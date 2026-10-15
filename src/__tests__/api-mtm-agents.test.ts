@@ -1730,3 +1730,75 @@ describe("GET /api/v1/mtm/leaderboard", () => {
     expect(json.data.period).toBe("monthly")
   })
 })
+
+// Owner, 2026-10-16: «для МТМ-агентов также… создаём агента, его номер
+// указываем, и когда он заходит в приложение, авторизуется через OTP; одно и
+// то же правило для сотрудников и агентов полевых». The number is how the agent
+// signs in — a code to its WhatsApp — so it is written with its country code
+// and held by no other active card in the company.
+describe("an agent's WhatsApp number — the one it signs in by", () => {
+  const card = (id: string, phone: string | null, userId: string | null = null) => ({ id, phone, userId })
+
+  beforeEach(() => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.create).mockResolvedValue({ id: "new-agent", name: "Fictional Agent" } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([card("other", "+994 55 000 11 22")] as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([] as never)
+  })
+
+  it("keeps a new card's number written with its country code, without spaces", async () => {
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Fictional Agent", phone: "+994 50 111 22 33" }))
+    expect(res.status).toBe(201)
+    const createArgs = vi.mocked(prisma.mtmAgent.create).mock.calls[0][0] as { data: { phone: string; passwordHash: string | null } }
+    expect(createArgs.data).toMatchObject({ phone: "+994501112233", passwordHash: null })
+  })
+
+  it("refuses a number without the country code", async () => {
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Fictional Agent", phone: "050 111 22 33" }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).code).toBe("MTM_AGENT_PHONE_INVALID")
+    expect(prisma.mtmAgent.create).not.toHaveBeenCalled()
+  })
+
+  it("refuses a number another active card holds, however it was written there", async () => {
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([card("other", "055 000 11 22")] as never)
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Fictional Agent", phone: "+994550001122" }))
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe("MTM_AGENT_PHONE_TAKEN")
+    expect(prisma.mtmAgent.create).not.toHaveBeenCalled()
+  })
+
+  it("refuses a number that sits on the CRM user linked to another card", async () => {
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([card("office", null, "user-office")] as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "user-office", phone: "+994501112233" }] as never)
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Fictional Agent", phone: "+994501112233" }))
+    expect(res.status).toBe(409)
+  })
+
+  describe("on an existing card", () => {
+    const put = (body: unknown) => UpdateAgent(makeJsonReq("/api/v1/mtm/agents/a1", "PUT", body), { params: Promise.resolve({ id: "a1" }) })
+
+    beforeEach(() => {
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "Fictional Agent", phone: "050 999 88 77", role: "AGENT", status: "ACTIVE", managerId: null, userId: null, teamId: null, tags: [], mapColor: null } as never)
+      vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
+      vi.mocked(prisma.mtmAgent.update).mockResolvedValue({ id: "a1" } as never)
+    })
+
+    it("does not re-judge a number left as it was, even one written the old way", async () => {
+      const res = await put({ name: "Fictional Agent", phone: "050 999 88 77" })
+      expect(res.status).toBe(200)
+      expect(prisma.mtmAgent.findMany).not.toHaveBeenCalled()
+    })
+
+    it("holds a changed number to the same rule", async () => {
+      expect((await (await put({ phone: "0501112233" })).json()).code).toBe("MTM_AGENT_PHONE_INVALID")
+      expect((await (await put({ phone: "+994550001122" })).json()).code).toBe("MTM_AGENT_PHONE_TAKEN")
+    })
+
+    it("lets the card keep its own number written another way", async () => {
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([card("a1", "050 999 88 77")] as never)
+      const res = await put({ phone: "+994 50 999 88 77" })
+      expect(res.status).toBe(200)
+    })
+  })
+})

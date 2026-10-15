@@ -15331,13 +15331,6 @@
     "roleSupervisor": "Supervisor",
     "roleManager": "Manager",
     "suspended": "Suspended",
-    "password": "Password",
-    "newPassword": "New Password",
-    "leaveEmptyToKeep": "Leave empty to keep current",
-    "minSixChars": "At least 12 characters: uppercase, lowercase, number, and special character",
-    "passwordHint": "The employee signs in to the mobile app with this password. Check it before saving — they must enter exactly what is written here.",
-    "showPassword": "Show",
-    "hidePassword": "Hide",
     "manager": "Manager",
     "allowSelfRoutePlanning": "Allow the agent to plan their own routes",
     "allowSelfRoutePlanningHint": "When this is off, only a manager can plan routes for this agent.",
@@ -15404,7 +15397,13 @@
     "addressFromMapHint": "appears once you set the place on the map",
     "placeholderLatitude": "Latitude",
     "placeholderLongitude": "Longitude",
-    "location": "Location"
+    "location": "Location",
+    "whatsappPhone": "WhatsApp number",
+    "emailOptional": "Email (optional)",
+    "whatsappPhoneInvalid": "Write the WhatsApp number in the international format, e.g. +994501234567.",
+    "whatsappPhoneTaken": "This number already belongs to another employee or agent. Everyone needs their own: the sign-in code goes to it.",
+    "codeLoginNote": "Nobody sets a password. The agent opens the app, taps “Get a code in WhatsApp” and sets their own. Forgot it? The same way, with a code.",
+    "codeLoginNoPhone": "The agent has no WhatsApp number and cannot sign in by a code. Write the number with its country code."
   },
   "admin": {
     "demoCenter": {

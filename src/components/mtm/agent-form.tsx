@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
-import { Check, X } from "lucide-react"
+import { Check, X, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,6 +18,13 @@ import {
   normalizeMtmAgentTags,
   validateMtmAgentTags,
 } from "@/lib/mtm/agent-tags"
+
+/** What the server accepts for a number: «+», a country code, at most 15 digits; spaces and dashes are fine. */
+const internationalPhone = (value: string) => /^\+[1-9]\d{6,14}$/.test(value.replace(/[\s\-()]/g, ""))
+const PHONE_ERROR: Record<string, string> = {
+  MTM_AGENT_PHONE_INVALID: "whatsappPhoneInvalid",
+  MTM_AGENT_PHONE_TAKEN: "whatsappPhoneTaken",
+}
 
 interface AgentFormProps {
   open: boolean
@@ -101,7 +108,6 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
     email: "",
     phone: "",
     externalCode: "",
-    password: "",
     role: "AGENT",
     status: "ACTIVE",
     canPlanOwnRoutes: true,
@@ -120,12 +126,6 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
   // Whether the manager pressed a colour button in this form: only then is
   // the colour his to save (see what is sent in handleSubmit).
   const [mapColorTouched, setMapColorTouched] = useState(false)
-  // Shown in clear by default. The manager sets this password for someone else
-  // and has to hand it over, so what is saved must be what they can read: on
-  // 2026-10-06 a manager set an agent's password twice behind the dots and the
-  // phone was refused both times — the card held something else, and nothing on
-  // the screen could show it.
-  const [passwordHidden, setPasswordHidden] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -135,9 +135,10 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       setForm({
         name: initialData?.name || "",
         email: initialData?.email || "",
-        phone: initialData?.phone || "",
+        // A new card starts with the country code: the number is how the agent
+        // signs in, by a code sent to its WhatsApp.
+        phone: initialData?.phone || (initialData?.id ? "" : "+994"),
         externalCode: initialData?.externalCode || "",
-        password: "",
         role: initialData?.role || "AGENT",
         status: initialData?.status || "ACTIVE",
         canPlanOwnRoutes: initialData?.canPlanOwnRoutes ?? true,
@@ -152,7 +153,6 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       setTagDraft("")
       setTagProblem(null)
       setError("")
-      setPasswordHidden(false)
       fetch("/api/v1/mtm/agents?limit=200", {
         headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string>,
       })
@@ -230,6 +230,13 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
     const mapColorChanged = mapColorTouched && (form.mapColor || null) !== (initialData?.mapColor ?? null)
     const sendTags = !isEdit || tagsChanged
     const sendMapColor = !isEdit || mapColorChanged
+    // The number signs the agent in (a code to WhatsApp), so a new card needs
+    // one written with its country code; a changed one is held to the same.
+    const phoneChanged = form.phone.trim() !== (initialData?.phone ?? "").trim()
+    if ((!isEdit || (phoneChanged && form.phone.trim())) && !internationalPhone(form.phone)) {
+      setError(tf("whatsappPhoneInvalid"))
+      return
+    }
     setSaving(true)
     setError("")
     try {
@@ -243,13 +250,13 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
         body: JSON.stringify({
           ...form,
           managerId: form.managerId || null,
-          password: form.password || undefined, // only send if not empty
+          phone: isEdit && !phoneChanged ? undefined : form.phone.trim() || null,
           tags: sendTags ? labels.tags : undefined,
           mapColor: sendMapColor ? form.mapColor || null : undefined,
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || tc("failedToSave"))
+      if (!res.ok) throw new Error(PHONE_ERROR[json.code] ? tf(PHONE_ERROR[json.code]) : json.error || tc("failedToSave"))
       onSaved()
       onOpenChange(false)
     } catch (err: unknown) {
@@ -274,51 +281,24 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="email">{tc("email")}</Label>
-                <Input id="email" type="email" value={form.email} onChange={e => update("email", e.target.value)} />
+                <Label htmlFor="phone">{`${tf("whatsappPhone")}${isEdit ? "" : " *"}`}</Label>
+                <Input id="phone" type="tel" inputMode="tel" placeholder="+994501234567" value={form.phone} onChange={e => update("phone", e.target.value)} required={!isEdit} />
               </div>
               <div>
-                <Label htmlFor="phone">{tc("phone")}</Label>
-                <Input id="phone" value={form.phone} onChange={e => update("phone", e.target.value)} />
+                <Label htmlFor="email">{tf("emailOptional")}</Label>
+                <Input id="email" type="email" value={form.email} onChange={e => update("email", e.target.value)} />
               </div>
             </div>
+            {/* Owner, 2026-10-16: «одно и то же правило для сотрудников и агентов
+                полевых» — nobody sets an agent's password; the agent gets a code
+                in WhatsApp and sets their own (as Personnel → Add employee). */}
+            <p className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" data-testid="agent-code-login-note">
+              <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{isEdit && !form.phone.trim() ? tf("codeLoginNoPhone") : tf("codeLoginNote")}</span>
+            </p>
             <div>
               <Label htmlFor="externalCode">{tf("externalCode")}</Label>
               <Input id="externalCode" value={form.externalCode} onChange={e => update("externalCode", e.target.value)} placeholder={tf("externalCodeHint")} />
-            </div>
-            <div>
-              <Label htmlFor="agent-password">{isEdit ? tf("newPassword") : tf("password")} {!isEdit && "*"}</Label>
-              <div className="relative">
-                {/* Not `id="password"` beside an email field: that is a sign-in
-                    form to a browser, which then offers — or fills in — the
-                    manager's own saved password. `new-password` says this is a
-                    credential being set; in clear it is an ordinary field the
-                    browser must not remember. */}
-                <Input
-                  id="agent-password"
-                  name="agent-new-password"
-                  type={passwordHidden ? "password" : "text"}
-                  value={form.password}
-                  onChange={e => update("password", e.target.value)}
-                  placeholder={isEdit ? tf("leaveEmptyToKeep") : tf("minSixChars")}
-                  minLength={isEdit ? undefined : 12}
-                  maxLength={72}
-                  required={!isEdit}
-                  autoComplete={passwordHidden ? "new-password" : "off"}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  className="pr-24"
-                />
-                <button
-                  type="button"
-                  onClick={() => setPasswordHidden(hidden => !hidden)}
-                  className="absolute inset-y-0 right-0 flex items-center px-3 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                >
-                  {passwordHidden ? tf("showPassword") : tf("hidePassword")}
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">{tf("passwordHint")}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
