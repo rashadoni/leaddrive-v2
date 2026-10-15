@@ -28942,6 +28942,42 @@
     "addEmployeePhoneInvalid": "Telefon beynəlxalq formatda olmalıdır, məsələn +994501234567.",
     "addEmployeeUserLimit": "Tarif üzrə istifadəçi limiti dolub. Yer boşaldın və ya tarifi genişləndirin.",
     "addEmployeeInvalid": "Adı və emaili yoxlayın.",
-    "addEmployeeFailed": "Əlavə etmək alınmadı. Bağlantını yoxlayıb yenidən cəhd edin."
+    "addEmployeeFailed": "Əlavə etmək alınmadı. Bağlantını yoxlayıb yenidən cəhd edin.",
+    "setupTitle": "Uçotun qurulması: {total} addımdan {done} hazırdır",
+    "setupHint": "Addımlar keçilməyənə qədər hesabatlar səhv sayır: qaydasız günlər gəlməmə kimi görünür, məzuniyyət normasızdır. Onları ardıcıl keçin — hər biri bir neçə dəqiqə çəkir.",
+    "setupDo": "Qur",
+    "setupOpen": "Aç",
+    "setupSteps": {
+      "hours": {
+        "title": "İş vaxtı",
+        "todo": "Gün nə vaxt başlayır və gecikmə nə vaxt sayılır",
+        "done": "Təyin edilib"
+      },
+      "holidays": {
+        "title": "{year} bayramları",
+        "todo": "Rəsmi bayramları və köçürmələri daxil edin",
+        "done": "Daxil edilib: {count} gün"
+      },
+      "branches": {
+        "title": "Filiallar",
+        "todo": "Ofisin ünvanı — girişdəki QR-kod üçün",
+        "done": "Filiallar: {count}"
+      },
+      "leave": {
+        "title": "Məzuniyyət normaları",
+        "todo": "Əməkdaşlara neçə gün məzuniyyət düşür",
+        "done": "Təsdiqlənib"
+      },
+      "employees": {
+        "title": "Əməkdaşlar",
+        "todo": "Gəliş və gedişi qeyd edənləri əlavə edin",
+        "done": "Uçotda: {count}"
+      },
+      "app": {
+        "title": "MTM tətbiqi",
+        "todo": "Son 30 gündə tətbiqdə heç kim qeyd olunmayıb",
+        "done": "Tətbiqdə qeyd olunur: {total} nəfərdən {count}"
+      }
+    }
   }
 }

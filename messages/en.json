@@ -28946,6 +28946,42 @@
     "addEmployeePhoneInvalid": "Use the international phone format, e.g. +994501234567.",
     "addEmployeeUserLimit": "The plan's user limit is reached. Free a seat or extend the plan.",
     "addEmployeeInvalid": "Check the name and email.",
-    "addEmployeeFailed": "Couldn't add. Check the connection and try again."
+    "addEmployeeFailed": "Couldn't add. Check the connection and try again.",
+    "setupTitle": "Attendance setup: {done} of {total} done",
+    "setupHint": "Until these steps are done, reports are wrong: days without rules read as absences, leave has no norm. Go through them in order — each takes a couple of minutes.",
+    "setupDo": "Set up",
+    "setupOpen": "Open",
+    "setupSteps": {
+      "hours": {
+        "title": "Working hours",
+        "todo": "When the day starts and when lateness counts",
+        "done": "Set"
+      },
+      "holidays": {
+        "title": "Holidays {year}",
+        "todo": "Enter the public holidays and moved days",
+        "done": "Days entered: {count}"
+      },
+      "branches": {
+        "title": "Branches",
+        "todo": "The office address — for the entrance QR code",
+        "done": "Branches: {count}"
+      },
+      "leave": {
+        "title": "Leave norms",
+        "todo": "How many leave days employees are entitled to",
+        "done": "Approved"
+      },
+      "employees": {
+        "title": "Employees",
+        "todo": "Add the people who mark arrival and departure",
+        "done": "Tracked: {count}"
+      },
+      "app": {
+        "title": "MTM app",
+        "todo": "Nobody has marked in the app in the last 30 days",
+        "done": "Marking in the app: {count} of {total}"
+      }
+    }
   }
 }
