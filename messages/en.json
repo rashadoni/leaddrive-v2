@@ -14172,7 +14172,7 @@
       "excelUnchangedRows": "Records that already match the data: the import leaves them alone.",
       "excelErrorRows": "Rows with errors, plus errors in the header row. While there are any, the import cannot be applied — fix the file and upload it again.",
       "excelDownloadErrors": "Download every check error as an Excel file: row, column, what is wrong and the cell's value. Only the first five are shown here.",
-      "excelConflict": "A conflict means the same employee already has a published or started route, and the meeting times match or are missing. The import does not change that route.",
+      "excelConflict": "A conflict means the same employee already has a published or started route on the same day, and the meeting times match or are missing. The import does not change that route.",
       "excelApplyNoFile": "Upload a file and wait for the check first — there is nothing to apply yet.",
       "excelApplyErrors": "The file has errors. Fix them and upload it again — only a file without errors can be applied.",
       "excelApplyConflicts": "First tick the box above to confirm you have reviewed the route conflicts.",
