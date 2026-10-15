@@ -15372,7 +15372,7 @@
         "kpiAttention": "Neçə məsələ qərarınızı gözləyir: agentlərin müraciətləri, dərc olunmamış marşrutlar, baxılmamış xəbərdarlıqlar, yoxlanılmamış fotolar. Siyahı — aşağıdakı kartda.",
         "ctaLocationRequests": "Marşrut təsdiqlərini açacaq: müştərinin yeni yerini qəbul edin və ya əvvəlkini saxlayın.",
         "ctaContactCreate": "Agentlərin yeni müştəri müraciətləri ilə müştəriləri açacaq — qəbul edin və ya rədd edin.",
-        "ctaCustomerCreate": "Marşrut təsdiqlərini açacaq: agentlərin yeni məkan müraciətləri.",
+        "ctaCustomerCreate": "Marşrut təsdiqlərini açacaq: agentlərin yeni müəssisə müraciətləri.",
         "ctaRouteChange": "Marşrut təsdiqlərini açacaq: agentlər dərc olunmuş marşrutu dəyişməyi xahiş edir.",
         "ctaPublish": "Marşrutları açacaq. Qaralamanı agent dərc olunana qədər görmür.",
         "ctaAlerts": "Keçmiş günlərin hələ baxılmamış xəbərdarlıqlarını açacaq. Bu günkülər — əməkdaşın sətrində.",
@@ -15402,7 +15402,7 @@
         "qualityTooLong": "MTM ayarlarındakı avtomatik bitmə həddindən uzun vizitlər. Açıq vizit saatla hesablanır.",
         "qualityTooShort": "Bu həddən qısa bitmiş vizitlər — vizitin olub-olmadığını yoxlamağa səbəb.",
         "qualityOpenVisits": "Vizitlərin siyahısı.",
-        "setupCustomersWithoutPin": "Xəritədə nöqtəsi olmayan məkanlar: nöqtə qoyulmayınca agent orada vizit qeyd edə bilməz.",
+        "setupCustomersWithoutPin": "Xəritədə nöqtəsi olmayan müəssisələr: nöqtə qoyulmayınca agent orada vizit qeyd edə bilməz.",
         "setupContactsUnclassified": "Bütün müştərilərin sinfi eynidir və ya yoxdur: panel bazanın əhatəsini siniflərə görə bölür.",
         "setupNoVisitNorms": "Vizit normaları — hər qrupun müştərilərinə nə qədər tez-tez baş çəkmək lazımdır. Bazanın əhatəsi onlara görə hesablanır."
       },
