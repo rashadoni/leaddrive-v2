@@ -10,6 +10,7 @@ import { mtmAgentMapColorHex } from "@/lib/mtm/agent-tags"
 import { rosterExportTable } from "@/lib/mtm/live-map-roster-export"
 import { printRosterHtml, rosterPrintHtml } from "@/lib/mtm/live-map-roster-print"
 import { liveMapDuration } from "@/lib/mtm/live-map-state-since"
+import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
 import {
   activeRosterFilterColumns,
   availableRosterColumns,
@@ -675,10 +676,12 @@ export function LiveMapRoster({
         return (agent.routeTotal ?? 0) > 0
           ? <span className="block truncate tabular-nums" data-testid={`live-map-agent-progress-${agent.agentId}`}>{tMap("routeStop.progress", { done: agent.routeVisited ?? 0, total: agent.routeTotal ?? 0 })}</span>
           : <span className="text-muted-foreground">—</span>
-      case "speed":
-        return typeof agent.speed === "number" && Number.isFinite(agent.speed)
-          ? <span className="block truncate tabular-nums">{tMap("roster.kmh", { value: Math.round(agent.speed) })}</span>
+      case "speed": {
+        const kmh = mtmSpeedKmh(agent.speed)
+        return kmh != null
+          ? <span className="block truncate tabular-nums">{tMap("roster.kmh", { value: kmh })}</span>
           : <span className="text-muted-foreground">—</span>
+      }
       case "battery":
         return typeof agent.battery === "number" && Number.isFinite(agent.battery)
           ? <span className={cn("block truncate tabular-nums", agent.battery < 20 && "font-medium text-red-600 dark:text-red-400")}>{Math.round(agent.battery)}%</span>

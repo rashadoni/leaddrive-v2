@@ -107,9 +107,10 @@ export function mtmSampleMoving(sample: Pick<MtmMovementSample, "isMoving" | "sp
  * Review of #205: one motionless sample at a red light flipped «Yolda» to
  * «Dayanıb». An agent counts as stopped only when, for the last
  * {@link MTM_STOPPED_DWELL_MS}, no sample reported movement (flag or speed
- * above 1 m/s) and every sample stayed within {@link MTM_STOPPED_RADIUS_METERS}
- * of the newest one. `lastMovingAt` is the newest moving sample the database
- * holds for that window, so a sparse set of loaded points cannot hide it.
+ * above 1 km/h, the stored unit — src/lib/mtm/gps-speed.ts) and every sample
+ * stayed within {@link MTM_STOPPED_RADIUS_METERS} of the newest one.
+ * `lastMovingAt` is the newest moving sample the database holds for that
+ * window, so a sparse set of loaded points cannot hide it.
  */
 export function isMtmAgentMoving(input: {
   samples: MtmMovementSample[]

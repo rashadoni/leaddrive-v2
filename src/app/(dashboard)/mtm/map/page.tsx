@@ -35,6 +35,7 @@ import {
   type RosterView,
 } from "@/lib/mtm/live-map-roster"
 import { liveMapDaySteps } from "@/lib/mtm/live-map-day-steps"
+import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
 import { createDateFormatter, formatDateTime, formatTime } from "@/lib/format-date"
 import { effectiveGeofenceRadius, formatMtmArea, formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/live-feed-alerts"
@@ -1334,6 +1335,7 @@ export default function MtmMapPage() {
   const renderAgentDetail = (agent: AgentLocation) => {
     const appPresent = agent.isOnline
     const hasFreshGps = agent.freshness === "ONLINE"
+    const speedKmh = mtmSpeedKmh(agent.speed)
     const workdayTone = agent.workdayState === "ACTIVE"
       ? "font-medium text-emerald-700 dark:text-emerald-400"
       : agent.workdayState === "PAUSED"
@@ -1485,7 +1487,7 @@ export default function MtmMapPage() {
           {agent.managerName ? <span data-testid="live-map-agent-manager">{tMap("roster.columns.manager")}: {agent.managerName}</span> : null}
           {/* The labels a manager put on him — the list shows them only as a column somebody switched on. */}
           {agent.tags?.length ? <span data-testid="live-map-agent-tags">{tMap("roster.columns.tags")}: {agent.tags.join(", ")}</span> : null}
-          {agent.speed != null && agent.speed > 0 ? <span>{tMap("roster.kmh", { value: agent.speed.toFixed(0) })}</span> : null}
+          {speedKmh ? <span>{tMap("roster.kmh", { value: speedKmh })}</span> : null}
           {agent.routeCompletion > 0 ? <span><Navigation className="inline h-3 w-3" /> {agent.routeCompletion}%</span> : null}
           {agent.accuracy != null ? <span>±{Math.round(agent.accuracy)} m</span> : null}
           {agent.battery != null ? <span className="inline-flex items-center"><Battery className="mr-0.5 h-3 w-3" />{Math.round(agent.battery)}%</span> : null}
