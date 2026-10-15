@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Send } from "lucide-react"
@@ -70,11 +71,13 @@ export function MtmRoutesAwaitingPublish({
               </span>
             </p>
             <div className="flex shrink-0 gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={() => onOpen(route)}>{t("awaitingOpen")}</Button>
-              <Button type="button" size="sm" disabled={publishing !== null} onClick={() => { void publish(route) }}>
-                <Send className="mr-1 h-4 w-4" aria-hidden="true" />
-                {publishing === route.id ? t("publishing") : t("publishRoute")}
-              </Button>
+              <Hint text={t("hint.awaitingOpen")}><Button type="button" size="sm" variant="outline" onClick={() => onOpen(route)}>{t("awaitingOpen")}</Button></Hint>
+              <Hint wrap text={t("hint.publish")}>
+                <Button type="button" size="sm" disabled={publishing !== null} onClick={() => { void publish(route) }}>
+                  <Send className="mr-1 h-4 w-4" aria-hidden="true" />
+                  {publishing === route.id ? t("publishing") : t("publishRoute")}
+                </Button>
+              </Hint>
             </div>
           </li>
         ))}

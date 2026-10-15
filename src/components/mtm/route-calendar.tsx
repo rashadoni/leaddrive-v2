@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Plus, RefreshCw } from "lucide-react"
@@ -170,16 +171,20 @@ export function MtmRouteCalendar({
           </div>
         </div>
         <div className="flex items-center justify-between gap-1 sm:justify-end">
-          <Button data-testid="mtm-route-calendar-previous-month" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("previousMonth")} onClick={() => moveMonth(-1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+          <Hint text={t("hint.previousMonth")}>
+            <Button data-testid="mtm-route-calendar-previous-month" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("previousMonth")} onClick={() => moveMonth(-1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </Hint>
           <div className="min-w-32 px-2 text-center text-sm font-semibold capitalize sm:min-w-40">
             {formatDate(month, locale, { month: "long", year: "numeric" })}
           </div>
-          <Button data-testid="mtm-route-calendar-next-month" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("nextMonth")} onClick={() => moveMonth(1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" className="min-h-11 px-3" onClick={returnToCurrentMonth}>{t("todayAction")}</Button>
+          <Hint text={t("hint.nextMonth")}>
+            <Button data-testid="mtm-route-calendar-next-month" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("nextMonth")} onClick={() => moveMonth(1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Hint>
+          <Hint text={t("hint.today")}><Button variant="outline" className="min-h-11 px-3" onClick={returnToCurrentMonth}>{t("todayAction")}</Button></Hint>
         </div>
       </header>
 

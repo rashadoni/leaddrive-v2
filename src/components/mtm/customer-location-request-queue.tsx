@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useCallback, useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import { useLocale, useTranslations } from "next-intl"
@@ -185,7 +186,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
                 <dl className="grid grid-cols-2 gap-2">
                   {facts.map(([label, value]) => (
                     <div key={label} className="rounded-lg border border-zinc-200 bg-muted/40 px-3 py-2 dark:border-zinc-700">
-                      <dt className="text-[11px] text-muted-foreground">{label}</dt>
+                      <dt className="text-[11px] text-muted-foreground"><HintValue text={t("hint.locationFacts")}>{label}</HintValue></dt>
                       <dd className="text-sm font-semibold text-foreground">{value}</dd>
                     </div>
                   ))}
@@ -224,27 +225,31 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
                     />
                     <div className="grid gap-2 sm:grid-cols-2">
                       {request.pinMovedSince ? null : (
+                        <Hint wrap text={t("hint.locationAccept")}>
+                          <Button
+                            type="button"
+                            onClick={() => { void decide(request, "APPROVED") }}
+                            disabled={busy != null}
+                            data-testid={`mtm-customer-location-accept-${request.id}`}
+                          >
+                            {deciding === "APPROVED" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="mr-2 h-4 w-4" aria-hidden="true" />}
+                            {t("locationAccept")}
+                          </Button>
+                        </Hint>
+                      )}
+                      <Hint wrap text={t("hint.locationReject")}>
                         <Button
                           type="button"
-                          onClick={() => { void decide(request, "APPROVED") }}
+                          variant="outline"
+                          onClick={() => { void decide(request, "REJECTED") }}
                           disabled={busy != null}
-                          data-testid={`mtm-customer-location-accept-${request.id}`}
+                          className={request.pinMovedSince ? "sm:col-span-2" : undefined}
+                          data-testid={`mtm-customer-location-reject-${request.id}`}
                         >
-                          {deciding === "APPROVED" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="mr-2 h-4 w-4" aria-hidden="true" />}
-                          {t("locationAccept")}
+                          {deciding === "REJECTED" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <X className="mr-2 h-4 w-4" aria-hidden="true" />}
+                          {t("locationReject")}
                         </Button>
-                      )}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => { void decide(request, "REJECTED") }}
-                        disabled={busy != null}
-                        className={request.pinMovedSince ? "sm:col-span-2" : undefined}
-                        data-testid={`mtm-customer-location-reject-${request.id}`}
-                      >
-                        {deciding === "REJECTED" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <X className="mr-2 h-4 w-4" aria-hidden="true" />}
-                        {t("locationReject")}
-                      </Button>
+                      </Hint>
                     </div>
                   </div>
                 ) : (

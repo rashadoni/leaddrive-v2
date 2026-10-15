@@ -21,7 +21,8 @@ describe("MTM calendar-first planning UI contract", () => {
     expect(page).toContain('data-testid="mtm-routes-view-calendar"')
     expect(page).toContain('data-testid="mtm-routes-view-list"')
     expect(page).toContain('data-testid="mtm-routes-view-week"')
-    expect(page).toContain('calendarSurface && capabilities.canReview ? <Button data-testid="mtm-routes-view-week"')
+    // The team's week is a reviewer's tab of the calendar (its hint says what it holds).
+    expect(page).toContain('calendarSurface && capabilities.canReview ? <Hint text={t("hint.viewWeek")}><Button data-testid="mtm-routes-view-week"')
     // Owner 2026-09-25: every view is its own tab in one row — no dropdown.
     expect(page).toContain('data-testid="mtm-route-view-tabs"')
     expect(page).not.toContain('data-testid="mtm-routes-more-views"')

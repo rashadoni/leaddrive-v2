@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
@@ -209,7 +210,7 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
                               <p className="text-[11px] font-medium text-muted-foreground">{t("existingCustomer")}</p>
                               <p className="truncate text-sm font-semibold">{candidate.name}</p>
                             </div>
-                            <Badge variant={candidate.exact ? "destructive" : "warning"}>{t("matchScore", { score: candidate.score })}</Badge>
+                            <HintValue text={t("hint.matchScore")}><Badge variant={candidate.exact ? "destructive" : "warning"}>{t("matchScore", { score: candidate.score })}</Badge></HintValue>
                           </div>
                           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                             {candidate.code ? <span className="flex items-center gap-1"><Hash className="h-3 w-3" aria-hidden="true" />{candidate.code}</span> : null}
@@ -256,18 +257,24 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
                   </div>
 
                   <div className="mt-4 space-y-2" aria-live="polite">
-                    <Button className="w-full" onClick={() => decide(request.id, "APPROVED")} disabled={busy || blocked}>
-                      {busy ? <Loader2 className="animate-spin" /> : <Check />}
-                      {t("approveCreateCustomer")}
-                    </Button>
-                    <Button className="w-full justify-between" variant="outline" onClick={() => decide(request.id, "NEEDS_INFO")} disabled={busy || !comment.trim()}>
-                      <span className="flex items-center gap-2"><CircleHelp />{t("requestCustomerDetails")}</span>
-                      <ArrowRight />
-                    </Button>
-                    <Button className="w-full justify-between text-destructive hover:text-destructive" variant="outline" onClick={() => decide(request.id, "REJECTED")} disabled={busy || !comment.trim()}>
-                      <span className="flex items-center gap-2"><X />{t("rejectCustomerRequest")}</span>
-                      <ArrowRight />
-                    </Button>
+                    <Hint wrap text={t("hint.approveCustomer")}>
+                      <Button className="w-full" onClick={() => decide(request.id, "APPROVED")} disabled={busy || blocked}>
+                        {busy ? <Loader2 className="animate-spin" /> : <Check />}
+                        {t("approveCreateCustomer")}
+                      </Button>
+                    </Hint>
+                    <Hint wrap text={t("hint.customerDetails")}>
+                      <Button className="w-full justify-between" variant="outline" onClick={() => decide(request.id, "NEEDS_INFO")} disabled={busy || !comment.trim()}>
+                        <span className="flex items-center gap-2"><CircleHelp />{t("requestCustomerDetails")}</span>
+                        <ArrowRight />
+                      </Button>
+                    </Hint>
+                    <Hint wrap text={t("hint.customerReject")}>
+                      <Button className="w-full justify-between text-destructive hover:text-destructive" variant="outline" onClick={() => decide(request.id, "REJECTED")} disabled={busy || !comment.trim()}>
+                        <span className="flex items-center gap-2"><X />{t("rejectCustomerRequest")}</span>
+                        <ArrowRight />
+                      </Button>
+                    </Hint>
                   </div>
                 </div>
               </aside>

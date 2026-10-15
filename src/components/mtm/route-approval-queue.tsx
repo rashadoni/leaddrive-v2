@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertCircle, Check, ClipboardCheck, HelpCircle, MapPin, X } from "lucide-react"
@@ -166,15 +167,21 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
                   rows={2}
                 />
                 <div className="grid grid-cols-3 gap-2">
-                  <Button size="sm" onClick={() => decide(request.id, "APPROVED")} disabled={busyId === request.id}>
-                    <Check className="mr-1 h-4 w-4" />{t("approve")}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => decide(request.id, "NEEDS_INFO")} disabled={busyId === request.id || needsComment}>
-                    <HelpCircle className="mr-1 h-4 w-4" />{t("needsInfo")}
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-destructive" onClick={() => decide(request.id, "REJECTED")} disabled={busyId === request.id || needsComment}>
-                    <X className="mr-1 h-4 w-4" />{t("reject")}
-                  </Button>
+                  <Hint wrap text={t("hint.approve")}>
+                    <Button size="sm" onClick={() => decide(request.id, "APPROVED")} disabled={busyId === request.id}>
+                      <Check className="mr-1 h-4 w-4" />{t("approve")}
+                    </Button>
+                  </Hint>
+                  <Hint wrap text={t("hint.needsInfo")}>
+                    <Button size="sm" variant="outline" onClick={() => decide(request.id, "NEEDS_INFO")} disabled={busyId === request.id || needsComment}>
+                      <HelpCircle className="mr-1 h-4 w-4" />{t("needsInfo")}
+                    </Button>
+                  </Hint>
+                  <Hint wrap text={t("hint.reject")}>
+                    <Button size="sm" variant="outline" className="text-destructive" onClick={() => decide(request.id, "REJECTED")} disabled={busyId === request.id || needsComment}>
+                      <X className="mr-1 h-4 w-4" />{t("reject")}
+                    </Button>
+                  </Hint>
                 </div>
                 {needsComment ? (
                   <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><AlertCircle className="h-3 w-3" />{t("decisionComment")}</p>

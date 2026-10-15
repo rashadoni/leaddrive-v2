@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { ExternalLink, Loader2, Map, Navigation, Route as RouteIcon } from "lucide-react"
@@ -253,25 +254,31 @@ export function MtmRouteTravelPanel({ route, canCalculate, locale, orgId }: Prop
           <p className="text-xs text-muted-foreground">{t("routeTravelReady")}</p>
         )}
         {calculationReady ? (
-          <Button type="button" size="sm" className="min-h-11" onClick={() => void requestEstimate()} disabled={calculating}>
-            {calculating ? <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" /> : <RouteIcon className="mr-1 h-4 w-4" aria-hidden="true" />}
-            {calculating ? t("routeTravelCalculating") : t("routeTravelCalculate")}
-          </Button>
+          <Hint wrap text={t("hint.travelCalculate")}>
+            <Button type="button" size="sm" className="min-h-11" onClick={() => void requestEstimate()} disabled={calculating}>
+              {calculating ? <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" /> : <RouteIcon className="mr-1 h-4 w-4" aria-hidden="true" />}
+              {calculating ? t("routeTravelCalculating") : t("routeTravelCalculate")}
+            </Button>
+          </Hint>
         ) : null}
         {travelPolicy.calculationEnabled && !googleMapOpen ? (
-          <Button type="button" size="sm" variant="outline" className="min-h-11" onClick={() => setGoogleMapOpen(true)}>
-            <Map className="mr-1 h-4 w-4" aria-hidden="true" />
-            {t("routeTravelOpenGoogleMap")}
-          </Button>
+          <Hint text={t("hint.travelMap")}>
+            <Button type="button" size="sm" variant="outline" className="min-h-11" onClick={() => setGoogleMapOpen(true)}>
+              <Map className="mr-1 h-4 w-4" aria-hidden="true" />
+              {t("routeTravelOpenGoogleMap")}
+            </Button>
+          </Hint>
         ) : null}
         {travelPolicy.navigationEnabled && navigationUrl ? (
-          <Button asChild type="button" size="sm" variant="outline" className="min-h-11">
-            <a href={navigationUrl} target="_blank" rel="noreferrer">
-              <Navigation className="mr-1 h-4 w-4" aria-hidden="true" />
-              {t("routeTravelOpenNavigation")}
-              <ExternalLink className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
-            </a>
-          </Button>
+          <Hint text={t("hint.travelNavigation")}>
+            <Button asChild type="button" size="sm" variant="outline" className="min-h-11">
+              <a href={navigationUrl} target="_blank" rel="noreferrer">
+                <Navigation className="mr-1 h-4 w-4" aria-hidden="true" />
+                {t("routeTravelOpenNavigation")}
+                <ExternalLink className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+            </Button>
+          </Hint>
         ) : null}
       </div>
 

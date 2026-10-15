@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
@@ -118,9 +119,9 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
           {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
         </Select>
         {AGENT_PERIOD_PRESETS.map((value) => (
-          <Button key={value} type="button" variant={preset === value ? "default" : "outline"} aria-pressed={preset === value} className="min-h-11" onClick={() => { setPreset(value); setRange(agentPeriodPreset(value, today)) }}>
+          <Hint key={value} text={t("hint.presets")}><Button type="button" variant={preset === value ? "default" : "outline"} aria-pressed={preset === value} className="min-h-11" onClick={() => { setPreset(value); setRange(agentPeriodPreset(value, today)) }}>
             {t(`presets.${value}`)}
-          </Button>
+          </Button></Hint>
         ))}
         <span className="inline-flex items-center gap-1">
           <Input type="date" aria-label={t("from")} value={range.from} max={range.to} onChange={(event) => { setPreset(null); setRange((current) => ({ ...current, from: event.target.value })) }} className="min-h-11 w-40" />
@@ -137,13 +138,13 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
         <div className={loading ? "space-y-4 opacity-60 transition-opacity" : "space-y-4 transition-opacity"} aria-busy={loading}>
           <div data-testid="mtm-agent-period-cards" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
-              { label: t("cards.workDays"), value: `${summary.workedDays}`, extra: `/ ${summary.plannedDays || pastDays}` },
-              { label: t("cards.inField"), value: duration(summary.fieldSeconds), extra: "" },
-              { label: t("cards.visitsPlan"), value: `${summary.visits}`, extra: summary.planned ? `/ ${summary.planned} · ${Math.round((summary.visitedPoints / summary.planned) * 100)}%` : "" },
-              { label: t("cards.distance"), value: km(summary.distanceMeters), extra: period.distanceBasis === "ROADS" ? t("byRoads") : "" },
+              { label: t("cards.workDays"), hint: t("hint.workDays"), value: `${summary.workedDays}`, extra: `/ ${summary.plannedDays || pastDays}` },
+              { label: t("cards.inField"), hint: t("hint.inField"), value: duration(summary.fieldSeconds), extra: "" },
+              { label: t("cards.visitsPlan"), hint: t("hint.visitsPlan"), value: `${summary.visits}`, extra: summary.planned ? `/ ${summary.planned} · ${Math.round((summary.visitedPoints / summary.planned) * 100)}%` : "" },
+              { label: t("cards.distance"), hint: t("hint.distance", { byRoads: t("byRoads") }), value: km(summary.distanceMeters), extra: period.distanceBasis === "ROADS" ? t("byRoads") : "" },
             ].map((card) => (
               <div key={card.label} className="rounded-lg bg-muted/40 p-3">
-                <div className="text-xs text-muted-foreground">{card.label}</div>
+                <div className="text-xs text-muted-foreground"><HintValue text={card.hint}>{card.label}</HintValue></div>
                 <div className="text-xl font-semibold tabular-nums">{card.value} <span className="text-sm font-normal text-muted-foreground">{card.extra}</span></div>
               </div>
             ))}
@@ -199,9 +200,11 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
                       ))}
                     </ul>
                   ) : <p className="mt-2 text-sm text-muted-foreground">{t("noVisits")}</p>}
-                  <Link href={`/mtm/map?mode=history&agentId=${encodeURIComponent(agentId)}&date=${day.date}`} className="mt-3 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                    <MapPinned className="h-4 w-4" />{t("openOnMap")}
-                  </Link>
+                  <Hint text={t("hint.openOnMap")}>
+                    <Link href={`/mtm/map?mode=history&agentId=${encodeURIComponent(agentId)}&date=${day.date}`} className="mt-3 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                      <MapPinned className="h-4 w-4" />{t("openOnMap")}
+                    </Link>
+                  </Hint>
                 </li>
               )
             })}
