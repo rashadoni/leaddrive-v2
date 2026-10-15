@@ -22,6 +22,8 @@ const scratch = vi.hoisted(() => {
   return { name, role, adminDb: db.toString() }
 })
 const identity = vi.hoisted(() => ({ orgId: "employee-pg-a", agentId: "", role: "EMPLOYEE" }))
+// The plan's seat limit is billing, not under test here.
+vi.mock("@/lib/plan-limits", () => ({ checkUserLimit: async () => ({ allowed: true }) }))
 vi.mock("@/lib/mobile-auth", () => ({ resolveMobileAuth: async () => ({ ...identity, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } }) }))
 function sql(url: string, statement: string) {
   const cli = createRequire(import.meta.url).resolve("prisma/build/index.js")
@@ -459,5 +461,37 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     expect(await tenant(automaticOrg, () => prisma.mtmAgent.count({ where: { userId: "automatic-month-race-user" } }))).toBe(1)
     expect(await tenant(automaticOrg, () => prisma.mtmAgent.findUnique({ where: { id: scope.agentId } }))).toMatchObject({ role: "EMPLOYEE", attendanceParticipant: true,
       canPlanOwnRoutes: false, attendanceExcluded: true })
+  })
+
+  // Owner, 2026-10-15: HR adds office staff in Personnel → Employees, apart from
+  // MTM agents; the person is a CRM user (counts against the plan) who sees no module.
+  it("adds an office employee from Personnel: one hidden-module CRM user and one EMPLOYEE card", async () => {
+    const create = await import("@/lib/mtm/attendance-employee-create")
+    const bcrypt = (await import("bcryptjs")).default
+    const input = { name: "Fictional office hire", email: "Office.Hire@example.invalid", phone: "+994501234567", password: "Fixture-Pass-2026!" }
+    const created = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, input))
+    await tenant(automaticOrg, async () => {
+      const user = await prisma.user.findUniqueOrThrow({ where: { id: created.userId } })
+      expect(user).toMatchObject({ email: "office.hire@example.invalid", role: "viewer", isActive: true, phone: "+994501234567" })
+      expect(user.hiddenModules).toEqual(expect.arrayContaining(["crm", "sales", "finance", "mtm", "support"]))
+      expect(await bcrypt.compare(input.password, user.passwordHash!)).toBe(true)
+      // The database trigger made the card; the function did not add a second.
+      const cards = await prisma.mtmAgent.findMany({ where: { userId: created.userId } })
+      expect(cards).toHaveLength(1)
+      expect(cards[0]).toMatchObject({ id: created.agentId, role: "EMPLOYEE", status: "ACTIVE", attendanceParticipant: true, passwordHash: null, canPlanOwnRoutes: false })
+      expect(await prisma.mtmAuditLog.count({ where: { action: "MTM_ATTENDANCE_EMPLOYEE_CREATED", agentId: created.agentId } })).toBe(1)
+      expect((await store.readAttendanceEmployees(automaticAdmin)).employees.some(employee => employee.id === created.agentId)).toBe(true)
+    })
+    const users = await tenant(automaticOrg, () => prisma.user.count())
+    for (const [actor, body, code] of [
+      [automaticAdmin, input, "MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN"],
+      [automaticAdmin, { ...input, email: "existing-field@example.invalid" }, "MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN"],
+      [automaticAdmin, { ...input, email: "short@example.invalid", password: "short" }, "MTM_ATTENDANCE_EMPLOYEE_PASSWORD_WEAK"],
+      [automaticAdmin, { ...input, email: "phone@example.invalid", phone: "0501234567" }, "MTM_ATTENDANCE_EMPLOYEE_PHONE_INVALID"],
+    ] as const) await expect(tenant(automaticOrg, () => create.createAttendanceEmployee(actor, body))).rejects.toMatchObject({ code })
+    // A non-administrator (here a sales user) is refused before any write.
+    await expect(tenant(automaticOrg, () => create.createAttendanceEmployee({ ...automaticAdmin, userId: "automatic-user-001" }, { ...input, email: "by-sales@example.invalid" })))
+      .rejects.toMatchObject({ status: 403 })
+    expect(await tenant(automaticOrg, () => prisma.user.count())).toBe(users)
   })
 })
