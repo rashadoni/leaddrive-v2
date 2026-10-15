@@ -15308,7 +15308,7 @@
         "kpiAttention": "How many questions wait for your decision: agents' requests, unpublished routes, unhandled alerts, unchecked photos. The list is in the card below.",
         "ctaLocationRequests": "Opens route approvals: accept the client's new place or keep the old one.",
         "ctaContactCreate": "Opens clients with agents' requests for new clients: accept or decline.",
-        "ctaCustomerCreate": "Opens route approvals: agents' requests for new places.",
+        "ctaCustomerCreate": "Opens route approvals: agents' requests for new institutions.",
         "ctaRouteChange": "Opens route approvals: agents ask to change a published route.",
         "ctaPublish": "Opens routes. An agent does not see a draft until it is published.",
         "ctaAlerts": "Opens alerts from past days that are not yet handled. Today's are in the employee's row.",
@@ -15338,7 +15338,7 @@
         "qualityTooLong": "Visits longer than the auto-finish limit in the MTM settings. An open visit is counted by the clock.",
         "qualityTooShort": "Finished visits shorter than this limit: a reason to check the visit happened.",
         "qualityOpenVisits": "The list of visits.",
-        "setupCustomersWithoutPin": "Places without a pin on the map: an agent cannot check in there until the pin is set.",
+        "setupCustomersWithoutPin": "Institutions without a pin on the map: an agent cannot check in there until the pin is set.",
         "setupContactsUnclassified": "All clients share one class or none: the panel splits base coverage by class.",
         "setupNoVisitNorms": "Visit norms say how often to visit each group of clients. Base coverage is counted against them."
       },
