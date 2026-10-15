@@ -46,8 +46,11 @@ describe("MTM calendar-first planning UI contract", () => {
   })
 
   it("prefills date from the month and date plus employee from the week", () => {
-    expect(page).toContain('onCreateRoute={(date) => openNewRoute({ date, returnView: "calendar" })}')
-    expect(page).toContain('onCreateRoute={({ date, agentId }) => openNewRoute({ date, agentId, returnView: "week" })}')
+    // A new route is planned on its own page, on a map, since 2026-10-15; the
+    // day of the month and the employee of the week go with it.
+    expect(page).toContain('onCreateRoute={(date) => openPlanner({ date })}')
+    expect(page).toContain('onCreateRoute={({ date, agentId }) => openPlanner({ date, agentId })}')
+    expect(page).toContain('router.push(query ? `/mtm/routes/plan?${query}` : "/mtm/routes/plan")')
     expect(page).toContain("initialDate={editData ? undefined : builderPreset?.date}")
     expect(page).toContain("initialAgentId={editData ? undefined : builderPreset?.agentId}")
     expect(builder).toContain("initialDate?: string")

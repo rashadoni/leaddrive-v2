@@ -744,6 +744,25 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
     setBuilderOpen(true)
   }
 
+  /**
+   * A new route is planned on its own page, on a map (/mtm/routes/plan; owner,
+   * 2026-10-15). It opens on the day and the employee the screen is on; an
+   * existing route is still changed in the builder.
+   */
+  function openPlanner(preset: { date?: string | null; agentId?: string | null } = {}) {
+    if (!capabilities.canCreateRoute) {
+      toast.error(t("selfPlanningDisabled"))
+      return
+    }
+    const params = new URLSearchParams()
+    const date = preset.date ?? plannerContext.date
+    const agentId = preset.agentId ?? plannerContext.agentId ?? (capabilities.canReview ? null : capabilities.actorAgentId)
+    if (date) params.set("date", date)
+    if (agentId) params.set("agentId", agentId)
+    const query = params.toString()
+    router.push(query ? `/mtm/routes/plan?${query}` : "/mtm/routes/plan")
+  }
+
   function openRouteEditor(route: MtmRouteRecord) {
     closeRouteDetails()
     const nextPlannerContext = mergeMtmRoutePlannerContext(plannerContext, {
@@ -942,7 +961,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
           <div className="flex shrink-0 items-center justify-end gap-2">
             {returnTarget ? <Hint text={t("hint.returnBack")}><Button asChild variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10"><Link href={returnTarget.href}><ArrowLeft className="mr-1 h-4 w-4" />{t(returnTarget.label)}</Link></Button></Hint> : null}
             {capabilities.canReview ? <Hint text={t("hint.excel")}><Button data-testid="mtm-routes-excel-exchange" variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10" onClick={() => setExcelOpen(true)}><FileSpreadsheet className="mr-1 h-4 w-4" />{t("excelExchange")}</Button></Hint> : null}
-            <Hint wrap text={capabilities.canCreateRoute ? t("hint.addRoute") : t("selfPlanningDisabled")}><Button data-testid="mtm-route-builder-open" className="min-h-11 flex-1 whitespace-nowrap px-4 sm:flex-none lg:min-h-10" onClick={() => openNewRoute()} disabled={!capabilities.canCreateRoute}><Plus className="mr-1 h-4 w-4" /> {t("add")}</Button></Hint>
+            <Hint wrap text={capabilities.canCreateRoute ? t("hint.addRoute") : t("selfPlanningDisabled")}><Button data-testid="mtm-route-builder-open" className="min-h-11 flex-1 whitespace-nowrap px-4 sm:flex-none lg:min-h-10" onClick={() => openPlanner()} disabled={!capabilities.canCreateRoute}><Plus className="mr-1 h-4 w-4" /> {t("add")}</Button></Hint>
           </div>
         </div>
       </header>
@@ -1287,7 +1306,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
           canCreateRoutes={capabilities.canCreateRoute}
           canManageAssignments={capabilities.canReview}
           selfAgentId={capabilities.actorAgentId}
-          onCreateRoute={({ date, agentId }) => openNewRoute({ date, agentId, returnView: "week" })}
+          onCreateRoute={({ date, agentId }) => openPlanner({ date, agentId })}
           onOpenAgent={openAgentPeriod}
         />
       ) : viewMode === "agent" ? (
@@ -1322,7 +1341,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
           onRetry={() => setCalendarRefreshVersion((current) => current + 1)}
           onSelectRoute={openRouteDetails}
           canCreateRoutes={capabilities.canCreateRoute}
-          onCreateRoute={(date) => openNewRoute({ date, returnView: "calendar" })}
+          onCreateRoute={(date) => openPlanner({ date })}
         />
       )}
 

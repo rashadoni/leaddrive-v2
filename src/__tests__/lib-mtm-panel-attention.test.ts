@@ -145,8 +145,9 @@ describe("the rows of the block", () => {
     expect(attentionItemHref({ kind: "customerCreateRequests", date: null })).toBe("/mtm/routes?view=approvals")
     expect(attentionItemHref({ kind: "routeChangeRequests", date: null })).toBe("/mtm/routes?view=approvals")
     expect(attentionItemHref({ kind: "routesAwaitingPublish", date: "2026-10-12" })).toBe("/mtm/routes")
-    // /mtm/alerts opens on today: without the day the alerts of 8 October stay off screen.
-    expect(attentionItemHref({ kind: "olderAlerts", date: "2026-10-08" })).toBe("/mtm/alerts?date=2026-10-08")
+    // /mtm/alerts opens on every open alert, whatever its day (2026-10-15). A
+    // link to one day showed one of the seven the row counted.
+    expect(attentionItemHref({ kind: "olderAlerts", date: "2026-10-08" })).toBe("/mtm/alerts")
     expect(attentionItemHref({ kind: "olderAlerts", date: null })).toBe("/mtm/alerts")
     // The gallery opens on this week and every status: the link names both.
     expect(attentionItemHref({ kind: "photosPendingReview", date: "2026-10-07" })).toBe("/mtm/photos?status=PENDING&period=all")

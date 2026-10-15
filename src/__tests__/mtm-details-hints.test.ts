@@ -34,6 +34,7 @@ describe.each([
   ["mtmExplainableKpi.hint", "hint.", [component("explainable-kpi-dashboard")]],
   ["mtmPharmacyPromotions.hint", "hint.", ["workspace", "detail", "definition-admin", "campaign-admin", "agent-capture"].map((name) => component(`pharmacy-promotion-${name}`))],
   ["mtmProductCatalog.hint", "hint.", [component("product-catalog")]],
+  ["mtmRoutePlanner.hint", "hint.", [component("route-planner")]],
   ["mtmVisitWorkspace.hint", "hint.", ["src/app/(dashboard)/mtm/visits/visit-workspace.tsx"]],
   ["mtmMap.history.hint", "hint.", [component("location-history-panel")]],
   ["mtmExcel.hint", "hint.", [component("excel-exchange-panel")]],
