@@ -54,6 +54,8 @@ import {
 import { VisitReviewPanel, visitStatusClasses, type ReviewedVisitFacts } from "./visit-review-panel"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 import { VisitWorkspace } from "./visit-workspace"
+import { RemindAgentButton, useLeftOpenSince, useMinuteClock, useOpenForText } from "./visit-left-open"
+import { isMtmVisitLeftOpen, MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES } from "@/lib/mtm/visit-left-open"
 
 type MtmVisitRow = {
   id: string
@@ -168,6 +170,10 @@ export default function MtmVisitsPage() {
     geofenceRadius: null,
   })
   const [activeVisits, setActiveVisits] = useState<ActiveVisitRow[]>([])
+  // The tenant's long-open line (autoCheckoutMinutes): past it a visit is «не закрыт агентом», not «идёт».
+  const [longOpenMinutes, setLongOpenMinutes] = useState(MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES)
+  const now = useMinuteClock()
+  const openForText = useOpenForText()
   const [viewer, setViewer] = useState<VisitViewer | null>(null)
   const [activeVisitId, setActiveVisitId] = useState<string | null>(null)
   const [focusedVisitUnavailable, setFocusedVisitUnavailable] = useState(false)
@@ -395,6 +401,7 @@ export default function MtmVisitsPage() {
       const body = await res.json().catch(() => null)
       if (!isCurrentRequest() || !res.ok || !body?.success) return []
       const nextViewer: VisitViewer | null = body.data.viewer ?? null
+      if (typeof body.data.longOpenMinutes === "number" && body.data.longOpenMinutes > 0) setLongOpenMinutes(body.data.longOpenMinutes)
       const isOwn = (visit: ActiveVisitRow) => isOwnVisitExecution(nextViewer, { agentId: visit.agentId, status: "CHECKED_IN" })
       let next: ActiveVisitRow[] = body.data.visits ?? []
 
@@ -549,7 +556,11 @@ export default function MtmVisitsPage() {
   // only where they are the whole period.
   const listIsPartial = visitsRemaining > 0 || meta.sourceTruncated
   const ownActiveVisits = activeVisits.filter((visit) => isOwnVisitExecution(viewer, { agentId: visit.agentId, status: "CHECKED_IN" }))
-  const teamActiveVisits = activeVisits.filter((visit) => !ownActiveVisits.includes(visit))
+  const openTeamVisits = activeVisits.filter((visit) => !ownActiveVisits.includes(visit))
+  // Owner, 2026-10-15: a visit opened three days before stood here as «идёт
+  // сейчас». It is listed apart, as what it is: left open by the agent.
+  const leftOpenVisits = openTeamVisits.filter((visit) => isMtmVisitLeftOpen({ checkInAt: visit.checkInAt }, now, longOpenMinutes))
+  const teamActiveVisits = openTeamVisits.filter((visit) => !leftOpenVisits.includes(visit))
   const focusedOwnExecution = Boolean(focusedVisitId && ownActiveVisits.some((visit) => visit.id === focusedVisitId))
   // Until the viewer is known, an agent's own ?visitId must not flash the office review.
   const focusPending = Boolean(focusedVisitId && !activeResolved && !focusedVisitUnavailable)
@@ -591,7 +602,16 @@ export default function MtmVisitsPage() {
     router.push(visitHref(visitId))
   }
 
-  function statusBadge(visit: { status: string }) {
+  function statusBadge(visit: { status: string; checkInAt?: string | null; checkOutAt?: string | null }) {
+    // The same visit says the same thing in the history as in its card (2026-10-15).
+    if (visit.checkInAt && isMtmVisitLeftOpen({ status: visit.status, checkInAt: visit.checkInAt, checkOutAt: visit.checkOutAt ?? null }, now, longOpenMinutes)) {
+      return (
+        <span data-testid="mtm-visit-row-left-open" className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+          {t("statusLeftOpen")}
+        </span>
+      )
+    }
     const Icon = visit.status === "CHECKED_IN"
       ? Clock
       : visit.status === "CHECKED_OUT"
@@ -731,6 +751,8 @@ export default function MtmVisitsPage() {
             refreshToken={refreshTick}
             closeHref={visitHref(null)}
             onVisitLoaded={applyReviewedVisit}
+            longOpenMinutes={longOpenMinutes}
+            orgId={orgId ? String(orgId) : undefined}
           />
           <AdvisorRecordWidget entityType="mtm_visit" entityId={focusedVisitId} orgId={orgId ? String(orgId) : undefined} title={t("advisorRisk")} />
         </div>
@@ -816,6 +838,19 @@ export default function MtmVisitsPage() {
             </div>
           ) : null}
         </section>
+      ) : null}
+
+      {leftOpenVisits.length > 0 ? (
+        <LeftOpenVisits
+          visits={leftOpenVisits}
+          now={now}
+          timezone={meta.timezone}
+          orgId={orgId ? String(orgId) : undefined}
+          focusedVisitId={focusedVisitId}
+          visitHref={visitHref}
+          openForText={openForText}
+          canRemind={viewer?.role !== "AGENT"}
+        />
       ) : null}
 
       <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800" aria-labelledby="visit-history-title">
@@ -1005,5 +1040,57 @@ export default function MtmVisitsPage() {
         itemName={deleteItem?.customer?.name || tf("thisVisit")}
       />
     </div>
+  )
+}
+
+/**
+ * Visits the agents opened and did not close, apart from those going on now
+ * (owner, 2026-10-15). Each says since when and for how long, and reminds the
+ * agent; the office does not close it for him (2026-09-25).
+ */
+function LeftOpenVisits({ visits, now, timezone, orgId, focusedVisitId, visitHref, openForText, canRemind }: {
+  visits: ActiveVisitRow[]
+  now: Date
+  timezone: string
+  orgId?: string
+  focusedVisitId: string | null
+  visitHref: (id: string | null) => string
+  openForText: (checkInAt: string, now: Date) => string
+  canRemind: boolean
+}) {
+  const t = useTranslations("mtmVisitsPage")
+  const since = useLeftOpenSince(timezone)
+  return (
+    <section data-testid="mtm-visits-left-open" className="rounded-2xl border border-amber-200 bg-amber-50/60 shadow-sm dark:border-amber-900 dark:bg-amber-950/20" aria-labelledby="left-open-visits-title">
+      <div className="border-b border-amber-200 p-4 dark:border-amber-900 sm:p-5">
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />
+          <h2 id="left-open-visits-title" className="font-semibold text-foreground">{t("leftOpenTitle", { count: visits.length })}</h2>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">{t("leftOpenHint")}</p>
+      </div>
+      <ul className="divide-y divide-amber-200 dark:divide-amber-900">
+        {visits.map((visit) => (
+          <li key={visit.id} className={`flex min-h-14 flex-wrap items-center gap-3 px-4 py-3 sm:px-5 ${visit.id === focusedVisitId ? "bg-amber-100/60 dark:bg-amber-900/30" : ""}`}>
+            <Link href={visitHref(visit.id)} aria-current={visit.id === focusedVisitId ? "true" : undefined} className="min-w-0 flex-1 hover:underline">
+              <span className="block truncate font-medium text-foreground">{visit.customer?.name || t("unknownCustomer")}</span>
+              <span className="block truncate text-sm text-muted-foreground">
+                {visit.agent?.name || t("unknownAgent")} · <span className="font-medium text-amber-800 dark:text-amber-300">{t("leftOpenSince", { since: since(visit.checkInAt), openFor: openForText(visit.checkInAt, now) })}</span>
+              </span>
+            </Link>
+            {canRemind && visit.agentId ? (
+              <RemindAgentButton
+                agentId={visit.agentId}
+                customerName={visit.customer?.name || t("unknownCustomer")}
+                checkInAt={visit.checkInAt}
+                timezone={timezone}
+                orgId={orgId}
+                testId={`mtm-visit-remind-${visit.id}`}
+              />
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

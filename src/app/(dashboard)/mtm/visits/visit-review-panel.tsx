@@ -6,6 +6,8 @@ import { useLocale, useTranslations } from "next-intl"
 import { AlertTriangle, Camera, CheckCircle2, Circle, Clock, FileText, Flag, ListChecks, LogIn, LogOut, MapPin, Minus, PenLine, Presentation, UserRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SignaturePreview } from "@/components/mtm/visit-signature-preview"
+import { isMtmVisitLeftOpen, MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES } from "@/lib/mtm/visit-left-open"
+import { RemindAgentButton, useMinuteClock, useOpenForText } from "./visit-left-open"
 import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
 import { formatDateTime, formatTime as formatClockTime } from "@/lib/format-date"
 import { useMtmDistanceText } from "@/components/mtm/visit-place-badge"
@@ -169,10 +171,13 @@ function RoadmapTrack({ steps, t }: { steps: VisitRoadmapStep[]; t: Translator }
   )
 }
 
-export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoaded }: {
+export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoaded, longOpenMinutes = MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES, orgId }: {
   visitId: string
   refreshToken: number
   closeHref: string
+  /** The tenant's long-open line: past it the visit reads «не закрыт агентом», with its date. */
+  longOpenMinutes?: number
+  orgId?: string
   /** Called with the fresh status facts after every successful load, so the history row can follow without its own request. */
   onVisitLoaded?: (visit: ReviewedVisitFacts) => void
 }) {
@@ -185,6 +190,8 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
   const [data, setData] = useState<VisitReviewData | null>(null)
   const [state, setState] = useState<"loading" | "ready" | "unavailable" | "failed">("loading")
   const requestRef = useRef<AbortController | null>(null)
+  const now = useMinuteClock()
+  const openForText = useOpenForText()
   const onVisitLoadedRef = useRef(onVisitLoaded)
   useEffect(() => { onVisitLoadedRef.current = onVisitLoaded }, [onVisitLoaded])
 
@@ -262,6 +269,10 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
   }
 
   const { visit } = data
+  // Owner, 2026-10-15: «21:21 → ещё не завершён» on a visit opened three days
+  // before read as a visit begun that evening.
+  const leftOpen = isMtmVisitLeftOpen(visit, now, longOpenMinutes)
+  const leftOpenSince = (value: string) => formatDateTime(value, locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: data.timezone }) || "—"
   const formatTime = (value: string | null | undefined) => value
     ? formatClockTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: data.timezone }) || "—"
     : "—"
@@ -363,7 +374,12 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
 
   // One line of facts instead of four blocks of one line each.
   const facts: Array<{ key: string; icon: ReactNode; text: string; tone?: string; href?: string | null }> = []
-  facts.push({
+  facts.push(leftOpen ? {
+    key: "time",
+    icon: <Clock className="h-4 w-4 text-amber-600" aria-hidden="true" />,
+    text: t("leftOpenFact", { since: leftOpenSince(visit.checkInAt), openFor: openForText(visit.checkInAt, now) }),
+    tone: "font-medium text-amber-800 dark:text-amber-300",
+  } : {
     key: "time",
     icon: <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />,
     text: `${formatTime(visit.checkInAt)} → ${visit.checkOutAt ? formatTime(visit.checkOutAt) : t("notFinished")}${durationText ? ` · ${durationText}` : ""}`,
@@ -412,9 +428,15 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
       <header className="flex items-start justify-between gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800 sm:px-5 sm:py-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${visitStatusClasses(visit.status)}`}>
-              {t(visitStatusKey(visit.status))}
-            </span>
+            {leftOpen ? (
+              <span data-testid="mtm-visit-left-open-status" className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                {t("statusLeftOpen")}
+              </span>
+            ) : (
+              <span className={`inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${visitStatusClasses(visit.status)}`}>
+                {t(visitStatusKey(visit.status))}
+              </span>
+            )}
             <h2 id="visit-review-title" className="text-lg font-semibold text-foreground sm:text-xl">{visit.customer.name || t("unknownCustomer")}</h2>
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -431,6 +453,19 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
               {t("review.openCustomer")}
             </Link>
           </p>
+          {leftOpen && visit.agent?.id && !data.viewer.canExecute ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200" data-testid="mtm-visit-left-open-note">
+              <span className="min-w-0 flex-1">{t("leftOpenHint")}</span>
+              <RemindAgentButton
+                agentId={visit.agent.id}
+                customerName={visit.customer.name || t("unknownCustomer")}
+                checkInAt={visit.checkInAt}
+                timezone={data.timezone}
+                orgId={orgId}
+                testId="mtm-visit-review-remind"
+              />
+            </div>
+          ) : null}
         </div>
         <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11 shrink-0">
           <Link href={closeHref} scroll={false} aria-label={t("review.close")}><X className="h-5 w-5" aria-hidden="true" /></Link>

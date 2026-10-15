@@ -35,7 +35,7 @@ const keysIn = (files: string[], prefix: string) => new Set(files.flatMap((file)
   [...readFileSync(file, "utf8").matchAll(new RegExp(`"${prefix.replace(/\./g, "\\.")}(\\w+)"`, "g"))].map((match) => match[1])))
 
 const SCREENS = [
-  ["mtmVisitsPage.hint", ["src/app/(dashboard)/mtm/visits/page.tsx"], "hint."],
+  ["mtmVisitsPage.hint", ["src/app/(dashboard)/mtm/visits/page.tsx", "src/app/(dashboard)/mtm/visits/visit-left-open.tsx"], "hint."],
   ["mtmAgents.hint", ["src/app/(dashboard)/mtm/agents/page.tsx"], "hint."],
   ["mtmContactExplorer.hint", ["contact-explorer", "contact-transfer-dialog", "contact-assignment-dialog"].map((name) => `src/components/mtm/${name}.tsx`), "hint."],
   ["mtmCustomers.explorer.hint", ["src/components/mtm/organization-explorer.tsx"], "explorer.hint."],

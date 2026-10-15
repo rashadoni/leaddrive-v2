@@ -14677,7 +14677,9 @@
       "sort": "Vizitlər hansı qaydada göstərilsin.",
       "summary": "Cəmi — dövrdəki vizitlər; bitib — onlardan neçəsi bağlanıb; median — vizitlərin yarısı daha qısa, yarısı daha uzundur (açıqlar sayılmır); GPS təsdiqlənib — giriş və çıxış müştərinin zonasında.",
       "locationRequest": "Agent bu vizitdən müştərinin nöqtəsinin səhv yerdə olduğunu bildirib. Ona görə burada «zonadan kənar» mütləq pozuntu deyil.",
-      "loadMore": "Növbəti vizitləri yüklə."
+      "loadMore": "Növbəti vizitləri yüklə.",
+      "remindAgent": "Agentə tətbiqdə mesaj göndər: vizit hələ açıqdır, onu bağlayın.",
+      "remindedAgent": "Agent tətbiqdə mesajı aldı."
     },
     "widenedNotice": "«{from}» üçün ziyarət yoxdur — «{to}» göstərilir.",
     "title": "Ziyarətlər",
@@ -14843,7 +14845,18 @@
       "taskDue": "son tarix {date}",
       "signedBy": "İmzalayan: {name}",
       "signedAt": "İmza vaxtı: {time}"
-    }
+    },
+    "leftOpenTitle": "{count, plural, other {Agent tərəfindən bağlanmayıb: # vizit}}",
+    "leftOpenHint": "Agent viziti başladıb və bağlamayıb. Viziti yalnız agentin özü bağlaya bilər — ona xatırladın.",
+    "leftOpenSince": "{since} tarixindən açıqdır · {openFor}",
+    "leftOpenFact": "{since} tarixindən → agent bağlamayıb · {openFor}",
+    "statusLeftOpen": "Agent bağlamayıb",
+    "openForDays": "{count, plural, other {# gün}}",
+    "openForHours": "{count, plural, other {# saat}}",
+    "openForMinutes": "{count} dəq",
+    "remindAgent": "Agentə xatırlat",
+    "reminded": "Xatırlatma göndərildi",
+    "remindFailed": "Xatırlatmanı göndərmək alınmadı. Yenidən cəhd edin."
   },
   "mtmVisitWorkspace": {
     "hint": {

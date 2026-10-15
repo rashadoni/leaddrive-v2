@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { mutableVisitWhere } from "@/lib/mtm/visit-scope"
+import { getMtmSettings } from "@/lib/mtm-settings"
+import { MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES } from "@/lib/mtm/visit-left-open"
 
 export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
   const actor = await resolveMtmRouteActor(prisma, {
@@ -26,7 +28,7 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
       select: { requirements: { where: { mode: "REQUIRED" }, select: { actionKey: true, minCount: true } } },
     },
   } as const
-  const [scoped, ownRows] = await Promise.all([
+  const [scoped, ownRows, settings] = await Promise.all([
     prisma.mtmVisit.findMany({
       // The resume workspace performs generic checkout/result mutations. Keep
       // this list in the same primary-agent mutation scope as those endpoints;
@@ -47,6 +49,8 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
         select,
       })
       : null,
+    // The tenant's long-open line: past it a visit reads «не закрыт агентом», not «идёт».
+    getMtmSettings(auth.orgId).catch(() => null),
   ])
   const own: typeof scoped = ownRows ?? []
   const ownIds = new Set(own.map((visit: { id: string }) => visit.id))
@@ -58,6 +62,9 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
       // The page shows the execution workspace only for the viewer's own
       // visits; everyone else gets the read-only review.
       viewer: { agentId: actor.agentId, role: actor.role },
+      longOpenMinutes: typeof settings?.autoCheckoutMinutes === "number" && settings.autoCheckoutMinutes > 0
+        ? settings.autoCheckoutMinutes
+        : MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES,
     },
   })
 })
