@@ -7,6 +7,7 @@ import { Download, FileText, RefreshCw, Trash2, Upload, WifiOff } from "lucide-r
 import { type MtmTaskDocument } from "@/components/mtm/task-workspace"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import { formatInTimezone } from "@/lib/timezone"
 import {
   enqueueTaskDocument,
@@ -21,6 +22,13 @@ import {
 } from "@/lib/mtm/task-document-outbox"
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024
+
+/** What a file waiting in this browser's queue is doing (task-document-outbox.ts). */
+const UPLOAD_STATUS_HINT = {
+  queued: "hint.filesStatusQueued",
+  uploading: "hint.filesStatusUploading",
+  failed: "hint.filesStatusFailed",
+} as const
 const SAFE_FILE_TYPES: Record<string, readonly string[]> = {
   "application/pdf": [".pdf"],
   "application/msword": [".doc"],
@@ -198,7 +206,9 @@ export function MtmTaskFilesPanel({
         {canUpload ? (
           <>
             <input ref={inputRef} type="file" className="sr-only" tabIndex={-1} aria-label={t("addFiles")} multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.zip" onChange={(event) => void chooseFiles(event.target.files)} />
-            <Button type="button" className="min-h-11 print:hidden" onClick={() => inputRef.current?.click()}><Upload className="h-4 w-4" />{t("addFiles")}</Button>
+            <Hint text={t("hint.filesAdd")}>
+              <Button type="button" className="min-h-11 print:hidden" onClick={() => inputRef.current?.click()}><Upload className="h-4 w-4" />{t("addFiles")}</Button>
+            </Hint>
           </>
         ) : null}
       </div>
@@ -213,10 +223,16 @@ export function MtmTaskFilesPanel({
             {queued.map((entry) => (
               <li key={entry.clientDocumentId} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
                 <FileText className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{entry.fileName}</p><p className="mt-1 text-xs text-muted-foreground">{formatBytes(entry.sizeBytes)} · {t(`uploadStatuses.${entry.status}` as never)}{entry.status === "failed" ? ` · ${t("uploadFailed")}` : ""}</p></div>
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{entry.fileName}</p><p className="mt-1 text-xs text-muted-foreground">{formatBytes(entry.sizeBytes)} · <HintValue text={t(UPLOAD_STATUS_HINT[entry.status])}>{t(`uploadStatuses.${entry.status}` as never)}</HintValue>{entry.status === "failed" ? ` · ${t("uploadFailed")}` : ""}</p></div>
                 <div className="flex gap-2">
-                  {entry.status === "failed" ? <Button type="button" variant="outline" className="min-h-11" onClick={() => void retry(entry)} disabled={syncing}><RefreshCw className="h-4 w-4" />{t("retryUpload")}</Button> : null}
-                  <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => void remove(entry)} aria-label={t("removeQueuedFile", { name: entry.fileName })}><Trash2 className="h-4 w-4" /></Button>
+                  {entry.status === "failed" ? (
+                    <Hint wrap text={syncing ? null : t("hint.filesRetry")}>
+                      <Button type="button" variant="outline" className="min-h-11" onClick={() => void retry(entry)} disabled={syncing}><RefreshCw className="h-4 w-4" />{t("retryUpload")}</Button>
+                    </Hint>
+                  ) : null}
+                  <Hint text={t("hint.filesRemoveQueued")}>
+                    <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => void remove(entry)} aria-label={t("removeQueuedFile", { name: entry.fileName })}><Trash2 className="h-4 w-4" /></Button>
+                  </Hint>
                 </div>
               </li>
             ))}
@@ -230,7 +246,7 @@ export function MtmTaskFilesPanel({
             <li key={document.id} className="flex items-center gap-3 py-4">
               <FileText className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{document.title || document.fileName}</p><p className="mt-1 text-xs text-muted-foreground">{formatBytes(document.sizeBytes)} · {formatDate(document.createdAt)}</p></div>
-              {document.downloadUrl ? <Button asChild variant="outline" size="icon" className="min-h-11 min-w-11" aria-label={t("downloadFile", { name: document.fileName })}><a href={document.downloadUrl}><Download className="h-4 w-4" /></a></Button> : <Badge variant="outline">{t("downloadUnavailable")}</Badge>}
+              {document.downloadUrl ? <Hint text={t("hint.filesDownload")}><Button asChild variant="outline" size="icon" className="min-h-11 min-w-11" aria-label={t("downloadFile", { name: document.fileName })}><a href={document.downloadUrl}><Download className="h-4 w-4" /></a></Button></Hint> : <Badge variant="outline">{t("downloadUnavailable")}</Badge>}
             </li>
           ))}
         </ul>

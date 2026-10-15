@@ -1,7 +1,8 @@
 /**
  * The hints of the doctor and institution cards, the task form, «how the
- * figures are counted», pharmacy promotions, the product catalogue and the
- * visit workspace (owner, 2026-10-15: «подсказок в модуле очень мало»): words
+ * figures are counted», pharmacy promotions, the product catalogue, the visit
+ * workspace, a day's movement history, Excel exchange and the settings
+ * sub-pages (owner, 2026-10-15: «подсказок в модуле очень мало»): words
  * in all three languages for every key asked for, the same blanks, none unused.
  */
 import { readFileSync } from "node:fs"
@@ -21,16 +22,27 @@ const used = (files: readonly string[], prefix: string) => {
   return new Set(files.flatMap((file) => [...readFileSync(file, "utf8").matchAll(pattern)].map((match) => match[1])))
 }
 const component = (name: string) => `src/components/mtm/${name}.tsx`
+const settings = (name: string) => `src/app/(dashboard)/mtm/settings/${name}.tsx`
 
 describe.each([
-  ["mtmContactDetail.hint", "hint.", [component("contact-detail")]],
+  ["mtmContactDetail.hint", "hint.", [component("contact-detail"), component("contact-duplicate-dialog")]],
   ["mtmContactEdit.hint", "hint.", [component("contact-edit-dialog")]],
-  ["mtmContactScoring.hint", "hint.", [component("contact-scoring-panel")]],
+  ["mtmContactScoring.hint", "hint.", [component("contact-scoring-panel"), component("contact-scoring-entry-dialogs")]],
+  ["mtmContactWorkplace.hint", "hint.", [component("contact-workplace-dialog")]],
+  ["mtmContactDictionaryAssignments.hint", "hint.", [component("contact-dictionary-assignment-panel")]],
   ["mtmCustomers.detail.hint", "detail.hint.", [component("organization-detail")]],
   ["mtmExplainableKpi.hint", "hint.", [component("explainable-kpi-dashboard")]],
-  ["mtmPharmacyPromotions.hint", "hint.", [component("pharmacy-promotion-workspace")]],
+  ["mtmPharmacyPromotions.hint", "hint.", ["workspace", "detail", "definition-admin", "campaign-admin", "agent-capture"].map((name) => component(`pharmacy-promotion-${name}`))],
   ["mtmProductCatalog.hint", "hint.", ["src/app/(dashboard)/mtm/products/page.tsx"]],
   ["mtmVisitWorkspace.hint", "hint.", ["src/app/(dashboard)/mtm/visits/visit-workspace.tsx"]],
+  ["mtmMap.history.hint", "hint.", [component("location-history-panel")]],
+  ["mtmExcel.hint", "hint.", [component("excel-exchange-panel")]],
+  ["mtmAgentSection.hint", "hint.", [component("agent-section")]],
+  ["mtmScoringFormulas.hint", "hint.", [settings("scoring-formula-settings")]],
+  ["mtmContactCategories.hint", "hint.", [settings("contact-category-settings")]],
+  ["mtmContactDictionaries.hint", "hint.", [settings("contact-dictionary-settings")]],
+  ["mtmOrganizationAttributes.hint", "hint.", [settings("organization-attribute-package-settings")]],
+  ["mtmCoverageAdmin.hint", "hint.", [component("coverage-policy-admin")]],
 ] as const)("the hints of %s", (path, prefix, files) => {
   const keys = used(files, prefix)
   it("are written for every key the screen asks for, in Russian, Azerbaijani and English, with the same blanks", () => {
@@ -53,7 +65,7 @@ describe.each([
   })
 })
 
-describe("the institution card's hints", () => {
+describe.each(["mtmCustomers.detail.hint", "mtmOrganizationAttributes.hint"])("the institution hints of %s", (path) => {
   it("call institutions what the section calls them", () => {
     const banned: Record<string, RegExp> = {
       ru: /клиент|организац|объект/i,
@@ -61,7 +73,7 @@ describe("the institution card's hints", () => {
       en: /customer|organi[sz]ation|\bsites?\b/i,
     }
     for (const [locale, word] of Object.entries(banned)) {
-      const wrong = Object.entries(at("mtmCustomers.detail.hint", locale)).filter(([, text]) => word.test(text))
+      const wrong = Object.entries(at(path, locale)).filter(([, text]) => word.test(text))
       expect(wrong, locale).toEqual([])
     }
   })

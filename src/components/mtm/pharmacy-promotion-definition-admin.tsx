@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { CheckCircle2, FileJson2, KeyRound, Loader2, Plus, RefreshCw, ShieldCheck } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Hint, HintValue } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -69,9 +70,18 @@ function observedAtIso(value: string): string | null {
   return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : null
 }
 
+/** What each status means for a type, a formula or a policy. Keys written out so a test finds every one. */
+const DEFINITION_STATUS_HINT = {
+  DRAFT: "hint.definitionStatusDraft",
+  ACTIVE: "hint.definitionStatusActive",
+  RETIRED: "hint.definitionStatusRetired",
+} as const
+
 function DefinitionBadge({ status }: { status: DefinitionStatus }) {
   const t = useTranslations("mtmPharmacyPromotions.definitionStatus")
-  return <Badge variant={status === "ACTIVE" ? "success" : status === "DRAFT" ? "warning" : "outline"}>{t(status)}</Badge>
+  const hintT = useTranslations("mtmPharmacyPromotions")
+  const hint = Object.prototype.hasOwnProperty.call(DEFINITION_STATUS_HINT, status) ? hintT(DEFINITION_STATUS_HINT[status]) : null
+  return <HintValue text={hint}><Badge variant={status === "ACTIVE" ? "success" : status === "DRAFT" ? "warning" : "outline"}>{t(status)}</Badge></HintValue>
 }
 
 function FormField({ label, ...props }: ComponentProps<typeof Input> & { label: string }) {
@@ -85,6 +95,7 @@ function FormField({ label, ...props }: ComponentProps<typeof Input> & { label: 
 
 export function PharmacyPromotionDefinitionAdmin({ onChanged }: { onChanged?: () => void }) {
   const t = useTranslations("mtmPharmacyPromotions.configuration")
+  const hintT = useTranslations("mtmPharmacyPromotions")
   const [catalog, setCatalog] = useState<Catalog>(emptyCatalog)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
@@ -260,13 +271,13 @@ export function PharmacyPromotionDefinitionAdmin({ onChanged }: { onChanged?: ()
       <div className="grid divide-y xl:grid-cols-3 xl:divide-x xl:divide-y-0">
         <details className="group p-4" open>
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 font-semibold">
-            <span>{t("typesTitle")}</span><Badge variant="outline">{catalog.types.length}</Badge>
+            <span>{t("typesTitle")}</span><HintValue text={hintT("hint.definitionCount")}><Badge variant="outline">{catalog.types.length}</Badge></HintValue>
           </summary>
           <div className="mt-3 space-y-3">
             {catalog.types.map((item) => (
               <article key={item.id} className="border border-zinc-200/70 p-3 dark:border-zinc-800">
                 <div className="flex items-start justify-between gap-2"><div><p className="font-medium">{item.code}</p><p className="text-xs text-muted-foreground">{item.nameRu} · {item.nameAz} · {item.nameEn}</p></div><DefinitionBadge status={item.status} /></div>
-                {item.status === "DRAFT" ? <Button className="mt-3 min-h-11 w-full lg:min-h-9" variant="outline" disabled={Boolean(busy)} onClick={() => void activateType(item)}>{busy === `type:${item.id}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}{t("activate")}</Button> : null}
+                {item.status === "DRAFT" ? <Hint wrap text={busy ? null : hintT("hint.definitionActivateType")}><Button className="mt-3 min-h-11 w-full lg:min-h-9" variant="outline" disabled={Boolean(busy)} onClick={() => void activateType(item)}>{busy === `type:${item.id}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}{t("activate")}</Button></Hint> : null}
               </article>
             ))}
             <div className="space-y-3 border border-dashed p-3">
@@ -275,20 +286,20 @@ export function PharmacyPromotionDefinitionAdmin({ onChanged }: { onChanged?: ()
               <FormField label={t("nameRu")} value={typeForm.nameRu} maxLength={160} onChange={(event) => setTypeForm((current) => ({ ...current, nameRu: event.target.value }))} />
               <FormField label={t("nameAz")} value={typeForm.nameAz} maxLength={160} onChange={(event) => setTypeForm((current) => ({ ...current, nameAz: event.target.value }))} />
               <FormField label={t("nameEn")} value={typeForm.nameEn} maxLength={160} onChange={(event) => setTypeForm((current) => ({ ...current, nameEn: event.target.value }))} />
-              <Button className="min-h-11 w-full lg:min-h-9" disabled={Boolean(busy) || Object.values(typeForm).some((value) => !value.trim())} onClick={() => void createType()}>{busy === "create-type" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}{t("createDraft")}</Button>
+              <Hint wrap text={busy ? null : Object.values(typeForm).some((value) => !value.trim()) ? hintT("hint.definitionFillAll") : hintT("hint.definitionCreateType")}><Button className="min-h-11 w-full lg:min-h-9" disabled={Boolean(busy) || Object.values(typeForm).some((value) => !value.trim())} onClick={() => void createType()}>{busy === "create-type" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}{t("createDraft")}</Button></Hint>
             </div>
           </div>
         </details>
 
         <details className="group p-4" open>
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 font-semibold"><span>{t("formulasTitle")}</span><Badge variant="outline">{catalog.formulas.length}</Badge></summary>
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 font-semibold"><span>{t("formulasTitle")}</span><HintValue text={hintT("hint.definitionCount")}><Badge variant="outline">{catalog.formulas.length}</Badge></HintValue></summary>
           <div className="mt-3 space-y-3">
             {catalog.formulas.map((item) => (
               <article key={item.id} className="border border-zinc-200/70 p-3 dark:border-zinc-800">
                 <div className="flex items-start justify-between gap-2"><div><p className="font-medium">{item.code} · v{item.version}</p><p className="text-xs text-muted-foreground">{item.nameRu}</p></div><DefinitionBadge status={item.status} /></div>
-                <p className="mt-2 break-all font-mono text-[10px] text-muted-foreground" title={item.definitionHash}>{item.definitionHash}</p>
-                <p className="mt-2 text-xs text-muted-foreground">{item.sourceSystem} · {item.sourceReference || "—"}</p>
-                {item.status === "DRAFT" ? <Button className="mt-3 min-h-11 w-full lg:min-h-9" variant="outline" disabled={Boolean(busy)} onClick={() => { setActivation({ kind: "formula", id: item.id, label: `${item.code} v${item.version}`, definitionHash: item.definitionHash }); setApprovalReference("") }}><KeyRound className="mr-2 h-4 w-4" />{t("signAndActivate")}</Button> : null}
+                <p className="mt-2 break-all font-mono text-[10px] text-muted-foreground"><HintValue text={hintT("hint.definitionHash")}>{item.definitionHash}</HintValue></p>
+                <p className="mt-2 text-xs text-muted-foreground"><HintValue text={hintT("hint.definitionSource")}>{item.sourceSystem} · {item.sourceReference || "—"}</HintValue></p>
+                {item.status === "DRAFT" ? <Hint wrap text={busy ? null : hintT("hint.definitionSignFormula")}><Button className="mt-3 min-h-11 w-full lg:min-h-9" variant="outline" disabled={Boolean(busy)} onClick={() => { setActivation({ kind: "formula", id: item.id, label: `${item.code} v${item.version}`, definitionHash: item.definitionHash }); setApprovalReference("") }}><KeyRound className="mr-2 h-4 w-4" />{t("signAndActivate")}</Button></Hint> : null}
               </article>
             ))}
             <details className="border border-dashed p-3">
@@ -305,20 +316,20 @@ export function PharmacyPromotionDefinitionAdmin({ onChanged }: { onChanged?: ()
               </div>
               <label className="mt-3 block text-sm font-medium"><span className="mb-1.5 block">{t("definitionJson")}</span><Textarea rows={9} className="font-mono text-xs" value={formulaForm.definition} onChange={(event) => setFormulaForm((current) => ({ ...current, definition: event.target.value }))} placeholder={t("formulaSchemaHint")} /></label>
               <p className="mt-2 text-xs text-muted-foreground">{t("noDefaultsHint")}</p>
-              <Button className="mt-3 min-h-11 w-full lg:min-h-9" disabled={Boolean(busy) || !formulaForm.code.trim() || !formulaForm.version || !formulaForm.definition.trim() || !formulaForm.sourceSystem.trim() || !formulaForm.sourceReference.trim() || !formulaForm.observedAt} onClick={() => void createFormula()}>{busy === "create-formula" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileJson2 className="mr-2 h-4 w-4" />}{t("createDraft")}</Button>
+              <Hint wrap text={busy ? null : !formulaForm.code.trim() || !formulaForm.version || !formulaForm.definition.trim() || !formulaForm.sourceSystem.trim() || !formulaForm.sourceReference.trim() || !formulaForm.observedAt ? hintT("hint.definitionFillFormula") : hintT("hint.definitionCreateFormula")}><Button className="mt-3 min-h-11 w-full lg:min-h-9" disabled={Boolean(busy) || !formulaForm.code.trim() || !formulaForm.version || !formulaForm.definition.trim() || !formulaForm.sourceSystem.trim() || !formulaForm.sourceReference.trim() || !formulaForm.observedAt} onClick={() => void createFormula()}>{busy === "create-formula" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileJson2 className="mr-2 h-4 w-4" />}{t("createDraft")}</Button></Hint>
             </details>
           </div>
         </details>
 
         <details className="group p-4" open>
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 font-semibold"><span>{t("policiesTitle")}</span><Badge variant="outline">{catalog.policies.length}</Badge></summary>
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 font-semibold"><span>{t("policiesTitle")}</span><HintValue text={hintT("hint.definitionCount")}><Badge variant="outline">{catalog.policies.length}</Badge></HintValue></summary>
           <div className="mt-3 space-y-3">
             {catalog.policies.map((item) => (
               <article key={item.id} className="border border-zinc-200/70 p-3 dark:border-zinc-800">
                 <div className="flex items-start justify-between gap-2"><div><p className="font-medium">{item.code} · v{item.version}</p><p className="text-xs text-muted-foreground">{item.name}</p></div><DefinitionBadge status={item.status} /></div>
-                <p className="mt-2 break-all font-mono text-[10px] text-muted-foreground" title={item.definitionHash}>{item.definitionHash}</p>
-                <p className="mt-2 text-xs text-muted-foreground">{item.sourceSystem} · {item.sourceReference || "—"}</p>
-                {item.status === "DRAFT" ? <Button className="mt-3 min-h-11 w-full lg:min-h-9" variant="outline" disabled={Boolean(busy)} onClick={() => { setActivation({ kind: "policy", id: item.id, label: `${item.code} v${item.version}`, definitionHash: item.definitionHash }); setApprovalReference("") }}><KeyRound className="mr-2 h-4 w-4" />{t("signAndActivate")}</Button> : null}
+                <p className="mt-2 break-all font-mono text-[10px] text-muted-foreground"><HintValue text={hintT("hint.definitionHash")}>{item.definitionHash}</HintValue></p>
+                <p className="mt-2 text-xs text-muted-foreground"><HintValue text={hintT("hint.definitionSource")}>{item.sourceSystem} · {item.sourceReference || "—"}</HintValue></p>
+                {item.status === "DRAFT" ? <Hint wrap text={busy ? null : hintT("hint.definitionSignPolicy")}><Button className="mt-3 min-h-11 w-full lg:min-h-9" variant="outline" disabled={Boolean(busy)} onClick={() => { setActivation({ kind: "policy", id: item.id, label: `${item.code} v${item.version}`, definitionHash: item.definitionHash }); setApprovalReference("") }}><KeyRound className="mr-2 h-4 w-4" />{t("signAndActivate")}</Button></Hint> : null}
               </article>
             ))}
             <details className="border border-dashed p-3">
@@ -333,7 +344,7 @@ export function PharmacyPromotionDefinitionAdmin({ onChanged }: { onChanged?: ()
               </div>
               <label className="mt-3 block text-sm font-medium"><span className="mb-1.5 block">{t("definitionJson")}</span><Textarea rows={9} className="font-mono text-xs" value={policyForm.definition} onChange={(event) => setPolicyForm((current) => ({ ...current, definition: event.target.value }))} placeholder={t("policySchemaHint")} /></label>
               <p className="mt-2 text-xs text-muted-foreground">{t("noDefaultsHint")}</p>
-              <Button className="mt-3 min-h-11 w-full lg:min-h-9" disabled={Boolean(busy) || !policyForm.code.trim() || !policyForm.version || !policyForm.name.trim() || !policyForm.definition.trim() || !policyForm.sourceSystem.trim() || !policyForm.sourceReference.trim() || !policyForm.observedAt} onClick={() => void createPolicy()}>{busy === "create-policy" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileJson2 className="mr-2 h-4 w-4" />}{t("createDraft")}</Button>
+              <Hint wrap text={busy ? null : !policyForm.code.trim() || !policyForm.version || !policyForm.name.trim() || !policyForm.definition.trim() || !policyForm.sourceSystem.trim() || !policyForm.sourceReference.trim() || !policyForm.observedAt ? hintT("hint.definitionFillPolicy") : hintT("hint.definitionCreatePolicy")}><Button className="mt-3 min-h-11 w-full lg:min-h-9" disabled={Boolean(busy) || !policyForm.code.trim() || !policyForm.version || !policyForm.name.trim() || !policyForm.definition.trim() || !policyForm.sourceSystem.trim() || !policyForm.sourceReference.trim() || !policyForm.observedAt} onClick={() => void createPolicy()}>{busy === "create-policy" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileJson2 className="mr-2 h-4 w-4" />}{t("createDraft")}</Button></Hint>
             </details>
           </div>
         </details>
@@ -341,7 +352,7 @@ export function PharmacyPromotionDefinitionAdmin({ onChanged }: { onChanged?: ()
 
       {activation ? (
         <div className="border-t border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
-          <div className="flex items-start gap-3"><KeyRound className="mt-0.5 h-5 w-5 shrink-0" /><div className="min-w-0 flex-1"><h3 className="font-semibold">{t("activationTitle", { label: activation.label })}</h3><p className="mt-1 text-sm">{t("activationWarning")}</p><p className="mt-2 break-all font-mono text-[10px]">{activation.definitionHash}</p><div className="mt-3 grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto_auto]"><FormField label={t("approvalReference")} value={approvalReference} maxLength={500} onChange={(event) => setApprovalReference(event.target.value)} /><Button variant="ghost" className="min-h-11 self-end lg:min-h-10" disabled={Boolean(busy)} onClick={() => { setActivation(null); setApprovalReference("") }}>{t("cancel")}</Button><Button className="min-h-11 self-end lg:min-h-10" disabled={Boolean(busy) || approvalReference.trim().length < 3} onClick={() => void activateSignedDefinition()}>{busy.startsWith("activate:") ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}{t("confirmActivation")}</Button></div></div></div>
+          <div className="flex items-start gap-3"><KeyRound className="mt-0.5 h-5 w-5 shrink-0" /><div className="min-w-0 flex-1"><h3 className="font-semibold">{t("activationTitle", { label: activation.label })}</h3><p className="mt-1 text-sm">{t("activationWarning")}</p><p className="mt-2 break-all font-mono text-[10px]"><HintValue text={hintT("hint.definitionHash")}>{activation.definitionHash}</HintValue></p><div className="mt-3 grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto_auto]"><FormField label={t("approvalReference")} value={approvalReference} maxLength={500} onChange={(event) => setApprovalReference(event.target.value)} /><Button variant="ghost" className="min-h-11 self-end lg:min-h-10" disabled={Boolean(busy)} onClick={() => { setActivation(null); setApprovalReference("") }}>{t("cancel")}</Button><Hint wrap text={busy ? null : approvalReference.trim().length < 3 ? hintT("hint.definitionReferenceRequired") : activation.kind === "formula" ? hintT("hint.definitionConfirmFormula") : hintT("hint.definitionConfirmPolicy")}><Button className="min-h-11 self-end lg:min-h-10" disabled={Boolean(busy) || approvalReference.trim().length < 3} onClick={() => void activateSignedDefinition()}>{busy.startsWith("activate:") ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}{t("confirmActivation")}</Button></Hint></div></div></div>
         </div>
       ) : null}
     </section>

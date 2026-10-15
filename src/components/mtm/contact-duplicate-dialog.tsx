@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Check, CircleAlert, Loader2, Search, Send, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -265,10 +266,12 @@ export function MtmContactDuplicateReportDialog({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-          <Button type="submit" disabled={saving || !selected}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {saving ? t("duplicateSubmitting") : t("duplicateSubmit")}
-          </Button>
+          <Hint wrap text={saving ? null : !selected ? t("hint.dupChooseMain") : t("hint.dupSubmit")}>
+            <Button type="submit" disabled={saving || !selected}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {saving ? t("duplicateSubmitting") : t("duplicateSubmit")}
+            </Button>
+          </Hint>
         </DialogFooter>
       </form>
     </Dialog>
@@ -355,9 +358,11 @@ export function MtmContactDuplicateDecisionDialog({
         {request?.duplicateTarget ? (
           <div className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
             <p className="text-xs font-medium text-muted-foreground">{t("duplicateCanonicalContact")}</p>
-            <Link className="mt-1 inline-flex min-h-11 items-center font-semibold text-primary hover:underline" href={`/mtm/contacts/${request.duplicateTarget.id}`} target="_blank">
-              {request.duplicateTarget.displayName}
-            </Link>
+            <Hint text={t("hint.dupOpenMain")} align="start">
+              <Link className="mt-1 inline-flex min-h-11 items-center font-semibold text-primary hover:underline" href={`/mtm/contacts/${request.duplicateTarget.id}`} target="_blank">
+                {request.duplicateTarget.displayName}
+              </Link>
+            </Hint>
             <p className="text-xs text-muted-foreground">{request.duplicateTarget.externalCode || t("externalCodeMissing")}</p>
           </div>
         ) : null}
@@ -372,12 +377,16 @@ export function MtmContactDuplicateDecisionDialog({
       </DialogContent>
       <DialogFooter>
         <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-        <Button type="button" variant="destructive" disabled={saving} onClick={() => void decide("REJECTED")}>
-          <X className="h-4 w-4" />{t("duplicateReject")}
-        </Button>
-        <Button type="button" disabled={saving || !request?.duplicateTarget} onClick={() => void decide("APPROVED")}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{t("duplicateApprove")}
-        </Button>
+        <Hint wrap text={saving ? null : t("hint.dupReject")}>
+          <Button type="button" variant="destructive" disabled={saving} onClick={() => void decide("REJECTED")}>
+            <X className="h-4 w-4" />{t("duplicateReject")}
+          </Button>
+        </Hint>
+        <Hint wrap text={saving ? null : !request?.duplicateTarget ? t("hint.dupMainUnavailable") : t("hint.dupApprove")}>
+          <Button type="button" disabled={saving || !request?.duplicateTarget} onClick={() => void decide("APPROVED")}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{t("duplicateApprove")}
+          </Button>
+        </Hint>
       </DialogFooter>
     </Dialog>
   )

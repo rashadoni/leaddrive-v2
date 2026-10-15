@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { AlertCircle, ChevronDown, Eye, Info, Lock, Plus, RefreshCw, Trash2, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import { cn } from "@/lib/utils"
 import {
   SPECIAL_RULE_PRIORITY,
@@ -324,9 +325,11 @@ export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
                   <option value="">{t("specialChooseTeam")}</option>
                   {addableTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
                 </select>
-                <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={addRule} disabled={!addTeamId || working}>
-                  <Plus className="h-4 w-4" />{t("specialAdd")}
-                </Button>
+                <Hint wrap text={working ? null : addTeamId ? t("hint.policyAdd") : t("hint.policyAddPickTeam")}>
+                  <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={addRule} disabled={!addTeamId || working}>
+                    <Plus className="h-4 w-4" />{t("specialAdd")}
+                  </Button>
+                </Hint>
               </div>
             ) : <p className="shrink-0 text-xs text-muted-foreground">{t("specialAllTeamsHaveRules")}</p>
           ) : null}
@@ -349,6 +352,8 @@ export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
               const readOnly = readOnlyReason !== null
               return (
                 <li key={id} data-testid={`visit-special-rule-${id}`}>
+                  {/* The lock on a rule says only "you cannot change it"; the hint says why. */}
+                  <Hint text={readOnly ? readOnlyText(readOnlyReason) || null : null}>
                   <button
                     type="button"
                     aria-expanded={open}
@@ -363,6 +368,7 @@ export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
                     {readOnly ? <Lock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /> : null}
                     <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden="true" />
                   </button>
+                  </Hint>
                   {open ? (
                     <div className="px-2 pb-3">
                       <VisitActionSwitches
@@ -384,9 +390,11 @@ export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
                               <Button type="button" variant="destructive" size="sm" className="min-h-9" onClick={() => { void removeRule(rule) }} disabled={working}>{t("ruleDeleteYes")}</Button>
                             </>
                           ) : (
-                            <Button type="button" variant="ghost" size="sm" className="min-h-9 text-destructive" onClick={() => setConfirmDeleteId(id)}>
-                              <Trash2 className="mr-1 h-4 w-4" />{t("ruleDelete")}
-                            </Button>
+                            <Hint text={t("hint.policyDelete")}>
+                              <Button type="button" variant="ghost" size="sm" className="min-h-9 text-destructive" onClick={() => setConfirmDeleteId(id)}>
+                                <Trash2 className="mr-1 h-4 w-4" />{t("ruleDelete")}
+                              </Button>
+                            </Hint>
                           )}
                         </div>
                       )}
@@ -412,10 +420,12 @@ export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
               <option value="">{t("previewCustomer")}</option>
               {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
             </select>
-            <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={runPreview} disabled={previewing || !previewAgentId || !previewCustomerId}>
-              {previewing ? <RefreshCw className="mr-1 h-4 w-4 animate-spin" /> : <Eye className="mr-1 h-4 w-4" />}
-              {t("preview")}
-            </Button>
+            <Hint wrap text={previewing ? null : previewAgentId && previewCustomerId ? t("hint.policyPreview") : t("hint.policyPreviewPick")}>
+              <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={runPreview} disabled={previewing || !previewAgentId || !previewCustomerId}>
+                {previewing ? <RefreshCw className="mr-1 h-4 w-4 animate-spin" /> : <Eye className="mr-1 h-4 w-4" />}
+                {t("preview")}
+              </Button>
+            </Hint>
           </div>
           {preview ? (
             <div className="mt-3" data-testid="visit-rule-check-result">
@@ -425,7 +435,7 @@ export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
                   <li key={item.actionKey} className="flex items-baseline justify-between gap-2 border-b border-zinc-100 py-1 text-sm dark:border-zinc-800">
                     <span className={cn("min-w-0 truncate", item.mode === "HIDDEN" && "text-muted-foreground")}>{t(`actions.${item.actionKey}`)}</span>
                     <span className={cn("shrink-0 text-xs", item.mode === "REQUIRED" ? "font-semibold text-rose-700 dark:text-rose-300" : "text-muted-foreground")}>
-                      {t(`modes.${item.mode}`)}{item.mode === "REQUIRED" && item.minCount > 1 ? ` ×${item.minCount}` : ""}
+                      {t(`modes.${item.mode}`)}{item.mode === "REQUIRED" && item.minCount > 1 ? <HintValue text={t("hint.policyMinCount", { count: item.minCount })}>{` ×${item.minCount}`}</HintValue> : ""}
                     </span>
                   </li>
                 ))}
