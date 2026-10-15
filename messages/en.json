@@ -11265,6 +11265,14 @@
     "domainHint": "Use a subdomain like landing.yourcompany.com or pages.yourcompany.com"
   },
   "mtmAccess": {
+    "hint": {
+      "canPlan": "Ticked: the agent builds their own routes. Unticked: they work only on routes the manager builds.",
+      "canPublish": "Ticked: the agent publishes their routes without approval and may change routes already published.",
+      "colCrmRole": "The role for signing in to the CRM: what the person sees on the site.",
+      "colAccess": "The field role: what the employee can do in MTM: their territory, their team, or only their own clients.",
+      "colRoutes": "Whether the agent may build and publish their own routes.",
+      "perAgentCount": "How many active agents have this permission, out of all active agents."
+    },
     "perm_attendanceBranchQr": "Confirm the branch with QR",
     "perm_attendanceBranchQr_hint": "Off by default. Without a valid code the branch stays unconfirmed; work time is still saved.",
     "perm_attendanceInstallation": "Phone approval",
@@ -17592,6 +17600,12 @@
     "connectionLost": "Could not refresh. Check your internet connection — the page will try again."
   },
   "mtmSettingsPage": {
+    "hint": {
+      "routeTargetAdd": "Add one more button for the agent to choose whom to visit. No more than 20 buttons.",
+      "routeTargetMoveUp": "Move the button up. The all-clients button always stays first.",
+      "routeTargetMoveDown": "Move the button down.",
+      "routeTargetDelete": "Delete the button. The only button or the last one switched on cannot be deleted."
+    },
     "groupAttendanceReminders": "Attendance reminders",
     "lblAttendanceEmployeeReminders": "Remind employees",
     "hintAttendanceEmployeeReminders": "In the app: record arrival after the scheduled start and departure after the scheduled end. Once per day, excluding days off and approved absences.",
@@ -18198,6 +18212,9 @@
     }
   },
   "mtmVisitPolicies": {
+    "hint": {
+      "refine": "Refine the action: a minimum of photos, or only for clients of a certain class or institution type. A dot on the arrow means a refinement is set."
+    },
     "simpleTitle": "What an agent does on a visit",
     "simpleScope": "For the whole company. Applies to visits started after the change.",
     "colShown": "Show",

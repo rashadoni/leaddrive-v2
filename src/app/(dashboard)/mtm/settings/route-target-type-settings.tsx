@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useState } from "react"
 import { ArrowDown, ArrowUp, ChevronDown, Lock, Plus, Route, Trash2 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
@@ -106,9 +107,11 @@ export function RouteTargetTypeSettings({
           </div>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t("routeTargetHint")}</p>
         </div>
-        <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={addRow} disabled={rows.length >= 20}>
-          <Plus className="h-4 w-4" />{t("routeTargetAdd")}
-        </Button>
+        <Hint wrap text={t("hint.routeTargetAdd")}>
+          <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={addRow} disabled={rows.length >= 20}>
+            <Plus className="h-4 w-4" />{t("routeTargetAdd")}
+          </Button>
+        </Hint>
       </div>
 
       {/* Two equal halves, like every other row of the settings page: the
@@ -134,28 +137,32 @@ export function RouteTargetTypeSettings({
                     </span>
                   ) : (
                     <>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="min-h-11 min-w-9"
-                        aria-label={t("routeTargetMoveUp")}
-                        onClick={() => moveRow(index, -1)}
-                        disabled={index <= 1}
-                      >
-                        <ArrowUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="min-h-11 min-w-9"
-                        aria-label={t("routeTargetMoveDown")}
-                        onClick={() => moveRow(index, 1)}
-                        disabled={index === rows.length - 1}
-                      >
-                        <ArrowDown className="h-4 w-4" />
-                      </Button>
+                      <Hint wrap text={t("hint.routeTargetMoveUp")}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="min-h-11 min-w-9"
+                          aria-label={t("routeTargetMoveUp")}
+                          onClick={() => moveRow(index, -1)}
+                          disabled={index <= 1}
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                      </Hint>
+                      <Hint wrap text={t("hint.routeTargetMoveDown")}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="min-h-11 min-w-9"
+                          aria-label={t("routeTargetMoveDown")}
+                          onClick={() => moveRow(index, 1)}
+                          disabled={index === rows.length - 1}
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </Button>
+                      </Hint>
                     </>
                   )}
                   <button
@@ -241,16 +248,18 @@ export function RouteTargetTypeSettings({
                         {t("routeTargetOtherLanguages")}
                       </button>
                       {fixed ? null : (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive"
-                          onClick={() => onChange(rows.filter((candidate) => candidate.id !== row.id))}
-                          disabled={rows.length <= 1 || lastEnabled}
-                        >
-                          <Trash2 className="mr-1 h-4 w-4" />{t("routeTargetDelete")}
-                        </Button>
+                        <Hint wrap text={t("hint.routeTargetDelete")}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => onChange(rows.filter((candidate) => candidate.id !== row.id))}
+                            disabled={rows.length <= 1 || lastEnabled}
+                          >
+                            <Trash2 className="mr-1 h-4 w-4" />{t("routeTargetDelete")}
+                          </Button>
+                        </Hint>
                       )}
                     </div>
                     {translationsOpen ? (

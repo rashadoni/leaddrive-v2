@@ -11261,6 +11261,14 @@
     "domainHint": "Alt domen istifadə edin, məsələn landing.sirketiniz.com və ya pages.sirketiniz.com"
   },
   "mtmAccess": {
+    "hint": {
+      "canPlan": "İşarəlidir — agent marşrutları özü qurur. İşarəsizdir — yalnız rəhbərin marşrutları ilə işləyir.",
+      "canPublish": "İşarəlidir — agent marşrutlarını təsdiqsiz dərc edir və artıq dərc olunmuşları dəyişə bilər.",
+      "colCrmRole": "CRM-ə giriş üçün rol: insan saytda nə görür.",
+      "colAccess": "Sahədə rol — əməkdaş MTM-də nə edə bilər: öz ərazisi, öz komandası və ya yalnız öz müştəriləri.",
+      "colRoutes": "Agent marşrutlarını özü qura və dərc edə bilərmi.",
+      "perAgentCount": "Neçə aktiv agentin bu icazəsi var — bütün aktiv agentlərdən."
+    },
     "perm_attendanceBranchQr": "Filialı QR ilə təsdiqlə",
     "perm_attendanceBranchQr_hint": "İlkin olaraq söndürülüb. Etibarlı kod yoxdursa filial təsdiqlənmir, iş vaxtı isə saxlanılır.",
     "perm_attendanceInstallation": "Telefonun təsdiqi",
@@ -17588,6 +17596,12 @@
     "connectionLost": "Məlumatı yeniləmək alınmadı. İnternet bağlantısını yoxlayın — səhifə yenidən cəhd edəcək."
   },
   "mtmSettingsPage": {
+    "hint": {
+      "routeTargetAdd": "Agentə kimə baş çəkəcəyini seçmək üçün daha bir düymə əlavə et. 20 düymədən çox olmaz.",
+      "routeTargetMoveUp": "Düyməni yuxarı qaldır. Birinci həmişə bütün müştərilər düyməsidir.",
+      "routeTargetMoveDown": "Düyməni aşağı endir.",
+      "routeTargetDelete": "Düyməni sil. Yeganə və ya sonuncu açıq düyməni silmək olmaz."
+    },
     "groupAttendanceReminders": "Davamiyyət xatırlatmaları",
     "lblAttendanceEmployeeReminders": "Əməkdaşa xatırlat",
     "hintAttendanceEmployeeReminders": "Tətbiqdə: iş günü başlayandan sonra gəlişi, bitəndən sonra isə gedişi qeyd etmək. Gündə bir dəfə; istirahət və təsdiqlənmiş məzuniyyət günləri istisnadır.",
@@ -18194,6 +18208,9 @@
     }
   },
   "mtmVisitPolicies": {
+    "hint": {
+      "refine": "Hərəkəti dəqiqləşdir: minimum foto, yalnız müəyyən sinif müştəriləri və ya müəssisə növü üçün. Oxdakı nöqtə — dəqiqləşdirmə artıq verilib."
+    },
     "simpleTitle": "Agent ziyarətdə nə edir",
     "simpleScope": "Bütün şirkət üçün. Dəyişiklikdən sonra başlanan ziyarətlərə aiddir.",
     "colShown": "Göstər",
