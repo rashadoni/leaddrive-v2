@@ -39,7 +39,11 @@ authentication. It accepts `1..50` points and a JSON envelope no larger than
 unique `clientLocationId`, valid coordinates/metrics and a timestamp no more
 than seven days old or five minutes in the future. `speed` is km/h (0–500), as
 every other write path stores it: the phone converts Android's m/s before it
-sends (`src/lib/mtm/gps-speed.ts`). The server resolves the
+sends (`src/lib/mtm/gps-speed.ts`). The point's `isMoving` is the server's,
+not the phone's: 3 km/h and up as the screens show the speed (2.5 stored),
+`mtmSpeedMoving` — the owner's line of 2026-10-15, the same one the live status
+and the list read. Points written before that keep the flag of the old rule
+(above 1 km/h); they were not rewritten. The server resolves the
 active workday (or validates the supplied one) and checks the window both
 before and inside the write transaction.
 
@@ -114,8 +118,8 @@ catch up; no second authoritative write path is introduced.
 The same projection row holds the agent's current stop — `stationarySince`,
 `stationaryLatitude`, `stationaryLongitude`, `stationaryConfirmedAt` — which is
 what the live map reads for «стоит N минут» (`src/lib/mtm/stationary-anchor.ts`).
-Every write decides it from the incoming point alone: a moving point (the
-phone's flag, or speed above 1 km/h) clears the four columns, whatever its
+Every write decides it from the incoming point alone: a moving point (its
+`isMoving`, or 3 km/h and up — `mtmSpeedMoving`) clears the four columns, whatever its
 accuracy; a still point with accuracy worse than 100 m leaves them untouched;
 a still, accurate point confirms the stop (writes `stationaryConfirmedAt` only)
 while it is within 50 m of where the stop began and no more than 10 minutes
