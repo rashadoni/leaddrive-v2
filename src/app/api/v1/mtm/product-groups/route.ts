@@ -132,6 +132,10 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
     })
     return NextResponse.json({ success: true, data: created }, { status: 201 })
   } catch (error) {
+    // (organizationId, parentId, name) is unique: the screen says «that name is taken», not «failed».
+    if ((error as { code?: string })?.code === "P2002") {
+      return NextResponse.json({ error: "A group with this name already exists here", code: "MTM_PRODUCT_GROUP_NAME_TAKEN" }, { status: 409 })
+    }
     console.error("[MTM/product-groups POST]", error)
     return NextResponse.json({ error: "Failed to create product group", code: "MTM_PRODUCT_GROUP_CREATE_FAILED" }, { status: 500 })
   }

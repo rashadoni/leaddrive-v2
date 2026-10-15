@@ -33,7 +33,7 @@ describe.each([
   ["mtmCustomers.detail.hint", "detail.hint.", [component("organization-detail")]],
   ["mtmExplainableKpi.hint", "hint.", [component("explainable-kpi-dashboard")]],
   ["mtmPharmacyPromotions.hint", "hint.", ["workspace", "detail", "definition-admin", "campaign-admin", "agent-capture"].map((name) => component(`pharmacy-promotion-${name}`))],
-  ["mtmProductCatalog.hint", "hint.", ["src/app/(dashboard)/mtm/products/page.tsx"]],
+  ["mtmProductCatalog.hint", "hint.", [component("product-catalog")]],
   ["mtmVisitWorkspace.hint", "hint.", ["src/app/(dashboard)/mtm/visits/visit-workspace.tsx"]],
   ["mtmMap.history.hint", "hint.", [component("location-history-panel")]],
   ["mtmExcel.hint", "hint.", [component("excel-exchange-panel")]],
