@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { CalendarClock, CircleAlert, FileCheck2, Link2, Plus, SquarePen } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -82,17 +83,20 @@ function FormField({
   label,
   required = false,
   hint,
+  labelHint,
   children,
 }: {
   id: string
   label: string
   required?: boolean
   hint?: string
+  /** Under the cursor: what the value means and how it is counted. */
+  labelHint?: string
   children: React.ReactNode
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={id}>{label}{required ? " *" : ""}</Label>
+      <Label htmlFor={id}><HintValue text={labelHint}>{label}</HintValue>{required ? " *" : ""}</Label>
       {children}
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
@@ -295,10 +299,10 @@ export function MtmAssessmentCreateDialog({
               <FormField id="assessment-category" label={t("granularCategory")}>
                 <Input id="assessment-category" value={form.granularCategory} maxLength={500} onChange={(event) => update("granularCategory", event.target.value)} />
               </FormField>
-              <FormField id="assessment-actual" label={t("actualScore")}>
+              <FormField id="assessment-actual" label={t("actualScore")} labelHint={t("hint.actualScore")}>
                 <Input id="assessment-actual" type="number" min="0" max="1000000000" step="any" inputMode="decimal" value={form.actualScore} onChange={(event) => update("actualScore", event.target.value)} />
               </FormField>
-              <FormField id="assessment-target" label={t("targetScore")}>
+              <FormField id="assessment-target" label={t("targetScore")} labelHint={t("hint.targetScore")}>
                 <Input id="assessment-target" type="number" min="0" max="1000000000" step="any" inputMode="decimal" value={form.targetScore} onChange={(event) => update("targetScore", event.target.value)} />
               </FormField>
               <div className="grid content-start gap-3">
@@ -318,10 +322,12 @@ export function MtmAssessmentCreateDialog({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-          <Button type="submit" disabled={saving || loadingFormulas || formulas.length === 0}>
-            <SquarePen className="h-4 w-4" />
-            {saving ? t("savingRecord") : t("createAssessment")}
-          </Button>
+          <Hint wrap text={saving || loadingFormulas ? null : formulas.length === 0 ? t("hint.entryNoFormula") : t("hint.entryCreateAssessment")}>
+            <Button type="submit" disabled={saving || loadingFormulas || formulas.length === 0}>
+              <SquarePen className="h-4 w-4" />
+              {saving ? t("savingRecord") : t("createAssessment")}
+            </Button>
+          </Hint>
         </DialogFooter>
       </form>
     </Dialog>
@@ -509,10 +515,10 @@ export function MtmPotentialCreateDialog({
               </FormField>
             </div>
             <div className="grid gap-4 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700 sm:grid-cols-2 lg:grid-cols-3">
-              <FormField id="potential-value" label={t("potentialValue")} required>
+              <FormField id="potential-value" label={t("potentialValue")} required labelHint={t("hint.potentialValue")}>
                 <Input id="potential-value" type="number" min="0" max="1000000000" step="any" inputMode="decimal" value={form.potentialValue} onChange={(event) => update("potentialValue", event.target.value)} required />
               </FormField>
-              <FormField id="potential-coverage" label={t("coverageValue")} required>
+              <FormField id="potential-coverage" label={t("coverageValue")} required labelHint={t("hint.coverageValue")}>
                 <Input id="potential-coverage" type="number" min="0" max="1000000000" step="any" inputMode="decimal" value={form.coverageValue} onChange={(event) => update("coverageValue", event.target.value)} required />
               </FormField>
               <FormField id="potential-category" label={t("measurementCategory")}>
@@ -564,10 +570,12 @@ export function MtmPotentialCreateDialog({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-          <Button type="submit" disabled={saving || (perAgentDimension && agents.length === 0)}>
-            <Plus className="h-4 w-4" />
-            {saving ? t("savingRecord") : t("createPotential")}
-          </Button>
+          <Hint wrap text={saving ? null : perAgentDimension && agents.length === 0 ? t("hint.entryNoAgents") : t("hint.entryCreatePotential")}>
+            <Button type="submit" disabled={saving || (perAgentDimension && agents.length === 0)}>
+              <Plus className="h-4 w-4" />
+              {saving ? t("savingRecord") : t("createPotential")}
+            </Button>
+          </Hint>
         </DialogFooter>
       </form>
     </Dialog>
@@ -648,10 +656,12 @@ export function MtmPotentialEndDialog({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-          <Button type="submit" disabled={saving || reason.trim().length < 2}>
-            <CalendarClock className="h-4 w-4" />
-            {saving ? t("savingRecord") : t("endPotential")}
-          </Button>
+          <Hint wrap text={saving ? null : reason.trim().length < 2 ? t("hint.entryEndReasonRequired") : t("hint.entryEndPotential")}>
+            <Button type="submit" disabled={saving || reason.trim().length < 2}>
+              <CalendarClock className="h-4 w-4" />
+              {saving ? t("savingRecord") : t("endPotential")}
+            </Button>
+          </Hint>
         </DialogFooter>
       </form>
     </Dialog>

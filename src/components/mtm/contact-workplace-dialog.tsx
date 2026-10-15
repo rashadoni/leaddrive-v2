@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Archive, CircleAlert, Loader2, Send, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -227,7 +228,7 @@ export function MtmContactWorkplaceDialog({
             <div className="grid gap-1.5"><Label htmlFor="workplace-ended-on">{t("endedOn")}</Label><Input id="workplace-ended-on" type="date" value={form.endedOn} onChange={(event) => { update("endedOn", event.target.value); if (event.target.value) update("isPrimary", false) }} /></div>
             <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 px-3 text-sm font-medium dark:border-zinc-700 sm:col-span-2">
               <input type="checkbox" className="h-4 w-4 accent-primary" checked={form.isPrimary} disabled={Boolean(form.endedOn)} onChange={(event) => update("isPrimary", event.target.checked)} />
-              <span>{t("primary")}</span>
+              <HintValue text={form.endedOn ? t("hint.workplacePrimaryEnded") : t("hint.workplacePrimary")}>{t("primary")}</HintValue>
             </label>
           </section>
 
@@ -240,10 +241,12 @@ export function MtmContactWorkplaceDialog({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-          <Button type="submit" disabled={saving || (!canManage && !canRequestChanges)}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : requestMode ? <Send className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-            {saving ? t("saving") : requestMode ? t("sendRequest") : t("save")}
-          </Button>
+          <Hint wrap text={saving ? null : !canManage && !canRequestChanges ? t("hint.workplaceNoRight") : requestMode ? t("hint.workplaceSendRequest") : t("hint.workplaceSave")}>
+            <Button type="submit" disabled={saving || (!canManage && !canRequestChanges)}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : requestMode ? <Send className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {saving ? t("saving") : requestMode ? t("sendRequest") : t("save")}
+            </Button>
+          </Hint>
         </DialogFooter>
       </form>
     </Dialog>
@@ -360,10 +363,12 @@ export function MtmContactWorkplaceEndDialog({
       </DialogContent>
       <DialogFooter>
         <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-        <Button type="button" variant="destructive" disabled={saving || !workplace} onClick={() => void submit()}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : requestMode ? <Send className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-          {saving ? t("saving") : requestMode ? t("sendRequest") : t("endWorkplace")}
-        </Button>
+        <Hint wrap text={saving || !workplace ? null : requestMode ? t("hint.workplaceEndRequest") : t("hint.workplaceEnd")}>
+          <Button type="button" variant="destructive" disabled={saving || !workplace} onClick={() => void submit()}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : requestMode ? <Send className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+            {saving ? t("saving") : requestMode ? t("sendRequest") : t("endWorkplace")}
+          </Button>
+        </Hint>
       </DialogFooter>
     </Dialog>
   )

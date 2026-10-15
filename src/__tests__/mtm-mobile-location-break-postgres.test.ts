@@ -22,6 +22,11 @@
  * Every instant is taken relative to now — the handlers refuse the future and
  * anything older than a week — so nothing here depends on the date.
  *
+ * The same two mobile handlers decide which point is «moving» — the phone
+ * sends only its speed — and that flag is what History shows and what ends a
+ * stop on the live map. Since 2026-10-15 the line is 3 km/h as a screen shows
+ * it (src/lib/mtm/gps-speed.ts); the last block reads it back off the table.
+ *
  * Set MTM_LOCATION_BREAK_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55499:5432 postgres:16
  *   MTM_LOCATION_BREAK_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55499/postgres
@@ -519,5 +524,103 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
       clientLocationId: "before-the-day",
     })
     expect(await storedMinutes(agentId)).toEqual([])
+  })
+
+  /**
+   * The owner's line of 2026-10-15: from 3 km/h as a screen shows it. The
+   * speeds are production's: a standing phone's GPS jitter is stored at
+   * 1–2.4 km/h, a walk at 3–4, a drive at tens; the app sends no speed at all
+   * for Android's 0. Until that day both routes stored everything above
+   * 1 km/h as moving, and a phone lying on a counter ended its own stop some
+   * fifty times a day.
+   */
+  describe("which points are stored as moving", () => {
+    type Fix = { clientLocationId: string; minute: number; speed: number | null; north?: number }
+    const fixPayload = (fix: Fix) => ({
+      clientLocationId: fix.clientLocationId,
+      latitude: 40.4 + (fix.north ?? 0) / 111_195,
+      longitude: 49.8,
+      accuracy: 8,
+      ...(fix.speed == null ? {} : { speed: fix.speed }),
+      recordedAt: at(fix.minute).toISOString(),
+    })
+    const SPEEDS = [null, 1.4, 2.4, 2.5, 3.4, 52.2]
+    /** «2 km/h» on a screen stands; «3 km/h» moves. */
+    const MOVING = [false, false, false, true, true, true]
+    const fixes = (prefix: string, firstMinute: number): Fix[] =>
+      SPEEDS.map((speed, index) => ({ clientLocationId: `${prefix}-${index}`, minute: firstMinute + index, speed }))
+
+    async function sendFixesInBatch(agentId: string, sent: Fix[]) {
+      callAs(agentId)
+      const response = await postBatch(new NextRequest(BATCH_URL, {
+        method: "POST",
+        headers: { Authorization: "Bearer mobile", "content-type": "application/json", "x-field-device-id": DEVICE },
+        body: JSON.stringify({ points: sent.map(fixPayload) }),
+      }))
+      return response.status
+    }
+
+    async function sendFix(agentId: string, fix: Fix) {
+      callAs(agentId)
+      const response = await postPoint(new NextRequest(POINT_URL, {
+        method: "POST",
+        headers: { Authorization: "Bearer mobile", "content-type": "application/json" },
+        body: JSON.stringify(fixPayload(fix)),
+      }))
+      return response.status
+    }
+
+    async function stored(agentId: string) {
+      const rows: Array<{ speed: number | null; isMoving: boolean }> = await bypass(() => prisma.mtmAgentLocation.findMany({
+        where: { organizationId: ORG, agentId },
+        orderBy: { recordedAt: "asc" },
+        select: { speed: true, isMoving: true },
+      }))
+      return rows
+    }
+
+    async function stop(agentId: string) {
+      return bypass(() => prisma.mtmAgentLatestLocation.findUniqueOrThrow({
+        where: { organizationId_agentId: { organizationId: ORG, agentId } },
+        select: { stationarySince: true, stationaryConfirmedAt: true },
+      }))
+    }
+
+    it("the batch route stores a point as moving from what a screen shows as 3 km/h", async () => {
+      const { agentId } = await agentWithDay({ status: "STARTED", journal: [] })
+
+      expect(await sendFixesInBatch(agentId, fixes("batch", 20))).toBe(201)
+
+      expect(await stored(agentId)).toEqual(SPEEDS.map((speed, index) => ({ speed, isMoving: MOVING[index] })))
+    })
+
+    it("the single-point route stores the same flags for the same speeds", async () => {
+      const { agentId } = await agentWithDay({ status: "STARTED", journal: [] })
+
+      for (const fix of fixes("single", 20)) expect(await sendFix(agentId, fix)).toBe(200)
+
+      expect(await stored(agentId)).toEqual(SPEEDS.map((speed, index) => ({ speed, isMoving: MOVING[index] })))
+    })
+
+    it("a standing phone's jitter keeps the stop the live map counts; a walk ends it", async () => {
+      const { agentId } = await agentWithDay({ status: "STARTED", journal: [] })
+      const standing: Fix[] = [
+        { clientLocationId: "lay-down", minute: 40, speed: null },
+        { clientLocationId: "jitter-1", minute: 41, speed: 1.4, north: 6 },
+        { clientLocationId: "jitter-2", minute: 42, speed: 2.4, north: -7 },
+        { clientLocationId: "jitter-3", minute: 43, speed: 1.9, north: 4 },
+      ]
+
+      expect(await sendFixesInBatch(agentId, standing)).toBe(201)
+      expect(await stop(agentId)).toEqual({ stationarySince: at(40), stationaryConfirmedAt: at(43) })
+
+      // The single-point route keeps it too.
+      expect(await sendFix(agentId, { clientLocationId: "jitter-4", minute: 44, speed: 2.2, north: -5 })).toBe(200)
+      expect(await stop(agentId)).toEqual({ stationarySince: at(40), stationaryConfirmedAt: at(44) })
+
+      // He picks the phone up and walks out at 3.4 km/h.
+      expect(await sendFixesInBatch(agentId, [{ clientLocationId: "walk", minute: 45, speed: 3.4, north: 25 }])).toBe(201)
+      expect(await stop(agentId)).toEqual({ stationarySince: null, stationaryConfirmedAt: null })
+    })
   })
 })

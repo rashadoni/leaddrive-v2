@@ -1,5 +1,6 @@
 "use client"
 
+import { HintValue } from "@/components/hint"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
@@ -148,17 +149,17 @@ export function MtmTeamResults({ orgId, initialPreset }: { orgId?: string; initi
 
           <div data-testid="mtm-team-results-cards" className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{t("cardPlan")}</div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /><HintValue text={t("hint.cardPlan")}>{t("cardPlan")}</HintValue></div>
               <div className={`mt-1 text-3xl font-semibold tabular-nums ${TONE_TEXT[mtmPlanTone(report.plan.denominator > 0 ? report.plan.percentage : null)]}`}>{report.plan.denominator > 0 ? `${report.plan.percentage}%` : "—"}</div>
               <div className="mt-1 text-sm text-muted-foreground">{t("cardPlanDetail", { done: report.plan.numerator, planned: report.plan.denominator })}</div>
             </div>
             <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" aria-hidden="true" />{t("cardVisits")}</div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" aria-hidden="true" /><HintValue text={t("hint.cardVisits")}>{t("cardVisits")}</HintValue></div>
               <div className="mt-1 text-3xl font-semibold tabular-nums">{report.gps.denominator}</div>
               <div className="mt-1 text-sm text-muted-foreground">{t("cardVisitsDetail")}</div>
             </div>
             <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Satellite className="h-4 w-4" aria-hidden="true" />{t("cardGps")}</div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Satellite className="h-4 w-4" aria-hidden="true" /><HintValue text={t("hint.cardGps")}>{t("cardGps")}</HintValue></div>
               <div className="mt-1 text-3xl font-semibold tabular-nums">{report.gps.denominator > 0 ? `${report.gps.percentage}%` : "—"}</div>
               <div className="mt-1 text-sm text-muted-foreground">{t("cardGpsDetail", { withGps: report.gps.numerator, visits: report.gps.denominator })}</div>
             </div>

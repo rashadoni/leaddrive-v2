@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -119,9 +120,9 @@ export function MtmAccessPanel() {
         <div className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
           <div className="hidden gap-4 border-b border-zinc-200 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground dark:border-zinc-700 md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.6fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
             <span>{t("colPerson")}</span>
-            <span>{t("colCrmRole")}</span>
-            <span>{t("colAccess")}</span>
-            <span>{t("colRoutes")}</span>
+            <span><HintValue text={t("hint.colCrmRole")}>{t("colCrmRole")}</HintValue></span>
+            <span><HintValue text={t("hint.colAccess")}>{t("colAccess")}</HintValue></span>
+            <span><HintValue text={t("hint.colRoutes")}>{t("colRoutes")}</HintValue></span>
           </div>
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
             {roster.rows.map((row) => (
@@ -217,26 +218,30 @@ function AccessRowView({
       <div className="grid gap-2 text-sm">
         {row.kind === "card" && row.role === "AGENT" && (
           <>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
-                checked={row.card.canPlanOwnRoutes !== false}
-                disabled={busy}
-                onChange={(event) => onCardFlag(row.card.id, "canPlanOwnRoutes", event.target.checked)}
-              />
-              {t("canPlan")}
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
-                checked={row.card.canSelfPublishRoutes === true}
-                disabled={busy}
-                onChange={(event) => onCardFlag(row.card.id, "canSelfPublishRoutes", event.target.checked)}
-              />
-              {t("canPublish")}
-            </label>
+            <Hint text={t("hint.canPlan")}>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                  checked={row.card.canPlanOwnRoutes !== false}
+                  disabled={busy}
+                  onChange={(event) => onCardFlag(row.card.id, "canPlanOwnRoutes", event.target.checked)}
+                />
+                {t("canPlan")}
+              </label>
+            </Hint>
+            <Hint text={t("hint.canPublish")}>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                  checked={row.card.canSelfPublishRoutes === true}
+                  disabled={busy}
+                  onChange={(event) => onCardFlag(row.card.id, "canSelfPublishRoutes", event.target.checked)}
+                />
+                {t("canPublish")}
+              </label>
+            </Hint>
           </>
         )}
       </div>

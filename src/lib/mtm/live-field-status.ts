@@ -1,5 +1,6 @@
 import { calculateDistance } from "@/lib/geo-utils"
 import type { MtmFieldStatus, MtmGpsFreshness } from "@/lib/mtm-types"
+import { mtmSpeedMoving } from "@/lib/mtm/gps-speed"
 
 /**
  * What the live map says an employee is doing right now.
@@ -96,9 +97,13 @@ function sampleMs(sample: MtmMovementSample): number {
   return sample.recordedAt instanceof Date ? sample.recordedAt.getTime() : Date.parse(sample.recordedAt)
 }
 
-/** One sample says «moving»: by the phone's own flag, or by a speed above GPS noise. */
+/**
+ * One sample says «moving»: by its stored flag, or by a speed of
+ * `MTM_MOVING_FROM_KMH` (gps-speed.ts) or more — above a standing phone's
+ * GPS jitter.
+ */
 export function mtmSampleMoving(sample: Pick<MtmMovementSample, "isMoving" | "speed">): boolean {
-  return sample.isMoving === true || (typeof sample.speed === "number" && sample.speed > 1)
+  return sample.isMoving === true || mtmSpeedMoving(sample.speed)
 }
 
 /**
@@ -106,9 +111,9 @@ export function mtmSampleMoving(sample: Pick<MtmMovementSample, "isMoving" | "sp
  *
  * Review of #205: one motionless sample at a red light flipped «Yolda» to
  * «Dayanıb». An agent counts as stopped only when, for the last
- * {@link MTM_STOPPED_DWELL_MS}, no sample reported movement (flag or speed
- * above 1 km/h, the stored unit — src/lib/mtm/gps-speed.ts) and every sample
- * stayed within {@link MTM_STOPPED_RADIUS_METERS} of the newest one.
+ * {@link MTM_STOPPED_DWELL_MS}, no sample reported movement (flag, or 3 km/h
+ * and up — `MTM_MOVING_FROM_KMH` in src/lib/mtm/gps-speed.ts) and every
+ * sample stayed within {@link MTM_STOPPED_RADIUS_METERS} of the newest one.
  * `lastMovingAt` is the newest moving sample the database holds for that
  * window, so a sparse set of loaded points cannot hide it.
  */

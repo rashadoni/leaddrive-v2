@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle, CheckCircle2, Loader2, ShieldCheck, UserMinus, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,19 @@ export type ContactAssignmentResult = {
 
 type Step = "PARAMETERS" | "PREVIEW" | "RESULT"
 
+/** Why a contact stays as it is, for the reasons the label alone does not explain. Keys written out so a test finds every one. */
+const ISSUE_HINT = {
+  NO_PRIMARY_ASSIGNMENT: "hint.assignmentIssueNobody",
+  MULTIPLE_PRIMARY_OWNERS: "hint.assignmentIssueMultiplePrimary",
+  FUTURE_ASSIGNMENT_CONFLICT: "hint.assignmentIssueFuture",
+  OPEN_VISIT_CONFLICT: "hint.assignmentIssueOpenVisit",
+  ROUTE_PLAN_CONFLICT: "hint.assignmentIssueRoutePlan",
+} as const satisfies Partial<Record<AssignmentIssue, string>>
+
+function issueHintKey(issue: AssignmentIssue) {
+  return Object.prototype.hasOwnProperty.call(ISSUE_HINT, issue) ? ISSUE_HINT[issue as keyof typeof ISSUE_HINT] : null
+}
+
 function localDateKey(): string {
   const now = new Date()
   const offset = now.getTimezoneOffset() * 60_000
@@ -94,6 +108,7 @@ export function ContactAssignmentDialog({
   onCompleted: (result: ContactAssignmentResult) => void
 }) {
   const t = useTranslations("mtmContactExplorer.assignment")
+  const th = useTranslations("mtmContactExplorer")
   const [step, setStep] = useState<Step>("PARAMETERS")
   const [targetAgentId, setTargetAgentId] = useState(initialTargetAgentId ?? "")
   const [effectiveFrom, setEffectiveFrom] = useState(asOf || localDateKey())
@@ -306,14 +321,14 @@ export function ContactAssignmentDialog({
           <>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Summary label={t("selected")} value={preview.summary.selected} />
-              <Summary label={t("canChange")} value={preview.summary.assignable} tone="positive" />
-              <Summary label={t("excluded")} value={preview.summary.excluded} tone={preview.summary.excluded ? "warning" : "neutral"} />
-              <Summary label={t("planConflicts")} value={preview.summary.routePlanConflicts} tone={preview.summary.routePlanConflicts ? "warning" : "neutral"} />
+              <Summary label={t("canChange")} value={preview.summary.assignable} tone="positive" hint={th("hint.assignmentCanChange")} />
+              <Summary label={t("excluded")} value={preview.summary.excluded} tone={preview.summary.excluded ? "warning" : "neutral"} hint={th("hint.assignmentExcluded")} />
+              <Summary label={t("planConflicts")} value={preview.summary.routePlanConflicts} tone={preview.summary.routePlanConflicts ? "warning" : "neutral"} hint={th("hint.assignmentPlanConflicts")} />
             </div>
             {mode === "ASSIGN" ? (
               <div className="rounded-lg border border-zinc-200 bg-muted/30 p-3 text-sm dark:border-zinc-700">
                 {t("newOwner")}: <span className="font-medium">{preview.targetAgent?.name || "—"}</span>
-                <span className="float-right text-xs text-muted-foreground">{preview.effectiveFrom}</span>
+                <HintValue className="float-right text-xs text-muted-foreground" text={th("hint.assignmentEffectiveFrom")}>{preview.effectiveFrom}</HintValue>
                 {/* Attaching takes the client from nobody — said in words, because it used to. */}
                 {(preview.summary.additional ?? 0) > 0 ? (
                   <p data-testid="contact-assignment-additional" className="mt-2 text-muted-foreground">
@@ -326,7 +341,7 @@ export function ContactAssignmentDialog({
                 {sourceAgent
                   ? <>{t("detachFrom")}: <span className="font-medium">{sourceAgent.name}</span></>
                   : t("detachFromAll")}
-                <span className="float-right text-xs text-muted-foreground">{preview.effectiveFrom}</span>
+                <HintValue className="float-right text-xs text-muted-foreground" text={th("hint.assignmentEffectiveFrom")}>{preview.effectiveFrom}</HintValue>
               </div>
             )}
             {preview.summary.excluded > 0 ? (
@@ -337,11 +352,14 @@ export function ContactAssignmentDialog({
                     <div key={row.contactId} className="p-3 text-sm">
                       <p className="font-medium">{row.displayName || row.contactId}</p>
                       <div className="mt-1 flex flex-wrap gap-1.5">
-                        {row.issues.map((issue) => (
-                          <span key={issue} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
-                            {t(`issues.${issue}`)}
-                          </span>
-                        ))}
+                        {row.issues.map((issue) => {
+                          const hintKey = issueHintKey(issue)
+                          return (
+                            <HintValue key={issue} text={hintKey ? th(hintKey) : null} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
+                              {t(`issues.${issue}`)}
+                            </HintValue>
+                          )
+                        })}
                       </div>
                     </div>
                   ))}
@@ -380,20 +398,35 @@ export function ContactAssignmentDialog({
         {step === "PARAMETERS" ? (
           <>
             <Button type="button" variant="outline" onClick={close} disabled={busy}>{t("cancel")}</Button>
-            <Button type="button" onClick={() => void buildPreview()} disabled={busy || contactIds.length === 0}>
-              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-1 h-4 w-4" />}
-              {busy ? t("buildingPreview") : t("review")}
-            </Button>
+            <Hint wrap text={busy || contactIds.length === 0 ? null : th("hint.assignmentReview")}>
+              <Button type="button" onClick={() => void buildPreview()} disabled={busy || contactIds.length === 0}>
+                {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-1 h-4 w-4" />}
+                {busy ? t("buildingPreview") : t("review")}
+              </Button>
+            </Hint>
           </>
         ) : step === "PREVIEW" ? (
           <>
             <Button type="button" variant="outline" onClick={() => { setStep("PARAMETERS"); setError("") }} disabled={busy}>
               {t("changeParameters")}
             </Button>
-            <Button type="button" onClick={() => void execute()} disabled={busy || !preview || preview.summary.assignable === 0}>
-              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ModeIcon className="mr-1 h-4 w-4" />}
-              {busy ? t("applying") : t("apply", { count: preview?.summary.assignable ?? 0 })}
-            </Button>
+            <Hint
+              wrap
+              text={busy || !preview
+                ? null
+                : preview.summary.assignable === 0
+                  ? th("hint.assignmentNothing")
+                  : mode === "ASSIGN"
+                    ? th("hint.assignmentApplyAssign")
+                    : sourceAgentId
+                      ? th("hint.assignmentApplyUnassign")
+                      : th("hint.assignmentApplyUnassignAll")}
+            >
+              <Button type="button" onClick={() => void execute()} disabled={busy || !preview || preview.summary.assignable === 0}>
+                {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ModeIcon className="mr-1 h-4 w-4" />}
+                {busy ? t("applying") : t("apply", { count: preview?.summary.assignable ?? 0 })}
+              </Button>
+            </Hint>
           </>
         ) : (
           <Button type="button" onClick={close}>{t("close")}</Button>
@@ -407,10 +440,12 @@ function Summary({
   label,
   value,
   tone = "neutral",
+  hint,
 }: {
   label: string
   value: number
   tone?: "positive" | "warning" | "neutral"
+  hint?: string
 }) {
   return (
     <div className={`rounded-lg border p-3 ${
@@ -420,7 +455,7 @@ function Summary({
           ? "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20"
           : "border-zinc-200 bg-muted/30 dark:border-zinc-700"
     }`}>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
     </div>
   )

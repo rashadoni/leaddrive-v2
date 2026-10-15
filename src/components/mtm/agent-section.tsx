@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { AlertCircle, ArrowLeft, History, Info, MapPinned, UserPlus, UsersRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint } from "@/components/hint"
 import { MtmContactExplorer, type MtmContactExplorerAgentScope } from "@/components/mtm/contact-explorer"
 import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
@@ -145,24 +146,32 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm" className="min-h-11">
-            <Link href={`/mtm/map?agentId=${encodeURIComponent(agent.id)}`}><MapPinned className="mr-1.5 h-4 w-4" aria-hidden="true" />{ta("actionMap")}</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="min-h-11">
-            <Link href={`/mtm/map?mode=history&agentId=${encodeURIComponent(agent.id)}`}><History className="mr-1.5 h-4 w-4" aria-hidden="true" />{ta("actionHistory")}</Link>
-          </Button>
+          <Hint text={t("hint.sectionMap")}>
+            <Button asChild variant="outline" size="sm" className="min-h-11">
+              <Link href={`/mtm/map?agentId=${encodeURIComponent(agent.id)}`}><MapPinned className="mr-1.5 h-4 w-4" aria-hidden="true" />{ta("actionMap")}</Link>
+            </Button>
+          </Hint>
+          <Hint text={t("hint.sectionHistory")}>
+            <Button asChild variant="outline" size="sm" className="min-h-11">
+              <Link href={`/mtm/map?mode=history&agentId=${encodeURIComponent(agent.id)}`}><History className="mr-1.5 h-4 w-4" aria-hidden="true" />{ta("actionHistory")}</Link>
+            </Button>
+          </Hint>
         </div>
       </header>
 
       <div role="tablist" aria-label={t("tabs")} className="flex flex-wrap gap-2">
-        <button type="button" role="tab" aria-selected={view === "assigned"} data-testid="mtm-agent-tab-assigned" className={tabClass(view === "assigned")} onClick={() => openView("assigned")}>
-          <UsersRound className="h-4 w-4" aria-hidden="true" />
-          {assignedTotal === null ? t("tabAssigned") : t("tabAssignedCount", { count: assignedTotal })}
-        </button>
-        <button type="button" role="tab" aria-selected={view === "candidates"} data-testid="mtm-agent-tab-attach" className={tabClass(view === "candidates")} onClick={() => openView("candidates")}>
-          <UserPlus className="h-4 w-4" aria-hidden="true" />
-          {t("tabAttach")}
-        </button>
+        <Hint text={t("hint.sectionAssigned")}>
+          <button type="button" role="tab" aria-selected={view === "assigned"} data-testid="mtm-agent-tab-assigned" className={tabClass(view === "assigned")} onClick={() => openView("assigned")}>
+            <UsersRound className="h-4 w-4" aria-hidden="true" />
+            {assignedTotal === null ? t("tabAssigned") : t("tabAssignedCount", { count: assignedTotal })}
+          </button>
+        </Hint>
+        <Hint text={t("hint.sectionAttach")}>
+          <button type="button" role="tab" aria-selected={view === "candidates"} data-testid="mtm-agent-tab-attach" className={tabClass(view === "candidates")} onClick={() => openView("candidates")}>
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+            {t("tabAttach")}
+          </button>
+        </Hint>
       </div>
 
       {view === "candidates" && !canReceiveClients ? (

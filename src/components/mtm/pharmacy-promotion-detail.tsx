@@ -22,6 +22,7 @@ import {
   XCircle,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Hint, HintValue } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -252,7 +253,36 @@ function variant(status: string) {
   return "outline" as const
 }
 
-function DetailStatusBadge({ status, label }: { status: string; label: string }) {
+/** What each status means, under the cursor — the same words as the registry. Keys written out so a test finds every one. */
+const EXECUTION_STATUS_HINT = {
+  DRAFT: "hint.statusDraft",
+  READY: "hint.statusReady",
+  IN_REVIEW: "hint.statusInReview",
+  APPROVED: "hint.statusApproved",
+  RETURNED: "hint.statusReturned",
+  REJECTED: "hint.statusRejected",
+  REVERSED: "hint.statusReversed",
+} as const
+
+const REVIEW_STATE_HINT = {
+  NOT_READY: "hint.levelNotReady",
+  READY: "hint.levelReady",
+  APPROVED: "hint.levelApproved",
+  RETURNED: "hint.levelReturned",
+  REJECTED: "hint.levelRejected",
+} as const
+
+const SOURCE_FRESHNESS_HINT = {
+  FRESH: "hint.sourceFresh",
+  STALE: "hint.sourceStale",
+  UNKNOWN: "hint.sourceUnknown",
+} as const
+
+function hintKey<T extends Record<string, string>>(map: T, value: string | null | undefined): T[keyof T] | null {
+  return value && Object.prototype.hasOwnProperty.call(map, value) ? map[value as keyof T] : null
+}
+
+function DetailStatusBadge({ status, label, hint }: { status: string; label: string; hint?: string | null }) {
   const badgeVariant = variant(status)
   const Icon = badgeVariant === "success"
     ? CheckCircle2
@@ -263,11 +293,12 @@ function DetailStatusBadge({ status, label }: { status: string; label: string })
         : badgeVariant === "info"
           ? Clock3
           : ShieldCheck
-  return <Badge variant={badgeVariant}><Icon className="mr-1 h-3 w-3" aria-hidden="true" />{label}</Badge>
+  const badge = <Badge variant={badgeVariant}><Icon className="mr-1 h-3 w-3" aria-hidden="true" />{label}</Badge>
+  return hint ? <HintValue text={hint}>{badge}</HintValue> : badge
 }
 
-function Metric({ label, value, note, accent }: { label: string; value: string; note?: string; accent?: boolean }) {
-  return <div className={cn("min-w-0 border p-3 sm:p-4", accent ? "border-primary/30 bg-primary/5" : "border-zinc-200/70 bg-card dark:border-zinc-800")}><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p><p className="mt-1 break-words text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>{note ? <p className="mt-1 text-xs text-muted-foreground">{note}</p> : null}</div>
+function Metric({ label, value, note, accent, hint }: { label: string; value: string; note?: string; accent?: boolean; hint?: string }) {
+  return <div className={cn("min-w-0 border p-3 sm:p-4", accent ? "border-primary/30 bg-primary/5" : "border-zinc-200/70 bg-card dark:border-zinc-800")}><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p><p className="mt-1 break-words text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>{note ? <p className="mt-1 text-xs text-muted-foreground">{note}</p> : null}</div>
 }
 
 export function PharmacyPromotionDetail({ executionId }: { executionId: string }) {
@@ -500,6 +531,18 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
   const blockerLabel = (code: string) => t.has(`blocker.${code}`)
     ? t(`blocker.${code}`)
     : t("unknownBlocker")
+  const statusHint = (status: string) => {
+    const key = hintKey(EXECUTION_STATUS_HINT, status)
+    return key ? t(key) : null
+  }
+  const levelHint = (status: string) => {
+    const key = hintKey(REVIEW_STATE_HINT, status)
+    return key ? t(key) : null
+  }
+  const freshnessHint = (state: string) => {
+    const key = hintKey(SOURCE_FRESHNESS_HINT, state)
+    return key ? t(key) : null
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -575,15 +618,15 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
       <header className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <Link href={returnTo} className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground lg:min-h-10"><ArrowLeft className="h-4 w-4" />{t("backToRegistry")}</Link>
-          <div className="mt-2 flex flex-wrap items-center gap-2"><DetailStatusBadge status={detail.status} label={stateLabel(detail.status)} /><DetailStatusBadge status={detail.l1State} label={`L1 · ${stateLabel(detail.l1State)}`} /><DetailStatusBadge status={detail.l2State} label={`L2 · ${stateLabel(detail.l2State)}`} /></div>
+          <div className="mt-2 flex flex-wrap items-center gap-2"><DetailStatusBadge status={detail.status} label={stateLabel(detail.status)} hint={statusHint(detail.status)} /><DetailStatusBadge status={detail.l1State} label={`L1 · ${stateLabel(detail.l1State)}`} hint={levelHint(detail.l1State)} /><DetailStatusBadge status={detail.l2State} label={`L2 · ${stateLabel(detail.l2State)}`} hint={levelHint(detail.l2State)} /></div>
           <h1 className="mt-2 break-words text-2xl font-semibold tracking-tight sm:text-3xl">{detail.target.customer.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{localName(detail.promotion, locale)} · {detail.promotion.promotion.code} · v{detail.promotion.revision}</p>
         </div>
         <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button className="min-h-11 lg:min-h-9" variant="outline" onClick={() => setRefresh((value) => value + 1)} disabled={loading}><RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin motion-reduce:animate-none")} />{t("refresh")}</Button>
+            <Hint wrap text={loading ? null : t("hint.detailRefresh")}><Button className="min-h-11 lg:min-h-9" variant="outline" onClick={() => setRefresh((value) => value + 1)} disabled={loading}><RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin motion-reduce:animate-none")} />{t("refresh")}</Button></Hint>
           </div>
-          {outboxState !== "idle" ? <div className={cn("max-w-md text-xs", outboxState === "conflict" || outboxState === "error" ? "text-destructive" : "text-muted-foreground")} aria-live="polite"><p>{t(`outbox.${outboxState}`)} {outboxEntries.length > 0 ? t("outbox.count", { count: outboxEntries.length }) : null}</p>{outboxEntries[0]?.lastError ? <code className="mt-1 block break-all text-[10px]">{outboxEntries[0].lastError}</code> : null}<div className="mt-2 flex flex-wrap justify-end gap-2">{outboxState === "error" ? <Button size="sm" variant="outline" className="min-h-11" onClick={() => void retryOutbox()}>{t("outbox.retry")}</Button> : null}{outboxState === "conflict" ? <Button size="sm" variant="outline" className="min-h-11" onClick={() => void resolveOutboxConflict()}>{t("outbox.resolveConflict")}</Button> : null}</div></div> : null}
+          {outboxState !== "idle" ? <div className={cn("max-w-md text-xs", outboxState === "conflict" || outboxState === "error" ? "text-destructive" : "text-muted-foreground")} aria-live="polite"><p>{t(`outbox.${outboxState}`)} {outboxEntries.length > 0 ? t("outbox.count", { count: outboxEntries.length }) : null}</p>{outboxEntries[0]?.lastError ? <code className="mt-1 block break-all text-[10px]">{outboxEntries[0].lastError}</code> : null}<div className="mt-2 flex flex-wrap justify-end gap-2">{outboxState === "error" ? <Hint text={t("hint.detailOutboxRetry")}><Button size="sm" variant="outline" className="min-h-11" onClick={() => void retryOutbox()}>{t("outbox.retry")}</Button></Hint> : null}{outboxState === "conflict" ? <Hint text={t("hint.detailOutboxDiscard")}><Button size="sm" variant="outline" className="min-h-11" onClick={() => void resolveOutboxConflict()}>{t("outbox.resolveConflict")}</Button></Hint> : null}</div></div> : null}
         </div>
       </header>
 
@@ -635,31 +678,44 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
             </div>
           </div>
           {guidance.canSubmit ? (
-            <Button
-              className="min-h-11 w-full md:w-auto"
-              onClick={() => void submitForReview()}
-              disabled={submitDisabled}
+            <Hint
+              wrap
+              text={!guidance.ready
+                ? t("hint.detailSubmitBlocked")
+                : outboxEntries.length > 0 || outboxState === "syncing"
+                  ? t("hint.detailSubmitQueued")
+                  : submitDisabled
+                    ? null
+                    : t("hint.detailSubmit")}
             >
-              <FileCheck2 className="mr-2 h-4 w-4" />
-              {t("submitForReview")}
-            </Button>
+              <Button
+                className="min-h-11 w-full md:w-auto"
+                onClick={() => void submitForReview()}
+                disabled={submitDisabled}
+              >
+                <FileCheck2 className="mr-2 h-4 w-4" />
+                {t("submitForReview")}
+              </Button>
+            </Hint>
           ) : guidance.canReview ? (
-            <Button className="min-h-11 w-full md:w-auto" asChild>
-              <Link href="/mtm/promotions?view=review">
-                <ClipboardCheck className="mr-2 h-4 w-4" />
-                {t("openReviewQueue")}
-              </Link>
-            </Button>
+            <Hint text={t("hint.detailOpenReviewQueue")}>
+              <Button className="min-h-11 w-full md:w-auto" asChild>
+                <Link href="/mtm/promotions?view=review">
+                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                  {t("openReviewQueue")}
+                </Link>
+              </Button>
+            </Hint>
           ) : null}
         </div>
       </section>
 
       <section className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-        <Metric label={t("planQuantity")} value={quantity(detail.target.planQuantity, detail.target.unit, locale)} note={t("immutableSnapshot")} />
-        <Metric label={t("factQuantity")} value={quantity(detail.factQuantity, detail.target.unit, locale)} note={t("sourceFact")} />
-        <Metric label={t("summary.fact")} value={points(visiblePoints.factPoints, locale)} note={posted ? t("postedLedger") : t("previewOnly")} accent />
-        <Metric label={t("summary.reward")} value={points(visiblePoints.rewardPoints, locale)} note={posted ? t("postedLedger") : t("previewOnly")} accent />
-        <Metric label={t("summary.difference")} value={points(visiblePoints.difference, locale)} note={posted ? t("postedLedger") : t("previewOnly")} accent />
+        <Metric label={t("planQuantity")} value={quantity(detail.target.planQuantity, detail.target.unit, locale)} note={t("immutableSnapshot")} hint={t("hint.detailPlanQuantity")} />
+        <Metric label={t("factQuantity")} value={quantity(detail.factQuantity, detail.target.unit, locale)} note={t("sourceFact")} hint={t("hint.detailFactQuantity")} />
+        <Metric label={t("summary.fact")} value={points(visiblePoints.factPoints, locale)} note={posted ? t("postedLedger") : t("previewOnly")} accent hint={t("hint.factPoints")} />
+        <Metric label={t("summary.reward")} value={points(visiblePoints.rewardPoints, locale)} note={posted ? t("postedLedger") : t("previewOnly")} accent hint={t("hint.rewardPoints")} />
+        <Metric label={t("summary.difference")} value={points(visiblePoints.difference, locale)} note={posted ? t("postedLedger") : t("previewOnly")} accent hint={t("hint.difference")} />
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,.75fr)]">
@@ -671,15 +727,15 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
               <div><dt className="text-xs text-muted-foreground">{t("address")}</dt><dd className="mt-1">{detail.target.customer.address || detail.target.customer.locality || "—"}</dd></div>
               <div><dt className="text-xs text-muted-foreground">{t("employee")}</dt><dd className="mt-1 font-medium">{detail.employee.name}</dd><dd className="text-xs text-muted-foreground">{t("userGroupValue", { value: detail.target.team?.name || "—" })}<br />{t("managerValue", { value: detail.target.manager?.name || "—" })}</dd></div>
               <div><dt className="text-xs text-muted-foreground">{t("contact")}</dt><dd className="mt-1">{detail.target.contact?.displayName || "—"}</dd></div>
-              <div><dt className="text-xs text-muted-foreground">{t("controlledVisit")}</dt><dd className="mt-1">{detail.visit ? <Link className="inline-flex min-h-11 items-center font-medium text-primary hover:underline lg:min-h-0" href={`/mtm/visits?visitId=${encodeURIComponent(detail.visit.id)}`}>{t.has(`visitStatus.${detail.visit.status}`) ? t(`visitStatus.${detail.visit.status}`) : t("unknownStatus")}</Link> : t("notLinked")}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">{t("controlledVisit")}</dt><dd className="mt-1">{detail.visit ? <Hint text={t("hint.detailVisit")}><Link className="inline-flex min-h-11 items-center font-medium text-primary hover:underline lg:min-h-0" href={`/mtm/visits?visitId=${encodeURIComponent(detail.visit.id)}`}>{t.has(`visitStatus.${detail.visit.status}`) ? t(`visitStatus.${detail.visit.status}`) : t("unknownStatus")}</Link></Hint> : t("notLinked")}</dd></div>
               <div><dt className="text-xs text-muted-foreground">{t("timestamps")}</dt><dd className="mt-1 text-xs">{t("createdAt")}: {date(detail.createdAt, locale)}<br />{t("submittedAt")}: {date(detail.submittedAt, locale)}<br />{t("closedAt")}: {date(detail.closedAt, locale)}</dd></div>
             </dl>
           </section>
 
           <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
-            <header className="flex items-center justify-between gap-3 border-b px-4 py-3"><span className="flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("evidence")}</h2></span><Badge variant="outline">{detail.evidence.length}</Badge></header>
-            {detail.permissions?.canSubmit && detail.status === "DRAFT" ? <div className="border-b bg-muted/20 p-4"><div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(180px,.6fr)_auto] sm:items-end"><label className="space-y-1 text-sm font-medium"><span>{t("evidenceFile")}</span><input key={evidenceInputKey} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.zip" disabled={evidenceUploading || loading || Boolean(error) || outboxEntries.length > 0 || outboxState === "syncing" || outboxState === "synced"} className="block min-h-11 w-full cursor-pointer border bg-background px-3 py-2 text-sm file:mr-3 file:border-0 file:bg-transparent file:font-medium" onChange={(event) => { setEvidenceFile(event.target.files?.[0] ?? null); evidenceIdentityRef.current = null; setEvidenceError(""); setEvidenceMessage("") }} /></label><label className="space-y-1 text-sm font-medium"><span>{t("evidenceTitle")}</span><Input value={evidenceTitle} maxLength={200} disabled={evidenceUploading || loading || Boolean(error) || outboxEntries.length > 0 || outboxState === "syncing" || outboxState === "synced"} className="min-h-11" onChange={(event) => setEvidenceTitle(event.target.value)} /></label><Button className="min-h-11" disabled={!evidenceFile || evidenceUploading || loading || Boolean(error) || outboxEntries.length > 0 || outboxState === "syncing" || outboxState === "synced"} onClick={() => void uploadEvidence()}>{evidenceUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <FileCheck2 className="mr-2 h-4 w-4" />}{t("evidenceUpload")}</Button></div><p className="mt-2 text-xs text-muted-foreground">{t("evidenceFileHint")}</p><div className="mt-2 min-h-5 text-xs" aria-live="polite">{evidenceError ? <p className="text-destructive">{evidenceError}</p> : evidenceMessage ? <p className="text-emerald-700 dark:text-emerald-300">{evidenceMessage}</p> : null}</div></div> : null}
-            {detail.evidence.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">{t("noEvidence")}</p> : <div className="divide-y">{detail.evidence.map((item) => <div key={item.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="break-words font-medium">{item.document?.title || item.document?.fileName || (t.has(`evidenceKind.${item.kind}`) ? t(`evidenceKind.${item.kind}`) : t("unknownEvidence"))}</p><p className="mt-1 break-all text-xs text-muted-foreground">{date(item.capturedAt, locale)} · SHA-256 {item.contentHash.slice(0, 12)}… · {item.submittedByAgent?.name || "—"}</p></div>{item.downloadUrl ? <Button className="min-h-11 shrink-0 lg:min-h-8" asChild variant="outline" size="sm"><a href={item.downloadUrl}><Download className="mr-2 h-4 w-4" />{t("downloadEvidence")}</a></Button> : null}</div>)}</div>}
+            <header className="flex items-center justify-between gap-3 border-b px-4 py-3"><span className="flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("evidence")}</h2></span><HintValue text={t("hint.detailEvidenceCount")}><Badge variant="outline">{detail.evidence.length}</Badge></HintValue></header>
+            {detail.permissions?.canSubmit && detail.status === "DRAFT" ? <div className="border-b bg-muted/20 p-4"><div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(180px,.6fr)_auto] sm:items-end"><label className="space-y-1 text-sm font-medium"><span>{t("evidenceFile")}</span><input key={evidenceInputKey} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.zip" disabled={evidenceUploading || loading || Boolean(error) || outboxEntries.length > 0 || outboxState === "syncing" || outboxState === "synced"} className="block min-h-11 w-full cursor-pointer border bg-background px-3 py-2 text-sm file:mr-3 file:border-0 file:bg-transparent file:font-medium" onChange={(event) => { setEvidenceFile(event.target.files?.[0] ?? null); evidenceIdentityRef.current = null; setEvidenceError(""); setEvidenceMessage("") }} /></label><label className="space-y-1 text-sm font-medium"><span>{t("evidenceTitle")}</span><Input value={evidenceTitle} maxLength={200} disabled={evidenceUploading || loading || Boolean(error) || outboxEntries.length > 0 || outboxState === "syncing" || outboxState === "synced"} className="min-h-11" onChange={(event) => setEvidenceTitle(event.target.value)} /></label><Hint wrap text={evidenceUploading || loading ? null : outboxEntries.length > 0 || outboxState === "syncing" ? t("hint.detailSubmitQueued") : !evidenceFile ? t("hint.detailEvidenceChooseFile") : t("hint.detailEvidenceUpload")}><Button className="min-h-11" disabled={!evidenceFile || evidenceUploading || loading || Boolean(error) || outboxEntries.length > 0 || outboxState === "syncing" || outboxState === "synced"} onClick={() => void uploadEvidence()}>{evidenceUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <FileCheck2 className="mr-2 h-4 w-4" />}{t("evidenceUpload")}</Button></Hint></div><p className="mt-2 text-xs text-muted-foreground">{t("evidenceFileHint")}</p><div className="mt-2 min-h-5 text-xs" aria-live="polite">{evidenceError ? <p className="text-destructive">{evidenceError}</p> : evidenceMessage ? <p className="text-emerald-700 dark:text-emerald-300">{evidenceMessage}</p> : null}</div></div> : null}
+            {detail.evidence.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">{t("noEvidence")}</p> : <div className="divide-y">{detail.evidence.map((item) => <div key={item.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="break-words font-medium">{item.document?.title || item.document?.fileName || (t.has(`evidenceKind.${item.kind}`) ? t(`evidenceKind.${item.kind}`) : t("unknownEvidence"))}</p><p className="mt-1 break-all text-xs text-muted-foreground">{date(item.capturedAt, locale)} · <HintValue text={t("hint.detailEvidenceHash")}>SHA-256 {item.contentHash.slice(0, 12)}…</HintValue> · {item.submittedByAgent?.name || "—"}</p></div>{item.downloadUrl ? <Button className="min-h-11 shrink-0 lg:min-h-8" asChild variant="outline" size="sm"><a href={item.downloadUrl}><Download className="mr-2 h-4 w-4" />{t("downloadEvidence")}</a></Button> : null}</div>)}</div>}
           </section>
 
           <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
@@ -694,21 +750,21 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
           <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
             <header className="flex items-center gap-2 border-b px-4 py-3"><ShieldCheck className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("governance")}</h2></header>
             <dl className="space-y-4 p-4 text-sm">
-              <div><dt className="text-xs text-muted-foreground">{t("formula")}</dt><dd className="mt-1 font-medium">{detail.formula.code} · v{detail.formula.version}</dd><dd className="break-all font-mono text-[10px] text-muted-foreground">{detail.formula.definitionHash}</dd></div>
-              <div><dt className="text-xs text-muted-foreground">{t("approvalPolicy")}</dt><dd className="mt-1 font-medium">{detail.approvalPolicy.code} · v{detail.approvalPolicy.version}</dd><dd className="break-all font-mono text-[10px] text-muted-foreground">{detail.approvalPolicy.definitionHash}</dd></div>
-              <div><dt className="text-xs text-muted-foreground">{t("eligibilityLabel")}</dt><dd className="mt-1 flex flex-wrap items-center gap-2 font-medium"><span>{t.has(`eligibilityStatus.${detail.eligibility.status}`) ? t(`eligibilityStatus.${detail.eligibility.status}`) : t("unknownStatus")}</span>{detail.eligibility.overridden ? <Badge variant="warning">{t("eligibilityOverrideActive")}</Badge> : null}</dd>{detail.eligibility.overrideReason ? <dd className="mt-1 break-words text-xs text-muted-foreground">{t("eligibilityOverrideReason", { reason: detail.eligibility.overrideReason })}</dd> : null}</div>
-              <div><dt className="text-xs text-muted-foreground">{t("source")}</dt><dd className="mt-1 flex flex-wrap items-center gap-2 font-medium"><span>{t.has(`sourceSystem.${detail.source.system}`) ? t(`sourceSystem.${detail.source.system}`) : t("unknownSource")}</span>{detail.source.freshness ? <DetailStatusBadge status={detail.source.freshness.state} label={t.has(`freshness.${detail.source.freshness.state}`) ? t(`freshness.${detail.source.freshness.state}`) : t("freshness.UNKNOWN")} /> : null}</dd><dd className="text-xs text-muted-foreground">{detail.source.reference || "—"}<br />{t("sourceObservedAt", { date: date(detail.source.observedAt, locale) })}<br />{t("sourceReceivedAt", { date: date(detail.source.receivedAt, locale) })}{detail.source.freshness?.ageMinutes !== null && detail.source.freshness?.ageMinutes !== undefined ? <><br />{t("freshnessAge", { minutes: detail.source.freshness.ageMinutes })}</> : null}</dd></div>
+              <div><dt className="text-xs text-muted-foreground"><HintValue text={t("hint.detailFormula")}>{t("formula")}</HintValue></dt><dd className="mt-1 font-medium">{detail.formula.code} · v{detail.formula.version}</dd><dd className="break-all font-mono text-[10px] text-muted-foreground">{detail.formula.definitionHash}</dd></div>
+              <div><dt className="text-xs text-muted-foreground"><HintValue text={t("hint.detailApprovalPolicy")}>{t("approvalPolicy")}</HintValue></dt><dd className="mt-1 font-medium">{detail.approvalPolicy.code} · v{detail.approvalPolicy.version}</dd><dd className="break-all font-mono text-[10px] text-muted-foreground">{detail.approvalPolicy.definitionHash}</dd></div>
+              <div><dt className="text-xs text-muted-foreground"><HintValue text={t("hint.detailEligibility")}>{t("eligibilityLabel")}</HintValue></dt><dd className="mt-1 flex flex-wrap items-center gap-2 font-medium"><span>{t.has(`eligibilityStatus.${detail.eligibility.status}`) ? t(`eligibilityStatus.${detail.eligibility.status}`) : t("unknownStatus")}</span>{detail.eligibility.overridden ? <HintValue text={detail.eligibility.overrideReason ? t("hint.overrideReason", { reason: detail.eligibility.overrideReason }) : t("hint.override")}><Badge variant="warning">{t("eligibilityOverrideActive")}</Badge></HintValue> : null}</dd>{detail.eligibility.overrideReason ? <dd className="mt-1 break-words text-xs text-muted-foreground">{t("eligibilityOverrideReason", { reason: detail.eligibility.overrideReason })}</dd> : null}</div>
+              <div><dt className="text-xs text-muted-foreground">{t("source")}</dt><dd className="mt-1 flex flex-wrap items-center gap-2 font-medium"><span>{t.has(`sourceSystem.${detail.source.system}`) ? t(`sourceSystem.${detail.source.system}`) : t("unknownSource")}</span>{detail.source.freshness ? <DetailStatusBadge status={detail.source.freshness.state} label={t.has(`freshness.${detail.source.freshness.state}`) ? t(`freshness.${detail.source.freshness.state}`) : t("freshness.UNKNOWN")} hint={freshnessHint(detail.source.freshness.state)} /> : null}</dd><dd className="text-xs text-muted-foreground">{detail.source.reference || "—"}<br />{t("sourceObservedAt", { date: date(detail.source.observedAt, locale) })}<br />{t("sourceReceivedAt", { date: date(detail.source.receivedAt, locale) })}{detail.source.freshness?.ageMinutes !== null && detail.source.freshness?.ageMinutes !== undefined ? <><br /><HintValue text={t("hint.detailFreshnessAge")}>{t("freshnessAge", { minutes: detail.source.freshness.ageMinutes })}</HintValue></> : null}</dd></div>
             </dl>
             {detail.policy && !detail.policy.ready ? <div className="m-4 mt-0 flex gap-2 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><XCircle className="h-4 w-4 shrink-0" /><span>{detail.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
           </section>
 
           <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
             <header className="flex items-center gap-2 border-b px-4 py-3"><UserRound className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("reviews")}</h2></header>
-            {detail.reviews.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">{t("noReviews")}</p> : <div className="divide-y">{detail.reviews.map((review) => <div key={review.id} className="p-4"><div className="flex flex-wrap items-center justify-between gap-2"><DetailStatusBadge status={review.decision} label={`${review.level} · ${t.has(`decision.${review.decision}`) ? t(`decision.${review.decision}`) : t("unknownDecision")}`} /><span className="text-xs text-muted-foreground">{date(review.decidedAt, locale)}</span></div><p className="mt-2 text-sm font-medium">{review.reviewerNameSnapshot}</p>{review.reason ? <p className="mt-1 break-words text-sm text-muted-foreground">{review.reason}</p> : null}<p className="mt-2 text-xs tabular-nums text-muted-foreground">{t("factShort")} {points(review.factPointsPreview, locale)} · {t("rewardShort")} {points(review.rewardPointsPreview, locale)} · Δ {points(review.differencePointsPreview, locale)}</p></div>)}</div>}
+            {detail.reviews.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">{t("noReviews")}</p> : <div className="divide-y">{detail.reviews.map((review) => <div key={review.id} className="p-4"><div className="flex flex-wrap items-center justify-between gap-2"><DetailStatusBadge status={review.decision} label={`${review.level} · ${t.has(`decision.${review.decision}`) ? t(`decision.${review.decision}`) : t("unknownDecision")}`} /><span className="text-xs text-muted-foreground">{date(review.decidedAt, locale)}</span></div><p className="mt-2 text-sm font-medium">{review.reviewerNameSnapshot}</p>{review.reason ? <p className="mt-1 break-words text-sm text-muted-foreground">{review.reason}</p> : null}<p className="mt-2 text-xs tabular-nums text-muted-foreground"><HintValue text={t("hint.detailReviewPoints")}>{t("factShort")} {points(review.factPointsPreview, locale)} · {t("rewardShort")} {points(review.rewardPointsPreview, locale)} · Δ {points(review.differencePointsPreview, locale)}</HintValue></p></div>)}</div>}
           </section>
 
           <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
-            <header className="flex items-center gap-2 border-b px-4 py-3"><Calculator className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("ledger")}</h2></header>
+            <header className="flex items-center gap-2 border-b px-4 py-3"><Calculator className="h-4 w-4 text-primary" /><h2 className="font-semibold"><HintValue text={t("hint.detailLedger")}>{t("ledger")}</HintValue></h2></header>
             {detail.ledger.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">{t("ledgerEmpty")}</p> : <div className="divide-y">{detail.ledger.map((entry) => { const sign = decimalSign(entry.delta); return <div key={entry.id} className="flex items-start justify-between gap-3 p-4"><div><p className="text-sm font-medium">{t.has(`ledgerBucket.${entry.bucket}`) ? t(`ledgerBucket.${entry.bucket}`) : t("unknownLedgerBucket")}</p><p className="mt-1 text-xs text-muted-foreground">{t.has(`ledgerEntry.${entry.entryType}`) ? t(`ledgerEntry.${entry.entryType}`) : t("unknownLedgerEntry")} · {date(entry.occurredAt, locale)}</p>{entry.reason ? <p className="mt-1 break-words text-xs text-muted-foreground">{entry.reason}</p> : null}</div><span className={cn("font-semibold tabular-nums", sign < 0 ? "text-red-600" : sign > 0 ? "text-emerald-600" : "text-muted-foreground")}>{sign > 0 ? "+" : ""}{points(entry.delta, locale)}</span></div> })}</div>}
           </section>
         </aside>

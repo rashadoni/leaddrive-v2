@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
@@ -47,6 +48,14 @@ const SORTABLE: Array<{ key: SortKey; label: string; numeric: boolean }> = [
   { key: "approvedPhotos", label: "colPhotos", numeric: true },
   { key: "score", label: "colScore", numeric: true },
 ]
+
+/** What a column counts, under the cursor on its heading. */
+const COLUMN_HINT: Record<string, string> = {
+  visits: "hint.visits",
+  completedTasks: "hint.tasks",
+  approvedPhotos: "hint.photos",
+  score: "hint.score",
+}
 
 export default function MtmLeaderboardPage() {
   const t = useTranslations("mtmLeaderboard")
@@ -144,9 +153,9 @@ export default function MtmLeaderboardPage() {
         </div>
         <div className="flex gap-1 flex-wrap">
           {(["weekly", "monthly", "all"] as const).map(p => (
-            <Button key={p} variant={period === p ? "default" : "outline"} size="sm" onClick={() => setPeriod(p)}>
+            <Hint key={p} text={t("hint.period")}><Button variant={period === p ? "default" : "outline"} size="sm" onClick={() => setPeriod(p)}>
               {p === "weekly" ? t("weekly") : p === "monthly" ? t("monthly") : t("allTime")}
-            </Button>
+            </Button></Hint>
           ))}
         </div>
       </div>
@@ -167,12 +176,12 @@ export default function MtmLeaderboardPage() {
                       {SORTABLE.map(({ key, label, numeric }) => (
                         <th key={key} scope="col" className={numeric ? "px-2 py-2 text-right" : "px-2 py-2 text-left"}
                           aria-sort={sort.key === key ? (sort.desc ? "descending" : "ascending") : "none"}>
-                          <button type="button" onClick={() => toggleSort(key)}
+                          <Hint text={COLUMN_HINT[key] ? t(COLUMN_HINT[key]) : null}><button type="button" onClick={() => toggleSort(key)}
                             aria-label={t("sortBy", { column: t(label) })}
                             className={`inline-flex min-h-9 items-center gap-1 rounded px-1 font-medium hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${sort.key === key ? "text-foreground" : ""}`}>
                             {t(label)}
                             {sort.key === key ? (sort.desc ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />) : null}
-                          </button>
+                          </button></Hint>
                         </th>
                       ))}
                     </tr>

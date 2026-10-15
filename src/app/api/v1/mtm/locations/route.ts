@@ -29,6 +29,7 @@ import {
 } from "@/lib/mtm/live-field-status"
 import { groupMtmLiveFeedAlerts } from "@/lib/mtm/live-feed-alerts"
 import { shownMtmStationarySince } from "@/lib/mtm/stationary-anchor"
+import { MTM_MOVING_MIN_STORED_SPEED } from "@/lib/mtm/gps-speed"
 import { MTM_AGENT_WEB_ONLY_SELECT, mtmAgentNotesReader, readsMtmAgentNotes } from "@/lib/mtm/agent-tags"
 import { foldRosterText } from "@/lib/mtm/live-map-roster"
 import { locationShareLinkAccessOf, locationShareLinkContract } from "@/lib/mtm/location-share-access"
@@ -362,7 +363,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
             organizationId: orgId,
             agentId: { in: returnedAgentIds },
             recordedAt: { gte: movementSince, lte: now },
-            OR: [{ isMoving: true }, { speed: { gt: 1 } }],
+            OR: [{ isMoving: true }, { speed: { gte: MTM_MOVING_MIN_STORED_SPEED } }],
           },
           _max: { recordedAt: true },
         })

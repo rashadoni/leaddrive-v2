@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
@@ -405,16 +406,18 @@ export default function MtmOperationsPage() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <PageDescription icon={Radio} title={t("title")} description={t("subtitle")} />
-        <Button variant="outline" onClick={() => load(true)} disabled={refreshing}>
-          {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock3 className="mr-2 h-4 w-4" />}
-          {t("refresh")}
-        </Button>
+        <Hint wrap text={t("hint.refresh")}>
+          <Button variant="outline" onClick={() => load(true)} disabled={refreshing}>
+            {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock3 className="mr-2 h-4 w-4" />}
+            {t("refresh")}
+          </Button>
+        </Hint>
       </div>
 
       <div className={`grid gap-3 ${canReviewHrm ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-        <Card className="overflow-hidden"><CardContent className="flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"><BellRing className="h-5 w-5" /></span><div><p className="text-2xl font-semibold tabular-nums">{data?.counts.acknowledgementDue ?? 0}</p><p className="text-xs text-muted-foreground">{t("acknowledgementsDue")}</p></div></CardContent></Card>
-        <Card className="overflow-hidden"><CardContent className="flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"><FileLock2 className="h-5 w-5" /></span><div><p className="text-2xl font-semibold tabular-nums">{data?.counts.requiredDocumentsUnread ?? 0}</p><p className="text-xs text-muted-foreground">{t("requiredUnread")}</p></div></CardContent></Card>
-        {canReviewHrm ? <Card className="overflow-hidden"><CardContent className="flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300"><CalendarCheck2 className="h-5 w-5" /></span><div><p className="text-2xl font-semibold tabular-nums">{data?.counts.pendingHrm ?? 0}</p><p className="text-xs text-muted-foreground">{t("pendingHrm")}</p></div></CardContent></Card> : null}
+        <Card className="overflow-hidden"><CardContent className="flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"><BellRing className="h-5 w-5" /></span><div><p className="text-2xl font-semibold tabular-nums">{data?.counts.acknowledgementDue ?? 0}</p><p className="text-xs text-muted-foreground"><HintValue text={t("hint.acknowledgementsDue")}>{t("acknowledgementsDue")}</HintValue></p></div></CardContent></Card>
+        <Card className="overflow-hidden"><CardContent className="flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"><FileLock2 className="h-5 w-5" /></span><div><p className="text-2xl font-semibold tabular-nums">{data?.counts.requiredDocumentsUnread ?? 0}</p><p className="text-xs text-muted-foreground"><HintValue text={t("hint.requiredUnread")}>{t("requiredUnread")}</HintValue></p></div></CardContent></Card>
+        {canReviewHrm ? <Card className="overflow-hidden"><CardContent className="flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300"><CalendarCheck2 className="h-5 w-5" /></span><div><p className="text-2xl font-semibold tabular-nums">{data?.counts.pendingHrm ?? 0}</p><p className="text-xs text-muted-foreground"><HintValue text={t("hint.pendingHrm")}>{t("pendingHrm")}</HintValue></p></div></CardContent></Card> : null}
       </div>
 
 
@@ -487,7 +490,9 @@ export default function MtmOperationsPage() {
                   </div>
                 ) : null}
                 <AudiencePicker agents={data?.agents ?? []} selected={messageRecipients} onChange={setMessageRecipients} multiple={messageType === "BROADCAST"} title={messageType === "BROADCAST" ? t("audience") : t("recipient")} searchPlaceholder={t("searchAgents")} selectAllLabel={t("selectAll")} clearLabel={t("clear")} selectedLabel={(count) => t("selectedAgents", { count })} emptyLabel={t("noAgents")} roleLabel={roleLabel} />
-                <Button className="w-full" onClick={sendMessage} disabled={sendingMessage || !messageBody.trim() || messageRecipients.length === 0 || !keyMessageRangeValid || (messageType === "BROADCAST" && !messageSubject.trim())}>{sendingMessage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{messageType === "BROADCAST" ? t("sendBroadcast") : t("sendDirect")}</Button>
+                <Hint wrap text={t("hint.send")}>
+                  <Button className="w-full" onClick={sendMessage} disabled={sendingMessage || !messageBody.trim() || messageRecipients.length === 0 || !keyMessageRangeValid || (messageType === "BROADCAST" && !messageSubject.trim())}>{sendingMessage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{messageType === "BROADCAST" ? t("sendBroadcast") : t("sendDirect")}</Button>
+                </Hint>
               </CardContent>
             </Card>
 
@@ -519,7 +524,9 @@ export default function MtmOperationsPage() {
                 <div><Label htmlFor="operations-document-file">{t("file")} *</Label><Input id="operations-document-file" type="file" onChange={(event) => setDocumentFile(event.target.files?.[0] ?? null)} className="mt-1.5 h-auto py-2" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.zip" />{documentFile ? <p className="mt-1 text-xs text-muted-foreground">{documentFile.name} · {formatBytes(documentFile.size)}</p> : <p className="mt-1 text-xs text-muted-foreground">{t("fileLimit")}</p>}</div>
                 <div className="grid gap-3 sm:grid-cols-2"><label className="flex cursor-pointer items-start gap-3 py-1"><input type="checkbox" checked={documentRequired} onChange={(event) => setDocumentRequired(event.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" /><span><span className="block text-sm font-medium">{t("requiredDocument")}</span><span className="block text-xs text-muted-foreground">{t("requiredDocumentHint")}</span></span></label><div><Label htmlFor="operations-document-expiry">{t("expiresOn")}</Label><Input id="operations-document-expiry" type="date" value={documentExpiresOn} onChange={(event) => setDocumentExpiresOn(event.target.value)} className="mt-1.5" /></div></div>
                 <AudiencePicker agents={data?.agents ?? []} selected={documentRecipients} onChange={setDocumentRecipients} multiple title={t("audience")} searchPlaceholder={t("searchAgents")} selectAllLabel={t("selectAll")} clearLabel={t("clear")} selectedLabel={(count) => t("selectedAgents", { count })} emptyLabel={t("noAgents")} roleLabel={roleLabel} />
-                <Button className="w-full" onClick={uploadDocument} disabled={uploadingDocument || !documentFile || documentRecipients.length === 0}>{uploadingDocument ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}{t("uploadAndAssign")}</Button>
+                <Hint wrap text={t("hint.upload")}>
+                  <Button className="w-full" onClick={uploadDocument} disabled={uploadingDocument || !documentFile || documentRecipients.length === 0}>{uploadingDocument ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}{t("uploadAndAssign")}</Button>
+                </Hint>
               </CardContent>
             </Card>
 

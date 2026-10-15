@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -328,9 +329,11 @@ export default function MtmTasksPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {canCreate ? (
-            <Button type="button" className="min-h-11" onClick={() => setFormOpen(true)}>
-              <Plus className="h-4 w-4" />{t("add")}
-            </Button>
+            <Hint text={t("hint.add")}>
+              <Button type="button" className="min-h-11" onClick={() => setFormOpen(true)}>
+                <Plus className="h-4 w-4" />{t("add")}
+              </Button>
+            </Hint>
           ) : null}
         </div>
       </header>
@@ -347,19 +350,23 @@ export default function MtmTasksPage() {
             </span>
           ) : null}
           {(data?.filters.teams || []).length > 0 ? (
-            <MtmFilterSelect testId="mtm-task-team" label={t("teamFilter")} value={teamId} allLabel={t("allTeams")}
-              options={(data?.filters.teams || []).map((team) => ({ value: team.id, label: team.name }))}
-              onChange={(nextTeamId) => {
-                setTeamId(nextTeamId)
-                const selectedAgent = (data?.filters.agents || []).find((agent) => agent.id === agentId)
-                if (selectedAgent && nextTeamId && selectedAgent.teamId !== nextTeamId && selectedAgent.team?.id !== nextTeamId) setAgentId("")
-                setPage(1)
-              }} />
+            <Hint wrap text={t("hint.team")}>
+              <MtmFilterSelect testId="mtm-task-team" label={t("teamFilter")} value={teamId} allLabel={t("allTeams")}
+                options={(data?.filters.teams || []).map((team) => ({ value: team.id, label: team.name }))}
+                onChange={(nextTeamId) => {
+                  setTeamId(nextTeamId)
+                  const selectedAgent = (data?.filters.agents || []).find((agent) => agent.id === agentId)
+                  if (selectedAgent && nextTeamId && selectedAgent.teamId !== nextTeamId && selectedAgent.team?.id !== nextTeamId) setAgentId("")
+                  setPage(1)
+                }} />
+            </Hint>
           ) : null}
-          <MtmFilterSelect testId="mtm-task-agent" label={t("agentFilter")} value={agentId} allLabel={t("allAgents")}
-            options={(data?.filters.agents || []).filter((agent) => !teamId || agent.teamId === teamId || agent.team?.id === teamId).map((agent) => ({ value: agent.id, label: agent.name }))}
-            onChange={(value) => { setAgentId(value); setPage(1) }} />
-          <MtmFilterReset show={Boolean(search || panelFilters || contactId)} onReset={clearFilters} label={tFilters("reset")} />
+          <Hint wrap text={t("hint.agent")}>
+            <MtmFilterSelect testId="mtm-task-agent" label={t("agentFilter")} value={agentId} allLabel={t("allAgents")}
+              options={(data?.filters.agents || []).filter((agent) => !teamId || agent.teamId === teamId || agent.team?.id === teamId).map((agent) => ({ value: agent.id, label: agent.name }))}
+              onChange={(value) => { setAgentId(value); setPage(1) }} />
+          </Hint>
+          <Hint wrap text={t("hint.reset")}><MtmFilterReset show={Boolean(search || panelFilters || contactId)} onReset={clearFilters} label={tFilters("reset")} /></Hint>
         </MtmFilterBar>
       </section>
 
@@ -382,8 +389,7 @@ export default function MtmTasksPage() {
             ]).filter((chip) => chip.value !== "CANCELLED" || chip.count > 0 || status === "CANCELLED").map((chip) => {
               const pressed = status === chip.value
               return (
-                <button
-                  key={chip.value}
+                <Hint key={chip.value} text={t(`hint.chip${chip.value}`)}><button
                   type="button"
                   aria-pressed={pressed}
                   onClick={() => { setStatus(chip.value); setPage(1) }}
@@ -391,7 +397,7 @@ export default function MtmTasksPage() {
                 >
                   <span className={pressed ? "" : chip.tone}>{chip.label}</span>
                   {!data ? null : <span className="tabular-nums text-muted-foreground">{chip.count}</span>}
-                </button>
+                </button></Hint>
               )
             })}
           </nav>
@@ -403,8 +409,8 @@ export default function MtmTasksPage() {
                 <option value="">{t("chooseAssignee")}</option>
                 {(data?.filters.agents || []).map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
               </Select>
-              <Button type="button" className="min-h-11" disabled={!bulkAgentId || bulkSaving} onClick={bulkReassign}>{bulkSaving ? t("reassigning") : t("reassign")}</Button>
-              <Button type="button" variant="ghost" className="min-h-11 sm:ml-auto" onClick={() => setSelected([])}>{t("clearSelection")}</Button>
+              <Hint wrap text={t("hint.reassign")}><Button type="button" className="min-h-11" disabled={!bulkAgentId || bulkSaving} onClick={bulkReassign}>{bulkSaving ? t("reassigning") : t("reassign")}</Button></Hint>
+              <Hint text={t("hint.clearSelection")}><Button type="button" variant="ghost" className="min-h-11 sm:ml-auto" onClick={() => setSelected([])}>{t("clearSelection")}</Button></Hint>
             </section>
           ) : null}
 

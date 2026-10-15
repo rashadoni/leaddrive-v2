@@ -26,6 +26,7 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react"
+import { Hint, HintValue } from "@/components/hint"
 import { Badge } from "@/components/ui/badge"
 import { MtmFilterBar, MtmFilterMore, MtmFilterReset, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { Button } from "@/components/ui/button"
@@ -342,7 +343,42 @@ function statusVariant(status: string): "success" | "warning" | "destructive" | 
   return "outline"
 }
 
-function PromotionStatusBadge({ status, label }: { status: string; label: string }) {
+/** What each status means, under the cursor. Keys written out so a test finds every one. */
+const EXECUTION_STATUS_HINT = {
+  DRAFT: "hint.statusDraft",
+  READY: "hint.statusReady",
+  IN_REVIEW: "hint.statusInReview",
+  APPROVED: "hint.statusApproved",
+  RETURNED: "hint.statusReturned",
+  REJECTED: "hint.statusRejected",
+  REVERSED: "hint.statusReversed",
+} as const
+
+const REVIEW_STATE_HINT = {
+  NOT_READY: "hint.levelNotReady",
+  READY: "hint.levelReady",
+  APPROVED: "hint.levelApproved",
+  RETURNED: "hint.levelReturned",
+  REJECTED: "hint.levelRejected",
+} as const
+
+const SOURCE_FRESHNESS_HINT = {
+  FRESH: "hint.sourceFresh",
+  STALE: "hint.sourceStale",
+  UNKNOWN: "hint.sourceUnknown",
+} as const
+
+const VIEW_HINT = {
+  registry: "hint.viewRegistry",
+  review: "hint.viewReview",
+  campaigns: "hint.viewCampaigns",
+} as const
+
+function hintKey<T extends Record<string, string>>(map: T, value: string): T[keyof T] | null {
+  return Object.prototype.hasOwnProperty.call(map, value) ? map[value as keyof T] : null
+}
+
+function PromotionStatusBadge({ status, label, hint }: { status: string; label: string; hint?: string | null }) {
   const badgeVariant = statusVariant(status)
   const Icon = badgeVariant === "success"
     ? CheckCircle2
@@ -354,7 +390,8 @@ function PromotionStatusBadge({ status, label }: { status: string; label: string
           ? ClipboardCheck
           : ShieldAlert
 
-  return <Badge variant={badgeVariant}><Icon className="mr-1 h-3 w-3" aria-hidden="true" />{label}</Badge>
+  const badge = <Badge variant={badgeVariant}><Icon className="mr-1 h-3 w-3" aria-hidden="true" />{label}</Badge>
+  return hint ? <HintValue text={hint}>{badge}</HintValue> : badge
 }
 
 function LabeledInput({ label, ...props }: { label: string } & ComponentProps<typeof Input>) {
@@ -502,7 +539,7 @@ function ReviewDialog({ rows, open, onOpenChange, onApplied }: {
         <div className="grid gap-3 sm:grid-cols-3">
           <div data-testid="mtm-pharmacy-review-step" className="rounded-lg border border-zinc-200/70 bg-muted/30 px-3 py-2 dark:border-zinc-800">
             <p className="text-xs text-muted-foreground">{t("reviewLevel")}</p>
-            <p className="mt-1 font-semibold">{inferredStep ?? t("unknownStatus")}</p>
+            <p className="mt-1 font-semibold">{inferredStep ? <HintValue text={t("hint.reviewLevel")}>{inferredStep}</HintValue> : t("unknownStatus")}</p>
           </div>
           <Select label={t("reviewDecision")} value={decision} disabled={previewing || applying} className="min-h-11" onChange={(event) => { setDecision(event.target.value as typeof decision); setPreview(null); setOperationId(null); setError("") }}>
             <option value="">{t("chooseDecision")}</option>
@@ -568,17 +605,21 @@ function ReviewDialog({ rows, open, onOpenChange, onApplied }: {
       <DialogFooter className="flex-col-reverse sm:flex-row">
         <Button className="min-h-11 w-full sm:w-auto" variant="outline" onClick={() => onOpenChange(false)} disabled={previewing || applying}>{t("cancel")}</Button>
         {!preview ? (
-          <Button className="min-h-11 w-full sm:w-auto" onClick={loadPreview} disabled={previewing || !inferredStep || !decision}>
-            {previewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
-            {t("buildPreview")}
-          </Button>
+          <Hint wrap side="top" text={previewing ? null : !inferredStep ? t("reviewStepMismatch") : !decision ? t("reviewDecisionRequired") : t("hint.buildPreview")}>
+            <Button className="min-h-11 w-full sm:w-auto" onClick={loadPreview} disabled={previewing || !inferredStep || !decision}>
+              {previewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
+              {t("buildPreview")}
+            </Button>
+          </Hint>
         ) : (
           <>
-            <Button className="min-h-11 w-full sm:w-auto" variant="outline" onClick={() => { setPreview(null); setOperationId(null); setError("") }} disabled={applying}>{t("rebuildPreview")}</Button>
-            <Button className="min-h-11 w-full sm:w-auto" onClick={applyReview} disabled={applying || !operationId}>
-              {applying ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <BadgeCheck className="mr-2 h-4 w-4" />}
-              {t("applyDecision")}
-            </Button>
+            <Hint wrap side="top" text={applying ? null : t("hint.rebuildPreview")}><Button className="min-h-11 w-full sm:w-auto" variant="outline" onClick={() => { setPreview(null); setOperationId(null); setError("") }} disabled={applying}>{t("rebuildPreview")}</Button></Hint>
+            <Hint wrap side="top" text={applying ? null : t("hint.applyDecision")}>
+              <Button className="min-h-11 w-full sm:w-auto" onClick={applyReview} disabled={applying || !operationId}>
+                {applying ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <BadgeCheck className="mr-2 h-4 w-4" />}
+                {t("applyDecision")}
+              </Button>
+            </Hint>
           </>
         )}
       </DialogFooter>
@@ -995,6 +1036,21 @@ export function PharmacyPromotionWorkspace() {
   }, [data?.filters, promotionOptions, searchKey, t, typeOptions])
   const advancedFilterCount = activeFilterChips.filter((chip) => chip.key !== "q" && chip.key !== "departmentId" && chip.key !== "employeeId").length
 
+  const statusHint = (status: string) => {
+    const key = hintKey(EXECUTION_STATUS_HINT, status)
+    return key ? t(key) : null
+  }
+  const levelHint = (status: string) => {
+    const key = hintKey(REVIEW_STATE_HINT, status)
+    return key ? t(key) : null
+  }
+  const freshnessHint = (state: string) => {
+    const key = hintKey(SOURCE_FRESHNESS_HINT, state)
+    return key ? t(key) : null
+  }
+  const overrideHint = (row: PromotionRow) => row.eligibility.overrideReason
+    ? t("hint.overrideReason", { reason: row.eligibility.overrideReason })
+    : t("hint.override")
   const stateLabel = (status: string) => t.has(`status.${status}`)
     ? t(`status.${status}`)
     : t("unknownStatus")
@@ -1069,18 +1125,22 @@ export function PharmacyPromotionWorkspace() {
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button className="min-h-11 lg:min-h-9" variant="outline" onClick={() => setRefreshKey((value) => value + 1)} disabled={refreshing}>
-            <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin motion-reduce:animate-none")} />{t("refresh")}
-          </Button>
-          {data?.capabilities.canExport ? <Button className="min-h-11 lg:min-h-9" variant="outline" asChild><a href={exportUrl}><Download className="mr-2 h-4 w-4" />{t("export")}</a></Button> : null}
+          <Hint wrap text={refreshing ? null : t("hint.refresh")}>
+            <Button className="min-h-11 lg:min-h-9" variant="outline" onClick={() => setRefreshKey((value) => value + 1)} disabled={refreshing}>
+              <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin motion-reduce:animate-none")} />{t("refresh")}
+            </Button>
+          </Hint>
+          {data?.capabilities.canExport ? <Hint text={t("hint.export")}><Button className="min-h-11 lg:min-h-9" variant="outline" asChild><a href={exportUrl}><Download className="mr-2 h-4 w-4" />{t("export")}</a></Button></Hint> : null}
         </div>
       </header>
 
       <nav aria-label={t("viewsLabel")} className={cn("grid border border-zinc-200/70 bg-card p-1 dark:border-zinc-800 sm:inline-grid", availableViews.length === 1 && "grid-cols-1 sm:min-w-[220px]", availableViews.length === 2 && "grid-cols-2 sm:min-w-[340px]", availableViews.length === 3 && "grid-cols-3 sm:min-w-[430px]") }>
         {availableViews.map((candidate) => (
-          <button key={candidate} type="button" onClick={() => { setSelectedSavedViewId(""); replaceParams({ view: candidate, page: null, ready: candidate === "review" ? draft.ready || null : null }) }} className={cn("min-h-11 px-3 text-sm font-medium transition-colors lg:min-h-10", view === candidate ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
-            {t(`view.${candidate}`)}{candidate === "review" && data ? <span className="ml-2 rounded-full bg-background/15 px-1.5 py-0.5 text-[10px]">{data.summary.readyL1 + data.summary.readyL2}</span> : null}
-          </button>
+          <Hint key={candidate} text={t(VIEW_HINT[candidate])}>
+            <button type="button" onClick={() => { setSelectedSavedViewId(""); replaceParams({ view: candidate, page: null, ready: candidate === "review" ? draft.ready || null : null }) }} className={cn("min-h-11 px-3 text-sm font-medium transition-colors lg:min-h-10", view === candidate ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+              {t(`view.${candidate}`)}{candidate === "review" && data ? <span className="ml-2 rounded-full bg-background/15 px-1.5 py-0.5 text-[10px]">{data.summary.readyL1 + data.summary.readyL2}</span> : null}
+            </button>
+          </Hint>
         ))}
       </nav>
 
@@ -1095,7 +1155,7 @@ export function PharmacyPromotionWorkspace() {
             {data.capabilities.canConfigure ? t("postingBlockedAdminHint") : t("postingBlockedUserHint")}
           </div>
           {data.capabilities.canConfigure ? (
-            <Button variant="outline" size="sm" className="min-h-11 shrink-0 border-amber-400 bg-background text-foreground" onClick={() => replaceParams({ view: "campaigns", page: null })}>{t("openCampaignSettings")}</Button>
+            <Hint text={t("hint.openCampaignSettings")}><Button variant="outline" size="sm" className="min-h-11 shrink-0 border-amber-400 bg-background text-foreground" onClick={() => replaceParams({ view: "campaigns", page: null })}>{t("openCampaignSettings")}</Button></Hint>
           ) : null}
         </div>
       ) : null}
@@ -1122,8 +1182,8 @@ export function PharmacyPromotionWorkspace() {
                 <MtmFilterSelect testId="mtm-pharmacy-saved-view" label={tFilters("view")} value={selectedSavedViewId} allLabel={savedViewsLoading ? t("savedViewsLoading") : t("savedViewsNoneSelected")} clearable={false} disabled={savedViewsLoading}
                   options={savedViews.map((savedView) => ({ value: savedView.id, label: `${savedView.name}${savedView.isDefault ? ` · ${t("defaultView")}` : ""}` }))}
                   onChange={(value) => applySavedView(value)} />
-                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" title={t("saveView")} aria-label={t("saveView")} aria-expanded={showSaveView} onClick={() => setShowSaveView((value) => !value)}><Bookmark className="h-4 w-4" /></Button>
-                {selectedSavedViewId ? <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" title={t("deleteSavedView")} aria-label={t("deleteSavedView")} disabled={deletingView} onClick={deleteSelectedView}><Trash2 className="h-4 w-4" /></Button> : null}
+                <Hint text={t("hint.saveView")}><Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" aria-label={t("saveView")} aria-expanded={showSaveView} onClick={() => setShowSaveView((value) => !value)}><Bookmark className="h-4 w-4" /></Button></Hint>
+                {selectedSavedViewId ? <Hint wrap text={deletingView ? null : t("hint.deleteView")}><Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" aria-label={t("deleteSavedView")} disabled={deletingView} onClick={deleteSelectedView}><Trash2 className="h-4 w-4" /></Button></Hint> : null}
               </span>
             </MtmFilterBar>
             {showSaveView ? (
@@ -1134,19 +1194,21 @@ export function PharmacyPromotionWorkspace() {
               </div>
             ) : null}
             {data ? (
-              <MtmResultLine aside={t("asOf", { date: formatDate(data.asOf, locale, true) })}>
-                <span className="font-medium text-foreground">{t("summary.executions")}: {data.summary.executions}</span>
-                {" · "}L1: {data.summary.readyL1} · L2: {data.summary.readyL2}
-                {" · "}{t("summary.difference")}: {formatPoints(data.summary.difference ?? null, locale)} ({t("summary.fact")}: {formatPoints(data.summary.factPoints ?? null, locale)} · {t("summary.reward")}: {formatPoints(data.summary.rewardPoints ?? null, locale)})
+              <MtmResultLine aside={<HintValue text={t("hint.asOf")}>{t("asOf", { date: formatDate(data.asOf, locale, true) })}</HintValue>}>
+                <HintValue text={t("hint.summaryExecutions")} className="font-medium text-foreground">{t("summary.executions")}: {data.summary.executions}</HintValue>
+                {" · "}<HintValue text={t("hint.summaryReady")}>L1: {data.summary.readyL1} · L2: {data.summary.readyL2}</HintValue>
+                {" · "}<HintValue text={t("hint.summaryPoints")}>{t("summary.difference")}: {formatPoints(data.summary.difference ?? null, locale)} ({t("summary.fact")}: {formatPoints(data.summary.factPoints ?? null, locale)} · {t("summary.reward")}: {formatPoints(data.summary.rewardPoints ?? null, locale)})</HintValue>
               </MtmResultLine>
             ) : null}
             {activeFilterChips.length > 0 ? (
               <div data-testid="mtm-pharmacy-active-filters" className="flex flex-wrap items-center gap-2">
                 <span className="mr-1 text-xs font-semibold text-muted-foreground">{t("activeFilters", { count: activeFilterChips.length })}</span>
                 {activeFilterChips.map((filter) => (
-                  <button key={filter.key} type="button" onClick={() => replaceParams({ [filter.key]: null, page: null })} aria-label={t("clearFilter", { filter: `${filter.label}: ${filter.value}` })} className="inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border bg-background px-3 text-xs transition-colors hover:border-primary hover:text-primary">
-                    <span className="truncate"><strong>{filter.label}:</strong> {filter.value}</span><XCircle className="h-3.5 w-3.5 shrink-0" />
-                  </button>
+                  <Hint key={filter.key} text={t("hint.removeFilter")}>
+                    <button type="button" onClick={() => replaceParams({ [filter.key]: null, page: null })} aria-label={t("clearFilter", { filter: `${filter.label}: ${filter.value}` })} className="inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border bg-background px-3 text-xs transition-colors hover:border-primary hover:text-primary">
+                      <span className="truncate"><strong>{filter.label}:</strong> {filter.value}</span><XCircle className="h-3.5 w-3.5 shrink-0" />
+                    </button>
+                  </Hint>
                 ))}
                 <Button variant="ghost" size="sm" className="min-h-9" onClick={resetFilters}>{t("resetFilters")}</Button>
               </div>
@@ -1184,7 +1246,7 @@ export function PharmacyPromotionWorkspace() {
           {data?.capabilities.canBulkReview && selected.size > 0 ? (
             <div className="sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 border border-primary/30 bg-background/95 p-3 shadow-lg backdrop-blur">
               <div><span className="font-semibold">{t("selectedCount", { count: selected.size })}</span>{!bulkReady ? <span className="ml-2 text-xs text-amber-700 dark:text-amber-300">{t("sameStepRequired")}</span> : null}</div>
-              <div className="flex gap-2"><Button className="min-h-11 xl:min-h-8" variant="ghost" size="sm" onClick={() => setSelected(new Set())}>{t("clearSelection")}</Button><Button className="min-h-11 xl:min-h-8" size="sm" disabled={!bulkReady} onClick={() => setReviewRows(selectedRows)}><ClipboardCheck className="mr-2 h-4 w-4" />{t("reviewSelected")}</Button></div>
+              <div className="flex gap-2"><Button className="min-h-11 xl:min-h-8" variant="ghost" size="sm" onClick={() => setSelected(new Set())}>{t("clearSelection")}</Button><Hint wrap text={bulkReady ? t("hint.reviewSelected") : t("sameStepRequired")}><Button className="min-h-11 xl:min-h-8" size="sm" disabled={!bulkReady} onClick={() => setReviewRows(selectedRows)}><ClipboardCheck className="mr-2 h-4 w-4" />{t("reviewSelected")}</Button></Hint></div>
             </div>
           ) : null}
 
@@ -1200,9 +1262,11 @@ export function PharmacyPromotionWorkspace() {
                     <option value="compact">{t("density.compact")}</option>
                   </Select>
                   <Popover>
-                    <PopoverTrigger asChild>
-                      <Button data-testid="mtm-pharmacy-column-chooser" className="min-h-11" variant="outline"><Columns3 className="mr-2 h-4 w-4" />{t("columnChooser")}</Button>
-                    </PopoverTrigger>
+                    <Hint text={t("hint.columns")}>
+                      <PopoverTrigger asChild>
+                        <Button data-testid="mtm-pharmacy-column-chooser" className="min-h-11" variant="outline"><Columns3 className="mr-2 h-4 w-4" />{t("columnChooser")}</Button>
+                      </PopoverTrigger>
+                    </Hint>
                     <PopoverContent align="end" className="w-80 p-3">
                       <div>
                         <p className="font-semibold">{t("columnChooserTitle")}</p>
@@ -1239,16 +1303,16 @@ export function PharmacyPromotionWorkspace() {
                     <caption className="sr-only">{t("registryCaption")}</caption>
                     <thead className="sticky top-0 z-10 bg-muted/95 text-left backdrop-blur">
                       <tr className="border-b">
-                        {data?.capabilities.canBulkReview ? <th className="sticky left-0 z-20 w-10 bg-muted/95 px-3 py-2"><input type="checkbox" aria-label={t("selectPage")} checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(allReviewableOnPage.map((row) => row.id)))} /></th> : null}
+                        {data?.capabilities.canBulkReview ? <th className="sticky left-0 z-20 w-10 bg-muted/95 px-3 py-2"><Hint text={t("selectPage")}><input type="checkbox" aria-label={t("selectPage")} checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(allReviewableOnPage.map((row) => row.id)))} /></Hint></th> : null}
                         <th className={cn("sticky z-20 bg-muted/95 px-3 py-2 font-semibold shadow-[8px_0_12px_-12px_rgba(0,0,0,.45)]", data?.capabilities.canBulkReview ? "left-10" : "left-0")}>{t("pharmacy")}</th>
                         {visibleColumns.has("promotion") ? <th className="px-3 py-2 font-semibold">{t("promotion")}</th> : null}
                         {visibleColumns.has("employee") ? <th className="px-3 py-2 font-semibold">{t("employee")}</th> : null}
-                        {visibleColumns.has("planFact") ? <th className="px-3 py-2 text-right font-semibold">{t("planFact")}</th> : null}
-                        {visibleColumns.has("factPoints") ? <th className="px-3 py-2 text-right font-semibold">{t("summary.fact")}</th> : null}
-                        {visibleColumns.has("rewardPoints") ? <th className="px-3 py-2 text-right font-semibold">{t("summary.reward")}</th> : null}
-                        {visibleColumns.has("difference") ? <th className="px-3 py-2 text-right font-semibold">{t("summary.difference")}</th> : null}
-                        {visibleColumns.has("review") ? <th className="px-3 py-2 font-semibold">L1 / L2</th> : null}
-                        {visibleColumns.has("source") ? <th className="px-3 py-2 font-semibold">{t("source")}</th> : null}
+                        {visibleColumns.has("planFact") ? <th className="px-3 py-2 text-right font-semibold"><HintValue text={t("hint.planFact")}>{t("planFact")}</HintValue></th> : null}
+                        {visibleColumns.has("factPoints") ? <th className="px-3 py-2 text-right font-semibold"><HintValue text={t("hint.factPoints")}>{t("summary.fact")}</HintValue></th> : null}
+                        {visibleColumns.has("rewardPoints") ? <th className="px-3 py-2 text-right font-semibold"><HintValue text={t("hint.rewardPoints")}>{t("summary.reward")}</HintValue></th> : null}
+                        {visibleColumns.has("difference") ? <th className="px-3 py-2 text-right font-semibold"><HintValue text={t("hint.difference")}>{t("summary.difference")}</HintValue></th> : null}
+                        {visibleColumns.has("review") ? <th className="px-3 py-2 font-semibold"><HintValue text={t("hint.reviewColumn")}>L1 / L2</HintValue></th> : null}
+                        {visibleColumns.has("source") ? <th className="px-3 py-2 font-semibold"><HintValue text={t("hint.sourceColumn")}>{t("source")}</HintValue></th> : null}
                         <th className="sticky right-0 z-20 bg-muted/95 px-3 py-2 font-semibold shadow-[-8px_0_12px_-12px_rgba(0,0,0,.45)]">{t("actions")}</th>
                       </tr>
                     </thead>
@@ -1257,7 +1321,7 @@ export function PharmacyPromotionWorkspace() {
                         const points = row.ledger.posted ? row.ledger : row.preview
                         return (
                           <tr data-testid={`mtm-pharmacy-promotion-${row.id}`} key={row.id} className={cn("group align-top transition-colors hover:bg-muted/30", selected.has(row.id) && "bg-primary/5", row.source.freshness.state === "STALE" && "opacity-75")}>
-                            {data?.capabilities.canBulkReview ? <td className={cn("sticky left-0 z-10 px-3 group-hover:bg-muted", cellPadding, selected.has(row.id) ? "bg-primary/5" : "bg-card")}><input type="checkbox" aria-label={t("selectRow", { name: row.target.customerName })} disabled={!row.currentStep} checked={selected.has(row.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(row.id)) next.delete(row.id); else next.add(row.id); return next })} /></td> : null}
+                            {data?.capabilities.canBulkReview ? <td className={cn("sticky left-0 z-10 px-3 group-hover:bg-muted", cellPadding, selected.has(row.id) ? "bg-primary/5" : "bg-card")}><Hint wrap text={row.currentStep ? t("hint.selectRow") : t("hint.selectRowLocked")}><input type="checkbox" aria-label={t("selectRow", { name: row.target.customerName })} disabled={!row.currentStep} checked={selected.has(row.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(row.id)) next.delete(row.id); else next.add(row.id); return next })} /></Hint></td> : null}
                             <td className={cn("sticky z-10 max-w-[240px] px-3 shadow-[8px_0_12px_-12px_rgba(0,0,0,.45)] group-hover:bg-muted", cellPadding, data?.capabilities.canBulkReview ? "left-10" : "left-0", selected.has(row.id) ? "bg-primary/5" : "bg-card")}><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`} className="font-semibold hover:text-primary hover:underline">{row.target.customerName}</Link><p className="mt-0.5 truncate text-muted-foreground">{registrationLabel(row)}</p><p className="truncate text-muted-foreground">{row.target.address || row.target.locality || "—"}</p></td>
                             {visibleColumns.has("promotion") ? <td className={cn("max-w-[230px] px-3", cellPadding)}><p className="font-medium">{localizedName(row.promotion, locale)}</p><p className="text-muted-foreground">{row.promotion.code} · {row.promotion.type.code} · v{row.promotion.revision}</p></td> : null}
                             {visibleColumns.has("employee") ? <td className={cn("max-w-[200px] px-3", cellPadding)}><p className="font-medium">{row.employee.name}</p><p className="truncate text-muted-foreground">{t("userGroupValue", { value: row.employee.userGroups?.map((group) => group.name).join(", ") || row.employee.team?.name || "—" })}</p><p className="truncate text-muted-foreground">{t("managerValue", { value: row.employee.manager?.name || "—" })}</p></td> : null}
@@ -1265,9 +1329,9 @@ export function PharmacyPromotionWorkspace() {
                             {visibleColumns.has("factPoints") ? <td className={cn("px-3 text-right font-semibold tabular-nums", cellPadding)}>{formatPoints(points.factPoints, locale)}</td> : null}
                             {visibleColumns.has("rewardPoints") ? <td className={cn("px-3 text-right font-semibold tabular-nums", cellPadding)}>{formatPoints(points.rewardPoints, locale)}</td> : null}
                             {visibleColumns.has("difference") ? <td className={cn("px-3 text-right font-semibold tabular-nums", cellPadding)}>{formatPoints(points.difference, locale)}</td> : null}
-                            {visibleColumns.has("review") ? <td className={cn("px-3", cellPadding)}><div className="flex gap-1"><PromotionStatusBadge status={row.l1State} label={`L1 ${stateLabel(row.l1State)}`} /><PromotionStatusBadge status={row.l2State} label={`L2 ${stateLabel(row.l2State)}`} /></div>{row.eligibility.overridden ? <Badge className="mt-1" variant="warning" title={row.eligibility.overrideReason ?? undefined}>{t("eligibilityOverrideActive")}</Badge> : null}<p className="mt-1 text-[10px] text-muted-foreground">{nextResponsibleLabel(row.nextResponsible)}</p>{!row.policy.ready ? <p className="mt-1 max-w-[210px] truncate text-[10px] text-amber-700 dark:text-amber-300" title={row.policy.blockers.map(blockerLabel).join(", ")}>{row.policy.blockers.map(blockerLabel).join(" · ")}</p> : null}</td> : null}
-                            {visibleColumns.has("source") ? <td className={cn("px-3", cellPadding)}><PromotionStatusBadge status={row.source.freshness.state} label={freshnessLabel(row.source.freshness.state)} /><p className="mt-1 text-[10px] text-muted-foreground">{formatDate(row.source.observedAt, locale, true)}</p>{row.source.freshness.ageMinutes !== null ? <p className="text-[10px] text-muted-foreground">{t("freshnessAge", { minutes: row.source.freshness.ageMinutes })}</p> : null}</td> : null}
-                            <td className={cn("sticky right-0 z-10 px-3 shadow-[-8px_0_12px_-12px_rgba(0,0,0,.45)] group-hover:bg-muted", cellPadding, selected.has(row.id) ? "bg-primary/5" : "bg-card")}><div className="flex gap-1"><Button asChild variant="ghost" size="sm"><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("open")}</Link></Button>{data?.capabilities.canReview && row.currentStep ? <Button data-testid={`mtm-pharmacy-review-${row.id}`} size="sm" onClick={() => setReviewRows([row])}>{t("review")}</Button> : null}</div></td>
+                            {visibleColumns.has("review") ? <td className={cn("px-3", cellPadding)}><div className="flex gap-1"><PromotionStatusBadge status={row.l1State} label={`L1 ${stateLabel(row.l1State)}`} hint={levelHint(row.l1State)} /><PromotionStatusBadge status={row.l2State} label={`L2 ${stateLabel(row.l2State)}`} hint={levelHint(row.l2State)} /></div>{row.eligibility.overridden ? <HintValue text={overrideHint(row)}><Badge className="mt-1" variant="warning">{t("eligibilityOverrideActive")}</Badge></HintValue> : null}<p className="mt-1 text-[10px] text-muted-foreground">{nextResponsibleLabel(row.nextResponsible)}</p>{!row.policy.ready ? <p className="mt-1 max-w-[210px] truncate text-[10px] text-amber-700 dark:text-amber-300" title={row.policy.blockers.map(blockerLabel).join(", ")}>{row.policy.blockers.map(blockerLabel).join(" · ")}</p> : null}</td> : null}
+                            {visibleColumns.has("source") ? <td className={cn("px-3", cellPadding)}><PromotionStatusBadge status={row.source.freshness.state} label={freshnessLabel(row.source.freshness.state)} hint={freshnessHint(row.source.freshness.state)} /><p className="mt-1 text-[10px] text-muted-foreground">{formatDate(row.source.observedAt, locale, true)}</p>{row.source.freshness.ageMinutes !== null ? <p className="text-[10px] text-muted-foreground">{t("freshnessAge", { minutes: row.source.freshness.ageMinutes })}</p> : null}</td> : null}
+                            <td className={cn("sticky right-0 z-10 px-3 shadow-[-8px_0_12px_-12px_rgba(0,0,0,.45)] group-hover:bg-muted", cellPadding, selected.has(row.id) ? "bg-primary/5" : "bg-card")}><div className="flex gap-1"><Button asChild variant="ghost" size="sm"><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("open")}</Link></Button>{data?.capabilities.canReview && row.currentStep ? <Hint text={t("hint.reviewOne")}><Button data-testid={`mtm-pharmacy-review-${row.id}`} size="sm" onClick={() => setReviewRows([row])}>{t("review")}</Button></Hint> : null}</div></td>
                           </tr>
                         )
                       })}
@@ -1302,8 +1366,8 @@ export function PharmacyPromotionWorkspace() {
                                   <ChevronRight className={cn("mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform", focused && "translate-x-0.5 text-primary")} />
                                 </span>
                                 <span className="mt-2 flex flex-wrap gap-1">
-                                  <PromotionStatusBadge status={row.status} label={stateLabel(row.status)} />
-                                  {visibleColumns.has("source") ? <PromotionStatusBadge status={row.source.freshness.state} label={freshnessLabel(row.source.freshness.state)} /> : null}
+                                  <PromotionStatusBadge status={row.status} label={stateLabel(row.status)} hint={statusHint(row.status)} />
+                                  {visibleColumns.has("source") ? <PromotionStatusBadge status={row.source.freshness.state} label={freshnessLabel(row.source.freshness.state)} hint={freshnessHint(row.source.freshness.state)} /> : null}
                                 </span>
                                 <span className="mt-2 grid grid-cols-2 gap-2 text-xs">
                                   {visibleColumns.has("employee") ? <span className="truncate text-muted-foreground">{row.employee.name}</span> : null}
@@ -1313,10 +1377,10 @@ export function PharmacyPromotionWorkspace() {
                                 </span>
                               </button>
                               {data?.capabilities.canBulkReview && row.currentStep ? (
-                                <label className="grid min-h-11 min-w-11 cursor-pointer place-items-center" title={t("selectRow", { name: row.target.customerName })}>
+                                <Hint text={t("hint.selectRow")}><label className="grid min-h-11 min-w-11 cursor-pointer place-items-center">
                                   <span className="sr-only">{t("selectRow", { name: row.target.customerName })}</span>
                                   <input type="checkbox" className="h-5 w-5" checked={selected.has(row.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(row.id)) next.delete(row.id); else next.add(row.id); return next })} />
-                                </label>
+                                </label></Hint>
                               ) : null}
                             </div>
                           )
@@ -1335,17 +1399,17 @@ export function PharmacyPromotionWorkspace() {
                       </div>
 
                       <div data-testid="mtm-pharmacy-tablet-source-facts" data-source-visible={visibleColumns.has("source")} className="mt-4 flex flex-wrap gap-1.5">
-                        <PromotionStatusBadge status={focusedRow.status} label={stateLabel(focusedRow.status)} />
-                        {visibleColumns.has("source") ? <PromotionStatusBadge status={focusedRow.source.freshness.state} label={freshnessLabel(focusedRow.source.freshness.state)} /> : null}
-                        {focusedRow.eligibility.overridden ? <Badge variant="warning">{t("eligibilityOverrideActive")}</Badge> : null}
+                        <PromotionStatusBadge status={focusedRow.status} label={stateLabel(focusedRow.status)} hint={statusHint(focusedRow.status)} />
+                        {visibleColumns.has("source") ? <PromotionStatusBadge status={focusedRow.source.freshness.state} label={freshnessLabel(focusedRow.source.freshness.state)} hint={freshnessHint(focusedRow.source.freshness.state)} /> : null}
+                        {focusedRow.eligibility.overridden ? <HintValue text={overrideHint(focusedRow)}><Badge variant="warning">{t("eligibilityOverrideActive")}</Badge></HintValue> : null}
                       </div>
 
                       {(visibleColumns.has("planFact") || visibleColumns.has("factPoints") || visibleColumns.has("rewardPoints") || visibleColumns.has("difference")) ? (
                         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          {visibleColumns.has("planFact") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground">{t("planFact")}</p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedRow.target.planQuantity, locale)} / {formatPoints(focusedRow.factQuantity, locale)}</p></div> : null}
-                          {visibleColumns.has("factPoints") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground">{t("summary.fact")}</p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.factPoints, locale)}</p></div> : null}
-                          {visibleColumns.has("rewardPoints") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground">{t("summary.reward")}</p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.rewardPoints, locale)}</p></div> : null}
-                          {visibleColumns.has("difference") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground">{t("summary.difference")}</p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.difference, locale)}</p></div> : null}
+                          {visibleColumns.has("planFact") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground"><HintValue text={t("hint.planFact")}>{t("planFact")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedRow.target.planQuantity, locale)} / {formatPoints(focusedRow.factQuantity, locale)}</p></div> : null}
+                          {visibleColumns.has("factPoints") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground"><HintValue text={t("hint.factPoints")}>{t("summary.fact")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.factPoints, locale)}</p></div> : null}
+                          {visibleColumns.has("rewardPoints") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground"><HintValue text={t("hint.rewardPoints")}>{t("summary.reward")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.rewardPoints, locale)}</p></div> : null}
+                          {visibleColumns.has("difference") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground"><HintValue text={t("hint.difference")}>{t("summary.difference")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.difference, locale)}</p></div> : null}
                         </div>
                       ) : null}
 
@@ -1360,7 +1424,7 @@ export function PharmacyPromotionWorkspace() {
 
                       <div className={cn("mt-4 grid gap-2", data?.capabilities.canReview && focusedRow.currentStep ? "grid-cols-2" : "grid-cols-1")}>
                         <Button className="min-h-11" asChild variant="outline"><Link href={`/mtm/promotions/${focusedRow.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("details")}</Link></Button>
-                        {data?.capabilities.canReview && focusedRow.currentStep ? <Button data-testid={`mtm-pharmacy-review-${focusedRow.id}`} className="min-h-11" onClick={() => setReviewRows([focusedRow])}>{t("reviewStep", { step: focusedRow.currentStep })}</Button> : null}
+                        {data?.capabilities.canReview && focusedRow.currentStep ? <Hint text={t("hint.reviewOne")}><Button data-testid={`mtm-pharmacy-review-${focusedRow.id}`} className="min-h-11" onClick={() => setReviewRows([focusedRow])}>{t("reviewStep", { step: focusedRow.currentStep })}</Button></Hint> : null}
                       </div>
                     </aside>
                   </div>
@@ -1372,18 +1436,18 @@ export function PharmacyPromotionWorkspace() {
                     return (
                       <article data-testid={`mtm-pharmacy-promotion-${row.id}`} key={row.id} aria-labelledby={`promotion-execution-${row.id}`} className={cn("border border-zinc-200/70 p-3 dark:border-zinc-800", selected.has(row.id) && "border-primary bg-primary/5", row.source.freshness.state === "STALE" && "border-dashed opacity-80")}>
                         <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 id={`promotion-execution-${row.id}`}><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`} className="block break-words font-semibold hover:text-primary hover:underline">{row.target.customerName}</Link></h2><p className="mt-0.5 truncate text-xs text-muted-foreground">{registrationLabel(row)} · {row.target.locality || "—"}</p></div>{data?.capabilities.canBulkReview && row.currentStep ? <label className="grid min-h-11 min-w-11 shrink-0 cursor-pointer place-items-center"><span className="sr-only">{t("selectRow", { name: row.target.customerName })}</span><input type="checkbox" aria-label={t("selectRow", { name: row.target.customerName })} checked={selected.has(row.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(row.id)) next.delete(row.id); else next.add(row.id); return next })} className="h-5 w-5" /></label> : null}</div>
-                        <div className="mt-3 flex flex-wrap gap-1"><PromotionStatusBadge status={row.status} label={stateLabel(row.status)} /><PromotionStatusBadge status={row.source.freshness.state} label={freshnessLabel(row.source.freshness.state)} /><Badge variant="outline">{row.promotion.code}</Badge>{row.eligibility.overridden ? <Badge variant="warning" title={row.eligibility.overrideReason ?? undefined}>{t("eligibilityOverrideActive")}</Badge> : null}</div>
+                        <div className="mt-3 flex flex-wrap gap-1"><PromotionStatusBadge status={row.status} label={stateLabel(row.status)} hint={statusHint(row.status)} /><PromotionStatusBadge status={row.source.freshness.state} label={freshnessLabel(row.source.freshness.state)} hint={freshnessHint(row.source.freshness.state)} /><Badge variant="outline">{row.promotion.code}</Badge>{row.eligibility.overridden ? <HintValue text={overrideHint(row)}><Badge variant="warning">{t("eligibilityOverrideActive")}</Badge></HintValue> : null}</div>
                         <div className="mt-3 grid grid-cols-3 gap-2 border-y py-3 text-center"><div><p className="text-[10px] uppercase text-muted-foreground">{t("summary.fact")}</p><p className="font-semibold tabular-nums">{formatPoints(points.factPoints, locale)}</p></div><div><p className="text-[10px] uppercase text-muted-foreground">{t("summary.reward")}</p><p className="font-semibold tabular-nums">{formatPoints(points.rewardPoints, locale)}</p></div><div><p className="text-[10px] uppercase text-muted-foreground">{t("summary.difference")}</p><p className="font-semibold tabular-nums">{formatPoints(points.difference, locale)}</p></div></div>
                         <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs"><dt className="text-muted-foreground">{t("promotion")}</dt><dd className="truncate text-right">{localizedName(row.promotion, locale)} · v{row.promotion.revision}</dd><dt className="text-muted-foreground">{t("employee")}</dt><dd className="truncate text-right">{row.employee.name}</dd><dt className="text-muted-foreground">{t("userGroup")}</dt><dd className="truncate text-right">{row.employee.userGroups?.map((group) => group.name).join(", ") || row.employee.team?.name || "—"}</dd><dt className="text-muted-foreground">{t("manager")}</dt><dd className="truncate text-right">{row.employee.manager?.name || "—"}</dd><dt className="text-muted-foreground">{t("planFact")}</dt><dd className="text-right tabular-nums">{formatPoints(row.target.planQuantity, locale)} / <strong>{formatPoints(row.factQuantity, locale)}</strong> {row.target.unit}</dd><dt className="text-muted-foreground">{t("evidence")}</dt><dd className="text-right">{t("evidenceCount", { count: row.evidenceCount })} · {formatDate(row.source.observedAt, locale, true)}</dd><dt className="text-muted-foreground">L1 / L2</dt><dd className="text-right">{stateLabel(row.l1State)} / {stateLabel(row.l2State)}</dd><dt className="text-muted-foreground">{t("nextResponsibleLabel")}</dt><dd className="text-right">{nextResponsibleLabel(row.nextResponsible)}</dd></dl>
                         {!row.policy.ready ? <div className="mt-3 flex gap-2 bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><AlertTriangle className="h-4 w-4 shrink-0" /><span>{row.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
-                        <div className={cn("mt-3 grid gap-2", data?.capabilities.canReview && row.currentStep ? "grid-cols-2" : "grid-cols-1")}><Button className="min-h-11" asChild variant="outline"><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("details")}</Link></Button>{data?.capabilities.canReview && row.currentStep ? <Button data-testid={`mtm-pharmacy-review-${row.id}`} className="min-h-11" onClick={() => setReviewRows([row])}>{t("reviewStep", { step: row.currentStep })}</Button> : null}</div>
+                        <div className={cn("mt-3 grid gap-2", data?.capabilities.canReview && row.currentStep ? "grid-cols-2" : "grid-cols-1")}><Button className="min-h-11" asChild variant="outline"><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("details")}</Link></Button>{data?.capabilities.canReview && row.currentStep ? <Hint text={t("hint.reviewOne")}><Button data-testid={`mtm-pharmacy-review-${row.id}`} className="min-h-11" onClick={() => setReviewRows([row])}>{t("reviewStep", { step: row.currentStep })}</Button></Hint> : null}</div>
                       </article>
                     )
                   })}
                 </div> : null}
               </>
             )}
-            {data ? <footer className="flex flex-col gap-3 border-t px-3 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><div>{t("pageInfo", { from: data.pageInfo.total ? (data.pageInfo.page - 1) * data.pageInfo.pageSize + 1 : 0, to: Math.min(data.pageInfo.page * data.pageInfo.pageSize, data.pageInfo.total), total: data.pageInfo.total })} · {t("timezone", { value: data.timezone })}</div><div className="flex items-center gap-2"><Select aria-label={t("pageSize")} value={String(data.pageInfo.pageSize)} onChange={(event) => replaceParams({ pageSize: event.target.value, page: null })} className="min-h-11 min-w-20 xl:min-h-9"><option value="25">25</option><option value="50">50</option><option value="100">100</option></Select><Button className="min-h-11 min-w-11 xl:min-h-9 xl:min-w-9" aria-label={t("previousPage")} variant="outline" size="icon" disabled={data.pageInfo.page <= 1} onClick={() => replaceParams({ page: data.pageInfo.page - 1 })}><ChevronLeft className="h-4 w-4" /></Button><span className="min-w-16 text-center" aria-label={t("currentPage", { page: data.pageInfo.page, totalPages: data.pageInfo.totalPages })}>{data.pageInfo.page} / {data.pageInfo.totalPages}</span><Button className="min-h-11 min-w-11 xl:min-h-9 xl:min-w-9" aria-label={t("nextPage")} variant="outline" size="icon" disabled={data.pageInfo.page >= data.pageInfo.totalPages} onClick={() => replaceParams({ page: data.pageInfo.page + 1 })}><ChevronRight className="h-4 w-4" /></Button></div></footer> : null}
+            {data ? <footer className="flex flex-col gap-3 border-t px-3 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><div>{t("pageInfo", { from: data.pageInfo.total ? (data.pageInfo.page - 1) * data.pageInfo.pageSize + 1 : 0, to: Math.min(data.pageInfo.page * data.pageInfo.pageSize, data.pageInfo.total), total: data.pageInfo.total })} · {t("timezone", { value: data.timezone })}</div><div className="flex items-center gap-2"><Select aria-label={t("pageSize")} value={String(data.pageInfo.pageSize)} onChange={(event) => replaceParams({ pageSize: event.target.value, page: null })} className="min-h-11 min-w-20 xl:min-h-9"><option value="25">25</option><option value="50">50</option><option value="100">100</option></Select><Hint wrap text={data.pageInfo.page <= 1 ? null : t("previousPage")}><Button className="min-h-11 min-w-11 xl:min-h-9 xl:min-w-9" aria-label={t("previousPage")} variant="outline" size="icon" disabled={data.pageInfo.page <= 1} onClick={() => replaceParams({ page: data.pageInfo.page - 1 })}><ChevronLeft className="h-4 w-4" /></Button></Hint><span className="min-w-16 text-center" aria-label={t("currentPage", { page: data.pageInfo.page, totalPages: data.pageInfo.totalPages })}>{data.pageInfo.page} / {data.pageInfo.totalPages}</span><Hint wrap text={data.pageInfo.page >= data.pageInfo.totalPages ? null : t("nextPage")}><Button className="min-h-11 min-w-11 xl:min-h-9 xl:min-w-9" aria-label={t("nextPage")} variant="outline" size="icon" disabled={data.pageInfo.page >= data.pageInfo.totalPages} onClick={() => replaceParams({ page: data.pageInfo.page + 1 })}><ChevronRight className="h-4 w-4" /></Button></Hint></div></footer> : null}
           </section>
         </>
       ) : data?.capabilities.canConfigure ? (

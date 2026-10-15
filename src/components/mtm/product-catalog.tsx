@@ -371,6 +371,7 @@ export function MtmProductCatalog() {
                 const { own, inherited } = agentsWhoSeeProductGroup(groups, group.id)
                 return (
                   <li key={group.id}>
+                    <Hint text={t("hint.group")} side="right">
                     <button
                       type="button"
                       aria-current={selected ? "true" : undefined}
@@ -391,6 +392,7 @@ export function MtmProductCatalog() {
                       </span>
                       <HomePill tone={READINESS_TONE[readiness]} className="text-[11px]">{t(`readiness.${readiness}`)}</HomePill>
                     </button>
+                    </Hint>
                   </li>
                 )
               })}
@@ -505,7 +507,7 @@ function GroupDetail(props: {
   const showings = productGroupShowings(products, group.id)
   const query = props.agentQuery.trim().toLocaleLowerCase(locale)
   const shownAgents = query ? fieldAgents.filter((agent) => agent.name.toLocaleLowerCase(locale).includes(query)) : fieldAgents
-  const readOnlyHint = group.canManage ? null : t("readOnlyHint")
+  const readOnlyHint = group.canManage ? null : t("hint.lockedGroup")
 
   return (
     <div className="min-w-0 space-y-4" data-testid="mtm-product-group-detail">
@@ -527,7 +529,7 @@ function GroupDetail(props: {
           </div>
           {managers.length ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              <HintValue text={t("managersHint")}>{t("managers")}</HintValue>: {managers.map((member) => member.agent.name).join(", ")}
+              <HintValue text={t("hint.managers")}>{t("managers")}</HintValue>: {managers.map((member) => member.agent.name).join(", ")}
             </p>
           ) : null}
         </div>
@@ -573,7 +575,7 @@ function GroupDetail(props: {
                       ) : (
                         <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-300">{t("fileMissing")}</span>
                       )}
-                      <HintValue text={t("showingsHint")} className="mt-1 inline-block text-xs font-medium text-foreground">
+                      <HintValue text={t("hint.openedCount")} className="mt-1 inline-block text-xs font-medium text-foreground">
                         {t("showings", { count: product._count.presentationSessions })}
                       </HintValue>
                     </span>
@@ -615,10 +617,12 @@ function GroupDetail(props: {
                   </label>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={props.onUpload} disabled={props.draftBusy} data-testid="mtm-product-draft-upload">
-                    {props.draftBusy ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <UploadCloud aria-hidden="true" />}
-                    {props.draftBusy ? t("uploading") : t("upload")}
-                  </Button>
+                  <Hint text={props.draftBusy ? null : t("hint.uploadAndCreate")}>
+                    <Button onClick={props.onUpload} disabled={props.draftBusy} data-testid="mtm-product-draft-upload">
+                      {props.draftBusy ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <UploadCloud aria-hidden="true" />}
+                      {props.draftBusy ? t("uploading") : t("upload")}
+                    </Button>
+                  </Hint>
                   <Button variant="ghost" onClick={props.onCancelDraft} disabled={props.draftBusy}><X aria-hidden="true" />{t("cancel")}</Button>
                 </div>
               </div>
@@ -730,7 +734,7 @@ function GroupDetail(props: {
         </div>
         <div className="flex items-center gap-2">
           <ArrowRight className="hidden h-4 w-4 text-muted-foreground sm:block" aria-hidden="true" />
-          <HintValue text={t("showingsHint")} className="text-[28px] font-bold leading-none tabular-nums">{showings}</HintValue>
+          <HintValue text={t("hint.openedCount")} className="text-[28px] font-bold leading-none tabular-nums">{showings}</HintValue>
           <span className="text-sm text-muted-foreground">{t("showingsUnit", { count: showings })}</span>
         </div>
       </section>
@@ -782,9 +786,11 @@ function GroupForm({ tree, form, busy, error, onChange, onCancel, onCreate }: {
       </label>
       {error ? <p role="alert" className="text-xs text-red-700 dark:text-red-300">{error}</p> : null}
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={busy} data-testid="mtm-product-group-create">
-          {busy ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <FolderPlus aria-hidden="true" />}{t("createGroup")}
-        </Button>
+        <Hint text={busy ? null : t("hint.createGroup")}>
+          <Button type="submit" size="sm" disabled={busy} data-testid="mtm-product-group-create">
+            {busy ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <FolderPlus aria-hidden="true" />}{t("createGroup")}
+          </Button>
+        </Hint>
         <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={busy}>{t("cancel")}</Button>
       </div>
     </form>

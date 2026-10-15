@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { AlertCircle, Camera, Check, ChevronDown, ListChecks, Lock, MessageCircle, Package, PenLine, Presentation, StickyNote } from "lucide-react"
@@ -247,17 +248,18 @@ export function VisitActionSwitches({
                   onToggle={() => move(actionKey, { required: !state.required })}
                 />
               </span>
-              <button
-                type="button"
-                aria-expanded={open}
-                aria-label={t("refineToggle", { action: name })}
-                title={t("refineToggle", { action: name })}
-                onClick={() => { setMinDraft(null); setOpenKey(open ? null : actionKey) }}
-                className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60"
-              >
-                <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} aria-hidden="true" />
-                {refined && !open ? <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" /> : null}
-              </button>
+              <Hint text={t("hint.refine")}>
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  aria-label={t("refineToggle", { action: name })}
+                  onClick={() => { setMinDraft(null); setOpenKey(open ? null : actionKey) }}
+                  className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60"
+                >
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} aria-hidden="true" />
+                  {refined && !open ? <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" /> : null}
+                </button>
+              </Hint>
 
               {open ? (
                 <div className="col-span-4 mb-2 rounded-md bg-muted/50 p-3" data-testid={`${testId}-refine-${actionKey}`}>

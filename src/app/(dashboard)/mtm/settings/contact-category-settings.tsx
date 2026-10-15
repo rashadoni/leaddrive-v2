@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { ArrowDown, ArrowUp, CircleAlert, Loader2, Plus, RotateCcw, Save, Tags, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import {
@@ -288,9 +289,16 @@ export function ContactCategorySettings({
           )}
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
-        <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={addCategory} disabled={categories.length >= CONTACT_CATEGORY_LIMITS.categories}>
-          <Plus className="h-4 w-4" />{t("addCategory")}
-        </Button>
+        <Hint
+          wrap
+          text={categories.length >= CONTACT_CATEGORY_LIMITS.categories
+            ? t("hint.categoryAddLimit", { max: CONTACT_CATEGORY_LIMITS.categories })
+            : t("hint.categoryAdd")}
+        >
+          <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={addCategory} disabled={categories.length >= CONTACT_CATEGORY_LIMITS.categories}>
+            <Plus className="h-4 w-4" />{t("addCategory")}
+          </Button>
+        </Hint>
       </div>
 
       <div className="mt-5 grid gap-4">
@@ -319,18 +327,26 @@ export function ContactCategorySettings({
                   />
                 </label>
                 <span className="min-h-11 content-center rounded-full px-1 text-xs text-muted-foreground">
-                  {category.code ? (contacts > 0 ? t("usage", { count: contacts }) : t("usageNone")) : t("usageNew")}
+                  {category.code
+                    ? <HintValue text={t("hint.categoryUsage")}>{contacts > 0 ? t("usage", { count: contacts }) : t("usageNone")}</HintValue>
+                    : t("usageNew")}
                 </span>
                 <div className="flex items-center gap-1">
-                  <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveUp")} disabled={categoryIndex === 0} onClick={() => setCategories((current) => move(current, categoryIndex, -1))}>
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveDown")} disabled={categoryIndex === categories.length - 1} onClick={() => setCategories((current) => move(current, categoryIndex, 1))}>
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                  <Button type="button" variant="ghost" className="min-h-11 text-destructive" onClick={() => removeCategory(category)}>
-                    <Trash2 className="h-4 w-4" />{t("removeCategory")}
-                  </Button>
+                  <Hint text={categoryIndex === 0 ? null : t("hint.categoryMoveUp")}>
+                    <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveUp")} disabled={categoryIndex === 0} onClick={() => setCategories((current) => move(current, categoryIndex, -1))}>
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                  </Hint>
+                  <Hint text={categoryIndex === categories.length - 1 ? null : t("hint.categoryMoveDown")}>
+                    <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveDown")} disabled={categoryIndex === categories.length - 1} onClick={() => setCategories((current) => move(current, categoryIndex, 1))}>
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                  </Hint>
+                  <Hint text={t("hint.categoryRemove")}>
+                    <Button type="button" variant="ghost" className="min-h-11 text-destructive" onClick={() => removeCategory(category)}>
+                      <Trash2 className="h-4 w-4" />{t("removeCategory")}
+                    </Button>
+                  </Hint>
                 </div>
               </div>
 
@@ -376,7 +392,7 @@ export function ContactCategorySettings({
                           // that cannot be used reads as a broken one.
                           <div className="grid basis-44 gap-1 text-xs">
                             <span className="text-muted-foreground">{t("fieldType")}</span>
-                            <span data-testid="mtm-contact-category-field-type" className="flex min-h-11 items-center text-sm font-medium">{t(`fieldTypes.${field.type}`)}</span>
+                            <span data-testid="mtm-contact-category-field-type" className="flex min-h-11 items-center text-sm font-medium"><HintValue text={t("hint.categoryTypeLocked")}>{t(`fieldTypes.${field.type}`)}</HintValue></span>
                           </div>
                         ) : (
                           <label className="grid basis-44 gap-1 text-xs">
@@ -397,25 +413,33 @@ export function ContactCategorySettings({
                             </Select>
                           </label>
                         )}
-                        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 accent-primary"
-                            checked={field.required}
-                            onChange={(event) => updateField(category.uid, field.uid, (current) => ({ ...current, required: event.target.checked }))}
-                          />
-                          {t("required")}
-                        </label>
+                        <Hint text={t("hint.categoryRequired")}>
+                          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-primary"
+                              checked={field.required}
+                              onChange={(event) => updateField(category.uid, field.uid, (current) => ({ ...current, required: event.target.checked }))}
+                            />
+                            {t("required")}
+                          </label>
+                        </Hint>
                         <div className="flex items-center gap-1">
-                          <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveUp")} disabled={fieldIndex === 0} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, -1) }))}>
-                            <ArrowUp className="h-4 w-4" />
-                          </Button>
-                          <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveDown")} disabled={fieldIndex === category.fields.length - 1} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, 1) }))}>
-                            <ArrowDown className="h-4 w-4" />
-                          </Button>
-                          <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" aria-label={t("removeField")} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: current.fields.filter((candidate) => candidate.uid !== field.uid) }))}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Hint text={fieldIndex === 0 ? null : t("hint.categoryFieldMoveUp")}>
+                            <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveUp")} disabled={fieldIndex === 0} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, -1) }))}>
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                          </Hint>
+                          <Hint text={fieldIndex === category.fields.length - 1 ? null : t("hint.categoryFieldMoveDown")}>
+                            <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveDown")} disabled={fieldIndex === category.fields.length - 1} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, 1) }))}>
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                          </Hint>
+                          <Hint text={t("hint.categoryFieldRemove")}>
+                            <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" aria-label={t("removeField")} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: current.fields.filter((candidate) => candidate.uid !== field.uid) }))}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </Hint>
                         </div>
                       </div>
 
@@ -439,14 +463,23 @@ export function ContactCategorySettings({
                                       : candidate),
                                   }))}
                                 />
-                                <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" aria-label={t("removeOption")} onClick={() => updateField(category.uid, field.uid, (current) => ({ ...current, options: (current.options ?? []).filter((candidate) => candidate.uid !== option.uid) }))}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <Hint text={t("hint.categoryOptionRemove")}>
+                                  <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" aria-label={t("removeOption")} onClick={() => updateField(category.uid, field.uid, (current) => ({ ...current, options: (current.options ?? []).filter((candidate) => candidate.uid !== option.uid) }))}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </Hint>
                               </span>
                             ))}
-                            <Button type="button" variant="outline" className="min-h-11" disabled={(field.options?.length ?? 0) >= CONTACT_CATEGORY_LIMITS.options} onClick={() => addOption(category.uid, field.uid)}>
-                              <Plus className="h-4 w-4" />{t("addOption")}
-                            </Button>
+                            <Hint
+                              wrap
+                              text={(field.options?.length ?? 0) >= CONTACT_CATEGORY_LIMITS.options
+                                ? t("hint.categoryOptionLimit", { max: CONTACT_CATEGORY_LIMITS.options })
+                                : null}
+                            >
+                              <Button type="button" variant="outline" className="min-h-11" disabled={(field.options?.length ?? 0) >= CONTACT_CATEGORY_LIMITS.options} onClick={() => addOption(category.uid, field.uid)}>
+                                <Plus className="h-4 w-4" />{t("addOption")}
+                              </Button>
+                            </Hint>
                           </div>
                         </div>
                       ) : null}
@@ -454,9 +487,16 @@ export function ContactCategorySettings({
                   )
                 })}
                 <div>
-                  <Button type="button" variant="outline" className="min-h-11" disabled={category.fields.length >= CONTACT_CATEGORY_LIMITS.fields} onClick={() => addField(category.uid)}>
-                    <Plus className="h-4 w-4" />{t("addField")}
-                  </Button>
+                  <Hint
+                    wrap
+                    text={category.fields.length >= CONTACT_CATEGORY_LIMITS.fields
+                      ? t("hint.categoryFieldLimit", { max: CONTACT_CATEGORY_LIMITS.fields })
+                      : t("hint.categoryFieldAdd")}
+                  >
+                    <Button type="button" variant="outline" className="min-h-11" disabled={category.fields.length >= CONTACT_CATEGORY_LIMITS.fields} onClick={() => addField(category.uid)}>
+                      <Plus className="h-4 w-4" />{t("addField")}
+                    </Button>
+                  </Hint>
                 </div>
               </div>
             </article>
@@ -489,10 +529,12 @@ export function ContactCategorySettings({
           <Button type="button" variant="outline" className="min-h-11" onClick={reset} disabled={!dirty || saving}>
             <RotateCcw className="h-4 w-4" />{t("cancel")}
           </Button>
-          <Button type="button" className="min-h-11" onClick={() => void save()} disabled={!dirty || saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? t("saving") : t("save")}
-          </Button>
+          <Hint wrap text={dirty && !saving ? t("hint.categorySave") : null}>
+            <Button type="button" className="min-h-11" onClick={() => void save()} disabled={!dirty || saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? t("saving") : t("save")}
+            </Button>
+          </Hint>
         </div>
       </div>
     </section>

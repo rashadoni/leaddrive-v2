@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner"
 import { MtmCustomerForm } from "@/components/mtm/customer-form"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { createDateFormatter } from "@/lib/format-date"
@@ -199,6 +200,21 @@ type StaffSection = {
 // The owner took departments, pharmacy promotions and files off the card on
 // 2026-10-02: no tenant had a row in any of them. The section API still answers.
 type DetailSection = "details" | "contacts" | "visits" | "staff"
+
+// Hover hints for values whose meaning is not in their word (owner,
+// 2026-10-15: «подсказок в модуле очень мало»). Key by key, so a test finds
+// every one of them.
+const STATUS_HINT: Record<string, string> = {
+  INACTIVE: "detail.hint.statusInactive",
+  PROSPECT: "detail.hint.statusProspect",
+}
+const ASSIGNMENT_ROLE_HINT: Record<string, string> = {
+  PRIMARY: "detail.hint.rolePrimary",
+  SECONDARY: "detail.hint.roleSecondary",
+}
+const VISIT_STATUS_HINT: Record<string, string> = {
+  CHECKED_IN: "detail.hint.visitInProgress",
+}
 type LoadableSection = Exclude<DetailSection, "details">
 
 type ApiPayload<T> = {
@@ -229,14 +245,17 @@ function DefinitionRow({
   label,
   value,
   className,
+  hint,
 }: {
   label: string
   value: React.ReactNode
   className?: string
+  /** What the row means or how it is counted, under the cursor on its label. */
+  hint?: string | null
 }) {
   return (
     <div className={cn("grid gap-1 border-b border-zinc-200 py-3 last:border-0 dark:border-zinc-700 sm:grid-cols-[10.5rem_minmax(0,1fr)] sm:gap-4", className)}>
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dt className="text-xs font-medium text-muted-foreground"><HintValue text={hint}>{label}</HintValue></dt>
       <dd className="min-w-0 text-sm">{value || "—"}</dd>
     </div>
   )
@@ -245,9 +264,12 @@ function DefinitionRow({
 function StateBadge({
   children,
   tone = "neutral",
+  hint,
 }: {
   children: React.ReactNode
   tone?: "positive" | "warning" | "neutral"
+  /** What the badge means, under the cursor. */
+  hint?: string | null
 }) {
   return (
     <span className={cn(
@@ -256,7 +278,7 @@ function StateBadge({
       tone === "warning" && "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200",
       tone === "neutral" && "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
     )}>
-      {children}
+      <HintValue text={hint}>{children}</HintValue>
     </span>
   )
 }
@@ -448,6 +470,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
       ? totals.map((row) => `${numberFormatter.format(Number(row.amount))} ${row.currency}`).join(" · ")
       : t("detail.noCommercialData")
   )
+  const hintFor = (keys: Record<string, string>, value: string) => keys[value] ? t(keys[value]) : null
 
   return (
     <div data-testid="mtm-organization-detail" className="space-y-5">
@@ -469,10 +492,10 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-7">
           <div className="grid min-w-0 gap-4">
             <div className="flex flex-wrap items-center gap-2">
-              <StateBadge tone={summary.status === "ACTIVE" ? "positive" : "warning"}>
+              <StateBadge tone={summary.status === "ACTIVE" ? "positive" : "warning"} hint={hintFor(STATUS_HINT, summary.status)}>
                 {explorer(`statuses.${summary.status}`)}
               </StateBadge>
-              <StateBadge>{explorer("categoryShort", { category: summary.category })}</StateBadge>
+              <StateBadge hint={t("detail.hint.category")}>{explorer("categoryShort", { category: summary.category })}</StateBadge>
               <StateBadge>{organizationType}</StateBadge>
             </div>
             <div className="grid gap-2">
@@ -485,7 +508,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
               <span className="inline-flex items-center gap-2">
                 <UserRound className="h-4 w-4 text-muted-foreground" />
-                {owners.map((item) => item.agent.name).join(", ") || t("detail.unassigned")}
+                <HintValue text={t("detail.hint.owner")}>{owners.map((item) => item.agent.name).join(", ") || t("detail.unassigned")}</HintValue>
               </span>
               {summary.phone ? (
                 <a className="inline-flex items-center gap-2 underline-offset-4 hover:underline" href={`tel:${summary.phone}`}>
@@ -497,34 +520,38 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
           </div>
           <div className="flex flex-wrap gap-2 lg:justify-end">
             {mapHref ? (
-              <Button asChild variant="outline" className="min-h-11 md:min-h-9">
-                <a href={mapHref} target="_blank" rel="noreferrer">
-                  <MapPin className="h-4 w-4" />
-                  {t("detail.openMap")}
-                </a>
-              </Button>
+              <Hint text={t("detail.hint.openMap")}>
+                <Button asChild variant="outline" className="min-h-11 md:min-h-9">
+                  <a href={mapHref} target="_blank" rel="noreferrer">
+                    <MapPin className="h-4 w-4" />
+                    {t("detail.openMap")}
+                  </a>
+                </Button>
+              </Hint>
             ) : null}
             {canManage ? (
-              <Button
-                variant="outline"
-                className="min-h-11 md:min-h-9"
-                onClick={() => setEditOpen(true)}
-              >
-                <Pencil className="h-4 w-4" />
-                {t("detail.edit")}
-              </Button>
+              <Hint text={t("detail.hint.edit")}>
+                <Button
+                  variant="outline"
+                  className="min-h-11 md:min-h-9"
+                  onClick={() => setEditOpen(true)}
+                >
+                  <Pencil className="h-4 w-4" />
+                  {t("detail.edit")}
+                </Button>
+              </Hint>
             ) : null}
           </div>
         </div>
         <div className="grid divide-y border-t border-zinc-200 bg-muted/25 dark:border-zinc-700 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
           {[
-            ...(summary.code ? [[t("detail.etalonId"), summary.code]] : []),
-            ...(fieldContactsEnabled ? [[t("detail.contacts"), numberFormatter.format(summary._count.contactWorkplaces)]] : []),
-            [t("detail.visits"), numberFormatter.format(summary._count.visits)],
-            [t("detail.gps"), hasCoordinates ? t("detail.coordinatesRecorded") : t("detail.coordinatesMissing")],
-          ].map(([label, value]) => (
+            ...(summary.code ? [[t("detail.etalonId"), summary.code, t("detail.hint.code")]] : []),
+            ...(fieldContactsEnabled ? [[t("detail.contacts"), numberFormatter.format(summary._count.contactWorkplaces), t("detail.hint.contactsCount")]] : []),
+            [t("detail.visits"), numberFormatter.format(summary._count.visits), t("detail.hint.visitsCount")],
+            [t("detail.gps"), hasCoordinates ? t("detail.coordinatesRecorded") : t("detail.coordinatesMissing"), t("detail.hint.gps")],
+          ].map(([label, value, hint]) => (
             <div key={label} className="grid gap-1 px-5 py-3">
-              <span className="text-xs font-medium text-muted-foreground">{label}</span>
+              <span className="text-xs font-medium text-muted-foreground"><HintValue text={hint}>{label}</HintValue></span>
               <span className="truncate text-sm font-semibold">{value}</span>
             </div>
           ))}
@@ -586,7 +613,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                 <dl className="mt-2">
                   <DefinitionRow label={t("detail.latitude")} value={summary.latitude?.toFixed(6)} />
                   <DefinitionRow label={t("detail.longitude")} value={summary.longitude?.toFixed(6)} />
-                  <DefinitionRow label={t("detail.geofenceRadius")} value={summary.geofenceRadius ? t("detail.meters", { count: summary.geofenceRadius }) : null} />
+                  <DefinitionRow label={t("detail.geofenceRadius")} hint={t("detail.hint.geofenceRadius")} value={summary.geofenceRadius ? t("detail.meters", { count: summary.geofenceRadius }) : null} />
                   <DefinitionRow label={t("detail.coordinateSource")} value={coordinateVerification?.sourceSystem || (hasCoordinates ? t("detail.crmCoordinateSource") : null)} />
                   <DefinitionRow
                     label={t("detail.verification")}
@@ -601,10 +628,12 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                   />
                 </dl>
                 {mapHref ? (
-                  <a className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline" href={mapHref} target="_blank" rel="noreferrer">
-                    {t("detail.verifyOnMap")}
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+                  <Hint text={t("detail.hint.openMap")} align="start">
+                    <a className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline" href={mapHref} target="_blank" rel="noreferrer">
+                      {t("detail.verifyOnMap")}
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Hint>
                 ) : null}
                 {canManage && hasCoordinates ? (
                   <div className="mt-4 grid gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
@@ -622,10 +651,12 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                       maxLength={500}
                       className="min-h-11 rounded-md border border-input bg-background px-3 text-sm"
                     />
-                    <Button type="button" disabled={actionLoading || !coordinateSource.trim()} onClick={() => void verifyCoordinates()}>
-                      <ShieldCheck className="h-4 w-4" />
-                      {t("detail.confirmCoordinates")}
-                    </Button>
+                    <Hint wrap text={actionLoading ? null : !coordinateSource.trim() ? t("detail.hint.confirmCoordinatesNeedsSource") : t("detail.hint.confirmCoordinates")}>
+                      <Button type="button" className="w-full" disabled={actionLoading || !coordinateSource.trim()} onClick={() => void verifyCoordinates()}>
+                        <ShieldCheck className="h-4 w-4" />
+                        {t("detail.confirmCoordinates")}
+                      </Button>
+                    </Hint>
                   </div>
                 ) : null}
               </section> : null}
@@ -637,13 +668,13 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                 <h2 className="text-base font-semibold">{t("detail.commercialTitle")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("detail.commercialDescription")}</p>
               </div>
-              {commercial?.latestSource ? <StateBadge tone="positive">{t("detail.sourceRecorded")}</StateBadge> : <StateBadge tone="warning">{t("detail.noSource")}</StateBadge>}
+              {commercial?.latestSource ? <StateBadge tone="positive" hint={t("detail.hint.sourceRecorded")}>{t("detail.sourceRecorded")}</StateBadge> : <StateBadge tone="warning" hint={t("detail.hint.noSource")}>{t("detail.noSource")}</StateBadge>}
             </div>
             <dl className="mt-3 grid gap-x-8 lg:grid-cols-2">
-              <DefinitionRow label={t("detail.monthShipments", { period: commercial?.month ?? "—" })} value={commercial ? formatTotals(commercial.monthTotals) : null} />
-              <DefinitionRow label={t("detail.yearShipments", { period: commercial?.year ?? "—" })} value={commercial ? formatTotals(commercial.yearTotals) : null} />
+              <DefinitionRow label={t("detail.monthShipments", { period: commercial?.month ?? "—" })} hint={t("detail.hint.monthShipments")} value={commercial ? formatTotals(commercial.monthTotals) : null} />
+              <DefinitionRow label={t("detail.yearShipments", { period: commercial?.year ?? "—" })} hint={t("detail.hint.yearShipments")} value={commercial ? formatTotals(commercial.yearTotals) : null} />
               <DefinitionRow label={t("detail.latestCommercialDocument")} value={commercial?.latestSource?.externalDocumentNo} />
-              <DefinitionRow label={t("detail.sourceFreshness")} value={commercial?.latestSource ? dateTimeFormatter.format(new Date(commercial.latestSource.sourceImportJob?.appliedAt || commercial.latestSource.updatedAt)) : null} />
+              <DefinitionRow label={t("detail.sourceFreshness")} hint={t("detail.hint.sourceFreshness")} value={commercial?.latestSource ? dateTimeFormatter.format(new Date(commercial.latestSource.sourceImportJob?.appliedAt || commercial.latestSource.updatedAt)) : null} />
               <DefinitionRow label={t("detail.sourceFile")} value={commercial?.latestSource?.sourceImportJob?.originalFileName} />
               <DefinitionRow label={t("detail.sourceStatus")} value={commercial?.latestSource?.sourceImportJob?.status || commercial?.latestSource?.status} />
             </dl>
@@ -667,14 +698,14 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                               {workplace.contact.displayName}
                             </Link>
                           </h3>
-                          {workplace.isPrimary ? <StateBadge tone="positive">{t("detail.primaryWorkplace")}</StateBadge> : null}
-                          {workplace.endedOn ? <StateBadge>{t("detail.historicalWorkplace")}</StateBadge> : null}
+                          {workplace.isPrimary ? <StateBadge tone="positive" hint={t("detail.hint.primaryWorkplace")}>{t("detail.primaryWorkplace")}</StateBadge> : null}
+                          {workplace.endedOn ? <StateBadge hint={t("detail.hint.historicalWorkplace")}>{t("detail.historicalWorkplace")}</StateBadge> : null}
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {[workplace.contact.specialtyName, workplace.jobTitle, workplace.department].filter(Boolean).join(" · ") || t("detail.contactRoleMissing")}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {t("detail.contactCategory", { category: workplace.contact.category })}
+                          <HintValue text={t("detail.hint.contactCategory")}>{t("detail.contactCategory", { category: workplace.contact.category })}</HintValue>
                         </p>
                       </div>
                       <div className="grid content-start gap-1 text-sm">
@@ -704,10 +735,10 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                       <div className="grid gap-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold">{visit.agent.name}</h3>
-                          <StateBadge tone={visit.status === "CHECKED_OUT" ? "positive" : visit.status === "CANCELLED" ? "warning" : "neutral"}>
+                          <StateBadge tone={visit.status === "CHECKED_OUT" ? "positive" : visit.status === "CANCELLED" ? "warning" : "neutral"} hint={hintFor(VISIT_STATUS_HINT, visit.status)}>
                             {t(`detail.visitStatuses.${visit.status}`)}
                           </StateBadge>
-                          {visit.outcome ? <StateBadge>{t(`detail.visitOutcomes.${visit.outcome}`)}</StateBadge> : null}
+                          {visit.outcome ? <StateBadge hint={t("detail.hint.visitOutcome")}>{t(`detail.visitOutcomes.${visit.outcome}`)}</StateBadge> : null}
                         </div>
                         <p className="text-sm text-muted-foreground">{visit.resultNotes || t("detail.visitNotesMissing")}</p>
                       </div>
@@ -731,12 +762,16 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               <SectionState loading={sectionLoading === "staff"} error={sectionError} retry={() => void loadDetailSection("staff")} t={t}>
                 {canManage ? (
                   <div className="mb-4 flex flex-wrap gap-2 border-b border-zinc-200 pb-4 dark:border-zinc-700">
-                    <Button asChild size="sm">
-                      <Link href={`/mtm/customers?assignmentTarget=${encodeURIComponent(organizationId)}&assignmentMode=ASSIGN`}><UserPlus className="h-4 w-4" />{explorer("assign")}</Link>
-                    </Button>
-                    <Button asChild size="sm" variant="outline">
-                      <Link href={`/mtm/customers?assignmentTarget=${encodeURIComponent(organizationId)}&assignmentMode=UNASSIGN`}><UserMinus className="h-4 w-4" />{explorer("unassign")}</Link>
-                    </Button>
+                    <Hint text={t("detail.hint.assign")}>
+                      <Button asChild size="sm">
+                        <Link href={`/mtm/customers?assignmentTarget=${encodeURIComponent(organizationId)}&assignmentMode=ASSIGN`}><UserPlus className="h-4 w-4" />{explorer("assign")}</Link>
+                      </Button>
+                    </Hint>
+                    <Hint text={t("detail.hint.unassign")}>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/mtm/customers?assignmentTarget=${encodeURIComponent(organizationId)}&assignmentMode=UNASSIGN`}><UserMinus className="h-4 w-4" />{explorer("unassign")}</Link>
+                      </Button>
+                    </Hint>
                   </div>
                 ) : null}
                 {staff?.agentAssignments.length ? (
@@ -746,8 +781,8 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-semibold">{assignment.agent.name}</h3>
-                            <StateBadge>{t(`detail.assignmentRoles.${assignment.role}`)}</StateBadge>
-                            {!assignment.effectiveTo ? <StateBadge tone="positive">{t("detail.currentAssignment")}</StateBadge> : null}
+                            <StateBadge hint={hintFor(ASSIGNMENT_ROLE_HINT, assignment.role)}>{t(`detail.assignmentRoles.${assignment.role}`)}</StateBadge>
+                            {!assignment.effectiveTo ? <StateBadge tone="positive" hint={t("detail.hint.currentAssignment")}>{t("detail.currentAssignment")}</StateBadge> : null}
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">{assignment.reason || t("detail.assignmentReasonMissing")}</p>
                         </div>
@@ -766,9 +801,9 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
             <SectionFrame title={t("detail.managerAndCoverage")} description={t("detail.managerAndCoverageDescription")}>
               <SectionState loading={sectionLoading === "staff"} error={sectionError} retry={() => void loadDetailSection("staff")} t={t}>
                 <dl>
-                  <DefinitionRow label={t("detail.managingManager")} value={staff?.managingManager?.name} />
-                  <DefinitionRow label={t("detail.potentialRecords")} value={staff ? numberFormatter.format(staff.fieldPotentials.length) : null} />
-                  <DefinitionRow label={t("detail.coverageAsOf")} value={staff?.fieldPotentials[0]?.periodStart ? dateFormatter.format(new Date(staff.fieldPotentials[0].periodStart)) : null} />
+                  <DefinitionRow label={t("detail.managingManager")} hint={t("detail.hint.managingManager")} value={staff?.managingManager?.name} />
+                  <DefinitionRow label={t("detail.potentialRecords")} hint={t("detail.hint.potentialRecords")} value={staff ? numberFormatter.format(staff.fieldPotentials.length) : null} />
+                  <DefinitionRow label={t("detail.coverageAsOf")} hint={t("detail.hint.coverageAsOf")} value={staff?.fieldPotentials[0]?.periodStart ? dateFormatter.format(new Date(staff.fieldPotentials[0].periodStart)) : null} />
                 </dl>
               </SectionState>
             </SectionFrame>
