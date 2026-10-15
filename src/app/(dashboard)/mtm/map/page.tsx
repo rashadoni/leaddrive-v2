@@ -36,6 +36,7 @@ import {
   type RosterView,
 } from "@/lib/mtm/live-map-roster"
 import { liveMapDaySteps } from "@/lib/mtm/live-map-day-steps"
+import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
 import { createDateFormatter, formatDateTime, formatTime } from "@/lib/format-date"
 import { effectiveGeofenceRadius, formatMtmArea, formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/live-feed-alerts"
@@ -1346,6 +1347,7 @@ export default function MtmMapPage() {
   const renderAgentDetail = (agent: AgentLocation) => {
     const appPresent = agent.isOnline
     const hasFreshGps = agent.freshness === "ONLINE"
+    const speedKmh = mtmSpeedKmh(agent.speed)
     const workdayTone = agent.workdayState === "ACTIVE"
       ? "font-medium text-emerald-700 dark:text-emerald-400"
       : agent.workdayState === "PAUSED"
@@ -1498,7 +1500,7 @@ export default function MtmMapPage() {
           {agent.managerName ? <span data-testid="live-map-agent-manager">{tMap("roster.columns.manager")}: {agent.managerName}</span> : null}
           {/* The labels a manager put on him — the list shows them only as a column somebody switched on. */}
           {agent.tags?.length ? <span data-testid="live-map-agent-tags">{tMap("roster.columns.tags")}: {agent.tags.join(", ")}</span> : null}
-          {agent.speed != null && agent.speed > 0 ? <HintValue text={tMap("hint.speed")}>{tMap("roster.kmh", { value: agent.speed.toFixed(0) })}</HintValue> : null}
+          {speedKmh ? <HintValue text={tMap("hint.speed")}>{tMap("roster.kmh", { value: speedKmh })}</HintValue> : null}
           {agent.routeCompletion > 0 ? <HintValue text={tMap("hint.routeCompletion")}><Navigation className="inline h-3 w-3" /> {agent.routeCompletion}%</HintValue> : null}
           {agent.accuracy != null ? <HintValue text={tMap("hint.accuracy", { meters: Math.round(agent.accuracy) })}>±{Math.round(agent.accuracy)} m</HintValue> : null}
           {agent.battery != null ? <HintValue className="inline-flex items-center" text={tMap("hint.battery")}><Battery className="mr-0.5 h-3 w-3" />{Math.round(agent.battery)}%</HintValue> : null}

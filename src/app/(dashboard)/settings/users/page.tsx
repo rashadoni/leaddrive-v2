@@ -290,7 +290,7 @@ function UserFormDialog({
     setFieldCardsFailed(false)
     setFieldCardPick(null)
     setFieldRolePick(null)
-    fetch("/api/v1/mtm/agents?limit=200", {
+    fetch("/api/v1/mtm/agents?limit=200&includeEmployees=1", {
       headers: orgId ? { "x-organization-id": orgId } : undefined,
     })
       .then(async (res) => {

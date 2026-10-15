@@ -15,6 +15,7 @@ import { clusterLiveMapClients, liveMapClientColor, type LiveMapClient, type Liv
 import { liveMapAgentMarker } from "@/lib/mtm/live-map-agent-marker"
 import { liveMapZoneHex, liveMapZonesLargestFirst, zoneAreaSquareMeters, type LiveMapZone, type LiveMapZoneChange } from "@/lib/mtm/live-map-zones"
 import { formatMtmArea } from "@/lib/mtm/visit-place-check"
+import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
 
 // F-24: rewritten on Leaflet. Google Maps + AdvancedMarker had been the
 // source of 5 hotfixes in a month — Vector tiles need a real Map ID, the React
@@ -1275,6 +1276,7 @@ export default function MtmLiveMap({
             const status = agent.fieldStatus || (agent.isOnline ? "ON_ROAD" : "OFFLINE")
             const statusKey: MtmFieldStatus = isMtmFieldStatus(status) ? status : "OFFLINE"
             const isFocused = agent.agentId === focusAgentId
+            const speedKmh = mtmSpeedKmh(agent.speed)
             return (
               <GlidingMarker
                 key={marker.id}
@@ -1301,7 +1303,7 @@ export default function MtmLiveMap({
                     </div>
                     <div style={{ fontSize: 12, color: "#64748b", marginBottom: 2 }}>
                       {tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}
-                      {agent.speed && agent.speed > 0 ? ` · ${agent.speed.toFixed(1)} km/h` : ""}
+                      {speedKmh ? ` · ${tMap("roster.kmh", { value: speedKmh })}` : ""}
                       {agent.battery != null ? ` · 🔋${agent.battery}%` : ""}
                     </div>
                     <div style={{ fontSize: 12, color: agent.freshness === "STALE" ? "#64748b" : "#334155", fontWeight: 600, marginBottom: 2 }}>

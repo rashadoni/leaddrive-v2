@@ -1,4 +1,5 @@
 import type { MtmDashboardAgent } from "@/lib/mtm-types"
+import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
 import { ROSTER_COLUMNS, rosterLabels, rosterValue, type RosterColumnId } from "@/lib/mtm/live-map-roster"
 
 /**
@@ -79,8 +80,10 @@ export function rosterCellText(agent: MtmDashboardAgent, column: RosterColumnId,
     }
     case "route":
       return (agent.routeTotal ?? 0) > 0 ? words.routeProgress(agent.routeVisited ?? 0, agent.routeTotal ?? 0) : EMPTY
-    case "speed":
-      return finite(agent.speed) ? words.speed(Math.round(agent.speed)) : EMPTY
+    case "speed": {
+      const kmh = mtmSpeedKmh(agent.speed)
+      return kmh == null ? EMPTY : words.speed(kmh)
+    }
     case "battery":
       return finite(agent.battery) ? `${Math.round(agent.battery)}%` : EMPTY
   }

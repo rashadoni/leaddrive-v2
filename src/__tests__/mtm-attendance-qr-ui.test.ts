@@ -60,7 +60,20 @@ describe("branch QR display", () => {
   })
   it("does not grant a manager the admin setting", async () => {
     directory.canConfigure = false; await render()
-    expect(host.querySelector<HTMLButtonElement>('[role="switch"]')!.disabled).toBe(true); expect(image()).not.toBeNull()
+    // The manager sees the state in words and no button that would only be refused.
+    expect(host.querySelector('[role="switch"]')).toBeNull(); expect(image()).not.toBeNull()
+    expect(host.querySelector('[data-testid="attendance-qr-rule"]')!.textContent).toContain(messages.ru.mtmAttendance.installationOn)
+  })
+  it("names the action, not the state, on the administrator's button", async () => {
+    await render()
+    expect(host.querySelector('[role="switch"]')!.textContent).toBe(messages.ru.mtmAttendance[directory.enabled ? "qrTurnOff" : "qrTurnOn"])
+  })
+  it("sends to Branches when there is no branch to show a code for", async () => {
+    directory.branches = []; await render()
+    expect(host.querySelector("#attendance-qr-branch")).toBeNull()
+    const link = host.querySelector('[data-testid="attendance-qr-no-branches"] a')!
+    expect(link.getAttribute("href")).toBe("/mtm/attendance/people?tab=branches")
+    expect(link.textContent).toBe(messages.ru.mtmAttendance.qrAddBranch)
   })
   it("hides codes when the tab is no longer visible and reloads on return", async () => {
     await render(); const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden")

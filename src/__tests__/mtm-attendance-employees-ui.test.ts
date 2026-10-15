@@ -140,3 +140,49 @@ describe("automatic employee participation and immutable history UI", () => {
     fetchMock.mockImplementation(() => new Promise<Response>(() => {})); await click("employeesRefresh"); const signal = fetchMock.mock.calls.at(-1)![1]!.signal!; await act(async () => root.unmount()); unmounted = true; expect(signal.aborted).toBe(true)
   })
 })
+
+// Owner, 2026-10-15: HR adds office staff right here, apart from MTM agents.
+describe("Add employee", () => {
+  const p = (key: string, values?: Record<string, string | number>) => createTranslator({ locale, messages: messages[locale], namespace: "personnel" })(key, values)
+  const input = (label: string) => [...container.querySelectorAll("label")].find(node => node.querySelector("span")?.textContent === p(label))!.querySelector("input")!
+  async function type(label: string, value: string) {
+    await act(async () => { const node = input(label); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(node, value); node.dispatchEvent(new Event("input", { bubbles: true })) })
+  }
+  const form = () => container.querySelector<HTMLFormElement>('[data-testid="attendance-add-employee-form"]')!
+  async function send() { await act(async () => form().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))) }
+  const creates = () => fetchMock.mock.calls.filter(([url, options]) => String(url).endsWith("/employees/new") && options?.method === "POST")
+
+  it("creates the employee with the app login, then lists them and says how they sign in", async () => {
+    fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ success: true, data: { userId: "u-new", agentId: "a-new" } }), { status: 201 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeeEmail", "Nigar@Example.test"); await type("addEmployeePassword", "Kaxebomu-4821!")
+    await send()
+    expect(creates()).toHaveLength(1)
+    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", email: "Nigar@Example.test", phone: null, password: "Kaxebomu-4821!" })
+    expect(container.querySelector('[data-testid="attendance-employee-added"]')!.textContent).toBe(p("addEmployeeDone", { name: "Nigar Demo", email: "nigar@example.test" }))
+    expect(container.querySelector('[data-testid="attendance-add-employee-form"]')).toBeNull()
+  })
+
+  it("refuses a weak password on the spot and suggests a strong one", async () => {
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeeEmail", "nigar@example.test"); await type("addEmployeePassword", "short")
+    await send()
+    expect(creates()).toHaveLength(0)
+    expect(form().querySelector('[role="alert"]')!.textContent).toBe(p("addEmployeePasswordWeak"))
+    await act(async () => [...form().querySelectorAll("button")].find(node => node.textContent === p("addEmployeeSuggestPassword"))!.click())
+    expect(input("addEmployeePassword").value).toMatch(/^[A-Z][a-z]{7}-\d{4}!$/)
+    expect(input("addEmployeePassword").type).toBe("text")
+  })
+
+  it("names a taken email in words and keeps what was typed", async () => {
+    fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ code: "MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN" }), { status: 409 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeeEmail", "taken@example.test"); await type("addEmployeePassword", "Kaxebomu-4821!")
+    await send()
+    expect(form().querySelector('[role="alert"]')!.textContent).toBe(p("addEmployeeEmailTaken"))
+    expect(input("addEmployeeEmail").value).toBe("taken@example.test")
+  })
+})
