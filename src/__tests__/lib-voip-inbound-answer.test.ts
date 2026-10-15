@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest"
 
 import {
   DEFAULT_INBOUND_GREETING,
+  INBOUND_CALL_CONTEXT,
+  MAX_INBOUND_RULES_LENGTH,
   deriveVoiceAgentMode,
+  inboundCallContext,
+  inboundRulesFitTransport,
   readInboundAnswerPolicy,
   shouldAiAnswer,
 } from "@/lib/voip/inbound-answer"
@@ -35,6 +39,26 @@ describe("inbound answer policy", () => {
   it("uses the organisation's greeting, or a neutral one that never claims we called", () => {
     expect(readInboundAnswerPolicy({ ...station, voiceAgentInboundGreeting: "  Salam!  " }).greeting).toBe("Salam!")
     expect(readInboundAnswerPolicy({ ...station, voiceAgentInboundGreeting: "   " }).greeting).toBe(DEFAULT_INBOUND_GREETING)
+  })
+
+  it("adds only configured inbound rules to the fixed incoming-call context", () => {
+    const policy = readInboundAnswerPolicy({ ...station, voiceAgentInboundRules: "  Məsləhət təklif et.  " })
+    expect(policy.conversationRules).toBe("Məsləhət təklif et.")
+    expect(inboundCallContext(policy)).toContain(INBOUND_CALL_CONTEXT)
+    expect(inboundCallContext(policy)).toContain("Məsləhət təklif et.")
+    for (const rules of [undefined, "", "  ", 123]) {
+      expect(inboundCallContext(readInboundAnswerPolicy({ ...station, voiceAgentInboundRules: rules })))
+        .toBe(INBOUND_CALL_CONTEXT)
+    }
+  })
+
+  it("bounds legacy rules to the PBX context and JSON byte limits", () => {
+    for (const rules of ["ə".repeat(2_000), "漢".repeat(2_000), "\u0000".repeat(2_000)]) {
+      const policy = readInboundAnswerPolicy({ ...station, voiceAgentInboundRules: rules })
+      expect(policy.conversationRules.length).toBeLessThanOrEqual(MAX_INBOUND_RULES_LENGTH)
+      expect(inboundRulesFitTransport(policy.conversationRules)).toBe(true)
+      expect(inboundCallContext(policy).length).toBeLessThanOrEqual(2_000)
+    }
   })
 })
 

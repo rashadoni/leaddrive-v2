@@ -23,6 +23,15 @@ export const MIN_RINGS_BEFORE_AI = 1
 export const MAX_RINGS_BEFORE_AI = 4
 export const DEFAULT_RINGS_BEFORE_AI = 3
 export const MAX_INBOUND_GREETING_LENGTH = 500
+export const MAX_INBOUND_RULES_LENGTH = 1_000
+// The PBX reads an 8 KiB response and at most 2,000 context characters.
+// Bound escaped text too, so unusual control characters cannot consume the
+// response budget reserved for the exact greeting and call instructions.
+export const MAX_INBOUND_RULES_JSON_BYTES = 3_002
+
+export function inboundRulesFitTransport(value: string): boolean {
+  return new TextEncoder().encode(JSON.stringify(value)).length <= MAX_INBOUND_RULES_JSON_BYTES
+}
 
 /**
  * Spoken word for word when the AI picks up an inbound call and the org has
@@ -46,6 +55,13 @@ export type InboundAnswerPolicy = {
   mode: InboundAnswerMode
   ringsBeforeAi: number
   greeting: string
+  conversationRules: string
+}
+
+export function inboundCallContext(policy: InboundAnswerPolicy): string {
+  return policy.conversationRules
+    ? `${INBOUND_CALL_CONTEXT}\n\nDaxil olan zəng üçün əlavə qaydalar:\n${policy.conversationRules}`
+    : INBOUND_CALL_CONTEXT
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -78,10 +94,18 @@ export function readInboundAnswerPolicy(settingsValue: unknown): InboundAnswerPo
   const greeting = typeof settings.voiceAgentInboundGreeting === "string"
     ? settings.voiceAgentInboundGreeting.trim().slice(0, MAX_INBOUND_GREETING_LENGTH)
     : ""
+  let conversationRules = typeof settings.voiceAgentInboundRules === "string"
+    ? settings.voiceAgentInboundRules.trim().slice(0, MAX_INBOUND_RULES_LENGTH)
+    : ""
+  // Legacy/imported settings may predate the write-time transport guard.
+  while (!inboundRulesFitTransport(conversationRules)) {
+    conversationRules = conversationRules.slice(0, -1)
+  }
   return {
     mode: settings.provider === "asterisk" && settings.voiceAgentEnabled === true ? mode : "human",
     ringsBeforeAi: clampRingsBeforeAi(settings.inboundAiAfterRings),
     greeting: greeting || DEFAULT_INBOUND_GREETING,
+    conversationRules,
   }
 }
 

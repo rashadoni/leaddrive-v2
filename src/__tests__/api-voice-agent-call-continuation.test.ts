@@ -306,6 +306,50 @@ describe("an inbound call the AI answered", () => {
     expect(body.opening).not.toMatch(/zəng etmişəm/u)
   })
 
+  it.each(["ai", "human_then_ai"])("passes separate rules when AI answers in %s mode", async (mode) => {
+    mocks.findFirst.mockResolvedValueOnce(inboundRow())
+    mocks.findConfigs.mockResolvedValue([{
+      settings: {
+        provider: "asterisk", voiceAgentEnabled: true, inboundAnswerMode: mode,
+        voiceAgentInboundGreeting: "Salam! Mən virtual köməkçiyəm.",
+        voiceAgentInboundRules: "  Məsləhət təklif et və bir sual ver.  ",
+        voiceAgentPrompt: "Unrelated outbound script",
+      },
+    }])
+    const body = await (await GET(request())).json()
+    expect(body.opening).toBe("Salam! Mən virtual köməkçiyəm.")
+    expect(body.context).toContain(INBOUND_CALL_CONTEXT)
+    expect(body.context).toContain("Məsləhət təklif et və bir sual ver.")
+    expect(body.context).not.toContain("Unrelated outbound script")
+    expect(mocks.findConfigs.mock.calls[0][0].where.organizationId).toBe("org-test")
+  })
+
+  it("keeps an inbound-origin callback on its continuation without new greeting/rules", async () => {
+    mocks.findFirst.mockResolvedValueOnce(callbackRow({ direction: "inbound" })).mockResolvedValueOnce(originalRow())
+    const body = await (await GET(request())).json()
+    expect(body).toEqual({ continuation: TRANSCRIPT, conversation: null })
+    expect(mocks.findConfigs).not.toHaveBeenCalled()
+  })
+
+  it("fits multibyte JSON by removing oldest correspondence, preserving exact greeting and rules", async () => {
+    mocks.findFirst.mockResolvedValueOnce(inboundRow({ leadId: "lead-1" }))
+    const opening = "漢".repeat(500)
+    const rules = "語".repeat(1_000)
+    mocks.findConfigs.mockResolvedValue([{
+      settings: { provider: "asterisk", voiceAgentEnabled: true, voiceAgentInboundGreeting: opening, voiceAgentInboundRules: rules },
+    }])
+    mocks.findMessages.mockResolvedValue(Array.from({ length: 6 }, (_, index) => ({
+      direction: "inbound", body: `${index}${"字".repeat(298)}`,
+    })))
+    const text = await (await GET(request())).text()
+    const body = JSON.parse(text)
+    expect(Buffer.byteLength(text, "utf8")).toBeLessThanOrEqual(8_000)
+    expect(body.opening).toBe(opening)
+    expect(body.context).toContain(rules)
+    expect(body.conversation).toContain(`0${"字".repeat(298)}`)
+    expect(body.conversation).not.toContain(`4${"字".repeat(298)}`)
+  })
+
   it("adds nothing to an outbound AI call or to a human inbound call", async () => {
     for (const row of [
       callbackRow({ continuesCallId: null, direction: "outbound" }),

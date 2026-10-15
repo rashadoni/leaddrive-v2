@@ -11,8 +11,10 @@ import {
 import {
   INBOUND_ANSWER_MODES,
   MAX_INBOUND_GREETING_LENGTH,
+  MAX_INBOUND_RULES_LENGTH,
   MAX_RINGS_BEFORE_AI,
   MIN_RINGS_BEFORE_AI,
+  inboundRulesFitTransport,
 } from "@/lib/voip/inbound-answer";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +32,9 @@ const commonSettings = z.object({
   inboundAnswerMode: z.enum(INBOUND_ANSWER_MODES).optional(),
   inboundAiAfterRings: z.number().int().min(MIN_RINGS_BEFORE_AI).max(MAX_RINGS_BEFORE_AI).optional(),
   voiceAgentInboundGreeting: z.string().trim().max(MAX_INBOUND_GREETING_LENGTH).optional(),
+  voiceAgentInboundRules: z.string().trim().max(MAX_INBOUND_RULES_LENGTH)
+    .refine(inboundRulesFitTransport, "Incoming call rules exceed the voice connection text limit")
+    .optional(),
 });
 
 const settingsSchema = z.discriminatedUnion("provider", [

@@ -319,6 +319,7 @@ describe("VoIP-only provider configuration", () => {
       inboundAnswerMode: "human_then_ai",
       inboundAiAfterRings: 3,
       voiceAgentInboundGreeting: "Salam! Sizi dinləyirəm.",
+      voiceAgentInboundRules: "  Məsləhət təklif et.  ",
     });
 
     const res = await PUT(request("PUT", payload));
@@ -330,6 +331,7 @@ describe("VoIP-only provider configuration", () => {
           inboundAnswerMode: "human_then_ai",
           inboundAiAfterRings: 3,
           voiceAgentInboundGreeting: "Salam! Sizi dinləyirəm.",
+          voiceAgentInboundRules: "Məsləhət təklif et.",
         }),
       }),
     }));
@@ -338,7 +340,7 @@ describe("VoIP-only provider configuration", () => {
   it("keeps the stored inbound answer when a tab from before the setting saves", async () => {
     mocks.findFirst.mockResolvedValue({
       ...row,
-      settings: { ...row.settings, inboundAnswerMode: "ai", inboundAiAfterRings: 2 },
+      settings: { ...row.settings, inboundAnswerMode: "ai", inboundAiAfterRings: 2, voiceAgentInboundRules: "Stored inbound rules" },
     });
     mocks.update.mockResolvedValue(row);
 
@@ -347,9 +349,48 @@ describe("VoIP-only provider configuration", () => {
     expect(res.status).toBe(200);
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
-        settings: expect.objectContaining({ inboundAnswerMode: "ai", inboundAiAfterRings: 2 }),
+        settings: expect.objectContaining({ inboundAnswerMode: "ai", inboundAiAfterRings: 2, voiceAgentInboundRules: "Stored inbound rules" }),
       }),
     }));
+  });
+
+  it("lets an administrator clear inbound rules without touching general rules", async () => {
+    mocks.findFirst.mockResolvedValue({ ...row, settings: { ...row.settings, voiceAgentInboundRules: "Old rules" } });
+    mocks.update.mockResolvedValue(row);
+    const payload = asteriskPayload({ id: "voip_1" });
+    Object.assign(payload.settings, { voiceAgentInboundRules: "  " });
+    expect((await PUT(request("PUT", payload))).status).toBe(200);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ settings: expect.objectContaining({ voiceAgentInboundRules: "", voiceAgentPrompt: "prompt" }) }),
+    }));
+  });
+
+  it("returns saved incoming rules and greeting to the VoIP administrator", async () => {
+    mocks.findFirst.mockResolvedValue({ ...row, settings: {
+      ...row.settings, voiceAgentInboundGreeting: "Salam!", voiceAgentInboundRules: "Məsləhət təklif et.",
+    } });
+    const response = await GET(request());
+    expect(response.status).toBe(200);
+    expect((await response.json()).data.settings).toEqual(expect.objectContaining({
+      voiceAgentInboundGreeting: "Salam!", voiceAgentInboundRules: "Məsləhət təklif et.",
+    }));
+  });
+
+  it("accepts 1,000 multibyte characters at the incoming rules boundary", async () => {
+    mocks.findFirst.mockResolvedValue(row);
+    mocks.update.mockResolvedValue(row);
+    const payload = asteriskPayload({ id: "voip_1" });
+    Object.assign(payload.settings, { voiceAgentInboundRules: "漢".repeat(1_000) });
+    expect((await PUT(request("PUT", payload))).status).toBe(200);
+  });
+
+  it("rejects incoming rules beyond the character or escaped-byte limit before writing", async () => {
+    for (const rules of ["ə".repeat(1_001), "\u0000".repeat(1_000), 123]) {
+      const payload = asteriskPayload();
+      Object.assign(payload.settings, { voiceAgentInboundRules: rules });
+      expect((await PUT(request("PUT", payload))).status).toBe(400);
+    }
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
   it("refuses an AI inbound answer the line cannot deliver", async () => {

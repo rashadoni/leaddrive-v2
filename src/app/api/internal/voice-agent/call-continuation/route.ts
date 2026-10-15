@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { noteDemoCallConnecting } from "@/lib/demo-center/call-prompt-match"
 import { CALLBACK_FRESHNESS_MS } from "@/lib/voice-agent/callback-decision"
-import { INBOUND_CALL_CONTEXT } from "@/lib/voip/inbound-answer"
+import { inboundCallContext } from "@/lib/voip/inbound-answer"
 import { loadInboundAnswerPolicy } from "@/lib/voip/inbound-answer-config"
 
 export const dynamic = "force-dynamic"
@@ -45,7 +45,7 @@ export const dynamic = "force-dynamic"
  *
  * An inbound call the AI picked up also gets `opening` (the organisation's
  * inbound greeting, spoken word for word instead of the outbound "I am calling
- * you") and `context` (one fixed paragraph saying the customer called us).
+ * you") and `context` (the incoming-call scope and organisation's inbound rules).
  * Both are settings text, not customer data, so they add nothing to what a
  * stolen token can read.
  */
@@ -61,6 +61,10 @@ const CONVERSATION_MESSAGE_CHARS = 300
 const CONVERSATION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 /** Retry grace after the first collection. */
 const CONTINUATION_GRACE_MS = 2 * 60 * 1000
+// The deployed PBX reads at most 8,192 bytes before parsing this JSON.
+// Keep headroom and sacrifice only oldest written correspondence, never the
+// current greeting/rules. Outbound and callback responses are unchanged.
+const INBOUND_RESPONSE_BYTES = 8_000
 
 function authorized(request: NextRequest): boolean {
   const expected = process.env.FANUM_VOICE_RUNTIME_TOKEN
@@ -148,9 +152,9 @@ export async function GET(request: NextRequest) {
     // the demo's script (src/lib/demo-center/call-prompt-match.ts).
     await noteDemoCallConnecting(organizationId, callId, call)
     if (!call) return { continuation: null, conversation: null }
-    const inboundAi = call.callMode === "ai" && call.direction === "inbound"
-    const opening = inboundAi
-      ? (await loadInboundAnswerPolicy(organizationId)).greeting
+    const inboundAi = call.callMode === "ai" && call.direction === "inbound" && !call.continuesCallId
+    const inboundPolicy = inboundAi
+      ? await loadInboundAnswerPolicy(organizationId)
       : null
     // The written thread is available on every AI call, not only callbacks:
     // opening with "your number was in our system" to somebody who has been
@@ -159,9 +163,19 @@ export async function GET(request: NextRequest) {
       ? await leadConversation({ organizationId, leadId: call.leadId, now })
       : null
     const continuation = await continuationFor(call, organizationId, now)
-    return inboundAi
-      ? { continuation, conversation, opening, context: INBOUND_CALL_CONTEXT }
-      : { continuation, conversation }
+    if (!inboundPolicy) return { continuation, conversation }
+    const inboundContext = {
+      continuation,
+      conversation,
+      opening: inboundPolicy.greeting,
+      context: inboundCallContext(inboundPolicy),
+    }
+    while (inboundContext.conversation && Buffer.byteLength(JSON.stringify(inboundContext), "utf8") > INBOUND_RESPONSE_BYTES) {
+      const lines = inboundContext.conversation.split("\n")
+      lines.shift()
+      inboundContext.conversation = lines.join("\n") || null
+    }
+    return inboundContext
   })
 
   return NextResponse.json(

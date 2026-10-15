@@ -23,6 +23,7 @@ import {
   DEFAULT_RINGS_BEFORE_AI,
   INBOUND_ANSWER_MODES,
   MAX_INBOUND_GREETING_LENGTH,
+  MAX_INBOUND_RULES_LENGTH,
   MAX_RINGS_BEFORE_AI,
   MIN_RINGS_BEFORE_AI,
   clampRingsBeforeAi,
@@ -70,6 +71,7 @@ type ChannelSettings = {
   inboundAnswerMode?: InboundAnswerMode
   inboundAiAfterRings?: number
   voiceAgentInboundGreeting?: string
+  voiceAgentInboundRules?: string
 }
 
 type ChannelConfig = {
@@ -151,6 +153,7 @@ export default function VoipSettingsPage() {
   const [inboundAnswerMode, setInboundAnswerMode] = useState<InboundAnswerMode>("human")
   const [inboundAiAfterRings, setInboundAiAfterRings] = useState(DEFAULT_RINGS_BEFORE_AI)
   const [inboundGreeting, setInboundGreeting] = useState("")
+  const [inboundRules, setInboundRules] = useState("")
   const [voiceAgentPrompt, setVoiceAgentPrompt] = useState(DEFAULT_VOICE_AGENT_PROMPT)
   const [voiceAgentKnowledge, setVoiceAgentKnowledge] = useState("")
 
@@ -206,6 +209,7 @@ export default function VoipSettingsPage() {
         )
         setInboundAiAfterRings(clampRingsBeforeAi(s.inboundAiAfterRings))
         setInboundGreeting(s.voiceAgentInboundGreeting || "")
+        setInboundRules(s.voiceAgentInboundRules || "")
         setVoiceAgentPrompt(s.voiceAgentPrompt || DEFAULT_VOICE_AGENT_PROMPT)
         setVoiceAgentKnowledge(s.voiceAgentKnowledge || "")
 
@@ -293,6 +297,7 @@ export default function VoipSettingsPage() {
       inboundAnswerMode: effectiveInboundAnswerMode,
       inboundAiAfterRings,
       voiceAgentInboundGreeting: inboundGreeting.trim(),
+      voiceAgentInboundRules: inboundRules.trim(),
       voiceAgentPrompt: voiceAgentPrompt.trim(),
       voiceAgentKnowledge: voiceAgentKnowledge.trim(),
     }
@@ -736,22 +741,45 @@ export default function VoipSettingsPage() {
                 )}
 
                 {voiceAgentEnabled && inboundAnswerMode !== "human" && (
-                  <div className="grid gap-2">
-                    <Label htmlFor="inbound-greeting" className="text-sm font-medium">
-                      {t("inboundGreetingLabel")}
-                    </Label>
-                    <Textarea
-                      id="inbound-greeting"
-                      value={inboundGreeting}
-                      onChange={event => setInboundGreeting(event.target.value)}
-                      rows={3}
-                      maxLength={MAX_INBOUND_GREETING_LENGTH}
-                      placeholder={DEFAULT_INBOUND_GREETING}
-                    />
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      {t("inboundGreetingHint")}
-                    </p>
-                  </div>
+                  <section aria-labelledby="inbound-conversation-title" className="space-y-4 rounded-lg border p-3">
+                    <div className="space-y-1">
+                      <h3 id="inbound-conversation-title" className="text-sm font-medium">{t("inboundConversationTitle")}</h3>
+                      <p className="text-xs leading-relaxed text-muted-foreground">{t("inboundConversationHint")}</p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="inbound-greeting" className="text-sm font-medium">
+                        {t("inboundGreetingLabel")}
+                      </Label>
+                      <Textarea
+                        id="inbound-greeting"
+                        value={inboundGreeting}
+                        onChange={event => setInboundGreeting(event.target.value)}
+                        rows={3}
+                        maxLength={MAX_INBOUND_GREETING_LENGTH}
+                        placeholder={DEFAULT_INBOUND_GREETING}
+                        aria-describedby="inbound-greeting-hint"
+                      />
+                      <p id="inbound-greeting-hint" className="text-xs leading-relaxed text-muted-foreground">
+                        {t("inboundGreetingHint")}
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="inbound-conversation-rules" className="text-sm font-medium">{t("inboundRulesLabel")}</Label>
+                      <Textarea
+                        id="inbound-conversation-rules"
+                        value={inboundRules}
+                        onChange={event => setInboundRules(event.target.value)}
+                        rows={5}
+                        maxLength={MAX_INBOUND_RULES_LENGTH}
+                        placeholder={t("inboundRulesPlaceholder")}
+                        aria-describedby="inbound-rules-hint inbound-rules-count"
+                      />
+                      <p id="inbound-rules-hint" className="text-xs leading-relaxed text-muted-foreground">{t("inboundRulesHint")}</p>
+                      <p id="inbound-rules-count" className="text-xs text-muted-foreground">
+                        {t("inboundRulesCount", { count: inboundRules.length, max: MAX_INBOUND_RULES_LENGTH })}
+                      </p>
+                    </div>
+                  </section>
                 )}
               </div>
             )}
