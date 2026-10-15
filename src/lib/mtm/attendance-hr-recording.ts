@@ -7,6 +7,7 @@ import { resolveAttendanceReviewerScope, type AttendanceReviewer } from "@/lib/m
 import { attendanceRequestDto, attendanceRequestSelect, lockAttendanceRequests } from "@/lib/mtm/attendance-request-store"
 import { AttendanceRequestDetailsSchema, AttendanceRequestError, attendanceRequestWindowsOverlap, type AttendanceRequestDto } from "@/lib/mtm/attendance-request-contract"
 import { readAttendanceDayKinds } from "@/lib/mtm/attendance-day-kind-store"
+import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { AttendanceHrRecordingInputSchema, canRecordAttendanceDayKind, type AttendanceHrDirectory } from "@/lib/mtm/attendance-hr-recording-contract"
 import az from "../../../messages/az.json"
 import ru from "../../../messages/ru.json"
@@ -21,7 +22,8 @@ async function recordingTimezone(tx: Prisma.TransactionClient, organizationId: s
 export async function readAttendanceHrDirectory(reviewer: AttendanceReviewer): Promise<AttendanceHrDirectory> {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const actor = await resolveAttendanceReviewerScope(tx, reviewer)
-    const employees = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, status: "ACTIVE",
+    // Personnel lists people in attendance only; MTM field agents stay in MTM (owner, 2026-10-14).
+    const employees = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, status: "ACTIVE", ...ATTENDANCE_TRACKED_CARD_WHERE,
       ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }),
       ...(actor.agentId ? { NOT: { id: actor.agentId } } : {}), OR: [{ userId: null }, { userId: { not: reviewer.userId } }],
     }, select: { id: true, name: true, teamId: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 2001 })
@@ -45,7 +47,7 @@ export async function recordAttendanceDaysInTransaction(tx: Prisma.TransactionCl
   for (const agentId of input.agentIds) await lockAttendanceRequests(tx, { organizationId, agentId })
   const actor = await resolveAttendanceReviewerScope(tx, reviewer)
   // Read after all locks; a deactivation before its lock must invalidate the batch.
-  const targets = await tx.mtmAgent.findMany({ where: { organizationId, id: { in: input.agentIds }, status: "ACTIVE" },
+  const targets = await tx.mtmAgent.findMany({ where: { organizationId, id: { in: input.agentIds }, status: "ACTIVE", ...ATTENDANCE_TRACKED_CARD_WHERE },
     select: { id: true, userId: true, user: { select: { preferredLanguage: true } } } })
   if (targets.length !== input.agentIds.length || targets.some(target => target.userId === userId || !canReviewMtmRouteRequest(actor, target.id))) {
     throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)

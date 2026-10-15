@@ -80,6 +80,10 @@ describe("actual HR recording form", () => {
     for (const input of container.querySelectorAll("input,select,textarea")) expect(container.querySelector(`label[for="${input.id}"]`)).not.toBeNull()
     capture(locale)
   })
+  it("says why the recorder's own days are not in the list", async () => {
+    await render()
+    expect(container.querySelector('[data-testid="hr-recording-not-self"]')!.textContent).toBe(t("hrRecordingNotSelf"))
+  })
   it("records a sorted, explicit team snapshot with the loaded catalogue version and waits before another operation", async () => {
     await render(); await fill(); await click("hrRecordingSave")
     expect(AttendanceHrRecordingInputSchema.safeParse(payload()).success).toBe(true)
