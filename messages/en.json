@@ -335,6 +335,7 @@
     "personnelToday": "Who came, who is late and what is waiting for your decision",
     "personnelTimesheet": "Month timesheet, reports and Excel/PDF",
     "personnelPeople": "Employees, branches and phones",
+    "personnelReports": "N-1t timesheet, summaries, lateness, leave, Excel/PDF",
     "personnelSettings": "Work hours, schedules, leave and checks"
   },
   "skillRouting": {
@@ -661,6 +662,7 @@
     "personnelToday": "Today",
     "personnelTimesheet": "Timesheet",
     "personnelPeople": "Employees",
+    "personnelReports": "Reports",
     "personnelSettings": "Settings"
   },
   "mtmModuleNavigation": {
@@ -19205,7 +19207,29 @@
     "overtimeApprovalHint": "Employees submit overtime requests; managers review them in the shared queue. The full allowance belongs to its sole intersecting recorded shift, or otherwise to the request date. Ambiguous matches show a dash.",
     "overtimeThresholdHint": "Set the threshold in a published schedule. A missing threshold is not treated as zero.",
     "overtimeTotals": "Above plan: {excess}. Approved by requests: {approved}.",
-    "overtimePartial": "Partial total: unfinished, invalid and ambiguous hours are excluded."
+    "overtimePartial": "Partial total: unfinished, invalid and ambiguous hours are excluded.",
+    "reportIndex": "No.",
+    "reportWorkedDays": "Days worked",
+    "reportHours": "Hours",
+    "reportPlannedDays": "Planned days",
+    "reportExpected": "Norm",
+    "reportEarlyCount": "Early departures",
+    "reportLeaveDays": "Leave, days",
+    "reportSickDays": "Sick leave, days",
+    "reportOvertimeHours": "Overtime",
+    "reportAttendanceRate": "Attendance",
+    "reportBalance": "Difference",
+    "reportAbsenceKinds": "Absence kinds",
+    "reportAbsenceTotal": "Total days",
+    "reportSummaryTitle": "Employee summary",
+    "reportSummaryTitleHint": "One row per employee for the period. Attendance is days worked out of planned days.",
+    "reportBalanceTitle": "Hours balance",
+    "reportBalanceTitleHint": "Difference is worked minus norm: “+” over the norm, “−” short.",
+    "reportAbsenceKindsTitle": "Absence by kind",
+    "reportAbsenceKindsTitleHint": "Days per absence kind from the company catalogue.",
+    "reportTeamTitle": "By department",
+    "reportTeamTitleHint": "One row per team; people without a team get their own row.",
+    "reportN1tTitle": "N-1t timesheet"
   },
   "mtmReports": {
     "title": "Reports",
@@ -28567,6 +28591,70 @@
     "featureDisableConfirm": "The Personnel section disappears for everyone; arrival marks and reminders stop. All data is kept and comes back when attendance is turned on again.",
     "featureDisableAction": "Turn attendance off",
     "featureSaveError": "Couldn't save. Try again.",
+    "reportsTitle": "Reports",
+    "reportsIntro": "Each report has a period, a team and Excel and PDF export.",
+    "reportsNew": "new",
+    "reportGroups": {
+      "daily": "Every day",
+      "month": "Month and payroll",
+      "discipline": "Discipline and overtime",
+      "leave": "Leave and absence",
+      "control": "Units and control"
+    },
+    "reports": {
+      "day": {
+        "title": "Day card",
+        "hint": "Arrival, departure, break, worked time and lateness for everyone"
+      },
+      "absent": {
+        "title": "Who did not come",
+        "hint": "No arrival or departure mark and no reason"
+      },
+      "timesheet": {
+        "title": "Monthly timesheet",
+        "hint": "People × days with letters, day and hour totals"
+      },
+      "n1t": {
+        "title": "N-1t timesheet",
+        "hint": "The accounting form: no., name, unit, days 1–31, days and hours worked"
+      },
+      "summary": {
+        "title": "Employee summary",
+        "hint": "Planned and worked days, hours, lateness, absences, leave, sick leave, overtime, attendance %"
+      },
+      "balance": {
+        "title": "Hours balance",
+        "hint": "Norm, actual and difference — who worked less or more"
+      },
+      "late": {
+        "title": "Late arrivals and early departures",
+        "hint": "Every case: date, arrival, departure, minutes"
+      },
+      "overtime": {
+        "title": "Overtime",
+        "hint": "Hours over the norm and the company threshold; the law allows at most 4 h over 2 consecutive days"
+      },
+      "absenceKinds": {
+        "title": "Absence by kind",
+        "hint": "Leave, sick leave, unpaid, no-shows — days per kind"
+      },
+      "leaveBalances": {
+        "title": "Leave balances",
+        "hint": "Entitled, used and left"
+      },
+      "teams": {
+        "title": "By department",
+        "hint": "Attendance, hours, lateness, no-shows and overtime per team"
+      },
+      "journal": {
+        "title": "Mark log",
+        "hint": "Every mark: phone and server time"
+      },
+      "decisions": {
+        "title": "Requests and corrections",
+        "hint": "Who filed, who decided and when"
+      }
+    },
     "addEmployee": "Add employee",
     "addEmployeeHint": "The employee marks arrival and departure in the MTM app. Field agents are added in Route & Field, not here.",
     "addEmployeeName": "Full name",
