@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertCircle, CalendarClock, Check, CheckCircle2, ChevronDown, Clock3, FileText, ImagePlus, PackageCheck, PenLine, Presentation, RefreshCw, Save, Upload } from "lucide-react"
 import { toast } from "sonner"
+import { Hint, HintValue } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
@@ -434,7 +435,7 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
           <div className="flex items-center gap-2">
             <Icon className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">{t(`actions.${requirement.actionKey}`)}</span>
-            <span className={`text-xs ${done ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}>{count}/{requirement.minCount}</span>
+            <HintValue text={t("hint.actionCount")} className={`text-xs ${done ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}>{count}/{requirement.minCount}</HintValue>
           </div>
           {done && <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-300"><Check className="h-3.5 w-3.5" /> {t("done")}</span>}
         </div>
@@ -449,16 +450,18 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
           </div>
         )}
         {!done && requirement.actionKey === "PHOTO" && (
-          <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-primary">
-            <Upload className="h-4 w-4" /> {t("uploadPhoto")}
-            <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" className="sr-only" onChange={(event) => void uploadPhoto(event.target.files?.[0] ?? null)} />
-          </label>
+          <Hint text={t("hint.uploadPhoto")}>
+            <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-primary">
+              <Upload className="h-4 w-4" /> {t("uploadPhoto")}
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" className="sr-only" onChange={(event) => void uploadPhoto(event.target.files?.[0] ?? null)} />
+            </label>
+          </Hint>
         )}
         {!done && requirement.actionKey === "PRESENTATION" && (
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             <Input value={presentation.material} onChange={(event) => setPresentation({ ...presentation, material: event.target.value })} placeholder={t("material")} className="h-9" />
             <Input value={presentation.version} onChange={(event) => setPresentation({ ...presentation, version: event.target.value })} placeholder={t("version")} className="h-9" />
-            <div className="flex gap-2"><Input value={presentation.topic} onChange={(event) => setPresentation({ ...presentation, topic: event.target.value })} placeholder={t("topic")} className="h-9" /><Button size="icon" className="h-9 w-9 shrink-0" disabled={!presentation.material || busy} onClick={() => { const completedAt = new Date().toISOString(); void saveAction("PRESENTATION", { ...presentation, openedAt: completedAt, completedAt }) }} title={t("saveAction")}><Save className="h-4 w-4" /></Button></div>
+            <div className="flex gap-2"><Input value={presentation.topic} onChange={(event) => setPresentation({ ...presentation, topic: event.target.value })} placeholder={t("topic")} className="h-9" /><Hint wrap text={busy ? null : presentation.material ? t("hint.savePresentation") : t("hint.fillFirst")}><Button size="icon" className="h-9 w-9 shrink-0" disabled={!presentation.material || busy} onClick={() => { const completedAt = new Date().toISOString(); void saveAction("PRESENTATION", { ...presentation, openedAt: completedAt, completedAt }) }} aria-label={t("saveAction")}><Save className="h-4 w-4" /></Button></Hint></div>
           </div>
         )}
         {!done && requirement.actionKey === "STOCK_CHECK" && (
@@ -466,11 +469,11 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
             <Input value={stock.product} onChange={(event) => setStock({ ...stock, product: event.target.value })} placeholder={t("product")} className="h-9" />
             <select value={stock.state} onChange={(event) => setStock({ ...stock, state: event.target.value })} className="h-9 rounded-md border border-zinc-200 bg-background px-2 text-sm dark:border-zinc-700"><option value="AVAILABLE">{t("available")}</option><option value="NOT_AVAILABLE">{t("notAvailable")}</option><option value="UNKNOWN">{t("unknown")}</option></select>
             <Input type="number" min={0} value={stock.quantity} onChange={(event) => setStock({ ...stock, quantity: event.target.value })} placeholder={t("quantity")} className="h-9" />
-            <Button size="icon" className="h-9 w-9" disabled={!stock.product || busy} onClick={() => void saveAction("STOCK_CHECK", { ...stock, quantity: stock.quantity ? Number(stock.quantity) : null })} title={t("saveAction")}><Save className="h-4 w-4" /></Button>
+            <Hint wrap text={busy ? null : stock.product ? t("hint.saveStock") : t("hint.fillFirst")}><Button size="icon" className="h-9 w-9" disabled={!stock.product || busy} onClick={() => void saveAction("STOCK_CHECK", { ...stock, quantity: stock.quantity ? Number(stock.quantity) : null })} aria-label={t("saveAction")}><Save className="h-4 w-4" /></Button></Hint>
           </div>
         )}
         {!done && requirement.actionKey === "CHECKLIST" && (
-          <div className="mt-3 flex gap-2"><Input value={checklist} onChange={(event) => setChecklist(event.target.value)} placeholder={t("checklistResult")} className="h-9" /><Button size="icon" className="h-9 w-9" disabled={!checklist || busy} onClick={() => void saveAction("CHECKLIST", { result: checklist })} title={t("saveAction")}><Save className="h-4 w-4" /></Button></div>
+          <div className="mt-3 flex gap-2"><Input value={checklist} onChange={(event) => setChecklist(event.target.value)} placeholder={t("checklistResult")} className="h-9" /><Hint wrap text={busy ? null : checklist ? t("hint.saveChecklist") : t("hint.fillFirst")}><Button size="icon" className="h-9 w-9" disabled={!checklist || busy} onClick={() => void saveAction("CHECKLIST", { result: checklist })} aria-label={t("saveAction")}><Save className="h-4 w-4" /></Button></Hint></div>
         )}
         {!done && ["VISIT_NOTE", "FEEDBACK", "NEXT_ACTION"].includes(requirement.actionKey) && <p className="mt-2 text-xs text-muted-foreground">{t("completeInResult")}</p>}
         {requirement.actionKey === "SIGNATURE" && (done ? <SignaturePreview evidence={data.visit.actionResults.filter((item) => item.actionKey === "SIGNATURE" && item.status === "COMPLETED").at(-1)?.evidence} label={t("actions.SIGNATURE")} /> : <p className="mt-2 text-xs text-muted-foreground">{t("signatureOnTablet")}</p>)}
@@ -486,7 +489,7 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
           <h2 className="mt-1 text-xl font-semibold">{data.visit.customer.name}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{data.visit.customer.address || t("noAddress")} - {data.visit.agent.name}</p>
         </div>
-        <div className="text-right text-xs text-muted-foreground"><div className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" /> {formatDateTime(new Date(data.visit.checkInAt), locale)}</div>{data.visit.requirementSnapshot?.sourcePolicy?.name && <div className="mt-1">{data.visit.requirementSnapshot.sourcePolicy.name}</div>}</div>
+        <div className="text-right text-xs text-muted-foreground"><div className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" /> <HintValue text={t("hint.checkIn")}>{formatDateTime(new Date(data.visit.checkInAt), locale)}</HintValue></div>{data.visit.requirementSnapshot?.sourcePolicy?.name && <div className="mt-1"><HintValue text={t("hint.policy")}>{data.visit.requirementSnapshot.sourcePolicy.name}</HintValue></div>}</div>
       </div>
 
       {!online && <div className="mt-4 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"><AlertCircle className="h-4 w-4" /> {t("offlineDraft")}</div>}
@@ -509,19 +512,19 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
               </p>
             )}
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1"><span className="text-xs text-muted-foreground">{t("outcome")}</span><select value={result.outcome} onChange={(event) => setResult({ ...result, outcome: event.target.value })} className="h-10 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700"><option value="">{t("selectOutcome")}</option>{["SUCCESSFUL", "PARTIAL", "NO_CONTACT", ...(visibleActions.has("NEXT_ACTION") ? ["RESCHEDULE"] : [])].map((value) => <option key={value} value={value}>{t(`outcomes.${value}`)}</option>)}</select></label>
-              <label className="space-y-1"><span className="text-xs text-muted-foreground">{t("potential")}</span><select value={result.potential} onChange={(event) => setResult({ ...result, potential: event.target.value })} className="h-10 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700">{["HIGH", "MEDIUM", "LOW", "UNKNOWN"].map((value) => <option key={value} value={value}>{t(`potentials.${value}`)}</option>)}</select></label>
+              <label className="space-y-1"><HintValue text={visibleActions.has("NEXT_ACTION") ? t("hint.outcomeWithReschedule") : t("hint.outcome")} className="text-xs text-muted-foreground">{t("outcome")}</HintValue><select value={result.outcome} onChange={(event) => setResult({ ...result, outcome: event.target.value })} className="h-10 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700"><option value="">{t("selectOutcome")}</option>{["SUCCESSFUL", "PARTIAL", "NO_CONTACT", ...(visibleActions.has("NEXT_ACTION") ? ["RESCHEDULE"] : [])].map((value) => <option key={value} value={value}>{t(`outcomes.${value}`)}</option>)}</select></label>
+              <label className="space-y-1"><HintValue text={t("hint.potential")} className="text-xs text-muted-foreground">{t("potential")}</HintValue><select value={result.potential} onChange={(event) => setResult({ ...result, potential: event.target.value })} className="h-10 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700">{["HIGH", "MEDIUM", "LOW", "UNKNOWN"].map((value) => <option key={value} value={value}>{t(`potentials.${value}`)}</option>)}</select></label>
             </div>
             {visibleActions.has("VISIT_NOTE") && <><Input value={result.discussedTopics} onChange={(event) => setResult({ ...result, discussedTopics: event.target.value })} placeholder={t("topicsPlaceholder")} /><textarea value={result.finalNote} onChange={(event) => setResult({ ...result, finalNote: event.target.value })} placeholder={t("notePlaceholder")} className="min-h-24 w-full rounded-md border border-zinc-200 bg-background p-3 text-sm dark:border-zinc-700" /></>}
             {visibleActions.has("FEEDBACK") && <textarea value={result.feedback} onChange={(event) => setResult({ ...result, feedback: event.target.value })} placeholder={t("feedbackPlaceholder")} className="min-h-20 w-full rounded-md border border-zinc-200 bg-background p-3 text-sm dark:border-zinc-700" />}
             {visibleActions.has("NEXT_ACTION") && <div className="grid gap-2 sm:grid-cols-[1fr_190px_140px]"><Input value={result.nextActionTitle} onChange={(event) => setResult({ ...result, nextActionTitle: event.target.value })} placeholder={t("nextActionPlaceholder")} /><Input type="datetime-local" value={result.nextActionDueDate} onChange={(event) => setResult({ ...result, nextActionDueDate: event.target.value })} /><select value={result.nextActionPriority} onChange={(event) => setResult({ ...result, nextActionPriority: event.target.value })} className="h-10 rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700">{["LOW", "MEDIUM", "HIGH", "URGENT"].map((value) => <option key={value} value={value}>{t(`priorities.${value}`)}</option>)}</select></div>}
-            <Button variant="outline" size="sm" disabled={busy || !online} onClick={() => { setBusy(true); saveResult().then(() => { toast.success(t("resultSaved")); return load() }).catch((error) => toast.error(error instanceof Error ? error.message : t("resultFailed"))).finally(() => setBusy(false)) }}><Save className="mr-1 h-4 w-4" /> {t("saveDraft")}</Button>
+            <Hint wrap text={busy ? null : online ? t("hint.saveResult") : t("hint.saveResultOffline")}><Button variant="outline" size="sm" disabled={busy || !online} onClick={() => { setBusy(true); saveResult().then(() => { toast.success(t("resultSaved")); return load() }).catch((error) => toast.error(error instanceof Error ? error.message : t("resultFailed"))).finally(() => setBusy(false)) }}><Save className="mr-1 h-4 w-4" /> {t("saveDraft")}</Button></Hint>
           </div>
         </div>
 
         <aside className="space-y-6">
           <div>
-            <h3 className="text-sm font-semibold">{t("reminders")}</h3>
+            <h3 className="text-sm font-semibold"><HintValue text={t("hint.reminders")}>{t("reminders")}</HintValue></h3>
             <div className="mt-2 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
               {data.reminders.length ? data.reminders.slice(0, REMINDER_PREVIEW_LIMIT).map((reminder) => (
                 <div key={reminder.id} className="py-3">
@@ -533,9 +536,9 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
                     <span className="text-[11px] text-muted-foreground">{t(`priorities.${reminder.priority}`)}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder, "complete")}><Check className="mr-1 h-3.5 w-3.5" />{t("complete")}</Button>
-                    {reminder.status !== "IN_PROGRESS" && <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder, "acknowledge")}>{t("acknowledge")}</Button>}
-                    {canReschedule && <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder, "reschedule")}><RefreshCw className="mr-1 h-3.5 w-3.5" />{t("tomorrow")}</Button>}
+                    <Hint text={t("hint.reminderComplete")}><Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder, "complete")}><Check className="mr-1 h-3.5 w-3.5" />{t("complete")}</Button></Hint>
+                    {reminder.status !== "IN_PROGRESS" && <Hint text={t("hint.reminderAcknowledge")}><Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder, "acknowledge")}>{t("acknowledge")}</Button></Hint>}
+                    {canReschedule && <Hint text={t("hint.reminderTomorrow")}><Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder, "reschedule")}><RefreshCw className="mr-1 h-3.5 w-3.5" />{t("tomorrow")}</Button></Hint>}
                   </div>
                 </div>
               )) : <p className="py-4 text-sm text-muted-foreground">{t("noReminders")}</p>}
@@ -546,20 +549,20 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
               </Link>
             )}
           </div>
-          <div><h3 className="text-sm font-semibold">{t("previousPromises")}</h3><div className="mt-2 space-y-3">{data.previousPromises.length ? data.previousPromises.map((promise) => <div key={promise.id} className="text-sm"><div className="text-xs text-muted-foreground">{formatDate(new Date(promise.checkInAt), locale)} - {promise.agent.name}</div>{promise.resultNotes && <p className="mt-1">{promise.resultNotes}</p>}{promise.nextActionDueAt && <p className="mt-1 text-xs text-muted-foreground">{t("due", { date: formatDateTime(new Date(promise.nextActionDueAt), locale) })}</p>}</div>) : <p className="text-sm text-muted-foreground">{t("noPreviousPromises")}</p>}</div></div>
+          <div><h3 className="text-sm font-semibold"><HintValue text={t("hint.previousPromises")}>{t("previousPromises")}</HintValue></h3><div className="mt-2 space-y-3">{data.previousPromises.length ? data.previousPromises.map((promise) => <div key={promise.id} className="text-sm"><div className="text-xs text-muted-foreground">{formatDate(new Date(promise.checkInAt), locale)} - {promise.agent.name}</div>{promise.resultNotes && <p className="mt-1">{promise.resultNotes}</p>}{promise.nextActionDueAt && <p className="mt-1 text-xs text-muted-foreground">{t("due", { date: formatDateTime(new Date(promise.nextActionDueAt), locale) })}</p>}</div>) : <p className="text-sm text-muted-foreground">{t("noPreviousPromises")}</p>}</div></div>
           {data.previousStockChecks.length > 0 && <div><h3 className="text-sm font-semibold">{t("previousStock")}</h3><div className="mt-2 space-y-2">{data.previousStockChecks.map((item) => <div key={item.id} className="text-sm"><span className="font-medium">{String(item.evidence?.product ?? t("unknownProduct"))}</span><span className="ml-2 text-muted-foreground">{String(item.evidence?.state ?? "-")}{item.evidence?.quantity != null ? ` (${String(item.evidence?.quantity)})` : ""}</span><div className="text-xs text-muted-foreground">{formatDate(new Date(item.completedAt ?? item.visit.checkInAt), locale)} - {item.visit.agent.name}</div></div>)}</div></div>}
         </aside>
       </div>
 
       <div className="sticky bottom-0 z-10 mt-6 border-t border-zinc-200 bg-card/95 py-3 backdrop-blur-sm dark:border-zinc-800">
-        {missing.length > 0 && <div className="mb-2 flex flex-wrap gap-2">{missing.map((item) => <span key={item.actionKey} className="rounded-md bg-rose-50 px-2 py-1 text-xs text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">{t(`actions.${item.actionKey}`)} {item.completedCount}/{item.requiredCount}</span>)}</div>}
+        {missing.length > 0 && <div className="mb-2 flex flex-wrap gap-2">{missing.map((item) => <HintValue key={item.actionKey} text={t("hint.missing")} className="rounded-md bg-rose-50 px-2 py-1 text-xs text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">{t(`actions.${item.actionKey}`)} {item.completedCount}/{item.requiredCount}</HintValue>)}</div>}
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {online ? t("manualCompletionHint") : t("offlineQueueHint")}
-            {pendingSync > 0 && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{t("pendingSync", { count: pendingSync })}</span>}
-            {pendingPhotos > 0 && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{t("pendingPhotos", { count: pendingPhotos })}</span>}
+            {pendingSync > 0 && <HintValue text={t("hint.pendingSync")} className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{t("pendingSync", { count: pendingSync })}</HintValue>}
+            {pendingPhotos > 0 && <HintValue text={t("hint.pendingPhotos")} className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{t("pendingPhotos", { count: pendingPhotos })}</HintValue>}
           </p>
-          <Button size="sm" disabled={busy} onClick={() => void completeVisit()}><CheckCircle2 className="mr-1 h-4 w-4" /> {busy ? t("completing") : online ? t("completeVisit") : t("queueCheckout")}</Button>
+          <Hint wrap side="top" text={busy ? null : online ? t("hint.completeVisit") : t("hint.queueCheckout")}><Button size="sm" disabled={busy} onClick={() => void completeVisit()}><CheckCircle2 className="mr-1 h-4 w-4" /> {busy ? t("completing") : online ? t("completeVisit") : t("queueCheckout")}</Button></Hint>
         </div>
       </div>
     </div>

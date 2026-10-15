@@ -137,7 +137,7 @@ describe("MTM guided route builder UI contract", () => {
     expect(builder).toContain('data-testid="mtm-route-auto-schedule"')
     expect(builder).toContain('aria-describedby="mtm-route-auto-schedule-hint"')
     expect(builder).toContain('id="mtm-route-auto-schedule-hint"')
-    expect(builder).toContain('title={t("autoScheduleStopsHint")}')
+    expect(builder).toContain('<Hint text={t("hint.builderAutoSchedule")}')
     expect(builder).toContain("if (stop.plannedTime) return stop")
     expect(builder).toContain('MTM_ROUTE_TIME_SLOTS.filter((time) => time >= "09:00" && !occupiedTimes.has(time))')
     expect(builder).toContain("availableTimes[availableTimeIndex] ?? null")

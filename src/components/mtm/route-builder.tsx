@@ -27,6 +27,7 @@ import {
   Users,
   X,
 } from "lucide-react"
+import { Hint, HintValue } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -222,6 +223,14 @@ const emptyCandidateFilters: CandidateFilters = {
 
 const candidateDisplayPageSize = 8
 const candidateResultPageSize = 50
+
+/** Why a candidate is offered to this employee, said under the cursor. */
+const CANDIDATE_AVAILABILITY_HINT = {
+  DIRECT_CONTACT_ASSIGNMENT: "hint.builderAvailabilityDirect",
+  WORKPLACE_ASSIGNMENT: "hint.builderAvailabilityWorkplace",
+  ORGANIZATION_ASSIGNMENT: "hint.builderAvailabilityOrganization",
+  ACTIVE_CATALOG: "hint.builderAvailabilityCatalog",
+} as const satisfies Record<CandidateAvailability["source"], string>
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value)
@@ -1534,6 +1543,21 @@ export function MtmRouteBuilder({
           : isEditing
             ? t("saveChanges")
             : t("saveDraft")
+  // Never empty: an empty hint draws the button without its tooltip wrapper,
+  // and switching between the two remounts the button and drops its focus.
+  const primaryActionHint = primaryAction === "agent" || primaryAction === "date"
+    ? t("hint.builderStepWhoWhen")
+    : primaryAction === "continue"
+      ? t("hint.builderStepCustomers")
+      : primaryAction === "review"
+        ? customersComplete ? t("hint.builderReview") : t("hint.builderReviewLocked")
+        : canPublishFromBuilder
+          ? t("hint.builderSaveAndPublish")
+          : isPublishedEdit
+            ? t("hint.builderSavePublished")
+            : isEditing
+              ? t("hint.builderSaveChanges")
+              : t("hint.builderSaveDraft")
 
   return (
     <section data-testid="mtm-route-builder" className="flex min-h-0 max-h-dvh flex-1 flex-col overflow-hidden border-y border-zinc-200 bg-card dark:border-zinc-700 min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]">
@@ -1544,15 +1568,20 @@ export function MtmRouteBuilder({
             <h2 className="truncate text-base font-semibold">
               {isEditing ? t("builderEditTitle") : t("builderNewTitle")}
             </h2>
-            <span className="border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+            <HintValue
+              className="border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300"
+              text={isPublishedEdit ? t("hint.builderPublishedBadge") : t("hint.builderDraftBadge")}
+            >
               {isPublishedEdit ? mtmStatusLabel(statusT, "route", initialData?.status ?? "DRAFT") : t("draft")}
-            </span>
+            </HintValue>
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{t("builderSubtitle")}</p>
         </div>
-        <Button type="button" variant="ghost" size="icon" data-testid="mtm-route-builder-close" onClick={requestClose} title={t("closeBuilder")} aria-label={t("closeBuilder")}>
-          <X className="h-4 w-4" />
-        </Button>
+        <Hint text={t("hint.builderClose")} align="end">
+          <Button type="button" variant="ghost" size="icon" data-testid="mtm-route-builder-close" onClick={requestClose} aria-label={t("closeBuilder")}>
+            <X className="h-4 w-4" />
+          </Button>
+        </Hint>
       </div>
 
       {recoverableDraft ? (
@@ -1589,8 +1618,8 @@ export function MtmRouteBuilder({
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
-            <Button type="button" size="sm" className="min-h-9" onClick={restoreLocalDraft}>{t("restoreRouteDraft")}</Button>
-            <Button type="button" size="sm" variant="outline" className="min-h-9" onClick={() => discardLocalDraft()}>{t("discardRouteDraft")}</Button>
+            <Hint text={t("hint.builderRestoreDraft")}><Button type="button" size="sm" className="min-h-9" onClick={restoreLocalDraft}>{t("restoreRouteDraft")}</Button></Hint>
+            <Hint text={t("hint.builderDiscardDraft")}><Button type="button" size="sm" variant="outline" className="min-h-9" onClick={() => discardLocalDraft()}>{t("discardRouteDraft")}</Button></Hint>
           </div>
         </div>
       ) : null}
@@ -1604,7 +1633,7 @@ export function MtmRouteBuilder({
               <p className="mt-0.5 text-xs opacity-80">{t("routeDraftRecoveredHint", { date: formatInTimezone(recoveredAt, timezone, { dateStyle: "medium", timeStyle: "short" }, locale) })}</p>
             </div>
           </div>
-          <Button type="button" size="sm" variant="outline" className="min-h-9 shrink-0" onClick={() => discardLocalDraft({ resetCurrent: true })}>{t("discardRecoveredRouteDraft")}</Button>
+          <Hint text={t("hint.builderDiscardRecovered")}><Button type="button" size="sm" variant="outline" className="min-h-9 shrink-0" onClick={() => discardLocalDraft({ resetCurrent: true })}>{t("discardRecoveredRouteDraft")}</Button></Hint>
         </div>
       ) : null}
 
@@ -1621,9 +1650,11 @@ export function MtmRouteBuilder({
           <div className="min-w-0 flex-1">
             <p>{error}</p>
             {duplicate ? (
-              <Button type="button" variant="link" className="h-auto p-0 text-red-700 dark:text-red-300" onClick={() => onOpenExisting(duplicate.id)}>
-                {t("openExistingRoute")}
-              </Button>
+              <Hint text={t("hint.builderOpenExisting")} align="start">
+                <Button type="button" variant="link" className="h-auto p-0 text-red-700 dark:text-red-300" onClick={() => onOpenExisting(duplicate.id)}>
+                  {t("openExistingRoute")}
+                </Button>
+              </Hint>
             ) : null}
           </div>
         </div>
@@ -1687,21 +1718,24 @@ export function MtmRouteBuilder({
       <nav className="shrink-0 border-b border-zinc-200 px-4 py-2 dark:border-zinc-700" aria-label={t("builderProgressLabel")}>
         <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-1 sm:gap-3">
           {([
-            { step: 1 as const, label: t("progressWhoWhen"), complete: setupComplete, detail: setupComplete ? t("progressWhoWhenDone", { employee: selectedAgentName ?? "—", date: planningDateLabel(date, locale) }) : t("progressWhoWhenTodo") },
-            { step: 2 as const, label: t("progressCustomers"), complete: customersComplete, detail: customersComplete ? t("progressCustomersDone", { count: stops.length }) : t("progressCustomersTodo") },
-            { step: 3 as const, label: t("progressSave"), complete: false, detail: setupComplete && customersComplete ? t("progressSaveReady") : t("progressSaveTodo") },
+            { step: 1 as const, label: t("progressWhoWhen"), complete: setupComplete, detail: setupComplete ? t("progressWhoWhenDone", { employee: selectedAgentName ?? "—", date: planningDateLabel(date, locale) }) : t("progressWhoWhenTodo"), hint: t("hint.builderStepWhoWhen"), lockedHint: null },
+            { step: 2 as const, label: t("progressCustomers"), complete: customersComplete, detail: customersComplete ? t("progressCustomersDone", { count: stops.length }) : t("progressCustomersTodo"), hint: t("hint.builderStepCustomers"), lockedHint: t("hint.builderStepCustomersLocked") },
+            { step: 3 as const, label: t("progressSave"), complete: false, detail: setupComplete && customersComplete ? t("progressSaveReady") : t("progressSaveTodo"), hint: t("hint.builderStepSave"), lockedHint: t("hint.builderStepSaveLocked") },
           ]).map((item) => {
             const current = item.step === activeStep
             const available = item.step === 1 || (item.step === 2 && setupComplete) || (item.step === 3 && setupComplete && customersComplete)
+            // The hint sits on the list item: a disabled step lets the pointer
+            // through to it, so the reason it is closed still opens.
             return (
-              <li key={item.step}>
+              <Hint key={item.step} text={available ? item.hint : item.lockedHint}>
+              <li className={available ? undefined : "cursor-not-allowed"}>
                 <button
                   type="button"
                   onClick={() => focusStep(item.step)}
                   disabled={!available}
                   aria-current={current ? "step" : undefined}
                   aria-label={`${item.label}. ${item.detail}`}
-                  className={`flex min-h-10 w-full items-center justify-center gap-2 rounded-full px-2 py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${
+                  className={`flex min-h-10 w-full items-center justify-center gap-2 rounded-full px-2 py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 ${
                     current
                       ? "bg-primary/10 text-foreground"
                       : item.complete
@@ -1721,6 +1755,7 @@ export function MtmRouteBuilder({
                   <span className="truncate text-xs font-semibold sm:text-sm">{item.label}</span>
                 </button>
               </li>
+              </Hint>
             )
           })}
         </ol>
@@ -1743,13 +1778,20 @@ export function MtmRouteBuilder({
             <p className="mt-1 text-sm text-muted-foreground">{t("stepChooseAgentHint")}</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div>
+            {/*
+              A published route keeps its employee and day (the server refuses
+              a change). The hint is on the field's block, not on the disabled
+              control: the control lets the pointer through so it still opens.
+            */}
+            <Hint text={isPublishedEdit ? t("hint.builderPublishedFieldsLocked") : null}>
+            <div className={isPublishedEdit ? "cursor-not-allowed" : undefined}>
               <Label htmlFor="route-builder-primary">{t("primaryAgent")} *</Label>
               <Select
                 id="route-builder-primary"
                 ref={agentSelectRef}
                 value={primaryAgentId}
                 disabled={isPublishedEdit}
+                className="disabled:pointer-events-none"
                 onChange={(event) => {
                   setPrimaryAgentId(event.target.value)
                   setParticipantIds((current) => current.filter((id) => id !== event.target.value))
@@ -1764,6 +1806,7 @@ export function MtmRouteBuilder({
                 {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
               </Select>
             </div>
+            </Hint>
             {dateWasChosenFromCalendar ? (
               <div data-testid="mtm-route-calendar-date-confirmation" className="space-y-1">
                 <span className="text-sm font-medium">{t("selectedCalendarDate")}</span>
@@ -1776,10 +1819,12 @@ export function MtmRouteBuilder({
                 </div>
               </div>
             ) : (
-              <div>
+              <Hint text={isPublishedEdit ? t("hint.builderPublishedFieldsLocked") : null}>
+              <div className={isPublishedEdit ? "cursor-not-allowed" : undefined}>
                 <Label htmlFor="route-builder-date">{t("singleRouteDate")} *</Label>
-                <Input ref={dateInputRef} id="route-builder-date" type="date" value={date} disabled={isPublishedEdit} onChange={(event) => setDate(event.target.value)} required />
+                <Input ref={dateInputRef} id="route-builder-date" type="date" value={date} disabled={isPublishedEdit} onChange={(event) => setDate(event.target.value)} required className="disabled:pointer-events-none" />
               </div>
+              </Hint>
             )}
           </div>
 
@@ -1798,7 +1843,11 @@ export function MtmRouteBuilder({
                 <p className="mt-1 text-xs text-muted-foreground">{t("routeNameHint")}</p>
               </div>
               <div>
-                <Label>{t("participants")}</Label>
+                <Label>
+                  <HintValue text={isPublishedEdit ? t("hint.builderPublishedFieldsLocked") : t("hint.builderParticipants")} align="start">
+                    {t("participants")}
+                  </HintValue>
+                </Label>
                 <div className="mt-2 max-h-48 divide-y divide-zinc-200 overflow-y-auto border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
                   {agents.filter((agent) => agent.id !== primaryAgentId).map((agent) => {
                     const checked = participantIds.includes(agent.id)
@@ -1883,18 +1932,19 @@ export function MtmRouteBuilder({
                                 {[stop.contact ? stop.customer.name : null, stop.contact?.specialtyName, stop.customer.address ?? stop.customer.city ?? stop.customer.code].filter(Boolean).join(" · ")}
                               </span>
                             </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="min-h-11 min-w-11 shrink-0 text-destructive"
-                              disabled={locked}
-                              onClick={() => removeStop(index)}
-                              title={locked ? t("stopLocked") : t("removeStop")}
-                              aria-label={locked ? t("stopLocked") : t("removeStopNamed", { name: stopName })}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                            <Hint wrap text={locked ? t("hint.builderStopLocked") : t("hint.builderRemoveStop")} align="end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="min-h-11 min-w-11 shrink-0 text-destructive"
+                                disabled={locked}
+                                onClick={() => removeStop(index)}
+                                aria-label={locked ? t("stopLocked") : t("removeStopNamed", { name: stopName })}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </Hint>
                           </li>
                         )
                       })}
@@ -1902,6 +1952,8 @@ export function MtmRouteBuilder({
                   ) : (
                     <p className="px-3 py-5 text-sm text-muted-foreground">{t("noStops")}</p>
                   )}
+                  {/* On the block, not the full-width button: a disabled button lets the pointer through to it. */}
+                  <Hint text={customersComplete ? t("hint.builderReview") : t("hint.builderReviewLocked")}>
                   <div className="border-t border-zinc-200 p-3 dark:border-zinc-700">
                     <Button
                       type="button"
@@ -1913,6 +1965,7 @@ export function MtmRouteBuilder({
                       <MapPin className="h-4 w-4" />{t("reviewRouteAction")}
                     </Button>
                   </div>
+                  </Hint>
                 </div>
               </aside>
               <div className="min-w-0 md:order-1">
@@ -1934,8 +1987,8 @@ export function MtmRouteBuilder({
               <>
             <div className="mb-2 flex flex-wrap gap-2" role="group" aria-label={t("planningDirection")}>
               {enabledRouteTargetTypes.map((target) => (
+                <Hint key={target.id} text={t("hint.builderTargetType")}>
                 <Button
-                  key={target.id}
                   type="button"
                   size="sm"
                   variant={selectedRouteTargetType?.id === target.id ? "default" : "outline"}
@@ -1947,6 +2000,7 @@ export function MtmRouteBuilder({
                 >
                   {routeTargetLabel(target, locale)}
                 </Button>
+                </Hint>
               ))}
             </div>
             <div className="mb-2 flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
@@ -1960,6 +2014,7 @@ export function MtmRouteBuilder({
               </p>
               <div className="flex flex-wrap gap-2">
                 {canManageAssignments && candidateTotal > 0 ? (
+                  <Hint text={t("hint.builderInlineAssignment")}>
                   <Button
                     type="button"
                     size="sm"
@@ -1970,11 +2025,14 @@ export function MtmRouteBuilder({
                   >
                     <Users className="mr-1 h-4 w-4" />{t("inlineAssignmentOpenAction")}
                   </Button>
+                  </Hint>
                 ) : null}
                 {canRequestCustomer ? (
+                  <Hint text={t("hint.builderRequestCustomer")}>
                   <Button type="button" size="sm" variant="outline" className="min-h-10 shrink-0" onClick={() => onRequestCustomer(persistedRouteId ?? initialData?.id)}>
                     <UserRound className="mr-1 h-4 w-4" />{t("requestNewCustomer")}
                   </Button>
+                  </Hint>
                 ) : null}
               </div>
             </div>
@@ -2007,15 +2065,16 @@ export function MtmRouteBuilder({
               {customerSearchLoading ? (
                 <Loader2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
               ) : customerSearch ? (
-                <button
-                  type="button"
-                  onClick={() => setCustomerSearch("")}
-                  className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  title={t("clearCustomerSearch")}
-                  aria-label={t("clearCustomerSearch")}
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <Hint text={t("hint.builderClearSearch")} align="end">
+                  <button
+                    type="button"
+                    onClick={() => setCustomerSearch("")}
+                    className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={t("clearCustomerSearch")}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Hint>
               ) : null}
             </div>
             {!primaryAgentId ? (
@@ -2032,24 +2091,28 @@ export function MtmRouteBuilder({
                   <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">{t("planningTools")}</span>
                   {activeCandidateFilters.length > 0 ? (
-                    <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
+                    <HintValue className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary" text={t("hint.builderActiveFilterCount")}>
                       {activeCandidateFilters.length}
-                    </span>
+                    </HintValue>
                   ) : null}
                 </span>
                 <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-                  {t("candidateResultCount", { shown: visibleCandidates.length, total: candidateTotal })}
+                  <HintValue text={t("hint.builderResultCount")} align="end">
+                    {t("candidateResultCount", { shown: visibleCandidates.length, total: candidateTotal })}
+                  </HintValue>
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </span>
               </summary>
               <div className="border-t border-zinc-200 p-3 dark:border-zinc-700">
                 <div className="max-w-sm">
+                  <Hint text={t("hint.builderSort")} align="start">
                   <Select className="h-11" value={candidateSort} onChange={(event) => setCandidateSort(event.target.value as CandidateSort)} aria-label={t("candidateSort")}>
                     <option value="NAME">{t("sortCandidateName")}</option>
                     <option value="PRIORITY">{t("sortCandidatePriority")}</option>
                     <option value="LAST_VISIT">{t("sortCandidateLastVisit")}</option>
                     {direction === "PHARMACY" ? <option value="COVERAGE_GAP">{t("sortCandidateCoverageGap")}</option> : null}
                   </Select>
+                  </Hint>
                 </div>
             <div className="mt-3 border-y border-zinc-200 bg-muted/20 px-2 py-2 dark:border-zinc-700" data-testid="mtm-planning-filter-summary">
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -2067,8 +2130,8 @@ export function MtmRouteBuilder({
               {activeCandidateFilters.length > 0 ? (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5" aria-label={t("activeCandidateFilters", { count: activeCandidateFilters.length })}>
                   {activeCandidateFilters.map((filter) => (
+                    <Hint key={filter.key} text={t("hint.builderRemoveFilter")}>
                     <button
-                      key={filter.key}
                       type="button"
                       onClick={() => removeCandidateFilter(filter.key)}
                       className="inline-flex min-h-11 max-w-full items-center gap-1 border border-primary/25 bg-primary/5 px-2 text-xs text-foreground hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-9"
@@ -2077,10 +2140,13 @@ export function MtmRouteBuilder({
                       <span className="max-w-56 truncate"><span className="font-medium">{filter.label}:</span> {filter.value}</span>
                       <X className="h-3.5 w-3.5 shrink-0" />
                     </button>
+                    </Hint>
                   ))}
+                  <Hint text={t("hint.builderClearFilters")}>
                   <Button type="button" size="sm" variant="ghost" className="min-h-11 lg:min-h-9" onClick={clearAllCandidateFilters}>
                     {t("clearCandidateFilters")}
                   </Button>
+                  </Hint>
                 </div>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">{t("noActiveCandidateFilters")}</p>
@@ -2138,15 +2204,17 @@ export function MtmRouteBuilder({
                   </>
                 ) : null}
                 <div className="flex items-end">
+                  <Hint text={t("hint.builderClearFilters")}>
                   <Button type="button" size="sm" variant="outline" className="min-h-11 w-full lg:min-h-9" onClick={clearAllCandidateFilters}>
                     {t("clearCandidateFilters")}
                   </Button>
+                  </Hint>
                 </div>
               </fieldset>
             {coveragePreview?.available && coveragePreview.groups?.length ? (
               <div className="mt-3 border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/25 dark:text-emerald-100" data-testid="mtm-planner-coverage-preview">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-semibold">{t("candidateCoverageVerified", { version: coveragePreview.policy?.version ?? 0 })}</span>
+                  <HintValue className="font-semibold" text={t("hint.builderCoverage")} align="start">{t("candidateCoverageVerified", { version: coveragePreview.policy?.version ?? 0 })}</HintValue>
                   <span className="tabular-nums">{t("candidateCoveragePeriod", { start: coveragePreview.period?.start ?? "—", end: coveragePreview.period?.end ?? "—" })}</span>
                 </div>
                 {coveragePreview.groups.map((group) => (
@@ -2241,7 +2309,7 @@ export function MtmRouteBuilder({
                       <span className="flex items-center gap-2">
                         <span className="block min-w-0 flex-1 truncate text-sm font-medium">{candidate.name}</span>
                         <span className="shrink-0 border border-zinc-200 px-1.5 py-0.5 text-xs font-medium text-muted-foreground dark:border-zinc-700">
-                          {candidate.category}
+                          <HintValue text={t("hint.builderCategory")} align="end">{candidate.category}</HintValue>
                         </span>
                       </span>
                       {customerDetails ? (
@@ -2255,16 +2323,17 @@ export function MtmRouteBuilder({
                           {t("customerAlreadySelected", { position: selectedPosition })}
                         </span>
                       ) : null}
-                      <span data-testid="mtm-route-candidate-availability" className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-sky-800 dark:text-sky-200" title={availabilityPeriod}>
+                      {/* The period, cut off on a narrow card, is read in full in the hint. */}
+                      <span data-testid="mtm-route-candidate-availability" className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-sky-800 dark:text-sky-200">
                         <Users className="h-3 w-3 shrink-0" />
-                        <span className="truncate font-medium">{availabilityLabel}</span>
+                        <HintValue className="truncate font-medium" text={t(CANDIDATE_AVAILABILITY_HINT[candidate.availability.source], { period: availabilityPeriod })} align="start">{availabilityLabel}</HintValue>
                         <span aria-hidden="true">·</span>
                         <span className="truncate text-muted-foreground">{availabilityPeriod}</span>
                       </span>
                       <span className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-                        <span>{candidate.lastVisitAt ? t("lastVisitValue", { date: candidate.lastVisitAt.slice(0, 10) }) : t("noLastVisit")}</span>
-                        {candidate.plannedRoute ? <span className="text-amber-700 dark:text-amber-300">{t("alreadyPlanned", { date: candidate.plannedRoute.date })}</span> : null}
-                        {candidate.coverage ? <span className="font-medium text-amber-800 dark:text-amber-300" title={candidate.coverage.explanation.summary[coverageLocale]}>{t("candidateCoverageGap", { value: candidate.coverage.uncoveredMoi })}</span> : null}
+                        <HintValue text={t("hint.builderLastVisit")} align="start">{candidate.lastVisitAt ? t("lastVisitValue", { date: candidate.lastVisitAt.slice(0, 10) }) : t("noLastVisit")}</HintValue>
+                        {candidate.plannedRoute ? <HintValue className="text-amber-700 dark:text-amber-300" text={t("hint.builderAlreadyPlanned")}>{t("alreadyPlanned", { date: candidate.plannedRoute.date })}</HintValue> : null}
+                        {candidate.coverage ? <HintValue className="font-medium text-amber-800 dark:text-amber-300" text={candidate.coverage.explanation.summary[coverageLocale]}>{t("candidateCoverageGap", { value: candidate.coverage.uncoveredMoi })}</HintValue> : null}
                       </span>
                     </span>
                     {!selectedPosition ? (
@@ -2310,10 +2379,12 @@ export function MtmRouteBuilder({
                         date: planningDateLabel(date, locale),
                         target: selectedTargetLabel,
                       })}</p>
+                      <Hint text={t("hint.builderClearSearch")}>
                       <Button type="button" variant="outline" className="mt-3 min-h-11" onClick={() => setCustomerSearch("")}>
                         <X className="h-4 w-4" />
                         {t("clearCustomerSearch")}
                       </Button>
+                      </Hint>
                     </div>
                   ) : primaryAgentId && activeCandidateFilters.length > 0 ? (
                     <div className="mx-auto mt-2 max-w-xl">
@@ -2322,10 +2393,12 @@ export function MtmRouteBuilder({
                         date: planningDateLabel(date, locale),
                         target: selectedTargetLabel,
                       })}</p>
+                      <Hint text={t("hint.builderClearFilters")}>
                       <Button type="button" variant="outline" className="mt-3 min-h-11" onClick={clearAllCandidateFilters}>
                         <SlidersHorizontal className="h-4 w-4" />
                         {t("clearCandidateFilters")}
                       </Button>
+                      </Hint>
                     </div>
                   ) : primaryAgentId ? (
                     <div className="mx-auto mt-2 max-w-xl">
@@ -2339,6 +2412,7 @@ export function MtmRouteBuilder({
                             })}
                       </p>
                       {canManageAssignments && candidateScopeMode === "AGENT_ASSIGNMENTS" ? (
+                        <Hint text={t("hint.builderInlineAssignment")}>
                         <Button
                           type="button"
                           variant="outline"
@@ -2349,6 +2423,7 @@ export function MtmRouteBuilder({
                           <Users className="h-4 w-4" />
                           {t("inlineAssignmentOpenAction")}
                         </Button>
+                        </Hint>
                       ) : null}
                     </div>
                   ) : null}
@@ -2423,12 +2498,16 @@ export function MtmRouteBuilder({
                 <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t("reviewEditableHint")}</p>
               </div>
               <div className="grid shrink-0 gap-2 sm:grid-cols-2">
+                <Hint text={t("hint.builderBackToSetup")}>
                 <Button type="button" variant="outline" size="sm" className="min-h-11" data-testid="mtm-route-edit-setup" onClick={() => focusStep(1)}>
                   <PencilLine className="h-4 w-4" />{t("editWhoWhenAction")}
                 </Button>
+                </Hint>
+                <Hint text={t("hint.builderBackToCustomers")}>
                 <Button type="button" variant="outline" size="sm" className="min-h-11" data-testid="mtm-route-edit-customers" onClick={() => focusStep(2)}>
                   <Users className="h-4 w-4" />{t("editCustomersAction")}
                 </Button>
+                </Hint>
               </div>
             </div>
             <div className="mb-2 flex flex-wrap items-end justify-between gap-2 border-y border-zinc-200 py-3 dark:border-zinc-700">
@@ -2438,6 +2517,7 @@ export function MtmRouteBuilder({
               </div>
               {unscheduledStopCount > 0 ? (
                 <div className="flex max-w-sm flex-col gap-1 sm:items-end">
+                  <Hint text={t("hint.builderAutoSchedule")} align="end">
                   <Button
                     type="button"
                     variant="outline"
@@ -2445,11 +2525,11 @@ export function MtmRouteBuilder({
                     className="min-h-11"
                     data-testid="mtm-route-auto-schedule"
                     aria-describedby="mtm-route-auto-schedule-hint"
-                    title={t("autoScheduleStopsHint")}
                     onClick={autoScheduleStops}
                   >
                     <Clock3 className="h-4 w-4" />{t("autoScheduleStops")}
                   </Button>
+                  </Hint>
                   <p id="mtm-route-auto-schedule-hint" className="text-xs text-muted-foreground sm:text-right">{t("autoScheduleStopsHint")}</p>
                 </div>
               ) : null}
@@ -2510,6 +2590,7 @@ export function MtmRouteBuilder({
                                 {notice.kind === "same-agent" ? t("meetingAssistantBusyHint") : t("meetingAssistantJointHint")}
                               </div>
                               {notice.kind === "same-agent" && !locked ? (
+                                <Hint text={t("hint.builderFindFreeTime")} align="start">
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -2526,6 +2607,7 @@ export function MtmRouteBuilder({
                                     ? t("findingNextFreeTime")
                                     : t("findNextFreeTime")}
                                 </Button>
+                                </Hint>
                               ) : null}
                             </div>
                           </div>
@@ -2533,6 +2615,8 @@ export function MtmRouteBuilder({
                       })}
                     </span>
                     <div className="col-span-2 flex flex-wrap items-center justify-end gap-1 sm:col-span-1 sm:flex-nowrap">
+                      {/* The hint is on the block: a locked stop's disabled select lets the pointer through to it. */}
+                      <Hint text={locked ? t("hint.builderStopLocked") : t("hint.builderPlannedTime")}>
                       <div className="w-28 shrink-0">
                         <Label htmlFor={`route-stop-time-${index}`} className="sr-only">{t("plannedTime")}</Label>
                         <Select
@@ -2541,23 +2625,29 @@ export function MtmRouteBuilder({
                           value={stop.plannedTime ?? ""}
                           onChange={(event) => updateStopTime(index, event.target.value)}
                           disabled={locked}
-                          title={t("plannedTime")}
                           aria-label={`${t("plannedTime")}: ${stop.contact?.displayName ?? stop.customer.name}`}
-                          className="h-11 px-2 text-xs"
+                          className="h-11 px-2 text-xs disabled:pointer-events-none"
                         >
                           <option value="">—</option>
                           {MTM_ROUTE_TIME_SLOTS.map((time) => <option key={time} value={time}>{time}</option>)}
                         </Select>
                       </div>
-                      <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveStop(index, -1)} disabled={locked || index === 0} title={t("moveUp")} aria-label={t("moveStopUp", { name: stop.contact?.displayName ?? stop.customer.name })}>
+                      </Hint>
+                      <Hint wrap text={locked ? t("hint.builderStopLocked") : t("hint.builderMoveUp")}>
+                      <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveStop(index, -1)} disabled={locked || index === 0} aria-label={t("moveStopUp", { name: stop.contact?.displayName ?? stop.customer.name })}>
                         <ArrowUp className="h-4 w-4" />
                       </Button>
-                      <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveStop(index, 1)} disabled={locked || index === stops.length - 1} title={t("moveDown")} aria-label={t("moveStopDown", { name: stop.contact?.displayName ?? stop.customer.name })}>
+                      </Hint>
+                      <Hint wrap text={locked ? t("hint.builderStopLocked") : t("hint.builderMoveDown")}>
+                      <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveStop(index, 1)} disabled={locked || index === stops.length - 1} aria-label={t("moveStopDown", { name: stop.contact?.displayName ?? stop.customer.name })}>
                         <ArrowDown className="h-4 w-4" />
                       </Button>
-                      <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" disabled={locked} onClick={() => removeStop(index)} title={locked ? t("stopLocked") : t("removeStop")} aria-label={locked ? t("stopLocked") : t("removeStopNamed", { name: stop.contact?.displayName ?? stop.customer.name })}>
+                      </Hint>
+                      <Hint wrap text={locked ? t("hint.builderStopLocked") : t("hint.builderRemoveStop")} align="end">
+                      <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" disabled={locked} onClick={() => removeStop(index)} aria-label={locked ? t("stopLocked") : t("removeStopNamed", { name: stop.contact?.displayName ?? stop.customer.name })}>
                         <X className="h-4 w-4" />
                       </Button>
+                      </Hint>
                     </div>
                   </div>
                 )
@@ -2623,6 +2713,7 @@ export function MtmRouteBuilder({
         </div>
         <div className="flex w-full min-w-0 items-center justify-end gap-2 sm:w-auto sm:shrink-0">
           {activeStep > 1 ? (
+            <Hint text={activeStep === 3 ? t("hint.builderBackToCustomers") : t("hint.builderBackToSetup")} side="top">
             <Button
               type="button"
               variant="outline"
@@ -2634,9 +2725,13 @@ export function MtmRouteBuilder({
               <ChevronLeft className="h-4 w-4 sm:hidden" />
               <span className="hidden sm:inline">{activeStep === 3 ? t("editCustomersAction") : t("backAction")}</span>
             </Button>
+            </Hint>
           ) : null}
+          <Hint text={t("hint.builderClose")} side="top">
           <Button type="button" variant="ghost" className="hidden min-h-11 sm:inline-flex" data-testid="mtm-route-builder-cancel" onClick={requestClose}>{t("cancelBuilder")}</Button>
+          </Hint>
           {canPublishFromBuilder && activeStep === 3 ? (
+            <Hint text={isEditing ? t("hint.builderSaveChanges") : t("hint.builderSaveDraft")} side="top">
             <Button
               type="button"
               variant="outline"
@@ -2652,7 +2747,9 @@ export function MtmRouteBuilder({
                 <><Check className="h-4 w-4" /><span className="hidden sm:inline">{isEditing ? t("saveChanges") : t("saveDraft")}</span></>
               )}
             </Button>
+            </Hint>
           ) : null}
+          <Hint text={primaryActionHint} side="top" align="end">
           <Button
             type="button"
             className="min-h-12 min-w-0 flex-1 px-4 text-sm sm:min-w-48 sm:flex-none"
@@ -2671,6 +2768,7 @@ export function MtmRouteBuilder({
               </>
             )}
           </Button>
+          </Hint>
         </div>
       </div>
     </section>

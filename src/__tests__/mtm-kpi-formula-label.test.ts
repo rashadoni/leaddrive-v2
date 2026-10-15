@@ -25,7 +25,8 @@ describe("C1 tail: the KPI formula is named, not coded", () => {
 
   it("keeps the code reachable, because a manager quotes it to finance", () => {
     const dashboard = readFileSync(DASHBOARD, "utf8")
-    expect(dashboard).toContain('title={t("formulaCodeHint", { code: report.formula.version })}')
+    // Under the cursor now (src/components/hint.tsx), after a sentence on what the badge means.
+    expect(dashboard).toContain('t("formulaCodeHint", { code: report.formula.version })}`}><Badge variant="outline">{t("formulaName")}</Badge></HintValue>')
   })
 
   it("has the name and the hint in all three languages", () => {

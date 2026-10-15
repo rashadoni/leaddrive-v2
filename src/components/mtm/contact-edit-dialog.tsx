@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { CircleAlert, Save, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -209,17 +210,20 @@ function Field({
   id,
   label,
   required,
+  hint,
   children,
 }: {
   id: string
   label: string
   required?: boolean
+  /** What the field means, under the cursor on its label. */
+  hint?: string | null
   children: React.ReactNode
 }) {
   return (
     <div className="grid gap-1.5">
       <Label htmlFor={id}>
-        {label}
+        <HintValue text={hint}>{label}</HintValue>
         {required ? <span className="ml-1 text-destructive" aria-hidden="true">*</span> : null}
       </Label>
       {children}
@@ -451,7 +455,7 @@ export function MtmContactEditDialog({
               </Field>
             ) : null}
             {shows("externalCode") ? (
-              <Field id="contact-external-code" label={t("externalCode")} required={isRequired("externalCode")}>
+              <Field id="contact-external-code" label={t("externalCode")} required={isRequired("externalCode")} hint={t("hint.externalCode")}>
                 <Input id="contact-external-code" value={form.externalCode} onChange={(event) => update("externalCode", event.target.value)} maxLength={500} required={isRequired("externalCode")} />
               </Field>
             ) : null}
@@ -480,7 +484,7 @@ export function MtmContactEditDialog({
                 </Select>
               )}
             </Field>
-            <Field id="contact-category" label={t("category")}>
+            <Field id="contact-category" label={t("category")} hint={t("hint.category")}>
               <Select id="contact-category" value={form.category} onChange={(event) => update("category", event.target.value)}>
                 {contactClassOptions(classes, form.category).map((value) => <option key={value} value={value}>{value}</option>)}
               </Select>
@@ -510,7 +514,7 @@ export function MtmContactEditDialog({
                 <Input id="contact-product-category" value={form.productCategory} onChange={(event) => update("productCategory", event.target.value)} maxLength={500} required={isRequired("productCategory")} />
               </Field>
             ) : null}
-            <Field id="contact-status" label={t("status")}>
+            <Field id="contact-status" label={t("status")} hint={["DUPLICATE", "MERGED"].includes(form.status) ? t("hint.statusLocked") : null}>
               <Select
                 id="contact-status"
                 value={form.status}
@@ -608,17 +612,17 @@ export function MtmContactEditDialog({
           ) : null}
 
           <FormSection title={t("governanceTitle")} description={t("governanceDescription")}>
-            <Field id="contact-verification" label={t("verification")}>
+            <Field id="contact-verification" label={t("verification")} hint={t("hint.verification")}>
               <Select id="contact-verification" value={form.verificationStatus} onChange={(event) => update("verificationStatus", event.target.value)}>
                 {["UNVERIFIED", "VERIFIED", "REJECTED"].map((value) => <option key={value} value={value}>{t(`verificationStatuses.${value}`)}</option>)}
               </Select>
             </Field>
-            <Field id="contact-consent" label={t("consent")}>
+            <Field id="contact-consent" label={t("consent")} hint={t("hint.consent")}>
               <Select id="contact-consent" value={form.consentStatus} onChange={(event) => update("consentStatus", event.target.value)}>
                 {["UNKNOWN", "GRANTED", "REVOKED"].map((value) => <option key={value} value={value}>{t(`consentStatuses.${value}`)}</option>)}
               </Select>
             </Field>
-            <Field id="contact-preference" label={t("preferredChannel")}>
+            <Field id="contact-preference" label={t("preferredChannel")} hint={t("hint.preferredChannel")}>
               <Select id="contact-preference" value={form.contactPreference} onChange={(event) => update("contactPreference", event.target.value)}>
                 <option value="">{t("notSet")}</option>
                 {["PHONE", "EMAIL", "WHATSAPP", "VIBER", "TELEGRAM", "DO_NOT_CONTACT"].map((value) => <option key={value} value={value}>{t(`preferences.${value}`)}</option>)}
@@ -658,10 +662,12 @@ export function MtmContactEditDialog({
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
             {t("cancel")}
           </Button>
-          <Button type="submit" disabled={saving || (!canManage && !canRequestChanges)}>
-            {requestMode ? <Send className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-            {saving ? t("saving") : requestMode ? t("submitRequest") : t("save")}
-          </Button>
+          <Hint wrap text={saving ? null : requestMode ? t("hint.submitRequest") : t("hint.save")} side="top">
+            <Button type="submit" className="w-full sm:w-auto" disabled={saving || (!canManage && !canRequestChanges)}>
+              {requestMode ? <Send className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {saving ? t("saving") : requestMode ? t("submitRequest") : t("save")}
+            </Button>
+          </Hint>
         </DialogFooter>
       </form>
     </Dialog>
