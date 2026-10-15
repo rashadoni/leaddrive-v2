@@ -103,3 +103,27 @@ export async function findPhoneOwner(client: LookupClient, organizationId: strin
   if (matches.length > 1) return { kind: "ambiguous", agentIds: matches.map(match => match.agentId).sort() }
   return { kind: "found", agentId: matches[0].agentId, sendTo: internationalNumber(matches[0].stored, entered) }
 }
+
+export type SignInPhoneCheck =
+  | { ok: true; phone: string }
+  | { ok: false; status: 400 | 409; code: "MTM_AGENT_PHONE_INVALID" | "MTM_AGENT_PHONE_TAKEN"; error: string }
+
+/**
+ * A number a manager types on a card is the number its holder signs in by — a
+ * code goes to its WhatsApp (owner, 2026-10-16: «одно и то же правило для
+ * сотрудников и агентов полевых»). So it is written with its country code
+ * (spaces and dashes dropped), and no other active card in the company may
+ * hold it: two people with one number would both be refused the code.
+ */
+export async function checkSignInPhone(client: LookupClient, organizationId: string, value: string, selfAgentId?: string): Promise<SignInPhoneCheck> {
+  const phone = value.replace(/[\s\-()]/g, "")
+  if (!/^\+[1-9]\d{6,14}$/.test(phone)) {
+    return { ok: false, status: 400, code: "MTM_AGENT_PHONE_INVALID", error: "Write the WhatsApp number with its country code, e.g. +994501234567" }
+  }
+  const owner = await findPhoneOwner(client, organizationId, phone)
+  const others = owner.kind === "found" ? [owner.agentId] : owner.kind === "ambiguous" ? owner.agentIds : []
+  if (others.some(agentId => agentId !== selfAgentId)) {
+    return { ok: false, status: 409, code: "MTM_AGENT_PHONE_TAKEN", error: "This number already belongs to another active employee or agent" }
+  }
+  return { ok: true, phone }
+}
