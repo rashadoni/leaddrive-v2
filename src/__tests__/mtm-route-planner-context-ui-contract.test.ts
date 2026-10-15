@@ -32,7 +32,7 @@ describe("MTM planner launch-context UI contract", () => {
     expect(builder).toContain("onPlannerContextChange?: (context: MtmRoutePlannerContext) => void")
     expect(builder).toContain("setCustomerSearch(initialPlannerContext?.search ?? \"\")")
     expect(builder).toContain("setCandidateFilters({ ...emptyCandidateFilters, ...initialPlannerContext?.filters })")
-    expect(page).toContain('data-testid="mtm-routes-view-matrix"')
+    expect(page).toContain("<MtmRoutePlanningMatrix")
     expect(page).toContain('data-testid="mtm-routes-view-calendar"')
     expect(page).toContain('data-testid="mtm-routes-view-week"')
   })

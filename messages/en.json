@@ -13273,8 +13273,6 @@
       "viewCalendar": "A month of routes: what is planned for each day and how it went.",
       "viewWeek": "The team's week: employees in rows, seven days in columns, the day's route in each cell.",
       "viewList": "All routes as a list, with a status filter and search.",
-      "viewMatrix": "Plan one employee's week: who to visit on which day.",
-      "viewAgent": "One employee's work over a chosen period, day by day.",
       "viewApprovals": "Agents' requests awaiting a decision: route changes, new clients and institutions, a client's new place. The number is how many wait.",
       "returnBack": "Go back to where you opened routes from.",
       "excel": "Load routes and reference lists from Excel, or export them to Excel.",
@@ -13382,10 +13380,12 @@
       "inlineClose": "Close the search. The route and the clients already chosen stay as they are.",
       "inlineAdd": "Assign this record to the employee from the route's date and add it to the route straight away.",
       "inlineShare": "The current employee stays assigned and this one is added alongside from the route's date. Then the record goes into the route.",
-      "inlineTransfer": "The record moves from its current employee to this one from the route's date and is added to the route. You will be asked once more first."
+      "inlineTransfer": "The record moves from its current employee to this one from the route's date and is added to the route. You will be asked once more first.",
+      "closeSideView": "Back to the section's main views.",
+      "openAgentPeriod": "Open {employee} over any period: day by day, whom they met and for how long."
     },
     "testAccounts": "Test accounts",
-    "calendarTitle": "Calendar",
+    "calendarTitle": "Route calendar",
     "weekIdleAgents": "{count, plural, one {# employee without a plan this week} other {# employees without a plan this week}}",
     "weekShowIdle": "Show",
     "weekHideIdle": "Hide",
@@ -13400,7 +13400,6 @@
     "controlAndReports": "Control and reports",
     "title": "Routes",
     "routeSummary": "Route summary",
-    "calendarTitle": "Route calendar",
     "calendarHint": "Choose a day to see its routes or plan a new one immediately.",
     "todayAction": "Today",
     "routesOnDate": "{count, plural, one {# route} other {# routes}}",
@@ -14077,7 +14076,8 @@
     },
     "allLatest": "All (latest {shown} of {total})",
     "loadMoreRoutes": "Show {count} more",
-    "loadMoreRoutesFailed": "Could not load more routes. Try again."
+    "loadMoreRoutesFailed": "Could not load more routes. Try again.",
+    "closeSideView": "Close this view"
   },
   "mtmOperationsPage": {
     "hint": {

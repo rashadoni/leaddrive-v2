@@ -199,7 +199,7 @@ describe("SwissMed MTM browser evidence runner", () => {
   })
 
   it("uses stable non-visual hooks for interactive route states", () => {
-    expect(source("src/app/(dashboard)/mtm/routes/page.tsx")).toContain('data-testid="mtm-routes-view-matrix"')
+    expect(source("src/app/(dashboard)/mtm/routes/page.tsx")).toContain("<MtmRoutePlanningMatrix")
     // Owner 2026-09-25: the views are tabs in one row; the week plan is clicked directly.
     expect(source("src/app/(dashboard)/mtm/routes/page.tsx")).toContain('data-testid="mtm-route-view-tabs"')
     expect(runner).not.toContain("mtm-routes-more-views-toggle")

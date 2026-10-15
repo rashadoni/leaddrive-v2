@@ -37,7 +37,10 @@ describe("MTM routes view indicator", () => {
     expect(page).toContain('data-testid="mtm-route-view-tabs"')
     expect(page).not.toContain("advancedViewLabel")
     expect(page).not.toContain("advancedViewsOpen")
-    for (const view of ["calendar", "week", "list", "matrix", "approvals"]) {
+    // The week plan and the employee over a period have no tab since
+    // 2026-10-15; while one is open it is lit as the side view.
+    expect(page).toContain('data-testid="mtm-routes-side-view"')
+    for (const view of ["calendar", "week", "list", "approvals"]) {
       expect(page).toContain(`aria-pressed={viewMode === "${view}"}`)
       expect(page).toContain(`variant={viewMode === "${view}" ? "default" : "ghost"}`)
     }
