@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertTriangle, Check, ChevronDown, CircleHelp, LocateFixed, MapPin, Plus, RefreshCw, Send, Smartphone, X } from "lucide-react"
@@ -290,7 +291,7 @@ export function MtmCustomerCreateRequestPanel({ open, routeId, orgId, onClose, o
             <section className="rounded-lg bg-muted/35 p-3.5" aria-labelledby="customer-location-heading">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <div><div id="customer-location-heading" className="flex items-center gap-2 text-sm font-semibold"><MapPin className="h-4 w-4 text-primary" />{t("customerLocation")}</div><p className="mt-0.5 text-xs text-muted-foreground">{t("customerRequestLocationHint")}</p></div>
-                <Button type="button" size="sm" variant="outline" onClick={locate} disabled={locating}><LocateFixed className="mr-1 h-4 w-4" />{locating ? t("locating") : t("useCurrentLocation")}</Button>
+                <Hint wrap text={t("hint.useLocation")}><Button type="button" size="sm" variant="outline" onClick={locate} disabled={locating}><LocateFixed className="mr-1 h-4 w-4" />{locating ? t("locating") : t("useCurrentLocation")}</Button></Hint>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div><Label htmlFor="customer-request-lat">{t("latitude")}</Label><Input id="customer-request-lat" value={form.latitude} onChange={(event) => setField("latitude", event.target.value)} inputMode="decimal" /></div>
@@ -314,10 +315,12 @@ export function MtmCustomerCreateRequestPanel({ open, routeId, orgId, onClose, o
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><CircleHelp className="h-3.5 w-3.5" />{t("customerRequestRequiredHint")}</p>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
                 {editingId ? <Button type="button" variant="ghost" onClick={resetForm}>{t("cancelBuilder")}</Button> : null}
-                <Button type="button" onClick={submit} disabled={saving || form.name.trim().length < 2 || form.reason.trim().length < 3}>
-                  {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                  {editingId ? t("resubmitRequest") : t("submitCustomerRequest")}
-                </Button>
+                <Hint wrap text={t("hint.submitCustomerRequest")}>
+                  <Button type="button" onClick={submit} disabled={saving || form.name.trim().length < 2 || form.reason.trim().length < 3}>
+                    {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                    {editingId ? t("resubmitRequest") : t("submitCustomerRequest")}
+                  </Button>
+                </Hint>
               </div>
             </div>
           </div>

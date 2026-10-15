@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useCallback, useEffect, useState, useMemo, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -907,19 +908,19 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
               Excel exchange is a button with words, not a menu item. */}
           <nav data-testid="mtm-route-view-switcher" className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label={t("primaryViews")}>
             <div data-testid="mtm-route-view-tabs" className="flex min-w-0 flex-wrap gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700" role="group" aria-label={t("primaryViews")}>
-              {calendarSurface ? <Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant={viewMode === "calendar" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("calendar")}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button> : null}
-              {calendarSurface && capabilities.canReview ? <Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("week")}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button> : null}
-              <Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("list")}><List className="mr-1 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button>
-              <Button data-testid="mtm-routes-view-matrix" aria-pressed={viewMode === "matrix"} variant={viewMode === "matrix" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("matrix")}><TableProperties className="mr-1 h-4 w-4" />{t("viewMatrix")}</Button>
+              {calendarSurface ? <Hint text={t("hint.viewCalendar")}><Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant={viewMode === "calendar" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("calendar")}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button></Hint> : null}
+              {calendarSurface && capabilities.canReview ? <Hint text={t("hint.viewWeek")}><Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("week")}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button></Hint> : null}
+              <Hint text={t("hint.viewList")}><Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("list")}><List className="mr-1 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button></Hint>
+              <Hint text={t("hint.viewMatrix")}><Button data-testid="mtm-routes-view-matrix" aria-pressed={viewMode === "matrix"} variant={viewMode === "matrix" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("matrix")}><TableProperties className="mr-1 h-4 w-4" />{t("viewMatrix")}</Button></Hint>
               {/* Owner 2026-09-25: one agent over any period, not only a week. */}
-              <Button data-testid="mtm-routes-view-agent" aria-pressed={viewMode === "agent"} variant={viewMode === "agent" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("agent")}><UserRound className="mr-1 h-4 w-4" />{t("viewAgentPeriod")}</Button>
-              {capabilities.canReview ? <Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}{approvalTotal > 0 ? <span data-testid="mtm-routes-approvals-count" className="ml-1.5 min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-[11px] font-semibold leading-5 text-white">{approvalTotal}</span> : null}</Button> : null}
+              <Hint text={t("hint.viewAgent")}><Button data-testid="mtm-routes-view-agent" aria-pressed={viewMode === "agent"} variant={viewMode === "agent" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("agent")}><UserRound className="mr-1 h-4 w-4" />{t("viewAgentPeriod")}</Button></Hint>
+              {capabilities.canReview ? <Hint text={t("hint.viewApprovals")}><Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}{approvalTotal > 0 ? <span data-testid="mtm-routes-approvals-count" className="ml-1.5 min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-[11px] font-semibold leading-5 text-white">{approvalTotal}</span> : null}</Button></Hint> : null}
             </div>
           </nav>
           <div className="flex shrink-0 items-center justify-end gap-2">
-            {returnTarget ? <Button asChild variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10"><Link href={returnTarget.href}><ArrowLeft className="mr-1 h-4 w-4" />{t(returnTarget.label)}</Link></Button> : null}
-            {capabilities.canReview ? <Button data-testid="mtm-routes-excel-exchange" variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10" onClick={() => setExcelOpen(true)}><FileSpreadsheet className="mr-1 h-4 w-4" />{t("excelExchange")}</Button> : null}
-            <Button data-testid="mtm-route-builder-open" className="min-h-11 flex-1 whitespace-nowrap px-4 sm:flex-none lg:min-h-10" onClick={() => openNewRoute()} disabled={!capabilities.canCreateRoute} title={!capabilities.canCreateRoute ? t("selfPlanningDisabled") : undefined}><Plus className="mr-1 h-4 w-4" /> {t("add")}</Button>
+            {returnTarget ? <Hint text={t("hint.returnBack")}><Button asChild variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10"><Link href={returnTarget.href}><ArrowLeft className="mr-1 h-4 w-4" />{t(returnTarget.label)}</Link></Button></Hint> : null}
+            {capabilities.canReview ? <Hint text={t("hint.excel")}><Button data-testid="mtm-routes-excel-exchange" variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10" onClick={() => setExcelOpen(true)}><FileSpreadsheet className="mr-1 h-4 w-4" />{t("excelExchange")}</Button></Hint> : null}
+            <Hint wrap text={capabilities.canCreateRoute ? t("hint.addRoute") : t("selfPlanningDisabled")}><Button data-testid="mtm-route-builder-open" className="min-h-11 flex-1 whitespace-nowrap px-4 sm:flex-none lg:min-h-10" onClick={() => openNewRoute()} disabled={!capabilities.canCreateRoute}><Plus className="mr-1 h-4 w-4" /> {t("add")}</Button></Hint>
           </div>
         </div>
       </header>
@@ -1028,25 +1029,27 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
                 <span>{selectedRoute.assignments?.map((assignment: MtmRouteAssignment) => assignment.agent?.name).filter(Boolean).join(", ") || selectedRoute.agent?.name}</span>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-1">
-              {capabilities.canRequestCustomer && selectedRoute.historicalAccessOnly !== true ? <Button size="sm" variant="outline" onClick={() => { setCustomerRequestRouteId(selectedRoute.id); setCustomerRequestOpen(true) }}>
-                <User className="mr-1 h-4 w-4" />{t("requestNewCustomer")}
-              </Button> : null}
-              {canEditRoute(selectedRoute) ? (
-                <>
-                  <Button data-testid="mtm-route-edit" size="sm" variant="outline" onClick={() => openRouteEditor(selectedRoute)}><Pencil className="mr-1 h-4 w-4" />{t("edit")}</Button>
-                  {selectedRoute.status === "DRAFT" && capabilities.canPublish ? <Button data-testid="mtm-route-publish" size="sm" onClick={() => publishRoute(selectedRoute)}><Send className="mr-1 h-4 w-4" />{t("publishRoute")}</Button> : null}
-                </>
-              ) : null}
-              <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={closeRouteDetails} title={t("closeRouteDetails")} aria-label={t("closeRouteDetails")}><X className="h-4 w-4" /></Button>
-            </div>
+            <Hint text={t("hint.requestCustomer")}>
+              <div className="flex flex-wrap items-center gap-1">
+                {capabilities.canRequestCustomer && selectedRoute.historicalAccessOnly !== true ? <Button size="sm" variant="outline" onClick={() => { setCustomerRequestRouteId(selectedRoute.id); setCustomerRequestOpen(true) }}>
+                  <User className="mr-1 h-4 w-4" />{t("requestNewCustomer")}
+                </Button> : null}
+                {canEditRoute(selectedRoute) ? (
+                  <>
+                    <Hint text={t("hint.edit")}><Button data-testid="mtm-route-edit" size="sm" variant="outline" onClick={() => openRouteEditor(selectedRoute)}><Pencil className="mr-1 h-4 w-4" />{t("edit")}</Button></Hint>
+                    {selectedRoute.status === "DRAFT" && capabilities.canPublish ? <Hint text={t("hint.publish")}><Button data-testid="mtm-route-publish" size="sm" onClick={() => publishRoute(selectedRoute)}><Send className="mr-1 h-4 w-4" />{t("publishRoute")}</Button></Hint> : null}
+                  </>
+                ) : null}
+                <Hint text={t("hint.close")}><Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={closeRouteDetails} aria-label={t("closeRouteDetails")}><X className="h-4 w-4" /></Button></Hint>
+              </div>
+            </Hint>
           </div>
           <div className="grid grid-cols-2 divide-x divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700 sm:grid-cols-5 sm:divide-y-0">
-            <div className="p-3 text-center"><CheckCircle2 className="mx-auto mb-1 h-4 w-4 text-green-500" /><div className="text-lg font-bold">{selectedRoute.visitedPoints}/{selectedRoute.totalPoints}</div><div className="text-[10px] text-muted-foreground">{t("completed")}</div></div>
-            <div className="p-3 text-center"><Navigation className="mx-auto mb-1 h-4 w-4 text-blue-500" /><div className="text-lg font-bold">{routeMetrics?.completion ?? 0}%</div><div className="text-[10px] text-muted-foreground">{t("execution")}</div></div>
-            <div className="p-3 text-center"><Clock className="mx-auto mb-1 h-4 w-4 text-amber-500" /><div className="text-lg font-bold">{routeMetrics?.duration ? durationLabel(routeMetrics.duration) : "—"}</div><div className="text-[10px] text-muted-foreground">{t("duration")}</div></div>
-            <div className="p-3 text-center"><MapPin className="mx-auto mb-1 h-4 w-4 text-fuchsia-500" /><div className="text-lg font-bold">{selectedRoute.totalPoints}</div><div className="text-[10px] text-muted-foreground">{t("points")}</div></div>
-            <div className="p-3 text-center"><Route className="mx-auto mb-1 h-4 w-4 text-cyan-600" /><div className="text-lg font-bold">{selectedRoute.distanceKm ? `${selectedRoute.distanceKm} km` : "—"}</div><div className="text-[10px] text-muted-foreground">{t("distance")}</div></div>
+            <div className="p-3 text-center"><CheckCircle2 className="mx-auto mb-1 h-4 w-4 text-green-500" /><div className="text-lg font-bold">{selectedRoute.visitedPoints}/{selectedRoute.totalPoints}</div><div className="text-[10px] text-muted-foreground"><HintValue text={t("hint.completed")}>{t("completed")}</HintValue></div></div>
+            <div className="p-3 text-center"><Navigation className="mx-auto mb-1 h-4 w-4 text-blue-500" /><div className="text-lg font-bold">{routeMetrics?.completion ?? 0}%</div><div className="text-[10px] text-muted-foreground"><HintValue text={t("hint.execution")}>{t("execution")}</HintValue></div></div>
+            <div className="p-3 text-center"><Clock className="mx-auto mb-1 h-4 w-4 text-amber-500" /><div className="text-lg font-bold">{routeMetrics?.duration ? durationLabel(routeMetrics.duration) : "—"}</div><div className="text-[10px] text-muted-foreground"><HintValue text={t("hint.duration")}>{t("duration")}</HintValue></div></div>
+            <div className="p-3 text-center"><MapPin className="mx-auto mb-1 h-4 w-4 text-fuchsia-500" /><div className="text-lg font-bold">{selectedRoute.totalPoints}</div><div className="text-[10px] text-muted-foreground"><HintValue text={t("hint.points")}>{t("points")}</HintValue></div></div>
+            <div className="p-3 text-center"><Route className="mx-auto mb-1 h-4 w-4 text-cyan-600" /><div className="text-lg font-bold">{selectedRoute.distanceKm ? `${selectedRoute.distanceKm} km` : "—"}</div><div className="text-[10px] text-muted-foreground"><HintValue text={t("hint.distance")}>{t("distance")}</HintValue></div></div>
           </div>
           {selectedRoutePoints.length > 0 && (
             <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden" style={{ height: 360 }}><MtmRouteMap points={selectedRoutePoints} timezone={timezone} /></div>
@@ -1080,15 +1083,15 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
                   <span className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${p.status === "VISITED" ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300" : p.status === "SKIPPED" ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
                   <span className="min-w-0 flex-1 font-medium">
                     {visit ? (
-                      <Link className="hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`}>{p.customer?.name || "—"}</Link>
+                      <Hint text={t("hint.openVisit")}><Link className="hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`}>{p.customer?.name || "—"}</Link></Hint>
                     ) : (p.customer?.name || "—")}
                   </span>
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${p.status === "VISITED" ? "bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-300" : p.status === "SKIPPED" ? "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-300" : "bg-muted/50 text-muted-foreground"}`}>{t(pointStatusLabelKey[p.status] ?? "pointStatusUnknown")}</span>
                   {p.changeRequests?.some((request) => request.changeType === "REMOVE_STOP") ? (
-                    <span className="border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">{t("removalPending")}</span>
+                    <HintValue className="border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300" text={t("hint.removalPending")}>{t("removalPending")}</HintValue>
                   ) : null}
                   {selectedRoute.historicalAccessOnly !== true && (selectedRoute.status === "PLANNED" || selectedRoute.status === "IN_PROGRESS") && p.status !== "VISITED" && !p.changeRequests?.some((request) => request.changeType === "REMOVE_STOP") ? (
-                    <Button variant="ghost" size="sm" onClick={() => { setRemovalPointId(p.id); setRemovalReason("") }}>{t("requestRemoval")}</Button>
+                    <Hint text={t("hint.requestRemoval")}><Button variant="ghost" size="sm" onClick={() => { setRemovalPointId(p.id); setRemovalReason("") }}>{t("requestRemoval")}</Button></Hint>
                   ) : null}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 pl-7 text-muted-foreground">
@@ -1106,14 +1109,14 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
                       <span>{t("stopFact.notVisited")}</span>
                     ) : null}
                     {fact?.timing === "LATE" && fact.delayMinutes !== null ? (
-                      <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300">{t("stopFact.late", { delay: durationLabel(fact.delayMinutes) })}</span>
+                      <HintValue className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300" text={t("hint.late")}>{t("stopFact.late", { delay: durationLabel(fact.delayMinutes) })}</HintValue>
                     ) : fact?.timing === "EARLY" && fact.delayMinutes !== null ? (
-                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">{t("stopFact.early", { delay: durationLabel(Math.abs(fact.delayMinutes)) })}</span>
+                      <HintValue className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300" text={t("hint.early")}>{t("stopFact.early", { delay: durationLabel(Math.abs(fact.delayMinutes)) })}</HintValue>
                     ) : fact?.timing === "ON_TIME" ? (
-                      <span className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-950/20 dark:text-green-300">{t("stopFact.onTime")}</span>
+                      <HintValue className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-950/20 dark:text-green-300" text={t("hint.onTime")}>{t("stopFact.onTime")}</HintValue>
                     ) : null}
                     {fact?.outOfOrder && fact.actualSequence !== null ? (
-                      <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"><ArrowDownUp className="h-3 w-3" />{t("stopFact.outOfOrder", { actual: fact.actualSequence })}</span>
+                      <HintValue className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300" text={t("hint.outOfOrder")}><ArrowDownUp className="h-3 w-3" />{t("stopFact.outOfOrder", { actual: fact.actualSequence })}</HintValue>
                     ) : null}
                     {visit?.locationHidden ? (
                       <span data-place-verdict="location_hidden" className="text-[10px] text-muted-foreground">{tPlace("locationHidden")}</span>
@@ -1154,17 +1157,19 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           <MtmFilterBar testId="mtm-route-list-filters">
             <MtmFilterSearch testId="mtm-route-list-search" value={search} onChange={setSearch} delayMs={150} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tFilters("clearSearch")} />
             <div data-testid="mtm-route-status-filters" role="group" aria-label={t("routeSummary")} className="flex flex-wrap gap-1">
-              <Button aria-pressed={activeFilter === "all"} variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{routesTotal > routes.length ? t("allLatest", { shown: routes.length, total: routesTotal }) : `${t("all")} (${routes.length})`}</Button>
+              <Hint text={t("hint.statusAll")}><Button aria-pressed={activeFilter === "all"} variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{routesTotal > routes.length ? t("allLatest", { shown: routes.length, total: routesTotal }) : `${t("all")} (${routes.length})`}</Button></Hint>
               {(["DRAFT", "PLANNED", "IN_PROGRESS", "COMPLETED", "INCOMPLETE", "CANCELLED"] as const).map(s => (
-                <Button key={s} aria-pressed={activeFilter === s} variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>
+                <Hint key={s} text={t(`hint.status${s}`)}><Button aria-pressed={activeFilter === s} variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>
                   {mtmStatusLabel(statusT, "route", s)} ({statusCounts[s] || 0})
-                </Button>
+                </Button></Hint>
               ))}
             </div>
             <span className="ml-auto">
-              <MtmFilterSelect label={tFilters("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
-                options={[{ value: "date_desc", label: t("sortDateDesc") }, { value: "date_asc", label: t("sortDateAsc") }, { value: "status", label: t("sortStatus") }]}
-                onChange={setSortBy} />
+              <Hint wrap text={t("hint.sort")}>
+                <MtmFilterSelect label={tFilters("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
+                  options={[{ value: "date_desc", label: t("sortDateDesc") }, { value: "date_asc", label: t("sortDateAsc") }, { value: "status", label: t("sortStatus") }]}
+                  onChange={setSortBy} />
+              </Hint>
             </span>
           </MtmFilterBar>
           {filtered.length === 0 ? (
@@ -1201,10 +1206,10 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
                       ) : null}
                     </button>
                     <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1">
-                      <span className="flex items-center gap-2 text-xs" title={`${completion}%`}>
+                      <Hint text={`${completion}% · ${t("hint.progress")}`}><span tabIndex={0} className="flex items-center gap-2 text-xs">
                         <span className="h-1.5 w-16 overflow-hidden rounded-full bg-muted" aria-hidden="true"><span className={`block h-full rounded-full ${shortOfPlan ? "bg-amber-500" : "bg-green-500"}`} style={{ width: `${completion}%` }} /></span>
                         <span className="font-medium tabular-nums">{route.visitedPoints}/{route.totalPoints}</span>
-                      </span>
+                      </span></Hint>
                       {shortOfPlan ? (
                         <span className="text-xs font-medium text-amber-700 dark:text-amber-300">{t("weekStopsMissed", { count: route.totalPoints - route.visitedPoints })}</span>
                       ) : null}
@@ -1212,9 +1217,9 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
                       {route.changeRequests?.length ? <span className="text-xs text-amber-700 dark:text-amber-300">{t("viewApprovals")}: {route.changeRequests.length}</span> : null}
                       {canEditRoute(route) ? (
                         <span className="flex items-center">
-                          <Button variant="ghost" size="icon" className="min-h-11 min-w-11" title={t("edit")} aria-label={t("edit")} onClick={() => openRouteEditor(route)}><Pencil className="h-4 w-4" /></Button>
+                          <Hint text={t("hint.edit")}><Button variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("edit")} onClick={() => openRouteEditor(route)}><Pencil className="h-4 w-4" /></Button></Hint>
                           {route.status === "DRAFT" ? (
-                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" title={t("delete")} aria-label={t("delete")} onClick={() => { setDeleteItem(route); setDeleteOpen(true) }}><Trash2 className="h-4 w-4" /></Button>
+                            <Hint text={t("hint.delete")}><Button variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" aria-label={t("delete")} onClick={() => { setDeleteItem(route); setDeleteOpen(true) }}><Trash2 className="h-4 w-4" /></Button></Hint>
                           ) : null}
                         </span>
                       ) : null}
@@ -1226,10 +1231,12 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           )}
           {routesTotal > routes.length ? (
             <div className="flex justify-center">
-              <Button data-testid="mtm-route-list-load-more" variant="outline" className="min-h-11" disabled={routesLoadingMore} onClick={() => void loadMoreRoutes()}>
-                {routesLoadingMore ? <RefreshCw className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
-                {t("loadMoreRoutes", { count: Math.min(200, routesTotal - routes.length) })}
-              </Button>
+              <Hint wrap text={t("hint.loadMore")}>
+                <Button data-testid="mtm-route-list-load-more" variant="outline" className="min-h-11" disabled={routesLoadingMore} onClick={() => void loadMoreRoutes()}>
+                  {routesLoadingMore ? <RefreshCw className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
+                  {t("loadMoreRoutes", { count: Math.min(200, routesTotal - routes.length) })}
+                </Button>
+              </Hint>
             </div>
           ) : null}
         </>

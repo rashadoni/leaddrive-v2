@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useEffect, useMemo, useReducer, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
@@ -302,13 +303,17 @@ export function MtmRouteWeekPlan({
               ))}
             </select>
           ) : null}
-          <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveWeek(-1)} title={t("previousWeek")} aria-label={t("previousWeek")}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+          <Hint text={t("hint.previousWeek")}>
+            <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveWeek(-1)} aria-label={t("previousWeek")}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </Hint>
           <div className="min-w-36 text-center text-sm font-semibold">{t("weekOf", { date: formatDate(weekStart, locale) })}</div>
-          <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveWeek(1)} title={t("nextWeek")} aria-label={t("nextWeek")}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <Hint text={t("hint.nextWeek")}>
+            <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveWeek(1)} aria-label={t("nextWeek")}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Hint>
         </div>
       </div>
 
@@ -407,7 +412,7 @@ export function MtmRouteWeekPlan({
           {idleAgents.length > 0 && busyAgents.length > 0 && !agentSearch ? (
             <div data-testid="mtm-week-idle-agents" className="flex items-center gap-3 border-b border-zinc-200 px-3 py-2 text-sm text-muted-foreground dark:border-zinc-700">
               <span>{t("weekIdleAgents", { count: idleAgents.length })}</span>
-              <Button type="button" variant="outline" size="sm" className="min-h-10" onClick={() => setShowIdle((current) => !current)}>{showIdle ? t("weekHideIdle") : t("weekShowIdle")}</Button>
+              <Hint text={t("hint.showIdle")}><Button type="button" variant="outline" size="sm" className="min-h-10" onClick={() => setShowIdle((current) => !current)}>{showIdle ? t("weekHideIdle") : t("weekShowIdle")}</Button></Hint>
             </div>
           ) : null}
           {agents.length > 0 && hiddenCount > 0 ? (
