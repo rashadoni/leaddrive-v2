@@ -1,5 +1,6 @@
 "use client"
 
+import { HintValue } from "@/components/hint"
 import { useCallback, useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Check, Lock, X } from "lucide-react"
@@ -244,7 +245,7 @@ function MatrixRow({
         ) : row.kind === "perAgent" ? (
           <>
             <p className="text-sm font-medium">
-              {count && count.total > 0 ? t("perAgentCount", count) : t("perAgentNoAgents")}
+              {count && count.total > 0 ? <HintValue text={t("hint.perAgentCount")}>{t("perAgentCount", count)}</HintValue> : t("perAgentNoAgents")}
             </p>
           </>
         ) : (

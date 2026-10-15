@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useSession } from "next-auth/react"
@@ -432,7 +433,7 @@ export default function MtmSettingsPage() {
       items: [
         {
           key: "alertLongBreak", labelKey: "lblAlertLongBreak", hintKey: "hintAlertLongBreak", type: "boolean",
-          thresholds: [{ key: "autoCheckoutMinutes", labelKey: "lblAutoCheckoutMinutes", unitKey: "unitMinutes" }],
+          thresholds: [{ key: "autoCheckoutMinutes", labelKey: "lblAutoCheckoutMinutes", hintKey: "hintAutoCheckout", unitKey: "unitMinutes" }],
         },
         {
           // One stored key (alertOutOfZone) controls both alerts below.
@@ -443,8 +444,8 @@ export default function MtmSettingsPage() {
               titleKey: "subRouteDeviation",
               hintKey: "hintSubRouteDeviation",
               thresholds: [
-                { key: "deviationThresholdMeters", labelKey: "lblDeviationThreshold", unitKey: "unitMeters" },
-                { key: "deviationAlertThrottleMinutes", labelKey: "lblDeviationThrottle", unitKey: "unitMinutes" },
+                { key: "deviationThresholdMeters", labelKey: "lblDeviationThreshold", hintKey: "hintDeviationThreshold", unitKey: "unitMeters" },
+                { key: "deviationAlertThrottleMinutes", labelKey: "lblDeviationThrottle", hintKey: "hintDeviationThrottle", unitKey: "unitMinutes" },
               ],
             },
           ],
@@ -604,7 +605,10 @@ export default function MtmSettingsPage() {
     <div className="space-y-2">
       {thresholds.map((threshold) => (
         <div key={threshold.key} className="flex items-start justify-between gap-4">
-          <div className="min-w-0 pt-1 text-sm">{ts(threshold.labelKey)}</div>
+          <div className="min-w-0 pt-1 text-sm">
+            {ts(threshold.labelKey)}
+            {threshold.hintKey ? <div className="mt-0.5 text-xs text-muted-foreground">{ts(threshold.hintKey)}</div> : null}
+          </div>
           {renderNumber(threshold.key, threshold.labelKey, threshold.unitKey, disabled)}
         </div>
       ))}
@@ -745,13 +749,13 @@ export default function MtmSettingsPage() {
           >
             {ts(SETTINGS_TAB_LABEL[name])}
             {tabsWithErrors.has(name) || tabsWithChanges.has(name) ? (
-              <span
+              <Hint text={ts(tabsWithErrors.has(name) ? "tabMarkMistake" : "tabMarkUnsaved")}><span
                 data-testid={`mtm-settings-tab-mark-${name}`}
                 data-mark={tabsWithErrors.has(name) ? "mistake" : "unsaved"}
                 className={`ml-2 inline-block h-2 w-2 rounded-full ${tabsWithErrors.has(name) ? "bg-rose-500" : "bg-amber-400"}`}
               >
                 <span className="sr-only">{ts(tabsWithErrors.has(name) ? "tabMarkMistake" : "tabMarkUnsaved")}</span>
-              </span>
+              </span></Hint>
             ) : null}
           </button>
         ))}
