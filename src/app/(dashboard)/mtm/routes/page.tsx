@@ -47,6 +47,7 @@ import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { MtmAgentPeriodView } from "@/components/mtm/agent-period-view"
 import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { isMtmRouteShortOfPlan } from "@/lib/mtm/calendar-day-summary"
+import { canUseMtmRouteView, defaultMtmRouteView, type MtmRouteSurface, type MtmRouteViewMode } from "@/lib/mtm/route-sections"
 import { mtmCalendarDayKey } from "@/lib/mtm/calendar-day-tone"
 import { mtmDurationParts, summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
@@ -70,7 +71,7 @@ const pointStatusLabelKey: Partial<Record<MtmRoutePoint["status"], "pointStatusP
   SKIPPED: "pointStatusSkipped",
 }
 
-type RouteViewMode = "list" | "matrix" | "week" | "calendar" | "approvals" | "agent"
+type RouteViewMode = MtmRouteViewMode
 
 interface RouteBuilderPreset {
   date?: string
@@ -131,17 +132,13 @@ function routeViewMode(value: string | null): RouteViewMode | null {
     : null
 }
 
-function canUseRouteView(mode: RouteViewMode, canReview: boolean) {
-  return canReview || (mode !== "week" && mode !== "approvals")
-}
-
 /**
  * Owner 2026-09-23: «remove the calendar from this section and make a separate
  * Calendar section, opening on the team calendar». Both surfaces are the same
  * workspace — the routes, their planner and their dialogs — so the section
  * only decides which views it offers and which one it opens on.
  */
-export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" | "calendar" } = {}) {
+export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteSurface } = {}) {
   const calendarSurface = surface === "calendar"
   const { data: session } = useSession()
   const router = useRouter()
@@ -168,7 +165,8 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
   const [sortBy, setSortBy] = useState("date_desc")
-  const [viewMode, setViewMode] = useState<RouteViewMode>(calendarSurface ? "calendar" : "list")
+  const defaultView = defaultMtmRouteView(surface)
+  const [viewMode, setViewMode] = useState<RouteViewMode>(defaultView)
   const [viewPreferenceReady, setViewPreferenceReady] = useState(false)
   const [selectedRoute, setSelectedRoute] = useState<MtmRouteRecord | null>(null)
   const [routeDetailLoading, setRouteDetailLoading] = useState(false)
@@ -222,8 +220,10 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
     controller: null,
   })
   const viewerKey = String(session?.user?.id ?? session?.user?.email ?? "")
+  // Each section remembers its own view; one key for both opened the
+  // calendar's view inside «Маршруты».
   const viewPreferenceKey = orgId && viewerKey
-    ? `leaddrive:mtm:routes:view:${String(orgId)}:${viewerKey}`
+    ? `leaddrive:mtm:${calendarSurface ? "calendar" : "routes"}:view:${String(orgId)}:${viewerKey}`
     : ""
   const plannerContextStorageKey = orgId && viewerKey
     ? mtmRoutePlannerContextStorageKey(String(orgId), viewerKey)
@@ -442,12 +442,13 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
 
     setViewPreferenceReady(false)
     if (requestedRouteId) {
-      setViewMode("list")
+      // The route opens in its dialog; the calendar stays under it.
+      if (!calendarSurface) setViewMode("list")
       setViewPreferenceReady(true)
       return
     }
     if (requestedViewMode) {
-      setViewMode(canUseRouteView(requestedViewMode, capabilities.canReview) ? requestedViewMode : "calendar")
+      setViewMode(canUseMtmRouteView(requestedViewMode, capabilities.canReview, surface) ? requestedViewMode : defaultView)
       setViewPreferenceReady(true)
       return
     }
@@ -458,13 +459,13 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
 
     try {
       const savedView = routeViewMode(window.localStorage.getItem(viewPreferenceKey))
-      if (savedView && canUseRouteView(savedView, capabilities.canReview)) setViewMode(savedView)
+      if (savedView && canUseMtmRouteView(savedView, capabilities.canReview, surface) && savedView !== "agent" && savedView !== "matrix") setViewMode(savedView)
       else if (savedView) window.localStorage.removeItem(viewPreferenceKey)
     } catch {
       // Storage can be unavailable in hardened browsers; calendar remains the safe default.
     }
     setViewPreferenceReady(true)
-  }, [capabilities.canReview, loading, requestedContactId, requestedCustomerId, requestedPlanningAgentId, requestedRouteId, requestedViewMode, viewPreferenceKey])
+  }, [calendarSurface, capabilities.canReview, defaultView, loading, requestedContactId, requestedCustomerId, requestedPlanningAgentId, requestedRouteId, requestedViewMode, surface, viewPreferenceKey])
 
   useEffect(() => {
     if (!viewPreferenceReady || !viewPreferenceKey) return
@@ -886,6 +887,18 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
     ?? routes[0]?.agentId
     ?? null
   const primaryCalendarLabel = t(capabilities.canReview ? "viewTeamCalendar" : "viewMyCalendar")
+  const showApprovalsTab = !calendarSurface && capabilities.canReview && (approvalTotal > 0 || viewMode === "approvals")
+  const sideViewOpen = viewMode === "agent" || viewMode === "matrix"
+  // One view and nothing else to switch to: no switch.
+  const tabCount = (calendarSurface ? 1 + (capabilities.canReview ? 1 : 0) : 1 + (showApprovalsTab ? 1 : 0)) + (sideViewOpen ? 1 : 0)
+  const showViewTabs = tabCount > 1
+  const sectionPath = calendarSurface ? "/mtm/calendar" : "/mtm/routes"
+  /** An employee over a period, from a name in the team week. */
+  const openAgentPeriod = (agentId: string) => router.replace(`${sectionPath}?view=agent&agentId=${encodeURIComponent(agentId)}`, { scroll: false })
+  const closeSideView = () => {
+    router.replace(sectionPath, { scroll: false })
+    setViewMode(calendarSurface && capabilities.canReview && viewMode === "agent" ? "week" : defaultView)
+  }
 
   if (loading) return (
     <div className="space-y-3" aria-busy="true">
@@ -926,15 +939,24 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
               visible ones; every view is now its own tab in one row, and the
               Excel exchange is a button with words, not a menu item. */}
           <nav data-testid="mtm-route-view-switcher" className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label={t("primaryViews")}>
+            {showViewTabs ? (
             <div data-testid="mtm-route-view-tabs" className="flex min-w-0 flex-wrap gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700" role="group" aria-label={t("primaryViews")}>
               {calendarSurface ? <Hint text={t("hint.viewCalendar")}><Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant={viewMode === "calendar" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("calendar")}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button></Hint> : null}
               {calendarSurface && capabilities.canReview ? <Hint text={t("hint.viewWeek")}><Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("week")}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button></Hint> : null}
-              <Hint text={t("hint.viewList")}><Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("list")}><List className="mr-1 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button></Hint>
-              <Hint text={t("hint.viewMatrix")}><Button data-testid="mtm-routes-view-matrix" aria-pressed={viewMode === "matrix"} variant={viewMode === "matrix" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("matrix")}><TableProperties className="mr-1 h-4 w-4" />{t("viewMatrix")}</Button></Hint>
-              {/* Owner 2026-09-25: one agent over any period, not only a week. */}
-              <Hint text={t("hint.viewAgent")}><Button data-testid="mtm-routes-view-agent" aria-pressed={viewMode === "agent"} variant={viewMode === "agent" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("agent")}><UserRound className="mr-1 h-4 w-4" />{t("viewAgentPeriod")}</Button></Hint>
-              {capabilities.canReview ? <Hint text={t("hint.viewApprovals")}><Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}{approvalTotal > 0 ? <span data-testid="mtm-routes-approvals-count" className="ml-1.5 min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-[11px] font-semibold leading-5 text-white">{approvalTotal}</span> : null}</Button></Hint> : null}
+              {!calendarSurface ? <Hint text={t("hint.viewList")}><Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("list")}><List className="mr-1 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button></Hint> : null}
+              {/* Shown only when something waits, or while it is open: an empty
+                  tab was one more place to look for nothing. */}
+              {showApprovalsTab ? <Hint text={t("hint.viewApprovals")}><Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}{approvalTotal > 0 ? <span data-testid="mtm-routes-approvals-count" className="ml-1.5 min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-[11px] font-semibold leading-5 text-white">{approvalTotal}</span> : null}</Button></Hint> : null}
+              {/* A view without a tab, opened by a name or a link: lit while it is open, with a way back. */}
+              {viewMode === "agent" || viewMode === "matrix" ? (
+                <span data-testid="mtm-routes-side-view" className="inline-flex min-h-10 items-center gap-1 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground">
+                  {viewMode === "agent" ? <UserRound className="h-4 w-4" aria-hidden="true" /> : <TableProperties className="h-4 w-4" aria-hidden="true" />}
+                  {t(viewMode === "agent" ? "viewAgentPeriod" : "viewMatrix")}
+                  <Hint text={t("hint.closeSideView")}><button type="button" data-testid="mtm-routes-side-view-close" aria-label={t("closeSideView")} onClick={closeSideView} className="ml-1 flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/20"><X className="h-3.5 w-3.5" aria-hidden="true" /></button></Hint>
+                </span>
+              ) : null}
             </div>
+            ) : null}
           </nav>
           <div className="flex shrink-0 items-center justify-end gap-2">
             {returnTarget ? <Hint text={t("hint.returnBack")}><Button asChild variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10"><Link href={returnTarget.href}><ArrowLeft className="mr-1 h-4 w-4" />{t(returnTarget.label)}</Link></Button></Hint> : null}
@@ -1285,6 +1307,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           canManageAssignments={capabilities.canReview}
           selfAgentId={capabilities.actorAgentId}
           onCreateRoute={({ date, agentId }) => openPlanner({ date, agentId })}
+          onOpenAgent={openAgentPeriod}
         />
       ) : viewMode === "agent" ? (
         <MtmAgentPeriodView timezone={timezone} initialAgentId={capabilities.canReview ? searchParams.get("agentId") : capabilities.actorAgentId} />

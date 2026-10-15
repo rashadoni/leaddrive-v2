@@ -13337,8 +13337,6 @@
       "viewCalendar": "Marşrutların ayı: hər gün üçün nə planlaşdırılıb və necə keçib.",
       "viewWeek": "Komandanın həftəsi: sətirlərdə əməkdaşlar, sütunlarda yeddi gün, xanada — günün marşrutu.",
       "viewList": "Bütün marşrutlar siyahı ilə, status üzrə seçim və axtarışla.",
-      "viewMatrix": "Bir əməkdaşın həftəsini planlaşdır: günlər üzrə kimə və nə vaxt baş çəkmək.",
-      "viewAgent": "Bir əməkdaşın seçilmiş dövrdəki işi, günlər üzrə.",
       "viewApprovals": "Qərar gözləyən agent müraciətləri: marşrut dəyişiklikləri, yeni müştərilər və müəssisələr, müştərinin yeni yeri. Rəqəm — neçəsi gözləyir.",
       "returnBack": "Marşrutları açdığınız yerə qayıt.",
       "excel": "Marşrutları və sorğu kitablarını Excel-dən yüklə və ya Excel-ə çıxar.",
@@ -13446,10 +13444,12 @@
       "inlineClose": "Axtarışı bağla. Marşrut və artıq seçilmiş müştərilər dəyişməyəcək.",
       "inlineAdd": "Qeydi marşrut tarixindən bu əməkdaşa təyin et və dərhal marşruta əlavə et.",
       "inlineShare": "Əvvəlki əməkdaş təyinatda qalır, bu əməkdaş marşrut tarixindən ona əlavə olunur. Sonra qeyd marşruta düşür.",
-      "inlineTransfer": "Qeyd marşrut tarixindən əvvəlki əməkdaşdan bu əməkdaşa keçəcək və marşruta əlavə olunacaq. Əvvəlcə bir daha soruşacağıq."
+      "inlineTransfer": "Qeyd marşrut tarixindən əvvəlki əməkdaşdan bu əməkdaşa keçəcək və marşruta əlavə olunacaq. Əvvəlcə bir daha soruşacağıq.",
+      "closeSideView": "Bölmənin əsas görünüşlərinə qayıt.",
+      "openAgentPeriod": "{employee} istənilən dövr üzrə: gün-gün, kiminlə görüşüb və nə qədər qalıb."
     },
     "testAccounts": "Test hesabları",
-    "calendarTitle": "Təqvim",
+    "calendarTitle": "Marşrut təqvimi",
     "weekIdleAgents": "Bu həftə planı olmayan əməkdaş: {count}",
     "weekShowIdle": "Göstər",
     "weekHideIdle": "Gizlət",
@@ -13464,7 +13464,6 @@
     "controlAndReports": "Nəzarət və hesabatlar",
     "title": "Marşrutlar",
     "routeSummary": "Marşrut xülasəsi",
-    "calendarTitle": "Marşrut təqvimi",
     "calendarHint": "Marşrutlara baxmaq və ya yenisini dərhal planlaşdırmaq üçün günü seçin.",
     "todayAction": "Bu gün",
     "routesOnDate": "{count} marşrut",
@@ -14141,7 +14140,8 @@
     },
     "allLatest": "Hamısı (son {shown} / {total})",
     "loadMoreRoutes": "Daha {count} göstər",
-    "loadMoreRoutesFailed": "Növbəti marşrutları yükləmək alınmadı. Yenidən cəhd edin."
+    "loadMoreRoutesFailed": "Növbəti marşrutları yükləmək alınmadı. Yenidən cəhd edin.",
+    "closeSideView": "Bu görünüşü bağla"
   },
   "mtmOperationsPage": {
     "hint": {
