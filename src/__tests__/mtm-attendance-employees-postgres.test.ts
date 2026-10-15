@@ -494,4 +494,40 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       .rejects.toMatchObject({ status: 403 })
     expect(await tenant(automaticOrg, () => prisma.user.count())).toBe(users)
   })
+
+  // Owner, 2026-10-15: Today shows an administrator what is left to set up; each
+  // step is read from its own data, never from a stored "done" flag.
+  it("reads the setup checklist from the real tables, step by step", async () => {
+    const setup = await import("@/lib/mtm/attendance-setup")
+    const org = "employee-pg-setup", now = new Date("2026-10-15T08:00:00Z")
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional setup organization", slug: org, modules: { "route-field": true, personnel: true } } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
+    })
+    const read = () => tenant(org, () => setup.readAttendanceSetup(org, "Asia/Baku", now))
+    const done = async () => Object.fromEntries((await read()).map(step => [step.key, step.done]))
+    expect(await done()).toEqual({ hours: false, holidays: false, branches: false, leave: false, employees: false, app: false })
+    await bypass(async () => {
+      await prisma.user.create({ data: { id: "setup-admin", organizationId: org, name: "Fictional setup admin", email: "setup-admin@example.invalid", passwordHash: "fixture", role: "admin" } })
+      // With the provisioning trigger installed the new user already has a card.
+      if (!await prisma.mtmAgent.findFirst({ where: { organizationId: org, userId: "setup-admin" } })) {
+        await prisma.mtmAgent.create({ data: { id: randomUUID(), organizationId: org, userId: "setup-admin", name: "Fictional setup admin", role: "EMPLOYEE", attendanceParticipant: true } })
+      }
+      const card = (await prisma.mtmAgent.findFirstOrThrow({ where: { organizationId: org, userId: "setup-admin" } })).id
+      await prisma.mtmWorkCalendarDay.create({ data: { organizationId: org, date: new Date("2026-11-08T00:00:00Z"), kind: "PUBLIC_HOLIDAY", name: "Fictional holiday" } })
+      await prisma.$executeRaw`INSERT INTO mtm_attendance_rules ("id","organizationId","effectiveFrom","timezone","startTime","endTime","lunchMinutes","lateGraceMinutes","weekendDays","createdBy")
+        VALUES ('setup-rule', ${org}, '2026-10-01', 'Asia/Baku', '09:00', '18:00', 60, 10, ARRAY[0,6]::int[], 'setup-admin')`
+      await prisma.mtmAttendanceBranch.create({ data: { id: "setup-branch", organizationId: org } })
+      await prisma.mtmAttendanceBranchRevision.create({ data: { organizationId: org, branchId: "setup-branch", version: 1, requestId: randomUUID(), requestHash: "a".repeat(64),
+        name: "Fictional branch", address: "Fictional address", latitude: 40.4, longitude: 49.8, radiusMeters: 150, active: true, createdBy: "setup-admin" } })
+      await prisma.mtmAgentWorkday.create({ data: { organizationId: org, agentId: card, workDate: new Date("2026-10-14T00:00:00Z"), status: "COMPLETED", startedAt: new Date("2026-10-14T05:00:00Z") } })
+    })
+    const steps = await read()
+    expect(Object.fromEntries(steps.map(step => [step.key, step.done]))).toEqual({ hours: true, holidays: true, branches: true, leave: false, employees: true, app: true })
+    expect(steps.find(step => step.key === "app")).toMatchObject({ count: 1, total: 1 })
+    // An archived branch (its latest revision inactive) no longer counts.
+    await bypass(() => prisma.mtmAttendanceBranchRevision.create({ data: { organizationId: org, branchId: "setup-branch", version: 2, requestId: randomUUID(), requestHash: "b".repeat(64),
+      name: "Fictional branch", address: "Fictional address", latitude: 40.4, longitude: 49.8, radiusMeters: 150, active: false, createdBy: "setup-admin" } }))
+    expect((await done()).branches).toBe(false)
+  })
 })

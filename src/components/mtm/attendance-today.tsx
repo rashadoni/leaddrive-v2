@@ -15,6 +15,7 @@ import { ATTENDANCE_RISK_MESSAGES, type AttendanceRiskItem } from "@/lib/mtm/att
 import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
 import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
+import { MtmAttendanceSetupChecklist } from "@/components/mtm/attendance-setup-checklist"
 
 const ATTENTION_LIMIT = 6
 const REQUESTS_LIMIT = 5
@@ -123,6 +124,8 @@ export function MtmAttendanceToday() {
         <Button asChild className="min-h-11 rounded-full"><Link href="/mtm/attendance/timesheet" prefetch={false}><FileSpreadsheet className="mr-2 h-4 w-4" aria-hidden="true" />{month ? t("openTimesheet", { month }) : t("timesheetTitle")}</Link></Button>
       </div>
     </header>
+
+    {data ? <MtmAttendanceSetupChecklist year={data.today.slice(0, 4)} /> : null}
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {([
