@@ -34,12 +34,16 @@ export function MtmAttendanceLeaveBalances() {
       if ([401, 403, 404].includes(response.status)) { clear(); setDenied(true); return }
       if (!response.ok || body?.success !== true || !Array.isArray(body.data?.rows) || typeof body.data?.canManage !== "boolean") throw new Error("INVALID_BALANCES")
       const value = body.data as AttendanceLeaveDirectory; setData(value); setDenied(false)
-      setBasisDate(value.policy?.value.basisDate ?? ""); setCounting(value.policy?.value.counting ?? ""); setMinutes(value.policy?.value.minutesPerDay == null ? "" : String(value.policy.value.minutesPerDay))
-      setTiers(value.policy?.value.tiers.map(tier => ({ category: tier.category, minimumYears: String(tier.minimumYears), days: String(tier.days) })) ?? [])
-      setReviewed(false); setPolicyReason(""); setAgentId(""); setCategory(""); setServiceStart(""); setOpening(""); setProfileReason("")
+      // No norms yet: start from the Labour Code's basic leave — 21 calendar days,
+      // holidays not counted (owner, 2026-10-15). HR checks and saves it; nothing
+      // is published until they do. Seniority additions vary by source, so none is assumed.
+      const policy = value.policy?.value
+      setBasisDate(policy?.basisDate ?? (policy ? "" : `${value.year}-01-01`)); setCounting(policy?.counting ?? (policy ? "" : "CALENDAR_EXCEPT_HOLIDAYS")); setMinutes(policy?.minutesPerDay == null ? "" : String(policy.minutesPerDay))
+      setTiers(policy ? policy.tiers.map(tier => ({ category: tier.category, minimumYears: String(tier.minimumYears), days: String(tier.days) })) : [{ category: t("leaveDefaultCategory"), minimumYears: "0", days: "21" }])
+      setReviewed(false); setPolicyReason(policy ? "" : t("leaveDefaultReason")); setAgentId(""); setCategory(""); setServiceStart(""); setOpening(""); setProfileReason("")
     } catch { if (!request.signal.aborted && alive.current) { clear(); setMessage("leaveLoadError") } }
     finally { if (!request.signal.aborted && alive.current) setBusy(false) }
-  }, [year, usedThrough, offset, clear])
+  }, [year, usedThrough, offset, clear, t])
   useEffect(() => { alive.current = true; void load(); return () => { alive.current = false; controller.current?.abort() } }, [load])
   async function send(input: Pending) {
     if (writing.current) return
@@ -88,7 +92,7 @@ export function MtmAttendanceLeaveBalances() {
     {pending && <Button type="button" className="min-h-11" disabled={busy} onClick={() => void send(pending)}>{t("leaveRetry")}</Button>}
     {busy && !data && <p role="status">{t("reportLoading")}</p>}
     {data && <>
-      {!data.policy?.value.reviewed && <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-5 dark:border-orange-900 dark:bg-orange-950/20"><h2 className="font-semibold">{t("leaveEmptyPolicy")}</h2><p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("leaveLegalHint")}</p></div>}
+      {!data.policy?.value.reviewed && <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-5 dark:border-orange-900 dark:bg-orange-950/20"><h2 className="font-semibold">{t("leaveEmptyPolicy")}</h2><p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{t(data.canManage && !data.policy ? "leaveDefaultHint" : "leaveLegalHint")}</p></div>}
       <div className="rounded-xl border bg-card p-4 sm:p-5">
         {!data.rows.length ? <p>{t("leaveNoEmployees")}</p> : <>
           <div className="hidden overflow-x-auto lg:block"><table className="w-full text-left text-sm"><thead><tr>{["leaveEmployee", "leaveCategory", "leaveAllowance", "leaveUsed", "leavePlanned", "leaveRemaining"].map(key => <th key={key} className="border-b px-3 py-4 font-medium text-muted-foreground">{t(key)}</th>)}{data.canManage && <th className="border-b"><span className="sr-only">{t("leaveEdit")}</span></th>}</tr></thead>
@@ -99,7 +103,7 @@ export function MtmAttendanceLeaveBalances() {
       </div>
       <div className="flex flex-wrap gap-3"><Button type="button" variant="outline" className="min-h-11" disabled={locked || !offset} onClick={() => setOffset(value => Math.max(0, value - 50))}>{t("leavePrev")}</Button><Button type="button" variant="outline" className="min-h-11" disabled={locked || !data.hasMore} onClick={() => setOffset(value => value + 50)}>{t("leaveNext")}</Button></div>
       {data.canManage && <div className="grid items-start gap-5 xl:grid-cols-2">
-        <HomeCard testId="leave-policy" titleId="leave-policy-title" title={t("leaveNorms", { year: data.year })} icon={<CalendarDays className="h-5 w-5" aria-hidden="true" />} tone="orange"><details className="py-4"><summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">{t("leaveNorms", { year: data.year })}</summary><p className="my-4 text-sm text-muted-foreground">{t("leaveLegalHint")}</p>
+        <HomeCard testId="leave-policy" titleId="leave-policy-title" title={t("leaveNorms", { year: data.year })} icon={<CalendarDays className="h-5 w-5" aria-hidden="true" />} tone="orange"><details className="py-4" open={!data.policy?.value.reviewed || undefined}><summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">{t("leaveNorms", { year: data.year })}</summary><p className="my-4 text-sm text-muted-foreground">{t("leaveLegalHint")}</p>
           <form className="space-y-4" onSubmit={publish}><fieldset disabled={locked} className="min-w-0 space-y-4">
             <label className="block space-y-1 text-sm"><span>{t("leaveBasisDate")}</span><input required type="date" min={`${data.year}-01-01`} max={`${data.year}-12-31`} className={control} value={basisDate} onChange={e => setBasisDate(e.target.value)} /></label>
             <label className="block space-y-1 text-sm"><span>{t("leaveCounting")}</span><select required className={control} value={counting} onChange={e => setCounting(e.target.value)}><option value="">{t("leaveChoose")}</option><option value="CALENDAR_EXCEPT_HOLIDAYS">{t("leaveCalendarDays")}</option><option value="WORKING_DAYS">{t("leaveWorkingDays")}</option></select></label>

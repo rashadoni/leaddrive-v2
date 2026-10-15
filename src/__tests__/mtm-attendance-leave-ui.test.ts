@@ -27,16 +27,17 @@ async function render(locale = "ru") {
   await act(async () => root.render(createElement(NextIntlClientProvider, props)))
 }
 function button(label: string) { return [...host.querySelectorAll<HTMLButtonElement>("button")].find(item => item.textContent === label)! }
-async function fill(label: string, value: string) {
-  const element = [...host.querySelectorAll("label")].find(item => item.querySelector("span")?.textContent === label)?.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input,select,textarea")
+async function fill(label: string, value: string, scope: ParentNode = host) {
+  const element = [...scope.querySelectorAll("label")].find(item => item.querySelector("span")?.textContent === label)?.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input,select,textarea")
   if (!element) throw new Error(`Missing fixture input: ${label}`)
   const type = element.tagName === "SELECT" ? HTMLSelectElement : element.tagName === "TEXTAREA" ? HTMLTextAreaElement : HTMLInputElement
   await act(async () => { Object.getOwnPropertyDescriptor(type.prototype, "value")!.set!.call(element, value); element.dispatchEvent(new Event(element.tagName === "SELECT" ? "change" : "input", { bubbles: true })) })
 }
 async function editProfile() {
   await act(async () => button(texts.leaveEdit).click())
-  await fill(texts.leaveCategory, "Fictional category"); await fill(texts.leaveServiceStart, "2020-01-01"); await fill(texts.leaveOpening, "0")
+  // The norms form above also has a "Category" field (prefilled basic leave), so stay inside the profile form.
   const form = host.querySelector<HTMLFormElement>('[data-testid="leave-profile"] form')!
+  await fill(texts.leaveCategory, "Fictional category", form); await fill(texts.leaveServiceStart, "2020-01-01", form); await fill(texts.leaveOpening, "0", form)
   const reason = form.querySelector("textarea")!
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(reason, "Fictional approved input"); reason.dispatchEvent(new Event("input", { bubbles: true })) })
   return form
@@ -78,6 +79,26 @@ describe("leave balances use explicit client inputs", () => {
     await act(async () => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })))
     expect(host.querySelector("form")).toBeNull(); expect(host.textContent).not.toContain("Demo employee")
     expect(host.textContent).not.toContain("Fictional category")
+  })
+  // Owner, 2026-10-15: empty norms start from the Labour Code's basic leave; HR checks and saves.
+  it("starts empty norms from 21 calendar days of basic leave and publishes only after HR confirms", async () => {
+    await render()
+    const policy = host.querySelector<HTMLDetailsElement>('[data-testid="leave-policy"] details')!
+    expect(policy.open).toBe(true)
+    expect(host.textContent).toContain(texts.leaveDefaultHint)
+    const inputs = [...policy.querySelectorAll<HTMLInputElement>("input")]
+    expect(inputs.find(input => input.type === "date")!.value).toBe("2026-01-01")
+    expect(policy.querySelector<HTMLSelectElement>("select")!.value).toBe("CALENDAR_EXCEPT_HOLIDAYS")
+    expect(inputs.filter(input => input.type !== "date" && input.type !== "checkbox").map(input => input.value)).toEqual(["", texts.leaveDefaultCategory, "0", "21"])
+    const submit = async () => act(async () => policy.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })))
+    await submit()
+    expect(fetchMock.mock.calls.some(([, options]) => options?.method === "POST")).toBe(false)
+    await act(async () => policy.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click())
+    fetchMock.mockImplementation(async (_url, options) => options?.method === "POST" ? response({ id: "p1", idempotent: false }) : response(directory))
+    await submit()
+    const sent = JSON.parse(String(fetchMock.mock.calls.find(([, options]) => options?.method === "POST")![1]!.body))
+    expect(sent).toMatchObject({ year: 2026, expectedRevisionId: null, reason: texts.leaveDefaultReason,
+      policy: { basisDate: "2026-01-01", counting: "CALENDAR_EXCEPT_HOLIDAYS", minutesPerDay: null, reviewed: true, tiers: [{ category: texts.leaveDefaultCategory, minimumYears: 0, days: 21 }] } })
   })
   it("never publishes incomplete or unconfirmed norms", async () => {
     await render(); await act(async () => host.querySelector('[data-testid="leave-policy"] form')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })))
