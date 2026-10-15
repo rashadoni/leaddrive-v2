@@ -136,6 +136,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
   const planKpi = card.kind === "today"
     ? {
         label: t("kpiTodayPlan"),
+        hint: t("hint.kpiTodayPlan"),
         icon: <CheckCircle2 className="h-[18px] w-[18px]" aria-hidden="true" />,
         // A plan in progress is never red: at noon a third done is the day, not a failure.
         tone: (planPercent !== null && planPercent >= 95 ? "green" : "amber") as HomeTone,
@@ -148,6 +149,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
     : card.kind === "next"
       ? {
           label: card.isTomorrow ? t("kpiTomorrowPlan") : t("kpiNextDayPlan", { date: dayLabel(card.date, locale, { day: "numeric", month: "short" }) }),
+          hint: t("hint.kpiNextDayPlan"),
           icon: <RouteIcon className="h-[18px] w-[18px]" aria-hidden="true" />,
           tone: (card.withRoute === 0 ? "red" : card.withRoute >= card.agents ? "green" : "amber") as HomeTone,
           value: String(card.withRoute),
@@ -161,6 +163,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
         }
       : {
           label: t("kpiTodayPlan"),
+          hint: t("hint.kpiTodayPlan"),
           icon: <CheckCircle2 className="h-[18px] w-[18px]" aria-hidden="true" />,
           tone: "zinc" as HomeTone,
           value: null,
@@ -217,6 +220,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
         <HomeKpi
           testId="mtm-home-kpi-field"
           label={t("kpiInField")}
+          hint={t("hint.kpiInField")}
           icon={<MapPin className="h-[18px] w-[18px]" aria-hidden="true" />}
           tone={now.inField > 0 ? "green" : "zinc"}
           value={team ? String(now.inField) : null}
@@ -228,6 +232,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
         <HomeKpi
           testId="mtm-home-kpi-week"
           label={t("kpiWeekPlan")}
+          hint={t("hint.kpiWeekPlan")}
           icon={<TrendingUp className="h-[18px] w-[18px]" aria-hidden="true" />}
           tone={weekTone}
           value={totals && totals.planned > 0 ? String(totals.done) : null}
@@ -239,6 +244,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
         <HomeKpi
           testId="mtm-home-kpi-attention"
           label={t("kpiAttention")}
+          hint={t("hint.kpiAttention")}
           icon={<BellRing className="h-[18px] w-[18px]" aria-hidden="true" />}
           tone={waiting === null ? "zinc" : waiting > 0 ? "amber" : "green"}
           value={waiting === null ? null : String(waiting)}

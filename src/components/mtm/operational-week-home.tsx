@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -83,6 +84,14 @@ import {
 
 type WeekDays = 1 | 5 | 7
 type WorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
+
+/** What each of the employee's own workday buttons does, said under the cursor. */
+const WORKDAY_ACTION_HINT = {
+  START: "hint.workdayStart",
+  PAUSE: "hint.workdayPause",
+  RESUME: "hint.workdayResume",
+  FINISH: "hint.workdayFinish",
+} as const satisfies Record<WorkdayAction, string>
 type ManagerWorkdayActionKind = "reopen" | "undoReopen"
 const MANAGER_WORKDAY_ACTION_KINDS: readonly ManagerWorkdayActionKind[] = ["reopen", "undoReopen"]
 
@@ -2035,16 +2044,20 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
     if (!actions || !managerView || facts?.workdayCapability.canMutateSelf || cachedSnapshot) return null
     if (actions.reopen.allowed) {
       return (
-        <Button type="button" className="min-h-11" data-testid="mtm-week-workday-reopen" disabled={managerWorkdayPending || !workdayMutationLive} onClick={() => openManagerWorkdayDialog("reopen")}>
-          <RotateCcw className="h-4 w-4" />{t("managerWorkday.reopenAction")}
-        </Button>
+        <Hint wrap text={t("hint.managerReopen")}>
+          <Button type="button" className="min-h-11" data-testid="mtm-week-workday-reopen" disabled={managerWorkdayPending || !workdayMutationLive} onClick={() => openManagerWorkdayDialog("reopen")}>
+            <RotateCcw className="h-4 w-4" />{t("managerWorkday.reopenAction")}
+          </Button>
+        </Hint>
       )
     }
     if (actions.undoReopen.allowed) {
       return (
-        <Button type="button" variant="outline" className="min-h-11" data-testid="mtm-week-workday-reopen-undo" disabled={managerWorkdayPending || !workdayMutationLive} onClick={() => openManagerWorkdayDialog("undoReopen")}>
-          <Undo2 className="h-4 w-4" />{t("managerWorkday.undoAction")}
-        </Button>
+        <Hint wrap text={t("hint.managerUndo")}>
+          <Button type="button" variant="outline" className="min-h-11" data-testid="mtm-week-workday-reopen-undo" disabled={managerWorkdayPending || !workdayMutationLive} onClick={() => openManagerWorkdayDialog("undoReopen")}>
+            <Undo2 className="h-4 w-4" />{t("managerWorkday.undoAction")}
+          </Button>
+        </Hint>
       )
     }
     const refusalKind = MANAGER_WORKDAY_ACTION_KINDS.find((kind) => {
@@ -2262,8 +2275,8 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             ) : null}
             {(routeHref || visitHref) ? (
               <div className="mt-2 flex flex-wrap gap-x-3">
-                {routeHref ? <Link href={routeHref} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">{t("openRoute")}<ArrowUpRight className="h-3 w-3" /></Link> : null}
-                {visitHref ? <Link href={visitHref} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">{t("openVisit")}<ArrowUpRight className="h-3 w-3" /></Link> : null}
+                {routeHref ? <Hint text={t("hint.openRoute")}><Link href={routeHref} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">{t("openRoute")}<ArrowUpRight className="h-3 w-3" /></Link></Hint> : null}
+                {visitHref ? <Hint text={t("hint.openVisit")}><Link href={visitHref} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">{t("openVisit")}<ArrowUpRight className="h-3 w-3" /></Link></Hint> : null}
               </div>
             ) : null}
             {pendingCancellation ? (
@@ -2271,15 +2284,17 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                 <Clock3 className="h-3.5 w-3.5" />{t("cancellationPending")}
               </p>
             ) : canRequestCancellation ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="mt-2 min-h-11 px-2 text-xs text-red-700 hover:text-red-800 dark:text-red-300 md:min-h-9"
-                onClick={() => setCancellationTarget({ point, day })}
-              >
-                <XCircle className="mr-1.5 h-3.5 w-3.5" />{t("requestCancellation")}
-              </Button>
+              <Hint text={t("hint.requestCancellation")}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 min-h-11 px-2 text-xs text-red-700 hover:text-red-800 dark:text-red-300 md:min-h-9"
+                  onClick={() => setCancellationTarget({ point, day })}
+                >
+                  <XCircle className="mr-1.5 h-3.5 w-3.5" />{t("requestCancellation")}
+                </Button>
+              </Hint>
             ) : null}
           </div>
         </div>
@@ -2339,9 +2354,11 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             <div className="border-b border-zinc-200 py-2 dark:border-zinc-700" data-testid="mtm-week-day-alerts">
               <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300"><BellRing className="h-3.5 w-3.5" />{t("dayAlerts", { count: dayAlertGroups.reduce((total, group) => total + group.count, 0) })}</p>
               <ul>{dayAlertGroups.slice(0, 4).map((group) => renderAlertGroup(group, true))}</ul>
-              <Link href={withReturnTo(`/mtm/alerts?agentId=${encodeURIComponent(effectiveAgentId)}`, context)} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">
-                {dayAlertGroups.length > 4 ? t("moreAlertGroups", { count: dayAlertGroups.length - 4 }) : t("openAlerts")}<ArrowUpRight className="h-3 w-3" />
-              </Link>
+              <Hint text={t("hint.openAlerts")}>
+                <Link href={withReturnTo(`/mtm/alerts?agentId=${encodeURIComponent(effectiveAgentId)}`, context)} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">
+                  {dayAlertGroups.length > 4 ? t("moreAlertGroups", { count: dayAlertGroups.length - 4 }) : t("openAlerts")}<ArrowUpRight className="h-3 w-3" />
+                </Link>
+              </Hint>
             </div>
           ) : null}
           {pointCount ? orderedRoutes.map((route) => {
@@ -2464,14 +2481,22 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
               />
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 min-[100rem]:grid-cols-1">
-              <Button type="button" size="sm" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "APPROVED")}>{t("approveCancellation")}</Button>
-              <Button type="button" size="sm" variant="secondary" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "RESCHEDULE")}>{t("rescheduleCancellation")}</Button>
-              <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "NEEDS_INFO")}>{t("returnCancellation")}</Button>
-              <Button type="button" size="sm" variant="destructive" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "REJECTED")}>{t("rejectCancellation")}</Button>
+              <Hint wrap text={t("hint.approveCancellation")}>
+                <Button type="button" size="sm" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "APPROVED")}>{t("approveCancellation")}</Button>
+              </Hint>
+              <Hint wrap text={t("hint.rescheduleCancellation")}>
+                <Button type="button" size="sm" variant="secondary" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "RESCHEDULE")}>{t("rescheduleCancellation")}</Button>
+              </Hint>
+              <Hint wrap text={t("hint.returnCancellation")}>
+                <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "NEEDS_INFO")}>{t("returnCancellation")}</Button>
+              </Hint>
+              <Hint wrap text={t("hint.rejectCancellation")}>
+                <Button type="button" size="sm" variant="destructive" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "REJECTED")}>{t("rejectCancellation")}</Button>
+              </Hint>
             </div>
           </div>
         ) : null}
-        {href ? <Link className="mt-1 inline-flex min-h-11 items-center gap-1 font-medium text-primary hover:underline md:min-h-0" href={href}>{t("openRoute")}<ArrowUpRight className="h-3 w-3" /></Link> : null}
+        {href ? <Hint text={t("hint.openRoute")}><Link className="mt-1 inline-flex min-h-11 items-center gap-1 font-medium text-primary hover:underline md:min-h-0" href={href}>{t("openRoute")}<ArrowUpRight className="h-3 w-3" /></Link></Hint> : null}
       </li>
     )
   }
@@ -2617,7 +2642,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                       : "—"}
                 </p>
               </div>
-              {baseCoveragePhase === "ready" && baseCoverage?.policy ? <Badge variant="success">{t("baseCoverageSigned", { version: baseCoverage.policy.version })}</Badge> : null}
+              {baseCoveragePhase === "ready" && baseCoverage?.policy ? <HintValue text={t("hint.coverageSigned")}><Badge variant="success">{t("baseCoverageSigned", { version: baseCoverage.policy.version })}</Badge></HintValue> : null}
             </div>
 
             {baseCoveragePhase === "loading" ? (
@@ -2652,10 +2677,10 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                         <Badge variant="outline">{t("baseCoverageObjects", { count: group.populationCount })}</Badge>
                       </div>
                       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 2xl:grid-cols-4">
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground">{t("baseCoverageRequired")}</dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.requiredCoverage)}</dd></div>
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground">{t("baseCoverageActualMoi")}</dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(group.target)})</span></dd></div>
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground">{t("baseCoverageActual")}</dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualCoverage)}</dd></div>
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground">{t("baseCoverageUncovered")}</dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(group.uncoveredMoi)}</dd></div>
+                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageRequired")}>{t("baseCoverageRequired")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.requiredCoverage)}</dd></div>
+                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActualMoi")}>{t("baseCoverageActualMoi")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(group.target)})</span></dd></div>
+                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActual")}>{t("baseCoverageActual")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualCoverage)}</dd></div>
+                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageUncovered")}>{t("baseCoverageUncovered")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(group.uncoveredMoi)}</dd></div>
                       </dl>
                       <Button
                         type="button"
@@ -2729,10 +2754,10 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                 <div className="border-t-2 border-zinc-300 px-3 pt-3 dark:border-zinc-600">
                   <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">{t("baseCoverageTotal")}</span><span className="text-xs font-semibold tabular-nums">{t("baseCoverageObjects", { count: baseCoverage.totals.overall.populationCount })}</span></div>
                   <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 2xl:grid-cols-4">
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground">{t("baseCoverageRequired")}</dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.requiredCoverage)}</dd></div>
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground">{t("baseCoverageActualMoi")}</dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(baseCoverage.totals.overall.target)})</span></dd></div>
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground">{t("baseCoverageActual")}</dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualCoverage)}</dd></div>
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground">{t("baseCoverageUncovered")}</dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(baseCoverage.totals.overall.uncoveredMoi)}</dd></div>
+                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageRequired")}>{t("baseCoverageRequired")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.requiredCoverage)}</dd></div>
+                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActualMoi")}>{t("baseCoverageActualMoi")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(baseCoverage.totals.overall.target)})</span></dd></div>
+                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActual")}>{t("baseCoverageActual")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualCoverage)}</dd></div>
+                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageUncovered")}>{t("baseCoverageUncovered")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(baseCoverage.totals.overall.uncoveredMoi)}</dd></div>
                   </dl>
                 </div>
                 <p className="text-[11px] leading-4 text-muted-foreground">
@@ -2871,9 +2896,11 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                   </ul>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-700">
                     <p className="text-xs text-muted-foreground">{t("activeTasksShown", { shown: shownActiveTaskCount, total: activeTasks.length })}</p>
-                    <Link href={taskListHref} className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
-                      {t("viewAllTasks")}<ArrowUpRight className="h-3 w-3 shrink-0" />
-                    </Link>
+                    <Hint text={t("hint.viewAllTasks")}>
+                      <Link href={taskListHref} className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
+                        {t("viewAllTasks")}<ArrowUpRight className="h-3 w-3 shrink-0" />
+                      </Link>
+                    </Hint>
                   </div>
                 </>
               ) : null}
@@ -2904,36 +2931,43 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
     // filters with nothing in them. A filter is drawn when it has something
     // to choose from, or holds a value the reader must be able to clear.
     const regionField = filters.regions.length > 0 || query?.regionId ? (
-      <MtmFilterSelect testId="mtm-week-region" label={t("region")} value={query?.regionId || ""} allLabel={t("allRegions")}
-        options={filters.regions.map((option) => ({ value: option.id, label: option.name }))}
-        disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.regions.length === 0}
-        onChange={(value) => query && updateQuery({ ...query, regionId: value, teamId: "", agentId: "" }, "region")} />
+      <Hint wrap text={t("hint.region")}>
+        <MtmFilterSelect testId="mtm-week-region" label={t("region")} value={query?.regionId || ""} allLabel={t("allRegions")}
+          options={filters.regions.map((option) => ({ value: option.id, label: option.name }))}
+          disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.regions.length === 0}
+          onChange={(value) => query && updateQuery({ ...query, regionId: value, teamId: "", agentId: "" }, "region")} />
+      </Hint>
     ) : null
     const teamField = filters.teams.length > 0 || query?.teamId ? (
-      <MtmFilterSelect testId="mtm-week-team" label={t("team")} value={query?.teamId || ""} allLabel={t("allTeams")}
-        options={filters.teams.map((option) => ({ value: option.id, label: option.name }))}
-        disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.teams.length === 0}
-        onChange={(value) => query && updateQuery({ ...query, teamId: value, agentId: "" }, "team")} />
+      <Hint wrap text={t("hint.team")}>
+        <MtmFilterSelect testId="mtm-week-team" label={t("team")} value={query?.teamId || ""} allLabel={t("allTeams")}
+          options={filters.teams.map((option) => ({ value: option.id, label: option.name }))}
+          disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.teams.length === 0}
+          onChange={(value) => query && updateQuery({ ...query, teamId: value, agentId: "" }, "team")} />
+      </Hint>
     ) : null
     const employeeField = (
-      <MtmFilterSelect testId="mtm-week-employee" label={t("employee")} value={effectiveAgentId} allLabel={t("chooseEmployee")}
-        options={displayedAgentOptions.map((option) => ({ value: option.id, label: option.name }))}
-        disabled={!query || Boolean(mutatingAction) || phase === "loading" && displayedAgentOptions.length === 0}
-        onChange={(value) => query && updateQuery({ ...query, agentId: value })} />
+      <Hint wrap text={t("hint.employee")}>
+        <MtmFilterSelect testId="mtm-week-employee" label={t("employee")} value={effectiveAgentId} allLabel={t("chooseEmployee")}
+          options={displayedAgentOptions.map((option) => ({ value: option.id, label: option.name }))}
+          disabled={!query || Boolean(mutatingAction) || phase === "loading" && displayedAgentOptions.length === 0}
+          onChange={(value) => query && updateQuery({ ...query, agentId: value })} />
+      </Hint>
     )
     const refreshButton = (
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        className="h-11 w-11"
-        onClick={() => !inFlightRef.current && setRefreshToken((value) => value + 1)}
-        disabled={!query || phase === "loading" || phase === "refreshing" || Boolean(mutatingAction)}
-        aria-label={t("refresh")}
-        title={t("refresh")}
-      >
-        <RefreshCw className={cn("h-4 w-4", phase === "refreshing" && "animate-spin motion-reduce:animate-none")} />
-      </Button>
+      <Hint wrap text={t("hint.refresh")}>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-11 w-11"
+          onClick={() => !inFlightRef.current && setRefreshToken((value) => value + 1)}
+          disabled={!query || phase === "loading" || phase === "refreshing" || Boolean(mutatingAction)}
+          aria-label={t("refresh")}
+        >
+          <RefreshCw className={cn("h-4 w-4", phase === "refreshing" && "animate-spin motion-reduce:animate-none")} />
+        </Button>
+      </Hint>
     )
     if (compact === "team") {
       return (
@@ -2988,24 +3022,31 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             {employeeField}
             <div className="flex h-10 items-center rounded-full border border-zinc-200 p-0.5 dark:border-zinc-700" role="group" aria-label={t("period") }>
               {([1, 5, 7] as WeekDays[]).map((days) => (
-                <button
-                  key={days}
-                  type="button"
-                  aria-pressed={query?.days === days}
-                  disabled={Boolean(mutatingAction)}
-                  className={cn("h-9 min-w-11 rounded-full px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", query?.days === days ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
-                  onClick={() => query && updateQuery({ ...query, days, day: query.date })}
-                >
-                  {t("days", { count: days })}
-                </button>
+                <Hint key={days} wrap text={t("hint.periodDays")}>
+                  <button
+                    type="button"
+                    aria-pressed={query?.days === days}
+                    disabled={Boolean(mutatingAction)}
+                    className={cn("h-9 min-w-11 rounded-full px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", query?.days === days ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                    onClick={() => query && updateQuery({ ...query, days, day: query.date })}
+                  >
+                    {t("days", { count: days })}
+                  </button>
+                </Hint>
               ))}
             </div>
-            <MtmFilterDate testId="mtm-week-anchor-date" label={t("anchorDate")} value={query?.date || ""} disabled={Boolean(mutatingAction)}
-              onChange={(value) => query && updateQuery({ ...query, date: validDateKey(value), day: validDateKey(value) })} />
+            <Hint wrap text={t("hint.anchorDate")}>
+              <MtmFilterDate testId="mtm-week-anchor-date" label={t("anchorDate")} value={query?.date || ""} disabled={Boolean(mutatingAction)}
+                onChange={(value) => query && updateQuery({ ...query, date: validDateKey(value), day: validDateKey(value) })} />
+            </Hint>
             <span className="ml-auto flex items-center gap-1">
-              <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(-1)} aria-label={t("previousPeriod")}><ChevronLeft className="h-4 w-4" /></Button>
+              <Hint wrap text={t("hint.previousPeriod")}>
+                <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(-1)} aria-label={t("previousPeriod")}><ChevronLeft className="h-4 w-4" /></Button>
+              </Hint>
               <span className="min-w-36 text-center text-sm font-medium tabular-nums">{periodLabel}</span>
-              <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(1)} aria-label={t("nextPeriod")}><ChevronRight className="h-4 w-4" /></Button>
+              <Hint wrap text={t("hint.nextPeriod")}>
+                <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(1)} aria-label={t("nextPeriod")}><ChevronRight className="h-4 w-4" /></Button>
+              </Hint>
             </span>
           </MtmFilterBar>
         </div>
@@ -3099,10 +3140,10 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             {facts.workdayCapability.enabled ? <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 lg:border-l lg:border-t-0 lg:px-5">
               <div className="flex flex-wrap items-center gap-2">
                 {facts.workdayCapability.canMutateSelf && facts.workdayCapability.availableActions.length ? facts.workdayCapability.availableActions.map((action) => (
-                  <Button key={action} type="button" variant={action === "FINISH" ? "outline" : "default"} className="min-h-11" disabled={Boolean(mutatingAction) || !workdayMutationLive || (action === "FINISH" && confirmingFinish)} aria-expanded={action === "FINISH" ? confirmingFinish : undefined} onClick={() => action === "FINISH" ? setConfirmingFinish(true) : void runWorkdayAction(action)}>
+                  <Hint key={action} wrap text={t(WORKDAY_ACTION_HINT[action])}><Button type="button" variant={action === "FINISH" ? "outline" : "default"} className="min-h-11" disabled={Boolean(mutatingAction) || !workdayMutationLive || (action === "FINISH" && confirmingFinish)} aria-expanded={action === "FINISH" ? confirmingFinish : undefined} onClick={() => action === "FINISH" ? setConfirmingFinish(true) : void runWorkdayAction(action)}>
                     {mutatingAction === action ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : action === "START" || action === "RESUME" ? <PlayCircle className="h-4 w-4" /> : action === "PAUSE" ? <PauseCircle className="h-4 w-4" /> : <Square className="h-4 w-4" />}
                     {actionLabel(action)}
-                  </Button>
+                  </Button></Hint>
                 )) : renderManagerWorkdayControls() ?? <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><ShieldAlert className="h-4 w-4" />{facts.workdayCapability.canMutateSelf ? t("workdayNoActions") : t("workdayReadOnly")}</span>}
               </div>
               {confirmingFinish ? (
@@ -3150,9 +3191,11 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             return (
               <div data-testid="mtm-week-status-line" className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-zinc-200 bg-muted/20 px-4 py-2.5 text-sm dark:border-zinc-700 lg:px-5">
                 {workday && WorkdayIcon ? <span className={cn("inline-flex items-center gap-1.5 font-medium", workday.className)}><WorkdayIcon className="h-4 w-4" />{workday.label}</span> : null}
-                <span className={cn("inline-flex items-center gap-1.5 font-medium", gps.className)}><GpsIcon className="h-4 w-4" />{gpsText}</span>
+                <HintValue className={cn("inline-flex items-center gap-1.5 font-medium", gps.className)} text={t("hint.gpsState")}><GpsIcon className="h-4 w-4" />{gpsText}</HintValue>
                 {gpsReasonLabel(facts.gps.reason) ? <span className="text-xs text-muted-foreground">{gpsReasonLabel(facts.gps.reason)}</span> : null}
-                <Link href={withReturnTo(`/mtm/map?mode=history&agentId=${encodeURIComponent(effectiveAgentId)}&date=${encodeURIComponent(selectedDay.date)}`, returnPath(query!, effectiveAgentId, selectedDay.date))} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">{t("openGpsPath")}<ArrowUpRight className="h-3 w-3" /></Link>
+                <Hint text={t("hint.gpsPath")}>
+                  <Link href={withReturnTo(`/mtm/map?mode=history&agentId=${encodeURIComponent(effectiveAgentId)}&date=${encodeURIComponent(selectedDay.date)}`, returnPath(query!, effectiveAgentId, selectedDay.date))} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">{t("openGpsPath")}<ArrowUpRight className="h-3 w-3" /></Link>
+                </Hint>
               </div>
             )
           })() : null}

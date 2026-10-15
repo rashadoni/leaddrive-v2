@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
@@ -75,6 +76,17 @@ const STATE_KEY = {
   unplanned: "stateUnplanned",
   "last-visit": "stateLastVisit",
   "no-activity": "stateNoActivity",
+} as const satisfies Record<HomeAgentState["kind"], string>
+
+/** What each state means, said under the cursor on its chip. */
+const STATE_HINT_KEY = {
+  "at-customer": "hint.stateAtCustomer",
+  heading: "hint.stateHeading",
+  "plan-done": "hint.statePlanDone",
+  "not-started": "hint.stateNotStarted",
+  unplanned: "hint.stateUnplanned",
+  "last-visit": "hint.stateLastVisit",
+  "no-activity": "hint.stateNoActivity",
 } as const satisfies Record<HomeAgentState["kind"], string>
 
 function stateIcon(kind: HomeAgentState["kind"]): ReactNode {
@@ -206,7 +218,7 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
       icon={<Users className="h-4 w-4" aria-hidden="true" />}
       tone="orange"
       title={t("teamTitle")}
-      action={{ href: "/mtm/map", label: t("openMap") }}
+      action={{ href: "/mtm/map", label: t("openMap"), hint: t("hint.openMap") }}
     >
       {failed && team.length === 0 ? (
         <p role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2 py-4 text-sm">
@@ -241,28 +253,31 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary" aria-hidden="true">{initials(row.name)}</span>
                   <div className="min-w-[9rem] flex-1">
                     <div className="flex min-w-0 items-center gap-2">
-                      <button
-                        type="button"
-                        aria-label={t("openAgentWeek", { name: row.name })}
-                        className="min-w-0 truncate text-left text-sm font-semibold hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                        onClick={() => onOpenAgent(row.agentId)}
-                      >
-                        {row.name}
-                      </button>
-                      {row.openAlerts > 0 ? (
-                        <Link
-                          href={`/mtm/alerts?agentId=${encodeURIComponent(row.agentId)}`}
-                          prefetch={false}
-                          title={tw("teamRowOpenAlerts", { count: row.openAlerts })}
-                          aria-label={tw("teamRowOpenAlerts", { count: row.openAlerts })}
-                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900"
+                      <Hint text={t("hint.openAgentWeek")}>
+                        <button
+                          type="button"
+                          aria-label={t("openAgentWeek", { name: row.name })}
+                          className="min-w-0 truncate text-left text-sm font-semibold hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                          onClick={() => onOpenAgent(row.agentId)}
                         >
-                          <AlertTriangle className="h-3 w-3" aria-hidden="true" />{row.openAlerts}
-                        </Link>
+                          {row.name}
+                        </button>
+                      </Hint>
+                      {row.openAlerts > 0 ? (
+                        <Hint text={`${tw("teamRowOpenAlerts", { count: row.openAlerts })}. ${t("hint.openAlerts")}`}>
+                          <Link
+                            href={`/mtm/alerts?agentId=${encodeURIComponent(row.agentId)}`}
+                            prefetch={false}
+                            aria-label={tw("teamRowOpenAlerts", { count: row.openAlerts })}
+                            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900"
+                          >
+                            <AlertTriangle className="h-3 w-3" aria-hidden="true" />{row.openAlerts}
+                          </Link>
+                        </Hint>
                       ) : null}
                     </div>
                     <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-                      <HomePill tone={STATE_TONE[state.kind]} className="text-[11px]">{stateIcon(state.kind)}{t(STATE_KEY[state.kind])}</HomePill>
+                      <Hint text={t(STATE_HINT_KEY[state.kind])}><span tabIndex={0} className="inline-flex shrink-0 cursor-help rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40"><HomePill tone={STATE_TONE[state.kind]} className="text-[11px]">{stateIcon(state.kind)}{t(STATE_KEY[state.kind])}</HomePill></span></Hint>
                       {text ? <span className="min-w-0 truncate text-xs text-muted-foreground" title={text}>{text}</span> : null}
                     </div>
                   </div>
@@ -270,26 +285,26 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
                     <>
                       <div className="flex gap-1" data-testid="mtm-home-team-week">
                         {agentWeek.cells.map((cell) => (
-                          <button
-                            key={cell.date}
-                            type="button"
-                            data-tone={cell.tone}
-                            title={cellTitle(cell)}
-                            aria-label={cellTitle(cell)}
-                            className={cn(
-                              "flex h-8 w-8 items-center justify-center rounded-md text-[11px] font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-                              CELL[cell.tone],
-                              cell.isToday && "ring-2 ring-primary/70 ring-offset-1 ring-offset-card",
-                            )}
-                            onClick={() => onOpenAgent(row.agentId, cell.date)}
-                          >
-                            {cellText(cell)}
-                          </button>
+                          <Hint key={cell.date} text={cellTitle(cell)}>
+                            <button
+                              type="button"
+                              data-tone={cell.tone}
+                              aria-label={cellTitle(cell)}
+                              className={cn(
+                                "flex h-8 w-8 items-center justify-center rounded-md text-[11px] font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                                CELL[cell.tone],
+                                cell.isToday && "ring-2 ring-primary/70 ring-offset-1 ring-offset-card",
+                              )}
+                              onClick={() => onOpenAgent(row.agentId, cell.date)}
+                            >
+                              {cellText(cell)}
+                            </button>
+                          </Hint>
                         ))}
                       </div>
-                      <span data-testid="mtm-home-team-total" className="w-11 shrink-0 text-right text-sm font-bold tabular-nums">
-                        {agentWeek.planned > 0 ? `${agentWeek.done}/${agentWeek.planned}` : "–"}
-                      </span>
+                      <HintValue text={t("hint.weekTotal")} className="w-11 shrink-0 text-right text-sm font-bold tabular-nums">
+                        <span data-testid="mtm-home-team-total">{agentWeek.planned > 0 ? `${agentWeek.done}/${agentWeek.planned}` : "–"}</span>
+                      </HintValue>
                     </>
                   ) : null}
                 </li>
@@ -309,7 +324,7 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
                   <li key={visit.id} className="flex items-center gap-3 border-b border-zinc-100 py-2 text-sm last:border-b-0 dark:border-zinc-800">
                     <span className="w-28 shrink-0 tabular-nums text-muted-foreground">{visitMoment(visit.at)}</span>
                     <span className="min-w-0 flex-1 truncate font-medium">{customer(visit.customerName)}</span>
-                    <HomePill tone={visit.flag ? "amber" : "zinc"}>{duration(visit.durationMinutes)}</HomePill>
+                    <Hint text={t("hint.recentDuration", { quality: t("qualityTitle") })}><span tabIndex={0} className="inline-flex cursor-help rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40"><HomePill tone={visit.flag ? "amber" : "zinc"}>{duration(visit.durationMinutes)}</HomePill></span></Hint>
                   </li>
                 ))}
               </ul>
@@ -328,7 +343,7 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
                 <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-8" onClick={onRetryWeek}>{t("retry")}</Button>
               </p>
             ) : null}
-            {footText ? <HomeCardFoot text={footText} href="/mtm/analytics?period=thisWeek" link={t("openResults")} /> : <div className="h-3" />}
+            {footText ? <HomeCardFoot text={footText} textHint={t("hint.footGps")} href="/mtm/analytics?period=thisWeek" link={t("openResults")} linkHint={t("hint.openResults")} /> : <div className="h-3" />}
           </div>
         </>
       )}
