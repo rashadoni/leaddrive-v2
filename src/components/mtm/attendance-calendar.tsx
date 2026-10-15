@@ -7,9 +7,10 @@ import { CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomeCard } from "@/components/mtm/home-parts"
+import { azOfficialCalendar } from "@/lib/mtm/az-official-calendar"
 
 const ENDPOINT = "/api/v1/mtm/attendance/calendar"
-const EDITABLE_KINDS = ["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY", "EXCEPTION_WORKDAY"] as const
+const EDITABLE_KINDS = ["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY", "WEEKEND", "EXCEPTION_WORKDAY"] as const
 const KIND_MESSAGES: Record<string, string> = { PUBLIC_HOLIDAY: "calendarPublicHoliday", COMPANY_HOLIDAY: "calendarCompanyHoliday", EXCEPTION_WORKDAY: "calendarExceptionWorkday",
   WORKING_DAY: "calendarWorkingDay", WEEKEND: "calendarWeekend", MOVED_WORKDAY: "calendarMovedWorkday", MOVED_DAY_OFF: "calendarMovedDayOff" }
 type EditableKind = typeof EDITABLE_KINDS[number]
@@ -40,6 +41,7 @@ export function MtmAttendanceCalendar() {
   const [saving, setSaving] = useState(false)
   const [mustReload, setMustReload] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [official, setOfficial] = useState<{ added: number; past: number; existing: number } | null>(null)
   const loadController = useRef<AbortController | null>(null)
   const mutationController = useRef<AbortController | null>(null)
   const interruptedSave = useRef(false)
@@ -55,6 +57,7 @@ export function MtmAttendanceCalendar() {
     setSaved(null)
     setRemovingId(null)
     setData(null)
+    if (!acknowledgeInterrupted) setOfficial(null)
     setDraft(null)
     if (interruptedSave.current) setSaving(false)
     if (selectedYear) setYear(selectedYear)
@@ -158,6 +161,27 @@ export function MtmAttendanceCalendar() {
     }
   }
 
+  /** One press adds the year's official days; the server skips past and already entered dates. */
+  async function addOfficial() {
+    if (!data?.canManage || !year || saving || mutationController.current || mustReload) return
+    const controller = new AbortController()
+    mutationController.current = controller
+    setSaving(true); setSaveError(null); setSaved(null); setOfficial(null)
+    try {
+      const response = await fetch(`${ENDPOINT}/official`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ year: Number(year) }), signal: controller.signal })
+      const body = await response.json().catch(() => null)
+      if (controller.signal.aborted) return
+      if (!response.ok || body?.success !== true || typeof body.data?.added !== "number") { setSaveError(t("calendarOfficialFailed")); return }
+      const result = body.data as { added: number; past: number; existing: number }
+      mutationController.current = null
+      await load(year, true)
+      setOfficial(result)
+    } catch { if (!controller.signal.aborted) setSaveError(t("calendarOfficialFailed")) }
+    finally {
+      if (mutationController.current === controller) mutationController.current = null
+      if (!controller.signal.aborted) setSaving(false)
+    }
+  }
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void mutate() }
   const days = data ? [...data.days].sort((a, b) => a.date.localeCompare(b.date)) : []
   const currentYear = data ? Number(data.today.slice(0, 4)) : null
@@ -195,6 +219,12 @@ export function MtmAttendanceCalendar() {
               : <span className="text-xs text-muted-foreground">{t(day.date <= data.today ? "calendarPastReadOnly" : !day.canEdit ? "calendarPairedReadOnly" : "calendarViewOnly")}</span>}</td>
           </tr>)}</tbody>
         </table></div> : <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-5 text-sm text-muted-foreground dark:border-zinc-700">{t("calendarEmpty", { year: year ?? String(currentYear) })}</p>}
+        {data.canManage && year ? <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4" data-testid="attendance-calendar-official">
+          <p className="text-sm font-semibold">{t("calendarOfficialTitle", { year })}</p>
+          <p className="max-w-prose text-sm text-muted-foreground">{azOfficialCalendar(Number(year)).complete ? t("calendarOfficialHint", { source: azOfficialCalendar(Number(year)).source ?? "" }) : t("calendarOfficialPartial", { year })}</p>
+          <Button type="button" className="min-h-11 rounded-full" disabled={disabled} onClick={() => void addOfficial()}>{t("calendarOfficialAdd", { year })}</Button>
+          {official ? <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300" data-testid="attendance-calendar-official-result">{t("calendarOfficialDone", official)}</p> : null}
+        </div> : null}
         {data.canManage ? <form className="space-y-4 border-t border-zinc-200 pt-5 dark:border-zinc-700" onSubmit={submit} aria-label={t(draft.id ? "calendarEditForm" : "calendarAddForm")}>
           <fieldset disabled={disabled} className="space-y-4"><legend className="mb-3 text-sm font-semibold">{t(draft.id ? "calendarEditForm" : "calendarAddForm")}</legend>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(10rem,1fr)_minmax(12rem,1.3fr)_minmax(14rem,2fr)]">

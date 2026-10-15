@@ -5,10 +5,12 @@ import { currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { attendanceRuleForDate, MTM_ATTENDANCE_BASELINE_RULE } from "@/lib/mtm/attendance-rules"
 import { readAttendanceRules } from "@/lib/mtm/attendance-rule-store"
 import { lockWorkforceCalendarConfigurationDates } from "@/lib/workforce/calendar-configuration"
+import { azOfficialCalendar } from "@/lib/mtm/az-official-calendar"
 
 export const AttendanceCalendarInputSchema = z.object({
   date: z.string().refine(isDateKey),
-  kind: z.enum(["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY", "EXCEPTION_WORKDAY"]),
+  // WEEKEND: an extra rest day (a holiday moved off a weekend) — not worked, yet counted inside leave.
+  kind: z.enum(["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY", "EXCEPTION_WORKDAY", "WEEKEND"]),
   name: z.string().trim().min(1).max(160),
   id: z.string().min(1).max(191).optional(),
   version: z.string().datetime().optional(),
@@ -95,4 +97,26 @@ export async function saveAttendanceCalendar(input: {
     } })
     return created ? serialize(created) : null
   })
+}
+
+/**
+ * Adds Azerbaijan's official days for a year, one date at a time through the
+ * same guarded writer: past dates and dates that already have an entry are
+ * skipped (and counted), never overwritten.
+ */
+export async function addAzOfficialCalendar(input: { organizationId: string; userId: string; timezone: string; year: number }) {
+  const rules = await readAttendanceRules(input.organizationId)
+  const saturdayWorks = !attendanceRuleForDate(rules, `${input.year}-06-01`).weekendDays.includes(6)
+  const official = azOfficialCalendar(input.year, saturdayWorks)
+  let added = 0, past = 0, existing = 0
+  for (const entry of official.entries) {
+    try { await saveAttendanceCalendar({ ...input, value: entry }); added += 1 }
+    catch (error) {
+      if (!(error instanceof AttendanceCalendarError)) throw error
+      if (error.code === "MTM_ATTENDANCE_CALENDAR_PAST") past += 1
+      else if (error.code === "MTM_ATTENDANCE_CALENDAR_EXISTS") existing += 1
+      else throw error
+    }
+  }
+  return { year: input.year, added, past, existing, complete: official.complete, source: official.source }
 }

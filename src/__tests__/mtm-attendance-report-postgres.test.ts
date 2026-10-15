@@ -244,6 +244,29 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     expect(audit.every((entry) => entry.actorUserId === "fixture-admin")).toBe(true)
   })
 
+  // Owner, 2026-10-15: official holidays added with one press, never overwriting what HR entered.
+  it("adds Azerbaijan's official days for next year once, keeping a date HR already entered", async () => {
+    const { azOfficialCalendar } = await import("@/lib/mtm/az-official-calendar")
+    const org = "attendance-report-official", year = Number(currentDateKey(new Date(), "Asia/Baku").slice(0, 4)) + 1
+    await bypass(() => prisma.organization.create({ data: { id: org, name: "Fictional official calendar", slug: org, modules: { "route-field": true, personnel: true } } }))
+    const own = await tenant(org, () => calendar.saveAttendanceCalendar({ organizationId: org, userId: "fixture-admin", timezone: "Asia/Baku",
+      value: { date: `${year}-01-01`, kind: "COMPANY_HOLIDAY", name: "Fixture own New Year" } }))
+    const add = () => tenant(org, () => calendar.addAzOfficialCalendar({ organizationId: org, userId: "fixture-admin", timezone: "Asia/Baku", year }))
+    const expected = azOfficialCalendar(year).entries
+    expect(await add()).toMatchObject({ added: expected.length - 1, existing: 1, past: 0 })
+    expect(await add()).toMatchObject({ added: 0, existing: expected.length, past: 0 })
+    const days = await tenant(org, () => calendar.readAttendanceCalendar(org, `${year}-01-01`, `${year}-12-31`))
+    expect(days.map(day => day.date)).toEqual(expected.map(entry => entry.date))
+    expect(days.find(day => day.date === `${year}-01-01`)).toMatchObject({ id: own!.id, kind: "COMPANY_HOLIDAY", name: "Fixture own New Year" })
+    expect(days.find(day => day.date === `${year}-11-08`)).toMatchObject({ kind: "PUBLIC_HOLIDAY", name: "Zəfər Günü" })
+    expect(await tenant(org, () => prisma.mtmAuditLog.count({ where: { organizationId: org, action: "MTM_ATTENDANCE_CALENDAR_ADDED" } }))).toBe(expected.length)
+    // A moved rest day is a WEEKEND override: not a working day, not a holiday (own date: +23 days).
+    const date = addDateKeyDays(monday, 23)
+    await tenant(ORG, () => calendar.saveAttendanceCalendar({ organizationId: ORG, userId: "fixture-admin", timezone: "Asia/Baku", value: { date, kind: "WEEKEND", name: "Fixture moved rest day" } }))
+    const moved = await tenant(ORG, () => readReport({ organizationId: ORG, actor: adminActor, query: { from: date, to: date, form: "ALL" }, now: at(date, "19:00") }))
+    expect(moved.rows.length).toBeGreaterThan(0)
+    expect(moved.rows.every(row => row.kind === "WEEKEND" && row.calendarKind === "WEEKEND" && row.expectedWorkSeconds === 0)).toBe(true)
+  })
   it("serializes calendar editors and refuses past changes without altering saved rows", async () => {
     const date = addDateKeyDays(monday, 15)
     const results = await Promise.allSettled(["One", "Two"].map((name) => tenant(ORG, () => calendar.saveAttendanceCalendar({
