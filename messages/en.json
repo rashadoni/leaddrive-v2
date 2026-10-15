@@ -14749,7 +14749,9 @@
       "sort": "The order visits are shown in.",
       "summary": "Total is the visits of the period; finished is how many are closed; the median means half the visits are shorter and half longer (open ones are not counted); GPS confirmed means check-in and check-out were within the client's zone.",
       "locationRequest": "From this visit the agent reported the client's pin is in the wrong place, so «outside the zone» here is not necessarily a violation.",
-      "loadMore": "Load the next visits."
+      "loadMore": "Load the next visits.",
+      "remindAgent": "Send the agent a message in the app: the visit is still open, close it.",
+      "remindedAgent": "The agent got the message in the app."
     },
     "widenedNotice": "No visits for «{from}» — showing «{to}».",
     "title": "Visits",
@@ -14915,7 +14917,18 @@
       "taskDue": "due {date}",
       "signedBy": "Signed by {name}",
       "signedAt": "Signed at {time}"
-    }
+    },
+    "leftOpenTitle": "{count, plural, one {Left open by the agent: # visit} other {Left open by agents: # visits}}",
+    "leftOpenHint": "The agent started the visit and did not close it. Only the agent can close it — remind them.",
+    "leftOpenSince": "open since {since} · {openFor}",
+    "leftOpenFact": "since {since} → not closed by the agent · {openFor}",
+    "statusLeftOpen": "Not closed by the agent",
+    "openForDays": "{count, plural, one {# day} other {# days}}",
+    "openForHours": "{count, plural, one {# hour} other {# hours}}",
+    "openForMinutes": "{count} min",
+    "remindAgent": "Remind the agent",
+    "reminded": "Reminder sent",
+    "remindFailed": "Could not send the reminder. Try again."
   },
   "mtmVisitWorkspace": {
     "hint": {

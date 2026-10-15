@@ -272,6 +272,18 @@ describe("GET /api/v1/mtm/visits/active viewer", () => {
     expect((await response.json()).data.visits).toEqual([{ id: "visit-2", agentId: "agent-anar" }])
   })
 
+  // Owner, 2026-10-15: past this line an open visit reads «не закрыт агентом», not «идёт сейчас».
+  it("tells the page the tenant's long-open line, 120 minutes when the tenant never set it", async () => {
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: null, role: "ADMIN", scopedAgentIds: null } as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValueOnce([{ key: "autoCheckoutMinutes", value: 90 }] as never)
+    expect((await (await getActiveVisits(request("/api/v1/mtm/visits/active"))).json()).data.longOpenMinutes).toBe(90)
+
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValueOnce([] as never)
+    expect((await (await getActiveVisits(request("/api/v1/mtm/visits/active"))).json()).data.longOpenMinutes).toBe(120)
+  })
+
   it("tells the page who is looking so only their own visits open the execution workspace", async () => {
     vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "manager-1", role: "MANAGER", scopedAgentIds: ["manager-1", "agent-anar"] } as never)
     vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([{ id: "visit-2", agentId: "agent-anar", status: "CHECKED_IN" }] as never)
