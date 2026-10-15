@@ -12967,7 +12967,7 @@
       "viewList": "All routes as a list, with a status filter and search.",
       "viewMatrix": "Plan one employee's week: who to visit on which day.",
       "viewAgent": "One employee's work over a chosen period, day by day.",
-      "viewApprovals": "Agents' requests awaiting a decision: route changes, new clients and places, a client's new place. The number is how many wait.",
+      "viewApprovals": "Agents' requests awaiting a decision: route changes, new clients and institutions, a client's new place. The number is how many wait.",
       "returnBack": "Go back to where you opened routes from.",
       "excel": "Load routes and reference lists from Excel, or export them to Excel.",
       "addRoute": "A new route: the employee, the day and the clients to visit.",
