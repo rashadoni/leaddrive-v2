@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useCallback, useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
@@ -138,9 +139,11 @@ export default function MtmActivityPage() {
           <PageDescription icon={Activity} title={t("title")} description={t("description")} />
           <HelpButton slug="mtm-activity" variant="label" />
         </div>
-        <Button variant="outline" size="sm" onClick={exportCsv}>
-          <Download className="h-4 w-4 mr-1" /> {t("export")}
-        </Button>
+        <Hint text={t("hint.export")}>
+          <Button variant="outline" size="sm" onClick={exportCsv}>
+            <Download className="h-4 w-4 mr-1" /> {t("export")}
+          </Button>
+        </Hint>
       </div>
 
       {/* Owner 2026-09-27: filters in one row. Five stat cards stood above a
@@ -164,11 +167,13 @@ export default function MtmActivityPage() {
               { value: "TASK", label: t("tasks") },
             ]}
             onChange={(value) => { setType(value); setViolations(false) }} />
-          <button type="button" data-testid="mtm-activity-violations" aria-pressed={violations} onClick={toggleViolations} title={t("violationsHint")}
-            className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${violations ? "border-red-400 bg-red-50 text-red-700 dark:border-red-500/50 dark:bg-red-500/10 dark:text-red-300" : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}>
-            <ShieldAlert className="h-4 w-4" aria-hidden="true" />
-            {t("violations")} ({kpi.totalViolations})
-          </button>
+          <Hint text={t("hint.violations")}>
+            <button type="button" data-testid="mtm-activity-violations" aria-pressed={violations} onClick={toggleViolations}
+              className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${violations ? "border-red-400 bg-red-50 text-red-700 dark:border-red-500/50 dark:bg-red-500/10 dark:text-red-300" : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}>
+              <ShieldAlert className="h-4 w-4" aria-hidden="true" />
+              {t("violations")} ({kpi.totalViolations})
+            </button>
+          </Hint>
         </MtmFilterBar>
         <MtmResultLine aside={t("statsPeriodNote")}>
           <span className="font-medium text-foreground">{t("totalActivity")}: {kpi.totalActivities}</span> · {t("checkIn")}: {kpi.totalCheckIns} · {t("checkOut")}: {kpi.totalCheckOuts} · {t("photoUpload")}: {kpi.totalPhotos}

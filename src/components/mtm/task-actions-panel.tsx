@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
@@ -385,13 +386,13 @@ export function MtmTaskActionsPanel({
             </div>
           ) : null}
           {canExecute ? <><div className="space-y-2">
-            <div className="flex items-center justify-between gap-3"><Label htmlFor="task-progress">{t("progress")}</Label><span className="text-sm font-semibold tabular-nums">{progress}%</span></div>
+            <div className="flex items-center justify-between gap-3"><Label htmlFor="task-progress"><HintValue text={t("hint.progress")}>{t("progress")}</HintValue></Label><span className="text-sm font-semibold tabular-nums">{progress}%</span></div>
             <input id="task-progress" type="range" min={0} max={100} step={5} value={progress} onChange={(event) => setProgress(Number(event.target.value))} className="min-h-11 w-full accent-primary" disabled={!canComplete || executionLocked} />
           </div>
           <div className="space-y-1.5"><Label htmlFor="task-result">{t("result")}</Label><Textarea id="task-result" value={result} onChange={(event) => setResult(event.target.value)} rows={4} maxLength={5000} disabled={!canComplete || executionLocked} placeholder={t("resultPlaceholder")} /></div>
           <div className="grid gap-2">
-            {canStart ? <Button type="button" className="min-h-11" disabled={busyExecution || executionLocked} onClick={() => void queueExecution({ status: "IN_PROGRESS", progress: Math.max(1, progress) })}><Play className="h-4 w-4" />{t("startTask")}</Button> : null}
-            {canComplete ? <><Button type="button" variant="outline" className="min-h-11" disabled={busyExecution || executionLocked} onClick={() => void queueExecution({ progress, result: result.trim() || null })}><Save className="h-4 w-4" />{t("saveProgress")}</Button><Button type="button" className="min-h-11" disabled={busyExecution || executionLocked} onClick={() => void queueExecution({ status: "COMPLETED", progress: 100, result: result.trim() || null })}><CheckCircle2 className="h-4 w-4" />{t("completeTask")}</Button></> : null}
+            {canStart ? <Hint wrap text={t("hint.startTask")}><Button type="button" className="min-h-11" disabled={busyExecution || executionLocked} onClick={() => void queueExecution({ status: "IN_PROGRESS", progress: Math.max(1, progress) })}><Play className="h-4 w-4" />{t("startTask")}</Button></Hint> : null}
+            {canComplete ? <><Hint wrap text={t("hint.saveProgress")}><Button type="button" variant="outline" className="min-h-11" disabled={busyExecution || executionLocked} onClick={() => void queueExecution({ progress, result: result.trim() || null })}><Save className="h-4 w-4" />{t("saveProgress")}</Button></Hint><Hint wrap text={t("hint.completeTask")}><Button type="button" className="min-h-11" disabled={busyExecution || executionLocked} onClick={() => void queueExecution({ status: "COMPLETED", progress: 100, result: result.trim() || null })}><CheckCircle2 className="h-4 w-4" />{t("completeTask")}</Button></Hint></> : null}
             {!canStart && !canComplete ? <p className="text-xs text-muted-foreground">{t("executionUnavailableForStatus")}</p> : null}
           </div></> : <p className="text-xs text-muted-foreground">{t("executionPermissionUnavailable")}</p>}
         </section>
@@ -403,7 +404,7 @@ export function MtmTaskActionsPanel({
           <div className="space-y-1.5"><Label htmlFor="task-review-comment">{t("reviewComment")}</Label><Textarea id="task-review-comment" value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} rows={3} maxLength={2000} /></div>
           <div className="space-y-1.5"><Label htmlFor="task-return-reason">{t("returnReason")}</Label><Textarea id="task-return-reason" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} rows={3} maxLength={2000} placeholder={t("returnReasonPlaceholder")} /></div>
           {reviewMessage ? <p className={`text-xs leading-5 ${reviewPhase === "error" || reviewPhase === "conflict" ? "text-red-700 dark:text-red-300" : "text-muted-foreground"}`} role="status">{reviewMessage}</p> : null}
-          <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="min-h-11 flex-1 basis-32" disabled={reviewPhase === "saving"} onClick={() => void review("RETURN")}><RotateCcw className="h-4 w-4" />{t("returnTask")}</Button><Button type="button" className="min-h-11 flex-1 basis-32" disabled={reviewPhase === "saving"} onClick={() => void review("ACCEPT")}><CheckCircle2 className="h-4 w-4" />{t("acceptTask")}</Button></div>
+          <div className="flex flex-wrap gap-2"><Hint wrap text={t("hint.returnTask")}><Button type="button" variant="outline" className="min-h-11 flex-1 basis-32" disabled={reviewPhase === "saving"} onClick={() => void review("RETURN")}><RotateCcw className="h-4 w-4" />{t("returnTask")}</Button></Hint><Hint wrap text={t("hint.acceptTask")}><Button type="button" className="min-h-11 flex-1 basis-32" disabled={reviewPhase === "saving"} onClick={() => void review("ACCEPT")}><CheckCircle2 className="h-4 w-4" />{t("acceptTask")}</Button></Hint></div>
         </section>
       ) : null}
 

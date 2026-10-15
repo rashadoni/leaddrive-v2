@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -269,9 +270,9 @@ export default function MtmPhotosPage() {
           {/* Audit 2026-09-26: three bare icons nobody could read, and an
               «Export» button with no handler at all. */}
           <div data-testid="mtm-photos-modes" className="flex overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("viewModes")}>
-            <Button aria-pressed={viewMode === "gallery"} variant={viewMode === "gallery" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => setViewMode("gallery")}><LayoutGrid className="mr-1.5 h-4 w-4" />{t("modeGallery")}</Button>
-            <Button aria-pressed={viewMode === "compare"} variant={viewMode === "compare" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => setViewMode("compare")}><Columns className="mr-1.5 h-4 w-4" />{t("modeCompare")}</Button>
-            <Button aria-pressed={viewMode === "batch"} variant={viewMode === "batch" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => { setViewMode("batch"); setSelectedPhotos(new Set()) }}><CheckSquare className="mr-1.5 h-4 w-4" />{t("modeBatch")}</Button>
+            <Hint text={t("hint.modeGallery")}><Button aria-pressed={viewMode === "gallery"} variant={viewMode === "gallery" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => setViewMode("gallery")}><LayoutGrid className="mr-1.5 h-4 w-4" />{t("modeGallery")}</Button></Hint>
+            <Hint text={t("hint.modeCompare")}><Button aria-pressed={viewMode === "compare"} variant={viewMode === "compare" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => setViewMode("compare")}><Columns className="mr-1.5 h-4 w-4" />{t("modeCompare")}</Button></Hint>
+            <Hint text={t("hint.modeBatch")}><Button aria-pressed={viewMode === "batch"} variant={viewMode === "batch" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => { setViewMode("batch"); setSelectedPhotos(new Set()) }}><CheckSquare className="mr-1.5 h-4 w-4" />{t("modeBatch")}</Button></Hint>
           </div>
         </div>
       </div>
@@ -280,28 +281,34 @@ export default function MtmPhotosPage() {
           counts the status chips already carry; period, employee and order
           were labelled fields on rows of their own. */}
       <MtmFilterBar testId="mtm-photos-filters">
-        <MtmFilterSelect testId="mtm-photos-period" label={t("periodLabel")} value={period} emptyValue="week" showValue allLabel={t("periodWeek")}
-          options={[{ value: "today", label: t("periodToday") }, { value: "week", label: t("periodWeek") }, { value: "all", label: t("periodAll") }]}
-          onChange={(value) => {
-            setPeriodChosenByUser(true)
-            setWidenedFrom(null)
-            setPeriod(value as PhotoPeriod)
-          }} />
-        <MtmFilterSelect testId="mtm-photos-agent" label={t("agentFilter")} value={agentFilter} allLabel={t("allAgents")}
-          options={[...knownAgents.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => ({ value: id, label: name }))}
-          onChange={setAgentFilter} />
+        <Hint wrap text={t("hint.period")}>
+          <MtmFilterSelect testId="mtm-photos-period" label={t("periodLabel")} value={period} emptyValue="week" showValue allLabel={t("periodWeek")}
+            options={[{ value: "today", label: t("periodToday") }, { value: "week", label: t("periodWeek") }, { value: "all", label: t("periodAll") }]}
+            onChange={(value) => {
+              setPeriodChosenByUser(true)
+              setWidenedFrom(null)
+              setPeriod(value as PhotoPeriod)
+            }} />
+        </Hint>
+        <Hint wrap text={t("hint.agent")}>
+          <MtmFilterSelect testId="mtm-photos-agent" label={t("agentFilter")} value={agentFilter} allLabel={t("allAgents")}
+            options={[...knownAgents.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => ({ value: id, label: name }))}
+            onChange={setAgentFilter} />
+        </Hint>
         <div role="group" aria-label={tfl("status")} className="flex flex-wrap gap-1">
-          <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{t("all")} ({periodTotal})</Button>
+          <Hint text={t("hint.status")}><Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{t("all")} ({periodTotal})</Button></Hint>
           {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
-            <Button key={s} variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>
+            <Hint key={s} text={t("hint.status")}><Button variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>
               {t(PHOTO_FILTER_LABELS[s])} ({statusCounts[s] || 0})
-            </Button>
+            </Button></Hint>
           ))}
         </div>
         <span className="ml-auto">
-          <MtmFilterSelect label={tfl("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
-            options={[{ value: "date_desc", label: t("sortDateDesc") }, { value: "status", label: t("sortStatus") }]}
-            onChange={setSortBy} />
+          <Hint wrap text={t("hint.sort")}>
+            <MtmFilterSelect label={tfl("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
+              options={[{ value: "date_desc", label: t("sortDateDesc") }, { value: "status", label: t("sortStatus") }]}
+              onChange={setSortBy} />
+          </Hint>
         </span>
       </MtmFilterBar>
       {widenedFrom ? (
@@ -317,12 +324,16 @@ export default function MtmPhotosPage() {
       {viewMode === "batch" && selectedPhotos.size > 0 && (
         <div className="flex items-center gap-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-primary/5">
           <span className="text-xs font-medium">{t("batchSelected", { n: selectedPhotos.size })}</span>
-          <Button size="sm" variant="outline" className="h-6 text-xs text-green-600" onClick={() => { selectedPhotos.forEach(id => { if (!missingFiles.has(id)) updatePhotoStatus(id, "APPROVED") }); setSelectedPhotos(new Set()) }}>
-            <Check className="h-3 w-3 mr-1" /> {t("batchApproveAll")}
-          </Button>
-          <Button size="sm" variant="outline" className="h-6 text-xs text-red-600" onClick={() => { selectedPhotos.forEach(id => updatePhotoStatus(id, "REJECTED")); setSelectedPhotos(new Set()) }}>
-            <X className="h-3 w-3 mr-1" /> {t("batchRejectAll")}
-          </Button>
+          <Hint text={t("hint.approveAll")}>
+            <Button size="sm" variant="outline" className="h-6 text-xs text-green-600" onClick={() => { selectedPhotos.forEach(id => { if (!missingFiles.has(id)) updatePhotoStatus(id, "APPROVED") }); setSelectedPhotos(new Set()) }}>
+              <Check className="h-3 w-3 mr-1" /> {t("batchApproveAll")}
+            </Button>
+          </Hint>
+          <Hint text={t("hint.rejectAll")}>
+            <Button size="sm" variant="outline" className="h-6 text-xs text-red-600" onClick={() => { selectedPhotos.forEach(id => updatePhotoStatus(id, "REJECTED")); setSelectedPhotos(new Set()) }}>
+              <X className="h-3 w-3 mr-1" /> {t("batchRejectAll")}
+            </Button>
+          </Hint>
           <Button size="sm" variant="ghost" className="h-6 text-xs ml-auto" onClick={() => setSelectedPhotos(new Set())}>{t("batchClear")}</Button>
         </div>
       )}
@@ -389,18 +400,20 @@ export default function MtmPhotosPage() {
                     <div className="flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
                       <time dateTime={photo.createdAt} className="truncate tabular-nums">{t("capturedAt", { time: formatDateTime(photo.createdAt, locale, { dateStyle: "short", timeStyle: "short" }) })}</time>
                       {photo.visit?.id ? (
-                        <Link
-                          href={`/mtm/visits?visitId=${encodeURIComponent(photo.visit.id)}`}
-                          className="shrink-0 text-primary hover:underline"
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          {t("openVisit")}
-                        </Link>
+                        <Hint text={t("hint.openVisit")}>
+                          <Link
+                            href={`/mtm/visits?visitId=${encodeURIComponent(photo.visit.id)}`}
+                            className="shrink-0 text-primary hover:underline"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            {t("openVisit")}
+                          </Link>
+                        </Hint>
                       ) : null}
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-1">
                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[photo.status] || ""}`}>{mtmStatusLabel(ts, "photo", photo.status)}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title={t("deletePhoto")} aria-label={t("deletePhoto")} onClick={(event) => { event.stopPropagation(); setDeleteItem(photo); setDeleteOpen(true) }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Hint text={t("hint.delete")}><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" aria-label={t("deletePhoto")} onClick={(event) => { event.stopPropagation(); setDeleteItem(photo); setDeleteOpen(true) }}><Trash2 className="h-3.5 w-3.5" /></Button></Hint>
                     </div>
                     {photo.status === "PENDING" && (!photo.url || missingFiles.has(photo.id)) ? (
                       // Audit 2026-09-26: «Approve» under «File not found» —
@@ -408,8 +421,8 @@ export default function MtmPhotosPage() {
                       <p data-testid="mtm-photo-review-unavailable" className="mt-2 text-[11px] text-muted-foreground">{t("reviewUnavailable")}</p>
                     ) : photo.status === "PENDING" ? (
                       <div className="mt-2 grid grid-cols-2 gap-1">
-                        <Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-green-600 hover:bg-green-50" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "APPROVED") }}><Check className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("approve")}</span></Button>
-                        <Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-red-600 hover:bg-red-50" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "REJECTED") }}><X className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("reject")}</span></Button>
+                        <Hint text={t("hint.approve")}><Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-green-600 hover:bg-green-50" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "APPROVED") }}><Check className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("approve")}</span></Button></Hint>
+                        <Hint text={t("hint.reject")}><Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-red-600 hover:bg-red-50" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "REJECTED") }}><X className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("reject")}</span></Button></Hint>
                       </div>
                     ) : null}
                   </div>
@@ -440,9 +453,11 @@ export default function MtmPhotosPage() {
               <time dateTime={lightboxPhoto.createdAt}>{formatDateTime(lightboxPhoto.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time>
               <span className={`rounded px-1.5 py-0.5 text-[10px] ${statusColors[lightboxPhoto.status] || ""}`}>{mtmStatusLabel(ts, "photo", lightboxPhoto.status)}</span>
               {lightboxPhoto.visit?.id ? (
-                <Link href={`/mtm/visits?visitId=${encodeURIComponent(lightboxPhoto.visit.id)}`} className="inline-flex items-center gap-1 text-primary hover:underline">
-                  <ExternalLink className="h-3 w-3" />{t("openVisit")}
-                </Link>
+                <Hint text={t("hint.openVisit")}>
+                  <Link href={`/mtm/visits?visitId=${encodeURIComponent(lightboxPhoto.visit.id)}`} className="inline-flex items-center gap-1 text-primary hover:underline">
+                    <ExternalLink className="h-3 w-3" />{t("openVisit")}
+                  </Link>
+                </Hint>
               ) : null}
               <Button size="sm" variant="outline" className="ml-auto min-h-10" onClick={() => setLightboxPhoto(null)}>{t("closeLightbox")}</Button>
             </div>

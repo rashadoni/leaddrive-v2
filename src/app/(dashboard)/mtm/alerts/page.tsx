@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -235,26 +236,32 @@ export default function MtmAlertsPage() {
   const filters = (
     <div className="space-y-2">
       <MtmFilterBar testId="mtm-alerts-filters">
-        <MtmFilterSelect testId="mtm-alerts-agent" label={t("filterAgent")} value={agentId} allLabel={t("allAgents")}
-          options={[
-            ...(agentId && !agents.some((agent) => agent.id === agentId) ? [{ value: agentId, label: agentId }] : []),
-            ...agents.map((agent) => ({ value: agent.id, label: agent.name })),
-          ]}
-          onChange={(value) => setFilter("agentId", value)} />
-        <MtmFilterSelect testId="mtm-alerts-type" label={t("filterType")} value={type} allLabel={t("allTypes")}
-          options={ALERT_TYPES.map((value) => ({ value, label: tt(`typeLabel_${value}`) }))}
-          onChange={(value) => setFilter("type", value)} />
-        <MtmFilterSelect testId="mtm-alerts-status" label={t("filterStatus")} value={status} emptyValue="open" showValue allLabel={t("statusOpen")}
-          options={[{ value: "open", label: t("statusOpen") }, { value: "resolved", label: t("statusResolved") }, { value: "all", label: t("statusAll") }]}
-          onChange={(value) => setFilter("status", value === "open" ? "" : value)} />
-        <MtmFilterDate testId="mtm-alerts-date" label={t("filterDate")} max={data?.today} value={dateParam || data?.today || ""} onChange={(value) => setFilter("date", value === data?.today ? "" : value)} />
+        <Hint wrap text={t("hint.agent")}>
+          <MtmFilterSelect testId="mtm-alerts-agent" label={t("filterAgent")} value={agentId} allLabel={t("allAgents")}
+            options={[
+              ...(agentId && !agents.some((agent) => agent.id === agentId) ? [{ value: agentId, label: agentId }] : []),
+              ...agents.map((agent) => ({ value: agent.id, label: agent.name })),
+            ]}
+            onChange={(value) => setFilter("agentId", value)} />
+        </Hint>
+        <Hint wrap text={t("hint.type")}>
+          <MtmFilterSelect testId="mtm-alerts-type" label={t("filterType")} value={type} allLabel={t("allTypes")}
+            options={ALERT_TYPES.map((value) => ({ value, label: tt(`typeLabel_${value}`) }))}
+            onChange={(value) => setFilter("type", value)} />
+        </Hint>
+        <Hint wrap text={t("hint.status")}>
+          <MtmFilterSelect testId="mtm-alerts-status" label={t("filterStatus")} value={status} emptyValue="open" showValue allLabel={t("statusOpen")}
+            options={[{ value: "open", label: t("statusOpen") }, { value: "resolved", label: t("statusResolved") }, { value: "all", label: t("statusAll") }]}
+            onChange={(value) => setFilter("status", value === "open" ? "" : value)} />
+        </Hint>
+        <Hint wrap text={t("hint.date")}><MtmFilterDate testId="mtm-alerts-date" label={t("filterDate")} max={data?.today} value={dateParam || data?.today || ""} onChange={(value) => setFilter("date", value === data?.today ? "" : value)} /></Hint>
         {dateParam && dateParam !== data?.today && (
-          <Button variant="outline" size="sm" className="h-10 rounded-full" onClick={() => setFilter("date", "")}>{t("today")}</Button>
+          <Hint text={t("hint.today")}><Button variant="outline" size="sm" className="h-10 rounded-full" onClick={() => setFilter("date", "")}>{t("today")}</Button></Hint>
         )}
       </MtmFilterBar>
       {data ? (
         <MtmResultLine>
-          {t("statGroups")}: {groups.length} · {t("statOpen")}: {openTotal} · <span className={criticalGroups > 0 ? "font-medium text-red-700 dark:text-red-400" : ""}>{t("statCritical")}: {criticalGroups}</span> · {t("statStale")}: {data.stale.total ?? 0}
+          <HintValue text={t("hint.summary")}>{t("statGroups")}</HintValue>: {groups.length} · {t("statOpen")}: {openTotal} · <span className={criticalGroups > 0 ? "font-medium text-red-700 dark:text-red-400" : ""}>{t("statCritical")}: {criticalGroups}</span> · {t("statStale")}: {data.stale.total ?? 0}
         </MtmResultLine>
       ) : null}
     </div>
@@ -323,17 +330,19 @@ export default function MtmAlertsPage() {
           </button>
           <div className="flex flex-wrap items-center gap-1.5">
             <Button asChild size="sm" variant="outline" className="h-7 bg-white/50 text-xs hover:bg-white/80 dark:bg-black/20">
-              <Link href={group.historyHref}><MapPin className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{t("openOnMap")}</Link>
+              <Link href={group.historyHref}><Hint text={t("hint.openOnMap")}><MapPin className="mr-1 h-3.5 w-3.5" aria-hidden="true" /></Hint>{t("openOnMap")}</Link>
             </Button>
             {group.visitId && (
               <Button asChild size="sm" variant="outline" className="h-7 bg-white/50 text-xs hover:bg-white/80 dark:bg-black/20">
-                <Link href={`/mtm/visits?visitId=${encodeURIComponent(group.visitId)}`}><ExternalLink className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{t("openVisit")}</Link>
+                <Link href={`/mtm/visits?visitId=${encodeURIComponent(group.visitId)}`}><Hint text={t("hint.openVisit")}><ExternalLink className="mr-1 h-3.5 w-3.5" aria-hidden="true" /></Hint>{t("openVisit")}</Link>
               </Button>
             )}
             {data?.canResolve && group.openIds.length > 0 && (
-              <Button size="sm" variant="outline" className="h-7 bg-white/50 text-xs hover:bg-white/80 dark:bg-black/20" disabled={busyGroup === group.key} onClick={() => (group.openIds.length > 1 ? setGroupConfirm({ key: group.key, ids: group.openIds }) : resolveIds(group.openIds, group.key))}>
-                <CheckCircle2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{t("resolveGroup")}
-              </Button>
+              <Hint wrap text={t("hint.resolveGroup")}>
+                <Button size="sm" variant="outline" className="h-7 bg-white/50 text-xs hover:bg-white/80 dark:bg-black/20" disabled={busyGroup === group.key} onClick={() => (group.openIds.length > 1 ? setGroupConfirm({ key: group.key, ids: group.openIds }) : resolveIds(group.openIds, group.key))}>
+                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{t("resolveGroup")}
+                </Button>
+              </Hint>
             )}
           </div>
         </div>
@@ -375,9 +384,11 @@ export default function MtmAlertsPage() {
             {item.isResolved
               ? <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700">{t("resolved")}</span>
               : data?.canResolve && (
-                  <Button size="sm" variant="outline" className="h-6 bg-white/50 text-[10px] hover:bg-white/80" onClick={() => resolveIds([item.id], item.id)} disabled={busyGroup === item.id}>
-                    <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden="true" /> {t("resolve")}
-                  </Button>
+                  <Hint wrap text={t("hint.resolve")}>
+                    <Button size="sm" variant="outline" className="h-6 bg-white/50 text-[10px] hover:bg-white/80" onClick={() => resolveIds([item.id], item.id)} disabled={busyGroup === item.id}>
+                      <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden="true" /> {t("resolve")}
+                    </Button>
+                  </Hint>
                 )}
             {data?.canResolve && (
               // C14: удаление оповещения — в «⋯», а не вплотную к кнопке
@@ -428,9 +439,11 @@ export default function MtmAlertsPage() {
               </span>
             </button>
             {data.canResolve && (
-              <Button size="sm" variant="outline" onClick={() => setStaleConfirm(true)}>
-                <CheckCircle2 className="mr-1 h-4 w-4" aria-hidden="true" />{t("closeAllStale")}
-              </Button>
+              <Hint text={t("hint.closeAllStale")}>
+                <Button size="sm" variant="outline" onClick={() => setStaleConfirm(true)}>
+                  <CheckCircle2 className="mr-1 h-4 w-4" aria-hidden="true" />{t("closeAllStale")}
+                </Button>
+              </Hint>
             )}
           </div>
           {staleOpen && (
