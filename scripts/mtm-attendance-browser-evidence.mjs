@@ -971,8 +971,8 @@ try {
     await clickResponse(button('branchesFind'), `${apiRoot}/branches/assignments`, 'GET')
     const row = page.getByTestId('branch-employee').filter({ hasText: 'Fixture roster 07' })
     await row.getByRole('combobox').selectOption(state.branch.id)
-    await clickResponse(row.getByRole('button', { name: t('branchesAssignNamed', { name: 'Fixture roster 02' }) }), `${apiRoot}/branches/assignments`)
-    const directory = await api('admin', '/branches/assignments?search=Fixture%20roster%2002')
+    await clickResponse(row.getByRole('button', { name: t('branchesAssignNamed', { name: 'Fixture roster 07' }) }), `${apiRoot}/branches/assignments`)
+    const directory = await api('admin', '/branches/assignments?search=Fixture%20roster%2007')
     assert.equal(directory.employees.find(employee => employee.id === office.id).primary.branchId, state.branch.id)
   })
   await run('browser-risk-dismissal', 'browser-action+synthetic-risk-fixture', async () => {
