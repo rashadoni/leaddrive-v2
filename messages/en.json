@@ -16790,7 +16790,7 @@
       "chipStopped": "Only those whose app is connected but who have stayed in one place (within 50 m) for the last 5 minutes.",
       "chipRouteFinished": "Only those who finished today's route: every stop visited or the route closed.",
       "chipLate": "Only those who have not started today's route although the lateness hour in the MTM settings has passed.",
-      "chipOffline": "Only those whose latest position is older than {minutes} min or never arrived.",
+      "chipOffline": "Only those with no live signal: the position is older than {minutes} min, never arrived, or the app is not connected.",
       "agents": "How many employees in your access the server sent, before the list's filters.",
       "appPresence": "«{online}» means the app contacted the server in the last {minutes} min. It is about the app itself, not GPS.",
       "gpsFreshness": "How long ago the latest position arrived: «{fresh}» is within {freshMinutes} min, «{delayed}» up to {delayedMinutes} min, «{stale}» older. The limits are set in the MTM settings.",
