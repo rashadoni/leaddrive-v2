@@ -57,7 +57,7 @@ describe("Report viewer", () => {
   beforeEach(() => { container = document.createElement("div"); document.body.append(container); root = createRoot(container); fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock) })
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals() })
   async function render(key: "summary" | "n1t") {
-    await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "ru", timeZone: "Asia/Baku", messages: ru }, createElement(MtmAttendanceReportViewer, { report: key }))))
+    await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "ru", timeZone: "Asia/Baku", messages: ru, children: createElement(MtmAttendanceReportViewer, { report: key }) })))
     for (let i = 0; i < 3; i++) await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
   }
   const reportCalls = () => fetchMock.mock.calls.map(([url]) => new URL(String(url), "https://crm.test")).filter(url => url.pathname.endsWith("/report"))
