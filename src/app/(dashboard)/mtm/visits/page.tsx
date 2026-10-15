@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -617,14 +618,15 @@ export default function MtmVisitsPage() {
         <VisitPlaceBadge place={visitPlaceSummary(visit, meta.geofenceRadius)} />
         {/* Why a visit «вне зоны» was accepted: its agent had reported the pin as wrong, from that very place. */}
         {request ? (
-          <span
+          <Hint text={t("hint.locationRequest")}><span
+            tabIndex={0}
             data-testid="mtm-visit-location-request"
             className={request.waiting
               ? "inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-950/50 dark:text-amber-200"
               : "inline-flex rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"}
           >
             {t(request.key)}
-          </span>
+          </span></Hint>
         ) : null}
       </span>
     )
@@ -702,10 +704,12 @@ export default function MtmVisitsPage() {
               </Link>
             </Button>
           ) : null}
-          <Button className="min-h-11" onClick={() => { setEditData(undefined); setFormOpen(true) }}>
-            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-            {t("add")}
-          </Button>
+          <Hint text={t("hint.add")}>
+            <Button className="min-h-11" onClick={() => { setEditData(undefined); setFormOpen(true) }}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+              {t("add")}
+            </Button>
+          </Hint>
         </div>
       </div>
 
@@ -822,26 +826,32 @@ export default function MtmVisitsPage() {
               the rest; the numbers are one line under the row now. */}
           <MtmFilterBar testId="mtm-visits-filters">
             <MtmFilterSearch value={search} onChange={setSearch} delayMs={150} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tFilters("clearSearch")} />
-            <MtmFilterSelect testId="mtm-visits-range" label={t("rangeLabel")} value={historyRange} emptyValue="today" showValue allLabel={t("rangeToday")}
-              options={HISTORY_RANGES.map((range) => ({ value: range.value, label: t(range.label) }))}
-              onChange={(value) => {
-                setRangeChosenByUser(true)
-                setWidenedFrom(null)
-                setHistoryRange(value as HistoryRange)
-              }} />
-            <MtmFilterSelect testId="mtm-visits-status" label={t("statusFilterLabel")} value={activeFilter} emptyValue="all" allLabel={t("all")}
-              options={[
-                { value: "all", label: `${t("all")} (${visits.length})` },
-                ...(["CHECKED_IN", "CHECKED_OUT"] as const).map((status) => ({ value: status, label: `${t(VISIT_FILTER_LABELS[status])} (${statusCounts[status] || 0})` })),
-              ]}
-              onChange={setActiveFilter} />
-            <MtmFilterSelect testId="mtm-visits-sort" label={tFilters("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
-              options={[
-                { value: "date_desc", label: t("sortDateDesc") },
-                { value: "date_asc", label: t("sortDateAsc") },
-                { value: "duration", label: t("sortDuration") },
-              ]}
-              onChange={setSortBy} />
+            <Hint wrap text={t("hint.range")}>
+              <MtmFilterSelect testId="mtm-visits-range" label={t("rangeLabel")} value={historyRange} emptyValue="today" showValue allLabel={t("rangeToday")}
+                options={HISTORY_RANGES.map((range) => ({ value: range.value, label: t(range.label) }))}
+                onChange={(value) => {
+                  setRangeChosenByUser(true)
+                  setWidenedFrom(null)
+                  setHistoryRange(value as HistoryRange)
+                }} />
+            </Hint>
+            <Hint wrap text={t("hint.status")}>
+              <MtmFilterSelect testId="mtm-visits-status" label={t("statusFilterLabel")} value={activeFilter} emptyValue="all" allLabel={t("all")}
+                options={[
+                  { value: "all", label: `${t("all")} (${visits.length})` },
+                  ...(["CHECKED_IN", "CHECKED_OUT"] as const).map((status) => ({ value: status, label: `${t(VISIT_FILTER_LABELS[status])} (${statusCounts[status] || 0})` })),
+                ]}
+                onChange={setActiveFilter} />
+            </Hint>
+            <Hint wrap text={t("hint.sort")}>
+              <MtmFilterSelect testId="mtm-visits-sort" label={tFilters("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
+                options={[
+                  { value: "date_desc", label: t("sortDateDesc") },
+                  { value: "date_asc", label: t("sortDateAsc") },
+                  { value: "duration", label: t("sortDuration") },
+                ]}
+                onChange={setSortBy} />
+            </Hint>
           </MtmFilterBar>
           {widenedFrom ? (
             <p role="status" data-testid="mtm-visits-widened" className="text-sm text-muted-foreground">
@@ -849,10 +859,10 @@ export default function MtmVisitsPage() {
             </p>
           ) : null}
           <MtmResultLine
-            aside={<span data-testid="mtm-visits-summary">
+            aside={<HintValue text={t("hint.summary")}><span data-testid="mtm-visits-summary">
               {listIsPartial ? null : <>{t("statTotal")}: {displayedTotal} · </>}{t("statCheckedOut")}: {statusCounts.CHECKED_OUT || 0} · {t("statMedianDuration")}:{" "}
               <span data-testid="mtm-visits-median-duration">{medianDuration == null ? "—" : `${medianDuration} ${t("min")}`}</span> · {t("statGpsConfirmed")}: {confirmedGps}
-            </span>}
+            </span></HintValue>}
           >
             {meta.sourceTruncated ? (
               <span role="status" className="text-amber-700 dark:text-amber-300">
@@ -970,10 +980,12 @@ export default function MtmVisitsPage() {
         )}
         {!loading && visitsRemaining > 0 ? (
           <div className="flex justify-center border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <Button data-testid="mtm-visits-load-more" variant="outline" className="min-h-11" disabled={visitsLoadingMore} onClick={() => void loadMoreVisits()}>
-              {visitsLoadingMore ? <RefreshCw className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
-              {t("loadMore", { count: Math.min(VISIT_PAGE_SIZE, visitsRemaining) })}
-            </Button>
+            <Hint wrap text={t("hint.loadMore")}>
+              <Button data-testid="mtm-visits-load-more" variant="outline" className="min-h-11" disabled={visitsLoadingMore} onClick={() => void loadMoreVisits()}>
+                {visitsLoadingMore ? <RefreshCw className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
+                {t("loadMore", { count: Math.min(VISIT_PAGE_SIZE, visitsRemaining) })}
+              </Button>
+            </Hint>
           </div>
         ) : null}
       </section>

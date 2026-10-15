@@ -11458,6 +11458,25 @@
     "attachUnavailableBody": "Müştərilər yalnız aktiv sahə əməkdaşına təyin edilir. {name}: rol «{role}», status «{status}»."
   },
   "mtmAgents": {
+    "hint": {
+      "export": "Göstərilən əməkdaşları CSV-yə yüklə: ad, email, telefon, rol, status və son aktivlik.",
+      "add": "Yeni əməkdaş kartı: rol, rəhbər, etiketlər və marşrut hüquqları.",
+      "filterAll": "Bütün əməkdaşları göstər.",
+      "filterOnline": "Yalnız tətbiqi son 15 dəqiqədə siqnal verənlər.",
+      "filterStatus": "Yalnız kartı «{status}» statusunda olan əməkdaşlar.",
+      "sort": "Əməkdaşlar hansı qaydada göstərilsin. «Aktivliyə görə» — 7 gündəki vizitlərin sayına görə.",
+      "viewCards": "Əməkdaşları kartlarla göstər.",
+      "viewList": "Əməkdaşları cədvəllə göstər.",
+      "appState": "«Tətbiq aktivdir» — siqnal son 15 dəqiqədə olub.",
+      "breaks": "Bu gün neçə fasilə götürüb və onlar birlikdə neçə dəqiqə çəkib.",
+      "activity": "Son günlərdəki vizitlər və eyni müddətdə marşrutlarının baş çəkilən nöqtələrinin payı.",
+      "notificationsOff": "Onun telefonuna bildiriş göndərmək olmur: tətbiq bildirişlər üçün qeydiyyatda deyil.",
+      "call": "Onun telefonuna zəng et.",
+      "message": "Ona WhatsApp-da yaz.",
+      "map": "Onu canlı xəritədə göstər.",
+      "history": "Bu gün harada olub: xəritədə yolu, dayanmaları və vizitləri saatı ilə.",
+      "clients": "Ona bağlanmış müştəriləri aç."
+    },
     "clients": "Müştərilər",
     "clientsCount": "Müştərilər: {count}",
     "openSection": "Əməkdaşın bölməsini aç",
@@ -11552,6 +11571,30 @@
     "deleteKeptClose": "Aydındır"
   },
   "mtmContactExplorer": {
+    "hint": {
+      "saveView": "Cari filtrləri görünüş kimi saxla ki, sonra bir seçimlə açasan.",
+      "deleteView": "Seçilmiş görünüşü sil. Müştərilər özləri silinmir.",
+      "createClient": "Bazaya yeni müştəri əlavə et.",
+      "refresh": "Siyahını serverdən yenidən oxu.",
+      "owner": "Bir məsul əməkdaşın müştərilərini göstər.",
+      "category": "Müştəriləri kateqoriyaya (sinfə) görə seç.",
+      "assignmentState": "Yalnız məsul əməkdaşı olan və ya yalnız olmayan müştərilər.",
+      "coveragePeriod": "«Əhatə» sütunu hansı ay üçün hesablansın.",
+      "asOf": "Əməkdaşlara bağlılıqlar bu tarixə göstərilir; əhatə — seçilmiş ay üzrə.",
+      "selectAll": "Təkcə bu səhifəni yox, filtrə görə tapılanların hamısını seç.",
+      "clearSelection": "Seçimi götür.",
+      "unassign": "Seçilmiş müştərilərdən əməkdaşı götür. Müştərilər silinmir; tətbiqdən əvvəl nəyin dəyişəcəyini göstərəcəyik.",
+      "assign": "Seçilmiş müştərilərə daha bir əməkdaş əlavə et. Tətbiqdən əvvəl nəyin dəyişəcəyini göstərəcəyik.",
+      "transfer": "Seçilmiş müştəriləri bir əməkdaşdan digərinə ötür. Tətbiqdən əvvəl kimləri ötürmək olar və qalanlarını niyə olmaz — göstərəcəyik.",
+      "routeFlowAssign": "Seçilmişləri marşrutun əməkdaşına təyin et və marşrut qurucusuna qayıt.",
+      "scopeAssign": "Seçilmiş müştəriləri bu əməkdaşa bağla. Tətbiqdən əvvəl nəyin dəyişəcəyini göstərəcəyik.",
+      "scopeTransfer": "Seçilmiş müştəriləri başqa əməkdaşa ötür.",
+      "scopeUnassign": "Seçilmiş müştəriləri bu əməkdaşdan ayır. Müştərilər silinmir.",
+      "colProfessional": "İxtisas, profil və ixtisas kateqoriyası.",
+      "colCoverage": "Seçilmiş ayda müştəri imzalanmış vizit normasına görə əhatə olunubmu: «əhatə olunub», «boşluq var» və ya niyə hesablamaq olmur.",
+      "colVisitContext": "Müştəriyə son vizit və ona ən yaxın marşrut nöqtəsi.",
+      "colOwner": "Müştərinin bağlı olduğu əməkdaşlar; əsas olan — birinci."
+    },
     "filterSpecialties": "İxtisas",
     "filterSpecialtySearch": "İxtisas axtar",
     "filterNothingFound": "Heç nə tapılmadı",
@@ -11906,6 +11949,28 @@
     "latitude": "Enlik",
     "longitude": "Uzunluq",
     "explorer": {
+      "hint": {
+        "saveView": "Cari filtrləri görünüş kimi saxla ki, sonra bir seçimlə açasan.",
+        "deleteView": "Seçilmiş görünüşü sil. Müəssisələr özləri silinmir.",
+        "export": "Müəssisələri CSV-yə yüklə: bu səhifəni və ya filtrə görə bütün seçimi.",
+        "add": "Müəssisə əlavə et: ad, növ, ünvan və xəritədə nöqtə.",
+        "onPage": "Bu səhifənin neçə müəssisəsi əməkdaşlara bağlanıb və neçəsi sərbəstdir.",
+        "addToRoute": "Bu müəssisə ilə marşrut qurucusunu aç.",
+        "selectAll": "Təkcə bu səhifəni yox, filtrə görə tapılan bütün müəssisələri seç.",
+        "clearSelection": "Seçimi götür.",
+        "assign": "Seçilmiş müəssisələri əməkdaşa bağla.",
+        "unassign": "Seçilmiş müəssisələrin əməkdaşa bağlılığını götür. Müəssisələr silinmir.",
+        "routeFlowAssign": "Seçilmişləri marşrutun əməkdaşına bağla və marşrut qurucusuna qayıt.",
+        "colCode": "Müəssisənin xarici kodu — bazanın yükləndiyi sorğu kitabındakı nömrəsi.",
+        "colType": "Müəssisənin növü: aptek, klinika, ticarət nöqtəsi və ya sorğu kitabından növ.",
+        "colCategory": "Müəssisənin kateqoriyası — A: əsas, B: adi, C: kiçik, D: qeyri-aktiv — və onun ixtisası.",
+        "colMedicalCategory": "İmzalanmış sorğu kitabından tibb müəssisəsinin kateqoriyası. Sorğu sahəsidir: marşrutlara mane olmur.",
+        "colLicense": "İmzalanmış sorğu kitabından lisenziyanın statusu. Sorğu sahəsidir: marşrutlara mane olmur.",
+        "colOwner": "Müəssisənin bağlandığı əməkdaşlar. «Sərbəst» — heç kimə.",
+        "colActivity": "Müəssisədə neçə kontakt (həkim) işləyir və ora cəmi neçə vizit olub.",
+        "colLastVisit": "Müəssisəyə son vizit.",
+        "colNextVisit": "Bu müəssisəyə ən yaxın marşrut nöqtəsi."
+      },
       "filterName": "Ad",
       "filterNamePlaceholder": "Ad və ya kod",
       "filterAddress": "Ünvan",
@@ -14217,6 +14282,15 @@
     }
   },
   "mtmVisitsPage": {
+    "hint": {
+      "add": "Viziti əl ilə yaz: müştəri, əməkdaş, vaxt və nəticə.",
+      "range": "Vizitlərin tarixçəsi hansı dövr üçün göstərilsin.",
+      "status": "Bütün vizitləri, yalnız indi gedənləri və ya yalnız bitmişləri göstər.",
+      "sort": "Vizitlər hansı qaydada göstərilsin.",
+      "summary": "Cəmi — dövrdəki vizitlər; bitib — onlardan neçəsi bağlanıb; median — vizitlərin yarısı daha qısa, yarısı daha uzundur (açıqlar sayılmır); GPS təsdiqlənib — giriş və çıxış müştərinin zonasında.",
+      "locationRequest": "Agent bu vizitdən müştərinin nöqtəsinin səhv yerdə olduğunu bildirib. Ona görə burada «zonadan kənar» mütləq pozuntu deyil.",
+      "loadMore": "Növbəti vizitləri yüklə."
+    },
     "widenedNotice": "«{from}» üçün ziyarət yoxdur — «{to}» göstərilir.",
     "title": "Ziyarətlər",
     "subtitle": "Agentlərin ziyarətlərinə baxın: vaxt, yer, foto, imza",
@@ -16674,6 +16748,15 @@
     }
   },
   "mtmPlaceCheck": {
+    "hint": {
+      "at_point": "Vizitin qeydləri müştərinin zonasının radiusunda edilib (açıq vizitdə — hələlik yalnız giriş).",
+      "outside": "Giriş və ya çıxış müştərinin zonasından kənarda qeyd olunub — onun nöqtəsindən göstərilən məsafədə.",
+      "checkin_gps_missing": "Girişdə telefon koordinat göndərməyib; çıxış zonada qeyd olunub.",
+      "checkout_gps_missing": "Giriş zonada qeyd olunub; çıxışda telefon koordinat göndərməyib.",
+      "no_gps": "Qeyd zamanı telefon koordinat göndərməyib — yeri yoxlamaq olmur.",
+      "no_pin": "Müştərinin xəritədə nöqtəsi yoxdur — müqayisə etməyə bir şey yoxdur. Onun kartında nöqtə qoyun.",
+      "locationHidden": "Giriş zonanızdan kənar başqa əməkdaşın viziti — onun yeri göstərilmir."
+    },
     "locationHidden": "Yer məlumatı gizlidir",
     "atPoint": "Zonada",
     "outside": "Zonadan kənar · {distance}",

@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import {
   useCallback,
   useEffect,
@@ -325,6 +326,19 @@ function FacetSelect({
       </Select>
     </div>
   )
+}
+
+/** What a column holds, under the cursor on its heading; the plain ones (name, place) have none. */
+const COLUMN_HINT: Partial<Record<OrganizationColumn, string>> = {
+  code: "colCode",
+  type: "colType",
+  category: "colCategory",
+  medicalCategory: "colMedicalCategory",
+  license: "colLicense",
+  owner: "colOwner",
+  activity: "colActivity",
+  lastVisit: "colLastVisit",
+  nextVisit: "colNextVisit",
 }
 
 export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
@@ -1023,25 +1037,29 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                 else setActiveSavedViewId("")
               }}
               options={savedViews.map((view) => ({ value: view.id, label: `${view.isDefault ? "★ " : ""}${view.name}${view.isShared ? ` · ${tx("explorer.sharedView")}` : ""}` }))} />
-            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" title={tx("explorer.saveCurrentView")} aria-label={tx("explorer.saveCurrentView")} disabled={savedViewsBusy}
-              onClick={() => {
-                setSavedViewName("")
-                setSavedViewDefault(false)
-                setSaveViewOpen(true)
-              }}>
-              <Bookmark className="h-4 w-4" />
-            </Button>
-            {activeSavedView?.canDelete ? (
-              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" title={tx("explorer.deleteSavedView")} aria-label={tx("explorer.deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
-                <Trash2 className="h-4 w-4" />
+            <Hint wrap text={tx("explorer.hint.saveView")}>
+              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" aria-label={tx("explorer.saveCurrentView")} disabled={savedViewsBusy}
+                onClick={() => {
+                  setSavedViewName("")
+                  setSavedViewDefault(false)
+                  setSaveViewOpen(true)
+                }}>
+                <Bookmark className="h-4 w-4" />
               </Button>
+            </Hint>
+            {activeSavedView?.canDelete ? (
+              <Hint wrap text={tx("explorer.hint.deleteView")}>
+                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" aria-label={tx("explorer.deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </Hint>
             ) : null}
           </span>
           <details className="group relative">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground marker:hidden md:min-h-9">
+            <Hint text={tx("explorer.hint.export")}><summary className="flex min-h-11 cursor-pointer list-none items-center rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground marker:hidden md:min-h-9">
               <Download className="mr-2 h-4 w-4" />
               {tx("explorer.exportOptions")}
-            </summary>
+            </summary></Hint>
             <div className="absolute left-0 top-[calc(100%+0.5rem)] z-30 grid w-[min(18rem,calc(100vw-2rem))] gap-2 rounded-xl xl:left-auto xl:right-0 border border-zinc-200 bg-card p-2 shadow-xl dark:border-zinc-700">
               <Button
                 variant="ghost"
@@ -1053,31 +1071,34 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                 <Download className="mr-2 h-4 w-4" />
                 {tx("explorer.exportPage")}
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="min-h-11 justify-start"
-                onClick={() => void exportAllFiltered()}
-                disabled={organizations.length === 0 || exportBusy}
-                title={total > MTM_ORGANIZATION_BULK_LIMIT ? tx("explorer.exportFilteredLimit", { count: MTM_ORGANIZATION_BULK_LIMIT }) : undefined}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                {exportBusy ? tx("explorer.exporting") : tx("explorer.exportFiltered")}
-              </Button>
+              <Hint wrap text={total > MTM_ORGANIZATION_BULK_LIMIT ? tx("explorer.exportFilteredLimit", { count: MTM_ORGANIZATION_BULK_LIMIT }) : null}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-11 justify-start"
+                  onClick={() => void exportAllFiltered()}
+                  disabled={organizations.length === 0 || exportBusy}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {exportBusy ? tx("explorer.exporting") : tx("explorer.exportFiltered")}
+                </Button>
+              </Hint>
             </div>
           </details>
           {data?.capabilities.canManage ? (
-            <Button
-              size="sm"
-              className="min-h-11 md:min-h-9"
-              onClick={() => {
-                setEditData(undefined)
-                setFormOpen(true)
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {t("add")}
-            </Button>
+            <Hint text={tx("explorer.hint.add")}>
+              <Button
+                size="sm"
+                className="min-h-11 md:min-h-9"
+                onClick={() => {
+                  setEditData(undefined)
+                  setFormOpen(true)
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t("add")}
+              </Button>
+            </Hint>
           ) : null}
         </div>
       </div>
@@ -1165,7 +1186,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           <MtmFilterMore testId="organization-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={activeAdvancedCount} label={tf("more")} />
           <MtmFilterReset testId="organization-clear-filters" show={activeFilterLabels.length > 0} onReset={clearFilters} label={tf("reset")} />
         </MtmFilterActions>
-        <MtmResultLine aside={`${tx("explorer.assignedOnPage")}: ${formatNumber.format(assignedOnPage)} · ${tx("explorer.unassignedOnPage")}: ${formatNumber.format(organizations.length - assignedOnPage)}`}>
+        <MtmResultLine aside={<HintValue text={tx("explorer.hint.onPage")}>{`${tx("explorer.assignedOnPage")}: ${formatNumber.format(assignedOnPage)} · ${tx("explorer.unassignedOnPage")}: ${formatNumber.format(organizations.length - assignedOnPage)}`}</HintValue>}>
           <span className="font-medium text-foreground">{tf("found", { count: formatNumber.format(total) })}</span>
         </MtmResultLine>
       </section>
@@ -1185,37 +1206,49 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           </div>
           <div className="flex flex-wrap gap-2">
             {selectedOrganizationId && !isRouteOrganizationFlow ? (
-              <Button asChild size="sm" className="min-h-11 md:min-h-9">
-                <Link href={routePlanningHref(selectedOrganizationId)}>
-                  <CalendarPlus className="mr-2 h-4 w-4" />
-                  {tx("explorer.addToRoute")}
-                </Link>
-              </Button>
+              <Hint text={tx("explorer.hint.addToRoute")}>
+                <Button asChild size="sm" className="min-h-11 md:min-h-9">
+                  <Link href={routePlanningHref(selectedOrganizationId)}>
+                    <CalendarPlus className="mr-2 h-4 w-4" />
+                    {tx("explorer.addToRoute")}
+                  </Link>
+                </Button>
+              </Hint>
             ) : null}
             {selectionScope !== "ALL_FILTERED" && total <= MTM_ORGANIZATION_BULK_LIMIT ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-11 md:min-h-9"
-                disabled={selectingAll}
-                onClick={() => void selectAllFiltered()}
-              >
-                {selectingAll ? tx("explorer.selectingAll") : tx("explorer.selectAllFiltered", { count: total })}
-              </Button>
+              <Hint wrap text={tx("explorer.hint.selectAll")}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-11 md:min-h-9"
+                  disabled={selectingAll}
+                  onClick={() => void selectAllFiltered()}
+                >
+                  {selectingAll ? tx("explorer.selectingAll") : tx("explorer.selectAllFiltered", { count: total })}
+                </Button>
+              </Hint>
             ) : null}
-            <Button variant="ghost" size="sm" className="min-h-11 md:min-h-9" onClick={() => setSelected(new Set())}>
-              {tx("explorer.clearSelection")}
-            </Button>
-            {data?.capabilities.canManage && isRouteOrganizationFlow ? (
-              <Button data-testid="mtm-organization-assign-open" size="sm" className="min-h-11 md:min-h-9" onClick={() => openAssignment("ASSIGN")}>
-                <UserRoundCheck className="mr-2 h-4 w-4" />
-                {tx("explorer.routeFlowAssignAndReturn")}
+            <Hint text={tx("explorer.hint.clearSelection")}>
+              <Button variant="ghost" size="sm" className="min-h-11 md:min-h-9" onClick={() => setSelected(new Set())}>
+                {tx("explorer.clearSelection")}
               </Button>
+            </Hint>
+            {data?.capabilities.canManage && isRouteOrganizationFlow ? (
+              <Hint text={tx("explorer.hint.routeFlowAssign")}>
+                <Hint text={tx("explorer.hint.assign")}>
+                  <Button data-testid="mtm-organization-assign-open" size="sm" className="min-h-11 md:min-h-9" onClick={() => openAssignment("ASSIGN")}>
+                    <UserRoundCheck className="mr-2 h-4 w-4" />
+                    {tx("explorer.routeFlowAssignAndReturn")}
+                  </Button>
+                </Hint>
+              </Hint>
             ) : data?.capabilities.canManage ? (
               <>
-                <Button variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={() => openAssignment("UNASSIGN")}>
-                  {tx("explorer.unassign")}
-                </Button>
+                <Hint text={tx("explorer.hint.unassign")}>
+                  <Button variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={() => openAssignment("UNASSIGN")}>
+                    {tx("explorer.unassign")}
+                  </Button>
+                </Hint>
                 <Button data-testid="mtm-organization-assign-open" size="sm" className="min-h-11 md:min-h-9" onClick={() => openAssignment("ASSIGN")}>
                   <UserRoundCheck className="mr-2 h-4 w-4" />
                   {tx("explorer.assign")}
@@ -1416,7 +1449,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                     </th>
                     {visibleColumns.map((column) => (
                       <th key={column} data-column={column} className={`${densityCellClass} bg-muted text-xs font-semibold`} style={columnStyle(column)} scope="col">
-                        {columnLabel(column)}
+                        <HintValue text={COLUMN_HINT[column] ? tx(`explorer.hint.${COLUMN_HINT[column]}`) : null}>{columnLabel(column)}</HintValue>
                       </th>
                     ))}
                     <th data-column="actions" className="bg-muted px-3 py-2 text-right text-xs font-semibold xl:sticky xl:right-0 xl:z-20" style={{ width: actionColumnWidth, minWidth: actionColumnWidth }}>
@@ -1738,10 +1771,10 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                           </a>
                         </Button>
                       ) : (
-                        <Button variant="outline" className="min-h-11" disabled title={tx("explorer.coordinatesMissing")}>
+                        <Hint wrap text={tx("explorer.coordinatesMissing")}><Button variant="outline" className="min-h-11" disabled>
                           <Navigation className="mr-2 h-4 w-4" />
                           {tx("explorer.navigate")}
-                        </Button>
+                        </Button></Hint>
                       )
                     ) : null}
                     <Button asChild className="min-h-11">

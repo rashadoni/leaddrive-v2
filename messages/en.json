@@ -11462,6 +11462,25 @@
     "attachUnavailableBody": "Clients are attached only to an active field agent. {name} has the role “{role}” and the status “{status}”."
   },
   "mtmAgents": {
+    "hint": {
+      "export": "Download the employees shown as CSV: name, email, phone, role, status and last activity.",
+      "add": "A new employee card: role, manager, labels and route rights.",
+      "filterAll": "Show all employees.",
+      "filterOnline": "Only those whose app has signalled in the last 15 minutes.",
+      "filterStatus": "Only employees whose card has the status «{status}».",
+      "sort": "The order employees are shown in. «By activity» means by the number of visits in 7 days.",
+      "viewCards": "Show employees as cards.",
+      "viewList": "Show employees as a table.",
+      "appState": "«App active» means a signal came in the last 15 minutes.",
+      "breaks": "How many breaks they took today and how many minutes they lasted together.",
+      "activity": "Visits over the last days and the share of their route stops visited in the same time.",
+      "notificationsOff": "A notification cannot reach their phone: the app is not registered for notifications.",
+      "call": "Call their phone.",
+      "message": "Message them on WhatsApp.",
+      "map": "Show them on the live map.",
+      "history": "Where they were today: the path on the map, stops and visits by time.",
+      "clients": "Open the clients assigned to them."
+    },
     "clients": "Clients",
     "clientsCount": "Clients: {count}",
     "openSection": "Open the employee's section",
@@ -11556,6 +11575,30 @@
     "deleteKeptClose": "Got it"
   },
   "mtmContactExplorer": {
+    "hint": {
+      "saveView": "Save the current filters as a view to open them later in one choice.",
+      "deleteView": "Delete the chosen view. The clients themselves are not deleted.",
+      "createClient": "Add a new client to the base.",
+      "refresh": "Read the list from the server again.",
+      "owner": "Show the clients of one responsible employee.",
+      "category": "Pick clients by category (class).",
+      "assignmentState": "Only clients with a responsible employee, or only those without one.",
+      "coveragePeriod": "The month the «Coverage» column is counted for.",
+      "asOf": "Assignments to employees are shown as of this date; coverage is for the chosen month.",
+      "selectAll": "Select everyone found by the filter, not only this page.",
+      "clearSelection": "Clear the selection.",
+      "unassign": "Remove an employee from the selected clients. The clients are not deleted; you will see what changes before applying.",
+      "assign": "Add one more employee to the selected clients. You will see what changes before applying.",
+      "transfer": "Hand the selected clients from one employee to another. Before applying you will see who can be handed over and why the rest cannot.",
+      "routeFlowAssign": "Assign the selected to the route's employee and go back to the route builder.",
+      "scopeAssign": "Assign the selected clients to this employee. You will see what changes before applying.",
+      "scopeTransfer": "Hand the selected clients to another employee.",
+      "scopeUnassign": "Unassign the selected clients from this employee. The clients are not deleted.",
+      "colProfessional": "Specialty, profile and qualification category.",
+      "colCoverage": "Whether the client is covered in the chosen month by the signed visit norm: covered, a gap, or why it cannot be counted.",
+      "colVisitContext": "The last visit to the client and the nearest route stop to them.",
+      "colOwner": "The employees the client is assigned to; the main one first."
+    },
     "filterSpecialties": "Specialty",
     "filterSpecialtySearch": "Find a specialty",
     "filterNothingFound": "Nothing found",
@@ -11910,6 +11953,28 @@
     "latitude": "Latitude",
     "longitude": "Longitude",
     "explorer": {
+      "hint": {
+        "saveView": "Save the current filters as a view to open them later in one choice.",
+        "deleteView": "Delete the chosen view. The institutions themselves are not deleted.",
+        "export": "Download institutions as CSV: this page or the whole filtered set.",
+        "add": "Add an institution: name, type, address and its pin on the map.",
+        "onPage": "How many institutions on this page are assigned to employees and how many are free.",
+        "addToRoute": "Open the route builder with this institution.",
+        "selectAll": "Select every institution found by the filter, not only this page.",
+        "clearSelection": "Clear the selection.",
+        "assign": "Assign the selected institutions to an employee.",
+        "unassign": "Remove the selected institutions from an employee. The institutions are not deleted.",
+        "routeFlowAssign": "Assign the selected to the route's employee and go back to the route builder.",
+        "colCode": "The institution's external code: its number in the reference list the base was loaded from.",
+        "colType": "The kind of institution: pharmacy, clinic, shop, or a kind from the reference list.",
+        "colCategory": "The institution's category (A key, B regular, C small, D inactive) and its specialisation.",
+        "colMedicalCategory": "The medical institution category from the signed reference list. A reference field: it does not affect routes.",
+        "colLicense": "The licence status from the signed reference list. A reference field: it does not affect routes.",
+        "colOwner": "The employees the institution is assigned to. «Unassigned» means nobody.",
+        "colActivity": "How many contacts (doctors) work at the institution and how many visits there have been in total.",
+        "colLastVisit": "The last visit to the institution.",
+        "colNextVisit": "The nearest route stop at this institution."
+      },
       "filterName": "Name",
       "filterNamePlaceholder": "Name or code",
       "filterAddress": "Address",
@@ -14221,6 +14286,15 @@
     }
   },
   "mtmVisitsPage": {
+    "hint": {
+      "add": "Record a visit by hand: client, employee, time and outcome.",
+      "range": "The period the visit history covers.",
+      "status": "Show all visits, only those in progress, or only finished ones.",
+      "sort": "The order visits are shown in.",
+      "summary": "Total is the visits of the period; finished is how many are closed; the median means half the visits are shorter and half longer (open ones are not counted); GPS confirmed means check-in and check-out were within the client's zone.",
+      "locationRequest": "From this visit the agent reported the client's pin is in the wrong place, so «outside the zone» here is not necessarily a violation.",
+      "loadMore": "Load the next visits."
+    },
     "widenedNotice": "No visits for «{from}» — showing «{to}».",
     "title": "Visits",
     "subtitle": "Review your agents' visits: time, place, photos, signature",
@@ -16678,6 +16752,15 @@
     }
   },
   "mtmPlaceCheck": {
+    "hint": {
+      "at_point": "The visit's check-ins were made within the client's zone (for an open visit, only the check-in so far).",
+      "outside": "The check-in or check-out was made outside the client's zone, at the distance shown from their pin.",
+      "checkin_gps_missing": "The phone sent no position at check-in; the check-out was within the zone.",
+      "checkout_gps_missing": "The check-in was within the zone; the phone sent no position at check-out.",
+      "no_gps": "The phone sent no position at check-in, so the place cannot be checked.",
+      "no_pin": "The client has no pin on the map, so there is nothing to compare with. Set the pin in their card.",
+      "locationHidden": "A visit by another employee outside your access; its place is not shown."
+    },
     "locationHidden": "Location hidden",
     "atPoint": "In zone",
     "outside": "Outside zone · {distance}",
