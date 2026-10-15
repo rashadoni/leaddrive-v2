@@ -325,8 +325,9 @@ export function attentionItemHref(item: Pick<MtmPanelAttentionItem, "kind" | "da
     case "routesAwaitingPublish":
       return "/mtm/routes"
     case "olderAlerts":
-      // /mtm/alerts opens on today; without the day these alerts stay hidden.
-      return item.date ? `/mtm/alerts?date=${encodeURIComponent(item.date)}` : "/mtm/alerts"
+      // /mtm/alerts opens on every open alert, whatever its day (2026-10-15).
+      // It took this row's day before, and showed one of the seven the row counted.
+      return "/mtm/alerts"
     case "photosPendingReview":
       // The gallery opens on this week and on every status; an unreviewed
       // photo of last week would not be there.

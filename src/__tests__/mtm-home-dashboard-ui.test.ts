@@ -266,8 +266,8 @@ describe("Zeytun Pharma, Sunday 11 October", () => {
     const alerts = attentionRow("olderAlerts")!
     expect(alerts.querySelector("p")?.textContent).toBe("6 оповещений не разобрано")
     expect(alerts.textContent).toContain("8 окт. · 5 «Вне маршрута», 1 «Долгий перерыв»")
-    // The alerts page opens on today; the link carries the day these are on.
-    expect(alerts.querySelector("a")?.getAttribute("href")).toBe("/mtm/alerts?date=2026-10-08")
+    // The alerts page opens on every open alert, whatever its day — all six are there.
+    expect(alerts.querySelector("a")?.getAttribute("href")).toBe("/mtm/alerts")
 
     const photos = attentionRow("photosPendingReview")!
     expect(photos.querySelector("p")?.textContent).toBe("2 фото не проверены")
