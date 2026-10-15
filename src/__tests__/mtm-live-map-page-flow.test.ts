@@ -368,7 +368,7 @@ describe("the live map page, end to end", () => {
     try {
       await open()
       const hint = (key: string) => ((ru.mtmMap as Messages).hint as Messages)[key] as string
-      expect(await readHint(byTestId("mtm-map-status-chip-OFFLINE"))).toBe("Только те, чья последняя координата старше 15 мин или не приходила вовсе.")
+      expect(await readHint(byTestId("mtm-map-status-chip-OFFLINE"))).toBe("Только те, от кого нет живого сигнала: координата старше 15 мин, не приходила вовсе или приложение не на связи.")
       expect(await readHint(byTestId("mtm-map-status-chip-STOPPED"))).toBe(hint("chipStopped"))
       expect(await readHint(byTestId("mtm-map-refresh"))).toContain("15 с")
       const summaryLabel = (text: string) => [...document.body.querySelectorAll("[data-hint-value]")].find((node) => node.textContent === text)
