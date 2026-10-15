@@ -8,11 +8,23 @@ export const AttendanceEmploymentInputSchema = z.object({ clientRequestId: z.str
   kind: z.enum(["HIRE", "TERMINATION", "REHIRE"]), date, previousEventId: id.nullable(), reason: z.string().trim().min(3).max(1000) }).strict()
 export const AttendanceParticipationInputSchema = z.object({ clientRequestId: z.string().uuid(), agentId: id,
   included: z.boolean(), previousEventId: id.nullable() }).strict()
+/** Personnel → Employees → card: job title, department (an MTM team) and manager. */
+export const ATTENDANCE_EMPLOYEE_POSITION_MAX = 120
+export const AttendanceEmployeeCardSchema = z.object({ agentId: id,
+  position: z.string().trim().max(ATTENDANCE_EMPLOYEE_POSITION_MAX).transform(value => value || null).nullable(),
+  teamId: id.nullable(), newTeamName: z.string().trim().min(1).max(120).optional(), managerId: id.nullable() }).strict()
+  .refine(card => !(card.newTeamName && card.teamId), { path: ["teamId"] })
+/** Card roles that see the requests of the people under them: a MANAGER through the
+ * reporting line (territory-scope.ts), an ADMIN everywhere. A SUPERVISOR is scoped by
+ * team, not by managerId, so naming one here would grant nothing. */
+export const ATTENDANCE_MANAGER_ROLES = ["ADMIN", "MANAGER"] as const
 export type AttendanceParticipationEvent = { id: string; agentId: string; included: boolean; effectiveAt: string }
 export type AttendanceEmployeeDirectory = {
   users: Array<{ id: string; name: string; existingRole: string | null; existingTeamId: string | null; eligible: boolean }>
   teams: Array<{ id: string; name: string }>
+  managers: Array<{ id: string; name: string; position: string | null }>
   employees: Array<{ id: string; name: string; role: string; teamName: string | null; status: string;
+    position: string | null; teamId: string | null; managerId: string | null;
     included: boolean; participationVersion: string | null; includedFrom: string | null;
     history: Array<{ id: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; at: string; byName: string | null }> }>
   timezone: string

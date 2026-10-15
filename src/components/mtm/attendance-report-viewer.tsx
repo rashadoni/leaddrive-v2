@@ -24,6 +24,27 @@ const shiftMonth = (range: Range, step: number) => {
   const [year, month] = range.from.slice(0, 7).split("-").map(Number)
   return monthOf(new Date(Date.UTC(year, month - 1 + step, 1, 12)).toISOString().slice(0, 10))
 }
+const isDayKey = (key: string) => /^\d{4}-\d{2}-\d{2}$/.test(key)
+/**
+ * A month grid on screen (owner, 2026-10-15: «Forma N-1t» ran off the page).
+ * Excel and PDF keep every column as built; the screen only regroups them:
+ * position and department go under the name, a day shows its code with the
+ * hours beneath (hours only from 85rem — below that the code alone fits, the
+ * hours stay in the cell's tooltip), and an empty notes column is not drawn.
+ */
+function screenColumns(table: NonNullable<ReturnType<typeof buildAttendanceTable>>) {
+  const index = (key: string) => table.columns.findIndex(column => column.key === key)
+  const monthGrid = table.columns.some(column => isDayKey(column.key)) && index("employee") >= 0
+  const folded = monthGrid ? ["position", "team"].map(index).filter(at => at >= 0) : []
+  const notes = index("notes"), emptyNotes = monthGrid && notes >= 0 && table.rows.every(row => !String(row.cells[notes] ?? "").trim())
+  return { employee: index("employee"), folded, shown: table.columns.map((column, at) => ({ column, at })).filter(({ at }) => !folded.includes(at) && !(emptyNotes && at === notes)) }
+}
+function DayCell({ text }: { text: string }) {
+  const [code, ...rest] = text.split(" · ")
+  if (!rest.length || text.includes(" / ")) return <>{text}</>
+  return <span className="block text-center leading-tight" title={text}><span className="block font-semibold">{code}</span>
+    <span className="hidden text-[10px] text-muted-foreground min-[85rem]:block">{rest.join(" · ")}</span></span>
+}
 const SELECT = "min-h-10 min-w-44 rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
 
 /** One Personnel report: its period, team, the table and Excel/PDF of the same snapshot. */
@@ -66,6 +87,7 @@ export function MtmAttendanceReportViewer({ report }: { report: AttendanceReport
     filters: { from: data.from, to: data.to, form: definition.form, ...(teamId ? { teamId } : {}) },
   }, [definition, data, teamId])
   const table = useMemo(() => data && config ? buildAttendanceTable(data, config, locale, t) : null, [data, config, locale, t])
+  const layout = useMemo(() => table ? screenColumns(table) : null, [table])
   const teams = useMemo(() => [...new Map((data?.rows ?? []).flatMap(row => row.teamId ? [[row.teamId, row.teamName ?? t("reportNoTeam")] as const] : [])).entries()], [data, t])
   if (definition.kind !== "table") return null
 
@@ -91,12 +113,17 @@ export function MtmAttendanceReportViewer({ report }: { report: AttendanceReport
     <div className="rounded-2xl border bg-card p-4">
       {loading ? <p role="status" className="text-sm text-muted-foreground">{t("reportLoading")}</p> : null}
       {error ? <p role="alert" className="text-sm text-destructive">{t(error)}</p> : null}
-      {table ? !table.rows.length ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p>
+      {table && layout ? !table.rows.length ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p>
         : <div className="overflow-x-auto" role="region" aria-label={table.title} tabIndex={0}><table className="w-full border-collapse text-sm" data-testid="attendance-report-table">
           {/* Headers wrap and cells stay tight: a wide report fits the page instead of scrolling inside the card. */}
-          <thead><tr>{table.columns.map(column => <th key={column.key} scope="col" className="border-b px-2 py-2 text-left align-bottom text-[11px] font-medium leading-tight text-muted-foreground">{/^\d{4}-\d{2}-\d{2}$/.test(column.key) ? Number(column.key.slice(8)) : column.label}</th>)}</tr></thead>
-          <tbody>{table.rows.map(row => <tr key={row.key} className="border-b last:border-0" data-testid="attendance-report-row">{row.cells.map((cell, index) =>
-            <td key={table.columns[index].key} className={`px-2 py-2 text-[13px] tabular-nums ${index === 0 ? "min-w-32 font-semibold" : ""}`}>{cell}</td>)}</tr>)}</tbody>
+          <thead><tr>{layout.shown.map(({ column }) => <th key={column.key} scope="col" className={`border-b py-2 align-bottom text-[11px] font-medium leading-tight text-muted-foreground ${isDayKey(column.key) ? "px-0.5 text-center" : "px-2 text-left"}`}>{isDayKey(column.key) ? Number(column.key.slice(8)) : column.label}</th>)}</tr></thead>
+          <tbody>{table.rows.map(row => <tr key={row.key} className="border-b last:border-0" data-testid="attendance-report-row">{layout.shown.map(({ column, at }) => {
+            const cell = row.cells[at], day = isDayKey(column.key), name = at === layout.employee
+            const under = name ? layout.folded.map(index => String(row.cells[index] ?? "")).filter(text => text && text !== "—") : []
+            return <td key={column.key} className={`py-2 text-[13px] tabular-nums ${day ? "px-0.5" : "px-2"} ${name ? "min-w-28 font-semibold" : ""}`}>
+              {day ? <DayCell text={String(cell ?? "")} /> : cell}
+              {under.length ? <span className="block text-[11px] font-normal leading-tight text-muted-foreground" data-testid="attendance-report-employee-details">{under.join(" · ")}</span> : null}</td>
+          })}</tr>)}</tbody>
         </table></div> : null}
       {table && range ? <div className="mt-4 space-y-1 text-xs text-muted-foreground">
         <p>{t("reportPeriod", { from: label(range.from), to: label(range.to) })}</p>

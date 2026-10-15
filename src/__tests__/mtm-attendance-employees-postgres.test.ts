@@ -495,6 +495,60 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     expect(await tenant(automaticOrg, () => prisma.user.count())).toBe(users)
   })
 
+  // Owner, 2026-10-15: the employee card — position, department, manager and
+  // hire date — and «Forma N-1t» reading the position from it.
+  it("keeps the employee card and shows its position in the report", async () => {
+    const create = await import("@/lib/mtm/attendance-employee-create")
+    const created = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional card hire", email: "card.hire@example.invalid",
+      password: "Fixture-Pass-2026!", position: " Fictional cashier ", newTeamName: "Fictional warehouse", hireDate: "2026-10-01" }))
+    const managerId = randomUUID(), supervisorId = randomUUID()
+    await bypass(async () => {
+      await prisma.mtmAgent.create({ data: { id: managerId, organizationId: automaticOrg, name: "Fictional card manager", role: "MANAGER", position: "Fictional head" } })
+      await prisma.mtmAgent.create({ data: { id: supervisorId, organizationId: automaticOrg, name: "Fictional card supervisor", role: "SUPERVISOR" } })
+    })
+    const card = () => tenant(automaticOrg, () => prisma.mtmAgent.findUniqueOrThrow({ where: { id: created.agentId }, select: { position: true, teamId: true, managerId: true, team: { select: { name: true } } } }))
+    const first = await card()
+    expect(first).toMatchObject({ position: "Fictional cashier", managerId: null, team: { name: "Fictional warehouse" } })
+    const employee = async () => (await tenant(automaticOrg, () => store.readAttendanceEmployees(automaticAdmin))).employees.find(row => row.id === created.agentId)!
+    expect((await employee()).history).toMatchObject([{ kind: "HIRE", date: "2026-10-01" }])
+
+    // The same department typed again (any case) is reused, not duplicated.
+    const teams = await tenant(automaticOrg, () => prisma.mtmTeam.count())
+    const change = { agentId: created.agentId, position: "Fictional senior cashier", teamId: null, newTeamName: "fictional WAREHOUSE", managerId }
+    expect(await tenant(automaticOrg, () => store.updateAttendanceEmployeeCard(automaticAdmin, change))).toMatchObject({ idempotent: false })
+    expect(await card()).toMatchObject({ position: "Fictional senior cashier", teamId: first.teamId, managerId })
+    expect(await tenant(automaticOrg, () => prisma.mtmTeam.count())).toBe(teams)
+    const audits = () => tenant(automaticOrg, () => prisma.mtmAuditLog.count({ where: { action: "MTM_ATTENDANCE_EMPLOYEE_CARD_CHANGED", agentId: created.agentId } }))
+    expect(await audits()).toBe(1)
+    const same = { agentId: created.agentId, position: "Fictional senior cashier", teamId: first.teamId, managerId }
+    expect(await tenant(automaticOrg, () => store.updateAttendanceEmployeeCard(automaticAdmin, same))).toMatchObject({ idempotent: true })
+    expect(await audits()).toBe(1)
+
+    const directory = await tenant(automaticOrg, () => store.readAttendanceEmployees(automaticAdmin))
+    expect(directory.employees.find(row => row.id === created.agentId)).toMatchObject({ position: "Fictional senior cashier", teamId: first.teamId, managerId })
+    // A supervisor is scoped by team, not by managerId: naming one would grant nothing.
+    expect(directory.managers.map(manager => manager.id)).toContain(managerId)
+    expect(directory.managers.map(manager => manager.id)).not.toContain(supervisorId)
+
+    for (const [actor, body, code] of [
+      [automaticAdmin, { ...same, managerId: supervisorId }, "MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID"],
+      [automaticAdmin, { ...same, managerId: created.agentId }, "MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID"],
+      [automaticAdmin, { ...same, teamId: "missing-team" }, "MTM_ATTENDANCE_EMPLOYEE_TEAM_CHANGED"],
+      [automaticAdmin, { ...same, agentId: managerId }, "MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND"],
+      [automaticAdmin, { ...same, position: "x".repeat(121) }, "MTM_ATTENDANCE_EMPLOYEE_INVALID"],
+    ] as const) await expect(tenant(automaticOrg, () => store.updateAttendanceEmployeeCard(actor, body))).rejects.toMatchObject({ code })
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployeeCard({ ...automaticAdmin, userId: "automatic-user-001" }, { ...same, position: null }))).rejects.toMatchObject({ status: 403 })
+    // Another tenant's administrator cannot reach the card at all.
+    await expect(tenant(organizationId, () => store.updateAttendanceEmployeeCard(admin, { ...same, position: null }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND" })
+    expect(await card()).toMatchObject({ position: "Fictional senior cashier", managerId })
+
+    // Today: the card was included in attendance just now, so earlier days have no rows.
+    const today = (await import("@/lib/mtm/mobile-week")).currentDateKey(new Date(), "Asia/Baku")
+    const result = await tenant(automaticOrg, () => report.readMtmAttendanceReport({ organizationId: automaticOrg, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null },
+      query: { from: today, to: today, employeeId: created.agentId, form: "ALL" } }))
+    expect(result.rows.map(row => row.employeePosition)).toEqual(["Fictional senior cashier"])
+  })
+
   // Owner, 2026-10-15: Today shows an administrator what is left to set up; each
   // step is read from its own data, never from a stored "done" flag.
   it("reads the setup checklist from the real tables, step by step", async () => {

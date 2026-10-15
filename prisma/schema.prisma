@@ -5796,6 +5796,8 @@ model MtmAgent {
   userId         String? // link to CRM User if exists
   user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   name           String
+  /// Job title HR writes on «Forma N-1t» (Personnel → Employees → card).
+  position       String?        @db.VarChar(120)
   email          String?
   phone          String?
   externalCode   String?

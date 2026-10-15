@@ -9,7 +9,7 @@ import { HomeCard } from "@/components/mtm/home-parts"
 import { ATTENDANCE_VIEW_COLUMNS, DEFAULT_ATTENDANCE_VIEW_COLUMNS, AttendanceViewConfigSchema, type AttendanceView, type AttendanceViewColumn, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 
 const ENDPOINT = "/api/v1/mtm/attendance/views"
-const COLUMN_MESSAGES: Record<AttendanceViewColumn, string> = { employee: "reportEmployee", team: "reportTeam", date: "reportDate", status: "reportStatus",
+const COLUMN_MESSAGES: Record<AttendanceViewColumn, string> = { employee: "reportEmployee", position: "reportPosition", team: "reportTeam", date: "reportDate", status: "reportStatus",
   startedAt: "reportStarted", completedAt: "reportFinished", worked: "reportWorked", paused: "reportPaused", late: "reportLate", early: "reportEarly",
   event: "reportEvent", phoneAt: "reportPhoneTime", serverAt: "reportServerTime", days: "viewsDays", absent: "reportAbsentCount", notes: "reportNotes", arrivalBranch: "reportArrivalBranch", departureBranch: "reportDepartureBranch", markLocation: "reportMarkLocation",
   branch: "branchReportBranch", arrivals: "branchReportArrivals", departures: "branchReportDepartures", employees: "branchReportEmployees", outside: "branchReportOutside", uncertain: "branchReportUncertain", noLocation: "locationReportUnavailable", noConsent: "locationReportNoConsent", planned: "overtimePlanned", excess: "overtimeExcess", threshold: "overtimeThreshold", approvedOvertime: "overtimeApproved", overtimeState: "overtimeState", index: "reportIndex", workedDays: "reportWorkedDays", hours: "reportHours", plannedDays: "reportPlannedDays", expected: "reportExpected", lateCount: "reportLateCount", earlyCount: "reportEarlyCount",
