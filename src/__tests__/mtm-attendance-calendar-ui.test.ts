@@ -49,6 +49,22 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals() })
 
 describe("MTM attendance organization calendar UI", () => {
+  // Owner, 2026-10-15: Azerbaijan's holidays with one press; the source and the gaps are said in words.
+  it("adds the year's official holidays with one press, reloads and reports what was added", async () => {
+    fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/official") ? response({ year: 2026, added: 4, existing: 0, past: 21, complete: true, source: "x" }) : response(data()))
+    await render("ru")
+    const ru = messages("ru").mtmAttendance
+    const block = container.querySelector('[data-testid="attendance-calendar-official"]')!
+    expect(block.textContent).toContain(ru.calendarOfficialTitle.replace("{year}", "2026"))
+    expect(block.textContent).toMatch(/362/)
+    await click(ru.calendarOfficialAdd.replace("{year}", "2026"))
+    const call = fetchMock.mock.calls.find(([url]) => String(url) === `${ENDPOINT}/official`)!
+    expect(call[1]!.method).toBe("POST"); expect(JSON.parse(String(call[1]!.body))).toEqual({ year: 2026 })
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).startsWith(`${ENDPOINT}?from=2026-01-01`))).toHaveLength(1)
+    expect(container.querySelector('[data-testid="attendance-calendar-official-result"]')!.textContent).toBe("Добавлено дней: 4. Уже были внесены: 0. Прошедшие даты не добавляются: 21.")
+    await edit("year", "2027")
+    expect(container.querySelector('[data-testid="attendance-calendar-official"]')!.textContent).toContain(ru.calendarOfficialPartial.replace("{year}", "2027"))
+  })
   it.each(["ru", "az", "en"])("renders real labels, entries and readonly boundaries in %s", async (locale) => {
     await render(locale)
     const t = messages(locale).mtmAttendance

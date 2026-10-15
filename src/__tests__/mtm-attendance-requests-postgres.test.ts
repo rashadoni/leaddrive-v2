@@ -289,6 +289,17 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
       await expect(recording.recordAttendanceDays(reviewer, { ...body, clientRequestId: randomUUID(), agentIds: [self.agentId, "request-pg-foreign"] })).rejects.toMatchObject({ status: 403 })
     })
   })
+  // Owner, 2026-10-14: Personnel lists people in attendance; MTM field agents stay in MTM.
+  it("leaves MTM field agents out of the HR recording list and refuses recording for them", async () => {
+    const reviewer = { organizationId: self.organizationId, userId: "request-pg-admin", principalType: "session" as const }
+    await bypass(() => prisma.mtmAgent.create({ data: { id: "request-pg-field-agent", organizationId: self.organizationId, name: "Fictional field agent", role: "AGENT", status: "ACTIVE" } }))
+    const directory = await tenant(self.organizationId, () => recording.readAttendanceHrDirectory(reviewer))
+    expect(directory.employees.map(employee => employee.id)).toEqual(expect.arrayContaining([self.agentId, "request-pg-colleague"]))
+    expect(directory.employees.map(employee => employee.id)).not.toContain("request-pg-field-agent")
+    await expect(tenant(self.organizationId, () => recording.recordAttendanceDays(reviewer, { clientRequestId: randomUUID(), agentIds: ["request-pg-field-agent"], dayKindKey: "STUDY_LEAVE",
+      catalogueVersion: null, unit: "DAYS", startDate: "2027-09-01", endDate: "2027-09-01", reason: "Fictional agent record" }))).rejects.toMatchObject({ status: 403 })
+    expect(await tenant(self.organizationId, () => prisma.mtmHrmRequest.count({ where: { agentId: "request-pg-field-agent" } }))).toBe(0)
+  })
   it("rolls back every HR row and audit when an employee inbox insert fails", async () => {
     const body = { clientRequestId: randomUUID(), agentIds: [self.agentId, "request-pg-colleague"], dayKindKey: "STUDY_LEAVE", catalogueVersion: null,
       unit: "DAYS", startDate: "2027-08-15", endDate: "2027-08-16", reason: "PRIVATE_ATOMIC_HR_REASON" }

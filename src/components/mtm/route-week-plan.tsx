@@ -26,6 +26,8 @@ interface RouteWeekPlanProps {
   canManageAssignments: boolean
   selfAgentId: string | null
   onCreateRoute: (input: { date: string; agentId: string }) => void
+  /** The employee over any period — what the «Агент за период» tab opened before 2026-10-15. */
+  onOpenAgent?: (agentId: string) => void
 }
 
 interface RouteAgent {
@@ -131,6 +133,7 @@ export function MtmRouteWeekPlan({
   canManageAssignments,
   selfAgentId,
   onCreateRoute,
+  onOpenAgent,
 }: RouteWeekPlanProps) {
   const t = useTranslations("mtmRoutesPage")
   const statusT = useTranslations("mtmStatus")
@@ -339,7 +342,15 @@ export function MtmRouteWeekPlan({
 
           {visibleAgents.map((agent) => (
             <div key={agent.id} className="grid min-h-16 grid-cols-[180px_repeat(7,minmax(100px,1fr))] border-b border-zinc-200 last:border-b-0 dark:border-zinc-700">
-              <div className="sticky left-0 z-10 border-r border-zinc-200 bg-card px-3 py-2 text-sm font-medium dark:border-zinc-700">{agent.name}</div>
+              <div className="sticky left-0 z-10 border-r border-zinc-200 bg-card px-3 py-2 text-sm font-medium dark:border-zinc-700">
+                {onOpenAgent ? (
+                  <Hint text={t("hint.openAgentPeriod", { employee: agent.name })}>
+                    <button type="button" data-testid={`mtm-route-week-agent-${agent.id}`} onClick={() => onOpenAgent(agent.id)} className="text-left font-medium text-foreground underline-offset-2 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
+                      {agent.name}
+                    </button>
+                  </Hint>
+                ) : agent.name}
+              </div>
               {days.map((day) => {
                 const dayRoutes = routesByAgentAndDate.get(`${agent.id}:${dateKey(day)}`) ?? []
                 const canCreateForAgent = canCreateRoutes && (canManageAssignments || !selfAgentId || selfAgentId === agent.id)

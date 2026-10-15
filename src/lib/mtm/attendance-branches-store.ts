@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
+import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { checkPermission, type Role } from "@/lib/permissions"
@@ -62,7 +63,7 @@ export async function readAttendanceBranchAssignments(reviewer: AttendanceReview
     let writer: MtmRouteActor | null = null
     try { writer = await resolveAttendanceReviewerScope(tx, reviewer) }
     catch (error) { if (!(error instanceof AttendanceRequestError) || error.status !== 403) throw error }
-    const employees = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, status: "ACTIVE",
+    const employees = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, status: "ACTIVE", ...ATTENDANCE_TRACKED_CARD_WHERE,
       ...(readActor.scopedAgentIds === null ? {} : { id: { in: [...readActor.scopedAgentIds] } }),
       ...(search ? { name: { contains: search, mode: "insensitive" } } : {}),
     }, select: { id: true, name: true, userId: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 51 })

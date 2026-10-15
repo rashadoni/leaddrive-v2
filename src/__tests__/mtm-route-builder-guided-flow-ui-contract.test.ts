@@ -355,7 +355,8 @@ describe("MTM guided route builder UI contract", () => {
     expect(builder).toContain("data-route-target-direction={target.direction}")
     expect(builder).not.toContain("mtm-route-open-multi-day-planning")
     expect(builder).not.toContain("planSeveralDays")
-    expect(routesPage).toContain('data-testid="mtm-routes-view-matrix"')
+    // The week plan has no tab since 2026-10-15; an old link still opens it.
+    expect(routesPage).toContain('viewMode === "matrix" ? (')
   })
 
   it("keeps the recovery path inside the route builder when no customer is available", () => {

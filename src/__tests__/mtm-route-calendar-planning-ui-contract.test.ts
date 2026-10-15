@@ -15,7 +15,8 @@ describe("MTM calendar-first planning UI contract", () => {
 
   it("opens the calendar section on the team calendar and the routes section as a list", () => {
     // Owner 2026-09-23: the calendar is its own section; routes open as a list.
-    expect(page).toContain('useState<RouteViewMode>(calendarSurface ? "calendar" : "list")')
+    expect(page).toContain("const defaultView = defaultMtmRouteView(surface)")
+    expect(page).toContain("useState<RouteViewMode>(defaultView)")
     const calendarPage = source("src/app/(dashboard)/mtm/calendar/page.tsx")
     expect(calendarPage).toContain('<MtmRoutesWorkspace surface="calendar" />')
     expect(page).toContain('data-testid="mtm-routes-view-calendar"')
@@ -108,13 +109,14 @@ describe("MTM calendar-first planning UI contract", () => {
   })
 
   it("remembers a normal view without overriding route or planning deep links", () => {
-    expect(page).toContain('leaddrive:mtm:routes:view:')
+    // Each section remembers its own view (2026-10-15): one key opened the calendar inside «Маршруты».
+    expect(page).toContain('leaddrive:mtm:${calendarSurface ? "calendar" : "routes"}:view:')
     expect(page).toContain('window.localStorage.getItem(viewPreferenceKey)')
     expect(page).toContain('window.localStorage.setItem(viewPreferenceKey, viewMode)')
     expect(page).toContain('const requestedViewMode = routeViewMode(searchParams.get("view"))')
     expect(page).toContain('if (requestedRouteId)')
     expect(page).toContain('if (requestedRouteId || requestedViewMode || requestedCustomerId || requestedContactId || requestedPlanningAgentId) return')
-    expect(page).toContain('canUseRouteView(requestedViewMode, capabilities.canReview)')
+    expect(page).toContain("canUseMtmRouteView(requestedViewMode, capabilities.canReview, surface)")
   })
 
   it("does not leave a grey empty grid cell when filters return an odd candidate count", () => {
@@ -153,7 +155,7 @@ describe("MTM calendar-first planning UI contract", () => {
     expect(builder).not.toContain('onClick={() => setPeriod(value)}')
     expect(builder).not.toContain('data-testid="mtm-route-planning-day"')
     expect(page).not.toContain("setMatrixPreset")
-    expect(page).toContain('setViewMode("matrix")')
+    expect(page).toContain('viewMode === "matrix" ? (')
     expect(matrix).toContain('data-testid="mtm-week-day-list"')
     expect(matrix).toContain("data.planningDays.map((day, index)")
     expect(matrix).toContain('period: "7_DAYS"')

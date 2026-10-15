@@ -30,6 +30,7 @@ import type { RlsAuth } from "@/lib/with-rls"
 import { checkPermission } from "@/lib/permissions"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { passwordPolicyError } from "@/lib/password-policy"
+import { checkSignInPhone } from "@/lib/mtm/mobile-login-phone"
 import {
   MTM_AGENT_WEB_ONLY_SELECT,
   mtmAgentNotesReader,
@@ -436,7 +437,17 @@ export const POST = withRls(async (req, auth) => {
       }
     }
 
-    // Hash password if provided (for mobile app login)
+    // The number is how the agent signs in — a code to its WhatsApp — so it is
+    // written with its country code and held by nobody else active here. An
+    // integration may still create a card without one.
+    if (body.phone) {
+      const phone = await checkSignInPhone(prisma, orgId, body.phone)
+      if (!phone.ok) return NextResponse.json({ error: phone.error, code: phone.code }, { status: phone.status })
+      body.phone = phone.phone
+    }
+
+    // A password sent by an integration or a tab opened before 2026-10-16 is
+    // still honoured; the form sends none — the agent sets his own by a code.
     let passwordHash: string | null = null
     if (body.password) {
       const passwordError = passwordPolicyError(body.password)

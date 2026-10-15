@@ -23,6 +23,7 @@ import {
 } from "@/lib/mtm/agent-administration"
 import { checkPermission } from "@/lib/permissions"
 import { passwordPolicyError } from "@/lib/password-policy"
+import { checkSignInPhone } from "@/lib/mtm/mobile-login-phone"
 import {
   MTM_AGENT_WEB_ONLY_SELECT,
   mtmAgentNotesReader,
@@ -208,6 +209,7 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
         id: true,
         name: true,
         email: true,
+        phone: true,
         role: true,
         status: true,
         canPlanOwnRoutes: true,
@@ -276,7 +278,16 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
     if (body.name !== undefined) data.name = body.name
     if (body.externalCode !== undefined) data.externalCode = body.externalCode ?? null
     if (body.email !== undefined) data.email = body.email ?? null
-    if (body.phone !== undefined) data.phone = body.phone ?? null
+    if (body.phone !== undefined) {
+      // A changed number is the one the agent will sign in by: held to the
+      // same rule as a new card. A number left as it was is not re-judged.
+      if (body.phone && body.phone.replace(/[\s\-()]/g, "") !== (before.phone ?? "").replace(/[\s\-()]/g, "")) {
+        const phone = await checkSignInPhone(prisma, orgId, body.phone, before.id)
+        if (!phone.ok) return NextResponse.json({ error: phone.error, code: phone.code }, { status: phone.status })
+        body.phone = phone.phone
+      }
+      data.phone = body.phone ?? null
+    }
     if (body.role !== undefined) data.role = body.role
     if (body.status !== undefined) data.status = body.status
     if (body.canPlanOwnRoutes !== undefined) data.canPlanOwnRoutes = body.canPlanOwnRoutes
