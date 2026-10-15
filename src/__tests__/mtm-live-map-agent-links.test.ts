@@ -58,6 +58,7 @@ vi.mock("next/link", async () => {
 })
 
 import { LiveMapAgentLinks } from "@/components/mtm/live-map-agent-links"
+import { readHint } from "./helpers/hint"
 import { liveMapAgentLinks } from "@/lib/mtm/live-map-agent-links"
 
 let root: Root
@@ -119,11 +120,32 @@ describe("the selected employee's links to the other screens", () => {
   it("say that the alert rules are the whole organization's, and do not name the employee on that link", async () => {
     await show(everyLink(), "Северов Тимур")
     const rules = pill("alertRules")
-    expect(rules?.getAttribute("title")).toBe("Правила оповещений общие для всей организации: отдельных правил для одного сотрудника нет")
+    expect(await readHint(rules)).toBe("Правила оповещений общие для всей организации: отдельных правил для одного сотрудника нет")
     expect(rules?.getAttribute("aria-label")).toBeNull()
     expect(rules?.getAttribute("href")).not.toContain("agent-7")
-    // The hint belongs to that link alone.
-    expect(pills().filter((link) => link.hasAttribute("title")).map((link) => link.dataset.testid)).toEqual(["live-map-agent-link-alertRules"])
+  })
+
+  // Owner, 2026-10-15, on this very card: «тут нет подсказок при наведении».
+  // The browser's own grey `title` was there on one link and he never saw it.
+  it("say under the cursor what each one opens — every link, none with the browser's own title", async () => {
+    await show(everyLink(), "Северов Тимур")
+    const hints: [string | null, string | null][] = []
+    for (const link of pills()) hints.push([link.textContent, await readHint(link)])
+    const hint = (key: string) => ((ru.mtmMap as Messages).hint as Messages)[key]
+    expect(hints).toEqual([
+      ["История за день", hint("historyToday")],
+      ["Оповещения", hint("alerts")],
+      ["Отчёт за период", hint("period")],
+      ["Задачи", hint("tasks")],
+      ["Профиль сотрудника", hint("card")],
+      ["Настройки оповещений", ((ru.mtmMap as Messages).links as Messages).alertRulesHint],
+    ])
+    for (const [label, hint] of hints) expect(typeof hint === "string" && hint.length > 20, String(label)).toBe(true)
+    expect(pills().filter((link) => link.hasAttribute("title"))).toEqual([])
+
+    // Where the organization keeps no employee sections, «Профиль» opens the list narrowed to him — and says that.
+    await show(liveMapAgentLinks({ agentId: "agent-7", tenantToday: "2026-10-09", fieldContactsEnabled: false }))
+    expect(await readHint(pill("card"))).toBe(hint("cardList"))
   })
 
   it("show the links they were given, in that order, and nothing in their place when one is not offered", async () => {

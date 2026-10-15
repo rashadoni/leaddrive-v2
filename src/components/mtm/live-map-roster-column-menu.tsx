@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useMemo, useState, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowDown, ArrowUp, ChevronDown, Filter, Search } from "lucide-react"
@@ -167,6 +168,22 @@ export function RosterColumnMenuPanel({
   )
 }
 
+/** What each column holds, said under the cursor on its heading — once for the column, not on every row. */
+const COLUMN_HINT: Record<RosterColumnId, string> = {
+  name: "hint.colName",
+  status: "hint.colStatus",
+  signal: "hint.colSignal",
+  distance: "hint.distance",
+  team: "hint.colTeam",
+  manager: "hint.colManager",
+  tags: "hint.colTags",
+  app: "hint.colApp",
+  workday: "hint.workday",
+  route: "hint.routeProgress",
+  speed: "hint.speed",
+  battery: "hint.batteryList",
+}
+
 /**
  * A column heading that is also its menu — the spreadsheet's filter arrow
  * (owner, 2026-10-09: «нужны фильтры прямо в списке, как в Excel»).
@@ -184,25 +201,27 @@ export function LiveMapRosterColumnMenu(props: RosterColumnMenuProps & {
 
   return (
     <Popover onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          data-testid={`roster-column-${column}`}
-          data-filtered={filter ? "true" : "false"}
-          aria-label={tMap("roster.filter.open", { column: label })}
-          className={cn(
-            "flex h-9 w-full min-w-0 items-center gap-1 rounded px-1 text-left text-[11px] font-semibold uppercase tracking-wide transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [@media(pointer:coarse)]:h-11",
-            filter ? ROSTER_ACTION_TEXT : "text-muted-foreground",
-            className,
-          )}
-        >
-          <span className="min-w-0 truncate">{label}</span>
-          {sortDirection ? <SortIcon className="h-3 w-3 shrink-0" aria-hidden="true" /> : null}
-          {filter
-            ? <Filter className="h-3 w-3 shrink-0 fill-current" aria-hidden="true" />
-            : <ChevronDown className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />}
-        </button>
-      </PopoverTrigger>
+      <Hint text={`${tMap(COLUMN_HINT[column])} ${tMap("hint.columnHeader")}`}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            data-testid={`roster-column-${column}`}
+            data-filtered={filter ? "true" : "false"}
+            aria-label={tMap("roster.filter.open", { column: label })}
+            className={cn(
+              "flex h-9 w-full min-w-0 items-center gap-1 rounded px-1 text-left text-[11px] font-semibold uppercase tracking-wide transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [@media(pointer:coarse)]:h-11",
+              filter ? ROSTER_ACTION_TEXT : "text-muted-foreground",
+              className,
+            )}
+          >
+            <span className="min-w-0 truncate">{label}</span>
+            {sortDirection ? <SortIcon className="h-3 w-3 shrink-0" aria-hidden="true" /> : null}
+            {filter
+              ? <Filter className="h-3 w-3 shrink-0 fill-current" aria-hidden="true" />
+              : <ChevronDown className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />}
+          </button>
+        </PopoverTrigger>
+      </Hint>
       {/* After the trigger, not before it: the trigger names itself the anchor
           when it mounts, and the last one to speak is the one the menu stands
           beside. Put first, this line left the menu in the corner of the screen. */}

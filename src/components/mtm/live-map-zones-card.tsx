@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useTranslations } from "next-intl"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -57,17 +58,19 @@ export function LiveMapZonesCard({ zones, canWrite, unfolded, onUnfoldedChange, 
         </h4>
         {zones.length > 0 ? (
           // In words, not an arrow alone: an arrow by itself does not say what it opens.
-          <button
-            type="button"
-            aria-expanded={unfolded}
-            aria-controls="live-map-zones-card-list"
-            onClick={() => onUnfoldedChange(!unfolded)}
-            data-testid="live-map-zones-card-fold"
-            className="ml-auto inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md border border-zinc-200 px-2 text-xs font-medium hover:bg-muted dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11"
-          >
-            <Chevron className="h-3.5 w-3.5" aria-hidden="true" />
-            {tMap(unfolded ? "areas.hideList" : "areas.showList")}
-          </button>
+          <Hint text={tMap("hint.areasList")}>
+            <button
+              type="button"
+              aria-expanded={unfolded}
+              aria-controls="live-map-zones-card-list"
+              onClick={() => onUnfoldedChange(!unfolded)}
+              data-testid="live-map-zones-card-fold"
+              className="ml-auto inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md border border-zinc-200 px-2 text-xs font-medium hover:bg-muted dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11"
+            >
+              <Chevron className="h-3.5 w-3.5" aria-hidden="true" />
+              {tMap(unfolded ? "areas.hideList" : "areas.showList")}
+            </button>
+          </Hint>
         ) : null}
       </div>
       {gone ? <LiveMapZoneGone className="mt-2" onClose={onGoneClose} /> : null}

@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import "leaflet/dist/leaflet.css"
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties, type MutableRefObject } from "react"
 import { useLocale, useTranslations } from "next-intl"
@@ -733,9 +734,15 @@ const ZoneShape = memo(function ZoneShape({
             </div>
             {canEdit && onAction ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-                <button type="button" onClick={() => act("rename")} style={CLIENT_ACTION}>{tMap("areas.rename")}</button>
-                <button type="button" onClick={() => act("color")} style={CLIENT_ACTION}>{tMap("areas.recolor")}</button>
-                <button type="button" onClick={() => act("delete")} style={ZONE_REMOVE_ACTION}>{tMap("areas.remove")}</button>
+                <Hint text={tMap("hint.areaRename")}>
+                  <button type="button" onClick={() => act("rename")} style={CLIENT_ACTION}>{tMap("areas.rename")}</button>
+                </Hint>
+                <Hint text={tMap("hint.areaRecolor")}>
+                  <button type="button" onClick={() => act("color")} style={CLIENT_ACTION}>{tMap("areas.recolor")}</button>
+                </Hint>
+                <Hint text={tMap("hint.areaRemove")}>
+                  <button type="button" onClick={() => act("delete")} style={ZONE_REMOVE_ACTION}>{tMap("areas.remove")}</button>
+                </Hint>
               </div>
             ) : null}
           </div>

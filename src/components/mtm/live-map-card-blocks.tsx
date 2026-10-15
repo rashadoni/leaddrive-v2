@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react"
@@ -50,31 +51,35 @@ export function LiveMapCardBlocks({ blocks, layout, onLayoutChange }: {
         const Chevron = folded ? ChevronRight : ChevronDown
         return (
           <section key={id} className="rounded-md bg-background/80 p-2" data-testid={`live-map-card-block-${id}`} data-folded={folded ? "true" : "false"}>
-            <button
-              type="button"
-              aria-expanded={!folded}
-              onClick={() => onLayoutChange(toggleCardBlockCollapsed(layout, id))}
-              data-testid={`live-map-card-block-toggle-${id}`}
-              className="flex min-h-8 w-full items-center gap-1 rounded text-left font-semibold text-foreground hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [@media(pointer:coarse)]:min-h-11"
-            >
-              <Chevron className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <span className="min-w-0 flex-1">{block.title}</span>
-            </button>
+            <Hint side="top" align="start" text={tMap("hint.blockToggle")}>
+              <button
+                type="button"
+                aria-expanded={!folded}
+                onClick={() => onLayoutChange(toggleCardBlockCollapsed(layout, id))}
+                data-testid={`live-map-card-block-toggle-${id}`}
+                className="flex min-h-8 w-full items-center gap-1 rounded text-left font-semibold text-foreground hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [@media(pointer:coarse)]:min-h-11"
+              >
+                <Chevron className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="min-w-0 flex-1">{block.title}</span>
+              </button>
+            </Hint>
             {folded ? null : <div className="mt-1">{block.render()}</div>}
           </section>
         )
       })}
       <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            data-testid="live-map-card-customize"
-            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
-          >
-            <SlidersHorizontal className="h-3 w-3" aria-hidden="true" />{tMap("card.customize")}
-            {shown.length < offered.length ? <span className="tabular-nums text-muted-foreground">· {tMap("card.hiddenCount", { count: offered.length - shown.length })}</span> : null}
-          </button>
-        </PopoverTrigger>
+        <Hint text={tMap("hint.customize")}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              data-testid="live-map-card-customize"
+              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
+            >
+              <SlidersHorizontal className="h-3 w-3" aria-hidden="true" />{tMap("card.customize")}
+              {shown.length < offered.length ? <span className="tabular-nums text-muted-foreground">· {tMap("card.hiddenCount", { count: offered.length - shown.length })}</span> : null}
+            </button>
+          </PopoverTrigger>
+        </Hint>
         <PopoverContent align="start" collisionPadding={8} aria-label={tMap("card.customize")} className="max-h-[var(--radix-popover-content-available-height)] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto p-2" data-testid="live-map-card-customize-menu">
           <p className="px-1 pb-1 text-[11px] text-muted-foreground">{tMap("card.customizeHint")}</p>
           <ul className="space-y-0.5">
@@ -94,30 +99,32 @@ export function LiveMapCardBlocks({ blocks, layout, onLayoutChange }: {
                     />
                     <span className={cn("min-w-0 flex-1 truncate", !visible && "text-muted-foreground")}>{block.title}</span>
                   </label>
-                  <button
-                    type="button"
-                    // Not `disabled`: a block moved to the edge would drop the keyboard's focus to the page.
-                    aria-disabled={index === 0}
-                    onClick={() => { if (!(index === 0)) onLayoutChange(moveCardBlock(layout, id, "up", available)) }}
-                    aria-label={tMap("card.moveUp", { name: block.title })}
-                    title={tMap("card.moveUp", { name: block.title })}
-                    data-testid={`live-map-card-block-up-${id}`}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-200 hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-transparent dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
-                  >
-                    <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    // Not `disabled`: a block moved to the edge would drop the keyboard's focus to the page.
-                    aria-disabled={index === offered.length - 1}
-                    onClick={() => { if (!(index === offered.length - 1)) onLayoutChange(moveCardBlock(layout, id, "down", available)) }}
-                    aria-label={tMap("card.moveDown", { name: block.title })}
-                    title={tMap("card.moveDown", { name: block.title })}
-                    data-testid={`live-map-card-block-down-${id}`}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-200 hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-transparent dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
-                  >
-                    <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
+                  <Hint text={tMap("card.moveUp", { name: block.title })}>
+                    <button
+                      type="button"
+                      // Not `disabled`: a block moved to the edge would drop the keyboard's focus to the page.
+                      aria-disabled={index === 0}
+                      onClick={() => { if (!(index === 0)) onLayoutChange(moveCardBlock(layout, id, "up", available)) }}
+                      aria-label={tMap("card.moveUp", { name: block.title })}
+                      data-testid={`live-map-card-block-up-${id}`}
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-200 hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-transparent dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+                    >
+                      <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </Hint>
+                  <Hint text={tMap("card.moveDown", { name: block.title })}>
+                    <button
+                      type="button"
+                      // Not `disabled`: a block moved to the edge would drop the keyboard's focus to the page.
+                      aria-disabled={index === offered.length - 1}
+                      onClick={() => { if (!(index === offered.length - 1)) onLayoutChange(moveCardBlock(layout, id, "down", available)) }}
+                      aria-label={tMap("card.moveDown", { name: block.title })}
+                      data-testid={`live-map-card-block-down-${id}`}
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-200 hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-transparent dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+                    >
+                      <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </Hint>
                 </li>
               )
             })}

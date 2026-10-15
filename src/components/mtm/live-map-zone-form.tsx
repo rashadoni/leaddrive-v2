@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useState, type FormEvent } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Check, Loader2 } from "lucide-react"
@@ -178,22 +179,22 @@ export function LiveMapZoneForm({ task, onSubmit, onCancel, className, blocked =
             // The swatch takes its hex from the palette in the code, by key;
             // its name is on the button for a pointer and for a reader.
             return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setColor(key)}
-                aria-pressed={chosen}
-                aria-label={tf(`mapColors.${key}`)}
-                title={tf(`mapColors.${key}`)}
-                data-testid={`live-map-zone-color-${key}`}
-                className={cn(
-                  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 [@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10",
-                  chosen ? "ring-2 ring-zinc-900 ring-offset-2 ring-offset-background dark:ring-zinc-100" : "ring-1 ring-zinc-400/60",
-                )}
-                style={{ backgroundColor: MTM_AGENT_MAP_COLORS[key] }}
-              >
-                {chosen ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
-              </button>
+              <Hint key={key} text={tf(`mapColors.${key}`)}>
+                <button
+                  type="button"
+                  onClick={() => setColor(key)}
+                  aria-pressed={chosen}
+                  aria-label={tf(`mapColors.${key}`)}
+                  data-testid={`live-map-zone-color-${key}`}
+                  className={cn(
+                    "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 [@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10",
+                    chosen ? "ring-2 ring-zinc-900 ring-offset-2 ring-offset-background dark:ring-zinc-100" : "ring-1 ring-zinc-400/60",
+                  )}
+                  style={{ backgroundColor: MTM_AGENT_MAP_COLORS[key] }}
+                >
+                  {chosen ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
+                </button>
+              </Hint>
             )
           })}
           <button
