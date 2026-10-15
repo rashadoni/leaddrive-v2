@@ -243,7 +243,10 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
   }
   function applyPersonal(config: AttendanceViewConfig, name: string) {
     setCustomView({ name, config })
-    setForm(config.mode === "DAY" ? config.filters.form === "JOURNAL" ? "DAY" : config.filters.form === "ALL" ? "DAY" : config.filters.form : config.mode)
+    // Report-only row types (summary, balance, absence kinds, team) have no
+    // workspace form of their own; their table is built from the saved form.
+    setForm(config.mode === "DAY" ? config.filters.form === "JOURNAL" ? "DAY" : config.filters.form === "ALL" ? "DAY" : config.filters.form
+      : config.mode === "SUMMARY" || config.mode === "BALANCE" || config.mode === "ABSENCE_KINDS" || config.mode === "TEAM" ? "DAY" : config.mode)
     setTeamId(config.filters.teamId ?? "")
     setEmployeeId(config.filters.employeeId ?? "")
     void load({ from: config.filters.from, to: config.filters.to }, config)

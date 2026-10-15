@@ -335,6 +335,7 @@
     "personnelToday": "Kim gəlib, kim gecikib və qərarınızı nə gözləyir",
     "personnelTimesheet": "Aylıq tabel, hesabatlar və Excel/PDF",
     "personnelPeople": "Əməkdaşlar, filiallar və telefonlar",
+    "personnelReports": "N-1t tabeli, xülasələr, gecikmələr, məzuniyyətlər, Excel/PDF",
     "personnelSettings": "İş vaxtı, qrafiklər, məzuniyyətlər və yoxlamalar"
   },
   "skillRouting": {
@@ -661,6 +662,7 @@
     "personnelToday": "Bu gün",
     "personnelTimesheet": "Tabel",
     "personnelPeople": "Əməkdaşlar",
+    "personnelReports": "Hesabatlar",
     "personnelSettings": "Parametrlər"
   },
   "mtmModuleNavigation": {
@@ -19352,7 +19354,29 @@
     "overtimeApprovalHint": "Əməkdaş əlavə iş müraciəti göndərir; rəhbər ümumi növbədə baxır. İcazə saatları yalnız bir növbə ilə kəsişirsə həmin növbədə, əks halda müraciətin tarixində tam göstərilir. Qeyri-müəyyən uyğunluq tire ilə göstərilir.",
     "overtimeThresholdHint": "Hədd dərc edilmiş iş qrafikində təyin olunur. Təyin edilməmiş hədd sıfır sayılmır.",
     "overtimeTotals": "Planı aşan vaxt: {excess}. Müraciətlərlə təsdiqlənib: {approved}.",
-    "overtimePartial": "Yekun natamamdır: başa çatmamış, etibarsız və qeyri-müəyyən saatlar daxil deyil."
+    "overtimePartial": "Yekun natamamdır: başa çatmamış, etibarsız və qeyri-müəyyən saatlar daxil deyil.",
+    "reportIndex": "№",
+    "reportWorkedDays": "İşlənmiş günlər",
+    "reportHours": "Saatlar",
+    "reportPlannedDays": "Plan üzrə günlər",
+    "reportExpected": "Norma",
+    "reportEarlyCount": "Tez gedişlər",
+    "reportLeaveDays": "Məzuniyyət, gün",
+    "reportSickDays": "Xəstəlik, gün",
+    "reportOvertimeHours": "Əlavə iş",
+    "reportAttendanceRate": "İştirak",
+    "reportBalance": "Fərq",
+    "reportAbsenceKinds": "İştirak etməmə növləri",
+    "reportAbsenceTotal": "Cəmi gün",
+    "reportSummaryTitle": "Əməkdaş üzrə xülasə",
+    "reportSummaryTitleHint": "Dövr üzrə hər əməkdaşa bir sətir. İştirak — plan günlərindən işlənmiş günlər.",
+    "reportBalanceTitle": "Saat balansı",
+    "reportBalanceTitleHint": "Fərq — işlənmiş vaxt çıxılsın norma: «+» normadan çox, «−» az.",
+    "reportAbsenceKindsTitle": "Növlər üzrə iştirak etməmə",
+    "reportAbsenceKindsTitleHint": "Şirkət kataloqundakı hər iştirak etməmə növü üzrə günlər.",
+    "reportTeamTitle": "Şöbələr üzrə",
+    "reportTeamTitleHint": "Hər komandaya bir sətir; komandası olmayanlar ayrıca sətirdə.",
+    "reportN1tTitle": "N-1t tabeli"
   },
   "mtmReports": {
     "title": "Hesabatlar",
@@ -28714,6 +28738,70 @@
     "featureDisableConfirm": "«Kadr uçotu» bölməsi hamıdan gizlənəcək, gəliş qeydləri və xatırlatmalar dayanacaq. Bütün məlumatlar saxlanılır — uçotu yenidən aktiv etsəniz, geri qayıdacaq.",
     "featureDisableAction": "Uçotu söndür",
     "featureSaveError": "Yadda saxlamaq alınmadı. Yenidən cəhd edin.",
+    "reportsTitle": "Hesabatlar",
+    "reportsIntro": "Hər hesabatın dövrü, komandası və Excel/PDF yükləməsi var.",
+    "reportsNew": "yeni",
+    "reportGroups": {
+      "daily": "Hər gün",
+      "month": "Ay və əmək haqqı",
+      "discipline": "İntizam və əlavə iş",
+      "leave": "Məzuniyyət və iştirak etməmə",
+      "control": "Bölmələr və nəzarət"
+    },
+    "reports": {
+      "day": {
+        "title": "Günün kartı",
+        "hint": "Hər kəs üzrə gəliş, gediş, fasilə, işlənmiş vaxt və gecikmə"
+      },
+      "absent": {
+        "title": "Kim gəlməyib",
+        "hint": "Gəliş və ya gediş qeydi yoxdur, səbəb yoxdur"
+      },
+      "timesheet": {
+        "title": "Ayın tabeli",
+        "hint": "İnsanlar × günlər hərflərlə, gün və saat yekunları"
+      },
+      "n1t": {
+        "title": "N-1t tabeli",
+        "hint": "Mühasibatlıq üçün forma: №, A.S.A., bölmə, 1–31 günlər, işlənmiş gün və saatlar"
+      },
+      "summary": {
+        "title": "Əməkdaş üzrə xülasə",
+        "hint": "Plan və fakt günlər, saatlar, gecikmələr, gəlməmələr, məzuniyyət, xəstəlik, əlavə iş, iştirak %"
+      },
+      "balance": {
+        "title": "Saat balansı",
+        "hint": "Norma, fakt və fərq — kim az, kim çox işləyib"
+      },
+      "late": {
+        "title": "Gecikmələr və tez gedişlər",
+        "hint": "Hər hal: tarix, gəliş, gediş, dəqiqələr"
+      },
+      "overtime": {
+        "title": "Əlavə iş",
+        "hint": "Normadan artıq saatlar və şirkətin həddi; qanunla ardıcıl 2 gündə 4 saatdan çox olmaz"
+      },
+      "absenceKinds": {
+        "title": "Növlər üzrə iştirak etməmə",
+        "hint": "Məzuniyyət, xəstəlik, ödənişsiz, gəlməmə — hər növ üzrə günlər"
+      },
+      "leaveBalances": {
+        "title": "Məzuniyyət qalıqları",
+        "hint": "Haqqı olan, istifadə olunan və qalan"
+      },
+      "teams": {
+        "title": "Şöbələr üzrə",
+        "hint": "Hər komanda üzrə iştirak, saatlar, gecikmələr, gəlməmələr və əlavə iş"
+      },
+      "journal": {
+        "title": "Qeyd jurnalı",
+        "hint": "Hər qeyd: telefon və server vaxtı"
+      },
+      "decisions": {
+        "title": "Müraciətlər və düzəlişlər",
+        "hint": "Kim verib, kim nə vaxt qərar verib"
+      }
+    },
     "addEmployee": "Əməkdaş əlavə et",
     "addEmployeeHint": "Əməkdaş gəliş və gedişi MTM tətbiqində qeyd edəcək. Sahə agentləri burada yox, «Marşrut və sahə» bölməsində əlavə olunur.",
     "addEmployeeName": "Ad və soyad",

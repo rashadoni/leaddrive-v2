@@ -210,7 +210,7 @@ describe("accessibleNavItems", () => {
 })
 
 describe("Personnel sidebar", () => {
-  const personnelHrefs = ["/mtm/attendance", "/mtm/attendance/timesheet", "/mtm/attendance/people", "/mtm/attendance/settings"]
+  const personnelHrefs = ["/mtm/attendance", "/mtm/attendance/timesheet", "/mtm/attendance/people", "/mtm/attendance/reports", "/mtm/attendance/settings"]
   const context = (role: string, attendanceEnabled?: boolean) => ({
     plan: "enterprise", role, modules: { "route-field": true, personnel: true },
     orgSettings: attendanceEnabled === undefined ? {} : { attendanceEnabled },
@@ -218,7 +218,7 @@ describe("Personnel sidebar", () => {
   const personnelItems = (org: Parameters<typeof accessibleNavItems>[0]) =>
     accessibleNavItems(org).filter(item => item.href === "/mtm/attendance" || item.href.startsWith("/mtm/attendance/"))
 
-  it.each(["admin", "superadmin", "manager", "sales", "support", "viewer"])("shows exactly four destinations in its own section for %s", role => {
+  it.each(["admin", "superadmin", "manager", "sales", "support", "viewer"])("shows exactly five destinations in its own section for %s", role => {
     const items = personnelItems(context(role, true))
     expect(items.map(item => item.href)).toEqual(personnelHrefs)
     expect(items.every(item => item.group === "Personnel" && item.module === undefined
@@ -249,7 +249,7 @@ describe("Personnel sidebar", () => {
   })
 
   it.each(["admin", "superadmin"])("needs its own Personnel capability, not Route & Field, for %s", role => {
-    // Sold on its own: a tenant with Personnel and no routes sees all four.
+    // Sold on its own: a tenant with Personnel and no routes sees all five.
     expect(personnelItems({ ...context(role, true), modules: { personnel: true } }).map(item => item.href)).toEqual(personnelHrefs)
     expect(personnelItems({ ...context(role, true), modules: { "route-field": true, personnel: false } })).toEqual([])
     // Tenants that had attendance through the MTM bundle keep it.
