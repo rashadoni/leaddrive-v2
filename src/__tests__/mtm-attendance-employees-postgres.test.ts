@@ -478,7 +478,7 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       // The database trigger made the card; the function did not add a second.
       const cards = await prisma.mtmAgent.findMany({ where: { userId: created.userId } })
       expect(cards).toHaveLength(1)
-      expect(cards[0]).toMatchObject({ id: created.agentId, role: "EMPLOYEE", status: "ACTIVE", attendanceParticipant: true, passwordHash: null, canPlanOwnRoutes: false })
+      expect(cards[0]).toMatchObject({ id: created.agentId, role: "EMPLOYEE", status: "ACTIVE", attendanceParticipant: true, passwordHash: null, canPlanOwnRoutes: false, phone: "+994501234567" })
       expect(await prisma.mtmAuditLog.count({ where: { action: "MTM_ATTENDANCE_EMPLOYEE_CREATED", agentId: created.agentId } })).toBe(1)
       expect((await store.readAttendanceEmployees(automaticAdmin)).employees.some(employee => employee.id === created.agentId)).toBe(true)
     })
@@ -488,11 +488,66 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       [automaticAdmin, { ...input, email: "existing-field@example.invalid" }, "MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN"],
       [automaticAdmin, { ...input, email: "short@example.invalid", password: "short" }, "MTM_ATTENDANCE_EMPLOYEE_PASSWORD_WEAK"],
       [automaticAdmin, { ...input, email: "phone@example.invalid", phone: "0501234567" }, "MTM_ATTENDANCE_EMPLOYEE_PHONE_INVALID"],
+      // The number signs the person in: a second active person with it would lock both out.
+      [automaticAdmin, { ...input, email: "same-number@example.invalid", phone: "+994 50 123 45 67" }, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN"],
     ] as const) await expect(tenant(automaticOrg, () => create.createAttendanceEmployee(actor, body))).rejects.toMatchObject({ code })
     // A non-administrator (here a sales user) is refused before any write.
     await expect(tenant(automaticOrg, () => create.createAttendanceEmployee({ ...automaticAdmin, userId: "automatic-user-001" }, { ...input, email: "by-sales@example.invalid" })))
       .rejects.toMatchObject({ status: 403 })
     expect(await tenant(automaticOrg, () => prisma.user.count())).toBe(users)
+  })
+
+  // Owner, 2026-10-15: «через WhatsApp приходил OTP-пароль, чтоб сами назначали,
+  // а кадровик не занимался этой рутиной». HR gives a name and a number only.
+  it("adds an employee with only a WhatsApp number, finds them by it, and lets one code through once", async () => {
+    const create = await import("@/lib/mtm/attendance-employee-create")
+    const phones = await import("@/lib/mtm/mobile-login-phone")
+    const codes = await import("@/lib/mtm/mobile-login-code")
+    const created = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional number-only hire", phone: "+994 55 765 43 21" }))
+    expect(created).toMatchObject({ email: null, phone: "+994557654321" })
+    await tenant(automaticOrg, async () => {
+      const user = await prisma.user.findUniqueOrThrow({ where: { id: created.userId } })
+      // The schema wants an email and a password: neither can be used.
+      expect(user.email).toMatch(/^staff-[0-9a-f-]{36}@invalid\.local$/)
+      expect(create.hasRealEmail(user.email)).toBe(false)
+      expect(user.passwordHash.startsWith("$2")).toBe(false)
+      const card = await prisma.mtmAgent.findUniqueOrThrow({ where: { id: created.agentId } })
+      expect(card).toMatchObject({ email: null, phone: "+994557654321", passwordHash: null, role: "EMPLOYEE", attendanceParticipant: true })
+    })
+    // Typed the way people type it: national, spaced, international.
+    for (const typed of ["055 765 43 21", "+994557654321", "00994557654321"]) {
+      expect(await bypass(() => phones.findPhoneOwner(prisma, automaticOrg, typed))).toEqual({ kind: "found", agentId: created.agentId, sendTo: "+994557654321" })
+    }
+    expect(await bypass(() => phones.findPhoneOwner(prisma, automaticOrg, "+994557654320"))).toEqual({ kind: "none" })
+
+    const now = new Date("2026-10-15T09:00:00Z")
+    const first = await bypass(() => codes.issueMobileLoginCode(automaticOrg, "+994557654321", now))
+    expect(first.code).toMatch(/^\d{6}$/)
+    expect(await bypass(() => codes.secondsUntilResend(automaticOrg, "+994557654321", new Date(now.getTime() + 15_000)))).toBeGreaterThan(40)
+    // Only a hash is kept.
+    const stored = await bypass(() => prisma.otpCode.findUniqueOrThrow({ where: { id: first.id } }))
+    expect(stored).toMatchObject({ organizationId: automaticOrg, purpose: "mtm_app_login", attempts: 0, usedAt: null })
+    expect(stored.codeHash).not.toContain(first.code)
+    // Asking again retires the first code.
+    const second = await bypass(() => codes.issueMobileLoginCode(automaticOrg, "+994557654321", now))
+    const wrong = second.code === "000000" ? "111111" : "000000"
+    expect(await bypass(() => codes.checkMobileLoginCode(automaticOrg, "+994557654321", wrong, now))).toEqual({ ok: false, reason: "invalid" })
+    // Another company with the same number does not see this code.
+    expect(await bypass(() => codes.checkMobileLoginCode("employee-pg-other-org", "+994557654321", second.code, now))).toEqual({ ok: false, reason: "expired" })
+    if (first.code !== second.code) expect(await bypass(() => codes.checkMobileLoginCode(automaticOrg, "+994557654321", first.code, now))).toEqual({ ok: false, reason: "invalid" })
+    expect(await bypass(() => codes.checkMobileLoginCode(automaticOrg, "+994557654321", second.code, now))).toEqual({ ok: true })
+    expect(await bypass(() => codes.checkMobileLoginCode(automaticOrg, "+994557654321", second.code, now))).toEqual({ ok: false, reason: "expired" })
+
+    // Five wrong tries retire a code even if the sixth is right.
+    const third = await bypass(() => codes.issueMobileLoginCode(automaticOrg, "+994557654321", now))
+    const miss = third.code === "000000" ? "111111" : "000000"
+    const results = []
+    for (let attempt = 0; attempt < 5; attempt++) results.push((await bypass(() => codes.checkMobileLoginCode(automaticOrg, "+994557654321", miss, now))).ok ? "ok" : "no")
+    expect(results).toEqual(["no", "no", "no", "no", "no"])
+    expect(await bypass(() => codes.checkMobileLoginCode(automaticOrg, "+994557654321", third.code, now))).toEqual({ ok: false, reason: "expired" })
+    // Ten minutes later a fresh code has expired.
+    const fourth = await bypass(() => codes.issueMobileLoginCode(automaticOrg, "+994557654321", now))
+    expect(await bypass(() => codes.checkMobileLoginCode(automaticOrg, "+994557654321", fourth.code, new Date(now.getTime() + 10 * 60_000 + 1)))).toEqual({ ok: false, reason: "expired" })
   })
 
   // Owner, 2026-10-15: Today shows an administrator what is left to set up; each
