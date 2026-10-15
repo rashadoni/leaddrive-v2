@@ -53,7 +53,7 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_MARKETING_URL = "https://leaddrivecrm.org"
   process.env.NEXT_PUBLIC_APP_URL = "https://app.leaddrivecrm.org"
   vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: self.organizationId, agentId: self.agentId, role: self.role,
-    tenantCapabilities: { routeField: true, workforceHrm: false } } as never)
+    tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
   vi.mocked(prisma.$transaction).mockImplementation((async (callback: (tx: typeof prisma) => unknown) => callback(prisma)) as never)
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }, { key: "timezone", value: "Asia/Baku" }] as never)
   vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)

@@ -235,8 +235,10 @@ function isRouteFieldSessionOperation(
   auth: Pick<MobileAuthResult, "tenantCapabilities">,
   entity: string,
 ): boolean {
+  // Personnel alone (2026-10-14) uses the same workday record for an office
+  // employee's own marks, without routes and without the Workforce fence.
   return entity === "workdays" &&
-    auth.tenantCapabilities?.routeField === true &&
+    (auth.tenantCapabilities?.routeField === true || auth.tenantCapabilities?.personnel === true) &&
     auth.tenantCapabilities?.workforceHrm !== true
 }
 
@@ -292,9 +294,9 @@ const isValidOpId = (id: unknown): id is string => typeof id === "string" && id.
 
 function syncCapabilityError(
   operationId: string,
-  capabilityId: "route-field" | "workforce-hrm",
+  capabilityId: "route-field" | "workforce-hrm" | "personnel",
 ) {
-  const label = capabilityId === "workforce-hrm" ? "Workforce HRM" : "Route & Field"
+  const label = capabilityId === "workforce-hrm" ? "Workforce HRM" : capabilityId === "personnel" ? "Personnel" : "Route & Field"
   return {
     operationId,
     status: "error" as const,
@@ -382,20 +384,22 @@ async function syncWorkdayIdempotencyMismatch(input: {
 
 function hasSyncCapability(
   auth: Pick<MobileAuthResult, "tenantCapabilities">,
-  capabilityId: "route-field" | "workforce-hrm",
+  capabilityId: "route-field" | "workforce-hrm" | "personnel",
 ): boolean {
   if (!auth.tenantCapabilities) return false
   return capabilityId === "workforce-hrm"
     ? auth.tenantCapabilities.workforceHrm
-    : auth.tenantCapabilities.routeField
+    : capabilityId === "personnel"
+      ? auth.tenantCapabilities.personnel === true
+      : auth.tenantCapabilities.routeField
 }
 
 function capabilityForSyncEntity(
   auth: Pick<MobileAuthResult, "tenantCapabilities">,
   entity: string,
-): "route-field" | "workforce-hrm" {
+): "route-field" | "workforce-hrm" | "personnel" {
   return isRouteFieldSessionOperation(auth, entity)
-    ? "route-field"
+    ? auth.tenantCapabilities?.routeField === true ? "route-field" : "personnel"
     : WORKFORCE_SYNC_ENTITIES.has(entity)
       ? "workforce-hrm"
       : "route-field"
@@ -486,7 +490,7 @@ export const POST = withMobileRls(async (req, auth) => {
   // Keep the legacy AGENT path unchanged, including when attendance is disabled.
   let attendanceWorkdaySelf = false
   let attendanceWorkdayTimezone: string | null = null
-  if (auth.role !== "AGENT" && hasSyncCapability(auth, "route-field")
+  if (auth.role !== "AGENT" && hasSyncCapability(auth, "personnel")
     && admittedOperations.some(operation => operation?.entity === "workdays")) {
     try {
       attendanceWorkdayTimezone = await requireAttendanceSelf(prisma, { organizationId: orgId, agentId, role: auth.role })
@@ -765,8 +769,10 @@ export const POST = withMobileRls(async (req, auth) => {
         continue
       }
     } else {
-      if (!hasSyncCapability(auth, "route-field")) {
-        results.push(syncCapabilityError(operationId, "route-field"))
+      // An office employee's own mark is Personnel; everything else here is routes.
+      const operationCapability = attendanceWorkdayOperation ? "personnel" : "route-field"
+      if (!hasSyncCapability(auth, operationCapability)) {
+        results.push(syncCapabilityError(operationId, operationCapability))
         continue
       }
       if (!attendanceWorkdayOperation && !canMutateRouteSyncOperation(auth, entity, opType, data)) {

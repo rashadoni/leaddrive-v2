@@ -332,7 +332,11 @@ export async function POST(req: NextRequest) {
 
     const routeFieldEnabled = isTenantCapabilityEnabled("route-field", agent.organization)
     const workforceEnabled = isTenantCapabilityEnabled("workforce-hrm", agent.organization)
-    if (!routeFieldEnabled && !workforceEnabled) {
+    // Personnel alone admits office staff to their own attendance; a field
+    // agent needs routes. Every request re-checks this in resolveMobileAuth.
+    const officeAttendanceOnly = !routeFieldEnabled && !workforceEnabled
+      && isTenantCapabilityEnabled("personnel", agent.organization) && agent.role !== "AGENT"
+    if (!routeFieldEnabled && !workforceEnabled && !officeAttendanceOnly) {
       return NextResponse.json({
         success: false,
         error: "The mobile app is not enabled for this tenant.",

@@ -827,6 +827,23 @@ describe("POST /api/v1/mtm/mobile/auth", () => {
     expect(jwt.sign).not.toHaveBeenCalled()
   })
 
+  it.each([["MANAGER", 200], ["AGENT", 403]] as const)("lets a %s of a Personnel-only tenant in only as office staff (%i)", async (role, status) => {
+    // Personnel is sold apart from routes (owner, 2026-10-14): office staff
+    // use the phone for their own attendance; a field agent needs routes.
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      id: `a-personnel-${role}`, name: "Fictional office", email: "office@test.com", phone: null, role, avatar: null,
+      passwordHash: "hashed", userId: null, organizationId: ORG,
+      organization: { ...MOBILE_ORG, features: [], modules: { personnel: true } },
+    } as any)
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+    const response = await MobileAuth(makeJsonReq("/api/v1/mtm/mobile/auth", "POST", { email: "office@test.com", password: "secret" }))
+    expect(response.status).toBe(status)
+    if (status === 403) {
+      expect(await response.json()).toMatchObject({ code: "TENANT_CAPABILITY_DISABLED", capabilityId: "mobile-field-app" })
+      expect(jwt.sign).not.toHaveBeenCalled()
+    } else expect(jwt.sign).toHaveBeenCalledTimes(1)
+  })
+
   it("does not auto-link a CRM user when both tenant products are disabled", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
       id: "a-neither-unlinked",

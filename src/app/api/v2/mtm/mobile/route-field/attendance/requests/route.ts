@@ -12,7 +12,7 @@ export const GET = withMobileRls(async (req, auth) => {
     if (cursor && !z.string().uuid().safeParse(cursor).success) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_INVALID", 400)
     return attendanceRequestResponse(await listOwnAttendanceRequests({ organizationId: auth.orgId, agentId: auth.agentId, role: auth.role }, cursor))
   } catch (error) { return attendanceRequestFailure(error) }
-}, { requiredCapability: "route-field" })
+}, { requiredCapability: "personnel" })
 
 export const POST = withMobileRls(async (req, auth) => {
   const self = { organizationId: auth.orgId, agentId: auth.agentId, role: auth.role }
@@ -23,4 +23,4 @@ export const POST = withMobileRls(async (req, auth) => {
     const result = await submitAttendanceRequest(self, body.value)
     return attendanceRequestResponse(result, result.idempotent ? 200 : 201)
   } catch (error) { return attendanceRequestFailure(error) }
-}, { requiredCapability: "route-field" })
+}, { requiredCapability: "personnel" })

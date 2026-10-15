@@ -9,7 +9,7 @@ import { JWT_SECRET, resolveMobileAuth } from "@/lib/mobile-auth"
 import { createSessionFingerprint } from "@/lib/session-invalidation"
 const agentId = "office-fixture-agent", userId = "office-fixture-user", organizationId = "office-fixture-org"
 const user = { isActive: true, passwordHash: "fixture-user-hash", passwordChangedAt: null }
-const agent = { role: "EMPLOYEE", status: "ACTIVE", userId, passwordHash: null, organization: { isActive: true, plan: "enterprise", addons: [], features: [], modules: { "route-field": true } } }
+const agent = { role: "EMPLOYEE", status: "ACTIVE", userId, passwordHash: null, organization: { isActive: true, plan: "enterprise", addons: [], features: [], modules: { "route-field": true, personnel: true } } }
 const request = (path: string, method = "GET") => new NextRequest(`http://localhost${path}`, { method, headers: { authorization: "Bearer fixture-token" } })
 beforeEach(() => {
   vi.clearAllMocks()
@@ -55,6 +55,31 @@ describe("office attendance fresh mobile access", () => {
   })
   it("also revokes the linked CRM user's session", async () => {
     vi.mocked(prisma.user.findFirst).mockResolvedValue({ ...user, isActive: false } as never)
+    expect(await resolveMobileAuth(request("/api/v1/mtm/mobile/bootstrap"))).toBeNull()
+  })
+})
+
+// Personnel is sold apart from routes (owner, 2026-10-14): such a tenant's
+// office staff use the phone for their own attendance, and nothing else.
+describe("Personnel without Route & Field", () => {
+  const personnelOnly = (role: string) => ({ ...agent, role, organization: { ...agent.organization, modules: { personnel: true } } })
+  it.each(["EMPLOYEE", "MANAGER", "SUPERVISOR", "ADMIN"])("admits %s to the office attendance endpoints with a Personnel-only snapshot", async role => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(personnelOnly(role) as never)
+    const auth = await resolveMobileAuth(request("/api/v1/mtm/mobile/bootstrap"))
+    expect(auth?.role).toBe(role)
+    expect(auth?.tenantCapabilities).toMatchObject({ routeField: false, workforceHrm: false, personnel: true })
+    expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/attendance/requests", "POST"))).not.toBeNull()
+  })
+  it.each(["MANAGER", "ADMIN"])("keeps %s out of field and manager endpoints", async role => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(personnelOnly(role) as never)
+    for (const path of ["/api/v1/mtm/mobile/manager/team", "/api/v1/mtm/mobile/sync/pull", "/api/v1/mtm/visits"]) expect(await resolveMobileAuth(request(path))).toBeNull()
+  })
+  it("refuses a field agent: its day is routes, which the tenant does not have", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(personnelOnly("AGENT") as never)
+    expect(await resolveMobileAuth(request("/api/v1/mtm/mobile/bootstrap"))).toBeNull()
+  })
+  it("refuses an office employee of a tenant with routes but without Personnel", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ ...agent, organization: { ...agent.organization, modules: { "route-field": true, personnel: false } } } as never)
     expect(await resolveMobileAuth(request("/api/v1/mtm/mobile/bootstrap"))).toBeNull()
   })
 })

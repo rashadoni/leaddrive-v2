@@ -26,6 +26,7 @@ const mobileAuth = (role: string): MobileAuthResult => ({
   tenantCapabilities: {
     routeField: true,
     workforceHrm: true,
+    personnel: true,
     attendanceQr: false,
     attendanceDeviceTrust: false,
   },
@@ -98,6 +99,30 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(json.data.policies.attendanceBranchQrVersion === 1).toBe(marks)
     // The agent's own "Start day" stays its field session.
     expect(json.data.permissions.includes("WORKTIME_SELF_MUTATE")).toBe(role === "AGENT")
+  })
+  it("gives an office employee of a Personnel-only tenant its attendance and no field surface", async () => {
+    // Personnel is sold apart from routes (owner, 2026-10-14). The app opens
+    // its office tabs from these attendance flags, whatever routeField says.
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...mobileAuth("EMPLOYEE"), tenantCapabilities: { routeField: false, workforceHrm: false, personnel: true } })
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role: "EMPLOYEE", attendanceParticipant: true, attendanceExcluded: false, name: "Fictional employee", canPlanOwnRoutes: false } as never)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }] as never)
+    const response = await GET(request())
+    expect(response.status).toBe(200)
+    const json = await response.json()
+    expect(json.data.policies.agentPermissions).toMatchObject({ attendanceRequests: true, attendanceWorkday: true })
+    expect(json.data.policies.attendanceMarkVersion).toBe(1)
+    expect(json.data.modules.routeField.enabled).toBe(false)
+    expect(json.data.routeTargetTypes).toEqual([])
+    expect(json.data.sync.streams).toBeUndefined()
+    expect(prisma.mtmAgentWorkday.findFirst).toHaveBeenCalled()
+  })
+  it("gives no attendance to a tenant with routes but without Personnel", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...mobileAuth("AGENT"), tenantCapabilities: { routeField: true, workforceHrm: false, personnel: false } })
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role: "AGENT", attendanceParticipant: true, attendanceExcluded: false, name: "Fictional agent", canPlanOwnRoutes: true } as never)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }] as never)
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.agentPermissions).toMatchObject({ attendanceRequests: false, attendanceWorkday: false })
+    expect(json.data.modules.routeField.enabled).toBe(true)
   })
   it("returns tenant, principal, capabilities and explicit unversioned state", async () => {
     const response = await GET(request())
@@ -422,6 +447,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       workforce: { enabled: true },
     })
     expect(json.data.routeTargetTypes).toEqual([])
+    expect(json.data.sync.streams).toBeUndefined()
     expect(json.data.permissions).toEqual(["WORKTIME_SELF_READ", "WORKTIME_SELF_MUTATE"])
     expect(json.data.sync.streams).toBeUndefined()
     expect(prisma.mtmAgentWorkday.findFirst).toHaveBeenCalledTimes(1)
@@ -880,6 +906,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(json.data.permissions).toEqual(["WORKTIME_SELF_READ", "WORKTIME_SELF_MUTATE"])
     expect(json.data.policies).toMatchObject({ canPlanOwnRoutes: false, workforce: { enabled: true } })
     expect(json.data.routeTargetTypes).toEqual([])
+    expect(json.data.sync.streams).toBeUndefined()
   })
 
   it("preserves workday bootstrap data for an old MTM-only tenant", async () => {

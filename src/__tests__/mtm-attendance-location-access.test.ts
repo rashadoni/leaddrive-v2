@@ -11,7 +11,7 @@ const request=(body?:unknown)=>new NextRequest("http://localhost/api/v2/mtm/mobi
 const consent={requestId:"ec2f6acb-f55f-4717-ae23-bec9790ebc14",policyRevisionId:"fictional-policy",expectedConsentId:null,accepted:true}
 beforeEach(()=>{
  vi.resetAllMocks()
- vi.mocked(resolveMobileAuth).mockResolvedValue({orgId:"fictional-org",agentId:"fictional-office",role:"EMPLOYEE",tenantCapabilities:{routeField:true,workforceHrm:false}} as never)
+ vi.mocked(resolveMobileAuth).mockResolvedValue({orgId:"fictional-org",agentId:"fictional-office",role:"EMPLOYEE",tenantCapabilities:{routeField:true,workforceHrm:false,personnel:true}} as never)
  vi.mocked(prisma.$transaction).mockImplementation((async(callback:(tx:typeof prisma)=>unknown)=>callback(prisma)) as never)
  vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{key:"attendanceEnabled",value:true}] as never)
  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({id:"fictional-office",role:"EMPLOYEE",attendanceParticipant:true} as never)

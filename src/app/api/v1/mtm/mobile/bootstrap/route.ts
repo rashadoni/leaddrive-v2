@@ -316,12 +316,12 @@ export const GET = withMobileRls(async (req, auth) => {
     if (!agent || !organization) {
       return NextResponse.json({ error: "Mobile principal is no longer active" }, { status: 403 })
     }
-    if (!auth.tenantCapabilities.routeField && !auth.tenantCapabilities.workforceHrm) {
+    if (!auth.tenantCapabilities.routeField && !auth.tenantCapabilities.workforceHrm && auth.tenantCapabilities.personnel !== true) {
       return NextResponse.json({
         success: false,
         code: "TENANT_CAPABILITY_DISABLED",
         capabilityId: null,
-        error: "Route & Field or Workforce HRM is not enabled for this tenant.",
+        error: "Route & Field, Workforce HRM or Personnel is not enabled for this tenant.",
       }, { status: 403 })
     }
 
@@ -394,8 +394,11 @@ export const GET = withMobileRls(async (req, auth) => {
     // policy, requests, timesheets, or team data. When Workforce is enabled
     // its stricter read permission continues to provide the same canonical
     // workday projection.
-    const attendanceSelf = routeFieldEnabled && mayUseAttendanceSelf(auth.role, settings.attendanceEnabled, agent.attendanceParticipant, agent.attendanceExcluded)
-    const fieldSessionEnabled = routeFieldEnabled && (auth.role === "AGENT" || attendanceSelf)
+    // Own attendance (requests; marks for office staff) is the Personnel
+    // module, sold apart from routes since 2026-10-14. A field agent's day is
+    // still its Route & Field session.
+    const attendanceSelf = auth.tenantCapabilities.personnel === true && mayUseAttendanceSelf(auth.role, settings.attendanceEnabled, agent.attendanceParticipant, agent.attendanceExcluded)
+    const fieldSessionEnabled = auth.role === "AGENT" ? routeFieldEnabled : attendanceSelf
     // A field agent keeps HR requests (leave, sick leave) but its day is not an
     // HR attendance mark (owner, 2026-10-14): no mark envelope, location
     // consent, phone approval or branch QR. Its "Start day" is the field session above.

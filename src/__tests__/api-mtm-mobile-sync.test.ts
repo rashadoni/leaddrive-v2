@@ -42,7 +42,7 @@ const AUTH_CONTEXT = {
   orgId: ORG,
   agentId: AGENT_ID,
   role: "AGENT",
-  tenantCapabilities: { routeField: true, workforceHrm: true },
+  tenantCapabilities: { routeField: true, workforceHrm: true, personnel: true },
 }
 
 function makePullReq(qs = ""): NextRequest {
@@ -825,7 +825,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
   it("replays a pinned own field-session workday after Workforce is disabled", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...AUTH_CONTEXT,
-      tenantCapabilities: { routeField: true, workforceHrm: false },
+      tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true },
     } as never)
     const persisted = {
       serverId: "workday-pinned-1",
@@ -2827,7 +2827,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
   it("does not leak an unrelated field-session winner through a Routes-only replay race", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...AUTH_CONTEXT,
-      tenantCapabilities: { routeField: true, workforceHrm: false },
+      tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true },
     } as never)
     vi.mocked(prisma.mtmVisit.create).mockResolvedValue({
       id: "visit-local",
@@ -3289,7 +3289,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     const occurredAt = new Date(Date.now() - 60_000).toISOString()
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...AUTH_CONTEXT,
-      tenantCapabilities: { routeField: true, workforceHrm: false },
+      tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true },
     } as never)
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.mtmAgentWorkday.create).mockResolvedValue({
@@ -3975,7 +3975,7 @@ describe("POST /api/v1/mtm/mobile/sync/push — activity audit rows", () => {
 describe("explicit attendance enrollment through the live workday path", () => {
   const operation = () => ({ operationId: "office-workday-start", entity: "workdays", op: "create", data: { action: "START", id: "office-workday", occurredAt: new Date().toISOString() }, clientTimestamp: Date.now() })
   function enrolled(role = "EMPLOYEE") {
-    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role, tenantCapabilities: { routeField: true, workforceHrm: false } } as never)
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
     vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }, { key: "timezone", value: "Asia/Baku" }] as never)
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT_ID, role, attendanceParticipant: true } as never)
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(null)
@@ -3993,6 +3993,25 @@ describe("explicit attendance enrollment through the live workday path", () => {
     expect(evaluateWorkforceMobileWriteAccess).not.toHaveBeenCalled()
     expect(prisma.mtmSyncOperation.create).toHaveBeenCalledTimes(1)
   })
+  it.each(["EMPLOYEE", "MANAGER"])("accepts the %s owner's workday for a Personnel-only tenant and refuses its field write", async role => {
+    // Personnel is sold apart from routes (owner, 2026-10-14).
+    enrolled(role)
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role, tenantCapabilities: { routeField: false, workforceHrm: false, personnel: true } } as never)
+    const response = await PushPOST(makePushReq({ operations: [operation(), { operationId: "office-field-write", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now() }] }))
+    expect(response.status).toBe(200)
+    expect((await response.json()).results).toMatchObject([{ status: "ok", serverId: "office-workday" }, { status: "error" }])
+    expect(prisma.mtmAgentWorkday.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmVisit.create).not.toHaveBeenCalled()
+    expect(evaluateWorkforceMobileWriteAccess).not.toHaveBeenCalled()
+  })
+  it("refuses an office workday when the tenant has routes but not Personnel", async () => {
+    enrolled("EMPLOYEE")
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role: "MANAGER", tenantCapabilities: { routeField: true, workforceHrm: false, personnel: false } } as never)
+    const response = await PushPOST(makePushReq({ operations: [operation()] }))
+    // Without its own attendance the manager is a field principal without FIELD_EXECUTE.
+    expect(response.status).toBe(403)
+    expect(prisma.mtmAgentWorkday.create).not.toHaveBeenCalled()
+  })
   it("accepts an excluded field employee's queued workday without recording stale attendance evidence", async () => {
     enrolled("AGENT")
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT_ID, role: "AGENT", attendanceParticipant: true, attendanceExcluded: true } as never)
@@ -4009,7 +4028,7 @@ describe("explicit attendance enrollment through the live workday path", () => {
   })
   it("preserves the Workforce fence when both capabilities are present", async () => {
     enrolled()
-    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role: "EMPLOYEE", tenantCapabilities: { routeField: true, workforceHrm: true } } as never)
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role: "EMPLOYEE", tenantCapabilities: { routeField: true, workforceHrm: true, personnel: true } } as never)
     vi.mocked(evaluateWorkforceMobileWriteAccess).mockResolvedValue({ allowed: false, mode: "DENIED", code: "WORKFORCE_MOBILE_WRITE_DISABLED", message: "Fixture disabled" } as never)
     const response = await PushPOST(makePushReq({ operations: [operation()] }))
     expect((await response.json()).results).toMatchObject([{ status: "error", serverData: { code: "WORKFORCE_MOBILE_WRITE_DISABLED" } }])
@@ -4017,7 +4036,7 @@ describe("explicit attendance enrollment through the live workday path", () => {
   })
   it("never lets the office role replay or create a retired HRM operation when both flags are present", async () => {
     enrolled()
-    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role: "EMPLOYEE", tenantCapabilities: { routeField: true, workforceHrm: true } } as never)
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role: "EMPLOYEE", tenantCapabilities: { routeField: true, workforceHrm: true, personnel: true } } as never)
     vi.mocked(prisma.mtmSyncOperation.findMany).mockResolvedValue([{ operationId: "office-workday-start", entity: "workdays", status: "ok", result: { serverId: "office-workday" } }, { operationId: "office-retired-hrm", entity: "hrmRequests", status: "ok", result: { serverData: { privateOldHrmResult: "hidden" } } }] as never)
     const response = await PushPOST(makePushReq({ operations: [operation(), ...["office-retired-hrm", "office-new-hrm"].map(operationId => ({ operationId, entity: "hrmRequests", op: "create", data: {}, clientTimestamp: Date.now() }))] }))
     const body = await response.json()

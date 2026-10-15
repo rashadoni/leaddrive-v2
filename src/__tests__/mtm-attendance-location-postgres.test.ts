@@ -16,7 +16,7 @@ const adminUrl=process.env.MTM_ATTENDANCE_TEST_DATABASE_URL
 if(!adminUrl&&process.env.MTM_ATTENDANCE_DB_GATE==="required")throw new Error("MTM_ATTENDANCE_TEST_DATABASE_URL is required")
 const scratch=vi.hoisted(()=>{const admin=process.env.MTM_ATTENDANCE_TEST_DATABASE_URL;if(!admin)return null;const name=`mtm_geo_${process.pid}_${Date.now()}`,role=`${name}_app`;const url=new URL(admin);url.pathname=`/${name}`;const app=new URL(url);app.username=role;app.password="geo-fixture-only";process.env.DATABASE_URL=app.toString();return{name,role,adminDb:url.toString()}})
 const identity=vi.hoisted(()=>({orgId:"geo-fixture-a",agentId:"",role:"EMPLOYEE"}))
-vi.mock("@/lib/mobile-auth",()=>({resolveMobileAuth:async(req:Request)=>({...identity,...(req.headers.get("x-fixture-agent")?{agentId:req.headers.get("x-fixture-agent")!}:{}),tenantCapabilities:{routeField:true,workforceHrm:false}})}))
+vi.mock("@/lib/mobile-auth",()=>({resolveMobileAuth:async(req:Request)=>({...identity,...(req.headers.get("x-fixture-agent")?{agentId:req.headers.get("x-fixture-agent")!}:{}),tenantCapabilities:{routeField:true,workforceHrm:false,personnel:true}})}))
 vi.mock("@/lib/public-abuse-guard",async()=>{
  const actual=await vi.importActual<typeof import("@/lib/public-abuse-guard")>("@/lib/public-abuse-guard")
  return {...actual,consumePublicRateLimit:vi.fn(async()=>({allowed:true,retryAfterSeconds:0,unavailable:false}))}

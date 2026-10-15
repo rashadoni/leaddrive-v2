@@ -7,7 +7,7 @@ import { readOwnAttendanceInstallation, submitAttendanceInstallation } from "@/l
 export const GET = withMobileRls(async (req, auth) => {
   try { return attendanceRequestResponse(await readOwnAttendanceInstallation({ organizationId: auth.orgId, agentId: auth.agentId, role: auth.role }, req.headers.get("x-field-device-id"))) }
   catch (error) { return attendanceRequestFailure(error) }
-}, { requiredCapability: "route-field" })
+}, { requiredCapability: "personnel" })
 export const POST = withMobileRls(async (req, auth) => {
   try {
     const body = await readJsonRequestWithinLimit(req, 4096)
@@ -19,4 +19,4 @@ export const POST = withMobileRls(async (req, auth) => {
     }
     return attendanceRequestFailure(error)
   }
-}, { requiredCapability: "route-field" })
+}, { requiredCapability: "personnel" })

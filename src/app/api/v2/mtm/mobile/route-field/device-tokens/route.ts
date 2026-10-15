@@ -131,7 +131,7 @@ export const POST = withMobileRls(async (req, auth) => {
   // agent who believes the phone will buzz stops opening the app.
   return NextResponse.json({ success: true, data: { ...saved, pushEnabled: pushConfigured() } })
   })
-}, { requiredCapability: "route-field" })
+}, { requiredCapability: ["route-field", "personnel"] })
 
 export const DELETE = withMobileRls(async (req, auth) => {
   const permission = auth.role === "AGENT" ? requireMobilePermission(auth, "ROUTE_EXECUTE") : null
@@ -154,4 +154,4 @@ export const DELETE = withMobileRls(async (req, auth) => {
 
   return NextResponse.json({ success: true, data: { removed: removed.count } })
   })
-}, { requiredCapability: "route-field" })
+}, { requiredCapability: ["route-field", "personnel"] })
