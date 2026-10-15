@@ -116,7 +116,7 @@ describe("automatic employee participation and immutable history UI", () => {
   })
   it("handles empty data and bounds roster/history DOM without truncating access to records", async () => {
     directory.users = []; directory.employees = []; await render(); expect(container.textContent).toContain(t("employeesEmpty"))
-    directory.employees = Array.from({ length: 300 }, (_, i) => ({ id: `employee-${i}`, name: `Demo ${i}`, role: "AGENT", status: "ACTIVE", teamName: null, included: i >= 15, participationVersion: null, includedFrom: null, history: Array.from({ length: 22 }, (_, j) => ({ id: `event-${j}`, kind: "HIRE" as const, date: "2026-10-01", at: "2026-09-30T20:00:00Z", byName: null })) }))
+    directory.employees = Array.from({ length: 300 }, (_, i) => ({ id: `employee-${i}`, name: `Demo ${i}`, role: "AGENT", status: "ACTIVE", teamName: null, position: null, teamId: null, managerId: null, included: i >= 15, participationVersion: null, includedFrom: null, history: Array.from({ length: 22 }, (_, j) => ({ id: `event-${j}`, kind: "HIRE" as const, date: "2026-10-01", at: "2026-09-30T20:00:00Z", byName: null })) }))
     await click("employeesRefresh"); expect(container.querySelectorAll('[data-testid="employee-row"]')).toHaveLength(25); await click("employeesNext"); expect(container.textContent).toContain("Demo 25"); await openHistory(); expect(container.querySelectorAll('[data-testid="employment-event"]')).toHaveLength(20)
     expect(container.textContent).toContain(t("employeesParticipationCounts", { total: 300, included: 285, excluded: 15 }))
     await edit("employee-search", "Demo 299"); expect(container.querySelectorAll('[data-testid="employee-row"]')).toHaveLength(1)
