@@ -37,7 +37,9 @@ and is only a selector, never an opt-in. Tenant and agent always come from
 authentication. It accepts `1..50` points and a JSON envelope no larger than
 256 KiB. Every point needs a
 unique `clientLocationId`, valid coordinates/metrics and a timestamp no more
-than seven days old or five minutes in the future. The server resolves the
+than seven days old or five minutes in the future. `speed` is km/h (0–500), as
+every other write path stores it: the phone converts Android's m/s before it
+sends (`src/lib/mtm/gps-speed.ts`). The server resolves the
 active workday (or validates the supplied one) and checks the window both
 before and inside the write transaction.
 
@@ -113,7 +115,7 @@ The same projection row holds the agent's current stop — `stationarySince`,
 `stationaryLatitude`, `stationaryLongitude`, `stationaryConfirmedAt` — which is
 what the live map reads for «стоит N минут» (`src/lib/mtm/stationary-anchor.ts`).
 Every write decides it from the incoming point alone: a moving point (the
-phone's flag, or speed above 1 m/s) clears the four columns, whatever its
+phone's flag, or speed above 1 km/h) clears the four columns, whatever its
 accuracy; a still point with accuracy worse than 100 m leaves them untouched;
 a still, accurate point confirms the stop (writes `stationaryConfirmedAt` only)
 while it is within 50 m of where the stop began and no more than 10 minutes

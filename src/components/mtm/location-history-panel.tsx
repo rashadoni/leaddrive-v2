@@ -14,6 +14,7 @@ import { formatTime } from "@/lib/format-date"
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { addDays, clampHistoryEndDate, MAX_RANGE_DAYS } from "@/lib/mtm/history-range"
 import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
+import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 import { DayTripLedger, type DayTripData, type DayTripFocus } from "@/components/mtm/day-trip-ledger"
 
@@ -250,6 +251,8 @@ function distanceLabel(meters: number | null, unavailable: string): string {
 export function LocationHistoryPanel() {
   const locale = useLocale()
   const t = useTranslations("mtmMap.history")
+  // The speed reads in the live map's words, so one fix says the same on both screens.
+  const tMap = useTranslations("mtmMap")
   const [agents, setAgents] = useState<RosterAgent[]>([])
   const [timezone, setTimezone] = useState("Asia/Baku")
   const [agentId, setAgentId] = useState("")
@@ -414,6 +417,7 @@ export function LocationHistoryPanel() {
   const playbackPointCount = data?.points.length ?? 0
   const playbackLastIndex = Math.max(0, playbackPointCount - 1)
   const playbackPoint = data?.points[Math.min(playbackIndex, playbackLastIndex)] ?? null
+  const playbackSpeedKmh = mtmSpeedKmh(playbackPoint?.speed)
   const playbackAtMillis = playbackPoint ? new Date(playbackPoint.recordedAt).getTime() : Number.POSITIVE_INFINITY
   const activeTimelineIndex = data?.timeline.reduce(
     (lastIndex, event, index) => new Date(event.at).getTime() <= playbackAtMillis ? index : lastIndex,
@@ -696,7 +700,7 @@ export function LocationHistoryPanel() {
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 <span>{t("accuracy")}: {playbackPoint.accuracy == null ? "—" : `${Math.round(playbackPoint.accuracy)} m`}</span>
                 <span>{t("battery")}: {playbackPoint.battery == null ? "—" : `${Math.round(playbackPoint.battery)}%`}</span>
-                <span>{t("gpsSpeed")}: {playbackPoint.speed == null ? "—" : `${Math.max(0, playbackPoint.speed * 3.6).toFixed(1)} km/h`}</span>
+                <span>{t("gpsSpeed")}: {playbackSpeedKmh == null ? "—" : tMap("roster.kmh", { value: playbackSpeedKmh })}</span>
                 <span>{playbackPoint.isMoving ? t("moving") : t("stationary")}</span>
               </div>
             )}
