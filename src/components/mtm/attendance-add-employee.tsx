@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl"
 import { MessageCircle, UserPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { MtmAttendanceDepartmentField, departmentPayload, type DepartmentValue } from "@/components/mtm/attendance-department-field"
+import { ATTENDANCE_EMPLOYEE_POSITION_MAX } from "@/lib/mtm/attendance-employee-contract"
 
 const ENDPOINT = "/api/v1/mtm/attendance/employees/new"
 const ERRORS: Record<string, string> = {
@@ -14,8 +16,8 @@ const ERRORS: Record<string, string> = {
   MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN: "addEmployeePhoneTaken",
   MTM_ATTENDANCE_EMPLOYEE_USER_LIMIT: "addEmployeeUserLimit",
 }
-type Form = { name: string; phone: string; email: string }
-const empty: Form = { name: "", phone: "+994", email: "" }
+type Form = { name: string; phone: string; email: string; position: string; department: DepartmentValue; hireDate: string }
+const empty: Form = { name: "", phone: "+994", email: "", position: "", department: { teamId: "", newTeamName: "" }, hireDate: "" }
 /** What the server accepts: «+», a country code, at most 15 digits; spaces and dashes are fine. */
 const internationalPhone = (value: string) => /^\+[1-9]\d{6,14}$/.test(value.replace(/[\s\-()]/g, ""))
 
@@ -26,11 +28,11 @@ const internationalPhone = (value: string) => /^\+[1-9]\d{6,14}$/.test(value.rep
  * WhatsApp and sets their own (owner: «чтоб сами назначали, а кадровик не
  * занимался этой рутиной»). In the CRM they see nothing (every module hidden).
  */
-export function MtmAttendanceAddEmployee({ disabled, onAdded }: { disabled: boolean; onAdded: (name: string, phone: string) => void }) {
+export function MtmAttendanceAddEmployee({ disabled, teams, onAdded }: { disabled: boolean; teams: ReadonlyArray<{ id: string; name: string }>; onAdded: (name: string, phone: string) => void }) {
   const p = useTranslations("personnel")
   const [open, setOpen] = useState(false), [form, setForm] = useState<Form>(empty)
   const [saving, setSaving] = useState(false), [error, setError] = useState<string | null>(null)
-  const set = (key: keyof Form) => (value: string) => { setForm(current => ({ ...current, [key]: value })); setError(null) }
+  const set = <K extends keyof Form>(key: K) => (value: Form[K]) => { setForm(current => ({ ...current, [key]: value })); setError(null) }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -39,7 +41,8 @@ export function MtmAttendanceAddEmployee({ disabled, onAdded }: { disabled: bool
     setSaving(true); setError(null)
     try {
       const response = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: form.name, phone: form.phone.trim(), email: form.email.trim() || null }) })
+        body: JSON.stringify({ name: form.name, phone: form.phone.trim(), email: form.email.trim() || null,
+          position: form.position.trim() || null, ...departmentPayload(form.department), hireDate: form.hireDate || null }) })
       const body = await response.json().catch(() => null)
       if (response.status === 201 && body?.success === true) {
         const { name, phone } = form
@@ -61,6 +64,10 @@ export function MtmAttendanceAddEmployee({ disabled, onAdded }: { disabled: bool
     <div className="grid gap-4 md:grid-cols-2">
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeeName")}</span><Input required maxLength={200} className="min-h-11" autoComplete="off" value={form.name} onChange={event => set("name")(event.target.value)} /></label>
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeePhone")}</span><Input required type="tel" inputMode="tel" placeholder="+994501234567" maxLength={24} className="min-h-11" autoComplete="off" value={form.phone} onChange={event => set("phone")(event.target.value)} data-testid="attendance-add-employee-phone" /></label>
+      <label className="space-y-2 text-sm font-medium"><span>{p("employeeCardPosition")}</span><Input maxLength={ATTENDANCE_EMPLOYEE_POSITION_MAX} className="min-h-11" autoComplete="off" placeholder={p("employeeCardPositionPlaceholder")} value={form.position} onChange={event => set("position")(event.target.value)} /></label>
+      <MtmAttendanceDepartmentField id="add-employee-department" teams={teams} value={form.department} onChange={set("department")} />
+      <label className="space-y-2 text-sm font-medium"><span>{p("employeeCardHired")}</span><Input type="date" className="min-h-11" value={form.hireDate} onChange={event => set("hireDate")(event.target.value)} />
+        <span className="block text-xs font-normal text-muted-foreground">{p("addEmployeeHireHint")}</span></label>
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeeEmail")}</span><Input type="email" maxLength={320} className="min-h-11" autoComplete="off" value={form.email} onChange={event => set("email")(event.target.value)} /></label>
     </div>
     <p className="flex max-w-prose items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" data-testid="attendance-add-employee-code-note">

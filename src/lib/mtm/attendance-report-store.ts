@@ -61,7 +61,7 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
         ...(query.employeeId ? { AND: { id: query.employeeId } } : {}),
         ...(query.teamId ? { teamId: query.teamId } : {}),
       },
-      select: { id: true, name: true, teamId: true, attendanceIncludedFrom: true },
+      select: { id: true, name: true, position: true, teamId: true, attendanceIncludedFrom: true },
       orderBy: [{ name: "asc" }, { id: "asc" }],
       take: Math.floor(MTM_ATTENDANCE_REPORT_MAX_ROWS / days) + 1,
     })

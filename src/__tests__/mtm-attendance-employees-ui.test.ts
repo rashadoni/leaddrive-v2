@@ -19,7 +19,7 @@ const postCalls = () => fetchMock.mock.calls.filter(([, options]) => options?.me
 async function render(language = locale) { locale = language; const props = { locale, messages: messages[locale], timeZone: "Asia/Baku", children: createElement(MtmAttendanceEmployees) }; await act(async () => root.render(createElement(NextIntlClientProvider, props))) }
 const field = (id: string) => container.querySelector<HTMLInputElement | HTMLSelectElement>(`#${id}`)!
 async function edit(id: string, value: string) { await act(async () => { const input = field(id); Object.getOwnPropertyDescriptor(input.tagName === "SELECT" ? HTMLSelectElement.prototype : HTMLInputElement.prototype, "value")!.set!.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true })); input.dispatchEvent(new Event("change", { bubbles: true })) }) }
-async function submit() { await act(async () => container.querySelector('[data-testid="employees-history"] form')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))) }
+async function submit() { await act(async () => container.querySelector(`[data-testid="employees-history"] form[aria-label="${t("employeesRecordChange")}"]`)!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))) }
 async function toggle(index = 0) { await act(async () => container.querySelectorAll<HTMLButtonElement>('[role="switch"]')[index].click()) }
 async function openHistory(index = 0) { await act(async () => container.querySelectorAll<HTMLButtonElement>('[data-testid="employee-row"] button:not([role="switch"])')[index].click()) }
 function capture() {
@@ -31,9 +31,10 @@ function capture() {
 }
 beforeEach(() => {
   locale = "ru"; unmounted = false; container = document.createElement("div"); document.body.append(container); root = createRoot(container)
-  directory = { timezone: "Asia/Baku", users: [{ id: "user-leyla", name: "Leyla Demo", existingRole: null, existingTeamId: null, eligible: true }, { id: "user-rauf", name: "Rauf Demo", existingRole: "MANAGER", existingTeamId: "team-centre", eligible: true }, { id: "ineligible", name: "Hidden Demo", existingRole: "AGENT", existingTeamId: null, eligible: false }], teams: [{ id: "team-centre", name: "Demo Centre" }, { id: "team-north", name: "Demo North" }], employees: [
-    { id: "employee-aylin", name: "Aylin Demo", role: "EMPLOYEE", teamName: "Demo Centre", status: "ACTIVE", included: true, participationVersion: null, includedFrom: null, history: [{ id: "hire-1", kind: "HIRE", date: "2026-10-01", at: "2026-09-30T20:00:00.000Z", byName: "Rauf Demo" }] },
-    { id: "employee-murad", name: "Murad Demo", role: "AGENT", teamName: "Demo North", status: "ACTIVE", included: true, participationVersion: null, includedFrom: null, history: [] },
+  directory = { timezone: "Asia/Baku", users: [{ id: "user-leyla", name: "Leyla Demo", existingRole: null, existingTeamId: null, eligible: true }, { id: "user-rauf", name: "Rauf Demo", existingRole: "MANAGER", existingTeamId: "team-centre", eligible: true }, { id: "ineligible", name: "Hidden Demo", existingRole: "AGENT", existingTeamId: null, eligible: false }], teams: [{ id: "team-centre", name: "Demo Centre" }, { id: "team-north", name: "Demo North" }],
+    managers: [{ id: "manager-rauf", name: "Rauf Demo", position: "Руководитель отдела" }, { id: "employee-murad", name: "Murad Demo", position: null }], employees: [
+    { id: "employee-aylin", name: "Aylin Demo", role: "EMPLOYEE", teamName: "Demo Centre", position: "Бухгалтер", teamId: "team-centre", managerId: null, status: "ACTIVE", included: true, participationVersion: null, includedFrom: null, history: [{ id: "hire-1", kind: "HIRE", date: "2026-10-01", at: "2026-09-30T20:00:00.000Z", byName: "Rauf Demo" }] },
+    { id: "employee-murad", name: "Murad Demo", role: "AGENT", teamName: "Demo North", position: null, teamId: "team-north", managerId: null, status: "ACTIVE", included: true, participationVersion: null, includedFrom: null, history: [] },
   ] }
   fetchMock.mockReset(); fetchMock.mockImplementation(async (_url, options) => options?.method === "POST" ? response({ eventId: "new-event", idempotent: false }) : response(directory)); vi.stubGlobal("fetch", fetchMock)
 })
@@ -71,7 +72,9 @@ describe("automatic employee participation and immutable history UI", () => {
   it("records termination with the last known immutable event and explicit last working day", async () => {
     await render(); await openHistory(); expect(field("employment-date").value).toBe(""); expect(field("employment-kind").value).toBe("TERMINATION")
     await edit("employment-date", "2026-10-31"); await edit("employment-reason", "Fictional termination"); await submit()
-    expect(postCalls()[0][0]).toBe("/api/v1/mtm/attendance/employees/history"); expect(JSON.parse(postCalls()[0][1]!.body as string)).toMatchObject({ agentId: "employee-aylin", kind: "TERMINATION", date: "2026-10-31", previousEventId: "hire-1" }); expect(container.querySelector('[data-testid="employees-history"]')).toBeNull()
+    expect(postCalls()[0][0]).toBe("/api/v1/mtm/attendance/employees/history"); expect(JSON.parse(postCalls()[0][1]!.body as string)).toMatchObject({ agentId: "employee-aylin", kind: "TERMINATION", date: "2026-10-31", previousEventId: "hire-1" })
+    // The card stays open on the fresh data, so HR sees the record it just made.
+    expect(container.querySelector('[data-testid="employees-history"]')).not.toBeNull(); expect(container.textContent).toContain(t("employeesSaved"))
   })
   it("records the first HIRE without inventing a prior event", async () => {
     await render(); await openHistory(1); expect(field("employment-kind").value).toBe("HIRE"); await edit("employment-date", "2026-10-01"); await edit("employment-reason", "Fictional hire"); await submit()
@@ -113,7 +116,7 @@ describe("automatic employee participation and immutable history UI", () => {
   })
   it("handles empty data and bounds roster/history DOM without truncating access to records", async () => {
     directory.users = []; directory.employees = []; await render(); expect(container.textContent).toContain(t("employeesEmpty"))
-    directory.employees = Array.from({ length: 300 }, (_, i) => ({ id: `employee-${i}`, name: `Demo ${i}`, role: "AGENT", status: "ACTIVE", teamName: null, included: i >= 15, participationVersion: null, includedFrom: null, history: Array.from({ length: 22 }, (_, j) => ({ id: `event-${j}`, kind: "HIRE" as const, date: "2026-10-01", at: "2026-09-30T20:00:00Z", byName: null })) }))
+    directory.employees = Array.from({ length: 300 }, (_, i) => ({ id: `employee-${i}`, name: `Demo ${i}`, role: "AGENT", status: "ACTIVE", teamName: null, position: null, teamId: null, managerId: null, included: i >= 15, participationVersion: null, includedFrom: null, history: Array.from({ length: 22 }, (_, j) => ({ id: `event-${j}`, kind: "HIRE" as const, date: "2026-10-01", at: "2026-09-30T20:00:00Z", byName: null })) }))
     await click("employeesRefresh"); expect(container.querySelectorAll('[data-testid="employee-row"]')).toHaveLength(25); await click("employeesNext"); expect(container.textContent).toContain("Demo 25"); await openHistory(); expect(container.querySelectorAll('[data-testid="employment-event"]')).toHaveLength(20)
     expect(container.textContent).toContain(t("employeesParticipationCounts", { total: 300, included: 285, excluded: 15 }))
     await edit("employee-search", "Demo 299"); expect(container.querySelectorAll('[data-testid="employee-row"]')).toHaveLength(1)
@@ -142,6 +145,45 @@ describe("automatic employee participation and immutable history UI", () => {
 })
 
 // Owner, 2026-10-15: HR adds office staff right here, apart from MTM agents.
+// Owner, 2026-10-15: the employee card — position, department, manager, hire date.
+describe("Employee card", () => {
+  const p = (key: string, values?: Record<string, string | number>) => createTranslator({ locale, messages: messages[locale], namespace: "personnel" })(key, values)
+  const cards = () => postCalls().filter(([url]) => String(url).endsWith("/employees/card"))
+  async function save() { await act(async () => container.querySelector('[data-testid="employee-card"]')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))) }
+
+  it("shows position and department in the roster and saves the card, staying open", async () => {
+    await render()
+    expect(container.querySelector('[data-testid="employee-row"]')!.textContent).toContain("Бухгалтер · Demo Centre")
+    await openHistory()
+    expect(container.querySelector('[data-testid="employees-history"]')!.textContent).toContain(p("employeeCardTitle", { name: "Aylin Demo" }))
+    expect(field("employee-card-position").value).toBe("Бухгалтер"); expect(field("employee-card-department").value).toBe("team-centre")
+    expect(container.querySelector('[data-testid="employee-card-hire"]')!.textContent).toContain("2026")
+    await edit("employee-card-position", "  Главный бухгалтер "); await edit("employee-card-manager", "manager-rauf"); await save()
+    expect(cards()).toHaveLength(1)
+    expect(JSON.parse(String(cards()[0][1]!.body))).toEqual({ agentId: "employee-aylin", position: "Главный бухгалтер", teamId: "team-centre", managerId: "manager-rauf" })
+    expect(container.querySelector('[data-testid="employee-card"]')).not.toBeNull(); expect(container.textContent).toContain(p("employeeCardSaved"))
+  })
+
+  it("never offers the employee as their own manager, and types a new department by name", async () => {
+    await render(); await openHistory(1)
+    const managers = [...field("employee-card-manager").querySelectorAll("option")].map(option => option.value)
+    expect(managers).toEqual(["", "manager-rauf"])
+    expect(container.querySelector('[data-testid="employee-card-hire"]')!.textContent).toContain(p("employeeCardHireMissing"))
+    await edit("employee-card-department", "__new")
+    const name = container.querySelector<HTMLInputElement>(`input[aria-label="${p("employeeCardNewDepartmentName")}"]`)!
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(name, " Склад "); name.dispatchEvent(new Event("input", { bubbles: true })) })
+    await save()
+    expect(JSON.parse(String(cards()[0][1]!.body))).toEqual({ agentId: "employee-murad", position: null, teamId: null, newTeamName: "Склад", managerId: null })
+  })
+
+  it("explains a refused manager in words, without a retry button", async () => {
+    await render(); await openHistory()
+    fetchMock.mockImplementation(async (url, options) => options?.method === "POST" ? response(null, 422, "MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID") : response(directory))
+    await edit("employee-card-manager", "manager-rauf"); await save()
+    expect(container.textContent).toContain(t("employeesManagerInvalid")); expect(button("employeesCheckWrite")).toBeUndefined()
+  })
+})
+
 describe("Add employee", () => {
   const p = (key: string, values?: Record<string, string | number>) => createTranslator({ locale, messages: messages[locale], namespace: "personnel" })(key, values)
   const input = (label: string) => [...container.querySelectorAll("label")].find(node => node.querySelector("span")?.textContent === p(label))!.querySelector("input")!
@@ -162,18 +204,19 @@ describe("Add employee", () => {
     await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994 50 111 22 33")
     await send()
     expect(creates()).toHaveLength(1)
-    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994 50 111 22 33", email: null })
+    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994 50 111 22 33", email: null, position: null, teamId: null, hireDate: null })
     expect(container.querySelector('[data-testid="attendance-employee-added"]')!.textContent).toBe(p("addEmployeeDone", { name: "Nigar Demo", phone: "+994 50 111 22 33" }))
     expect(container.querySelector('[data-testid="attendance-add-employee-form"]')).toBeNull()
   })
 
-  it("sends the email when HR gives one", async () => {
+  it("sends the email, position, department and hire date when HR gives them", async () => {
     fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ success: true, data: { userId: "u-new", agentId: "a-new" } }), { status: 201 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
     await render()
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
     await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994501112233"); await type("addEmployeeEmail", "nigar@example.test")
+    await type("employeeCardPosition", "Кассир"); await type("employeeCardHired", "2026-10-01"); await edit("add-employee-department", "team-north")
     await send()
-    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994501112233", email: "nigar@example.test" })
+    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994501112233", email: "nigar@example.test", position: "Кассир", teamId: "team-north", hireDate: "2026-10-01" })
   })
 
   it("refuses a number without the country code on the spot", async () => {

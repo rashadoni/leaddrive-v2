@@ -45,7 +45,7 @@ describe("Report viewer", () => {
   const kinds = attendanceDayKindPresetCodes(defaultAttendanceDayKinds(key => ({ ru: ru.mtmAttendance[`dayKindName${key}`], az: "x", en: "x" })), "RU")
   const at = (date: string, time: string) => `${date}T${time}:00+04:00`
   const report = (from: string, to: string) => ({ ...buildMtmAttendanceReport({ from, to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
-    employees: [{ id: "nigar", name: "Нигяр", teamId: "centre", teamName: "Центр" }, { id: "rashad", name: "Рашад", teamId: "north", teamName: "Север" }],
+    employees: [{ id: "nigar", name: "Нигяр", position: "Бухгалтер", teamId: "centre", teamName: "Центр" }, { id: "rashad", name: "Рашад", teamId: "north", teamName: "Север" }],
     workdays: [{ id: "n", agentId: "nigar", workDate: "2026-10-13", status: "COMPLETED", startedAt: at("2026-10-13", "09:00"), completedAt: at("2026-10-13", "18:00"), totalPausedSeconds: 0,
       events: [{ type: "START", occurredAt: at("2026-10-13", "09:00") }, { type: "FINISH", occurredAt: at("2026-10-13", "18:00") }] }] }),
     snapshot: { id: "snap", asOf: "2026-10-14T08:00:00Z", query: { from, to, form: "ALL" } } })
@@ -78,9 +78,19 @@ describe("Report viewer", () => {
     expect(reportCalls().at(-1)?.searchParams.get("from")).toBe("2026-10-01")
     expect(reportCalls().at(-1)?.searchParams.get("to")).toBe("2026-10-31")
     const headers = [...container.querySelectorAll("th")].map(th => th.textContent)
-    expect(headers.slice(0, 3)).toEqual([ru.mtmAttendance.reportIndex, ru.mtmAttendance.reportEmployee, ru.mtmAttendance.reportTeam])
-    expect(headers).toHaveLength(3 + 31 + 3)
-    // The day columns read as day numbers on screen, so 31 of them fit the page.
-    expect(headers.slice(3, 34)).toEqual(Array.from({ length: 31 }, (_, index) => String(index + 1)))
+    // On screen position and department sit under the name and an empty notes
+    // column is not drawn, so 31 days fit the page; Excel and PDF keep every column.
+    expect(headers.slice(0, 2)).toEqual([ru.mtmAttendance.reportIndex, ru.mtmAttendance.reportEmployee])
+    expect(headers).toHaveLength(2 + 31 + 2)
+    // The day columns read as day numbers on screen.
+    expect(headers.slice(2, 33)).toEqual(Array.from({ length: 31 }, (_, index) => String(index + 1)))
+    const details = [...container.querySelectorAll('[data-testid="attendance-report-row"]')].map(row => row.querySelector('[data-testid="attendance-report-employee-details"]')?.textContent)
+    expect(details).toEqual(["Бухгалтер · Центр", "Север"])
+    // A worked day shows its code with the hours beneath, the whole text in its tooltip.
+    // Every day has the same shape (code line, hours line), so codes line up along the row.
+    const cells = [...container.querySelectorAll<HTMLElement>("td span[title]")]
+    const worked = cells.find(cell => / · /.test(cell.getAttribute("title")!))!, absent = cells.find(cell => !/ · /.test(cell.getAttribute("title")!))!
+    expect(worked.children).toHaveLength(2); expect(worked.children[1].textContent).not.toBe("")
+    expect(absent.children).toHaveLength(2); expect(absent.children[1].textContent).toBe("")
   })
 })

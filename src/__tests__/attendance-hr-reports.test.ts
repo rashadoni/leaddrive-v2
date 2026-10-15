@@ -20,7 +20,7 @@ const leave: AttendanceApprovedPeriod = { id: "leave", agentId: "rashad", startD
   details: { kind: "ANNUAL_LEAVE", unit: "DAYS", startTime: null, endTime: null, timezone: "Asia/Baku", dayKind: kinds.find(kind => kind.key === "ANNUAL_LEAVE")! } }
 // Mon 5 – Fri 9 October 2026. Nigar: four days, late on Tuesday; Rashad: Monday, Tuesday absent, two days of leave, Friday.
 const report = buildMtmAttendanceReport({ from: "2026-10-05", to: "2026-10-09", now: "2026-10-12T08:00:00Z", rules: [], calendar: [], dayKinds: kinds, approvedRequests: [leave],
-  employees: [{ id: "nigar", name: "Нигяр", teamId: "centre", teamName: "Центр" }, { id: "rashad", name: "Рашад", teamId: "north", teamName: "Север" }],
+  employees: [{ id: "nigar", name: "Нигяр", position: "Бухгалтер", teamId: "centre", teamName: "Центр" }, { id: "rashad", name: "Рашад", teamId: "north", teamName: "Север" }],
   workdays: [day("nigar", "2026-10-05", "09:00", "18:00"), day("nigar", "2026-10-06", "09:40", "18:00"), day("nigar", "2026-10-07", "09:00", "18:00"), day("nigar", "2026-10-08", "09:00", "18:00"),
     day("rashad", "2026-10-05", "09:00", "18:00"), day("rashad", "2026-10-09", "09:00", "17:00")] })
 const config = (mode: AttendanceViewConfig["mode"], columns: string[], filters: Partial<AttendanceViewConfig["filters"]> = {}) =>
@@ -59,10 +59,12 @@ describe("HR reports on the report engine", () => {
     expect(rowOf(table, "Центр")).toMatchObject({ employees: 1, workedDays: 4, lateCount: 1 })
   })
 
-  it("lays out «Forma N-1t»: number, name, unit, day codes, days and hours worked", () => {
+  it("lays out «Forma N-1t»: number, name, position, unit, day codes, days and hours worked", () => {
     const table = buildAttendanceTable(report, config("MONTH", [...ATTENDANCE_REPORTS.n1t.columns], { from: "2026-10-01", to: "2026-10-31" }), "ru", t)
     expect(table.title).toBe(ru.mtmAttendance.reportN1tTitle)
-    expect(table.columns.slice(0, 3).map(column => column.key)).toEqual(["index", "employee", "team"])
+    expect(table.columns.slice(0, 4).map(column => column.key)).toEqual(["index", "employee", "position", "team"])
+    expect(table.columns[2].label).toBe(ru.mtmAttendance.reportPosition)
+    expect(rowOf(table, "Нигяр").position).toBe("Бухгалтер"); expect(rowOf(table, "Рашад").position).toBe("—")
     expect(table.columns.filter(column => /^\d{4}-\d{2}-\d{2}$/.test(column.key))).toHaveLength(31)
     expect(table.rows.map(row => row.cells[0])).toEqual([1, 2])
     expect(rowOf(table, "Нигяр").workedDays).toBe(4)
