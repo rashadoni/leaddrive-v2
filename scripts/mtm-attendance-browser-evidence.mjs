@@ -34,7 +34,7 @@ const destinations = {
   decisions: ['timesheet?view=decisions', 'timesheet'], employees: ['people?tab=employees', 'people'], branches: ['people?tab=branches', 'people'],
   'branches/report': ['timesheet?view=branches', 'timesheet'], shifts: ['settings?tab=shifts', 'settings'], 'leave-balances': ['settings?tab=leave', 'settings'],
   months: ['timesheet?view=months', 'timesheet'], installations: ['people?tab=phones', 'people'], 'branch-qr': ['settings?tab=qr', 'settings'],
-  review: ['settings?tab=review', 'settings'], 'location-settings': ['settings?tab=location', 'settings'], recordings: ['recordings', null],
+  review: ['review', ''], 'location-settings': ['settings?tab=location', 'settings'], recordings: ['recordings', null],
   'day-kinds': ['settings?tab=day-kinds', 'settings'], 'request-limits': ['settings?tab=requests', 'settings'], 'hr-access': ['settings?tab=access', 'settings'],
 }
 const personnelHrefs = ['/mtm/attendance', '/mtm/attendance/timesheet', '/mtm/attendance/people', '/mtm/attendance/reports', '/mtm/attendance/settings']
@@ -867,7 +867,7 @@ try {
     // Settings is one page of cards (2026-10-14); a card opens its editor.
     await readyPage('settings?tab=')
     await page.getByTestId('attendance-settings-hub').waitFor({ timeout: 120000 })
-    assert.equal(await page.locator('[data-testid^="attendance-settings-card-"]').count(), 10)
+    assert.equal(await page.locator('[data-testid^="attendance-settings-card-"]').count(), 9)
     // The organization switch sits on top of Personnel → Settings (moved from MTM settings).
     await page.getByTestId('attendance-feature-on').waitFor({ timeout: 120000 })
     await page.getByTestId('attendance-settings-card-hours').click()

@@ -56,8 +56,8 @@ describe("Report viewer", () => {
   })
   beforeEach(() => { container = document.createElement("div"); document.body.append(container); root = createRoot(container); fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock) })
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals() })
-  async function render(key: "summary" | "n1t") {
-    await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "ru", timeZone: "Asia/Baku", messages: ru, children: createElement(MtmAttendanceReportViewer, { report: key }) })))
+  async function render(key: "summary" | "n1t" | "late", initialDate?: string) {
+    await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "ru", timeZone: "Asia/Baku", messages: ru, children: createElement(MtmAttendanceReportViewer, { report: key, initialDate }) })))
     for (let i = 0; i < 3; i++) await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
   }
   const reportCalls = () => fetchMock.mock.calls.map(([url]) => new URL(String(url), "https://crm.test")).filter(url => url.pathname.endsWith("/report"))
@@ -71,6 +71,12 @@ describe("Report viewer", () => {
     const team = container.querySelector<HTMLSelectElement>(`select[aria-label="${ru.mtmAttendance.reportTeam}"]`)!
     await act(async () => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(team, "north"); team.dispatchEvent(new Event("change", { bubbles: true })) })
     expect(rows()).toEqual(["Рашад"])
+  })
+
+  it("opens on the date a link names (Today → today's late arrivals)", async () => {
+    await render("late", "2026-10-07")
+    expect(reportCalls().at(-1)?.searchParams.get("from")).toBe("2026-10-07")
+    expect(reportCalls().at(-1)?.searchParams.get("to")).toBe("2026-10-07")
   })
 
   it("opens N-1t on the whole current month with day columns", async () => {

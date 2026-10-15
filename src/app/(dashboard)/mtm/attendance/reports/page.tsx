@@ -11,14 +11,16 @@ import type { AttendanceSearchParams } from "@/lib/mtm/attendance-legacy-redirec
  * `?report=<key>` opens one with its period, team and Excel/PDF. */
 export default async function PersonnelReportsPage({ searchParams }: { searchParams: AttendanceSearchParams }) {
   const t = await getTranslations("personnel")
-  const raw = (await searchParams).report
+  const params = await searchParams, raw = params.report
   const report = Array.isArray(raw) ? raw[0] : raw
+  // Today's cards link here for one date (e.g. today's late arrivals).
+  const date = Array.isArray(params.date) ? params.date[0] : params.date
   if (isAttendanceReportKey(report) && ATTENDANCE_REPORTS[report].kind !== "page") return <div className="space-y-5">
     <Link href="/mtm/attendance/reports" prefetch={false} className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary hover:underline" data-testid="attendance-back-to-reports">
       <ChevronLeft className="h-4 w-4" aria-hidden="true" />{t("reportsTitle")}</Link>
     {ATTENDANCE_REPORTS[report].kind === "table" ? <>
       <div><h1 className="text-2xl font-bold tracking-tight">{t(`reports.${report}.title`)}</h1><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t(`reports.${report}.hint`)}</p></div>
-      <MtmAttendanceReportViewer report={report} />
+      <MtmAttendanceReportViewer report={report} initialDate={date} />
     </> : report === "leaveBalances" ? <MtmAttendanceLeaveBalances /> : <MtmAttendanceDecisionJournal />}
   </div>
   return <div className="space-y-6" data-testid="attendance-reports-hub">
