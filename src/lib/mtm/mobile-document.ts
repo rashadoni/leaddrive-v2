@@ -1,8 +1,9 @@
 import crypto from "node:crypto"
 import path from "node:path"
 import { resolveRuntimePaths } from "@/lib/runtime-paths"
+import { MAX_MOBILE_DOCUMENT_BYTES } from "@/lib/mtm/mobile-document-limits"
 
-export const MAX_MOBILE_DOCUMENT_BYTES = 25 * 1024 * 1024
+export { MAX_MOBILE_DOCUMENT_BYTES }
 
 const SAFE_MIME_EXTENSIONS = new Map<string, ReadonlySet<string>>([
   ["application/pdf", new Set([".pdf"])],

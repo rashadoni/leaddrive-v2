@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { expandVisibleProductGroupIds } from "@/lib/mtm/product-group-access"
-import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { resolveMtmProductAccess } from "@/lib/mtm/product-access"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
 
 const PRESENTATION_MIME_TYPES = [
@@ -20,50 +19,8 @@ const CreateProductSchema = z.object({
   sortOrder: z.number().int().min(0).max(100_000).default(0),
 }).strict()
 
-async function resolveProductAccess(auth: {
-  orgId: string
-  userId: string
-  role: string
-  agentId?: string | null
-}) {
-  const actor = await resolveMtmRouteActor(prisma, {
-    organizationId: auth.orgId,
-    userId: auth.userId,
-    webRole: auth.role,
-    agentId: auth.agentId,
-  })
-  if (!actor) return null
-
-  const groups = await prisma.mtmProductGroup.findMany({
-    where: { organizationId: auth.orgId },
-    select: {
-      id: true,
-      parentId: true,
-      members: {
-        where: { agentId: actor.agentId ?? "__no_agent__" },
-        select: { role: true },
-      },
-    },
-  })
-  const visibleIds = actor.role === "ADMIN"
-    ? new Set(groups.map((group) => group.id))
-    : expandVisibleProductGroupIds(groups.map((group) => ({
-      id: group.id,
-      parentId: group.parentId,
-      hasDirectMembership: group.members.length > 0,
-    })))
-  const managedIds = actor.role === "ADMIN"
-    ? visibleIds
-    : expandVisibleProductGroupIds(groups.map((group) => ({
-      id: group.id,
-      parentId: group.parentId,
-      hasDirectMembership: group.members.some((member) => member.role === "MANAGER"),
-    })))
-  return { actor, visibleIds, managedIds }
-}
-
 export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
-  const access = await resolveProductAccess(auth)
+  const access = await resolveMtmProductAccess(auth)
   if (!access) {
     return NextResponse.json({ error: "MTM access required", code: "MTM_AGENT_ACCESS_REQUIRED" }, { status: 403 })
   }
@@ -101,7 +58,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid product", details: parsed.error.flatten() }, { status: 400 })
   }
-  const access = await resolveProductAccess(auth)
+  const access = await resolveMtmProductAccess(auth)
   if (
     !access ||
     !["ADMIN", "MANAGER", "SUPERVISOR"].includes(access.actor.role) ||
