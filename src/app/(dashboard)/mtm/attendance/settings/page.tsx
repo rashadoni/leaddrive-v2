@@ -9,10 +9,10 @@ import { MtmAttendanceCalendar } from "@/components/mtm/attendance-calendar"
 import { MtmAttendanceShifts } from "@/components/mtm/attendance-shifts"
 import { MtmAttendanceLeaveBalances } from "@/components/mtm/attendance-leave-balances"
 import { MtmAttendanceManagedSetting } from "@/components/mtm/attendance-managed-setting"
-import { MtmAttendanceRiskReview } from "@/components/mtm/attendance-risk-review"
 import { MtmAttendanceQrDisplay } from "@/components/mtm/attendance-qr-display"
 import { MtmAttendanceLocationPolicy } from "@/components/mtm/attendance-location-policy"
 import { ATTENDANCE_ADMIN_SETTINGS, ATTENDANCE_SETTINGS_CARDS, type AttendanceSettingsCard } from "@/lib/mtm/attendance-settings-cards"
+import { redirect } from "next/navigation"
 import type { AttendanceSearchParams } from "@/lib/mtm/attendance-legacy-redirect"
 
 // These editors carry no page heading of their own.
@@ -24,7 +24,13 @@ export default async function PersonnelSettingsPage({ searchParams }: { searchPa
   const t = await getTranslations("personnel")
   const session = await runWithRlsBypass(async () => auth())
   const isAdmin = session?.user?.role === "admin" || session?.user?.role === "superadmin"
-  const raw = (await searchParams).tab
+  const params = await searchParams, raw = params.tab
+  // The former settings card: bookmarks and old links land on the queue itself.
+  if (raw === "review") {
+    const query = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) if (key !== "tab") for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) query.append(key, item)
+    redirect(`/mtm/attendance/review${query.size ? `?${query}` : ""}`)
+  }
   const requested = (Array.isArray(raw) ? raw[0] : raw) as AttendanceSettingsCard | undefined
   const tab = requested && ATTENDANCE_SETTINGS_CARDS.includes(requested) && (isAdmin || !ATTENDANCE_ADMIN_SETTINGS.includes(requested)) ? requested : null
   if (!tab) return <MtmAttendanceSettingsHub isAdmin={isAdmin} />
@@ -37,7 +43,6 @@ export default async function PersonnelSettingsPage({ searchParams }: { searchPa
       : tab === "shifts" ? <MtmAttendanceShifts />
       : tab === "day-kinds" || tab === "requests" || tab === "access" ? <MtmAttendanceManagedSetting kind={tab} />
       : tab === "leave" ? <MtmAttendanceLeaveBalances />
-      : tab === "review" ? <MtmAttendanceRiskReview />
       : tab === "qr" ? <MtmAttendanceQrDisplay />
       : <MtmAttendanceLocationPolicy />}
   </div>

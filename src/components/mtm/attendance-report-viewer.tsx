@@ -52,7 +52,7 @@ const totalColumn = (key: string) => ["workedDays", "hours", "worked", "late", "
 const SELECT = "min-h-10 min-w-44 rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
 
 /** One Personnel report: its period, team, the table and Excel/PDF of the same snapshot. */
-export function MtmAttendanceReportViewer({ report }: { report: AttendanceReportKey }) {
+export function MtmAttendanceReportViewer({ report, initialDate }: { report: AttendanceReportKey; initialDate?: string }) {
   const definition = ATTENDANCE_REPORTS[report]
   const t = useTranslations("mtmAttendance"), p = useTranslations("personnel")
   const locale = useLocale() as "az" | "ru" | "en"
@@ -73,7 +73,10 @@ export function MtmAttendanceReportViewer({ report }: { report: AttendanceReport
         const rules = await fetch("/api/v1/mtm/attendance/rules", { cache: "no-store", signal: controller.signal }).then(response => response.json()).catch(() => null)
         const today: unknown = rules?.data?.today
         if (!isDateKey(today)) throw new Error("NO_TODAY")
-        selected = definition.period === "day" ? { from: today, to: today } : definition.period === "month" ? monthOf(today) : { from: `${today.slice(0, 7)}-01`, to: today }
+        // A link for one date opens that date (its month for a month report); otherwise the current period.
+        const asked = isDateKey(initialDate) ? initialDate : null
+        selected = asked ? definition.period === "month" ? monthOf(asked) : { from: asked, to: asked }
+          : definition.period === "day" ? { from: today, to: today } : definition.period === "month" ? monthOf(today) : { from: `${today.slice(0, 7)}-01`, to: today }
       }
       setRange(selected)
       const response = await fetch(`/api/v1/mtm/attendance/report?${new URLSearchParams({ from: selected.from, to: selected.to, form: "ALL" })}`, { cache: "no-store", signal: controller.signal })
@@ -83,7 +86,7 @@ export function MtmAttendanceReportViewer({ report }: { report: AttendanceReport
       setData(body.data as Data)
     } catch { if (!controller.signal.aborted) setError("reportLoadError") }
     finally { if (!controller.signal.aborted) setLoading(false) }
-  }, [definition])
+  }, [definition, initialDate])
   useEffect(() => { void load(); return () => request.current?.abort() }, [load])
 
   const config = useMemo<AttendanceViewConfig | null>(() => definition.kind !== "table" || !data ? null : {

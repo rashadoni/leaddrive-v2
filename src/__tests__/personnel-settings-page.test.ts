@@ -80,29 +80,30 @@ describe("Settings cards", () => {
   }
   const card = (key: string) => container.querySelector<HTMLAnchorElement>(`[data-testid="attendance-settings-card-${key}"]`)
 
-  it("groups ten cards for an administrator, each opening its editor", async () => {
+  it("groups nine cards for an administrator, each opening its editor", async () => {
     await render(true)
     const cards = Array.from(container.querySelectorAll<HTMLAnchorElement>('[data-testid^="attendance-settings-card-"]'))
-    expect(cards.map(link => link.getAttribute("href"))).toEqual(["hours", "holidays", "shifts", "day-kinds", "leave", "requests", "review", "qr", "location", "access"].map(key => `/mtm/attendance/settings?tab=${key}`))
+    expect(cards.map(link => link.getAttribute("href"))).toEqual(["hours", "holidays", "shifts", "day-kinds", "leave", "requests", "qr", "location", "access"].map(key => `/mtm/attendance/settings?tab=${key}`))
     expect(Array.from(container.querySelectorAll("h2")).map(heading => heading.textContent)).toEqual(Object.values(ru.personnel.settingsGroups))
     // A card alone in its row takes the whole row (owner: no half-empty rows).
-    expect(cards.filter(link => link.className.includes("md:col-span-2")).map(link => link.dataset.testid)).toEqual(["attendance-settings-card-location", "attendance-settings-card-access"])
+    expect(cards.filter(link => link.className.includes("md:col-span-2")).map(link => link.dataset.testid)).toEqual(["attendance-settings-card-access"])
+    // Suspicious marks are a daily queue on Today, not a setting (owner, 2026-10-15).
+    expect(card("review")).toBeNull()
   })
 
   it("shows current values where it can read them", async () => {
     await render(true)
     expect(card("hours")!.textContent).toContain("пн–пт, 09:00–18:00 · опоздание после 10 мин")
     expect(card("holidays")!.textContent).toContain(ru.personnel.settingsHolidaysValue.replace("{count}", "2"))
-    expect(container.querySelector('[data-testid="attendance-settings-waiting"]')!.textContent).toBe(ru.personnel.settingsWaiting.replace("{count}", "2"))
     expect(card("qr")!.textContent).toContain(ru.personnel.settingsCards.qr.hint)
   })
 
   it("hides the administrator card from a manager", async () => {
     await render(false)
     expect(card("location")).toBeNull()
-    expect(container.querySelectorAll('[data-testid^="attendance-settings-card-"]')).toHaveLength(9)
-    // Rows stay full: without the administrator card the marks pair fills its row.
-    expect(card("qr")!.className).not.toContain("md:col-span-2")
+    expect(container.querySelectorAll('[data-testid^="attendance-settings-card-"]')).toHaveLength(8)
+    // Rows stay full: without the administrator card the QR card takes its row alone.
+    expect(card("qr")!.className).toContain("md:col-span-2")
     expect(card("access")!.className).toContain("md:col-span-2")
   })
 

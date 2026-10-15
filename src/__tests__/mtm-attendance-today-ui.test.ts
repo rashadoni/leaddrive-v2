@@ -83,7 +83,15 @@ describe("Personnel → Today", () => {
     expect(absent.getAttribute("href")).toBe(`/mtm/attendance/recordings?employeeId=${encodeURIComponent("id-Рашад")}&date=${today}`)
     expect(items[1].textContent).toContain("25 мин")
     expect(items[2].querySelector("a")!.getAttribute("href")).toBe(`/mtm/attendance/timesheet?date=2026-10-13&employeeId=${encodeURIComponent("id-Эльвин")}`)
-    expect(items[3].querySelector("a")!.getAttribute("href")).toBe("/mtm/attendance/settings?tab=review")
+    // Suspicious marks open their own queue page, reached from here (owner, 2026-10-15).
+    expect(items[3].querySelector("a")!.getAttribute("href")).toBe("/mtm/attendance/review")
+    expect(byTestId("attendance-today-attention")!.querySelector('a[href="/mtm/attendance/review"]')).not.toBeNull()
+    // Each figure opens the list it counts: today's day map, today's late arrivals, today's absences.
+    const link = (id: string) => byTestId(`attendance-today-${id}`)!.parentElement!.querySelector("a")!.getAttribute("href")
+    expect(link("arrived")).toBe("/mtm/attendance/reports?report=day")
+    expect(link("late")).toBe(`/mtm/attendance/reports?report=late&date=${today}`)
+    expect(link("absent")).toBe("/mtm/attendance/reports?report=absent")
+    expect(link("missing-finish")).toBe("/mtm/attendance/timesheet?filter=missing-finish")
     expect(items[3].textContent).toContain("Эльвин")
   })
 

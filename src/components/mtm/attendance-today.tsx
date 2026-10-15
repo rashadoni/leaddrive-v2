@@ -130,11 +130,11 @@ export function MtmAttendanceToday() {
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {([
         { id: "arrived", label: t("kpiArrived"), icon: <LogIn className="h-4 w-4" />, tone: "green", value: summary?.arrived, unit: summary ? t("kpiOf", { total: summary.expected }) : null,
-          progress: summary?.expected ? summary.arrived / summary.expected * 100 : 0, href: "/mtm/attendance/timesheet", link: t("kpiArrivedLink") },
+          progress: summary?.expected ? summary.arrived / summary.expected * 100 : 0, href: "/mtm/attendance/reports?report=day", link: t("kpiArrivedLink") },
         { id: "late", label: t("kpiLate"), icon: <Clock3 className="h-4 w-4" />, tone: "amber", value: summary?.late, unit: null,
-          progress: summary?.expected ? summary.late / summary.expected * 100 : 0, href: "/mtm/attendance/timesheet?filter=late", link: t("kpiLateLink") },
+          progress: summary?.expected ? summary.late / summary.expected * 100 : 0, href: `/mtm/attendance/reports?report=late${data ? `&date=${data.today}` : ""}`, link: t("kpiLateLink") },
         { id: "absent", label: t("kpiAbsent"), icon: <UserRoundX className="h-4 w-4" />, tone: "red", value: summary?.absent, unit: summary ? t("kpiAbsentUnit", { away: summary.away }) : null,
-          progress: summary?.expected ? summary.absent / summary.expected * 100 : 0, href: "/mtm/attendance/timesheet?filter=absent", link: t("kpiAbsentLink") },
+          progress: summary?.expected ? summary.absent / summary.expected * 100 : 0, href: "/mtm/attendance/reports?report=absent", link: t("kpiAbsentLink") },
         { id: "missing-finish", label: t("kpiMissing"), icon: <LogOut className="h-4 w-4" />, tone: "blue", value: summary?.missingFinish, unit: null,
           progress: summary?.people ? summary.missingFinish / summary.people * 100 : 0, href: "/mtm/attendance/timesheet?filter=missing-finish", link: t("kpiMissingLink") },
       ] as const).map(card => <div key={card.id} className="relative">
@@ -174,7 +174,7 @@ export function MtmAttendanceToday() {
       </HomeCard> : null}
 
       <HomeCard testId="attendance-today-attention" titleId="attendance-today-attention-title" icon={<ShieldAlert className="h-4 w-4" aria-hidden="true" />} tone="amber"
-        title={t("attentionTitle")} badge={attentionCount ? String(attentionCount) : null}>
+        title={t("attentionTitle")} badge={attentionCount ? String(attentionCount) : null} action={risks.length ? { href: "/mtm/attendance/review", label: t("allRisks", { count: risks.length }) } : undefined}>
         {!data ? <p role="status" className="py-6 text-sm text-muted-foreground">{a("reportLoading")}</p>
           : attentionCount === 0 ? <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" />{t("attentionEmpty")}</p>
           : <ul className="divide-y divide-border">
@@ -188,7 +188,7 @@ export function MtmAttendanceToday() {
             {risks.slice(0, Math.max(0, ATTENTION_LIMIT - attention.length)).map(item => <li key={item.id} className="flex flex-wrap items-center gap-3 py-2.5" data-testid="attendance-today-attention-item" data-type="risk">
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.employeeName}</p>
                 <p className="text-sm text-muted-foreground">{a(ATTENDANCE_RISK_MESSAGES[item.kind])}{item.relatedNames.length ? ` · ${item.relatedNames.join(", ")}` : ""}</p></div>
-              <Button asChild size="sm" variant="outline" className="min-h-9 shrink-0"><Link prefetch={false} href="/mtm/attendance/settings?tab=review">{t("check")}</Link></Button>
+              <Button asChild size="sm" variant="outline" className="min-h-9 shrink-0"><Link prefetch={false} href="/mtm/attendance/review">{t("check")}</Link></Button>
             </li>)}
           </ul>}
         {data && attentionCount > ATTENTION_LIMIT ? <p className="mb-3 text-xs text-muted-foreground">{t("moreAttention", { count: attentionCount - ATTENTION_LIMIT })}</p> : null}

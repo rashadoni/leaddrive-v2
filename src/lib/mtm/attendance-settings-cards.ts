@@ -5,7 +5,8 @@
 export const ATTENDANCE_SETTINGS_GROUPS = [
   { key: "workday", cards: ["hours", "holidays", "shifts", "day-kinds"] },
   { key: "leave", cards: ["leave", "requests"] },
-  { key: "marks", cards: ["review", "qr", "location"] },
+  // Suspicious marks are a daily queue on Today (/mtm/attendance/review), not a setting.
+  { key: "marks", cards: ["qr", "location"] },
   { key: "access", cards: ["access"] },
 ] as const
 export type AttendanceSettingsCard = (typeof ATTENDANCE_SETTINGS_GROUPS)[number]["cards"][number]
