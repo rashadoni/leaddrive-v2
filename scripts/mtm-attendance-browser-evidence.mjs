@@ -867,7 +867,7 @@ try {
     // Settings is one page of cards (2026-10-14); a card opens its editor.
     await readyPage('settings?tab=')
     await page.getByTestId('attendance-settings-hub').waitFor({ timeout: 120000 })
-    assert.equal(await page.locator('[data-testid^="attendance-settings-card-"]').count(), 10)
+    assert.equal(await page.locator('[data-testid^="attendance-settings-card-"]').count(), 9)
     // The organization switch sits on top of Personnel → Settings (moved from MTM settings).
     await page.getByTestId('attendance-feature-on').waitFor({ timeout: 120000 })
     await page.getByTestId('attendance-settings-card-hours').click()
