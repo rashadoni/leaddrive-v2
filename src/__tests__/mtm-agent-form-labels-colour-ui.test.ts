@@ -546,7 +546,7 @@ describe("agent card — what the form sends for labels and colour", () => {
   it("creates a new employee with the labels and the colour set in the form", async () => {
     await show(null)
     await type(field("name"), "New Agent")
-    await type(field("agent-password"), "Field-Agent-2026!")
+    await type(field("phone"), "+994501112233")
     await type(labelField(), "стажёр")
     await pressEnter()
     await click(colourButton("Тёмно-синий"))
@@ -560,7 +560,7 @@ describe("agent card — what the form sends for labels and colour", () => {
   it("creates a new employee without labels and without a colour when none were set", async () => {
     await show(null)
     await type(field("name"), "New Agent")
-    await type(field("agent-password"), "Field-Agent-2026!")
+    await type(field("phone"), "+994501112233")
 
     await save()
 
