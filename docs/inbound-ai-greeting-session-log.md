@@ -34,3 +34,10 @@
 - Confirmed exact greeting and incoming conversation rules are separate, saved as optional configuration, scoped to actual incoming AI calls with no callback continuation. Oldest written context is dropped when needed to fit the deployed PBX response limit.
 - No source changes after the existing 72-test/lint/i18n/narrow-typecheck verification; repeating those checks was unnecessary. Full build/application typecheck/browser remain NOT RUN as recorded above.
 - Ready for task-authorized publication and CI; no push, merge, production change or real phone call performed.
+
+## 2026-10-16 — Publication authorized
+
+- User explicitly approved verification and publication: «Да, проверить и опубликовать». This supersedes the earlier no-push/no-deploy stopping point for this feature only. The visible change list (separate greeting and inbound conversation rules) was approved before merge.
+- Reconfirmed clean feature worktree, current repository/production route, and all five required checks bound to GitHub Actions with admin enforcement enabled. No direct-main push or direct production copy is permitted.
+- Fetched and merged current `origin/main` (`f1e0cf010`, unrelated personnel changes) before publication; existing task checkpoints preserved.
+- Next: publish draft PR, run hosted checks and production-build verification, merge only after green gates, then follow the normal deployment workflow and verify public revision/health. No tenant configuration writes or actual calls.
