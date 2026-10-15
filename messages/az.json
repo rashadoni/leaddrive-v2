@@ -13786,6 +13786,14 @@
     "loadMoreRoutesFailed": "Növbəti marşrutları yükləmək alınmadı. Yenidən cəhd edin."
   },
   "mtmOperationsPage": {
+    "hint": {
+      "refresh": "Mesajları, sənədləri və sorğuları yenidən oxu.",
+      "acknowledgementsDue": "Təsdiq istənilən son mesajlar üzrə hələ neçə təsdiq gəlməyib: insan × mesaj.",
+      "requiredUnread": "Əməkdaşların hələ açmadığı məcburi sənədlərin sayı.",
+      "pendingHrm": "Komandanın neçə sorğusu qərarınızı gözləyir.",
+      "send": "Göndər. Mətn və alıcılar, elan üçün isə həm də mövzu lazımdır.",
+      "upload": "Faylı yüklə və seçilmiş əməkdaşlara ver. Fayl və alıcılar lazımdır."
+    },
     "title": "Komanda ilə əlaqə",
     "subtitle": "Mesajlar, məxfi sənədlər və işçi sorğuları bir aydın iş yerində.",
     "clarityGuide": {
@@ -13947,6 +13955,19 @@
     }
   },
   "mtmTasksPage": {
+    "hint": {
+      "add": "Əməkdaşa tapşırıq ver: nə etməli, hansı müddətə və hansı müştəridə.",
+      "team": "Bir komandanın əməkdaşlarının tapşırıqlarını göstər.",
+      "agent": "Bir əməkdaşın tapşırıqlarını göstər.",
+      "reset": "Filtrləri götür və açıq tapşırıqlara qayıt.",
+      "chipOPEN": "Açıq — başlamağı gözləyir, işdədir və ya müddəti keçib.",
+      "chipOVERDUE": "Müddəti artıq keçmiş açıq tapşırıqlar.",
+      "chipAWAITING_REVIEW": "Əməkdaş tapşırığı bitirib; rəhbərin onu qəbul etməsini və ya yenidən işə qaytarmasını gözləyir.",
+      "chipCOMPLETED": "Bitmiş tapşırıqlar.",
+      "chipCANCELLED": "Ləğv olunmuş tapşırıqlar.",
+      "reassign": "Seçilmiş tapşırıqları seçilmiş əməkdaşa ötür. Bu vaxt kimsə tapşırığı dəyişibsə, bildirəcəyik.",
+      "clearSelection": "Seçimi götür."
+    },
     "openStatuses": "Açıq",
     "overdueBy": "{count} gün gecikir",
     "title": "Sahə tapşırıqları",
@@ -14034,6 +14055,14 @@
     "undatedHintPartial": "{count} tapşırıqdan ən köhnə {shown} göstərilir."
   },
   "mtmTaskWorkspace": {
+    "hint": {
+      "startTask": "Tapşırığı başlat: işə keçəcək.",
+      "saveProgress": "Faizi və nəticəni statusu dəyişmədən saxla.",
+      "completeTask": "Tapşırığı bitir. O, rəhbərdə «Qəbul gözləyir» bölməsinə düşəcək.",
+      "returnTask": "Yenidən işə qaytar. Səbəb lazımdır — onu əməkdaş görəcək.",
+      "acceptTask": "Yerinə yetirilmiş tapşırığı qəbul et. Şərh — istəyə görə.",
+      "progress": "Yerinə yetirmə faizi tapşırıq işdə olduqca dəyişir."
+    },
     "loading": "Tapşırıq yüklənir…",
     "loadFailed": "Tapşırıq iş sahəsini yükləmək alınmadı",
     "permissionTitle": "Tapşırıq əlçatan deyil",
@@ -14582,6 +14611,21 @@
     }
   },
   "mtmPhotosPage": {
+    "hint": {
+      "modeGallery": "Bütün fotolar şəbəkə ilə; böyütmək üçün fotoya basın.",
+      "modeCompare": "İki foto yan-yana: aşağıdakı fotolara basın — birincisi solda, ikincisi sağda olacaq.",
+      "modeBatch": "Bir neçə fotonu işarələ və birdən təsdiqlə və ya rədd et.",
+      "period": "Fotolar hansı dövr üçün göstərilsin.",
+      "agent": "Bir əməkdaşın fotolarını göstər.",
+      "status": "Fotoları yoxlamaya görə seç: hamısı, yoxlamada, təsdiqlənmiş və ya rədd edilmiş.",
+      "sort": "Yüklənmiş fotolar hansı qaydada göstərilsin.",
+      "approveAll": "İşarələnmiş bütün fotoları təsdiqlə.",
+      "rejectAll": "İşarələnmiş bütün fotoları rədd et.",
+      "approve": "Fotonu təsdiqlə. Təsdiqlənmiş fotolar əməkdaşın reytinqinə (+5 bal) və hesabatlara düşür.",
+      "reject": "Fotonu rədd et.",
+      "openVisit": "Fotonun çəkildiyi viziti aç.",
+      "delete": "Fotonu həmişəlik sil. Ondan əvvəl bir daha soruşacağıq; saxlanmalı olan fotoları silmək olmaz."
+    },
     "widenedNotice": "«{from}» üçün foto yoxdur — «{to}» göstərilir.",
     "title": "Şəkillər",
     "subtitle": "Şəkil qalereyası və yoxlama sistemi",
@@ -14638,6 +14682,19 @@
     "closeLightbox": "Bağla"
   },
   "mtmAlertsPage": {
+    "hint": {
+      "agent": "Bir əməkdaşın xəbərdarlıqlarını göstər.",
+      "type": "Bir növ xəbərdarlıqları seç: GPS, gecikmə, buraxılmış vizit və s.",
+      "status": "Açıq — hələ baxılmayıb; həll olunmuş — kimsə bağlayıb.",
+      "date": "Xəbərdarlıqlar hansı gün üçün göstərilsin.",
+      "today": "Bu günə qayıt.",
+      "summary": "Vəziyyət — bir əməkdaş, bir xəbərdarlıq növü, bir gün. Kritik — qırmızı; köhnə — 7 gündən köhnə açıq xəbərdarlıqlar.",
+      "openOnMap": "Əməkdaş bu vaxt harada olub: xəritədə yol.",
+      "openVisit": "Xəbərdarlığın aid olduğu viziti aç.",
+      "resolveGroup": "Bu vəziyyətin bütün açıq xəbərdarlıqlarını bağla.",
+      "resolve": "Xəbərdarlığı bağla: açıqlardan və paneldən çıxacaq.",
+      "closeAllStale": "7 gündən köhnə bütün açıq xəbərdarlıqları bağla — onlar üzrə hərəkət etmək artıq gecdir."
+    },
     "title": "Xəbərdarlıqlar",
     "subtitle": "GPS anomaliyaları, gecikmələr, buraxılmış ziyarətlər",
     "noResults": "Xəbərdarlıq tapılmadı",
@@ -15263,6 +15320,10 @@
     "viewMyQueue": "Növbəmi aç"
   },
   "mtmActivity": {
+    "hint": {
+      "export": "Səhifədə artıq yüklənmiş jurnal sətirlərini CSV-yə yüklə.",
+      "violations": "Yalnız pozuntular: rəhbərin müştəri zonasından kənarda başlatdığı vizitlər və tətbiqə uğursuz girişlər."
+    },
     "title": "Aktivlik jurnalı",
     "description": "Check-in/check-out və sahə aktivlik jurnalı",
     "export": "İxrac",
@@ -15395,6 +15456,13 @@
     }
   },
   "mtmLeaderboard": {
+    "hint": {
+      "period": "Həftə — son 7 sutka; ay — ayın 1-dən; bütün vaxt — məhdudiyyətsiz.",
+      "score": "Bal: vizit — 10, yerinə yetirilmiş tapşırıq — 15, qəbul olunmuş foto — 5, bitmiş marşrut — 20.",
+      "visits": "Dövr ərzində yaradılmış vizitlər.",
+      "tasks": "Dövr ərzində yaradılmış və artıq yerinə yetirilmiş tapşırıqlar.",
+      "photos": "Dövr ərzində yüklənmiş və artıq qəbul olunmuş fotolar."
+    },
     "title": "Reytinq",
     "description": "Agent performans reytinqi və nailiyyətləri",
     "weekly": "Həftəlik",
@@ -15999,6 +16067,11 @@
     "found": "Tapıldı: {count}"
   },
   "mtmTeamResults": {
+    "hint": {
+      "cardPlan": "Dövr ərzində marşrutların baş çəkilən nöqtələri — dərc olunmuş marşrutların bütün nöqtələrindən. Yaşıl — 95%-dən, sarı — 80%-dən.",
+      "cardVisits": "Bu dövrdə başlanmış bitmiş vizitlər.",
+      "cardGps": "Həm girişin, həm də çıxışın koordinatları olan bitmiş vizitlərin payı."
+    },
     "period": "Dövr",
     "preset": {
       "thisWeek": "Bu həftə",

@@ -13790,6 +13790,14 @@
     "loadMoreRoutesFailed": "Could not load more routes. Try again."
   },
   "mtmOperationsPage": {
+    "hint": {
+      "refresh": "Read messages, documents and requests again.",
+      "acknowledgementsDue": "How many confirmations are still missing on recent messages that asked for one: people × messages.",
+      "requiredUnread": "How many required documents employees have not opened yet.",
+      "pendingHrm": "How many team requests wait for your decision.",
+      "send": "Send. Text and recipients are needed, and a subject for an announcement.",
+      "upload": "Upload the file and hand it to the chosen employees. A file and recipients are needed."
+    },
     "title": "Team messages",
     "subtitle": "Messages, private documents, and team requests in one clear workspace.",
     "clarityGuide": {
@@ -13951,6 +13959,19 @@
     }
   },
   "mtmTasksPage": {
+    "hint": {
+      "add": "Give an employee a task: what to do, by when and at which client.",
+      "team": "Show the tasks of one team's employees.",
+      "agent": "Show one employee's tasks.",
+      "reset": "Clear the filters and go back to open tasks.",
+      "chipOPEN": "Open: waiting to start, in progress or overdue.",
+      "chipOVERDUE": "Open tasks whose deadline has passed.",
+      "chipAWAITING_REVIEW": "The employee finished the task; it waits for the manager to accept it or send it back.",
+      "chipCOMPLETED": "Finished tasks.",
+      "chipCANCELLED": "Cancelled tasks.",
+      "reassign": "Hand the selected tasks to the chosen employee. If someone changed a task meanwhile, you will be told.",
+      "clearSelection": "Clear the selection."
+    },
     "openStatuses": "Open",
     "overdueBy": "{count, plural, one {# day late} other {# days late}}",
     "title": "Field Tasks",
@@ -14038,6 +14059,14 @@
     "undatedHintPartial": "The oldest {shown} of {count} are shown."
   },
   "mtmTaskWorkspace": {
+    "hint": {
+      "startTask": "Start the task: it moves to in progress.",
+      "saveProgress": "Save the percentage and the result without changing the status.",
+      "completeTask": "Finish the task. It goes to the manager under «Awaiting review».",
+      "returnTask": "Send back for more work. A reason is required; the employee will see it.",
+      "acceptTask": "Accept the finished task. A comment is optional.",
+      "progress": "The percentage can be changed while the task is in progress."
+    },
     "loading": "Loading task…",
     "loadFailed": "Task workspace could not be loaded",
     "permissionTitle": "Task is unavailable",
@@ -14586,6 +14615,21 @@
     }
   },
   "mtmPhotosPage": {
+    "hint": {
+      "modeGallery": "All photos in a grid; click a photo to enlarge it.",
+      "modeCompare": "Two photos side by side: click photos below; the first goes left, the second right.",
+      "modeBatch": "Tick several photos and approve or reject them at once.",
+      "period": "The period photos are shown for.",
+      "agent": "Show one employee's photos.",
+      "status": "Pick photos by review: all, under review, approved or rejected.",
+      "sort": "The order the loaded photos are shown in.",
+      "approveAll": "Approve every ticked photo.",
+      "rejectAll": "Reject every ticked photo.",
+      "approve": "Approve the photo. Approved photos count in the employee's rating (+5 points) and in reports.",
+      "reject": "Reject the photo.",
+      "openVisit": "Open the visit the photo was taken on.",
+      "delete": "Delete the photo for good. You will be asked once more; photos that must be kept cannot be deleted."
+    },
     "widenedNotice": "No photos for «{from}» — showing «{to}».",
     "title": "Photos",
     "subtitle": "Photo gallery with review system",
@@ -14642,6 +14686,19 @@
     "closeLightbox": "Close"
   },
   "mtmAlertsPage": {
+    "hint": {
+      "agent": "Show one employee's alerts.",
+      "type": "Pick one kind of alert: GPS, lateness, missed visit and others.",
+      "status": "Open means not yet handled; resolved means someone closed them.",
+      "date": "The day alerts are shown for.",
+      "today": "Back to today.",
+      "summary": "A situation is one employee, one kind of alert, one day. Critical ones are red; old ones are open alerts older than 7 days.",
+      "openOnMap": "Where the employee was at that time: the path on the map.",
+      "openVisit": "Open the visit the alert is about.",
+      "resolveGroup": "Close every open alert of this situation.",
+      "resolve": "Close the alert: it leaves the open ones and the panel.",
+      "closeAllStale": "Close every open alert older than 7 days; it is too late to act on them."
+    },
     "title": "Alerts",
     "subtitle": "GPS anomalies, late starts, missed visits",
     "noResults": "No alerts match the filter",
@@ -15267,6 +15324,10 @@
     "viewMyQueue": "View my queue"
   },
   "mtmActivity": {
+    "hint": {
+      "export": "Download as CSV the journal rows already loaded on the page.",
+      "violations": "Only violations: visits started by a manager outside the client's zone, and failed sign-ins to the app."
+    },
     "title": "Activity Journal",
     "description": "Check-in/check-out and field activity log",
     "export": "Export",
@@ -15399,6 +15460,13 @@
     }
   },
   "mtmLeaderboard": {
+    "hint": {
+      "period": "Week is the last 7 days; month is since the 1st; all time has no limit.",
+      "score": "Points: a visit 10, a finished task 15, an accepted photo 5, a finished route 20.",
+      "visits": "Visits created in the period.",
+      "tasks": "Tasks created in the period and already finished.",
+      "photos": "Photos uploaded in the period and already accepted."
+    },
     "title": "Leaderboard",
     "description": "Agent performance ranking and achievements",
     "weekly": "Weekly",
@@ -16003,6 +16071,11 @@
     "found": "Found: {count}"
   },
   "mtmTeamResults": {
+    "hint": {
+      "cardPlan": "Route stops visited in the period, out of all stops of published routes. Green from 95%, yellow from 80%.",
+      "cardVisits": "Finished visits started in this period.",
+      "cardGps": "The share of finished visits with positions for both check-in and check-out."
+    },
     "period": "Period",
     "preset": {
       "thisWeek": "This week",
