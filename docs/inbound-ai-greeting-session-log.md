@@ -27,3 +27,10 @@
 - Targeted ESLint on changed source/tests PASS; translation parity PASS; narrow TypeScript policy-module check PASS; `git diff --check` PASS. No application service, real database, external send, or actual call was used.
 - Full application typecheck/build: NOT RUN on Contabo under workload policy; requires CI after permission to publish. Browser/E2E: NOT RUN; no isolated authenticated application/browser environment was started. Existing package directory was reused rather than claiming an exact-lock dependency install.
 - Current status: implemented and locally checked, ready for review; no push/deploy. Last action: completed targeted checks and prepared this checkpoint. Stopping point: local feature branch. Next action: review the change, then obtain task authorization before branch publication/CI or production delivery.
+
+## 2026-10-16 — Root review
+
+- Reviewed the settings UI/API, shared policy reader, call-continuation response and focused regression coverage at f08bd21dbaacc421450a6280a7975a924532c2c7. No blocking issue identified.
+- Confirmed exact greeting and incoming conversation rules are separate, saved as optional configuration, scoped to actual incoming AI calls with no callback continuation. Oldest written context is dropped when needed to fit the deployed PBX response limit.
+- No source changes after the existing 72-test/lint/i18n/narrow-typecheck verification; repeating those checks was unnecessary. Full build/application typecheck/browser remain NOT RUN as recorded above.
+- Ready for task-authorized publication and CI; no push, merge, production change or real phone call performed.
