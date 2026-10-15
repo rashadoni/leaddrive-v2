@@ -21,8 +21,8 @@ const scratch = vi.hoisted(() => {
   process.env.DATABASE_URL = app.toString()
   return { name, role, adminDb: db.toString() }
 })
-const identity = vi.hoisted(() => ({ orgId: "request-pg-a", agentId: "request-pg-owner", role: "EMPLOYEE", routeField: true }))
-vi.mock("@/lib/mobile-auth", () => ({ resolveMobileAuth: async () => ({ ...identity, tenantCapabilities: { routeField: identity.routeField, workforceHrm: false } }) }))
+const identity = vi.hoisted(() => ({ orgId: "request-pg-a", agentId: "request-pg-owner", role: "EMPLOYEE", personnel: true }))
+vi.mock("@/lib/mobile-auth", () => ({ resolveMobileAuth: async () => ({ ...identity, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: identity.personnel } }) }))
 function sql(url: string, statement: string) {
   const file = createRequire(import.meta.url).resolve("prisma/build/index.js")
   const result = spawnSync(process.execPath, [file, "db", "execute", "--url", url, "--stdin"], { input: statement, encoding: "utf8", timeout: 180_000, maxBuffer: 1024 * 1024 })
@@ -151,9 +151,10 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   })
   it("has no writes for a disabled feature, denied capability or another owner, and never leaks draft storage keys", async () => {
     const before = await tenant(self.organizationId, () => prisma.mtmHrmRequest.count())
-    identity.routeField = false
+    // Requests are the Personnel module (2026-10-14), not routes.
+    identity.personnel = false
     expect((await submit(input("2027-02-05"))).status).toBe(403)
-    identity.routeField = true
+    identity.personnel = true
     expect((await submit({ ...input("2027-02-05"), agentId: "request-pg-colleague" })).status).toBe(400)
     await tenant(self.organizationId, () => prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: self.organizationId, key: "attendanceEnabled" } }, data: { value: false } }))
     expect((await submit(input("2027-02-05"))).status).toBe(404)

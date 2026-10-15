@@ -21,7 +21,7 @@ function workday() { return { id: "source-workday", workDate: at("00:00"), statu
 const saved = () => vi.mocked(prisma.mtmHrmRequest.create).mock.calls.at(-1)![0].data
 beforeEach(() => {
   vi.resetAllMocks(); vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-10-13T15:00:00Z"))
-  vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: self.organizationId, agentId: self.agentId, role: "AGENT", tenantCapabilities: { routeField: true, workforceHrm: false } } as never)
+  vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: self.organizationId, agentId: self.agentId, role: "AGENT", tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
   vi.mocked(prisma.$transaction).mockImplementation((async (callback: (tx: typeof prisma) => unknown) => callback(prisma)) as never)
   vi.mocked(prisma.$queryRaw).mockResolvedValue([])
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }, { key: "timezone", value: "Asia/Baku" }] as never)

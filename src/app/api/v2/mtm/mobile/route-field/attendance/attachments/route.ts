@@ -46,4 +46,4 @@ export const POST = withMobileRls(async (req, auth) => {
     if (retryAfter > 0) response.headers.set("retry-after", String(Math.max(1, Math.ceil(retryAfter))))
     return response
   } finally { for (const slot of slots.reverse()) await releasePublicConcurrencySlot(slot) }
-}, { requiredCapability: "route-field" })
+}, { requiredCapability: "personnel" })

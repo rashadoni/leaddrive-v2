@@ -16,7 +16,7 @@ const self = { organizationId: "request-fixture-org", agentId: "request-fixture-
 const input = () => ({ clientRequestId: randomUUID(), kind: "HOURLY_ABSENCE", unit: "HOURS", startDate: "2026-11-02", endDate: "2026-11-02", startTime: "09:00", endTime: "11:00", reason: "Fixture request" })
 const req = (body: unknown) => new NextRequest("http://localhost/api/v2/mtm/mobile/route-field/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
 function authenticate(role = "AGENT", allowed = true) {
-  vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: self.organizationId, agentId: self.agentId, role, tenantCapabilities: { routeField: allowed, workforceHrm: false } } as never)
+  vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: self.organizationId, agentId: self.agentId, role, tenantCapabilities: { routeField: allowed, workforceHrm: false, personnel: allowed } } as never)
 }
 beforeEach(() => {
   vi.resetAllMocks()

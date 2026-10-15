@@ -22,7 +22,7 @@ const scratch = vi.hoisted(() => {
   return { name, role, adminDb: db.toString() }
 })
 const identity = vi.hoisted(() => ({ orgId: "employee-pg-a", agentId: "", role: "EMPLOYEE" }))
-vi.mock("@/lib/mobile-auth", () => ({ resolveMobileAuth: async () => ({ ...identity, tenantCapabilities: { routeField: true, workforceHrm: false } }) }))
+vi.mock("@/lib/mobile-auth", () => ({ resolveMobileAuth: async () => ({ ...identity, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } }) }))
 function sql(url: string, statement: string) {
   const cli = createRequire(import.meta.url).resolve("prisma/build/index.js")
   const result = spawnSync(process.execPath, [cli, "db", "execute", "--url", url, "--stdin"], { input: statement, encoding: "utf8", timeout: 180_000, maxBuffer: 1024 * 1024 })

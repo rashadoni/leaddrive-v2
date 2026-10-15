@@ -7,4 +7,4 @@ export const GET = withMobileRls(async (req, auth) => {
     const month = new URL(req.url).searchParams.get("month") ?? ""
     return attendanceRequestResponse(await readOwnAttendanceRequestQuota({ organizationId: auth.orgId, agentId: auth.agentId, role: auth.role }, month))
   } catch (error) { return attendanceRequestFailure(error) }
-}, { requiredCapability: "route-field" })
+}, { requiredCapability: "personnel" })

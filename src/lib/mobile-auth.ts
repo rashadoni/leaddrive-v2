@@ -35,6 +35,12 @@ export interface MobileTenantCapabilities {
   routeField: boolean
   workforceHrm: boolean
   /**
+   * Personnel (HR work-time attendance), sold apart from routes since
+   * 2026-10-14. Alone it admits only office staff to the attendance endpoints.
+   * Optional for in-process callers; `resolveMobileAuth` always sets it.
+   */
+  personnel?: boolean
+  /**
    * Workforce add-ons remain independently false unless explicitly sold and
    * enabled. Optional typing keeps existing in-process callers compatible;
    * `resolveMobileAuth` always populates both flags for real requests.
@@ -183,19 +189,21 @@ export async function resolveMobileAuth(
     }
     const routeFieldEnabled = isTenantCapabilityEnabled("route-field", entitlementFields)
     const workforceEnabled = isTenantCapabilityEnabled("workforce-hrm", entitlementFields)
+    const personnelEnabled = isTenantCapabilityEnabled("personnel", entitlementFields)
     const attendanceQrEnabled = workforceEnabled
       && isTenantCapabilityEnabled("attendance-qr", entitlementFields)
     const attendanceDeviceTrustEnabled = workforceEnabled
       && isTenantCapabilityEnabled("attendance-device-trust", entitlementFields)
     const workforceExceptionResponseEnabled = workforceEnabled
       && resolveWorkforceExceptionResponseRecording(agent.organization.features) === "AVAILABLE"
-    if (!routeFieldEnabled && !workforceEnabled) {
-      console.warn(`[mobile-auth][revocation] Route Field and Workforce are disabled — agentId=${decoded.agentId} orgId=${decoded.orgId}`)
+    if (!routeFieldEnabled && !workforceEnabled && !personnelEnabled) {
+      console.warn(`[mobile-auth][revocation] Route Field, Workforce and Personnel are disabled — agentId=${decoded.agentId} orgId=${decoded.orgId}`)
       return null
     }
     tenantCapabilities = {
       routeField: routeFieldEnabled,
       workforceHrm: workforceEnabled,
+      personnel: personnelEnabled,
       attendanceQr: attendanceQrEnabled,
       attendanceDeviceTrust: attendanceDeviceTrustEnabled,
       workforceExceptionResponse: workforceExceptionResponseEnabled,
@@ -214,8 +222,12 @@ export async function resolveMobileAuth(
       return null
     }
     currentRole = agent.role
+    // Personnel alone is office attendance only: no field agent, and only the
+    // endpoints the office app uses (the same allowlist as an EMPLOYEE).
+    if (!routeFieldEnabled && !workforceEnabled
+      && (currentRole === "AGENT" || !officeAttendanceMobilePath(req.method, new URL(req.url).pathname))) return null
     if (currentRole === "EMPLOYEE") {
-      if (!routeFieldEnabled || !agent.userId || !officeAttendanceMobilePath(req.method, new URL(req.url).pathname)) return null
+      if (!personnelEnabled || !agent.userId || !officeAttendanceMobilePath(req.method, new URL(req.url).pathname)) return null
       const allowed = await runWithRlsBypass(async () => {
         const [member, feature] = await Promise.all([
           prisma.mtmAgent.findFirst({ where: { id: decoded.agentId, organizationId: decoded.orgId, attendanceParticipant: true }, select: { id: true } }),
