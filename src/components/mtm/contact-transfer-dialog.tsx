@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle, ArrowRight, CheckCircle2, HardDriveDownload, Loader2, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -78,6 +79,19 @@ type TransferResult = {
 }
 
 type Step = "PARAMETERS" | "PREVIEW" | "RESULT"
+
+/** Why a contact stays where it is, for the reasons the label alone does not explain. Keys written out so a test finds every one. */
+const ISSUE_HINT = {
+  OWNER_CHANGED: "hint.transferIssueOwnerChanged",
+  MULTIPLE_PRIMARY_OWNERS: "hint.transferIssueMultiplePrimary",
+  FUTURE_ASSIGNMENT_CONFLICT: "hint.transferIssueFuture",
+  OPEN_VISIT_CONFLICT: "hint.transferIssueOpenVisit",
+  ROUTE_PLAN_CONFLICT: "hint.transferIssueRoutePlan",
+} as const satisfies Partial<Record<TransferIssue, string>>
+
+function issueHintKey(issue: TransferIssue) {
+  return Object.prototype.hasOwnProperty.call(ISSUE_HINT, issue) ? ISSUE_HINT[issue as keyof typeof ISSUE_HINT] : null
+}
 
 function localDateKey(): string {
   const now = new Date()
@@ -287,15 +301,15 @@ export function ContactTransferDialog({
           <>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Summary label={tt("transfer.selected")} value={preview.summary.selected} />
-              <Summary label={tt("transfer.transferable")} value={preview.summary.transferable} tone="positive" />
-              <Summary label={tt("transfer.excluded")} value={preview.summary.excluded} tone={preview.summary.excluded ? "warning" : "neutral"} />
-              <Summary label={tt("transfer.openTasks")} value={preview.summary.openTasks} tone={preview.summary.openTasks ? "warning" : "neutral"} />
+              <Summary label={tt("transfer.transferable")} value={preview.summary.transferable} tone="positive" hint={tt("hint.transferTransferable")} />
+              <Summary label={tt("transfer.excluded")} value={preview.summary.excluded} tone={preview.summary.excluded ? "warning" : "neutral"} hint={tt("hint.transferExcluded")} />
+              <Summary label={tt("transfer.openTasks")} value={preview.summary.openTasks} tone={preview.summary.openTasks ? "warning" : "neutral"} hint={tt("hint.transferOpenTasks")} />
             </div>
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 bg-muted/30 p-3 text-sm dark:border-zinc-700">
               <span className="font-medium">{preview.sourceAgent?.name || "—"}</span>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">{preview.targetAgent?.name || "—"}</span>
-              <span className="ml-auto text-xs text-muted-foreground">{preview.effectiveFrom}</span>
+              <HintValue className="ml-auto text-xs text-muted-foreground" text={tt("hint.transferEffectiveFrom")}>{preview.effectiveFrom}</HintValue>
             </div>
             {preview.warnings.length > 0 ? (
               <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-100">
@@ -326,11 +340,14 @@ export function ContactTransferDialog({
                     <div key={row.contactId} className="p-3 text-sm">
                       <p className="font-medium">{row.displayName || row.contactId}</p>
                       <div className="mt-1 flex flex-wrap gap-1.5">
-                        {row.issues.map((issue) => (
-                          <span key={issue} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
-                            {tt(`transfer.issues.${issue}`)}
-                          </span>
-                        ))}
+                        {row.issues.map((issue) => {
+                          const hintKey = issueHintKey(issue)
+                          return (
+                            <HintValue key={issue} text={hintKey ? tt(hintKey) : null} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
+                              {tt(`transfer.issues.${issue}`)}
+                            </HintValue>
+                          )
+                        })}
                       </div>
                     </div>
                   ))}
@@ -406,20 +423,24 @@ export function ContactTransferDialog({
         {step === "PARAMETERS" ? (
           <>
             <Button type="button" variant="outline" onClick={close} disabled={busy}>{tt("transfer.cancel")}</Button>
-            <Button type="button" onClick={() => void buildPreview()} disabled={busy || contactIds.length === 0}>
-              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-1 h-4 w-4" />}
-              {busy ? tt("transfer.buildingPreview") : tt("transfer.review")}
-            </Button>
+            <Hint wrap text={busy || contactIds.length === 0 ? null : tt("hint.transferReview")}>
+              <Button type="button" onClick={() => void buildPreview()} disabled={busy || contactIds.length === 0}>
+                {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-1 h-4 w-4" />}
+                {busy ? tt("transfer.buildingPreview") : tt("transfer.review")}
+              </Button>
+            </Hint>
           </>
         ) : step === "PREVIEW" ? (
           <>
             <Button type="button" variant="outline" onClick={() => { setStep("PARAMETERS"); setError("") }} disabled={busy}>
               {tt("transfer.changeParameters")}
             </Button>
-            <Button type="button" onClick={() => void execute()} disabled={busy || !preview || preview.summary.transferable === 0}>
-              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-1 h-4 w-4" />}
-              {busy ? tt("transfer.applying") : tt("transfer.apply", { count: preview?.summary.transferable ?? 0 })}
-            </Button>
+            <Hint wrap text={busy || !preview ? null : preview.summary.transferable === 0 ? tt("hint.transferNothing") : tt("hint.transferApply")}>
+              <Button type="button" onClick={() => void execute()} disabled={busy || !preview || preview.summary.transferable === 0}>
+                {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-1 h-4 w-4" />}
+                {busy ? tt("transfer.applying") : tt("transfer.apply", { count: preview?.summary.transferable ?? 0 })}
+              </Button>
+            </Hint>
           </>
         ) : (
           <Button type="button" onClick={close}>{tt("transfer.close")}</Button>
@@ -433,10 +454,12 @@ function Summary({
   label,
   value,
   tone = "neutral",
+  hint,
 }: {
   label: string
   value: number
   tone?: "positive" | "warning" | "neutral"
+  hint?: string
 }) {
   return (
     <div className={`rounded-lg border p-3 ${
@@ -446,7 +469,7 @@ function Summary({
           ? "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20"
           : "border-zinc-200 bg-muted/30 dark:border-zinc-700"
     }`}>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="text-[11px] text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
     </div>
   )

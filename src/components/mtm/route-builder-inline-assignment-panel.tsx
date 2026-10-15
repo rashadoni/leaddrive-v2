@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { AlertTriangle, Check, Loader2, Search, UserPlus, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Hint } from "@/components/hint"
 import { Input } from "@/components/ui/input"
 import type { MtmRouteCustomer } from "@/components/mtm/route-types"
 
@@ -176,17 +177,18 @@ export function RouteBuilderInlineAssignmentPanel({
             {t("inlineAssignmentDescription", { agent: targetAgentName || t("selectedEmployee") })}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="min-h-10 min-w-10"
-          onClick={() => onOpenChange(false)}
-          title={t("inlineAssignmentClose")}
-          aria-label={t("inlineAssignmentClose")}
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <Hint text={t("hint.inlineClose")}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="min-h-10 min-w-10"
+            onClick={() => onOpenChange(false)}
+            aria-label={t("inlineAssignmentClose")}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </Hint>
       </div>
 
       <div className="relative mt-2">
@@ -268,17 +270,19 @@ export function RouteBuilderInlineAssignmentPanel({
                       : t("inlineAssignmentUnassigned")}
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  data-testid="mtm-route-inline-assignment-add"
-                  variant={transferring ? "outline" : "default"}
-                  className="min-h-10 shrink-0"
-                  onClick={() => requestAssignment(candidate)}
-                  disabled={Boolean(assigningId)}
-                >
-                  {assigningId === identity ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : transferring ? <UserPlus className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                  {transferring ? t("inlineAssignmentTransferAction") : shared ? t("inlineAssignmentShareAction") : t("inlineAssignmentAddAction")}
-                </Button>
+                <Hint wrap text={assigningId ? null : t(transferring ? "hint.inlineTransfer" : shared ? "hint.inlineShare" : "hint.inlineAdd")}>
+                  <Button
+                    type="button"
+                    data-testid="mtm-route-inline-assignment-add"
+                    variant={transferring ? "outline" : "default"}
+                    className="min-h-10 shrink-0"
+                    onClick={() => requestAssignment(candidate)}
+                    disabled={Boolean(assigningId)}
+                  >
+                    {assigningId === identity ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : transferring ? <UserPlus className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                    {transferring ? t("inlineAssignmentTransferAction") : shared ? t("inlineAssignmentShareAction") : t("inlineAssignmentAddAction")}
+                  </Button>
+                </Hint>
               </div>
             )
           })}

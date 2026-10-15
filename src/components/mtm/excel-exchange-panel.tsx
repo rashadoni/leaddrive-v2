@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Loader2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select } from "@/components/ui/select"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
@@ -53,6 +54,32 @@ interface Props {
 
 const IMPORT_TYPES: ImportType[] = ["CUSTOMERS", "ROUTES", "SALES_FACTS", "PLAN_FACT"]
 const EXPORT_TYPES: ExportType[] = ["CUSTOMERS", "ROUTES", "SALES_FACTS", "VISIT_RESULTS", "PLAN_FACT", "CUSTOMER_REQUESTS"]
+
+/** What an import of this type does to the data already there (excel-import.ts). */
+const IMPORT_TYPE_HINT = {
+  CUSTOMERS: "hint.excelImportCustomers",
+  ROUTES: "hint.excelImportRoutes",
+  SALES_FACTS: "hint.excelImportSales",
+  PLAN_FACT: "hint.excelImportPlan",
+} as const
+
+/** What each export file holds (excel-export.ts). */
+const EXPORT_TYPE_HINT = {
+  CUSTOMERS: "hint.excelExportCustomers",
+  ROUTES: "hint.excelExportRoutes",
+  SALES_FACTS: "hint.excelExportSales",
+  VISIT_RESULTS: "hint.excelExportVisits",
+  PLAN_FACT: "hint.excelExportPlan",
+  CUSTOMER_REQUESTS: "hint.excelExportRequests",
+} as const
+
+/** How each figure of the check is counted. */
+const SUMMARY_HINT = {
+  createRows: "hint.excelCreateRows",
+  updateRows: "hint.excelUpdateRows",
+  unchangedRows: "hint.excelUnchangedRows",
+  errorRows: "hint.excelErrorRows",
+} as const
 
 export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props) {
   const t = useTranslations("mtmExcel")
@@ -149,6 +176,13 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
 
   const summary = result?.summary
   const canApply = Boolean(summary && summary.errorRows === 0 && canImport)
+  // Why «Apply» is shut, or what it will do once it is open.
+  const applyHint = applying ? null
+    : !summary ? t("hint.excelApplyNoFile")
+    : !canImport ? t("hint.excelImportRestricted")
+    : summary.errorRows > 0 ? t("hint.excelApplyErrors")
+    : summary.requiresConflictOverride && !allowConflicts ? t("hint.excelApplyConflicts")
+    : type === "ROUTES" ? t("hint.excelApplyRoutes") : t("hint.excelApply")
 
   if (typeof document === "undefined") return null
 
@@ -162,21 +196,27 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
           <div className="min-w-0 space-y-5">
             <section className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-semibold"><span className="grid h-6 w-6 place-items-center rounded-full bg-foreground text-xs text-background">1</span>{t("chooseType")}</div>
-              <Select value={type} onChange={(event) => setType(event.target.value as ImportType)} aria-label={t("chooseType")}>
-                {IMPORT_TYPES.map((item) => <option key={item} value={item}>{t(`types.${item}`)}</option>)}
-              </Select>
+              <Hint text={t(IMPORT_TYPE_HINT[type])} align="start">
+                <Select value={type} onChange={(event) => setType(event.target.value as ImportType)} aria-label={t("chooseType")}>
+                  {IMPORT_TYPES.map((item) => <option key={item} value={item}>{t(`types.${item}`)}</option>)}
+                </Select>
+              </Hint>
             </section>
 
             <section className="space-y-3 border-t pt-5">
               <div className="flex items-center gap-2 text-sm font-semibold"><span className="grid h-6 w-6 place-items-center rounded-full bg-foreground text-xs text-background">2</span>{t("templateOrUpload")}</div>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => download(`/api/v1/mtm/excel/templates/${type.toLowerCase()}?locale=${locale}`, `mtm-${type.toLowerCase()}-template.xlsx`)}>
-                  <Download className="mr-2 h-4 w-4" />{t("downloadTemplate")}
-                </Button>
+                <Hint text={t("hint.excelTemplate")}>
+                  <Button type="button" variant="outline" onClick={() => download(`/api/v1/mtm/excel/templates/${type.toLowerCase()}?locale=${locale}`, `mtm-${type.toLowerCase()}-template.xlsx`)}>
+                    <Download className="mr-2 h-4 w-4" />{t("downloadTemplate")}
+                  </Button>
+                </Hint>
                 <input ref={fileRef} type="file" className="hidden" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file) }} />
-                <Button type="button" onClick={() => fileRef.current?.click()} disabled={!canImport || uploading}>
-                  {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}{uploading ? t("validating") : t("selectFile")}
-                </Button>
+                <Hint wrap text={uploading ? null : canImport ? t("hint.excelUpload") : t("hint.excelImportRestricted")}>
+                  <Button type="button" onClick={() => fileRef.current?.click()} disabled={!canImport || uploading}>
+                    {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}{uploading ? t("validating") : t("selectFile")}
+                  </Button>
+                </Hint>
               </div>
               {!canImport ? <p className="text-sm text-muted-foreground">{t("importRestricted")}</p> : null}
             </section>
@@ -187,7 +227,7 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-px overflow-hidden border bg-border sm:grid-cols-4">
                     {(["createRows", "updateRows", "unchangedRows", "errorRows"] as const).map((key) => (
-                      <div key={key} className="bg-background p-3"><div className="text-xs text-muted-foreground">{t(key)}</div><div className="mt-1 text-xl font-semibold tabular-nums">{summary?.[key] ?? 0}</div></div>
+                      <div key={key} className="bg-background p-3"><div className="text-xs text-muted-foreground">{t(key)}</div><div className="mt-1 text-xl font-semibold tabular-nums"><HintValue text={t(SUMMARY_HINT[key])}>{summary?.[key] ?? 0}</HintValue></div></div>
                     ))}
                   </div>
                   {result.errors.length > 0 ? (
@@ -196,7 +236,9 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
                       <div className="space-y-1 text-xs">
                         {result.errors.slice(0, 5).map((error, index) => <p key={`${error.rowNumber}-${error.columnName}-${index}`}>{t("errorAt", { row: error.rowNumber, column: error.columnName || "-", message: error.message })}</p>)}
                       </div>
-                      <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => download(`/api/v1/mtm/excel/imports/${result.job.id}/errors?locale=${locale}`, `mtm-import-errors.xlsx`)}><Download className="mr-2 h-4 w-4" />{t("downloadErrors")}</Button>
+                      <Hint text={t("hint.excelDownloadErrors")}>
+                        <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => download(`/api/v1/mtm/excel/imports/${result.job.id}/errors?locale=${locale}`, `mtm-import-errors.xlsx`)}><Download className="mr-2 h-4 w-4" />{t("downloadErrors")}</Button>
+                      </Hint>
                     </div>
                   ) : <div className="flex items-center gap-2 text-sm text-emerald-700"><CheckCircle2 className="h-4 w-4" />{t("validationPassed")}</div>}
                   {result.preview.length > 0 ? (
@@ -214,15 +256,19 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
             <section className="space-y-3 border-t pt-5">
               <div className="flex items-center gap-2 text-sm font-semibold"><span className="grid h-6 w-6 place-items-center rounded-full bg-foreground text-xs text-background">4</span>{t("applyAndReview")}</div>
               {summary?.requiresConflictOverride ? (
-                <label className="flex items-start gap-2 border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/20">
-                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-foreground" checked={allowConflicts} onChange={(event) => setAllowConflicts(event.target.checked)} />
-                  <span>{t("confirmConflictOverride")}</span>
-                </label>
+                <Hint text={t("hint.excelConflict")} align="start">
+                  <label className="flex items-start gap-2 border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/20">
+                    <input type="checkbox" className="mt-0.5 h-4 w-4 accent-foreground" checked={allowConflicts} onChange={(event) => setAllowConflicts(event.target.checked)} />
+                    <span>{t("confirmConflictOverride")}</span>
+                  </label>
+                </Hint>
               ) : null}
-              <Button type="button" onClick={() => void applyImport()} disabled={!canApply || applying || Boolean(summary?.requiresConflictOverride && !allowConflicts)}>
-                {applying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                {summary ? t("applyChanges", { creates: summary.createRows, updates: summary.updateRows }) : t("apply")}
-              </Button>
+              <Hint wrap text={applyHint}>
+                <Button type="button" onClick={() => void applyImport()} disabled={!canApply || applying || Boolean(summary?.requiresConflictOverride && !allowConflicts)}>
+                  {applying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  {summary ? t("applyChanges", { creates: summary.createRows, updates: summary.updateRows }) : t("apply")}
+                </Button>
+              </Hint>
             </section>
           </div>
 
@@ -230,7 +276,11 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
             <section className="space-y-3">
               <h3 className="text-sm font-semibold">{t("exports")}</h3>
               <div className="grid gap-2">
-                {EXPORT_TYPES.map((item) => <Button key={item} type="button" variant="outline" className="justify-start" onClick={() => download(`/api/v1/mtm/excel/exports/${item.toLowerCase()}`, `mtm-${item.toLowerCase()}.xlsx`)}><Download className="mr-2 h-4 w-4" />{t(`types.${item}`)}</Button>)}
+                {EXPORT_TYPES.map((item) => (
+                  <Hint key={item} text={t(EXPORT_TYPE_HINT[item])} side="left">
+                    <Button type="button" variant="outline" className="justify-start" onClick={() => download(`/api/v1/mtm/excel/exports/${item.toLowerCase()}`, `mtm-${item.toLowerCase()}.xlsx`)}><Download className="mr-2 h-4 w-4" />{t(`types.${item}`)}</Button>
+                  </Hint>
+                ))}
               </div>
             </section>
             <section className="space-y-3 border-t pt-5">
@@ -239,7 +289,7 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
                 {history.length === 0 ? <p className="p-3 text-sm text-muted-foreground">{t("historyEmpty")}</p> : history.slice(0, 10).map((job) => (
                   <div key={job.id} className="p-3 text-xs">
                     <div className="flex items-center justify-between gap-2"><span className="truncate font-medium">{job.originalFileName}</span><span className="shrink-0 text-muted-foreground">{mtmStatusLabel(statusT, "importJob", job.status)}</span></div>
-                    <div className="mt-1 text-muted-foreground">{t(`types.${job.type}`)} · {job.totalRows} · {formatDate(new Date(job.createdAt), locale)}</div>
+                    <div className="mt-1 text-muted-foreground">{t(`types.${job.type}`)} · <HintValue text={t("hint.excelHistoryRows")}>{job.totalRows}</HintValue> · {formatDate(new Date(job.createdAt), locale)}</div>
                   </div>
                 ))}
               </div>

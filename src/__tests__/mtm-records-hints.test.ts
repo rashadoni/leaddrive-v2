@@ -37,7 +37,7 @@ const keysIn = (files: string[], prefix: string) => new Set(files.flatMap((file)
 const SCREENS = [
   ["mtmVisitsPage.hint", ["src/app/(dashboard)/mtm/visits/page.tsx"], "hint."],
   ["mtmAgents.hint", ["src/app/(dashboard)/mtm/agents/page.tsx"], "hint."],
-  ["mtmContactExplorer.hint", ["src/components/mtm/contact-explorer.tsx"], "hint."],
+  ["mtmContactExplorer.hint", ["contact-explorer", "contact-transfer-dialog", "contact-assignment-dialog"].map((name) => `src/components/mtm/${name}.tsx`), "hint."],
   ["mtmCustomers.explorer.hint", ["src/components/mtm/organization-explorer.tsx"], "explorer.hint."],
 ] as const
 

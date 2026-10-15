@@ -26,7 +26,7 @@ const used = (files: readonly string[]) => {
 
 describe.each([
   ["mtmTasksPage.hint", ["src/app/(dashboard)/mtm/tasks/page.tsx"]],
-  ["mtmTaskWorkspace.hint", ["task-actions-panel", "task-workspace", "task-form", "task-edit-form"].map((name) => `src/components/mtm/${name}.tsx`)],
+  ["mtmTaskWorkspace.hint", ["task-actions-panel", "task-workspace", "task-form", "task-edit-form", "task-files-panel"].map((name) => `src/components/mtm/${name}.tsx`)],
   ["mtmPhotosPage.hint", ["src/app/(dashboard)/mtm/photos/page.tsx"]],
   ["mtmAlertsPage.hint", ["src/app/(dashboard)/mtm/alerts/page.tsx"]],
   ["mtmOperationsPage.hint", ["src/app/(dashboard)/mtm/operations/page.tsx"]],

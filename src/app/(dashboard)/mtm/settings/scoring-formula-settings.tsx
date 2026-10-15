@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
+import { Hint, HintValue } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -134,6 +135,12 @@ const DEFINITION_TEMPLATE = JSON.stringify({
     approvalReference: "",
   },
 }, null, 2)
+
+const FORMULA_STATUS_HINT = {
+  DRAFT: "hint.formulaStatusDraft",
+  ACTIVE: "hint.formulaStatusActive",
+  RETIRED: "hint.formulaStatusRetired",
+} as const
 
 function statusVariant(status: FormulaStatus): "success" | "warning" | "outline" {
   if (status === "ACTIVE") return "success"
@@ -299,10 +306,12 @@ export function ScoringFormulaSettings() {
             {t("refresh")}
           </Button>
           {canConfigure ? (
-            <Button type="button" size="sm" onClick={openCreate}>
-              <Plus className="mr-1 h-4 w-4" />
-              {t("newFormula")}
-            </Button>
+            <Hint text={t("hint.formulaNew")}>
+              <Button type="button" size="sm" onClick={openCreate}>
+                <Plus className="mr-1 h-4 w-4" />
+                {t("newFormula")}
+              </Button>
+            </Hint>
           ) : null}
         </div>
       </div>
@@ -349,23 +358,25 @@ export function ScoringFormulaSettings() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{formula.name}</h3>
-                    <Badge variant={statusVariant(formula.status)}>{t(`statuses.${formula.status}`)}</Badge>
+                    <HintValue text={t(FORMULA_STATUS_HINT[formula.status])}><Badge variant={statusVariant(formula.status)}>{t(`statuses.${formula.status}`)}</Badge></HintValue>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{t("version", { version: formula.version })}</p>
                 </div>
                 {canConfigure && formula.status === "DRAFT" ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={!formula.definitionHash}
-                    onClick={() => {
-                      setApprovalConfirmation("")
-                      setActivateTarget(formula)
-                    }}
-                  >
-                    <BadgeCheck className="mr-1 h-4 w-4" />
-                    {t("activate")}
-                  </Button>
+                  <Hint wrap text={formula.definitionHash ? t("hint.formulaActivate") : t("hint.formulaActivateLegacy")}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!formula.definitionHash}
+                      onClick={() => {
+                        setApprovalConfirmation("")
+                        setActivateTarget(formula)
+                      }}
+                    >
+                      <BadgeCheck className="mr-1 h-4 w-4" />
+                      {t("activate")}
+                    </Button>
+                  </Hint>
                 ) : null}
               </div>
 
@@ -375,13 +386,13 @@ export function ScoringFormulaSettings() {
                   <dd className="mt-0.5 font-medium">{dateTime.format(new Date(formula.createdAt))}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">{t("definitionHash")}</dt>
+                  <dt className="text-muted-foreground"><HintValue text={t("hint.formulaHash")}>{t("definitionHash")}</HintValue></dt>
                   <dd className="mt-0.5 break-all font-mono font-medium">
                     {formula.definitionHash ?? t("legacyUnsigned")}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">{t("authority")}</dt>
+                  <dt className="text-muted-foreground"><HintValue text={t("hint.formulaAuthority")}>{t("authority")}</HintValue></dt>
                   <dd className="mt-0.5 font-medium">
                     {formula.sourceSystem
                       ? `${formula.sourceSystem}${formula.sourceReference ? ` · ${formula.sourceReference}` : ""}`
@@ -389,7 +400,7 @@ export function ScoringFormulaSettings() {
                   </dd>
                 </div>
                 <div className="sm:col-span-2">
-                  <dt className="text-muted-foreground">{t("approvalReference")}</dt>
+                  <dt className="text-muted-foreground"><HintValue text={t("hint.formulaApproval")}>{t("approvalReference")}</HintValue></dt>
                   <dd className="mt-0.5 font-medium">{formula.approvalReference ?? t("legacyUnsigned")}</dd>
                 </div>
                 <div>
@@ -520,14 +531,23 @@ export function ScoringFormulaSettings() {
           <Button type="button" variant="outline" onClick={() => setActivateTarget(null)} disabled={activating}>
             {t("cancel")}
           </Button>
-          <Button
-            type="button"
-            onClick={() => void activateFormula()}
-            disabled={activating || !activateTarget?.definitionHash || approvalConfirmation.trim() !== activateTarget?.approvalReference}
+          <Hint
+            wrap
+            text={activating
+              ? null
+              : activateTarget?.definitionHash && approvalConfirmation.trim() === activateTarget.approvalReference
+                ? t("hint.formulaConfirm")
+                : t("hint.formulaConfirmMismatch")}
           >
-            {activating ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}
-            {activating ? t("activating") : t("confirmActivation")}
-          </Button>
+            <Button
+              type="button"
+              onClick={() => void activateFormula()}
+              disabled={activating || !activateTarget?.definitionHash || approvalConfirmation.trim() !== activateTarget?.approvalReference}
+            >
+              {activating ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}
+              {activating ? t("activating") : t("confirmActivation")}
+            </Button>
+          </Hint>
         </DialogFooter>
       </Dialog>
     </section>

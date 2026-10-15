@@ -6,10 +6,17 @@ import { toast } from "sonner"
 import { CheckCircle2, FileJson2, Loader2, RefreshCw, ShieldCheck, Upload } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
 type PolicyStatus = "DRAFT" | "ACTIVE" | "RETIRED"
+
+const COVERAGE_STATUS_HINT = {
+  DRAFT: "hint.coverageStatusDraft",
+  ACTIVE: "hint.coverageStatusActive",
+  RETIRED: "hint.coverageStatusRetired",
+} as const
 
 type CoveragePolicy = {
   id: string
@@ -282,14 +289,14 @@ export function CoveragePolicyAdmin() {
               <article key={policy.id} className={`border p-3 ${activationId === policy.id ? "border-primary bg-primary/5" : "border-zinc-200/70 dark:border-zinc-800"}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0"><p className="font-medium">{policy.code} · v{policy.version}</p><p className="truncate text-xs text-muted-foreground">{policy.nameRu}</p></div>
-                  <StatusBadge status={policy.status} />
+                  <HintValue text={t(COVERAGE_STATUS_HINT[policy.status])}><StatusBadge status={policy.status} /></HintValue>
                 </div>
                 <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-xs">
-                  <dt className="text-muted-foreground">{t("effective")}</dt><dd>{policy.effectiveFrom.slice(0, 10)}{policy.effectiveTo ? ` — ${policy.effectiveTo.slice(0, 10)}` : ""}</dd>
+                  <dt className="text-muted-foreground"><HintValue text={t("hint.coverageEffective")}>{t("effective")}</HintValue></dt><dd>{policy.effectiveFrom.slice(0, 10)}{policy.effectiveTo ? ` — ${policy.effectiveTo.slice(0, 10)}` : ""}</dd>
                   <dt className="text-muted-foreground">{t("source")}</dt><dd className="truncate">{policy.sourceSystem}{policy.sourceReference ? ` · ${policy.sourceReference}` : ""}</dd>
-                  <dt className="text-muted-foreground">SHA-256</dt><dd className="break-all font-mono text-[11px]">{policy.definitionHash}</dd>
+                  <dt className="text-muted-foreground"><HintValue text={t("hint.coverageHash")}>SHA-256</HintValue></dt><dd className="break-all font-mono text-[11px]">{policy.definitionHash}</dd>
                 </dl>
-                {policy.status === "DRAFT" ? <Button className="mt-3 min-h-11 w-full lg:min-h-9" variant="outline" onClick={() => { setActivationId(policy.id); setApprovalReference("") }}><CheckCircle2 className="mr-2 h-4 w-4" />{t("reviewActivation")}</Button> : null}
+                {policy.status === "DRAFT" ? <Hint text={t("hint.coverageReview")}><Button className="mt-3 min-h-11 w-full lg:min-h-9" variant="outline" onClick={() => { setActivationId(policy.id); setApprovalReference("") }}><CheckCircle2 className="mr-2 h-4 w-4" />{t("reviewActivation")}</Button></Hint> : null}
                 {policy.approvalReference ? <p className="mt-2 break-all text-xs text-muted-foreground">{t("approval")}: {policy.approvalReference}</p> : null}
               </article>
             ))}
@@ -313,7 +320,12 @@ export function CoveragePolicyAdmin() {
             </div>
           ) : null}
           <label className="mt-3 flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" checked={policyConfirmed} onChange={(event) => setPolicyConfirmed(event.target.checked)} /><span>{t("policyConfirmation")}</span></label>
-          <Button className="mt-3 min-h-11 w-full lg:min-h-9" disabled={!policySummary || !policyConfirmed || Boolean(busy)} onClick={() => void createPolicy()}>{busy === "policy" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}{t("createDraft")}</Button>
+          {/* A disabled button gets no pointer events: the full-width span takes the hint (why it is disabled). */}
+          <Hint text={busy ? null : !policySummary ? t("hint.coveragePolicyNeedJson") : !policyConfirmed ? t("hint.coverageConfirmFirst") : t("hint.coverageCreateDraft")}>
+            <span className="mt-3 flex" tabIndex={0}>
+              <Button className="min-h-11 w-full lg:min-h-9" disabled={!policySummary || !policyConfirmed || Boolean(busy)} onClick={() => void createPolicy()}>{busy === "policy" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}{t("createDraft")}</Button>
+            </span>
+          </Hint>
         </div>
 
         <div className="p-4">
@@ -330,12 +342,16 @@ export function CoveragePolicyAdmin() {
               <p className="font-medium">{snapshotSummary.period}</p>
               <p className="mt-1 break-all text-xs text-muted-foreground">{t("policyId")}: {snapshotSummary.policyId} · {t("agentId")}: {snapshotSummary.agentId}</p>
               <p className="mt-1 text-xs text-muted-foreground">{t("rowCount", { count: snapshotSummary.rows })} · {t("doctorCount", { count: snapshotSummary.doctors })} · {t("pharmacyCount", { count: snapshotSummary.pharmacies })}</p>
-              <dl className="mt-2 grid grid-cols-2 gap-1 text-xs"><dt>{t("required")}</dt><dd className="text-right tabular-nums">{snapshotSummary.requiredCoverage}</dd><dt>{t("actual")}</dt><dd className="text-right tabular-nums">{snapshotSummary.actualCoverage}</dd><dt>{t("uncovered")}</dt><dd className="text-right tabular-nums">{snapshotSummary.uncoveredMoi}</dd></dl>
+              <dl className="mt-2 grid grid-cols-2 gap-1 text-xs"><dt><HintValue text={t("hint.coverageSum")}>{t("required")}</HintValue></dt><dd className="text-right tabular-nums">{snapshotSummary.requiredCoverage}</dd><dt><HintValue text={t("hint.coverageSum")}>{t("actual")}</HintValue></dt><dd className="text-right tabular-nums">{snapshotSummary.actualCoverage}</dd><dt><HintValue text={t("hint.coverageSum")}>{t("uncovered")}</HintValue></dt><dd className="text-right tabular-nums">{snapshotSummary.uncoveredMoi}</dd></dl>
               <p className="mt-2 break-all text-xs text-muted-foreground">{t("batch")}: {snapshotSummary.batch}</p>
             </div>
           ) : null}
           <label className="mt-3 flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" checked={snapshotConfirmed} onChange={(event) => setSnapshotConfirmed(event.target.checked)} /><span>{t("snapshotConfirmation")}</span></label>
-          <Button className="mt-3 min-h-11 w-full lg:min-h-9" disabled={!snapshotSummary || !snapshotConfirmed || Boolean(busy)} onClick={() => void importSnapshot()}>{busy === "snapshot" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}{t("importSnapshot")}</Button>
+          <Hint text={busy ? null : !snapshotSummary ? t("hint.coverageSnapshotNeedJson") : !snapshotConfirmed ? t("hint.coverageConfirmFirst") : t("hint.coverageImport")}>
+            <span className="mt-3 flex" tabIndex={0}>
+              <Button className="min-h-11 w-full lg:min-h-9" disabled={!snapshotSummary || !snapshotConfirmed || Boolean(busy)} onClick={() => void importSnapshot()}>{busy === "snapshot" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}{t("importSnapshot")}</Button>
+            </span>
+          </Hint>
         </div>
       </div>
 
@@ -345,7 +361,7 @@ export function CoveragePolicyAdmin() {
           <p className="mt-1 text-sm text-muted-foreground">{t("activationDescription")}</p>
           <p className="mt-3 break-all border bg-background p-2 font-mono text-xs">{activation.definitionHash}</p>
           <label className="mt-3 block text-sm font-medium"><span className="mb-1.5 block">{t("approvalReference")}</span><Input value={approvalReference} maxLength={500} onChange={(event) => setApprovalReference(event.target.value)} /></label>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end"><Button variant="outline" onClick={() => { setActivationId(""); setApprovalReference("") }}>{t("cancel")}</Button><Button disabled={approvalReference.trim().length < 3 || Boolean(busy)} onClick={() => void activatePolicy()}>{busy === "activate" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}{t("activateExactHash")}</Button></div>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end"><Button variant="outline" onClick={() => { setActivationId(""); setApprovalReference("") }}>{t("cancel")}</Button><Hint text={busy ? null : approvalReference.trim().length < 3 ? t("hint.coverageApprovalNeeded") : t("hint.coverageActivate")}><span className="flex" tabIndex={0}><Button className="w-full sm:w-auto" disabled={approvalReference.trim().length < 3 || Boolean(busy)} onClick={() => void activatePolicy()}>{busy === "activate" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}{t("activateExactHash")}</Button></span></Hint></div>
         </div>
       ) : null}
     </section>

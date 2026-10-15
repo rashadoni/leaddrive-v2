@@ -19,7 +19,7 @@ const used = (files: string[]) => new Set(files.flatMap((file) => [...readFileSy
 
 describe.each([
   ["mtmSettingsPage.hint", ["src/app/(dashboard)/mtm/settings/route-target-type-settings.tsx"]],
-  ["mtmVisitPolicies.hint", ["src/app/(dashboard)/mtm/settings/visit-action-switches.tsx"]],
+  ["mtmVisitPolicies.hint", ["src/app/(dashboard)/mtm/settings/visit-action-switches.tsx", "src/app/(dashboard)/mtm/settings/visit-policy-settings.tsx"]],
   ["mtmAccess.hint", ["src/components/mtm/access-panel.tsx", "src/components/mtm/agent-permission-matrix.tsx"]],
 ] as const)("the hints of %s", (path, files) => {
   const keys = used([...files])

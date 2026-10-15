@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { BadgeCheck, CircleAlert, History, Pencil, Settings2, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -116,16 +117,19 @@ function AssignmentBadge({
   assignment: GovernedContactDictionaryAssignment
   locale: string
 }) {
+  const t = useTranslations("mtmContactDictionaryAssignments")
   return (
-    <span className={cn(
-      "inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
-      assignment.valid
-        ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200"
-        : "bg-amber-100 text-amber-950 dark:bg-amber-900/30 dark:text-amber-100",
-    )}>
-      {assignment.valid ? <BadgeCheck className="h-3.5 w-3.5 flex-none" /> : <CircleAlert className="h-3.5 w-3.5 flex-none" />}
-      <span className="truncate">{assignment.entry ? localized(assignment.entry.labels, locale) : assignment.entryCode}</span>
-    </span>
+    <Hint text={assignment.valid ? t("hint.dictValueValid") : t("hint.dictValueInvalid")}>
+      <span tabIndex={0} className={cn(
+        "inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
+        assignment.valid
+          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200"
+          : "bg-amber-100 text-amber-950 dark:bg-amber-900/30 dark:text-amber-100",
+      )}>
+        {assignment.valid ? <BadgeCheck className="h-3.5 w-3.5 flex-none" /> : <CircleAlert className="h-3.5 w-3.5 flex-none" />}
+        <span className="truncate">{assignment.entry ? localized(assignment.entry.labels, locale) : assignment.entryCode}</span>
+      </span>
+    </Hint>
   )
 }
 
@@ -367,10 +371,12 @@ export function MtmContactDictionaryAssignmentPanel({
           <h2 className="text-base font-semibold">{t("title")}</h2>
         </div>
         {(canManage || canRequestChanges) && dictionaries.length ? (
-          <Button type="button" variant="outline" className="min-h-11" onClick={openEditor}>
-            <Pencil className="h-4 w-4" />
-            {canManage ? t("edit") : t("suggest")}
-          </Button>
+          <Hint text={canManage ? t("hint.dictEdit") : t("hint.dictSuggest")}>
+            <Button type="button" variant="outline" className="min-h-11" onClick={openEditor}>
+              <Pencil className="h-4 w-4" />
+              {canManage ? t("edit") : t("suggest")}
+            </Button>
+          </Hint>
         ) : null}
       </div>
 
@@ -385,9 +391,11 @@ export function MtmContactDictionaryAssignmentPanel({
             <h3 className="text-sm font-semibold">{t(label)}</h3>
             {kind === "CLIENT_TYPE" && !assignedClientType && clientCategory.entry ? (
               <div className="flex flex-wrap gap-2">
-                <span className="inline-flex min-w-0 items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100">
-                  <span className="truncate">{localized(clientCategory.entry.labels, locale)}</span>
-                </span>
+                <Hint text={t("hint.dictDefaultType")}>
+                  <span tabIndex={0} className="inline-flex min-w-0 items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100">
+                    <span className="truncate">{localized(clientCategory.entry.labels, locale)}</span>
+                  </span>
+                </Hint>
               </div>
             ) : renderAssignmentGroup(kind)}
             {kind === "CLIENT_TYPE" && clientCategoryFields.length > 0 ? (
@@ -416,8 +424,8 @@ export function MtmContactDictionaryAssignmentPanel({
               </div>
               {canManage ? (
                 <div className="flex gap-2">
-                  <Button type="button" size="sm" variant="outline" onClick={() => { setReviewTarget({ id: request.id, decision: "REJECTED" }); setReviewComment(""); setError("") }}>{t("reject")}</Button>
-                  <Button type="button" size="sm" onClick={() => { setReviewTarget({ id: request.id, decision: "APPROVED" }); setReviewComment(""); setError("") }}>{t("approve")}</Button>
+                  <Hint text={t("hint.dictReject")}><Button type="button" size="sm" variant="outline" onClick={() => { setReviewTarget({ id: request.id, decision: "REJECTED" }); setReviewComment(""); setError("") }}>{t("reject")}</Button></Hint>
+                  <Hint text={t("hint.dictApprove")}><Button type="button" size="sm" onClick={() => { setReviewTarget({ id: request.id, decision: "APPROVED" }); setReviewComment(""); setError("") }}>{t("approve")}</Button></Hint>
                 </div>
               ) : null}
             </div>
@@ -517,7 +525,7 @@ export function MtmContactDictionaryAssignmentPanel({
             {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>{t("cancel")}</Button>
-              <Button type="submit" disabled={saving}>{saving ? t("saving") : canManage ? t("save") : t("submit")}</Button>
+              <Hint wrap text={saving ? null : canManage ? t("hint.dictSave") : t("hint.dictSubmit")}><Button type="submit" disabled={saving}>{saving ? t("saving") : canManage ? t("save") : t("submit")}</Button></Hint>
             </DialogFooter>
           </form>
         </DialogContent>

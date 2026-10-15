@@ -31,7 +31,8 @@ const blanks = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((match) =>
 const ROUTES_SOURCES = [
   "src/app/(dashboard)/mtm/routes/page.tsx",
   ...["routes-awaiting-publish", "route-travel-panel", "route-calendar", "route-week-plan", "route-approval-queue",
-    "customer-request-queue", "customer-location-request-queue", "customer-create-request-panel", "route-builder"].map((name) => `src/components/mtm/${name}.tsx`),
+    "customer-request-queue", "customer-location-request-queue", "customer-create-request-panel", "route-builder",
+    "route-planning-matrix", "route-builder-inline-assignment-panel"].map((name) => `src/components/mtm/${name}.tsx`),
 ]
 const used = (files: string[]) => {
   const keys = new Set(files.flatMap((file) => [...readFileSync(file, "utf8").matchAll(/"hint\.(\w+)"/g)].map((match) => match[1])))

@@ -7,6 +7,7 @@ import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { Activity, AlertTriangle, CheckCircle2, Clock3, Download, Layers3, LocateFixed, MapPin, Pause, Play, RefreshCw, RotateCcw, Route, Satellite, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import { MtmFilterBar, MtmFilterDate, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { Select } from "@/components/ui/select"
 import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
@@ -212,6 +213,28 @@ type HistoryData = {
 }
 
 const HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/
+
+/** What a layer button shows on the map; the plainly named ones need no hint. */
+const HISTORY_LAYER_HINT: Partial<Record<"planned" | "actual" | "stops" | "visits" | "gaps" | "roads", string>> = {
+  planned: "hint.historyLayerPlanned",
+  actual: "hint.historyLayerActual",
+  gaps: "hint.historyLayerGaps",
+  roads: "hint.historyLayerRoads",
+}
+
+/** What each GPS quality warning means and what it does to the figures. */
+const HISTORY_ANOMALY_HINT = {
+  IMPOSSIBLE_JUMP: "hint.historyAnomalyJump",
+  LOW_ACCURACY: "hint.historyAnomalyLowAccuracy",
+  MISSING_SEGMENT: "hint.historyAnomalyMissing",
+} as const
+
+/** How the kilometres were counted (road-distance.ts); older responses omit the basis. */
+const HISTORY_DISTANCE_HINT = {
+  ROADS: "hint.historyDistanceRoads",
+  PARTIAL: "hint.historyDistancePartial",
+  STRAIGHT: "hint.historyDistanceStraight",
+} as const
 
 /** Wall-clock HH:MM in the tenant's timezone, for the time inputs. */
 function tenantClock(value: Date | string, timezone: string): string {
@@ -533,12 +556,14 @@ export function LocationHistoryPanel() {
               autoWindowRef.current = false
               setTo(value)
             }} />
-          <MtmFilterSelect testId="mtm-location-history-accuracy" label={t("accuracyFilter")} value={String(accuracy)} emptyValue="100" showValue clearable={false} allLabel="≤ 100 m"
-            options={[25, 50, 100, 200, 500].map((value) => ({ value: String(value), label: `≤ ${value} m` }))}
-            onChange={(value) => {
-              invalidateHistory()
-              setAccuracy(Number(value))
-            }} />
+          <Hint wrap text={t("hint.historyAccuracyFilter")}>
+            <MtmFilterSelect testId="mtm-location-history-accuracy" label={t("accuracyFilter")} value={String(accuracy)} emptyValue="100" showValue clearable={false} allLabel="≤ 100 m"
+              options={[25, 50, 100, 200, 500].map((value) => ({ value: String(value), label: `≤ ${value} m` }))}
+              onChange={(value) => {
+                invalidateHistory()
+                setAccuracy(Number(value))
+              }} />
+          </Hint>
           <Button data-testid="mtm-location-history-submit" type="submit" disabled={!agentId || loadingHistory} className="h-10 rounded-full px-4">
             <RefreshCw className={`mr-1.5 h-4 w-4 ${loadingHistory ? "animate-spin" : ""}`} />
             {loadingHistory ? t("loading") : t("show")}
@@ -572,18 +597,25 @@ export function LocationHistoryPanel() {
         <>
           <div data-testid="mtm-location-history-results" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
             {[
-              { icon: Route, label: t("distance"), value: distanceLabel(data.summary.distanceMeters, t("unavailableTruncated")) },
-              { icon: LocateFixed, label: t("acceptedPoints"), value: `${data.quality.acceptedPointCount}` },
-              { icon: MapPin, label: t("stops"), value: `${data.summary.stopCount}` },
-              { icon: CheckCircle2, label: t("visits"), value: `${data.summary.visitCount}` },
-              { icon: WifiOff, label: t("gaps"), value: `${data.summary.gapCount}` },
-              { icon: Activity, label: t("anomalies"), value: `${data.summary.anomalyCount}` },
+              {
+                icon: Route,
+                label: t("distance"),
+                value: distanceLabel(data.summary.distanceMeters, t("unavailableTruncated")),
+                hint: data.summary.distanceMeters == null
+                  ? t("hint.historyDistanceTruncated")
+                  : t(HISTORY_DISTANCE_HINT[data.summary.distanceBasis ?? "PARTIAL"]),
+              },
+              { icon: LocateFixed, label: t("acceptedPoints"), value: `${data.quality.acceptedPointCount}`, hint: t("hint.historyAcceptedPoints", { accuracy: Math.round(data.policy.maxAccuracyMeters) }) },
+              { icon: MapPin, label: t("stops"), value: `${data.summary.stopCount}`, hint: t("hint.historyStops", { minutes: data.policy.stopMinimumMinutes, radius: data.policy.stopRadiusMeters }) },
+              { icon: CheckCircle2, label: t("visits"), value: `${data.summary.visitCount}`, hint: t("hint.historyVisits") },
+              { icon: WifiOff, label: t("gaps"), value: `${data.summary.gapCount}`, hint: t("hint.historyGaps", { minutes: Math.round(data.policy.gapThresholdSeconds / 6) / 10 }) },
+              { icon: Activity, label: t("anomalies"), value: `${data.summary.anomalyCount}`, hint: t("hint.historyAnomalies", { accuracy: Math.round(data.policy.maxAccuracyMeters) }) },
             ].map((metric) => (
               <div key={metric.label} className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
                 <metric.icon className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <div className="text-xs text-muted-foreground">{metric.label}</div>
-                  <div className="text-lg font-semibold tabular-nums">{metric.value}</div>
+                  <div className="text-lg font-semibold tabular-nums"><HintValue text={metric.hint}>{metric.value}</HintValue></div>
                 </div>
               </div>
             ))}
@@ -604,21 +636,27 @@ export function LocationHistoryPanel() {
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-card p-2 dark:border-zinc-700">
             <div className="flex flex-wrap items-center gap-1.5" aria-label={t("layers")}>
               <span className="mr-1 inline-flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground"><Layers3 className="h-3.5 w-3.5" />{t("layers")}</span>
-              {(Object.keys(layers) as Array<keyof typeof layers>).filter((layer) => layer !== "roads" || Boolean(data?.matchedTrack)).map((layer) => (
-                <button
-                  key={layer}
-                  type="button"
-                  aria-pressed={layers[layer]}
-                  onClick={() => setLayers((current) => ({ ...current, [layer]: !current[layer] }))}
-                  className={`min-h-11 rounded-md border px-3 py-2 text-xs transition-colors ${layers[layer] ? "border-primary/30 bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
-                >
-                  {t(`layer.${layer}`)}
-                </button>
-              ))}
+              {(Object.keys(layers) as Array<keyof typeof layers>).filter((layer) => layer !== "roads" || Boolean(data?.matchedTrack)).map((layer) => {
+                const hintKey = HISTORY_LAYER_HINT[layer]
+                return (
+                  <Hint key={layer} text={hintKey ? t(hintKey) : null}>
+                    <button
+                      type="button"
+                      aria-pressed={layers[layer]}
+                      onClick={() => setLayers((current) => ({ ...current, [layer]: !current[layer] }))}
+                      className={`min-h-11 rounded-md border px-3 py-2 text-xs transition-colors ${layers[layer] ? "border-primary/30 bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                    >
+                      {t(`layer.${layer}`)}
+                    </button>
+                  </Hint>
+                )
+              })}
             </div>
-            <a href={exportUrl} download className="inline-flex min-h-11 items-center rounded-md border px-3 text-xs font-medium hover:bg-muted">
-              <Download className="mr-1.5 h-3.5 w-3.5" />{t("exportCsv")}
-            </a>
+            <Hint text={t("hint.historyExportCsv")}>
+              <a href={exportUrl} download className="inline-flex min-h-11 items-center rounded-md border px-3 text-xs font-medium hover:bg-muted">
+                <Download className="mr-1.5 h-3.5 w-3.5" />{t("exportCsv")}
+              </a>
+            </Hint>
           </div>
 
           <section data-testid="mtm-location-history-replay" className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700" aria-labelledby="day-replay-title">
@@ -642,17 +680,19 @@ export function LocationHistoryPanel() {
             </div>
 
             <div className="mt-3 grid gap-2 md:grid-cols-[auto_auto_minmax(180px,1fr)_110px] md:items-center">
-              <Button
-                data-testid="mtm-location-history-play"
-                type="button"
-                variant={isPlaying ? "secondary" : "default"}
-                className="min-h-11"
-                onClick={togglePlayback}
-                disabled={playbackPointCount < 2}
-              >
-                {isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4" />}
-                {isPlaying ? t("pause") : playbackIndex >= playbackLastIndex ? t("replayFromStart") : t("play")}
-              </Button>
+              <Hint wrap text={playbackPointCount < 2 ? t("hint.historyPlayNeedsPoints") : null}>
+                <Button
+                  data-testid="mtm-location-history-play"
+                  type="button"
+                  variant={isPlaying ? "secondary" : "default"}
+                  className="min-h-11"
+                  onClick={togglePlayback}
+                  disabled={playbackPointCount < 2}
+                >
+                  {isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4" />}
+                  {isPlaying ? t("pause") : playbackIndex >= playbackLastIndex ? t("replayFromStart") : t("play")}
+                </Button>
+              </Hint>
               <Button
                 type="button"
                 variant="outline"
@@ -685,23 +725,25 @@ export function LocationHistoryPanel() {
               </label>
               <label className="space-y-1 text-xs font-medium">
                 <span className="sr-only">{t("playbackRate")}</span>
-                <Select
-                  className="min-h-11"
-                  value={String(playbackRate)}
-                  aria-label={t("playbackRate")}
-                  onChange={(event) => setPlaybackRate(Number(event.target.value))}
-                >
-                  {[0.5, 1, 2, 4].map((rate) => <option key={rate} value={rate}>{t("playbackRateValue", { rate })}</option>)}
-                </Select>
+                <Hint text={t("hint.historyPlaybackRate")}>
+                  <Select
+                    className="min-h-11"
+                    value={String(playbackRate)}
+                    aria-label={t("playbackRate")}
+                    onChange={(event) => setPlaybackRate(Number(event.target.value))}
+                  >
+                    {[0.5, 1, 2, 4].map((rate) => <option key={rate} value={rate}>{t("playbackRateValue", { rate })}</option>)}
+                  </Select>
+                </Hint>
               </label>
             </div>
 
             {playbackPoint && (
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span>{t("accuracy")}: {playbackPoint.accuracy == null ? "—" : `${Math.round(playbackPoint.accuracy)} m`}</span>
+                <span>{t("accuracy")}: <HintValue text={playbackPoint.accuracy == null ? null : t("hint.historyPointAccuracy")}>{playbackPoint.accuracy == null ? "—" : `${Math.round(playbackPoint.accuracy)} m`}</HintValue></span>
                 <span>{t("battery")}: {playbackPoint.battery == null ? "—" : `${Math.round(playbackPoint.battery)}%`}</span>
-                <span>{t("gpsSpeed")}: {playbackSpeedKmh == null ? "—" : tMap("roster.kmh", { value: playbackSpeedKmh })}</span>
-                <span>{playbackPoint.isMoving ? t("moving") : t("stationary")}</span>
+                <span>{t("gpsSpeed")}: <HintValue text={playbackSpeedKmh == null ? null : t("hint.historyPointSpeed")}>{playbackSpeedKmh == null ? "—" : tMap("roster.kmh", { value: playbackSpeedKmh })}</HintValue></span>
+                <HintValue text={t("hint.historyPointMoving")}>{playbackPoint.isMoving ? t("moving") : t("stationary")}</HintValue>
               </div>
             )}
           </section>
@@ -805,13 +847,13 @@ export function LocationHistoryPanel() {
                         <span className="whitespace-nowrap text-muted-foreground">{formatDuration(stop.durationSeconds)}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
-                        <span>{t("accuracy")}: {stop.averageAccuracy == null ? "—" : `${Math.round(stop.averageAccuracy)} m`}</span>
+                        <span>{t("accuracy")}: <HintValue text={stop.averageAccuracy == null ? null : t("hint.historyStopAccuracy")}>{stop.averageAccuracy == null ? "—" : `${Math.round(stop.averageAccuracy)} m`}</HintValue></span>
                         <span>{t("battery")}: {stop.batteryStart == null ? "—" : stop.batteryStart === stop.batteryEnd ? `${Math.round(stop.batteryStart)}%` : `${Math.round(stop.batteryStart)}–${Math.round(stop.batteryEnd ?? stop.batteryStart)}%`}</span>
-                        <span>{stop.connectivity === "ONLINE" ? t("online") : t("offlineGaps")}</span>
+                        <HintValue text={stop.connectivity === "ONLINE" ? t("hint.historyStopOnline") : t("hint.historyStopOfflineGaps")}>{stop.connectivity === "ONLINE" ? t("online") : t("offlineGaps")}</HintValue>
                       </div>
                       <div className={`rounded-md px-2 py-1.5 ${stop.visit ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
                         {stop.visit
-                          ? `${t("confirmedVisit")}: ${stop.visit.customerName}`
+                          ? <><HintValue text={t("hint.historyStopVisit")}>{t("confirmedVisit")}</HintValue>: {stop.visit.customerName}</>
                           : t("stopIsNotVisit")}
                       </div>
                     </article>
@@ -858,7 +900,7 @@ export function LocationHistoryPanel() {
               <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {data.anomalies.slice(0, 30).map((anomaly) => (
                   <div key={anomaly.id} className="rounded-md border bg-background/80 p-2 text-xs">
-                    <div className="flex justify-between gap-2"><strong>{t(`anomaly.${anomaly.type}`)}</strong><time className="text-muted-foreground">{formatMoment(anomaly.startedAt, { timeStyle: "short" })}</time></div>
+                    <div className="flex justify-between gap-2"><strong><HintValue text={t(HISTORY_ANOMALY_HINT[anomaly.type])}>{t(`anomaly.${anomaly.type}`)}</HintValue></strong><time className="text-muted-foreground">{formatMoment(anomaly.startedAt, { timeStyle: "short" })}</time></div>
                     <div className="mt-1 text-muted-foreground">
                       {anomaly.type === "IMPOSSIBLE_JUMP" && t("jumpDetail", { distance: Math.round(anomaly.detail.distanceMeters ?? 0), speed: Math.round(anomaly.detail.speedKmh ?? 0) })}
                       {anomaly.type === "LOW_ACCURACY" && t("accuracyDetail", { accuracy: Math.round(anomaly.detail.accuracyMeters ?? 0) })}
