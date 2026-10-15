@@ -133,7 +133,8 @@ const FACTS: Partial<Record<AgentPermissionId, Fact[]>> = {
     { check: () => mobileCapabilities("AGENT").includes("FIELD_EXECUTE") },
     {
       file: "src/app/api/v2/mtm/mobile/route-field/workday-return/route.ts",
-      contains: 'if (!auth.agentId || (attendanceOnly && auth.tenantCapabilities?.routeField!==true)) {',
+      // An office employee's own day is Personnel (2026-10-14), not Route & Field.
+      contains: 'if (!auth.agentId || (attendanceOnly && auth.tenantCapabilities?.personnel!==true)) {',
     },
     {
       file: "src/app/api/v2/mtm/mobile/route-field/workday-return/route.ts",
