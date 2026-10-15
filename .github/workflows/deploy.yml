@@ -460,6 +460,15 @@ jobs:
           MTM_LOCATION_BREAK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_LOCATION_BREAK_DB_GATE: required
 
+      - name: MTM Excel route conflicts database gate
+        # Same gate as in pr-checks: an Excel route conflicts only with the
+        # employee's published or started routes of the same day, compared by
+        # real meeting slots in the organization's timezone (see the test's header).
+        run: npx vitest run src/__tests__/mtm-excel-route-conflicts-postgres.test.ts
+        env:
+          MTM_EXCEL_ROUTES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_EXCEL_ROUTES_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:

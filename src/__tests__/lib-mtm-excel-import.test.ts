@@ -33,7 +33,7 @@ describe("MTM Excel import validation", () => {
       { rowNumber: 3, values: { external_code: "0002", object_type: "clinic", name: "New Clinic" } },
     ])
 
-    const result = await validateMtmExcelImport({ db: db as never, organizationId: "org-1", parsed, checksum: "checksum", actor })
+    const result = await validateMtmExcelImport({ db: db as never, organizationId: "org-1", parsed, checksum: "checksum", actor, timezone: "Asia/Baku" })
 
     expect(result.snapshot.summary).toMatchObject({ totalRows: 2, createRows: 1, unchangedRows: 1, errorRows: 0 })
     expect(db.mtmCustomer.create).not.toHaveBeenCalled()
@@ -47,7 +47,7 @@ describe("MTM Excel import validation", () => {
       { rowNumber: 4, values: { external_code: "0010", object_type: "store", name: "Second" } },
     ])
 
-    const result = await validateMtmExcelImport({ db: db as never, organizationId: "org-1", parsed, checksum: "checksum", actor })
+    const result = await validateMtmExcelImport({ db: db as never, organizationId: "org-1", parsed, checksum: "checksum", actor, timezone: "Asia/Baku" })
 
     expect(result.errors).toContainEqual(expect.objectContaining({ rowNumber: 4, columnName: "external_code", errorCode: "DUPLICATE_IN_FILE" }))
     expect(result.snapshot.summary.errorRows).toBe(1)
@@ -61,7 +61,7 @@ describe("MTM Excel import validation", () => {
       { rowNumber: 4, values: { external_code: "0022", object_type: "store", name: "Real", latitude: "40.4", longitude: "49.8" } },
     ])
 
-    const result = await validateMtmExcelImport({ db: db as never, organizationId: "org-1", parsed, checksum: "checksum", actor })
+    const result = await validateMtmExcelImport({ db: db as never, organizationId: "org-1", parsed, checksum: "checksum", actor, timezone: "Asia/Baku" })
 
     const byCode = new Map(result.snapshot.rows.map((row) => [String(row.data.code), row.data]))
     expect(byCode.get("0020")).toMatchObject({ latitude: null, longitude: null })

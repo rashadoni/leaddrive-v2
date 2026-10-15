@@ -14217,7 +14217,7 @@
       "excelUnchangedRows": "Artıq bazadakı ilə üst-üstə düşən qeydlər: idxal onlara toxunmur.",
       "excelErrorRows": "Xətalı sətirlər, üstəgəl başlıqdakı xətalar. Onlar qaldıqca idxal tətbiq olunmur — faylı düzəldib yenidən yükləyin.",
       "excelDownloadErrors": "Yoxlamanın bütün xətalarını Excel faylı kimi endir: sətir, sütun, nə səhvdir və xanadakı dəyər. Burada yalnız ilk beşi göstərilir.",
-      "excelConflict": "Konflikt — eyni əməkdaşın artıq dərc olunmuş və ya başlanmış marşrutu var, görüş vaxtları üst-üstə düşür və ya göstərilməyib. İdxal o marşrutu dəyişmir.",
+      "excelConflict": "Konflikt — eyni əməkdaşın həmin gün üçün artıq dərc olunmuş və ya başlanmış marşrutu var, görüş vaxtları üst-üstə düşür və ya göstərilməyib. İdxal o marşrutu dəyişmir.",
       "excelApplyNoFile": "Əvvəlcə faylı yükləyin və yoxlamanı gözləyin — hələ tətbiq ediləcək heç nə yoxdur.",
       "excelApplyErrors": "Faylda xətalar var. Onları düzəldib faylı yenidən yükləyin — yalnız xətasız fayl tətbiq oluna bilər.",
       "excelApplyConflicts": "Əvvəlcə yuxarıdakı qutunu işarələyin — marşrut konfliktlərini yoxladığınızı təsdiqləyin.",

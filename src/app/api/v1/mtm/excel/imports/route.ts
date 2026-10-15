@@ -10,6 +10,7 @@ import {
   parseMtmExcelWorkbook,
 } from "@/lib/mtm/excel-contract"
 import { validateMtmExcelImport } from "@/lib/mtm/excel-import"
+import { getMtmSettings } from "@/lib/mtm-settings"
 
 function forbidden() {
   return NextResponse.json({ error: "Excel import is restricted to authorized administrators and managers", code: "MTM_EXCEL_IMPORT_DENIED" }, { status: 403 })
@@ -76,7 +77,8 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
   await prisma.mtmImportJob.update({ where: { id: job.id }, data: { status: "VALIDATING" } })
   try {
     const parsed = await parseMtmExcelWorkbook(bytes, rawType)
-    const result = await validateMtmExcelImport({ db: prisma, organizationId: auth.orgId, parsed, checksum, actor: access.actor })
+    const { timezone } = await getMtmSettings(auth.orgId)
+    const result = await validateMtmExcelImport({ db: prisma, organizationId: auth.orgId, parsed, checksum, actor: access.actor, timezone })
     const summary = result.snapshot.summary
     const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (result.errors.length > 0) {
