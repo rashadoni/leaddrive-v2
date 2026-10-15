@@ -961,13 +961,17 @@ try {
   await run('browser-primary-branch-assignment', 'browser-action+database-backed-http', async () => {
     assert.ok(state.branch)
     await readyPage('branches'); await button('branchesAssignments').click()
+    // Field agents stay in MTM: the HR branch list does not offer them (#796).
     await page.locator('#branch-employee-search').fill('Fixture field')
     await clickResponse(button('branchesFind'), `${apiRoot}/branches/assignments`, 'GET')
-    const row = page.getByTestId('branch-employee').filter({ hasText: 'Fixture field' })
+    assert.equal(await page.getByTestId('branch-employee').filter({ hasText: 'Fixture field' }).count(), 0)
+    await page.locator('#branch-employee-search').fill('Fixture outside')
+    await clickResponse(button('branchesFind'), `${apiRoot}/branches/assignments`, 'GET')
+    const row = page.getByTestId('branch-employee').filter({ hasText: 'Fixture outside' })
     await row.getByRole('combobox').selectOption(state.branch.id)
-    await clickResponse(row.getByRole('button', { name: t('branchesAssignNamed', { name: 'Fixture field' }) }), `${apiRoot}/branches/assignments`)
-    const directory = await api('admin', '/branches/assignments?search=Fixture%20field')
-    assert.equal(directory.employees.find(employee => employee.id === fixture.agents.field.id).primary.branchId, state.branch.id)
+    await clickResponse(row.getByRole('button', { name: t('branchesAssignNamed', { name: 'Fixture outside' }) }), `${apiRoot}/branches/assignments`)
+    const directory = await api('admin', '/branches/assignments?search=Fixture%20outside')
+    assert.equal(directory.employees.find(employee => employee.id === fixture.agents.outside.id).primary.branchId, state.branch.id)
   })
   await run('browser-risk-dismissal', 'browser-action+synthetic-risk-fixture', async () => {
     assert.ok(state.workdayId)
