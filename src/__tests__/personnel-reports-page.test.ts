@@ -87,8 +87,10 @@ describe("Report viewer", () => {
     const details = [...container.querySelectorAll('[data-testid="attendance-report-row"]')].map(row => row.querySelector('[data-testid="attendance-report-employee-details"]')?.textContent)
     expect(details).toEqual(["Бухгалтер · Центр", "Север"])
     // A worked day shows its code with the hours beneath, the whole text in its tooltip.
-    const worked = container.querySelector('td span[title]')!
-    expect(worked.getAttribute("title")).toMatch(/ · /)
-    expect(worked.children).toHaveLength(2)
+    // Every day has the same shape (code line, hours line), so codes line up along the row.
+    const cells = [...container.querySelectorAll<HTMLElement>("td span[title]")]
+    const worked = cells.find(cell => / · /.test(cell.getAttribute("title")!))!, absent = cells.find(cell => !/ · /.test(cell.getAttribute("title")!))!
+    expect(worked.children).toHaveLength(2); expect(worked.children[1].textContent).not.toBe("")
+    expect(absent.children).toHaveLength(2); expect(absent.children[1].textContent).toBe("")
   })
 })
