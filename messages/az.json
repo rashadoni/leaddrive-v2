@@ -16778,7 +16778,7 @@
       "chipStopped": "Yalnız tətbiqi əlaqədə olan, amma son 5 dəqiqə bir yerdə (50 m daxilində) duranlar.",
       "chipRouteFinished": "Yalnız bu günkü marşrutu bitirənlər: bütün nöqtələrə baş çəkilib və ya marşrut bağlanıb.",
       "chipLate": "Yalnız bu günkü marşrutu başlamayanlar, halbuki MTM ayarlarındakı gecikmə saatı artıq keçib.",
-      "chipOffline": "Yalnız son koordinatı {minutes} dəqiqədən köhnə olan və ya heç gəlməyənlər.",
+      "chipOffline": "Yalnız canlı siqnalı olmayanlar: koordinat {minutes} dəqiqədən köhnədir, heç gəlməyib və ya tətbiq əlaqədə deyil.",
       "agents": "Server giriş zonanızdan neçə əməkdaş göndərib — siyahının filtrlərindən əvvəl.",
       "appPresence": "«{online}» — tətbiq son {minutes} dəqiqədə serverlə əlaqə saxlayıb. Bu, GPS-ə yox, tətbiqin özünə aiddir.",
       "gpsFreshness": "Son koordinat nə vaxt gəlib: «{fresh}» — {freshMinutes} dəqiqədən köhnə deyil, «{delayed}» — {delayedMinutes} dəqiqəyə qədər, «{stale}» — daha köhnə. Həddlər MTM ayarlarında təyin olunur.",
