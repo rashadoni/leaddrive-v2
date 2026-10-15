@@ -135,6 +135,11 @@ export const GET = withRls(async (req, auth) => {
     const where: Prisma.MtmAgentWhereInput = { organizationId: orgId }
     if (Object.values(MtmAgentStatus).includes(status as MtmAgentStatus)) where.status = status as MtmAgentStatus
     if (Object.values(MtmAgentRole).includes(role as MtmAgentRole)) where.role = role as MtmAgentRole
+    // Office employees are Personnel, not field staff (owner, 2026-10-15): they
+    // are listed and added in Personnel → Employees, never among MTM agents.
+    // The CRM user page asks for every card it may link (includeEmployees=1),
+    // or it would offer a second card to a user who already has one.
+    else if (searchParams.get("includeEmployees") !== "1") where.role = { not: "EMPLOYEE" }
 
     // M4-5: territory-scope enforcement for mobile callers.
     // Web admin panel (cookie auth, no mobile JWT) sees all agents in the org.

@@ -129,6 +129,21 @@ describe("GET /api/v1/mtm/agents", () => {
     expect(json.data.limit).toBe(50)
   })
 
+  it.each([
+    ["/api/v1/mtm/agents", { not: "EMPLOYEE" }],
+    ["/api/v1/mtm/agents?role=AGENT", "AGENT"],
+    ["/api/v1/mtm/agents?role=EMPLOYEE", "EMPLOYEE"],
+    ["/api/v1/mtm/agents?includeEmployees=1", undefined],
+  ])("keeps office employees out of the field list unless asked for (%s)", async (url, role) => {
+    // Owner, 2026-10-15: office staff live in Personnel → Employees, not among
+    // MTM agents. The CRM user page asks for them so it never offers a second card.
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(0)
+    expect((await ListAgents(makeReq(url))).status).toBe(200)
+    expect((vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0] as any).where.role).toEqual(role)
+  })
+
   it("returns the linked web login's email flat to a web session, without the user row", async () => {
     // Prod 2026-09-15: the owner searched for a manager by «rashad@guven.az»,
     // which lives only on the linked login, not on the field card.
