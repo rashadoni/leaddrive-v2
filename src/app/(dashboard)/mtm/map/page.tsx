@@ -36,7 +36,7 @@ import {
   type RosterView,
 } from "@/lib/mtm/live-map-roster"
 import { liveMapDaySteps } from "@/lib/mtm/live-map-day-steps"
-import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
+import { mtmSpeedKmh, mtmSpeedMoving } from "@/lib/mtm/gps-speed"
 import { createDateFormatter, formatDateTime, formatTime } from "@/lib/format-date"
 import { effectiveGeofenceRadius, formatMtmArea, formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/live-feed-alerts"
@@ -1332,7 +1332,7 @@ export default function MtmMapPage() {
     if (agent?.latitude == null || agent.longitude == null ||
         !Number.isFinite(agent.latitude) || !Number.isFinite(agent.longitude)) return null
     const distMeters = calculateDistance(agent.latitude, agent.longitude, nextStop.latitude, nextStop.longitude)
-    const speedKmh = (agent.speed && agent.speed > 2) ? agent.speed : 30 // fallback 30 km/h
+    const speedKmh = agent.speed != null && mtmSpeedMoving(agent.speed) ? agent.speed : 30 // fallback 30 km/h
     return Math.round((distMeters / 1000) / speedKmh * 3600)
   }, [selectedAgent, routeStops, agents])
   const showRosterLoading = sessionStatus === "loading" || (Boolean(identityKey) && loading && !roster)

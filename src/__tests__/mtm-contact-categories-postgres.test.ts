@@ -837,6 +837,44 @@ pgDescribe("client categories on a real Postgres", () => {
         vi.useRealTimers()
       }
     })
+
+    // The owner's line of 2026-10-15: from 3 km/h as a screen shows it
+    // (src/lib/mtm/gps-speed.ts). The live map reads the newest five points
+    // itself and asks the database for any moving one older than that within
+    // five minutes — so the line is drawn twice, once in a Prisma filter on
+    // the stored column. Here the moving point is the sixth newest: only
+    // Postgres can see it.
+    it("a standing phone's jitter reads «Стоит» on the live map, and 3 km/h as shown reads «В пути» from the database alone", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      try {
+        const DAY = 24 * 60
+        const { GET } = await import("@/app/api/v1/mtm/locations/route")
+        async function statusAfter(start: number, firstSpeed: number) {
+          // One point at `firstSpeed`, then two and a half minutes of a phone lying still.
+          const speeds = [firstSpeed, 1.4, 2.4, 1.9, 2.4, 1.1]
+          for (const [index, speed] of speeds.entries()) {
+            const minutes = start + index / 2
+            await gps({ minutes, latitude: north(9_000), speed })
+            // The flag left unset, as the web and API-key entry leaves it: the speed alone has to say it.
+            await bypass(() => prisma.mtmAgentLocation.create({
+              data: { organizationId: ORG, agentId, latitude: north(9_000), longitude: 49.85, accuracy: 10, speed, isMoving: false, recordedAt: at(minutes) },
+            }))
+          }
+          await bypass(() => prisma.mtmAgent.update({ where: { id: agentId }, data: { isOnline: true, lastSeenAt: at(start + 2.5) } }))
+          vi.setSystemTime(at(start + 3))
+          const response = await GET(new NextRequest("http://localhost:3000/api/v1/mtm/locations"))
+          const body = await response.json()
+          expect(response.status, JSON.stringify(body).slice(0, 300)).toBe(200)
+          return body.data.agentLocations.find((entry: { agentId: string }) => entry.agentId === agentId)?.fieldStatus
+        }
+        // 2.4 km/h is «2 km/h» on a screen: jitter. Until 2026-10-15 it said «В пути».
+        expect(await statusAfter(2 * DAY + 41, 2.4)).toBe("STOPPED")
+        // 2.5 km/h is «3 km/h».
+        expect(await statusAfter(2 * DAY + 51, 2.5)).toBe("ON_ROAD")
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 
   // Labels and a personal map colour on an employee's card (owner, 2026-10-09:

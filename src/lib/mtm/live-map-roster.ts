@@ -16,6 +16,7 @@
  */
 import { calculateDistance } from "@/lib/geo-utils"
 import { isLiveMapPositionVisible, type MtmDashboardAgent } from "@/lib/mtm-types"
+import { mtmSpeedMoving } from "@/lib/mtm/gps-speed"
 
 export const ROSTER_COLUMNS = ["name", "status", "signal", "distance", "team", "manager", "tags", "app", "workday", "route", "speed", "battery"] as const
 export type RosterColumnId = typeof ROSTER_COLUMNS[number]
@@ -71,9 +72,6 @@ const FIXED_ORDER: Partial<Record<RosterColumnId, readonly string[]>> = {
   distance: ROSTER_DISTANCE_ORDER,
 }
 
-/** Below this the phone is «standing»: GPS noise reads as one or two km/h. */
-const MOVING_ABOVE_KMH = 2
-
 /**
  * The value a column's filter and grouping work on. Numbers are put into the
  * few classes a dispatcher asks about («battery low»), not into ranges to type.
@@ -99,7 +97,9 @@ export function rosterValue(agent: MtmDashboardAgent, column: RosterColumnId): s
     }
     case "speed":
       if (typeof agent.speed !== "number" || !Number.isFinite(agent.speed)) return "UNKNOWN"
-      return agent.speed > MOVING_ABOVE_KMH ? "MOVING" : "STILL"
+      // The one line every reading of «moving» uses (src/lib/mtm/gps-speed.ts):
+      // GPS jitter of a standing phone reads as one or two km/h.
+      return mtmSpeedMoving(agent.speed) ? "MOVING" : "STILL"
     case "battery":
       if (typeof agent.battery !== "number" || !Number.isFinite(agent.battery)) return "UNKNOWN"
       return agent.battery < 20 ? "LOW" : agent.battery < 50 ? "MID" : "HIGH"

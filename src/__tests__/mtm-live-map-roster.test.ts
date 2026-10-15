@@ -81,8 +81,8 @@ const TEAM = [
 ]
 // The edges of every class, and two people a sort cannot tell apart except by name.
 const EDGES = [
-  person("e1", "Vüqar", { battery: 19.9, speed: 2, routeVisited: 3, routeTotal: 3, fieldStatus: "ROUTE_FINISHED", workdayState: "CLOSED" }),
-  person("e2", "Anar", { battery: 20, speed: 2.1, routeVisited: 1, routeTotal: 4, workdayState: "PAUSED", isOnline: false }),
+  person("e1", "Vüqar", { battery: 19.9, speed: 2.4, routeVisited: 3, routeTotal: 3, fieldStatus: "ROUTE_FINISHED", workdayState: "CLOSED" }),
+  person("e2", "Anar", { battery: 20, speed: 2.5, routeVisited: 1, routeTotal: 4, workdayState: "PAUSED", isOnline: false }),
   person("e3", "Bəhruz", { battery: 49.9, speed: 0, routeVisited: 0, routeTotal: 4 }),
   person("e4", "Anar", { battery: 50, speed: 60, routeVisited: 2, routeTotal: 4, workdayState: "NOT_STARTED" }),
 ]
@@ -111,7 +111,7 @@ describe("what a column holds", () => {
     expect(rosterValue(person("x", "X", { fieldStatus: "SOMETHING_NEW" }), "status")).toBe("OFFLINE")
   })
 
-  it("draws the class boundaries where the labels say: below 20, 20-50, above 50; moving is faster than 2 km/h", () => {
+  it("draws the class boundaries where the labels say: below 20, 20-50, above 50; moving is 3 km/h as the cell shows it", () => {
     expect(EDGES.map((agent) => rosterValue(agent, "battery"))).toEqual(["LOW", "MID", "MID", "HIGH"])
     expect(EDGES.map((agent) => rosterValue(agent, "speed"))).toEqual(["STILL", "MOVING", "STILL", "MOVING"])
     expect(EDGES.map((agent) => rosterValue(agent, "route"))).toEqual(["DONE", "IN_PROGRESS", "NOT_STARTED", "IN_PROGRESS"])
