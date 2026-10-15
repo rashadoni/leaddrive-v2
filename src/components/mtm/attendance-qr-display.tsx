@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { QrCode, ShieldCheck } from "lucide-react"
 import { HomeCard, HomePill } from "@/components/mtm/home-parts"
@@ -81,14 +82,17 @@ export function MtmAttendanceQrDisplay() {
     <div className="space-y-2"><h1 className="text-2xl font-semibold tracking-tight">{t("qrTitle")}</h1><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("qrIntro")}</p></div>
     <HomeCard testId="attendance-qr-rule" titleId="attendance-qr-rule-title" title={t("qrRule")} icon={<ShieldCheck className="h-5 w-5" aria-hidden="true" />} tone="green">
       <div className="flex flex-wrap items-center justify-between gap-4 py-4"><p className="max-w-3xl text-sm text-muted-foreground">{t("qrRuleHint")}</p>
-        {directory && <Button type="button" variant="outline" role="switch" aria-checked={directory.enabled} aria-label={t("qrRule")} className="min-h-11" disabled={busy || !directory.canConfigure} onClick={() => void toggle()}>{t(directory.enabled ? "installationOn" : "installationOff")}</Button>}
+        {/* State and action in words: a button reading "On" looked like a status, yet pressing it switched the rule off. */}
+        {directory && <div className="flex flex-wrap items-center gap-3"><HomePill tone={directory.enabled ? "green" : "zinc"}>{t(directory.enabled ? "installationOn" : "installationOff")}</HomePill>
+          {directory.canConfigure && <Button type="button" variant={directory.enabled ? "outline" : "default"} role="switch" aria-checked={directory.enabled} aria-label={t("qrRule")} className="min-h-11" disabled={busy} onClick={() => void toggle()}>{t(directory.enabled ? "qrTurnOff" : "qrTurnOn")}</Button>}</div>}
       </div>
     </HomeCard>
     {error && <p role="alert" className="text-sm text-destructive">{t("qrLoadError")}</p>}
     {directory?.enabled ? <HomeCard testId="attendance-qr-code" titleId="attendance-qr-code-title" title={t("qrTitle")} icon={<QrCode className="h-5 w-5" aria-hidden="true" />} tone="orange">
-      <div className="space-y-6 py-4"><div className="flex flex-wrap items-end justify-between gap-4"><label className="block min-w-0 space-y-2 text-sm" htmlFor="attendance-qr-branch"><span>{t("qrBranch")}</span><select id="attendance-qr-branch" className="block min-h-11 max-w-full rounded-lg border bg-background px-3" value={branchId} disabled={busy} onChange={event => { setCode(null); setBranchId(event.target.value) }}>{directory.branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
-        {code && seconds > 0 && <HomePill tone="green">{t("qrValid")}</HomePill>}</div>
-        {!directory.branches.length ? <p>{t("qrEmpty")}</p> : <div className="grid min-w-0 items-center gap-8 lg:grid-cols-2">
+      <div className="space-y-6 py-4">{directory.branches.length > 0 && <div className="flex flex-wrap items-end justify-between gap-4"><label className="block min-w-0 space-y-2 text-sm" htmlFor="attendance-qr-branch"><span>{t("qrBranch")}</span><select id="attendance-qr-branch" className="block min-h-11 max-w-full rounded-lg border bg-background px-3" value={branchId} disabled={busy} onChange={event => { setCode(null); setBranchId(event.target.value) }}>{directory.branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
+        {code && seconds > 0 && <HomePill tone="green">{t("qrValid")}</HomePill>}</div>}
+        {!directory.branches.length ? <div className="space-y-3" data-testid="attendance-qr-no-branches"><p className="text-sm leading-relaxed">{t("qrEmptyAdd")}</p>
+          <Button asChild className="min-h-11 rounded-full"><Link href="/mtm/attendance/people?tab=branches" prefetch={false}>{t("qrAddBranch")}</Link></Button></div> : <div className="grid min-w-0 items-center gap-8 lg:grid-cols-2">
           <div className="mx-auto w-full max-w-sm rounded-2xl border bg-white p-4">{code && seconds > 0 ? <Image src={code.dataUrl} alt={t("qrImageAlt")} width={480} height={480} unoptimized className="h-auto w-full" /> : <div className="flex aspect-square items-center justify-center p-6 text-center text-sm text-zinc-600" role="status">{t(busy ? "reportLoading" : "qrLoadError")}</div>}</div>
           <div className="space-y-4"><h2 className="text-xl font-semibold">{t("qrScanTitle")}</h2><p className="text-sm leading-relaxed text-muted-foreground">{t("qrScanHint")}</p>
             {code && seconds > 0 && <p className="text-2xl font-semibold tabular-nums text-emerald-700">{t("qrCountdown", { seconds })}</p>}
