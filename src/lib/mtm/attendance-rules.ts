@@ -9,6 +9,8 @@ export interface MtmAttendanceRule {
   startTime: string
   endTime: string
   lunchMinutes: number
+  /** When lunch starts (HH:MM); unknown on rules saved before 2026-10-16. */
+  lunchStart?: string | null
   lateGraceMinutes: number
   weekendDays: number[]
   createdAt: string | null
@@ -28,10 +30,15 @@ export const AttendanceRuleInputSchema = z.object({
   startTime: time,
   endTime: time,
   lunchMinutes: z.number().int().min(0).max(1439),
+  // Optional: a tab opened before 2026-10-16 sends the length alone.
+  lunchStart: time.nullable().optional(),
   lateGraceMinutes: z.number().int().min(0).max(120),
   weekendDays: z.array(z.number().int().min(0).max(6)).max(6)
     .refine((days) => new Set(days).size === days.length),
 }).strict().refine((rule) => minutesOfDay(rule.endTime) - minutesOfDay(rule.startTime) > rule.lunchMinutes)
+  // The lunch lies inside the working day.
+  .refine((rule) => !rule.lunchStart || (rule.lunchMinutes > 0 && minutesOfDay(rule.lunchStart) >= minutesOfDay(rule.startTime)
+    && minutesOfDay(rule.lunchStart) + rule.lunchMinutes <= minutesOfDay(rule.endTime)))
 export type AttendanceRuleInput = z.infer<typeof AttendanceRuleInputSchema>
 
 export function minutesOfDay(time: string): number {

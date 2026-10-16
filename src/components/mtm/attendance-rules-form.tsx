@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import { useFormatter, useLocale, useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { formatDate } from "@/lib/format-date"
 import { CalendarClock, History } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,7 +21,9 @@ type Draft = {
   effectiveFrom: string
   startTime: string
   endTime: string
-  lunchMinutes: string
+  /** Lunch from–to (owner, 2026-10-16: the time, not only the length). Both empty: no fixed lunch. */
+  lunchStart: string
+  lunchEnd: string
   lateGraceMinutes: string
   weekendDays: number[]
 }
@@ -30,9 +32,18 @@ const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const
 const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const
 const ENDPOINT = "/api/v1/mtm/attendance/rules"
 
+const toMinutes = (time: string) => { const [hours, minutes] = time.split(":").map(Number); return hours * 60 + minutes }
+const toTime = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
+/** The rule's lunch as from–to; a rule saved before its time was kept starts at 13:00 if that fits the day. */
+export function lunchWindow(rule: Pick<MtmAttendanceRule, "startTime" | "endTime" | "lunchMinutes" | "lunchStart">): { start: string; end: string } | null {
+  if (rule.lunchMinutes <= 0) return null
+  const start = rule.lunchStart ?? (toMinutes("13:00") >= toMinutes(rule.startTime) && toMinutes("13:00") + rule.lunchMinutes <= toMinutes(rule.endTime) ? "13:00" : null)
+  return start ? { start, end: toTime(toMinutes(start) + rule.lunchMinutes) } : null
+}
 function draftFor(rule: MtmAttendanceRule, effectiveFrom: string): Draft {
+  const lunch = lunchWindow(rule)
   return { effectiveFrom, startTime: rule.startTime, endTime: rule.endTime,
-    lunchMinutes: String(rule.lunchMinutes), lateGraceMinutes: String(rule.lateGraceMinutes),
+    lunchStart: lunch?.start ?? "", lunchEnd: lunch?.end ?? "", lateGraceMinutes: String(rule.lateGraceMinutes),
     weekendDays: [...rule.weekendDays] }
 }
 
@@ -45,7 +56,6 @@ function nextDate(date: string): string {
 /** A single organization rule, with changes scheduled explicitly for a future day. */
 export function MtmAttendanceRulesForm() {
   const t = useTranslations("mtmAttendance")
-  const format = useFormatter()
   const locale = useLocale()
   const [data, setData] = useState<RulesData | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
@@ -106,9 +116,11 @@ export function MtmAttendanceRulesForm() {
   }, [load])
 
   const dateLabel = (date: string) => formatDate(`${date}T12:00:00.000Z`, locale, { dateStyle: "medium", timeZone: "UTC" })
+  const currentLunch = data ? lunchWindow(data.current) : null
   const weekendLabel = (days: readonly number[]) => {
     const names = WEEKDAYS.filter((day) => days.includes(day)).map((day) => t(DAY_KEYS[day]))
-    return names.length ? format.list(names, { type: "conjunction" }) : t("noWeekendDays")
+    // Commas, not Intl's list: browsers without Azerbaijani data printed «Şənbə and Bazar».
+    return names.length ? names.join(", ") : t("noWeekendDays")
   }
 
   function change(values: Partial<Draft>) {
@@ -120,16 +132,20 @@ export function MtmAttendanceRulesForm() {
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!data?.canManageRules || !draft || saving || saveController.current || mustReload) return
-    const lunchMinutes = Number(draft.lunchMinutes)
     const lateGraceMinutes = Number(draft.lateGraceMinutes)
-    const toMinutes = (time: string) => { const [hours, minutes] = time.split(":").map(Number); return hours * 60 + minutes }
-    if (!draft.lunchMinutes.trim() || !draft.lateGraceMinutes.trim()
-      || !Number.isInteger(lunchMinutes) || lunchMinutes < 0 || lunchMinutes > 1439
+    // Lunch is both times or neither, and lies inside the working day.
+    const hasLunch = Boolean(draft.lunchStart || draft.lunchEnd)
+    const lunchMinutes = hasLunch && draft.lunchStart && draft.lunchEnd ? toMinutes(draft.lunchEnd) - toMinutes(draft.lunchStart) : 0
+    if (!draft.lateGraceMinutes.trim()
       || !Number.isInteger(lateGraceMinutes) || lateGraceMinutes < 0 || lateGraceMinutes > 120
       || !draft.startTime || !draft.endTime || draft.endTime <= draft.startTime
-      || toMinutes(draft.endTime) - toMinutes(draft.startTime) <= lunchMinutes
       || draft.weekendDays.length > 6) {
       setSaveError(t("rulesInvalid"))
+      return
+    }
+    if (hasLunch && (!draft.lunchStart || !draft.lunchEnd || lunchMinutes <= 0 || draft.lunchStart < draft.startTime || draft.lunchEnd > draft.endTime
+      || toMinutes(draft.endTime) - toMinutes(draft.startTime) <= lunchMinutes)) {
+      setSaveError(t("rulesLunchInvalid"))
       return
     }
     if (!draft.effectiveFrom || draft.effectiveFrom < data.minEffectiveFrom) {
@@ -144,7 +160,8 @@ export function MtmAttendanceRulesForm() {
     setSavedDate(null)
     try {
       const response = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...draft, lunchMinutes, lateGraceMinutes }), signal: controller.signal })
+        body: JSON.stringify({ effectiveFrom: draft.effectiveFrom, startTime: draft.startTime, endTime: draft.endTime, weekendDays: draft.weekendDays,
+          lunchMinutes, lunchStart: hasLunch ? draft.lunchStart : null, lateGraceMinutes }), signal: controller.signal })
       const body = await response.json().catch(() => null)
       if (controller.signal.aborted) return
       if (!response.ok || body?.success !== true || !body.data?.effectiveFrom) {
@@ -195,7 +212,7 @@ export function MtmAttendanceRulesForm() {
       {data && draft ? <>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <p className="text-sm font-medium">{t("rulesCurrentHours", { start: data.current.startTime, end: data.current.endTime })}</p>
+            <p className="text-sm font-medium">{t("rulesCurrentHours", { start: data.current.startTime, end: data.current.endTime })}{currentLunch ? ` · ${t("rulesCurrentLunch", currentLunch)}` : ""}</p>
             <p className="max-w-prose text-sm text-muted-foreground">{t("rulesHistoryPreserved")}</p>
           </div>
           <span className="text-xs text-muted-foreground">{t("rulesTimezone", { timezone: data.current.timezone })}</span>
@@ -214,8 +231,12 @@ export function MtmAttendanceRulesForm() {
                 <Input id="attendance-end" type="time" required value={draft.endTime} className="min-h-11 tabular-nums" onChange={(event) => change({ endTime: event.target.value })} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="attendance-lunch" className="text-sm font-medium">{t("rulesLunch")}</label>
-                <Input id="attendance-lunch" type="number" required min={0} max={1439} step={1} value={draft.lunchMinutes} className="min-h-11 tabular-nums" onChange={(event) => change({ lunchMinutes: event.target.value })} />
+                <label htmlFor="attendance-lunch" className="text-sm font-medium">{t("rulesLunchWindow")}</label>
+                <div className="flex items-center gap-1.5">
+                  <Input id="attendance-lunch" type="time" aria-label={t("rulesLunchFrom")} value={draft.lunchStart} className="min-h-11 min-w-0 tabular-nums" onChange={(event) => change({ lunchStart: event.target.value })} />
+                  <span className="text-muted-foreground" aria-hidden="true">–</span>
+                  <Input id="attendance-lunch-end" type="time" aria-label={t("rulesLunchTo")} value={draft.lunchEnd} className="min-h-11 min-w-0 tabular-nums" onChange={(event) => change({ lunchEnd: event.target.value })} />
+                </div>
               </div>
               <div className="space-y-2">
                 <label htmlFor="attendance-grace" className="text-sm font-medium">{t("rulesLateGrace")}</label>
@@ -259,7 +280,8 @@ export function MtmAttendanceRulesForm() {
                 </HomePill>
               </div>
               <div className="space-y-1 text-sm">
-                <p className="tabular-nums">{t("rulesVersionSummary", { start: rule.startTime, end: rule.endTime, lunch: rule.lunchMinutes, grace: rule.lateGraceMinutes })}</p>
+                <p className="tabular-nums">{rule.lunchStart ? t("rulesVersionSummaryWindow", { start: rule.startTime, end: rule.endTime, lunchStart: lunchWindow(rule)!.start, lunchEnd: lunchWindow(rule)!.end, grace: rule.lateGraceMinutes })
+                  : t("rulesVersionSummary", { start: rule.startTime, end: rule.endTime, lunch: rule.lunchMinutes, grace: rule.lateGraceMinutes })}</p>
                 <p className="text-xs text-muted-foreground">{t("rulesWeekendSummary", { days: weekendLabel(rule.weekendDays) })}</p>
               </div>
             </li>)}

@@ -76,7 +76,8 @@ describe("attendance rule form with real translations", () => {
     expect(container.textContent).not.toMatch(/0001-01-01|mtmAttendance\.|PRIVATE_SERVER_ERROR/)
     expect(input("start").value).toBe("09:00")
     expect(input("end").value).toBe("18:00")
-    expect(input("lunch").value).toBe("60")
+    // Lunch is a time window (owner, 2026-10-16); a rule saved with its length alone starts at 13:00.
+    expect(input("lunch").value).toBe("13:00"); expect(input("lunch-end").value).toBe("14:00")
     expect(input("grace").value).toBe("10")
     expect(input("effective-from").value).toBe("2026-10-14")
     expect(input("effective-from").min).toBe("2026-10-14")
@@ -125,13 +126,13 @@ describe("attendance rule form with real translations", () => {
     await render()
     await edit("start", "08:00")
     await edit("end", "17:00")
-    await edit("lunch", "45")
+    await edit("lunch", "12:30"); await edit("lunch-end", "13:15")
     await edit("grace", "5")
     await sendForm()
     expect(posts()).toHaveLength(1)
     expect(posts()[0][0]).toBe(ENDPOINT)
     expect(JSON.parse(String(posts()[0][1]?.body))).toEqual({
-      effectiveFrom: "2026-10-14", startTime: "08:00", endTime: "17:00", lunchMinutes: 45, lateGraceMinutes: 5, weekendDays: [0, 6],
+      effectiveFrom: "2026-10-14", startTime: "08:00", endTime: "17:00", lunchMinutes: 45, lunchStart: "12:30", lateGraceMinutes: 5, weekendDays: [0, 6],
     })
     expect(container.textContent).toContain("Сейчас рабочий день: 09:00–18:00")
     expect(container.textContent).toContain("Правила сохранены")
@@ -141,7 +142,22 @@ describe("attendance rule form with real translations", () => {
     expect(container.textContent).not.toContain("fixture-admin")
   })
 
-  it.each([["lunch", "540"], ["grace", "121"], ["end", "08:00"]])("refuses invalid %s before sending", async (id, value) => {
+  it("refuses a lunch outside the working day, or with one time only, before sending", async () => {
+    await render()
+    await edit("lunch", "08:30"); await sendForm()
+    expect(posts()).toHaveLength(0)
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(messages("ru").mtmAttendance.rulesLunchInvalid)
+    await edit("lunch", "13:00"); await edit("lunch-end", ""); await sendForm()
+    expect(posts()).toHaveLength(0)
+  })
+
+  it("sends no lunch when both times are empty", async () => {
+    fetchMock.mockImplementation(async (_url, options) => options?.method === "POST" ? response(savedRule({ lunchMinutes: 0 }), 201) : response(rulesData()))
+    await render(); await edit("lunch", ""); await edit("lunch-end", ""); await sendForm()
+    expect(JSON.parse(String(posts()[0][1]?.body))).toMatchObject({ lunchMinutes: 0, lunchStart: null })
+  })
+
+  it.each([["grace", "121"], ["end", "08:00"]])("refuses invalid %s before sending", async (id, value) => {
     await render()
     await edit(id, value)
     await sendForm()

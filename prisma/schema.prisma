@@ -9696,6 +9696,8 @@ model MtmAttendanceRule {
   startTime        String       @db.VarChar(5)
   endTime          String       @db.VarChar(5)
   lunchMinutes     Int
+  /// Lunch start (HH:MM); with lunchMinutes it gives the lunch window. Null on rules saved before 2026-10-16.
+  lunchStart       String?      @db.VarChar(5)
   lateGraceMinutes Int
   weekendDays      Int[]
   createdBy        String

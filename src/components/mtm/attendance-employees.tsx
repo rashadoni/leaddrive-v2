@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
-import { Pencil, Search } from "lucide-react"
+import { IdCard, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomePill, type HomeTone } from "@/components/mtm/home-parts"
@@ -124,7 +124,7 @@ export function MtmAttendanceEmployees() {
             <td className="col-span-2 text-muted-foreground md:px-3 md:py-3">{employee.teamName ?? t("employeesNoTeam")}</td>
             <td className="md:px-3 md:py-3"><HomePill tone={tone}>{todayText}</HomePill></td>
             <td className="row-start-1 col-start-2 text-right md:px-3 md:py-3"><Button asChild variant="outline" className="min-h-10 rounded-full">
-              <Link href={href} prefetch={false} aria-label={p("employeeEditNamed", { name: employee.name })}><Pencil className="mr-2 h-4 w-4" aria-hidden="true" />{p("employeeEdit")}</Link></Button></td>
+              <Link href={href} prefetch={false} aria-label={p("employeeEditNamed", { name: employee.name })}><IdCard className="mr-2 h-4 w-4" aria-hidden="true" />{p("employeeEdit")}</Link></Button></td>
           </tr>
         })}</tbody></table></div> : <p className="text-sm text-muted-foreground">{t("employeesEmpty")}</p>}
       {employees.length > PAGE_SIZE && <div className="flex flex-wrap items-center gap-3"><Button variant="outline" className="min-h-11" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("employeesPrevious")}</Button><span className="text-xs text-muted-foreground">{t("employeesPage", { page: currentPage + 1, pages, count: employees.length })}</span><Button variant="outline" className="min-h-11" disabled={currentPage + 1 >= pages} onClick={() => setPage(currentPage + 1)}>{t("employeesNext")}</Button></div>}
