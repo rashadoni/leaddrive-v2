@@ -19,6 +19,7 @@ import {
   FileText,
   Loader2,
   MessageSquare,
+  Plus,
   Radio,
   Search,
   Send,
@@ -221,6 +222,8 @@ export default function MtmOperationsPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeSection, setActiveSection] = useState<"messages" | "documents" | "hrm">("messages")
+  // The page opens on the messages; the form is one click away (owner, 2026-10-16, from a picture).
+  const [composeOpen, setComposeOpen] = useState(false)
 
   const [messageType, setMessageType] = useState<"BROADCAST" | "DIRECT">("BROADCAST")
   const [messageSubject, setMessageSubject] = useState("")
@@ -304,6 +307,7 @@ export default function MtmOperationsPage() {
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || t("sendFailed"))
       toast.success(t("messageSent"))
+      setComposeOpen(false)
       setMessageBody("")
       setMessageSubject("")
       setAcknowledgementRequired(false)
@@ -392,11 +396,16 @@ export default function MtmOperationsPage() {
   const dateTime = (value: string) => createDateFormatter(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
   const dateOnly = (value: string) => createDateFormatter(locale, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(value))
 
+  const attention: Array<{ key: string; count: number; label: string; hint: string; icon: typeof BellRing; section: "messages" | "documents" | "hrm" }> = [
+    { key: "ack", count: data?.counts.acknowledgementDue ?? 0, label: "acknowledgementsDue", hint: "hint.acknowledgementsDue", icon: BellRing, section: "messages" as const },
+    { key: "docs", count: data?.counts.requiredDocumentsUnread ?? 0, label: "requiredUnread", hint: "hint.requiredUnread", icon: FileLock2, section: "documents" as const },
+    ...(canReviewHrm ? [{ key: "hrm", count: data?.counts.pendingHrm ?? 0, label: "pendingHrm", hint: "hint.pendingHrm", icon: CalendarCheck2, section: "hrm" as const }] : []),
+  ].filter((item) => item.count > 0)
+
   if (loading) {
     return (
       <div className="space-y-5">
         <PageDescription icon={Radio} title={t("title")} description={t("subtitle")} />
-        <div className="grid gap-3 sm:grid-cols-3">{[0, 1, 2].map((item) => <div key={item} className="h-24 animate-pulse rounded-xl bg-muted" />)}</div>
         <div className="h-96 animate-pulse rounded-xl bg-muted" />
       </div>
     )
@@ -406,20 +415,36 @@ export default function MtmOperationsPage() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <PageDescription icon={Radio} title={t("title")} description={t("subtitle")} />
-        <Hint wrap text={t("hint.refresh")}>
-          <Button variant="outline" onClick={() => load(true)} disabled={refreshing}>
-            {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock3 className="mr-2 h-4 w-4" />}
-            {t("refresh")}
-          </Button>
-        </Hint>
+        <div className="flex flex-wrap gap-2">
+          <Hint wrap text={t("hint.refresh")}>
+            <Button variant="outline" onClick={() => load(true)} disabled={refreshing}>
+              {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock3 className="mr-2 h-4 w-4" />}
+              {t("refresh")}
+            </Button>
+          </Hint>
+          <Hint text={t("hint.newMessage")}>
+            <Button data-testid="mtm-operations-new-message" onClick={() => { setActiveSection("messages"); setComposeOpen(true) }}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t("newMessage")}
+            </Button>
+          </Hint>
+        </div>
       </div>
 
-      <div className={`grid gap-3 ${canReviewHrm ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-        <Card className="overflow-hidden"><CardContent className="flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"><BellRing className="h-5 w-5" /></span><div><p className="text-2xl font-semibold tabular-nums">{data?.counts.acknowledgementDue ?? 0}</p><p className="text-xs text-muted-foreground"><HintValue text={t("hint.acknowledgementsDue")}>{t("acknowledgementsDue")}</HintValue></p></div></CardContent></Card>
-        <Card className="overflow-hidden"><CardContent className="flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"><FileLock2 className="h-5 w-5" /></span><div><p className="text-2xl font-semibold tabular-nums">{data?.counts.requiredDocumentsUnread ?? 0}</p><p className="text-xs text-muted-foreground"><HintValue text={t("hint.requiredUnread")}>{t("requiredUnread")}</HintValue></p></div></CardContent></Card>
-        {canReviewHrm ? <Card className="overflow-hidden"><CardContent className="flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300"><CalendarCheck2 className="h-5 w-5" /></span><div><p className="text-2xl font-semibold tabular-nums">{data?.counts.pendingHrm ?? 0}</p><p className="text-xs text-muted-foreground"><HintValue text={t("hint.pendingHrm")}>{t("pendingHrm")}</HintValue></p></div></CardContent></Card> : null}
-      </div>
-
+      {/* Three tiles said «0» on most days (owner, 2026-10-16, from a picture):
+          what waits for someone is one line, and only when something does. */}
+      {attention.length > 0 ? (
+        <div data-testid="mtm-operations-attention" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+          {attention.map((item) => (
+            <span key={item.key} className="inline-flex items-center gap-2">
+              <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <b className="tabular-nums">{item.count}</b>
+              <HintValue text={t(item.hint)}>{t(item.label)}</HintValue>
+              <button type="button" onClick={() => setActiveSection(item.section)} className="font-semibold underline-offset-4 hover:underline">{t("attentionOpen")}</button>
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       <Tabs value={activeSection} onValueChange={(value) => setActiveSection(value as "messages" | "documents" | "hrm")}>
         <TabsList className={`grid h-auto w-full sm:w-auto ${canReviewHrm ? "grid-cols-3" : "grid-cols-2"}`}>
@@ -429,9 +454,12 @@ export default function MtmOperationsPage() {
         </TabsList>
 
         <TabsContent value="messages" className="space-y-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
-            <Card>
-              <CardHeader className="p-5 pb-3"><CardTitle className="flex items-center gap-2 text-base"><Send className="h-4 w-4 text-primary" />{t("composeTitle")}</CardTitle><CardDescription>{t("composeDescription")}</CardDescription></CardHeader>
+          <div className="grid gap-4">
+            {composeOpen ? <Card data-testid="mtm-operations-compose">
+              <CardHeader className="flex flex-row items-start justify-between gap-3 p-5 pb-3">
+                <div><CardTitle className="flex items-center gap-2 text-base"><Send className="h-4 w-4 text-primary" />{t("composeTitle")}</CardTitle><CardDescription>{t("composeDescription")}</CardDescription></div>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setComposeOpen(false)}><X className="mr-1 h-4 w-4" />{t("closeCompose")}</Button>
+              </CardHeader>
               <CardContent className="space-y-4 p-5 pt-0">
                 <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-1">
                   <Button type="button" variant={messageType === "BROADCAST" ? "default" : "ghost"} onClick={() => { setMessageType("BROADCAST"); setMessageRecipients(defaultBroadcastAudience(data?.agents ?? [])) }}><Radio className="mr-2 h-4 w-4" />{t("broadcast")}</Button>
@@ -494,7 +522,7 @@ export default function MtmOperationsPage() {
                   <Button className="w-full" onClick={sendMessage} disabled={sendingMessage || !messageBody.trim() || messageRecipients.length === 0 || !keyMessageRangeValid || (messageType === "BROADCAST" && !messageSubject.trim())}>{sendingMessage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{messageType === "BROADCAST" ? t("sendBroadcast") : t("sendDirect")}</Button>
                 </Hint>
               </CardContent>
-            </Card>
+            </Card> : null}
 
             <Card>
               <CardHeader className="p-5 pb-3"><CardTitle className="text-base">{t("messageHistory")}</CardTitle><CardDescription>{t("messageHistoryDescription")}</CardDescription></CardHeader>

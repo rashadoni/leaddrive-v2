@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
 import type { AgentPeriod, AgentPeriodDayStatus } from "@/lib/mtm/agent-period"
+import { agentPeriodChoices, agentPeriodDefaultAgentId, type AgentPeriodChoice } from "@/lib/mtm/agent-period-choice"
 import type { DistanceBasis } from "@/lib/mtm/road-distance"
 
 /**
@@ -71,13 +72,17 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
     fetch("/api/v1/mtm/agents?limit=200", { signal: controller.signal })
       .then((response) => response.json())
       .then((body) => {
-        const list: Agent[] = (body?.data?.agents ?? []).map((agent: Agent) => ({ id: agent.id, name: agent.name }))
-        setAgents(list)
-        setAgentId((current) => current || list[0]?.id || "")
+        const all: AgentPeriodChoice[] = (body?.data?.agents ?? []).map((agent: AgentPeriodChoice & { app?: { lastSignalAt?: string | null } }) => ({
+          id: agent.id, name: agent.name, role: agent.role, status: agent.status, lastSignalAt: agent.app?.lastSignalAt ?? null,
+        }))
+        // Field agents only, opened on the one in the field last.
+        const list = agentPeriodChoices(all, initialAgentId)
+        setAgents(list.map((agent) => ({ id: agent.id, name: agent.name })))
+        setAgentId((current) => current || agentPeriodDefaultAgentId(list))
       })
       .catch(() => undefined)
     return () => controller.abort()
-  }, [])
+  }, [initialAgentId])
 
   useEffect(() => {
     if (!agentId || !range.from || !range.to || range.to < range.from) return
