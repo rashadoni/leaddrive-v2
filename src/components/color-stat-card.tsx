@@ -4,8 +4,15 @@ import { cn } from "@/lib/utils"
 import { type ReactNode, useState, useEffect, useRef } from "react"
 import { InfoHint } from "@/components/info-hint"
 
+/** The first number in a tile's value as it is written, e.g. "1,234.5" in "₼1,234.5". */
+const NUMBER_TOKEN = /[-]?[\d,]+(?:\.\d+)?/
 
-function useCountUp(target: number, duration = 800) {
+function fractionDigits(val: string | number): number {
+  const token = String(val).match(NUMBER_TOKEN)?.[0] ?? ""
+  return token.split(".")[1]?.length ?? 0
+}
+
+function useCountUp(target: number, duration = 800, decimals = 0) {
   const [value, setValue] = useState(0)
   const prevTarget = useRef(target)
 
@@ -21,13 +28,16 @@ function useCountUp(target: number, duration = 800) {
       const elapsed = now - startTime
       const progress = Math.min(elapsed / duration, 1)
       const eased = 1 - Math.pow(1 - progress, 3)
-      setValue(Math.round(from + (target - from) * eased))
+      // Frames keep the target's own precision and the last one is the target
+      // itself. Rounding to whole numbers left the tail behind: «0.5» counted
+      // up to 1, kept «.5», and the tile read «1.5».
+      setValue(progress < 1 ? Number((from + (target - from) * eased).toFixed(decimals)) : target)
       if (progress < 1) raf = requestAnimationFrame(step)
     }
 
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [target, duration])
+  }, [target, duration, decimals])
 
   return value
 }
@@ -46,27 +56,29 @@ function extractNumber(val: string | number): number | null {
   return num
 }
 
+/** `n` written the way `token` is: same decimals, thousands commas only if it has them. */
+function formatLike(n: number, token: string): string {
+  const decimals = token.split(".")[1]?.length ?? 0
+  return token.includes(",")
+    ? n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+    : n.toFixed(decimals)
+}
+
 function animateValue(original: string | number, animated: number): string {
-  if (typeof original === "number") return String(animated)
+  if (typeof original === "number") return formatLike(animated, String(original))
   const str = String(original)
   const match = str.match(/^([^0-9-]*)([-]?[\d,]+(?:\.\d+)?)(\s*[kKMB])(.*$)/)
   if (match) {
-    const [, prefix, , unitWithSpace, suffix] = match
+    const [, prefix, token, unitWithSpace, suffix] = match
     const unit = unitWithSpace.trim()
-    if (unit === "k" || unit === "K") {
-      return prefix + Math.round(animated / 1000).toLocaleString() + unitWithSpace + suffix
-    }
-    if (unit === "M") {
-      return prefix + (animated / 1_000_000).toFixed(1) + unitWithSpace + suffix
-    }
-    if (unit === "B") {
-      return prefix + (animated / 1_000_000_000).toFixed(1) + unitWithSpace + suffix
-    }
+    if (unit === "k" || unit === "K") return prefix + formatLike(animated / 1000, token) + unitWithSpace + suffix
+    if (unit === "M") return prefix + formatLike(animated / 1_000_000, token) + unitWithSpace + suffix
+    if (unit === "B") return prefix + formatLike(animated / 1_000_000_000, token) + unitWithSpace + suffix
   }
-  const stdMatch = str.match(/^([^0-9-]*)([-]?[\d,]+)(.*$)/)
+  const stdMatch = str.match(/^([^0-9-]*)([-]?[\d,]+(?:\.\d+)?)(.*$)/)
   if (!stdMatch) return str
-  const [, stdPrefix, , stdSuffix] = stdMatch
-  return stdPrefix + animated.toLocaleString() + stdSuffix
+  const [, stdPrefix, stdToken, stdSuffix] = stdMatch
+  return stdPrefix + formatLike(animated, stdToken) + stdSuffix
 }
 
 interface ColorStatCardProps {
@@ -94,8 +106,10 @@ export function ColorStatCard({
   wrapLabel = false,
 }: ColorStatCardProps) {
   const numericTarget = extractNumber(value)
-  const animatedNum = useCountUp(animate && numericTarget !== null ? numericTarget : 0, 900)
-  const displayValue = animate && numericTarget !== null ? animateValue(value, animatedNum) : value
+  const animatedNum = useCountUp(animate && numericTarget !== null ? numericTarget : 0, 900, fractionDigits(value))
+  // Once the count-up lands, the tile shows the value exactly as it was given.
+  const counting = animate && numericTarget !== null && animatedNum !== numericTarget
+  const displayValue = counting ? animateValue(value, animatedNum) : value
 
   return (
     <div

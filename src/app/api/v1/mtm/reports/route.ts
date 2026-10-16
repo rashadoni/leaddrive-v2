@@ -102,16 +102,19 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     let total = 0
 
     if (type === "agent") {
-      total = agentCount
-      const agents: ReportAgentRow[] = await prisma.mtmAgent.findMany({
+      // Every field agent in scope, and the table is a page of them. The
+      // tiles and the chart describe all of them: before, the average summed
+      // the visits of the page and divided by everyone, so past 50 agents the
+      // tile and the table no longer agreed.
+      const everyone: ReportAgentRow[] = await prisma.mtmAgent.findMany({
         where: agentWhere,
         select: { id: true, name: true, role: true },
         orderBy: { name: "asc" },
-        skip: (page - 1) * limit,
-        take: limit,
       })
-      const agentIds = agents.map((agent) => agent.id)
-      // One grouped query per metric for the page instead of three per agent.
+      total = everyone.length
+      const agents = everyone.slice((page - 1) * limit, page * limit)
+      const agentIds = everyone.map((agent) => agent.id)
+      // One grouped query per metric instead of three per agent.
       // Photos count what was uploaded in the period whatever its review
       // status (a pending photo is still work done — the old APPROVED-only
       // filter showed 0 for an agent with four fresh photos), and tasks count
@@ -151,15 +154,18 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         tasks: tasksByAgent.get(a.id) ?? 0,
         photos: photosByAgent.get(a.id) ?? 0,
       }))
-      const top = [...rows].sort((x, y) => y.visits - x.visits)[0]
-      const totalVisits = rows.reduce((s, r) => s + r.visits, 0)
+      const visitsOf = (agent: ReportAgentRow) => visitsByAgent.get(agent.id) ?? 0
+      const top = [...everyone].sort((x, y) => visitsOf(y) - visitsOf(x))[0]
+      const totalVisits = everyone.reduce((s, agent) => s + visitsOf(agent), 0)
       summary = [
-        { labelKey: "sum.activeAgents", value: agentCount, kind: "number" },
-        { labelKey: "sum.avgPerAgent", value: agentCount ? Math.round((totalVisits / agentCount) * 10) / 10 : 0, kind: "number" },
-        { labelKey: "sum.topPerformer", value: top?.name || "—", kind: "text" },
+        { labelKey: "sum.activeAgents", value: everyone.length, kind: "number" },
+        { labelKey: "sum.avgPerAgent", value: everyone.length ? Math.round((totalVisits / everyone.length) * 10) / 10 : 0, kind: "number" },
+        { labelKey: "sum.topPerformer", value: top && visitsOf(top) > 0 ? top.name : "—", kind: "text" },
       ]
+      // The same people as the table: a deactivated agent's visits are not
+      // in any row, so they are not in the chart either.
       const vd = await prisma.mtmVisit.findMany({
-        where: { ...where, deletedAt: null, agent: { role: "AGENT" } },
+        where: { ...where, deletedAt: null, agentId: { in: agentIds } },
         select: { createdAt: true },
       })
       series = dailySeries(vd.map((v: any) => v.createdAt), startKey, todayKey, timezone)
