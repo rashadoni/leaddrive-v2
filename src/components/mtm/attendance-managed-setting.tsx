@@ -28,7 +28,8 @@ export function MtmAttendanceManagedSetting({ kind }: { kind: "day-kinds" | "acc
     return () => controller.abort()
   }, [])
   if (canManage === null) return <p role="status" className="text-sm text-muted-foreground">{t("reportLoading")}</p>
-  const props = { canManage, accessUnavailable: denied, onAccessLost: () => { setDenied(true); setCanManage(false) } }
+  // Opened from a Settings card: show the editor, not a second button to open it.
+  const props = { canManage, accessUnavailable: denied, alwaysOpen: true, onAccessLost: () => { setDenied(true); setCanManage(false) } }
   if (kind === "day-kinds") return <MtmAttendanceDayKinds {...props} onSaved={() => undefined} />
   if (kind === "access") return <MtmAttendanceHrAccess {...props} />
   return <MtmAttendanceRequestLimits {...props} />
