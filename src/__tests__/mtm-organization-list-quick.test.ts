@@ -180,7 +180,7 @@ describe("«Müəssisələr»: one line an institution, the chips over them", ()
   it("opens on the columns that answer «who, when, whose», without a frame that scrolls on its own", () => {
     const headers = [...container.querySelectorAll('[data-testid="mtm-organization-grid-scroll"] thead th')]
       .slice(1).map((cell) => cell.textContent?.trim())
-    expect(headers).toEqual(["Müəssisə və ünvan", "Müştərilər", "Son ziyarət", "Növbəti ziyarət", "Sahə əməkdaşı", "Əməliyyatlar"])
+    expect(headers).toEqual(["Müəssisə və ünvan", "Kontaktlar", "Son ziyarət", "Növbəti ziyarət", "Sahə əməkdaşı", "Əməliyyatlar"])
     expect(field("mtm-organization-grid-scroll")?.className).not.toMatch(/max-h|overflow-auto/)
     // The named fields wait under «Daha çox filtr».
     expect(field("organization-name")).toBeNull()

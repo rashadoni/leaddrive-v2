@@ -12212,7 +12212,7 @@
       "hint": {
         "rowMore": "Müəssisəni açmaq, redaktə etmək və ya silmək.",
         "assignOne": "Müəssisəni əməkdaşa təhkim et. Tətbiq etməzdən əvvəl nəyin dəyişəcəyini göstərəcəyik.",
-        "colContacts": "Hazırda müəssisədə neçə müştərinin (həkim, əczaçı) işlədiyi.",
+        "colContacts": "Hazırda müəssisədə neçə kontaktın (həkim, əczaçı) işlədiyi.",
         "quickCategory": "Yalnız {category} kateqoriyalı müəssisələr. Ləğv etmək üçün yenidən basın.",
         "quickUnassigned": "Bu gün heç bir əməkdaşa təhkim olunmamış müəssisələr. Elə sətirdəcə təyin etmək olar.",
         "quickNotPlanned": "Bu gündən etibarən heç bir planlaşdırılmış marşrutda olmayan müəssisələr.",
@@ -12365,7 +12365,7 @@
       },
       "visibleColumns": "Görünən sütunlar",
       "columns": {
-        "contacts": "Müştərilər",
+        "contacts": "Kontaktlar",
         "code": "Etalon ID",
         "organization": "Müəssisə və ünvan",
         "type": "Müəssisə növü",

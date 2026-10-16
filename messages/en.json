@@ -12216,7 +12216,7 @@
       "hint": {
         "rowMore": "Open, edit or delete the institution.",
         "assignOne": "Assign the institution to an employee. We show what changes before applying it.",
-        "colContacts": "How many clients (doctors, pharmacists) work at the institution now.",
+        "colContacts": "How many contacts (doctors, pharmacists) work at the institution now.",
         "quickCategory": "Only institutions of category {category}. Click again to clear.",
         "quickUnassigned": "Institutions no employee is assigned to today. You can assign one right in the row.",
         "quickNotPlanned": "Institutions that are on no planned route from today on.",
@@ -12369,7 +12369,7 @@
       },
       "visibleColumns": "Visible columns",
       "columns": {
-        "contacts": "Clients",
+        "contacts": "Contacts",
         "code": "Etalon ID",
         "organization": "Institution and address",
         "type": "Institution kind",
