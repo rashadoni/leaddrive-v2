@@ -11653,7 +11653,8 @@
       "attachByPlace": "Pick doctors step by step: specialty → city → district. Everyone found is ticked — untick whoever you don't want.",
       "attachBySearch": "The whole client list with search and filters — to find a particular client by name or address.",
       "attachChosen": "Assign the ticked doctors to this agent from today. Whoever already has an agent keeps them.",
-      "attachNothingChosen": "Choose a specialty first — the doctors found are ticked for you."
+      "attachNothingChosen": "Choose a specialty first — the doctors found are ticked for you.",
+      "attachNoneTicked": "Tick at least one doctor in the list. Those already with the agent are greyed out and not counted."
     },
     "back": "All field agents",
     "notFound": "This employee was not found or is outside your access.",
@@ -11671,7 +11672,8 @@
     "attachNothingYet": "Choose a specialty and tick the doctors",
     "attachChosen": "Assign ticked ({count})",
     "attachReason": "Chosen on the agent's page",
-    "attachFailed": "Could not assign. Check the connection and press again — those already assigned stay."
+    "attachFailed": "Could not assign. Check the connection and press again — those already assigned stay.",
+    "attachNoneTicked": "Nobody ticked — tick doctors in the list"
   },
   "mtmAgents": {
     "hint": {

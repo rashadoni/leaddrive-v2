@@ -55,10 +55,12 @@ export function MtmAgentAttachByPlace({ agentId, onAttached, onForbidden }: {
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{error}
         </p>
       ) : null}
-      {/* Stays at the bottom of the screen while the list is scrolled. */}
-      <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-wrap items-center justify-between gap-3 rounded-b-xl border-t bg-card/95 px-4 py-3 backdrop-blur" data-testid="mtm-agent-attach-bar">
-        <span className="text-sm text-muted-foreground">{count > 0 ? t("attachChecked", { count }) : t("attachNothingYet")}</span>
-        <Hint text={count > 0 ? t("hint.attachChosen") : t("hint.attachNothingChosen")}>
+      {/* Floats over the list while it is scrolled, like the other save bars:
+          the page's own padding keeps a bar pinned flush at «bottom: 0» a few
+          rows above the edge, with the list showing under it. */}
+      <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur" data-testid="mtm-agent-attach-bar">
+        <span className="text-sm text-muted-foreground">{count > 0 ? t("attachChecked", { count }) : choice.listed ? t("attachNoneTicked") : t("attachNothingYet")}</span>
+        <Hint text={count > 0 ? t("hint.attachChosen") : choice.listed ? t("hint.attachNoneTicked") : t("hint.attachNothingChosen")}>
           <span className="inline-flex" tabIndex={count > 0 ? undefined : 0}>
             <Button type="button" className="min-h-11" disabled={count === 0 || saving} onClick={() => void attach()} data-testid="mtm-agent-attach-submit">
               {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" /> : <UserPlus className="mr-1.5 h-4 w-4" aria-hidden="true" />}

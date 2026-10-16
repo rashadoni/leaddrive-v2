@@ -22,7 +22,8 @@ import { PICKER_NONE, type AgentClientPicker, type PickerOption } from "@/lib/mt
 type Selection = { specialties: string[]; cities: string[]; districts: string[] }
 type PickerData = AgentClientPicker & { asOf: string }
 
-export type AgentClientChoice = { contactIds: string[]; asOf: string | null }
+/** `listed`: a specialty is chosen, so the doctors are on the screen. */
+export type AgentClientChoice = { contactIds: string[]; asOf: string | null; listed?: boolean }
 
 const DOCTORS_SHOWN_IN_GROUP = 4
 
@@ -167,10 +168,10 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   const chosenKey = chosen.join(",")
 
   useEffect(() => {
-    onChange({ contactIds: chosenKey ? chosenKey.split(",") : [], asOf: data?.asOf ?? null })
+    onChange({ contactIds: chosenKey ? chosenKey.split(",") : [], asOf: data?.asOf ?? null, listed: chosenFirstStep })
     // The ids travel as their joined key: the list is rebuilt on every answer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chosenKey, data?.asOf])
+  }, [chosenKey, data?.asOf, chosenFirstStep])
 
   const setStep = (step: keyof Selection, values: string[]) => {
     setSelection(current => step === "specialties"

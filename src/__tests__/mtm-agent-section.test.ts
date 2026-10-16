@@ -657,7 +657,7 @@ describe("the agent's page — the card's picker and its edit button", () => {
 
   it("assigns the doctors left ticked — not the one taken out — and then shows them as this agent's", async () => {
     await openSection({ tab: "attach", locale: "ru", more: TERAPEVTS })
-    const section = words<{ attachChosen: string; attachChecked: string; attachReason: string; tabAssignedCount: string }>("ru", "mtmAgentSection")
+    const section = words<{ attachChosen: string; attachChecked: string; attachNoneTicked: string; attachReason: string; tabAssignedCount: string }>("ru", "mtmAgentSection")
     const forms = words<{ clientsAlreadyHere: string }>("ru", "mtmForms")
     await until(() => Boolean(byTestId("agent-clients-start")), "the picker's first step")
 
@@ -684,6 +684,8 @@ describe("the agent's page — the card's picker and its edit button", () => {
     // The one taken out stays out: nothing is left to assign until it is ticked again.
     expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe(fill(section.attachChosen, { count: 0 }))
     expect((byTestId("mtm-agent-attach-submit") as HTMLButtonElement).disabled).toBe(true)
+    // The specialty is chosen and the doctors are listed: the bar no longer asks for one.
+    expect(byTestId("mtm-agent-attach-bar")?.textContent).toContain(section.attachNoneTicked)
   })
 
   it("gives someone who may only look the list, not a picker that would refuse them", async () => {

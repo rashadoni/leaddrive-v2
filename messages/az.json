@@ -11649,7 +11649,8 @@
       "attachByPlace": "Həkimləri addım-addım seçin: ixtisas → şəhər → rayon. Tapılanların hamısı işarələnib — lazım olmayanların işarəsini götürün.",
       "attachBySearch": "Axtarış və filtrlərlə bütün müştəri siyahısı — konkret müştərini adına və ya ünvanına görə tapmaq üçün.",
       "attachChosen": "Seçilmiş həkimləri bu gündən bu agentə təyin etmək. Kimin artıq agenti varsa, o qalır.",
-      "attachNothingChosen": "Əvvəlcə ixtisası seçin — tapılan həkimlər özü işarələnəcək."
+      "attachNothingChosen": "Əvvəlcə ixtisası seçin — tapılan həkimlər özü işarələnəcək.",
+      "attachNoneTicked": "Siyahıda ən azı bir həkimi işarələyin. Artıq agentdə olanlar boz işarələnib və sayılmır."
     },
     "back": "Bütün sahə agentləri",
     "notFound": "Əməkdaş tapılmadı və ya sizə əlçatan deyil.",
@@ -11667,7 +11668,8 @@
     "attachNothingYet": "İxtisası seçin və həkimləri işarələyin",
     "attachChosen": "Seçilənləri təyin et ({count})",
     "attachReason": "Agentin səhifəsində seçilib",
-    "attachFailed": "Təyin etmək alınmadı. Bağlantını yoxlayın və yenidən basın — artıq təyin olunanlar qalacaq."
+    "attachFailed": "Təyin etmək alınmadı. Bağlantını yoxlayın və yenidən basın — artıq təyin olunanlar qalacaq.",
+    "attachNoneTicked": "Heç kim işarələnməyib — siyahıda həkimləri işarələyin"
   },
   "mtmAgents": {
     "hint": {
