@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useFormatter, useLocale, useTranslations } from "next-intl"
 import { formatDate, formatTime } from "@/lib/format-date"
-import { CheckCircle2, ClipboardCheck, Clock3, FileSpreadsheet, LogIn, LogOut, Paperclip, Plus, ShieldAlert, UserRoundX } from "lucide-react"
+import { CheckCircle2, ChevronDown, ClipboardCheck, Users, Clock3, FileSpreadsheet, LogIn, LogOut, Paperclip, Plus, ShieldAlert, UserRoundX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomeCard, HomeKpi, HomePill } from "@/components/mtm/home-parts"
 import { attendanceDayKindLabel } from "@/lib/mtm/attendance-day-kinds"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
-import { attendanceTodayRange, summarizeAttendanceToday, type AttendanceTodaySummary } from "@/lib/mtm/attendance-today"
+import { attendanceNow, attendanceTodayRange, summarizeAttendanceToday, type AttendanceNow, type AttendanceNowPerson, type AttendanceTodaySummary } from "@/lib/mtm/attendance-today"
 import { ATTENDANCE_RISK_MESSAGES, type AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
 import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
 import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
@@ -19,7 +19,47 @@ import { MtmAttendanceSetupChecklist } from "@/components/mtm/attendance-setup-c
 
 const ATTENTION_LIMIT = 6
 const REQUESTS_LIMIT = 5
-type Loaded = { today: string; summary: AttendanceTodaySummary; requests: AttendanceReviewItem[] | null; risks: AttendanceRiskItem[] | null }
+type Loaded = { today: string; summary: AttendanceTodaySummary; requests: AttendanceReviewItem[] | null; risks: AttendanceRiskItem[] | null
+  now: AttendanceNow; timezone: string; loadedAt: string; canManage: boolean }
+const NOW_LIMIT = 3
+const NOW_COLUMNS = [
+  { key: "working", label: "nowWorking", time: "nowSince", tone: "text-emerald-700 dark:text-emerald-400" },
+  { key: "paused", label: "nowPaused", time: "nowSince", tone: "text-amber-700 dark:text-amber-400" },
+  { key: "left", label: "nowLeft", time: "nowAt", tone: "text-sky-700 dark:text-sky-400" },
+  { key: "notYet", label: "nowNotYet", time: null, tone: "text-muted-foreground" },
+] as const
+
+/**
+ * Personnel → Today → «Now» (owner, 2026-10-16, approved mockup): who is at
+ * work, on a break, gone and not yet in. A name opens the employee's page for
+ * an administrator, their day in the timesheet for anyone else.
+ */
+function MtmAttendanceNow({ data }: { data: Loaded }) {
+  const t = useTranslations("personnel"), locale = useLocale()
+  const [open, setOpen] = useState<string | null>(null)
+  const time = (value: string | null) => value ? formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: data.timezone }) : ""
+  const href = (person: AttendanceNowPerson) => data.canManage ? `/mtm/attendance/people/${encodeURIComponent(person.employeeId)}`
+    : `/mtm/attendance/timesheet?${new URLSearchParams({ date: data.today, employeeId: person.employeeId })}`
+  return <section className="rounded-2xl border bg-card p-4" aria-labelledby="attendance-today-now-title" data-testid="attendance-today-now">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <h2 id="attendance-today-now-title" className="flex items-center gap-2 text-[15px] font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" aria-hidden="true"><Users className="h-4 w-4" /></span>{t("nowTitle", { time: time(data.loadedAt) })}</h2>
+      <Link href="/mtm/attendance/reports?report=day" prefetch={false} className="text-sm font-semibold text-primary hover:underline">{t("nowOpenDay")} →</Link>
+    </div>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{NOW_COLUMNS.map(column => {
+      const people = data.now[column.key], expanded = open === column.key, shown = expanded ? people : people.slice(0, NOW_LIMIT)
+      return <div key={column.key} className="rounded-xl border p-3" data-testid={`attendance-now-${column.key}`}>
+        <p className={`mb-2 text-sm font-semibold ${column.tone}`}>{t(column.label)} · {people.length}</p>
+        {people.length ? <ul className="space-y-1.5 text-sm">{shown.map(person => <li key={person.employeeId} className="flex min-w-0 items-baseline justify-between gap-2">
+          <Link href={href(person)} prefetch={false} className="truncate font-medium hover:underline">{person.name}</Link>
+          <span className="shrink-0 text-xs text-muted-foreground">{column.time ? t(column.time, { time: time(person.at) }) : person.dayKind ? attendanceDayKindLabel(person.dayKind, locale) : ""}</span></li>)}</ul>
+          : <p className="text-sm text-muted-foreground">{t("nowNobody")}</p>}
+        {people.length > NOW_LIMIT ? <button type="button" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : column.key)}>
+          {expanded ? t("nowLess") : t("nowMore", { count: people.length - NOW_LIMIT })}<ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden="true" /></button> : null}
+      </div>
+    })}</div>
+    <p className="mt-3 text-xs text-muted-foreground">{t("nowAutoHint")}</p>
+  </section>
+}
 
 async function readJson(response: Response) { return response.json().catch(() => null) }
 
@@ -61,9 +101,12 @@ export function MtmAttendanceToday() {
       if (!report.ok || reportBody?.success !== true || !Array.isArray(reportBody.data?.rows)) {
         setError(a([401, 403, 404].includes(report.status) ? "reportAccessUnavailable" : "reportLoadError")); return
       }
+      const rows = reportBody.data.rows as MtmAttendanceReportRow[]
       setData({
         today,
-        summary: summarizeAttendanceToday(reportBody.data.rows as MtmAttendanceReportRow[], today),
+        summary: summarizeAttendanceToday(rows, today),
+        now: attendanceNow(rows, today), timezone: rows.find(row => row.date === today)?.timezone ?? "Asia/Baku",
+        loadedAt: new Date().toISOString(), canManage: rulesBody.data?.canManageRules === true,
         // Viewing attendance and deciding requests are separate rights: a
         // refused queue hides the card instead of failing the screen.
         requests: requests.ok && requestsBody?.success === true && Array.isArray(requestsBody.data?.items) ? requestsBody.data.items : null,
@@ -75,6 +118,11 @@ export function MtmAttendanceToday() {
   }, [a])
 
   useEffect(() => { void load(); return () => active.current?.abort() }, [load])
+  // «Now» keeps itself current: once a minute while the tab is in view.
+  useEffect(() => {
+    const timer = setInterval(() => { if (document.visibilityState === "visible") void load() }, 60_000)
+    return () => clearInterval(timer)
+  }, [load])
 
   async function decide(item: AttendanceReviewItem, decision: "APPROVED" | "REJECTED") {
     if (busyId) return
@@ -142,6 +190,8 @@ export function MtmAttendanceToday() {
         <Link href={card.href} prefetch={false} className="absolute bottom-3 left-4 text-xs font-semibold text-primary hover:underline">{card.link} →</Link>
       </div>)}
     </div>
+
+    {data ? <MtmAttendanceNow data={data} /> : null}
 
     {message ? <p role="status" className="rounded-xl bg-muted/60 px-4 py-2 text-sm">{message}</p> : null}
 

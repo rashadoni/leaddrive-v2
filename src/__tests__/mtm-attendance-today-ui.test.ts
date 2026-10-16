@@ -95,6 +95,16 @@ describe("Personnel → Today", () => {
     expect(items[3].textContent).toContain("Эльвин")
   })
 
+  // Owner, 2026-10-16 (approved mockup): who is at work, on a break, gone and not yet in.
+  it("shows who is at work now, and a name opens the employee for an administrator", async () => {
+    await render()
+    const now = byTestId("attendance-today-now")!
+    const names = (key: string) => [...now.querySelectorAll(`[data-testid="attendance-now-${key}"] li a`)].map(link => link.textContent)
+    expect(names("working")).toEqual(["Айсель", "Эльвин", "Нигяр"])
+    expect(names("notYet")).toEqual(["Рашад"])
+    expect(byTestId("attendance-now-working")!.textContent).toContain(p("nowSince").replace("{time}", "08:55"))
+    expect(now.querySelector("li a")!.getAttribute("href")).toBe(`/mtm/attendance/people/${encodeURIComponent("id-Айсель")}`)
+  })
   it("approves in one click with the request version and removes the row", async () => {
     await render()
     const row = byTestId("attendance-today-request-r1")
