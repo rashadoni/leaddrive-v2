@@ -27,10 +27,11 @@ function report(workday = day(), corrections = [ledger({ kind: "MISSING", workDa
 describe("MTM correction replay and safe report projection", () => {
   it("creates complete facts from one missing-day ledger entry without inventing phone events", () => {
     const result = report()
-    expect(result.rows[0]).toMatchObject({ kind: "WORKED", factsState: "VALID", workedSeconds: 32400, pausedSeconds: 0, events: [] })
+    // 09:00–18:00 Baku without a break: the 13:00–14:00 lunch is taken off (owner, 2026-10-16: «вычитать обед самому»).
+    expect(result.rows[0]).toMatchObject({ kind: "WORKED", factsState: "VALID", workedSeconds: 28800, pausedSeconds: 0, lunchAutoSeconds: 3600, events: [] })
     expect(result.rows[0].corrections).toHaveLength(1)
     expect(filterMtmAttendanceRows(result.rows, { form: "JOURNAL" })).toHaveLength(1)
-    expect(result.totals).toMatchObject({ arrivedCount: 1, workedSeconds: 32400, unknownWorkedCount: 0 })
+    expect(result.totals).toMatchObject({ arrivedCount: 1, workedSeconds: 28800, unknownWorkedCount: 0 })
     expect(JSON.stringify(result)).not.toMatch(/PRIVATE_REASON|48\.12345|clientEventId|latitude/)
   })
   it("keeps an unproved empty journal unknown", () => {
@@ -85,13 +86,13 @@ describe("MTM correction replay and safe report projection", () => {
     expect(line).toContain("09:00:00")
     expect(line).toContain(locale === "en" ? "06:00:00 PM" : "18:00:00")
     expect(attendanceJournalEntries(row, locale, t)).toEqual([{ id: "correction:correction-fixture", description: line, phoneAt: null, serverAt: now.toISOString(), correction: true }])
-    expect(attendanceMonthCell(row, t)).toBe("9:00 *")
+    expect(attendanceMonthCell(row, t)).toBe("8:00 *") // 9:00 present − 1:00 automatic lunch
     for (const mode of ["DAY", "JOURNAL", "MONTH"] as const) {
       const config: AttendanceViewConfig = { version: 1, mode, columns: [...ATTENDANCE_VIEW_COLUMNS[mode]], showTotals: true,
         filters: { from: mode === "MONTH" ? "2026-10-01" : date, to: mode === "MONTH" ? "2026-10-31" : date, form: mode === "JOURNAL" ? "JOURNAL" : "ALL" } }
       const table = buildAttendanceTable(result, config, locale, t)
       expect(JSON.stringify(table)).toContain(line)
-      expect(table.totals.join(" ")).toContain("9:00")
+      expect(table.totals.join(" ")).toMatch(/(^|[^\d])8:00/)
       if (mode === "JOURNAL") expect(table.rows[0].cells[table.columns.findIndex((column) => column.key === "phoneAt")]).toBe("—")
     }
     const hiddenNotes = buildAttendanceTable(result, { version: 1, mode: "DAY", columns: ["employee", "worked"], showTotals: false, filters: { from: date, to: date, form: "ALL" } }, locale, t)

@@ -38,9 +38,13 @@ describe("attendance forms keep their numbers and privacy in actual files", () =
     const sheet = reopened.worksheets[0]
     expect(sheet.getRow(1).values).toEqual([undefined, ...projected.columns.map((column) => column.label)])
     expect(sheet.getRow(2).getCell(1).value).toBe("'=Fixture Əli Əliyev")
-    expect(sheet.getRow(2).getCell(7).value).toBe("7:39")
+    // 8:09 present − 0:30 pressed break − the other 0:30 of the 13:00–14:00 lunch (owner, 2026-10-16: «вычитать обед самому»).
+    expect(sheet.getRow(2).getCell(7).value).toBe("7:09")
     expect(sheet.getRow(2).getCell(8).value).toBe("0:30")
     expect(sheet.getRow(3).getCell(7).value).toBe("—")
+    const lunchNote = createTranslator({ locale, messages: JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")), namespace: "mtmAttendance" })("reportLunchAuto", { time: "0:30" })
+    expect(String(sheet.getRow(2).getCell(11).value)).toContain(lunchNote)
+    expect(String(sheet.getRow(3).getCell(11).value)).not.toContain(lunchNote)
     expect(sheet.getRow(2).getCell(1).type).toBe(ExcelJS.ValueType.String)
     const pdf = buildAttendancePdf(projected)
     if (process.env.MTM_ATTENDANCE_EXPORT_DIR) {
@@ -50,7 +54,7 @@ describe("attendance forms keep their numbers and privacy in actual files", () =
     }
     const text = pdfText(pdf)
     expect(text).toContain("Əli Əliyev")
-    expect(text).toContain("7:39")
+    expect(text).toContain("7:09")
     expect(text).toContain("0:21")
     expect(text).toContain(projected.title)
     const allCells = JSON.stringify(reopened.worksheets.map((sheet) => sheet.getSheetValues()))
@@ -59,14 +63,14 @@ describe("attendance forms keep their numbers and privacy in actual files", () =
   it("keeps custom ordering and hides totals while the monthly grid retains every day", () => {
     const custom = table("en", { ...config, columns: ["late", "employee", "worked"], showTotals: false })
     expect(custom.columns.map((column) => column.key)).toEqual(["late", "employee", "worked"])
-    expect(custom.rows[0].cells).toEqual(["0:21", "=Fixture Əli Əliyev", "7:39"])
+    expect(custom.rows[0].cells).toEqual(["0:21", "=Fixture Əli Əliyev", "7:09"])
     expect(custom.totals).toEqual([])
     const month = table("en", { ...config, mode: "MONTH", columns: [...DEFAULT_ATTENDANCE_MONTH_COLUMNS], filters: { from: "2026-10-01", to: "2026-10-31", form: "ALL" } })
     expect(month.columns.filter((column) => column.key.startsWith("2026-"))).toHaveLength(31)
     expect(month.rows).toHaveLength(2)
     const text = pdfText(buildAttendancePdf(month))
     expect(text).toContain("Oct 31, 2026")
-    expect(text).toContain("7:39")
+    expect(text).toContain("7:09")
     expect(text.replace(/\s+/g, " ")).toContain("partial total")
     expect(text).not.toMatch(/PRIVATE_BREAK_MARKER|40\.987654/)
   })
@@ -122,8 +126,9 @@ it("keeps approved-hour exclusions identical in the late form, Excel and PDF", a
   const sheet = buildAttendanceXlsx(late).worksheets[0]
   expect(JSON.stringify(sheet.getSheetValues())).not.toContain("Fictional approved employee")
   const all = buildAttendanceTable(result, { ...config, columns: ["employee", "worked", "late", "early"] }, "en", translate)
-  expect(all.rows[0].cells.slice(0, 4)).toEqual(["Fictional approved employee", "7:00", "0:00", "0:00"])
+  // 10:00–17:00 present − the automatic 13:00–14:00 lunch = 6:00 (owner, 2026-10-16: «вычитать обед самому»).
+  expect(all.rows[0].cells.slice(0, 4)).toEqual(["Fictional approved employee", "6:00", "0:00", "0:00"])
   const actual = new ExcelJS.Workbook(); await actual.xlsx.load(await buildAttendanceXlsx(all).xlsx.writeBuffer())
-  expect(actual.worksheets[0].getRow(2).getCell(2).value).toBe("7:00")
-  expect(pdfText(buildAttendancePdf(all))).toContain("7:00")
+  expect(actual.worksheets[0].getRow(2).getCell(2).value).toBe("6:00")
+  expect(pdfText(buildAttendancePdf(all))).toContain("6:00")
 })

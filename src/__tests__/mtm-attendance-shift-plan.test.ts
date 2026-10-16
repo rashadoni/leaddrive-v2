@@ -44,7 +44,9 @@ describe("frozen-roster shift cycle", () => {
       events: [{ type: "START", occurredAt: "2026-11-01T22:00:00+04:00" }] }
     const input = { from: "2026-11-01", to: "2026-11-01", employees: [{ id: assignment.agentId, name: "Fictional employee", teamId: null, teamName: null }], workdays: [workday], rules: [], calendar: [], shiftAssignments: [assignment] }
     const open = buildMtmAttendanceReport({ ...input, now: "2026-11-02T03:00:00+04:00" }).rows[0]
-    expect(open).toMatchObject({ kind: "OPEN", factsState: "VALID", workedSeconds: 18000, accountingDate: "2026-11-02", expectedWorkSeconds: 25200 })
+    // A shift has no lunchStart: its 60-minute lunch is centred on 02:00 (01:30–02:30). At 03:00 the
+    // 5:00 present lose that hour (owner, 2026-10-16: «вычитать обед самому»).
+    expect(open).toMatchObject({ kind: "OPEN", factsState: "VALID", workedSeconds: 14400, lunchAutoSeconds: 3600, accountingDate: "2026-11-02", expectedWorkSeconds: 25200 })
     expect(open.flags).not.toContain("MISSING_FINISH")
     expect(buildMtmAttendanceReport({ ...input, now: "2026-11-02T07:00:00+04:00" }).rows[0]).toMatchObject({ kind: "MISSING_FINISH", workedSeconds: null })
     const finished = { ...workday, status: "COMPLETED", completedAt: "2026-11-02T06:00:00+04:00", totalPausedSeconds: 3600,
@@ -92,7 +94,8 @@ describe("frozen-roster shift cycle", () => {
     const permission = { id: "fictional-hourly-permission", agentId: assignment.agentId, startDate: "2026-11-02", endDate: "2026-11-02", decidedAt: "2026-10-01T12:00:00Z",
       details: { kind: "HOURLY_ABSENCE" as const, unit: "HOURS" as const, startTime: "04:00", endTime: "06:00", timezone: "Asia/Baku", dayKind: defaultAttendanceDayKinds(() => ({ az: "Fixture", ru: "Fixture", en: "Fixture" })).find(day => day.key === "HOURLY_ABSENCE")! } }
     const row = buildMtmAttendanceReport({ ...input, approvedRequests: [permission] }).rows[0]
-    expect(row).toMatchObject({ kind: "WORKED", earlyLeaveSeconds: 0, workedSeconds: 21600, annualLeaveDays: 0 })
+    // 22:00–04:00 present − the automatic 01:30–02:30 lunch = 5:00.
+    expect(row).toMatchObject({ kind: "WORKED", earlyLeaveSeconds: 0, workedSeconds: 18000, lunchAutoSeconds: 3600, annualLeaveDays: 0 })
     expect(row.approvedRequests).toHaveLength(1)
   })
 
