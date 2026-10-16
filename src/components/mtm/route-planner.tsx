@@ -147,6 +147,15 @@ export function MtmRoutePlanner() {
   const [error, setError] = useState("")
   const [duplicate, setDuplicate] = useState<{ id: string } | null>(null)
   const dragIndex = useRef<number | null>(null)
+  // «В маршрут» from a list row: that client goes onto the route as soon as
+  // the employee's clients are read — or waits, named as missing, until an
+  // employee who may visit them is chosen.
+  const requestedCustomerId = searchParams.get("customerId")?.trim() || ""
+  const prefill = useRef<{ customerId: string; contactId: string | null } | null>(
+    requestedCustomerId ? { customerId: requestedCustomerId, contactId: searchParams.get("contactId")?.trim() || null } : null,
+  )
+  const [prefillPending, setPrefillPending] = useState(Boolean(requestedCustomerId))
+  const [candidatesFor, setCandidatesFor] = useState("")
 
   // Settings, capabilities and the agents the user may plan for.
   useEffect(() => {
@@ -177,8 +186,25 @@ export function MtmRoutePlanner() {
     const next = new URLSearchParams(searchParams.toString())
     next.set("agentId", agentId)
     next.set("date", date)
+    // Once the client is on the route, a reload must not put them there twice.
+    if (!prefillPending) {
+      next.delete("customerId")
+      next.delete("contactId")
+    }
     if (next.toString() !== searchParams.toString()) router.replace(`/mtm/routes/plan?${next.toString()}`, { scroll: false })
-  }, [agentId, date, router, searchParams])
+  }, [agentId, date, prefillPending, router, searchParams])
+
+  const addCandidates = useCallback((added: RoutePlannerCandidate[]) => {
+    setStops((current) => {
+      const next = [...current]
+      for (const candidate of added) {
+        if (next.some((stop) => stop.key === candidate.key)) continue
+        next.push(stopFrom(candidate, routePlannerNextSlot(next[next.length - 1]?.plannedTime)))
+      }
+      return next
+    })
+    setError("")
+  }, [])
 
   // The clients this employee may visit on this day: the builder's own list —
   // read once the settings say whether doctors are planned too.
@@ -201,12 +227,24 @@ export function MtmRoutePlanner() {
     Promise.all([read("ORGANIZATION"), doctorsEnabled ? read("DOCTOR") : Promise.resolve([])])
       .then(([organizations, doctors]) => {
         if (controller.signal.aborted) return
-        setCandidates([...organizations, ...doctors])
+        const list = [...organizations, ...doctors]
+        setCandidates(list)
+        setCandidatesFor(`${agentId}:${date}`)
+        const wanted = prefill.current
+        const candidate = wanted ? list.find((item) => item.key === routePlannerStopKey(wanted)) : undefined
+        if (candidate) {
+          prefill.current = null
+          setPrefillPending(false)
+          addCandidates([candidate])
+          setSelectedPlaceId(candidate.customerId)
+          setFocusPlaceId(candidate.customerId)
+        }
       })
       .catch(() => { if (!controller.signal.aborted) setCandidatesFailed(true) })
       .finally(() => { if (!controller.signal.aborted) setCandidatesLoading(false) })
     return () => controller.abort()
-  }, [agentId, date, doctorsEnabled, headers, orgId, route?.id, settingsLoaded])
+  }, [addCandidates, agentId, date, doctorsEnabled, headers, orgId, route?.id, settingsLoaded])
+  const prefillMissing = prefillPending && !candidatesLoading && !candidatesFailed && candidatesFor === `${agentId}:${date}`
 
   const monthLabel = date ? formatDate(`${date}T12:00:00.000Z`, locale, { month: "long", timeZone: "UTC" }) : ""
   const dayLabel = date ? formatDate(`${date}T12:00:00.000Z`, locale, { weekday: "short", day: "numeric", month: "long", timeZone: "UTC" }) : ""
@@ -226,18 +264,6 @@ export function MtmRoutePlanner() {
   const lengthKm = routePlannerLengthKm(stops)
   const dayMinutes = routePlannerDayMinutes(stops.map((stop) => stop.plannedTime))
   const canPublish = capabilities?.canPublish === true
-
-  const addCandidates = useCallback((added: RoutePlannerCandidate[]) => {
-    setStops((current) => {
-      const next = [...current]
-      for (const candidate of added) {
-        if (next.some((stop) => stop.key === candidate.key)) continue
-        next.push(stopFrom(candidate, routePlannerNextSlot(next[next.length - 1]?.plannedTime)))
-      }
-      return next
-    })
-    setError("")
-  }, [])
 
   const removeStop = (key: string) => setStops((current) => retime(current.filter((stop) => stop.key !== key), current.filter((stop) => stop.key !== key).map((stop) => stop.plannedTime)))
   const moveStop = (from: number, to: number) => setStops((current) => {
@@ -482,6 +508,11 @@ export function MtmRoutePlanner() {
                 : t("duration", { hours: Math.floor(dayMinutes / 60), minutes: dayMinutes % 60 })}</HomePill></HintValue> : null}
             </div>
           </div>
+          {prefillMissing ? (
+            <p role="status" data-testid="mtm-route-planner-prefill-missing" className="mx-3 mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              {t("prefillMissing")}
+            </p>
+          ) : null}
           {stops.length === 0 ? (
             <p className="flex-1 px-4 py-6 text-sm text-muted-foreground">{t("emptyRoute")}</p>
           ) : (

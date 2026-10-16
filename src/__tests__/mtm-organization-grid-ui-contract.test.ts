@@ -56,7 +56,8 @@ describe("SWM-08 dense organization grid UI contract", () => {
     expect(ui).toContain('className="min-h-11 min-w-11"')
     expect(ui).toContain('tx("explorer.noVisits")')
     expect(ui).toContain('const nextVisit = organization.routePoints[0]')
-    expect(ui).toContain('href={routePlanningHref(organization.id)}')
+    // «В маршрут» opens the route planner on a map (2026-10-16).
+    expect(ui).toContain('href={routePlanningHref(organization)}')
     expect(ui).toContain('https://www.google.com/maps/dir/?api=1&destination=')
   })
 
@@ -66,8 +67,8 @@ describe("SWM-08 dense organization grid UI contract", () => {
     expect(ui).toContain('data-testid={`mtm-add-organization-to-route-${organization.id}`}')
     expect(ui).toContain('tx("explorer.addToRouteFor", { name: organization.name })')
     expect(ui).toContain('selectedOrganizationId ? (')
-    expect(ui).toContain('href={routePlanningHref(selectedOrganizationId)}')
-    expect(ui).toContain('mtmRoutePlanningHref({')
+    expect(ui).toContain('href={routePlanningHref(selectedOrganization)}')
+    expect(ui).toContain('mtmRoutePlanPageHref({')
     expect(ui).toContain('testId={`mtm-organization-select-${organization.id}`}')
     expect(ui).toContain('data-testid="mtm-organization-assign-open"')
     expect(ui).toContain('data-testid="mtm-organization-assignment-dialog"')

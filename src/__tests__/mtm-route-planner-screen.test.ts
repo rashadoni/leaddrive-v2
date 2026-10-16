@@ -252,4 +252,25 @@ describe("the route planner", () => {
     expect(agent.disabled).toBe(true)
     expect(container.querySelector('[data-testid="mtm-route-planner-publish"]')).toBeNull()
   })
+
+  // «В маршрут» from the lists of clients and institutions (2026-10-16).
+  it("puts the client from a list row on the route, and takes them out of the address so a reload does not add them twice", async () => {
+    nav.params = new URLSearchParams("agentId=agent-1&date=2026-10-16&customerId=c1&contactId=d1")
+    await mount()
+
+    expect(stopNames()).toEqual(["Dr One"])
+    expect(stopTimes()).toEqual(["09:30"])
+    expect(container.querySelector('[data-testid="mtm-route-planner-prefill-missing"]')).toBeNull()
+    expect(nav.replace).toHaveBeenLastCalledWith("/mtm/routes/plan?agentId=agent-1&date=2026-10-16", { scroll: false })
+  })
+
+  it("says so when the client is not this employee's to visit, and adds nothing", async () => {
+    nav.params = new URLSearchParams("agentId=agent-1&date=2026-10-16&customerId=c9")
+    await mount()
+
+    expect(stopNames()).toEqual([])
+    expect(byTestId("mtm-route-planner-prefill-missing").textContent).toBe(T.prefillMissing)
+    // The client stays asked for: choosing the right employee puts them on.
+    expect(nav.replace).not.toHaveBeenCalledWith("/mtm/routes/plan?agentId=agent-1&date=2026-10-16", { scroll: false })
+  })
 })

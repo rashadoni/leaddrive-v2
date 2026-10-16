@@ -29,6 +29,15 @@ import {
 import { contactCategoryWhere } from "@/lib/mtm/contact-categories"
 import { contactSpecialtyFilterValues } from "@/lib/mtm/contact-explorer"
 import { contactFieldFilters } from "@/lib/mtm/list-field-filters"
+import {
+  mtmClientCategoryCounts,
+  mtmClientPendingRoutePoint,
+  mtmClientQuickFilter,
+  mtmClientVisitInMonth,
+  mtmClientVisitMonth,
+  type MtmClientQuickCounts,
+  type MtmClientQuickFilter,
+} from "@/lib/mtm/client-list-quick"
 
 function utcDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
@@ -76,6 +85,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const ownerAgentId = params.get("ownerAgentId")
   const notAgentId = params.get("notAgentId")
   const assignmentState = params.get("assignmentState")
+  const quick = mtmClientQuickFilter(params.get("quick"))
+  const withCounts = params.get("withCounts") === "1"
   const coveragePeriod = contactCoveragePeriod(params.get("coveragePeriod"), asOf.toISOString().slice(0, 10))
   const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1)
   const limit = Math.min(200, Math.max(1, Number.parseInt(params.get("limit") ?? "50", 10) || 50))
@@ -162,17 +173,44 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const categoryWhere = contactCategoryWhere(type)
   if (categoryWhere) and.push(categoryWhere)
 
-  const where: Prisma.MtmContactWhereInput = {
+  // The quick views (chips over the list): one at a time, on top of the fields.
+  const visitMonth = mtmClientVisitMonth(asOf)
+  const quickWhere: Record<MtmClientQuickFilter, Prisma.MtmContactWhereInput> = {
+    NOT_VISITED: { visits: { none: mtmClientVisitInMonth(auth.orgId, visitMonth) } },
+    NOT_PLANNED: { routePoints: { none: mtmClientPendingRoutePoint(auth.orgId, asOf) } },
+    UNASSIGNED: { agentAssignments: { none: activeFieldAssignmentWindow(asOf) } },
+  }
+  const contactWhere = (extra: Prisma.MtmContactWhereInput[], withCategory = true): Prisma.MtmContactWhereInput => ({
     organizationId: auth.orgId,
     deletedAt: null,
     ...(status && ["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"].includes(status) ? { status: status as "ACTIVE" | "INACTIVE" | "PROSPECT" | "DUPLICATE" | "MERGED" } : {}),
     ...(profile ? { profile } : {}),
     ...(qualificationCategory ? { qualificationCategory } : {}),
-    ...(isMtmContactClass(category) ? { category } : {}),
-    ...(and.length > 0 ? { AND: and } : {}),
-  }
+    ...(withCategory && isMtmContactClass(category) ? { category } : {}),
+    ...(and.length + extra.length > 0 ? { AND: [...and, ...extra] } : {}),
+  })
+  const quickExtra = quick ? [quickWhere[quick]] : []
+  const where = contactWhere(quickExtra)
 
-  const [contacts, total, availableAgents] = await Promise.all([
+  // How many each chip holds — asked for by the Clients page only, so the
+  // route builder and the other readers of this list do not pay for it.
+  const quickCountsRead: Promise<MtmClientQuickCounts | null> = withCounts
+    ? Promise.all([
+        prisma.mtmContact.count({ where: contactWhere([]) }),
+        prisma.mtmContact.count({ where: contactWhere([quickWhere.NOT_VISITED]) }),
+        prisma.mtmContact.count({ where: contactWhere([quickWhere.NOT_PLANNED]) }),
+        prisma.mtmContact.count({ where: contactWhere([quickWhere.UNASSIGNED]) }),
+        prisma.mtmContact.groupBy({ by: ["category"], where: contactWhere(quickExtra, false), _count: { _all: true } }),
+      ]).then(([all, notVisited, notPlanned, unassigned, categories]) => ({
+        all,
+        NOT_VISITED: notVisited,
+        NOT_PLANNED: notPlanned,
+        UNASSIGNED: unassigned,
+        categories: mtmClientCategoryCounts(categories),
+      }))
+    : Promise.resolve(null)
+
+  const [contacts, total, availableAgents, quickCounts] = await Promise.all([
     prisma.mtmContact.findMany({
       where,
       skip: (page - 1) * limit,
@@ -223,6 +261,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
             checkInAt: true,
             checkOutAt: true,
             outcome: true,
+            // «Последний визит · кто»: the list names who was there.
+            agent: { select: { id: true, name: true } },
           },
         },
         routePoints: {
@@ -263,7 +303,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       select: { id: true, name: true, role: true, status: true },
       orderBy: [{ status: "asc" }, { name: "asc" }],
     }),
+    quickCountsRead,
   ])
+
 
   const coverageAgentIds = [...new Set(contacts.flatMap((contact) => {
     if (contact.type !== "DOCTOR") return []
@@ -387,6 +429,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         start: coveragePeriod.startKey,
         end: coveragePeriod.endKey,
       },
+      quick: { filter: quick, month: visitMonth.key, counts: quickCounts },
       transferSyncScopeKey: contactTransferSyncScopeKey({
         organizationId: auth.orgId,
         userId: auth.userId,

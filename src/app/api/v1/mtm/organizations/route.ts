@@ -20,6 +20,15 @@ import {
   organizationAreaFilter,
   organizationNameFilter,
 } from "@/lib/mtm/list-field-filters"
+import {
+  mtmClientCategoryCounts,
+  mtmClientPendingRoutePoint,
+  mtmClientQuickFilter,
+  mtmClientVisitInMonth,
+  mtmClientVisitMonth,
+  type MtmClientQuickCounts,
+  type MtmClientQuickFilter,
+} from "@/lib/mtm/client-list-quick"
 
 function utcDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
@@ -69,11 +78,13 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const managingManagerId = params.get("managingManagerId")?.trim()
   const assignedAgentId = params.get("assignedAgentId")?.trim()
   const assignmentState = params.get("assignmentState")
+  const quick = mtmClientQuickFilter(params.get("quick"))
+  const withCounts = params.get("withCounts") === "1"
   const sort = params.get("sort")
   const direction = params.get("direction") === "desc" ? "desc" : "asc"
   const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1)
   const limit = Math.min(200, Math.max(1, Number.parseInt(params.get("limit") ?? "50", 10) || 50))
-  if (assignmentState === "UNASSIGNED" && !canManageFieldMasterData(actor)) {
+  if ((assignmentState === "UNASSIGNED" || quick === "UNASSIGNED") && !canManageFieldMasterData(actor)) {
     return forbidden("MTM_ORGANIZATION_ASSIGNMENT_SEARCH_FORBIDDEN")
   }
   const routeAgentIds = actor.scopedAgentIds === null
@@ -136,13 +147,31 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     ...organizationAreaFilter(params.get("area")),
   )
 
-  const where: Prisma.MtmCustomerWhereInput = {
+  // The routes this reader sees — the same scope as «Следующий визит» below.
+  const routeScope: Prisma.MtmRouteWhereInput = routeAgentIds === null
+    ? {}
+    : routeAgentIds.length > 0
+      ? {
+          OR: [
+            { agentId: { in: routeAgentIds } },
+            { assignments: { some: { agentId: { in: routeAgentIds }, removedAt: null } } },
+          ],
+        }
+      : { id: "__no_route_scope__" }
+  // The quick views (chips over the list): one at a time, on top of the fields.
+  const visitMonth = mtmClientVisitMonth(asOf)
+  const quickWhere: Record<MtmClientQuickFilter, Prisma.MtmCustomerWhereInput> = {
+    NOT_VISITED: { visits: { none: mtmClientVisitInMonth(auth.orgId, visitMonth) } },
+    NOT_PLANNED: { routePoints: { none: mtmClientPendingRoutePoint(auth.orgId, asOf, routeScope) } },
+    UNASSIGNED: { agentAssignments: { none: activeFieldAssignmentWindow(asOf) } },
+  }
+  const organizationWhere = (extra: Prisma.MtmCustomerWhereInput[], withCategory = true): Prisma.MtmCustomerWhereInput => ({
     organizationId: auth.orgId,
     deletedAt: null,
     objectType: objectType && ["PHARMACY", "CLINIC", "STORE", "OTHER"].includes(objectType)
       ? objectType as "PHARMACY" | "CLINIC" | "STORE" | "OTHER"
       : { not: "DOCTOR" },
-    ...(isMtmContactClass(category) ? { category } : {}),
+    ...(withCategory && isMtmContactClass(category) ? { category } : {}),
     ...(status && ["ACTIVE", "INACTIVE", "PROSPECT"].includes(status) ? { status: status as "ACTIVE" | "INACTIVE" | "PROSPECT" } : {}),
     ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
     ...(region ? { region: { equals: region, mode: "insensitive" } } : {}),
@@ -170,10 +199,30 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     } : assignmentState === "ASSIGNED" ? {
       agentAssignments: { some: activeFieldAssignmentWindow(asOf) },
     } : {}),
-    ...(and.length > 0 ? { AND: and } : {}),
-  }
+    ...(and.length + extra.length > 0 ? { AND: [...and, ...extra] } : {}),
+  })
+  const quickExtra = quick ? [quickWhere[quick]] : []
+  const where = organizationWhere(quickExtra)
 
-  const [organizations, total] = await Promise.all([
+  // How many each chip holds — asked for by the Institutions page only.
+  const canSeeUnassigned = canManageFieldMasterData(actor)
+  const quickCountsRead: Promise<MtmClientQuickCounts | null> = withCounts
+    ? Promise.all([
+        prisma.mtmCustomer.count({ where: organizationWhere([]) }),
+        prisma.mtmCustomer.count({ where: organizationWhere([quickWhere.NOT_VISITED]) }),
+        prisma.mtmCustomer.count({ where: organizationWhere([quickWhere.NOT_PLANNED]) }),
+        canSeeUnassigned ? prisma.mtmCustomer.count({ where: organizationWhere([quickWhere.UNASSIGNED]) }) : Promise.resolve(null),
+        prisma.mtmCustomer.groupBy({ by: ["category"], where: organizationWhere(quickExtra, false), _count: { _all: true } }),
+      ]).then(([all, notVisited, notPlanned, unassigned, categories]) => ({
+        all,
+        NOT_VISITED: notVisited,
+        NOT_PLANNED: notPlanned,
+        UNASSIGNED: unassigned,
+        categories: mtmClientCategoryCounts(categories),
+      }))
+    : Promise.resolve(null)
+
+  const [organizations, total, quickCounts] = await Promise.all([
     prisma.mtmCustomer.findMany({
       where,
       skip: (page - 1) * limit,
@@ -216,16 +265,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
               deletedAt: null,
               status: { in: ["PLANNED", "IN_PROGRESS"] },
               date: { gte: asOf },
-              ...(routeAgentIds === null
-                ? {}
-                : routeAgentIds.length > 0
-                  ? {
-                      OR: [
-                        { agentId: { in: routeAgentIds } },
-                        { assignments: { some: { agentId: { in: routeAgentIds }, removedAt: null } } },
-                      ],
-                    }
-                  : { id: "__no_route_scope__" }),
+              ...routeScope,
             },
           },
           orderBy: [{ route: { date: "asc" } }, { orderIndex: "asc" }],
@@ -272,6 +312,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       },
     }),
     prisma.mtmCustomer.count({ where }),
+    quickCountsRead,
   ])
 
   return NextResponse.json({
@@ -284,6 +325,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       asOf: asOf.toISOString().slice(0, 10),
       timezone,
       effectiveScope,
+      quick: { filter: quick, month: visitMonth.key, counts: quickCounts },
       capabilities: {
         canManage: canManageFieldMasterData(actor),
         canRequestChanges: actor.agentId !== null,

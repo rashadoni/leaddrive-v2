@@ -25,6 +25,7 @@ import {
   ExternalLink,
   Download,
   MapPin,
+  MoreHorizontal,
   Navigation,
   Pencil,
   Plus,
@@ -35,15 +36,22 @@ import {
 } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
 import {
-  MtmFilterActions,
   MtmFilterGrid,
   MtmFilterMore,
   MtmFilterReset,
+  MtmFilterSearch,
   MtmFilterSelect,
   MtmFilterSelectField,
   MtmFilterTextField,
-  MtmResultLine,
+  MtmQuickChips,
+  type MtmQuickChip,
 } from "@/components/mtm/filter-bar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { HelpButton } from "@/components/help/help-button"
 import { MtmCustomerForm } from "@/components/mtm/customer-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
@@ -83,9 +91,10 @@ import {
 import {
   appendMtmRouteAssignmentHandoff,
   mtmRouteAssignmentHandoffFromSearchParams,
-  mtmRoutePlanningHref,
+  mtmRoutePlanPageHref,
 } from "@/lib/mtm/route-links"
-import { createDateFormatter } from "@/lib/format-date"
+import type { MtmClientQuickCounts } from "@/lib/mtm/client-list-quick"
+import { createDateFormatter, formatDate } from "@/lib/format-date"
 
 type Agent = {
   id: string
@@ -194,6 +203,8 @@ type OrganizationListPayload = {
   asOf: string
   timezone: string
   effectiveScope: "ALL" | "MINE"
+  /** The chip in force, the month «без визита» is about, and how many each chip holds. */
+  quick?: { filter: string | null; month: string; counts: MtmClientQuickCounts | null }
   capabilities: {
     canManage: boolean
     canRequestChanges: boolean
@@ -293,44 +304,10 @@ function FieldCheckbox({
   )
 }
 
-function FacetSelect({
-  id,
-  label,
-  value,
-  options,
-  allLabel,
-  onChange,
-}: {
-  id: string
-  label: string
-  value: string
-  options: Array<{ value: string; label: string }>
-  allLabel: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={id} className="text-xs font-medium text-muted-foreground">
-        {label}
-      </Label>
-      <Select
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-11 md:min-h-9"
-      >
-        <option value="">{allLabel}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </Select>
-    </div>
-  )
-}
-
 /** What a column holds, under the cursor on its heading; the plain ones (name, place) have none. */
 const COLUMN_HINT: Partial<Record<OrganizationColumn, string>> = {
   code: "colCode",
+  contacts: "colContacts",
   type: "colType",
   category: "colCategory",
   medicalCategory: "colMedicalCategory",
@@ -339,6 +316,34 @@ const COLUMN_HINT: Partial<Record<OrganizationColumn, string>> = {
   activity: "colActivity",
   lastVisit: "colLastVisit",
   nextVisit: "colNextVisit",
+}
+
+/** The named fields, all under «Ещё фильтры»; the search box is on the page. */
+const ORGANIZATION_FIELD_KEYS = [
+  "assignedAgentId", "name", "address", "area", "objectType", "category", "status", "assignmentState",
+  "region", "administrativeDistrict", "locality", "cityDistrict", "specialization", "organizationKind",
+  "territoryCode", "medicalCategoryCode", "licenseStatus", "polygonCode", "managingManagerId",
+] as const satisfies ReadonlyArray<keyof OrganizationExplorerFilters>
+
+/** The words of each chip. */
+const QUICK_LABEL = {
+  NOT_VISITED: "notVisited",
+  NOT_PLANNED: "notPlanned",
+  UNASSIGNED: "unassigned",
+} as const
+
+/** What each chip holds, under the cursor. */
+const QUICK_HINT = {
+  "": "explorer.hint.quickAll",
+  NOT_VISITED: "explorer.hint.quickNotVisited",
+  NOT_PLANNED: "explorer.hint.quickNotPlanned",
+  UNASSIGNED: "explorer.hint.quickUnassigned",
+} as const
+
+/** «Seymur Məmmədov» → «Seymur M.»: who was there, in a narrow column. */
+function shortPersonName(name: string): string {
+  const [first, second] = name.trim().split(/\s+/)
+  return second ? `${first} ${second.charAt(0)}.` : name.trim()
 }
 
 export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
@@ -418,6 +423,8 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     initialUrlHadState.current = params.size > 0
     const restored = organizationFiltersFromSearchParams(params)
     setFilters(restored)
+    // A link that sets a named field opens with the fields in sight.
+    setAdvancedOpen(ORGANIZATION_FIELD_KEYS.some((key) => Boolean(restored[key])))
     const restoredPage = Number.parseInt(params.get("page") ?? "1", 10)
     const restoredLimit = Number.parseInt(params.get("limit") ?? "50", 10)
     if (restoredPage > 1) setPage(restoredPage)
@@ -480,7 +487,8 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     setLoadError("")
     const params = organizationQuery(filters, page, limit)
     try {
-      const response = await fetch(`/api/v1/mtm/organizations?${params}`, {
+      // The page asks how many each chip holds; the address bar does not carry it.
+      const response = await fetch(`/api/v1/mtm/organizations?${params}&withCounts=1`, {
         headers: requestHeaders,
       })
       const payload = await response.json()
@@ -550,8 +558,16 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     total,
   })
   const pageCount = Math.max(1, Math.ceil(total / limit))
+  // Every named field is under «Ещё фильтры» now; the search box is on the page.
   const activeAdvancedCount = [
-    filters.search,
+    filters.assignedAgentId,
+    filters.name,
+    filters.address,
+    filters.area,
+    filters.objectType,
+    filters.category,
+    filters.status,
+    filters.assignmentState,
     filters.region,
     filters.administrativeDistrict,
     filters.locality,
@@ -564,9 +580,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     filters.polygonCode,
     filters.managingManagerId,
   ].filter(Boolean).length
-  const assignedOnPage = organizations.filter(
-    (organization) => organization.agentAssignments.length > 0,
-  ).length
+  const quickMonthKey = data?.quick?.month
   const activeFilterLabels = useMemo(() => {
     const items: string[] = []
     const add = (label: string, value: string | null | undefined) => {
@@ -579,6 +593,8 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     ) => code ? attributeLabel(options?.find((item) => item.code === code)?.labels, locale, fallback) : ""
 
     add(tx("explorer.searchLabel"), filters.search)
+    const month = formatDate(`${quickMonthKey ?? new Date().toISOString().slice(0, 7)}-15T12:00:00.000Z`, locale, { month: "long", timeZone: "UTC" })
+    add(tx("explorer.quick.label"), filters.quick ? tx(`explorer.quick.${QUICK_LABEL[filters.quick as keyof typeof QUICK_LABEL] ?? "all"}`, { month }) : "")
     add(tx("explorer.filterName"), filters.name)
     add(tx("explorer.filterAddress"), filters.address)
     add(tx("explorer.filterArea"), filters.area)
@@ -606,7 +622,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     add(tx("explorer.manager"), facets?.managers.find((agent) => agent.id === filters.managingManagerId)?.name ?? filters.managingManagerId)
     add(tx("explorer.owner"), facets?.assignableAgents.find((agent) => agent.id === filters.assignedAgentId)?.name ?? filters.assignedAgentId)
     return items
-  }, [facets, filters, locale, tx])
+  }, [facets, filters, locale, quickMonthKey, tx])
 
   function setFilter<K extends keyof OrganizationExplorerFilters>(
     key: K,
@@ -815,6 +831,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   function columnValue(organization: Organization, column: OrganizationColumn): string | number | null {
     switch (column) {
       case "code": return organization.code
+      case "contacts": return organization._count.contactWorkplaces
       case "organization": return [organization.name, organization.address].filter(Boolean).join(" — ")
       case "type": return organization.organizationKind || tx(`explorer.objectTypes.${organization.objectType}`)
       case "category": return [organization.category, organization.specialization].filter(Boolean).join(" — ")
@@ -928,11 +945,13 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   }
 
   const formatNumber = useMemo(() => new Intl.NumberFormat(locale), [locale])
-  const visitDate = useMemo(() => createDateFormatter(locale, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }), [locale])
+  const visitDate = useMemo(() => createDateFormatter(locale, { dateStyle: "medium" }), [locale])
+  // «7 окт.» in the grid: this year's dates need no year, older ones keep it.
+  const visitDayThisYear = useMemo(() => createDateFormatter(locale, { day: "numeric", month: "short" }), [locale])
+  const visitDay = (value: string) => {
+    const date = new Date(value)
+    return date.getFullYear() === new Date().getFullYear() ? visitDayThisYear.format(date) : visitDate.format(date)
+  }
   const visitDateTime = useMemo(() => createDateFormatter(locale, {
     day: "2-digit",
     month: "2-digit",
@@ -940,13 +959,12 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     hour: "2-digit",
     minute: "2-digit",
   }), [locale])
-  const selectionColumnWidth = 72
-  // The cell holds a nowrap "Add to route" button plus three icon buttons;
-  // 288 px was narrower than its own content in ru/az.
-  const actionColumnWidth = 340
+  const selectionColumnWidth = 64
+  // «В маршрут» and, for whoever may change the base, «⋯» with edit and delete.
+  const actionColumnWidth = 168
   const gridWidth = visibleColumns.reduce((sum, column) => sum + columnWidths[column], selectionColumnWidth + actionColumnWidth)
   const organizationStickyLeft = selectionColumnWidth + (visibleColumns.includes("code") ? columnWidths.code : 0)
-  const densityCellClass = density === "COMPACT" ? "px-2 py-1.5" : "px-3 py-3"
+  const densityCellClass = density === "COMPACT" ? "px-2 py-1.5" : "px-3 py-2"
   const densitySubtextClass = density === "COMPACT" ? "text-[11px] leading-4" : "text-xs leading-5"
   const columnStyle = (column: OrganizationColumn): CSSProperties => ({
     width: columnWidths[column],
@@ -977,6 +995,26 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     event.preventDefault()
     next.focus()
   }
+  // The chips over the list, each with how many it holds (the server counts).
+  const quickCounts = data?.quick?.counts ?? null
+  const quickMonth = formatDate(`${data?.quick?.month ?? new Date().toISOString().slice(0, 7)}-15T12:00:00.000Z`, locale, { month: "long", timeZone: "UTC" })
+  const quickChips: MtmQuickChip[] = [
+    { value: "", label: tx("explorer.quick.all"), count: quickCounts?.all, testId: "organization-quick-all" },
+    { value: "NOT_VISITED", label: tx("explorer.quick.notVisited", { month: quickMonth }), count: quickCounts?.NOT_VISITED, testId: "organization-quick-not-visited" },
+    { value: "NOT_PLANNED", label: tx("explorer.quick.notPlanned"), count: quickCounts?.NOT_PLANNED, testId: "organization-quick-not-planned" },
+    // Only for whoever may assign, and only where somebody is unassigned.
+    ...(typeof quickCounts?.UNASSIGNED === "number" && (quickCounts.UNASSIGNED > 0 || filters.quick === "UNASSIGNED")
+      ? [{ value: "UNASSIGNED", label: tx("explorer.quick.unassigned"), count: quickCounts.UNASSIGNED, testId: "organization-quick-unassigned" }]
+      : []),
+  ]
+  const categoryChips: MtmQuickChip[] = (quickCounts?.categories.length ?? 0) >= 2 || filters.category
+    ? (quickCounts?.categories ?? []).map((entry) => ({
+        value: entry.category,
+        label: tx("explorer.quick.category", { category: entry.category }),
+        count: entry.count,
+        testId: `organization-quick-category-${entry.category}`,
+      }))
+    : []
   const categoryOptions = ["A", "B", "C", "D"].map((value) => ({
     value,
     label: tx(`explorer.categories.${value}`),
@@ -987,12 +1025,17 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   ).toString()}`
   const organizationHref = (id: string) =>
     `/mtm/customers/${id}?returnTo=${encodeURIComponent(listReturnPath)}`
-  const routePlanningHref = (id: string) => mtmRoutePlanningHref({
-    customerId: id,
-    returnTo: listReturnPath,
+  // «В маршрут»: the planner on a map, of the responsible employee, the
+  // institution already on the route.
+  const routePlanningHref = (organization: Organization) => mtmRoutePlanPageHref({
+    customerId: organization.id,
+    agentId: organization.agentAssignments[0]?.agent.id,
   })
   const selectedOrganizationId = selected.size === 1
     ? selected.values().next().value ?? null
+    : null
+  const selectedOrganization = selectedOrganizationId
+    ? organizations.find((organization) => organization.id === selectedOrganizationId) ?? null
     : null
   const routeAssignmentAgent = facets?.assignableAgents.find((agent) => agent.id === routeAssignmentHandoff?.agentId)
   const effectiveScope = filters.scope || data?.effectiveScope || "ALL"
@@ -1126,8 +1169,26 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           field per thing you look by. Eight fields on the page; the rest
           behind «Ещё фильтры», and a reference dropdown only where the
           tenant's data gives it something to choose. */}
+      {/* Owner, 2026-10-16, from a picture: one search and the chips — «Все»,
+          «Без визита за октябрь», «Не запланированы», «Без ответственного» —
+          with how many each holds; the named fields (2026-10-02) one click
+          away under «Ещё фильтры». */}
       <section data-testid="organization-filters" className="space-y-3">
-        <MtmFilterGrid>
+        <div data-testid="organization-toolbar" className="flex flex-wrap items-center gap-2">
+          <MtmFilterSearch testId="organization-search" value={filters.search} onChange={(value) => setFilter("search", value)} placeholder={tx("explorer.searchBox")} label={tx("explorer.filterAnywhere")} clearLabel={tf("clear")} />
+          <MtmQuickChips label={tx("explorer.quick.label")} chips={quickChips} value={filters.quick} onChange={(value) => setFilter("quick", value)}
+            renderChip={(chip, element) => <Hint text={tx(QUICK_HINT[chip.value as keyof typeof QUICK_HINT] ?? "explorer.hint.quickAll", { month: quickMonth })}>{element}</Hint>} />
+          {categoryChips.length > 0 ? (
+            <MtmQuickChips label={tx("explorer.category")} chips={categoryChips} value={filters.category} onChange={(value) => setFilter("category", value === filters.category ? "" : value)}
+              renderChip={(chip, element) => <Hint text={tx("explorer.hint.quickCategory", { category: chip.value })}>{element}</Hint>} />
+          ) : null}
+          <span className="ml-auto flex items-center gap-1">
+            <MtmFilterMore testId="organization-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={activeAdvancedCount} label={tf("more")} />
+            <MtmFilterReset testId="organization-clear-filters" show={activeFilterLabels.length > 0} onReset={clearFilters} label={tf("reset")} />
+          </span>
+        </div>
+        {advancedOpen ? (
+          <MtmFilterGrid>
           {(facets?.assignableAgents.length ?? 0) > 0 || filters.assignedAgentId ? (
             <MtmFilterSelectField testId="organization-assignedAgentId" label={tx("explorer.owner")} value={filters.assignedAgentId} allLabel={tx("explorer.all")} options={(facets?.assignableAgents ?? []).map((agent) => ({ value: agent.id, label: agent.name }))} onChange={(value) => setFilter("assignedAgentId", value)} />
           ) : null}
@@ -1144,14 +1205,13 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           <MtmFilterSelectField testId="organization-assignment" label={tx("explorer.assignment")} value={filters.assignmentState} allLabel={tx("explorer.all")}
             options={["ASSIGNED", "UNASSIGNED"].map((value) => ({ value, label: tx(`explorer.assignmentStates.${value}`) }))}
             onChange={(value) => setFilter("assignmentState", value)} />
-          {advancedOpen ? (
+          {(
             <>
               {data?.capabilities.actorAgentId ? (
                 <MtmFilterSelectField testId="organization-scope" label={tx("explorer.scopeTitle")} value={effectiveScope} emptyValue="ALL" allLabel={tx("explorer.scopeAll")}
                   options={[{ value: "ALL", label: tx("explorer.scopeAll") }, { value: "MINE", label: tx("explorer.scopeMine") }]}
                   onChange={(value) => { if (value === "MINE") setExplorerScope("MINE"); else setExplorerScope("ALL") }} />
               ) : null}
-              <MtmFilterTextField testId="organization-search" label={tx("explorer.filterAnywhere")} placeholder={tx("explorer.searchLabel")} value={filters.search} onChange={(value) => setFilter("search", value)} clearLabel={tf("clear")} />
               {([
                 ["region", "region", facets?.region],
                 ["administrativeDistrict", "administrativeDistrict", facets?.administrativeDistrict],
@@ -1180,15 +1240,9 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                 <MtmFilterSelectField testId="organization-managingManagerId" label={tx("explorer.manager")} value={filters.managingManagerId} allLabel={tx("explorer.all")} options={(facets?.managers ?? []).map((agent) => ({ value: agent.id, label: agent.name }))} onChange={(value) => setFilter("managingManagerId", value)} />
               ) : null}
             </>
-          ) : null}
+          )}
         </MtmFilterGrid>
-        <MtmFilterActions>
-          <MtmFilterMore testId="organization-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={activeAdvancedCount} label={tf("more")} />
-          <MtmFilterReset testId="organization-clear-filters" show={activeFilterLabels.length > 0} onReset={clearFilters} label={tf("reset")} />
-        </MtmFilterActions>
-        <MtmResultLine aside={<HintValue text={tx("explorer.hint.onPage")}>{`${tx("explorer.assignedOnPage")}: ${formatNumber.format(assignedOnPage)} · ${tx("explorer.unassignedOnPage")}: ${formatNumber.format(organizations.length - assignedOnPage)}`}</HintValue>}>
-          <span className="font-medium text-foreground">{tf("found", { count: formatNumber.format(total) })}</span>
-        </MtmResultLine>
+        ) : null}
       </section>
 
       {selected.size > 0 ? (
@@ -1205,10 +1259,10 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {selectedOrganizationId && !isRouteOrganizationFlow ? (
+            {selectedOrganization && !isRouteOrganizationFlow ? (
               <Hint text={tx("explorer.hint.addToRoute")}>
                 <Button asChild size="sm" className="min-h-11 md:min-h-9">
-                  <Link href={routePlanningHref(selectedOrganizationId)}>
+                  <Link href={routePlanningHref(selectedOrganization)}>
                     <CalendarPlus className="mr-2 h-4 w-4" />
                     {tx("explorer.addToRoute")}
                   </Link>
@@ -1263,8 +1317,10 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           right edge, not to its trigger — when the controls wrap onto a new
           line the trigger sits at the left and a right-anchored panel used to
           open past the left edge of the page. */}
-      <div className="relative flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="relative flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+          <span data-testid="organization-result-count" className="font-medium text-foreground">{tf("found", { count: formatNumber.format(total) })}</span>
+          <span aria-hidden="true">·</span>
           <span>{tx("explorer.asOf", { date: data?.asOf ?? facets?.asOf ?? "—" })}</span>
           <Button
             variant="ghost"
@@ -1276,23 +1332,22 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <FacetSelect
-            id="organization-sort"
-            label={tx("explorer.sort")}
-            value={filters.sort}
-            allLabel={tx("explorer.all")}
-            options={[
-              { value: "name", label: tx("explorer.sorts.name") },
-              { value: "updatedAt", label: tx("explorer.sorts.updatedAt") },
-              { value: "city", label: tx("explorer.sorts.city") },
-              { value: "category", label: tx("explorer.sorts.category") },
-              { value: "status", label: tx("explorer.sorts.status") },
-            ]}
-            onChange={(value) => {
-              if (value) setFilter("sort", value as OrganizationExplorerFilters["sort"])
-            }}
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground" htmlFor="organization-sort">
+            {tx("explorer.sort")}
+            <Select
+              id="organization-sort"
+              value={filters.sort}
+              onChange={(event) => {
+                if (event.target.value) setFilter("sort", event.target.value as OrganizationExplorerFilters["sort"])
+              }}
+              className="min-h-11 w-auto text-foreground md:min-h-9"
+            >
+              {(["name", "updatedAt", "city", "category", "status"] as const).map((value) => (
+                <option key={value} value={value}>{tx(`explorer.sorts.${value}`)}</option>
+              ))}
+            </Select>
+          </label>
           <Button
             variant="outline"
             size="icon"
@@ -1371,7 +1426,9 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground">{tx("explorer.optionalAttributesHint")}</p>
+      {visibleColumns.includes("medicalCategory") || visibleColumns.includes("license") ? (
+        <p className="text-xs text-muted-foreground">{tx("explorer.optionalAttributesHint")}</p>
+      ) : null}
 
       {loading ? (
         <div className="space-y-2" aria-label={tx("explorer.loading")}>
@@ -1426,7 +1483,9 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
       ) : (
         <>
           <div className="hidden overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700 md:block">
-            <div data-testid="mtm-organization-grid-scroll" className="max-h-[62vh] overflow-auto">
+            {/* No frame with its own scrolling (owner: an inner scroll is a bug):
+                the default columns fit a laptop screen; more, scroll sideways. */}
+            <div data-testid="mtm-organization-grid-scroll" className="overflow-x-auto">
               <table
                 className={`w-full table-fixed border-collapse ${density === "COMPACT" ? "text-xs" : "text-sm"}`}
                 style={{ minWidth: gridWidth }}
@@ -1465,7 +1524,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                     return (
                       <tr
                         key={organization.id}
-                        className="group border-b border-zinc-200 align-top transition-colors last:border-0 hover:bg-muted/40 dark:border-zinc-700"
+                        className="group border-b border-zinc-200 align-middle transition-colors last:border-0 hover:bg-muted/40 dark:border-zinc-700"
                         style={{ contentVisibility: "auto", containIntrinsicSize: density === "COMPACT" ? "44px" : "64px" }}
                       >
                         <td className="sticky left-0 z-20 bg-card px-1 group-hover:bg-muted" style={{ width: selectionColumnWidth, minWidth: selectionColumnWidth }}>
@@ -1496,12 +1555,14 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                           >
                             {column === "code" ? (
                               <span className="font-medium tabular-nums">{organization.code || "—"}</span>
+                            ) : column === "contacts" ? (
+                              <span className="tabular-nums">{formatNumber.format(organization._count.contactWorkplaces)}</span>
                             ) : column === "organization" ? (
                               <div className="grid min-w-0 gap-0.5">
                                 <Link href={organizationHref(organization.id)} className="truncate font-semibold underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                   {organization.name}
                                 </Link>
-                                <span className={`${densitySubtextClass} line-clamp-2 text-muted-foreground`}>{organization.address || "—"}</span>
+                                <span className={`${densitySubtextClass} truncate text-muted-foreground`}>{organization.address || "—"}</span>
                               </div>
                             ) : column === "type" ? (
                               <span className="line-clamp-2">{organization.organizationKind || tx(`explorer.objectTypes.${organization.objectType}`)}</span>
@@ -1532,23 +1593,35 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                                 <div className="grid gap-0.5">
                                   {organization.agentAssignments.map((assignment) => <span key={assignment.id} className="truncate">{assignment.agent.name}</span>)}
                                 </div>
+                              ) : data?.capabilities.canManage ? (
+                                // Nobody responsible: one click to name somebody.
+                                <Hint text={tx("explorer.hint.assignOne")}>
+                                  <button
+                                    type="button"
+                                    data-testid={`mtm-organization-assign-one-${organization.id}`}
+                                    onClick={() => {
+                                      setSelected(new Set([organization.id]))
+                                      openAssignment("ASSIGN")
+                                    }}
+                                    className="inline-flex min-h-8 items-center rounded-full border border-dashed border-zinc-300 px-2.5 text-xs font-medium text-muted-foreground hover:border-primary/50 hover:text-primary dark:border-zinc-600"
+                                  >
+                                    {tx("explorer.assign")}
+                                  </button>
+                                </Hint>
                               ) : <span className="font-medium text-amber-800 dark:text-amber-300">{tx("explorer.free")}</span>
                             ) : column === "lastVisit" ? (
                               lastVisit ? (
-                                <Link href={`/mtm/visits?visitId=${encodeURIComponent(lastVisit.id)}&returnTo=${encodeURIComponent(listReturnPath)}`} className="grid gap-0.5 tabular-nums hover:text-primary hover:underline">
-                                  <span>{visitDate.format(new Date(lastVisit.checkInAt))}</span>
-                                  <span className={`${densitySubtextClass} truncate text-muted-foreground`}>{lastVisit.agent.name}</span>
+                                <Link href={`/mtm/visits?visitId=${encodeURIComponent(lastVisit.id)}&returnTo=${encodeURIComponent(listReturnPath)}`} className="block truncate whitespace-nowrap hover:text-primary hover:underline">
+                                  <span className="font-medium">{visitDay(lastVisit.checkInAt)}</span>
+                                  <span className="text-muted-foreground"> · {shortPersonName(lastVisit.agent.name)}</span>
                                 </Link>
-                              ) : <span className="text-muted-foreground">{tx("explorer.noVisits")}</span>
+                              ) : <span className="font-semibold text-orange-600 dark:text-orange-400">{tx("explorer.noVisitYet")}</span>
                             ) : column === "nextVisit" ? (
                               nextVisit ? (
-                                <Link href={`/mtm/routes?routeId=${encodeURIComponent(nextVisit.routeId)}&returnTo=${encodeURIComponent(listReturnPath)}`} className="grid gap-0.5 tabular-nums hover:text-primary hover:underline">
-                                  <span>{nextVisit.plannedTime
-                                    ? visitDateTime.format(new Date(nextVisit.plannedTime))
-                                    : visitDate.format(new Date(nextVisit.route.date))}</span>
-                                  <span className={`${densitySubtextClass} truncate text-muted-foreground`}>{tx(`explorer.routeStatuses.${nextVisit.route.status}`)}</span>
+                                <Link href={`/mtm/routes?routeId=${encodeURIComponent(nextVisit.routeId)}&returnTo=${encodeURIComponent(listReturnPath)}`} className="block whitespace-nowrap font-medium tabular-nums hover:text-primary hover:underline">
+                                  {visitDay(nextVisit.plannedTime ?? nextVisit.route.date)}
                                 </Link>
-                              ) : <span className="text-muted-foreground">{tx("explorer.notPlanned")}</span>
+                              ) : <HintValue text={tx("explorer.notPlanned")}><span className="text-muted-foreground">—</span></HintValue>
                             ) : (
                               <div className={`${densitySubtextClass} grid gap-0.5 tabular-nums text-muted-foreground`}>
                                 <span>{tx("explorer.contactsCount", { count: organization._count.contactWorkplaces })}</span>
@@ -1558,49 +1631,46 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                           </td>
                         ))}
                         <td className="bg-card px-2 py-1 group-hover:bg-muted xl:sticky xl:right-0 xl:z-20" style={{ width: actionColumnWidth, minWidth: actionColumnWidth }}>
-                          <div className="flex justify-end gap-1">
-                            <Button asChild variant="outline" size="sm" className="min-h-11 whitespace-nowrap md:min-h-9">
-                              <Link
-                                href={routePlanningHref(organization.id)}
-                                aria-label={tx("explorer.addToRouteFor", { name: organization.name })}
-                                data-testid={`mtm-add-organization-to-route-${organization.id}`}
-                              >
-                                <CalendarPlus className="mr-2 h-4 w-4" />
-                                {tx("explorer.addToRoute")}
-                              </Link>
-                            </Button>
-                            <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11 md:min-h-9 md:min-w-9">
-                              <Link href={organizationHref(organization.id)} aria-label={tx("explorer.openOrganization", { name: organization.name })}>
-                                <ExternalLink className="h-4 w-4" />
-                              </Link>
-                            </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Hint text={tx("explorer.hint.addToRoute")}>
+                              <Button asChild variant="outline" size="sm" className="min-h-11 whitespace-nowrap md:min-h-9">
+                                <Link
+                                  href={routePlanningHref(organization)}
+                                  aria-label={tx("explorer.addToRouteFor", { name: organization.name })}
+                                  data-testid={`mtm-add-organization-to-route-${organization.id}`}
+                                >
+                                  <CalendarPlus className="mr-1.5 h-4 w-4" />
+                                  {tx("explorer.toRoute")}
+                                </Link>
+                              </Button>
+                            </Hint>
                             {data?.capabilities.canManage ? (
-                              <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="min-h-11 min-w-11 md:min-h-9 md:min-w-9"
-                                aria-label={tx("explorer.editOrganization", { name: organization.name })}
-                                onClick={() => {
-                                  setEditData(organization)
-                                  setFormOpen(true)
-                                }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="min-h-11 min-w-11 text-destructive md:min-h-9 md:min-w-9"
-                                aria-label={tx("explorer.deleteOrganization", { name: organization.name })}
-                                onClick={() => {
-                                  setDeleteItem(organization)
-                                  setDeleteOpen(true)
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                              </>
+                              <DropdownMenu>
+                                <Hint text={tx("explorer.hint.rowMore")}>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="min-h-11 min-w-11 md:min-h-9 md:min-w-9" aria-label={tx("explorer.rowMoreFor", { name: organization.name })} data-testid={`mtm-organization-row-more-${organization.id}`}>
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                </Hint>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem asChild>
+                                    <Link href={organizationHref(organization.id)}><ExternalLink />{tx("explorer.rowOpen")}</Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => {
+                                    setEditData(organization)
+                                    setFormOpen(true)
+                                  }}>
+                                    <Pencil />{tx("explorer.rowEdit")}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => {
+                                    setDeleteItem(organization)
+                                    setDeleteOpen(true)
+                                  }}>
+                                    <Trash2 />{tx("explorer.rowDelete")}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             ) : null}
                           </div>
                         </td>
@@ -1779,7 +1849,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                     ) : null}
                     <Button asChild className="min-h-11">
                       <Link
-                        href={routePlanningHref(organization.id)}
+                        href={routePlanningHref(organization)}
                         aria-label={tx("explorer.addToRouteFor", { name: organization.name })}
                       >
                         <CalendarPlus className="mr-2 h-4 w-4" />
