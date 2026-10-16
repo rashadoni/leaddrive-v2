@@ -19166,6 +19166,7 @@
     "monthCloseChooseSaved": "Bağlanmış tabeli seçin",
     "monthCloseEmpty": "Bu ay üçün əlçatan bağlanmış tabel yoxdur.",
     "monthCloseClosed": "Bağlanıb",
+    "monthCloseOwn": "Öz ayınızı başqa rəhbər və ya administrator bağlayır.",
     "monthCloseExcel": "Excel yüklə",
     "monthClosePdf": "PDF yüklə",
     "monthCloseFrozen": "Tabel bağlandığı vəziyyətdə saxlanır. İxracda eyni məlumatlar var. Sonrakı düzəlişlər ayrıca göstərilir.",

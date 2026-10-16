@@ -128,6 +128,14 @@ async function readyPage(path) {
 }
 // Office staff auto-enrolled at activation; a field agent is not HR attendance.
 const rosterCard = name => fixture.admin.mtmAgent.findFirstOrThrow({ where: { organizationId: fixture.organization.id, name } })
+/** Closed months pick a month with arrows (the browser's month input printed English in Azerbaijani). */
+async function chooseMonth(target) {
+  const picker = page.getByTestId('attendance-months-picker')
+  for (let step = 0; step < 36 && await picker.getAttribute('data-month') !== target; step++) {
+    await picker.getByRole('button', { name: pt((await picker.getAttribute('data-month')) > target ? 'previousMonth' : 'nextMonth'), exact: true }).click()
+  }
+  assert.equal(await picker.getAttribute('data-month'), target)
+}
 async function openTimesheetExtras() {
   await readyPage('timesheet')
   // Saved forms and deliveries open from the timesheet's "More" menu.
@@ -854,7 +862,7 @@ try {
   await run('browser-month-frozen-download', 'browser-action+database-backed-http', async () => {
     assert.ok(state.closedMonth)
     await readyPage('months')
-    await page.locator('input[type="month"]').fill(state.closedMonth.month)
+    await chooseMonth(state.closedMonth.month)
     await page.getByLabel(t('monthCloseChooseSaved')).selectOption(state.closedMonth.id)
     await button('monthCloseExcel').waitFor()
     for (const key of ['monthCloseExcel', 'monthClosePdf']) {
@@ -1013,7 +1021,7 @@ try {
         await fixture.admin.mtmAgentWorkdayEvent.create({ data: { organizationId: fixture.organization.id, agentId, workdayId: workday.id, clientEventId: randomUUID(), type, occurredAt, appliedAt: occurredAt, claimedAt: occurredAt, serverReceivedAt: occurredAt } })
       }
     }
-    await readyPage('months'); await page.locator('input[type="month"]').fill(month)
+    await readyPage('months'); await chooseMonth(month)
     await page.getByRole('checkbox', { name: /Fixture manager/ }).check()
     const preview = await clickResponse(button('monthClosePreview'), `${apiRoot}/months/preview`)
     assert.deepEqual(preview.blockers, [])

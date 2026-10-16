@@ -19170,6 +19170,7 @@
     "monthCloseChooseSaved": "Choose a closed timesheet",
     "monthCloseEmpty": "There are no available closed timesheets for this month.",
     "monthCloseClosed": "Closed",
+    "monthCloseOwn": "Another manager or administrator closes your own month.",
     "monthCloseExcel": "Download Excel",
     "monthClosePdf": "Download PDF",
     "monthCloseFrozen": "The timesheet is preserved as it was closed. Exports contain these same values. Later corrections appear separately.",
