@@ -65,3 +65,36 @@ describe("Personnel → Today summary", () => {
     expect(week[3]).toMatchObject({ future: true, expected: 4, present: 0, away: 1, absent: 0 })
   })
 })
+
+// Owner, 2026-10-16: who is at work, on a break, gone, or not yet in — right now.
+describe("Personnel → Today → Now", () => {
+  it("sorts today's people into at work, on a break, gone and not yet in", async () => {
+    const { attendanceNow } = await import("@/lib/mtm/attendance-today")
+    const range = attendanceTodayRange(today)
+    const rows = buildMtmAttendanceReport({
+      from: range.from, to: range.to, now, rules: [], calendar: [], dayKinds: kinds, approvedRequests: [leave],
+      employees: ["on-time", "on-break", "gone", "absent", "on-leave"].map(id => ({ id, name: `Fictional ${id}`, teamId: null, teamName: null })),
+      workdays: [
+        day("on-time", today, "08:58", null),
+        { ...day("on-break", today, "09:05", null), status: "PAUSED",
+          events: [{ type: "START", occurredAt: at(today, "09:05") }, { type: "PAUSE", occurredAt: at(today, "11:00") }] },
+        day("gone", today, "07:00", "10:30"),
+      ],
+    }).rows
+    const result = attendanceNow(rows, today)
+    expect(result.working.map(person => person.employeeId)).toEqual(["on-time"])
+    expect(result.working[0].at).toBe(rows.find(row => row.employeeId === "on-time" && row.date === today)!.startedAt)
+    expect(result.paused.map(person => [person.employeeId, person.at])).toEqual([["on-break", new Date(at(today, "11:00")).toISOString()]])
+    expect(result.left.map(person => person.employeeId)).toEqual(["gone"])
+    // The unexplained first; leave carries its day kind, an absence carries none.
+    expect(result.notYet.map(person => [person.employeeId, person.dayKind?.key ?? null])).toEqual([["absent", null], ["on-leave", "ANNUAL_LEAVE"]])
+  })
+
+  it("lists nobody on a day off", async () => {
+    const { attendanceNow } = await import("@/lib/mtm/attendance-today")
+    const saturday = "2026-10-17"
+    const rows = buildMtmAttendanceReport({ from: saturday, to: saturday, now: "2026-10-17T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
+      employees: [{ id: "a", name: "Fictional a", teamId: null, teamName: null }], workdays: [] }).rows
+    expect(attendanceNow(rows, saturday)).toEqual({ working: [], paused: [], left: [], notYet: [] })
+  })
+})
