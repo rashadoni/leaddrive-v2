@@ -34,16 +34,16 @@ export const MTM_ORGANIZATION_DEFAULT_COLUMNS = [
 ] satisfies OrganizationColumn[]
 export const MTM_ORGANIZATION_DEFAULT_COLUMN_WIDTHS: Record<OrganizationColumn, number> = {
   code: 120,
-  organization: 360,
-  contacts: 104,
+  organization: 340,
+  contacts: 96,
   type: 220,
   category: 160,
   medicalCategory: 180,
   license: 150,
   location: 220,
-  owner: 180,
-  lastVisit: 170,
-  nextVisit: 150,
+  owner: 170,
+  lastVisit: 160,
+  nextVisit: 140,
   activity: 150,
 }
 export const MTM_ORGANIZATION_COLUMN_MIN_WIDTH = 96

@@ -58,6 +58,7 @@ export function MtmFilterSearch({
   clearLabel,
   delayMs = 350,
   testId,
+  narrow = false,
 }: {
   value: string
   onChange: (value: string) => void
@@ -66,11 +67,13 @@ export function MtmFilterSearch({
   clearLabel: string
   delayMs?: number
   testId?: string
+  /** Gives way to a row of chips beside it (12rem instead of 16rem before it grows). */
+  narrow?: boolean
 }) {
   const [draft, setDraft] = useDebouncedDraft(value, onChange, delayMs)
 
   return (
-    <label className="flex h-10 min-w-0 flex-[1_1_16rem] items-center gap-2 rounded-full border border-zinc-200 bg-card px-3 text-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 dark:border-zinc-700">
+    <label className={`flex h-10 min-w-0 ${narrow ? "flex-[1_1_12rem]" : "flex-[1_1_16rem]"} items-center gap-2 rounded-full border border-zinc-200 bg-card px-3 text-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 dark:border-zinc-700`}>
       <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <input
         data-testid={testId}
