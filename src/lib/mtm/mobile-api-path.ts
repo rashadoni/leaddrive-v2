@@ -18,6 +18,7 @@ const V2_MTM_MOBILE_EXACT_PATHS = new Set([
   "/api/v2/mtm/mobile/route-field/attendance/attachments",
   "/api/v2/mtm/mobile/route-field/attendance/location-consent",
   "/api/v2/mtm/mobile/route-field/attendance/installation",
+  "/api/v2/mtm/mobile/route-field/attendance/explanations",
   "/api/v2/mtm/mobile/route-field/contact-create-requests",
   "/api/v2/mtm/mobile/route-field/contacts",
   "/api/v2/mtm/mobile/route-field/device-tokens",

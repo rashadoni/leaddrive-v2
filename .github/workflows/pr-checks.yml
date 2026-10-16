@@ -283,7 +283,7 @@ jobs:
           MTM_WORKDAY_RETURN_DB_GATE: required
 
       - name: MTM attendance database gate
-        run: npx vitest run src/__tests__/mtm-attendance-postgres.test.ts src/__tests__/mtm-attendance-report-postgres.test.ts src/__tests__/mtm-attendance-requests-postgres.test.ts src/__tests__/mtm-attendance-corrections-postgres.test.ts src/__tests__/mtm-attendance-branches-postgres.test.ts src/__tests__/mtm-attendance-employees-postgres.test.ts src/__tests__/mtm-attendance-location-postgres.test.ts src/__tests__/mtm-attendance-month-postgres.test.ts src/__tests__/mtm-attendance-reminders-postgres.test.ts
+        run: npx vitest run src/__tests__/mtm-attendance-postgres.test.ts src/__tests__/mtm-attendance-report-postgres.test.ts src/__tests__/mtm-attendance-requests-postgres.test.ts src/__tests__/mtm-attendance-corrections-postgres.test.ts src/__tests__/mtm-attendance-branches-postgres.test.ts src/__tests__/mtm-attendance-employees-postgres.test.ts src/__tests__/mtm-attendance-location-postgres.test.ts src/__tests__/mtm-attendance-month-postgres.test.ts src/__tests__/mtm-attendance-reminders-postgres.test.ts src/__tests__/mtm-attendance-explanations-postgres.test.ts
         env:
           MTM_ATTENDANCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_ATTENDANCE_DB_GATE: required

@@ -133,6 +133,8 @@ export interface MtmAttendanceReportRow {
   locationMarks?: AttendanceReportMark[]
   corrections?: MtmAttendanceCorrection[]
   approvedRequests?: AttendanceApprovedPeriod[]
+  /** HR's request for an explanation of this day and the employee's answer (owner, 2026-10-16). */
+  explanations?: { kind: "LATE" | "ABSENT"; status: "REQUESTED" | "ANSWERED" | "ACCEPTED" | "REJECTED"; answer: string | null }[]
 }
 
 export interface MtmAttendanceReportInput {

@@ -19305,6 +19305,17 @@
     "managerNoTeamHint": "You can change only the rules of your own teams, and your employee card is not in a team yet. Ask an administrator to assign your card to a team."
   },
   "mtmAttendance": {
+    "explanationAskLate": "Explain being late on {date}: {minutes} min",
+    "explanationAskAbsent": "Explain your absence on {date}",
+    "explanationAskBody": "HR asks for an explanation. Write it in the app under «Explanations».",
+    "explanationAccepted": "Your explanation for {date} was accepted",
+    "explanationRejected": "Your explanation for {date} was not accepted",
+    "explanationAnsweredTitle": "{name} wrote an explanation for {date}",
+    "explanationAnsweredBody": "Read it and decide in Personnel → Today.",
+    "reportExplanationREQUESTED": "Explanation: waiting for an answer",
+    "reportExplanationANSWERED": "Explanation: «{answer}»",
+    "reportExplanationACCEPTED": "Explanation accepted: «{answer}»",
+    "reportExplanationREJECTED": "Explanation not accepted: «{answer}»",
     "helpTitle": "Help for HR",
     "helpIntro": "Read attendance and handle requests",
     "helpAccessTitle": "Setup and access",
@@ -29649,6 +29660,20 @@
     }
   },
   "personnel": {
+    "explainAsk": "Ask for an explanation ({count})",
+    "explainSelectAll": "Select all ({count})",
+    "explainSelect": "Select {name}",
+    "explainNotAsked": "not asked",
+    "explainWaiting": "waiting since {time}",
+    "explainAnswered": "answered · read",
+    "explainAccepted": "explanation accepted",
+    "explainRejected": "explanation not accepted",
+    "explainAnswerOf": "{name}'s answer:",
+    "explainAccept": "Accept",
+    "explainReject": "Do not accept",
+    "explainSent": "Requests sent: {created}. Already asked: {already}. Not needed: {notNeeded}.",
+    "explainFailed": "That didn't work. Refresh the page and try again.",
+    "explainHint": "Explanations are asked of people who were late or absent without a reason. Anyone on leave, sick, on a business trip or with permission to be away is not listed.",
     "peopleTabs": "Employees sections",
     "settingsTabs": "Settings sections",
     "tabs": {

@@ -19301,6 +19301,17 @@
     "managerNoTeamHint": "Yalnız öz komandalarınızın qaydalarını dəyişə bilərsiniz, amma əməkdaş kartınız hələ heç bir komandaya daxil deyil. Administratordan kartınıza komanda təyin etməsini xahiş edin."
   },
   "mtmAttendance": {
+    "explanationAskLate": "{date} gecikməsini izah edin: {minutes} dəq",
+    "explanationAskAbsent": "{date} işə gəlməməyinizi izah edin",
+    "explanationAskBody": "Kadrlar izahat istəyir. Onu tətbiqdə «İzahatlar» bölməsində yazın.",
+    "explanationAccepted": "{date} üzrə izahat qəbul edildi",
+    "explanationRejected": "{date} üzrə izahat qəbul edilmədi",
+    "explanationAnsweredTitle": "{name} {date} üzrə izahat yazdı",
+    "explanationAnsweredBody": "Oxuyub qərar vermək üçün: Kadr uçotu → Bu gün.",
+    "reportExplanationREQUESTED": "İzahat: cavab gözlənilir",
+    "reportExplanationANSWERED": "İzahat: «{answer}»",
+    "reportExplanationACCEPTED": "İzahat qəbul edilib: «{answer}»",
+    "reportExplanationREJECTED": "İzahat qəbul edilməyib: «{answer}»",
     "helpTitle": "HR üçün kömək",
     "helpIntro": "Uçotu anlamaq və müraciətlərlə işləmək",
     "helpAccessTitle": "Aktivləşdirmə və icazələr",
@@ -29645,6 +29656,20 @@
     }
   },
   "personnel": {
+    "explainAsk": "İzahat istə ({count})",
+    "explainSelectAll": "Hamısını seç ({count})",
+    "explainSelect": "Seç: {name}",
+    "explainNotAsked": "istənməyib",
+    "explainWaiting": "cavab gözlənilir · {time}",
+    "explainAnswered": "cavab verib · oxu",
+    "explainAccepted": "izahat qəbul edilib",
+    "explainRejected": "izahat qəbul edilməyib",
+    "explainAnswerOf": "{name} cavabı:",
+    "explainAccept": "Qəbul et",
+    "explainReject": "Qəbul etmə",
+    "explainSent": "Sorğular göndərildi: {created}. Artıq var idi: {already}. Lazım deyil: {notNeeded}.",
+    "explainFailed": "Alınmadı. Səhifəni yeniləyib yenidən cəhd edin.",
+    "explainHint": "İzahat gecikən və ya səbəbsiz gəlməyənlərdən istənir. Məzuniyyətdə, xəstəlikdə, ezamiyyətdə olanlar və icazə alanlar bura düşmür.",
     "peopleTabs": "Əməkdaşlar bölmələri",
     "settingsTabs": "Parametr bölmələri",
     "tabs": {
