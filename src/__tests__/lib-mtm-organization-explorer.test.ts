@@ -148,3 +148,14 @@ describe("MTM organization explorer", () => {
     })
   })
 })
+
+describe("the institutions table on the owner's laptop", () => {
+  // Prod, 2026-10-16: on 1470 px the frame of the table is 1148 px wide, and
+  // the default columns were 48 px wider — a scrollbar under every list.
+  it("fits its default columns, the selection and the actions into 1148 px", () => {
+    const selection = 64
+    const actions = 168
+    const width = MTM_ORGANIZATION_DEFAULT_COLUMNS.reduce((sum, column) => sum + MTM_ORGANIZATION_DEFAULT_COLUMN_WIDTHS[column], selection + actions)
+    expect(width).toBeLessThanOrEqual(1148)
+  })
+})

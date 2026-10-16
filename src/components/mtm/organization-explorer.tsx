@@ -1175,7 +1175,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           away under «Ещё фильтры». */}
       <section data-testid="organization-filters" className="space-y-3">
         <div data-testid="organization-toolbar" className="flex flex-wrap items-center gap-2">
-          <MtmFilterSearch testId="organization-search" value={filters.search} onChange={(value) => setFilter("search", value)} placeholder={tx("explorer.searchBox")} label={tx("explorer.filterAnywhere")} clearLabel={tf("clear")} />
+          <MtmFilterSearch testId="organization-search" narrow value={filters.search} onChange={(value) => setFilter("search", value)} placeholder={tx("explorer.searchBox")} label={tx("explorer.filterAnywhere")} clearLabel={tf("clear")} />
           <MtmQuickChips label={tx("explorer.quick.label")} chips={quickChips} value={filters.quick} onChange={(value) => setFilter("quick", value)}
             renderChip={(chip, element) => <Hint text={tx(QUICK_HINT[chip.value as keyof typeof QUICK_HINT] ?? "explorer.hint.quickAll", { month: quickMonth })}>{element}</Hint>} />
           {categoryChips.length > 0 ? (
