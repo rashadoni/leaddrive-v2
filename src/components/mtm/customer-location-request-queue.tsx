@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { createDateFormatter } from "@/lib/format-date"
 
 type Point = { latitude: number; longitude: number }
@@ -82,14 +83,26 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
 
   useEffect(() => { void load() }, [load])
 
-  async function decide(request: CustomerLocationRequestRow, decision: "APPROVED" | "REJECTED") {
+  // «Подтвердить» on a request whose pin was moved after the agent asked: one
+  // question first, then the answer is sent as confirmed over that change.
+  const [confirmMoved, setConfirmMoved] = useState<CustomerLocationRequestRow | null>(null)
+
+  async function decide(request: CustomerLocationRequestRow, decision: "APPROVED" | "REJECTED", confirmPinMoved = false) {
     if (busy) return
+    if (decision === "APPROVED" && request.pinMovedSince && !confirmPinMoved) {
+      setConfirmMoved(request)
+      return
+    }
     setBusy({ id: request.id, decision })
     try {
       const response = await fetch(`/api/v1/mtm/customer-location-requests/${request.id}/decision`, {
         method: "POST",
         headers: { "content-type": "application/json", ...(orgId ? { "x-organization-id": orgId } : {}) },
-        body: JSON.stringify({ decision, comment: decision === "REJECTED" ? comments[request.id]?.trim() || undefined : undefined }),
+        body: JSON.stringify({
+          decision,
+          comment: decision === "REJECTED" ? comments[request.id]?.trim() || undefined : undefined,
+          ...(confirmPinMoved ? { confirmPinMoved: true } : {}),
+        }),
       })
       const result = await response.json().catch(() => null) as { code?: string } | null
       if (!response.ok) {
@@ -223,9 +236,10 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
                       maxLength={500}
                       rows={2}
                     />
+                    {/* Owner, 2026-10-16: «тут должно быть либо подтверждаю, либо
+                        отклоняю» — both, always; a moved pin asks once more. */}
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {request.pinMovedSince ? null : (
-                        <Hint wrap text={t("hint.locationAccept")}>
+                      <Hint wrap text={t(request.pinMovedSince ? "hint.locationAcceptMoved" : "hint.locationAccept")}>
                           <Button
                             type="button"
                             onClick={() => { void decide(request, "APPROVED") }}
@@ -236,14 +250,12 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
                             {t("locationAccept")}
                           </Button>
                         </Hint>
-                      )}
                       <Hint wrap text={t("hint.locationReject")}>
                         <Button
                           type="button"
                           variant="outline"
                           onClick={() => { void decide(request, "REJECTED") }}
                           disabled={busy != null}
-                          className={request.pinMovedSince ? "sm:col-span-2" : undefined}
                           data-testid={`mtm-customer-location-reject-${request.id}`}
                         >
                           {deciding === "REJECTED" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <X className="mr-2 h-4 w-4" aria-hidden="true" />}
@@ -260,6 +272,20 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
           )
         })}
       </div>
+      <ConfirmDialog
+        open={confirmMoved != null}
+        onOpenChange={(open) => { if (!open) setConfirmMoved(null) }}
+        onConfirm={async () => {
+          const request = confirmMoved
+          setConfirmMoved(null)
+          if (request) await decide(request, "APPROVED", true)
+        }}
+        title={t("locationMovedConfirmTitle")}
+        description={t("locationMovedConfirmBody")}
+        confirmLabel={t("locationMovedConfirm")}
+        confirmVariant="default"
+        icon={<AlertTriangle className="h-5 w-5 text-amber-600" aria-hidden="true" />}
+      />
     </section>
   )
 }

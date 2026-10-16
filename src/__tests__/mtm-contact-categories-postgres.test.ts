@@ -2427,6 +2427,30 @@ pgDescribe("client categories on a real Postgres", () => {
       expect((await cardOf(asker, pharmacy)).locationRequest).toMatchObject({ id: requestId, status: "REJECTED", mine: true, decisionComment: "Точку уже поправили вручную" })
     })
 
+    // Owner, 2026-10-16: «тут должно быть либо подтверждаю, либо отклоняю».
+    // The card always offers both; over a pin moved since, «Подтвердить» asks
+    // once more and then sends confirmPinMoved.
+    it("moves a pin changed since the request only on the manager's explicit confirmation, and journals what it replaced", async () => {
+      const further = { latitude: north(DOOR.latitude, 500), longitude: 49.852 }
+      const asked = await ask(asker, pharmacy, sending("confirm-moved-0001", { proposed: further }))
+      expect(asked.status, JSON.stringify(asked.body).slice(0, 300)).toBe(201)
+      const requestId = asked.body.data.request.id
+      const byHand = { latitude: north(DOOR.latitude, 60), longitude: 49.8505 }
+      await bypass(() => prisma.mtmCustomer.update({ where: { id: pharmacy }, data: byHand }))
+
+      // A tab that never showed the warning still cannot move it.
+      expect(await decide(requestId, { decision: "APPROVED" })).toMatchObject({ status: 409, body: { code: "MTM_LOCATION_REQUEST_CUSTOMER_MOVED" } })
+      expect(await pinOf(pharmacy)).toEqual(at(byHand))
+
+      const confirmed = await decide(requestId, { decision: "APPROVED", confirmPinMoved: true })
+      expect(confirmed.status, JSON.stringify(confirmed.body).slice(0, 300)).toBe(200)
+      expect(await pinOf(pharmacy)).toEqual(at(further))
+      expect((await rows({ id: requestId }))[0]).toMatchObject({ status: "APPROVED", reviewedBy: "admin-user" })
+      const journal = await bypass(() => prisma.mtmAuditLog.findFirstOrThrow({ where: { organizationId: ORG, entityId: requestId, entity: "customer_location_request" }, orderBy: { createdAt: "desc" } }))
+      expect(journal.oldData).toMatchObject({ status: "SUBMITTED", ...at(byHand) })
+      expect(journal.newData).toMatchObject({ status: "APPROVED", confirmedOverPinMovedSinceRequest: true })
+    })
+
     it("gives a customer that had no pin its first one", async () => {
       expect(await pinOf(pinless)).toEqual({ latitude: null, longitude: null })
       const asked = await ask(asker, pinless, sending("first-pin-000001"))
