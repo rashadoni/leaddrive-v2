@@ -64,7 +64,10 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
     <div className="min-w-0 flex-1">
       <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{step}. {label}</div>
       <Popover>
-        <Hint wrap text={disabled ? disabledHint : null}>
+        {/* The hint sits on a full-width block: a disabled button gets no
+            pointer, and Hint's own inline wrapper shrank the field. */}
+        <Hint text={disabled ? disabledHint : null}>
+          <div className="w-full" tabIndex={disabled ? 0 : undefined}>
           <PopoverTrigger asChild disabled={disabled}>
             <button
               type="button"
@@ -78,6 +81,7 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             </button>
           </PopoverTrigger>
+          </div>
         </Hint>
         {/* Above the agent dialog, which is itself a layer (z-60). */}
         <PopoverContent align="start" className="z-[70] max-h-80 w-64 overflow-y-auto p-1.5" data-testid={`${testId}-options`}>

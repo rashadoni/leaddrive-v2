@@ -145,6 +145,12 @@ export function Dialog({ open, onOpenChange, children, widthClassName = "max-w-[
       if (!dialog || openDialogStack.at(-1) !== dialogInstance) return
 
       if (event.key === "Escape") {
+        // A list, popover or menu open inside the dialog is closed first:
+        // Escape there is for it. Caught here in the capture phase, it closed
+        // the whole dialog and took everything typed in it along (2026-10-16,
+        // the specialty list on an agent's «Clients» tab).
+        const target = event.target instanceof Element ? event.target : null
+        if (target?.closest("[data-radix-popper-content-wrapper]")) return
         event.preventDefault()
         event.stopPropagation()
         onOpenChangeRef.current(false)
