@@ -18,13 +18,38 @@ export const AttendanceEmployeeCardSchema = z.object({ agentId: id,
  * reporting line (territory-scope.ts), an ADMIN everywhere. A SUPERVISOR is scoped by
  * team, not by managerId, so naming one here would grant nothing. */
 export const ATTENDANCE_MANAGER_ROLES = ["ADMIN", "MANAGER"] as const
+/** Personnel → Employees → employee page (owner, 2026-10-16): one save for the
+ * person and their work. Phone and email are how the person signs in; they are
+ * sent only when the page offers them (see `loginEditable`). No password: the
+ * person sets their own from a WhatsApp code. */
+export const ATTENDANCE_PHONE_PATTERN = /^\+[1-9]\d{6,14}$/
+export const AttendanceEmployeeProfileSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  /** The WhatsApp number the person signs in by (a code comes there); spaces and dashes are dropped. */
+  phone: z.string().transform(value => value.replace(/[\s\-()]/g, "")).pipe(z.string().regex(ATTENDANCE_PHONE_PATTERN)).optional(),
+  email: z.union([z.literal("").transform(() => null), z.string().trim().toLowerCase().max(320).email(), z.null()]).optional(),
+  position: z.string().trim().max(ATTENDANCE_EMPLOYEE_POSITION_MAX).transform(value => value || null).nullable(),
+  teamId: id.nullable(), newTeamName: z.string().trim().min(1).max(120).optional(), managerId: id.nullable(),
+  /** Only while the employment history is empty: becomes its first HIRE. */
+  hireDate: date.nullable().optional(),
+}).strict().refine(profile => !(profile.newTeamName && profile.teamId), { path: ["teamId"] })
+export type AttendanceEmployeeToday = { status: "STARTED" | "PAUSED" | "COMPLETED"; startedAt: string | null; completedAt: string | null }
+export type AttendanceEmploymentHistoryItem = { id: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; at: string; byName: string | null }
+export type AttendanceEmployeeDetail = {
+  timezone: string; today: string
+  employee: { id: string; name: string; phone: string | null; email: string | null; role: string; status: string; loginEditable: boolean
+    position: string | null; teamId: string | null; teamName: string | null; managerId: string | null
+    included: boolean; participationVersion: string | null; history: AttendanceEmploymentHistoryItem[]; todayMark: AttendanceEmployeeToday | null }
+  teams: Array<{ id: string; name: string }>; managers: Array<{ id: string; name: string; position: string | null }>
+  month: { from: string; to: string; workedDays: number; workedSeconds: number; lateCount: number; absentCount: number; leaveDays: number; sickDays: number; isComplete: boolean } | null
+}
 export type AttendanceParticipationEvent = { id: string; agentId: string; included: boolean; effectiveAt: string }
 export type AttendanceEmployeeDirectory = {
   users: Array<{ id: string; name: string; existingRole: string | null; existingTeamId: string | null; eligible: boolean }>
   teams: Array<{ id: string; name: string }>
   managers: Array<{ id: string; name: string; position: string | null }>
   employees: Array<{ id: string; name: string; role: string; teamName: string | null; status: string;
-    position: string | null; teamId: string | null; managerId: string | null;
+    position: string | null; teamId: string | null; managerId: string | null; phone?: string | null; todayMark?: AttendanceEmployeeToday | null;
     included: boolean; participationVersion: string | null; includedFrom: string | null;
     history: Array<{ id: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; at: string; byName: string | null }> }>
   timezone: string
