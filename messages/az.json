@@ -15972,6 +15972,7 @@
     }
   },
   "mtmLeaderboard": {
+    "notRanked": "Reytinqdə yalnız sahə əməkdaşları var — vizitlərə gedənlər. İştirak etmir: {names}.",
     "hint": {
       "period": "Həftə — son 7 sutka; ay — ayın 1-dən; bütün vaxt — məhdudiyyətsiz.",
       "score": "Bal: vizit — 10, yerinə yetirilmiş tapşırıq — 15, qəbul olunmuş foto — 5, bitmiş marşrut — 20.",
@@ -15980,7 +15981,7 @@
       "photos": "Dövr ərzində yüklənmiş və artıq qəbul olunmuş fotolar."
     },
     "title": "Reytinq",
-    "description": "Agent performans reytinqi və nailiyyətləri",
+    "description": "Sahə əməkdaşlarının reytinqi və nailiyyətləri",
     "weekly": "Həftəlik",
     "monthly": "Aylıq",
     "allTime": "Bütün vaxt",

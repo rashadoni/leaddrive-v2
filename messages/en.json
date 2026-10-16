@@ -15976,6 +15976,7 @@
     }
   },
   "mtmLeaderboard": {
+    "notRanked": "Only field employees are ranked — the ones who make visits. Not ranked: {names}.",
     "hint": {
       "period": "Week is the last 7 days; month is since the 1st; all time has no limit.",
       "score": "Points: a visit 10, a finished task 15, an accepted photo 5, a finished route 20.",
@@ -15984,7 +15985,7 @@
       "photos": "Photos uploaded in the period and already accepted."
     },
     "title": "Leaderboard",
-    "description": "Agent performance ranking and achievements",
+    "description": "Ranking and achievements of field employees",
     "weekly": "Weekly",
     "monthly": "Monthly",
     "allTime": "All Time",
