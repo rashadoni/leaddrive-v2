@@ -76,7 +76,7 @@ describe("Personnel → Today → Now", () => {
       employees: ["on-time", "on-break", "gone", "absent", "on-leave"].map(id => ({ id, name: `Fictional ${id}`, teamId: null, teamName: null })),
       workdays: [
         day("on-time", today, "08:58", null),
-        { ...day("on-break", today, "09:05", null), status: "PAUSED", pausedAt: at(today, "11:00"),
+        { ...day("on-break", today, "09:05", null), status: "PAUSED",
           events: [{ type: "START", occurredAt: at(today, "09:05") }, { type: "PAUSE", occurredAt: at(today, "11:00") }] },
         day("gone", today, "07:00", "10:30"),
       ],
