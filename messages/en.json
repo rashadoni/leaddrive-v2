@@ -29824,66 +29824,80 @@
     "featureSaveError": "Couldn't save. Try again.",
     "reportsTitle": "Reports",
     "reportsIntro": "Each report has a period, a department and Excel and PDF export.",
+    "reportExample": "Example",
     "reportsNew": "new",
     "reportGroups": {
       "daily": "Every day",
       "month": "Month and payroll",
       "discipline": "Discipline and overtime",
       "leave": "Leave and absence",
-      "control": "Units and control"
+      "control": "Departments and record checks"
     },
     "reports": {
       "day": {
-        "title": "Day card",
-        "hint": "Arrival, departure, break, worked time and lateness for everyone"
+        "title": "How everyone's day went",
+        "hint": "When each person arrived and left, how long their break was and how late they were — for one chosen day.",
+        "example": "Aygün · arrived 09:12 · left 18:05 · 12 min late"
       },
       "absent": {
-        "title": "Who did not come",
-        "hint": "No arrival or departure mark and no reason"
+        "title": "Who didn't come in",
+        "hint": "People with no arrival or departure mark for the day and no recorded reason such as leave or sickness.",
+        "example": "Rasim · no arrival mark · no reason recorded"
       },
       "timesheet": {
-        "title": "Monthly timesheet",
-        "hint": "People × days with letters, day and hour totals"
+        "title": "Month timesheet",
+        "hint": "A people × days grid: which days each person worked, rested, was sick or on leave. Totals of days and hours at the bottom.",
+        "example": "Aygün · 1 Oct worked · 2 Oct worked · 3 Oct leave … total 20 days, 160 h"
       },
       "n1t": {
-        "title": "N-1t timesheet",
-        "hint": "The accounting form: no., name, unit, days 1–31, days and hours worked"
+        "title": "Timesheet for accounting (N-1t)",
+        "hint": "The official N-1t timesheet form. Accounting uses it to calculate pay.",
+        "example": "1 · Aygün Mammadova · cashier · 20 days · 160 h"
       },
       "summary": {
-        "title": "Employee summary",
-        "hint": "Planned and worked days, hours, lateness, absences, leave, sick leave, overtime, attendance %"
+        "title": "Totals per person",
+        "hint": "Everything about a person in one row: days planned and days worked, late arrivals, leave, sickness and overtime.",
+        "example": "Aygün · 21 days planned, worked 20 · 2 late · 1 sick day · attendance 95 %"
       },
       "balance": {
-        "title": "Hours balance",
-        "hint": "Norm, actual and difference — who worked less or more"
+        "title": "Who worked less, who worked more",
+        "hint": "Compares scheduled hours with hours worked over the period. Minus means short, plus means over.",
+        "example": "Aygün · scheduled 168 h · worked 160 h · −8 h"
       },
       "late": {
         "title": "Late arrivals and early departures",
-        "hint": "Every case: date, arrival, departure, minutes"
+        "hint": "Every case on its own row: who, when they arrived or left, and by how many minutes.",
+        "example": "14 Oct · Rasim · arrived 09:25 · 25 min late"
       },
       "overtime": {
-        "title": "Overtime",
-        "hint": "Hours over the norm and the company threshold; the law allows at most 4 h over 2 consecutive days"
+        "title": "Who worked beyond the schedule",
+        "hint": "Days someone worked more than scheduled. Helps keep within the law: no more than 4 hours over the norm in 2 days in a row.",
+        "example": "15 Oct · Aygün · scheduled 8 h · worked 10 h · +2 h"
       },
       "absenceKinds": {
-        "title": "Absence by kind",
-        "hint": "Leave, sick leave, unpaid, no-shows — days per kind"
+        "title": "Days away and why",
+        "hint": "For each person: days on leave, sick, unpaid, or absent without a reason.",
+        "example": "Aygün · leave 5 · sick 2 · no reason 1 · total 8 days"
       },
       "leaveBalances": {
-        "title": "Leave balances",
-        "hint": "Entitled, used and left"
+        "title": "How much leave is left",
+        "hint": "Leave days granted for the year, days used and days left.",
+        "example": "Aygün · granted 21 · used 5 · left 16"
       },
       "teams": {
-        "title": "By department",
-        "hint": "Attendance, hours, lateness, no-shows and overtime per department"
+        "title": "Departments compared",
+        "hint": "Each department in one row: people, hours worked, attendance, late arrivals, absences and overtime.",
+        "example": "Cash desk · 6 people · attendance 92 % · 4 late"
       },
       "journal": {
-        "title": "Mark log",
-        "hint": "Every mark: the phone time and when it reached the system"
+        "title": "Every «Arrived» and «Left» tap",
+        "hint": "Each mark: the time on the phone and the time it reached the server. Useful when a mark's time looks doubtful.",
+        "example": "Aygün · «Arrived» · phone 09:12 · server 09:12"
       },
       "decisions": {
-        "title": "Requests and corrections",
-        "hint": "Who filed, who decided and when"
+        "title": "Who asked for what, who approved",
+        "hint": "Leave and mark correction requests: who filed them, who decided and when.",
+        "example": "Aygün asked for leave 20–24 Oct · Saida approved on 16 Oct"
       }
     },
     "addEmployee": "Add employee",

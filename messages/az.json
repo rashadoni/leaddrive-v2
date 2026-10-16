@@ -29820,66 +29820,80 @@
     "featureSaveError": "Yadda saxlamaq alınmadı. Yenidən cəhd edin.",
     "reportsTitle": "Hesabatlar",
     "reportsIntro": "Hər hesabatın dövrü, şöbəsi və Excel/PDF yükləməsi var.",
+    "reportExample": "Nümunə",
     "reportsNew": "yeni",
     "reportGroups": {
       "daily": "Hər gün",
       "month": "Ay və əmək haqqı",
       "discipline": "İntizam və əlavə iş",
-      "leave": "Məzuniyyət və iştirak etməmə",
-      "control": "Bölmələr və nəzarət"
+      "leave": "Məzuniyyət və gəlməmə günləri",
+      "control": "Şöbələr və qeydlərin yoxlanışı"
     },
     "reports": {
       "day": {
-        "title": "Günün kartı",
-        "hint": "Hər kəs üzrə gəliş, gediş, fasilə, işlənmiş vaxt və gecikmə"
+        "title": "Gün necə keçib",
+        "hint": "Seçilmiş gün üzrə hər kəs nə vaxt gəlib, nə vaxt gedib, nə qədər fasilədə olub və neçə dəqiqə gecikib.",
+        "example": "Aygün · gəlib 09:12 · gedib 18:05 · 12 dəq gecikib"
       },
       "absent": {
         "title": "Kim gəlməyib",
-        "hint": "Gəliş və ya gediş qeydi yoxdur, səbəb yoxdur"
+        "hint": "Gün ərzində gəliş və ya gediş qeydi olmayan və səbəbi (məzuniyyət, xəstəlik və s.) yazılmayan işçilər.",
+        "example": "Rəsim · gəliş qeydi yoxdur · səbəb yazılmayıb"
       },
       "timesheet": {
         "title": "Ayın tabeli",
-        "hint": "İnsanlar × günlər hərflərlə, gün və saat yekunları"
+        "hint": "«İşçilər × günlər» cədvəli: işçi hansı gün işləyib, istirahət edib, xəstə olub və ya məzuniyyətdə olub. Aşağıda gün və saat yekunu.",
+        "example": "Aygün · 1 okt işləyib · 2 okt işləyib · 3 okt məzuniyyət … cəmi 20 gün, 160 saat"
       },
       "n1t": {
-        "title": "N-1t tabeli",
-        "hint": "Mühasibatlıq üçün forma: №, A.S.A., bölmə, 1–31 günlər, işlənmiş gün və saatlar"
+        "title": "Mühasibatlıq üçün tabel (N-1t)",
+        "hint": "Rəsmi N-1t tabel forması. Əmək haqqı hesablamaq üçün mühasibə verilir.",
+        "example": "1 · Aygün Məmmədova · kassir · 20 gün · 160 saat"
       },
       "summary": {
-        "title": "Əməkdaş üzrə xülasə",
-        "hint": "Plan və fakt günlər, saatlar, gecikmələr, gəlməmələr, məzuniyyət, xəstəlik, əlavə iş, iştirak %"
+        "title": "Dövr üzrə hər kəsin yekunu",
+        "hint": "İşçi haqqında hər şey bir sətirdə: neçə gün işləməli idi və neçə gün işləyib, gecikmələr, məzuniyyət, xəstəlik, əlavə iş.",
+        "example": "Aygün · planla 21 gün, işləyib 20 · 2 gecikmə · 1 gün xəstəlik · iştirak 95 %"
       },
       "balance": {
-        "title": "Saat balansı",
-        "hint": "Norma, fakt və fərq — kim az, kim çox işləyib"
+        "title": "Kim az, kim çox işləyib",
+        "hint": "Dövr üzrə qrafikə görə saatları işlənmiş saatlarla müqayisə edir. Mənfi — az işləyib, müsbət — artıq işləyib.",
+        "example": "Aygün · qrafiklə 168 saat · işləyib 160 saat · −8 saat"
       },
       "late": {
         "title": "Gecikmələr və tez gedişlər",
-        "hint": "Hər hal: tarix, gəliş, gediş, dəqiqələr"
+        "hint": "Hər hal ayrıca sətirdə: kim, nə vaxt gəlib və ya gedib, neçə dəqiqə.",
+        "example": "14 okt · Rəsim · gəlib 09:25 · 25 dəq gecikib"
       },
       "overtime": {
-        "title": "Əlavə iş",
-        "hint": "Normadan artıq saatlar və şirkətin həddi; qanunla ardıcıl 2 gündə 4 saatdan çox olmaz"
+        "title": "Kim qrafikdən artıq işləyib",
+        "hint": "İşçinin qrafikdən çox işlədiyi günlər. Qanunu pozmamağa kömək edir: ardıcıl 2 gündə normadan artıq 4 saatdan çox olmaz.",
+        "example": "15 okt · Aygün · qrafiklə 8 saat · işləyib 10 saat · +2 saat"
       },
       "absenceKinds": {
-        "title": "Növlər üzrə iştirak etməmə",
-        "hint": "Məzuniyyət, xəstəlik, ödənişsiz, gəlməmə — hər növ üzrə günlər"
+        "title": "Neçə gün olmayıb və niyə",
+        "hint": "Hər işçi üzrə: neçə gün məzuniyyətdə, xəstəlikdə, ödənişsiz məzuniyyətdə olub və ya səbəbsiz gəlməyib.",
+        "example": "Aygün · məzuniyyət 5 · xəstəlik 2 · səbəbsiz 1 · cəmi 8 gün"
       },
       "leaveBalances": {
-        "title": "Məzuniyyət qalıqları",
-        "hint": "Haqqı olan, istifadə olunan və qalan"
+        "title": "Nə qədər məzuniyyət qalıb",
+        "hint": "İl üzrə neçə gün məzuniyyət haqqı var, neçəsi istifadə olunub və neçəsi qalıb.",
+        "example": "Aygün · haqqı 21 · istifadə 5 · qalıb 16"
       },
       "teams": {
-        "title": "Şöbələr üzrə",
-        "hint": "Hər şöbə üzrə iştirak, saatlar, gecikmələr, gəlməmələr və əlavə iş"
+        "title": "Şöbələrin müqayisəsi",
+        "hint": "Hər şöbə bir sətirdə: neçə nəfər, işlənmiş saatlar, iştirak, gecikmələr, gəlməmələr və əlavə iş.",
+        "example": "Kassa · 6 nəfər · iştirak 92 % · 4 gecikmə"
       },
       "journal": {
-        "title": "Qeyd jurnalı",
-        "hint": "Hər qeyd: telefondakı vaxt və sistemə daxil olma vaxtı"
+        "title": "Bütün «Gəldim» və «Getdim» qeydləri",
+        "hint": "Hər qeyd: telefondakı vaxt və serverə çatdığı vaxt. Qeydin vaxtı şübhə doğurarsa lazımdır.",
+        "example": "Aygün · «Gəldim» · telefonda 09:12 · serverdə 09:12"
       },
       "decisions": {
-        "title": "Müraciətlər və düzəlişlər",
-        "hint": "Kim verib, kim nə vaxt qərar verib"
+        "title": "Kim nə istəyib, kim icazə verib",
+        "hint": "Məzuniyyət və qeyd düzəlişi müraciətləri: kim verib, kim nə vaxt qərar verib.",
+        "example": "Aygün 20–24 okt məzuniyyət istəyib · Səidə 16 okt icazə verib"
       }
     },
     "addEmployee": "Əməkdaş əlavə et",
