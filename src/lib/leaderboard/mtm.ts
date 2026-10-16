@@ -57,8 +57,11 @@ export async function computeMtmRankings(
 ): Promise<MtmRanking[]> {
   const dateFilter = startDate ? { createdAt: { gte: startDate } } : {}
 
+  // Field employees only (owner, 2026-10-16, from a picture): administrators,
+  // managers and supervisors make no visits, and the board ranked them second
+  // and third with 0 points. The Arena's «Полевые агенты» group reads the same.
   const agents = await prisma.mtmAgent.findMany({
-    where: { organizationId: orgId, status: "ACTIVE" },
+    where: { organizationId: orgId, status: "ACTIVE", role: "AGENT" },
     select: { id: true, name: true, avatar: true },
   })
   if (agents.length === 0) return []
@@ -217,4 +220,18 @@ export async function computeMtmLeaderboard(
   thresholds: StatusThresholds = DEFAULT_STATUS_THRESHOLDS,
 ): Promise<NormalizedAgent[]> {
   return mtmToNormalized(await computeMtmRankings(orgId, startDate, now), weights, thresholds)
+}
+
+/**
+ * Who the board leaves out, by name: the active administrators, managers and
+ * supervisors of the field team. Office employees (Personnel) are not MTM's
+ * people at all and are not named.
+ */
+export async function readMtmLeaderboardNotRanked(orgId: string): Promise<string[]> {
+  const people = await prisma.mtmAgent.findMany({
+    where: { organizationId: orgId, status: "ACTIVE", role: { in: ["ADMIN", "MANAGER", "SUPERVISOR"] } },
+    select: { name: true },
+    orderBy: { name: "asc" },
+  })
+  return people.map((person: { name: string }) => person.name)
 }
