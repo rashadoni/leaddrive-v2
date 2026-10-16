@@ -1,11 +1,11 @@
 "use client"
 
-import { Hint, HintValue } from "@/components/hint"
+import { Hint } from "@/components/hint"
 import { useCallback, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
-import { FileText, Download, ArrowRight, ArrowLeft } from "lucide-react"
+import { FileText, Download } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts"
 import { PageDescription } from "@/components/page-description"
 import { ColorStatCard } from "@/components/color-stat-card"
@@ -20,6 +20,15 @@ type Period = "today" | "week" | "month"
 const PERIODS: Period[] = ["today", "week", "month"]
 const PERIOD_KEY: Record<Period, string> = { today: "today", week: "thisWeek", month: "thisMonth" }
 const PAGE_SIZE = 50
+/** The report a manager last opened, per browser; a convenience only. */
+const LAST_REPORT_KEY = "leaddrive:mtm:reports:type"
+function lastReport(): ReportType {
+  try {
+    const saved = window.localStorage.getItem(LAST_REPORT_KEY)
+    if (saved && (REPORT_TYPES as string[]).includes(saved)) return saved as ReportType
+  } catch { /* private mode, blocked storage: the first report */ }
+  return REPORT_TYPES[0]
+}
 
 interface SummaryItem { labelKey: string; value: number | string; kind: string }
 
@@ -36,7 +45,14 @@ export default function MtmReportsPage() {
   const orgId = session?.user?.organizationId
 
   const [period, setPeriod] = useState<Period>("week")
+  // The page opens on a report, not on a menu of «0 записей» tiles (owner,
+  // 2026-10-16, from a picture): the last one opened, or the first.
   const [selected, setSelected] = useState<ReportType | "">("")
+  useEffect(() => { setSelected(lastReport()) }, [])
+  const chooseReport = (type: ReportType) => {
+    setSelected(type)
+    try { window.localStorage.setItem(LAST_REPORT_KEY, type) } catch { /* not remembered */ }
+  }
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [summary, setSummary] = useState<SummaryItem[]>([])
   const [series, setSeries] = useState<{ date: string; count: number }[]>([])
@@ -48,8 +64,8 @@ export default function MtmReportsPage() {
 
   const headers = orgId ? { "x-organization-id": String(orgId) } : ({} as Record<string, string>)
 
+  // How many records each report holds — the numbers on the report row.
   const loadOverview = useCallback(async () => {
-    setLoading(true)
     try {
       const [baseResponse, managementResponse] = await Promise.all([
         fetch(`/api/v1/mtm/reports?period=${period}`, { headers }),
@@ -57,7 +73,7 @@ export default function MtmReportsPage() {
       ])
       const [base, management] = await Promise.all([baseResponse.json(), managementResponse.json()])
       setCounts({ ...(base.success ? base.data.counts : {}), ...(management.success ? management.data.counts : {}) })
-    } catch { /* ignore */ } finally { setLoading(false) }
+    } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, period])
 
@@ -81,8 +97,12 @@ export default function MtmReportsPage() {
 
   useEffect(() => {
     if (!orgId) return
-    if (selected) loadReport(selected, 1, false); else loadOverview()
-  }, [orgId, period, selected, loadReport, loadOverview])
+    void loadOverview()
+  }, [orgId, period, loadOverview])
+  useEffect(() => {
+    if (!orgId || !selected) return
+    void loadReport(selected, 1, false)
+  }, [orgId, period, selected, loadReport])
 
   const fmt = (item: SummaryItem): string => {
     if (item.kind === "percent") return `${item.value}%`
@@ -144,43 +164,35 @@ export default function MtmReportsPage() {
         </div>
       </div>
 
-      {!selected ? (
-        loading ? (
-          <div className="animate-pulse grid gap-3 md:grid-cols-2 lg:grid-cols-4">{[1, 2, 3, 4].map(i => <div key={i} className="h-40 bg-muted rounded-lg" />)}</div>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-            {REPORT_TYPES.map(rt => {
-              const def = REPORTS[rt]
-              const Icon = def.icon
-              return (
-                <div key={rt} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 hover:shadow-md transition-shadow flex flex-col">
-                  <div className="flex items-start justify-between">
-                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${def.iconClass}`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <HintValue className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground" text={t(rt === "agent" ? "hint.recordsAgent" : "hint.recordsOther")}>{t("records", { count: counts[rt] ?? 0 })}</HintValue>
-                  </div>
-                  <h3 className="font-semibold mt-3">{t(`type_${rt}`)}</h3>
-                  <p className="text-sm text-muted-foreground mt-1 flex-1">{t(`type_${rt}_desc`)}</p>
-                  <div className="flex items-center justify-end mt-4">
-                    <Button variant="link" size="sm" className="text-primary p-0 h-auto" onClick={() => setSelected(rt)}>
-                      {t("view")} <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setSelected("")}>
-              <ArrowLeft className="h-4 w-4 mr-1" /> {t("backToReports")}
-            </Button>
-            <h3 className="font-semibold">{t(`type_${selected}`)}</h3>
-          </div>
+      {/* Every report in one row with how many records it holds; the chosen
+          one is open right below. A report with nothing for the period is
+          there too, quieter. */}
+      <div data-testid="mtm-report-types" role="tablist" aria-label={t("title")} className="flex flex-wrap gap-2">
+        {REPORT_TYPES.map((rt) => {
+          const count = counts[rt] ?? 0
+          const on = rt === selected
+          return (
+            <Hint key={rt} text={t(rt === "agent" ? "hint.recordsAgent" : "hint.recordsOther")}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={on}
+                data-testid={`mtm-report-type-${rt}`}
+                onClick={() => chooseReport(rt)}
+                className={`inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm transition-colors ${on
+                  ? "border-primary bg-primary font-semibold text-primary-foreground"
+                  : count > 0 ? "border-zinc-200 bg-card font-medium hover:bg-muted/60 dark:border-zinc-700" : "border-dashed border-zinc-200 text-muted-foreground hover:bg-muted/40 dark:border-zinc-700"}`}
+              >
+                {t(`type_${rt}`)}
+                <span className={`rounded-full px-1.5 text-xs font-semibold tabular-nums ${on ? "bg-white/25" : "bg-muted"}`}>{count}</span>
+              </button>
+            </Hint>
+          )
+        })}
+      </div>
 
+      {selected ? (
+        <div className="space-y-4">
           {loading ? (
             <div className="animate-pulse space-y-3"><div className="h-24 bg-muted rounded-lg" /><div className="h-56 bg-muted rounded-lg" /></div>
           ) : (
@@ -259,7 +271,7 @@ export default function MtmReportsPage() {
             </>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

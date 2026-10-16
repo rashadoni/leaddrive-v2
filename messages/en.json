@@ -14202,7 +14202,11 @@
     "closeSideView": "Close this view"
   },
   "mtmOperationsPage": {
+    "attentionOpen": "Open",
+    "closeCompose": "Close",
+    "newMessage": "New message",
     "hint": {
+      "newMessage": "Write an announcement to the team or a direct message to an agent. The form opens above the messages.",
       "refresh": "Read messages, documents and requests again.",
       "acknowledgementsDue": "How many confirmations are still missing on recent messages that asked for one: people × messages.",
       "requiredUnread": "How many required documents employees have not opened yet.",
@@ -20362,7 +20366,7 @@
       "sales_attainment": "Actual sales against the plan, as a percentage."
     },
     "title": "Reports",
-    "description": "Review and export various report types",
+    "description": "Pick a report — it opens right below; export with the button on the right",
     "today": "Today",
     "thisWeek": "This Week",
     "thisMonth": "This Month",

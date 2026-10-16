@@ -14198,7 +14198,11 @@
     "closeSideView": "Bu görünüşü bağla"
   },
   "mtmOperationsPage": {
+    "attentionOpen": "Aç",
+    "closeCompose": "Bağla",
+    "newMessage": "Yeni mesaj",
     "hint": {
+      "newMessage": "Komandaya elan və ya agentə şəxsi mesaj yazmaq. Forma mesaj lentinin üstündə açılacaq.",
       "refresh": "Mesajları, sənədləri və sorğuları yenidən oxu.",
       "acknowledgementsDue": "Təsdiq istənilən son mesajlar üzrə hələ neçə təsdiq gəlməyib: insan × mesaj.",
       "requiredUnread": "Əməkdaşların hələ açmadığı məcburi sənədlərin sayı.",
@@ -20358,7 +20362,7 @@
       "sales_attainment": "Satış faktının plana nisbəti, faizlə."
     },
     "title": "Hesabatlar",
-    "description": "Müxtəlif hesabat növlərini nəzərdən keçirin və ixrac edin",
+    "description": "Hesabatı seçin — dərhal aşağıda açılacaq; ixrac — sağdakı düymə ilə",
     "today": "Bu gün",
     "thisWeek": "Bu həftə",
     "thisMonth": "Bu ay",
