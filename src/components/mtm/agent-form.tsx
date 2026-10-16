@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
+import { toast } from "sonner"
+import { MtmAgentClientPicker, type AgentClientChoice } from "@/components/mtm/agent-client-picker"
 import { cn } from "@/lib/utils"
 import {
   MTM_AGENT_MAP_COLORS,
@@ -21,6 +23,37 @@ import {
 
 /** What the server accepts for a number: «+», a country code, at most 15 digits; spaces and dashes are fine. */
 const internationalPhone = (value: string) => /^\+[1-9]\d{6,14}$/.test(value.replace(/[\s\-()]/g, ""))
+/** The assignment API takes at most this many doctors in one call. */
+const ASSIGNMENT_BATCH = 500
+
+/**
+ * Assigns the doctors ticked on the «Клиенты» tab to the agent just saved, by
+ * the same preview → apply as «Клиенты → Закрепить» (checked, journalled; a
+ * doctor who has an employee keeps him and gets this one as a second).
+ */
+async function assignDoctors(agentId: string, contactIds: string[], effectiveFrom: string, reason: string, orgId?: string) {
+  const headers = { "Content-Type": "application/json", Accept: "application/json", ...(orgId ? { "x-organization-id": orgId } : {}) }
+  let changed = 0
+  let left = 0
+  for (let start = 0; start < contactIds.length; start += ASSIGNMENT_BATCH) {
+    const batch = { contactIds: contactIds.slice(start, start + ASSIGNMENT_BATCH), mode: "ASSIGN", targetAgentId: agentId, effectiveFrom, reason }
+    const previewResponse = await fetch("/api/v1/mtm/contact-assignments/preview", { method: "POST", headers, body: JSON.stringify(batch) })
+    const preview = await previewResponse.json().catch(() => null) as { success?: boolean; data?: { previewToken: string; summary: { assignable: number } } } | null
+    if (!previewResponse.ok || !preview?.success || !preview.data) throw new Error("preview")
+    if (preview.data.summary.assignable === 0) { left += batch.contactIds.length; continue }
+    const applyResponse = await fetch("/api/v1/mtm/contact-assignments", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ ...batch, previewToken: preview.data.previewToken, idempotencyKey: crypto.randomUUID() }),
+    })
+    const applied = await applyResponse.json().catch(() => null) as { success?: boolean; data?: { summary: { changed: number }; excluded: unknown[] } } | null
+    if (!applyResponse.ok || !applied?.success || !applied.data) throw new Error("apply")
+    changed += applied.data.summary.changed
+    left += applied.data.excluded.length
+  }
+  return { changed, left }
+}
+
 const PHONE_ERROR: Record<string, string> = {
   MTM_AGENT_PHONE_INVALID: "whatsappPhoneInvalid",
   MTM_AGENT_PHONE_TAKEN: "whatsappPhoneTaken",
@@ -102,7 +135,14 @@ function withTypedTags(
 export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }: AgentFormProps) {
   const tc = useTranslations("common")
   const tf = useTranslations("mtmForms")
-  const isEdit = !!initialData?.id
+  // A card created in this dialog whose doctors could not be assigned stays
+  // open as that card: saving again must not create a second agent.
+  const [savedAgentId, setSavedAgentId] = useState<string | null>(null)
+  const agentId = initialData?.id ?? savedAgentId
+  const isEdit = !!agentId
+  const [tab, setTab] = useState<"profile" | "clients">("profile")
+  const [clientsOpened, setClientsOpened] = useState(false)
+  const [clientChoice, setClientChoice] = useState<AgentClientChoice>({ contactIds: [], asOf: null })
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -153,6 +193,10 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       setTagDraft("")
       setTagProblem(null)
       setError("")
+      setSavedAgentId(null)
+      setTab("profile")
+      setClientsOpened(false)
+      setClientChoice({ contactIds: [], asOf: null })
       fetch("/api/v1/mtm/agents?limit=200", {
         headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string>,
       })
@@ -237,10 +281,18 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       setError(tf("whatsappPhoneInvalid"))
       return
     }
+    // The form does its own checking (noValidate): a required field on the
+    // other tab would make the browser refuse the save without a word.
+    if (!form.name.trim()) {
+      setTab("profile")
+      setError(tf("agentNameRequired"))
+      return
+    }
+    const doctors = form.role === "AGENT" ? clientChoice.contactIds : []
     setSaving(true)
     setError("")
     try {
-      const url = isEdit ? `/api/v1/mtm/agents/${initialData!.id}` : "/api/v1/mtm/agents"
+      const url = isEdit ? `/api/v1/mtm/agents/${agentId}` : "/api/v1/mtm/agents"
       const res = await fetch(url, {
         method: isEdit ? "PUT" : "POST",
         headers: {
@@ -256,7 +308,24 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(PHONE_ERROR[json.code] ? tf(PHONE_ERROR[json.code]) : json.error || tc("failedToSave"))
+      if (!res.ok) {
+        if (PHONE_ERROR[json.code]) setTab("profile")
+        throw new Error(PHONE_ERROR[json.code] ? tf(PHONE_ERROR[json.code]) : json.error || tc("failedToSave"))
+      }
+      const savedId: string | undefined = isEdit ? agentId! : json?.data?.id
+      if (savedId && !isEdit) setSavedAgentId(savedId)
+      if (savedId && doctors.length > 0) {
+        try {
+          const done = await assignDoctors(savedId, doctors, clientChoice.asOf ?? new Date().toISOString().slice(0, 10), tf("clientsReason"), orgId)
+          if (done.left > 0) toast.warning(tf("clientsPartlyAssigned", { changed: done.changed, left: done.left }))
+          else toast.success(tf("clientsAssigned", { count: done.changed }))
+        } catch {
+          // The card is saved; only the doctors are left to try again.
+          onSaved()
+          setTab("clients")
+          throw new Error(tf("clientsAssignFailed"))
+        }
+      }
       onSaved()
       onOpenChange(false)
     } catch (err: unknown) {
@@ -267,14 +336,40 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} widthClassName={tab === "clients" ? "max-w-[48rem]" : undefined}>
       <DialogHeader>
         <DialogTitle>{isEdit ? tf("editAgent") : tf("addAgent")}</DialogTitle>
       </DialogHeader>
-      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        {/* Doctors are a field agent's: the tab is there for that role only. */}
+        {form.role === "AGENT" ? (
+          <div role="tablist" className="flex gap-1 border-b px-6" data-testid="agent-form-tabs">
+            {(["profile", "clients"] as const).map(key => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                data-testid={`agent-form-tab-${key}`}
+                onClick={() => { setTab(key); if (key === "clients") setClientsOpened(true) }}
+                className={cn("-mb-px border-b-2 px-3 py-2.5 text-sm transition-colors", tab === key ? "border-primary font-semibold text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}
+              >
+                {key === "profile" ? tf("tabProfile") : tf("tabClients")}
+                {key === "clients" && clientChoice.contactIds.length > 0 ? (
+                  <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">{clientChoice.contactIds.length}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <DialogContent>
           {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
-          <div className="grid gap-4">
+          {form.role === "AGENT" && clientsOpened ? (
+            <div className={cn(tab !== "clients" && "hidden")}>
+              <MtmAgentClientPicker agentId={agentId} orgId={orgId} onChange={setClientChoice} />
+            </div>
+          ) : null}
+          <div className={cn("grid gap-4", form.role === "AGENT" && tab === "clients" && "hidden")}>
             <div>
               <Label htmlFor="name">{`${tc("name")} *`}</Label>
               <Input id="name" value={form.name} onChange={e => update("name", e.target.value)} required />
@@ -479,7 +574,12 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
-          <Button type="submit" disabled={saving}>{saving ? tc("saving") : isEdit ? tc("update") : tc("create")}</Button>
+          <Button type="submit" disabled={saving} data-testid="agent-form-submit">
+            {saving ? tc("saving")
+              : form.role === "AGENT" && clientChoice.contactIds.length > 0
+                ? tf(isEdit ? "saveAndAssign" : "createAndAssign", { count: clientChoice.contactIds.length })
+                : isEdit ? tc("update") : tc("create")}
+          </Button>
         </DialogFooter>
       </form>
     </Dialog>

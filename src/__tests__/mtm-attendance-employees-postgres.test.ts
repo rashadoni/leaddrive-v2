@@ -552,6 +552,49 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
 
   // Owner, 2026-10-15: the employee card — position, department, manager and
   // hire date — and «Forma N-1t» reading the position from it.
+  // Owner, 2026-10-16: employees are edited on their own page — person, sign-in and work in one save.
+  it("edits an employee on their page: name, sign-in phone and email, work and the first hire date", async () => {
+    const create = await import("@/lib/mtm/attendance-employee-create")
+    const created = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional page hire", phone: "+994550007788" }))
+    const other = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional other hire", phone: "+994550009900" }))
+    const before = await tenant(automaticOrg, () => store.readAttendanceEmployee(automaticAdmin, created.agentId))
+    expect(before.employee).toMatchObject({ name: "Fictional page hire", phone: "+994550007788", email: null, loginEditable: true, history: [] })
+    expect(before.month).toMatchObject({ workedDays: 0, absentCount: expect.any(Number) })
+    const teamId = before.teams[0]?.id ?? null
+    const input = { name: "Fictional page renamed", phone: "+994 55 000 66 55", email: "Page.Renamed@example.invalid", position: "Fictional clerk", teamId, managerId: null, hireDate: "2026-09-01" }
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, created.agentId, input))
+    const after = await tenant(automaticOrg, async () => ({
+      user: await prisma.user.findUniqueOrThrow({ where: { id: created.userId }, select: { name: true, phone: true, email: true } }),
+      card: await prisma.mtmAgent.findUniqueOrThrow({ where: { id: created.agentId }, select: { name: true, phone: true, email: true, position: true, teamId: true } }),
+      detail: await store.readAttendanceEmployee(automaticAdmin, created.agentId),
+    }))
+    expect(after.user).toEqual({ name: "Fictional page renamed", phone: "+994550006655", email: "page.renamed@example.invalid" })
+    expect(after.card).toEqual({ name: "Fictional page renamed", phone: "+994550006655", email: "page.renamed@example.invalid", position: "Fictional clerk", teamId })
+    expect(after.detail.employee.history).toMatchObject([{ kind: "HIRE", date: "2026-09-01" }])
+    // A second save never adds another hire: the date then lives in the history.
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, created.agentId, { ...input, hireDate: "2026-09-05" }))
+    expect((await tenant(automaticOrg, () => store.readAttendanceEmployee(automaticAdmin, created.agentId))).employee.history).toHaveLength(1)
+    expect(await tenant(automaticOrg, () => prisma.mtmAuditLog.count({ where: { action: "MTM_ATTENDANCE_EMPLOYEE_UPDATED", agentId: created.agentId } }))).toBe(2)
+
+    const same = { ...input, hireDate: undefined }
+    for (const [body, code] of [
+      [{ ...same, phone: "+994550009900" }, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN"],
+      [{ ...same, email: "existing-field@example.invalid" }, "MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN"],
+      [{ ...same, phone: "0550001122" }, "MTM_ATTENDANCE_EMPLOYEE_PHONE_INVALID"],
+    ] as const) await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, created.agentId, body))).rejects.toMatchObject({ code })
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee({ ...automaticAdmin, userId: "automatic-user-001" }, other.agentId, { ...same, phone: "+994550009900", email: null }))).rejects.toMatchObject({ status: 403 })
+    // An administrator's sign-in is not changed from Personnel; their name is.
+    const adminCard = await tenant(automaticOrg, () => prisma.mtmAgent.findFirstOrThrow({ where: { userId: automaticAdminId }, select: { id: true } }))
+    const adminDetail = await tenant(automaticOrg, () => store.readAttendanceEmployee(automaticAdmin, adminCard.id))
+    expect(adminDetail.employee.loginEditable).toBe(false)
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, adminCard.id, { name: adminDetail.employee.name, position: null, teamId: null, managerId: null, phone: "+994550004433" })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED" })
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, adminCard.id, { name: "Fictional renamed admin", position: null, teamId: null, managerId: null }))
+    expect(await tenant(automaticOrg, () => prisma.user.findUniqueOrThrow({ where: { id: automaticAdminId }, select: { name: true } }))).toEqual({ name: "Fictional renamed admin" })
+    // Another tenant's administrator cannot reach the employee.
+    await expect(tenant(organizationId, () => store.readAttendanceEmployee(admin, created.agentId))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND" })
+  })
+
   it("keeps the employee card and shows its position in the report", async () => {
     const create = await import("@/lib/mtm/attendance-employee-create")
     const created = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional card hire", email: "card.hire@example.invalid",

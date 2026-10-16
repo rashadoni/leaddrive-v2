@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import { Button } from "@/components/ui/button"
-import { Trophy, Zap, Camera, Target, Heart, Star, ChevronDown, ChevronUp } from "lucide-react"
+import { Trophy, Zap, Camera, Target, Heart, Star, ChevronDown, ChevronUp, Info } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { AgentDetailCard } from "@/components/leaderboard/agent-detail-card"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
@@ -216,6 +216,13 @@ export default function MtmLeaderboardPage() {
                 </table>
               </div>
             )}
+            {/* Only field employees are ranked; say who is not, by name. */}
+            {(data?.notRanked?.length ?? 0) > 0 ? (
+              <p data-testid="mtm-leaderboard-not-ranked" className="mt-3 flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>{t("notRanked", { names: (data.notRanked as string[]).join(", ") })}</span>
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-4">
@@ -242,7 +249,8 @@ export default function MtmLeaderboardPage() {
               ) : (<div className="text-sm text-muted-foreground">{t("selectAgent")}</div>)}
             </div>
 
-            {rankings.length >= 3 && (
+            {/* With two field employees there is a top two, not nothing. */}
+            {rankings.length >= 2 && (
               <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
                 <h3 className="font-semibold text-sm mb-1">{t("top3Weekly")}</h3>
                 <p className="mb-3 text-[11px] text-muted-foreground">{t("top3FromRanking")}</p>
