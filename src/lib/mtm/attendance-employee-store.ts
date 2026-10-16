@@ -8,7 +8,7 @@ import { summarizeMtmAttendanceRows } from "@/lib/mtm/attendance-report"
 import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
-import { ATTENDANCE_MANAGER_ROLES, AttendanceEmployeeCardSchema, AttendanceEmployeeEnrollmentSchema, AttendanceEmploymentInputSchema, AttendanceParticipationInputSchema, type AttendanceEmployeeDirectory, type AttendanceEmployeeDetail, type AttendanceEmployeeToday, AttendanceEmployeeProfileSchema } from "@/lib/mtm/attendance-employee-contract"
+import { ATTENDANCE_MANAGER_ROLES, AttendanceEmployeeCardSchema, AttendanceEmployeeEnrollmentSchema, AttendanceEmploymentInputSchema, AttendanceParticipationInputSchema, type AttendanceEmployeeDirectory, type AttendanceEmployeeDetail, type AttendanceEmployeeToday, AttendanceEmployeeProfileSchema, AttendanceEmployeeRemoveSchema, OFFICE_EMPLOYEE_CRM_ROLE } from "@/lib/mtm/attendance-employee-contract"
 import { readAttendanceParticipationHistory } from "@/lib/mtm/attendance-participation-store"
 import { lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
 import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
@@ -17,6 +17,7 @@ import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { resolveAttendanceReviewerScope } from "@/lib/mtm/attendance-request-decision"
 import { ATTENDANCE_FEATURE_SETTING_KEY } from "@/lib/mtm/attendance-feature"
 import { managerAssignmentCreatesCycle } from "@/lib/mtm/agent-administration"
+import { agentHistory } from "@/lib/mtm/agent-deletion"
 
 type EmploymentRow = { id: string; agentId: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; effectiveAt: Date; recordedByUserId: string; recordedDate: string | null }
 function employmentDate(event: EmploymentRow, timezone: string) {
@@ -290,7 +291,7 @@ export async function readAttendanceEmployee(actor: AttendanceReviewer, agentId:
     const marks = await todayMarks(tx, organizationId, [agentId], today)
     return { timezone, today, teams, managers: managerCards.map(manager => ({ id: manager.id, name: manager.name, position: manager.position ?? null })), month,
       employee: { id: card.id, name: card.user?.name ?? card.name, phone: card.phone ?? card.user?.phone ?? null, email: realEmail(card.email) ?? realEmail(card.user?.email),
-        role: card.role, status: card.status, loginEditable: !card.user || !LOGIN_LOCKED_ROLES.has(card.user.role),
+        role: card.role, status: card.status, crmRole: card.user?.role ?? null, loginEditable: !card.user || !LOGIN_LOCKED_ROLES.has(card.user.role),
         position: card.position ?? null, teamId: card.teamId, teamName: card.team?.name ?? null, managerId: card.managerId,
         included: !card.attendanceExcluded, participationVersion: participation.at(-1)?.id ?? null, todayMark: marks.get(agentId) ?? null,
         history: events.map(event => ({ id: event.id, kind: event.kind, date: employmentDate(event, timezone), at: event.effectiveAt.toISOString(), byName: names.get(event.recordedByUserId) ?? null })) } }
@@ -350,4 +351,75 @@ export async function updateAttendanceEmployee(actor: AttendanceReviewer, agentI
     userId: actor.userId, oldValue: { name: result.before.name, phone: result.before.phone, email: result.before.email },
     newValue: { name: result.after.name, phone: result.after.phone, email: result.after.email, source: "personnel" } })
   return { agentId, eventId: result.auditId, idempotent: false }
+}
+
+/** Calendar entries that record a person's own leave or absence: history, like the agent delete counts them. */
+const HISTORY_CALENDAR_SOURCES = ["HRM", "WORKFORCE_LEAVE", "WORKFORCE_ABSENCE"]
+
+/**
+ * Personnel → employee page → remove (owner, 2026-10-16: «где удаление
+ * сотрудников»), by the rule the owner set for MTM agents on 2026-10-06:
+ * - DELETE: only someone with no work history (added by mistake). The card goes
+ *   for good; the office employee's CRM login is switched off first.
+ * - DISMISS: someone with history is let go instead — a TERMINATION on their
+ *   last working day, the card inactive, the office login switched off. Their
+ *   marks stay for the timesheet.
+ * A CRM user Personnel did not add (an administrator, a sales manager) is not
+ * removed here: their account belongs to Settings → Users.
+ */
+export async function removeAttendanceEmployee(actor: AttendanceReviewer, agentId: string, raw: unknown) {
+  const parsed = AttendanceEmployeeRemoveSchema.safeParse(raw)
+  if (!parsed.success) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_INVALID", 400)
+  const input = parsed.data, organizationId = actor.organizationId
+  const result = await prisma.$transaction(async tx => {
+    const timezone = await requireAttendanceEmployeeAdmin(tx, actor)
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`workforce-employment:${organizationId}:${agentId}`}))`
+    const [card] = await tx.$queryRaw<Array<{ name: string; userId: string | null; status: string }>>`
+      SELECT name, "userId", status FROM mtm_agents WHERE "organizationId" = ${organizationId} AND id = ${agentId} AND ${attendanceTrackedCardSql()} FOR UPDATE`
+    if (!card) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
+    if (card.userId) await tx.$queryRaw`SELECT id FROM users WHERE "organizationId" = ${organizationId} AND id = ${card.userId} FOR UPDATE`
+    const user = card.userId ? await tx.user.findFirst({ where: { organizationId, id: card.userId }, select: { id: true, role: true, isActive: true } }) : null
+    if (user && user.role !== OFFICE_EMPLOYEE_CRM_ROLE) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_CRM_USER", 409)
+    if (user?.id === actor.userId) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_CRM_USER", 409)
+    // The office login goes first: the database keeps an active user's card.
+    const closeLogin = async () => { if (user?.isActive) await tx.user.update({ where: { id: user.id }, data: { isActive: false, passwordChangedAt: new Date() } }) }
+    if (input.mode === "DELETE") {
+      const kinds = await agentHistory(tx, organizationId, agentId)
+      const calendar = await tx.mtmWorkCalendarDay.count({ where: { organizationId, agentId, source: { in: HISTORY_CALENDAR_SOURCES } } })
+      // Employment history lives outside the Prisma models agentHistory reads.
+      const employment = await history(tx, organizationId, [agentId])
+      if (kinds.length || calendar || employment.length) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_HAS_HISTORY", 409)
+      await closeLogin()
+      await tx.mtmAgent.delete({ where: { organizationId, id: agentId } })
+      await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId: null, entity: "agent", entityId: agentId,
+        action: "MTM_ATTENDANCE_EMPLOYEE_DELETED", metadataKind: "mtm_attendance_employment", oldData: { name: card.name, userId: card.userId } } })
+      return { userId: user?.id ?? null, closed: Boolean(user?.isActive), name: card.name }
+    }
+    // Dismissal: the last working day is today or before — a future one waits in the history form.
+    if (input.lastDay > currentDateKey(new Date(), timezone)) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_DATE_INVALID", 400)
+    const previous = await history(tx, organizationId, [agentId])
+    if (previous.at(-1)?.kind !== "TERMINATION") {
+      if (!previous.length) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_HIRE_REQUIRED", 409)
+      const event = await appendEvent(tx, actor, agentId, "TERMINATION", input.lastDay, timezone)
+      await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId, entity: "workforce_employment_event", entityId: event.id,
+        action: "MTM_ATTENDANCE_EMPLOYMENT_RECORDED", metadataKind: "mtm_attendance_employment", newData: { reason: input.reason, date: input.lastDay, kind: "TERMINATION", eventId: event.id, timezone } } })
+    }
+    await closeLogin()
+    await tx.mtmAgent.update({ where: { organizationId, id: agentId }, data: { status: "INACTIVE" } })
+    await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId, entity: "agent", entityId: agentId,
+      action: "MTM_ATTENDANCE_EMPLOYEE_DISMISSED", metadataKind: "mtm_attendance_employee_card", oldData: { status: card.status }, newData: { status: "INACTIVE", lastDay: input.lastDay, reason: input.reason } } })
+    return { userId: user?.id ?? null, closed: Boolean(user?.isActive), name: card.name }
+  }, { timeout: 15_000 }).catch((error: unknown) => {
+    // The database refused the delete: a row no check here knows still points at
+    // the person, or an append-only table would lose a fact. That is history —
+    // and never the constraint's name on HR's screen. Everything rolled back.
+    if ((error instanceof Prisma.PrismaClientKnownRequestError && ["P2003", "P2014"].includes(error.code))
+      || (error instanceof Error && /foreign key constraint|is immutable|cannot be deleted|IMMUTABLE/i.test(error.message))) {
+      throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_HAS_HISTORY", 409)
+    }
+    throw error
+  })
+  if (result.userId && result.closed) await logAudit(organizationId, "user_updated", "user", result.userId, result.name, {
+    userId: actor.userId, oldValue: { isActive: true }, newValue: { isActive: false, source: "personnel", mode: input.mode } })
+  return { agentId, eventId: agentId, idempotent: false, mode: input.mode }
 }

@@ -4,7 +4,9 @@ import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { createTranslator, NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { MtmAttendanceEmployeePage } from "@/components/mtm/attendance-employee-page"
+const push = vi.hoisted(() => ({ calls: [] as string[] }))
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: (href: string) => push.calls.push(href) }) }))
+const { MtmAttendanceEmployeePage } = await import("@/components/mtm/attendance-employee-page")
 import type { AttendanceEmployeeDetail } from "@/lib/mtm/attendance-employee-contract"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -102,6 +104,44 @@ describe("Personnel → employee page", () => {
     await act(async () => container.querySelector<HTMLButtonElement>('[role="switch"]')!.click())
     expect(String(posts()[1][0])).toBe("/api/v1/mtm/attendance/employees/participation")
     expect(JSON.parse(String(posts()[1][1]!.body))).toMatchObject({ agentId: "togrul", included: false, previousEventId: "pv1" })
+  })
+
+  // Owner, 2026-10-16: «где удаление сотрудников» — his rule for agents: delete without history, dismiss with it.
+  it("deletes an employee without history and returns to the list", async () => {
+    push.calls = []
+    detail.employee = { ...detail.employee, crmRole: "viewer" }
+    await render()
+    const block = container.querySelector('[data-testid="attendance-employee-remove"]')!
+    const button = (text: string) => [...container.querySelectorAll<HTMLButtonElement>("button")].find(item => item.textContent === text)!
+    await act(async () => button(p("removeButton")).click())
+    await act(async () => button(p("removeConfirmButton")).click())
+    expect(String(posts()[0][0])).toBe("/api/v1/mtm/attendance/employees/togrul/remove")
+    expect(JSON.parse(String(posts()[0][1]!.body))).toEqual({ mode: "DELETE" })
+    expect(push.calls).toEqual([BACK]); expect(block).toBeTruthy()
+  })
+
+  it("offers dismissal when the server says the employee has history, and sends the last day and reason", async () => {
+    detail.employee = { ...detail.employee, crmRole: "viewer" }
+    fetchMock.mockImplementation(async (url, options) => options?.method === "POST"
+      ? String(url).endsWith("/remove") && String(options.body).includes("DELETE") ? json(null, 409, "MTM_ATTENDANCE_EMPLOYEE_HAS_HISTORY") : json({ eventId: "e", idempotent: false })
+      : json(detail))
+    await render()
+    const button = (text: string) => [...container.querySelectorAll<HTMLButtonElement>("button")].find(item => item.textContent === text)!
+    await act(async () => button(p("removeButton")).click()); await act(async () => button(p("removeConfirmButton")).click())
+    const form = container.querySelector('[data-testid="attendance-employee-dismiss"]')!
+    expect(form.textContent).toContain(p("dismissHint", { name: "Togrul" }))
+    const [lastDay, reason] = [...form.querySelectorAll("input")]
+    expect(lastDay.value).toBe("2026-10-16")
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(reason, "По собственному желанию"); reason.dispatchEvent(new Event("input", { bubbles: true })) })
+    await act(async () => { form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })) })
+    expect(JSON.parse(String(posts().at(-1)![1]!.body))).toEqual({ mode: "DISMISS", lastDay: "2026-10-16", reason: "По собственному желанию" })
+  })
+
+  it("does not offer removal of a CRM user, and says where that is done", async () => {
+    detail.employee = { ...detail.employee, crmRole: "admin" }
+    await render()
+    expect(container.querySelector('[data-testid="attendance-employee-remove-crm"]')!.textContent).toBe(p("removeCrmUser"))
+    expect([...container.querySelectorAll("button")].some(item => item.textContent === p("removeButton"))).toBe(false)
   })
 
   it("names a missing employee in words", async () => {
