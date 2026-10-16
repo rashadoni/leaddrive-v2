@@ -1,8 +1,11 @@
+import { MTM_CLIENT_QUICK_FILTERS } from "@/lib/mtm/client-list-quick"
+
 export const MTM_ORGANIZATION_PAGE_SIZES = [25, 50, 100] as const
 export const MTM_ORGANIZATION_BULK_LIMIT = 500
 export const MTM_ORGANIZATION_COLUMNS = [
   "code",
   "organization",
+  "contacts",
   "type",
   "category",
   "medicalCategory",
@@ -15,30 +18,32 @@ export const MTM_ORGANIZATION_COLUMNS = [
 ] as const
 export type OrganizationColumn = (typeof MTM_ORGANIZATION_COLUMNS)[number]
 export type OrganizationDensity = "COMPACT" | "COMFORTABLE"
+/**
+ * What a fresh list shows: the organization, how many clients work there, who
+ * was there last and when, the next visit and who is responsible — the first
+ * screen without scrolling sideways (owner, 2026-10-16, from a picture). The
+ * reference ID, type, TT category, licence and place are one tick away in
+ * «Настроить таблицу»: on prod they were «—» / «Нет данных» in every row.
+ */
 export const MTM_ORGANIZATION_DEFAULT_COLUMNS = [
-  "code",
   "organization",
-  "type",
-  "category",
-  "medicalCategory",
-  "license",
-  "location",
-  "owner",
+  "contacts",
   "lastVisit",
   "nextVisit",
-  "activity",
+  "owner",
 ] satisfies OrganizationColumn[]
 export const MTM_ORGANIZATION_DEFAULT_COLUMN_WIDTHS: Record<OrganizationColumn, number> = {
   code: 120,
-  organization: 320,
+  organization: 360,
+  contacts: 104,
   type: 220,
   category: 160,
   medicalCategory: 180,
   license: 150,
   location: 220,
-  owner: 190,
-  lastVisit: 150,
-  nextVisit: 165,
+  owner: 180,
+  lastVisit: 170,
+  nextVisit: 150,
   activity: 150,
 }
 export const MTM_ORGANIZATION_COLUMN_MIN_WIDTH = 96
@@ -75,6 +80,8 @@ export interface OrganizationExplorerFilters {
   managingManagerId: string
   assignedAgentId: string
   assignmentState: string
+  /** The chip over the list: NOT_VISITED, NOT_PLANNED or UNASSIGNED; empty is «Все». */
+  quick: string
   sort: OrganizationSort
   direction: "asc" | "desc"
 }
@@ -101,6 +108,7 @@ export const EMPTY_ORGANIZATION_FILTERS: OrganizationExplorerFilters = {
   managingManagerId: "",
   assignedAgentId: "",
   assignmentState: "",
+  quick: "",
   sort: "name",
   direction: "asc",
 }
@@ -136,6 +144,8 @@ export function organizationFacetQuery(
   params.delete("limit")
   params.delete("sort")
   params.delete("direction")
+  // A chip narrows the rows, not what the dropdowns offer.
+  params.delete("quick")
   return params
 }
 
@@ -158,6 +168,10 @@ export function organizationFiltersFromSearchParams(
     }
     if (key === "scope") {
       if (value === "ALL" || value === "MINE") filters.scope = value
+      continue
+    }
+    if (key === "quick") {
+      if ((MTM_CLIENT_QUICK_FILTERS as readonly string[]).includes(value)) filters.quick = value
       continue
     }
     Object.assign(filters, { [key]: value })

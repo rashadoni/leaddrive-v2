@@ -2,6 +2,10 @@
 /**
  * The «Клиенты» filter as the person uses it.
  *
+ * Owner 2026-10-16, from a picture: the page opens on one search and the
+ * chips («Все», «Без визита за октябрь», «Не запланированы») with how many
+ * each holds; the named fields below are one click away under «Ещё фильтры».
+ *
  * Owner 2026-10-02, on the row of fifteen pills that stood on this screen: «он
  * не интуитивен и не юзер френдли», with a screenshot of the filter he wants —
  * a named field per thing you look by — and «чтоб была возможность выбирать
@@ -70,6 +74,8 @@ import { GET as GET_FACETS } from "@/app/api/v1/mtm/contacts/facets/route"
 import { requireAuth } from "@/lib/api-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { MTM_CONTACT_SPECIALTY_DEFAULTS } from "@/lib/mtm/contact-specialties"
+import { mtmClientVisitMonth } from "@/lib/mtm/client-list-quick"
+import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { prisma } from "@/lib/prisma"
 import { matchesPrismaWhere } from "./mocks/prisma-where"
 
@@ -125,12 +131,25 @@ function client(
   }
 }
 
+// The month the list's «без визита за…» is about, as the server counts it.
+const TODAY = new Date(`${currentDateKey(new Date(), "Asia/Baku")}T00:00:00.000Z`)
+const MONTH = mtmClientVisitMonth(TODAY)
+const inMonth = new Date(MONTH.start.getTime() + 12 * 3_600_000)
+const lastMonth = new Date(MONTH.start.getTime() - 3 * 86_400_000)
+
 const CLIENTS = [
-  client("d-001", "Aysel Məmmədova", "Pediatr", [clinic]),
+  client("d-001", "Aysel Məmmədova", "Pediatr", [clinic], {
+    // Seen, but last month: still «без визита» this month.
+    visits: [{ id: "v-old", organizationId: ORG, deletedAt: null, status: "CHECKED_OUT", checkInAt: lastMonth, checkOutAt: lastMonth, outcome: null, agent: { id: SEYMUR.id, name: "Seymur Məmmədov" } }],
+  }),
   client("d-002", "Rəşad Əliyev", "Kardioloq", [clinic, hospital], {
     agentAssignments: [{ agentId: SEYMUR.id, role: "PRIMARY", deletedAt: null, effectiveFrom: new Date("2026-01-01"), effectiveTo: null, agent: SEYMUR }],
+    visits: [{ id: "v-now", organizationId: ORG, deletedAt: null, status: "CHECKED_OUT", checkInAt: inMonth, checkOutAt: inMonth, outcome: null, agent: { id: SEYMUR.id, name: "Seymur Məmmədov" } }],
   }),
-  client("d-003", "Nigar Hüseynova", "Kardioloq", [hospital]),
+  client("d-003", "Nigar Hüseynova", "Kardioloq", [hospital], {
+    // On tomorrow's planned route.
+    routePoints: [{ id: "p-1", routeId: "route-1", plannedTime: null, orderIndex: 0, deletedAt: null, status: "PENDING", route: { organizationId: ORG, deletedAt: null, status: "PLANNED", date: new Date(TODAY.getTime() + 86_400_000) } }],
+  }),
   // Saved before the list existed, with a specialty the list does not have.
   client("d-004", "Elvin Quliyev", "Cardiology", [hospital]),
   client("d-005", "Lalə Səfərova", "Lor", [clinic], { status: "INACTIVE" }),
@@ -148,7 +167,12 @@ async function settle(ms = 0) {
 /** Names in the desktop table (the phone cards repeat the same rows). */
 const listed = () => [...container.querySelectorAll("tbody tr td:nth-child(2) a")].map((link) => link.textContent?.trim())
 const field = (testId: string) => container.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
-const labels = () => [...container.querySelectorAll('[data-testid="mtm-contact-filters"] label')].map((label) => label.textContent?.trim())
+/** The named fields' labels (the search box on the page is not one of them). */
+const labels = () => [...container.querySelectorAll('[data-testid="mtm-contact-filters"] label')]
+  .filter((label) => !label.querySelector('[data-testid="mtm-contact-search"]'))
+  .map((label) => label.textContent?.trim())
+const chips = () => [...container.querySelectorAll('[data-testid="mtm-contact-toolbar"] button[aria-pressed]')]
+  .map((chip) => `${chip.textContent?.trim()}${chip.getAttribute("aria-pressed") === "true" ? " ✓" : ""}`)
 
 async function click(element: Element | null | undefined) {
   if (!(element instanceof HTMLElement)) throw new Error("element not found")
@@ -166,6 +190,11 @@ async function typeInto(testId: string, value: string) {
   })
   // The field applies after a pause in typing.
   await settle(400)
+}
+
+/** The named fields are under «Daha çox filtr» on the Clients page. */
+async function openFields() {
+  if (field("mtm-contact-more-filters")?.getAttribute("aria-expanded") !== "true") await click(field("mtm-contact-more-filters"))
 }
 
 async function choose(testId: string, value: string) {
@@ -254,8 +283,16 @@ afterEach(async () => {
 })
 
 describe("«Müştərilər»: the filter as named fields", () => {
-  it("opens with eight named fields and the active clients, not a row of fifteen pills", () => {
-    expect(labels()).toEqual([
+  it("opens on the search, the chips and the active clients; the eight named fields are under «Daha çox filtr»", async () => {
+    expect(field("mtm-contact-search")).not.toBeNull()
+    expect(labels()).toEqual([])
+    expect(listed()).toEqual(["Aysel Məmmədova", "Elvin Quliyev", "Nigar Hüseynova", "Rəşad Əliyev"])
+    expect(container.textContent).toContain("Tapıldı: 4")
+    // «Sıfırla» is offered only once something is set.
+    expect(field("mtm-contact-clear-filters")).toBeNull()
+
+    await openFields()
+    expect(labels().slice(0, 8)).toEqual([
       "Məsul əməkdaş",
       "İxtisas",
       "Müştəri adı",
@@ -265,13 +302,10 @@ describe("«Müştərilər»: the filter as named fields", () => {
       "Kontakt növü",
       "Status",
     ])
-    expect(listed()).toEqual(["Aysel Məmmədova", "Elvin Quliyev", "Nigar Hüseynova", "Rəşad Əliyev"])
-    expect(container.textContent).toContain("Tapıldı: 4")
-    // «Sıfırla» is offered only once something is set.
-    expect(field("mtm-contact-clear-filters")).toBeNull()
   })
 
   it("lets several specialties be ticked, and lists the clients of any of them", async () => {
+    await openFields()
     await click(field("mtm-contact-specialties"))
     // The tenant's list, then what clients carry beyond it.
     expect(specialtyChoices().map((input) => input.value)).toEqual([...MTM_CONTACT_SPECIALTY_DEFAULTS, "Cardiology"])
@@ -294,6 +328,7 @@ describe("«Müştərilər»: the filter as named fields", () => {
   })
 
   it("narrows by what is typed into a field, and the fields narrow together", async () => {
+    await openFields()
     await typeInto("mtm-contact-workplace", "xəstəxana")
     expect(listed()).toEqual(["Elvin Quliyev", "Nigar Hüseynova", "Rəşad Əliyev"])
 
@@ -308,10 +343,12 @@ describe("«Müştərilər»: the filter as named fields", () => {
 
     await click(field("mtm-contact-clear-filters"))
     expect(listed()).toHaveLength(4)
+    await openFields()
     expect((field("mtm-contact-workplace") as HTMLInputElement).value).toBe("")
   })
 
   it("finds by address and by the employee the client is assigned to", async () => {
+    await openFields()
     await typeInto("mtm-contact-address", "Nizami 76")
     expect(listed()).toEqual(["Aysel Məmmədova", "Rəşad Əliyev"])
 
@@ -322,21 +359,21 @@ describe("«Müştərilər»: the filter as named fields", () => {
   // Prod, 2026-10-04, Zeytun Pharma: «deaktiv» under the employee's name in
   // every one of 321 rows, while the employee was working.
   it("marks the responsible employee inactive only when they are", async () => {
-    const employeeOf = (client: string) => [...container.querySelectorAll("tbody tr")]
-      .find((row) => row.textContent?.includes(client))?.querySelector("td:last-child")?.textContent
-    expect(employeeOf("Rəşad Əliyev")).toBe(SEYMUR.name)
+    const employeeOf = (id: string) => field(`mtm-contact-owner-${id}`)?.textContent
+    expect(employeeOf("d-002")).toBe(SEYMUR.name)
 
     SEYMUR.status = "INACTIVE"
     try {
-      await click(field("mtm-contact-more-filters"))
+      await openFields()
       await choose("mtm-contact-assignment-state", "ASSIGNED")
-      expect(employeeOf("Rəşad Əliyev")).toBe(`${SEYMUR.name}deaktiv`)
+      expect(employeeOf("d-002")).toBe(`${SEYMUR.name}deaktiv`)
     } finally {
       SEYMUR.status = "ACTIVE"
     }
   })
 
   it("shows inactive clients when the status field says so", async () => {
+    await openFields()
     await choose("mtm-contact-status", "INACTIVE")
     expect(listed()).toEqual(["Lalə Səfərova"])
     await choose("mtm-contact-status", "")
@@ -345,25 +382,25 @@ describe("«Müştərilər»: the filter as named fields", () => {
 
   it("keeps the rarer filters behind «Daha çox filtr», without dropdowns that have nothing to choose", async () => {
     expect(field("mtm-contact-category")).toBeNull()
-    await click(field("mtm-contact-more-filters"))
+    await openFields()
     expect(field("mtm-contact-category")).not.toBeNull()
     expect(field("mtm-contact-assignment-state")).not.toBeNull()
-    expect(field("mtm-contact-search")).not.toBeNull()
     expect(field("mtm-contact-coverage-period")).not.toBeNull()
     // Nobody in this tenant has a region, a profile or an institution kind.
     for (const empty of ["region", "administrativeDistrict", "locality", "cityDistrict", "organizationKind", "profile", "qualificationCategory"]) {
       expect(field(`mtm-contact-${empty}`)).toBeNull()
     }
 
-    // The one box over every field still works for those who used it.
+    // The one box over every field, on the page itself.
     await typeInto("mtm-contact-search", "Tbilisi")
     expect(listed()).toEqual(["Elvin Quliyev", "Nigar Hüseynova", "Rəşad Əliyev"])
   })
 
-  it("drops the fields a tenant switched off: no specialty filter, no profession or coverage column", async () => {
+  it("drops the fields a tenant switched off: no specialty filter, no specialty in the rows", async () => {
     // Column names; the first cell is the «select page» checkbox.
     const headers = () => [...container.querySelectorAll("thead th")].slice(1).map((cell) => cell.textContent?.trim())
-    expect(headers()).toEqual(["Kontakt", "Peşəkar profil", "Əhatə", "İş yeri", "Ziyarətlər", "Əlaqə", "Məsul əməkdaş"])
+    expect(headers()).toEqual(["Kontakt", "İş yeri", "Son ziyarət", "Növbəti ziyarət", "Məsul əməkdaş", "Əməliyyatlar"])
+    expect(container.querySelector("tbody")?.textContent).toContain("Pediatr")
 
     // A tenant that does not visit doctors, reopening the same screen.
     vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
@@ -374,13 +411,80 @@ describe("«Müştərilər»: the filter as named fields", () => {
     await act(async () => { root.render(createElement(MtmContactExplorer)) })
     await settle()
 
-    expect(labels()).toEqual(["Məsul əməkdaş", "Müştəri adı", "Ünvan", "Şəhər və ya rayon", "Müəssisə", "Kontakt növü", "Status"])
+    await openFields()
+    expect(labels().slice(0, 7)).toEqual(["Məsul əməkdaş", "Müştəri adı", "Ünvan", "Şəhər və ya rayon", "Müəssisə", "Kontakt növü", "Status"])
     expect(field("mtm-contact-specialties")).toBeNull()
-    expect(headers()).toEqual(["Kontakt", "İş yeri", "Ziyarətlər", "Əlaqə", "Məsul əməkdaş"])
+    expect(headers()).toEqual(["Kontakt", "İş yeri", "Son ziyarət", "Növbəti ziyarət", "Məsul əməkdaş", "Əməliyyatlar"])
     expect(container.querySelector("tbody")?.textContent).not.toContain("Pediatr")
-    await click(field("mtm-contact-more-filters"))
     expect(field("mtm-contact-coverage-period")).toBeNull()
     // The clients themselves are all still there.
     expect(listed()).toHaveLength(4)
+  })
+})
+
+describe("«Müştərilər»: the chips over the list", () => {
+  const month = new Intl.DateTimeFormat("az", { month: "long", timeZone: "UTC" })
+
+  it("says how many each chip holds, and a chip narrows the list to what it says", async () => {
+    // Four active clients; Rəşad was seen this month; Nigar is on tomorrow's route.
+    expect(chips()).toEqual([
+      "Hamısı4 ✓",
+      expect.stringMatching(/ayında gəlinməyənlər3$/),
+      "Planlaşdırılmayıb3",
+      "Məsul əməkdaşı yoxdur3",
+    ])
+    expect(chips()[1]).toContain(month.format(MONTH.start).slice(0, 3))
+
+    await click(field("mtm-contact-quick-not-visited"))
+    // Aysel was seen last month: that is not this month.
+    expect(listed()).toEqual(["Aysel Məmmədova", "Elvin Quliyev", "Nigar Hüseynova"])
+    expect(container.textContent).toContain("Tapıldı: 3")
+    expect(navigation.router.replace).toHaveBeenLastCalledWith(expect.stringContaining("quick=NOT_VISITED"), { scroll: false })
+
+    await click(field("mtm-contact-quick-not-planned"))
+    expect(listed()).toEqual(["Aysel Məmmədova", "Elvin Quliyev", "Rəşad Əliyev"])
+
+    await click(field("mtm-contact-quick-unassigned"))
+    expect(listed()).toEqual(["Aysel Məmmədova", "Elvin Quliyev", "Nigar Hüseynova"])
+
+    await click(field("mtm-contact-quick-all"))
+    expect(listed()).toHaveLength(4)
+  })
+
+  it("counts the chips within the search, and the reset clears the chip too", async () => {
+    await typeInto("mtm-contact-search", "Kardioloq")
+    expect(listed()).toEqual(["Nigar Hüseynova", "Rəşad Əliyev"])
+    expect(chips().slice(0, 3)).toEqual(["Hamısı2 ✓", expect.stringMatching(/gəlinməyənlər1$/), "Planlaşdırılmayıb1"])
+
+    await click(field("mtm-contact-quick-not-planned"))
+    expect(listed()).toEqual(["Rəşad Əliyev"])
+    await click(field("mtm-contact-clear-filters"))
+    expect(listed()).toHaveLength(4)
+    expect(chips()[0]).toBe("Hamısı4 ✓")
+  })
+
+  it("shows no class chips where every client is in one class", () => {
+    expect(container.querySelector('[data-testid^="mtm-contact-quick-category-"]')).toBeNull()
+  })
+
+  it("says once that visit norms are not set, instead of «Qayda imzalanmayıb» in every row", () => {
+    const banner = field("mtm-contact-coverage-unsigned")
+    expect(banner?.textContent).toContain("Vizit normaları təyin edilməyib")
+    expect(banner?.querySelector("a")?.getAttribute("href")).toBe("/mtm/settings?tab=admin")
+    expect(container.querySelector("thead")?.textContent).not.toContain("Əhatə")
+    expect(container.querySelector("tbody")?.textContent).not.toContain("Qayda imzalanmayıb")
+  })
+
+  it("names who was there last, says «hələ olmayıb» where nobody was, and puts a client on a route in one click", () => {
+    expect(field("mtm-contact-last-visit-d-002")?.textContent).toMatch(/· Seymur M\.$/)
+    expect(field("mtm-contact-last-visit-d-003")?.textContent).toBe("hələ olmayıb")
+    expect(field("mtm-contact-next-visit-d-003")?.querySelector("a")?.getAttribute("href")).toBe("/mtm/routes?routeId=route-1")
+
+    // To the planner of the responsible employee, the client already on the route.
+    expect(field("mtm-contact-add-to-route-d-002")?.getAttribute("href"))
+      .toBe("/mtm/routes/plan?agentId=agent-seymur&customerId=org-clinic&contactId=d-002")
+    // Nobody responsible: the planner opens on its own employee.
+    expect(field("mtm-contact-add-to-route-d-001")?.getAttribute("href"))
+      .toBe("/mtm/routes/plan?customerId=org-clinic&contactId=d-001")
   })
 })

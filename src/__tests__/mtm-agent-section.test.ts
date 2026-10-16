@@ -586,10 +586,12 @@ describe("the Clients page after the explorer learned about sections", () => {
     const { container } = await mount(createElement(MtmContactExplorer))
     await until(() => tableRows(container).length === 4, "every client")
 
-    expect(container.querySelector("[data-testid='mtm-contact-owner']")).not.toBeNull()
-    // There the assignment state is one of the «more filters», closed on a fresh page.
+    // There every named field is under «more filters», closed on a fresh page
+    // (owner, 2026-10-16: the page opens on the search and the chips).
+    expect(container.querySelector("[data-testid='mtm-contact-owner']")).toBeNull()
     expect(container.querySelector("[data-testid='mtm-contact-assignment-state']")).toBeNull()
     await click(container.querySelector("[data-testid='mtm-contact-more-filters']"))
+    expect(container.querySelector("[data-testid='mtm-contact-owner']")).not.toBeNull()
     expect(container.querySelector("[data-testid='mtm-contact-assignment-state']")).not.toBeNull()
     expect(calls.some((call) => call.url.startsWith("/api/v1/mtm/contacts/views"))).toBe(true)
     expect(listCalls()[0].get("ownerAgentId")).toBeNull()

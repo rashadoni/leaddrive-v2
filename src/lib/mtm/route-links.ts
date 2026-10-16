@@ -119,6 +119,23 @@ export function mtmRoutePlanningHref(input: {
   return `/mtm/routes?${params.toString()}`
 }
 
+/**
+ * «В маршрут» from a list row: the route planner on a map (/mtm/routes/plan)
+ * with the client already on the day's route. The employee is the client's
+ * responsible one when there is one; the planner keeps the day it opens on.
+ */
+export function mtmRoutePlanPageHref(input: {
+  customerId: string
+  contactId?: string | null
+  agentId?: string | null
+}): string {
+  const params = new URLSearchParams()
+  if (input.agentId) params.set("agentId", input.agentId)
+  params.set("customerId", input.customerId)
+  if (input.contactId) params.set("contactId", input.contactId)
+  return `/mtm/routes/plan?${params.toString()}`
+}
+
 export function mtmRouteReturnTarget(value: string | null): MtmRouteReturnTarget | null {
   if (value === "/mtm" || value?.startsWith("/mtm?")) {
     return { href: value, label: "returnToOperationalWeek" }

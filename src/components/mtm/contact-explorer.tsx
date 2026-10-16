@@ -14,6 +14,8 @@ import { useLocale, useTranslations } from "next-intl"
 import {
   ArrowRightLeft,
   Bookmark,
+  CalendarPlus,
+  Info,
   ChevronLeft,
   ChevronRight,
   Mail,
@@ -41,9 +43,12 @@ import {
   MtmFilterMultiField,
   MtmFilterReset,
   MtmFilterSelect,
+  MtmFilterSearch,
   MtmFilterSelectField,
   MtmFilterTextField,
+  MtmQuickChips,
   MtmResultLine,
+  type MtmQuickChip,
 } from "@/components/mtm/filter-bar"
 import { ContactAssignmentDialog } from "@/components/mtm/contact-assignment-dialog"
 import { MtmContactCreateDialog } from "@/components/mtm/contact-create-dialog"
@@ -71,7 +76,9 @@ import {
 import {
   appendMtmRouteAssignmentHandoff,
   mtmRouteAssignmentHandoffFromSearchParams,
+  mtmRoutePlanPageHref,
 } from "@/lib/mtm/route-links"
+import type { MtmClientQuickCounts } from "@/lib/mtm/client-list-quick"
 import {
   effectiveContactCategoryCode,
   LEGACY_CONTACT_TYPES,
@@ -94,7 +101,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
-import { createDateFormatter, type DateFormatter } from "@/lib/format-date"
+import { createDateFormatter, formatDate, type DateFormatter } from "@/lib/format-date"
 
 type ContactAssignment = {
   id: string
@@ -144,6 +151,7 @@ type ContactRow = {
     checkInAt: string
     checkOutAt: string | null
     outcome: string | null
+    agent?: { id: string; name: string } | null
   }>
   routePoints: Array<{
     id: string
@@ -182,6 +190,8 @@ type ContactPayload = {
   asOf: string
   timezone: string
   coveragePeriod: { key: string; start: string; end: string }
+  /** The chip in force, the month «без визита» is about, and how many each chip holds. */
+  quick?: { filter: string | null; month: string; counts: MtmClientQuickCounts | null }
   transferSyncScopeKey: string
   availableAgents: ContactTransferAgent[]
   capabilities: {
@@ -223,7 +233,22 @@ type ContactSavedView = {
   canDelete: boolean
 }
 
-/** Behind «Ещё фильтры»; the eight fields on the page are the everyday ones. */
+/**
+ * The named fields. On the Clients page all of them are behind «Ещё фильтры»
+ * and the page opens on the search and the chips (owner, 2026-10-16, from a
+ * picture: the first client was below the screen). An employee's own section
+ * keeps the eight everyday fields in sight and the rest behind «Ещё».
+ */
+const PAGE_FIELD_KEYS: (keyof ContactExplorerFilters)[] = [
+  "ownerAgentId",
+  "specialties",
+  "name",
+  "address",
+  "area",
+  "workplace",
+  "type",
+  "status",
+]
 const ADVANCED_FILTER_KEYS: (keyof ContactExplorerFilters)[] = [
   "search",
   "category",
@@ -238,6 +263,26 @@ const ADVANCED_FILTER_KEYS: (keyof ContactExplorerFilters)[] = [
   "objectType",
   "coveragePeriod",
 ]
+
+/** What each chip holds, under the cursor. */
+const QUICK_HINT = {
+  "": "hint.quickAll",
+  NOT_VISITED: "hint.quickNotVisited",
+  NOT_PLANNED: "hint.quickNotPlanned",
+  UNASSIGNED: "hint.quickUnassigned",
+} as const
+
+/** On the Clients page: every named field — the search box is on the page itself. */
+const FIELD_KEYS_BEHIND_MORE = [...PAGE_FIELD_KEYS, ...ADVANCED_FILTER_KEYS.filter((key) => key !== "search")]
+
+/** States that say the tenant has no visit norms yet, not something about this client. */
+const COVERAGE_WITHOUT_NORMS = new Set(["UNSIGNED_COVERAGE_POLICY", "NOT_APPLICABLE", "NO_OWNER"])
+
+/** «Seymur Məmmədov» → «Seymur M.»: who was there, in a narrow column. */
+function shortPersonName(name: string): string {
+  const [first, second] = name.trim().split(/\s+/)
+  return second ? `${first} ${second.charAt(0)}.` : name.trim()
+}
 
 const COVERAGE_STATE_KEYS = new Set([
   "COVERED",
@@ -379,7 +424,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
   const [createOpen, setCreateOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(
-    !agentScope && ADVANCED_FILTER_KEYS.some((key) => contactFilterIsActive(initial.filters, key)),
+    !agentScope && FIELD_KEYS_BEHIND_MORE.some((key) => contactFilterIsActive(initial.filters, key)),
   )
   const [savedViews, setSavedViews] = useState<ContactSavedView[]>([])
   const [activeSavedViewId, setActiveSavedViewId] = useState("")
@@ -401,6 +446,12 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
     () => createDateFormatter(locale, { dateStyle: "medium", timeStyle: "short" }),
     [locale],
   )
+  // «7 окт.» in the list: this year's dates need no year, older ones keep it.
+  const visitDayThisYear = useMemo(() => createDateFormatter(locale, { day: "numeric", month: "short" }), [locale])
+  const visitDay = useCallback((value: string) => {
+    const date = new Date(value)
+    return date.getFullYear() === new Date().getFullYear() ? visitDayThisYear.format(date) : visitDate.format(date)
+  }, [visitDate, visitDayThisYear])
 
   // The tenant's own category names win; a code they no longer list (or the
   // list not loaded yet) falls back to the built-in type name.
@@ -425,7 +476,6 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
 
   // Fields the tenant switched off are not columns, card lines or filters here.
   const shows = useMemo(() => contactFieldVisibility(facets?.hiddenFields), [facets?.hiddenFields])
-  const showsProfession = shows("specialtyName") || shows("qualificationCategory") || shows("profile")
   // Owner, 2026-10-04, in front of an employee's own list of 321 clients: «не
   // понятно, кому привязаны». Every row of a section therefore names the
   // employee, right after the client. The room comes from the coverage column,
@@ -452,7 +502,8 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
     setLoading(true)
     setError("")
     try {
-      const response = await fetch(`/api/v1/mtm/contacts?${queryString}`, {
+      // The Clients page asks how many each chip holds; a section does not show them.
+      const response = await fetch(`/api/v1/mtm/contacts?${queryString}${scoped ? "" : "&withCounts=1"}`, {
         headers: { Accept: "application/json" },
         signal,
       })
@@ -470,7 +521,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
     } finally {
       if (!signal?.aborted) setLoading(false)
     }
-  }, [page, queryString, refusalText, t])
+  }, [page, queryString, refusalText, scoped, t])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -508,7 +559,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
     setLimit(restored.limit)
     setSelected(new Set())
     setActiveSavedViewId(view.id)
-    setAdvancedOpen(ADVANCED_FILTER_KEYS.some((key) => contactFilterIsActive(restored.filters, key)))
+    setAdvancedOpen(FIELD_KEYS_BEHIND_MORE.some((key) => contactFilterIsActive(restored.filters, key)))
   }, [])
 
   const loadSavedViews = useCallback(async (signal?: AbortSignal) => {
@@ -632,7 +683,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
     key === "specialties" ? filters.specialties.length > 0 : filters[key] !== baseFilters[key]
   )
   // In a section the assignment state sits among the main fields, not behind «more».
-  const advancedFilterCount = ADVANCED_FILTER_KEYS
+  const advancedFilterCount = (scoped ? ADVANCED_FILTER_KEYS : FIELD_KEYS_BEHIND_MORE)
     .filter((key) => !(scoped && key === "assignmentState") && filterIsActive(key)).length
   const hasActiveFilters = (Object.keys(EMPTY_CONTACT_FILTERS) as (keyof ContactExplorerFilters)[])
     .some(filterIsActive)
@@ -649,6 +700,46 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
     if (reportTotal && loadedTotal !== undefined && !hasActiveFilters) reportTotal(loadedTotal)
   }, [hasActiveFilters, loadedTotal, reportTotal])
   const routeAssignmentAgent = (payload?.availableAgents ?? []).find((agent) => agent.id === routeAssignmentHandoff?.agentId)
+
+  // The chips over the list, each with how many it holds (the server counts).
+  const quickCounts = payload?.quick?.counts ?? null
+  const quickMonth = formatDate(`${payload?.quick?.month ?? new Date().toISOString().slice(0, 7)}-15T12:00:00.000Z`, locale, { month: "long", timeZone: "UTC" })
+  const quickChips: MtmQuickChip[] = [
+    { value: "", label: t("quick.all"), count: quickCounts?.all, testId: "mtm-contact-quick-all" },
+    { value: "NOT_VISITED", label: t("quick.notVisited", { month: quickMonth }), count: quickCounts?.NOT_VISITED, testId: "mtm-contact-quick-not-visited" },
+    { value: "NOT_PLANNED", label: t("quick.notPlanned"), count: quickCounts?.NOT_PLANNED, testId: "mtm-contact-quick-not-planned" },
+    // Only where somebody has nobody: a chip that always says 0 is noise.
+    ...((quickCounts?.UNASSIGNED ?? 0) > 0 || filters.quick === "UNASSIGNED"
+      ? [{ value: "UNASSIGNED", label: t("quick.unassigned"), count: quickCounts?.UNASSIGNED, testId: "mtm-contact-quick-unassigned" }]
+      : []),
+  ]
+  // Class chips where the tenant grades its clients in more than one class.
+  const categoryChips: MtmQuickChip[] = (quickCounts?.categories.length ?? 0) >= 2 || filters.category
+    ? (quickCounts?.categories ?? []).map((entry) => ({
+        value: entry.category,
+        label: t("categoryShort", { category: entry.category }),
+        count: entry.count,
+        testId: `mtm-contact-quick-category-${entry.category}`,
+      }))
+    : []
+  // Without signed visit norms every row said «Правило не подписано»: one line
+  // says it instead, and the column comes back when a norm is in force.
+  const coverageWithoutNorms = showsCoverage && contacts.length > 0
+    && contacts.every((contact) => COVERAGE_WITHOUT_NORMS.has(contact.coverage.state))
+    && contacts.some((contact) => contact.coverage.state === "UNSIGNED_COVERAGE_POLICY")
+  const showsCoverageColumn = showsCoverage && !coverageWithoutNorms
+  // «Связь» only when somebody on the page has a phone or an e-mail.
+  const showsCommunication = contacts.some((contact) => visiblePhone(contact, shows) || (shows("email") && contact.email))
+  // The client category («Həkim») in the row only where the page mixes them.
+  const mixedCategories = new Set(contacts.map((contact) => categoryLabel(contact))).size > 1
+  // The class (A, B, VIP) likewise: «Категория B» in all 321 rows said nothing.
+  const mixedClasses = new Set(contacts.map((contact) => contact.category)).size > 1
+  const routeHref = (contact: ContactRow): string | null => {
+    const workplace = contact.workplaces.find((item) => item.isPrimary) ?? contact.workplaces[0]
+    if (!workplace) return null
+    const owner = contact.agentAssignments.find((assignment) => assignment.role === "PRIMARY") ?? contact.agentAssignments[0]
+    return mtmRoutePlanPageHref({ customerId: workplace.customer.id, contactId: contact.id, agentId: owner?.agent.id })
+  }
 
   const updateFilter = (key: ContactTextFilterKey, value: string) => {
     setFilters((current) => ({ ...current, [key]: value }))
@@ -900,7 +991,27 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           page; the rest behind «Ещё фильтры», and the reference dropdowns only
           for a tenant whose data fills them (on prod nobody's did). */}
       <section data-testid="mtm-contact-filters" className="space-y-3">
-        <MtmFilterGrid>
+        {/* Owner, 2026-10-16, from a picture: the Clients page opens on one
+            search and the chips — «Все», «Без визита за октябрь», «Не
+            запланированы» — with how many each holds; the named fields he
+            asked for on 2026-10-02 are one click away under «Ещё фильтры». */}
+        {scoped ? null : (
+          <div data-testid="mtm-contact-toolbar" className="flex flex-wrap items-center gap-2">
+            <MtmFilterSearch testId="mtm-contact-search" value={filters.search} onChange={(value) => updateFilter("search", value)} placeholder={t("searchPlaceholder")} label={t("filterAnywhere")} clearLabel={tf("clear")} />
+            <MtmQuickChips label={t("quick.label")} chips={quickChips} value={filters.quick} onChange={(value) => updateFilter("quick", value)}
+              renderChip={(chip, element) => <Hint text={t(QUICK_HINT[chip.value as keyof typeof QUICK_HINT] ?? "hint.quickAll", { month: quickMonth })}>{element}</Hint>} />
+            {categoryChips.length > 0 ? (
+              <MtmQuickChips label={t("category")} chips={categoryChips} value={filters.category} onChange={(value) => updateFilter("category", value === filters.category ? "" : value)}
+                renderChip={(chip, element) => <Hint text={t("hint.quickCategory", { category: chip.value })}>{element}</Hint>} />
+            ) : null}
+            <span className="ml-auto flex items-center gap-1">
+              <MtmFilterMore testId="mtm-contact-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={advancedFilterCount} label={tf("more")} />
+              <MtmFilterReset testId="mtm-contact-clear-filters" show={hasActiveFilters} onReset={clearFilters} label={tf("reset")} />
+            </span>
+          </div>
+        )}
+        {scoped || advancedOpen ? (
+          <MtmFilterGrid>
           {/* In an employee's own list the owner is that employee: nothing to choose.
               When attaching, the question is whose clients to look through, and
               it is one question: nobody's, or a named colleague's. Two fields
@@ -944,7 +1055,9 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                     options={[{ value: "ASSIGNED", label: t("assigned") }, { value: "UNASSIGNED", label: t("unassigned") }]} />
                 </Hint>
               )}
-              <MtmFilterTextField testId="mtm-contact-search" label={t("filterAnywhere")} placeholder={t("searchPlaceholder")} value={filters.search} onChange={(value) => updateFilter("search", value)} clearLabel={tf("clear")} />
+              {scoped ? (
+                <MtmFilterTextField testId="mtm-contact-search" label={t("filterAnywhere")} placeholder={t("searchPlaceholder")} value={filters.search} onChange={(value) => updateFilter("search", value)} clearLabel={tf("clear")} />
+              ) : null}
               {([
                 ["profile", "profile", facets?.profiles],
                 ["qualificationCategory", "qualificationCategory", facets?.qualificationCategories],
@@ -976,15 +1089,29 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
             </>
           ) : null}
         </MtmFilterGrid>
+        ) : null}
         {facetsError && facetsError !== error ? <p className="text-xs text-amber-700 dark:text-amber-300">{facetsError}</p> : null}
-        <MtmFilterActions>
-          <MtmFilterMore testId="mtm-contact-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={advancedFilterCount} label={tf("more")} />
-          <MtmFilterReset testId="mtm-contact-clear-filters" show={hasActiveFilters} onReset={clearFilters} label={tf("reset")} />
-        </MtmFilterActions>
+        {scoped ? (
+          <MtmFilterActions>
+            <MtmFilterMore testId="mtm-contact-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={advancedFilterCount} label={tf("more")} />
+            <MtmFilterReset testId="mtm-contact-clear-filters" show={hasActiveFilters} onReset={clearFilters} label={tf("reset")} />
+          </MtmFilterActions>
+        ) : null}
+        {coverageWithoutNorms ? (
+          <div data-testid="mtm-contact-coverage-unsigned" className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground dark:border-zinc-700">
+            <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1">{t("coverageUnsignedBanner")}</span>
+            {payload?.capabilities.actorRole === "ADMIN" ? (
+              <Hint text={t("hint.coverageUnsignedAction")}>
+                <Link href="/mtm/settings?tab=admin" className="font-semibold text-primary hover:underline">{t("coverageUnsignedAction")}</Link>
+              </Hint>
+            ) : null}
+          </div>
+        ) : null}
         <MtmResultLine
           aside={scoped ? undefined : <HintValue text={t("hint.asOf")}>
             {t("asOf", { date: payload?.asOf ?? "—" })}
-            {payload?.coveragePeriod ? ` · ${t("coveragePeriodRange", { start: payload.coveragePeriod.start, end: payload.coveragePeriod.end })}` : ""}
+            {payload?.coveragePeriod && showsCoverageColumn ? ` · ${t("coveragePeriodRange", { start: payload.coveragePeriod.start, end: payload.coveragePeriod.end })}` : ""}
           </HintValue>}
         >
           <span data-testid="mtm-contact-result-count" className="font-medium text-foreground">{resultLabel}</span>
@@ -1107,15 +1234,19 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                 visitDateTime={visitDateTime}
                 categoryLabel={categoryLabel(contact)}
                 shows={shows}
-                showsCoverage={showsCoverage}
+                showsCoverage={showsCoverageColumn}
+                planHref={routeHref(contact)}
                 ownerLabel={ownerLabel}
                 noOwnerLabel={noOwnerLabel}
                 t={t}
               />
             ))}
           </div>
+          {/* One line a client (owner, 2026-10-16, from a picture): who, where,
+              when last and by whom, when next, whose — and «В маршрут». The
+              table fits the screen: no sideways scrolling, no column of «—». */}
           <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 bg-card dark:border-zinc-700 lg:block">
-            <table className={`${scoped ? "min-w-[1100px]" : "min-w-[1320px]"} w-full text-sm`}>
+            <table data-testid="mtm-contact-table" className="w-full table-fixed text-sm">
               <thead className="bg-muted/60 text-left text-xs text-muted-foreground">
                 <tr>
                   <th scope="col" className="w-12">
@@ -1126,14 +1257,16 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                       onChange={togglePage}
                     />
                   </th>
-                  <th scope="col" className="px-3 py-3 font-medium">{t("contact")}</th>
-                  {scoped ? <th scope="col" className="px-3 py-3 font-medium"><HintValue text={t("hint.colOwner")}>{ownerLabel}</HintValue></th> : null}
-                  {showsProfession ? <th scope="col" className="px-3 py-3 font-medium"><HintValue text={t("hint.colProfessional")}>{t("professional")}</HintValue></th> : null}
-                  {showsCoverage ? <th scope="col" className="px-3 py-3 font-medium"><HintValue text={t("hint.colCoverage")}>{t("coverage")}</HintValue></th> : null}
-                  <th scope="col" className="px-3 py-3 font-medium">{t("workplace")}</th>
-                  <th scope="col" className="px-3 py-3 font-medium"><HintValue text={t("hint.colVisitContext")}>{t("visitContext")}</HintValue></th>
-                  <th scope="col" className="px-3 py-3 font-medium">{t("communication")}</th>
-                  {scoped ? null : <th scope="col" className="px-3 py-3 font-medium"><HintValue text={t("hint.colOwner")}>{ownerLabel}</HintValue></th>}
+                  {/* Fixed shares of the width: the row never pushes «В маршрут» off the screen. */}
+                  <th scope="col" className="px-3 py-2.5 font-medium">{t("contact")}</th>
+                  {scoped ? <th scope="col" className="w-[15%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colOwner")}>{ownerLabel}</HintValue></th> : null}
+                  {showsCoverageColumn ? <th scope="col" className="w-[14%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colCoverage")}>{t("coverage")}</HintValue></th> : null}
+                  <th scope="col" className="w-[22%] px-3 py-2.5 font-medium">{t("workplace")}</th>
+                  <th scope="col" className="w-[13%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colLastVisit")}>{t("lastVisit")}</HintValue></th>
+                  <th scope="col" className="w-[10%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colNextVisit")}>{t("nextVisit")}</HintValue></th>
+                  {showsCommunication ? <th scope="col" className="w-[13%] px-3 py-2.5 font-medium">{t("communication")}</th> : null}
+                  {scoped ? null : <th scope="col" className="w-[15%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colOwner")}>{ownerLabel}</HintValue></th>}
+                  <th scope="col" className="w-[9.5rem] px-3 py-2.5"><span className="sr-only">{t("rowActions")}</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -1144,10 +1277,18 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                   const email = shows("email") ? contact.email : null
                   const lastVisit = contact.visits[0]
                   const nextPoint = contact.routePoints[0]
+                  const planHref = routeHref(contact)
+                  const detail = [
+                    specialtyLine(contact, shows),
+                    professionDetail(contact, shows),
+                    mixedCategories ? categoryLabel(contact) : null,
+                    mixedClasses ? t("categoryShort", { category: contact.category }) : null,
+                    contact.externalCode && shows("externalCode") ? contact.externalCode : null,
+                  ].filter(Boolean).join(" · ")
                   const ownerCell = (
-                    <td className="px-3 py-3" data-testid={`mtm-contact-owner-${contact.id}`}>
+                    <td className="px-3 py-2" data-testid={`mtm-contact-owner-${contact.id}`}>
                       {owners.length > 0 ? owners.map((owner) => (
-                        <p key={owner.id} className="font-medium [&+p]:mt-1.5">
+                        <p key={owner.id} className="truncate [&+p]:mt-1" title={owner.name}>
                           {owner.name}
                           {owner.status !== "ACTIVE" ? <span className="mt-0.5 block text-xs font-normal text-amber-700 dark:text-amber-300">{t("agentInactive")}</span> : null}
                         </p>
@@ -1155,7 +1296,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                     </td>
                   )
                   return (
-                    <tr key={contact.id} className="align-top hover:bg-muted/25">
+                    <tr key={contact.id} className="hover:bg-muted/25">
                       <td>
                         <FieldCheckbox
                           checked={selected.has(contact.id)}
@@ -1164,75 +1305,81 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                           onChange={(checked) => toggleContact(contact.id, checked)}
                         />
                       </td>
-                      <td className="px-3 py-3">
-                        <Link
-                          href={`/mtm/contacts/${contact.id}?returnTo=${encodeURIComponent(returnHref)}`}
-                          className="font-semibold text-primary hover:underline"
-                        >
-                          {contact.displayName}
-                        </Link>
-                        <div className="mt-1 flex flex-wrap gap-1.5">
-                          <Badge variant={statusVariant(contact.status)}>{t(`statuses.${contact.status}`)}</Badge>
-                          <Badge variant="outline">{categoryLabel(contact)}</Badge>
-                          <Badge variant="outline">{t("categoryShort", { category: contact.category })}</Badge>
-                        </div>
-                        {contact.externalCode && shows("externalCode") ? <p className="mt-1 text-xs text-muted-foreground">{contact.externalCode}</p> : null}
+                      <td className="px-3 py-2">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <Link
+                            href={`/mtm/contacts/${contact.id}?returnTo=${encodeURIComponent(returnHref)}`}
+                            className="truncate font-semibold text-primary hover:underline"
+                          >
+                            {contact.displayName}
+                          </Link>
+                          {contact.status !== "ACTIVE" ? <Badge variant={statusVariant(contact.status)}>{t(`statuses.${contact.status}`)}</Badge> : null}
+                        </span>
+                        {detail ? <p className="mt-0.5 truncate text-xs text-muted-foreground" title={detail}>{detail}</p> : null}
                       </td>
                       {scoped ? ownerCell : null}
-                      {showsProfession ? (
-                        <td className="px-3 py-3">
-                          <p className="font-medium">{specialtyLine(contact, shows) || "—"}</p>
-                          {professionDetail(contact, shows) ? <p className="mt-1 text-xs text-muted-foreground">{professionDetail(contact, shows)}</p> : null}
-                        </td>
-                      ) : null}
-                      {showsCoverage ? (
-                        <td className="px-3 py-3">
+                      {showsCoverageColumn ? (
+                        <td className="px-3 py-2">
                           <ContactCoverageCell coverage={contact.coverage} t={t} />
                         </td>
                       ) : null}
-                      <td className="px-3 py-3">
+                      <td className="px-3 py-2">
                         {workplace ? (
                           <>
                             <Link
                               href={`/mtm/customers/${workplace.customer.id}?returnTo=${encodeURIComponent(returnHref)}`}
-                              className="font-medium hover:text-primary hover:underline"
+                              className="block truncate font-medium hover:text-primary hover:underline"
                             >
                               {workplace.customer.name}
                             </Link>
-                            <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
                               {[workplace.customer.city, workplace.customer.address].filter(Boolean).join(" · ") || "—"}
                             </p>
                           </>
                         ) : <span className="text-muted-foreground">{t("noWorkplace")}</span>}
                       </td>
-                      <td className="px-3 py-3">
-                        <div className="space-y-1.5 text-xs">
-                          <p>
-                            <span className="text-muted-foreground">{t("lastVisit")}:</span>{" "}
-                            {lastVisit ? (
-                              <Link href={`/mtm/visits?visitId=${lastVisit.id}`} className="font-medium hover:text-primary hover:underline">
-                                {visitDate.format(new Date(lastVisit.checkInAt))}
-                              </Link>
-                            ) : t("noVisitHistory")}
-                          </p>
-                          <p>
-                            <span className="text-muted-foreground">{t("nextVisit")}:</span>{" "}
-                            {nextPoint ? (
-                              <Link href={`/mtm/routes?routeId=${nextPoint.routeId}`} className="font-medium hover:text-primary hover:underline">
-                                {nextPoint.plannedTime
-                                  ? visitDateTime.format(new Date(nextPoint.plannedTime))
-                                  : visitDate.format(new Date(nextPoint.route.date))}
-                              </Link>
-                            ) : t("notPlanned")}
-                          </p>
-                        </div>
+                      <td className="px-3 py-2" data-testid={`mtm-contact-last-visit-${contact.id}`}>
+                        {lastVisit ? (
+                          <Link href={`/mtm/visits?visitId=${lastVisit.id}`} className="block truncate hover:text-primary hover:underline">
+                            <span className="font-medium">{visitDay(lastVisit.checkInAt)}</span>
+                            {lastVisit.agent ? <span className="text-muted-foreground"> · {shortPersonName(lastVisit.agent.name)}</span> : null}
+                          </Link>
+                        ) : <span className="font-semibold text-orange-600 dark:text-orange-400">{t("noVisitHistory")}</span>}
                       </td>
-                      <td className="px-3 py-3">
-                        {phone ? <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-1.5 hover:text-primary"><Phone className="h-3.5 w-3.5" />{phone}</a> : null}
-                        {email ? <a href={`mailto:${email}`} className="mt-1 flex items-center gap-1.5 hover:text-primary"><Mail className="h-3.5 w-3.5" />{email}</a> : null}
-                        {!phone && !email ? <span className="text-muted-foreground">—</span> : null}
+                      <td className="whitespace-nowrap px-3 py-2" data-testid={`mtm-contact-next-visit-${contact.id}`}>
+                        {nextPoint ? (
+                          <Link href={`/mtm/routes?routeId=${nextPoint.routeId}`} className="font-medium hover:text-primary hover:underline">
+                            {visitDay(nextPoint.plannedTime ?? nextPoint.route.date)}
+                          </Link>
+                        ) : <HintValue text={t("notPlanned")}><span className="text-muted-foreground">—</span></HintValue>}
                       </td>
+                      {showsCommunication ? (
+                        <td className="px-3 py-2">
+                          {phone ? <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-1.5 whitespace-nowrap hover:text-primary"><Phone className="h-3.5 w-3.5" />{phone}</a> : null}
+                          {email ? <a href={`mailto:${email}`} className="mt-1 flex items-center gap-1.5 hover:text-primary"><Mail className="h-3.5 w-3.5" />{email}</a> : null}
+                          {!phone && !email ? <span className="text-muted-foreground">—</span> : null}
+                        </td>
+                      ) : null}
                       {scoped ? null : ownerCell}
+                      <td className="px-3 py-2 text-right">
+                        {planHref ? (
+                          <Hint text={t("hint.addToRoute")}>
+                            <Button asChild variant="outline" size="sm" className="min-h-9 whitespace-nowrap">
+                              <Link href={planHref} data-testid={`mtm-contact-add-to-route-${contact.id}`} aria-label={t("addToRouteFor", { name: contact.displayName })}>
+                                <CalendarPlus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                {t("addToRoute")}
+                              </Link>
+                            </Button>
+                          </Hint>
+                        ) : (
+                          <Hint wrap text={t("hint.addToRouteNoWorkplace")}>
+                            <Button variant="outline" size="sm" className="min-h-9 whitespace-nowrap" disabled>
+                              <CalendarPlus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                              {t("addToRoute")}
+                            </Button>
+                          </Hint>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
@@ -1400,6 +1547,7 @@ function ContactCard({
   showsCoverage,
   ownerLabel,
   noOwnerLabel,
+  planHref,
   t,
 }: {
   contact: ContactRow
@@ -1413,6 +1561,7 @@ function ContactCard({
   showsCoverage: boolean
   ownerLabel: string
   noOwnerLabel: string
+  planHref: string | null
   t: ReturnType<typeof useTranslations>
 }) {
   const workplace = contact.workplaces.find((item) => item.isPrimary) ?? contact.workplaces[0]
@@ -1438,7 +1587,7 @@ function ContactCard({
             {contact.displayName}
           </Link>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <Badge variant={statusVariant(contact.status)}>{t(`statuses.${contact.status}`)}</Badge>
+            {contact.status !== "ACTIVE" ? <Badge variant={statusVariant(contact.status)}>{t(`statuses.${contact.status}`)}</Badge> : null}
             <Badge variant="outline">{categoryLabel}</Badge>
             <Badge variant="outline">{t("categoryShort", { category: contact.category })}</Badge>
           </div>
@@ -1477,8 +1626,9 @@ function ContactCard({
             {lastVisit ? (
               <Link href={`/mtm/visits?visitId=${lastVisit.id}`} className="hover:text-primary hover:underline">
                 {visitDate.format(new Date(lastVisit.checkInAt))}
+                {lastVisit.agent ? <span className="text-muted-foreground"> · {shortPersonName(lastVisit.agent.name)}</span> : null}
               </Link>
-            ) : t("noVisitHistory")}
+            ) : <span className="font-semibold text-orange-600 dark:text-orange-400">{t("noVisitHistory")}</span>}
           </dd>
         </div>
         <div>
@@ -1494,12 +1644,13 @@ function ContactCard({
           </dd>
         </div>
       </dl>
-      {(phone || email) ? (
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-          {phone ? <Button asChild variant="outline" size="sm"><a href={`tel:${phone.replace(/[^\d+]/g, "")}`}><Phone className="mr-1 h-4 w-4" />{t("call")}</a></Button> : null}
-          {email ? <Button asChild variant="outline" size="sm"><a href={`mailto:${email}`}><Mail className="mr-1 h-4 w-4" />{t("email")}</a></Button> : null}
-        </div>
-      ) : null}
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+        {planHref ? (
+          <Button asChild size="sm" className="min-h-11"><Link href={planHref}><CalendarPlus className="mr-1 h-4 w-4" aria-hidden="true" />{t("addToRoute")}</Link></Button>
+        ) : null}
+        {phone ? <Button asChild variant="outline" size="sm" className="min-h-11"><a href={`tel:${phone.replace(/[^\d+]/g, "")}`}><Phone className="mr-1 h-4 w-4" />{t("call")}</a></Button> : null}
+        {email ? <Button asChild variant="outline" size="sm" className="min-h-11"><a href={`mailto:${email}`}><Mail className="mr-1 h-4 w-4" />{t("email")}</a></Button> : null}
+      </div>
     </article>
   )
 }

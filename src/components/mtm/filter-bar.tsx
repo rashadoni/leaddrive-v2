@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
+import { useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react"
 import { Check, ChevronDown, Search, SlidersHorizontal, X } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
@@ -197,6 +197,52 @@ export function MtmFilterMore({ open, onToggle, count, label, testId }: { open: 
       {label}
       {count > 0 ? <span className="rounded-full bg-primary px-1.5 text-xs font-semibold leading-5 text-primary-foreground">{count}</span> : null}
     </button>
+  )
+}
+
+export type MtmQuickChip = {
+  value: string
+  label: string
+  /** How many rows the chip holds; omitted while it is not known. */
+  count?: number | null
+  testId?: string
+}
+
+/**
+ * The quick views over a list — «Все», «Не были в октябре», «Не
+ * запланированы»… — each with how many it holds (owner, 2026-10-16, from a
+ * picture of «Клиенты»). One is on at a time; «Все» is the empty value.
+ */
+export function MtmQuickChips({ label, chips, value, onChange, renderChip }: {
+  label: string
+  chips: MtmQuickChip[]
+  value: string
+  onChange: (value: string) => void
+  /** Wraps a chip, e.g. in the hint that says what it holds. */
+  renderChip?: (chip: MtmQuickChip, element: ReactElement) => ReactNode
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap items-center gap-2">
+      {chips.map((chip) => {
+        const on = chip.value === value
+        const element = (
+          <button
+            key={chip.value || "all"}
+            type="button"
+            data-testid={chip.testId}
+            aria-pressed={on}
+            onClick={() => onChange(chip.value)}
+            className={`inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${on ? "border-primary bg-primary text-primary-foreground" : "border-zinc-200 bg-card text-foreground hover:bg-muted/60 dark:border-zinc-700"}`}
+          >
+            {chip.label}
+            {typeof chip.count === "number" ? (
+              <span className={`ml-1.5 rounded-full px-1.5 text-xs font-semibold tabular-nums ${on ? "bg-white/25" : "bg-muted"}`}>{chip.count}</span>
+            ) : null}
+          </button>
+        )
+        return renderChip ? <span key={chip.value || "all"} className="contents">{renderChip(chip, element)}</span> : element
+      })}
+    </div>
   )
 }
 

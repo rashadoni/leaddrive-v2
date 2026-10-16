@@ -49,14 +49,21 @@ describe("the labelled filter fields", () => {
   })
 })
 
+/**
+ * Owner 2026-10-16, from a picture of both lists: the page opens on one search
+ * and the chips with how many each holds («Все», «Без визита за октябрь», «Не
+ * запланированы»), and the named fields of 2026-10-02 are one click away under
+ * «Ещё фильтры». Still no pill row of dropdowns and no stat tiles.
+ */
 describe("«Клиенты» filters", () => {
   const explorer = readFileSync("src/components/mtm/contact-explorer.tsx", "utf8")
 
-  it("is a grid of named fields — no pill row, no saved-views panel, no stat tiles", () => {
+  it("is one search and the chips, then the named fields — no pill row, no saved-views panel, no stat tiles", () => {
     expect(explorer).toContain('<section data-testid="mtm-contact-filters" className="space-y-3">')
+    expect(explorer).toContain('<MtmFilterSearch testId="mtm-contact-search"')
+    expect(explorer).toContain("<MtmQuickChips")
     expect(explorer).toContain("<MtmFilterGrid>")
     expect(explorer).not.toContain("<MtmFilterBar")
-    expect(explorer).not.toContain("<MtmFilterSearch")
     expect(explorer).not.toContain('<details className="group -mx-4 -mt-4 border-b')
     expect(explorer).not.toContain('<Stat label={t("found")}')
     expect(explorer).not.toContain('<Button type="submit" size="icon"')
@@ -86,20 +93,21 @@ describe("«Клиенты» filters", () => {
 describe("«Учреждения» filters", () => {
   const explorer = readFileSync("src/components/mtm/organization-explorer.tsx", "utf8")
 
-  it("is a grid of named fields: no stat cells, no «Рабочая область» card, no search button, no pill row", () => {
+  it("is one search and the chips, then the named fields: no stat cells, no «Рабочая область» card, no search button, no pill row", () => {
     expect(explorer).toContain('<section data-testid="organization-filters" className="space-y-3">')
+    expect(explorer).toContain('<MtmFilterSearch testId="organization-search"')
+    expect(explorer).toContain("<MtmQuickChips")
     expect(explorer).toContain("<MtmFilterGrid>")
     expect(explorer).not.toContain("<MtmFilterBar")
-    expect(explorer).not.toContain("<MtmFilterSearch")
     expect(explorer).not.toContain('aria-label={tx("explorer.summary")}')
     expect(explorer).not.toContain('{tx("explorer.search")}')
     expect(explorer).not.toContain('{tx("explorer.advancedFilters")}')
   })
 
-  it("offers employee, name, address, district, type, category, status and assignment on the page", () => {
+  it("offers employee, name, address, district, type, category, status and assignment under «Ещё фильтры»", () => {
     for (const testId of ["organization-assignedAgentId", "organization-name", "organization-address", "organization-area", "organization-object-type", "organization-category", "organization-status", "organization-assignment"]) {
       expect(explorer).toContain(`testId="${testId}"`)
-      expect(explorer.indexOf(`testId="${testId}"`)).toBeLessThan(explorer.indexOf("{advancedOpen ? ("))
+      expect(explorer.indexOf(`testId="${testId}"`)).toBeGreaterThan(explorer.indexOf("{advancedOpen ? ("))
     }
     expect(explorer).toContain('<MtmFilterSelectField testId="organization-scope"')
     expect(explorer.indexOf('testId="organization-scope"')).toBeGreaterThan(explorer.indexOf("{advancedOpen ? ("))
