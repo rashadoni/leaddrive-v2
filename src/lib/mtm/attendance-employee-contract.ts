@@ -38,11 +38,23 @@ export type AttendanceEmploymentHistoryItem = { id: string; kind: "HIRE" | "TERM
 export type AttendanceEmployeeDetail = {
   timezone: string; today: string
   employee: { id: string; name: string; phone: string | null; email: string | null; role: string; status: string; loginEditable: boolean
+    /** The CRM role behind the card; Personnel removes only its own office employees. */
+    crmRole?: string | null
     position: string | null; teamId: string | null; teamName: string | null; managerId: string | null
     included: boolean; participationVersion: string | null; history: AttendanceEmploymentHistoryItem[]; todayMark: AttendanceEmployeeToday | null }
   teams: Array<{ id: string; name: string }>; managers: Array<{ id: string; name: string; position: string | null }>
   month: { from: string; to: string; workedDays: number; workedSeconds: number; lateCount: number; absentCount: number; leaveDays: number; sickDays: number; isComplete: boolean } | null
 }
+/** The CRM role Personnel gives an office employee it adds: they see no module
+ * (every one hidden) and sign in only to the MTM app. */
+export const OFFICE_EMPLOYEE_CRM_ROLE = "viewer"
+/** Personnel → employee page → remove (owner, 2026-10-16: «где удаление
+ * сотрудников»). The rule the owner set for MTM agents on 2026-10-06: delete
+ * only without work history; with history the person is let go instead. */
+export const AttendanceEmployeeRemoveSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("DELETE") }).strict(),
+  z.object({ mode: z.literal("DISMISS"), lastDay: date, reason: z.string().trim().min(3).max(1000) }).strict(),
+])
 export type AttendanceParticipationEvent = { id: string; agentId: string; included: boolean; effectiveAt: string }
 export type AttendanceEmployeeDirectory = {
   users: Array<{ id: string; name: string; existingRole: string | null; existingTeamId: string | null; eligible: boolean }>

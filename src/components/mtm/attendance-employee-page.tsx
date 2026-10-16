@@ -7,6 +7,7 @@ import { BriefcaseBusiness, CalendarDays, ChevronLeft, History, UserRound } from
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomePill, type HomeTone } from "@/components/mtm/home-parts"
+import { MtmAttendanceEmployeeRemove } from "@/components/mtm/attendance-employee-remove"
 import { MtmAttendanceDepartmentField, departmentPayload, type DepartmentValue } from "@/components/mtm/attendance-department-field"
 import { createDateFormatter, formatTime } from "@/lib/format-date"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
@@ -189,5 +190,6 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
         </form>
       </Section>
     </div>
+    <MtmAttendanceEmployeeRemove detail={detail} back={back} onDismissed={() => { void load(); setSaved("removeDismissed") }} />
   </div>
 }

@@ -8,7 +8,7 @@ import { USER_HIDEABLE_MODULE_IDS, parseHiddenModulesInput } from "@/lib/user-mo
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { recordAttendanceInitialHire, requireAttendanceEmployeeAdmin, resolveAttendanceDepartment } from "@/lib/mtm/attendance-employee-store"
-import { ATTENDANCE_EMPLOYEE_POSITION_MAX } from "@/lib/mtm/attendance-employee-contract"
+import { ATTENDANCE_EMPLOYEE_POSITION_MAX, OFFICE_EMPLOYEE_CRM_ROLE } from "@/lib/mtm/attendance-employee-contract"
 import { isDateKey } from "@/lib/mtm/mobile-week"
 import { findPhoneOwner } from "@/lib/mtm/mobile-login-phone"
 
@@ -26,7 +26,7 @@ import { findPhoneOwner } from "@/lib/mtm/mobile-login-phone"
  * optional; without one the CRM user gets an address that cannot receive mail
  * (the schema requires one) and the CRM user a password nobody can type.
  */
-export const OFFICE_EMPLOYEE_CRM_ROLE = "viewer"
+export { OFFICE_EMPLOYEE_CRM_ROLE }
 
 /** `.local` under `invalid.`, as anonymised users: it resolves nowhere, so no mail can go to it. */
 const NO_EMAIL_DOMAIN = "invalid.local"

@@ -16,7 +16,7 @@ const ENDPOINT = "/api/v1/mtm/attendance/employees"
 const SELECT = "min-h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
 const PAGE_SIZE = 50
 type Employee = AttendanceEmployeeDirectory["employees"][number]
-type Participation = "ALL" | "INCLUDED" | "EXCLUDED"
+type Participation = "ALL" | "INCLUDED" | "EXCLUDED" | "DISMISSED"
 const NO_DEPARTMENT = "none"
 
 /**
@@ -33,7 +33,7 @@ export function MtmAttendanceEmployees() {
   const [directory, setDirectory] = useState<AttendanceEmployeeDirectory | null>(null)
   const [search, setSearch] = useState(() => params.get("q") ?? "")
   const [department, setDepartment] = useState(() => params.get("team") ?? "")
-  const [participation, setParticipation] = useState<Participation>(() => (["INCLUDED", "EXCLUDED"].includes(params.get("show") ?? "") ? params.get("show") : "ALL") as Participation)
+  const [participation, setParticipation] = useState<Participation>(() => (["INCLUDED", "EXCLUDED", "DISMISSED"].includes(params.get("show") ?? "") ? params.get("show") : "ALL") as Participation)
   const [page, setPage] = useState(() => Math.max(0, Number(params.get("page") ?? 1) - 1) || 0)
   const [loading, setLoading] = useState(false), [denied, setDenied] = useState(false), [error, setError] = useState<string | null>(null)
   const read = useRef<AbortController | null>(null)
@@ -70,9 +70,11 @@ export function MtmAttendanceEmployees() {
     || (digits.length >= 3 && (employee.phone ?? "").replace(/\D/g, "").includes(digits))
   const employees = (directory?.employees ?? []).filter(employee => matches(employee)
     && (!department || (department === NO_DEPARTMENT ? !employee.teamId : employee.teamId === department))
-    && (participation === "ALL" || employee.included === (participation === "INCLUDED")))
+    // Dismissed people (2026-10-16) leave the list; their own filter brings them back.
+    && (participation === "DISMISSED" ? employee.status !== "ACTIVE" : employee.status === "ACTIVE" && (participation === "ALL" || employee.included === (participation === "INCLUDED"))))
   const pages = Math.max(1, Math.ceil(employees.length / PAGE_SIZE)), currentPage = Math.min(page, pages - 1)
-  const includedCount = directory?.employees.filter(employee => employee.included).length ?? 0
+  const active = directory?.employees.filter(employee => employee.status === "ACTIVE") ?? []
+  const includedCount = active.filter(employee => employee.included).length
   const date = (value: string) => createDateFormatter(locale, { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${value}T00:00:00Z`))
   const time = (value: string | null) => value && directory ? formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: directory.timezone }) : ""
   function today(employee: Employee): [string, HomeTone] {
@@ -109,9 +111,9 @@ export function MtmAttendanceEmployees() {
             <option value="">{t("reportAllTeams")}</option>{directory.teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}<option value={NO_DEPARTMENT}>{t("employeesNoTeam")}</option></select></div>
         <div className="space-y-1.5"><label htmlFor="employee-participation" className="text-sm font-medium">{t("employeesParticipationFilter")}</label>
           <select id="employee-participation" className={SELECT} value={participation} onChange={event => { setParticipation(event.target.value as Participation); reset() }}>
-            <option value="ALL">{t("employeesFilterAll")}</option><option value="INCLUDED">{t("employeesFilterIncluded")}</option><option value="EXCLUDED">{t("employeesFilterExcluded")}</option></select></div>
+            <option value="ALL">{t("employeesFilterAll")}</option><option value="INCLUDED">{t("employeesFilterIncluded")}</option><option value="EXCLUDED">{t("employeesFilterExcluded")}</option><option value="DISMISSED">{p("employeesFilterDismissed")}</option></select></div>
       </div>
-      <p className="text-sm text-muted-foreground" role="status">{t("employeesParticipationCounts", { total: directory.employees.length, included: includedCount, excluded: directory.employees.length - includedCount })}</p>
+      <p className="text-sm text-muted-foreground" role="status">{t("employeesParticipationCounts", { total: active.length, included: includedCount, excluded: active.length - includedCount })}</p>
       {employees.length ? <div className="overflow-x-auto"><table className="w-full table-fixed text-left text-sm">
         <thead className="hidden md:table-header-group"><tr className="border-b text-xs text-muted-foreground"><th className="w-[46%] px-3 py-2 font-medium">{p("employeesColEmployee")}</th><th className="px-3 py-2 font-medium">{p("employeeCardDepartment")}</th><th className="px-3 py-2 font-medium">{p("employeesColToday")}</th><th className="w-36 px-3 py-2"><span className="sr-only">{p("employeeEdit")}</span></th></tr></thead>
         <tbody className="block md:table-row-group">{employees.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map(employee => {

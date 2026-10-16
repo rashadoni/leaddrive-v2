@@ -595,6 +595,37 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     await expect(tenant(organizationId, () => store.readAttendanceEmployee(admin, created.agentId))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND" })
   })
 
+  // Owner, 2026-10-16: «где удаление сотрудников» — by his rule for agents: delete without history, dismiss with it.
+  it("deletes an office employee added by mistake, dismisses one with history, and leaves CRM users to Settings", async () => {
+    const create = await import("@/lib/mtm/attendance-employee-create")
+    const mistake = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional mistake", phone: "+994550003311" }))
+    expect(await tenant(automaticOrg, () => store.removeAttendanceEmployee(automaticAdmin, mistake.agentId, { mode: "DELETE" }))).toMatchObject({ mode: "DELETE" })
+    await tenant(automaticOrg, async () => {
+      expect(await prisma.mtmAgent.findUnique({ where: { id: mistake.agentId } })).toBeNull()
+      expect(await prisma.user.findUniqueOrThrow({ where: { id: mistake.userId }, select: { isActive: true } })).toEqual({ isActive: false })
+      expect(await prisma.mtmAuditLog.count({ where: { action: "MTM_ATTENDANCE_EMPLOYEE_DELETED", entityId: mistake.agentId } })).toBe(1)
+    })
+
+    const hired = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional leaver", phone: "+994550003322", hireDate: "2026-09-01" }))
+    await expect(tenant(automaticOrg, () => store.removeAttendanceEmployee(automaticAdmin, hired.agentId, { mode: "DELETE" }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_HAS_HISTORY" })
+    const today = (await import("@/lib/mtm/mobile-week")).currentDateKey(new Date(), "Asia/Baku")
+    await expect(tenant(automaticOrg, () => store.removeAttendanceEmployee(automaticAdmin, hired.agentId, { mode: "DISMISS", lastDay: "2099-01-01", reason: "Fictional leaving" })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_DATE_INVALID" })
+    await tenant(automaticOrg, () => store.removeAttendanceEmployee(automaticAdmin, hired.agentId, { mode: "DISMISS", lastDay: today, reason: "Fictional leaving" }))
+    await tenant(automaticOrg, async () => {
+      expect(await prisma.mtmAgent.findUniqueOrThrow({ where: { id: hired.agentId }, select: { status: true } })).toEqual({ status: "INACTIVE" })
+      expect(await prisma.user.findUniqueOrThrow({ where: { id: hired.userId }, select: { isActive: true } })).toEqual({ isActive: false })
+      expect((await store.readAttendanceEmployees(automaticAdmin)).employees.find(row => row.id === hired.agentId)!.history.map(event => event.kind)).toEqual(["HIRE", "TERMINATION"])
+    })
+
+    const unhired = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional no hire", phone: "+994550003333" }))
+    // A CRM user (here the tenant's sales user) is not removed from Personnel.
+    await expect(tenant(automaticOrg, () => store.removeAttendanceEmployee(automaticAdmin, "automatic-manual", { mode: "DELETE" }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_CRM_USER" })
+    // Only an administrator removes.
+    await expect(tenant(automaticOrg, () => store.removeAttendanceEmployee({ ...automaticAdmin, userId: "automatic-user-001" }, unhired.agentId, { mode: "DELETE" }))).rejects.toMatchObject({ status: 403 })
+    expect(await tenant(automaticOrg, () => prisma.mtmAgent.count({ where: { id: unhired.agentId } }))).toBe(1)
+  })
+
   it("keeps the employee card and shows its position in the report", async () => {
     const create = await import("@/lib/mtm/attendance-employee-create")
     const created = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional card hire", email: "card.hire@example.invalid",

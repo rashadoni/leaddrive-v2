@@ -77,6 +77,13 @@ describe("Personnel → Employees list", () => {
     expect(field("employee-search").value).toBe("Aylin"); expect(field("employee-department").value).toBe("team-centre"); expect(names()).toEqual(["Aylin Demo"])
   })
 
+  it("leaves dismissed people out of the list until their own filter is chosen", async () => {
+    directory.employees.push({ ...directory.employees[0], id: "employee-gone", name: "Gone Demo", status: "INACTIVE" })
+    await render()
+    expect(names()).not.toContain("Gone Demo")
+    await edit("employee-participation", "DISMISSED"); expect(names()).toEqual(["Gone Demo"])
+  })
+
   it("pages 50 at a time", async () => {
     directory.employees = Array.from({ length: 120 }, (_, i) => ({ ...directory.employees[0], id: `e-${i}`, name: `Demo ${String(i).padStart(3, "0")}` }))
     await render()
