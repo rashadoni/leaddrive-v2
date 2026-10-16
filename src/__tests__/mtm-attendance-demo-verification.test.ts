@@ -100,7 +100,10 @@ describe("dedicated attendance demo controller", () => {
   })
   it("independently matches actual report rows, shared-parser pauses, journal clocks and totals", () => {
     const parity = verifyParity(snapshot(), report())
-    expect(parity.totals).toMatchObject({ workedSeconds: 90540, pausedSeconds: 3000, lateSeconds: 1260, earlyLeaveSeconds: 1800, absentCount: 1 })
+    // Owner, 2026-10-16: «вычитать обед самому». 13:00–14:00 comes off each day, less the breaks pressed:
+    // 8:09 − 0:30 − 0:30 = 7:09, 9:00 − 0:20 − 0:40 = 8:00, 8:50 − 1:00 = 7:50 → 22:59 = 82740 s.
+    expect(parity.rows.map(row => row.workedSeconds)).toEqual([25740, 28800, 0, 28200])
+    expect(parity.totals).toMatchObject({ workedSeconds: 82740, pausedSeconds: 3000, lateSeconds: 1260, earlyLeaveSeconds: 1800, absentCount: 1 })
     expect(expectedRows(snapshot()).at(-1)?.lateSeconds).toBe(0)
     const evidence = { version: 1, status: "PASS", mode: "read-only-check", artifactSha: sha, tenant: DEMO.slug, created: false,
       period: { from: DEMO.from, to: DEMO.to }, readOnlyComparison: true, loginMethod: "credentials", ...parity }
@@ -108,8 +111,9 @@ describe("dedicated attendance demo controller", () => {
     expect(() => validateEvidence({ ...evidence, cookie: "PRIVATE" })).toThrow("OUTPUT_INVALID")
     expect(() => validateEvidence({ ...evidence, rows: [{ ...parity.rows[0], password: "PRIVATE" }] })).toThrow("OUTPUT_INVALID")
   })
-  it("detects wrong rounding, planned-lunch subtraction, missing journal, duplicate rows and changed totals", () => {
+  it("detects a forgotten or doubled lunch, wrong rounding, missing journal, duplicate rows and changed totals", () => {
     for (const change of [
+      (value: ReturnType<typeof report>) => { value.rows[0].workedSeconds! += value.rows[0].lunchAutoSeconds! },
       (value: ReturnType<typeof report>) => { value.rows[0].workedSeconds! -= 3600 },
       (value: ReturnType<typeof report>) => { value.rows[0].lateSeconds! -= 600 },
       (value: ReturnType<typeof report>) => { value.rows[0].events.pop() },

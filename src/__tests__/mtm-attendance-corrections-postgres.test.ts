@@ -138,7 +138,8 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
     await tenant(ORG, async () => {
       expect(await prisma.mtmAgentWorkdayEvent.findMany({ where: { workdayId: day.id }, orderBy: { occurredAt: "asc" } })).toEqual(before)
       const result = await report.readMtmAttendanceReport({ organizationId: ORG, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { form: "ALL", from: "2026-09-02", to: "2026-09-02" } })
-      expect(result.rows[0]).toMatchObject({ factsState: "VALID", workedSeconds: 30600, pausedSeconds: 1800, lateSeconds: 0, earlyLeaveSeconds: 0 })
+      // 09:00–18:00 less the pressed 30-minute break, less the other half of the lunch hour (owner, 2026-10-16).
+      expect(result.rows[0]).toMatchObject({ factsState: "VALID", workedSeconds: 28800, lunchAutoSeconds: 1800, pausedSeconds: 1800, lateSeconds: 0, earlyLeaveSeconds: 0 })
       expect(result.rows[0].corrections).toHaveLength(1)
       expect(result.rows[0].corrections![0]).toMatchObject({ reviewer: { id: ADMIN }, before: { kind: "WORKDAY", facts: { startedAt: at("2026-09-02", "09:30").toISOString() } }, after: { startedAt: at("2026-09-02", "09:00").toISOString() } })
       expect(JSON.stringify(result)).not.toMatch(/latitude|longitude|12\.34567|45\.67891|PRIVATE_BREAK_MARKER|Fictional forgotten mark/)

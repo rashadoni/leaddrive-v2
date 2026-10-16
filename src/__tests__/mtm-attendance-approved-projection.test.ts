@@ -24,7 +24,8 @@ describe("approved attendance requests in the shared report", () => {
     const startedAt = `${date}T05:00:00Z`, completedAt = `${date}T14:00:00Z`
     const result = buildMtmAttendanceReport({ ...input, approvedRequests: [period], workdays: [{ id: "day", agentId: period.agentId, workDate: date, status: "COMPLETED", startedAt, completedAt, totalPausedSeconds: 0,
       events: [{ type: "START", occurredAt: startedAt }, { type: "FINISH", occurredAt: completedAt }] }] })
-    expect(result.rows[0]).toMatchObject({ kind: "WORKED", factsState: "VALID", workedSeconds: 32400, flags: ["WORKED_ON_APPROVED_ABSENCE"] })
+    // 09:00–18:00 Baku without a break: the 13:00–14:00 lunch is taken off (owner, 2026-10-16: «вычитать обед самому»).
+    expect(result.rows[0]).toMatchObject({ kind: "WORKED", factsState: "VALID", workedSeconds: 28800, lunchAutoSeconds: 3600, flags: ["WORKED_ON_APPROVED_ABSENCE"] })
     expect(result.rows[0].events).toHaveLength(2)
   })
   it("projects a manual catalogue kind and still keeps a holiday inside manual annual leave", () => {

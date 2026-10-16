@@ -171,7 +171,9 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     expect(result.rows).toHaveLength(14)
     expect(result.rows.some((row) => row.employeeId === "field-agent")).toBe(false)
     const day = result.rows.find((row) => row.employeeId === "employee-a" && row.date === monday)!
-    expect(day).toMatchObject({ workedSeconds: 27_540, pausedSeconds: 1800, lateSeconds: 1260, earlyLeaveSeconds: 1800, expectedWorkSeconds: 28_800, kind: "WORKED" })
+    // Owner, 2026-10-16: «вычитать обед самому». 09:21–17:30 less the pressed
+    // 30-minute break, less the other 30 minutes of the 13:00–14:00 lunch.
+    expect(day).toMatchObject({ workedSeconds: 25_740, lunchAutoSeconds: 1800, pausedSeconds: 1800, lateSeconds: 1260, earlyLeaveSeconds: 1800, expectedWorkSeconds: 28_800, kind: "WORKED" })
     expect(result.rows.find((row) => row.employeeId === "employee-a" && row.date === addDateKeyDays(monday, 1))?.kind).toBe("ABSENT")
     expect(result.rows.find((row) => row.employeeId === "employee-a" && row.date === addDateKeyDays(monday, 2))?.kind).toBe("HOLIDAY")
     expect(result.rows.find((row) => row.employeeId === "employee-a" && row.date === addDateKeyDays(monday, 3))).toMatchObject({ kind: "MISSING_FINISH", workedSeconds: null })
@@ -185,7 +187,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     const all = await report()
     const late = await report("LATE_EARLY")
     expect(late.rows).toHaveLength(1)
-    expect(late.totals.workedSeconds).toBe(27_540)
+    expect(late.totals.workedSeconds).toBe(25_740)
     expect(all.totals.unknownWorkedCount).toBe(1)
     expect(all.totals.isComplete).toBe(false)
   })

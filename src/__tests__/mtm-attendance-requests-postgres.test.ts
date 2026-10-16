@@ -340,7 +340,8 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
       await recording.recordAttendanceDays(reviewer, { clientRequestId: randomUUID(), agentIds: [self.agentId], dayKindKey: "HOURLY_ABSENCE", catalogueVersion: null,
         unit: "HOURS", startDate: date, endDate: date, startTime: "17:00", endTime: "18:00", reason: "Fictional HR approved end" })
       const result = await read()
-      expect(result.rows[0]).toMatchObject({ lateSeconds: 0, earlyLeaveSeconds: 0, workedSeconds: 25200, pausedSeconds: 0, flags: [] })
+      // Owner, 2026-10-16: «вычитать обед самому» — the 13:00–14:00 lunch comes off worked time.
+      expect(result.rows[0]).toMatchObject({ lateSeconds: 0, earlyLeaveSeconds: 0, workedSeconds: 21600, lunchAutoSeconds: 3600, pausedSeconds: 0, flags: [] })
       expect(result.totals).toMatchObject({ lateCount: 0, earlyLeaveCount: 0 })
       expect((await read("LATE_EARLY")).rows).toHaveLength(0)
       expect(await prisma.mtmAgentWorkday.findUnique({ where: { id: day.id } })).toMatchObject({ startedAt, completedAt, totalPausedSeconds: 0 })
@@ -366,7 +367,8 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
       ] })
       const result = await read()
       expect(result.totals.annualLeaveDays).toBe(2)
-      expect(result.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 32400, flags: ["WORKED_ON_APPROVED_ABSENCE"], annualLeaveDays: 1 })
+      // Owner, 2026-10-16: «вычитать обед самому» — the 13:00–14:00 lunch comes off worked time.
+      expect(result.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 28800, lunchAutoSeconds: 3600, flags: ["WORKED_ON_APPROVED_ABSENCE"], annualLeaveDays: 1 })
       expect(result.rows[1]).toMatchObject({ kind: "HOLIDAY", annualLeaveDays: 0 })
       // The employee can withdraw a pending request, never an approved leave.
       await expect(store.cancelOwnAttendanceRequest(self, request.id)).rejects.toMatchObject({ status: 409 })
@@ -390,7 +392,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
         expect(await prisma.mtmNotification.count({ where: { AND: [{ metadata: { path: ["attendanceRequestId"], equals: request.id } }, { metadata: { path: ["status"], equals: "CANCELLED" } }] } })).toBe(1)
         const result = await read()
         expect(result.totals.annualLeaveDays).toBe(0)
-        expect(result.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 32400, flags: [] })
+        expect(result.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 28800, lunchAutoSeconds: 3600, flags: [] })
         expect(result.rows[2].kind).toBe("ABSENT")
         expect(JSON.stringify(result)).not.toMatch(/PRIVATE_RETRO_LEAVE|PRIVATE_REVOCATION_CAUSE/)
         await expect(revocation.revokeAttendanceLeave(reviewer, request.id, { ...cancellation, reason: "Changed cause" })).rejects.toMatchObject({ status: 409 })
