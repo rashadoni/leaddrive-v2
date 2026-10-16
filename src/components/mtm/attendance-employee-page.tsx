@@ -126,7 +126,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
     <form onSubmit={save} className="space-y-5" aria-label={p("employeeTitle", { name: employee.name })}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4"><span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-orange-100 text-lg font-semibold text-orange-800 dark:bg-orange-950 dark:text-orange-200" aria-hidden="true">{initials}</span>
-          <div className="min-w-0"><h1 className="break-words text-2xl font-semibold tracking-tight">{employee.name}</h1>
+          <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{p("employeeCardHeading")}</p><h1 className="break-words text-2xl font-semibold tracking-tight">{employee.name}</h1>
             <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">{[employee.position, employee.teamName].filter(Boolean).join(" · ") || mtmStatusLabel(statusText, "role", employee.role)}
               <HomePill tone={todayTone}>{today}</HomePill></p></div></div>
         <div className="flex flex-wrap items-center gap-3">{saved ? <span role="status" className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{p(saved)}</span> : null}

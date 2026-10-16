@@ -897,11 +897,14 @@ try {
     const rules = page.getByTestId('attendance-rules')
     await page.locator('#attendance-start').fill('09:30')
     await page.locator('#attendance-end').fill('18:30')
-    await page.locator('#attendance-lunch').fill('60')
+    // Lunch is a time window (2026-10-16).
+    await page.locator('#attendance-lunch').fill('13:00')
+    await page.locator('#attendance-lunch-end').fill('14:00')
     await page.locator('#attendance-grace').fill('15')
     await page.locator('#attendance-effective-from').fill(before.minEffectiveFrom)
     const savedRule = await clickResponse(button('rulesSave', rules), `${apiRoot}/rules`, 'POST', 201)
     assert.equal(savedRule.startTime, '09:30')
+    assert.equal(savedRule.lunchStart, '13:00'); assert.equal(savedRule.lunchMinutes, 60)
     assert.equal((await api('admin', '/rules')).current.id, before.current.id)
     // Holidays are their own card now, next to working hours.
     await readyPage('settings?tab=holidays')

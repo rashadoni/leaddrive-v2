@@ -100,6 +100,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
       "20260806120000_mtm_rls_coverage_completion",
       "20260806160000_mtm_rls_bypass_clause_normalization",
       "20261013010000_mtm_attendance_rules",
+      "20261016180000_personnel_lunch_start",
       "20261013020000_mtm_attendance_deliveries",
       "20261013030000_mtm_attendance_hr_access",
       "20261013180000_mtm_attendance_leave_balances",
