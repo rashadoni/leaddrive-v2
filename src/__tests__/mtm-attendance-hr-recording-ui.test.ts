@@ -80,6 +80,19 @@ describe("actual HR recording form", () => {
     for (const input of container.querySelectorAll("input,select,textarea")) expect(container.querySelector(`label[for="${input.id}"]`)).not.toBeNull()
     capture(locale)
   })
+  // Owner critique, 2026-10-15: an employee chosen by the link from Today still read «0 employees».
+  it("chooses the employee a link from Today names, groups day kinds, and offers a way back", async () => {
+    window.history.replaceState(null, "", "/mtm/attendance/recordings?employeeId=demo-a&date=2026-10-14")
+    try {
+      await render()
+      expect((container.querySelector("#hr-recording-target") as HTMLSelectElement).value).toBe("demo-a")
+      // The preview of chosen people appears only when someone is chosen.
+      expect(container.querySelector('[data-testid="hr-recording-preview"]')!.textContent).toContain("Murad Demo")
+      const groups = [...container.querySelectorAll<HTMLOptGroupElement>("#hr-recording-kind optgroup")].map(group => group.label)
+      expect(groups.length).toBeGreaterThan(1); expect(groups).toContain(t("kindsGroupPaidLeave"))
+      expect(container.querySelector('[data-testid="attendance-recording-back"]')!.getAttribute("href")).toBe("/mtm/attendance")
+    } finally { window.history.replaceState(null, "", "/") }
+  })
   it("says why the recorder's own days are not in the list", async () => {
     await render()
     expect(container.querySelector('[data-testid="hr-recording-not-self"]')!.textContent).toBe(t("hrRecordingNotSelf"))
