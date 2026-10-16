@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { requireMobilePermission } from "@/lib/mtm/mobile-capabilities"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
-import { activeFieldAssignmentWindow } from "@/lib/mtm/field-scope"
+import { activeFieldAssignmentWindow, contactTakenOffAgent } from "@/lib/mtm/field-scope"
 import {
   eligibleFieldCustomerWhere,
   fieldEligibilityEmptyReason,
@@ -411,6 +411,8 @@ export const GET = withMobileRls(async (req, auth) => {
     // against every active workplace, never fall through to a narrower
     // customer-owned subset where a different workplace might be guessed.
     agentAssignments: { none: directAssignment },
+    // A doctor taken off the agent is not offered through his institution.
+    NOT: contactTakenOffAgent(actor.agentId, routeDate),
     workplaces: {
       some: {
         ...activeWorkplaceWindow(routeDate),
@@ -474,6 +476,7 @@ export const GET = withMobileRls(async (req, auth) => {
                   },
                 },
               },
+              NOT: contactTakenOffAgent(actor.agentId, routeDate),
             },
           ],
         },

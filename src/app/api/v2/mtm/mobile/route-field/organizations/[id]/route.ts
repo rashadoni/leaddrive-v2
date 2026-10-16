@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { requireMobilePermission } from "@/lib/mtm/mobile-capabilities"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
-import { customerScopeForActor } from "@/lib/mtm/field-scope"
+import { contactTakenOffAgent, customerScopeForActor } from "@/lib/mtm/field-scope"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
@@ -15,7 +15,7 @@ const ROUTE_FIELD_CONTACT_LIMIT = 50
 const ROUTE_FIELD_VISIT_LIMIT = 15
 
 /** Fixed allowlist for the standalone Route Field detail card. */
-const routeFieldOrganizationSelect = (agentId: string) => ({
+const routeFieldOrganizationSelect = (agentId: string, asOf: Date) => ({
   id: true,
   code: true,
   name: true,
@@ -34,8 +34,9 @@ const routeFieldOrganizationSelect = (agentId: string) => ({
   // The person at the organization itself. Agents visit it and must know whom
   // to ask for; they still cannot change it (owner, 2026-10-02).
   contactPerson: true,
+  // Not a doctor taken off this agent: he is gone from the agent's app at once.
   contactWorkplaces: {
-    where: { deletedAt: null, endedOn: null, contact: { deletedAt: null, status: "ACTIVE" } },
+    where: { deletedAt: null, endedOn: null, contact: { deletedAt: null, status: "ACTIVE", NOT: contactTakenOffAgent(agentId, asOf) } },
     orderBy: [{ isPrimary: "desc" }, { startedOn: "desc" }, { id: "asc" }],
     take: ROUTE_FIELD_CONTACT_LIMIT,
     select: {
@@ -150,7 +151,7 @@ export const GET = withMobileRls(async (_req, auth, { params }: { params: Promis
       objectType: { not: "DOCTOR" },
       AND: [customerScopeForActor(actor, asOf)],
     },
-    select: routeFieldOrganizationSelect(actor.agentId),
+    select: routeFieldOrganizationSelect(actor.agentId, asOf),
   })
   if (!organization) return noStoreJson({ error: "Not found", code: "MTM_ROUTE_FIELD_ORGANIZATION_NOT_FOUND" }, { status: 404 })
 

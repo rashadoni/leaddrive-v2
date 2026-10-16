@@ -384,6 +384,14 @@ describe("GET /api/v1/mtm/mobile/sync/pull", () => {
             customer: expect.objectContaining({ OR: expect.any(Array) }),
           }),
         },
+        // Not through his institution once he was taken off this agent
+        // (owner, 2026-10-16: «нужно, чтоб пропадал сразу»).
+        NOT: {
+          AND: [
+            { agentAssignments: { some: { agentId: AGENT_ID, deletedAt: null, effectiveTo: { lte: expect.any(Date) } } } },
+            { agentAssignments: { none: expect.objectContaining({ agentId: AGENT_ID, deletedAt: null }) } },
+          ],
+        },
       },
     ]))
     expect(contactArgs.select).toMatchObject({
