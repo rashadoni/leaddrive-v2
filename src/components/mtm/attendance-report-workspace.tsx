@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { HintValue } from "@/components/hint"
 import Link from "next/link"
 import { useFormatter, useLocale, useTranslations } from "next-intl"
 import { formatDate, formatDateTime, formatTime } from "@/lib/format-date"
@@ -424,7 +425,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
             {monthDates.map(date => <th key={date} scope="col" className={`px-px py-1.5 text-center font-semibold ${date === today ? "rounded-t-lg bg-primary/10 text-primary" : dateKinds.get(date) === false ? "text-muted-foreground/60" : ""}`}>
               <time dateTime={date} title={dateLabel(date)} className="block text-[11px]">{Number(date.slice(-2))}</time>
               <span className="block text-[9.5px] font-medium opacity-70">{formatDate(`${date}T12:00:00.000Z`, locale, { weekday: "short", timeZone: "UTC" })}</span></th>)}
-            {(["colDays", "colHours", "colLeave", "colSick", "colMissed"] as const).map(key => <th key={key} scope="col" className="w-11 px-1 py-2 text-center text-[11px] font-semibold text-muted-foreground">{p(key)}</th>)}</tr></thead>
+            {(["colDays", "colHours", "colLeave", "colSick", "colMissed"] as const).map(key => <th key={key} scope="col" className="w-11 px-1 py-2 text-center text-[11px] font-semibold text-muted-foreground"><HintValue text={p(`${key}Hint`)}>{p(key)}</HintValue></th>)}</tr></thead>
           <tbody>{people.slice(pageStart, pageStart + PAGE_SIZE).map(person => {
             const worked = person.rows.filter(row => row.startedAt !== null).length
             const sick = person.rows.filter(row => row.dayKind?.key === "SICK_LEAVE" || row.dayKind?.key === "UNPAID_SICK").length
@@ -438,7 +439,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
                 const dimmed = issue !== null && !entries.some(entry => hasIssue(entry, issue))
                 return <td key={date} className={`px-px py-1 text-center ${date === today ? "bg-primary/5" : ""}`}>
                   {row ? <Popover open={openCell === cellKey} onOpenChange={open => setOpenCell(open ? cellKey : null)}><PopoverTrigger asChild><button type="button" data-testid="attendance-month-cell" data-dimmed={dimmed || undefined} aria-label={`${person.name} · ${dateLabel(date)} · ${attendanceStatusText(row, locale, t)}`}
-                    className={`flex h-7 w-full min-w-[22px] items-center justify-center rounded-md text-[11px] font-bold outline-none ring-offset-1 focus-visible:ring-2 focus-visible:ring-primary data-[state=open]:ring-2 data-[state=open]:ring-primary ${dimmed ? "opacity-25" : ""}`}
+                    className={`flex h-7 w-full min-w-[22px] items-center justify-center rounded-md text-[11px] font-bold outline-none ring-offset-1 focus-visible:ring-2 focus-visible:ring-primary data-[state=open]:ring-2 data-[state=open]:ring-primary ${dimmed ? "opacity-25" : ""} ${row.kind === "NOT_EMPLOYED" && !row.dayKind ? "bg-zinc-200/70 dark:bg-zinc-700/60" : ""}`}
                     style={row.dayKind && row.kind !== "UPCOMING" ? { color: row.dayKind.color, backgroundColor: `${row.dayKind.color}1a` } : { color: "var(--muted-foreground, #8a94a3)" }}>{cellCode(row)}{entries.length > 1 ? "+" : ""}</button></PopoverTrigger>
                     <PopoverContent align="center" className="w-80 space-y-3 p-4" data-testid="attendance-day-popover">
                       {entries.map(entry => {
