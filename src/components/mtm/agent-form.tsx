@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { MtmAgentClientPicker, type AgentClientChoice } from "@/components/mtm/agent-client-picker"
+import { assignDoctorsToAgent } from "@/lib/mtm/assign-agent-doctors"
 import { cn } from "@/lib/utils"
 import {
   MTM_AGENT_MAP_COLORS,
@@ -23,36 +24,6 @@ import {
 
 /** What the server accepts for a number: «+», a country code, at most 15 digits; spaces and dashes are fine. */
 const internationalPhone = (value: string) => /^\+[1-9]\d{6,14}$/.test(value.replace(/[\s\-()]/g, ""))
-/** The assignment API takes at most this many doctors in one call. */
-const ASSIGNMENT_BATCH = 500
-
-/**
- * Assigns the doctors ticked on the «Клиенты» tab to the agent just saved, by
- * the same preview → apply as «Клиенты → Закрепить» (checked, journalled; a
- * doctor who has an employee keeps him and gets this one as a second).
- */
-async function assignDoctors(agentId: string, contactIds: string[], effectiveFrom: string, reason: string, orgId?: string) {
-  const headers = { "Content-Type": "application/json", Accept: "application/json", ...(orgId ? { "x-organization-id": orgId } : {}) }
-  let changed = 0
-  let left = 0
-  for (let start = 0; start < contactIds.length; start += ASSIGNMENT_BATCH) {
-    const batch = { contactIds: contactIds.slice(start, start + ASSIGNMENT_BATCH), mode: "ASSIGN", targetAgentId: agentId, effectiveFrom, reason }
-    const previewResponse = await fetch("/api/v1/mtm/contact-assignments/preview", { method: "POST", headers, body: JSON.stringify(batch) })
-    const preview = await previewResponse.json().catch(() => null) as { success?: boolean; data?: { previewToken: string; summary: { assignable: number } } } | null
-    if (!previewResponse.ok || !preview?.success || !preview.data) throw new Error("preview")
-    if (preview.data.summary.assignable === 0) { left += batch.contactIds.length; continue }
-    const applyResponse = await fetch("/api/v1/mtm/contact-assignments", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ ...batch, previewToken: preview.data.previewToken, idempotencyKey: crypto.randomUUID() }),
-    })
-    const applied = await applyResponse.json().catch(() => null) as { success?: boolean; data?: { summary: { changed: number }; excluded: unknown[] } } | null
-    if (!applyResponse.ok || !applied?.success || !applied.data) throw new Error("apply")
-    changed += applied.data.summary.changed
-    left += applied.data.excluded.length
-  }
-  return { changed, left }
-}
 
 const PHONE_ERROR: Record<string, string> = {
   MTM_AGENT_PHONE_INVALID: "whatsappPhoneInvalid",
@@ -63,11 +34,11 @@ interface AgentFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSaved: () => void
-  initialData?: AgentData
+  initialData?: MtmAgentFormData
   orgId?: string
 }
 
-interface AgentData {
+export interface MtmAgentFormData {
   id: string
   name?: string | null
   email?: string | null
@@ -316,7 +287,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       if (savedId && !isEdit) setSavedAgentId(savedId)
       if (savedId && doctors.length > 0) {
         try {
-          const done = await assignDoctors(savedId, doctors, clientChoice.asOf ?? new Date().toISOString().slice(0, 10), tf("clientsReason"), orgId)
+          const done = await assignDoctorsToAgent(savedId, doctors, clientChoice.asOf ?? new Date().toISOString().slice(0, 10), tf("clientsReason"), orgId)
           if (done.left > 0) toast.warning(tf("clientsPartlyAssigned", { changed: done.changed, left: done.left }))
           else toast.success(tf("clientsAssigned", { count: done.changed }))
         } catch {

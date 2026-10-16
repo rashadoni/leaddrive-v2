@@ -15,7 +15,8 @@ import { PICKER_NONE, type AgentClientPicker, type PickerOption } from "@/lib/mt
  * a whole institution or a single doctor can be left out. What is ticked is
  * handed to the card, which assigns it after saving the agent — through the
  * same preview → apply as «Клиенты → Закрепить». The view was shown to the
- * owner as a picture first («да, делай»).
+ * owner as a picture first («да, делай»). The agent's own page offers the same
+ * picker on «Привязать ещё клиентов» (owner, same day: «да, сюда тоже»).
  */
 
 type Selection = { specialties: string[]; cities: string[]; districts: string[] }
@@ -105,11 +106,15 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
   )
 }
 
-export function MtmAgentClientPicker({ agentId, orgId, onChange }: {
+export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, onForbidden }: {
   /** The card being edited; null for a new agent. */
   agentId: string | null
   orgId?: string
   onChange: (choice: AgentClientChoice) => void
+  /** Raised after doctors were assigned elsewhere: asks again, keeping the steps. */
+  refresh?: number
+  /** Someone who may not assign doctors: the page offers its list instead. */
+  onForbidden?: () => void
 }) {
   const t = useTranslations("mtmForms")
   const [selection, setSelection] = useState<Selection>({ specialties: [], cities: [], districts: [] })
@@ -136,6 +141,10 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange }: {
     })
       .then(async response => {
         const body = await response.json().catch(() => null) as { success?: boolean; code?: string; data?: PickerData } | null
+        if (response.status === 403 && body?.code === "MTM_CONTACT_ASSIGNMENT_FORBIDDEN" && onForbidden) {
+          onForbidden()
+          return
+        }
         if (!response.ok || !body?.success || !body.data) throw new Error(body?.code ?? "failed")
         setData(body.data)
       })
@@ -145,7 +154,9 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange }: {
       })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [agentId, orgId, selection])
+    // onForbidden is read when the answer comes, not a reason to ask again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentId, orgId, selection, refresh])
 
   // Nothing is listed, nor ticked, before a specialty is chosen: a card opened
   // and closed again must not take every doctor of the company along.

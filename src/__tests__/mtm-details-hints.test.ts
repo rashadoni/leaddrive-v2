@@ -39,7 +39,7 @@ describe.each([
   ["mtmVisitWorkspace.hint", "hint.", ["src/app/(dashboard)/mtm/visits/visit-workspace.tsx"]],
   ["mtmMap.history.hint", "hint.", [component("location-history-panel")]],
   ["mtmExcel.hint", "hint.", [component("excel-exchange-panel")]],
-  ["mtmAgentSection.hint", "hint.", [component("agent-section")]],
+  ["mtmAgentSection.hint", "hint.", [component("agent-section"), component("agent-attach-by-place")]],
   ["mtmScoringFormulas.hint", "hint.", [settings("scoring-formula-settings")]],
   ["mtmContactCategories.hint", "hint.", [settings("contact-category-settings")]],
   ["mtmContactDictionaries.hint", "hint.", [settings("contact-dictionary-settings")]],
