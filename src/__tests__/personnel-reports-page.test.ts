@@ -28,6 +28,21 @@ describe("Personnel → Reports page", () => {
     expect(html.match(/reportsNew/g)).toHaveLength(6)
   })
 
+  // Owner, 2026-10-16: «отчёты не понятны, например «Saat balansı» — не понимаю, что это такое».
+  it("says on every card what the report answers and shows a sample row, in every language", async () => {
+    const html = renderToStaticMarkup(await open({}))
+    expect(html.match(/data-testid="attendance-report-example"/g)).toHaveLength(13)
+    for (const key of ["day", "balance", "decisions"]) expect(html).toContain(`reports.${key}.example`)
+    for (const locale of ["ru", "az", "en"]) {
+      const reports = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).personnel.reports as Record<string, Record<string, string>>
+      for (const [key, texts] of Object.entries(reports)) for (const field of ["title", "hint", "example"]) expect(texts[field]?.trim(), `${locale} ${key}.${field}`).toBeTruthy()
+    }
+    // The opened report repeats the sample under its title (the viewer itself is not rendered here).
+    const texts = (node: unknown): string[] => !node || typeof node !== "object" ? [] : Array.isArray(node) ? node.flatMap(texts)
+      : Object.values((node as ReactElement<Record<string, unknown>>).props ?? {}).flatMap(value => typeof value === "string" ? [value] : texts(value))
+    expect(texts(await open({ report: "balance" }))).toContain("reports.balance.example")
+  })
+
   it("opens a table report in the viewer and a ready screen for leave balances, each with a way back", async () => {
     const n1t = await open({ report: "n1t" })
     const children = n1t.props.children as ReactElement<{ href?: string; report?: string; children?: unknown }>[]
