@@ -11650,7 +11650,8 @@
       "attachBySearch": "Axtarış və filtrlərlə bütün müştəri siyahısı — konkret müştərini adına və ya ünvanına görə tapmaq üçün.",
       "attachChosen": "Seçilmiş həkimləri bu gündən bu agentə təyin etmək. Kimin artıq agenti varsa, o qalır.",
       "attachNothingChosen": "Əvvəlcə ixtisası seçin — tapılan həkimlər özü işarələnəcək.",
-      "attachNoneTicked": "Siyahıda ən azı bir həkimi işarələyin. Artıq agentdə olanlar boz işarələnib və sayılmır."
+      "attachNoneTicked": "Yeni həkimdə işarə — agentə təyin etmək. Artıq agentdə olan həkimdə götürülmüş işarə — ondan ayırmaq.",
+      "attachRemove": "İşarəsiz həkimləri bu agentdən ayırmaq və işarələnmiş yeniləri təyin etmək. Ayırmadan əvvəl bir daha soruşacağıq."
     },
     "back": "Bütün sahə agentləri",
     "notFound": "Əməkdaş tapılmadı və ya sizə əlçatan deyil.",
@@ -11664,12 +11665,15 @@
     "attachHow": "Müştəriləri necə seçmək",
     "attachByPlace": "İxtisas və yerə görə",
     "attachBySearch": "Bütün siyahıda axtarış",
-    "attachChecked": "Seçilmiş həkim: {count}",
+    "attachChecked": "Əlavə olunacaq: {count}",
     "attachNothingYet": "İxtisası seçin və həkimləri işarələyin",
     "attachChosen": "Seçilənləri təyin et ({count})",
     "attachReason": "Agentin səhifəsində seçilib",
-    "attachFailed": "Təyin etmək alınmadı. Bağlantını yoxlayın və yenidən basın — artıq təyin olunanlar qalacaq.",
-    "attachNoneTicked": "Heç kim işarələnməyib — siyahıda həkimləri işarələyin"
+    "attachFailed": "Saxlamaq alınmadı. Bağlantını yoxlayın və yenidən basın — artıq tətbiq olunanlar qalacaq.",
+    "attachNoneTicked": "Dəyişiklik yoxdur — yeni həkimləri işarələyin və ya çıxarmaq üçün işarəni götürün",
+    "attachWillRemove": "Çıxarılacaq: {count}",
+    "attachRemove": "Agentdən çıxar ({count})",
+    "attachChange": "{add} təyin et, {remove} çıxar"
   },
   "mtmAgents": {
     "hint": {
@@ -15531,7 +15535,7 @@
     "clientsTooLarge": "Burada seçmək üçün həkim çox çoxdur. «Müştərilər → Təyin et» ilə təyin edin.",
     "clientsEmpty": "Bu seçimə uyğun həkim yoxdur. Şəhəri və ya rayonu dəyişin.",
     "clientsFound": "{count} həkim tapıldı, {groups} müəssisədə",
-    "clientsChecked": "seçilib {count}",
+    "clientsChecked": "əlavə olunacaq {count}",
     "clientsAlreadyHereCount": "artıq agentdədir {count}",
     "clientsCheckAll": "Hamısını seç",
     "clientsUncheckAll": "Hamısını götür",
@@ -15546,8 +15550,19 @@
     "saveAndAssign": "Saxla və {count} təyin et",
     "clientsAssigned": "Agentə təyin olundu: {count} həkim.",
     "clientsPartlyAssigned": "{changed} təyin olundu, {left} təyin olunmadı: açıq vizit, marşrut və ya artıq başqa əsas agent var. Ətraflı — «Müştərilər»də.",
-    "clientsAssignFailed": "Agent saxlanıldı, amma həkimləri təyin etmək alınmadı. Bağlantını yoxlayıb yenidən saxlayın.",
-    "clientsReason": "Agentin kartında seçilib"
+    "clientsAssignFailed": "Agent saxlanıldı, amma həkim siyahısını dəyişmək alınmadı. Bağlantını yoxlayın və yenidən saxlayın.",
+    "clientsReason": "Agentin kartında seçilib",
+    "clientsWillRemove": "çıxarılacaq {count}",
+    "clientsWillBeRemoved": "agentdən çıxarılacaq",
+    "clientsNoteRemove": "İşarəsi götürülən, hazırda agentdə olan həkimlər ({count}) ondan ayrılacaq; kimin başqa agenti varsa — onda qalacaq.",
+    "saveAndRemove": "Saxla və {count} çıxar",
+    "saveAssignAndRemove": "Saxla: {add} təyin et, {remove} çıxar",
+    "clientsRemoved": "Agentdən çıxarıldı: {count}.",
+    "clientsChanged": "Təyin olundu: {added}, çıxarıldı: {removed}.",
+    "clientsPartlyChanged": "{added} təyin olundu, {removed} çıxarıldı, {left} dəyişmədi: açıq vizit və ya planlaşdırılmış marşrut var. Ətraflı — «Müştərilər»də.",
+    "clientsRemoveConfirmTitle": "Həkimlər agentdən çıxarılsın?",
+    "clientsRemoveConfirmBody": "{name} adlı agentdən çıxarılacaq həkim: {count}. Kartlar, vizitlər və tarixçə qalır; kimin başqa agenti varsa — onda qalacaq. Yenidən işarələyib qaytarmaq olar.",
+    "clientsRemoveConfirm": "{count} çıxar"
   },
   "admin": {
     "demoCenter": {

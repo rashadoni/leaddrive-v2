@@ -132,7 +132,7 @@ describe("agent card — choosing the agent's doctors", () => {
     expect(onSaved).toHaveBeenCalled()
   })
 
-  it("on an existing card, marks the doctors already the agent's and does not send them again", async () => {
+  it("on an existing card, marks the doctors already the agent's ticked and does not send them again", async () => {
     fetchMock.mockImplementationOnce(async () => ({ ok: true, status: 200, json: async () => ({ success: true, data: { agents: [] } }) }))
     const original = fetchMock.getMockImplementation()!
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
@@ -151,11 +151,54 @@ describe("agent card — choosing the agent's doctors", () => {
     await click(document.body.querySelector('[data-testid="agent-clients-group"] button[aria-expanded]'))
     const aliyeva = all("agent-clients-doctor").find(row => row.textContent?.includes("Fictional Aliyeva"))!
     expect(aliyeva.textContent).toContain(ru.mtmForms.clientsAlreadyHere)
-    expect(aliyeva.querySelector<HTMLButtonElement>('[role="checkbox"]')?.disabled).toBe(true)
+    expect(aliyeva.querySelector<HTMLButtonElement>('[role="checkbox"]')?.getAttribute("aria-checked")).toBe("true")
+    expect(aliyeva.querySelector<HTMLButtonElement>('[role="checkbox"]')?.disabled).toBe(false)
     await click(byTestId("agent-form-submit"))
     const preview = calls().find(call => call.url === "/api/v1/mtm/contact-assignments/preview")!
     expect(preview.body.contactIds).toEqual(["d2", "d3"])
     expect(calls().find(call => call.method === "PUT")?.url).toBe("/api/v1/mtm/agents/a1")
+    // Nothing was unticked: nobody is taken off.
+    expect(calls().filter(call => call.body?.mode === "UNASSIGN")).toEqual([])
+  })
+
+  // Owner, 2026-10-16, on an agent whose every doctor was greyed and locked:
+  // «нет возможности снимать галочки».
+  it("takes a doctor whose tick is taken off away from this agent alone, after asking once more", async () => {
+    const original = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (String(url).startsWith("/api/v1/mtm/contacts/agent-picker")) {
+        const chosen = new URL(String(url), "http://x").searchParams.getAll("specialty")
+        const contacts = PICKER.groups[0].contacts.map(contact => ({ ...contact, agents: [], assignedHere: true }))
+        return { ok: true, status: 200, json: async () => ({ success: true, data: { ...PICKER, groups: chosen.length ? [{ ...PICKER.groups[0], contacts }] : [], assignedHere: 3 } }) }
+      }
+      return original(url, init)
+    })
+    await render({ id: "a1", name: "Fictional Agent", phone: "+994501112233", role: "AGENT", status: "ACTIVE" })
+    await click(byTestId("agent-form-tab-clients"))
+    await click(byTestId("agent-clients-specialty"))
+    await click([...document.body.querySelectorAll<HTMLLabelElement>('[data-testid="agent-clients-specialty-options"] label')][0].querySelector("input"))
+    await click(document.body.querySelector('[data-testid="agent-clients-group"] button[aria-expanded]'))
+    expect(byTestId("agent-form-submit")?.textContent).toBe(ru.common.update)
+
+    const babayev = all("agent-clients-doctor").find(row => row.textContent?.includes("Fictional Babayev"))!
+    await click(babayev.querySelector('[role="checkbox"]'))
+    expect(babayev.textContent).toContain(ru.mtmForms.clientsWillBeRemoved)
+    expect(byTestId("agent-clients-taken-off")).not.toBeNull()
+    expect(byTestId("agent-form-submit")?.textContent).toBe(ru.mtmForms.saveAndRemove)
+
+    // Saving asks first; nothing is sent until the answer.
+    await click(byTestId("agent-form-submit"))
+    expect(document.body.textContent).toContain(ru.mtmForms.clientsRemoveConfirmTitle)
+    expect(calls().some(call => call.method === "PUT")).toBe(false)
+    const confirm = [...document.body.querySelectorAll("button")].find(button => button.textContent === ru.mtmForms.clientsRemoveConfirm)!
+    await click(confirm)
+    for (let tick = 0; tick < 20 && !onSaved.mock.calls.length; tick++) await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+
+    const preview = calls().find(call => call.url === "/api/v1/mtm/contact-assignments/preview")!
+    expect(preview.body).toMatchObject({ contactIds: ["d2"], mode: "UNASSIGN", targetAgentId: null, sourceAgentId: "a1" })
+    expect(calls().find(call => call.url === "/api/v1/mtm/contact-assignments")?.body).toMatchObject({ contactIds: ["d2"], mode: "UNASSIGN", sourceAgentId: "a1" })
+    expect(calls().some(call => call.body?.mode === "ASSIGN")).toBe(false)
+    expect(onSaved).toHaveBeenCalled()
   })
 
   it("has no Clients tab for a manager or a supervisor — doctors are a field agent's", async () => {
