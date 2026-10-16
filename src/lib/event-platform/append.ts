@@ -74,6 +74,11 @@ export async function appendDomainEvent<TData extends Record<string, CanonicalJs
     ? null
     : BigInt(input.expectedVersion)
   if (expected !== null && expected < BigInt(0)) throw new RangeError("expectedVersion cannot be negative")
+  // "lastEventAt" must equal the event's "occurredAt", which Prisma writes as
+  // naive UTC, or the deferred coherence trigger rejects the commit. A bound
+  // Date cast to `timestamp` takes the session TimeZone's wall clock, so bind
+  // an explicit UTC instant and convert it to naive UTC in SQL.
+  const occurredAtUtc = occurredAt.toISOString()
 
   let heads: Array<{ currentVersion: bigint }>
   if (expected === null) {
@@ -82,7 +87,7 @@ export async function appendDomainEvent<TData extends Record<string, CanonicalJs
       `INSERT INTO "event_aggregate_heads" (
          "organizationId", "aggregateType", "aggregateId", "currentVersion",
          "lastEventId", "lastEventAt", "createdAt", "updatedAt"
-       ) VALUES ($1, $2, $3, 1, $4::uuid, $5::timestamp, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ) VALUES ($1, $2, $3, 1, $4::uuid, ($5::timestamptz AT TIME ZONE 'UTC'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        ON CONFLICT ("organizationId", "aggregateType", "aggregateId") DO UPDATE
          SET "currentVersion" = "event_aggregate_heads"."currentVersion" + 1,
              "lastEventId" = EXCLUDED."lastEventId",
@@ -93,7 +98,7 @@ export async function appendDomainEvent<TData extends Record<string, CanonicalJs
       input.aggregateType,
       input.aggregateId,
       eventId,
-      occurredAt,
+      occurredAtUtc,
     )
   } else if (expected === BigInt(0)) {
     // Optimistic create: an existing aggregate is a conflict, never an update.
@@ -101,14 +106,14 @@ export async function appendDomainEvent<TData extends Record<string, CanonicalJs
       `INSERT INTO "event_aggregate_heads" (
          "organizationId", "aggregateType", "aggregateId", "currentVersion",
          "lastEventId", "lastEventAt", "createdAt", "updatedAt"
-       ) VALUES ($1, $2, $3, 1, $4::uuid, $5::timestamp, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ) VALUES ($1, $2, $3, 1, $4::uuid, ($5::timestamptz AT TIME ZONE 'UTC'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        ON CONFLICT ("organizationId", "aggregateType", "aggregateId") DO NOTHING
        RETURNING "currentVersion"`,
       input.organizationId,
       input.aggregateType,
       input.aggregateId,
       eventId,
-      occurredAt,
+      occurredAtUtc,
     )
   } else {
     // Optimistic append: UPDATE the existing head only when its exact version
@@ -119,7 +124,7 @@ export async function appendDomainEvent<TData extends Record<string, CanonicalJs
       `UPDATE "event_aggregate_heads"
           SET "currentVersion" = "currentVersion" + 1,
               "lastEventId" = $4::uuid,
-              "lastEventAt" = $5::timestamp,
+              "lastEventAt" = ($5::timestamptz AT TIME ZONE 'UTC'),
               "updatedAt" = CURRENT_TIMESTAMP
         WHERE "organizationId" = $1
           AND "aggregateType" = $2
@@ -130,7 +135,7 @@ export async function appendDomainEvent<TData extends Record<string, CanonicalJs
       input.aggregateType,
       input.aggregateId,
       eventId,
-      occurredAt,
+      occurredAtUtc,
       expected,
     )
   }
