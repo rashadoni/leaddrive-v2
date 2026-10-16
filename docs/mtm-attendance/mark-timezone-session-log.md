@@ -119,3 +119,19 @@
 - Authenticated browser run `38493430549` and required integration checks remain
   in progress. Parent notified; no source edits or new run at the green head.
   Receipt/journal checkpoint stays local pending coordinator publication.
+
+## 2026-10-14 — fifth guard: installation approval clocks
+
+- `mtm_attendance_installation_guard()` stamps request `submittedAt` and
+  decision/revocation `createdAt` from `clock_timestamp()` into naive
+  `TIMESTAMP(3)`. The four-guard migration above left it out, so on production
+  (session `TimeZone=Europe/Berlin`) these were Berlin wall clock, 1–2 h ahead.
+- Additive migration `20261014030000_mtm_attendance_installation_utc_guard_clock`
+  sets `timezone = 'UTC'` on that function only, same shape as
+  `20261014010000`. Body unchanged; no retained row rewritten, so an old future
+  request predecessor keeps its chain ahead until real UTC catches up.
+- Real PostgreSQL regression under `ALTER ROLE … SET timezone='Europe/Berlin'`:
+  request, decision and revocation clocks within ±5 s of UTC now. Without the
+  migration it fails on both `pgvector/pgvector:pg16` and `postgres:16`
+  (request clock ≈7 195 s ahead, CEST); with it the full location suite passes
+  54/54 on both images.

@@ -44,7 +44,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   schemaDir=mkdtempSync(join(tmpdir(),"mtm-geo-schema-"));const schema=join(schemaDir,"schema.prisma");writeFileSync(schema,readFileSync("prisma/schema.prisma","utf8").split("\n").filter(line=>!/Unsupported\("vector/.test(line)).join("\n"))
   const result=spawnSync(process.execPath,[cli,"db","push","--schema",schema,"--skip-generate"],{env:{...process.env,DATABASE_URL:scratch!.adminDb},encoding:"utf8",timeout:180000,maxBuffer:1024*1024});if(result.status!==0)throw new Error("Location fixture schema push failed")
   sql(scratch!.adminDb,'DROP TABLE mtm_attendance_qr_evidence; DROP TABLE mtm_attendance_installation_revocations; DROP TABLE mtm_attendance_installation_decisions; DROP TABLE mtm_attendance_installation_requests; DROP TABLE mtm_attendance_stream_integrity; DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
-  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity","20261013150000_mtm_attendance_installation_approval","20261013160000_mtm_attendance_branch_qr","20261014010000_mtm_attendance_utc_guard_clocks"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
+  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity","20261013150000_mtm_attendance_installation_approval","20261013160000_mtm_attendance_branch_qr","20261014010000_mtm_attendance_utc_guard_clocks","20261014030000_mtm_attendance_installation_utc_guard_clock"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   const foundation=readFileSync("prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql","utf8");sql(scratch!.adminDb,foundation.slice(foundation.indexOf("-- Tenant data ships fail-closed."),foundation.indexOf("-- A migration runner may own new tables")))
   for(const migration of["20260828224500_workforce_h3_legacy_fact_guard","20260828230000_workforce_direct_correction_contract"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   sql(scratch!.adminDb,readFileSync("scripts/rls/enable-batch-5.sql","utf8"));sql(scratch!.adminDb,`GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
@@ -669,12 +669,13 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    await expect(tenant(ORG,()=>qr.readAttendanceQrDirectory(manager))).rejects.toMatchObject({status:403})
   } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
  })
- it("sets UTC only on four attendance guards and preserves their original immutable bodies",async()=>{
+ it("sets UTC only on five attendance guards and preserves their original immutable bodies",async()=>{
   const guards=[
    ["mtm_attendance_location_history_guard","20261013090000_mtm_attendance_location_evidence"],
    ["mtm_attendance_branch_history_guard","20261013070000_mtm_attendance_branches"],
    ["mtm_attendance_risk_guard","20261013120000_mtm_attendance_risks"],
    ["mtm_attendance_qr_guard","20261013160000_mtm_attendance_branch_qr"],
+   ["mtm_attendance_installation_guard","20261013150000_mtm_attendance_installation_approval"],
   ] as const
   for(const [name,migration] of guards){
    const original=readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8").split(`CREATE FUNCTION ${name}()`)[1].split("$$")[1]
@@ -684,6 +685,32 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    expect(installed.securityDefiner).toBe(false)
   }
  })
+ it("Europe/Berlin installation request, decision and revocation clocks are UTC, not Berlin wall clock",async()=>{
+  // Production app sessions run in Europe/Berlin (postgresql.conf). Without the
+  // function-local UTC setting the guard wrote Berlin wall clock, 1–2 h ahead.
+  sql(scratch!.adminDb,`ALTER ROLE "${scratch!.role}" SET timezone='Europe/Berlin'`)
+  await prisma.$disconnect()
+  const installations=await import("@/lib/mtm/attendance-installation-store")
+  try {
+   const before=Date.now()-5_000,id=await employee(),device=`rf-${randomUUID()}`
+   await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),device,{requestId:randomUUID()}))
+   const [request]=await tenant(ORG,()=>prisma.$queryRaw<{id:string;submittedAt:Date;caller:string}[]>`SELECT id,"submittedAt",current_setting('TimeZone') AS caller FROM mtm_attendance_installation_requests WHERE "agentId"=${id} AND "installationId"=${device}`)
+   expect(request.caller).toBe("Europe/Berlin")
+   const approved=await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,request.id,{requestId:randomUUID(),action:"APPROVE",reason:"Fictional Berlin review"}))
+   await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,request.id,{requestId:randomUUID(),action:"REVOKE",reason:"Fictional Berlin revocation"}))
+   const [decision]=await tenant(ORG,()=>prisma.$queryRaw<{createdAt:Date}[]>`SELECT "createdAt" FROM mtm_attendance_installation_decisions WHERE id=${approved.id}`)
+   const [revocation]=await tenant(ORG,()=>prisma.$queryRaw<{createdAt:Date;caller:string}[]>`SELECT "createdAt",current_setting('TimeZone') AS caller FROM mtm_attendance_installation_revocations WHERE "decisionId"=${approved.id}`)
+   expect(revocation.caller).toBe("Europe/Berlin")
+   const after=Date.now()+5_000
+   for(const clock of [request.submittedAt,decision.createdAt,revocation.createdAt]){
+    expect(clock.getTime()).toBeGreaterThanOrEqual(before)
+    expect(clock.getTime()).toBeLessThanOrEqual(after)
+   }
+  } finally {
+   sql(scratch!.adminDb,`ALTER ROLE "${scratch!.role}" RESET timezone`)
+   await prisma.$disconnect()
+  }
+ },60_000)
  it.each(["Asia/Baku","America/New_York"] as const)("non-UTC guards preserve UTC consent, branch, mark and QR clocks and restore caller in %s",async timezone=>{
   sql(scratch!.adminDb,`ALTER ROLE "${scratch!.role}" SET timezone='${timezone}'`)
   await prisma.$disconnect()
