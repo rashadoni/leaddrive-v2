@@ -11644,7 +11644,12 @@
       "sectionMap": "Bu əməkdaşı canlı xəritədə göstər — indi haradadır.",
       "sectionHistory": "Əməkdaşın gün ərzində harada olduğu: xəritədə yol, dayanacaqlar və vaxta görə ziyarətlər. Bu gün açılacaq.",
       "sectionAssigned": "Bu əməkdaşa təyin edilmiş müştərilər: onları ayırmaq və ya başqasına vermək olar. Mötərizədəki say siyahı filtrlərindən asılı deyil.",
-      "sectionAttach": "Əməkdaşda hələ olmayan müştəriləri — heç kimə aid olmayan və ya başqasınınkıları — tap, işarələ və ona təyin et."
+      "sectionAttach": "Əməkdaşda hələ olmayan müştəriləri — heç kimə aid olmayan və ya başqasınınkıları — tap, işarələ və ona təyin et.",
+      "sectionEdit": "Əməkdaşın kartını açmaq: ad, WhatsApp nömrəsi, rəhbər, etiketlər. Səhra agentində orada «Müştərilər» bölməsi də var.",
+      "attachByPlace": "Həkimləri addım-addım seçin: ixtisas → şəhər → rayon. Tapılanların hamısı işarələnib — lazım olmayanların işarəsini götürün.",
+      "attachBySearch": "Axtarış və filtrlərlə bütün müştəri siyahısı — konkret müştərini adına və ya ünvanına görə tapmaq üçün.",
+      "attachChosen": "Seçilmiş həkimləri bu gündən bu agentə təyin etmək. Kimin artıq agenti varsa, o qalır.",
+      "attachNothingChosen": "Əvvəlcə ixtisası seçin — tapılan həkimlər özü işarələnəcək."
     },
     "back": "Bütün sahə agentləri",
     "notFound": "Əməkdaş tapılmadı və ya sizə əlçatan deyil.",
@@ -11654,7 +11659,15 @@
     "tabAssignedCount": "Əməkdaşın müştəriləri ({count})",
     "tabAttach": "Əlavə müştəri təyin et",
     "attachUnavailableTitle": "Bu əməkdaşa müştəri təyin etmək olmur",
-    "attachUnavailableBody": "Müştərilər yalnız aktiv sahə əməkdaşına təyin edilir. {name}: rol «{role}», status «{status}»."
+    "attachUnavailableBody": "Müştərilər yalnız aktiv sahə əməkdaşına təyin edilir. {name}: rol «{role}», status «{status}».",
+    "attachHow": "Müştəriləri necə seçmək",
+    "attachByPlace": "İxtisas və yerə görə",
+    "attachBySearch": "Bütün siyahıda axtarış",
+    "attachChecked": "Seçilmiş həkim: {count}",
+    "attachNothingYet": "İxtisası seçin və həkimləri işarələyin",
+    "attachChosen": "Seçilənləri təyin et ({count})",
+    "attachReason": "Agentin səhifəsində seçilib",
+    "attachFailed": "Təyin etmək alınmadı. Bağlantını yoxlayın və yenidən basın — artıq təyin olunanlar qalacaq."
   },
   "mtmAgents": {
     "hint": {

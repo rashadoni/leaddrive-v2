@@ -4,14 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { AlertCircle, ArrowLeft, History, Info, MapPinned, UserPlus, UsersRound } from "lucide-react"
+import { AlertCircle, ArrowLeft, History, Info, ListFilter, MapPinned, Pencil, Search, UserPlus, UsersRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Hint } from "@/components/hint"
 import { MtmContactExplorer, type MtmContactExplorerAgentScope } from "@/components/mtm/contact-explorer"
+import { MtmAgentAttachByPlace } from "@/components/mtm/agent-attach-by-place"
+import { MtmAgentForm, type MtmAgentFormData } from "@/components/mtm/agent-form"
 import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 
-type SectionAgent = {
+type SectionAgent = MtmAgentFormData & {
   id: string
   name: string
   role: string
@@ -32,6 +34,11 @@ type SectionView = MtmContactExplorerAgentScope["view"]
  * Until now both actions lived only on the Clients page: filter by the
  * responsible employee, tick, choose the employee again in a dialog. Opening
  * an employee led to their GPS history and nowhere near their clients.
+ *
+ * Attaching opens on the agent card's picker — specialty → city → district →
+ * ticks (owner, 2026-10-16: «да, сюда тоже»); the whole list with its search
+ * stays one press away for a client looked up by name. «Редактировать агента»
+ * opens the same card as the list of agents, with its «Клиенты» tab.
  */
 export function MtmAgentSection({ agentId }: { agentId: string }) {
   const t = useTranslations("mtmAgentSection")
@@ -42,7 +49,12 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const view: SectionView = searchParams.get("tab") === "attach" ? "candidates" : "assigned"
+  const [forbidden, setForbidden] = useState(false)
+  // Someone who may only look gets the list: the picker exists to assign.
+  const attachBy: "place" | "list" = searchParams.get("find") === "list" || forbidden ? "list" : "place"
   const [agent, setAgent] = useState<SectionAgent | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [reloads, setReloads] = useState(0)
   const [error, setError] = useState("")
   const [assignedTotal, setAssignedTotal] = useState<number | null>(null)
   const [changes, setChanges] = useState(0)
@@ -63,7 +75,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
         if (!controller.signal.aborted) setError(explainError(null))
       })
     return () => controller.abort()
-  }, [agentId, explainError, t])
+  }, [agentId, explainError, reloads, t])
 
   // On the attach tab the employee's own list is not mounted, so nothing
   // reports its size: ask for the count directly, again after every change.
@@ -82,19 +94,31 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
     return () => controller.abort()
   }, [agentId, changes, view])
 
+  const replaceQuery = (params: URLSearchParams) => {
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }
   const openView = (next: SectionView) => {
     const params = new URLSearchParams(searchParams.toString())
     if (next === "candidates") params.set("tab", "attach")
-    else params.delete("tab")
-    const query = params.toString()
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+    else {
+      params.delete("tab")
+      params.delete("find")
+    }
+    replaceQuery(params)
+  }
+  const openAttachBy = (next: "place" | "list") => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (next === "list") params.set("find", "list")
+    else params.delete("find")
+    replaceQuery(params)
   }
 
   const onChanged = useCallback(() => setChanges((count) => count + 1), [])
   const scope = useMemo<MtmContactExplorerAgentScope | null>(() => agent ? {
     agent: { id: agent.id, name: agent.name, role: agent.role, status: agent.status },
     view,
-    returnHref: view === "candidates" ? `${pathname}?tab=attach` : pathname,
+    returnHref: view === "candidates" ? `${pathname}?tab=attach&find=list` : pathname,
     onTotal: view === "assigned" ? setAssignedTotal : undefined,
     onChanged,
   } : null, [agent, onChanged, pathname, view])
@@ -146,6 +170,11 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Hint text={t("hint.sectionEdit")}>
+            <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={() => setEditing(true)} data-testid="mtm-agent-edit">
+              <Pencil className="mr-1.5 h-4 w-4" aria-hidden="true" />{ta("edit")}
+            </Button>
+          </Hint>
           <Hint text={t("hint.sectionMap")}>
             <Button asChild variant="outline" size="sm" className="min-h-11">
               <Link href={`/mtm/map?agentId=${encodeURIComponent(agent.id)}`}><MapPinned className="mr-1.5 h-4 w-4" aria-hidden="true" />{ta("actionMap")}</Link>
@@ -182,10 +211,44 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
             <p className="mt-1 opacity-80">{t("attachUnavailableBody", { name: agent.name, role: roleLabel, status: statusLabel })}</p>
           </div>
         </div>
+      ) : view === "candidates" ? (
+        <div className="space-y-3">
+          {forbidden ? null : (
+            <div role="radiogroup" aria-label={t("attachHow")} className="inline-flex flex-wrap gap-1 rounded-full border border-zinc-200 bg-muted/40 p-1 dark:border-zinc-700" data-testid="mtm-agent-attach-how">
+              {([["place", ListFilter, "attachByPlace"], ["list", Search, "attachBySearch"]] as const).map(([key, Icon, label]) => (
+                <Hint key={key} text={t(key === "place" ? "hint.attachByPlace" : "hint.attachBySearch")}>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={attachBy === key}
+                    data-testid={`mtm-agent-attach-by-${key}`}
+                    onClick={() => openAttachBy(key)}
+                    className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors ${attachBy === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden="true" />{t(label)}
+                  </button>
+                </Hint>
+              ))}
+            </div>
+          )}
+          {attachBy === "place"
+            ? <MtmAgentAttachByPlace agentId={agent.id} onAttached={onChanged} onForbidden={() => setForbidden(true)} />
+            : <MtmContactExplorer key={`${agent.id}-${view}`} agentScope={scope} />}
+        </div>
       ) : (
         // The list says itself whose clients it shows and how to change that.
         <MtmContactExplorer key={`${agent.id}-${view}`} agentScope={scope} />
       )}
+
+      <MtmAgentForm
+        open={editing}
+        onOpenChange={setEditing}
+        onSaved={() => {
+          setReloads((count) => count + 1)
+          onChanged()
+        }}
+        initialData={agent}
+      />
     </div>
   )
 }

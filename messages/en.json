@@ -11648,7 +11648,12 @@
       "sectionMap": "Show this employee on the live map — where they are now.",
       "sectionHistory": "Where the employee was during the day: path on the map, stops and visits in time order. Today opens first.",
       "sectionAssigned": "Clients assigned to this employee: here you can detach them or hand them over. The number in brackets does not depend on the list filters.",
-      "sectionAttach": "Find clients this employee does not have yet — unassigned or someone else's — tick them and assign them to this employee."
+      "sectionAttach": "Find clients this employee does not have yet — unassigned or someone else's — tick them and assign them to this employee.",
+      "sectionEdit": "Open the employee's card: name, WhatsApp number, manager, labels. A field agent's card also has the Clients tab.",
+      "attachByPlace": "Pick doctors step by step: specialty → city → district. Everyone found is ticked — untick whoever you don't want.",
+      "attachBySearch": "The whole client list with search and filters — to find a particular client by name or address.",
+      "attachChosen": "Assign the ticked doctors to this agent from today. Whoever already has an agent keeps them.",
+      "attachNothingChosen": "Choose a specialty first — the doctors found are ticked for you."
     },
     "back": "All field agents",
     "notFound": "This employee was not found or is outside your access.",
@@ -11658,7 +11663,15 @@
     "tabAssignedCount": "Employee's clients ({count})",
     "tabAttach": "Attach more clients",
     "attachUnavailableTitle": "Clients cannot be attached to this employee",
-    "attachUnavailableBody": "Clients are attached only to an active field agent. {name} has the role “{role}” and the status “{status}”."
+    "attachUnavailableBody": "Clients are attached only to an active field agent. {name} has the role “{role}” and the status “{status}”.",
+    "attachHow": "How to pick clients",
+    "attachByPlace": "By specialty and place",
+    "attachBySearch": "Search the whole list",
+    "attachChecked": "Doctors ticked: {count}",
+    "attachNothingYet": "Choose a specialty and tick the doctors",
+    "attachChosen": "Assign ticked ({count})",
+    "attachReason": "Chosen on the agent's page",
+    "attachFailed": "Could not assign. Check the connection and press again — those already assigned stay."
   },
   "mtmAgents": {
     "hint": {
