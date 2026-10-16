@@ -130,7 +130,7 @@ describe("attendance catalogue editor using the actual contract", () => {
     expect(items.map(item => item.key)).toEqual(fixture().map(item => item.key))
     expect(JSON.parse(String(puts()[0][1]?.body)).version).toBeNull()
     expect(onSaved).toHaveBeenCalledTimes(1)
-    await click("Refresh catalogue"); await selectKind("WORKED"); await edit("attendance-kind-paid", "unspecified"); await submit()
+    await click("Refresh list"); await selectKind("WORKED"); await edit("attendance-kind-paid", "unspecified"); await submit()
     expect(JSON.parse(String(puts()[1][1]?.body)).version).toBe("2026-10-13T10:00:01.000Z")
     expect(items[0].paid).toBeNull()
   })
@@ -157,13 +157,13 @@ describe("attendance catalogue editor using the actual contract", () => {
   it("requires confirmation to apply preset codes and preserves names and custom types", async () => {
     items[0].names.en = "Company workday"
     items.push({ ...items[0], key: "CUSTOM_EXAMPLE", code: "ZZ", names: { az: "Nümunə", ru: "Пример", en: "Example" } })
-    await render(); await click("Day types"); await click("Russian codes")
+    await render(); await click("Day types"); await click("Russian letters (Я, В, НН…)")
     expect(puts()).toHaveLength(0)
     await click("Cancel"); expect(puts()).toHaveLength(0)
-    await click("Russian codes"); await click("Confirm")
+    await click("Russian letters (Я, В, НН…)"); await click("Confirm")
     expect(items[0].code).toBe("Я"); expect(items[0].names.en).toBe("Company workday")
     expect(items.at(-1)!.code).toBe("ZZ")
-    await click("İ / B / E / X / M codes"); await click("Confirm")
+    await click("Azerbaijani letters (İ, B, E, X, M)"); await click("Confirm")
     expect(items[0].code).toBe("İ")
   })
 
@@ -183,7 +183,7 @@ describe("attendance catalogue editor using the actual contract", () => {
     await edit("attendance-kind-code", "W"); await submit()
     expect(panel().textContent).toContain(messages("en").mtmAttendance.kindsChanged)
     expect(button("Save type").disabled).toBe(true)
-    await click("Refresh catalogue")
+    await click("Refresh list")
     expect(panel().querySelector("form")).toBeNull(); expect(button("Add day type").disabled).toBe(false)
   })
 
@@ -192,7 +192,7 @@ describe("attendance catalogue editor using the actual contract", () => {
     await render(); await click("Day types"); await selectKind("WORKED"); await edit("attendance-kind-code", "W"); await submit()
     expect(panel().textContent).toContain(messages("en").mtmAttendance.kindsUnconfirmed)
     expect(puts()).toHaveLength(1)
-    await click("Refresh catalogue")
+    await click("Refresh list")
     expect(row("WORKED").textContent).toContain("W")
     expect(button("Add day type").disabled).toBe(false)
   })
@@ -231,11 +231,11 @@ describe("attendance catalogue editor using the actual contract", () => {
   it("clears the catalogue if a later read is denied and aborts pending reads on unmount", async () => {
     await render(); await click("Day types")
     fetchMock.mockResolvedValueOnce(response(null, 403))
-    await click("Refresh catalogue")
+    await click("Refresh list")
     expect(panel().querySelectorAll('[data-testid="attendance-kind-row"]')).toHaveLength(0)
     expect(accessLost).toHaveBeenCalledOnce()
     fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {}))
-    await click("Refresh catalogue")
+    await click("Refresh list")
     const signal = fetchMock.mock.calls.at(-1)![1]?.signal
     await act(async () => root.unmount()); root = createRoot(container)
     expect(signal?.aborted).toBe(true)
