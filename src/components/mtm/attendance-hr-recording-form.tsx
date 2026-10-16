@@ -2,15 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { CalendarPlus, Users } from "lucide-react"
+import Link from "next/link"
+import { CalendarPlus, ChevronLeft, Users } from "lucide-react"
 import { z } from "zod"
 import { createDateFormatter } from "@/lib/format-date"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomeCard, HomePill } from "@/components/mtm/home-parts"
-import { AttendanceDayKindSchema, attendanceDayKindLabel, type AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
+import { ATTENDANCE_DAY_GROUPS, AttendanceDayKindSchema, attendanceDayKindLabel, type AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
 import { ATTENDANCE_HR_BATCH_LIMIT, AttendanceHrRecordingInputSchema, canRecordAttendanceDayKind, type AttendanceHrDirectory, type AttendanceHrRecordingInput } from "@/lib/mtm/attendance-hr-recording-contract"
 
+const GROUP_KEYS: Record<(typeof ATTENDANCE_DAY_GROUPS)[number], string> = { WORK: "kindsGroupWork", PAID_LEAVE: "kindsGroupPaidLeave", UNPAID_LEAVE: "kindsGroupUnpaidLeave", VIOLATION: "kindsGroupViolation", CALENDAR: "kindsGroupCalendar", EMPLOYER: "kindsGroupEmployer" }
 const ENDPOINT = "/api/v1/mtm/attendance/recordings"
 const DirectorySchema = z.object({
   employees: z.array(z.object({ id: z.string().min(1), name: z.string(), teamId: z.string().nullable(), teamName: z.string().nullable() })).max(2000),
@@ -27,7 +29,7 @@ const ERRORS: Record<string, string> = {
 }
 
 export function MtmAttendanceHrRecordingForm() {
-  const t = useTranslations("mtmAttendance"), locale = useLocale()
+  const t = useTranslations("mtmAttendance"), p = useTranslations("personnel"), locale = useLocale()
   const [directory, setDirectory] = useState<AttendanceHrDirectory | null>(null)
   const [mode, setMode] = useState<"EMPLOYEE" | "TEAM">("EMPLOYEE")
   const [target, setTarget] = useState("")
@@ -76,7 +78,8 @@ export function MtmAttendanceHrRecordingForm() {
         prefilled.current = true
         const query = new URLSearchParams(window.location.search)
         const employeeId = query.get("employeeId"), date = query.get("date")
-        if (employeeId && parsed.data.employees.some(employee => employee.id === employeeId)) { setMode("EMPLOYEE"); setTarget(employeeId) }
+        // A link from Today names the person: choose them, not only show the name (it read «0 employees»).
+        if (employeeId && parsed.data.employees.some(employee => employee.id === employeeId)) { setMode("EMPLOYEE"); setTarget(employeeId); setSelectedIds([employeeId]) }
         if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) { setFrom(date); setTo(date) }
       }
       // A directory read cannot establish whether a write committed. Its exact
@@ -157,7 +160,10 @@ export function MtmAttendanceHrRecordingForm() {
   }
   const period = from ? `${dateLabel(from)}${unit === "HOURS" ? ` · ${startTime}–${endTime}` : to && to !== from ? ` — ${dateLabel(to)}` : ""}` : t("hrRecordingPeriodEmpty")
   const dayCount = from && to && unit === "DAYS" ? (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1 : null
-  return <section className="mx-auto max-w-5xl space-y-5" data-testid="attendance-hr-recording" aria-busy={busy}>
+  return <section className="space-y-5" data-testid="attendance-hr-recording" aria-busy={busy}>
+    {/* The form is reached from Today and from Requests; it had no way back (owner critique, 2026-10-15). */}
+    <Link href="/mtm/attendance" prefetch={false} className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary hover:underline" data-testid="attendance-recording-back">
+      <ChevronLeft className="h-4 w-4" aria-hidden="true" />{p("todayTitle")}</Link>
     <div className="space-y-2"><h1 className="text-2xl font-semibold tracking-tight">{t("hrRecordingTitle")}</h1><p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("hrRecordingIntro")}</p>
       <p className="max-w-3xl text-sm leading-6 text-muted-foreground" data-testid="hr-recording-not-self">{t("hrRecordingNotSelf")}</p></div>
     <HomeCard testId="attendance-hr-recording-card" titleId="attendance-hr-recording-title" title={t("hrRecordingCard")} tone="orange" icon={<CalendarPlus className="h-5 w-5" aria-hidden="true" />}>
@@ -170,7 +176,10 @@ export function MtmAttendanceHrRecordingForm() {
           <fieldset disabled={locked} className="grid min-w-0 gap-5 sm:grid-cols-2">
             <div className="min-w-0 space-y-2"><label htmlFor="hr-recording-mode" className="text-sm font-medium">{t("hrRecordingFor")}</label><select id="hr-recording-mode" className={selectClass} value={mode} onChange={event => { setMode(event.target.value as typeof mode); setTarget(""); setSelectedIds([]); edit() }}><option value="EMPLOYEE">{t("hrRecordingEmployee")}</option><option value="TEAM">{t("hrRecordingTeam")}</option></select></div>
             <div className="min-w-0 space-y-2"><label htmlFor="hr-recording-target" className="text-sm font-medium">{t(mode === "EMPLOYEE" ? "hrRecordingEmployee" : "hrRecordingTeam")}</label><select id="hr-recording-target" className={selectClass} value={target} onChange={event => chooseTarget(event.target.value)}><option value="">{t("hrRecordingChoose")}</option>{mode === "EMPLOYEE" ? directory.employees.map(employee => <option key={employee.id} value={employee.id}>{employee.name}{employee.teamName ? ` · ${employee.teamName}` : ""}</option>) : teams.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></div>
-            <div className="min-w-0 space-y-2 sm:col-span-2"><label htmlFor="hr-recording-kind" className="text-sm font-medium">{t("hrRecordingKind")}</label><select id="hr-recording-kind" className={selectClass} value={kindKey} onChange={event => { setKindKey(event.target.value); edit() }}><option value="">{t("hrRecordingChoose")}</option>{directory.catalogue.items.map(item => <option key={item.key} value={item.key}>{item.code} · {attendanceDayKindLabel(item, locale)}</option>)}</select></div>
+            <div className="min-w-0 space-y-2 sm:col-span-2"><label htmlFor="hr-recording-kind" className="text-sm font-medium">{t("hrRecordingKind")}</label><select id="hr-recording-kind" className={selectClass} value={kindKey} onChange={event => { setKindKey(event.target.value); edit() }}><option value="">{t("hrRecordingChoose")}</option>
+              {/* Grouped like the day types screen: two dozen kinds in one list were hard to scan. */}
+              {ATTENDANCE_DAY_GROUPS.map(group => { const items = directory.catalogue.items.filter(item => item.group === group)
+                return items.length ? <optgroup key={group} label={t(GROUP_KEYS[group])}>{items.map(item => <option key={item.key} value={item.key}>{item.code} · {attendanceDayKindLabel(item, locale)}</option>)}</optgroup> : null })}</select></div>
             <div className="min-w-0 space-y-2"><label htmlFor="hr-recording-from" className="text-sm font-medium">{t("hrRecordingFrom")}</label><Input className="min-h-11 min-w-0" id="hr-recording-from" type="date" required value={from} onChange={event => { setFrom(event.target.value); edit() }} /></div>
             {unit !== "HOURS" && <div className="min-w-0 space-y-2"><label htmlFor="hr-recording-to" className="text-sm font-medium">{t("hrRecordingTo")}</label><Input className="min-h-11 min-w-0" id="hr-recording-to" type="date" required value={to} min={from || undefined} onChange={event => { setTo(event.target.value); edit() }} /></div>}
             {unit === "HOURS" && <><div className="self-end pb-2 text-sm text-muted-foreground">{t("hrRecordingTimezone", { timezone: directory.timezone })}</div><div className="min-w-0 space-y-2"><label htmlFor="hr-recording-start" className="text-sm font-medium">{t("hrRecordingStartTime")}</label><Input className="min-h-11 min-w-0" id="hr-recording-start" type="time" required value={startTime} onChange={event => { setStartTime(event.target.value); edit() }} /></div><div className="min-w-0 space-y-2"><label htmlFor="hr-recording-end" className="text-sm font-medium">{t("hrRecordingEndTime")}</label><Input className="min-h-11 min-w-0" id="hr-recording-end" type="time" required value={endTime} onChange={event => { setEndTime(event.target.value); edit() }} /></div></>}
