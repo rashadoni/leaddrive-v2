@@ -2673,4 +2673,100 @@ pgDescribe("client categories on a real Postgres", () => {
       expect((await picker("agentId=not-an-agent-here&specialty=Pickerologist")).status).toBe(403)
     })
   })
+
+  // Owner, 2026-10-16, once a tick could be taken off on an agent's card: «в
+  // приложении будут видны те клиенты, которые будут оставлены?» — and, told
+  // that a doctor at an institution on the agent's route stayed in the app up
+  // to thirty days through it: «да, нужно, чтоб пропадал сразу».
+  describe("a doctor taken off an agent, in the agent's app", () => {
+    const params = (id: string) => ({ params: Promise.resolve({ id }) })
+    const today = new Date().toISOString().slice(0, 10)
+    const ids = {} as Record<"agent" | "clinic" | "taken" | "never" | "kept", string>
+    const ours = (names: string[]) => names.filter((name) => name.startsWith("Routeova ")).sort()
+    const asAgent = async () => {
+      const { resolveMobileAuth } = await import("@/lib/mobile-auth")
+      vi.mocked(resolveMobileAuth).mockResolvedValue({ agentId: ids.agent, userId: `user-of-${ids.agent}`, orgId: ORG, email: "route-agent@example.com", name: "Agent", role: "AGENT" } as never)
+    }
+    /** What the phone's offline sync hands over: the doctors, and the ones to drop. */
+    const pull = async (since?: string) => {
+      await asAgent()
+      const { GET } = await import("@/app/api/v1/mtm/mobile/sync/pull/route")
+      const response = await GET(new NextRequest(`http://localhost:3000/api/v1/mtm/mobile/sync/pull?entities=contacts${since ? `&since=${encodeURIComponent(since)}` : ""}`))
+      const body = await response.json()
+      if (response.status !== 200) throw new Error(`pull ${response.status}: ${JSON.stringify(body).slice(0, 300)}`)
+      return {
+        timestamp: body.timestamp as string,
+        names: ours((body.changes.contacts.updated as Array<{ displayName: string }>).map((contact) => contact.displayName)),
+        dropped: body.changes.contacts.deleted as string[],
+      }
+    }
+    /** The doctors the app's card of the institution lists. */
+    const card = async () => {
+      await asAgent()
+      const { GET } = await import("@/app/api/v2/mtm/mobile/route-field/organizations/[id]/route")
+      const response = await GET(new NextRequest(`http://localhost:3000/api/v2/mtm/mobile/route-field/organizations/${ids.clinic}`), params(ids.clinic))
+      const body = await response.json()
+      if (response.status !== 200) throw new Error(`card ${response.status}: ${JSON.stringify(body).slice(0, 300)}`)
+      return ours((body.data.organization.contacts as Array<{ name: string }>).map((contact) => contact.name))
+    }
+    /** The manager's tick on the agent's card: the same preview → apply. */
+    const tick = async (mode: "ASSIGN" | "UNASSIGN", contactId: string, key: string) => {
+      const { POST: preview } = await import("@/app/api/v1/mtm/contact-assignments/preview/route")
+      const { POST: execute } = await import("@/app/api/v1/mtm/contact-assignments/route")
+      const request = {
+        contactIds: [contactId],
+        mode,
+        targetAgentId: mode === "ASSIGN" ? ids.agent : null,
+        ...(mode === "UNASSIGN" ? { sourceAgentId: ids.agent } : {}),
+        effectiveFrom: today,
+        reason: "Chosen on the agent's card",
+      }
+      const previewed = await (await preview(send("POST", "/api/v1/mtm/contact-assignments/preview", request))).json()
+      if (!previewed.data?.previewToken) throw new Error(`preview refused: ${JSON.stringify(previewed).slice(0, 300)}`)
+      const executed = await execute(send("POST", "/api/v1/mtm/contact-assignments", { ...request, previewToken: previewed.data.previewToken, idempotencyKey: `taken-off-${key}` }))
+      expect(executed.status, JSON.stringify(await executed.clone().json()).slice(0, 300)).toBe(200)
+    }
+
+    beforeAll(async () => {
+      await bypass(async () => {
+        ids.agent = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Route Agent", role: "AGENT" }, select: { id: true } })).id
+        ids.clinic = (await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Fictional Route Clinic" }, select: { id: true } })).id
+        // The clinic is on the agent's route today: through it, every doctor
+        // working there is in his app — those who were never his as well.
+        const route = await prisma.mtmRoute.create({ data: { organizationId: ORG, agentId: ids.agent, date: new Date(`${today}T00:00:00.000Z`), status: "PLANNED" }, select: { id: true } })
+        await prisma.mtmRoutePoint.create({ data: { organizationId: ORG, routeId: route.id, customerId: ids.clinic } })
+        for (const [key, firstName] of [["taken", "Taken"], ["never", "Never"], ["kept", "Kept"]] as const) {
+          ids[key] = (await prisma.mtmContact.create({ data: { organizationId: ORG, firstName, lastName: "Routeova", displayName: `Routeova ${firstName}`, type: "DOCTOR" }, select: { id: true } })).id
+          await prisma.mtmContactWorkplace.create({ data: { organizationId: ORG, contactId: ids[key], customerId: ids.clinic, isPrimary: true } })
+        }
+        for (const contactId of [ids.taken, ids.kept]) {
+          await prisma.mtmContactAgentAssignment.create({ data: { organizationId: ORG, contactId, agentId: ids.agent, role: "PRIMARY", effectiveFrom: new Date("2026-01-01T00:00:00.000Z") } })
+        }
+      })
+    })
+
+    it("is dropped by the phone at the next sync and leaves the clinic's card, while the others stay", async () => {
+      const before = await pull()
+      expect(before.names).toEqual(["Routeova Kept", "Routeova Never", "Routeova Taken"])
+      expect(await card()).toEqual(["Routeova Kept", "Routeova Never", "Routeova Taken"])
+
+      await tick("UNASSIGN", ids.taken, "off")
+
+      // The phone that synced before is told to drop him, and only him…
+      const delta = await pull(before.timestamp)
+      expect(delta.dropped).toContain(ids.taken)
+      expect(delta.dropped).not.toContain(ids.kept)
+      expect(delta.dropped).not.toContain(ids.never)
+      // …a phone syncing from scratch never gets him, and the card of his
+      // clinic — on the agent's route today — no longer lists him.
+      expect((await pull()).names).toEqual(["Routeova Kept", "Routeova Never"])
+      expect(await card()).toEqual(["Routeova Kept", "Routeova Never"])
+    })
+
+    it("is back in the app once ticked again", async () => {
+      await tick("ASSIGN", ids.taken, "back")
+      expect((await pull()).names).toEqual(["Routeova Kept", "Routeova Never", "Routeova Taken"])
+      expect(await card()).toEqual(["Routeova Kept", "Routeova Never", "Routeova Taken"])
+    })
+  })
 })

@@ -4,6 +4,7 @@ import {
   contactDisplayName,
   contactMutationScopeForActor,
   contactScopeForActor,
+  contactTakenOffAgent,
   customerMutationScopeForActor,
   customerScopeForActor,
   MTM_FIELD_ROUTE_SCOPE_DAYS,
@@ -86,6 +87,23 @@ describe("MTM field ownership scope", () => {
         { workplaces: { some: { endedOn: null, customer: { OR: expect.any(Array) } } } },
       ],
     })
+  })
+
+  // Owner, 2026-10-16: a doctor taken off an agent «нужно, чтоб пропадал сразу»
+  // — not linger through his institution on the agent's route.
+  it("hides from an agent, through a workplace, a doctor taken off him — and only from him", () => {
+    const workplaceArm = (scope: { OR?: unknown }) => (scope.OR as Array<Record<string, unknown>>)[1]
+    expect(workplaceArm(contactScopeForActor(AGENT, DATE)).NOT).toEqual(contactTakenOffAgent("agent-1", DATE))
+    expect(contactTakenOffAgent("agent-1", DATE)).toEqual({
+      AND: [
+        { agentAssignments: { some: { agentId: "agent-1", deletedAt: null, effectiveTo: { lte: DATE } } } },
+        { agentAssignments: { none: { agentId: "agent-1", ...activeFieldAssignmentWindow(DATE) } } },
+      ],
+    })
+    // His manager still sees the doctor, and nothing he may do is narrowed.
+    const manager: MtmRouteActor = { agentId: "manager-1", role: "MANAGER", scopedAgentIds: ["agent-1"] }
+    expect(workplaceArm(contactScopeForActor(manager, DATE))).not.toHaveProperty("NOT")
+    expect(workplaceArm(contactMutationScopeForActor(AGENT, DATE))).not.toHaveProperty("NOT")
   })
 
   it("keeps observer route visibility read-only for customer and contact mutations", () => {
