@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "status": "PASS",
+  "headSha": "f219771906cb4df755df69ad600a30c33d7b52cd",
+  "workflowSha": "5c02f3c9daca7a99293ffd3bb694bf7b654e2ddb",
+  "runId": "38056170322",
+  "runAttempt": "1",
+  "startedAt": "2026-10-10T13:41:10.160Z",
+  "environment": "hosted Chromium, real credentials authentication, Next dev, isolated PostgreSQL16",
+  "productionMutation": false,
+  "sourceBindings": [
+    {
+      "path": ".github/workflows/hrm-tenant-capability-ui.yml",
+      "bytes": 13168,
+      "sha256": "9989d441f075c9f3c49187841e64fa8b0ffb8f3bb0b880e4df6e14551e8d4b78"
+    },
+    {
+      "path": "scripts/hrm-tenant-capability-ui-browser-evidence.mjs",
+      "bytes": 22918,
+      "sha256": "71a38cd83ecbaa00d4dcaee7403528808de3a95f797916279bdb45716990d5fe"
+    },
+    {
+      "path": "scripts/ci/fixtures/hrm-tenant-capability-ui.sql",
+      "bytes": 3940,
+      "sha256": "bddfd595655858a624df8a04e9bc81648523c729c014fc35be0c86ef2b4e6ac3"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 961874,
+      "sha256": "6c6281e85cc6db06b0d8758a44d76e8b71e918d46d8a376f02f557b1cc989121"
+    },
+    {
+      "path": "src/app/admin/tenants/[id]/edit/page.tsx",
+      "bytes": 52322,
+      "sha256": "5c5b61026b1c02062b817c28f3a80628551c3536ec42b7c70f77b84549d93fc5"
+    },
+    {
+      "path": "src/app/admin/tenants/[id]/workforce-capability-control.tsx",
+      "bytes": 4587,
+      "sha256": "374641116a64b72d41330c3ef4dde1f0064d01e997b310db8d522bc4b6ca16f5"
+    },
+    {
+      "path": "src/app/admin/tenants/[id]/tenant-capabilities-panel.tsx",
+      "bytes": 15540,
+      "sha256": "5040f57da8c9b8cd684b29960742dfbef5ef2ce4fe069f6979630ca9c0b2c5cf"
+    },
+    {
+      "path": "src/app/api/v1/admin/tenants/[id]/route.ts",
+      "bytes": 12221,
+      "sha256": "7ca11c467df887595e599e2c7610aee55414f1f411c804480bd0530aafec4c4f"
+    },
+    {
+      "path": "src/app/api/v1/admin/tenants/[id]/capabilities/route.ts",
+      "bytes": 14112,
+      "sha256": "6d5fa253d11b22ba9f996e879f7bad10acdc8000c8d1f5ae5459aea606ffa14c"
+    },
+    {
+      "path": "src/lib/tenant-capabilities.ts",
+      "bytes": 21507,
+      "sha256": "67720a5f24cf735bf2bf05d72441612ab9a6ccb671bf04cbd72758e34853d9b4"
+    },
+    {
+      "path": "src/lib/workforce/default-configuration-provisioning.ts",
+      "bytes": 9647,
+      "sha256": "b6062053b00802f855bd86cede7e65ff09aa41355f51063eb8cb8abe4bffd3e3"
+    },
+    {
+      "path": "src/lib/modules.ts",
+      "bytes": 23495,
+      "sha256": "08c8d13bebc1d6ba811687ee56f98f2510510c73f196c01f24cfefa521d23c24"
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1370769,
+      "sha256": "9e7e0bc2baaeabbf49f85289f349a7b9ab4992d2d842eab030878488d233e9c8"
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 2022458,
+      "sha256": "1dc262e3ef0f82c9805bcc86ee04e21ea71593d3194cb0e9eb8dbc2bbe870bb3"
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1516396,
+      "sha256": "32d39aa0e8b15128f6888019e45d2951a09fe44172f3b356278a16ec53154b79"
+    }
+  ],
+  "cases": [
+    {
+      "name": "actual non-bypass role and forced tenant RLS",
+      "status": "PASS"
+    },
+    {
+      "name": "human HRM label in en/ru/az, persisted false beats raw feature and legacy MTM, no load provisioning",
+      "status": "PASS"
+    },
+    {
+      "name": "explicitly disabled HRM remains discoverable with Enable in actual tenant overview",
+      "status": "PASS"
+    },
+    {
+      "name": "expected injected audit failure HTTP500 rolls back own entitlement, policy, shift and provisioning audit",
+      "status": "PASS"
+    },
+    {
+      "name": "real explicit Enable grants own HRM entitlement and commits one default profile plus provisioning audit",
+      "status": "PASS"
+    },
+    {
+      "name": "ordinary Save from pre-approval editor preserves canonical HRM and refreshes switch",
+      "status": "PASS"
+    },
+    {
+      "name": "editor explicit disable, stale raw features Save and reload stay disabled without deleting profile",
+      "status": "PASS"
+    },
+    {
+      "name": "raw metadata features cannot grant HRM or erase explicit false",
+      "status": "PASS"
+    },
+    {
+      "name": "editor re-enable preserves profile identities and does not duplicate provisioning audit",
+      "status": "PASS"
+    },
+    {
+      "name": "actual PostgreSQL row-lock race returns 409, preserves entitlement and does not record false update success",
+      "status": "PASS"
+    },
+    {
+      "name": "all A mutations preserve B organization and HRM configuration",
+      "status": "PASS"
+    },
+    {
+      "name": "legacy MTM editor reads effective enabled, ordinary Save does not mint own HRM entitlement or profile",
+      "status": "PASS"
+    },
+    {
+      "name": "intentional legacy MTM group edits retain existing compatibility behavior",
+      "status": "PASS"
+    },
+    {
+      "name": "explicit HRM disable overrides legacy MTM across Save and reload without changing legacy data",
+      "status": "PASS"
+    },
+    {
+      "name": "authenticated tenant admin cannot read/write own or foreign tenant capabilities/metadata",
+      "status": "PASS"
+    },
+    {
+      "name": "disabled HRM remains in overview after persisted disable/reload; profile retained",
+      "status": "PASS"
+    }
+  ],
+  "limitations": [
+    "Synthetic disposable organizations only; no production observation or activation",
+    "Prisma db push plus fixture RLS/default uniqueness, not every production migration/trigger",
+    "Development browser bundle; separate cold production build is a distinct gate",
+    "No human accessibility, physical device, operational pilot or load acceptance"
+  ],
+  "finishedAt": "2026-10-10T13:41:55.691Z"
+}
