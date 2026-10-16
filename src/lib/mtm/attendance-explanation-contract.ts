@@ -45,10 +45,10 @@ export class AttendanceExplanationError extends AttendanceRequestError {}
  * (a working day, employed, no start and no approved reason).
  */
 export function attendanceExplanationCandidates(rows: readonly MtmAttendanceReportRow[]): (AttendanceExplanationCandidate & { employeeId: string })[] {
-  return rows.flatMap(row => {
-    if (row.kind === "ABSENT") return [{ employeeId: row.employeeId, date: row.date, kind: "ABSENT" as const, lateMinutes: null }]
+  return rows.flatMap<AttendanceExplanationCandidate & { employeeId: string }>(row => {
+    if (row.kind === "ABSENT") return [{ employeeId: row.employeeId, date: row.date, kind: "ABSENT", lateMinutes: null }]
     if (row.factsState === "VALID" && row.startedAt && (row.lateSeconds ?? 0) > 0) {
-      return [{ employeeId: row.employeeId, date: row.date, kind: "LATE" as const, lateMinutes: Math.max(1, Math.round(row.lateSeconds! / 60)) }]
+      return [{ employeeId: row.employeeId, date: row.date, kind: "LATE", lateMinutes: Math.max(1, Math.round(row.lateSeconds! / 60)) }]
     }
     return []
   })
