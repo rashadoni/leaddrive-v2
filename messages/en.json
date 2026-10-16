@@ -11654,7 +11654,8 @@
       "attachBySearch": "The whole client list with search and filters — to find a particular client by name or address.",
       "attachChosen": "Assign the ticked doctors to this agent from today. Whoever already has an agent keeps them.",
       "attachNothingChosen": "Choose a specialty first — the doctors found are ticked for you.",
-      "attachNoneTicked": "Tick at least one doctor in the list. Those already with the agent are greyed out and not counted."
+      "attachNoneTicked": "A tick on a new doctor assigns them to the agent. Unticking a doctor the agent already has takes them off.",
+      "attachRemove": "Take the unticked doctors off this agent and assign the ticked new ones. You will be asked once more before anything is taken off."
     },
     "back": "All field agents",
     "notFound": "This employee was not found or is outside your access.",
@@ -11668,12 +11669,15 @@
     "attachHow": "How to pick clients",
     "attachByPlace": "By specialty and place",
     "attachBySearch": "Search the whole list",
-    "attachChecked": "Doctors ticked: {count}",
+    "attachChecked": "To add: {count}",
     "attachNothingYet": "Choose a specialty and tick the doctors",
     "attachChosen": "Assign ticked ({count})",
     "attachReason": "Chosen on the agent's page",
-    "attachFailed": "Could not assign. Check the connection and press again — those already assigned stay.",
-    "attachNoneTicked": "Nobody ticked — tick doctors in the list"
+    "attachFailed": "Could not save. Check the connection and press again — whatever was already applied stays.",
+    "attachNoneTicked": "No changes — tick new doctors, or untick one to take them off",
+    "attachWillRemove": "To take off: {count}",
+    "attachRemove": "Take off the agent ({count})",
+    "attachChange": "Assign {add}, take off {remove}"
   },
   "mtmAgents": {
     "hint": {
@@ -15535,7 +15539,7 @@
     "clientsTooLarge": "Too many doctors to choose from here. Assign them in Clients → Assign.",
     "clientsEmpty": "No doctors match this choice. Change the city or the district.",
     "clientsFound": "{count, plural, one {# doctor} other {# doctors}} found in {groups, plural, one {# institution} other {# institutions}}",
-    "clientsChecked": "{count} ticked",
+    "clientsChecked": "{count} to add",
     "clientsAlreadyHereCount": "{count} already the agent's",
     "clientsCheckAll": "Tick all",
     "clientsUncheckAll": "Untick all",
@@ -15550,8 +15554,19 @@
     "saveAndAssign": "Save and assign {count}",
     "clientsAssigned": "{count, plural, one {# doctor} other {# doctors}} assigned to the agent.",
     "clientsPartlyAssigned": "{changed} assigned, {left} not: they have an open visit, a route or another primary agent already. See Clients for details.",
-    "clientsAssignFailed": "The agent is saved, but the doctors couldn't be assigned. Check the connection and save again.",
-    "clientsReason": "Chosen on the agent's card"
+    "clientsAssignFailed": "The agent is saved, but the doctors could not be changed. Check the connection and press save again.",
+    "clientsReason": "Chosen on the agent's card",
+    "clientsWillRemove": "{count} to take off",
+    "clientsWillBeRemoved": "taken off the agent",
+    "clientsNoteRemove": "The agent's doctors left unticked ({count}) are taken off them; whoever has another agent stays with that one.",
+    "saveAndRemove": "Save and take off {count}",
+    "saveAssignAndRemove": "Save: assign {add}, take off {remove}",
+    "clientsRemoved": "Taken off the agent: {count}.",
+    "clientsChanged": "Assigned: {added}, taken off: {removed}.",
+    "clientsPartlyChanged": "{added} assigned, {removed} taken off, {left} unchanged: they have an open visit or a planned route. See Clients for details.",
+    "clientsRemoveConfirmTitle": "Take doctors off the agent?",
+    "clientsRemoveConfirmBody": "Doctors to take off {name}: {count}. Their cards, visits and history stay; whoever has another agent keeps them. Tick them again to bring them back.",
+    "clientsRemoveConfirm": "Take off {count}"
   },
   "admin": {
     "demoCenter": {

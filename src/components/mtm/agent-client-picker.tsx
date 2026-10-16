@@ -6,7 +6,9 @@ import { Check, ChevronDown, ChevronRight, Info, Loader2, Minus } from "lucide-r
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Hint } from "@/components/hint"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import type { AgentDoctorResult } from "@/lib/mtm/assign-agent-doctors"
 import { PICKER_NONE, type AgentClientPicker, type PickerOption } from "@/lib/mtm/agent-client-picker"
 
 /**
@@ -17,17 +19,47 @@ import { PICKER_NONE, type AgentClientPicker, type PickerOption } from "@/lib/mt
  * same preview → apply as «Клиенты → Закрепить». The view was shown to the
  * owner as a picture first («да, делай»). The agent's own page offers the same
  * picker on «Привязать ещё клиентов» (owner, same day: «да, сюда тоже»).
+ *
+ * The agent's own doctors are listed ticked like the rest, and a tick taken
+ * off one of them takes him off the agent (owner, same day, on the card of an
+ * agent whose every doctor was greyed and locked: «нет возможности снимать
+ * галочки»).
  */
 
 type Selection = { specialties: string[]; cities: string[]; districts: string[] }
 type PickerData = AgentClientPicker & { asOf: string }
 
-/** `listed`: a specialty is chosen, so the doctors are on the screen. */
-export type AgentClientChoice = { contactIds: string[]; asOf: string | null; listed?: boolean }
+/**
+ * `contactIds`: ticked and not the agent's yet — to attach. `removeIds`: the
+ * agent's, unticked — to detach. `listed`: a specialty is chosen, so the
+ * doctors are on the screen.
+ */
+export type AgentClientChoice = { contactIds: string[]; removeIds?: string[]; asOf: string | null; listed?: boolean }
 
 const DOCTORS_SHOWN_IN_GROUP = 4
 
-function TickBox({ state }: { state: "on" | "off" | "some" | "locked" }) {
+/** The words of `mtmForms`, as the card and the page both hold them. */
+type FormWords = (key: string, values?: Record<string, number | string>) => string
+
+/** One toast for what was applied, the same on the card and on the page. */
+export function announceDoctorChanges(t: FormWords, done: AgentDoctorResult, triedToRemove: boolean) {
+  if (done.left > 0) {
+    toast.warning(triedToRemove
+      ? t("clientsPartlyChanged", { added: done.added, removed: done.removed, left: done.left })
+      : t("clientsPartlyAssigned", { changed: done.added, left: done.left }))
+  } else if (done.removed > 0 && done.added > 0) toast.success(t("clientsChanged", { added: done.added, removed: done.removed }))
+  else if (done.removed > 0) toast.success(t("clientsRemoved", { count: done.removed }))
+  else toast.success(t("clientsAssigned", { count: done.added }))
+}
+
+/** What the card's save button says: what is attached, what is taken off. */
+export function doctorChangesLabel(t: FormWords, add: number, remove: number, prefix: "create" | "save"): string | null {
+  if (add === 0 && remove === 0) return null
+  if (remove === 0) return t(prefix === "create" ? "createAndAssign" : "saveAndAssign", { count: add })
+  return add === 0 ? t("saveAndRemove", { count: remove }) : t("saveAssignAndRemove", { add, remove })
+}
+
+function TickBox({ state }: { state: "on" | "off" | "some" }) {
   return (
     <span
       aria-hidden="true"
@@ -36,10 +68,9 @@ function TickBox({ state }: { state: "on" | "off" | "some" | "locked" }) {
         state === "on" && "border-primary bg-primary text-primary-foreground",
         state === "some" && "border-primary bg-background text-primary",
         state === "off" && "border-zinc-300 bg-background dark:border-zinc-600",
-        state === "locked" && "border-zinc-300 bg-zinc-200 text-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-300",
       )}
     >
-      {state === "on" || state === "locked" ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : state === "some" ? <Minus className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+      {state === "on" ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : state === "some" ? <Minus className="h-3.5 w-3.5" strokeWidth={3} /> : null}
     </span>
   )
 }
@@ -122,7 +153,8 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   const [data, setData] = useState<PickerData | null>(null)
   const [loading, setLoading] = useState(true)
   const [problem, setProblem] = useState<string | null>(null)
-  const [excluded, setExcluded] = useState<Set<string>>(new Set())
+  /** Untick means «leave out» for a new doctor and «take off» for the agent's own. */
+  const [unticked, setUnticked] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [showAll, setShowAll] = useState<Set<string>>(new Set())
 
@@ -163,22 +195,24 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   // and closed again must not take every doctor of the company along.
   const chosenFirstStep = selection.specialties.length > 0
   const groups = useMemo(() => (chosenFirstStep ? data?.groups ?? [] : []), [chosenFirstStep, data])
-  const selectable = useMemo(() => groups.flatMap(group => group.contacts.filter(contact => !contact.assignedHere).map(contact => contact.id)), [groups])
-  const chosen = useMemo(() => selectable.filter(id => !excluded.has(id)), [selectable, excluded])
+  const listedIds = useMemo(() => groups.flatMap(group => group.contacts.map(contact => contact.id)), [groups])
+  const chosen = useMemo(() => groups.flatMap(group => group.contacts.filter(contact => !contact.assignedHere && !unticked.has(contact.id)).map(contact => contact.id)), [groups, unticked])
+  const takenOff = useMemo(() => groups.flatMap(group => group.contacts.filter(contact => contact.assignedHere && unticked.has(contact.id)).map(contact => contact.id)), [groups, unticked])
   const chosenKey = chosen.join(",")
+  const takenOffKey = takenOff.join(",")
 
   useEffect(() => {
-    onChange({ contactIds: chosenKey ? chosenKey.split(",") : [], asOf: data?.asOf ?? null, listed: chosenFirstStep })
-    // The ids travel as their joined key: the list is rebuilt on every answer.
+    onChange({ contactIds: chosenKey ? chosenKey.split(",") : [], removeIds: takenOffKey ? takenOffKey.split(",") : [], asOf: data?.asOf ?? null, listed: chosenFirstStep })
+    // The ids travel as their joined keys: the list is rebuilt on every answer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chosenKey, data?.asOf, chosenFirstStep])
+  }, [chosenKey, takenOffKey, data?.asOf, chosenFirstStep])
 
   const setStep = (step: keyof Selection, values: string[]) => {
     setSelection(current => step === "specialties"
       ? { specialties: values, cities: [], districts: [] }
       : step === "cities" ? { ...current, cities: values, districts: [] } : { ...current, districts: values })
   }
-  const toggle = (ids: string[], include: boolean) => setExcluded(current => {
+  const toggle = (ids: string[], include: boolean) => setUnticked(current => {
     const next = new Set(current)
     for (const id of ids) {
       if (include) next.delete(id)
@@ -222,20 +256,21 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
             <span className={cn(loading && "opacity-60")}>
               <strong>{t("clientsFound", { count: data?.matching ?? 0, groups: groups.length })}</strong>
               {" · "}{t("clientsChecked", { count: chosen.length })}
+              {takenOff.length > 0 ? <span className="font-semibold text-red-600 dark:text-red-400" data-testid="agent-clients-taken-off">{" · "}{t("clientsWillRemove", { count: takenOff.length })}</span> : null}
               {(data?.assignedHere ?? 0) > 0 ? <span className="text-muted-foreground">{" · "}{t("clientsAlreadyHereCount", { count: data?.assignedHere ?? 0 })}</span> : null}
             </span>
             <span className="flex gap-3">
-              <button type="button" className="font-semibold text-primary hover:underline" onClick={() => toggle(selectable, true)} data-testid="agent-clients-check-all">{t("clientsCheckAll")}</button>
-              <button type="button" className="font-semibold text-primary hover:underline" onClick={() => toggle(selectable, false)} data-testid="agent-clients-uncheck-all">{t("clientsUncheckAll")}</button>
+              <button type="button" className="font-semibold text-primary hover:underline" onClick={() => toggle(listedIds, true)} data-testid="agent-clients-check-all">{t("clientsCheckAll")}</button>
+              <button type="button" className="font-semibold text-primary hover:underline" onClick={() => toggle(listedIds, false)} data-testid="agent-clients-uncheck-all">{t("clientsUncheckAll")}</button>
             </span>
           </div>
 
           <div className="space-y-2">
             {groups.map(group => {
               const key = group.institution?.id ?? PICKER_NONE
-              const ids = group.contacts.filter(contact => !contact.assignedHere).map(contact => contact.id)
-              const on = ids.filter(id => !excluded.has(id)).length
-              const state = ids.length === 0 ? "locked" : on === ids.length ? "on" : on === 0 ? "off" : "some"
+              const ids = group.contacts.map(contact => contact.id)
+              const on = ids.filter(id => !unticked.has(id)).length
+              const state = on === ids.length ? "on" : on === 0 ? "off" : "some"
               const open = expanded.has(key)
               const shown = showAll.has(key) ? group.contacts : group.contacts.slice(0, DOCTORS_SHOWN_IN_GROUP)
               return (
@@ -244,9 +279,8 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
                     <button
                       type="button"
                       role="checkbox"
-                      aria-checked={state === "some" ? "mixed" : state === "on" || state === "locked"}
+                      aria-checked={state === "some" ? "mixed" : state === "on"}
                       aria-label={group.institution?.name ?? t("clientsNoInstitution")}
-                      disabled={ids.length === 0}
                       onClick={() => toggle(ids, state !== "on")}
                       className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       data-testid="agent-clients-group-tick"
@@ -261,7 +295,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
                         </span>
                       ) : null}
                     </button>
-                    <span className="shrink-0 text-xs font-semibold tabular-nums text-zinc-600 dark:text-zinc-300">{t("clientsOfCount", { on: on + (group.contacts.length - ids.length), total: group.contacts.length })}</span>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-zinc-600 dark:text-zinc-300">{t("clientsOfCount", { on, total: group.contacts.length })}</span>
                     <button type="button" onClick={() => setExpanded(current => flip(current, key))} aria-label={group.institution?.name ?? t("clientsNoInstitution")} aria-expanded={open} className="shrink-0 text-muted-foreground">
                       <ChevronDown className={cn("h-4 w-4 transition-transform", !open && "-rotate-90")} aria-hidden="true" />
                     </button>
@@ -269,25 +303,26 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
                   {open ? (
                     <div className="border-t bg-muted/30">
                       {shown.map(contact => {
-                        const off = !contact.assignedHere && excluded.has(contact.id)
+                        const off = unticked.has(contact.id)
                         return (
                           <div key={contact.id} className={cn("flex items-center gap-3 border-b px-3 py-2 pl-11 text-sm last:border-b-0", off && "text-muted-foreground")} data-testid="agent-clients-doctor">
                             <button
                               type="button"
                               role="checkbox"
-                              aria-checked={contact.assignedHere || !off}
+                              aria-checked={!off}
                               aria-label={contact.name}
-                              disabled={contact.assignedHere}
                               onClick={() => toggle([contact.id], off)}
                               className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                              <TickBox state={contact.assignedHere ? "locked" : off ? "off" : "on"} />
+                              <TickBox state={off ? "off" : "on"} />
                             </button>
                             <span className="min-w-0 flex-1 truncate">
                               <span className={cn(off && "line-through")}>{contact.name}</span>
                               {contact.specialty ? <span className="ml-1.5 text-xs text-muted-foreground">{contact.specialty}</span> : null}
                             </span>
-                            {contact.assignedHere ? (
+                            {contact.assignedHere && off ? (
+                              <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-950 dark:text-red-200" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
+                            ) : contact.assignedHere ? (
                               <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
                             ) : contact.agents.length > 0 ? (
                               <Hint text={t("clientsAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") })}>
@@ -312,7 +347,11 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
           </div>
 
           <p className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100" data-testid="agent-clients-note">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{t("clientsNote", { count: chosen.length })}
+            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>
+              {t("clientsNote", { count: chosen.length })}
+              {takenOff.length > 0 ? <> {t("clientsNoteRemove", { count: takenOff.length })}</> : null}
+            </span>
           </p>
         </>
       )}

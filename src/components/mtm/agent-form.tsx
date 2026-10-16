@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
-import { toast } from "sonner"
-import { MtmAgentClientPicker, type AgentClientChoice } from "@/components/mtm/agent-client-picker"
-import { assignDoctorsToAgent } from "@/lib/mtm/assign-agent-doctors"
+import { MtmAgentClientPicker, announceDoctorChanges, doctorChangesLabel, type AgentClientChoice } from "@/components/mtm/agent-client-picker"
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
+import { changeAgentDoctors } from "@/lib/mtm/assign-agent-doctors"
 import { cn } from "@/lib/utils"
 import {
   MTM_AGENT_MAP_COLORS,
@@ -114,6 +114,8 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
   const [tab, setTab] = useState<"profile" | "clients">("profile")
   const [clientsOpened, setClientsOpened] = useState(false)
   const [clientChoice, setClientChoice] = useState<AgentClientChoice>({ contactIds: [], asOf: null })
+  // Taking doctors off the agent is asked once more, with the count.
+  const [confirmRemoval, setConfirmRemoval] = useState(false)
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -223,8 +225,12 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
   const tagDraftLeftOver = tagsFull && tagDraft.trim() !== ""
   const suggestedTags = normalizeMtmAgentTags([...form.tags, ...knownTags]).slice(form.tags.length)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    void submit(false)
+  }
+
+  const submit = async (removalConfirmed: boolean) => {
     // A label still in the field is on the screen, so it is saved with the
     // rest — or the save stops and says why, rather than losing it quietly.
     const labels = withTypedTags(form.tags, tagDraft, knownTags)
@@ -260,6 +266,11 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       return
     }
     const doctors = form.role === "AGENT" ? clientChoice.contactIds : []
+    const takeOff = form.role === "AGENT" && agentId ? clientChoice.removeIds ?? [] : []
+    if (takeOff.length > 0 && !removalConfirmed) {
+      setConfirmRemoval(true)
+      return
+    }
     setSaving(true)
     setError("")
     try {
@@ -285,11 +296,10 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       }
       const savedId: string | undefined = isEdit ? agentId! : json?.data?.id
       if (savedId && !isEdit) setSavedAgentId(savedId)
-      if (savedId && doctors.length > 0) {
+      if (savedId && (doctors.length > 0 || takeOff.length > 0)) {
         try {
-          const done = await assignDoctorsToAgent(savedId, doctors, clientChoice.asOf ?? new Date().toISOString().slice(0, 10), tf("clientsReason"), orgId)
-          if (done.left > 0) toast.warning(tf("clientsPartlyAssigned", { changed: done.changed, left: done.left }))
-          else toast.success(tf("clientsAssigned", { count: done.changed }))
+          const done = await changeAgentDoctors(savedId, { add: doctors, remove: takeOff }, clientChoice.asOf ?? new Date().toISOString().slice(0, 10), tf("clientsReason"), orgId)
+          announceDoctorChanges(tf, done, takeOff.length > 0)
         } catch {
           // The card is saved; only the doctors are left to try again.
           onSaved()
@@ -307,6 +317,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange} widthClassName={tab === "clients" ? "max-w-[48rem]" : undefined}>
       <DialogHeader>
         <DialogTitle>{isEdit ? tf("editAgent") : tf("addAgent")}</DialogTitle>
@@ -327,7 +338,10 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
               >
                 {key === "profile" ? tf("tabProfile") : tf("tabClients")}
                 {key === "clients" && clientChoice.contactIds.length > 0 ? (
-                  <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">{clientChoice.contactIds.length}</span>
+                  <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">+{clientChoice.contactIds.length}</span>
+                ) : null}
+                {key === "clients" && (clientChoice.removeIds?.length ?? 0) > 0 ? (
+                  <span className="ml-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-700 dark:bg-red-950 dark:text-red-200">−{clientChoice.removeIds?.length}</span>
                 ) : null}
               </button>
             ))}
@@ -547,12 +561,24 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
           <Button type="submit" disabled={saving} data-testid="agent-form-submit">
             {saving ? tc("saving")
-              : form.role === "AGENT" && clientChoice.contactIds.length > 0
-                ? tf(isEdit ? "saveAndAssign" : "createAndAssign", { count: clientChoice.contactIds.length })
-                : isEdit ? tc("update") : tc("create")}
+              : (form.role === "AGENT" ? doctorChangesLabel(tf, clientChoice.contactIds.length, agentId ? clientChoice.removeIds?.length ?? 0 : 0, isEdit ? "save" : "create") : null)
+                ?? (isEdit ? tc("update") : tc("create"))}
           </Button>
         </DialogFooter>
       </form>
     </Dialog>
+    {/* Beside the card, not inside it: the dialogs render in place. */}
+    <ConfirmDialog
+      open={confirmRemoval}
+      onOpenChange={setConfirmRemoval}
+      onConfirm={async () => {
+        setConfirmRemoval(false)
+        await submit(true)
+      }}
+      title={tf("clientsRemoveConfirmTitle")}
+      description={tf("clientsRemoveConfirmBody", { count: clientChoice.removeIds?.length ?? 0, name: form.name.trim() })}
+      confirmLabel={tf("clientsRemoveConfirm", { count: clientChoice.removeIds?.length ?? 0 })}
+    />
+    </>
   )
 }

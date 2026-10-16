@@ -2,22 +2,24 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
-import { AlertCircle, Loader2, UserPlus } from "lucide-react"
+import { AlertCircle, Loader2, UserMinus, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Hint } from "@/components/hint"
-import { MtmAgentClientPicker, type AgentClientChoice } from "@/components/mtm/agent-client-picker"
-import { assignDoctorsToAgent } from "@/lib/mtm/assign-agent-doctors"
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
+import { MtmAgentClientPicker, announceDoctorChanges, type AgentClientChoice } from "@/components/mtm/agent-client-picker"
+import { changeAgentDoctors } from "@/lib/mtm/assign-agent-doctors"
 
 /**
  * «Привязать ещё клиентов» on the agent's own page (owner, 2026-10-16, in front
  * of this page: «и где твои изменения?» — then «да, сюда тоже»): the same
  * specialty → city → district → ticks as the agent's card, and one button with
- * the count that assigns what is ticked. The doctors just assigned stay in
- * sight, greyed as «уже у агента», so the result is on the screen.
+ * the counts. A tick taken off one of the agent's own doctors takes him off
+ * the agent, asked once more with the count («нет возможности снимать
+ * галочки»). What changed stays in sight: the list is asked again.
  */
-export function MtmAgentAttachByPlace({ agentId, onAttached, onForbidden }: {
+export function MtmAgentAttachByPlace({ agentId, agentName, onAttached, onForbidden }: {
   agentId: string
+  agentName: string
   onAttached: () => void
   onForbidden: () => void
 }) {
@@ -27,16 +29,18 @@ export function MtmAgentAttachByPlace({ agentId, onAttached, onForbidden }: {
   const [refresh, setRefresh] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const count = choice.contactIds.length
+  const [confirmRemoval, setConfirmRemoval] = useState(false)
+  const add = choice.contactIds.length
+  const remove = choice.removeIds?.length ?? 0
+  const changes = add + remove
 
-  const attach = async () => {
-    if (count === 0 || saving) return
+  const apply = async () => {
+    if (changes === 0 || saving) return
     setSaving(true)
     setError("")
     try {
-      const done = await assignDoctorsToAgent(agentId, choice.contactIds, choice.asOf ?? new Date().toISOString().slice(0, 10), t("attachReason"))
-      if (done.left > 0) toast.warning(tf("clientsPartlyAssigned", { changed: done.changed, left: done.left }))
-      else toast.success(tf("clientsAssigned", { count: done.changed }))
+      const done = await changeAgentDoctors(agentId, { add: choice.contactIds, remove: choice.removeIds ?? [] }, choice.asOf ?? new Date().toISOString().slice(0, 10), t("attachReason"))
+      announceDoctorChanges(tf, done, remove > 0)
       onAttached()
     } catch {
       setError(t("attachFailed"))
@@ -46,6 +50,9 @@ export function MtmAgentAttachByPlace({ agentId, onAttached, onForbidden }: {
       setSaving(false)
     }
   }
+
+  const summary = [add > 0 ? t("attachChecked", { count: add }) : null, remove > 0 ? t("attachWillRemove", { count: remove }) : null].filter(Boolean).join(" · ")
+  const label = remove === 0 ? t("attachChosen", { count: add }) : add === 0 ? t("attachRemove", { count: remove }) : t("attachChange", { add, remove })
 
   return (
     <div className="space-y-4 rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700" data-testid="mtm-agent-attach-by-place">
@@ -59,16 +66,36 @@ export function MtmAgentAttachByPlace({ agentId, onAttached, onForbidden }: {
           the page's own padding keeps a bar pinned flush at «bottom: 0» a few
           rows above the edge, with the list showing under it. */}
       <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur" data-testid="mtm-agent-attach-bar">
-        <span className="text-sm text-muted-foreground">{count > 0 ? t("attachChecked", { count }) : choice.listed ? t("attachNoneTicked") : t("attachNothingYet")}</span>
-        <Hint text={count > 0 ? t("hint.attachChosen") : choice.listed ? t("hint.attachNoneTicked") : t("hint.attachNothingChosen")}>
-          <span className="inline-flex" tabIndex={count > 0 ? undefined : 0}>
-            <Button type="button" className="min-h-11" disabled={count === 0 || saving} onClick={() => void attach()} data-testid="mtm-agent-attach-submit">
-              {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" /> : <UserPlus className="mr-1.5 h-4 w-4" aria-hidden="true" />}
-              {t("attachChosen", { count })}
+        <span className="text-sm text-muted-foreground">{changes > 0 ? summary : choice.listed ? t("attachNoneTicked") : t("attachNothingYet")}</span>
+        <Hint text={changes === 0 ? (choice.listed ? t("hint.attachNoneTicked") : t("hint.attachNothingChosen")) : remove > 0 ? t("hint.attachRemove") : t("hint.attachChosen")}>
+          <span className="inline-flex" tabIndex={changes > 0 ? undefined : 0}>
+            <Button
+              type="button"
+              className="min-h-11"
+              variant={remove > 0 && add === 0 ? "destructive" : "default"}
+              disabled={changes === 0 || saving}
+              onClick={() => (remove > 0 ? setConfirmRemoval(true) : void apply())}
+              data-testid="mtm-agent-attach-submit"
+            >
+              {saving
+                ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" />
+                : remove > 0 && add === 0 ? <UserMinus className="mr-1.5 h-4 w-4" aria-hidden="true" /> : <UserPlus className="mr-1.5 h-4 w-4" aria-hidden="true" />}
+              {label}
             </Button>
           </span>
         </Hint>
       </div>
+      <ConfirmDialog
+        open={confirmRemoval}
+        onOpenChange={setConfirmRemoval}
+        onConfirm={async () => {
+          setConfirmRemoval(false)
+          await apply()
+        }}
+        title={tf("clientsRemoveConfirmTitle")}
+        description={tf("clientsRemoveConfirmBody", { count: remove, name: agentName })}
+        confirmLabel={tf("clientsRemoveConfirm", { count: remove })}
+      />
     </div>
   )
 }

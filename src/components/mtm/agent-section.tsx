@@ -232,7 +232,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
             </div>
           )}
           {attachBy === "place"
-            ? <MtmAgentAttachByPlace agentId={agent.id} onAttached={onChanged} onForbidden={() => setForbidden(true)} />
+            ? <MtmAgentAttachByPlace agentId={agent.id} agentName={agent.name} onAttached={onChanged} onForbidden={() => setForbidden(true)} />
             : <MtmContactExplorer key={`${agent.id}-${view}`} agentScope={scope} />}
         </div>
       ) : (
