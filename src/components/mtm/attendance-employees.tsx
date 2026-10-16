@@ -112,7 +112,7 @@ export function MtmAttendanceEmployees() {
             <option value="ALL">{t("employeesFilterAll")}</option><option value="INCLUDED">{t("employeesFilterIncluded")}</option><option value="EXCLUDED">{t("employeesFilterExcluded")}</option></select></div>
       </div>
       <p className="text-sm text-muted-foreground" role="status">{t("employeesParticipationCounts", { total: directory.employees.length, included: includedCount, excluded: directory.employees.length - includedCount })}</p>
-      {employees.length ? <table className="w-full table-fixed text-left text-sm">
+      {employees.length ? <div className="overflow-x-auto"><table className="w-full table-fixed text-left text-sm">
         <thead className="hidden md:table-header-group"><tr className="border-b text-xs text-muted-foreground"><th className="w-[46%] px-3 py-2 font-medium">{p("employeesColEmployee")}</th><th className="px-3 py-2 font-medium">{p("employeeCardDepartment")}</th><th className="px-3 py-2 font-medium">{p("employeesColToday")}</th><th className="w-36 px-3 py-2"><span className="sr-only">{p("employeeEdit")}</span></th></tr></thead>
         <tbody className="block md:table-row-group">{employees.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map(employee => {
           const href = `/mtm/attendance/people/${encodeURIComponent(employee.id)}?back=${back}`, [todayText, tone] = today(employee)
@@ -126,7 +126,7 @@ export function MtmAttendanceEmployees() {
             <td className="row-start-1 col-start-2 text-right md:px-3 md:py-3"><Button asChild variant="outline" className="min-h-10 rounded-full">
               <Link href={href} prefetch={false} aria-label={p("employeeEditNamed", { name: employee.name })}><Pencil className="mr-2 h-4 w-4" aria-hidden="true" />{p("employeeEdit")}</Link></Button></td>
           </tr>
-        })}</tbody></table> : <p className="text-sm text-muted-foreground">{t("employeesEmpty")}</p>}
+        })}</tbody></table></div> : <p className="text-sm text-muted-foreground">{t("employeesEmpty")}</p>}
       {employees.length > PAGE_SIZE && <div className="flex flex-wrap items-center gap-3"><Button variant="outline" className="min-h-11" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("employeesPrevious")}</Button><span className="text-xs text-muted-foreground">{t("employeesPage", { page: currentPage + 1, pages, count: employees.length })}</span><Button variant="outline" className="min-h-11" disabled={currentPage + 1 >= pages} onClick={() => setPage(currentPage + 1)}>{t("employeesNext")}</Button></div>}
     </section>}
   </div>
