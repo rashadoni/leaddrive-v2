@@ -9,7 +9,9 @@ import { HomeCard, HomePill } from "@/components/mtm/home-parts"
 import { AttendanceRequestLimitsUpdateSchema, type AttendanceRequestLimits } from "@/lib/mtm/attendance-request-limits"
 
 const ENDPOINT = "/api/v1/mtm/attendance/request-limits"
-type Props = { canManage: boolean; onAccessLost: () => void; accessUnavailable?: boolean }
+type Props = { canManage: boolean; onAccessLost: () => void; accessUnavailable?: boolean
+  /** Settings opens the editor itself; elsewhere it waits behind its button. */
+  alwaysOpen?: boolean }
 function parseLimits(value: unknown) {
   if (!value || typeof value !== "object") return null
   const data = value as Record<string, unknown>
@@ -17,9 +19,9 @@ function parseLimits(value: unknown) {
   return parsed.success ? parsed.data : null
 }
 
-export function MtmAttendanceRequestLimits({ canManage, onAccessLost, accessUnavailable = false }: Props) {
+export function MtmAttendanceRequestLimits({ canManage, onAccessLost, accessUnavailable = false, alwaysOpen = false }: Props) {
   const t = useTranslations("mtmAttendance")
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(alwaysOpen)
   const [limits, setLimits] = useState<AttendanceRequestLimits | null>(null)
   const [hours, setHours] = useState("")
   const [requests, setRequests] = useState("")
@@ -104,9 +106,9 @@ export function MtmAttendanceRequestLimits({ canManage, onAccessLost, accessUnav
   const busy = loading || saving || mustReload || !limits || Boolean(error)
   const blocked = hours.trim() !== "" && requests.trim() !== "" && (Number(hours) === 0 || Number(requests) === 0)
   return <section data-testid="attendance-request-limits" className="space-y-3">
-    <Button type="button" variant="outline" className="min-h-11" disabled={saving} aria-expanded={open} aria-controls="attendance-request-limits-panel" onClick={() => setOpen(value => !value)}>
+    {alwaysOpen ? null : <Button type="button" variant="outline" className="min-h-11" disabled={saving} aria-expanded={open} aria-controls="attendance-request-limits-panel" onClick={() => setOpen(value => !value)}>
       <SlidersHorizontal className="mr-2 h-4 w-4" aria-hidden="true" />{t(open ? "limitsClose" : "limitsOpen")}
-    </Button>
+    </Button>}
     {open ? <div id="attendance-request-limits-panel"><HomeCard testId="attendance-request-limits-card" titleId="attendance-request-limits-title" title={t("limitsTitle")} tone="orange" icon={<SlidersHorizontal className="h-4 w-4" aria-hidden="true" />}>
       <div className="space-y-5 py-4">
         <div className="max-w-prose space-y-2"><p className="text-sm font-medium">{t("limitsIntro")}</p><p className="text-sm text-muted-foreground">{t("limitsScope")}</p><p className="text-xs text-muted-foreground">{t("limitsReservations")}</p></div>

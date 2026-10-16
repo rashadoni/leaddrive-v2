@@ -12,14 +12,16 @@ const ENDPOINT = "/api/v1/mtm/attendance/day-kinds"
 const SELECT = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
 const PAGE_SIZE = 8
 const GROUP_KEYS = { WORK: "kindsGroupWork", PAID_LEAVE: "kindsGroupPaidLeave", UNPAID_LEAVE: "kindsGroupUnpaidLeave", VIOLATION: "kindsGroupViolation", CALENDAR: "kindsGroupCalendar", EMPLOYER: "kindsGroupEmployer" }
-type Props = { canManage: boolean; onAccessLost: () => void; onSaved: () => void; accessUnavailable?: boolean }
+type Props = { canManage: boolean; onAccessLost: () => void; onSaved: () => void; accessUnavailable?: boolean
+  /** Settings opens the editor itself; elsewhere it waits behind its button. */
+  alwaysOpen?: boolean }
 type Pending = { type: "preset"; value: "AZ" | "RU" } | { type: "archive"; key: string }
 
 /** Company labels only: saving the catalogue never invents attendance or pay. */
-export function MtmAttendanceDayKinds({ canManage, onAccessLost, onSaved, accessUnavailable = false }: Props) {
+export function MtmAttendanceDayKinds({ canManage, onAccessLost, onSaved, accessUnavailable = false, alwaysOpen = false }: Props) {
   const t = useTranslations("mtmAttendance")
   const locale = useLocale()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(alwaysOpen)
   const [items, setItems] = useState<AttendanceDayKind[]>([])
   const [version, setVersion] = useState<string | null>(null)
   const [serverCanManage, setServerCanManage] = useState(false)
@@ -133,7 +135,7 @@ export function MtmAttendanceDayKinds({ canManage, onAccessLost, onSaved, access
   if (accessUnavailable) return null
 
   return <section data-testid="attendance-day-kinds" className="space-y-4">
-    <Button type="button" variant="outline" className="min-h-11" aria-expanded={open} aria-controls="attendance-day-kinds-content" disabled={saving} onClick={() => setOpen(!open)}>{t(open ? "kindsClose" : "kindsOpen")}</Button>
+    {alwaysOpen ? null : <Button type="button" variant="outline" className="min-h-11" aria-expanded={open} aria-controls="attendance-day-kinds-content" disabled={saving} onClick={() => setOpen(!open)}>{t(open ? "kindsClose" : "kindsOpen")}</Button>}
     {open ? <div id="attendance-day-kinds-content"><HomeCard testId="attendance-day-kinds-card" titleId="attendance-day-kinds-title" title={t("kindsTitle")} tone="orange" icon={<Tags className="h-4 w-4" aria-hidden="true" />}>
       <div className="space-y-5 py-4">
         <div className="space-y-2 text-sm text-muted-foreground"><p>{t("kindsIntro")}</p><p>{t("kindsPayHint")}</p></div>

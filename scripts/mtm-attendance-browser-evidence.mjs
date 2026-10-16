@@ -732,7 +732,7 @@ try {
     assert.equal((await api('admin', '/request-limits')).monthlyMinutes, 720)
     await readyPage('day-kinds')
     const kinds = page.getByTestId('attendance-day-kinds')
-    await button('kindsOpen', kinds).click()
+    // Settings opens the editor itself (2026-10-16): no «Open» button.
     await button('kindsAdd', kinds).click()
     await button('kindsCancel', page.getByTestId('attendance-kind-editor')).click()
     await button('kindsPresetRu', kinds).click()
@@ -915,7 +915,6 @@ try {
   await run('browser-hr-grant-revoke', 'browser-action+authenticated-http', async () => {
     await readyPage('hr-access')
     const section = page.getByTestId('attendance-hr-access')
-    await button('hrOpen', section).click()
     await page.locator('#attendance-hr-search').fill('Fixture hr')
     await clickResponse(button('hrSearch', section), `${apiRoot}/access`, 'GET')
     const row = page.getByTestId('attendance-hr-user').filter({ hasText: 'Fixture hr' })
@@ -931,7 +930,7 @@ try {
   await run('browser-kind-create-archive-restore', 'browser-action+database-backed-http', async () => {
     await readyPage('day-kinds')
     const kinds = page.getByTestId('attendance-day-kinds')
-    await button('kindsOpen', kinds).click(); await button('kindsAdd', kinds).click()
+    await button('kindsAdd', kinds).click()
     for (const locale of ['az', 'ru', 'en']) await page.locator(`#attendance-kind-name-${locale}`).fill('Fixture browser custom')
     await page.locator('#attendance-kind-code').fill('FXL')
     await page.locator('#attendance-kind-group').selectOption('WORK')
@@ -1109,13 +1108,17 @@ try {
       for (const target of [original, concurrent]) {
         page = target
         await page.bringToFront()
+        // The editor opens with the page and starts its own request; the page
+        // heading does not establish a loaded catalogue. Fail on the real
+        // response before trying controls that render only with valid items.
+        const reading = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}/day-kinds` && response.request().method() === 'GET', { timeout: 120000 })
+        void reading.catch(() => {})
         await readyPage('day-kinds')
         const kinds = page.getByTestId('attendance-day-kinds')
         manifest.competingTabs.stage = target === original ? 'load-original' : 'load-concurrent'
-        // Opening this panel starts its own request; the page heading does not
-        // establish a loaded catalogue. Fail on the real response before trying
-        // controls that render only when that catalogue has valid items.
-        const catalogue = await clickResponse(button('kindsOpen', kinds), `${apiRoot}/day-kinds`, 'GET')
+        const loaded = await reading
+        assert.equal(loaded.status(), 200)
+        const catalogue = (await loaded.json()).data
         loads.push({ tab: target === original ? 'original' : 'concurrent', version: catalogue.version, items: catalogue.items.length })
         assert.ok(catalogue.items.some(item => item.key === 'REMOTE_WORK' && item.names.en === 'Fixture browser remote'))
         if (loads.length === 2) assert.equal(loads[0].version, catalogue.version)
