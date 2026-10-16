@@ -133,7 +133,8 @@ describe("field contacts organization switch", () => {
     expect(detail).toContain("useMtmFieldContacts(session?.user)")
     expect(detail).toContain('.filter(([section]) => (fieldContactsEnabled || section !== "contacts")')
     expect(detail).toContain('{fieldContactsEnabled ? <TabsContent value="contacts">')
-    expect(detail).toContain("...(fieldContactsEnabled ? [[t(\"detail.contacts\")")
+    // The visit strip (2026-10-16) drops «clients here» with the switch.
+    expect(detail).toContain("summary={fieldContactsEnabled ? visitSummary : { ...visitSummary, clientsHere: undefined }}")
 
     const week = source("src/components/mtm/operational-week-home.tsx")
     expect(week).toContain("useMtmFieldContacts(")

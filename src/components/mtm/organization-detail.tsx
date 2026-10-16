@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   Building2,
   CalendarDays,
+  CalendarPlus,
   CheckCircle2,
   CircleAlert,
   Clock3,
@@ -33,6 +34,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { createDateFormatter } from "@/lib/format-date"
 import { hasCommercialFacts, organizationReferenceRows } from "@/lib/mtm/organization-card"
+import { MtmClientVisitList, MtmClientVisitStrip } from "@/components/mtm/client-visit-strip"
+import type { MtmClientVisitLine, MtmClientVisitSummary } from "@/lib/mtm/client-visit-summary"
+import { mtmRoutePlanPageHref } from "@/lib/mtm/route-links"
 
 type Agent = {
   id: string
@@ -163,18 +167,10 @@ type Workplace = {
   }
 }
 
-type Visit = {
-  id: string
-  status: string
-  checkInAt: string
-  checkOutAt: string | null
-  outcome: string | null
+/** A visit line of the card (who, to whom, what was shown), with what the agent recorded. */
+type Visit = MtmClientVisitLine & {
   potential: string | null
   resultNotes: string | null
-  agent: {
-    id: string
-    name: string
-  }
 }
 
 type FieldPotential = {
@@ -212,9 +208,6 @@ const ASSIGNMENT_ROLE_HINT: Record<string, string> = {
   PRIMARY: "detail.hint.rolePrimary",
   SECONDARY: "detail.hint.roleSecondary",
 }
-const VISIT_STATUS_HINT: Record<string, string> = {
-  CHECKED_IN: "detail.hint.visitInProgress",
-}
 type LoadableSection = Exclude<DetailSection, "details">
 
 type ApiPayload<T> = {
@@ -230,6 +223,8 @@ type ApiPayload<T> = {
     }
     commercial?: CommercialSummary | null
     coordinateVerification?: CoordinateVerification | null
+    visitSummary?: MtmClientVisitSummary
+    longOpenMinutes?: number
   }
 }
 
@@ -286,6 +281,7 @@ function StateBadge({
 export function MtmOrganizationDetail({ organizationId }: { organizationId: string }) {
   const t = useTranslations("mtmCustomers")
   const explorer = useTranslations("mtmCustomers.explorer")
+  const visitWords = useTranslations("mtmClientVisits")
   const locale = useLocale()
   const searchParams = useSearchParams()
   const { data: session } = useSession()
@@ -300,7 +296,11 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
   const [contacts, setContacts] = useState<Workplace[] | null>(null)
   const [visits, setVisits] = useState<Visit[] | null>(null)
   const [staff, setStaff] = useState<StaffSection | null>(null)
-  const [activeSection, setActiveSection] = useState<DetailSection>("details")
+  // The card opens on its visits (owner, 2026-10-16, from a picture).
+  const [activeSection, setActiveSection] = useState<DetailSection>("visits")
+  const [visitSummary, setVisitSummary] = useState<MtmClientVisitSummary | null>(null)
+  const [longOpenMinutes, setLongOpenMinutes] = useState(120)
+  const [timezone, setTimezone] = useState("Asia/Baku")
   const [loadingSummary, setLoadingSummary] = useState(true)
   const [sectionLoading, setSectionLoading] = useState<LoadableSection | null>(null)
   const [error, setError] = useState("")
@@ -343,11 +343,22 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
     setLoadingSummary(true)
     setError("")
     try {
-      const payload = await fetchSection<OrganizationSummary>("summary")
+      // The visits tab is the one the card opens on: it is read with the summary.
+      const [payload, visitsPayload] = await Promise.all([
+        fetchSection<OrganizationSummary>("summary"),
+        fetchSection<{ visits: Visit[] }>("visits").catch((visitsError: unknown) => {
+          setSectionError(visitsError instanceof Error ? visitsError.message : t("detail.sectionLoadError"))
+          return null
+        }),
+      ])
+      if (visitsPayload) setVisits(visitsPayload.data.organization.visits)
       setSummary(payload.data.organization)
       setCommercial(payload.data.commercial ?? null)
       setCoordinateVerification(payload.data.coordinateVerification ?? null)
       setCanManage(payload.data.capabilities.canManage)
+      setVisitSummary(payload.data.visitSummary ?? null)
+      setLongOpenMinutes(payload.data.longOpenMinutes ?? 120)
+      setTimezone(payload.data.timezone || "Asia/Baku")
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("detail.loadError"))
     } finally {
@@ -471,6 +482,8 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
       : t("detail.noCommercialData")
   )
   const hintFor = (keys: Record<string, string>, value: string) => keys[value] ? t(keys[value]) : null
+  // «В маршрут»: the planner on a map, of the responsible employee, the institution on the route.
+  const planHref = mtmRoutePlanPageHref({ customerId: organizationId, agentId: owners[0]?.agent.id })
 
   return (
     <div data-testid="mtm-organization-detail" className="space-y-5">
@@ -497,6 +510,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               </StateBadge>
               <StateBadge hint={t("detail.hint.category")}>{explorer("categoryShort", { category: summary.category })}</StateBadge>
               <StateBadge>{organizationType}</StateBadge>
+              {summary.code ? <StateBadge hint={t("detail.hint.code")}>{t("detail.etalonId")}: {summary.code}</StateBadge> : null}
             </div>
             <div className="grid gap-2">
               <h1 className="max-w-4xl text-2xl font-semibold tracking-tight md:text-3xl">{summary.name}</h1>
@@ -506,10 +520,31 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               </p>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              <span className="inline-flex items-center gap-2">
-                <UserRound className="h-4 w-4 text-muted-foreground" />
-                <HintValue text={t("detail.hint.owner")}>{owners.map((item) => item.agent.name).join(", ") || t("detail.unassigned")}</HintValue>
-              </span>
+              {owners.length > 0 ? (
+                <span className="inline-flex items-center gap-2">
+                  <UserRound className="h-4 w-4 text-muted-foreground" />
+                  <HintValue text={t("detail.hint.owner")}>{owners.map((item) => item.agent.name).join(", ")}</HintValue>
+                </span>
+              ) : (
+                // Nobody responsible: say so, and offer to name somebody.
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-2 font-medium text-amber-800 dark:text-amber-300">
+                    <UserRound className="h-4 w-4" />
+                    <HintValue text={t("detail.hint.owner")}>{visitWords("unassigned")}</HintValue>
+                  </span>
+                  {canManage ? (
+                    <Hint text={visitWords("hint.assign")}>
+                      <Link
+                        href={`/mtm/customers?assignmentTarget=${encodeURIComponent(organizationId)}&assignmentMode=ASSIGN`}
+                        data-testid="mtm-organization-detail-assign"
+                        className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-dashed border-primary/50 px-3 text-[13px] font-semibold text-primary hover:bg-primary/5"
+                      >
+                        <UserPlus className="h-4 w-4" />{visitWords("assign")}
+                      </Link>
+                    </Hint>
+                  ) : null}
+                </span>
+              )}
               {summary.phone ? (
                 <a className="inline-flex items-center gap-2 underline-offset-4 hover:underline" href={`tel:${summary.phone}`}>
                   <Phone className="h-4 w-4 text-muted-foreground" />
@@ -541,30 +576,39 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                 </Button>
               </Hint>
             ) : null}
+            <Hint text={visitWords("hint.toRoute")}>
+              <Button asChild className="min-h-11 md:min-h-9">
+                <Link href={planHref} data-testid="mtm-organization-detail-to-route">
+                  <CalendarPlus className="h-4 w-4" />
+                  {visitWords("toRoute")}
+                </Link>
+              </Button>
+            </Hint>
           </div>
         </div>
-        <div className="grid divide-y border-t border-zinc-200 bg-muted/25 dark:border-zinc-700 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
-          {[
-            ...(summary.code ? [[t("detail.etalonId"), summary.code, t("detail.hint.code")]] : []),
-            ...(fieldContactsEnabled ? [[t("detail.contacts"), numberFormatter.format(summary._count.contactWorkplaces), t("detail.hint.contactsCount")]] : []),
-            [t("detail.visits"), numberFormatter.format(summary._count.visits), t("detail.hint.visitsCount")],
-            [t("detail.gps"), hasCoordinates ? t("detail.coordinatesRecorded") : t("detail.coordinatesMissing"), t("detail.hint.gps")],
-          ].map(([label, value, hint]) => (
-            <div key={label} className="grid gap-1 px-5 py-3">
-              <span className="text-xs font-medium text-muted-foreground"><HintValue text={hint}>{label}</HintValue></span>
-              <span className="truncate text-sm font-semibold">{value}</span>
-            </div>
-          ))}
-        </div>
+        {/* Owner, 2026-10-16, from a picture: the visits on top — last, open
+            now, the clients here and the next visit — where four counters
+            stood (the reference ID is a badge now, GPS is in «Сведения»). */}
+        {visitSummary ? (
+          <MtmClientVisitStrip
+            kind="institution"
+            // A tenant that switched field contacts off has no «clients here».
+            summary={fieldContactsEnabled ? visitSummary : { ...visitSummary, clientsHere: undefined }}
+            longOpenMinutes={longOpenMinutes}
+            timezone={timezone}
+            orgId={orgId ? String(orgId) : undefined}
+            planHref={planHref}
+          />
+        ) : null}
       </header>
 
       <Tabs value={!fieldContactsEnabled && activeSection === "contacts" ? "details" : activeSection} onValueChange={selectSection}>
         <div className="overflow-x-auto pb-1">
           <TabsList className="h-auto min-w-max justify-start p-1">
             {([
-              ["details", Building2],
-              ["contacts", Stethoscope],
               ["visits", CalendarDays],
+              ["contacts", Stethoscope],
+              ["details", Building2],
               ["staff", UsersRound],
             ] as const).filter(([section]) => (fieldContactsEnabled || section !== "contacts")).map(([section, Icon]) => (
               <TabsTrigger key={section} value={section} className="min-h-10 gap-2 px-3">
@@ -588,6 +632,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                 <DefinitionRow label={t("detail.address")} value={summary.address} />
                 <DefinitionRow label={t("detail.locality")} value={summary.locality || summary.city} />
                 <DefinitionRow label={t("detail.cityDistrict")} value={summary.cityDistrict || summary.district} />
+                <DefinitionRow label={t("detail.gps")} hint={t("detail.hint.gps")} value={hasCoordinates ? t("detail.coordinatesRecorded") : t("detail.coordinatesMissing")} />
                 {summary.notes ? <DefinitionRow label={t("detail.notes")} value={summary.notes} /> : null}
               </dl>
             </section>
@@ -726,34 +771,17 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         </TabsContent> : null}
 
         <TabsContent value="visits">
-          <SectionFrame title={t("detail.visitsTitle")} description={t("detail.visitsDescription")}>
-            <SectionState loading={sectionLoading === "visits"} error={sectionError} retry={() => void loadDetailSection("visits")} t={t}>
-              {visits?.length ? (
-                <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                  {visits.map((visit) => (
-                    <article key={visit.id} className="grid gap-3 py-4 first:pt-0 last:pb-0 lg:grid-cols-[minmax(0,1fr)_auto]">
-                      <div className="grid gap-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-semibold">{visit.agent.name}</h3>
-                          <StateBadge tone={visit.status === "CHECKED_OUT" ? "positive" : visit.status === "CANCELLED" ? "warning" : "neutral"} hint={hintFor(VISIT_STATUS_HINT, visit.status)}>
-                            {t(`detail.visitStatuses.${visit.status}`)}
-                          </StateBadge>
-                          {visit.outcome ? <StateBadge hint={t("detail.hint.visitOutcome")}>{t(`detail.visitOutcomes.${visit.outcome}`)}</StateBadge> : null}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{visit.resultNotes || t("detail.visitNotesMissing")}</p>
-                      </div>
-                      <div className="grid content-start gap-1 text-sm tabular-nums lg:text-right">
-                        <span>{dateTimeFormatter.format(new Date(visit.checkInAt))}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {visit.checkOutAt ? t("detail.completedAt", { date: dateTimeFormatter.format(new Date(visit.checkOutAt)) }) : t("detail.notCompleted")}
-                        </span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : <EmptySection icon={CalendarDays} title={t("detail.noVisits")} description={t("detail.noVisitsDescription")} />}
-            </SectionState>
-          </SectionFrame>
+          {/* One line a visit: when, who, to which doctor, what was shown, and
+              «не закрыт агентом» for a visit left open (owner, 2026-10-16). */}
+          <SectionState loading={sectionLoading === "visits" || (visits === null && !sectionError)} error={sectionError} retry={() => void loadDetailSection("visits", true)} t={t}>
+            <MtmClientVisitList
+              kind="institution"
+              visits={visits ?? []}
+              total={visitSummary?.total ?? visits?.length ?? 0}
+              longOpenMinutes={longOpenMinutes}
+              timezone={timezone}
+            />
+          </SectionState>
         </TabsContent>
 
         <TabsContent value="staff">

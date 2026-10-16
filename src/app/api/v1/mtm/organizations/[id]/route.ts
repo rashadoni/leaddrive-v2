@@ -14,6 +14,7 @@ import {
   customerScopeForActor,
 } from "@/lib/mtm/field-scope"
 import { writeMtmAudit } from "@/lib/mtm-audit"
+import { MTM_CLIENT_VISIT_SELECT, mtmClientVisitLine, readMtmClientVisitSummary } from "@/lib/mtm/client-visit-summary"
 
 function utcDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
@@ -42,14 +43,14 @@ async function context(auth: { orgId: string; userId: string; role: string; agen
     getMtmSettings(auth.orgId),
   ])
   const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
-  return { actor, timezone, asOf: utcDate(currentDateKey(new Date(), timezone)) }
+  return { actor, settings, timezone, asOf: utcDate(currentDateKey(new Date(), timezone)) }
 }
 
 const detailSections = new Set(["summary", "contacts", "visits", "departments", "staff", "promotions", "files"])
 
 export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
-  const { actor, timezone, asOf } = await context(auth)
+  const { actor, settings, timezone, asOf } = await context(auth)
   if (!actor) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const requestedSection = new URL(req.url).searchParams.get("section")
@@ -235,14 +236,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
           orderBy: { checkInAt: "desc" },
           take: 50,
           select: {
-            id: true,
-            status: true,
-            checkInAt: true,
-            checkOutAt: true,
-            outcome: true,
+            ...MTM_CLIENT_VISIT_SELECT,
             potential: true,
             resultNotes: true,
-            agent: { select: { id: true, name: true } },
           },
         },
       },
@@ -415,10 +411,41 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
   }
   if (!organization) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
+  // The visits tab names the doctor and what was shown (owner, 2026-10-16).
+  if (requestedSection === "visits" && "visits" in organization && Array.isArray(organization.visits)) {
+    organization = {
+      ...organization,
+      visits: organization.visits.map((visit: Parameters<typeof mtmClientVisitLine>[0] & { potential: unknown; resultNotes: string | null }) => ({
+        ...mtmClientVisitLine(visit),
+        potential: visit.potential,
+        resultNotes: visit.resultNotes,
+      })),
+    }
+  }
+  // The visits on top of the card: last, open, next, and the clients here.
+  const routeAgentIds = actor.scopedAgentIds === null
+    ? null
+    : actor.role === "AGENT"
+      ? actor.agentId ? [actor.agentId] : []
+      : [...actor.scopedAgentIds]
+  const visitSummary = !requestedSection || requestedSection === "summary"
+    ? await readMtmClientVisitSummary(prisma, {
+        organizationId: auth.orgId,
+        subject: { customerId: id },
+        asOf,
+        routeScope: routeAgentIds === null
+          ? {}
+          : routeAgentIds.length > 0
+            ? { OR: [{ agentId: { in: routeAgentIds } }, { assignments: { some: { agentId: { in: routeAgentIds }, removedAt: null } } }] }
+            : { id: "__no_route_scope__" },
+      })
+    : undefined
+
   return NextResponse.json({
     success: true,
     data: {
       organization,
+      ...(visitSummary ? { visitSummary, longOpenMinutes: settings.autoCheckoutMinutes } : {}),
       asOf: asOf.toISOString().slice(0, 10),
       timezone,
       section: requestedSection ?? "all",

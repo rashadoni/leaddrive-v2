@@ -31,6 +31,7 @@ describe.each([
   ["mtmContactWorkplace.hint", "hint.", [component("contact-workplace-dialog")]],
   ["mtmContactDictionaryAssignments.hint", "hint.", [component("contact-dictionary-assignment-panel")]],
   ["mtmCustomers.detail.hint", "detail.hint.", [component("organization-detail")]],
+  ["mtmClientVisits.hint", "hint.", [component("client-visit-strip"), component("organization-detail")]],
   ["mtmExplainableKpi.hint", "hint.", [component("explainable-kpi-dashboard")]],
   ["mtmPharmacyPromotions.hint", "hint.", ["workspace", "detail", "definition-admin", "campaign-admin", "agent-capture"].map((name) => component(`pharmacy-promotion-${name}`))],
   ["mtmProductCatalog.hint", "hint.", [component("product-catalog")]],
