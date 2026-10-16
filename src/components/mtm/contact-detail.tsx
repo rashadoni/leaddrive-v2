@@ -56,6 +56,9 @@ import type {
   MtmPotentialAgentOption,
 } from "@/components/mtm/contact-scoring-entry-dialogs"
 import { cn } from "@/lib/utils"
+import { MtmClientVisitList, MtmClientVisitStrip } from "@/components/mtm/client-visit-strip"
+import type { MtmClientVisitSummary } from "@/lib/mtm/client-visit-summary"
+import { mtmRoutePlanPageHref } from "@/lib/mtm/route-links"
 import type { MtmContactRequiredField } from "@/lib/mtm/contact-required-fields"
 import {
   MtmContactDictionaryAssignmentPanel,
@@ -195,6 +198,9 @@ type ApiPayload = {
     history: AuditEvent[]
     activeAssignments: Assignment[]
     eligibleBrandPotentialVisits: MtmEligiblePotentialVisit[]
+    /** The visits on top of the card: last, open, next, the latest few. */
+    visitSummary?: MtmClientVisitSummary
+    longOpenMinutes?: number
     brandPotentialAgents: MtmPotentialAgentOption[]
     availableContactDictionaries: GovernedContactDictionary[]
     dictionaryAssignmentStateHash: string
@@ -328,6 +334,7 @@ function SectionCard({
 
 export function MtmContactDetail({ contactId }: { contactId: string }) {
   const t = useTranslations("mtmContactDetail")
+  const visitWords = useTranslations("mtmClientVisits")
   const locale = useLocale()
   const searchParams = useSearchParams()
   const { data: session } = useSession()
@@ -355,10 +362,6 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
   )
   const dateTimeFormatter = useMemo(
     () => createDateFormatter(locale, { dateStyle: "medium", timeStyle: "short" }),
-    [locale],
-  )
-  const numberFormatter = useMemo(
-    () => new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }),
     [locale],
   )
 
@@ -457,6 +460,11 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
         : assignment.entry!.labels.en)
     .join(", ") || null
   const hintFor = (keys: Record<string, string>, value: string) => keys[value] ? t(keys[value]) : null
+  // «В маршрут»: the planner on a map, of the responsible employee, the client on the route.
+  const primaryOwner = activeAssignments.find((assignment) => assignment.role === "PRIMARY") ?? activeAssignments[0]
+  const planHref = primaryWorkplace
+    ? mtmRoutePlanPageHref({ customerId: primaryWorkplace.customer.id, contactId: contact.id, agentId: primaryOwner?.agent.id })
+    : null
   const changeHint = capabilities.canManage ? t("hint.edit") : t("hint.suggestChange")
 
   return (
@@ -496,6 +504,13 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
                   ? [primaryWorkplace.customer.name, primaryWorkplace.jobTitle, primaryWorkplace.room ? t("room", { value: primaryWorkplace.room }) : null].filter(Boolean).join(" · ")
                   : t("workplaceMissing")}</span>
               </p>
+              {/* Whose client it is, beside where he works (owner, 2026-10-16, from a picture). */}
+              {activeAssignments.length > 0 ? (
+                <p data-testid="mtm-contact-owners" className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <UserRound className="mt-0.5 h-4 w-4 flex-none" />
+                  <span>{[...activeAssignments].sort((left, right) => Number(right.role === "PRIMARY") - Number(left.role === "PRIMARY")).map((assignment) => assignment.agent.name).join(", ")}</span>
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -531,11 +546,11 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
                 </Button>
               </Hint>
             ) : null}
-            {primaryWorkplace ? (
-              <Hint text={t("hint.planVisit")}>
+            {planHref ? (
+              <Hint text={t("hint.toRoute")}>
                 <Button asChild className="min-h-11">
-                  <Link href={`/mtm/routes?customerId=${encodeURIComponent(primaryWorkplace.customer.id)}&contactId=${encodeURIComponent(contact.id)}`}>
-                    <CalendarPlus className="h-4 w-4" />{t("planVisit")}
+                  <Link href={planHref} data-testid="mtm-contact-to-route">
+                    <CalendarPlus className="h-4 w-4" />{visitWords("toRoute")}
                   </Link>
                 </Button>
               </Hint>
@@ -550,20 +565,17 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
           </div>
         </div>
 
-        <div className="grid divide-y border-t border-zinc-200 bg-muted/25 dark:border-zinc-700 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
-          {([
-            [t("workplaces"), contact.workplaces.length, t("hint.workplacesCount")],
-            [t("activeOwners"), activeAssignments.length, t("hint.ownersCount")],
-            [t("assessments"), contact.doctorAssessments.length, t("hint.assessmentsCount")],
-            [t("potentialRecords"), contact.fieldPotentials.length, t("hint.potentialCount")],
-          ] as const).map(([label, value, hint]) => (
-            <div key={String(label)} className="grid gap-1 px-5 py-3">
-              <span className="text-xs font-medium text-muted-foreground"><HintValue text={hint}>{label}</HintValue></span>
-              <span className="text-sm font-semibold tabular-nums">{numberFormatter.format(Number(value))}</span>
-            </div>
-          ))}
-        </div>
+        {/* Owner, 2026-10-16, from a picture: the visits on top — last, open
+            now, next — where four counters (workplaces, owners, assessments,
+            potentials) stood; those are in their tabs. */}
+        {payload.visitSummary ? (
+          <MtmClientVisitStrip kind="contact" summary={payload.visitSummary} longOpenMinutes={payload.longOpenMinutes ?? 120} timezone={payload.timezone} orgId={orgId ? String(orgId) : undefined} planHref={planHref} />
+        ) : null}
       </header>
+
+      {payload.visitSummary ? (
+        <MtmClientVisitList kind="contact" visits={payload.visitSummary.recent} total={payload.visitSummary.total} longOpenMinutes={payload.longOpenMinutes ?? 120} timezone={payload.timezone} />
+      ) : null}
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DetailTab)}>
         <div className="overflow-x-auto pb-1">
