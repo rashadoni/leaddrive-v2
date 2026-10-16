@@ -50,8 +50,20 @@ export function MtmAttendanceRiskReview() {
   const dirty = !report || JSON.stringify(draft) !== JSON.stringify(report.snapshot.query)
   const locked = loading || saving || Boolean(pending), selectedItem = report?.items.find(item => item.id === selected)
   const teams = [...new Map((report?.directory ?? []).flatMap(employee => employee.teamId ? [[employee.teamId, employee.teamName ?? "—"] as const] : [])).entries()]
-  function change(next: AttendanceRiskQuery) { exportRequest.current?.abort(); setExporting(null); setDraft(next); setSaved(false) }
-  function apply(event: FormEvent) { event.preventDefault(); if (locked) return; const parsed = AttendanceRiskQuerySchema.safeParse(draft); if (!parsed.success) { setError("journalInvalidPeriod"); return }; void load(parsed.data) }
+  // Filters apply themselves, as on the newer Personnel screens (owner, 2026-10-16);
+  // only a decision being written holds them still.
+  const applyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (applyTimer.current) clearTimeout(applyTimer.current) }, [])
+  const filtersLocked = saving || Boolean(pending)
+  function change(next: AttendanceRiskQuery) {
+    exportRequest.current?.abort(); setExporting(null); setDraft(next); setSaved(false)
+    if (applyTimer.current) clearTimeout(applyTimer.current)
+    const parsed = AttendanceRiskQuerySchema.safeParse(next)
+    if (!parsed.success) { if (next.from && next.to) setError("journalInvalidPeriod"); return }
+    setError(null)
+    applyTimer.current = setTimeout(() => { applyTimer.current = null; void load(parsed.data) }, 400)
+  }
+  function apply(event: FormEvent) { event.preventDefault(); if (filtersLocked) return; if (applyTimer.current) { clearTimeout(applyTimer.current); applyTimer.current = null }; const parsed = AttendanceRiskQuerySchema.safeParse(draft); if (!parsed.success) { setError("journalInvalidPeriod"); return }; void load(parsed.data) }
   async function dismiss(event?: FormEvent) {
     event?.preventDefault()
     if (saving || (!pending && (!selectedItem?.canDismiss || reason.trim().length < 3))) return
@@ -92,13 +104,13 @@ export function MtmAttendanceRiskReview() {
   return <section className="space-y-5" data-testid="attendance-risk-review" aria-label={t("riskTitle")} aria-busy={loading}>
     <header className="space-y-2"><h1 id="attendance-risk-report-title" className="text-2xl font-semibold tracking-tight">{t("riskTitle")}</h1><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("riskDescription")}</p></header>
     <Card data-testid="attendance-risk-report-card" aria-labelledby="attendance-risk-report-title" className="rounded-2xl px-5 py-1"><div className="space-y-4 py-4">
-      {!denied && <form onSubmit={apply} className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label={t("journalFilters")}>
-        {(["from", "to"] as const).map(key => <div key={key} className="space-y-2"><label htmlFor={`risk-${key}`} className="text-sm font-medium">{t(key === "from" ? "reportFrom" : "reportTo")}</label><Input id={`risk-${key}`} type="date" required className="min-h-11" disabled={locked} value={draft[key]} onChange={e => change({ ...draft, [key]: e.target.value })} /></div>)}
-        <div className="space-y-2"><label htmlFor="risk-team" className="text-sm font-medium">{t("riskSelectTeam")}</label><select id="risk-team" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" disabled={locked} value={draft.teamId} onChange={e => change({ ...draft, teamId: e.target.value, employeeId: "" })}><option value="">{t("riskAll")}</option>{teams.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></div>
-        <div className="space-y-2"><label htmlFor="risk-employee" className="text-sm font-medium">{t("riskSelectEmployee")}</label><select id="risk-employee" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" disabled={locked} value={draft.employeeId} onChange={e => change({ ...draft, employeeId: e.target.value })}><option value="">{t("riskAll")}</option>{report?.directory.filter(e => !draft.teamId || e.teamId === draft.teamId).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></div>
-        <div className="space-y-2"><label htmlFor="risk-status" className="text-sm font-medium">{t("journalStatus")}</label><select id="risk-status" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" disabled={locked} value={draft.status} onChange={e => change({ ...draft, status: e.target.value as AttendanceRiskQuery["status"] })}>{(["ALL", "OPEN", "DISMISSED"] as const).map(status => <option key={status} value={status}>{t(status === "ALL" ? "riskAll" : status === "OPEN" ? "riskOpen" : "riskDismissed")}</option>)}</select></div>
-        <div className="space-y-2 sm:col-span-2"><label htmlFor="risk-kind" className="text-sm font-medium">{t("riskFinding")}</label><select id="risk-kind" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" disabled={locked} value={draft.kind} onChange={e => change({ ...draft, kind: e.target.value as AttendanceRiskQuery["kind"] })}><option value="ALL">{t("riskAllKinds")}</option>{ATTENDANCE_RISK_KINDS.map(kind => <option key={kind} value={kind}>{t(ATTENDANCE_RISK_MESSAGES[kind])}</option>)}</select></div>
-        <Button type="submit" className="min-h-11" disabled={locked}>{t("journalApply")}</Button>
+      {!denied && <form onSubmit={apply} className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label={t("journalFilters")}>
+        {(["from", "to"] as const).map(key => <div key={key} className="space-y-2"><label htmlFor={`risk-${key}`} className="text-sm font-medium">{t(key === "from" ? "reportFrom" : "reportTo")}</label><Input id={`risk-${key}`} type="date" required className="min-h-11" disabled={filtersLocked} value={draft[key]} onChange={e => change({ ...draft, [key]: e.target.value })} /></div>)}
+        <div className="space-y-2"><label htmlFor="risk-team" className="text-sm font-medium">{t("riskSelectTeam")}</label><select id="risk-team" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" disabled={filtersLocked} value={draft.teamId} onChange={e => change({ ...draft, teamId: e.target.value, employeeId: "" })}><option value="">{t("riskAll")}</option>{teams.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></div>
+        <div className="space-y-2"><label htmlFor="risk-employee" className="text-sm font-medium">{t("riskSelectEmployee")}</label><select id="risk-employee" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" disabled={filtersLocked} value={draft.employeeId} onChange={e => change({ ...draft, employeeId: e.target.value })}><option value="">{t("riskAll")}</option>{report?.directory.filter(e => !draft.teamId || e.teamId === draft.teamId).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></div>
+        <div className="space-y-2"><label htmlFor="risk-status" className="text-sm font-medium">{t("journalStatus")}</label><select id="risk-status" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" disabled={filtersLocked} value={draft.status} onChange={e => change({ ...draft, status: e.target.value as AttendanceRiskQuery["status"] })}>{(["ALL", "OPEN", "DISMISSED"] as const).map(status => <option key={status} value={status}>{t(status === "ALL" ? "riskAll" : status === "OPEN" ? "riskOpen" : "riskDismissed")}</option>)}</select></div>
+        <div className="space-y-2"><label htmlFor="risk-kind" className="text-sm font-medium">{t("riskFinding")}</label><select id="risk-kind" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" disabled={filtersLocked} value={draft.kind} onChange={e => change({ ...draft, kind: e.target.value as AttendanceRiskQuery["kind"] })}><option value="ALL">{t("riskAllKinds")}</option>{ATTENDANCE_RISK_KINDS.map(kind => <option key={kind} value={kind}>{t(ATTENDANCE_RISK_MESSAGES[kind])}</option>)}</select></div>
+
       </form>}
       {loading && <p role="status">{t("journalLoading")}</p>}
       {error && <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{t(error)}</p>{pending ? <Button type="button" className="min-h-11" disabled={saving} onClick={() => void dismiss()}>{t("riskRetry")}</Button> : !denied && <Button type="button" variant="outline" className="min-h-11" disabled={loading} onClick={() => void load(report?.snapshot.query)}>{t("reportReload")}</Button>}</div>}

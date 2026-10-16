@@ -161,6 +161,18 @@ async function readyLeaveBalances() {
   assert.ok(body.data.rows.length)
   await page.getByTestId('leave-row').first().waitFor()
 }
+/** Filters apply themselves (2026-10-16): wait for the read whose query carries the final values. */
+async function filterResponse(action, path, expected) {
+  const waiting = page.waitForResponse(response => {
+    const url = new URL(response.url())
+    return url.pathname === path && response.request().method() === 'GET' && Object.entries(expected).every(([key, value]) => url.searchParams.get(key) === value)
+  }, { timeout: 120000 })
+  void waiting.catch(() => {})
+  await action()
+  const response = await waiting
+  assert.equal(response.status(), 200, 'Filtered read succeeds')
+  return response
+}
 async function clickResponse(locator, path, method = 'POST', status = 200, parseBody = true) {
   const waiting = page.waitForResponse(response => new URL(response.url()).pathname === path && response.request().method() === method, { timeout: 120000 })
   void waiting.catch(() => {}) // A failed click must not leave an unhandled listener rejection.
@@ -792,8 +804,7 @@ try {
     await readyPage('decisions')
     await page.locator('#attendance-journal-from').fill(today)
     await page.locator('#attendance-journal-to').fill(date(30))
-    await page.locator('#attendance-journal-status').selectOption('APPROVED')
-    await clickResponse(button('journalApply'), `${apiRoot}/decisions`, 'GET')
+    await filterResponse(() => page.locator('#attendance-journal-status').selectOption('APPROVED'), `${apiRoot}/decisions`, { from: today, to: date(30), status: 'APPROVED' })
     await page.getByTestId('attendance-journal-row').first().waitFor()
     const download = page.waitForEvent('download', { timeout: 120000 })
     await button('exportExcel').click(); assert.equal(await (await download).failure(), null)
@@ -996,15 +1007,13 @@ try {
     await readyPage('review')
     await page.locator('#risk-from').fill(today); await page.locator('#risk-to').fill(today)
     await page.locator('#risk-status').selectOption('OPEN')
-    await page.locator('#risk-kind').selectOption('CLOCK_DIFFERENCE')
-    await clickResponse(button('journalApply'), `${apiRoot}/review`, 'GET')
+    await filterResponse(() => page.locator('#risk-kind').selectOption('CLOCK_DIFFERENCE'), `${apiRoot}/review`, { from: today, to: today, status: 'OPEN', kind: 'CLOCK_DIFFERENCE' })
     const row = page.getByTestId('risk-row').filter({ hasText: 'Fixture employee' })
     await button('riskReview', row).click()
     assert.equal(await button('riskDismiss').isEnabled(), false)
     await page.locator('#risk-reason').fill('Fictional clock verified through browser')
     await clickResponse(button('riskDismiss'), `${apiRoot}/review/${risk.id}`)
-    await page.locator('#risk-status').selectOption('DISMISSED')
-    await clickResponse(button('journalApply'), `${apiRoot}/review`, 'GET')
+    await filterResponse(() => page.locator('#risk-status').selectOption('DISMISSED'), `${apiRoot}/review`, { status: 'DISMISSED' })
     assert.ok(await page.getByTestId('risk-row').count() >= 2)
     assert.deepEqual(await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: workday.id } }), workday)
     return { detector: 'Seeded finding; only review/dismissal is browser-tested' }

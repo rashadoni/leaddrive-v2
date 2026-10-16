@@ -32,7 +32,7 @@ describe("risk review screen",()=>{
  it("freezes an unknown decision and retries exactly the same request",async()=>{
   fetchMock.mockImplementation(async(url,opts)=>{if(String(url).endsWith(CASE)&&opts?.method==="POST"){if(writes().length===1)throw new Error("lost reply");report.items[0].dismissal={at:"2026-10-13T06:00:00Z",byName:"Demo reviewer",reason:"Demo shared device"};report.items[0].canDismiss=false;return response({id:CASE,idempotent:true})}return response(report)})
   await render();await click("riskReview");await edit("risk-reason","Demo shared device");await submit()
-  expect(container.textContent).toContain(t("riskUnknown"));expect((container.querySelector("#risk-reason") as HTMLTextAreaElement).disabled).toBe(true);expect(buttons("journalApply")[0].disabled).toBe(true)
+  expect(container.textContent).toContain(t("riskUnknown"));expect((container.querySelector("#risk-reason") as HTMLTextAreaElement).disabled).toBe(true);expect((container.querySelector("#risk-from") as HTMLInputElement).disabled).toBe(true)
   await click("riskRetry");expect(writes()).toHaveLength(2);expect(writes()[0][1]?.body).toBe(writes()[1][1]?.body);expect(container.textContent).toContain(t("riskSaved"));expect(container.textContent).toContain("Demo reviewer")
  })
  it.each([401,403,404])("clears private data and pending decision on %s",async status=>{

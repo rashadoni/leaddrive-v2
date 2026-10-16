@@ -14,7 +14,9 @@ type Pending = { path: "policy" | "profiles"; body: unknown }
 const number = (value: string) => value.trim() ? Number(value) : NaN
 export function MtmAttendanceLeaveBalances() {
   const t = useTranslations("mtmAttendance"), locale = useLocale()
-  const [year, setYear] = useState(String(new Date().getFullYear())), [usedThrough, setUsedThrough] = useState(""), [offset, setOffset] = useState(0)
+  // A list of years, not a number field: each typed digit used to start a load.
+  const thisYear = new Date().getFullYear()
+  const [year, setYear] = useState(String(thisYear)), [usedThrough, setUsedThrough] = useState(""), [offset, setOffset] = useState(0)
   const [data, setData] = useState<AttendanceLeaveDirectory | null>(null), [busy, setBusy] = useState(false), [denied, setDenied] = useState(false), [message, setMessage] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const [basisDate, setBasisDate] = useState(""), [counting, setCounting] = useState(""), [minutes, setMinutes] = useState("")
@@ -85,7 +87,7 @@ export function MtmAttendanceLeaveBalances() {
   if (denied) return <p role="status">{t("reportAccessUnavailable")}</p>
   return <main className="min-w-0 space-y-5" data-testid="attendance-leave-balances">
     <div className="space-y-2"><h1 className="text-2xl font-semibold tracking-tight">{t("leaveTitle")}</h1><p className="text-sm text-muted-foreground">{t("leaveIntro")}</p></div>
-    <div className="flex flex-wrap items-end gap-4"><label className="space-y-1 text-sm"><span>{t("leaveYear")}</span><input aria-label={t("leaveYear")} type="number" min={2000} max={2100} className={control} disabled={locked} value={year} onChange={e => { setYear(e.target.value); setOffset(0) }} /></label>
+    <div className="flex flex-wrap items-end gap-4"><label className="space-y-1 text-sm"><span>{t("leaveYear")}</span><select aria-label={t("leaveYear")} className={control} disabled={locked} value={year} onChange={e => { setYear(e.target.value); setOffset(0) }}>{[thisYear - 2, thisYear - 1, thisYear, thisYear + 1].map(value => <option key={value} value={value}>{value}</option>)}</select></label>
       <label className="space-y-1 text-sm"><span>{t("leaveThrough")}</span><input type="date" className={control} max={data?.today} disabled={locked} value={usedThrough || data?.usedThrough || ""} onChange={e => setUsedThrough(e.target.value)} /></label>
       <Button type="button" variant="outline" className="min-h-11" disabled={locked} onClick={() => void load()}>{t("leaveRefresh")}</Button></div>
     {message && <p role={message === "leaveSaved" ? "status" : "alert"} className="text-sm">{t(message)}</p>}

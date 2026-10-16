@@ -66,7 +66,7 @@ describe("leave balances use explicit client inputs", () => {
     const calls = () => fetchMock.mock.calls.filter(([, options]) => options?.method === "POST")
     expect(calls()).toHaveLength(1); expect(host.textContent).toContain(texts.leaveUnknown)
     expect(host.querySelector<HTMLFieldSetElement>('[data-testid="leave-policy"] fieldset')!.disabled).toBe(true)
-    expect(host.querySelector<HTMLInputElement>('input[aria-label="Год"]')!.disabled).toBe(true)
+    expect(host.querySelector<HTMLSelectElement>('select[aria-label="Год"]')!.disabled).toBe(true)
     await act(async () => button(texts.leaveRetry).click())
     expect(calls()).toHaveLength(2); expect(calls()[1][1]?.body).toBe(calls()[0][1]?.body)
     const sent = JSON.parse(String(calls()[0][1]?.body))
