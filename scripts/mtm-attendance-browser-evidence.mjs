@@ -924,7 +924,6 @@ try {
     await row.getByRole('button', { name: t('hrGrantNamed', { name: 'Fixture hr' }) }).click()
     await clickResponse(button('hrConfirmGrant', row), `${apiRoot}/access/${fixture.users.hr.id}`, 'PATCH')
     await api('hr', `/report?from=${today}&to=${today}&form=ALL`)
-    await button('hrClose', section).click()
     return { originalSessionRevokedThenRestored: true }
   })
   await run('browser-kind-create-archive-restore', 'browser-action+database-backed-http', async () => {
