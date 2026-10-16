@@ -93,7 +93,10 @@ describe("attendance report workspace on the real row calculation", () => {
     expect(card("missing-finish")).toBe("0")
     expect(container.textContent).toContain(t.reportInvalidFacts)
     expect(container.textContent).toContain(t.reportProvisional)
-    expect(container.textContent).toContain("16:39")
+    // 6:39 (break pressed over lunch) + the open day 09:00–19:00 less the automatic 1:00 lunch
+    // = 6:39 + 9:00 (owner, 2026-10-16: «вычитать обед самому»).
+    expect(container.textContent).toContain("15:39")
+    expect(container.textContent).toContain(messages(locale).mtmAttendance.reportLunchAuto.replace("{time}", "1:00"))
     expect(container.textContent).toContain("0:21")
     expect(container.textContent).not.toMatch(/PRIVATE_|40\.987654|49\.123456|latitude|longitude|mtmAttendance\./)
     expect(dayRows()[3].textContent).toContain("—")
@@ -192,7 +195,7 @@ describe("attendance report workspace on the real row calculation", () => {
     expect(container.textContent).toContain("запис")
     expect(card("missing-finish")).toBe("1")
     expect(container.textContent).toContain(t.reportPartial)
-    expect(container.querySelector('[data-testid="attendance-report-totals"]')?.textContent).toContain("16:39")
+    expect(container.querySelector('[data-testid="attendance-report-totals"]')?.textContent).toContain("15:39")
     capture("month", "ru")
     await edit("month", "2026-11")
     await submit()

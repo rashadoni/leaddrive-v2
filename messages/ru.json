@@ -20004,6 +20004,7 @@
     "reportUpcoming": "Ещё не наступил",
     "reportInvalidFacts": "Данные требуют проверки",
     "reportAbsenceReasonPending": "Не пришёл, причина выясняется",
+    "reportLunchAuto": "Обед {time} вычтен сам: перерыв не нажат",
     "reportProvisional": "День ещё идёт. Отработанное время предварительное на момент загрузки.",
     "reportProvisionalShort": "предварительно",
     "reportUnknownTime": "Нет отметки ухода; отработанное время неизвестно.",

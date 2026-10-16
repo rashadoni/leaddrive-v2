@@ -20000,6 +20000,7 @@
     "reportUpcoming": "Hələ başlamayıb",
     "reportInvalidFacts": "Məlumat yoxlanmalıdır",
     "reportAbsenceReasonPending": "İşə gəlməyib, səbəb dəqiqləşdirilir",
+    "reportLunchAuto": "Nahar {time} avtomatik çıxıldı: fasilə basılmayıb",
     "reportProvisional": "İş günü davam edir. İşlənmiş vaxt yüklənmə anına ilkin hesablamadır.",
     "reportProvisionalShort": "ilkin",
     "reportUnknownTime": "Çıxış qeydi yoxdur; işlənmiş vaxt məlum deyil.",

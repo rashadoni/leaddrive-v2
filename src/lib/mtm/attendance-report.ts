@@ -125,6 +125,8 @@ export interface MtmAttendanceReportRow {
   completedAt: string | null
   workedSeconds: number | null
   pausedSeconds: number | null
+  /** Lunch taken off the worked time because no break covering it was pressed (owner, 2026-10-16). */
+  lunchAutoSeconds?: number
   lateSeconds: number | null
   earlyLeaveSeconds: number | null
   flags: MtmAttendanceFlag[]
@@ -167,7 +169,9 @@ function workDate(value: Date | string): string | null {
 
 function rowKey(employeeId: string, date: string): string { return JSON.stringify([employeeId, date]) }
 
-type DayPlan = { shift?: AttendanceResolvedShift; rule: MtmAttendanceRule; today: string; start: string | null; end: string | null; expectedSeconds: number }
+type DayPlan = { shift?: AttendanceResolvedShift; rule: MtmAttendanceRule; today: string; start: string | null; end: string | null; expectedSeconds: number
+  /** The lunch hour as instants; null without lunch or when it cannot be placed. */
+  lunch: [number, number] | null }
 
 /** Resolve expensive timezone/DST conversions once per date, not once per employee. */
 function dayPlan(rules: readonly MtmAttendanceRule[], date: string, now: Date, shift?: AttendanceResolvedShift | null): DayPlan {
@@ -178,7 +182,7 @@ function dayPlan(rules: readonly MtmAttendanceRule[], date: string, now: Date, s
     lateGraceMinutes: rule.lateGraceMinutes, weekendDays: rule.weekendDays }).success)) {
     throw new MtmAttendanceReportError("MTM_ATTENDANCE_REPORT_INPUT_INVALID")
   }
-  const plan: DayPlan = { ...(shift ? { shift } : {}), rule, today: currentDateKey(now, rule.timezone), start: null, end: null,
+  const plan: DayPlan = { ...(shift ? { shift } : {}), rule, today: currentDateKey(now, rule.timezone), start: null, end: null, lunch: null,
     expectedSeconds: (minutesOfDay(rule.endTime) + (shift?.nextDay ? 1440 : 0) - minutesOfDay(rule.startTime) - rule.lunchMinutes - (shift?.shorteningMinutes ?? 0)) * 60 }
   try {
     const start = localDateTimeToUnambiguousUtc(`${date}T${rule.startTime}`, rule.timezone).toISOString()
@@ -190,6 +194,14 @@ function dayPlan(rules: readonly MtmAttendanceRule[], date: string, now: Date, s
     if (end > start && Number.isSafeInteger(plan.expectedSeconds) && plan.expectedSeconds >= 0) {
       plan.start = start
       plan.end = end
+      // The lunch window the rule names, or — for shifts and rules saved
+      // before lunch had a start — the lunch hour in the middle of the day.
+      const lunchSeconds = rule.lunchMinutes * 60
+      if (lunchSeconds > 0) {
+        const from = !shift && rule.lunchStart ? localDateTimeToUnambiguousUtc(`${date}T${rule.lunchStart}`, rule.timezone).getTime()
+          : (Date.parse(start) + Date.parse(end)) / 2 - lunchSeconds * 500
+        plan.lunch = [from, from + lunchSeconds * 1000]
+      }
     }
   } catch { /* A DST gap/fold remains unknown instead of choosing an instant. */ }
   return plan
@@ -302,6 +314,19 @@ function buildRow(employee: MtmAttendanceEmployee, date: string, days: readonly 
     row.kind = day.status === "COMPLETED" ? "WORKED" : missingFinish ? "MISSING_FINISH" : "OPEN"
     row.workedSeconds = missingFinish ? null : calculation.fact.workedSeconds
     row.pausedSeconds = missingFinish && day.status === "PAUSED" ? null : calculation.fact.pausedSeconds
+    // Owner, 2026-10-16: «вычитать обед самому». Whoever was at work over the
+    // lunch hour and pressed no break that long still had lunch: the part of
+    // the lunch hour they were present for is taken off, less the breaks they
+    // pressed. A pressed break of an hour or more already covers it.
+    if (plan.lunch && row.workedSeconds !== null && row.pausedSeconds !== null) {
+      const presentUntil = row.completedAt ? Date.parse(row.completedAt) : now.getTime()
+      const overlap = Math.max(0, Math.floor((Math.min(plan.lunch[1], presentUntil) - Math.max(plan.lunch[0], Date.parse(row.startedAt!))) / 1000))
+      const lunchAuto = Math.min(row.workedSeconds, Math.max(0, overlap - row.pausedSeconds))
+      if (lunchAuto > 0) {
+        row.workedSeconds -= lunchAuto
+        row.lunchAutoSeconds = lunchAuto
+      }
+    }
     // Grace suppresses the violation; it does not deduct ten minutes from a
     // real 21-minute late arrival. No late/early verdict applies to a day off.
     row.lateSeconds = isWorkingDay && calculation.deviations.lateStartSeconds > rule.lateGraceMinutes * 60
