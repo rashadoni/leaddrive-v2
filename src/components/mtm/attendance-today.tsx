@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useFormatter, useLocale, useTranslations } from "next-intl"
 import { formatDate, formatTime } from "@/lib/format-date"
-import { CheckCircle2, ChevronDown, ClipboardCheck, Users, Clock3, FileSpreadsheet, LogIn, LogOut, Paperclip, Plus, ShieldAlert, UserRoundX } from "lucide-react"
+import { CheckCircle2, ChevronDown, ClipboardCheck, MessageCircleQuestionMark, Users, Clock3, FileSpreadsheet, LogIn, LogOut, Paperclip, Plus, ShieldAlert, UserRoundX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomeCard, HomeKpi, HomePill } from "@/components/mtm/home-parts"
@@ -13,6 +13,7 @@ import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { attendanceNow, attendanceTodayRange, summarizeAttendanceToday, type AttendanceNow, type AttendanceNowPerson, type AttendanceTodaySummary } from "@/lib/mtm/attendance-today"
 import { ATTENDANCE_RISK_MESSAGES, type AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
 import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
+import type { AttendanceExplanationDto } from "@/lib/mtm/attendance-explanation-contract"
 import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { MtmAttendanceSetupChecklist } from "@/components/mtm/attendance-setup-checklist"
@@ -20,7 +21,10 @@ import { MtmAttendanceSetupChecklist } from "@/components/mtm/attendance-setup-c
 const ATTENTION_LIMIT = 6
 const REQUESTS_LIMIT = 5
 type Loaded = { today: string; summary: AttendanceTodaySummary; requests: AttendanceReviewItem[] | null; risks: AttendanceRiskItem[] | null
-  now: AttendanceNow; timezone: string; loadedAt: string; canManage: boolean }
+  now: AttendanceNow; timezone: string; loadedAt: string; canManage: boolean
+  /** Null when this user may not ask for explanations: the controls are not drawn. */
+  explanations: AttendanceExplanationDto[] | null }
+const explanationKey = (employeeId: string, date: string, kind: "LATE" | "ABSENT") => `${employeeId}|${date}|${kind}`
 const NOW_LIMIT = 3
 const NOW_COLUMNS = [
   { key: "working", label: "nowWorking", time: "nowSince", tone: "text-emerald-700 dark:text-emerald-400" },
@@ -75,6 +79,9 @@ export function MtmAttendanceToday() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [rejecting, setRejecting] = useState<string | null>(null)
   const [reason, setReason] = useState("")
+  // Owner, 2026-10-16 (approved mockup): tick the late and absent, ask them to explain.
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [reading, setReading] = useState<string | null>(null)
   const active = useRef<AbortController | null>(null)
 
   const load = useCallback(async () => {
@@ -91,12 +98,13 @@ export function MtmAttendanceToday() {
       }
       const today: string = rulesBody.data.today
       const range = attendanceTodayRange(today)
-      const [report, requests, risks] = await Promise.all([
+      const [report, requests, risks, explanations] = await Promise.all([
         fetch(`/api/v1/mtm/attendance/report?${new URLSearchParams({ from: range.from, to: range.to, form: "ALL" })}`, { cache: "no-store", signal: controller.signal }),
         fetch("/api/v1/mtm/attendance/requests?status=PENDING", { cache: "no-store", signal: controller.signal }),
         fetch(`/api/v1/mtm/attendance/review?${new URLSearchParams({ from: addDateKeyDays(today, -6), to: today, status: "OPEN" })}`, { cache: "no-store", signal: controller.signal }),
+        fetch(`/api/v1/mtm/attendance/explanations?${new URLSearchParams({ from: today, to: today })}`, { cache: "no-store", signal: controller.signal }),
       ])
-      const [reportBody, requestsBody, risksBody] = await Promise.all([readJson(report), readJson(requests), readJson(risks)])
+      const [reportBody, requestsBody, risksBody, explanationsBody] = await Promise.all([readJson(report), readJson(requests), readJson(risks), readJson(explanations)])
       if (controller.signal.aborted) return
       if (!report.ok || reportBody?.success !== true || !Array.isArray(reportBody.data?.rows)) {
         setError(a([401, 403, 404].includes(report.status) ? "reportAccessUnavailable" : "reportLoadError")); return
@@ -111,6 +119,7 @@ export function MtmAttendanceToday() {
         // refused queue hides the card instead of failing the screen.
         requests: requests.ok && requestsBody?.success === true && Array.isArray(requestsBody.data?.items) ? requestsBody.data.items : null,
         risks: risks.ok && Array.isArray(risksBody?.data?.items) ? risksBody.data.items : null,
+        explanations: explanations.ok && explanationsBody?.success === true && Array.isArray(explanationsBody.data?.items) ? explanationsBody.data.items : null,
       })
     } catch {
       if (!controller.signal.aborted) setError(a("reportLoadError"))
@@ -146,6 +155,30 @@ export function MtmAttendanceToday() {
     finally { setBusyId(null) }
   }
 
+  async function askExplanations(keys: string[]) {
+    if (busyId || !keys.length) return
+    setBusyId("explanations"); setMessage(null)
+    try {
+      const items = keys.map(value => { const [agentId, date, kind] = value.split("|"); return { agentId, date, kind } })
+      const response = await fetch("/api/v1/mtm/attendance/explanations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) })
+      const body = await readJson(response)
+      if (response.ok && body?.success === true) { setSelected(new Set()); setMessage(t("explainSent", body.data)); void load() }
+      else setMessage(t("explainFailed"))
+    } catch { setMessage(t("explainFailed")) }
+    finally { setBusyId(null) }
+  }
+  async function decideExplanation(item: AttendanceExplanationDto, decision: "ACCEPTED" | "REJECTED") {
+    if (busyId) return
+    setBusyId(item.id); setMessage(null)
+    try {
+      const response = await fetch(`/api/v1/mtm/attendance/explanations/${encodeURIComponent(item.id)}/decision`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision }) })
+      const body = await readJson(response)
+      if (response.ok && body?.success === true) { setReading(null); setMessage(t("decisionSaved")); void load() }
+      else setMessage(t(response.status === 409 ? "decisionChanged" : "explainFailed"))
+    } catch { setMessage(t("explainFailed")) }
+    finally { setBusyId(null) }
+  }
+
   // Through the shared helper, not Intl directly: ICU without Azerbaijani data
   // prints "M10 14, Wed" (seen on prod 2026-10-14); format-date assembles az itself.
   const dateLabel = (date: string, options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }) => formatDate(`${date}T12:00:00.000Z`, locale, { ...options, timeZone: "UTC" })
@@ -162,6 +195,11 @@ export function MtmAttendanceToday() {
   ]
   const risks = data?.risks ?? []
   const attentionCount = attention.length + risks.length
+  const explanationOf = new Map((data?.explanations ?? []).map(item => [explanationKey(item.employeeId, item.date, item.kind), item]))
+  const explainKey = (item: (typeof attention)[number]["item"]) => item.type === "late" || item.type === "absent" ? explanationKey(item.employeeId, item.date, item.type === "late" ? "LATE" : "ABSENT") : null
+  // Those still to be asked: late or absent today, nothing asked or written yet.
+  const askable = data?.explanations ? attention.flatMap(({ item }) => { const key = explainKey(item); return key && !explanationOf.has(key) ? [key] : [] }) : []
+  const picked = askable.filter(key => selected.has(key))
 
   return <div className="space-y-4" data-testid="attendance-today">
     <header className="flex flex-wrap items-end justify-between gap-3">
@@ -227,20 +265,41 @@ export function MtmAttendanceToday() {
         title={t("attentionTitle")} badge={attentionCount ? String(attentionCount) : null} action={risks.length ? { href: "/mtm/attendance/review", label: t("allRisks", { count: risks.length }) } : undefined}>
         {!data ? <p role="status" className="py-6 text-sm text-muted-foreground">{a("reportLoading")}</p>
           : attentionCount === 0 ? <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" />{t("attentionEmpty")}</p>
-          : <ul className="divide-y divide-border">
-            {attention.slice(0, ATTENTION_LIMIT).map(({ key, item }) => <li key={key} className="flex flex-wrap items-center gap-3 py-2.5" data-testid="attendance-today-attention-item" data-type={item.type}>
+          : <>{askable.length ? <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5" data-testid="attendance-explain-bar">
+              <label className="inline-flex min-h-9 items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={picked.length === askable.length}
+                onChange={event => setSelected(event.target.checked ? new Set(askable) : new Set())} />{t("explainSelectAll", { count: askable.length })}</label>
+              <Button size="sm" variant="outline" className="min-h-9" disabled={!picked.length || busyId !== null} onClick={() => void askExplanations(picked)} data-testid="attendance-explain-ask">
+                <MessageCircleQuestionMark className="mr-1.5 h-4 w-4" aria-hidden="true" />{t("explainAsk", { count: picked.length })}</Button>
+              <p className="w-full text-xs text-muted-foreground">{t("explainHint")}</p>
+            </div> : null}
+          <ul className="divide-y divide-border">
+            {attention.slice(0, ATTENTION_LIMIT).map(({ key, item }) => {
+              const explainId = explainKey(item), explanation = explainId ? explanationOf.get(explainId) : undefined
+              return <li key={key} className="py-2.5" data-testid="attendance-today-attention-item" data-type={item.type}><div className="flex flex-wrap items-center gap-3">
+              {explainId && data?.explanations ? <input type="checkbox" className="h-4 w-4 shrink-0" aria-label={t("explainSelect", { name: item.employeeName })} disabled={!!explanation}
+                checked={!explanation && selected.has(explainId)} onChange={event => setSelected(current => { const next = new Set(current); if (event.target.checked) next.add(explainId); else next.delete(explainId); return next })} /> : null}
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.employeeName}</p>
                 <p className="text-sm text-muted-foreground">{item.type === "absent" ? t("absentNoReason")
                   : item.type === "late" ? t("lateBy", { duration: item.lateSeconds < 3600 ? t("minutes", { count: Math.round(item.lateSeconds / 60) }) : formatAttendanceDuration(item.lateSeconds), time: formatTime(item.startedAt, locale, { hour: "2-digit", minute: "2-digit", timeZone: item.timezone }) })
                   : t("missingFinishOn", { date: dateLabel(item.date) })}</p></div>
+              {explainId && data?.explanations ? <span className="shrink-0 text-xs" data-testid="attendance-explain-status">{!explanation ? <span className="text-muted-foreground">{t("explainNotAsked")}</span>
+                : explanation.status === "REQUESTED" ? <span className="text-amber-700 dark:text-amber-400">{t("explainWaiting", { time: explanation.requestedAt ? formatTime(explanation.requestedAt, locale, { hour: "2-digit", minute: "2-digit", timeZone: data.timezone }) : "" })}</span>
+                : explanation.status === "ANSWERED" ? <button type="button" className="font-semibold text-primary hover:underline" aria-expanded={reading === explanation.id} onClick={() => setReading(reading === explanation.id ? null : explanation.id)}>{t("explainAnswered")}</button>
+                : <span className={explanation.status === "ACCEPTED" ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-300"}>{t(explanation.status === "ACCEPTED" ? "explainAccepted" : "explainRejected")}</span>}</span> : null}
               <Button asChild size="sm" variant="outline" className="min-h-9 shrink-0"><Link prefetch={false} href={item.type === "absent" ? recordHref(item.employeeId, item.date) : dayHref(item.employeeId, item.date)}>{item.type === "absent" ? t("addReason") : t("openDay")}</Link></Button>
-            </li>)}
+              </div>
+              {explanation && reading === explanation.id ? <div className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-sm" data-testid="attendance-explain-answer">
+                <span className="text-muted-foreground">{t("explainAnswerOf", { name: item.employeeName })}</span> «{explanation.answer}»
+                <span className="mt-2 flex flex-wrap gap-2"><Button size="sm" className="min-h-9 bg-emerald-600 text-white hover:bg-emerald-700" disabled={busyId !== null} onClick={() => void decideExplanation(explanation, "ACCEPTED")}>{t("explainAccept")}</Button>
+                  <Button size="sm" variant="outline" className="min-h-9 text-rose-700 dark:text-rose-300" disabled={busyId !== null} onClick={() => void decideExplanation(explanation, "REJECTED")}>{t("explainReject")}</Button></span>
+              </div> : null}
+            </li> })}
             {risks.slice(0, Math.max(0, ATTENTION_LIMIT - attention.length)).map(item => <li key={item.id} className="flex flex-wrap items-center gap-3 py-2.5" data-testid="attendance-today-attention-item" data-type="risk">
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.employeeName}</p>
                 <p className="text-sm text-muted-foreground">{a(ATTENDANCE_RISK_MESSAGES[item.kind])}{item.relatedNames.length ? ` · ${item.relatedNames.join(", ")}` : ""}</p></div>
               <Button asChild size="sm" variant="outline" className="min-h-9 shrink-0"><Link prefetch={false} href="/mtm/attendance/review">{t("check")}</Link></Button>
             </li>)}
-          </ul>}
+          </ul></>}
         {data && attentionCount > ATTENTION_LIMIT ? <p className="mb-3 text-xs text-muted-foreground">{t("moreAttention", { count: attentionCount - ATTENTION_LIMIT })}</p> : null}
         {data && summary && summary.people ? <p className="mb-3 text-xs text-muted-foreground">{t("quiet", { count: summary.quiet })}</p> : null}
       </HomeCard>

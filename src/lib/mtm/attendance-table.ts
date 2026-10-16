@@ -55,7 +55,7 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
   const baseNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID" ? row.invalidReasons.map((reason) => t(REASON[reason] ?? "reportReasonFacts")).join(" · ")
     : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime") : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_OUTSIDE_EMPLOYMENT") ? t("reportWorkOutsideEmployment") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
   const dayNotes = (row: MtmAttendanceReportRow) => [baseNotes(row), ...(row.lunchAutoSeconds ? [t("reportLunchAuto", { time: formatAttendanceDuration(row.lunchAutoSeconds) })] : []),
-    ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
+    ...(row.explanations ?? []).map(item => t(`reportExplanation${item.status}`, { answer: item.answer ?? "" })), ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
   const duration = (row: MtmAttendanceReportRow) => `${formatAttendanceDuration(row.workedSeconds)}${row.kind === "OPEN" ? ` · ${t("reportProvisionalShort")}` : ""}`
   // Absence kinds found in the period, in the company catalogue's order of first appearance.
   const absenceKinds = [...new Map(rows.flatMap(row => isAbsenceKind(row.dayKind) ? [[row.dayKind.key, row.dayKind] as const] : [])).values()]

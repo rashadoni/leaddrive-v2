@@ -9707,6 +9707,34 @@ model MtmAttendanceRule {
   @@map("mtm_attendance_rules")
 }
 
+/// Personnel → explanations (owner, 2026-10-16): HR asks someone late or
+/// absent without a recorded reason to explain; the employee answers from the
+/// app (or writes on their own) and HR accepts or does not. Hours never change.
+/// Foreign keys, checks and RLS live in the migration.
+model MtmAttendanceExplanation {
+  id                String    @id
+  organizationId    String
+  agentId           String
+  workDate          DateTime  @db.Date
+  /// LATE | ABSENT
+  kind              String    @db.VarChar(10)
+  /// REQUESTED | ANSWERED | ACCEPTED | REJECTED
+  status            String    @db.VarChar(10)
+  lateMinutes       Int?
+  requestedByUserId String?
+  requestedAt       DateTime?
+  answer            String?   @db.VarChar(1000)
+  answeredAt        DateTime?
+  decidedByUserId   String?
+  decidedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @default(now())
+
+  @@unique([organizationId, agentId, workDate, kind], map: "mtm_attendance_explanation_once")
+  @@index([organizationId, workDate], map: "mtm_attendance_explanation_date")
+  @@map("mtm_attendance_explanations")
+}
+
 model MtmSetting {
   id             String       @id @default(cuid())
   organizationId String

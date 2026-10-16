@@ -19305,6 +19305,17 @@
     "managerNoTeamHint": "Вы можете менять только правила своих команд, а ваша карточка сотрудника пока не входит ни в одну команду. Попросите администратора назначить вам команду."
   },
   "mtmAttendance": {
+    "explanationAskLate": "Объясните опоздание {date}: на {minutes} мин",
+    "explanationAskAbsent": "Объясните отсутствие {date}",
+    "explanationAskBody": "Кадры просят объяснительную. Напишите её в приложении в разделе «Объяснительные».",
+    "explanationAccepted": "Объяснительная за {date} принята",
+    "explanationRejected": "Объяснительная за {date} не принята",
+    "explanationAnsweredTitle": "{name} написал(а) объяснительную за {date}",
+    "explanationAnsweredBody": "Прочитать и решить — Кадры → Сегодня.",
+    "reportExplanationREQUESTED": "Объяснительная: ждём ответа",
+    "reportExplanationANSWERED": "Объяснительная: «{answer}»",
+    "reportExplanationACCEPTED": "Объяснительная принята: «{answer}»",
+    "reportExplanationREJECTED": "Объяснительная не принята: «{answer}»",
     "helpTitle": "Справка для HR",
     "helpIntro": "Как читать учёт и работать с заявками",
     "helpAccessTitle": "Включение и права",
@@ -29650,6 +29661,20 @@
     }
   },
   "personnel": {
+    "explainAsk": "Запросить объяснительную ({count})",
+    "explainSelectAll": "Выбрать всех ({count})",
+    "explainSelect": "Выбрать: {name}",
+    "explainNotAsked": "не запрошено",
+    "explainWaiting": "ждём ответа · с {time}",
+    "explainAnswered": "ответил(а) · прочитать",
+    "explainAccepted": "объяснительная принята",
+    "explainRejected": "объяснительная не принята",
+    "explainAnswerOf": "Ответ {name}:",
+    "explainAccept": "Принять",
+    "explainReject": "Не принять",
+    "explainSent": "Запросы отправлены: {created}. Уже были: {already}. Не нужно: {notNeeded}.",
+    "explainFailed": "Не получилось. Обновите страницу и попробуйте ещё раз.",
+    "explainHint": "Объяснительную просят у тех, кто опоздал или не пришёл без причины. Кто в отпуске, на больничном, в командировке или отпросился — сюда не попадает.",
     "peopleTabs": "Разделы сотрудников",
     "settingsTabs": "Разделы настроек",
     "tabs": {

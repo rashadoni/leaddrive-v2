@@ -37,10 +37,14 @@ const risk = { id: "risk-1", employeeId: "id-Рашад", employeeName: "Кам�
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 let requests: AttendanceReviewItem[] = [], requestsStatus = 200, decisionStatus = 200
+// Null: this user may not ask for explanations (the route refuses).
+let explanations: unknown[] | null = null
 const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
   const url = String(input)
   if (url.startsWith("/api/v1/mtm/attendance/rules")) return json({ success: true, data: { today, canManageRules: true } })
   if (url.startsWith("/api/v1/mtm/attendance/report")) return json({ success: true, data: report })
+  if (url.startsWith("/api/v1/mtm/attendance/explanations") && init?.method === "POST" && !url.includes("/decision")) return json({ success: true, data: { created: 2, already: 0, notNeeded: 0 } }, 201)
+  if (url.startsWith("/api/v1/mtm/attendance/explanations") && !init?.method) return explanations ? json({ success: true, data: { items: explanations } }) : json({ error: "Forbidden" }, 403)
   if (url.includes("/decision") && init?.method === "POST") return json(decisionStatus < 400 ? { success: true, data: { request: { status: "APPROVED" } } } : { error: "x" }, decisionStatus)
   if (url.startsWith("/api/v1/mtm/attendance/requests")) return json(requestsStatus < 400 ? { success: true, data: { items: requests, nextCursor: null } } : { error: "Forbidden" }, requestsStatus)
   if (url.startsWith("/api/v1/mtm/attendance/review")) return json({ success: true, data: { items: [risk], directory: [], snapshot: {} } })
@@ -62,7 +66,7 @@ async function type(field: HTMLInputElement, value: string) {
 }
 
 beforeEach(() => {
-  requests = [leaveRequest("r1", "Айсель Мамедова"), leaveRequest("r2", "Мурад Гасанов")]; requestsStatus = 200; decisionStatus = 200
+  requests = [leaveRequest("r1", "Айсель Мамедова"), leaveRequest("r2", "Мурад Гасанов")]; requestsStatus = 200; decisionStatus = 200; explanations = null
   container = document.createElement("div"); document.body.append(container); root = createRoot(container)
   fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock)
 })
@@ -165,5 +169,44 @@ describe("Personnel → Today", () => {
     expect(text).not.toMatch(/\b(Mon|Tue|Wed|Thu|Fri)\b/)
     expect(text).toContain("oktyabr")
     expect(text).toContain("14 okt")
+  })
+
+  // Owner, 2026-10-16 (approved mockup): tick the late and the absent and ask them to explain.
+  it("asks everyone late or absent today for an explanation with one tick and one button", async () => {
+    explanations = []
+    await render()
+    const bar = byTestId("attendance-explain-bar")!
+    expect(bar.textContent).toContain(p("explainHint"))
+    const all = bar.querySelector<HTMLInputElement>('input[type="checkbox"]')!
+    await act(async () => all.click())
+    const ask = byTestId("attendance-explain-ask") as HTMLButtonElement
+    expect(ask.textContent).toBe(ru.personnel.explainAsk.replace("{count}", "2"))
+    await act(async () => ask.click())
+    const post = fetchMock.mock.calls.find(([url, init]) => String(url) === "/api/v1/mtm/attendance/explanations" && init?.method === "POST")!
+    expect(JSON.parse(String(post[1]!.body)).items).toEqual([{ agentId: "id-Рашад", date: today, kind: "ABSENT" }, { agentId: "id-Нигяр", date: today, kind: "LATE" }])
+    expect(container.querySelector('[role="status"]')?.textContent).toContain("2")
+  })
+
+  it("shows who was asked and who answered, and HR accepts the answer", async () => {
+    explanations = [{ id: "e1", employeeId: "id-Рашад", employeeName: "Рашад", date: today, kind: "ABSENT", status: "ANSWERED", lateMinutes: null, requestedAt: at(today, "10:05"),
+      requestedByName: "HR", answer: "Затопило квартиру", answeredAt: at(today, "11:00"), decidedAt: null, decidedByName: null },
+    { id: "e2", employeeId: "id-Нигяр", employeeName: "Нигяр", date: today, kind: "LATE", status: "REQUESTED", lateMinutes: 25, requestedAt: at(today, "10:05"),
+      requestedByName: "HR", answer: null, answeredAt: null, decidedAt: null, decidedByName: null }]
+    await render()
+    // Both already asked: nothing left to tick.
+    expect(byTestId("attendance-explain-bar")).toBeNull()
+    const statuses = Array.from(container.querySelectorAll('[data-testid="attendance-explain-status"]')).map(item => item.textContent)
+    expect(statuses).toEqual([p("explainAnswered"), ru.personnel.explainWaiting.replace("{time}", "10:05")])
+    await act(async () => buttonIn(byTestId("attendance-today-attention"), p("explainAnswered"))!.click())
+    expect(byTestId("attendance-explain-answer")?.textContent).toContain("Затопило квартиру")
+    await act(async () => buttonIn(byTestId("attendance-explain-answer"), p("explainAccept"))!.click())
+    const decision = fetchMock.mock.calls.find(([url]) => String(url) === "/api/v1/mtm/attendance/explanations/e1/decision")!
+    expect(JSON.parse(String(decision[1]!.body))).toEqual({ decision: "ACCEPTED" })
+  })
+
+  it("without the right to ask draws no ticks and no button", async () => {
+    await render()
+    expect(byTestId("attendance-explain-bar")).toBeNull()
+    expect(container.querySelectorAll('[data-testid="attendance-explain-status"]')).toHaveLength(0)
   })
 })

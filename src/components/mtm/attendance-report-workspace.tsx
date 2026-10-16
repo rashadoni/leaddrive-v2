@@ -222,7 +222,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
 
   // The same note as the exported table (attendance-table.ts): the screen and the file say one thing.
   const rowNotes = (row: MtmAttendanceReportRow) => [baseRowNotes(row), ...(row.lunchAutoSeconds ? [t("reportLunchAuto", { time: formatAttendanceDuration(row.lunchAutoSeconds) })] : []),
-    ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
+    ...(row.explanations ?? []).map(item => t(`reportExplanation${item.status}`, { answer: item.answer ?? "" })), ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
 
   function chooseForm(next: Form) {
     const wasCustom = customView !== null
