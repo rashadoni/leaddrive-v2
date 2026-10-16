@@ -487,6 +487,31 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   finally {failed.mockRestore()}
   expect((await tenant(ORG,()=>installations.readOwnAttendanceInstallation(self(),`${INSTALLATION}-other`))).state).toBe("NOT_REQUESTED")
  })
+ it.each(["Europe/Berlin","America/Los_Angeles"] as const)("installation queue pages are disjoint and complete in a %s session",async timezone=>{
+  // Production sessions run in Europe/Berlin. The cursor is a naive timestamp
+  // read back as a JS Date; a session-zone cast moved it by the offset, so
+  // page 2 repeated page 1 (east of UTC) or came back empty (west of UTC).
+  await employee();const installations=await import("@/lib/mtm/attendance-installation-store")
+  await tenant(ORG,()=>prisma.$executeRaw`INSERT INTO mtm_attendance_installation_requests (id,"organizationId","agentId","installationId","requestId","requestHash")
+   SELECT gen_random_uuid()::text,${ORG},${identity.agentId},'rf-fictional-paging-'||lpad(n::text,8,'0'),gen_random_uuid()::text,repeat('a',64) FROM generate_series(1,55) n`)
+  sql(scratch!.adminDb,`ALTER ROLE "${scratch!.role}" SET timezone='${timezone}'`)
+  await prisma.$disconnect()
+  try {
+   const [session]=await tenant(ORG,()=>prisma.$queryRaw<{timezone:string}[]>`SELECT current_setting('TimeZone') AS timezone`)
+   expect(session.timezone).toBe(timezone)
+   const first=await tenant(ORG,()=>installations.readAttendanceInstallationQueue(admin,{employeeId:identity.agentId}))
+   expect(first.items).toHaveLength(50);expect(first.nextCursor).toBe(first.items[49].id)
+   const second=await tenant(ORG,()=>installations.readAttendanceInstallationQueue(admin,{employeeId:identity.agentId,cursor:first.nextCursor!}))
+   expect(second.nextCursor).toBeNull()
+   const seen=[...first.items,...second.items].map(item=>item.id)
+   expect(new Set(seen).size).toBe(55)
+   const all=await tenant(ORG,()=>prisma.$queryRaw<{id:string}[]>`SELECT id FROM mtm_attendance_installation_requests WHERE "agentId"=${identity.agentId} ORDER BY "submittedAt" DESC,id DESC`)
+   expect(seen).toEqual(all.map((row:{id:string})=>row.id))
+  } finally {
+   sql(scratch!.adminDb,`ALTER ROLE "${scratch!.role}" RESET timezone`)
+   await prisma.$disconnect()
+  }
+ },60_000)
  it("approval and revocation are immutable, scoped, reasoned and exact retries",async()=>{
   await employee();const installations=await import("@/lib/mtm/attendance-installation-store")
   const request={requestId:randomUUID()};await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,request))
