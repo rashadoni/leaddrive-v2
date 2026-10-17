@@ -1624,6 +1624,9 @@
     "lateCallbacksPromisedFor": "Razılaşdırılmış vaxt",
     "lateCallbacksCalledAt": "Zəng vaxtı",
     "lateCallbacksDelay": "Gecikmə",
+    "lateCallbacksDelayMinutes": "{count} dəq",
+    "lateCallbacksDelayHours": "{hours} saat",
+    "lateCallbacksDelayHoursMinutes": "{hours} saat {minutes} dəq",
     "lateCallbacksNeverCalled": "zəng edilməyib"
   },
   "companies": {
@@ -11015,6 +11018,7 @@
       "noAnswer": "Cavab yoxdur",
       "busy": "Məşğuldur",
       "failed": "Uğursuz",
+      "canceled": "Ləğv edildi",
       "unknown": "Status mövcud deyil"
     },
     "dialDiagnostics": {

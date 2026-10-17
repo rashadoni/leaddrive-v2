@@ -1624,6 +1624,9 @@
     "lateCallbacksPromisedFor": "Обещано на",
     "lateCallbacksCalledAt": "Позвонили",
     "lateCallbacksDelay": "Опоздание",
+    "lateCallbacksDelayMinutes": "{count} мин",
+    "lateCallbacksDelayHours": "{hours} ч",
+    "lateCallbacksDelayHoursMinutes": "{hours} ч {minutes} мин",
     "lateCallbacksNeverCalled": "не позвонили"
   },
   "companies": {
@@ -11019,6 +11022,7 @@
       "noAnswer": "Нет ответа",
       "busy": "Занято",
       "failed": "Ошибка",
+      "canceled": "Отменён",
       "unknown": "Статус недоступен"
     },
     "dialDiagnostics": {

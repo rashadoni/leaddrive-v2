@@ -4,6 +4,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { isManagerOrAbove } from "@/lib/constants"
 import { withRlsAuth } from "@/lib/with-rls"
+import { callbackTaskTitle } from "@/lib/calls/callback-title"
 import {
   COMMITMENT_CALL_FIELD,
   callbackReminderId,
@@ -113,13 +114,14 @@ export const PATCH = withRlsAuth("voip", "write", async (req, auth, { params }: 
           ?? call.conversationId
           ?? null
         const reminderOwnerId = call.userId ?? auth.userId
+        const title = await callbackTitleFor(orgId, reminderOwnerId)
         await tx.activity.upsert({
           where: { id: activityId },
           create: {
             id: activityId,
             organizationId: orgId,
             type: "task",
-            subject: "Callback",
+            subject: title,
             contactId: call.contactId,
             companyId: call.companyId,
             relatedType,
@@ -128,7 +130,7 @@ export const PATCH = withRlsAuth("voip", "write", async (req, auth, { params }: 
             scheduledAt: callbackAt,
           },
           update: {
-            subject: "Callback",
+            subject: title,
             contactId: call.contactId,
             companyId: call.companyId,
             relatedType,
@@ -145,6 +147,7 @@ export const PATCH = withRlsAuth("voip", "write", async (req, auth, { params }: 
           callId: id,
           dueDate: callbackAt,
           ownerId: reminderOwnerId,
+          title,
           relatedType: relatedType ?? "call",
           relatedId: relatedId ?? id,
         })
@@ -199,6 +202,23 @@ export const PATCH = withRlsAuth("voip", "write", async (req, auth, { params }: 
 
 class CallbackTaskConflict extends Error {}
 
+/**
+ * The task is the employee's, so its title is in his language. Read apart
+ * from the transaction: a title is no reason to refuse the outcome, so a
+ * failed read falls back to the product's default language.
+ */
+async function callbackTitleFor(organizationId: string, userId: string): Promise<string> {
+  try {
+    const owner = await prisma.user.findFirst({
+      where: { id: userId, organizationId },
+      select: { preferredLanguage: true, organization: { select: { settings: true } } },
+    })
+    return callbackTaskTitle({ preferredLanguage: owner?.preferredLanguage, organizationSettings: owner?.organization?.settings })
+  } catch {
+    return callbackTaskTitle({})
+  }
+}
+
 type CallbackTaskClient = Pick<Prisma.TransactionClient, "task">
 
 async function scheduleCallbackReminder(
@@ -208,6 +228,7 @@ async function scheduleCallbackReminder(
     callId: string
     dueDate: Date
     ownerId: string
+    title: string
     relatedType: string
     relatedId: string
   },
@@ -268,7 +289,7 @@ async function scheduleCallbackReminder(
       create: {
         id: canonicalId,
         organizationId: input.organizationId,
-        title: "Callback",
+        title: input.title,
         dueDate: input.dueDate,
         assignedTo: input.ownerId,
         relatedType: input.relatedType,

@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import { formatDateTime } from "@/lib/format-date"
 
 /**
  * Promised callbacks that were kept late or never made.
@@ -33,23 +34,16 @@ type Row = {
   lateByMinutes: number | null
 }
 
-type Report = {
+export type LateCallbacksReport = {
   rows: Row[]
   sellers: SellerSummary[]
   totals: { promises: number; onTime: number; late: number; missed: number }
 }
 
-function formatDelay(minutes: number | null): string {
-  if (minutes === null) return "—"
-  if (minutes < 60) return `${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  const rest = minutes % 60
-  return rest ? `${hours} h ${rest} min` : `${hours} h`
-}
 
 export function LateCallbacksPanel({ days = 7 }: { days?: number }) {
   const t = useTranslations("leads")
-  const [report, setReport] = useState<Report | null>(null)
+  const [report, setReport] = useState<LateCallbacksReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
@@ -92,6 +86,28 @@ export function LateCallbacksPanel({ days = 7 }: { days?: number }) {
       </div>
     )
   }
+  return <LateCallbacksView report={report} />
+}
+
+/**
+ * The report drawn. The panel above loads it; the guided demo
+ * (src/components/demo-center/journey/scenes/calls-scene.tsx) hands it an
+ * invented team's week, so a prospect sees this very table.
+ */
+export function LateCallbacksView({ report }: { report: LateCallbacksReport | null }) {
+  const t = useTranslations("leads")
+  const locale = useLocale()
+  // Minutes and hours in the reader's language; the panel printed «45 min», «2 h».
+  const formatDelay = (minutes: number | null): string => {
+    if (minutes === null) return "—"
+    if (minutes < 60) return t("lateCallbacksDelayMinutes", { count: minutes })
+    const hours = Math.floor(minutes / 60)
+    const rest = minutes % 60
+    return rest ? t("lateCallbacksDelayHoursMinutes", { hours, minutes: rest }) : t("lateCallbacksDelayHours", { hours })
+  }
+  // In the app's language, not the browser's.
+  const when = (value: string) => formatDateTime(value, locale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) || "—"
+
   // Nothing promised is a normal, healthy state — say so rather than showing an
   // empty table that reads like a broken screen.
   if (!report || report.totals.promises === 0) {
@@ -172,10 +188,10 @@ export function LateCallbacksPanel({ days = 7 }: { days?: number }) {
                       {row.leadPhone ? <span className="ml-2 text-xs text-muted-foreground">{row.leadPhone}</span> : null}
                     </td>
                     <td className="px-4 py-2">{row.sellerName}</td>
-                    <td className="px-4 py-2">{new Date(row.promisedFor).toLocaleString()}</td>
+                    <td className="px-4 py-2">{when(row.promisedFor)}</td>
                     <td className="px-4 py-2">
                       {row.contactedAt
-                        ? new Date(row.contactedAt).toLocaleString()
+                        ? when(row.contactedAt)
                         : <span className="text-destructive">{t("lateCallbacksNeverCalled")}</span>}
                     </td>
                     <td className="px-4 py-2 font-medium text-amber-600">{formatDelay(row.lateByMinutes)}</td>
