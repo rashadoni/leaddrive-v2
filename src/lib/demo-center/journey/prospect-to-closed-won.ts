@@ -1768,7 +1768,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     {
       id: "summary",
       title: "Nə etdiniz və nə oldu",
-      summary: "Bir müraciət — bir tam hekayə. Sessiya burada bitir.",
+      summary: "Keçdiyiniz hər modul: nə etdiniz və biznes üçün nə verir. Sessiya burada bitir.",
       area: "summary",
       route: "demo:summary",
       navGroup: "demo",
@@ -1780,7 +1780,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "summary-review",
           title: "Keçdiyiniz yol",
-          instruction: "Bu siyahıda tamamladığınız addımlar və hər birinin nəticəsi. Mənbə kampaniya qazanılmış sövdələşməyə bağlıdır.",
+          instruction: "Keçdiyiniz hər modul üçün: nə etdiniz və bu, biznesə nə verir. Lid hekayəsini keçmisinizsə, aşağıda mənbə kampaniya qazanılmış sövdələşməyə bağlanır.",
           anchor: "journey-summary",
           placement: "auto",
           action: "observe",
