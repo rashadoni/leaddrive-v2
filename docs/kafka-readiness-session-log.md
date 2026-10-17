@@ -682,3 +682,144 @@ worker, a production role change, a restore, an offset reset or customer replay.
   PASS. The workflow diff is exactly one nested queue:max addition in each
   file. Actual GitHub scheduling behavior on these new bytes is NOT RUN in
   this local task; the regression proves configuration, not a hosted receipt.
+
+## 2026-10-18 — next Fund shadow DB phase: PLANNED / NOT IMPLEMENTED
+
+- Created a separate managed worktree and branch
+  `codex/kafka-fund-shadow-db-20261018` from frozen PR868 checkpoint
+  `572b3ed36e0bdff668a2bc2e13b0b84a101940bb`. The earlier reducer/queue branch
+  is unchanged. codex-project-context confirms Contabo remote-alt, the
+  rashadoni/leaddrive-v2 origin and the existing GitHub Actions release route.
+- This entry records the next adapter design and unresolved test obligations
+  only. No DB adapter, worker, role, ACL, schema, SQL runtime, dependency,
+  broker, production or delivery change is implemented by this checkpoint.
+  The eight real-PostgreSQL cases above remain pending and NOT RUN.
+
+### Build lock and least-privilege candidate
+
+- A worker must hold a row lock on its tenant's existing ProjectionBuild
+  throughout the projection/inbox/checkpoint transaction. Check exact build
+  identity, version/build key/code SHA, shadow mode, effect fence and running
+  status on the locked row returned after any wait, not an earlier snapshot.
+  Use bounded lock waiting and retry the whole transaction outside an aborted
+  transaction; do not use SKIP LOCKED to acknowledge an unprocessed event.
+- PostgreSQL 16 requires UPDATE privilege on at least one column for a
+  locking SELECT. The existing replay-control checkpoint trigger also takes
+  FOR SHARE as the invoking role, so a SELECT-only worker is insufficient.
+  Primary references: [SELECT privileges](https://www.postgresql.org/docs/16/sql-select.html)
+  and [row-lock conflicts](https://www.postgresql.org/docs/16/explicit-locking.html).
+- The narrow candidate is table SELECT plus column-only UPDATE(createdAt)
+  on projection_builds for the future restricted worker. This is a proposal,
+  not an applied grant. The foundation state-machine trigger explicitly
+  rejects changing createdAt, while a same-value update can still occur for
+  a running build; do not describe this role as literally SELECT-only.
+  Prove that no inherited/table-wide UPDATE, ownership, BYPASSRLS or trigger
+  disabling authority defeats that boundary before considering it usable.
+- Do not substitute UPDATE(id): the current build guard does not explicitly
+  make id immutable. Do not grant lifecycle/evidence/timestamp-update columns
+  as a shortcut. The actual immutable createdAt guard must be exercised with
+  the deployed migration, restricted role and PostgreSQL 16, not inferred
+  from a mocked client or an administrator connection.
+- FOR UPDATE conflicts with an ordinary controller UPDATE of terminal status,
+  so it can serialize worker writes against that transition without inventing
+  a controller advisory-lock protocol. After the controller wins, the worker
+  must recheck terminal status and perform no writes. An advisory lock used
+  only by the worker does not protect against the controller; FOR KEY SHARE
+  does not block a normal non-key status update either.
+
+### Duplicate delivery and checkpoint decisions
+
+This narrows the earlier instruction to always record the current delivery
+checkpoint: a verified older duplicate must not call the monotonic upsert with
+a lower offset. All cases first validate the complete PostgreSQL-jsonb envelope
+hash and identity, tenant/build binding, exact topic/key/partition and required
+headers, then hold the build lock and inspect both event-ID and occupied-position
+receipts. Never replace current shadow state with an inbox's historical result.
+
+1. Known event, identical hash, incoming offset greater than the checkpoint:
+   skip monetary application; atomically advance the checkpoint in the same
+   transaction. Leave the original append-only inbox receipt unchanged.
+2. Known event at the checkpoint offset: accept a no-op only when the
+   checkpoint lastEventId matches; a different ID at that position is a
+   conflict, not a duplicate.
+3. Known event below the checkpoint: accept only a proven same-event delivery
+   with matching tenant/build/hash/topic/partition and no contradictory
+   occupied-position receipt. Skip application and leave the checkpoint
+   unchanged; do not send the lower offset into recordProjectionCheckpoint.
+4. Unknown event at or below the checkpoint: fail closed without applying or
+   acknowledging it. A checkpoint alone cannot prove that an unknown event
+   was processed; silently skipping it could hide a missing business fact.
+5. Unknown event above the checkpoint: apply the pure reducer, write only the
+   shadow row, insert the inbox receipt and advance the checkpoint atomically.
+6. A known inbox with a missing checkpoint is an atomic-state inconsistency
+   for this new adapter, not automatic repair authorization. Likewise reject
+   an incoming offset earlier than that event's recorded original offset in
+   the same partition until its identity/position is independently established.
+7. Hash, tenant, build, topic or partition conflicts fail before any write or
+   acknowledgement, including on a duplicate path. The inbox records the
+   original event delivery, not every later duplicate position; this design
+   must not claim to be a complete historical broker-position journal.
+
+### Broker partition high-water and assignment generation
+
+- Database checkpoints are tenant/build-specific; broker commits are per
+  consumer group and partition. Never derive the broker commit by taking a
+  maximum across tenant checkpoints or by acknowledging every duplicate as
+  incomingOffset+1: an older duplicate could rewind a commit, while a maximum
+  could skip another tenant's unfinished delivery in the same partition.
+- A future broker adapter must maintain a monotonic safe high-water for the
+  entire assigned partition and commit only through the processed delivery
+  sequence, never past an earlier failed/in-flight record. Numeric offsets
+  need not be consecutive. Partition processing is sequential in the initial
+  design; the build row lock alone does not establish broker ordering.
+- Associate acknowledgement/commit decisions with the current assignment and
+  consumer generation. A revoked or stale generation must not acknowledge,
+  even if its DB transaction already committed; the new owner can redeliver
+  and use the database dedupe receipt. Generation fencing and actual Kafka
+  rebalance behavior require separate broker integration evidence, not just
+  a successful database transaction or a mocked acknowledgement callback.
+
+### Additional pending regressions (all NOT RUN)
+
+1. With real restricted roles, prove SELECT-only FOR UPDATE and the checkpoint
+   trigger fail with permission denied; the candidate createdAt-only grant
+   permits the intended row lock and checkpoint, not lifecycle changes.
+2. A real createdAt change fails its immutable guard; id/status/evidence and
+   startedAt/completedAt/promotedAt/updatedAt updates plus build INSERT/DELETE
+   remain denied. Inspect effective grants and role membership in that test.
+3. Two PostgreSQL connections: worker lock blocks the controller transition
+   until commit (or a bounded lock timeout); reverse the order and prove a
+   worker observes the terminal state after waiting and changes nothing.
+4. After A at offset 10 then B at 20, duplicate A at 10 leaves checkpoint 20/B
+   unchanged; duplicate A at 30 advances to 30/A without changing the balance.
+5. Unknown valid IDs at offsets 10/15/20, wrong ID at the current offset and
+   hash/topic/partition conflicts roll back with no acknowledgement.
+6. Missing checkpoint for an existing inbox, or incoming offset below that
+   inbox's original position, fails closed rather than silently repairing it.
+7. In adapter tests, an older duplicate cannot rewind the partition commit
+   candidate and a stale/revoked generation cannot acknowledge. Real Kafka
+   commit/rebalance proof remains a later disposable integration test.
+
+The next authorized implementation decision is the smallest restricted-role
+DB adapter and its real PostgreSQL test seam. No activation, promotion, active
+v1/read-pointer change, offset reset or customer-data replay follows from this
+planning checkpoint. Current verification is documentation-only diff checking;
+runtime, Vitest, full TypeScript/build and PostgreSQL tests are NOT RUN here.
+
+### Coordinator delivery receipts received during this planning checkpoint
+
+- Root verified targeted recovery CDC866 run `39077023158` SUCCESS on `12bf`:
+  raw eight-record exact parity, four legacy mismatches and cleanup completed.
+  CDC867 run `39076938841` SUCCESS on `6c97`: corrected checked-in template,
+  cdc_legacy diagnostic label, raw eight-record exact parity, cold restart and
+  cleanup passed. These are actual disposable-runtime receipts, not inference
+  from unit tests; no runtime was started by this documentation task.
+- Basic stack runs `39076938829` (867) and `39077023226` (866) both SUCCESS.
+  This supersedes their earlier running/cancelled notes without removing them.
+- Root also verified adjacent production release `39075973582` SUCCESS on
+  `3799ff4398ea6afdec9968ec153eba9306a36a53`, with matching public artifact SHA
+  and ping. Main `3cdca2` still awaits its own matching artifact; the readiness
+  SHA boundary remains enforced and this is not a current-main readiness PASS.
+- PR868 at frozen `572b` is now ready. Both queue:max integration jobs remained
+  pending together, then one basic job began running. This is observed queue
+  scheduling progress, not a completed receipt for either job or all PR checks.
