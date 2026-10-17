@@ -38,6 +38,7 @@ import {
   timestampFieldFor,
 } from "@/lib/cpq/state-machine"
 import { buildSpawnedContractData } from "@/lib/cpq/spawn-contract"
+import { organizationLocale } from "@/lib/ticketing/customer-locale"
 import {
   encryptForTenantBoundOrNull,
   softDecryptForTenantBound,
@@ -371,7 +372,9 @@ export const PATCH = withRls(async (req, { orgId, session }, { params }: { param
         // `buildSpawnedContractData` for unit testability — see
         // `src/lib/cpq/spawn-contract.ts` and the tests under
         // `src/__tests__/lib-cpq-spawn-contract.test.ts`.
+        const organization = await tx.organization.findUnique({ where: { id: orgId }, select: { settings: true } })
         const contractData = buildSpawnedContractData({
+          locale: organizationLocale(organization?.settings),
           organizationId: orgId,
           quote: {
             id,

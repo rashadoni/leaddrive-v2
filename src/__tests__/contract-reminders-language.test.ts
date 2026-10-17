@@ -38,8 +38,10 @@ import { POST as esignReminders } from "@/app/api/cron/esign-reminders/route"
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/notifications"
 import { enterRlsBypass, runWithRlsBypass } from "@/lib/rls-context"
+import { organizationLocale } from "@/lib/ticketing/customer-locale"
 import {
   approvalOverdueText,
+  contractOrganizationLocale,
   contractRecipientLocale,
   milestoneReminderText,
   renewalAlertText,
@@ -65,6 +67,12 @@ describe("who reads which language", () => {
     expect(contractRecipientLocale("ru", { language: "az" })).toBe("ru")
     expect(contractRecipientLocale(null, { language: "az" })).toBe("az")
     expect(contractRecipientLocale("klingon", { language: "en" })).toBe("en")
+  })
+
+  it("reads the organization's language exactly as the rest of the product does", () => {
+    for (const settings of [{ language: "az" }, { locale: "ru" }, { language: "xx", locale: "en" }, {}, null, "junk"]) {
+      expect(contractOrganizationLocale(settings)).toBe(organizationLocale(settings))
+    }
   })
 
   it("names the contract, the end date and the days left in each language", () => {

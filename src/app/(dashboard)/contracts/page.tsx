@@ -26,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { contractListStats, daysUntilContractEnd, isContractExpiringSoon } from "@/lib/contract-lifecycle/list-stats"
 import { toast } from "sonner"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
@@ -101,9 +102,7 @@ function formatDate(dateStr: string | undefined, locale: string): string {
 }
 
 function daysUntilExpiry(endDate?: string): number | null {
-  if (!endDate) return null
-  const diff = new Date(endDate).getTime() - Date.now()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+  return daysUntilContractEnd(endDate)
 }
 
 // Module-scope types + helpers — defined here (not inside the component) to
@@ -612,34 +611,12 @@ export default function ContractsPage() {
     }
   })
 
-  const liveContracts = contracts.filter(c => c.status === "active" || c.status === "renewing")
-
   function isExpiringSoon(c: Contract) {
-    const days = daysUntilExpiry(c.endDate)
-    return days !== null && days > 0 && days <= 90 && ["active", "renewing"].includes(c.status)
+    return isContractExpiringSoon(c)
   }
 
-  // Stats
-  const activeCount = liveContracts.length
-  const totalValue = liveContracts.reduce((s, c) => s + (c.valueAmount || 0), 0)
-  const avgValue = activeCount > 0 ? Math.round(totalValue / activeCount) : 0
-
-  const expiringSoon = contracts.filter(isExpiringSoon).length
-
-  const expiredCount = contracts.filter(c => c.status === "expired").length
-
-  // MRR calculation (active contracts / their duration in months)
-  const mrr = liveContracts.reduce((sum, c) => {
-    if (!c.valueAmount || !c.startDate || !c.endDate) return sum
-    const months = Math.max(1, Math.ceil((new Date(c.endDate).getTime() - new Date(c.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30)))
-    return sum + c.valueAmount / months
-  }, 0)
-
-  // Status counts for filter tabs
-  const statusCounts: Record<string, number> = {}
-  for (const c of contracts) {
-    statusCounts[c.status] = (statusCounts[c.status] || 0) + 1
-  }
+  // Stats — the arithmetic lives in list-stats.ts, shared with the guided demo.
+  const { activeCount, totalValue, avgValue, expiringSoon, mrr, statusCounts } = contractListStats(contracts)
 
   const columns = [
     {
