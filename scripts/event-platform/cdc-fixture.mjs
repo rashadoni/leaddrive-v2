@@ -250,13 +250,23 @@ COMMIT;
   }).join('\n')
 }
 
-// Keys which a disposable test may change; all other template fields survive
-// verbatim. Never use this renderer to create a production connector.
-export const TEST_CONNECTOR_CONFIG_CHANGES = Object.freeze([
+// The raw mode preserves the production serializer verbatim. Only disposable
+// endpoint, identity, routing and TLS substitutions are allowed in that mode.
+export const TEST_CONNECTOR_TARGET_CHANGES = Object.freeze([
   'topic.prefix', 'database.hostname', 'database.dbname', 'database.user',
   'database.password', 'database.sslmode', 'database.sslrootcert', 'slot.name',
-  'transforms.outbox.route.topic.replacement', 'transforms.outbox.table.expand.json.payload',
+  'transforms.outbox.route.topic.replacement',
+])
+
+// Explicit legacy A/B experiment only: recreate the old schema-inferencing
+// serializer to detect its payload changes, never to validate production parity.
+export const LEGACY_EXPANDED_CONFIG_CHANGES = Object.freeze([
+  'transforms.outbox.table.expand.json.payload',
+  'transforms.outbox.table.json.payload.null.behavior',
   'value.converter', 'value.converter.schemas.enable',
+])
+export const TEST_CONNECTOR_CONFIG_CHANGES = Object.freeze([
+  ...TEST_CONNECTOR_TARGET_CHANGES, ...LEGACY_EXPANDED_CONFIG_CHANGES,
 ])
 
 const expectedMutableTemplateValues = Object.freeze({
@@ -269,9 +279,12 @@ const expectedMutableTemplateValues = Object.freeze({
   'database.sslrootcert': '__PG_SSL_ROOT_CERT_PATH__',
   'slot.name': 'leaddrive_event_outbox___ENV__',
   'transforms.outbox.route.topic.replacement': 'ld.__ENV__.$1.events.v1',
-  'transforms.outbox.table.expand.json.payload': 'true',
-  'value.converter': 'org.apache.kafka.connect.json.JsonConverter',
-  'value.converter.schemas.enable': 'false',
+  'transforms.outbox.table.expand.json.payload': 'false',
+  'value.converter': 'org.apache.kafka.connect.storage.StringConverter',
+  // Absence is part of the corrected production contract. These legacy-only
+  // settings must not silently reappear in the checked-in source template.
+  'value.converter.schemas.enable': undefined,
+  'transforms.outbox.table.json.payload.null.behavior': undefined,
 })
 
 export function renderTestConnector(template, options = {}) {
@@ -279,7 +292,7 @@ export function renderTestConnector(template, options = {}) {
       || Object.keys(options).some(key => key !== 'mode')) {
     throw new TypeError('Only a test connector mode option is allowed')
   }
-  const mode = options.mode === undefined ? 'expanded' : options.mode
+  const mode = options.mode === undefined ? 'raw' : options.mode
   assertConnectorMode(mode)
   if (!template || typeof template !== 'object' || Array.isArray(template)
       || template.name !== 'leaddrive-event-outbox-__ENV__'
@@ -289,7 +302,9 @@ export function renderTestConnector(template, options = {}) {
     throw new TypeError('Expected the checked-in event-outbox connector template')
   }
   for (const [key, expected] of Object.entries(expectedMutableTemplateValues)) {
-    if (template.config[key] !== expected) throw new Error(`Connector template changed at ${key}; review the test override explicitly`)
+    if (expected === undefined ? Object.hasOwn(template.config, key) : template.config[key] !== expected) {
+      throw new Error(`Connector template changed at ${key}; review the test override explicitly`)
+    }
   }
   const connector = structuredClone(template)
   connector.name = `leaddrive-event-outbox-test-${mode}`
@@ -304,15 +319,17 @@ export function renderTestConnector(template, options = {}) {
     'transforms.outbox.route.topic.replacement': `ld.test${mode}.$1.events.v1`,
   })
   delete connector.config['database.sslrootcert']
-  if (mode === 'raw') {
-    // A/B transport candidate only. StringConverter writes the existing JSON
-    // text; it does not wrap it in a second JSON string or infer array schemas.
-    connector.config['transforms.outbox.table.expand.json.payload'] = 'false'
-    connector.config['value.converter'] = 'org.apache.kafka.connect.storage.StringConverter'
-    delete connector.config['value.converter.schemas.enable']
+  if (mode === 'expanded') {
+    Object.assign(connector.config, {
+      'transforms.outbox.table.expand.json.payload': 'true',
+      'transforms.outbox.table.json.payload.null.behavior': 'optional_bytes',
+      'value.converter': 'org.apache.kafka.connect.json.JsonConverter',
+      'value.converter.schemas.enable': 'false',
+    })
   }
+  const allowedChanges = mode === 'expanded' ? TEST_CONNECTOR_CONFIG_CHANGES : TEST_CONNECTOR_TARGET_CHANGES
   for (const key of new Set([...Object.keys(template.config), ...Object.keys(connector.config)])) {
-    if (template.config[key] !== connector.config[key] && !TEST_CONNECTOR_CONFIG_CHANGES.includes(key)) {
+    if (template.config[key] !== connector.config[key] && !allowedChanges.includes(key)) {
       throw new Error(`Disallowed test connector change: ${key}`)
     }
   }

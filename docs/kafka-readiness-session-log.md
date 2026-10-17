@@ -353,6 +353,84 @@ No Kafka consumers, offsets or customer replay have been activated.
   createdAt. All 53 tooling tests pass locally after the sequence/timestamp
   corrections; integration is still pending the changed head.
 
+## 2026-10-17 — real CDC success exposes serializer defect
+
+- Corrected K2 run `39075079346` SUCCESS on exact
+  `770d576a16e1fc475b2ea0a8ca186cca803a70a5`. Full real foundation, rejected
+  small WAL cap, explicit finite test override, repeated CDC preparation,
+  metadata/real TCP permission checks and sequence-leak negative control passed.
+  Strict unexpanded transport matched all eight unique SQL-origin events from
+  two tenant-qualified keys across snapshot, streaming and cold Connect restart.
+  Both keys happened to use one observed partition; this is not cross-partition
+  rebalance/crash coverage. Connector/slot and final project cleanup succeeded.
+- Actual expanded-template A/B result: four records delivered with correct
+  headers/source-ID order, but all four original envelopes differed from SQL;
+  payloadParityPassed=false, envelopeMismatchRecords=4, doubleEncodedRecords=0.
+  Do not call the previous JsonConverter/expansion configuration lossless merely
+  because Kafka delivery and metadata succeed. Source SQL history is unchanged.
+- PR866's required full gates `39075079309` remain pending. It is not merged
+  or production activated. PR863's real libpq run `39074388375` SUCCESS/30 tests;
+  its required full gates `39074388386` also remain pending.
+- Production advanced through the unrelated reviewed release `39072976988`
+  SUCCESS to `0b3e7f9b100c3c05a34a31f2d986fe5364a70d5b`; public build-info and
+  ping matched. This supersedes the earlier observed artifact88 pointer but
+  does not prove our later c8 release: `39074203195` is still building.
+- Began a separate scoped serializer correction from the tested K2 head in
+  `leaddrive-kafka-cdc-serialization-20261018`, branch
+  `codex/kafka-cdc-json-fidelity-20261018`. Set the reviewed template to
+  unexpanded existing JSON + StringConverter, enforce both halves/header-only
+  placement in asset checks and retain old expansion only as a labelled legacy
+  A/B experiment. Next: narrow tests, independent changed-head CDC proof,
+  normal required gates/delivery. No existing connector/slot/offset is changed.
+
+### Prepared next Fund shadow seam (read-only assessment)
+
+- Reuse consumer/projection SDK, exact Fund contracts and the real Fund/ledger
+  fixture from the migration gate. No ready TS Fund reducer or broker caller
+  was found in these bounded paths. The minimal worker must remain shadow-only:
+  no promotion, Fund/currentBalance/v1 write, effect send or read-pointer change.
+- Before a live adapter: require full event contract/topic/header-ID checks,
+  actual PostgreSQL JSONB envelope-hash equality (not JS hash serialization),
+  exact fixed-point money/version reducer, per-build inbox identity, explicit
+  transaction client and duplicate-safe checkpoint advancement. Acknowledge
+  next Kafka offset only after DB commit/current assignment; failures stop the
+  partition, not silently skip. Existing SDK/mocks alone do not prove these.
+- Restricted shadow policies must still permit SELECT of active v1 because the
+  existing invoker deferred coherence trigger checks that row. Writes stay
+  limited to the worker's shadow build. Actual restricted-role, crash, duplicate,
+  tenant-isolation and fixed-cutoff parity tests are NOT RUN at this point.
+
+### Serializer correction checkpoint
+
+- Checkpoint `275ceb90b` pushed as draft PR867, depending on PR866. The raw
+  renderer now preserves every production serializer property; only a fixed
+  test target/TLS/identity/routing allowlist differs. Expanded mode has exactly
+  four explicit legacy-only overrides, and raw is the default. Reverted
+  serializer values/legacy-only keys are rejected rather than normalized.
+- All 55 narrow tooling tests PASS after resource inspection. Asset gate
+  (27 domains/86 topics/5 schemas), runner policy (69 files) and diff check
+  PASS. Heavy changed-template integration and full required gates are NOT RUN
+  locally; PR867 remains draft until the predecessor delivery phase allows its
+  own proof. Previous candidate success is evidence for the fix, not a passing
+  result on these new exact bytes.
+- Current release order remains PR861 artifact/feature inventory verification,
+  then protected delivery of the ready backup/CDC predecessors, then the
+  serializer correction. No caller/worker/connector was activated by this code.
+
+### 2026-10-18 — checkpoint continuity and explicit legacy label
+
+- Resumed the same clean serializer worktree at 4f036a3cf; origin remains
+  rashadoni/leaddrive-v2, registered production13.140.132.245:/opt/leaddrive-v2,
+  GitHub main/immutable-artifact route only. User requests all tasks in sequence.
+- Renamed the diagnostic expanded-result log key to
+  cdc_legacy_expanded_comparison: it describes the deliberately retained old
+  experiment, not the corrected current template. After fresh host RAM/disk/PSI
+  inspection, all 55 narrow tooling tests, asset gate, runner policy and diff
+  check PASS again. Exact changed-template runtime proof remains pending.
+- Prior c8 release build and quality gates now SUCCESS; deploy39074203195 is
+  executing its atomic production stage. Do not move own next merges ahead of
+  its receipt and read-only readiness inventory. PR863/866 full gates pending.
+
 ## 2026-10-17 — K1 merged; backup contract rebased onto current delivery
 
 - Superseding the historical draft/pending entries above: PR861 passed all
@@ -404,3 +482,20 @@ No Kafka consumers, offsets or customer replay have been activated.
   RAM, 214 GB free disk and zero current memory PSI. No containers or database
   runtime were started. Full build, TypeScript and actual merged-head CDC/stack
   integration are NOT RUN locally; they remain GitHub CI work after delivery.
+
+### Serializer synchronization after the backup-contract merge
+
+- Merged the verified local CDC checkpoint12bfbe398 into the serializer branch
+  with both complete journal histories retained. The production serializer
+  fix is still separate from the synthetic transport PR. Fund reducer is
+  checkpointed independently as draftPR868; its actual Vitest/typecheck have
+  not run locally and are not inferred from the tooling suite.
+- Exact predecessor release39074203195 SUCCESS/c8 artifact/ping and PR863
+  protected merge3cdca2db6 supersede prior pending notes. Another reviewed main
+  release was already queued, so read-only production inventory must wait for
+  a matching current-main artifact rather than relaxing its SHA boundary.
+- To avoid serial idle time, the corrected-template CI may run under the
+  existing disposable-stack lock while the predecessor's exact-head required
+  checks finish. This changes no release order:866 must merge before867, and
+  each requires all five actual successful gates plus its own runtime proof.
+  No duplicate manual job, production activation or replay is authorized.
