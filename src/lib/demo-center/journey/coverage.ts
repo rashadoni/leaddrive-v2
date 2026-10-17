@@ -197,6 +197,30 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
       { id: "mtm.mobile-app", label: "Приложение агента: отметка с GPS, съёмка, офлайн", included: false, reason: "Нужен телефон агента; демо показывает то, что приложение присылает руководителю." },
     ],
   },
+  {
+    // A module of its own (owner, 2026-10-17): the product's timesheet
+    // builder over an invented company's phone facts.
+    area: "personnel",
+    title: "Kadr uçotu (учёт рабочего дня)",
+    routes: ["/mtm/attendance", "/mtm/attendance/timesheet", "/mtm/attendance/review", "/mtm/attendance/reports"],
+    sections: [
+      { id: "personnel.nav", label: "Меню раздела: Сегодня / Табель / Сотрудники / Отчёты / Настройки", included: true, kind: "observe" },
+      { id: "personnel.today.kpis", label: "«Сегодня»: пришли, опоздали, не пришли, без ухода", included: true, kind: "observe" },
+      { id: "personnel.today.now", label: "«Сейчас»: на работе, на перерыве, ушли, ещё не пришли", included: true, kind: "observe" },
+      { id: "personnel.privacy", label: "Без биометрии; перерыв — только время, без места", included: true, kind: "observe" },
+      { id: "personnel.today.requests", label: "Заявки, ждущие решения: одобрить / отклонить", included: true, kind: "interactive" },
+      { id: "personnel.today.explanations", label: "Объяснительные у опоздавших", included: true, kind: "interactive" },
+      { id: "personnel.today.week", label: "Неделя по дням", included: true, kind: "observe" },
+      { id: "personnel.timesheet.grid", label: "Табель месяца буквами видов дня", included: true, kind: "observe" },
+      { id: "personnel.timesheet.day-card", label: "Карточка дня: «было → стало», кто одобрил", included: true, kind: "interactive" },
+      { id: "personnel.risk", label: "Подозрительные отметки: два времени, причина", included: true, kind: "observe" },
+      { id: "personnel.n1t", label: "Табель N-1t для бухгалтерии", included: true, kind: "observe" },
+      { id: "personnel.month-close", label: "Закрытие месяца", included: true, kind: "interactive" },
+      { id: "personnel.setup", label: "Сотрудники, филиалы, правила дня, графики, праздники", included: false, reason: "Настройка администратора; в первом знакомстве перегружает." },
+      { id: "personnel.mobile", label: "Приложение сотрудника: отметка, перерыв, заявки, объяснительные", included: false, reason: "Нужен телефон сотрудника; демо показывает то, что видит отдел кадров." },
+      { id: "personnel.location", label: "Место отметки, «вне филиала», QR в филиале", included: false, reason: "Сбор места выключен до утверждённого текста согласия; QR не проверен камерой на телефоне." },
+    ],
+  },
 ]
 
 export interface DemoCoverageResult {
