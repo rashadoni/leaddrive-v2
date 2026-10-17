@@ -1036,3 +1036,70 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   against both merge parents, diff-check, explicit three-path staging followed
   by the ordinary merge checkpoint. No push, CI dispatch, new source edit,
   dependency installation or runtime action is part of this synchronization.
+
+## 2026-10-18 — next K4.2 shadow adapter prepared; exact-main CDC passed
+
+- Continued in the same DB-plan worktree/branch; codex-project-context again
+  resolves Contabo development, origin rashadoni/leaddrive-v2 and the registered
+  Actions-only production route. The canonical checkout remains untouched.
+- Exact-main synthetic CDC run39079754380 on
+  7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd completed SUCCESS, including actual
+  migration/restricted-CDC/A-B fidelity/cold-restart and scoped cleanup steps.
+  This is synthetic transport evidence, not production Kafka activation or a
+  real business-worker transaction test.
+- Final deploy39079668201 is IN PROGRESS: actual build started; quality gates
+  reached blocking unit tests. Public artifact still3cdca2db68823dde281526837fce5ac3aa0af280
+  with ping ok. Concurrent foreign PR870 reached main as
+  fa738db91d5e9a7621f86f113a305db4cafba582, an ordinary descendant containing
+  all own merges. Its six-file change is demo UI/audio/test only, not routing
+  or Kafka; preserve it. This task did not merge or cancel the foreign work.
+  A later successful exact descendant receipt may be required if7a is superseded.
+- Prepared an INACTIVE Fund shadow SQL adapter with real interactive factory,
+  exact immutable-outbox PostgreSQL full-envelope hash/parsing equality,
+  independently provisioned restricted LOGIN precondition, locked build fence,
+  pure reducer, per-build inbox and duplicate-aware monotonic checkpoint in
+  the same transaction. No broker/ack caller, source/v1/pointer/effect writes,
+  provisioning DDL or production migration was introduced in application code.
+- Control-flow unit tests are explicitly mocks, not SQL/role/COMMIT evidence.
+  Prepared a separate, exact loopback-only disposable CI database fixture that
+  applies the actual foundation/Fund/replay migrations and scoped login/RLS
+  policies. Tests target two-tenant parity, duplicates, concurrency, actual
+  rollback/deferred-COMMIT error and denial of active/source/lifecycle writes.
+  The tests are still being independently reviewed; real-PG execution, Vitest
+  and TypeScript are NOT RUN locally because dependencies are absent and the
+  persistent development host is not the heavy test executor.
+- Added the dedicated real-PG step to existing required PR/static and production
+  quality jobs, after their migration gate. Missing fixture admission fails
+  closed; neither test step can access a production secret. Two lightweight
+  gate-wiring checks and the 70-workflow runner policy PASS on this tree.
+  These do not establish that the PostgreSQL test itself passes. No PR/push or
+  merge for the new adapter yet; no publication until review/checkpoint, and no
+  merge until all five actual required checks plus real-PG gate SUCCESS.
+- Kafka remains OFF. Backup tools/provenance are installed, but recovery
+  readiness, Object Lock verification cause, offline operator evidence,
+  HA/TLS/archive, source logical-WAL maintenance and real broker/replay work
+  remain open. No unchanged commissioning retry or runtime activation ran.
+
+### Adapter/fixture review checkpoint before publishing a draft
+
+- Independently reviewed the adapter and all mock tests; helper reviewed the
+  actual-PG fixture, then tightened denial assertions to exact SQLSTATE42501
+  rather than accepting a missing-field/constraint error. Direct foreign-GUC
+  reads/inserts and adoption of a different same-tenant build are tested using
+  independently scoped real LOGIN credentials. Column-only build-lock privilege
+  has a negative control and immutable-createdAt guard assertion.
+- Added a real PostgreSQL blocking-pids controller race, bounded waits and
+  exact expected serialization/lock-abort classification; arbitrary concurrent
+  failures cannot be counted as a safe duplicate. A deferred constraint error
+  after the callback must reject before an acknowledgement callback is reached.
+  These tests are prepared/reviewed, NOT RUN yet; no mock PASS is substituted.
+- Local dependency-free tooling58 tests PASS, 27-domain/86-topic/5-schema asset
+  gate PASS, runner policy70 workflows PASS. Resources before the small checks:
+  13GiB available RAM, memory pressure avg10/60/300 zero, disk213GiB available.
+  Local full build/Vitest/TypeScript/real-PG NOT RUN: missing dependencies and
+  heavy verification belongs to GitHub CI. No package was installed here.
+- Next: checkpoint only the eight task-owned paths, ordinary merge of current
+  main demo-only descendant if still current, publish a draft PR, and obtain
+  actual required-check plus dedicated real-PG receipts before merge. Continue
+  monitoring the earlier7a application delivery independently; the new adapter
+  remains inactive and does not enable Kafka or customer-data replay.
