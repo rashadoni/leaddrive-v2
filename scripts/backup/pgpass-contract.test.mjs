@@ -137,8 +137,8 @@ function executeGuard(subject, overrides = {}) {
         CURRENT_GID: String(overrides.currentGid ?? 7312),
         FILE_UID: String(overrides.owner ?? 7311),
         FILE_GID: String(overrides.group ?? 7312),
-        SERVICE_UID: "7311",
-        SERVICE_GID: "7312",
+        SERVICE_UID: String(overrides.serviceUid ?? 7311),
+        SERVICE_GID: String(overrides.serviceGid ?? 7312),
         ACCOUNT_PRESENT: overrides.accountPresent === false ? "no" : "yes",
         TEST_KIND: overrides.kind ?? "password",
       },
@@ -193,6 +193,8 @@ for (const subject of subjects) {
     test(`${subject.name}: requires exact service group and an existing service account`, () => {
       expectRejected(subject, { group: 9412 })
       expectRejected(subject, { accountPresent: false })
+      expectRejected(subject, { serviceUid: 0, owner: 0 })
+      expectRejected(subject, { serviceGid: 0, group: 0 })
       // Commissioning runs as root but must still require the service-owned authority.
       expectAllowed(subject, { currentUid: 0, currentGid: 0 })
     })

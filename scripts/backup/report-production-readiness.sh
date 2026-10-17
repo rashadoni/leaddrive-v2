@@ -201,6 +201,7 @@ check_service_secret_file() {
     *) fail "$key file must use private mode 0400 or 0600 (observed mode redacted from output)" ;;
   esac
   if [ -z "$backup_uid" ] || [ -z "$backup_gid" ] \
+    || [ "$backup_uid" = 0 ] || [ "$backup_gid" = 0 ] \
     || [ "$owner:$group" != "$backup_uid:$backup_gid" ]; then
     fail "$key file must belong to the backup service account and group"
   fi

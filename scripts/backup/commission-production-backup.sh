@@ -764,6 +764,8 @@ assert_backup_password_file() {
     || fatal "PostgreSQL password file must be an absolute regular non-symlink file"
   backup_uid="$(id -u leaddrive-backup)" || fatal "backup service account is absent"
   backup_gid="$(id -g leaddrive-backup)" || fatal "backup service group is absent"
+  [ "$backup_uid" != 0 ] && [ "$backup_gid" != 0 ] \
+    || fatal "backup service must use a non-root account and group"
   owner="$(stat -c '%u' "$file")"
   group="$(stat -c '%g' "$file")"
   [ "$owner:$group" = "$backup_uid:$backup_gid" ] \

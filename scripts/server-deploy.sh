@@ -427,6 +427,8 @@ assert_backup_password_file() {
     || fatal_after_standalone_replacement "backup service account is absent"
   backup_gid="$(id -g leaddrive-backup)" \
     || fatal_after_standalone_replacement "backup service group is absent"
+  [ "$backup_uid" != 0 ] && [ "$backup_gid" != 0 ] \
+    || fatal_after_standalone_replacement "backup service must use a non-root account and group"
   owner="$(stat -c '%u' "$file")"
   group="$(stat -c '%g' "$file")"
   [ "$owner:$group" = "$backup_uid:$backup_gid" ] \
