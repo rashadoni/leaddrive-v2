@@ -33,6 +33,13 @@ export interface PushMessage {
   body: string
   /** Small, non-personal routing hints the app reads when the push is tapped. */
   data?: Record<string, string>
+  /**
+   * The Android notification channel the system draws it in. A channel's
+   * importance decides whether the push pops up over the screen or only lands
+   * in the shade — see MTM_TEAM_MESSAGES_PUSH_CHANNEL. Without one the app's
+   * manifest default is used.
+   */
+  channelId?: string
 }
 
 export type PushDelivery =
@@ -157,7 +164,20 @@ export async function sendPushMessages(input: {
             token: message.token,
             notification: { title: message.title, body: message.body },
             data: message.data,
-            android: { priority: "HIGH" },
+            android: {
+              priority: "HIGH",
+              ...(message.channelId
+                ? {
+                    notification: {
+                      channel_id: message.channelId,
+                      // Android 7 has no channels: the notification's own priority pops it up there.
+                      notification_priority: "PRIORITY_HIGH",
+                      default_sound: true,
+                      default_vibrate_timings: true,
+                    },
+                  }
+                : {}),
+            },
           },
         }),
       })

@@ -399,3 +399,42 @@ Root поставил единственный
 На этой отметке run QUEUED, а не SUCCESS. Backup/restore/Kafka activation
 не выполнялись. Следующее действие — прочитать его фактический receipt;
 failure может включать частичные config/tools изменения, а не полный rollback.
+
+### Следующее обновление: tools установлены, три PR merged, deploy ожидается
+
+Новые факты заменяют queued-install и NOT MERGED выше, не удаляя историю:
+
+- [Install-tools 39079299803](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079299803)
+  SUCCESS на `3cdca2`: age 1.3.2/AWS CLI 2.36.40 с provenance/pins, миграция
+  persistent locks. Timer остаются disabled, encryption не изменён.
+  DB backup/restore/Kafka не запускались.
+- [Post-readiness 39079476339](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079476339)
+  FAILURE: `machine_ready=no issues=22 enterprise_gaps=9 operator_attestation_required=yes`.
+  Toolchain теперь PASS. Проверка S3 Object Lock стала исполнимой, но результат
+  read не удалось подтвердить; точная причина UNKNOWN. Это **не** доказательство
+  отсутствия Object Lock, и нельзя угадывать причину по одному failed check.
+- DB/secrets/log timer disabled/inactive, runtime-files timer not found;
+  CA/service credential file contracts корректны. Unit/evidence/genesis и
+  другие reported recovery gaps остаются. Подзадача установки tools имеет
+  receipt, но K2.1/K3.6 в целом остаются in-progress / partial.
+
+| PR | Нормальный merge в main после зелёных checks |
+|---|---|
+| [866](https://github.com/rashadoni/leaddrive-v2/pull/866) | `90eaf1625e114fc3ba6f229c4b9618938ebc7c79` |
+| [867](https://github.com/rashadoni/leaddrive-v2/pull/867) | `97f00bd6b1914e87e3b7b3acdc285eaea7d430ba` |
+| [868](https://github.com/rashadoni/leaddrive-v2/pull/868) | `7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd` |
+
+Чужой concurrent PR869 уже попал в main как `85dd493fa` до этих merge;
+Kafka-задача его не merge-ила и сохраняет изменения без редактирования.
+Текущий main — `7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd`, но
+[deploy 39079668201](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079668201)
+ещё pending. Последний проверенный public artifact — `3cdca2`;
+production-доставка `7a1cf49e` пока **НЕ подтверждена**. K8.2 не закрывается
+одним merge; актуальные deploy/public SHA/ping должен сверить root.
+
+Статусы остальных K-ID не расширены: K1/K2 synthetic tests и K4.4 pure reducer
+теперь merged, но restricted Fund shadow DB adapter **PLANNED / NOT IMPLEMENTED**,
+K4.1–K4.3 и реальные DB/role/race tests ещё впереди. Production logical WAL,
+restart, TLS/HA/archive, operator replay, consumer activation и all-module
+adoption остаются открытыми. Следующая ограниченная реализация — DB adapter;
+root независимо продолжает final deploy и existing recovery prerequisites.

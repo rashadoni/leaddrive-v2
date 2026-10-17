@@ -97,6 +97,38 @@ describe("what a push carries", () => {
     })
   })
 
+  it("draws a team message in its own high-importance channel, and anything else in the default one", async () => {
+    // 2026-10-18, the owner's phones: a manager's message landed only in the
+    // shade. A channel's importance decides whether it pops up; the app makes
+    // "team-messages" a high one.
+    const bodies: Array<{ message: { android: Record<string, unknown> } }> = []
+    const fetchImpl = vi.fn(async (url: string, init: RequestInit) => {
+      if (String(url).includes("oauth2")) return okResponse({ access_token: "access-1" })
+      bodies.push(JSON.parse(String(init.body)))
+      return okResponse({ name: "projects/leaddrive-mtm/messages/1" })
+    }) as unknown as typeof fetch
+
+    await sendPushMessages({
+      account,
+      fetchImpl,
+      messages: [
+        { token: "device-token-1", title: "Manager", body: "Sabah 9:00", data: { target: "Messages" }, channelId: "team-messages" },
+        { token: "device-token-2", title: "Reminder", body: "Visit" },
+      ],
+    })
+
+    expect(bodies[0].message.android).toEqual({
+      priority: "HIGH",
+      notification: {
+        channel_id: "team-messages",
+        notification_priority: "PRIORITY_HIGH",
+        default_sound: true,
+        default_vibrate_timings: true,
+      },
+    })
+    expect(bodies[1].message.android).toEqual({ priority: "HIGH" })
+  })
+
   it("asks Google for one access token and reuses it across messages", async () => {
     let tokenCalls = 0
     const fetchImpl = vi.fn(async (url: string) => {

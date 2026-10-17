@@ -160,3 +160,47 @@ absent. The remaining findings concern this reviewed recovery program.
   No backup, restore or Kafka activation has been performed by that queued run.
   Read its final phase/receipt before any follow-up; failure can leave partial
   configuration/tools changes and is not evidence of a complete rollback.
+
+## Subsequent commissioning and merge update — 2026-10-18
+
+This entry supersedes the queued-install and unmerged-PR statuses above while
+retaining those historical observations. Receipts were verified by root;
+this documentation synchronization performed no production action.
+
+- [Install-tools 39079299803](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079299803)
+  SUCCESS on reviewed `3cdca2db68823dde281526837fce5ac3aa0af280`: pinned age
+  1.3.2 and AWS CLI 2.36.40 with provenance validated, persistent lock-path
+  migration completed, automatic timers remain disabled and encryption is
+  unchanged. No database backup, restore or Kafka operation ran.
+- [Post-install readiness 39079476339](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079476339)
+  FAILURE: `machine_ready=no issues=22 enterprise_gaps=9 operator_attestation_required=yes`.
+  Toolchain checks now PASS. A newly runnable S3 Object Lock read could not
+  be verified; its exact cause is UNKNOWN. Do not turn that observation into
+  a claim that Object Lock is absent or that changing credentials is required.
+- Three existing DB/secrets/log timers remain disabled/inactive; the
+  runtime-files timer remains not found. CA/service-credential file contracts
+  remain good. Recovery-unit/evidence/genesis and other reported gaps remain;
+  metadata/tool installation is not independently certified restoration.
+
+All three own PRs merged normally after their exact-head checks:
+
+| PR | Main merge SHA |
+|---|---|
+| [866](https://github.com/rashadoni/leaddrive-v2/pull/866) | `90eaf1625e114fc3ba6f229c4b9618938ebc7c79` |
+| [867](https://github.com/rashadoni/leaddrive-v2/pull/867) | `97f00bd6b1914e87e3b7b3acdc285eaea7d430ba` |
+| [868](https://github.com/rashadoni/leaddrive-v2/pull/868) | `7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd` |
+
+The concurrent unrelated PR869 merge `85dd493fa` was already on main before
+these merges; it was not merged by this Kafka task and is preserved unchanged.
+Current main is now `7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd`, but
+[final deploy 39079668201](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079668201)
+is pending. The last verified public artifact remains `3cdca2`; delivery of
+`7a1cf49e` is NOT CONFIRMED. Do not reuse the earlier main/artifact equality
+claim for this new main until its deploy and public SHA/ping are checked.
+
+The corrected transport fixture and pure Fund reducer are merged code, not
+an activated production broker/consumer. Restricted Fund shadow DB adapter
+remains PLANNED / NOT IMPLEMENTED; role/race/transaction tests, production
+logical WAL/restart, TLS/HA/archive/recovery, replay and all-module adoption
+remain open. The next source phase is that bounded adapter, while root separately
+monitors final delivery and investigates the existing recovery prerequisites.

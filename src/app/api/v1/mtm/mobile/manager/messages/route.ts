@@ -8,7 +8,7 @@ import { requireMobileCapability } from "@/lib/mtm/mobile-capabilities"
 import { isValidMtmAgentRole, resolveAgentScope } from "@/lib/mtm/territory-scope"
 import { createFieldMessage } from "@/lib/mtm/field-message-send"
 import { sanitizeOperationalText } from "@/lib/mtm/operational-announcement"
-import { notifyAgents } from "@/lib/mtm/push-notify"
+import { MTM_TEAM_MESSAGES_PUSH_CHANNEL, notifyAgents } from "@/lib/mtm/push-notify"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 
 /**
@@ -155,6 +155,7 @@ export const POST = withMobileRls(async (req, auth) => {
       title: senderName,
       body,
       data: { target: "Messages", threadId: result.threadId },
+      channelId: MTM_TEAM_MESSAGES_PUSH_CHANNEL,
     }).catch((error) => console.warn("[MTM/mobile/manager/messages POST] push failed", error))
 
     await writeMtmAudit({

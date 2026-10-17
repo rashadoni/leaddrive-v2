@@ -996,3 +996,43 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   must be inspected for actual stage and partial writes before another action.
   Both appended status documents include this newer result without deleting
   the earlier queued snapshot. This subtask still performs documentation only.
+
+## 2026-10-18 — tools commissioned; own PRs merged; final deployment pending
+
+- Resumed the separate DB-plan branch from clean
+  `55bb517c4d7e84d842b7065c5dd7665a330920fa`, verified its root/branch/origin
+  through codex-project-context, and performed an ordinary no-commit merge of
+  exact origin/main `7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd`. The merge had
+  no conflicts. Inherited source changes from already-merged PR869 are retained
+  exactly; this task did not edit or merge that foreign PR. Own edits in this
+  checkpoint are append-only to baseline, backlog and this journal.
+- Root verified install-tools39079299803 SUCCESS on reviewed3cdca2: age1.3.2
+  and AWS CLI2.36.40 provenance/pins validated, persistent lock paths migrated,
+  automatic timers left disabled and backup encryption unchanged. No DB
+  backup/restore or Kafka action ran. The earlier queued-install note is now
+  superseded by this actual receipt, not by an assumption of completion.
+- Post-readiness39079476339 FAILURE reports machine_ready=no, issues=22,
+  enterprise_gaps=9, operator_attestation_required=yes. Toolchain now PASS;
+  newly runnable S3 Object Lock read could not be verified, exact cause UNKNOWN.
+  Do not claim the bucket lacks Object Lock or guess a credential/network cause.
+  Three DB/secrets/log timers remain disabled/inactive, runtime-files timer is
+  still not found; CA/service credential file contracts are good. Existing
+  unit/evidence/genesis and remaining readiness gaps still block full recovery.
+- Root normally merged own PR866 ->90eaf1625e114fc3ba6f229c4b9618938ebc7c79,
+  PR867 ->97f00bd6b1914e87e3b7b3acdc285eaea7d430ba and
+  PR868 ->7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd after the previously
+  recorded exact-head successful gates. Concurrent foreign PR869 ->85dd493fa
+  had reached main first; this Kafka task did not merge it and must preserve it.
+- Final deploy39079668201 for7a1cf49e remains pending. The last public artifact
+  checked by root is3cdca2; this entry does not declare7a1cf49e delivered or
+  current-main readiness proven. Root monitors actual deployment/public SHA
+  and ping before issuing that receipt.
+- Appended the same bounded evidence/status in READINESS_BASELINE.md and
+  KAFKA_IMPLEMENTATION_BACKLOG.md. Tools are installed and code is merged,
+  but restricted Fund shadow DB adapter remains PLANNED / NOT IMPLEMENTED.
+  Logical WAL/restart, production TLS/HA/archive/recovery, broker worker,
+  replay and all-module adoption remain open; no activation is implied.
+- Documentation verification only: preserve all historical document lines
+  against both merge parents, diff-check, explicit three-path staging followed
+  by the ordinary merge checkpoint. No push, CI dispatch, new source edit,
+  dependency installation or runtime action is part of this synchronization.
