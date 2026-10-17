@@ -248,6 +248,35 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
     ],
   },
   {
+    // A module of its own (owner, 2026-10-13): an invented service company's
+    // contracts, from the quote's draft to the signature and the reminders.
+    area: "contracts",
+    title: "Müqavilə nəzarəti (договоры)",
+    routes: ["/contracts", "/contracts/[id]", "/contracts/lifecycle", "/sign/[token]"],
+    sections: [
+      { id: "contracts.nav", label: "Меню модуля: договоры, жизненный цикл, шаблоны, формы, запросы, правила, делегирование, этапы, аналитика", included: true, kind: "observe" },
+      { id: "contracts.list.kpis", label: "Шесть цифр списка: всего, активные, сумма, MRR, средняя, скоро истекают", included: true, kind: "observe" },
+      { id: "contracts.list.filters", label: "Вкладки по статусам и «истекают в 90 дней»", included: true, kind: "observe" },
+      { id: "contracts.list.table", label: "Таблица: номер, имя, компания, тип, сумма, статус, дата окончания", included: true, kind: "observe" },
+      { id: "contracts.from-quote", label: "Черновик договора, созданный принятым КП", included: true, kind: "interactive" },
+      { id: "contracts.detail.kpis", label: "Карточка: дни в силе, сумма, тип, дней осталось", included: true, kind: "observe" },
+      { id: "contracts.approval.submit", label: "Отправка на согласование с этапами, ролями и SLA", included: true, kind: "interactive" },
+      { id: "contracts.approval.chain", label: "Цепочка согласования: уровни, режим, SLA, статусы", included: true, kind: "observe" },
+      { id: "contracts.approval.decide", label: "Решение по этапу: «Утвердить» / «Отклонить»", included: true, kind: "interactive" },
+      { id: "contracts.approval.escalation", label: "Просроченный этап: напоминание руководителям", included: true, kind: "observe" },
+      { id: "contracts.esign.send", label: "Отправка на подпись: тема, подписант, ссылка на 30 дней", included: true, kind: "interactive" },
+      { id: "contracts.esign.customer", label: "Страница подписанта: текст и подпись (набрать или нарисовать)", included: true, kind: "interactive" },
+      { id: "contracts.esign.active", label: "После подписи договор «Активен», конверт «Завершён»", included: true, kind: "observe" },
+      { id: "contracts.lifecycle.renewals", label: "Жизненный цикл: напоминания о продлении за 90 дней", included: true, kind: "observe" },
+      { id: "contracts.lifecycle.approvals", label: "Очередь согласования и узкий этап", included: true, kind: "observe" },
+      { id: "contracts.renewal-alert", label: "Напоминание в колокольчике руководителей", included: true, kind: "observe" },
+      { id: "contracts.setup", label: "Шаблоны и пункты, формы запроса, правила маршрута, делегирование", included: false, reason: "Настройка администратора; в первом знакомстве перегружает." },
+      { id: "contracts.editor", label: "Редактор, импорт .docx, версии, отклонения от пунктов", included: false, reason: "Работа юриста над текстом; глава показывает путь договора, а не его вёрстку." },
+      { id: "contracts.ai", label: "ИИ: извлечение пунктов, риск, редлайн, черновик пункта, поиск", included: false, reason: "Выключено по умолчанию и включается только платформой — показывать нельзя." },
+      { id: "contracts.analytics", label: "Аналитика, этапы исполнения, признание выручки, счёт по договору", included: false, reason: "Нужна история договоров; доля продлений всегда «—» — продление не отдельный статус; выручка и счета — модуль Финансы." },
+    ],
+  },
+  {
     // A module of its own (owner, 2026-10-17): the product's timesheet
     // builder over an invented company's phone facts.
     area: "personnel",

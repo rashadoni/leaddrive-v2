@@ -28,12 +28,13 @@ export const DEMO_JOURNEY_AREAS = [
   "voip",
   "mtm",
   "personnel",
+  "contracts",
   "summary",
 ] as const
 export type DemoJourneyArea = (typeof DEMO_JOURNEY_AREAS)[number]
 
 export const DEMO_PRODUCT_AREAS: readonly DemoJourneyArea[] = [
-  "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "support", "voip", "mtm", "personnel",
+  "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "support", "voip", "mtm", "personnel", "contracts",
 ]
 
 /** Capabilities a grant can switch on. Everything except email verification
