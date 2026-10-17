@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl"
 import { ChevronRight, ShieldCheck } from "lucide-react"
 import { activeSections } from "@/lib/demo-center/journey"
 import { navItems } from "@/lib/nav-items"
+import { demoModuleLabel } from "../module-label"
 import type { DemoSceneProps } from "../scene-props"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
@@ -58,7 +59,7 @@ export function OrientationScene({ manifest, snapshot, variant, reviewMode, open
                 >
                   <Icon className="h-4 w-4 shrink-0 text-[#FF4D00]" aria-hidden="true" />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">{t(item.tKey)}</span>
+                    <span className="block text-sm font-medium">{demoModuleLabel(item, t)}</span>
                     <span className="block truncate text-[11px] text-muted-foreground">{section.title}</span>
                   </span>
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />

@@ -167,6 +167,12 @@ function advance(snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest, n
   if (nextStep) return { ...snapshot, stepId: nextStep.id }
   const nextSection = sections[sectionIndex + 1]
   if (!nextSection) return snapshot
+  // A standalone module may have been opened at any point of the story; the
+  // section after it then opens on the records it expects.
+  if (section.standalone && !nextSection.standalone && !nextSection.entryStates.includes(snapshot.state)) {
+    const staged = stageTo(snapshot, nextSection, now)
+    if (staged) return staged
+  }
   // A module opened again ends among sections the prospect already walked.
   // The guide does not lead through those a second time: it goes on to the
   // next one not seen yet — the last screen, when nothing is left.
@@ -229,7 +235,7 @@ export function sectionJumpTarget(
   snapshot: DemoJourneySnapshot,
   manifest: DemoJourneyManifest,
   sectionId: string,
-): { ok: true; section: DemoJourneySection; back: boolean } | { ok: false; error: string } {
+): { ok: true; section: DemoJourneySection; back: boolean; standalone?: true } | { ok: false; error: string } {
   const sections = activeSections(manifest)
   const targetIndex = sections.findIndex((section) => section.id === sectionId)
   const frontierIndex = sections.findIndex((section) => section.id === snapshot.sectionId)
@@ -237,6 +243,8 @@ export function sectionJumpTarget(
   if (!target) return { ok: false, error: `section "${sectionId}" is not in this story` }
   if (target.navGroup === "demo") return { ok: false, error: `"${target.id}" is reached by the story, not opened directly` }
   if (awaitingOutcome(snapshot, manifest)) return { ok: false, error: "the live call waits for its outcome" }
+  // A module of its own opens where it is, whatever the story's state.
+  if (target.standalone) return { ok: true, section: target, back: false, standalone: true }
   if (targetIndex <= frontierIndex) return { ok: true, section: target, back: true }
   // Only a real call is worth stopping a jump for. In the open demo the call
   // from the lead card is a simulation, and making it a toll gate on the way
@@ -314,6 +322,21 @@ export function reduceJourney(
       const jump = sectionJumpTarget(snapshot, manifest, action.sectionId)
       if (!jump.ok) return fail(jump.error)
       const target = jump.section
+      if (jump.standalone) {
+        // Its own screens from its first step; the lead story stays exactly
+        // where it was — no state, no records touched.
+        return {
+          ok: true,
+          snapshot: {
+            ...snapshot,
+            sectionId: target.id,
+            stepId: target.steps[0].id,
+            visitedSections: snapshot.visitedSections.includes(target.id) ? snapshot.visitedSections : [...snapshot.visitedSections, target.id],
+            ui: Object.fromEntries(Object.entries(snapshot.ui).filter(([path]) => DEMO_UI_QUOTAS.includes(path))),
+            updatedAt: now.toISOString(),
+          },
+        }
+      }
       if (jump.back) {
         // The module starts over: its records as they stand at its own
         // beginning, its guide from the first step. What was walked stays

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Nümunə foto: həkimə verilən nümunələr">
+  <rect width="400" height="300" fill="#e7ecf3"/>
+  <rect x="40" y="70" width="320" height="170" rx="8" fill="#c8a37a"/>
+  <rect x="40" y="70" width="320" height="18" rx="8" fill="#b18c62"/>
+  <g>
+    <rect x="70" y="110" width="80" height="50" rx="4" fill="#ffffff" stroke="#ff7a3d" stroke-width="3"/><rect x="70" y="110" width="80" height="14" rx="4" fill="#ff7a3d"/>
+    <rect x="165" y="120" width="80" height="50" rx="4" fill="#ffffff" stroke="#38bdf8" stroke-width="3"/><rect x="165" y="120" width="80" height="14" rx="4" fill="#38bdf8"/>
+    <rect x="260" y="108" width="70" height="60" rx="4" fill="#ffffff" stroke="#a3e635" stroke-width="3"/><rect x="260" y="108" width="70" height="14" rx="4" fill="#a3e635"/>
+    <rect x="110" y="178" width="180" height="40" rx="4" fill="#f8fafc" stroke="#94a3b8"/>
+    <g fill="#94a3b8"><rect x="122" y="190" width="120" height="5" rx="2"/><rect x="122" y="202" width="90" height="5" rx="2"/></g>
+  </g>
+  <text x="200" y="290" font-family="system-ui, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">nümunə foto · demo</text>
+</svg>

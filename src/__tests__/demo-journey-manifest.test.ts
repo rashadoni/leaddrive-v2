@@ -33,12 +33,14 @@ import { getHelpVideoForSlug } from "@/content/help/video-assets"
 const ROOT = process.cwd()
 const read = (relative: string) => readFileSync(path.join(ROOT, relative), "utf8")
 
-/** Sidebar group label → group-module id, for the four groups the demo shows. */
+/** Sidebar group label → group-module id, for the groups the demo shows.
+ *  Route & Field joined on 2026-10-17 as a module of its own. */
 const NAV_GROUP_TO_MODULE: Record<string, string> = {
   CRM: "crm",
   Sales: "sales",
   Communication: "omnichannel",
   Marketing: "marketing",
+  "Route & Field": "mtm",
 }
 
 /** Pulls `{ href, group }` pairs out of nav-items.ts without importing it
@@ -72,8 +74,8 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
     expect(getDemoJourneyScenario("constructor")).toBeNull()
   })
 
-  it("shows only the four groups the owner chose and only real sidebar routes", () => {
-    expect(manifest.navGroups).toEqual(["crm", "sales", "omnichannel", "marketing"])
+  it("shows only the groups the owner chose and only real sidebar routes", () => {
+    expect(manifest.navGroups).toEqual(["crm", "sales", "omnichannel", "marketing", "mtm"])
     const entries = navEntries()
     expect(entries.length).toBeGreaterThan(100)
     for (const route of manifest.visibleRoutes) {
@@ -121,6 +123,13 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
       "deal",
       "quote",
       "closed-won",
+      // A module of its own beside the story (2026-10-17).
+      "mtm-today",
+      "mtm-plan",
+      "mtm-live",
+      "mtm-visit",
+      "mtm-place",
+      "mtm-results",
       "summary",
     ])
   })
@@ -250,6 +259,8 @@ describe("Guided journey coverage", () => {
     tasks: { included: 12, total: 14, percent: 86 },
     deals: { included: 13, total: 16, percent: 81 },
     quotes: { included: 9, total: 11, percent: 82 },
+    // 2026-10-17: Route & Field, a module of its own.
+    mtm: { included: 16, total: 20, percent: 80 },
   }
 
   it("meets the 80 % target in every shown product area", () => {

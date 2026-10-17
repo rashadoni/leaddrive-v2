@@ -299,3 +299,66 @@ describe("what is reported when the guide skips modules already walked", () => {
     for (const report of reports) expect(acceptJourneyReport(manifest, report).ok, report.name).toBe(true)
   })
 })
+
+/**
+ * Route & Field is a module of its own (owner, 2026-10-17): a field team's
+ * day, not a step of the prospect's lead. Opening it must not stage the lead
+ * story up to it, nor rewind a story already walked; leaving it for a story
+ * module or the last screen works as any other move.
+ */
+describe("a module of its own: Route & Field", () => {
+  const walkSection = (snapshot: DemoJourneySnapshot, sectionId: string): DemoJourneySnapshot => {
+    let current = snapshot
+    for (let guard = 0; guard < 20 && current.sectionId === sectionId; guard += 1) {
+      const result = reduceJourney(current, actionFor(current), manifest, NOW)
+      if (!result.ok) throw new Error(`${current.stepId}: ${result.error}`)
+      current = result.snapshot
+    }
+    return current
+  }
+
+  it("opens at the very start without touching the lead story", () => {
+    const before = start()
+    const result = jump(before, "mtm-today")
+    expect(result.ok).toBe(true)
+    expect(result.transitioned).toBeUndefined()
+    expect(result.snapshot).toMatchObject({ sectionId: "mtm-today", stepId: "mtm-today-figures", state: "STARTED" })
+    expect(result.snapshot.records).toEqual(before.records)
+  })
+
+  it("opens after the win without rewinding it", () => {
+    const won = driveToEnd(start())
+    // A finished session takes no more moves; one a step short of the end is where it matters.
+    const beforeEnd = (() => {
+      let current = start()
+      for (let guard = 0; guard < 200 && current.sectionId !== "mtm-today"; guard += 1) current = reduceJourney(current, actionFor(current), manifest, NOW).snapshot
+      return current
+    })()
+    expect(won.state).toBe("COMPLETED")
+    expect(beforeEnd.state).toBe("CLOSED_WON")
+    const reopened = jump(walkSection(beforeEnd, "mtm-today"), "mtm-today")
+    expect(reopened.snapshot.state).toBe("CLOSED_WON")
+    expect(reopened.snapshot.records.deal?.wonAt).not.toBeNull()
+  })
+
+  it("walks through its six screens and hands over to the last screen with the story staged", () => {
+    let current = jump(start(), "mtm-today").snapshot
+    for (const sectionId of ["mtm-today", "mtm-plan", "mtm-live", "mtm-visit", "mtm-place", "mtm-results"]) {
+      expect(current.sectionId).toBe(sectionId)
+      current = walkSection(current, sectionId)
+    }
+    expect(current.sectionId).toBe("summary")
+    // The last screen expects a closed deal; the module staged the story to it.
+    expect(current.state).toBe("CLOSED_WON")
+    expect(sectionStatus(current, manifest, "mtm-results")).toBe("done")
+    // The lead story's own steps were not done in the prospect's name.
+    expect(current.completedSteps.filter((id) => !id.startsWith("mtm-"))).toEqual([])
+  })
+
+  it("lets the prospect leave it for a story module, which starts over as usual", () => {
+    const inMtm = walkSection(jump(start(), "mtm-today").snapshot, "mtm-today")
+    const result = jump(inMtm, "conversation")
+    expect(result.ok).toBe(true)
+    expect(result.snapshot).toMatchObject({ sectionId: "conversation", stepId: "conversation-channels", state: "SOURCE_SEEN" })
+  })
+})

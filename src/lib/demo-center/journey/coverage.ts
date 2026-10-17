@@ -168,6 +168,35 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
       { id: "quotes.detail.advisor-risk", label: "Виджет Advisor risk", included: false, reason: "Считается фоновыми прогонами Advisor; статичное значение было бы выдуманной метрикой." },
     ],
   },
+  {
+    // A module of its own (owner, 2026-10-17): the product's MTM components
+    // drawn from an invented field team, beside the lead story.
+    area: "mtm",
+    title: "Route & Field (MTM)",
+    routes: ["/mtm", "/mtm/routes/plan", "/mtm/map", "/mtm/visits", "/mtm/routes", "/mtm/analytics"],
+    sections: [
+      { id: "mtm.nav", label: "Меню модуля: Сегодня / Маршруты / Календарь / Карта / Визиты / Результаты", included: true, kind: "observe" },
+      { id: "mtm.home.kpis", label: "«Сегодня»: в поле, план дня, неделя, ждёт решения", included: true, kind: "observe" },
+      { id: "mtm.home.attention", label: "«Ждёт решения»: заявки агентов, неопубликованные маршруты, фото", included: true, kind: "observe" },
+      { id: "mtm.home.team", label: "«Команда · эта неделя»: посещено / план по дням", included: true, kind: "observe" },
+      { id: "mtm.plan.map", label: "Планирование: клиенты на карте, «не были в этом месяце»", included: true, kind: "interactive" },
+      { id: "mtm.plan.suggest", label: "«Предложить маршрут»", included: true, kind: "interactive" },
+      { id: "mtm.plan.route-panel", label: "Маршрут дня: точки, время, километры", included: true, kind: "interactive" },
+      { id: "mtm.plan.publish", label: "Публикация маршрута агенту", included: true, kind: "interactive" },
+      { id: "mtm.live.map", label: "Живая карта команды", included: true, kind: "observe" },
+      { id: "mtm.live.roster", label: "Список сотрудников со статусами и исполнением маршрута", included: true, kind: "interactive" },
+      { id: "mtm.live.day-steps", label: "«День по шагам»: план и факт выбранного агента", included: true, kind: "interactive" },
+      { id: "mtm.visit.place", label: "Визит: в зоне ли агент и на каком расстоянии", included: true, kind: "observe" },
+      { id: "mtm.visit.photos", label: "Визит: фото, презентация, подпись", included: true, kind: "observe" },
+      { id: "mtm.visit.left-open", label: "«Не закрыт агентом» и «Напомнить агенту»", included: true, kind: "interactive" },
+      { id: "mtm.place-request", label: "«Клиент здесь»: было / предлагает, решение руководителя", included: true, kind: "interactive" },
+      { id: "mtm.results.team", label: "Результаты: план и факт по агентам", included: true, kind: "observe" },
+      { id: "mtm.calendar", label: "Календарь команды", included: false, reason: "Повторяет маршруты по дням; первое знакомство идёт по одному дню." },
+      { id: "mtm.photos.review", label: "Проверка фото пакетом", included: false, reason: "Отдельный экран для потока фото; в демо фото показаны в карточке визита." },
+      { id: "mtm.settings", label: "Настройки: правила визита, «Что может агент»", included: false, reason: "Работа администратора; в первом знакомстве перегружает." },
+      { id: "mtm.mobile-app", label: "Приложение агента: отметка с GPS, съёмка, офлайн", included: false, reason: "Нужен телефон агента; демо показывает то, что приложение присылает руководителю." },
+    ],
+  },
 ]
 
 export interface DemoCoverageResult {

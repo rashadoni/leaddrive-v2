@@ -24,12 +24,13 @@ export const DEMO_JOURNEY_AREAS = [
   "tasks",
   "deals",
   "quotes",
+  "mtm",
   "summary",
 ] as const
 export type DemoJourneyArea = (typeof DEMO_JOURNEY_AREAS)[number]
 
 export const DEMO_PRODUCT_AREAS: readonly DemoJourneyArea[] = [
-  "campaigns", "inbox", "leads", "tasks", "deals", "quotes",
+  "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "mtm",
 ]
 
 /** Capabilities a grant can switch on. Everything except email verification
@@ -191,6 +192,14 @@ export interface DemoJourneySection {
   readonly skippedNotice?: string
   readonly entryStates: readonly DemoJourneyState[]
   readonly exitStates: readonly DemoJourneyState[]
+  /**
+   * A module of its own, outside the prospect's lead story (Route & Field):
+   * its steps never move the journey state, so opening it at any moment
+   * neither stages the story up to it nor rewinds the story to it. In the
+   * story's order it sits after the win — its entry and exit states say so —
+   * and leaving it for the next story section stages that section as usual.
+   */
+  readonly standalone?: boolean
   readonly intro?: DemoTourClip
   /** Questions the prospect may ask the assistant here (hidden unless the
    *  `assistant` capability is granted). */

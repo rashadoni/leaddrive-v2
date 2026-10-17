@@ -38,6 +38,7 @@ const BOARD_SCENE = "src/components/demo-center/journey/scenes/board-scene.tsx"
 const DEAL_SCENE = "src/components/demo-center/journey/scenes/deal-scene.tsx"
 const QUOTE_SCENE = "src/components/demo-center/journey/scenes/quote-scene.tsx"
 const SUMMARY_SCENE = "src/components/demo-center/journey/scenes/summary-scene.tsx"
+const MTM_SCENE = "src/components/demo-center/journey/scenes/mtm-scene.tsx"
 
 /* Real product files */
 const LEADS_LIST = "src/app/(dashboard)/leads/page.tsx"
@@ -48,7 +49,7 @@ const CAMPAIGNS_PAGE = "src/app/(dashboard)/campaigns/page.tsx"
 
 export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   /* ── Demo shell ── */
-  "demo-sidebar": { area: "shell", scene: SIDEBAR, productFiles: [], label: "Reduced sidebar: four groups" },
+  "demo-sidebar": { area: "shell", scene: SIDEBAR, productFiles: [], label: "Reduced sidebar: five groups" },
   "demo-guide-panel": { area: "shell", scene: GUIDE, productFiles: [], label: "Guide panel with progress and checklist" },
   "demo-watermark": { area: "shell", scene: SHELL, productFiles: [], label: "Prospect watermark" },
   "demo-assistant": { area: "shell", scene: GUIDE, productFiles: [], label: "Da Vinci assistant prompts" },
@@ -150,6 +151,18 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "quote-customer": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "Customer block" },
   "quote-line-items": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "Line items" },
   "quote-summary": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "Totals and validity" },
+
+  /* ── Route & Field (MTM) ── */
+  "mtm-home-kpis": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Today: the day in four figures" },
+  "mtm-home-attention": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Today: what waits for a decision" },
+  "mtm-plan-route": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Route planner: the day's stops, suggest, publish" },
+  "mtm-plan-map": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Route planner: clients on the map" },
+  "mtm-live-roster": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Live map: the team and their statuses" },
+  "mtm-live-map": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Live map" },
+  "mtm-visit-card": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Visit: zone, photos, presentation, signature" },
+  "mtm-visit-left-open": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "A visit the agent left open" },
+  "mtm-place-request": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "«Client is here»: before / proposed" },
+  "mtm-results-team": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Results: plan and fact per agent" },
 }
 
 export function isDemoAnchor(id: string): boolean {
@@ -160,5 +173,5 @@ export function isDemoAnchor(id: string): boolean {
  *  have every one of its anchors rendered — that is what stops a half-built
  *  scene from shipping with a coach mark pointing at nothing. */
 export const DEMO_BUILT_AREAS: readonly DemoJourneyArea[] = [
-  "shell", "summary", "campaigns", "inbox", "leads", "tasks", "deals", "quotes",
+  "shell", "summary", "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "mtm",
 ]
