@@ -68,3 +68,5 @@ been changed in this phase.
 Fixture implementation is ready for a draft PR. Its heavy smoke stays skipped
 while draft; it is queued for execution after the K0 required checks, preserving
 the sequence and avoiding a second manual heavy phase on the development host.
+
+- Test-stack checkpoint `3100de7a1` is pushed; draft PR https://github.com/rashadoni/leaddrive-v2/pull/861 depends on #860. Its integration smoke is explicitly skipped while draft and will be made ready after predecessor gates. The K0 tooling and integration worktrees remain separate and cleanly scoped.
