@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { readFileSync } from "node:fs"
-import { PUSH_BODY_LIMIT, notifyAgents, pushBody } from "@/lib/mtm/push-notify"
+import { MTM_TEAM_MESSAGES_PUSH_CHANNEL, PUSH_BODY_LIMIT, notifyAgents, pushBody } from "@/lib/mtm/push-notify"
 
 function client(tokens: string[]) {
   return {
@@ -159,5 +159,35 @@ describe("a manager's message reaches the phone", () => {
     const call = route.slice(route.indexOf("void notifyAgents({"), route.indexOf("await writeMtmAudit"))
     expect(call).toContain("agentIds: uniqueAgentIds")
     expect(call).toContain("organizationId: auth.orgId")
+  })
+
+  it("pops up on the phone: both the web and the manager's phone use the team-messages channel", () => {
+    // 2026-10-18: without a channel the message landed only in the shade.
+    expect(MTM_TEAM_MESSAGES_PUSH_CHANNEL).toBe("team-messages")
+    const mobile = readFileSync("src/app/api/v1/mtm/mobile/manager/messages/route.ts", "utf8")
+    for (const source of [route, mobile]) {
+      const call = source.slice(source.indexOf("void notifyAgents({"), source.indexOf("await writeMtmAudit"))
+      expect(call).toContain("channelId: MTM_TEAM_MESSAGES_PUSH_CHANNEL,")
+    }
+  })
+
+  it("hands the channel to every message of the round", async () => {
+    const send = vi.fn(async ({ messages }: { messages: Array<{ token: string; channelId?: string }> }) => messages.map((message) => ({ token: message.token, ok: true as const })))
+    await notifyAgents({
+      client: {
+        mtmDeviceToken: {
+          findMany: vi.fn(async () => [{ token: "t-1" }, { token: "t-2" }]),
+          updateMany: vi.fn(async () => ({ count: 0 })),
+        },
+      },
+      organizationId: "org-1",
+      agentIds: ["agent-1"],
+      title: "Manager",
+      body: "Sabah 9:00",
+      channelId: MTM_TEAM_MESSAGES_PUSH_CHANNEL,
+      configured: true,
+      send: send as never,
+    })
+    expect(send.mock.calls[0][0].messages.map((message) => message.channelId)).toEqual(["team-messages", "team-messages"])
   })
 })

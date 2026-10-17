@@ -33,6 +33,8 @@ export interface NotifyAgentsInput {
   body: string
   /** Small routing hints the app reads when the push is tapped. */
   data?: Record<string, string>
+  /** The Android channel to draw it in; the app's default channel when absent. */
+  channelId?: string
   /** Injected in tests. */
   send?: typeof sendPushMessages
   configured?: boolean
@@ -43,6 +45,17 @@ export interface NotifyAgentsResult {
   failed: number
   retired: number
 }
+
+/**
+ * The Android channel of a manager's message to the team. The app (leaddrive-mtm
+ * 3.11.12+) creates it with high importance, so the message pops up over the
+ * screen like a chat message. Until 2026-10-18 every push went to the app's
+ * default «field-reminders» channel, created with default importance: on the
+ * owner's test phones the message arrived only in the shade («не всплывающий»).
+ * An app that has not created the channel yet gets the push in its default
+ * channel, as before. The name must match TEAM_MESSAGES_CHANNEL in the app.
+ */
+export const MTM_TEAM_MESSAGES_PUSH_CHANNEL = "team-messages"
 
 /** One line is enough on a lock screen, and it is all that belongs there. */
 export const PUSH_BODY_LIMIT = 160
@@ -88,6 +101,7 @@ export async function notifyAgents(input: NotifyAgentsInput): Promise<NotifyAgen
       title: input.title,
       body: pushBody(input.body),
       data: input.data,
+      ...(input.channelId ? { channelId: input.channelId } : {}),
     })),
   })
 
