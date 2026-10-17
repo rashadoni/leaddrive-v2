@@ -254,9 +254,10 @@ export default function AiAutomationPage() {
   const [savingBudget, setSavingBudget] = useState(false)
   const [savingAdvisor, setSavingAdvisor] = useState(false)
   const [advisorBusyKey, setAdvisorBusyKey] = useState<string | null>(null)
-  const [delivery, setDelivery] = useState({ telegramBotToken: "", telegramChatId: "", slackWebhookUrl: "", language: "ru" })
+  const [delivery, setDelivery] = useState({ telegramBotToken: "", telegramChatId: "", slackWebhookUrl: "" })
   const [savingDelivery, setSavingDelivery] = useState(false)
   const [deliverySaved, setDeliverySaved] = useState(false)
+  const [deliveryFailed, setDeliveryFailed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<string | null>(null)
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null)
@@ -328,7 +329,11 @@ export default function AiAutomationPage() {
       }
 
       if (deliveryRes?.data) {
-        setDelivery(d => ({ ...d, ...deliveryRes.data }))
+        setDelivery({
+          telegramBotToken: deliveryRes.data.telegramBotToken ?? "",
+          telegramChatId: deliveryRes.data.telegramChatId ?? "",
+          slackWebhookUrl: deliveryRes.data.slackWebhookUrl ?? "",
+        })
       }
     } catch {}
     setLoading(false)
@@ -434,15 +439,29 @@ export default function AiAutomationPage() {
   const saveDelivery = async () => {
     setSavingDelivery(true)
     setDeliverySaved(false)
+    setDeliveryFailed(false)
     try {
-      await fetch("/api/v1/settings/ai-delivery", {
+      // Only the three editable fields: the route's schema is strict, and the
+      // whole GET payload (with its *Configured flags) used to be sent back,
+      // so every save was refused while the card said «Сохранено!».
+      const res = await fetch("/api/v1/settings/ai-delivery", {
         method: "PATCH",
         headers,
-        body: JSON.stringify(delivery),
+        body: JSON.stringify({
+          telegramBotToken: delivery.telegramBotToken,
+          telegramChatId: delivery.telegramChatId,
+          slackWebhookUrl: delivery.slackWebhookUrl,
+        }),
       })
-      setDeliverySaved(true)
-      setTimeout(() => setDeliverySaved(false), 3000)
-    } catch {}
+      if (res.ok) {
+        setDeliverySaved(true)
+        setTimeout(() => setDeliverySaved(false), 3000)
+      } else {
+        setDeliveryFailed(true)
+      }
+    } catch {
+      setDeliveryFailed(true)
+    }
     setSavingDelivery(false)
   }
 
@@ -758,25 +777,12 @@ export default function AiAutomationPage() {
             />
           </div>
 
-          {/* Language */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">{t("briefingLanguage")}:</span>
-            <select
-              value={delivery.language}
-              onChange={e => setDelivery(d => ({ ...d, language: e.target.value }))}
-              className="h-8 text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 bg-background"
-            >
-              <option value="ru">Русский</option>
-              <option value="en">English</option>
-              <option value="az">Azərbaycan</option>
-            </select>
-          </div>
-
           <div className="flex items-center gap-2 pt-1">
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={saveDelivery} disabled={savingDelivery}>
               {savingDelivery ? "..." : t("save")}
             </Button>
             {deliverySaved && <span className="text-xs text-green-600">{t("saved")}</span>}
+            {deliveryFailed && <span className="text-xs text-red-600">{t("deliverySaveFailed")}</span>}
           </div>
         </CardContent>
       </Card>

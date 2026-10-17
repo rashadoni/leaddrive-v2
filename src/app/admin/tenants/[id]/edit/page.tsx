@@ -834,18 +834,19 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Default language for AI emails</Label>
+                <Label htmlFor="tenantCustomerLanguage">{t("tenants.customerLanguage")}</Label>
                 <Select
+                  id="tenantCustomerLanguage"
                   value={form.orgLanguage}
                   onChange={(e) => setForm({ ...form, orgLanguage: e.target.value })}
                 >
-                  <option value="">Auto (ru)</option>
+                  <option value="">{t("tenants.customerLanguageUnset")}</option>
                   <option value="ru">Русский</option>
                   <option value="en">English</option>
                   <option value="az">Azərbaycan</option>
                 </Select>
                 <p className="text-[11px] text-muted-foreground">
-                  Fallback language for renewal / meeting-recap / social-reply when the contact has no preferredLanguage.
+                  {t("tenants.customerLanguageHint")}
                 </p>
               </div>
             </div>

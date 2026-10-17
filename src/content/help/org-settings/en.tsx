@@ -23,17 +23,17 @@ export default function OrgSettingsHelpEn() {
         goal="Update the company name and logo shown across the CRM, and see your current plan and user/contact limits in one place"
       >
         You reach this page via <HelpKey>Settings</HelpKey> → <HelpKey>Organization</HelpKey>. Every
-        change applies only to your own organization (tenant). The page has two cards: one editable
-        (name and logo) and one read-only plan-information card.
+        change applies only to your own organization (tenant). The page has three cards: name and logo,
+        customer language, and a read-only plan-information card.
       </HelpScenario>
 
       <HelpSection title="What's on the page">
         <p>
           The header shows a building icon with the title <HelpKey>Organization</HelpKey> and the
-          subtitle «Company name, logo & plan details». Below it are two cards. The first card is{" "}
+          subtitle «Company name, logo & plan details». Below it are three cards. The first card is{" "}
           <strong>Company Details</strong> — it holds the <strong>Organization Name</strong> and{" "}
           <strong>Logo URL</strong> fields with a <HelpKey>Save</HelpKey> button below them. The second
-          card is <strong>Plan &amp; Limits</strong> — it shows three tiles (current plan, max users,
+          is the customer language (see below). The third card is <strong>Plan &amp; Limits</strong> — it shows three tiles (current plan, max users,
           max contacts) and the slug; this card is informational only and cannot be edited.
         </p>
         <dl className="rounded-md border p-3">
@@ -80,10 +80,34 @@ export default function OrgSettingsHelpEn() {
         </HelpStep>
       </HelpSection>
 
+      <HelpSection title="Customer language">
+        <p>
+          The second card is <strong>Customer language</strong>. The CRM writes to a customer in this
+          language when it does not know their own: the website chat window, its greeting and AI
+          replies, ticket messages, contract renewal e-mails. A customer whose card names a language of
+          their own gets ticket messages in that language.
+        </p>
+        <HelpStep n={1}>
+          <p>
+            Pick a language in the list and press <HelpKey>Save</HelpKey> below it.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            A green bar «Customer language saved». The website chat speaks the new language the next
+            time a visitor opens it.
+          </HelpCallout>
+        </HelpStep>
+        <HelpCallout kind="tip">
+          <p>
+            Only an administrator can change it; everyone else sees it without the button. The daily AI
+            briefing reaches each employee in their own language and uses this one only as a fallback.
+          </p>
+        </HelpCallout>
+      </HelpSection>
+
       <HelpSection title="Check your plan and limits">
         <HelpStep n={1}>
           <p>
-            The second card — <strong>Plan &amp; Limits</strong> — is informational only; there's
+            The third card — <strong>Plan &amp; Limits</strong> — is informational only; there's
             nothing to edit here. Look at the three tiles.
           </p>
           <HelpCallout kind="see" label="What you'll see">
