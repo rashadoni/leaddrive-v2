@@ -46,7 +46,8 @@ export const GET = withMobileRls(async (req, auth) => {
     })
     const includeInactive = new URL(req.url).searchParams.get("includeInactive") === "1"
     const settings = await getMtmSettings(auth.orgId)
-    const todayKey = currentDateKey(new Date(), isValidTimezone(settings.timezone) ? settings.timezone : "UTC")
+    const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+    const todayKey = currentDateKey(new Date(), timezone)
     const today = new Date(`${todayKey}T00:00:00.000Z`)
     const agents = await prisma.mtmAgent.findMany({
       where: {
@@ -98,6 +99,26 @@ export const GET = withMobileRls(async (req, auth) => {
         routeToday.set(route.agentId, counts)
       }
     }
+    // A visit still open from an earlier day of the company (owner,
+    // 2026-10-17): one stayed open five days and took the next visit's photo.
+    // The manager's «Diqqət» counts it; the agent's app asks to close it.
+    const openVisitSince = new Map<string, string>()
+    if (canReadRouteTeam && agents.length > 0) {
+      const openVisits = await prisma.mtmVisit.findMany({
+        where: {
+          organizationId: auth.orgId,
+          agentId: { in: agents.map((agent) => agent.id) },
+          status: "CHECKED_IN",
+          deletedAt: null,
+        },
+        orderBy: { checkInAt: "asc" },
+        select: { agentId: true, checkInAt: true },
+      })
+      for (const visit of openVisits) {
+        if (openVisitSince.has(visit.agentId)) continue
+        if (currentDateKey(visit.checkInAt, timezone) < todayKey) openVisitSince.set(visit.agentId, visit.checkInAt.toISOString())
+      }
+    }
     return NextResponse.json({
       success: true,
       data: {
@@ -108,7 +129,9 @@ export const GET = withMobileRls(async (req, auth) => {
           return {
             ...agent,
             workday: canReadWorkforceTeam ? workdayOfToday(workdays) : null,
-            ...(canReadRouteTeam ? { routeToday: routeToday.get(agent.id) ?? null } : {}),
+            ...(canReadRouteTeam
+              ? { routeToday: routeToday.get(agent.id) ?? null, openVisitSince: openVisitSince.get(agent.id) ?? null }
+              : {}),
           }
         }),
       },
