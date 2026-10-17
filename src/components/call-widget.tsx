@@ -56,6 +56,25 @@ interface StartCallResponse {
   providers?: CallProviderOption[]
 }
 
+/**
+ * Statuses after which the card stops asking: none of them can become active
+ * again, because the PBX (`/api/internal/asterisk/call-lifecycle`) writes
+ * `endedAt` with each, and a late "answered" never reopens an ended row.
+ *
+ * `dispatch-uncertain` is the station saying it cannot tell whether the call
+ * got through (and the CRM forbids a redial). The card already drew it as
+ * ended, yet kept polling every two seconds and kept the timer running for as
+ * long as it stayed open.
+ */
+const CALL_STATUSES_THAT_STOP_POLLING = new Set([
+  "completed",
+  "busy",
+  "no-answer",
+  "failed",
+  "canceled",
+  "dispatch-uncertain",
+])
+
 function toDateTimeLocalValue(date: Date): string {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
     .toISOString()
@@ -77,30 +96,43 @@ export function CallWidget({ callLogId, phoneNumber, contactName, onClose }: Cal
   const [dispositionSaved, setDispositionSaved] = useState<string | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
+  const pollAbortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
-    // Poll call status every 2 seconds
+    // Poll this call's status every 2 seconds — by id. The list's newest row
+    // is often someone else's (an inbound call, a teammate's call), and the
+    // card used to read only that row, so it froze mid-call on «connected».
+    const polling = new AbortController()
+    pollAbortRef.current = polling
+    const stopPolling = () => {
+      polling.abort()
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+    let inFlight = false
     const pollStatus = async () => {
+      if (inFlight || polling.signal.aborted) return
+      inFlight = true
       try {
-        const res = await fetch(`/api/v1/calls?limit=1`)
+        const res = await fetch(`/api/v1/calls?id=${encodeURIComponent(callLogId)}&limit=1`, {
+          cache: "no-store",
+          signal: polling.signal,
+        })
         const data = await res.json() as CallsListResponse
-        const calls = data.data ?? []
-        if (data.success && calls.length > 0) {
-          const call = calls.find((c) => c.id === callLogId)
-          if (call) {
-            setStatus(call.status)
-            if (call.duration) setDuration(call.duration)
-            if (["completed", "busy", "no-answer", "failed", "canceled"].includes(call.status)) {
-              if (pollRef.current) clearInterval(pollRef.current)
-              if (timerRef.current) clearInterval(timerRef.current)
-            }
-          }
+        // Only this exact row may drive the card, even if the filter were ignored.
+        const call = data.success ? data.data?.find((c) => c.id === callLogId) : undefined
+        if (!call || polling.signal.aborted) return
+        setStatus(call.status)
+        if (call.duration) setDuration(call.duration)
+        if (CALL_STATUSES_THAT_STOP_POLLING.has(call.status)) {
+          stopPolling()
+          if (timerRef.current) clearInterval(timerRef.current)
         }
-      } catch { /* ignore */ }
+      } catch { /* aborted, or a transient failure: the next tick asks again */ }
+      finally { inFlight = false }
     }
 
     pollRef.current = setInterval(pollStatus, 2000)
-    pollStatus()
+    void pollStatus()
 
     // Duration timer
     timerRef.current = setInterval(() => {
@@ -108,7 +140,7 @@ export function CallWidget({ callLogId, phoneNumber, contactName, onClose }: Cal
     }, 1000)
 
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
+      stopPolling()
       if (timerRef.current) clearInterval(timerRef.current)
     }
   }, [callLogId])
@@ -127,12 +159,15 @@ export function CallWidget({ callLogId, phoneNumber, contactName, onClose }: Cal
   }
 
   const handleEndCall = async () => {
+    // Stop asking first: a reply already on its way would otherwise put the
+    // card back on «connected» after the hang-up, with nothing left polling.
+    pollAbortRef.current?.abort()
+    if (pollRef.current) clearInterval(pollRef.current)
     try {
       await fetch(`/api/v1/calls/${callLogId}/end`, { method: "POST" })
-    } catch { /* ignore — will be caught by status poll */ }
+    } catch { /* ignore — the call log records the real outcome */ }
     setStatus("completed")
     if (timerRef.current) clearInterval(timerRef.current)
-    if (pollRef.current) clearInterval(pollRef.current)
   }
 
   const handleSaveNotes = async () => {
