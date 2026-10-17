@@ -1624,6 +1624,9 @@
     "lateCallbacksPromisedFor": "Обещано на",
     "lateCallbacksCalledAt": "Позвонили",
     "lateCallbacksDelay": "Опоздание",
+    "lateCallbacksDelayMinutes": "{count} мин",
+    "lateCallbacksDelayHours": "{hours} ч",
+    "lateCallbacksDelayHoursMinutes": "{hours} ч {minutes} мин",
     "lateCallbacksNeverCalled": "не позвонили"
   },
   "companies": {

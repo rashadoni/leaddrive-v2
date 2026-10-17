@@ -1624,6 +1624,9 @@
     "lateCallbacksPromisedFor": "Promised for",
     "lateCallbacksCalledAt": "Called at",
     "lateCallbacksDelay": "Delay",
+    "lateCallbacksDelayMinutes": "{count} min",
+    "lateCallbacksDelayHours": "{hours} h",
+    "lateCallbacksDelayHoursMinutes": "{hours} h {minutes} min",
     "lateCallbacksNeverCalled": "never called"
   },
   "companies": {
