@@ -100,6 +100,12 @@ function control(step: DemoJourneyStep): HTMLElement | null {
   if (target.matches("button, a, input")) return target
   // A marked region (the product's stage bar): press the part the arrow names.
   const named = /«([^»]+)»/.exec(step.targetLabel ?? "")?.[1]
+  // A list (the call outcome): choose the option the arrow names.
+  if (target instanceof HTMLSelectElement) {
+    const option = Array.from(target.options).find((candidate) => candidate.textContent?.trim() === named)
+    if (!option) return null
+    return { click: () => { target.value = option.value; target.dispatchEvent(new Event("change", { bubbles: true })) } } as unknown as HTMLElement
+  }
   return named ? buttonWithText(named, target) : null
 }
 
@@ -394,7 +400,7 @@ describe("the arrow's controls", () => {
     const sources = [
       "src/components/demo-center/journey/demo-journey-guide.tsx",
       "src/components/demo-center/journey/demo-live-call.tsx",
-      ...["campaign", "inbox", "lead", "board", "deal", "quote", "support", "mtm", "personnel", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
+      ...["campaign", "inbox", "lead", "board", "deal", "quote", "support", "calls", "mtm", "personnel", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
     ].map((file) => readFileSync(path.join(process.cwd(), file), "utf8")).join("\n")
     const withCall = withLiveCall(PROSPECT_TO_CLOSED_WON).sections.flatMap((section) => section.steps)
     for (const step of new Map([...steps, ...withCall.map((candidate) => [candidate.id, candidate] as const)]).values()) {
@@ -779,5 +785,103 @@ describe("the Service Desk module", () => {
     expect(textOf('[data-testid="sd-metric-rate"]')).toBe(`${metrics.resolutionRatePct}%`)
     expect(textOf('[data-testid="sd-metric-sla"]')).toBe(`${metrics.slaCompliancePct}%`)
     expect(metrics.csatSample).toBeGreaterThan(10)
+  }, 60_000)
+})
+
+/**
+ * Call Center (owner, 2026-10-13; 2026-10-17: only what every tenant with 3CX
+ * has). The log's figures are the call route's own rules over the same
+ * filtered calls; a «Geri zəng» outcome asks for a time and becomes the
+ * seller's promise, which the escalation ladder and the late-callbacks report
+ * then judge.
+ */
+describe("the Call Center module", () => {
+  const openCalls = async () => {
+    await renderPlayer()
+    const choice = document.querySelector<HTMLButtonElement>('[data-start-section="cc-log"]')
+    expect(choice, "the first screen offers Call Center").not.toBeNull()
+    expect(choice!.textContent).toContain(messages.nav.voipCalls)
+    await act(async () => choice!.click())
+    await settle()
+  }
+  const demoToday = async () => {
+    const { mtmDemoToday } = await import("@/components/demo-center/journey/scenes/mtm-demo-data")
+    const raw = window.sessionStorage.getItem(STORAGE_KEY)!
+    return mtmDemoToday((JSON.parse(raw).snapshot ?? JSON.parse(raw)).startedAt as string)
+  }
+
+  it("counts the month by the call log's rules and recounts it for the filter", async () => {
+    const { callsDemoLog, callsDemoSummary } = await import("@/components/demo-center/journey/scenes/calls-demo-data")
+    await openCalls()
+    expect(frontier()).toMatchObject({ sectionId: "cc-log", stepId: "cc-log-figures", state: "STARTED" })
+    const calls = callsDemoLog(await demoToday())
+    const all = callsDemoSummary(calls)
+    const summary = () => textOf('[data-tour-id="cc-log-summary"]')
+    expect(textOf('[data-testid="voip-workspace"]')).toContain(messages.voip.connectionState.configured)
+    expect(summary()).toContain(String(all.total))
+    expect(all.missed).toBeGreaterThan(0)
+    expect(all.total).toBe(all.inbound + all.outbound)
+    await walkTo("cc-log-filter")
+    await act(async () => findDemoTarget("cc-log-filter")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("cc-log-missed")
+    const inbound = callsDemoSummary(calls.filter((call) => call.direction === "inbound"))
+    expect(summary()).toContain(`${messages.voip.totalCalls}${inbound.total}`)
+    expect(inbound.outbound).toBe(0)
+    // Only customers' calls are left in the list, and the one nobody took is on top.
+    const rows = textOf('[data-tour-id="cc-log-timeline"] tbody')
+    expect(rows).not.toContain(messages.voip.outbound)
+    expect(rows).toContain(messages.voip.statusLabels.noAnswer)
+  }, 60_000)
+
+  it("calls from the lead card through 3CX and files the promised callback with its time", async () => {
+    const { CALLS_DEMO_PROVIDER, callsDemoCallbackAt } = await import("@/components/demo-center/journey/scenes/calls-demo-data")
+    const { formatDateTime } = await import("@/lib/format-date")
+    await openCalls()
+    await walkTo("cc-call-dial")
+    // The first press asks which service; the only one is already chosen.
+    await act(async () => findDemoTarget("cc-call-dial")!.click())
+    await settle()
+    const picker = document.querySelector<HTMLSelectElement>(`select[aria-label="${messages.voip.chooseCallProvider}"]`)
+    expect(picker?.value).toBe(CALLS_DEMO_PROVIDER.id)
+    expect(frontier().stepId).toBe("cc-call-dial")
+    await act(async () => findDemoTarget("cc-call-dial")!.click())
+    await settle()
+    const widget = () => textOf('[data-tour-id="cc-call-widget"]')
+    expect(widget()).toContain(messages.voip.activeCall)
+    // 3CX reports nothing until the call ends: the window says «started».
+    expect(widget()).toContain(messages.voip.statusLabels.initiated)
+    await act(async () => findDemoTarget("cc-call-end")!.click())
+    await settle()
+    expect(widget()).toContain(messages.voip.callEnded)
+    expect(frontier().stepId).toBe("cc-call-outcome")
+    await act(async () => control(steps.get("cc-call-outcome")!)!.click())
+    await settle()
+    expect(widget()).toContain(messages.voip.outcomePicker.callbackWhen)
+    await act(async () => findDemoTarget("cc-call-callback")!.click())
+    await settle()
+    // The window confirms it in its own words, with the time it was given.
+    expect(frontier().stepId).toBe("cc-call-saved")
+    const time = formatDateTime(callsDemoCallbackAt(await demoToday()), "az")
+    expect(widget()).toContain(messages.voip.outcomePicker.callbackSaved.replace("{time}", time))
+  }, 60_000)
+
+  it("tells the seller when the promise falls due and the managers 45 minutes later, and judges the week by calls made", async () => {
+    const { COMMITMENT_ALERT_TITLES, MANAGER_GRACE_MINUTES } = await import("@/lib/commitments/escalation")
+    const { callsDemoAlerts, callsDemoCallbackAt, callsDemoLateCallbacks } = await import("@/components/demo-center/journey/scenes/calls-demo-data")
+    await openCalls()
+    await walkTo("cc-promise-alerts")
+    const today = await demoToday()
+    const alerts = callsDemoAlerts(callsDemoCallbackAt(today))
+    expect(alerts.map((alert) => alert.step)).toEqual(["notify-assignee", "escalate-manager"])
+    expect(Date.parse(alerts[1].createdAt) - Date.parse(alerts[0].createdAt)).toBe(MANAGER_GRACE_MINUTES * 60_000)
+    const shown = textOf('[data-tour-id="cc-promise-alerts"]')
+    expect(shown).toContain(COMMITMENT_ALERT_TITLES.assignee)
+    expect(shown).toContain(COMMITMENT_ALERT_TITLES.manager)
+    const report = callsDemoLateCallbacks(today)
+    expect(report.totals).toEqual({ promises: 6, onTime: 3, late: 2, missed: 1 })
+    const table = textOf('[data-tour-id="cc-promise-report"]')
+    expect(table).toContain(messages.leads.lateCallbacksTitle)
+    expect(table).toContain(messages.leads.lateCallbacksNeverCalled)
   }, 60_000)
 })

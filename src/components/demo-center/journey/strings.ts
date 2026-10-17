@@ -222,6 +222,13 @@ export const DEMO_JOURNEY_STRINGS = {
   supportEscalationOn: (ticket: string) => `${ticket} üzrə qaydalar nə vaxt işləyir`,
   supportEscalationFired: "işləyib",
   supportEscalationNext: "gözlənilir",
+  // Call Center.
+  callsFilterHint: "Bu addımda «Gələn» filtrini seçin — bələdçinin oxu onu göstərir.",
+  callsOutcomeHint: "Müştəri geri zəng istədi — nəticə olaraq «Geri zəng» seçin.",
+  callsTimeHint: "Fərid sabah saat 11:00-u dedi — demoda vaxt artıq yazılıb.",
+  callsAlertSeller: (name: string) => `${name} (satıcı) — söz verilən vaxt`,
+  callsAlertManagers: "Rəhbərlər — 45 dəqiqə sonra",
+  callsAlertNote: "Hər iki bildiriş yalnız «Geri zəng» tapşırığı hələ açıqdırsa gəlir: satıcı tapşırığı bağlayıbsa, heç kimə yazılmır.",
   aiSuggestion: "Növbəti addım",
   aiSuggestionBody: "Təklifi hazırlayın və etibarlılıq müddətini 14 günlə məhdudlaşdırın — qərar sürətlənir.",
 } as const

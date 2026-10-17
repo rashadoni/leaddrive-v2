@@ -21,6 +21,12 @@
 
 export const MANAGER_GRACE_MINUTES = 45
 
+/** What each rung says. The task's own title follows as the message. */
+export const COMMITMENT_ALERT_TITLES = {
+  assignee: "Müştəriyə verilən söz gecikir",
+  manager: "Öhdəlik icra olunmayıb",
+} as const
+
 export type CommitmentEscalationState = {
   dueDate: Date
   /** When the assignee was told it had come due. */
