@@ -121,6 +121,11 @@ const HELP_VIDEO_ENTRIES_RAW = [
   { slug: "demo-inbox", routes: [] },
   { slug: "demo-leads", routes: [] },
   { slug: "demo-boards", routes: [] },
+  // The module chapters' intros (2026-10-17): filmed from the chapter's own
+  // screens on the open demo, so they show its invented company and nothing
+  // else.
+  { slug: "demo-support", routes: [] },
+  { slug: "demo-calls", routes: [] },
 ] as const satisfies readonly HelpVideoEntry[]
 
 export const HELP_VIDEO_ENTRIES: readonly HelpVideoEntry[] = HELP_VIDEO_ENTRIES_RAW
