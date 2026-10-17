@@ -145,10 +145,10 @@ BACKUP_AWS_REAL_BIN="$BACKUP_AWS_ROOT/v2/$BACKUP_AWS_VERSION/dist/aws"
 BACKUP_AWS_PROVENANCE="$BACKUP_AWS_ROOT/LEADDRIVE_PROVENANCE"
 BACKUP_CUSTODY_VERIFIER_SHA256="a02101a2e9ae313c7486d31337b9efe771ea2127d565b059d6e2427df86eca91"
 BACKUP_ARCHIVE_VERIFIER_SHA256="c6d4caabb1f44db3036c79d59b63253f961fa8ce29780724c9d15667dac644a6"
-BACKUP_POSTGRES_SCRIPT_SHA256="b2b0ca62ab77afe5ff2cda88351f71a038163b791484adc886cad806fe07edff"
+BACKUP_POSTGRES_SCRIPT_SHA256="7a49edc70a9f9ba0711006b7aa986ca3c60f84c92bbcf2a1a7e3349e52cc8b42"
 BACKUP_SECRETS_SCRIPT_SHA256="16d4bf083ad2549cd34e1bd89a53ee958f1625605235fe5370c8acecc401de99"
 BACKUP_RUNTIME_FILES_SCRIPT_SHA256="d5fe33b4b0b0e581194b3aff770eca45a14a493774ec314340146bd69475e53e"
-BACKUP_RESTORE_CANARY_SHA256="af743a9bd8df3daa6ba6b60d90141daea28629f6140d8d12d1623f6b083f5d9e"
+BACKUP_RESTORE_CANARY_SHA256="c4f2aadacf8618f643667aa305a6f2197badc0d23a1acf16f43f765f72304e36"
 BACKUP_PII_PROOF_SHA256="e83f3fc65c56e0dc8db7eb26e47780c0901917908c05d7aa6552792a37f99e18"
 BACKUP_CANARY_SQL_SHA256="5c3a9bf2b14c84c4deafa31525ac23518ba2290ab32a7cf5f66e2d05d4b249c9"
 EVENT_PLATFORM_CUTOVER_STATE="unknown"
@@ -417,6 +417,25 @@ assert_root_owned_nonwritable_file() {
   if (( (8#$mode & 8#022) != 0 )); then
     fatal "$label must not be group- or world-writable: $file"
   fi
+}
+
+assert_backup_password_file() {
+  local file="$1" owner group mode backup_uid backup_gid
+  [[ "$file" = /* ]] && [ -f "$file" ] && [ ! -L "$file" ] \
+    || fatal_after_standalone_replacement "PostgreSQL password file must be an absolute regular non-symlink file"
+  backup_uid="$(id -u leaddrive-backup)" \
+    || fatal_after_standalone_replacement "backup service account is absent"
+  backup_gid="$(id -g leaddrive-backup)" \
+    || fatal_after_standalone_replacement "backup service group is absent"
+  owner="$(stat -c '%u' "$file")"
+  group="$(stat -c '%g' "$file")"
+  [ "$owner:$group" = "$backup_uid:$backup_gid" ] \
+    || fatal_after_standalone_replacement "PostgreSQL password file must belong to the backup account and group"
+  mode="$(stat -c '%a' "$file")"
+  case "$mode" in
+    400|600) ;;
+    *) fatal_after_standalone_replacement "PostgreSQL password file must use private mode 0400 or 0600" ;;
+  esac
 }
 
 validate_checkout_app_env_for_first_cutover() {
@@ -3359,11 +3378,7 @@ validate_event_platform_backup_preconditions() {
       fatal_after_standalone_replacement "$policy_value must be root:root mode 0600"
   done
   for policy_value in /etc/leaddrive/backup.pgpass /etc/leaddrive/restore-verifier.pgpass; do
-    assert_root_owned_nonwritable_file "PostgreSQL password file" "$policy_value"
-    case "$(stat -c '%U:%G:%a' "$policy_value")" in
-      root:leaddrive-backup:440|root:leaddrive-backup:640) ;;
-      *) fatal_after_standalone_replacement "$policy_value must be root:leaddrive-backup mode 0440 or 0640" ;;
-    esac
+    assert_backup_password_file "$policy_value"
   done
   for policy_value in /etc/leaddrive/managed-postgres-ca.crt /etc/leaddrive/restore-postgres-ca.crt; do
     assert_root_owned_nonwritable_file "PostgreSQL CA file" "$policy_value"

@@ -77,23 +77,26 @@ assert_tmpfs_work_root() {
     || fatal "backup tmpfs has insufficient free capacity"
 }
 
-assert_root_connection_file() {
+assert_connection_file() {
   local label="$1"
   local file="$2"
   local kind="$3"
-  local mode group_id
+  local mode owner
   [[ "$file" = /* ]] || fatal "$label must use an absolute path"
   [ -f "$file" ] && [ ! -L "$file" ] && [ -r "$file" ] \
     || fatal "$label must be a readable regular non-symlink file"
-  [ "$(stat -c '%u' "$file")" = "0" ] || fatal "$label must be root-owned"
+  owner="$(stat -c '%u' "$file")"
   mode="$(stat -c '%a' "$file")"
+  if [ "$kind" = password ]; then
+    # libpq ignores password files accessible by any group/other user.
+    # The restricted runner must own the file; sharing it via a group fails.
+    [ "$owner" = "$(id -u)" ] || fatal "$label must belong to the backup account"
+    case "$mode" in 400|600) ;; *) fatal "$label must use private mode 0400 or 0600" ;; esac
+    return 0
+  fi
+  [ "$owner" = 0 ] || fatal "$label must be root-owned"
   case "$kind:$mode" in
     ca:400|ca:440|ca:444|ca:600|ca:640|ca:644) ;;
-    password:400|password:600) [ "$(id -u)" = "0" ] || fatal "$label mode $mode is not readable by the backup account" ;;
-    password:440|password:640)
-      group_id="$(stat -c '%g' "$file")"
-      [ "$group_id" = "$(id -g)" ] || fatal "$label group does not match the backup account"
-      ;;
     *) fatal "$label has an unsafe mode for $kind material" ;;
   esac
 }
@@ -178,8 +181,8 @@ PGSSLMODE="${PGSSLMODE:-verify-full}"
   || fatal "PGCONNECT_TIMEOUT must be between 1 and 30 seconds"
 export PGHOST PGHOSTADDR PGPORT PGDATABASE PGUSER PGPASSFILE PGCONNECT_TIMEOUT PGSSLMODE PGSSLROOTCERT
 
-assert_root_connection_file "PGPASSFILE" "$PGPASSFILE" password
-assert_root_connection_file "PGSSLROOTCERT" "$PGSSLROOTCERT" ca
+assert_connection_file "PGPASSFILE" "$PGPASSFILE" password
+assert_connection_file "PGSSLROOTCERT" "$PGSSLROOTCERT" ca
 [ -r "$SCRIPT_DIR/canary.sql" ] || fatal "canary.sql is missing"
 [ -r "$SCRIPT_DIR/migration-ledger.sql" ] && [ ! -L "$SCRIPT_DIR/migration-ledger.sql" ] \
   || fatal "migration-ledger.sql is missing or symlinked"
