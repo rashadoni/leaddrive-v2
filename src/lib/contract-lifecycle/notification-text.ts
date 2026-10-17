@@ -1,6 +1,5 @@
-import { locales, type Locale } from "@/i18n/routing"
+import { defaultLocale, locales, type Locale } from "@/i18n/routing"
 import { formatDate } from "@/lib/format-date"
-import { organizationLocale } from "@/lib/ticketing/customer-locale"
 
 /**
  * What the contract jobs say: the renewal alert, the overdue approval, the
@@ -110,9 +109,19 @@ function asLocale(value: unknown): Locale | null {
   return typeof value === "string" && (locales as readonly string[]).includes(value) ? (value as Locale) : null
 }
 
+/**
+ * The organization's language — the rule of `organizationLocale` in
+ * ticketing/customer-locale.ts, restated here because that module reads the
+ * database and this one is also drawn by the guided demo in the browser.
+ */
+export function contractOrganizationLocale(organizationSettings: unknown): Locale {
+  const settings = organizationSettings && typeof organizationSettings === "object" ? organizationSettings as Record<string, unknown> : {}
+  return asLocale(settings.language) ?? asLocale(settings.locale) ?? defaultLocale
+}
+
 /** A CRM user's language: their own, else the organization's. */
 export function contractRecipientLocale(preferredLanguage: string | null | undefined, organizationSettings: unknown): Locale {
-  return asLocale(preferredLanguage) ?? organizationLocale(organizationSettings)
+  return asLocale(preferredLanguage) ?? contractOrganizationLocale(organizationSettings)
 }
 
 /** A date-only field (end date, due date) as people of that language write it. */

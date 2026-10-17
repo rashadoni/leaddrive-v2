@@ -76,6 +76,32 @@ interface SignerInput {
   role: "signer" | "cc" | "copy"
 }
 
+// The approval chain's statuses and roles are stored as English words; these
+// name them in the reader's language (they were printed as stored).
+const APPROVAL_STATUS_KEYS: Record<string, string> = {
+  pending: "approvalStatusPending",
+  approved: "approvalStatusApproved",
+  rejected: "approvalStatusRejected",
+  skipped: "approvalStatusSkipped",
+  superseded: "approvalStatusSuperseded",
+}
+const APPROVAL_ROLE_KEYS: Record<string, string> = {
+  admin: "approvalRoleAdmin",
+  manager: "approvalRoleManager",
+  sales: "approvalRoleSales",
+  support: "approvalRoleSupport",
+  viewer: "approvalRoleViewer",
+  superadmin: "approvalRoleSuperadmin",
+}
+const CONTRACT_TYPE_KEYS: Record<string, string> = {
+  service_agreement: "typeService",
+  nda: "typeNda",
+  maintenance: "typeMaintenance",
+  license: "typeLicense",
+  sla: "typeSla",
+  other: "typeOther",
+}
+
 const defaultSignerInput = (): SignerInput => ({ fullName: "", email: "", role: "signer" })
 
 // ─── Approval types (parallel levels — Slice 3e-2) ────────────────────────────
@@ -1404,10 +1430,10 @@ export default function ContractDetailPage() {
                 <Link
                   href={`/quotes/${contract.spawnedFromQuoteId}`}
                   className="inline-flex items-center gap-1.5 mt-1.5 text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-900/40 rounded px-2 py-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition-colors"
-                  title="This contract was auto-spawned from an accepted quote — click to open the source"
+                  title={t("spawnedFromQuoteHint")}
                 >
                   <Sparkles className="h-3 w-3" />
-                  Auto-spawned from quote — view source
+                  {t("spawnedFromQuote")}
                 </Link>
               )}
             </div>
@@ -1542,7 +1568,7 @@ export default function ContractDetailPage() {
             />
             <ColorStatCard
               label={tc("type")}
-              value={contract.type || "—"}
+              value={contract.type ? (CONTRACT_TYPE_KEYS[contract.type] ? t(CONTRACT_TYPE_KEYS[contract.type]) : contract.type) : "—"}
               icon={<Hash className="h-4 w-4" />}
               hint={t("hintColType")}
             />
@@ -1682,10 +1708,10 @@ export default function ContractDetailPage() {
                       )}
                       <span className="text-xs text-muted-foreground">{modeLabel}</span>
                       {firstStage.slaHours && (
-                        <span className="text-xs text-muted-foreground">{firstStage.slaHours}h SLA</span>
+                        <span className="text-xs text-muted-foreground">{t("approvalSlaShort", { hours: firstStage.slaHours })}</span>
                       )}
                       <Badge variant={levelStatusBadge} className="text-xs capitalize">
-                        {levelStatusText}
+                        {t(APPROVAL_STATUS_KEYS[levelStatusText])}
                       </Badge>
                     </div>
 
@@ -1728,7 +1754,7 @@ export default function ContractDetailPage() {
                           >
                             <span className="flex-1 text-xs text-muted-foreground">
                               {stage.assigneeRole
-                                ? stage.assigneeRole
+                                ? (APPROVAL_ROLE_KEYS[stage.assigneeRole] ? t(APPROVAL_ROLE_KEYS[stage.assigneeRole]) : stage.assigneeRole)
                                 : stage.assigneeUserId
                                 ? t("approvalAssignedUser")
                                 : t("approvalAnyManager")}
@@ -1758,7 +1784,7 @@ export default function ContractDetailPage() {
                               }
                               className="text-xs capitalize"
                             >
-                              {stage.status}
+                              {APPROVAL_STATUS_KEYS[stage.status] ? t(APPROVAL_STATUS_KEYS[stage.status]) : stage.status}
                             </Badge>
                             {showActions && (
                               <div className="flex gap-1.5 ml-1">
