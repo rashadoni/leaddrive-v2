@@ -195,8 +195,8 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
     ],
   },
   {
-    // A module of its own (owner, 2026-10-13), on what every tenant with 3CX
-    // has (2026-10-17: «только то, что у всех»).
+    // A module of its own (owner, 2026-10-13), on the company's own PBX
+    // (2026-10-17) and only what every seller has («только то, что у всех»).
     area: "voip",
     title: "Call Center (звонки из CRM)",
     routes: ["/inbox/voip", "/leads/[id]", "/leads"],
@@ -206,15 +206,15 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
       { id: "voip.timeline", label: "Журнал звонков: направление, номер, клиент, статус, итог, запись", included: true, kind: "observe" },
       { id: "voip.filter", label: "Фильтр «Входящие / Исходящие» пересчитывает и итоги", included: true, kind: "interactive" },
       { id: "voip.row-actions", label: "У звонка: «Перезвонить», «К контакту», «Детали»", included: true, kind: "observe" },
-      { id: "voip.click-to-call", label: "Звонок с карточки лида одной кнопкой (3CX)", included: true, kind: "interactive" },
+      { id: "voip.click-to-call", label: "Звонок с карточки лида одной кнопкой (свой PBX)", included: true, kind: "interactive" },
       { id: "voip.provider-picker", label: "Выбор службы звонка перед набором", included: true, kind: "interactive" },
       { id: "voip.widget", label: "Окно звонка: статус, время, «Завершить»", included: true, kind: "interactive" },
       { id: "voip.disposition", label: "Итог звонка из списка", included: true, kind: "interactive" },
       { id: "voip.callback-task", label: "«Перезвонить» со временем: задача продавцу и запись в истории лида", included: true, kind: "interactive" },
       { id: "voip.escalation", label: "Просроченное обещание: напоминание продавцу, через 45 минут — руководителям", included: true, kind: "observe" },
       { id: "voip.late-callbacks", label: "Отчёт «Опоздавшие звонки клиентам» за 7 дней", included: true, kind: "observe" },
-      { id: "voip.recordings", label: "Запись разговора и её прослушивание", included: false, reason: "У 3CX запись разговора в CRM не попадает — журнал честно пишет «Записи нет»." },
-      { id: "voip.incoming-popup", label: "Окно входящего звонка и очередь пропущенных", included: false, reason: "Работает не у всех телефоний; владелец, 2026-10-17: показывать только то, что есть у всех." },
+      { id: "voip.recordings", label: "Запись разговора и её прослушивание", included: false, reason: "Запись остаётся на диске станции, в CRM не попадает — журнал честно пишет «Записи нет»." },
+      { id: "voip.incoming-popup", label: "Окно входящего звонка, ответ в браузере и очередь пропущенных", included: false, reason: "Ответ в браузере — пилот, очередь — только руководителям; владелец, 2026-10-17: показывать то, что есть у всех." },
       { id: "voip.ai", label: "ИИ-звонки, расшифровка и анализ разговора", included: false, reason: "Пилот, не у всех клиентов; в демо звонков ИИ нет." },
     ],
   },

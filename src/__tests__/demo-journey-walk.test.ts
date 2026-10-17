@@ -789,9 +789,9 @@ describe("the Service Desk module", () => {
 })
 
 /**
- * Call Center (owner, 2026-10-13; 2026-10-17: only what every tenant with 3CX
- * has). The log's figures are the call route's own rules over the same
- * filtered calls; a «Geri zəng» outcome asks for a time and becomes the
+ * Call Center (owner, 2026-10-13; 2026-10-17: the company's own PBX, and
+ * only what every seller has). The log's figures are the call route's own
+ * rules over the same filtered calls; a «Geri zəng» outcome asks for a time and becomes the
  * seller's promise, which the escalation ladder and the late-callbacks report
  * then judge.
  */
@@ -834,7 +834,7 @@ describe("the Call Center module", () => {
     expect(rows).toContain(messages.voip.statusLabels.noAnswer)
   }, 60_000)
 
-  it("calls from the lead card through 3CX and files the promised callback with its time", async () => {
+  it("calls from the lead card through the own PBX and files the promised callback with its time", async () => {
     const { CALLS_DEMO_PROVIDER, callsDemoCallbackAt } = await import("@/components/demo-center/journey/scenes/calls-demo-data")
     const { formatDateTime } = await import("@/lib/format-date")
     await openCalls()
@@ -849,7 +849,7 @@ describe("the Call Center module", () => {
     await settle()
     const widget = () => textOf('[data-tour-id="cc-call-widget"]')
     expect(widget()).toContain(messages.voip.activeCall)
-    // 3CX reports nothing until the call ends: the window says «started».
+    // The station rings the customer first: until the answer the window says «started».
     expect(widget()).toContain(messages.voip.statusLabels.initiated)
     await act(async () => findDemoTarget("cc-call-end")!.click())
     await settle()

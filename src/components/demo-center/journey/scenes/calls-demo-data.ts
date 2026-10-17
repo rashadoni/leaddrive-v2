@@ -1,14 +1,15 @@
 /**
- * The Call Center module's invented sales team, on what any tenant with the
- * VoIP add-on has today (owner, 2026-10-17: «только то, что у всех»): calls
- * placed from a CRM card through 3CX, the calls 3CX reports when they end,
- * the outcome of a call, and the callback a customer asked for — a task for
- * the seller, a reminder when it falls due and the managers' alert 45 minutes
- * later.
+ * The Call Center module's invented sales team on the company's own PBX —
+ * the Asterisk station production runs on (owner, 2026-10-17: «сейчас у меня
+ * свой пбх»; Twilio is not used) — and only what every seller has (owner,
+ * 2026-10-17: «только то, что у всех»): calls placed from a CRM card, the
+ * calls the station writes to the log, the outcome of a call, and the
+ * callback a customer asked for — a task for the seller, a reminder when it
+ * falls due and the managers' alert 45 minutes later.
  *
- * Left out because a 3CX tenant does not have them: the incoming-call window,
- * the missed-calls queue, transcripts, conversation insights and every AI
- * call. 3CX keeps no recordings here, so the log shows none.
+ * Left out: the missed-calls queue, the browser softphone, transcripts,
+ * conversation insights and every AI call. A recording stays on the
+ * station's disk, never in the CRM, so the log shows none.
  *
  * Every name, company, number and minute is made up. The day is the other
  * modules' demo day (the latest Thursday), at 15:10 Baku time; the summary,
@@ -23,7 +24,7 @@ import { addDays, mtmDemoAt } from "./mtm-demo-data"
 
 export const CALLS_DEMO_CLOCK = "15:10"
 /** The tenant's telephony, as the call button's service picker names it. */
-export const CALLS_DEMO_PROVIDER = { id: "provider-3cx", label: "3CX" } as const
+export const CALLS_DEMO_PROVIDER = { id: "provider-asterisk", label: "Asterisk VoIP" } as const
 /** The seller who calls from the lead card, and whose promise it becomes. */
 export const CALLS_DEMO_SELLER = "Kamran Səfərov"
 /** What the callback task is called for an Azerbaijani-speaking seller. */
@@ -94,8 +95,8 @@ function spread(seed: string, modulo: number): number {
 }
 
 /**
- * The last thirty days of the team's calls, newest first, as 3CX reports
- * them when they end: calls placed from a card, calls to and from the office
+ * The last thirty days of the team's calls, newest first, as the station
+ * writes them: calls placed from a card, calls to and from the office
  * line — and the callbacks of the week's promises among them.
  */
 export function callsDemoLog(today: string): CallsDemoCall[] {

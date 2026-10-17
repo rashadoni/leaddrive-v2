@@ -37,8 +37,8 @@ import {
 /**
  * Call Center: calls from the CRM, a module of its own beside the lead story
  * (owner, 2026-10-13: Omni Channel → Service Desk → Call Center → Route &
- * Field → Contracts), on what every tenant with 3CX has (2026-10-17: «только
- * то, что у всех»).
+ * Field → Contracts), on the company's own PBX (2026-10-17: «сейчас у меня
+ * свой пбх») and only what every seller has («только то, что у всех»).
  *
  * Three product pages: «VoIP Zənglər» (support/voip/page.tsx), the lead
  * card's «Lid məlumatı» with its call button and the call window
@@ -50,8 +50,8 @@ import {
  * (`calls-demo-data.ts`).
  *
  * What the screens say is what the product does: the call button first asks
- * which service to use, 3CX rings the integration's extension and then the
- * customer, a «Geri zəng» outcome asks for a time and files a task for the
+ * which service to use, the station rings the customer and then the
+ * seller's own number, a «Geri zəng» outcome asks for a time and files a task for the
  * caller, and the escalation job tells the seller at that time and the
  * managers 45 minutes later if the task is still open.
  */
@@ -357,6 +357,17 @@ function toDateTimeLocalValue(date: Date): string {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
 }
 
+/** The customer picks up a moment after the station dials (in a browser; jsdom's walk keeps the start). */
+function useAnswered(dialing: boolean): boolean {
+  const [answered, setAnswered] = useState(false)
+  useEffect(() => {
+    if (!dialing || typeof navigator === "undefined" || navigator.userAgent.includes("jsdom")) return
+    const timer = window.setTimeout(() => setAnswered(true), 2500)
+    return () => window.clearTimeout(timer)
+  }, [dialing])
+  return answered
+}
+
 /** Runs the call window's clock in a browser; jsdom's walk keeps the start. */
 function useTalkClock(running: boolean): number {
   const [seconds, setSeconds] = useState(0)
@@ -390,6 +401,7 @@ function CallScreen(props: DemoSceneProps) {
   // this one promise, so the demo does not let it be moved.
   const promised = callsDemoCallbackAt(today)
   const talk = useTalkClock(dialed && !ended)
+  const answered = useAnswered(dialed && !ended)
   const active = dialed && !ended
   const duration = ended ? CALLS_DEMO_TALK_SECONDS : talk
 
@@ -422,8 +434,9 @@ function CallScreen(props: DemoSceneProps) {
   }
 
 
-  const status = active ? "initiated" : "completed"
-  const statusColors: Record<string, string> = { initiated: "text-yellow-500", completed: "text-muted-foreground" }
+  // The station reports the answer and the end; until the customer picks up it says «started».
+  const status = !active ? "completed" : answered ? "in-progress" : "initiated"
+  const statusColors: Record<string, string> = { initiated: "text-yellow-500", "in-progress": "text-green-500", completed: "text-muted-foreground" }
 
   return (
     <div className="space-y-6">
@@ -526,7 +539,7 @@ function CallScreen(props: DemoSceneProps) {
                 <div className="font-medium">{lead.contactName}</div>
                 <div className="text-sm text-muted-foreground">{lead.phone}</div>
                 <div className="flex items-center justify-between">
-                  <span className={`text-sm font-medium capitalize ${statusColors[status] || ""}`}>{tv(`statusLabels.${callStatusLabelKey(status)}`)}</span>
+                  <span className={`text-sm font-medium capitalize ${statusColors[status] || ""}`}>{status === "in-progress" ? tv("connected") : tv(`statusLabels.${callStatusLabelKey(status)}`)}</span>
                   {active && <span className="font-mono text-sm">{durationLabel(duration) === "—" ? "0:00" : durationLabel(duration)}</span>}
                   {!active && duration > 0 && <span className="text-sm text-muted-foreground">{durationLabel(duration)}</span>}
                 </div>

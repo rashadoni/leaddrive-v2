@@ -985,13 +985,13 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       ],
     },
     // ── Call Center — calls from the CRM, a module of its own (owner,
-    // 2026-10-13), on what every tenant with 3CX has (2026-10-17: «только то,
-    // что у всех»): the call log, a call from the lead card, its outcome and
+    // 2026-10-13), on the company's own PBX (2026-10-17: «сейчас у меня свой
+    // пбх») and only what every seller has («только то, что у всех»): the call log, a call from the lead card, its outcome and
     // the promised callback that nobody can lose. An invented sales team.
     {
       id: "cc-log",
       title: "Call Center: zəng jurnalı",
-      summary: "Satıcılar müştəriyə CRM-dən zəng edir, ofis telefoniyası — 3CX. Hər zəng bitəndə 3CX onu CRM-ə yazır: gələn, gedən və cavabsız qalan zənglər bir jurnalda, tanınan nömrələr müştərinin adı ilə. Bu, nümunə satış komandasının son 30 günüdür.",
+      summary: "Satıcılar müştəriyə CRM-dən zəng edir, telefoniya — şirkətin öz PBX stansiyası. Stansiya hər zəngin gedişini CRM-ə özü yazır: gələn, gedən və cavabsız qalan zənglər bir jurnalda, tanınan nömrələr müştərinin adı ilə. Bu, nümunə satış komandasının son 30 günüdür.",
       area: "voip",
       route: "/inbox/voip",
       navGroup: "omnichannel",
@@ -1059,7 +1059,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "cc-call-dial",
           title: "Bir kliklə zəng",
-          instruction: "Telefon nömrəsinin yanındakı yaşıl düyməni basın. Əvvəl zəng xidməti seçimi açılır — burada yalnız 3CX var və o artıq seçilib; düyməni yenə basın. 3CX əvvəlcə inteqrasiyada göstərilən daxili nömrəni çaldırır, dəstək götürüləndə müştərini yığır.",
+          instruction: "Telefon nömrəsinin yanındakı yaşıl düyməni basın. Əvvəl zəng xidməti seçimi açılır — burada bir xidmət var və o artıq seçilib; düyməni yenə basın. Stansiya əvvəlcə müştərini yığır, müştəri cavab verəndə satıcının profilindəki nömrəyə zəng gəlir.",
           anchor: "cc-call-card",
           placement: "bottom",
           action: "click",
@@ -1073,7 +1073,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "cc-call-end",
           title: "Söhbət bitdi",
-          instruction: "Fərid sabah saat 11:00-da yenidən danışmağı xahiş edir. Söhbəti «Bitir» ilə bitirin (demoda söhbət simulyasiyadır).",
+          instruction: "Fərid cavab verdi — pəncərədə «Bağlantı var» və söhbətin vaxtı. O, sabah saat 11:00-da yenidən danışmağı xahiş edir. Söhbəti «Bitir» ilə bitirin (demoda söhbət simulyasiyadır).",
           anchor: "cc-call-widget",
           placement: "left",
           action: "click",
