@@ -195,3 +195,26 @@ No Kafka consumers, offsets or customer replay have been activated.
   from today's archive flag: legacy snapshots may describe an inactive Fund
   before copying its historical ledger. Full broker/hash/inbox/role boundaries
   remain later required work, not inferred from a pure reducer test.
+
+### 2026-10-18 — pure Fund reducer implementation checkpoint
+
+- Added a transport/DB-free reduceFundBalance(previous, envelope) and golden/
+  negative Vitest cases. All five exact existing Fund contracts are enforced;
+  one v1 opening, contiguous safe versions, tenant/Fund/UUID/time identity,
+  immutable currency, optional resultingBalance assertion and nonnegative
+  bounded prefixes are checked. Money is BigInt scaled by10000, exposed as
+  four-decimal strings; no Number arithmetic, reads/writes, pointer or effects.
+  Legacy inactive openings do not suppress the following historical ledger.
+- Root inspected both complete files; syntax-only Node22 strip-types checks
+  and whitespace checks PASS. Vitest and TypeScript NOT RUN locally: this
+  checkout has no installed vitest/zod and no dependency installation was
+  substituted on the persistent host. The existing required CI suite includes
+  the new test file; a real green run is still required before merge.
+- This is only the pure balance component, not a broker worker, SQL parity,
+  crash/acknowledgement or transaction test. Full transport integrity, SQL hash,
+  restricted shadow role and inbox/checkpoint adapter remain subsequent work.
+- Predecessor861 release39074203195 SUCCESS; exact public artifactc8c32582c
+  and ping verified. Backup863 merged3cdca2db6 after all five required checks
+  and actual libpq30-test success. CDC866 has real transport proof but now
+  needs ordinary main/journal reconciliation; serializer867 remains draft.
+  No production Kafka connector/consumer/offset/replay is activated.
