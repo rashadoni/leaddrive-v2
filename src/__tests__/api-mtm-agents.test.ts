@@ -357,6 +357,22 @@ describe("GET /api/v1/mtm/agents", () => {
     expect(visitWhere.createdAt.gte.getTime()).toBeLessThanOrEqual(routeWhere.date.gte.getTime() + 24 * 60 * 60 * 1000)
   })
 
+  // Owner's E2E test, 2026-10-17: «Bildirişlər qoşulmayıb» on an agent whose
+  // phone had registered — the app writes mtm_device_tokens, not expoPushToken.
+  it("calls notifications connected when the app registered a device token, and only a live one counts", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "a1", name: "Phone", lastSeenAt: null, expoPushToken: null, deviceTokens: [{ id: "t1" }], latestLocation: null },
+      { id: "a2", name: "None", lastSeenAt: null, expoPushToken: null, deviceTokens: [], latestLocation: null },
+    ] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(2)
+    const json = await (await ListAgents(makeReq("/api/v1/mtm/agents"))).json()
+    expect(json.data.agents.map((agent: { app: { notificationsConnected: boolean } }) => agent.app.notificationsConnected)).toEqual([true, false])
+    expect(json.data.agents[0]).not.toHaveProperty("deviceTokens")
+    const select = (vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0] as any).select
+    expect(select.deviceTokens).toEqual({ where: { disabledAt: null }, select: { id: true }, take: 1 })
+  })
+
   it("counts each card's clients the way the employee's own section lists them", async () => {
     // Owner 2026-10-02: a manager opens an employee to see and change their
     // clients. The card says how many there are; the number must be the active
