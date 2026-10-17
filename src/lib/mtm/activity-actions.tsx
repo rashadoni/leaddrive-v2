@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { formatDate } from "@/lib/format-date"
+import { mtmActivityEntityText, type MtmActivityEntityText } from "@/lib/mtm/activity-entity"
 
 export type Tone =
   | "slate" | "red" | "green" | "blue" | "sky" | "purple" | "emerald" | "teal" | "amber" | "violet"
@@ -183,18 +184,24 @@ function numberOrLength(value: unknown): number | null {
   return null
 }
 
+function snapshotOf(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}
+
+function textOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
 /**
  * A short phrase for rows that are about something other than a customer:
  * how many recipients a message had, how many organizations changed hands,
  * which presentation was uploaded. Null when the row carries no such fact.
  */
 export function activityDataSummary(
-  log: { action: string; newData?: unknown },
+  log: { action: string; newData?: unknown; oldData?: unknown },
   t: (key: string, values?: Record<string, unknown>) => string,
 ): string | null {
-  const data = log.newData && typeof log.newData === "object" && !Array.isArray(log.newData)
-    ? log.newData as Record<string, unknown>
-    : {}
+  const data = snapshotOf(log.newData)
   switch (canonicalAction(log.action)) {
     case "MESSAGE_BROADCAST":
     case "MESSAGE_DIRECT_SEND": {
@@ -213,6 +220,16 @@ export function activityDataSummary(
     case "MAP_ZONE_UPDATE":
     case "MAP_ZONE_DELETE":
       return typeof data.name === "string" && data.name.trim() ? data.name.trim() : null
+    // Which employee: the card's name as the change left it. A removal has
+    // only the «before» — and it is the one place the name survives: the
+    // row's own link to the employee is cleared when he is deleted, so every
+    // row about him read «Сотрудник», nobody in particular. The name and
+    // nothing else of the card: its labels and map colour are the managers'
+    // notes about the person and stay where the card keeps them.
+    case "AGENT_CREATE":
+    case "AGENT_UPDATE":
+    case "AGENT_DELETE":
+      return textOrNull(data.name) ?? textOrNull(snapshotOf(log.oldData).name)
     default:
       return null
   }
@@ -249,6 +266,42 @@ const KIND_KEY: Record<string, string> = {
 export function kindKey(metadataKind: string | null | undefined): string | null {
   if (!metadataKind) return null
   return KIND_KEY[metadataKind] ?? null
+}
+
+/** A journal row as the activity API answers it — the part the details cell reads. */
+export interface ActivityDetailsRow {
+  action: string
+  entity?: string | null
+  entityId?: string | null
+  metadataKind?: string | null
+  newData?: unknown
+  oldData?: unknown
+  subject?: ActivitySubject | null
+}
+
+/**
+ * What the details cell says a row is about — and, word for word, the same
+ * column of the CSV export.
+ *
+ * C12: the row used to read «mtm_pharmacy_promotion_execution · 4f2a9c» — a
+ * table name and six characters of an id. Neither is language, and the
+ * fragment finds nothing. The whole id went to the tooltip.
+ */
+export function activityDetails(
+  log: ActivityDetailsRow,
+  t: (key: string, values?: Record<string, unknown>) => string,
+): MtmActivityEntityText {
+  // 2026-09-14: the row used to read «Əməliyyat · Sistem · Əməkdaş». What a
+  // manager needs is WHERE — the customer's name, resolved by the API.
+  const customerName = log.subject?.customerName
+  if (customerName) return { label: customerName, title: log.entityId ?? null }
+  // Audit 2026-09-21: «Запись» said nothing about a broadcast or a bulk
+  // assignment; the row's own facts do.
+  const summary = activityDataSummary(log, t)
+  if (summary) return { label: summary, title: log.entityId ?? null }
+  const k = kindKey(log.metadataKind)
+  if (k) return { label: t(k), title: null }
+  return mtmActivityEntityText(log, t)
 }
 
 /** Relative time using the mtmActivity translator (t). */
