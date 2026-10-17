@@ -1,0 +1,62 @@
+name: Event platform read-only readiness
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Require protected production route
+        uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+
+      - name: Require current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ]
+          CURRENT_MAIN_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+          [ "$GITHUB_SHA" = "$CURRENT_MAIN_SHA" ]
+          bash -n scripts/event-platform/inspect-production.sh
+          node --test scripts/event-platform/inspect-production.test.mjs
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Inspect aggregate readiness without changing production
+        env:
+          EXPECTED_DEPLOY_SHA: ${{ github.sha }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          ssh -o ConnectTimeout=20 -i ~/.ssh/deploy_key \
+            "$SERVER_USER@$SERVER_HOST" \
+            "EXPECTED_DEPLOY_SHA='$EXPECTED_DEPLOY_SHA' bash -s" \
+            < scripts/event-platform/inspect-production.sh
+
+      - name: Cleanup SSH material
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts ~/.ssh/config
