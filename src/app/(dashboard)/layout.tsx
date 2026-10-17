@@ -183,7 +183,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 sessionLoaded={sessionLoaded}
                 onOpenLauncher={() => setLauncherOpen(true)}
               />
-              <main ref={mainRef} className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`}>
+              <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`} ref={mainRef}>
                 {!childrenReady ? (
                   <div className="flex h-full items-center justify-center" aria-busy="true">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary motion-reduce:animate-none" aria-hidden="true" />
