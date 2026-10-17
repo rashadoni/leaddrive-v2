@@ -126,13 +126,13 @@ key partition changes and out-of-order first-seen versions. Identical duplicate
 deliveries at new offsets are permitted, not counted as new business events.
 
 The A/B test uses separate `ld.testexpanded.transport.events.v1` and
-`ld.testraw.transport.events.v1` topics. `expanded` keeps the current production
-template's JsonConverter/JSON expansion; `raw` tests unexpanded existing JSON
-text plus StringConverter. Unicode, null/false/zero, nested objects and empty
-arrays exercise serializer fidelity. A detected current-template defect is
-reported separately from transport metadata and from the raw candidate's strict
-pass. **The production connector template is not changed by this test.** Any
-correction requires actual evidence and its own reviewed delivery.
+`ld.testraw.transport.events.v1` topics. `expanded` is an explicit legacy
+JsonConverter/JSON-expansion diagnostic; `raw` uses the corrected production
+template's unexpanded JSON text plus StringConverter. Unicode, null/false/zero,
+nested objects and empty arrays exercise serializer fidelity. The detected
+legacy payload defect is reported separately from metadata and the corrected
+template's strict pass. The test never changes a template at runtime; the
+serializer correction is a reviewed source change backed by A/B evidence.
 
 Successful cleanup deletes only the known test connector and its validated,
 inactive `pgoutput` slot in `event_platform_test`; outer teardown always removes

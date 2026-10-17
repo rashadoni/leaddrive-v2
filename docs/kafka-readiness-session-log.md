@@ -302,3 +302,50 @@ No Kafka consumers, offsets or customer replay have been activated.
   The strict verifier also has a regression rejecting event time as Kafka
   createdAt. All 53 tooling tests pass locally after the sequence/timestamp
   corrections; integration is still pending the changed head.
+
+## 2026-10-17 — real CDC success exposes serializer defect
+
+- Corrected K2 run `39075079346` SUCCESS on exact
+  `770d576a16e1fc475b2ea0a8ca186cca803a70a5`. Full real foundation, rejected
+  small WAL cap, explicit finite test override, repeated CDC preparation,
+  metadata/real TCP permission checks and sequence-leak negative control passed.
+  Strict unexpanded transport matched all eight unique SQL-origin events from
+  two tenant-qualified keys across snapshot, streaming and cold Connect restart.
+  Both keys happened to use one observed partition; this is not cross-partition
+  rebalance/crash coverage. Connector/slot and final project cleanup succeeded.
+- Actual expanded-template A/B result: four records delivered with correct
+  headers/source-ID order, but all four original envelopes differed from SQL;
+  payloadParityPassed=false, envelopeMismatchRecords=4, doubleEncodedRecords=0.
+  Do not call the previous JsonConverter/expansion configuration lossless merely
+  because Kafka delivery and metadata succeed. Source SQL history is unchanged.
+- PR866's required full gates `39075079309` remain pending. It is not merged
+  or production activated. PR863's real libpq run `39074388375` SUCCESS/30 tests;
+  its required full gates `39074388386` also remain pending.
+- Production advanced through the unrelated reviewed release `39072976988`
+  SUCCESS to `0b3e7f9b100c3c05a34a31f2d986fe5364a70d5b`; public build-info and
+  ping matched. This supersedes the earlier observed artifact88 pointer but
+  does not prove our later c8 release: `39074203195` is still building.
+- Began a separate scoped serializer correction from the tested K2 head in
+  `leaddrive-kafka-cdc-serialization-20261018`, branch
+  `codex/kafka-cdc-json-fidelity-20261018`. Set the reviewed template to
+  unexpanded existing JSON + StringConverter, enforce both halves/header-only
+  placement in asset checks and retain old expansion only as a labelled legacy
+  A/B experiment. Next: narrow tests, independent changed-head CDC proof,
+  normal required gates/delivery. No existing connector/slot/offset is changed.
+
+### Prepared next Fund shadow seam (read-only assessment)
+
+- Reuse consumer/projection SDK, exact Fund contracts and the real Fund/ledger
+  fixture from the migration gate. No ready TS Fund reducer or broker caller
+  was found in these bounded paths. The minimal worker must remain shadow-only:
+  no promotion, Fund/currentBalance/v1 write, effect send or read-pointer change.
+- Before a live adapter: require full event contract/topic/header-ID checks,
+  actual PostgreSQL JSONB envelope-hash equality (not JS hash serialization),
+  exact fixed-point money/version reducer, per-build inbox identity, explicit
+  transaction client and duplicate-safe checkpoint advancement. Acknowledge
+  next Kafka offset only after DB commit/current assignment; failures stop the
+  partition, not silently skip. Existing SDK/mocks alone do not prove these.
+- Restricted shadow policies must still permit SELECT of active v1 because the
+  existing invoker deferred coherence trigger checks that row. Writes stay
+  limited to the worker's shadow build. Actual restricted-role, crash, duplicate,
+  tenant-isolation and fixed-cutoff parity tests are NOT RUN at this point.

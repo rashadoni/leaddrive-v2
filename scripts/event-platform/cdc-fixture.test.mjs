@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
   FIXTURE, FIXTURE_PHASES, FIXTURE_TENANTS, CONNECTOR_MODES,
-  TEST_CONNECTOR_CONFIG_CHANGES, bootstrapSql, fixtureEvents, phaseSql,
+  TEST_CONNECTOR_CONFIG_CHANGES, TEST_CONNECTOR_TARGET_CHANGES,
+  LEGACY_EXPANDED_CONFIG_CHANGES, bootstrapSql, fixtureEvents, phaseSql,
   renderTestConnector, fixtureKafkaTopic, sqlQuote,
 } from './cdc-fixture.mjs'
 
@@ -202,19 +203,64 @@ test('test connector changes only the explicit allowlist and never mutates its t
     assert.equal(c['snapshot.select.statement.overrides.public.event_outbox'], template.config['snapshot.select.statement.overrides.public.event_outbox'])
   }
   assert.deepEqual(template, JSON.parse(templateText))
-  assert.equal(renderTestConnector(template).config['transforms.outbox.table.expand.json.payload'], 'true')
+  assert.deepEqual(renderTestConnector(template), renderTestConnector(template, { mode: 'raw' }))
   assert.notEqual(fixtureKafkaTopic('expanded'), fixtureKafkaTopic('raw'))
 })
 
-test('raw A/B mode uses unexpanded JSON text with StringConverter, never a production edit', () => {
+test('raw mode preserves the corrected production serializer and every non-target setting exactly', () => {
   const raw = renderTestConnector(template, { mode: 'raw' }).config
+  assert.equal(template.config['transforms.outbox.table.expand.json.payload'], 'false')
+  assert.equal(template.config['value.converter'], 'org.apache.kafka.connect.storage.StringConverter')
+  assert.equal(Object.hasOwn(template.config, 'value.converter.schemas.enable'), false)
+  assert.equal(Object.hasOwn(template.config, 'transforms.outbox.table.json.payload.null.behavior'), false)
   assert.equal(raw['transforms.outbox.table.expand.json.payload'], 'false')
   assert.equal(raw['value.converter'], 'org.apache.kafka.connect.storage.StringConverter')
   assert.equal(Object.hasOwn(raw, 'value.converter.schemas.enable'), false)
+  assert.equal(Object.hasOwn(raw, 'transforms.outbox.table.json.payload.null.behavior'), false)
+  const withoutTargets = config => Object.fromEntries(
+    Object.entries(config).filter(([key]) => !TEST_CONNECTOR_TARGET_CHANGES.includes(key)),
+  )
+  assert.deepEqual(withoutTargets(raw), withoutTargets(template.config))
+  for (const key of new Set([...Object.keys(template.config), ...Object.keys(raw)])) {
+    if (raw[key] !== template.config[key]) assert.ok(TEST_CONNECTOR_TARGET_CHANGES.includes(key), key)
+  }
+})
+
+test('expanded mode recreates only the explicitly isolated legacy serializer experiment', () => {
   const expanded = renderTestConnector(template, { mode: 'expanded' }).config
-  assert.equal(expanded['transforms.outbox.table.expand.json.payload'], 'true')
-  assert.equal(expanded['value.converter'], 'org.apache.kafka.connect.json.JsonConverter')
-  assert.equal(expanded['value.converter.schemas.enable'], 'false')
+  const legacy = {
+    'transforms.outbox.table.expand.json.payload': 'true',
+    'transforms.outbox.table.json.payload.null.behavior': 'optional_bytes',
+    'value.converter': 'org.apache.kafka.connect.json.JsonConverter',
+    'value.converter.schemas.enable': 'false',
+  }
+  assert.deepEqual([...LEGACY_EXPANDED_CONFIG_CHANGES].sort(), Object.keys(legacy).sort())
+  assert.equal(new Set(TEST_CONNECTOR_CONFIG_CHANGES).size, TEST_CONNECTOR_CONFIG_CHANGES.length)
+  const changedSerializerKeys = Object.keys(expanded).filter(key =>
+    !TEST_CONNECTOR_TARGET_CHANGES.includes(key) && expanded[key] !== template.config[key],
+  )
+  assert.deepEqual(changedSerializerKeys.sort(), Object.keys(legacy).sort())
+  for (const [key, value] of Object.entries(legacy)) assert.equal(expanded[key], value, key)
+  const withoutOverrides = config => Object.fromEntries(
+    Object.entries(config).filter(([key]) => !TEST_CONNECTOR_CONFIG_CHANGES.includes(key)),
+  )
+  assert.deepEqual(withoutOverrides(expanded), withoutOverrides(template.config))
+  assert.deepEqual(template, JSON.parse(templateText))
+})
+
+test('renderer refuses a reverted production serializer or reintroduced legacy-only properties', () => {
+  for (const [key, value] of [
+    ['transforms.outbox.table.expand.json.payload', 'true'],
+    ['value.converter', 'org.apache.kafka.connect.json.JsonConverter'],
+    ['value.converter.schemas.enable', 'false'],
+    ['transforms.outbox.table.json.payload.null.behavior', 'optional_bytes'],
+  ]) {
+    const changed = structuredClone(template)
+    changed.config[key] = value
+    for (const mode of CONNECTOR_MODES) {
+      assert.throws(() => renderTestConnector(changed, { mode }), /Connector template changed/)
+    }
+  }
 })
 
 test('renderer rejects unknown overrides, changed placeholders and malformed templates', () => {
