@@ -64,6 +64,10 @@ try:
     seen = set()
     for key, value in urllib.parse.parse_qsl(parsed.query, keep_blank_values=True):
         if key not in permitted or key in seen: raise ValueError()
+        # libpq read-write requires default_transaction_read_only=off, which
+        # cannot coexist with this inspector. Primary-only selection remains
+        # supported; never weaken read-only to satisfy the connection option.
+        if key == "target_session_attrs" and value == "read-write": raise ValueError()
         seen.add(key)
         env[permitted[key]] = value
     env["PGOPTIONS"] = "-c default_transaction_read_only=on -c statement_timeout=30s -c lock_timeout=3s"

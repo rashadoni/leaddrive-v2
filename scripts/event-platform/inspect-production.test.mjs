@@ -82,7 +82,7 @@ test('connection credentials never enter psql argv and read-only options are for
 })
 
 test('rejects connection option overrides instead of weakening read-only inspection', () => {
-  for (const query of ['options=-c%20default_transaction_read_only=off', 'host=other-host', 'sslmode=require&sslmode=disable']) {
+  for (const query of ['options=-c%20default_transaction_read_only=off', 'host=other-host', 'sslmode=require&sslmode=disable', 'target_session_attrs=read-write']) {
     const result = spawnSync('bash', ['--noprofile', '--norc', '-c',
       'source "$1"; run_readonly_psql "$2"', 'test', script, `postgresql://localhost/test?${query}`], { encoding: 'utf8' })
     assert.notEqual(result.status, 0)
