@@ -823,3 +823,96 @@ runtime, Vitest, full TypeScript/build and PostgreSQL tests are NOT RUN here.
 - PR868 at frozen `572b` is now ready. Both queue:max integration jobs remained
   pending together, then one basic job began running. This is observed queue
   scheduling progress, not a completed receipt for either job or all PR checks.
+
+## 2026-10-18 — backup tool commissioning: read-only operational audit
+
+- Inspected the install-backup-tools branch, its preflights/fence/cleanup,
+  workflow and runbook from exact origin/main
+  `3cdca2db68823dde281526837fce5ac3aa0af280` without executing any production
+  command, commissioning stage, test suite or retry. This is a source audit,
+  not a fresh inventory or proof that the operation is safe to run now.
+- The prior root-owned pgpass conflict is removed in the source contract:
+  commissioner/readiness/deploy require both canonical password files to
+  belong to the exact non-root leaddrive-backup UID and GID, private mode
+  0400/0600 and regular/non-symlink type. The runner requires ownership by
+  its current UID and the same private modes. Group-readable root-owned
+  0440/0640 pgpass is not accepted and is not a valid libpq substitute.
+- Backup, restore-canary, offline-backup verifier and custody-verifier Git
+  object hashes match the updated pins in commissioner/readiness/deploy.
+  This does not prove which helpers are currently installed. The tool-install
+  operation itself installs age/AWS CLI, not the backup runner scripts.
+  Live source and scratch pgpass ownership/readability remain UNKNOWN to this
+  audit; do not infer either from an old screenshot or earlier readiness PASS.
+
+### Required fresh facts and exact operation scope before dispatch
+
+1. Root first verifies the current production artifact SHA and performs fresh
+   read-only inventory. Obtain enabled/active/load states of all four recovery
+   timers and activity/mask states of their services, plus any durable fence
+   journal. Confirm that the authorized scope includes leaving all four
+   schedules disabled/inactive; do not run based on an old disabled-state
+   snapshot. If schedules now run, successful install intentionally stops
+   their automatic coverage until later commissioning/delivery stages.
+2. Inspect both pgpass files' numeric owner/group, mode, regular/non-symlink
+   status, service readability and safe parent-directory traversal. Separately
+   inspect root-owned CA files and their actual readability by leaddrive-backup.
+   Root metadata acceptance is not proof that the restricted runner can read
+   a file. Do not blindly chown files or replace their contents to pass a gate.
+3. Confirm Ubuntu 24.04 x86_64, the required curl/gpg/sha256sum/tar/unzip tools,
+   at least 2 GiB free and 10000 free inodes in both /var/tmp and /usr/local,
+   permitted outbound downloads, expected tool paths/provenance and the absence
+   of another active commissioning/deployment. The runtime checks also enforce
+   canonical recovery paths, verify-full settings, bounded connection timeouts,
+   monitoring configuration and the absence of reviewed legacy remnant patterns.
+4. Use only Commission production backup on main with operation
+   `install-backup-tools` and confirmation
+   `INSTALL_PINNED_BACKUP_TOOLS_AND_EXTEND_LOG_RETENTION_ON_13_140_132_245`.
+   expected_main_sha must be the fresh exact 40-character main SHA at dispatch;
+   the audited 3cdca2 SHA is valid only while it is still current. All optional
+   recipient/custody/evidence/candidate inputs must be empty. The workflow
+   enforces current-main equality, the production branch policy and the shared
+   production-deploy lock. The install branch does not itself check the SHA
+   of the running application, so root's separate artifact check remains needed.
+
+### Actual mutations and explicit non-actions
+
+- The operation durably records previous timer states, disables all four
+  timers, waits for running recovery services, applies temporary runtime
+  service masks and acquires fixed persistent locks. Missing reviewed
+  runtime/state directories and lock files can be created.
+- It atomically changes only an absent/365 LOG_SHIP_RETENTION_DAYS to 400;
+  unreviewed smaller values fail instead of being silently repaired. It
+  installs pinned age 1.3.2 and signed AWS CLI 2.36.40 into versioned roots
+  with provenance and global command symlinks, refusing unknown conflicting
+  installations. It also migrates only allowlisted legacy lock paths to the
+  reviewed persistent lock authority.
+- On success, service masks are removed but all four recovery timers remain
+  disabled/inactive. Install is therefore not an activation of backups.
+- It does not run backup/restore, start scratch, authenticate to PostgreSQL,
+  prove TLS connectivity or Object Lock, switch backup encryption, generate
+  keys, change pgpass ownership, deploy the application or activate/replay Kafka.
+  An install SUCCESS cannot be reported as working or certified recovery.
+
+### Concrete partial-failure/readability risks
+
+- Log-retention migration occurs before assert_backup_env. A later failure
+  does not roll that env change back. Created runtime/state directories and
+  lock files also remain; timer rollback must not be described as rollback
+  of every filesystem/configuration mutation.
+- INSTALL_COMMITTED is set before the final timer-state commit and legacy
+  lock-policy migration. A failed run can therefore leave validated tools
+  installed, and after timer commit can leave schedules disabled. Inspect
+  the actual phase, journal, tools and timer states before any retry; do not
+  assume a failed Actions result means nothing changed.
+- The CA metadata guard permits root-owned 0400/0600 as well as shared-readable
+  modes, but it does not check service-user readability. A root:root 0600 CA
+  may pass this stage and still fail in the restricted backup runner. The
+  fresh metadata inspection must cover that distinction without weakening TLS.
+- Even after all metadata passes, password correctness, source/scratch
+  availability and end-to-end recovery remain unproven by this operation.
+  Those are separate bounded stages, not implicit permission to start them.
+
+Stopping point: source audit recorded only; root awaits fresh inventory and
+the matching current artifact before deciding whether the authorized bounded
+install can proceed. No frozen PR866/867/868 worktree, production file, timer,
+service, branch delivery or Kafka runtime was changed by this documentation.
