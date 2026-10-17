@@ -216,10 +216,15 @@ const FACTS: Partial<Record<AgentPermissionId, Fact[]>> = {
   kpiOwn: [{ file: "src/app/api/v1/mtm/mobile/kpi/route.ts", contains: "agentId: auth.agentId" }],
   kpiTeam: [{ file: "src/app/api/v1/mtm/kpi/route.ts", contains: 'if (!actor || actor.role === "AGENT") {' }],
   messagesRead: [{ file: "src/app/api/v1/mtm/mobile/messages/route.ts", contains: "withMobileRls(" }],
-  messagesWrite: [{
-    file: "src/app/api/v1/mtm/operations/messages/route.ts",
-    contains: 'if (!actor || actor.role === "AGENT") return forbidden()',
-  }],
+  messagesWrite: [
+    {
+      file: "src/app/api/v1/mtm/operations/messages/route.ts",
+      contains: 'if (!actor || actor.role === "AGENT") return forbidden()',
+    },
+    // The manager's phone writes to the team since 2026-10-17; an agent's does not.
+    { check: () => !mobileCapabilities("AGENT").includes("TEAM_READ") },
+    { file: "src/app/api/v1/mtm/mobile/manager/messages/route.ts", contains: 'requireMobileCapability(auth, "TEAM_READ")' },
+  ],
   requestsDecide: [
     { check: () => !canReviewMtmRouteRequest(agent, "agent-2") && !canManageFieldMasterData(agent) },
     { file: "src/app/api/v1/mtm/contact-create-requests/[id]/decision/route.ts", contains: "canManageFieldMasterData(actor)" },

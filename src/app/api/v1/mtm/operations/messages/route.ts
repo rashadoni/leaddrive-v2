@@ -4,7 +4,7 @@ import { notifyAgents } from "@/lib/mtm/push-notify"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { writeMtmAudit } from "@/lib/mtm-audit"
-import { directMessageThreadKey } from "@/lib/mtm/mobile-message"
+import { createFieldMessage } from "@/lib/mtm/field-message-send"
 import { isAgentInRouteScope, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { withMtmRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { sanitizeOperationalText } from "@/lib/mtm/operational-announcement"
@@ -92,96 +92,24 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
 
   const sentAt = new Date()
   try {
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      let thread: { id: string }
-      if (input.type === "BROADCAST") {
-        thread = await tx.mtmMessageThread.create({
-          data: {
-            organizationId: auth.orgId,
-            type: "BROADCAST",
-            subject: sanitizedSubject,
-            createdByAgentId: actor.agentId,
-            createdByUserId: auth.userId,
-            lastMessageAt: sentAt,
-            participants: {
-              create: recipients.map((recipient: { id: string }) => ({
-                organizationId: auth.orgId,
-                agentId: recipient.id,
-                role: "MEMBER",
-              })),
-            },
-          },
-          select: { id: true },
-        })
-      } else {
-        const recipient = recipients[0]
-        const directKey = actor.agentId
-          ? directMessageThreadKey(actor.agentId, recipient.id)
-          : `web:${auth.userId}:${recipient.id}`
-        thread = await tx.mtmMessageThread.upsert({
-          where: { organizationId_directKey: { organizationId: auth.orgId, directKey } },
-          update: { subject: actor.agentId ? undefined : auth.name },
-          create: {
-            organizationId: auth.orgId,
-            type: "DIRECT",
-            subject: actor.agentId ? null : auth.name,
-            directKey,
-            createdByAgentId: actor.agentId,
-            createdByUserId: auth.userId,
-            lastMessageAt: sentAt,
-          },
-          select: { id: true },
-        })
-        for (const participantId of [...new Set([recipient.id, ...(actor.agentId ? [actor.agentId] : [])])]) {
-          await tx.mtmMessageParticipant.upsert({
-            where: { threadId_agentId: { threadId: thread.id, agentId: participantId } },
-            create: {
-              organizationId: auth.orgId,
-              threadId: thread.id,
-              agentId: participantId,
-              role: participantId === actor.agentId ? "OWNER" : "MEMBER",
-            },
-            update: { archivedAt: null },
-          })
-        }
-      }
-
-      const message = await tx.mtmMessage.create({
-        data: {
-          organizationId: auth.orgId,
-          threadId: thread.id,
-          senderAgentId: actor.agentId,
-          senderUserId: auth.userId,
-          senderName: auth.name || auth.email,
-          body: sanitizedBody,
-          acknowledgementRequired: input.type === "BROADCAST" && Boolean(input.acknowledgementRequired || input.keyMessage),
-          sentAt,
-        },
-        select: { id: true, threadId: true, body: true, sentAt: true, acknowledgementRequired: true },
-      })
-      await tx.mtmMessageThread.update({ where: { id: thread.id }, data: { lastMessageAt: sentAt } })
-      await tx.mtmNotification.createMany({
-        data: recipients.map((recipient: { id: string }) => ({
-          organizationId: auth.orgId,
-          agentId: recipient.id,
-          title: input.type === "BROADCAST" ? sanitizedSubject! : `Message from ${auth.name || auth.email}`,
-          body: sanitizedBody.slice(0, 500),
-          type: input.type === "BROADCAST" ? "announcement" : "message",
-          metadata: {
-            threadId: thread.id,
-            messageId: message.id,
-            ...(input.keyMessage ? {
-              keyMessage: true,
-              effectiveFrom: input.effectiveFrom!,
-              effectiveUntil: input.effectiveUntil!,
-              fallbackBody: sanitizedBody,
-              localizations: sanitizedLocalizations,
-            } : {}),
-          },
-        })),
-      })
-      return { threadId: thread.id, message }
-    })
+    const result = await prisma.$transaction((tx: Prisma.TransactionClient) => createFieldMessage(tx, {
+      organizationId: auth.orgId,
+      type: input.type,
+      subject: input.type === "BROADCAST" ? sanitizedSubject : null,
+      body: sanitizedBody,
+      recipients,
+      sender: { agentId: actor.agentId, userId: auth.userId, name: auth.name || auth.email },
+      acknowledgementRequired: input.type === "BROADCAST" && Boolean(input.acknowledgementRequired || input.keyMessage),
+      notificationTitle: input.type === "BROADCAST" ? sanitizedSubject! : `Message from ${auth.name || auth.email}`,
+      notificationMetadata: input.keyMessage ? {
+        keyMessage: true,
+        effectiveFrom: input.effectiveFrom!,
+        effectiveUntil: input.effectiveUntil!,
+        fallbackBody: sanitizedBody,
+        localizations: sanitizedLocalizations,
+      } : undefined,
+      sentAt,
+    }))
 
     // Fire-and-forget: the message is sent when it is in the database, not
     // when Google acknowledges it. The text is the manager's own subject —
