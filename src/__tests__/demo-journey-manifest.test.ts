@@ -246,10 +246,10 @@ describe("Guided journey coverage", () => {
     campaigns: { included: 7, total: 8, percent: 88 },
     // +2 on 2026-10-13: the channel rail and assigning to a colleague are now demonstrated.
     inbox: { included: 10, total: 12, percent: 83 },
-    leads: { included: 20, total: 23, percent: 87 },
-    tasks: { included: 11, total: 13, percent: 85 },
-    deals: { included: 14, total: 17, percent: 82 },
-    quotes: { included: 8, total: 10, percent: 80 },
+    leads: { included: 21, total: 23, percent: 91 },
+    tasks: { included: 12, total: 14, percent: 86 },
+    deals: { included: 13, total: 16, percent: 81 },
+    quotes: { included: 9, total: 11, percent: 82 },
   }
 
   it("meets the 80 % target in every shown product area", () => {

@@ -32,7 +32,7 @@ export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, h
   const completed = new Set(snapshot.completedSteps)
   const skipped = new Set(snapshot.skippedSteps)
   const { records } = snapshot
-  const wonAmount = records.deal?.wonAt ? records.deal.amount : records.quote ? quoteTotals(records.quote).gross : null
+  const wonAmount = records.deal?.wonAt ? records.deal.amount : records.quote ? quoteTotals(records.quote).total : null
   const finished = snapshot.state === "COMPLETED"
   const unseen = finished ? [] : moduleProgress(snapshot, manifest).filter((module) => !module.done)
   const onFinishStep = step?.id === "summary-finish"

@@ -7,8 +7,9 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatDateTime } from "@/lib/format-date"
-import { DEMO_CHANNEL_LABELS, DEMO_INBOX_COLLEAGUES, DEMO_INBOX_THREADS, demoInboxChannelOf, type DemoInboxChannel, type DemoInboxMessage } from "@/lib/demo-center/journey"
+import { DEMO_INBOX_COLLEAGUES, DEMO_INBOX_THREADS, demoInboxChannelOf, type DemoInboxChannel, type DemoInboxMessage } from "@/lib/demo-center/journey"
 import { ChannelIcon, channelColor, channelLabel as productChannelLabel } from "@/lib/inbox-channels"
+import { AI_DRAFT_PANEL_COPY } from "@/components/inbox/ai-draft-panel"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
@@ -32,6 +33,9 @@ const CHANNEL_FILTER = "inbox.channel"
 const COMPOSER_MODE = "inbox.composer"
 /** Set once the conversation was handed to a colleague. */
 const ASSIGNED = "inbox.assigned"
+
+/** The demo is Azerbaijani; the draft panel speaks the product's own words. */
+const DRAFT_COPY = AI_DRAFT_PANEL_COPY.az
 
 /** The rail lists channels in the product's own order. */
 const RAIL_CHANNELS: readonly DemoInboxChannel[] = ["email", "telegram", "sms", "whatsapp", "facebook", "instagram", "tiktok", "web-chat"]
@@ -81,8 +85,9 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   const tc = useTranslations("common")
   const locale = useLocale()
   const { conversation, lead } = snapshot.records
-  const channelLabel = DEMO_CHANNEL_LABELS[conversation.channel]
   const ownChannel = demoInboxChannelOf(snapshot.identity.sourceChannel)
+  // The product's own word for the channel, as every other row of the list says it.
+  const channelLabel = productChannelLabel(ownChannel)
   const threadOpen = snapshot.state !== "SOURCE_SEEN"
   /** "own" is the prospect's conversation; anything else is one of the invented ones. */
   const [activeId, setActiveId] = useState<string | null>(threadOpen ? "own" : null)
@@ -464,11 +469,12 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
 
             {conversation.aiDraft && (
               <div data-tour-id="inbox-ai-draft" className="shrink-0 border-t border-border/60 bg-[hsl(var(--ai-from))]/5 p-4">
+                {/* The product's own panel words (AiDraftPanel): title · reason (quality 0.86). */}
                 <p className="flex items-center gap-1.5 text-xs font-semibold">
-                  <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--ai-from))]" aria-hidden="true" />
-                  {S.aiDraftTitle}
-                  <span className="ml-auto rounded bg-muted px-1.5 py-0.5 font-normal text-muted-foreground">
-                    {S.aiDraftQuality(conversation.aiDraft.quality)}
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--ai-from))]" aria-hidden="true" />
+                  <span className="min-w-0 flex-1">
+                    {DRAFT_COPY.title} · {DRAFT_COPY[conversation.aiDraft.reason] ?? conversation.aiDraft.reason}
+                    <span className="ml-1 font-normal opacity-70">({DRAFT_COPY.quality} {conversation.aiDraft.quality.toFixed(2)})</span>
                   </span>
                 </p>
                 <p className="mt-2 rounded-lg border border-zinc-200 bg-background p-3 text-sm leading-relaxed dark:border-zinc-700">
@@ -480,7 +486,7 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                     <Send className="mr-1 h-3.5 w-3.5" /> {tc("send")}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => hint(S.hintFollow(step?.title ?? ""))}>
-                    {S.aiDraftDiscard}
+                    {DRAFT_COPY.discard}
                   </Button>
                 </div>
               </div>
@@ -587,9 +593,9 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("channels")}</p>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{channelLabel}</span>
-                {snapshot.identity.phoneMasked && channelLabel !== DEMO_CHANNEL_LABELS.whatsapp && (
+                {snapshot.identity.phoneMasked && ownChannel !== "whatsapp" && (
                   <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-                    {DEMO_CHANNEL_LABELS.whatsapp} · {S.channelActive}
+                    {productChannelLabel("whatsapp")} · {S.channelActive}
                   </span>
                 )}
               </div>
