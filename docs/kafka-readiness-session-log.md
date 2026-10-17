@@ -225,6 +225,134 @@ No Kafka consumers, offsets or customer replay have been activated.
   a skipped draft check is not accepted as success. K0 live inventory remains
   pending the corrected reviewed delivery. Backup PR863 remains separate.
 
+## 2026-10-17 — K1 runtime passed; K2 synthetic CDC checkpoint
+
+- Superseding the draft status above: PR861 is ready on exact head
+  `7d768b33c0ed68202a3d5c5878210a7a00fc0d98`. Actual infrastructure smoke
+  `39072900806` completed SUCCESS: four isolated services, logical WAL,
+  explicit topics, Connect plugin, Registry HTTP and strict Kafka key/value
+  equality passed. Project-scoped cleanup succeeded. Required full gates
+  `39072900714` are still running; no merge is claimed.
+- Other authorized work advanced main to `0b3e7f9b100c3c05a34a31f2d986fe5364a70d5b`
+  (PR864). This supersedes the old main pointer, not the verified Kafka K0
+  release receipt. Its separate release was observed in progress. No foreign
+  workflow was cancelled or restarted. Current production must be re-read
+  before the next receipt.
+- In the dedicated `codex/kafka-cdc-synthetic-20261017` worktree, prepared
+  deterministic two-tenant transport fixtures and an independent bounded
+  record verifier. Twenty-one generator/verifier tests pass; the verifier
+  requires exact SQL-origin JSON, headers, timestamps, tenant-qualified keys,
+  complete IDs and ordered versions, allowing only identical duplicates.
+- The successor runtime drill is under construction: complete unchanged
+  foundation migration under a non-superuser migration role, unchanged CDC
+  preparation, rejected 64 MiB cap followed by an explicit disposable finite
+  4096 MiB override, SQL privilege/RLS checks, separate A/B serialization topics
+  and a cold Connect restart with slots/offset topics retained. Four narrow
+  guard/config tests also pass locally. Docker/DB/CDC integration is NOT RUN
+  locally: heavy verification belongs only to GitHub CI.
+- The current connector's JSON expansion has a source-identified fidelity
+  risk (empty arrays and swallowed expansion exceptions). The test compares
+  it against unexpanded JSON text plus StringConverter without modifying the
+  production template. No production conclusion until actual A/B evidence.
+  Test-only plaintext, one broker, trusted app context and a REPLICATION login
+  are not production TLS, HA, a credential-compromise boundary or business
+  projection/replay safety. No customer data, consumers, offsets or replay
+  were activated in this phase.
+
+### K2 bounded harness prepared
+
+- Connected the optional synthetic CDC phase to the existing CI-only stack
+  harness. Added a separate path-filtered Ubuntu job sharing the same global
+  disposable-integration concurrency lock; no production secret/environment.
+- The metadata assertion runs inside a read-only transaction with exact
+  fixture DBA/database guards. The runtime uses real TCP/SCRAM auth and
+  SQLSTATE-specific denied operations; it does not accept a syntax or network
+  failure as a permission result. Cold restart retains the same connector,
+  database, slots and Connect offset/config/status topics.
+- Added a diagnostic-only expanded-JSON comparator so an early payload defect
+  cannot hide later header/ID-set/source-order failures. It preserves the
+  original parity failure separately and never replaces the strict raw
+  transport acceptance gate. Ten focused A/B tests pass.
+- All 49 current event-tooling tests, JavaScript/shell syntax, runner policy
+  (69 workflow files), asset gate (27 domains, 86 topics, 5 schemas) and
+  `git diff --check` passed locally. Heavy stack/CDC/DB integration and full
+  TypeScript/build gates are NOT RUN on Contabo by placement policy; GitHub
+  integration remains pending. Unit success is not a runtime receipt.
+- Required PR861 gates are progressing through real database/typecheck work.
+  Its already successful synthetic smoke is unchanged. K2 is checkpointed
+  separately and not marked complete or production ready.
+
+### K2 review correction: zero-exit consumer errors
+
+- Independent narrow review found that Kafka 4.3.1 ConsoleConsumer can catch a
+  non-timeout receive error, print a processed count and still exit zero. A
+  record count/exit-code check alone would falsely accept that observation.
+- Added a bounded observation guard requiring the single expected idle-timeout
+  terminal error and one consistent completion count, rejecting auth/format
+  failures, extra error logs, ambiguous counts and record ceilings. Regression
+  tests include exit-zero authentication failure after enough output records.
+  Confirmed behavior in the pinned upstream ConsoleConsumer source.
+- All 52 current tooling tests now pass locally, including the strict record
+  verifier and diagnostic-only A/B path. Actual CDC integration remains
+  pending; no runtime pass is inferred from these unit tests. Checkpoint
+  commits preserve the work independently of conversation history.
+
+## 2026-10-17 — K1 protected merge and ordered successor delivery
+
+- PR861 all required checks SUCCESS on
+  `7d768b33c0ed68202a3d5c5878210a7a00fc0d98`; full gates `39072900714`
+  completed, with real static/typecheck success, not skipped draft jobs.
+  Infrastructure smoke `39072900806` also SUCCESS. Normal exact-head merge
+  produced `c8c32582ccd54a65e5e7c887643c4226677b5373` at 22:13:47 UTC.
+- Its supported deploy `39074203195` is pending behind existing release work;
+  no foreign workflow was cancelled. Do not call this a successful new
+  production receipt until artifact/health verification actually completes.
+  Other reviewed main changes are inherited normally, not merged as foreign
+  PRs by this task.
+- Merged current main into both successor branches without resetting them.
+  The backup branch's append-only journal conflict retained both histories.
+  PR863 is next for actual libpq/full gates. Its 29 guard tests and 28 source
+  TLS safety tests, shell syntax, asset pins and runner policy pass locally;
+  no live password-file authority or credential value was changed.
+- The independent K2 read-only review is complete after the zero-exit guard
+  fix; no additional blocking harness defects found. K2 has 52 passing tooling
+  tests and remains checkpointed separately, ready for a draft PR after the
+  predecessor merge. Real CDC integration is still NOT RUN. A cold restart
+  receipt will prove delivery with retained resources, not independently audit
+  the contents of Connect's offset store or prove crash-at-commit exactly-once.
+
+## 2026-10-17 — actual pgpass success and first CDC SQL guard failure
+
+- PR863 exact head `3ed89d7a5a3c9a31d0d9c08dfa41536d6d5436f9` actual
+  disposable PostgreSQL/libpq run `39074388375` SUCCESS: 30 tests passed,
+  including real private-mode auth, unsafe-mode rejection and wrong-password
+  control. Helper pins passed. Full required gates `39074388386` still run;
+  no live credential file changed and no merge is claimed.
+- Opened K2 PR866; draft tooling validation passed all 52 tests. After the
+  pgpass runtime phase succeeded, made it ready on
+  `00fb1557d7187d0a1c98715a9f228f7fbda53d61`. New baseline stack smoke
+  `39074476195` succeeded; CDC ran next under the shared integration lock.
+- Actual CDC run `39074476208` failed before connector creation at read-only
+  SQL metadata assertion: SQLSTATE42809, `has_sequence_privilege` was evaluated
+  against a non-sequence catalog relation despite an AND relkind filter.
+  The real full foundation migration and explicit finite WAL preparation had
+  already completed. Cleanup succeeded; no production operation occurred.
+- Converted only PR866 back to draft. Corrected the SQL assertion to iterate
+  the already-filtered sequence rows before calling the sequence-only
+  function. Added a real synthetic leaked-sequence-grant negative control
+  requiring its exact P0001 rejection/message, plus a narrow regression.
+  This preserves the permission boundary rather than dropping the check.
+  Current integration result is FAILURE, not a passing CDC receipt; a new
+  changed-head run is required after local verification.
+
+- Strengthened the same disposable fixture before rerunning: SQL outbox
+  createdAt now differs from event time and reverses version order. This
+  catches a wrong timestamp source or snapshot sort rather than letting equal
+  fixture values conceal it. Production template/migration are unchanged.
+  The strict verifier also has a regression rejecting event time as Kafka
+  createdAt. All 53 tooling tests pass locally after the sequence/timestamp
+  corrections; integration is still pending the changed head.
+
 ## 2026-10-17 — K1 merged; backup contract rebased onto current delivery
 
 - Superseding the historical draft/pending entries above: PR861 passed all
@@ -240,3 +368,39 @@ No Kafka consumers, offsets or customer replay have been activated.
   not live file contents or owners. Live aggregate inventory and operational
   commissioning still await a deployed current-main receipt. No Kafka
   consumers, source offsets or customer replay have been activated.
+
+## 2026-10-18 — K2 synchronized with the verified backup-contract merge
+
+- Superseding the historical pending release entries: PR861 release
+  `39074203195` completed SUCCESS for exact artifact
+  `c8c32582ccd54a65e5e7c887643c4226677b5373`. The coordinating root task
+  verified the public artifact SHA and healthy `/api/v1/ping`; this branch
+  synchronization does not perform another deployment or production probe.
+- PR863 passed all five required checks on
+  `3ed89d7a5a3c9a31d0d9c08dfa41536d6d5436f9`; its actual disposable libpq
+  run `39074388375` passed 30 tests. The protected merge is
+  `3cdca2db68823dde281526837fce5ac3aa0af280`. This confirms the reviewed
+  password-file code contract, not live file ownership or commissioning.
+- PR866's previous exact head
+  `770d576a16e1fc475b2ea0a8ca186cca803a70a5` passed synthetic CDC run
+  `39075079346` and baseline stack run `39075079360`. Its required run
+  `39075079309` was still IN_PROGRESS when read: `pr-scope` and `typecheck`
+  SUCCESS; `static-checks` was executing its blocking unit-tests/baseline
+  step after the real database gates succeeded. No active job was cancelled,
+  duplicated or restarted.
+- PR866 was returned to draft for a normal `git merge --no-commit origin/main`.
+  The only conflict was this append-only journal; both historical branch
+  sections were retained in full. Other current-main changes are inherited
+  by the ordinary merge without task-specific edits.
+- These previous-head receipts do not establish the new merged head's CI
+  status. Fresh exact-head required and integration checks remain necessary
+  after the local checkpoint and subsequent authorized delivery. This scoped
+  synchronization does not push, mark ready, dispatch CI, deploy, activate
+  Kafka consumers, change offsets or replay customer data.
+- Local verification after the journal-only resolution: all 53 narrow Node
+  tooling tests PASS, sequentially; event-platform asset gate PASS (27 domains,
+  86 topics, 5 concrete schemas); runner policy PASS (70 workflow files);
+  whitespace diff checks PASS. Resource precheck showed about 13.4 GB available
+  RAM, 214 GB free disk and zero current memory PSI. No containers or database
+  runtime were started. Full build, TypeScript and actual merged-head CDC/stack
+  integration are NOT RUN locally; they remain GitHub CI work after delivery.
