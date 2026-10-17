@@ -294,3 +294,11 @@ No Kafka consumers, offsets or customer replay have been activated.
   This preserves the permission boundary rather than dropping the check.
   Current integration result is FAILURE, not a passing CDC receipt; a new
   changed-head run is required after local verification.
+
+- Strengthened the same disposable fixture before rerunning: SQL outbox
+  createdAt now differs from event time and reverses version order. This
+  catches a wrong timestamp source or snapshot sort rather than letting equal
+  fixture values conceal it. Production template/migration are unchanged.
+  The strict verifier also has a regression rejecting event time as Kafka
+  createdAt. All 53 tooling tests pass locally after the sequence/timestamp
+  corrections; integration is still pending the changed head.

@@ -17,7 +17,7 @@ function expectedRows(phases = FIXTURE_PHASES) {
     partitionKey: event.partitionKey,
     envelope: event.envelope,
     payloadHash: String(index + 1).padStart(64, '0'),
-    createdAtMs: Date.parse(event.occurredAt),
+    createdAtMs: Date.parse(event.createdAt),
   }))
 }
 
@@ -116,6 +116,7 @@ test('enforces tenant aggregate key and SQL createdAt, including on duplicate ev
   const rows = expectedRows()
   assert.throws(() => verifyCdcRecords(replaceRecord(rows, 0, { key: 'wrong-tenant:transport-fixture:same-logical-id' }), rows), /Kafka key differs/)
   assert.throws(() => verifyCdcRecords(replaceRecord(rows, 0, { timestamp: rows[0].createdAtMs + 1 }), rows), /timestamp differs/)
+  assert.throws(() => verifyCdcRecords(replaceRecord(rows, 0, { timestamp: Date.parse(rows[0].envelope.time) }), rows), /timestamp differs/)
   assert.throws(() => verifyCdcRecords(records(rows).replace('CreateTime:', 'LogAppendTime:'), rows), /missing numeric field prefix/)
 })
 

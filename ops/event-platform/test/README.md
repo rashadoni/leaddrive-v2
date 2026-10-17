@@ -114,6 +114,8 @@ operations distinguish permissions from connection/syntax failures.
 Two organizations share an aggregate ID but have distinct tenant-qualified
 keys. Snapshot inserts are physically v2-before-v1 with reverse-sorted UUIDs;
 the connector's actual snapshot query must deliver semantic version order.
+Outbox `createdAt` differs from event time and also reverses version order,
+so the timestamp assertion cannot accidentally validate the wrong time field.
 The raw candidate additionally streams v3, stops Connect, commits v4 while it
 is down and starts the same worker again. Config/offset/status topics, connector
 name, source database and logical slot are retained. No offset reset, topic

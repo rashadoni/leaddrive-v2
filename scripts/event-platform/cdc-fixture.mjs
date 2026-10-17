@@ -67,6 +67,9 @@ export function fixtureEvents(phase) {
       const outboxId = uuid('2', tenantIndex, aggregateVersion)
       const headId = uuid('3', tenantIndex, 0)
       const occurredAt = `2026-10-17T00:00:0${aggregateVersion}.000Z`
+      // Deliberately distinct from event time AND reverse version order. A
+      // wrong timestamp field/snapshot sort must not accidentally pass.
+      const createdAt = `2026-10-17T00:01:0${5 - aggregateVersion}.000Z`
       const data = {
         fixture: 'synthetic-transport-only',
         version: aggregateVersion,
@@ -102,6 +105,7 @@ export function fixtureEvents(phase) {
         aggregateVersion,
         eventType: FIXTURE.eventType,
         occurredAt,
+        createdAt,
         topic: FIXTURE.sourceTopic,
         partitionKey: `${organizationId}:${FIXTURE.aggregateType}:${FIXTURE.aggregateId}`,
         envelope,
@@ -179,7 +183,7 @@ INSERT INTO public.event_outbox (
 ) VALUES (
   ${sqlQuote(event.outboxId)}::uuid, ${sqlQuote(event.organizationId)}, ${sqlQuote(event.eventId)}::uuid,
   ${sqlQuote(event.eventType)}, ${sqlQuote(event.topic)}, ${sqlQuote(event.partitionKey)},
-  ${sqlQuote(JSON.stringify(e))}::jsonb, ${timestampSql(event.occurredAt)}
+  ${sqlQuote(JSON.stringify(e))}::jsonb, ${timestampSql(event.createdAt)}
 );
 `
 }

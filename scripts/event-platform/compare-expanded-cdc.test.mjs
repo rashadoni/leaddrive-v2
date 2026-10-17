@@ -10,7 +10,7 @@ function sourceRows() {
     envelope: event.envelope,
     partitionKey: event.partitionKey,
     payloadHash: String(index + 1).padStart(64, '0'), // unit placeholder, not a SQL-origin hash
-    createdAtMs: Date.parse(event.occurredAt),
+    createdAtMs: Date.parse(event.createdAt),
   }))
 }
 

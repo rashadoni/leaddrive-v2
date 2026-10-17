@@ -47,6 +47,8 @@ test('envelopes carry coherent source fields and hard JSON parity cases', () => 
     assert.equal(event.topic, `leaddrive.domain.${e.type.split('.')[0]}.v1`)
     assert.equal(e.specversion, '1.0')
     assert.equal(e.time, event.occurredAt)
+    assert.notEqual(event.createdAt, event.occurredAt)
+    assert.ok(Date.parse(event.createdAt) > Date.parse(event.occurredAt))
     assert.equal(new Date(e.time).toISOString(), event.occurredAt)
     assert.equal(e.organizationid, event.organizationId)
     assert.equal(e.aggregateid, event.aggregateId)
@@ -142,6 +144,8 @@ test('snapshot physical order defeats UUID order; later phases require exact pre
   for (const tenant of FIXTURE_TENANTS) {
     const [v1, v2] = fixtureEvents('snapshot').filter(event => event.organizationId === tenant)
     assert.ok(snapshot.indexOf(sqlQuote(v2.outboxId)) < snapshot.indexOf(sqlQuote(v1.outboxId)))
+    assert.ok(Date.parse(v1.createdAt) > Date.parse(v2.createdAt))
+    for (const event of [v1, v2]) assert.ok(snapshot.includes(sqlQuote(event.createdAt)))
   }
   assert.equal((snapshot.match(/INSERT INTO public.event_aggregate_heads/g) ?? []).length, 2)
   for (const [phase, previous, next] of [['stream', 2, 3], ['restart', 3, 4]]) {
