@@ -30,6 +30,7 @@ import { prisma } from "@/lib/prisma"
 import { requireCronAuth } from "@/lib/cron-auth"
 import { createNotification } from "@/lib/notifications"
 import { runWithRlsBypass } from "@/lib/rls-context"
+import { contractRecipientLocale, milestoneReminderText } from "@/lib/contract-lifecycle/notification-text"
 
 export const dynamic = "force-dynamic"
 
@@ -40,9 +41,16 @@ const MAX_BATCH               = 300 // cap per cron run
 const ACTIVE_STATUSES = ["pending", "in_progress"]
 
 export async function POST(req: NextRequest) {
-  return runWithRlsBypass(async () => {
+  // Authenticate before entering the bypass: an unauthenticated request must
+  // never reach a context that can see every tenant.
   const cronError = requireCronAuth(req)
   if (cronError) return cronError
+  // The deploy proves the schedule answers without delivering anything.
+  if (new URL(req.url).searchParams.get("smoke") === "1") {
+    return NextResponse.json({ success: true, data: { smoke: true } })
+  }
+
+  return runWithRlsBypass(async () => {
 
   const now          = new Date()
   const leadCutoff   = new Date(now.getTime() + REMINDER_LEAD_DAYS * 86_400_000)
@@ -89,8 +97,9 @@ export async function POST(req: NextRequest) {
       // Fetch admin + manager users for this org once
       const admins = await prisma.user.findMany({
         where: { organizationId: orgId, role: { in: ["admin", "manager"] }, isActive: true },
-        select: { id: true },
+        select: { id: true, preferredLanguage: true },
       })
+      const organization = await prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } })
 
       // Collect all distinct ownerUserIds in this org's batch and validate
       // them in one query — prevents a stale/polluted ownerUserId from
@@ -102,13 +111,13 @@ export async function POST(req: NextRequest) {
             .filter((ownerId: string | null): ownerId is string => ownerId !== null),
         ),
       ]
-      const validOwnersResult: { id: string }[] = ownerIds.length > 0
+      const validOwnersResult: { id: string; preferredLanguage: string | null }[] = ownerIds.length > 0
         ? await prisma.user.findMany({
             where: { id: { in: ownerIds }, organizationId: orgId, isActive: true },
-            select: { id: true },
+            select: { id: true, preferredLanguage: true },
           })
         : []
-      const validOwners = new Set(validOwnersResult.map((u: { id: string }) => u.id))
+      const validOwners = new Map(validOwnersResult.map((u) => [u.id, u.preferredLanguage]))
 
       for (const milestone of orgMilestones) {
         try {
@@ -133,28 +142,25 @@ export async function POST(req: NextRequest) {
             continue
           }
 
-          // CAS won — build notification copy
+          // CAS won — notification copy in each reader's language
           const contractRef  = milestone.contract.contractNumber || milestone.contract.id
           const isOverdue    = milestone.dueAt <= now
           const notifType    = isOverdue ? "warning" : "info"
-          const overdueLabel = isOverdue ? "overdue" : "due soon"
-          const title        = `Milestone ${overdueLabel}: ${milestone.label}`
-          const message      = (
-            `Milestone "${milestone.label}" on contract "${milestone.contract.title ?? contractRef}" ` +
-            `is ${overdueLabel} (due ${milestone.dueAt.toISOString().split("T")[0]}).`
+          const textFor = (preferredLanguage: string | null) => milestoneReminderText(
+            contractRecipientLocale(preferredLanguage, organization?.settings),
+            { label: milestone.label, contractTitle: milestone.contract.title ?? contractRef, dueAt: milestone.dueAt, overdue: isOverdue },
           )
 
           const notifiedUserIds = new Set<string>()
 
           // Notify admins/managers
           await Promise.allSettled(
-            admins.map(async (u: { id: string }) => {
+            admins.map(async (u: { id: string; preferredLanguage: string | null }) => {
               const n = await createNotification({
                 organizationId: orgId,
                 userId:         u.id,
                 type:           notifType,
-                title,
-                message,
+                ...textFor(u.preferredLanguage).managers,
                 entityType:     "contract",
                 entityId:       milestone.contractId,
                 kind:           "contract.milestone_reminder",
@@ -165,16 +171,11 @@ export async function POST(req: NextRequest) {
 
           // Notify owner (if set, same-org validated, and not already notified as admin/manager)
           if (milestone.ownerUserId && validOwners.has(milestone.ownerUserId) && !notifiedUserIds.has(milestone.ownerUserId)) {
-            const ownerMsg = (
-              `Reminder: "${milestone.label}" on contract "${milestone.contract.title ?? contractRef}" ` +
-              `is ${overdueLabel} and assigned to you. Due: ${milestone.dueAt.toISOString().split("T")[0]}.`
-            )
             await createNotification({
               organizationId: orgId,
               userId:         milestone.ownerUserId,
               type:           notifType,
-              title:          `Action needed: ${milestone.label}`,
-              message:        ownerMsg,
+              ...textFor(validOwners.get(milestone.ownerUserId) ?? null).owner,
               entityType:     "contract",
               entityId:       milestone.contractId,
               kind:           "contract.milestone_reminder",

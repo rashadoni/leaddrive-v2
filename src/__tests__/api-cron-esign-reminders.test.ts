@@ -37,6 +37,9 @@ vi.mock("@/lib/prisma", () => ({
     esignAuditEvent: {
       create: (...args: unknown[]) => mockAuditCreate(...args),
     },
+    organization: {
+      findUnique: vi.fn().mockResolvedValue({ settings: { language: "az" } }),
+    },
   },
 }))
 

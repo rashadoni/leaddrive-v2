@@ -64,6 +64,10 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/mtm-demo-pulse/ { next }
   /cron-trigger\.sh \/api\/cron\/sla-escalation/ { next }
   /cron-trigger\.sh \/api\/cron\/ticket-closure-requests/ { next }
+  /cron-trigger\.sh (\/api\/cron\/)?renewal-alerts([ ?]|$)/ { next }
+  /cron-trigger\.sh (\/api\/cron\/)?contract-approval-escalations([ ?]|$)/ { next }
+  /cron-trigger\.sh (\/api\/cron\/)?contract-milestone-reminders([ ?]|$)/ { next }
+  /cron-trigger\.sh (\/api\/cron\/)?esign-reminders([ ?]|$)/ { next }
   { print }
 ' "$CURRENT" > "$CLEAN"
 
@@ -140,6 +144,18 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # seven days, and the ticket card says so. Without this sweep it never did.
   # Hourly is plenty for a seven-day promise, and a request is closed once.
   printf '%s\n' "37 * * * * $TRIGGER /api/cron/ticket-closure-requests >> $LOG 2>&1"
+  # Contract reminders: the renewal alerts (90/60/30/14/7 days before the end
+  # date), overdue approval stages, milestones coming due, and the reminder
+  # e-mail to a signer whose turn it is. They lived only in a hand-run script
+  # and did not move with production in September 2026, so a month of them
+  # never fired (owner, 2026-10-17: «включить, сначала перевести»). Each is
+  # idempotent: an alert is sent once, an approval escalates at most three
+  # times a day apart, a milestone is reminded once a day, a signer at most
+  # three times three days apart. Mornings by the server clock.
+  printf '%s\n' "5 7 * * * $TRIGGER /api/cron/renewal-alerts >> $LOG 2>&1"
+  printf '%s\n' "15 * * * * $TRIGGER /api/cron/contract-approval-escalations >> $LOG 2>&1"
+  printf '%s\n' "0 8 * * * $TRIGGER /api/cron/contract-milestone-reminders >> $LOG 2>&1"
+  printf '%s\n' "0 9 * * * $TRIGGER /api/cron/esign-reminders >> $LOG 2>&1"
   # The durable queue drain is required for user-started jobs and is safe to
   # run independently. Keep the legacy marker and all other social workers
   # behind their existing opt-in state. Retaining the marker also ensures an

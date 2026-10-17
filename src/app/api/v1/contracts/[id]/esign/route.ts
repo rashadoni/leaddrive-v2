@@ -98,7 +98,8 @@ export const POST = withRls(async (req, { orgId, session }, { params }: { params
         data: {
           organizationId: orgId,
           contractId,
-          subject: subject ?? `Signing request: ${contract.title}`,
+          // The contract's own name: the e-mail wraps it in the signer's words.
+          subject: subject ?? contract.title,
           message: message ?? null,
           status: "created",
           expiresAt,
