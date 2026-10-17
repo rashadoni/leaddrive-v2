@@ -26,6 +26,7 @@ import { prisma } from "@/lib/prisma"
 import { requireCronAuth } from "@/lib/cron-auth"
 import { createNotification } from "@/lib/notifications"
 import { runWithRlsBypass } from "@/lib/rls-context"
+import { approvalOverdueText, contractRecipientLocale } from "@/lib/contract-lifecycle/notification-text"
 
 export const dynamic = "force-dynamic"
 
@@ -33,9 +34,16 @@ const MAX_ESCALATIONS = 3
 const ESCALATION_INTERVAL_HOURS = 24
 
 export async function POST(req: NextRequest) {
-  return runWithRlsBypass(async () => {
+  // Authenticate before entering the bypass: an unauthenticated request must
+  // never reach a context that can see every tenant.
   const cronError = requireCronAuth(req)
   if (cronError) return cronError
+  // The deploy proves the schedule answers without delivering anything.
+  if (new URL(req.url).searchParams.get("smoke") === "1") {
+    return NextResponse.json({ success: true, data: { smoke: true } })
+  }
+
+  return runWithRlsBypass(async () => {
 
   const now = new Date()
   const intervalCutoff = new Date(now.getTime() - ESCALATION_INTERVAL_HOURS * 3600 * 1000)
@@ -89,8 +97,9 @@ export async function POST(req: NextRequest) {
           role: { in: ["admin", "manager"] },
           isActive: true,
         },
-        select: { id: true },
+        select: { id: true, preferredLanguage: true },
       })
+      const organization = await prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } })
 
       for (const stage of stages) {
         try {
@@ -121,25 +130,23 @@ export async function POST(req: NextRequest) {
 
           // CAS succeeded (count===1): we own this escalation. Notify + log event.
 
-          // Build notification copy (PII-safe generic message)
-          const stageLabel = stage.label
+          // Notification copy in each reader's language (PII-safe generic message)
           const contractRef = contract.contractNumber || contract.id
-          const adminTitle = `Approval overdue: ${contractRef} — Stage "${stageLabel}"`
-          const adminMsg =
-            `Approval stage "${stageLabel}" on contract "${contract.title ?? contractRef}" ` +
-            `is overdue (escalation level ${nextLevel}). Please take action.`
+          const textFor = (preferredLanguage: string | null) => approvalOverdueText(
+            contractRecipientLocale(preferredLanguage, organization?.settings),
+            { contractRef, contractTitle: contract.title ?? contractRef, stage: stage.label, level: nextLevel },
+          )
 
           const notifiedUserIds: string[] = []
 
           // 2. Notify all admins/managers
           await Promise.allSettled(
-            adminUsers.map(async (u: { id: string }) => {
+            adminUsers.map(async (u: { id: string; preferredLanguage: string | null }) => {
               const n = await createNotification({
                 organizationId: orgId,
                 userId: u.id,
                 type: "warning",
-                title: adminTitle,
-                message: adminMsg,
+                ...textFor(u.preferredLanguage).managers,
                 entityType: "contract",
                 entityId: contract.id,
                 kind: "contract.approval_overdue",
@@ -150,15 +157,15 @@ export async function POST(req: NextRequest) {
 
           // 3. Remind the assignee (if any and not already in the admin list)
           if (stage.assigneeUserId && !notifiedUserIds.includes(stage.assigneeUserId)) {
-            const assigneeMsg =
-              `Reminder: approval stage "${stageLabel}" on contract ` +
-              `"${contract.title ?? contractRef}" requires your decision. It is overdue.`
+            const assignee = await prisma.user.findFirst({
+              where: { id: stage.assigneeUserId, organizationId: orgId },
+              select: { preferredLanguage: true },
+            })
             const n = await createNotification({
               organizationId: orgId,
               userId: stage.assigneeUserId,
               type: "warning",
-              title: `Action needed: approve "${stageLabel}"`,
-              message: assigneeMsg,
+              ...textFor(assignee?.preferredLanguage ?? null).assignee,
               entityType: "contract",
               entityId: contract.id,
               kind: "contract.approval_overdue",

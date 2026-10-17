@@ -1674,6 +1674,34 @@ jobs:
                exit 1
              fi'
 
+      # Contract reminders were installed by a hand-run script that did not
+      # move with production in September 2026; for a month none fired. The
+      # deploy now installs them with the other schedules, and this proves
+      # each is scheduled exactly once and answers (owner, 2026-10-17).
+      - name: Verify the contract reminder schedulers
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail
+             CRONTAB="$(crontab -l 2>/dev/null)"
+             for ENDPOINT in renewal-alerts contract-approval-escalations contract-milestone-reminders esign-reminders; do
+               ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk -v target="cron-trigger.sh /api/cron/$ENDPOINT " '\''
+                 $0 !~ /^[[:space:]]*#/ && index($0, target) { count++ }
+                 END { print count + 0 }
+               '\'')"
+               if [ "$ACTIVE_COUNT" -ne 1 ]; then
+                 echo "FATAL: expected exactly one active $ENDPOINT cron; found $ACTIVE_COUNT"
+                 exit 1
+               fi
+               SMOKE_OUTPUT="$(CRON_TRIGGER_LOCK_WAIT_SECONDS=120 /usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-trigger.sh "/api/cron/$ENDPOINT?smoke=1")"
+               printf "%s\n" "$SMOKE_OUTPUT"
+               if ! printf "%s\n" "$SMOKE_OUTPUT" | grep -Fq '\''"smoke":true'\''; then
+                 echo "FATAL: $ENDPOINT cron smoke was not side-effect-free and successful"
+                 exit 1
+               fi
+             done'
+
       - name: Verify missed inbound reconciliation scheduler
         if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
         run: |
