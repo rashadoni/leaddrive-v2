@@ -59,3 +59,104 @@ immutable event archive.
 Operational details and subsequent receipts are appended to the
 [session journal](../kafka-readiness-session-log.md). This baseline never
 substitutes for a fresh SHA-bound preflight at activation.
+
+## Evidence update — 2026-10-18
+
+The historical snapshot above is preserved. The following coordinator-verified
+receipts supersede its pending inspection, test-stack and contradictory pgpass
+status only. They do not close production Kafka or all-module recovery gates.
+This documentation checkpoint did not dispatch CI or access production.
+
+### Current application and read-only production inventory
+
+- Current main and production artifact:
+  `3cdca2db68823dde281526837fce5ac3aa0af280`.
+  [Deploy 39076392003](https://github.com/rashadoni/leaddrive-v2/actions/runs/39076392003)
+  SUCCESS; root checked the exact public artifact SHA and successful ping.
+- [Inventory 39079029627](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079029627)
+  SUCCESS, observation time `23:27:25 UTC`, on that matching artifact.
+  These are production observations, not measurements of the development host.
+
+| Observation | Exact value | Interpretation limit |
+|---|---|---|
+| RAM total / available | 12247548 / 10243736 kB | Instantaneous availability, not a peak-load or Kafka sizing budget |
+| Disk total / available | 206900281344 / 175675301888 bytes | Observed filesystem capacity, not three independent failure domains |
+| Swap | 0 | No swap capacity observed |
+| PostgreSQL server_version_num | 160015 | PostgreSQL 16.15 source; no version change performed |
+| wal_level / max_slot_wal_keep_size | replica / -1 | Logical CDC and a bounded slot-WAL budget are NOT configured |
+| Replication slots / outbox publication | 0 / absent | Production CDC has not been commissioned by these changes |
+| Expected event-platform tables | All eight present, FORCE RLS enabled | Presence/RLS flags, not proof of all-module adoption or worker authorization |
+| EstimatedRows | 0 in reported estimates | Planner estimates are not exact counts; do not claim empty event history |
+| WAL cumulative counter | 17852077336 bytes since September 4 | One cumulative sample, not WAL/day, event rate or peak throughput |
+
+The source logical-WAL change and required restart are still NOT DONE. No
+rate, peak, tenant-count, RPO/RTO or retention sizing conclusion follows from
+this one inventory sample.
+
+### Backup-file contract: source contradiction resolved, recovery still open
+
+- The service-owned private pgpass fix is now in current main/production.
+  Fresh inventory reports both source and scratch password files as owned by
+  the backup service UID/GID, mode 0600, regular, canonical, one link and
+  readable by that service. Both CA files are also service-readable. This
+  supersedes the earlier unknown-ownership note for this observed snapshot.
+- All four recovery timers are currently reported inactive. Their fresh
+  enabled/disabled states and the complete recovery verdict are still pending
+  [backup-readiness 39079208286](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079208286),
+  queued at this update. Inactive does not mean disabled, and queued is not PASS.
+- Do not replace the historical 26-issue failure with a new readiness claim
+  until that run returns. File metadata is not proof of DB authentication,
+  verified restoration, signed custody, immutable archive or enterprise DR.
+  The bounded install checklist and its partial-failure/timer risks remain in
+  the session journal; any dispatch requires fresh states and confirmed scope.
+
+### Exact-head CI evidence, not yet merged delivery
+
+Each row has all five required checks successful: pr-scope, static-checks,
+typecheck, runner-policy and scan. These PR heads are NOT MERGED at this update.
+
+| PR / exact HEAD | Required-check run | Basic stack | Synthetic CDC |
+|---|---|---|---|
+| [866](https://github.com/rashadoni/leaddrive-v2/pull/866) / `12bfbe398e52f2830de8bfa8b9b7ea99fb20b89e` | [39077023050](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077023050) SUCCESS | [39077023226](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077023226) SUCCESS | [39077023158](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077023158) SUCCESS |
+| [867](https://github.com/rashadoni/leaddrive-v2/pull/867) / `6c97dbec345745b6bc07a915e78c04a3b9f8a866` | [39076938861](https://github.com/rashadoni/leaddrive-v2/actions/runs/39076938861) SUCCESS | [39076938829](https://github.com/rashadoni/leaddrive-v2/actions/runs/39076938829) SUCCESS | [39076938841](https://github.com/rashadoni/leaddrive-v2/actions/runs/39076938841) SUCCESS |
+| [868](https://github.com/rashadoni/leaddrive-v2/pull/868) / `572b3ed36e0bdff668a2bc2e13b0b84a101940bb` | [39077546346](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077546346) SUCCESS | [39077546339](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077546339) SUCCESS | [39077546451](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077546451) SUCCESS |
+
+- The isolated stack and synthetic snapshot/stream/restart transport have
+  actual runtime evidence. Raw JSON preserves all eight source envelopes;
+  the legacy expanded-mode diagnostic identified four payload mismatches.
+  The corrected-template run is evidence for the serialization fix, not a
+  production connector or a real Fund API-to-worker transaction.
+- PR868's actual required suite includes the pure Fund Vitest tests. This
+  supersedes earlier Vitest NOT RUN notes for that exact CI head, not for all
+  later worktrees. The separate 56 Node tooling checks are not those tests.
+  Typecheck gate SUCCESS uses its existing diagnostic baseline; it does not
+  assert that the entire repository has zero TypeScript diagnostics.
+- The Fund DB adapter remains PLANNED / NOT IMPLEMENTED. Broker worker,
+  restricted shadow-role proof, production TLS/ACL/HA, independent archive,
+  all-module adoption, operator replay and consumer activation remain open.
+  See the appended status map in [the backlog](KAFKA_IMPLEMENTATION_BACKLOG.md).
+
+### Subsequent backup-readiness result and one queued preparation
+
+This supersedes the queued-readiness note above. Root received
+[39079208286](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079208286)
+FAILURE at the commissioned-program gate:
+`machine_ready=no enterprise_ga_ready=no issues=26 enterprise_gaps=9 operator_attestation_required=yes`.
+It is not an inventory failure and does not prove that all other backups are
+absent. The remaining findings concern this reviewed recovery program.
+
+- Ubuntu 24.04 x86_64 confirmed; both pgpass private/readable checks and CA
+  guards PASS, with service readability separately established by inventory.
+  All eight canonical operations-script hashes/pins match artifact `3cdca2`.
+- DB/secrets/log timers: `loaded:disabled:inactive`. Runtime-files timer:
+  `not-found:not-found:inactive`. This is the fresh timer state; an absent
+  timer is not a successfully installed disabled timer.
+- Pinned age/AWS tools are missing. Unit drift, incomplete evidence/genesis
+  and stale/missing runner evidence remain; K3.6 is not closed by the pgpass fix.
+- Root dispatched exactly one
+  [install-tools run 39079299803](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079299803)
+  against reviewed current `3cdca2`, with optional custody/candidate/evidence
+  inputs empty. It is QUEUED at this update: no successful install is claimed.
+  No backup, restore or Kafka activation has been performed by that queued run.
+  Read its final phase/receipt before any follow-up; failure can leave partial
+  configuration/tools changes and is not evidence of a complete rollback.

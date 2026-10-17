@@ -290,3 +290,112 @@ tenant недоступен; shadow rebuild детерминирован; replay
 - [Machine-readable catalog](../../src/lib/event-platform/catalog.ts)
 - [Deployment](../DEPLOYMENT.md) и [delivery contract](../DELIVERY-ARCHITECTURE.md)
 - [Журнал задачи](../kafka-readiness-session-log.md)
+
+## Обновление evidence и статусов — 2026-10-18
+
+Исходный план и прежние снимки выше сохранены. Эта секция уточняет только
+подтверждённые результаты; строки каталога не становятся «внедрёнными» от
+наличия схемы, зелёного CI или таблицы. Ответственный за текущую реализацию
+и доставку — root-сессия Kafka; эксплуатационные роли K0.4 этим не назначены.
+
+### Фактические receipts
+
+- Текущий main и production artifact:
+  `3cdca2db68823dde281526837fce5ac3aa0af280`;
+  [deploy 39076392003](https://github.com/rashadoni/leaddrive-v2/actions/runs/39076392003)
+  SUCCESS, public SHA и ping сверены root.
+- [Read-only inventory 39079029627](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079029627)
+  SUCCESS, наблюдение `23:27:25 UTC`. Точные RAM/disk/PG/файловые данные и
+  ограничения приведены в [обновлённом baseline](READINESS_BASELINE.md).
+  Все восемь ожидаемых таблиц присутствуют с FORCE RLS, но EstimatedRows=0
+  не является exact count. Единственный WAL counter 17852077336 с 4 сентября
+  не доказывает WAL/сутки, скорость событий или peak.
+- Production PostgreSQL по-прежнему `wal_level=replica`, slot WAL cap `-1`,
+  slots=0, outbox publication отсутствует. Logical WAL/restart **NOT DONE**.
+- На всех трёх точных HEAD прошли пять required checks и реальные basic/CDC
+  jobs. На момент этой записи PR866/867/868 ещё **НЕ MERGED**:
+
+| PR / HEAD | Required checks SUCCESS | Basic SUCCESS | CDC SUCCESS |
+|---|---|---|---|
+| [866](https://github.com/rashadoni/leaddrive-v2/pull/866) / `12bfbe398e52f2830de8bfa8b9b7ea99fb20b89e` | [39077023050](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077023050) | [39077023226](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077023226) | [39077023158](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077023158) |
+| [867](https://github.com/rashadoni/leaddrive-v2/pull/867) / `6c97dbec345745b6bc07a915e78c04a3b9f8a866` | [39076938861](https://github.com/rashadoni/leaddrive-v2/actions/runs/39076938861) | [39076938829](https://github.com/rashadoni/leaddrive-v2/actions/runs/39076938829) | [39076938841](https://github.com/rashadoni/leaddrive-v2/actions/runs/39076938841) |
+| [868](https://github.com/rashadoni/leaddrive-v2/pull/868) / `572b3ed36e0bdff668a2bc2e13b0b84a101940bb` | [39077546346](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077546346) | [39077546339](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077546339) | [39077546451](https://github.com/rashadoni/leaddrive-v2/actions/runs/39077546451) |
+
+Pure Fund Vitest выполнен в required suite PR868. Это не прежние 56 Node
+tooling checks и не только синтаксическая проверка. Typecheck gate SUCCESS
+не означает отсутствие всех TS diagnostics: действует существующий baseline.
+Synthetic CDC доказал raw-envelope parity восьми записей и cold restart;
+четыре mismatch legacy expanded-режима — выявленный транспортный дефект,
+а не допустимое искажение business payload. Исправление шаблона проверено
+на стенде, но ещё не доставлено этими PR в main/production.
+
+### Гранулярная карта завершённого scope и открытых частей
+
+`verified (bounded)` означает доказанный узкий результат в указанном
+окружении, а не закрытие всей строки K-ID. `in-progress / partial` сохраняет
+все неподтверждённые критерии исходной таблицы.
+
+| K-ID | Статус подтверждённой части | Что остаётся |
+|---|---|---|
+| K0.1 | verified (bounded): текущий main/artifact/ping, read-only таблицы/RLS, exact-head CI receipts | Перед mutation повторять актуальный SHA/preflight; полный аудит всех прав и модулей этим не выполнен |
+| K0.2 | in-progress / partial: [Fund](WRITE_PATH_INVENTORY.md) и [ограниченный non-Fund inventory](NON_FUND_WRITE_PATH_INVENTORY.md) | Остальные writers/домены NOT INSPECTED; Warehouse/Accounting только своим card-by-card процессом |
+| K0.3 | in-progress / partial: фактические RAM/disk и один cumulative WAL sample | Скорости/peaks, точные counts, tenant skew, backlog budget, RPO/RTO не измерены |
+| K0.4 | planned / open decisions | Фактическое дежурство, независимые операторы, доступные failure domains; без новой платной подписки до отдельного решения |
+| K1.1–K1.2 | in-progress / partial: production resource snapshot и pinned disposable fixture | Выбор независимых production failure domains, sizing, upgrade/rollback proof |
+| K1.3 | verified (bounded, disposable CI): PostgreSQL/Kafka/Connect/Registry поднимаются и проходят smoke | Это single-broker RF1 dev-стенд, не production HA или полноценный staging |
+| K1.4–K1.6 | planned / not commissioned | Production quorum/реплики/quotas, TLS/ACL/rotation, live RF3/minISR2 каталог не доказаны |
+| K1.7–K1.8 | in-progress / partial: internal test topics, outbox transport, исправленная JSON-сериализация и CI workflow | Registry compatibility enforcement и platform production delivery/live preflight ещё не приняты |
+| K2.1 | in-progress / partial: PG/RLS/WAL inventory, private pgpass contract и свежая service readability обоих pgpass/CA | Это не TLS handshake, парольная аутентификация или restore receipt; свежий backup verdict ожидается |
+| K2.2–K2.3 | planned / NOT DONE на production | WAL budget и bounded slot policy, logical setting/restart/rollback ещё не выполнены |
+| K2.4 | verified (bounded, disposable CI): SQL role/publication guards и негативные ordinary-SQL проверки | Trusted REPLICATION principal не является абсолютной изоляцией от всех DB данных; production роль/connector ещё не активированы |
+| K2.5 | planned / production NOT DONE | verify-full, live credentials/rotation и постоянная production slot/connector identity не испытаны; тестовый sslmode не доказательство TLS |
+| K2.6 | verified (bounded, synthetic transport): snapshot → streaming, точные восемь source envelopes, headers/key/order | Реальные Fund API commands и production concurrent workload не участвовали |
+| K2.7 | in-progress / partial: cold restart с сохранением тестовой истории и cleanup PASS | Длительный outage, WAL exhaustion/invalidated slot и recovery policy не испытаны |
+| K3.1–K3.8 | planned / prerequisites in progress | Kafka archive sink/off-provider immutable copy, reconciliation, alerts, PITR/DR и независимый drill не закрыты; backup-file fix не заменяет их |
+| K4.1–K4.3 | planned DB/broker adapter; partial reuse контрактов | Явная DB transaction, full-envelope PG hash, per-build inbox/checkpoint, роль и broker ack ещё не реализованы |
+| K4.4 | verified (bounded): pure deterministic Fund balance reducer + реальные Vitest | DB fold/dedupe, shadow integration и полный rebuild ещё не реализованы; reducer сам не обеспечивает event-ID дедупликацию |
+| K4.5–K4.8 | planned / NOT IMPLEMENTED в новом scope | Broker generation/high-water, retries/quotas/effect adapters, release/runtime smoke worker |
+| K5.1–K5.8 | planned / существующие primitives не равны controller | Operator API, планы/approvals, DB shadow, catch-up/promotion/rollback и offset exception не испытаны |
+| K6.D.1–K6.D.8 | in-progress / partial inventory только названных цепочек | Ни Finance целиком, ни остальные 26 доменов не объявляются мигрированными; source adoption/effects/legacy retirement требуют отдельных receipts |
+| K7.1–K7.3 | in-progress / partial: pure Fund fixtures и synthetic transport assertions | Нет сквозного Fund worker/DB/Broker crash-rebalance/tenant-isolation drill |
+| K7.4–K7.8 | planned / NOT RUN | Ошибочный reducer → исправленный rebuild, effects/UNKNOWN, DR, promotion/rollback под нагрузкой и независимый оператор |
+| K8.1–K8.8 | planned / production activation NOT DONE | Нет Kafka canary, live Fund worker, production replay/promotion, расширения tenant/domain или Kafka operational receipt |
+
+### Следующий ограниченный шаг и условия остановки
+
+Свежий inventory подтвердил оба pgpass: service UID/GID, mode 0600,
+regular/canonical, один link, readable=yes; обе CA readable=yes. Все четыре
+timer inactive, но enabled states и полный verdict ещё ожидаются от queued
+[backup-readiness 39079208286](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079208286).
+Не считать inactive равным disabled. Установка tools оставит четыре timer
+disabled/inactive: перед запуском нужны свежие состояния и подтверждённый scope,
+с учётом описанных в журнале частичных записей/rollback-ограничений.
+
+Параллельно подготовлен только план restricted Fund shadow DB adapter, без
+реализации: immutable createdAt grant candidate, build/controller row lock,
+полный PG-jsonb hash, per-build inbox, duplicate/new/older offset cases и
+broker partition high-water/generation. Реальные PostgreSQL role/race tests
+пока NOT RUN. P1 в целом ещё не закрыт; P2–P5 тем более не достигнуты.
+
+### Дополнение: readiness завершился, подготовка tools только в очереди
+
+Позднейший результат заменяет отметку queued для backup-readiness выше:
+[39079208286](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079208286)
+FAILURE именно по commissioned-program gate —
+`machine_ready=no enterprise_ga_ready=no issues=26 enterprise_gaps=9 operator_attestation_required=yes`.
+Успешный inventory этим не отменяется, отсутствие всех других backup не доказано.
+
+Ubuntu 24.04 x86_64 подтверждён, оба pgpass private/readable contract PASS,
+CA guards PASS и service readability подтверждена отдельно. Все восемь
+canonical ops scripts/pins совпадают с artifact `3cdca2`. Свежие timer states:
+DB/secrets/log — `loaded:disabled:inactive`; runtime-files —
+`not-found:not-found:inactive`. Отсутствующий timer не считается установленным.
+Age/AWS отсутствуют, unit drift/evidence/genesis/stale-runner gaps сохраняются;
+статус K2.1/K3.6 остаётся частичным, не verified recovery.
+
+Root поставил единственный
+[install-tools 39079299803](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079299803)
+на reviewed `3cdca2`; необязательные custody/candidate/evidence fields пусты.
+На этой отметке run QUEUED, а не SUCCESS. Backup/restore/Kafka activation
+не выполнялись. Следующее действие — прочитать его фактический receipt;
+failure может включать частичные config/tools изменения, а не полный rollback.

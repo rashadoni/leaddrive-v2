@@ -936,3 +936,63 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   service ACL and canary privacy remain independent production prerequisites.
 - These are additional NOT RUN acceptance requirements for the planned adapter;
   no role, policy, schema, application handler or broker was changed here.
+
+## 2026-10-18 — baseline/backlog reconciled with fresh production and CI receipts
+
+- Resumed only the separate DB-plan worktree at clean checkpoint
+  `99936930385202acda433d8fc72fd8a779421cca`. Read READINESS_BASELINE.md and
+  KAFKA_IMPLEMENTATION_BACKLOG.md completely, then appended evidence/status
+  sections to those files and this journal. Earlier snapshots are retained;
+  no frozen PR866/867/868 worktree or executable file was changed.
+- Root confirmed current main/production
+  `3cdca2db68823dde281526837fce5ac3aa0af280`, deploy `39076392003` SUCCESS,
+  matching public artifact SHA and ping. Read-only inventory `39079029627`
+  SUCCESS observed `23:27:25 UTC`: RAM 12247548/10243736 kB total/available,
+  disk 206900281344/175675301888 bytes total/available, swap 0. PostgreSQL
+  160015 still has wal_level=replica, slot WAL cap -1, zero slots and no outbox
+  publication. Logical-WAL configuration/restart remains NOT DONE.
+- All eight expected event-platform tables are present with FORCE RLS.
+  EstimatedRows=0 is not an exact count; cumulative WAL 17852077336 since
+  September 4 is not a rate/peak measurement. The new baseline explicitly
+  prevents capacity or empty-history claims from those observations.
+- Source/scratch pgpass now have fresh service UID/GID, 0600, regular/canonical,
+  one-link/readable evidence; both CA files are service-readable. This
+  supersedes the earlier unknown-live-metadata note for this snapshot only.
+  All four timers are inactive; enabled states and the complete backup verdict
+  still await queued readiness run `39079208286`. No install authorization is
+  inferred solely from stale timer states or the metadata result.
+- All five required checks are SUCCESS on exact PR866 `12bf` / run39077023050,
+  PR867 `6c97` / run39076938861, PR868 `572b` / run39077546346. Actual basic/CDC
+  success pairs are respectively 39077023226/39077023158,
+  39076938829/39076938841 and 39077546339/39077546451. These heads remain
+  NOT MERGED at this update; full SHA/run links are appended in both documents.
+- Pure Fund Vitest was included in the successful required suite, separately
+  from the 56 Node tooling checks. The typecheck gate's diagnostic baseline
+  does not prove repository-wide zero TS diagnostics. Synthetic raw transport
+  parity/restart is not a real Fund API-to-worker test or production activation.
+- K-ID statuses are deliberately bounded/partial: no production TLS/HA/archive,
+  all-module adoption, broker worker, DB adapter, operator replay or consumer
+  activation is claimed. The source hash/payload and shadow-role/ack plans
+  remain implementation/test obligations, not completed protection.
+- This checkpoint performs docs-only diff/append-only verification. No source
+  code, dependency, SQL, test suite, CI dispatch, push, merge or runtime action
+  belongs to it. Root continues the separate live readiness/delivery work.
+
+### Later receipt received before this docs-only commit
+
+- Backup-readiness39079208286 finished FAILURE at the commissioned-program
+  gate: machine_ready=no, enterprise_ga_ready=no, issues=26, enterprise_gaps=9,
+  operator_attestation_required=yes. This supersedes queued above, not the
+  successful inventory, and does not establish absence of all other backups.
+- Ubuntu24.04 x86_64 confirmed, both pgpass private/readable contract PASS,
+  CA guards PASS and metadata readability yes. All eight canonical ops scripts
+  and pins match artifact3cdca2. DB/secrets/log timer states are
+  loaded:disabled:inactive; runtime-files is not-found:not-found:inactive.
+  Missing pinned age/AWS, unit drift, evidence/genesis and stale runner gaps
+  persist; no commissioned recovery PASS is inferred.
+- Root dispatched only install-tools39079299803 against reviewed3cdca2 with
+  all optional custody/candidate/evidence inputs empty. It remains QUEUED at
+  receipt time; no backup/restore/Kafka activation occurred. The final receipt
+  must be inspected for actual stage and partial writes before another action.
+  Both appended status documents include this newer result without deleting
+  the earlier queued snapshot. This subtask still performs documentation only.
