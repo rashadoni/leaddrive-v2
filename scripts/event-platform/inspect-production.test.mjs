@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, writeFile, rm, access } from 'node:fs/promises'
+import { mkdtemp, writeFile, rm, access, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -88,5 +88,31 @@ test('rejects connection option overrides instead of weakening read-only inspect
     assert.notEqual(result.status, 0)
     assert.equal(result.stdout, '')
     assert.match(result.stderr, /unsupported inspection connection configuration/)
+  }
+})
+
+test('reports only fixed-label connection-file authority metadata, never paths or contents', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'ld-file-metadata-test-'))
+  const file = path.join(directory, 'secret-fixture')
+  const link = path.join(directory, 'must-not-follow')
+  await writeFile(file, 'synthetic-sensitive-contents-not-for-output', { mode: 0o600 })
+  await symlink(file, link)
+  try {
+    for (const [target, regular] of [[file, 'yes'], [link, 'no']]) {
+      const result = spawnSync('bash', ['--noprofile', '--norc', '-c',
+        'source "$1"; id(){ command id "$1"; }; runuser(){ shift 3; "$@"; }; report_connection_file_metadata fixture "$2"',
+        'test', script, target], { encoding: 'utf8', env: { PATH: process.env.PATH } })
+      assert.equal(result.status, 0, result.stderr)
+      assert.match(result.stdout, new RegExp(`^connection_file=fixture regular=${regular} `))
+      if (regular === 'yes') {
+        assert.match(result.stdout, /mode=600 links=1 canonical=yes service_readable=yes/)
+      } else {
+        assert.match(result.stdout, /mode=unknown links=unknown canonical=no service_readable=no/)
+      }
+      assert.equal(result.stdout.includes(directory), false)
+      assert.doesNotMatch(result.stdout, /synthetic-sensitive/)
+    }
+  } finally {
+    await rm(directory, { recursive: true })
   }
 })

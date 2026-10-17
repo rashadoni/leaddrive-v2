@@ -84,3 +84,43 @@ the sequence and avoiding a second manual heavy phase on the development host.
 - Run `39069469912` failed before installing tools: `database connection material must be root-owned`. Its workflow cleanup step succeeded, and the commissioning script's cleanup path clears the temporary runner fences; no backup/restore/customer data action ran. No retry was issued.
 - Source diagnosis found conflicting checked-in policies: the scratch provisioner writes a backup-service-owned 0600 pgpass accepted by the TLS remediator/readiness diagnostic, while commissioning, server-deploy and postgres-backup still demand root ownership/group-readable modes. Libpq ignores group-readable pgpass. Fixing only one guard or blindly changing file owners would not repair the chain.
 - A separate reviewed policy alignment with meaningful libpq/permission regression tests and refreshed helper pins is required. Current source pgpass ownership is not known; the successor inventory script now emits only fixed-label owner classes/modes for the four canonical connection files, without reading their contents.
+
+## 2026-10-17 — K0 merge, recovery fix and expanded bounded inventory
+
+- All five required PR860 checks actually succeeded on
+  `074028396c208fec187c7a69a2976bf2308b2c4b`. Normal merge produced
+  `88f658e68d43951e2f265243224bd980a2c5a66a`; deployment run `39070450651`
+  is in progress, not yet a successful production receipt. No bypass/rerun was
+  used and the old single PR watcher has exited.
+- Prepared separate draft PR #863, branch
+  `codex/backup-pgpass-contract-20261017`, head
+  `f12020c6d8e56965ebd03ec78d3e2f2a85697c32`: strict private service-owned
+  pgpass for production; invoking-user ownership for offline verification;
+  CA/root-environment protections preserved; synchronized helper hashes.
+  The current exact head must be re-read from GitHub before delivery.
+  Twenty-nine targeted guard tests, including root-equivalent service
+  identities, passed locally. Real libpq authentication awaits its disposable
+  GitHub job; no live credential file was normalized or rewritten.
+- Expanded the fixed-label connection-file diagnostic to include group class,
+  link count, canonical-path equality and backup-service readability. No file
+  contents, hostnames, usernames, credential hashes or environment dumps are
+  printed. Eleven current tooling tests, shell syntax and runner policy pass.
+- Added `NON_FUND_WRITE_PATH_INVENTORY.md`: bounded CRM/Sales/Support/Marketing/
+  Omnichannel/VoIP/SMS OTP chains, shared direct senders and a partial Loyalty
+  appendix. Sixty-nine local references were checked. Existing per-path claims
+  must be preserved; they are not universal event-sourcing or effect fencing.
+  Examples: keyed comments and Chatwoot claims provide useful local protection,
+  while direct senders/callback tails and current-rule bonus calculation cannot
+  simply be reused as replay reducers. No business code was changed in this
+  inventory phase; all other paths stay explicitly NOT INSPECTED.
+- A bounded app thread-list lookup did not locate the older local backup task
+  among available recent summaries. No unrelated task was messaged or created,
+  and September screenshots were not promoted to current custody evidence.
+
+### Current execution position
+
+The first K0 tooling PR is merged and its normal production release is being
+verified. PR861 remains the isolated test-stack draft; PR863 is a separate
+backup prerequisite draft. Next: confirm the first release's artifact/health,
+dispatch read-only inventory, then run the prepared CI test phases in sequence.
+No Kafka consumers, offsets or customer replay have been activated.

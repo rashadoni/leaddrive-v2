@@ -79,18 +79,29 @@ os.execvpe("psql", ["psql", "-X", "-qAt", "-v", "ON_ERROR_STOP=1"], env)
 }
 
 report_connection_file_metadata() {
-  local label="$1" file="$2" owner_class=unknown mode=unknown owner_uid backup_uid
+  local label="$1" file="$2" owner_class=unknown group_class=unknown mode=unknown
+  local owner_uid group_gid backup_uid backup_gid link_count canonical=no readable=no
   if [ -f "$file" ] && [ ! -L "$file" ]; then
     owner_uid="$(stat -c '%u' "$file")"
+    group_gid="$(stat -c '%g' "$file")"
     backup_uid="$(id -u leaddrive-backup 2>/dev/null || true)"
+    backup_gid="$(id -g leaddrive-backup 2>/dev/null || true)"
     case "$owner_uid" in 0) owner_class=root ;; *)
       if [ -n "$backup_uid" ] && [ "$owner_uid" = "$backup_uid" ]; then owner_class=backup-service; else owner_class=other; fi ;;
     esac
+    case "$group_gid" in 0) group_class=root ;; *)
+      if [ -n "$backup_gid" ] && [ "$group_gid" = "$backup_gid" ]; then group_class=backup-service; else group_class=other; fi ;;
+    esac
     mode="$(stat -c '%a' "$file")"
     [[ "$mode" =~ ^[0-7]{3,4}$ ]] || mode=unknown
-    printf 'connection_file=%s regular=yes owner=%s mode=%s\n' "$label" "$owner_class" "$mode"
+    link_count="$(stat -c '%h' "$file")"
+    [[ "$link_count" =~ ^[0-9]+$ ]] || link_count=unknown
+    [ "$(realpath -e -- "$file")" != "$file" ] || canonical=yes
+    if runuser -u leaddrive-backup -- test -r "$file" 2>/dev/null; then readable=yes; fi
+    printf 'connection_file=%s regular=yes owner=%s group=%s mode=%s links=%s canonical=%s service_readable=%s\n' \
+      "$label" "$owner_class" "$group_class" "$mode" "$link_count" "$canonical" "$readable"
   else
-    printf 'connection_file=%s regular=no owner=unknown mode=unknown\n' "$label"
+    printf 'connection_file=%s regular=no owner=unknown group=unknown mode=unknown links=unknown canonical=no service_readable=no\n' "$label"
   fi
 }
 
