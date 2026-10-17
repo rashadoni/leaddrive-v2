@@ -105,3 +105,138 @@ the new aggregate production inventory. Finish/push the separate pgpass fix
 as a draft with explicit paths; run its full gates and real libpq test in CI
 before merge. The disposable Kafka stack remains a prepared draft. Production
 Kafka consumers, offsets and replay remain unchanged.
+## 2026-10-17 — disposable test-stack preparation during K0 checks
+
+- PR #860 is ready on exact head `074028396c208fec187c7a69a2976bf2308b2c4b`. Tooling validation, secret scan, runner policy and pr-scope passed; static-checks/typecheck were still running. GitHub auto-merge is disabled, so the task keeps one local checks watcher (no duplicate workflow attempt).
+- Prepared K1.2/K1.3 fixture code in a separate managed worktree `/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-kafka-test-stack-20261017`, branch `codex/kafka-test-stack-20261017`, based on that task-owned head. This preparation does not mark K0's pending live inventory complete.
+- Added digest-pinned Linux/amd64 PostgreSQL/Kafka/Connect/Apicurio services on an internal disposable network. No host bind mounts, production secrets, production addresses or persistent restart policy; only Connect/Registry have loopback dynamic ports. Memory ceilings total 2,944 MiB, and the harness requires 4 GiB available memory. The single broker, RF1, plaintext and ephemeral registry are test-only and cannot satisfy the unchanged production gates.
+- Added a CI-only synthetic smoke with explicit test-project naming, per-run isolation, precreated Connect topics, logical-WAL check, actual Connect plugin/Registry probes, key/value transport assertion, bounded diagnostics, and scoped cleanup. JVM services have not been started on Contabo.
+- Primary upstream configuration and Registry endpoint were independently checked. Static Compose parsing, three fixture safety tests, all ten current tooling tests, bash syntax, runner policy and existing 27-domain asset gate passed. Runtime smoke is NOT RUN until its GitHub job executes; it does not yet test CDC snapshot, schemas, consumer/RLS, archive, replay or HA.
+
+### Test-stack stopping point
+
+Fixture implementation is ready for a draft PR. Its heavy smoke stays skipped
+while draft; it is queued for execution after the K0 required checks, preserving
+the sequence and avoiding a second manual heavy phase on the development host.
+
+- Test-stack checkpoint `3100de7a1` is pushed; draft PR https://github.com/rashadoni/leaddrive-v2/pull/861 depends on #860. Its integration smoke is explicitly skipped while draft and will be made ready after predecessor gates. The K0 tooling and integration worktrees remain separate and cleanly scoped.
+
+## 2026-10-17 — actual recovery prerequisite inspection
+
+- Reused the existing exact-main `Inspect production safely` workflow, view `backup-readiness`, rather than treating the new database inventory as a restore validator. Read-only run `39069172504` on `9ead36ce7ef64cb16d521acad9bc3b210812a3c9` completed with failure: `machine_ready=no enterprise_ga_ready=no issues=26 enterprise_gaps=9 operator_attestation_required=yes`.
+- New real blockers include missing pinned backup tools, artifact/unit drift, incomplete evidence/genesis, disabled recovery timers and stale/missing runner evidence. This is not evidence that all other backups are absent. No restore, customer-data rewrite or Kafka operation ran in the diagnostic.
+- Current production deploy `39066347230` succeeded and public artifact SHA now equals `9ead36ce...`; the earlier `1800e514...` observation remains a historical receipt, not the current artifact.
+- Started the existing bounded `install-backup-tools` commissioning operation, run `39069469912`, through current-main GitHub Actions. This is ordinary prerequisite preparation within the authorized implementation: pinned public tools and reviewed log-policy preparation only; it accepts no identity/evidence input, purchases no service and does not fabricate the missing offline attestation. Result pending.
+- Added `READINESS_BASELINE.md` with evidence, limitations and ordered remediation. A compatibility review also identified that libpq target_session_attrs=read-write cannot coexist with forced read-only inspection; the successor branch now rejects that combination explicitly instead of relaxing the guard. Existing PR860 remains frozen on its tested head.
+
+### Commissioning precondition defect
+
+- Run `39069469912` failed before installing tools: `database connection material must be root-owned`. Its workflow cleanup step succeeded, and the commissioning script's cleanup path clears the temporary runner fences; no backup/restore/customer data action ran. No retry was issued.
+- Source diagnosis found conflicting checked-in policies: the scratch provisioner writes a backup-service-owned 0600 pgpass accepted by the TLS remediator/readiness diagnostic, while commissioning, server-deploy and postgres-backup still demand root ownership/group-readable modes. Libpq ignores group-readable pgpass. Fixing only one guard or blindly changing file owners would not repair the chain.
+- A separate reviewed policy alignment with meaningful libpq/permission regression tests and refreshed helper pins is required. Current source pgpass ownership is not known; the successor inventory script now emits only fixed-label owner classes/modes for the four canonical connection files, without reading their contents.
+
+## 2026-10-17 — K0 merge, recovery fix and expanded bounded inventory
+
+- All five required PR860 checks actually succeeded on
+  `074028396c208fec187c7a69a2976bf2308b2c4b`. Normal merge produced
+  `88f658e68d43951e2f265243224bd980a2c5a66a`; deployment run `39070450651`
+  is in progress, not yet a successful production receipt. No bypass/rerun was
+  used and the old single PR watcher has exited.
+- Prepared separate draft PR #863, branch
+  `codex/backup-pgpass-contract-20261017`, head
+  `f12020c6d8e56965ebd03ec78d3e2f2a85697c32`: strict private service-owned
+  pgpass for production; invoking-user ownership for offline verification;
+  CA/root-environment protections preserved; synchronized helper hashes.
+  The current exact head must be re-read from GitHub before delivery.
+  Twenty-nine targeted guard tests, including root-equivalent service
+  identities, passed locally. Real libpq authentication awaits its disposable
+  GitHub job; no live credential file was normalized or rewritten.
+- Expanded the fixed-label connection-file diagnostic to include group class,
+  link count, canonical-path equality and backup-service readability. No file
+  contents, hostnames, usernames, credential hashes or environment dumps are
+  printed. Eleven current tooling tests, shell syntax and runner policy pass.
+- Added `NON_FUND_WRITE_PATH_INVENTORY.md`: bounded CRM/Sales/Support/Marketing/
+  Omnichannel/VoIP/SMS OTP chains, shared direct senders and a partial Loyalty
+  appendix. Sixty-nine local references were checked. Existing per-path claims
+  must be preserved; they are not universal event-sourcing or effect fencing.
+  Examples: keyed comments and Chatwoot claims provide useful local protection,
+  while direct senders/callback tails and current-rule bonus calculation cannot
+  simply be reused as replay reducers. No business code was changed in this
+  inventory phase; all other paths stay explicitly NOT INSPECTED.
+- A bounded app thread-list lookup did not locate the older local backup task
+  among available recent summaries. No unrelated task was messaged or created,
+  and September screenshots were not promoted to current custody evidence.
+
+### Current execution position
+
+The first K0 tooling PR is merged and its normal production release is being
+verified. PR861 remains the isolated test-stack draft; PR863 is a separate
+backup prerequisite draft. Next: confirm the first release's artifact/health,
+dispatch read-only inventory, then run the prepared CI test phases in sequence.
+No Kafka consumers, offsets or customer replay have been activated.
+
+## 2026-10-17 — first disposable runtime failure and scoped correction
+
+- PR861 was made ready after PR860's required checks and the release's quality
+  gates had succeeded. This started actual stack smoke `39071794001` and full
+  PR gates `39071794088` on `7dd52d3ed37d7de531654a400e1dacd418b8e6b8`.
+  The production release continued through its independent supported workflow;
+  no JVM/test services were started on Contabo.
+- The runtime smoke failed before HTTP readiness: PostgreSQL and Kafka were
+  healthy and Connect/Registry started, but Docker reported no published
+  `8083/tcp` port for the internal-only bridge. Read the actual failing job
+  logs; this was not a CDC or application-data failure. Project-scoped cleanup
+  removed the disposable services and network.
+- Converted only this PR back to draft while correcting the fixture. Removed
+  all host port publication and run bounded HTTP probes from the existing
+  Connect container over the private network. Internal isolation, image pins,
+  memory ceilings and production gates remain unchanged. Added a regression
+  asserting that no service publishes ports and HTTP probes use the internal
+  container path. No unchanged retry or workflow gate bypass was issued.
+- Prepared a clean successor worktree/branch
+  `leaddrive-kafka-cdc-synthetic-20261017` /
+  `codex/kafka-cdc-synthetic-20261017` for K2 transport tests only. Its design
+  reuses the real foundation migration and unchanged CDC SQL; test-only WAL/TLS
+  differences and JSON expansion fidelity must be tested explicitly. This is
+  not a production connector, logical-slot creation, offset reset or replay.
+
+## 2026-10-17 — verified first release and executable-path regressions
+
+- Deploy run `39070450651` completed SUCCESS. Public ping is healthy and exact
+  production `artifactSha` equals current main
+  `88f658e68d43951e2f265243224bd980a2c5a66a`; builtAt is
+  `2026-10-17T21:28:53Z`. This delivers internal K0 tooling, not Kafka activation.
+- Dispatched one current-main aggregate inventory, run `39072481170`. It failed
+  before file/DB inspection because Bash stdin execution under nounset has no
+  `BASH_SOURCE[0]`. Corrected the main-entry guard to support both direct-file
+  and Actions stdin execution, and added a regression exercising the actual
+  stdin launch form. Production data/settings were not read or changed by
+  this failed diagnostic; no unchanged rerun was started.
+- Corrected test-network smoke run `39072368740` reached all HTTP/plugin probes
+  and actually produced/consumed one Kafka record. Its strict byte comparison
+  failed because the deprecated consumer `--property` option writes its
+  deprecation notice to stdout in Kafka 4.3.1 (confirmed in that exact upstream
+  ConsoleConsumerOptions source). Switched to current reader/command/formatter
+  flags. Kept strict record equality; did not strip unknown lines or weaken the
+  assertion. Added a regression preventing reintroduction of stdout-polluting
+  legacy flags. The disposable project was cleaned successfully.
+- PR861 is draft while these executable-path corrections are checked. The new
+  exact head must pass actual smoke, static-checks and typecheck before merge;
+  a skipped draft check is not accepted as success. K0 live inventory remains
+  pending the corrected reviewed delivery. Backup PR863 remains separate.
+
+## 2026-10-17 — K1 merged; backup contract rebased onto current delivery
+
+- Superseding the historical draft/pending entries above: PR861 passed all
+  five required checks on `7d768b33c0ed68202a3d5c5878210a7a00fc0d98` and
+  actual disposable smoke `39072900806` succeeded, including teardown. Normal
+  protected merge produced `c8c32582ccd54a65e5e7c887643c4226677b5373`.
+  Deploy `39074203195` is pending; production verification is not yet claimed.
+- Merged current main into the separate PR863 branch before its real libpq
+  and full gates. Only the append-only session journal conflicted; retained
+  both historical branch entries and appended this superseding status. No
+  canonical dirty checkout or foreign worktree was changed.
+- This branch corrects pgpass ownership/modes in code and synchronized pins,
+  not live file contents or owners. Live aggregate inventory and operational
+  commissioning still await a deployed current-main receipt. No Kafka
+  consumers, source offsets or customer replay have been activated.

@@ -1,0 +1,47 @@
+name: Event platform disposable stack
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'ops/event-platform/test/**'
+      - 'scripts/event-platform/test-stack*'
+      - '.github/workflows/event-platform-stack.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: event-platform-stack-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: event-platform-disposable-integration
+      cancel-in-progress: false
+    env:
+      LD_EVENT_STACK_DISPOSABLE: '1'
+      LD_EVENT_STACK_PROJECT: ld-event-test-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate isolated configuration
+        run: |
+          bash -n scripts/event-platform/test-stack.sh
+          node --test scripts/event-platform/test-stack.test.mjs
+      - name: Run disposable infrastructure smoke
+        run: bash scripts/event-platform/test-stack.sh
+      - name: Cleanup this run only
+        if: always()
+        run: |
+          docker compose -p "$LD_EVENT_STACK_PROJECT" -f ops/event-platform/test/compose.yml down --volumes --remove-orphans --timeout 10

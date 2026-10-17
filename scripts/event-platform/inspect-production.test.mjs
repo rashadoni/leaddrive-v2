@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, writeFile, rm, access } from 'node:fs/promises'
+import { mkdtemp, writeFile, rm, access, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
@@ -59,6 +60,15 @@ test('direct invocation fails before host access without a full approved SHA', (
   assert.doesNotMatch(result.stdout, /postgresql:|host_Mem|inventory=PASS/)
 })
 
+test('Actions stdin execution enters the same SHA guard without a BASH_SOURCE nounset failure', () => {
+  const result = spawnSync('bash', ['-s'], { input: readFileSync(script, 'utf8'), encoding: 'utf8',
+    env: { PATH: process.env.PATH, EXPECTED_DEPLOY_SHA: 'short' } })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FATAL: expected SHA required/)
+  assert.doesNotMatch(result.stderr, /unbound variable/)
+  assert.doesNotMatch(result.stdout, /host_Mem|inventory=PASS/)
+})
+
 test('connection credentials never enter psql argv and read-only options are forced', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'ld-psql-argv-test-'))
   const fakePsql = path.join(directory, 'psql')
@@ -82,11 +92,37 @@ test('connection credentials never enter psql argv and read-only options are for
 })
 
 test('rejects connection option overrides instead of weakening read-only inspection', () => {
-  for (const query of ['options=-c%20default_transaction_read_only=off', 'host=other-host', 'sslmode=require&sslmode=disable']) {
+  for (const query of ['options=-c%20default_transaction_read_only=off', 'host=other-host', 'sslmode=require&sslmode=disable', 'target_session_attrs=read-write']) {
     const result = spawnSync('bash', ['--noprofile', '--norc', '-c',
       'source "$1"; run_readonly_psql "$2"', 'test', script, `postgresql://localhost/test?${query}`], { encoding: 'utf8' })
     assert.notEqual(result.status, 0)
     assert.equal(result.stdout, '')
     assert.match(result.stderr, /unsupported inspection connection configuration/)
+  }
+})
+
+test('reports only fixed-label connection-file authority metadata, never paths or contents', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'ld-file-metadata-test-'))
+  const file = path.join(directory, 'secret-fixture')
+  const link = path.join(directory, 'must-not-follow')
+  await writeFile(file, 'synthetic-sensitive-contents-not-for-output', { mode: 0o600 })
+  await symlink(file, link)
+  try {
+    for (const [target, regular] of [[file, 'yes'], [link, 'no']]) {
+      const result = spawnSync('bash', ['--noprofile', '--norc', '-c',
+        'source "$1"; id(){ command id "$1"; }; runuser(){ shift 3; "$@"; }; report_connection_file_metadata fixture "$2"',
+        'test', script, target], { encoding: 'utf8', env: { PATH: process.env.PATH } })
+      assert.equal(result.status, 0, result.stderr)
+      assert.match(result.stdout, new RegExp(`^connection_file=fixture regular=${regular} `))
+      if (regular === 'yes') {
+        assert.match(result.stdout, /mode=600 links=1 canonical=yes service_readable=yes/)
+      } else {
+        assert.match(result.stdout, /mode=unknown links=unknown canonical=no service_readable=no/)
+      }
+      assert.equal(result.stdout.includes(directory), false)
+      assert.doesNotMatch(result.stdout, /synthetic-sensitive/)
+    }
+  } finally {
+    await rm(directory, { recursive: true })
   }
 })
