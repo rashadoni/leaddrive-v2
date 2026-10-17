@@ -57,7 +57,6 @@ export default function OrganizationSettingsPage() {
   // written to in when their own language is unknown. Its own card and save,
   // because changing it is admin-only while name and logo are not.
   const [language, setLanguage] = useState<CustomerLanguage | null>(null)
-  const [savedLanguage, setSavedLanguage] = useState<CustomerLanguage | null>(null)
   const [canEditLanguage, setCanEditLanguage] = useState(false)
   const [savingLanguage, setSavingLanguage] = useState(false)
   const [languageMessage, setLanguageMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -78,7 +77,6 @@ export default function OrganizationSettingsPage() {
         if (languageRes?.ok) {
           const json = await languageRes.json()
           setLanguage(json.data.language)
-          setSavedLanguage(json.data.language)
           setCanEditLanguage(json.data.canEdit === true)
         }
       } catch (err) {
@@ -126,7 +124,6 @@ export default function OrganizationSettingsPage() {
       const json = await res.json().catch(() => null)
       if (res.ok && json?.data?.language) {
         setLanguage(json.data.language)
-        setSavedLanguage(json.data.language)
         setLanguageMessage({ type: "success", text: t("orgCustomerLanguageSaved") })
       } else {
         setLanguageMessage({ type: "error", text: json?.error || tc("saveFailed") })
@@ -220,6 +217,7 @@ export default function OrganizationSettingsPage() {
                 id="orgCustomerLanguage"
                 value={language}
                 disabled={!canEditLanguage || savingLanguage}
+                className="disabled:cursor-not-allowed disabled:opacity-70"
                 onChange={(e) => { setLanguage(e.target.value as CustomerLanguage); setLanguageMessage(null) }}
               >
                 {CUSTOMER_LANGUAGES.map((item) => (
@@ -237,7 +235,7 @@ export default function OrganizationSettingsPage() {
             )}
 
             {canEditLanguage && (
-              <Button onClick={handleSaveLanguage} disabled={savingLanguage || language === savedLanguage} className="gap-1.5">
+              <Button onClick={handleSaveLanguage} disabled={savingLanguage} className="gap-1.5">
                 {savingLanguage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {savingLanguage ? tc("saving") : tc("save")}
               </Button>
