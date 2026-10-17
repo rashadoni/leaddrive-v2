@@ -615,19 +615,25 @@ describe("the Route & Field module", () => {
     expect(frontier().sectionId).toBe("mtm-live")
   }, 60_000)
 
-  it("shows nobody's place during a break, in the list and on the map", async () => {
-    const { MTM_DEMO_AGENTS, mtmDemoLiveAgents } = await import("@/components/demo-center/journey/scenes/mtm-demo-data")
+  it("records nothing from a break: the map keeps only the point from before it, grey", async () => {
+    const { MTM_DEMO_AGENTS, mtmDemoRosterAgents } = await import("@/components/demo-center/journey/scenes/mtm-demo-data")
     const onBreak = MTM_DEMO_AGENTS.filter((agent) => agent.status === "PAUSED")
     expect(onBreak.length).toBeGreaterThan(0)
     for (const agent of onBreak) {
+      // No current position, and the only point the roster carries is older than the break.
       expect(agent.latitude, agent.name).toBeUndefined()
-      expect(mtmDemoLiveAgents("2026-10-20").map((marker) => marker.agentId)).not.toContain(agent.id)
+      const row = mtmDemoRosterAgents("2026-10-15").find((candidate) => candidate.agentId === agent.id)!
+      expect(row).toMatchObject({ workdayState: "PAUSED", freshness: "STALE", fieldStatus: "OFFLINE" })
+      expect(Date.parse(row.recordedAt!)).toBeLessThan(Date.parse(row.workdayPausedAt!))
     }
     await renderPlayer()
     await act(async () => document.querySelector<HTMLButtonElement>('[data-start-section="mtm-today"]')!.click())
     await settle()
     await walkTo("mtm-live-roster")
-    expect(textOf('[data-tour-id="mtm-live-roster"]')).toContain(S.mtmOnBreak)
+    // The product's own table and its own words for him and for the grey point.
+    expect(document.querySelector('[data-tour-id="mtm-live-roster"] [data-testid="live-map-roster"]')).not.toBeNull()
+    expect(textOf('[data-testid="live-map-agent-status-agent-rauf"]')).toContain(messages.mtmMap.fieldStatus.offline)
+    expect(textOf('[data-testid="mtm-live-last-known"]')).toContain(messages.mtmMap.lastKnownShown.split("{count}")[0].trim())
   }, 60_000)
 })
 

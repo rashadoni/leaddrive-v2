@@ -1,18 +1,26 @@
 "use client"
 
-import { useMemo, useState, type DragEvent, type MouseEvent, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from "react"
 import dynamic from "next/dynamic"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowLeft, BellRing, CheckCircle2, ChevronLeft, ChevronRight, GripVertical, MapPin, MessageSquare, Route as RouteIcon, Send, Sparkles, TrendingUp, Users } from "lucide-react"
+import { ArrowLeft, BellRing, CheckCircle2, ChevronLeft, ChevronRight, Clock, GripVertical, History, MapPin, MessageSquare, Radio, RefreshCw, Route as RouteIcon, Send, Sparkles, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { HomeAttentionCard } from "@/components/mtm/home-attention-card"
-import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/home-parts"
+import { HomeAttentionCard, attentionRowCount } from "@/components/mtm/home-attention-card"
+import { HomeBaseCard, HomeQualityCard } from "@/components/mtm/home-insight-cards"
+import { HomeTeamCard } from "@/components/mtm/home-team-card"
+import { HomeKpi, HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { LiveMapDaySteps } from "@/components/mtm/live-map-day-steps"
-import { ROSTER_STATUS_DOT_CLASS } from "@/components/mtm/live-map-roster"
+import { LiveMapLayersControl } from "@/components/mtm/live-map-layers-control"
+import { LiveMapRoster } from "@/components/mtm/live-map-roster"
+import { LiveMapTools } from "@/components/mtm/live-map-tools"
+import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 import { createDateFormatter } from "@/lib/format-date"
-import { FIELD_STATUS_LABEL_KEYS, type MtmFieldStatus } from "@/lib/mtm-types"
+import { isLiveMapAgentPositionVisible, type LiveMapAgent } from "@/lib/mtm-types"
+import { defaultWeek, fieldNow, finishedDaysPercent, homeTeam, percentOf, planCard, todayPlan, weekComparison, weekTotals } from "@/lib/mtm/home-dashboard"
+import { buildHomeBase } from "@/lib/mtm/home-insights"
+import { applyRosterFilters, foldRosterText, ROSTER_DEFAULT_VIEW, sortRoster, type RosterFilters, type RosterView } from "@/lib/mtm/live-map-roster"
 import {
   routePlannerDayMinutes,
   routePlannerLengthKm,
@@ -26,7 +34,7 @@ import { mtmVisitOpenFor } from "@/lib/mtm/visit-left-open"
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
-import { demoTarget } from "../demo-target"
+import { DEMO_TARGET_ATTRIBUTE, demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 import {
   MTM_DEMO_AGENTS,
@@ -38,13 +46,13 @@ import {
   mtmDemoAttention,
   mtmDemoElvinRoute,
   mtmDemoElvinSteps,
+  mtmDemoHome,
   mtmDemoLeftOpen,
-  mtmDemoLiveAgents,
+  mtmDemoRosterAgents,
   mtmDemoPlaceRequest,
   mtmDemoPlannerCandidates,
   mtmDemoToday,
   mtmDemoVisit,
-  mtmDemoWeekSoFar,
 } from "./mtm-demo-data"
 
 /**
@@ -152,30 +160,75 @@ function useBakuFormat() {
 
 /* ── «Bu gün» ─────────────────────────────────────────────────────────── */
 
-function TodayScreen({ snapshot }: DemoSceneProps) {
+/**
+ * «Bu gün» as `MtmHomeDashboard` draws it: the date and «İş günü · 12:10
+ * üzrə», the team filter, four figures, what waits, the team with a strip of
+ * the week, and below it the base and the visits judged. The product's
+ * dashboard reads three answers itself; here the same answers come from
+ * `mtmDemoHome` and every figure is the product's own arithmetic over them
+ * (`src/lib/mtm/home-dashboard.ts`, `buildHomeBase`), «than last week»
+ * included — none is typed in.
+ */
+function TodayScreen({ snapshot, hint }: DemoSceneProps) {
   const t = useTranslations("mtmDashboardPage.home")
+  const tw = useTranslations("mtmDashboardPage.operationalWeek")
   const today = mtmDemoToday(snapshot.startedAt)
   const format = useBakuFormat()
   const attention = useMemo(() => mtmDemoAttention(today), [today])
+  const home = useMemo(() => mtmDemoHome(today), [today])
 
-  const inField = MTM_DEMO_AGENTS.filter((agent) => agent.status !== "PAUSED").length
-  const atCustomer = MTM_DEMO_AGENTS.filter((agent) => agent.status === "CHECKED_IN").length
-  const onRoad = MTM_DEMO_AGENTS.filter((agent) => agent.status === "ON_ROAD").length
-  const planned = MTM_DEMO_AGENTS.reduce((sum, agent) => sum + agent.total, 0)
-  const done = MTM_DEMO_AGENTS.reduce((sum, agent) => sum + agent.visited, 0)
-  const weekPlanned = MTM_DEMO_AGENTS.reduce((sum, agent) => sum + mtmDemoWeekSoFar(agent).planned, 0)
-  const weekDone = MTM_DEMO_AGENTS.reduce((sum, agent) => sum + mtmDemoWeekSoFar(agent).done, 0)
-  const percent = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0)
-  const weekPercent = percent(weekDone, weekPlanned)
-  const requests = attention.items.filter((item) => item.kind !== "photosPendingReview").reduce((sum, item) => sum + item.count, 0)
-  const photos = attention.items.find((item) => item.kind === "photosPendingReview")?.count ?? 0
-  const waiting = attention.items.length + (attention.nextWorkday && attention.nextWorkday.withoutRoute > 0 ? 1 : 0)
+  const entries = homeTeam(home.rows, true)
+  const now = fieldNow(entries)
+  const plan = todayPlan(entries)
+  const weekDays = attention.week.length === 7 ? attention.week : defaultWeek(today)
+  const totals = weekTotals(home.facts, { from: weekDays[0].date, to: today })
+  const comparison = weekComparison(totals, home.previous)
+  const card = planCard({ today, plan, nextWorkday: attention.nextWorkday ?? null })
+  const waiting = attentionRowCount(attention) ?? 0
+  const base = buildHomeBase(home.base)
+
+  const lastVisitParts = [
+    now.heading > 0 ? t("partHeading", { count: now.heading }) : null,
+    now.notStarted > 0 ? t("partNotStarted", { count: now.notStarted }) : null,
+    now.planDone > 0 ? t("partPlanDone", { count: now.planDone }) : null,
+    now.idle > 0 ? t("partIdle", { count: now.idle }) : null,
+  ].filter(Boolean).join(" · ")
+  const planPercent = card.kind === "today" ? percentOf(card.done, card.planned) : null
+  const weekPercent = percentOf(totals.done, totals.planned)
+  const finishedPercent = finishedDaysPercent(home.facts, { from: weekDays[0].date, today })
+  const weekTone: HomeTone = weekPercent === null ? "zinc" : finishedPercent === null ? (weekPercent >= 95 ? "green" : "amber") : PLAN_TONE[mtmPlanTone(finishedPercent)]
+  const weekSub = totals.planned === 0
+    ? t("weekNoPlan")
+    : comparison.kind === "delta"
+      ? comparison.delta > 0
+        ? t("weekDeltaUp", { percent: comparison.previousPercent, delta: comparison.delta })
+        : comparison.delta < 0
+          ? t("weekDeltaDown", { percent: comparison.previousPercent, delta: Math.abs(comparison.delta) })
+          : t("weekDeltaSame", { percent: comparison.previousPercent })
+      : comparison.kind === "no-plan" ? t("weekNoPlanLastWeek") : totals.planned > totals.done ? t("weekRemaining", { count: totals.planned - totals.done }) : t("weekAllDone")
+  const countOf = (...kinds: string[]) => attention.items.filter((item) => kinds.includes(item.kind)).reduce((sum, item) => sum + item.count, 0)
+  const requests = countOf("customerLocationRequests", "contactCreateRequests", "customerCreateRequests", "routeChangeRequests")
+  const waitingParts = [
+    requests > 0 ? t("shortRequests", { count: requests }) : null,
+    countOf("routesAwaitingPublish") > 0 ? t("shortDrafts", { count: countOf("routesAwaitingPublish") }) : null,
+    countOf("olderAlerts") > 0 ? t("shortAlerts", { count: countOf("olderAlerts") }) : null,
+    countOf("photosPendingReview") > 0 ? t("shortPhotos", { count: countOf("photosPendingReview") }) : null,
+    attention.nextWorkday && attention.nextWorkday.withoutRoute > 0 ? t("shortNextDay") : null,
+  ].filter(Boolean).join(" · ")
 
   return (
     <div data-testid="mtm-home" className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight first-letter:uppercase">{format.day(today)}</h2>
-        <p className="text-sm text-muted-foreground">{t("workingDay")} · {S.mtmAsOf(MTM_DEMO_CLOCK)}</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold tracking-tight first-letter:uppercase">{format.day(today)}</h2>
+          <p className="min-h-5 text-sm text-muted-foreground">{[t(attention.todayIsWorkingDay ? "workingDay" : "dayOff"), tw("summaryAsOf", { time: MTM_DEMO_CLOCK }), S.mtmSampleDayNote].join(" · ")}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <MtmFilterBar testId="mtm-week-filters">
+            <MtmFilterSelect testId="mtm-week-team" label={tw("team")} value="" allLabel={tw("allTeams")} options={[{ value: "team-center", label: "Bakı — Mərkəz" }, { value: "team-south", label: "Bakı — Cənub" }]} onChange={() => hint(S.demoButtonHint)} />
+          </MtmFilterBar>
+          <Button type="button" variant="outline" size="icon" className="h-11 w-11" aria-label={tw("refresh")} onClick={() => hint(S.demoButtonHint)}><RefreshCw className="h-4 w-4" aria-hidden="true" /></Button>
+        </div>
       </div>
 
       <div data-tour-id="mtm-home-kpis" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -184,45 +237,45 @@ function TodayScreen({ snapshot }: DemoSceneProps) {
           label={t("kpiInField")}
           hint={t("hint.kpiInField")}
           icon={<MapPin className="h-[18px] w-[18px]" aria-hidden="true" />}
-          tone="green"
-          value={String(inField)}
-          unit={t("kpiInFieldUnit", { total: MTM_DEMO_AGENTS.length })}
-          pill={t("pillAtCustomer", { count: atCustomer })}
-          sub={[t("partHeading", { count: onRoad }), S.mtmOnBreakCount(1)].join(" · ")}
+          tone={now.inField > 0 ? "green" : "zinc"}
+          value={String(now.inField)}
+          unit={t("kpiInFieldUnit", { total: now.total })}
+          pill={now.atCustomer > 0 ? t("pillAtCustomer", { count: now.atCustomer }) : null}
+          sub={lastVisitParts || null}
         />
         <HomeKpi
           testId="mtm-home-kpi-plan"
           label={t("kpiTodayPlan")}
           hint={t("hint.kpiTodayPlan")}
           icon={<CheckCircle2 className="h-[18px] w-[18px]" aria-hidden="true" />}
-          tone="amber"
-          value={String(done)}
-          unit={t("kpiPointsUnit", { total: planned })}
-          pill={`${percent(done, planned)}%`}
-          progress={percent(done, planned)}
-          sub={t("todayVisits", { count: done })}
+          tone={planPercent !== null && planPercent >= 95 ? "green" : "amber"}
+          value={card.kind === "today" ? String(card.done) : null}
+          unit={card.kind === "today" ? t("kpiPointsUnit", { total: card.planned }) : null}
+          pill={planPercent !== null ? `${planPercent}%` : null}
+          progress={planPercent}
+          sub={card.kind === "today" ? t("todayVisits", { count: card.visits }) : null}
         />
         <HomeKpi
           testId="mtm-home-kpi-week"
           label={t("kpiWeekPlan")}
           hint={t("hint.kpiWeekPlan")}
           icon={<TrendingUp className="h-[18px] w-[18px]" aria-hidden="true" />}
-          tone={PLAN_TONE[mtmPlanTone(weekPercent)]}
-          value={String(weekDone)}
-          unit={t("kpiPointsUnit", { total: weekPlanned })}
-          pill={`${weekPercent}%`}
+          tone={weekTone}
+          value={totals.planned > 0 ? String(totals.done) : null}
+          unit={totals.planned > 0 ? t("kpiPointsUnit", { total: totals.planned }) : null}
+          pill={weekPercent !== null ? `${weekPercent}%` : null}
           progress={weekPercent}
-          sub={t("weekDeltaUp", { percent: weekPercent - 4, delta: 4 })}
+          sub={weekSub}
         />
         <HomeKpi
           testId="mtm-home-kpi-attention"
           label={t("kpiAttention")}
           hint={t("hint.kpiAttention")}
           icon={<BellRing className="h-[18px] w-[18px]" aria-hidden="true" />}
-          tone="amber"
+          tone={waiting > 0 ? "amber" : "green"}
           value={String(waiting)}
-          unit={t("issuesUnit", { count: waiting })}
-          sub={[t("shortRequests", { count: requests }), t("shortPhotos", { count: photos }), t("shortNextDay")].join(" · ")}
+          unit={waiting ? t("issuesUnit", { count: waiting }) : null}
+          sub={waiting === 0 ? t("attentionClear") : waitingParts}
         />
       </div>
 
@@ -230,47 +283,30 @@ function TodayScreen({ snapshot }: DemoSceneProps) {
         <div data-tour-id="mtm-home-attention">
           <HomeAttentionCard state={{ data: attention, failed: false, retry: () => {} }} />
         </div>
-        <TeamWeekCard />
+        <HomeTeamCard
+          team={entries}
+          hasCards
+          loading={false}
+          failed={false}
+          today={today}
+          timezone={MTM_DEMO_TIMEZONE}
+          week={weekDays}
+          facts={home.facts}
+          weekFailed={false}
+          totals={totals}
+          recentVisits={home.recentVisits}
+          onRetry={() => {}}
+          onRetryWeek={() => {}}
+          onOpenAgent={() => hint(S.mtmTabHint)}
+        />
+      </div>
+
+      <div className="grid gap-4 min-[1400px]:grid-cols-2">
+        <HomeBaseCard base={base} monthStart={home.monthStart} />
+        <HomeQualityCard quality={home.quality} />
       </div>
     </div>
   )
-}
-
-/** «Komanda · bu həftə»: each agent's week so far, day by day. */
-function TeamWeekCard() {
-  const t = useTranslations("mtmDashboardPage.home")
-  const tMap = useTranslations("mtmMap")
-  return (
-    <HomeCard testId="mtm-home-team" titleId="mtm-home-team-title" icon={<Users className="h-4 w-4" aria-hidden="true" />} tone="blue" title={t("teamTitle")}>
-      <ul className="divide-y divide-zinc-100 py-1 dark:divide-zinc-800">
-        {MTM_DEMO_AGENTS.map((agent) => {
-          const week = mtmDemoWeekSoFar(agent)
-          const percent = Math.round((week.done / week.planned) * 100)
-          return (
-            <li key={agent.id} className="flex items-center gap-3 py-2 text-sm">
-              <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", agent.status === "PAUSED" ? "bg-violet-400" : ROSTER_STATUS_DOT_CLASS[agent.status])} aria-hidden="true" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{agent.name}</span>
-                <span className="block truncate text-xs text-muted-foreground">{statusLabel(agent.status, tMap)}</span>
-              </span>
-              <span className="flex items-end gap-1" aria-hidden="true">
-                {week.days.map(([dayDone, dayPlanned], index) => (
-                  <span key={index} className="flex h-7 w-3 items-end overflow-hidden rounded-sm bg-muted">
-                    <span className={cn("w-full", dayDone >= dayPlanned ? "bg-emerald-500" : "bg-amber-500")} style={{ height: `${Math.round((dayDone / dayPlanned) * 100)}%` }} />
-                  </span>
-                ))}
-              </span>
-              <HomePill tone={PLAN_TONE[mtmPlanTone(percent)]}>{percent}%</HomePill>
-            </li>
-          )
-        })}
-      </ul>
-    </HomeCard>
-  )
-}
-
-function statusLabel(status: MtmFieldStatus | "PAUSED", tMap: (key: string) => string): string {
-  return status === "PAUSED" ? S.mtmOnBreak : tMap(`fieldStatus.${FIELD_STATUS_LABEL_KEYS[status]}`)
 }
 
 /* ── Marşrut xəritədə ─────────────────────────────────────────────────── */
@@ -465,83 +501,231 @@ function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
 
 /* ── Canlı xəritə ─────────────────────────────────────────────────────── */
 
+/**
+ * The live map as `/mtm/map` lays it out (owner, 2026-10-17: «на проде
+ * отличается от того, который ты показал»): the status chips and the
+ * one-line count above, the grey «last known position» notice, the map with
+ * its «Laylar» and its tools, and beside it the product's own employee table
+ * (`LiveMapRoster`) — one row per person, a tick for the map, status and
+ * signal. The rows are the roster the server would send for this team
+ * (`mtmDemoRosterAgents`); a click on a name opens his day under the row.
+ */
+const LIVE_STATUS_CHIPS = [
+  { status: "CHECKED_IN", key: "checkedIn", tone: "text-green-600 border-green-200 dark:border-green-800" },
+  { status: "ON_ROAD", key: "onRoad", tone: "text-blue-600 border-blue-200 dark:border-blue-800" },
+  { status: "STOPPED", key: "stopped", tone: "text-amber-700 border-amber-200 dark:text-amber-300 dark:border-amber-800" },
+  { status: "ROUTE_FINISHED", key: "routeFinished", tone: "text-emerald-700 border-emerald-200 dark:text-emerald-300 dark:border-emerald-800" },
+  { status: "LATE", key: "late", tone: "text-red-600 border-red-200 dark:border-red-800" },
+  { status: "OFFLINE", key: "offline", tone: "text-muted-foreground" },
+] as const
+
+/** The page's tools that reach the server or the browser's full screen: explained here instead. */
+const LIVE_SIMULATED_CONTROLS = [
+  "live-map-roster-export",
+  "live-map-roster-print",
+  "live-map-roster-hide",
+  "live-map-tool-point",
+  "live-map-tool-ruler",
+  "live-map-tool-fullscreen",
+  "mtm-map-mode-history",
+].map((id) => `[data-testid="${id}"]`).join(",")
+
 function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const tMap = useTranslations("mtmMap")
+  const tNav = useTranslations("nav")
+  const tc = useTranslations("common")
+  const tf = useTranslations("mtmFilters")
   const format = useBakuFormat()
   const today = mtmDemoToday(snapshot.startedAt)
-  const agents = useMemo(() => mtmDemoLiveAgents(today), [today])
+  const nowMs = Date.parse(mtmDemoAt(today, MTM_DEMO_CLOCK))
+  const agents = useMemo(() => mtmDemoRosterAgents(today), [today])
   const route = useMemo(() => mtmDemoElvinRoute(today), [today])
   const steps = useMemo(() => mtmDemoElvinSteps(today), [today])
   const chosen = typeof snapshot.ui["mtm.liveAgent"] === "string" ? (snapshot.ui["mtm.liveAgent"] as string) : null
   const [selected, setSelected] = useState<string | null>(chosen)
   const [stopOrder, setStopOrder] = useState<number | null>(null)
-  const selectedAgent = MTM_DEMO_AGENTS.find((agent) => agent.id === selected) ?? null
+  const [search, setSearch] = useState("")
+  const [filters, setFilters] = useState<RosterFilters>({})
+  const [view, setView] = useState<RosterView>(ROSTER_DEFAULT_VIEW)
+  const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => new Set())
+  const [showLastKnown, setShowLastKnown] = useState(true)
+  const [layers, setLayers] = useState({ agents: true, route: true, labels: true })
+  const rosterRef = useRef<HTMLDivElement>(null)
+
+  const searched = useMemo(() => {
+    const query = foldRosterText(search.trim())
+    return query ? agents.filter((agent) => foldRosterText(agent.name).includes(query)) : agents
+  }, [agents, search])
+  const rows = useMemo(() => sortRoster(applyRosterFilters(searched, filters), view.sort, "az"), [searched, filters, view.sort])
+  // The page's own rule: a live position while the workday runs, and the
+  // last known one — grey — when the signal is old, never a point from a break.
+  const mapAgents: LiveMapAgent[] = rows.flatMap((agent) => {
+    if (!layers.agents || hiddenIds.has(agent.agentId)) return []
+    const lastKnown = showLastKnown && agent.freshness === "STALE"
+    if ((!isLiveMapAgentPositionVisible(agent.freshness, agent.workdayState) && !lastKnown) || agent.latitude === undefined || agent.longitude === undefined || !agent.recordedAt) return []
+    return [{ ...agent, freshness: agent.freshness as LiveMapAgent["freshness"], latitude: agent.latitude, longitude: agent.longitude, recordedAt: agent.recordedAt }]
+  })
+  const stalePositions = rows.filter((agent) => agent.freshness === "STALE").length
+  const count = (status: string) => agents.filter((agent) => agent.fieldStatus === status).length
+
+  // The guide's arrow points at Elvin's name in the product's own row.
+  useEffect(() => {
+    const name = rosterRef.current?.querySelector<HTMLElement>('[data-testid="live-map-agent-card-agent-elvin"] button[aria-pressed]')
+    if (!name) return
+    if (selected === "agent-elvin") name.removeAttribute(DEMO_TARGET_ATTRIBUTE)
+    else for (const [attribute, value] of Object.entries(demoTarget("mtm-live-agent"))) name.setAttribute(attribute, value)
+  })
 
   const choose = (agentId: string) => {
-    const agent = MTM_DEMO_AGENTS.find((candidate) => candidate.id === agentId)
-    if (agent?.status === "PAUSED") {
-      hint(S.mtmBreakPrivate)
-      setSelected(agentId)
-      return
-    }
-    setSelected(agentId)
-    if (!reviewMode && step?.id === "mtm-live-agent") dispatch({ type: "ui", path: "mtm.liveAgent", value: agentId })
+    setSelected((current) => (current === agentId ? null : agentId))
+    setStopOrder(null)
+    if (!reviewMode && step?.id === "mtm-live-agent" && agentId === "agent-elvin") dispatch({ type: "ui", path: "mtm.liveAgent", value: agentId })
   }
+  const simulated = (event: MouseEvent<HTMLDivElement>) => {
+    if (!(event.target as Element | null)?.closest?.(LIVE_SIMULATED_CONTROLS)) return
+    event.preventDefault()
+    event.stopPropagation()
+    hint(S.demoButtonHint)
+  }
+  const layer = (id: keyof typeof layers, label: string, layerHint: string) => ({ id, label, hint: layerHint, on: layers[id], onToggle: () => setLayers((current) => ({ ...current, [id]: !current[id] })), shownByDefault: true })
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[340px_minmax(0,1fr)]">
-      <div className="space-y-3">
-        <div data-tour-id="mtm-live-roster" className="rounded-2xl border border-zinc-200 bg-card p-2 dark:border-zinc-700">
-          <p className="px-2 pb-1 pt-1 text-xs text-muted-foreground">{S.mtmAsOf(MTM_DEMO_CLOCK)}</p>
-          <ul className="space-y-1">
-            {MTM_DEMO_AGENTS.map((agent) => (
-              <li key={agent.id}>
-                <button
-                  type="button"
-                  onClick={() => choose(agent.id)}
-                  aria-pressed={selected === agent.id}
-                  {...(agent.id === "agent-elvin" ? demoTarget("mtm-live-agent") : {})}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted/60",
-                    selected === agent.id && "bg-indigo-50 ring-1 ring-indigo-300 dark:bg-indigo-950/40 dark:ring-indigo-800",
-                  )}
-                >
-                  <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", agent.status === "PAUSED" ? "bg-violet-400" : ROSTER_STATUS_DOT_CLASS[agent.status])} aria-hidden="true" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{agent.name}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {statusLabel(agent.status, tMap)}
-                      {agent.status === "PAUSED" ? "" : ` · ${agent.where} · ${tMap("eta.minutes", { count: agent.forMinutes })}`}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">{agent.visited}/{agent.total}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-        {selectedAgent?.id === "agent-elvin" ? (
-          <div className="rounded-2xl border border-zinc-200 bg-card p-3 dark:border-zinc-700">
-            <p className="mb-2 text-sm font-semibold">{selectedAgent.name}</p>
-            <LiveMapDaySteps steps={steps} selectedOrder={stopOrder} onSelect={setStopOrder} formatTime={format.clock} />
+    <div className="space-y-3" onClickCapture={simulated}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold tracking-tight">{tNav("mtmMap")}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-md border bg-muted/40 p-0.5" role="tablist" aria-label={tMap("modeLabel")}>
+            <Button type="button" role="tab" aria-selected size="sm" className="min-h-9"><Radio className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("liveMode")}</Button>
+            <Button type="button" role="tab" aria-selected={false} variant="ghost" size="sm" className="min-h-9" data-testid="mtm-map-mode-history"><History className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("historyMode")}</Button>
           </div>
-        ) : selectedAgent?.status === "PAUSED" ? (
-          <p className="rounded-2xl border border-violet-200 bg-violet-50 p-3 text-xs leading-relaxed text-violet-900 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200">{S.mtmBreakPrivate}</p>
-        ) : selectedAgent ? (
-          <p className="rounded-2xl border border-zinc-200 bg-card p-3 text-xs text-muted-foreground dark:border-zinc-700">{S.mtmOtherAgentDay}</p>
-        ) : null}
+          <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" aria-hidden="true" />{tMap("lastUpdate")}: {S.mtmAsOf(MTM_DEMO_CLOCK)}</span>
+        </div>
       </div>
-      <div data-tour-id="mtm-live-map" className="relative h-[520px] overflow-hidden rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
-        <MtmLiveMap
-          agents={agents}
-          plannedRoute={selected === "agent-elvin" ? route : undefined}
-          focusAgentId={selected === "agent-elvin" ? selected : null}
-          onAgentSelect={choose}
-          focusStopOrder={stopOrder}
-          onStopSelect={setStopOrder}
-          showLabels
-          timeZone={MTM_DEMO_TIMEZONE}
-        />
+
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={tc("status")}>
+        <Button size="sm" className="min-h-9" onClick={() => setFilters({})}>{tc("all")} ({agents.length})</Button>
+        {LIVE_STATUS_CHIPS.map((chip) => (
+          <Button key={chip.status} size="sm" variant="outline" className={cn("min-h-9", chip.tone)} onClick={() => hint(S.demoButtonHint)}>
+            {tMap(`fieldStatus.${chip.key}`)} ({count(chip.status)})
+          </Button>
+        ))}
+      </div>
+
+      <div role="status" className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border bg-card px-3 py-2 text-xs">
+        <span className="font-semibold">{tMap("agents")}: {agents.length}</span>
+        <span className="flex flex-wrap items-center gap-x-2">
+          <span className="font-bold">{tMap("appPresence")}:</span>
+          <span className="text-green-700 dark:text-green-400">{tMap("presence.online")} {agents.filter((agent) => agent.isOnline).length}</span>
+          <span className="text-muted-foreground">{tMap("presence.offline")} {agents.filter((agent) => !agent.isOnline).length}</span>
+        </span>
+        <span className="flex flex-wrap items-center gap-x-2">
+          <span className="font-bold">{tMap("gpsFreshness")}:</span>
+          <span className="text-blue-700 dark:text-blue-400">{tMap("freshness.online")} {agents.filter((agent) => agent.freshness === "ONLINE").length}</span>
+          <span className="text-amber-700 dark:text-amber-300">{tMap("freshness.delayed")} {agents.filter((agent) => agent.freshness === "DELAYED").length}</span>
+          <span className="text-muted-foreground">{tMap("freshness.stale")} {agents.filter((agent) => agent.freshness === "STALE").length}</span>
+        </span>
+        <span className="flex flex-wrap items-center gap-x-2">
+          <span className="font-bold">{tMap("workdayState")}:</span>
+          <span className="text-emerald-700 dark:text-emerald-400">{tMap("workday.active")} {agents.filter((agent) => agent.workdayState === "ACTIVE").length}</span>
+          <span className="text-amber-700 dark:text-amber-300">{tMap("workday.paused")} {agents.filter((agent) => agent.workdayState === "PAUSED").length}</span>
+        </span>
+      </div>
+
+      {stalePositions > 0 ? (
+        <div role="status" data-testid="mtm-live-last-known" className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-300 bg-muted/40 px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">
+          <History className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {showLastKnown ? tMap("lastKnownShown", { count: stalePositions }) : tMap("stalePositionsHidden", { count: stalePositions })}
+          <button type="button" onClick={() => setShowLastKnown((value) => !value)} className="font-semibold text-foreground underline underline-offset-2">
+            {showLastKnown ? tMap("hideLastKnown") : tMap("showLastKnown")}
+          </button>
+        </div>
+      ) : null}
+
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
+        <div data-tour-id="mtm-live-map" className="relative isolate h-[54vh] min-h-[360px] overflow-hidden rounded-lg border border-zinc-200 bg-card lg:h-[560px] dark:border-zinc-700">
+          <MtmLiveMap
+            agents={mapAgents}
+            plannedRoute={layers.route && selected === "agent-elvin" ? route : undefined}
+            focusAgentId={selected}
+            onAgentSelect={choose}
+            focusStopOrder={stopOrder}
+            onStopSelect={setStopOrder}
+            showLabels={layers.labels}
+            showWorkdayStatus
+            timeZone={MTM_DEMO_TIMEZONE}
+          />
+          <LiveMapLayersControl
+            layers={[
+              layer("agents", tMap("layers.agents"), tMap("layers.agentsHint")),
+              layer("route", tMap("layers.route"), tMap("layers.routeHint")),
+              layer("labels", tMap("layers.labels"), tMap("layers.labelsHint")),
+            ]}
+            hiddenAgentCount={hiddenIds.size}
+            onShowAllAgents={() => setHiddenIds(new Set())}
+            note={tMap("historyOnlyExplicit")}
+          />
+          <LiveMapTools
+            near={mapAgents[0] ? { latitude: mapAgents[0].latitude, longitude: mapAgents[0].longitude } : null}
+            referencePoint={null}
+            onReferencePointChange={() => hint(S.demoButtonHint)}
+            pickingPoint={false}
+            onPickingPointChange={() => hint(S.demoButtonHint)}
+            rulerActive={false}
+            onRulerToggle={() => hint(S.demoButtonHint)}
+            rulerMeters={0}
+            rulerPointCount={0}
+            onRulerUndo={() => undefined}
+            formatDistance={(meters) => `${Math.round(meters)} m`}
+            fullscreen={false}
+            onFullscreenToggle={() => hint(S.demoButtonHint)}
+            fullscreenSupported
+          />
+        </div>
+        <div data-tour-id="mtm-live-roster" ref={rosterRef} className="min-w-0">
+          <LiveMapRoster
+            agents={searched}
+            rows={rows}
+            searchSlot={
+              <MtmFilterBar testId="mtm-map-filters">
+                <MtmFilterSearch value={search} onChange={setSearch} delayMs={0} placeholder={tMap("employeePlaceholder")} label={tMap("employeeFilter")} clearLabel={tf("clearSearch")} />
+              </MtmFilterBar>
+            }
+            filters={filters}
+            onFiltersChange={setFilters}
+            view={view}
+            onViewChange={setView}
+            onHide={() => hint(S.demoButtonHint)}
+            hiddenAgentIds={hiddenIds}
+            onToggleAgentOnMap={(agentId) => setHiddenIds((current) => {
+              const next = new Set(current)
+              if (next.has(agentId)) next.delete(agentId)
+              else next.add(agentId)
+              return next
+            })}
+            onSetAgentsOnMap={(agentIds, onMap) => setHiddenIds((current) => {
+              const next = new Set(current)
+              for (const agentId of agentIds) if (onMap) next.delete(agentId)
+              else next.add(agentId)
+              return next
+            })}
+            selectedAgentId={selected}
+            onSelect={choose}
+            renderDetail={(agent) => agent.agentId === "agent-elvin" ? (
+              <LiveMapDaySteps steps={steps} selectedOrder={stopOrder} onSelect={setStopOrder} formatTime={format.clock} />
+            ) : agent.workdayState === "PAUSED" ? (
+              <p className="text-xs leading-relaxed text-violet-900 dark:text-violet-200">{S.mtmBreakPrivate}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">{S.mtmOtherAgentDay}</p>
+            )}
+            nowMs={nowMs}
+            workforceEnabled
+            formatClock={format.clock}
+            formatVisitOpened={(value) => format.clock(value)}
+            isEarlierDay={() => false}
+            exportFileName={() => "leaddrive-demo-xerite"}
+            printTitle={() => `${tNav("mtmMap")} · ${MTM_DEMO_CLOCK}`}
+          />
+        </div>
       </div>
     </div>
   )

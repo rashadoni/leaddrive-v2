@@ -14,7 +14,7 @@
  * days behind it, and every time on every screen agrees. Screens say «nümunə
  * gün».
  */
-import type { LiveMapAgent } from "@/lib/mtm-types"
+import type { MtmDashboardAgent } from "@/lib/mtm-types"
 import type { RouteStop } from "@/components/mtm/live-map"
 import type { LiveMapDayStep } from "@/lib/mtm/live-map-day-steps"
 import type { MtmPanelAttention } from "@/lib/mtm/panel-attention"
@@ -59,6 +59,11 @@ export interface MtmDemoAgent {
   /** Absent on a break: where somebody spends it is not recorded (owner's rule). */
   readonly latitude?: number
   readonly longitude?: number
+  /** On a break: the phone's last point before it (Baku time) and when the break began. Nothing is recorded after. */
+  readonly beforeBreak?: { readonly latitude: number; readonly longitude: number; readonly at: string; readonly pausedAt: string }
+  readonly team: "center" | "south"
+  /** Phone battery, %. */
+  readonly battery: number
   /** Today's route: stops done, stops planned. */
   readonly visited: number
   readonly total: number
@@ -76,27 +81,28 @@ export const MTM_DEMO_AGENTS: readonly MtmDemoAgent[] = [
   {
     id: "agent-elvin", name: "Elvin Qasımov", status: "CHECKED_IN", latitude: 40.40935, longitude: 49.86708,
     visited: 3, total: 6, week: [[6, 6], [6, 6], [6, 6]], lastWeek: [29, 30], forMinutes: 18,
-    where: "Şəfa Tibb Mərkəzi", mapColor: "green",
+    where: "Şəfa Tibb Mərkəzi", mapColor: "green", team: "center", battery: 78,
   },
   {
     id: "agent-nermin", name: "Nərmin Hüseynli", status: "ON_ROAD", latitude: 40.39320, longitude: 49.85640,
     visited: 4, total: 6, week: [[6, 6], [5, 6], [6, 6]], lastWeek: [27, 30], forMinutes: 6,
-    where: "Aptek 24 — Gənclik istiqamətində", mapColor: "blue",
+    where: "Aptek 24 — Gənclik istiqamətində", mapColor: "blue", team: "center", battery: 64,
   },
   {
     id: "agent-tural", name: "Tural Babayev", status: "STOPPED", latitude: 40.39860, longitude: 49.83470,
     visited: 2, total: 5, week: [[4, 5], [4, 5], [5, 5]], lastWeek: [19, 25], forMinutes: 22,
-    where: "Yasamal, vizitdən kənar", mapColor: "amber",
+    where: "Yasamal, vizitdən kənar", mapColor: "amber", team: "center", battery: 51,
   },
   {
     id: "agent-aysu", name: "Aysu Kərimli", status: "LATE", latitude: 40.37490, longitude: 49.83180,
     visited: 1, total: 5, week: [[5, 6], [4, 6], [5, 6]], lastWeek: [23, 30], forMinutes: 35,
-    where: "Dəniz Stomatologiyaya gecikir", mapColor: "red",
+    where: "Dəniz Stomatologiyaya gecikir", mapColor: "red", team: "south", battery: 33,
   },
   {
     id: "agent-rauf", name: "Rauf Əhmədli", status: "PAUSED",
+    beforeBreak: { latitude: 40.37810, longitude: 49.87230, at: "11:53", pausedAt: "11:55" },
     visited: 3, total: 6, week: [[6, 6], [6, 6], [5, 6]], lastWeek: [28, 30], forMinutes: 15,
-    where: "", mapColor: "violet",
+    where: "", mapColor: "violet", team: "south", battery: 46,
   },
 ]
 
@@ -106,23 +112,69 @@ export function mtmDemoWeekSoFar(agent: MtmDemoAgent): { done: number; planned: 
   return { done: days.reduce((sum, [done]) => sum + done, 0), planned: days.reduce((sum, [, planned]) => sum + planned, 0), days }
 }
 
-/** The map's employees: the product's own shape. Nobody on a break is drawn. */
-export function mtmDemoLiveAgents(today: string): LiveMapAgent[] {
+const MTM_DEMO_TEAMS = {
+  center: { teamId: "team-center", teamName: "Bakı — Mərkəz" },
+  south: { teamId: "team-south", teamName: "Bakı — Cənub" },
+} as const
+
+/**
+ * The live map's roster, in the shape the product's live-map API answers
+ * with (`MtmDashboardAgent`). The statuses are what the server derives
+ * (`deriveMtmLiveFieldStatus`): somebody on a break sends no points, so his
+ * signal goes stale and the row reads «GPS aktiv deyil», his workday
+ * «dayandırılıb», and the only coordinate there is is the one from before the
+ * break — which the page draws grey as «the phone's last signal, not where he
+ * is now».
+ */
+export function mtmDemoRosterAgents(today: string): MtmDashboardAgent[] {
   const clock = Date.parse(mtmDemoAt(today, MTM_DEMO_CLOCK))
-  return MTM_DEMO_AGENTS.flatMap((agent) => agent.status === "PAUSED" || agent.latitude === undefined || agent.longitude === undefined ? [] : [{
-    agentId: agent.id,
-    name: agent.name,
-    isOnline: true,
-    fieldStatus: agent.status,
-    latitude: agent.latitude,
-    longitude: agent.longitude,
-    accuracy: 9,
-    recordedAt: new Date(clock - MINUTE).toISOString(),
-    freshness: "ONLINE" as const,
-    workdayState: "ACTIVE" as const,
-    mapColor: agent.mapColor,
-    routeCompletion: Math.round((agent.visited / agent.total) * 100),
-  }])
+  return MTM_DEMO_AGENTS.map((agent) => {
+    const common = {
+      agentId: agent.id,
+      name: agent.name,
+      isOnline: true,
+      lastSeenAt: new Date(clock - MINUTE).toISOString(),
+      ...MTM_DEMO_TEAMS[agent.team],
+      managerId: "manager-sebine",
+      managerName: MTM_DEMO_MANAGER,
+      tags: [],
+      mapColor: agent.mapColor,
+      battery: agent.battery,
+      routeCompletion: Math.round((agent.visited / agent.total) * 100),
+      routeVisited: agent.visited,
+      routeTotal: agent.total,
+      workdayDate: today,
+      workdayStartedAt: mtmDemoAt(today, "09:02"),
+      locationState: "AVAILABLE" as const,
+    }
+    if (agent.status === "PAUSED") {
+      const before = agent.beforeBreak!
+      return {
+        ...common,
+        fieldStatus: "OFFLINE",
+        freshness: "STALE" as const,
+        workdayState: "PAUSED" as const,
+        workdayPausedAt: mtmDemoAt(today, before.pausedAt),
+        latitude: before.latitude,
+        longitude: before.longitude,
+        accuracy: 12,
+        recordedAt: mtmDemoAt(today, before.at),
+      }
+    }
+    return {
+      ...common,
+      fieldStatus: agent.status,
+      freshness: "ONLINE" as const,
+      workdayState: "ACTIVE" as const,
+      latitude: agent.latitude,
+      longitude: agent.longitude,
+      accuracy: 9,
+      speed: agent.status === "ON_ROAD" ? 8 : 0,
+      recordedAt: new Date(clock - MINUTE).toISOString(),
+      openVisitSince: agent.status === "CHECKED_IN" ? new Date(clock - agent.forMinutes * MINUTE).toISOString() : null,
+      stationarySince: agent.status === "STOPPED" ? new Date(clock - agent.forMinutes * MINUTE).toISOString() : null,
+    }
+  })
 }
 
 interface MtmDemoPlace {
@@ -317,5 +369,118 @@ export function mtmDemoPlaceRequest(today: string) {
     movedMeters: 280,
     agentToProposedMeters: 6,
     comment: "Aptek prospektin o biri tərəfindədir, giriş Atatürk pr. 40-dan.",
+  }
+}
+
+/** Each agent's day on «Bu gün»: the stops done and where he goes next (Baku time). */
+const HOME_DAY: Record<string, { visits: ReadonlyArray<{ place: string; checkIn: string; checkOut?: string }>; next?: { place: string; planned: string } }> = {
+  "agent-elvin": { visits: ELVIN_DAY.filter((stop) => stop.checkIn).map((stop) => ({ place: stop.place, checkIn: stop.checkIn!, checkOut: stop.checkOut })) },
+  "agent-nermin": {
+    visits: [
+      { place: "pl-yasamal", checkIn: "09:20", checkOut: "09:41" },
+      { place: "pl-aile5", checkIn: "10:05", checkOut: "10:26" },
+      { place: "pl-xetai", checkIn: "10:50", checkOut: "11:12" },
+      { place: "pl-aptsaglam", checkIn: "11:30", checkOut: "11:44" },
+    ],
+    next: { place: "pl-apt24", planned: "12:20" },
+  },
+  "agent-tural": {
+    visits: [{ place: "pl-usaq", checkIn: "09:45", checkOut: "10:10" }, { place: "pl-aptderman", checkIn: "10:40", checkOut: "11:02" }],
+    next: { place: "pl-nar", planned: "12:30" },
+  },
+  "agent-aysu": { visits: [{ place: "pl-aptplus", checkIn: "09:50", checkOut: "10:12" }], next: { place: "pl-deniz", planned: "11:35" } },
+  "agent-rauf": {
+    visits: [
+      { place: "pl-respublika", checkIn: "09:25", checkOut: "09:49" },
+      { place: "pl-yasamal", checkIn: "10:30", checkOut: "10:52" },
+      { place: "pl-apt24", checkIn: "11:38", checkOut: "11:50" },
+    ],
+    next: { place: "pl-xetai", planned: "12:40" },
+  },
+}
+
+/**
+ * «Bu gün» in the shapes the product's three answers have: today's team
+ * rows, the week's plan points and visits (the same facts «Nəticələr»
+ * counts), and the lower row's base and visit quality. The figures on the
+ * screen are the product's own arithmetic over them
+ * (`src/lib/mtm/home-dashboard.ts`).
+ */
+export function mtmDemoHome(today: string) {
+  const clock = Date.parse(mtmDemoAt(today, MTM_DEMO_CLOCK))
+  const monday = addDays(today, -((new Date(`${today}T12:00:00.000Z`).getUTCDay() + 6) % 7))
+  const rows = MTM_DEMO_AGENTS.map((agent) => {
+    const day = HOME_DAY[agent.id]
+    const visits = day.visits.map((visit) => ({
+      customerName: placeOf(visit.place).name,
+      status: visit.checkOut ? "CHECKED_OUT" : "CHECKED_IN",
+      checkInAt: mtmDemoAt(today, visit.checkIn),
+      checkOutAt: visit.checkOut ? mtmDemoAt(today, visit.checkOut) : null,
+    }))
+    return {
+      agentId: agent.id,
+      name: agent.name,
+      teamName: MTM_DEMO_TEAMS[agent.team].teamName,
+      lastGpsAt: agent.beforeBreak ? mtmDemoAt(today, agent.beforeBreak.at) : new Date(clock - MINUTE).toISOString(),
+      route: { visited: agent.visited, total: agent.total },
+      visits,
+      visitCount: visits.length,
+      openAlerts: 0,
+      workday: agent.beforeBreak
+        ? { kind: "paused" as const, since: mtmDemoAt(today, agent.beforeBreak.pausedAt) }
+        : { kind: "working" as const, since: mtmDemoAt(today, "09:02") },
+      nextStop: day.next && !visits.some((visit) => visit.status === "CHECKED_IN")
+        ? { customerName: placeOf(day.next.place).name, plannedAt: mtmDemoAt(today, day.next.planned) }
+        : null,
+    }
+  })
+
+  // The week's plan points and visits, Monday to today, as «Результаты» counts them.
+  const planPoints: Array<{ agentId: string; date: string; completed: boolean }> = []
+  const factVisits: Array<{ agentId: string; date: string; gpsConfirmed: boolean }> = []
+  for (const agent of MTM_DEMO_AGENTS) {
+    const days = mtmDemoWeekSoFar(agent).days
+    days.forEach(([done, planned], index) => {
+      const date = addDays(monday, index)
+      for (let point = 0; point < planned; point += 1) planPoints.push({ agentId: agent.id, date, completed: point < done })
+      for (let visit = 0; visit < done; visit += 1) factVisits.push({ agentId: agent.id, date, gpsConfirmed: visit !== 1 || agent.id !== "agent-tural" })
+    })
+  }
+  // The same days of last week (Monday to Thursday), for «than last week».
+  const previous = MTM_DEMO_AGENTS.reduce((sum, agent) => ({
+    planned: sum.planned + Math.round((agent.lastWeek[1] * 4) / 5),
+    done: sum.done + Math.round((agent.lastWeek[0] * 4) / 5),
+  }), { planned: 0, done: 0 })
+
+  const recentVisits = rows
+    .flatMap((row) => row.visits.map((visit) => ({
+      id: `${row.agentId}:${visit.checkInAt}`,
+      at: visit.checkInAt!,
+      customerName: visit.customerName,
+      agentName: row.name,
+      durationMinutes: visit.checkOutAt ? Math.round((Date.parse(visit.checkOutAt) - Date.parse(visit.checkInAt!)) / MINUTE) : null,
+      flag: null,
+    })))
+    .sort((left, right) => right.at.localeCompare(left.at))
+    .slice(0, 5)
+
+  return {
+    rows,
+    facts: { planPoints, visits: factVisits },
+    previous,
+    recentVisits,
+    monthStart: `${today.slice(0, 8)}01`,
+    base: {
+      subject: "contacts" as const,
+      byClass: [
+        { key: "VIP", total: 12, visited: 11 },
+        { key: "A", total: 46, visited: 34 },
+        { key: "B", total: 71, visited: 39 },
+        { key: "C", total: 58, visited: 16 },
+      ],
+      secondary: [],
+      classOrder: ["VIP", "A", "B", "C", "D"],
+    },
+    quality: { visits: 64, atPlace: 58, awayFromPlace: 4, placeUnknown: 2, withPhoto: 55, tooLong: 2, tooShort: 1, longMinutes: 60, shortMinutes: 2 },
   }
 }

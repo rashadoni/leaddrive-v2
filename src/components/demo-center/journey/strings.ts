@@ -207,8 +207,7 @@ export const DEMO_JOURNEY_STRINGS = {
   // Route & Field (MTM): the module's own words where the product has none.
   mtmTabHint: "Bu demoda Marşrut & Sahə bölmələrini bələdçi açır — onun addımını izləyin.",
   mtmAsOf: (time: string) => `saat ${time} vəziyyəti (nümunə gün)`,
-  mtmOnBreak: "Fasilədə — yeri göstərilmir",
-  mtmOnBreakCount: (count: number) => `${count} fasilədə`,
+  mtmSampleDayNote: "nümunə gün",
   mtmPublishedBadge: "Dərc olunub",
   mtmBreakPrivate: "Agent fasilədədir. Fasilə şəxsi vaxtdır: bu müddətdə onun yeri yazılmır və heç kimə göstərilmir — şirkətin istəyindən asılı olmayaraq.",
   mtmOtherAgentDay: "Bu demoda günün addım-addım siyahısı Elvin Qasımov üçün göstərilir.",
