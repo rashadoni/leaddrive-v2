@@ -142,7 +142,8 @@ function useBakuFormat() {
     const day = createDateFormatter(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" })
     const short = createDateFormatter(locale, { timeZone: MTM_DEMO_TIMEZONE, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
     return {
-      clock: (iso: string) => clock.format(new Date(iso)),
+      // The product's day steps pass a stop without a time as null.
+      clock: (iso: string | null | undefined) => (iso ? clock.format(new Date(iso)) : ""),
       day: (dateKey: string) => day.format(new Date(`${dateKey}T12:00:00.000Z`)),
       short: (iso: string) => short.format(new Date(iso)),
     }
