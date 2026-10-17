@@ -174,3 +174,37 @@ No Kafka consumers, offsets or customer replay have been activated.
   exact head must pass actual smoke, static-checks and typecheck before merge;
   a skipped draft check is not accepted as success. K0 live inventory remains
   pending the corrected reviewed delivery. Backup PR863 remains separate.
+
+## 2026-10-17 — K1 runtime passed; K2 synthetic CDC checkpoint
+
+- Superseding the draft status above: PR861 is ready on exact head
+  `7d768b33c0ed68202a3d5c5878210a7a00fc0d98`. Actual infrastructure smoke
+  `39072900806` completed SUCCESS: four isolated services, logical WAL,
+  explicit topics, Connect plugin, Registry HTTP and strict Kafka key/value
+  equality passed. Project-scoped cleanup succeeded. Required full gates
+  `39072900714` are still running; no merge is claimed.
+- Other authorized work advanced main to `0b3e7f9b100c3c05a34a31f2d986fe5364a70d5b`
+  (PR864). This supersedes the old main pointer, not the verified Kafka K0
+  release receipt. Its separate release was observed in progress. No foreign
+  workflow was cancelled or restarted. Current production must be re-read
+  before the next receipt.
+- In the dedicated `codex/kafka-cdc-synthetic-20261017` worktree, prepared
+  deterministic two-tenant transport fixtures and an independent bounded
+  record verifier. Twenty-one generator/verifier tests pass; the verifier
+  requires exact SQL-origin JSON, headers, timestamps, tenant-qualified keys,
+  complete IDs and ordered versions, allowing only identical duplicates.
+- The successor runtime drill is under construction: complete unchanged
+  foundation migration under a non-superuser migration role, unchanged CDC
+  preparation, rejected 64 MiB cap followed by an explicit disposable finite
+  4096 MiB override, SQL privilege/RLS checks, separate A/B serialization topics
+  and a cold Connect restart with slots/offset topics retained. Four narrow
+  guard/config tests also pass locally. Docker/DB/CDC integration is NOT RUN
+  locally: heavy verification belongs only to GitHub CI.
+- The current connector's JSON expansion has a source-identified fidelity
+  risk (empty arrays and swallowed expansion exceptions). The test compares
+  it against unexpanded JSON text plus StringConverter without modifying the
+  production template. No production conclusion until actual A/B evidence.
+  Test-only plaintext, one broker, trusted app context and a REPLICATION login
+  are not production TLS, HA, a credential-compromise boundary or business
+  projection/replay safety. No customer data, consumers, offsets or replay
+  were activated in this phase.
