@@ -225,6 +225,50 @@ No Kafka consumers, offsets or customer replay have been activated.
   a skipped draft check is not accepted as success. K0 live inventory remains
   pending the corrected reviewed delivery. Backup PR863 remains separate.
 
+## 2026-10-17 — next bounded Fund balance reducer preparation
+
+- Historical draft status above is superseded: PR861 merged as
+  `c8c32582ccd54a65e5e7c887643c4226677b5373`; its normal deploy39074203195 is
+  still being verified. K2 synthetic CDC39075079346 succeeded on770d576a1,
+  with raw8source events exact across restart, but legacyexpanded4payloads
+  changed. PR866 full gates and separate serializer fix PR867 remain pending.
+- Created a separate clean current-main worktree/branch for the next pure
+  Fund balance reducer only: `leaddrive-kafka-fund-shadow-20261018` /
+  `codex/kafka-fund-shadow-reducer-20261018`. This is preparation, not a live
+  worker or production rollout; merge is not allowed before predecessor
+  delivery and its own actual verification.
+- Reuse the exact five Fund contracts and independent SQL rebuild formula:
+  one opening, plus signed deltas, every prefix inside NUMERIC(18,4), metadata/
+  archive/reactivation increment version without changing balance. No floating
+  point math, Fund/currentBalance/v1 write, promotion, send or broker dependency.
+  This balance projection must not re-judge historical transaction eligibility
+  from today's archive flag: legacy snapshots may describe an inactive Fund
+  before copying its historical ledger. Full broker/hash/inbox/role boundaries
+  remain later required work, not inferred from a pure reducer test.
+
+### 2026-10-18 — pure Fund reducer implementation checkpoint
+
+- Added a transport/DB-free reduceFundBalance(previous, envelope) and golden/
+  negative Vitest cases. All five exact existing Fund contracts are enforced;
+  one v1 opening, contiguous safe versions, tenant/Fund/UUID/time identity,
+  immutable currency, optional resultingBalance assertion and nonnegative
+  bounded prefixes are checked. Money is BigInt scaled by10000, exposed as
+  four-decimal strings; no Number arithmetic, reads/writes, pointer or effects.
+  Legacy inactive openings do not suppress the following historical ledger.
+- Root inspected both complete files; syntax-only Node22 strip-types checks
+  and whitespace checks PASS. Vitest and TypeScript NOT RUN locally: this
+  checkout has no installed vitest/zod and no dependency installation was
+  substituted on the persistent host. The existing required CI suite includes
+  the new test file; a real green run is still required before merge.
+- This is only the pure balance component, not a broker worker, SQL parity,
+  crash/acknowledgement or transaction test. Full transport integrity, SQL hash,
+  restricted shadow role and inbox/checkpoint adapter remain subsequent work.
+- Predecessor861 release39074203195 SUCCESS; exact public artifactc8c32582c
+  and ping verified. Backup863 merged3cdca2db6 after all five required checks
+  and actual libpq30-test success. CDC866 has real transport proof but now
+  needs ordinary main/journal reconciliation; serializer867 remains draft.
+  No production Kafka connector/consumer/offset/replay is activated.
+
 ## 2026-10-17 — K1 runtime passed; K2 synthetic CDC checkpoint
 
 - Superseding the draft status above: PR861 is ready on exact head
@@ -499,3 +543,142 @@ No Kafka consumers, offsets or customer replay have been activated.
   checks finish. This changes no release order:866 must merge before867, and
   each requires all five actual successful gates plus its own runtime proof.
   No duplicate manual job, production activation or replay is authorized.
+
+## 2026-10-18 — Fund shadow branch synchronized; DB adapter design only
+
+- Draft PR868 retains the pure Fund reducer and tests from
+  `d8665c16c917e98dd98a5aff680b36223d537a63`. Merged the local serializer
+  checkpoint `6c97dbec345745b6bc07a915e78c04a3b9f8a866` through an ordinary
+  merge, not a main delivery. Only this append-only journal conflicted; both
+  parent histories are preserved. No reducer, contract or application edit
+  was made while resolving the conflict; inherited predecessor code is unchanged.
+- Pure reducer syntax-only checks PASS. Actual Vitest and TypeScript are
+  NOT RUN locally because vitest/zod are absent; no dependencies were installed.
+  Tooling tests cannot substitute for execution of the new TypeScript reducer.
+  PR868 remains a draft pending the ordered 866 -> 867 -> 868 delivery and
+  its own actual exact-head checks. No push, ready, CI dispatch or deploy is
+  part of this synchronization.
+
+### Next bounded implementation seam: restricted Fund shadow DB adapter
+
+- Design only, NOT IMPLEMENTED: a transaction-scoped adapter receives the
+  explicit transaction client, immutable build ID, validated event and raw
+  envelope. Its outer wrapper owns the tenant-local transaction and acknowledges
+  only after commit. The generic processKafkaEvent apply callback does not
+  receive tx; do not bridge it with mutable/global transaction state.
+- Inside the same transaction, lock/check the tenant's running, effect-fenced
+  shadow build and exact projection version/build key/code SHA. Derive inbox
+  consumerName from the build ID so a new rebuild cannot reuse old dedupe
+  receipts. Restrict the topic to the intended Fund finance route and require
+  exactly one matching id header; the current generic validator omits that
+  header check.
+- Validate the full raw envelope through PostgreSQL
+  event_platform_jsonb_sha256($rawEnvelope::jsonb), match the origin header and
+  immutable tenant/event outbox evidence. domain_events.payloadHash hashes only
+  data; neither that hash nor JS JSON.stringify/hashCanonicalJson is the
+  transport-envelope authority. Perform validation before duplicate handling.
+- For a new event, read the isolated shadow row, invoke the pure reducer and
+  write only its shadow projection. Save lastEventAt in explicit evidence or
+  resolve it from canonical history because the projection has no such column.
+  Always record the current delivery checkpoint after consumeIdempotently,
+  outside its apply callback: a known event at a NEW offset must skip the
+  monetary mutation but atomically advance the checkpoint. Never rewrite the
+  append-only inbox's original offset or overwrite newer state with its older
+  duplicate result.
+- The existing deferred Fund projection coherence trigger is invoker-security
+  and reads the active v1 row, funds and aggregate head even for a shadow write.
+  A restricted worker therefore needs tenant-scoped SELECT of those rows, but
+  no source/v1/pointer/effects writes. Existing permissive tenant policies do
+  not themselves enforce shadow-only writes; adding another permissive policy
+  cannot narrow them. Actual separate-role grants and effective restrictive
+  write policy must be reviewed and tested before any worker activation.
+- Concurrency risks: inbox lookup/apply/insert is not a lock by itself; serialize
+  a first adapter on the build row and handle retries outside aborted transactions.
+  Keep topic/partition binding stable per aggregate. A build lock alone cannot
+  prove source offset order: process each assigned partition sequentially and
+  never acknowledge beyond a failed earlier delivery. Offsets need not be
+  numerically consecutive. Compare shadow with active v1 only at a consistent
+  cutoff; concurrent live writes are not evidence of corruption.
+- Control-plane code lives in projection.ts; there is no replay.ts in the
+  inspected tree. Fund shadow rows have no buildId foreign key, so the adapter
+  must explicitly bind tenant/buildKey/projectionVersion to ProjectionBuild.
+  Existing lib-event-platform-postgres.test.ts covers optimistic append, not
+  the restricted worker/inbox/checkpoint transaction; other relevant SDK tests
+  currently use mocks.
+
+### Eight required real-PostgreSQL adapter cases (all NOT RUN)
+
+Use the real foundation, Fund and replay-control migrations with separate
+migration/app/restricted-worker roles and disposable tenant data:
+
+1. Fold two tenant-isolated complete Fund histories into exact shadow
+   balance/version/event-ID state; prove source, active v1, activation pointers
+   and effects remain unchanged.
+2. Validate real PostgreSQL full-envelope hash semantics: JSON key reordering
+   passes; envelope tampering and data-only hash substitution fail before writes.
+3. Deliver the same event at the same and a new offset: one inbox and monetary
+   application, with the correct atomic checkpoint advancement for the new offset.
+4. Inject failures between projection/inbox/checkpoint and at deferred constraint
+   commit: all transactional changes roll back and acknowledgement never occurs.
+5. Race two real connections on the same event: only one application, a safe
+   duplicate/retry for the other; gap, reorder and conflicting hashes roll back.
+6. Rebuild the same history under independent build IDs/inboxes; reject terminal,
+   unfenced or wrong-tenant builds without modifying another build's state.
+7. Commit as a restricted worker with active-v1 read visibility; separately
+   prove source/effects/active/pointer writes and cross-tenant access are denied.
+8. Commit DB state, fail acknowledgement, then redeliver: no doubled balance,
+   no lost inbox/checkpoint and no acknowledgement before the successful commit.
+
+This is a recorded next-step design, not an implemented adapter, a Kafka broker
+worker, a production role change, a restore, an offset reset or customer replay.
+
+### Synchronization verification and predecessor scheduling update
+
+- After a fresh resource precheck (about 13.4 GB available RAM, 214 GB free
+  disk, zero current memory PSI), all 55 narrow Node tooling tests PASS
+  sequentially. Asset gate PASS (27 domains, 86 topics, 5 schemas), runner
+  policy PASS (70 workflows), both Fund TS syntax-only checks PASS, whitespace
+  checks PASS. Fund reducer/test/contracts bytes remain unchanged from the
+  original Fund head. Actual Vitest, full TypeScript/build and DB/broker runtime
+  remain NOT RUN locally; no dependencies or services were installed/started.
+- Coordinator update: PR866 on `12bfbe398` and PR867 on `6c97dbec3` passed
+  their draft-light checks and are now ready. Their CDC jobs/runs
+  `39077023158` / `39076938841` were CANCELLED with zero executed steps
+  because the shared job-concurrency pending slot was replaced while both PRs
+  were scheduled. This is scheduling evidence, not a failing CDC assertion.
+  Basic stack PR867 run `39076938829` SUCCESS; PR866 `39077023226` was still
+  running at this update. Full required gates for both new heads remain in
+  progress; no successful exact-head full receipt is claimed here.
+- The coordinator keeps the shared lock and does not duplicate active jobs.
+  Once that lock is free, the planned recovery is one targeted CDC-job rerun
+  for each affected PR, strictly sequentially. This journal synchronization
+  itself triggers no retry, ready transition, push or production action.
+
+## 2026-10-18 — bounded shared integration queue correction
+
+- Actual CDC runs `39077023158` and `39076938841` were cancelled before any
+  job steps when multiple PR workflows contended for the shared pending slot.
+  The previous `cancel-in-progress: false` protected the running job but did
+  not retain multiple pending jobs; default concurrency permits one pending
+  waiter and replaces it with the newest one.
+- Verified the current primary [GitHub concurrency documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency):
+  job-level `queue: max` permits up to 100 pending jobs, still only one running
+  job in the shared group. Excess jobs are cancelled when the queue is full;
+  this is bounded waiting, not parallel JVM execution or unlimited capacity.
+  The documented prohibition on combining queue:max with cancel-in-progress:true
+  applies to that same concurrency mapping.
+- Added only `queue: max` to the nested job concurrency in the basic stack
+  and CDC workflows, preserving the fixed shared
+  `event-platform-disposable-integration` group and cancel-in-progress:false.
+  Workflow-level branch-specific cancel-in-progress:true remains unchanged,
+  so superseded runs of the same branch can still be cancelled normally.
+- Added one dependency-free Node regression covering both job mappings, their
+  shared one-running-stack boundary and the unchanged workflow-level behavior.
+  This prepares a scheduler correction; it does not itself dispatch/retry CI,
+  activate Kafka, change any source/offset, run replay or alter production.
+- Verification on this tree after RAM/disk/PSI inspection: 56 narrow Node
+  tooling tests PASS sequentially, asset gate PASS (27 domains, 86 topics,
+  5 concrete schemas), runner policy PASS (70 workflows), whitespace checks
+  PASS. The workflow diff is exactly one nested queue:max addition in each
+  file. Actual GitHub scheduling behavior on these new bytes is NOT RUN in
+  this local task; the regression proves configuration, not a hosted receipt.
