@@ -164,6 +164,14 @@ async function main() {
   dba(readFileSync(prepareCdc, 'utf8'))
   const boundary = readFileSync(`${root}ops/event-platform/test/assert-cdc-boundary.sql`, 'utf8')
   dba(boundary)
+  // Prove the metadata assertion rejects a real effective sequence grant;
+  // syntax/planner errors must not count as a successful negative control.
+  dba('CREATE SEQUENCE public.cdc_boundary_test_sequence; GRANT USAGE ON SEQUENCE public.cdc_boundary_test_sequence TO leaddrive_event_cdc;')
+  const leakedSequence = dba(boundary, { allowFailure: true })
+  assertDenied(leakedSequence, 'P0001')
+  if (!leakedSequence.stderr.includes('CDC must not have effective public-sequence privileges')) fail('sequence-grant detector failed')
+  dba('REVOKE ALL ON SEQUENCE public.cdc_boundary_test_sequence FROM leaddrive_event_cdc; DROP SEQUENCE public.cdc_boundary_test_sequence;')
+  dba(boundary)
 
   assertDenied(psql(FIXTURE.cdcRole, 'deliberately-wrong-fixture-password', 'SELECT 1;', { allowFailure: true }), 'password authentication failed')
   assert.equal(psql(FIXTURE.cdcRole, FIXTURE.cdcPassword, 'SELECT current_user;').stdout.trim(), FIXTURE.cdcRole)

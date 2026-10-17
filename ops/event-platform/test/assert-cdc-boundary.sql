@@ -105,13 +105,16 @@ BEGIN
       END IF;
     END LOOP;
   END LOOP;
-  IF EXISTS (
-    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+  -- Do not rely on WHERE/AND evaluation order. PostgreSQL may call the
+  -- sequence-only privilege function on a non-sequence before filtering it.
+  FOR relation IN
+    SELECT c.oid FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
      WHERE n.nspname = 'public' AND c.relkind = 'S'
-       AND has_sequence_privilege(cdc_oid, c.oid, 'USAGE,SELECT,UPDATE')
-  ) THEN
-    RAISE EXCEPTION 'CDC must not have effective public-sequence privileges';
-  END IF;
+  LOOP
+    IF has_sequence_privilege(cdc_oid, relation.oid, 'USAGE,SELECT,UPDATE') THEN
+      RAISE EXCEPTION 'CDC must not have effective public-sequence privileges';
+    END IF;
+  END LOOP;
 
   IF NOT EXISTS (
     SELECT 1 FROM pg_policy

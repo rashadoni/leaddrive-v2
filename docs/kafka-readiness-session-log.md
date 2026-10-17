@@ -270,3 +270,27 @@ No Kafka consumers, offsets or customer replay have been activated.
   predecessor merge. Real CDC integration is still NOT RUN. A cold restart
   receipt will prove delivery with retained resources, not independently audit
   the contents of Connect's offset store or prove crash-at-commit exactly-once.
+
+## 2026-10-17 — actual pgpass success and first CDC SQL guard failure
+
+- PR863 exact head `3ed89d7a5a3c9a31d0d9c08dfa41536d6d5436f9` actual
+  disposable PostgreSQL/libpq run `39074388375` SUCCESS: 30 tests passed,
+  including real private-mode auth, unsafe-mode rejection and wrong-password
+  control. Helper pins passed. Full required gates `39074388386` still run;
+  no live credential file changed and no merge is claimed.
+- Opened K2 PR866; draft tooling validation passed all 52 tests. After the
+  pgpass runtime phase succeeded, made it ready on
+  `00fb1557d7187d0a1c98715a9f228f7fbda53d61`. New baseline stack smoke
+  `39074476195` succeeded; CDC ran next under the shared integration lock.
+- Actual CDC run `39074476208` failed before connector creation at read-only
+  SQL metadata assertion: SQLSTATE42809, `has_sequence_privilege` was evaluated
+  against a non-sequence catalog relation despite an AND relkind filter.
+  The real full foundation migration and explicit finite WAL preparation had
+  already completed. Cleanup succeeded; no production operation occurred.
+- Converted only PR866 back to draft. Corrected the SQL assertion to iterate
+  the already-filtered sequence rows before calling the sequence-only
+  function. Added a real synthetic leaked-sequence-grant negative control
+  requiring its exact P0001 rejection/message, plus a narrow regression.
+  This preserves the permission boundary rather than dropping the check.
+  Current integration result is FAILURE, not a passing CDC receipt; a new
+  changed-head run is required after local verification.

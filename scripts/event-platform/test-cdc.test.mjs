@@ -53,3 +53,11 @@ test('restart retains topic and slot authority and cleanup names only exact test
   assert.doesNotMatch(source, /--reset-offsets|pg_replication_slot_advance|kafka-delete-records|--delete.*topic|offsets\/reset/)
   assert.match(source, /max-messages', '256'/)
 })
+
+test('sequence privilege assertion filters relation kinds before invoking sequence-only functions', () => {
+  const sql = readFileSync(`${root}ops/event-platform/test/assert-cdc-boundary.sql`, 'utf8')
+  assert.match(sql, /FOR relation IN\s+SELECT c\.oid[^;]*c\.relkind = 'S'\s+LOOP\s+IF has_sequence_privilege\(cdc_oid, relation\.oid,/)
+  assert.match(source, /const leakedSequence = dba\(boundary, \{ allowFailure: true \}\)/)
+  assert.match(source, /assertDenied\(leakedSequence, 'P0001'\)/)
+  assert.match(source, /leakedSequence\.stderr\.includes\('CDC must not have effective public-sequence privileges'\)/)
+})
