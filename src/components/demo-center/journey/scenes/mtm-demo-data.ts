@@ -15,6 +15,9 @@
  * gün».
  */
 import type { MtmDashboardAgent } from "@/lib/mtm-types"
+import type { VisitReviewData } from "@/app/(dashboard)/mtm/visits/visit-review-panel"
+import { evaluateCustomerLocationRequest } from "@/lib/mtm/customer-location-request"
+import type { ExplainableKpiFact, ExplainableKpiPlanPoint } from "@/lib/mtm/explainable-kpi"
 import type { RouteStop } from "@/components/mtm/live-map"
 import type { LiveMapDayStep } from "@/lib/mtm/live-map-day-steps"
 import type { MtmPanelAttention } from "@/lib/mtm/panel-attention"
@@ -59,6 +62,8 @@ export interface MtmDemoAgent {
   /** Absent on a break: where somebody spends it is not recorded (owner's rule). */
   readonly latitude?: number
   readonly longitude?: number
+  /** A visit opened on an earlier day and never closed: the product lets no new one start until it is (MTM_VISIT_ALREADY_ACTIVE). */
+  readonly openVisit?: { readonly place: string; readonly at: string; readonly dayOffset: number }
   /** On a break: the phone's last point before it (Baku time) and when the break began. Nothing is recorded after. */
   readonly beforeBreak?: { readonly latitude: number; readonly longitude: number; readonly at: string; readonly pausedAt: string }
   readonly team: "center" | "south"
@@ -84,14 +89,16 @@ export const MTM_DEMO_AGENTS: readonly MtmDemoAgent[] = [
     where: "Şəfa Tibb Mərkəzi", mapColor: "green", team: "center", battery: 78,
   },
   {
-    id: "agent-nermin", name: "Nərmin Hüseynli", status: "ON_ROAD", latitude: 40.39320, longitude: 49.85640,
+    id: "agent-nermin", name: "Nərmin Hüseynli", status: "ON_ROAD", latitude: 40.39850, longitude: 49.87000,
     visited: 4, total: 6, week: [[6, 6], [5, 6], [6, 6]], lastWeek: [27, 30], forMinutes: 6,
-    where: "Aptek 24 — Gənclik istiqamətində", mapColor: "blue", team: "center", battery: 64,
+    where: "Aptek Sağlam — Əhmədli istiqamətində", mapColor: "blue", team: "center", battery: 64,
   },
   {
-    id: "agent-tural", name: "Tural Babayev", status: "STOPPED", latitude: 40.39860, longitude: 49.83470,
-    visited: 2, total: 5, week: [[4, 5], [4, 5], [5, 5]], lastWeek: [19, 25], forMinutes: 22,
-    where: "Yasamal, vizitdən kənar", mapColor: "amber", team: "center", battery: 51,
+    // Yesterday's visit at Xətai Tibb Mərkəzi is still open, so today he cannot check in anywhere.
+    id: "agent-tural", name: "Tural Babayev", status: "CHECKED_IN", latitude: 40.39860, longitude: 49.83470,
+    openVisit: { place: "pl-xetai", at: "16:40", dayOffset: -1 },
+    visited: 0, total: 5, week: [[4, 5], [4, 5], [5, 5]], lastWeek: [19, 25], forMinutes: 22,
+    where: "Xətai Tibb Mərkəzi — dünəndən açıq vizit", mapColor: "amber", team: "center", battery: 51,
   },
   {
     id: "agent-aysu", name: "Aysu Kərimli", status: "LATE", latitude: 40.37490, longitude: 49.83180,
@@ -100,7 +107,7 @@ export const MTM_DEMO_AGENTS: readonly MtmDemoAgent[] = [
   },
   {
     id: "agent-rauf", name: "Rauf Əhmədli", status: "PAUSED",
-    beforeBreak: { latitude: 40.37810, longitude: 49.87230, at: "11:53", pausedAt: "11:55" },
+    beforeBreak: { latitude: 40.41690, longitude: 49.91470, at: "11:53", pausedAt: "11:55" },
     visited: 3, total: 6, week: [[6, 6], [6, 6], [5, 6]], lastWeek: [28, 30], forMinutes: 15,
     where: "", mapColor: "violet", team: "south", battery: 46,
   },
@@ -171,7 +178,9 @@ export function mtmDemoRosterAgents(today: string): MtmDashboardAgent[] {
       accuracy: 9,
       speed: agent.status === "ON_ROAD" ? 8 : 0,
       recordedAt: new Date(clock - MINUTE).toISOString(),
-      openVisitSince: agent.status === "CHECKED_IN" ? new Date(clock - agent.forMinutes * MINUTE).toISOString() : null,
+      openVisitSince: agent.status !== "CHECKED_IN" ? null
+        : agent.openVisit ? mtmDemoAt(today, agent.openVisit.at, agent.openVisit.dayOffset)
+          : new Date(clock - agent.forMinutes * MINUTE).toISOString(),
       stationarySince: agent.status === "STOPPED" ? new Date(clock - agent.forMinutes * MINUTE).toISOString() : null,
     }
   })
@@ -343,9 +352,84 @@ export function mtmDemoVisit(today: string) {
       { id: "ph-2", url: "/icons/demo-mtm/visit-stand.svg", createdAt: mtmDemoAt(today, "09:44") },
       { id: "ph-3", url: "/icons/demo-mtm/visit-samples.svg", createdAt: mtmDemoAt(today, "09:52") },
     ],
-    presentation: { title: "Kardioloji xətt — 2026", slides: 6, minutes: 7 },
-    signature: "/icons/demo-mtm/visit-signature.svg",
+    presentation: { title: "Kardioloji xətt — 2026" },
     note: "Həkim yeni preparat üçün nümunə istədi; növbəti vizitdə klinik məlumatları gətirmək.",
+  }
+}
+
+/** The product's own signature evidence: one stroke path of the commands the card draws (M, L, Q, C). */
+const DEMO_SIGNATURE_PATH = "M34 72 C 48 30, 62 30, 66 60 C 70 80, 84 88, 96 50 C 104 26, 112 30, 118 58 C 124 82, 138 74, 146 52 C 152 36, 160 40, 166 60 C 172 80, 190 66, 204 48 C 214 36, 226 42, 236 56 C 246 70, 262 64, 286 44"
+
+/**
+ * Elvin's first visit of the day, in the shape the visit review API
+ * answers with, for the product's own review card (`VisitReviewView`).
+ * What it records is what the product records: that the presentation file was
+ * opened and which pages, not that the doctor looked at it.
+ */
+export function mtmDemoVisitReview(today: string): VisitReviewData {
+  const visit = mtmDemoVisit(today)
+  const place = placeOf("pl-nar")
+  const at = (hhmm: string) => mtmDemoAt(today, hhmm)
+  return {
+    visit: {
+      id: "visit-elvin-nar",
+      agentId: "agent-elvin",
+      status: "CHECKED_OUT",
+      checkInAt: visit.checkInAt,
+      checkOutAt: visit.checkOutAt,
+      duration: 24,
+      checkInLat: visit.placeInput.checkInLat ?? null,
+      checkInLng: visit.placeInput.checkInLng ?? null,
+      checkOutLat: visit.placeInput.checkOutLat ?? null,
+      checkOutLng: visit.placeInput.checkOutLng ?? null,
+      checkInCustomerLat: place.latitude,
+      checkInCustomerLng: place.longitude,
+      checkInGeofenceRadius: 100,
+      locationRequest: null,
+      notes: visit.note,
+      outcome: "SUCCESSFUL",
+      potential: "HIGH",
+      resultNotes: "Nümunələr verildi; klinik məlumatlar növbəti vizitdə.",
+      nextActionDueAt: mtmDemoAt(addDays(today, 7), "10:00"),
+      agent: { id: "agent-elvin", name: visit.agent },
+      customer: { id: place.id, name: place.name, address: place.address, city: "Bakı", latitude: place.latitude, longitude: place.longitude, geofenceRadius: 100 },
+      contact: { id: "dr-abbasova", displayName: visit.doctor },
+      route: { id: "route-elvin", name: null, date: today },
+      routePoint: { id: "rp-elvin-1", orderIndex: 0 },
+      requirementSnapshot: {
+        requirements: [
+          { id: "req-photo", actionKey: "PHOTO", mode: "REQUIRED", minCount: 1 },
+          { id: "req-presentation", actionKey: "PRESENTATION", mode: "OPTIONAL", minCount: 1 },
+          { id: "req-signature", actionKey: "SIGNATURE", mode: "REQUIRED", minCount: 1 },
+        ],
+      },
+      actionResults: [
+        { id: "ar-photo", actionKey: "PHOTO", status: "COMPLETED", evidence: null, completedAt: at("09:52") },
+        { id: "ar-presentation", actionKey: "PRESENTATION", status: "COMPLETED", evidence: null, completedAt: at("09:51") },
+        { id: "ar-signature", actionKey: "SIGNATURE", status: "COMPLETED", evidence: { svgPath: DEMO_SIGNATURE_PATH, widthPx: 320, heightPx: 110, signerName: visit.doctor, signedAt: at("09:56") }, completedAt: at("09:56") },
+      ],
+      presentationSessions: [{
+        id: "ps-kardio",
+        openedAt: at("09:44"),
+        lastViewedAt: at("09:51"),
+        closedAt: at("09:51"),
+        activeDurationSeconds: 7 * 60,
+        openLat: 40.37872, openLng: 49.84907, closeLat: 40.37874, closeLng: 49.84909,
+        pageCount: 12,
+        lastPage: 6,
+        pagesViewed: [1, 2, 3, 4, 5, 6],
+        pageEvents: null,
+        presentationVersion: "2026.1",
+        product: { id: "prod-kardio", name: "Kardioloji xətt", group: { id: "group-kardio", name: "Kardiologiya" } },
+        document: { id: "doc-kardio", title: visit.presentation.title, fileName: "kardioloji-xett-2026.pdf", mimeType: "application/pdf" },
+      }],
+      photos: visit.photos.map((photo) => ({ id: photo.id, url: photo.url, thumbnailUrl: null, status: "PENDING_REVIEW", createdAt: photo.createdAt })),
+      photoCount: visit.photos.length,
+    },
+    geofenceRadius: 100,
+    openTasks: { count: 1, items: [{ id: "task-kardio", title: "Klinik məlumatları Dr. Leyla Abbasovaya aparmaq", priority: "MEDIUM", dueDate: mtmDemoAt(addDays(today, 7), "10:00") }] },
+    timezone: MTM_DEMO_TIMEZONE,
+    viewer: { canExecute: false },
   }
 }
 
@@ -354,20 +438,37 @@ export function mtmDemoLeftOpen(today: string) {
   return { agentId: "agent-tural", agent: "Tural Babayev", place: "Xətai Tibb Mərkəzi", doctor: "Dr. Rəşad İsmayılov", since: mtmDemoAt(today, "16:40", -1) }
 }
 
-/** «Клиент здесь»: Nərmin at the pharmacy, whose pin sits on the wrong side of the avenue. */
+/**
+ * «Клиент здесь»: Nərmin checked in at the pharmacy at 11:50 and the visit
+ * read «outside the zone» — its pin sits on the wrong side of the avenue — so
+ * at 11:56 she sent where it really is. The distances are the product's own
+ * check (`evaluateCustomerLocationRequest`), not typed in.
+ */
 export function mtmDemoPlaceRequest(today: string) {
   const place = placeOf("pl-apt24")
+  const sentAt = mtmDemoAt(today, "11:56")
+  const proposed = { latitude: 40.40238, longitude: 49.85322 }
+  const agentFix = { latitude: 40.40242, longitude: 49.85317, accuracyMeters: 12 }
+  const verdict = evaluateCustomerLocationRequest(
+    { proposed, agent: { ...agentFix, fixAgeSeconds: 20 } },
+    { latitude: place.latitude, longitude: place.longitude },
+    new Date(sentAt),
+  )
+  if (!verdict.ok) throw new Error(`demo request refused: ${verdict.problem}`)
   return {
     agent: "Nərmin Hüseynli",
     customer: place.name,
     address: place.address,
-    sentAt: mtmDemoAt(today, "11:56"),
+    sentAt,
     previous: { latitude: place.latitude, longitude: place.longitude },
-    proposed: { latitude: 40.40238, longitude: 49.85322 },
-    agentFix: { latitude: 40.40242, longitude: 49.85317, accuracyMeters: 12 },
+    proposed,
+    agentFix,
     /** Straight-line metres between the old pin and the proposed one. */
-    movedMeters: 280,
-    agentToProposedMeters: 6,
+    movedMeters: verdict.facts.movedMeters ?? 0,
+    agentToProposedMeters: verdict.facts.agentToProposedMeters,
+    /** She checked in from this very spot: approving re-counts that visit inside the zone. */
+    checkedInFromHereAt: mtmDemoAt(today, "11:50"),
+    outsideVisitsHere90Days: 2,
     comment: "Aptek prospektin o biri tərəfindədir, giriş Atatürk pr. 40-dan.",
   }
 }
@@ -380,20 +481,19 @@ const HOME_DAY: Record<string, { visits: ReadonlyArray<{ place: string; checkIn:
       { place: "pl-yasamal", checkIn: "09:20", checkOut: "09:41" },
       { place: "pl-aile5", checkIn: "10:05", checkOut: "10:26" },
       { place: "pl-xetai", checkIn: "10:50", checkOut: "11:12" },
-      { place: "pl-aptsaglam", checkIn: "11:30", checkOut: "11:44" },
+      // Checked in 280 m from the pin, sent «Müştəri buradadır» at 11:56 (mtmDemoPlaceRequest).
+      { place: "pl-apt24", checkIn: "11:50", checkOut: "12:02" },
     ],
-    next: { place: "pl-apt24", planned: "12:20" },
+    next: { place: "pl-aptsaglam", planned: "12:40" },
   },
-  "agent-tural": {
-    visits: [{ place: "pl-usaq", checkIn: "09:45", checkOut: "10:10" }, { place: "pl-aptderman", checkIn: "10:40", checkOut: "11:02" }],
-    next: { place: "pl-nar", planned: "12:30" },
-  },
+  // No visit today: yesterday's is still open (mtmDemoLeftOpen).
+  "agent-tural": { visits: [], next: { place: "pl-usaq", planned: "09:30" } },
   "agent-aysu": { visits: [{ place: "pl-aptplus", checkIn: "09:50", checkOut: "10:12" }], next: { place: "pl-deniz", planned: "11:35" } },
   "agent-rauf": {
     visits: [
       { place: "pl-respublika", checkIn: "09:25", checkOut: "09:49" },
       { place: "pl-yasamal", checkIn: "10:30", checkOut: "10:52" },
-      { place: "pl-apt24", checkIn: "11:38", checkOut: "11:50" },
+      { place: "pl-aile5", checkIn: "11:31", checkOut: "11:50" },
     ],
     next: { place: "pl-xetai", planned: "12:40" },
   },
@@ -483,4 +583,107 @@ export function mtmDemoHome(today: string) {
     },
     quality: { visits: 64, atPlace: 58, awayFromPlace: 4, placeUnknown: 2, withPhoto: 55, tooLong: 2, tooShort: 1, longMinutes: 60, shortMinutes: 2 },
   }
+}
+
+export interface MtmDemoHistoryVisit {
+  readonly id: string
+  readonly agentId: string
+  readonly agent: string
+  readonly customer: string
+  readonly address: string
+  readonly status: "CHECKED_IN" | "CHECKED_OUT"
+  readonly checkInAt: string
+  readonly checkOutAt: string | null
+  readonly duration: number | null
+  readonly place: VisitPlaceInput
+  /** «Ünvan yoxlanılır»: the agent reported this customer's pin as wrong, from this visit's spot. */
+  readonly locationRequest: "SUBMITTED" | null
+}
+
+/** A point a few dozen metres from a pin, inside its 100 m zone. */
+function near(place: MtmDemoPlace, seed: number): { latitude: number; longitude: number } {
+  return { latitude: place.latitude + 0.00022 + (seed % 3) * 0.00006, longitude: place.longitude - 0.00018 + (seed % 2) * 0.0001 }
+}
+
+/** Today's visits, newest first, as «Ziyarət tarixçəsi» lists them — the same days «Bu gün» counts. */
+export function mtmDemoVisitHistory(today: string): MtmDemoHistoryVisit[] {
+  const request = mtmDemoPlaceRequest(today)
+  return MTM_DEMO_AGENTS.flatMap((agent) => HOME_DAY[agent.id].visits.map((visit, index) => {
+    const place = placeOf(visit.place)
+    // Nərmin's Aptek 24 visit was checked in where the pharmacy really is, 280 m from its pin.
+    const reported = agent.id === "agent-nermin" && visit.place === "pl-apt24"
+    // Elvin's first visit is the one «Vizitlər» opens: the same fixes as its review card.
+    const reviewed = agent.id === "agent-elvin" && visit.place === "pl-nar" ? mtmDemoVisit(today).placeInput : null
+    const fix = reported ? request.agentFix : reviewed ? { latitude: reviewed.checkInLat!, longitude: reviewed.checkInLng! } : near(place, index)
+    const checkInAt = mtmDemoAt(today, visit.checkIn)
+    const checkOutAt = visit.checkOut ? mtmDemoAt(today, visit.checkOut) : null
+    return {
+      id: `visit-${agent.id}-${index}`,
+      agentId: agent.id,
+      agent: agent.name,
+      customer: place.name,
+      address: place.address,
+      status: checkOutAt ? "CHECKED_OUT" as const : "CHECKED_IN" as const,
+      checkInAt,
+      checkOutAt,
+      duration: checkOutAt ? Math.round((Date.parse(checkOutAt) - Date.parse(checkInAt)) / MINUTE) : null,
+      place: {
+        status: checkOutAt ? "CHECKED_OUT" : "CHECKED_IN",
+        checkInLat: fix.latitude, checkInLng: fix.longitude,
+        checkOutLat: checkOutAt ? fix.latitude + 0.00003 : null, checkOutLng: checkOutAt ? fix.longitude + 0.00002 : null,
+        checkInCustomerLat: place.latitude, checkInCustomerLng: place.longitude, checkInGeofenceRadius: 100,
+      },
+      locationRequest: reported ? "SUBMITTED" as const : null,
+    }
+  })).sort((left, right) => right.checkInAt.localeCompare(left.checkInAt))
+}
+
+/**
+ * The plan points and visits of the last five weeks, in the shapes the
+ * product's KPI registry counts (`buildExplainableKpi`), so «Nəticələr» shows
+ * the product's own numbers for whichever period is picked. This week and
+ * today are the days «Bu gün» shows; last week adds up to each agent's
+ * `lastWeek`; earlier weeks follow the same habits.
+ */
+export function mtmDemoKpiFacts(today: string): { planPoints: ExplainableKpiPlanPoint[]; visits: ExplainableKpiFact[] } {
+  const monday = addDays(today, -((new Date(`${today}T12:00:00.000Z`).getUTCDay() + 6) % 7))
+  const lastMonday = addDays(monday, -7)
+  const planPoints: ExplainableKpiPlanPoint[] = []
+  const visits: ExplainableKpiFact[] = []
+  for (const agent of MTM_DEMO_AGENTS) {
+    for (let back = 35; back >= 0; back -= 1) {
+      const date = addDays(today, -back)
+      const weekday = (new Date(`${date}T12:00:00.000Z`).getUTCDay() + 6) % 7
+      if (weekday > 4) continue
+      let planned: number
+      let done: number
+      if (date === today) {
+        planned = agent.total
+        done = agent.visited
+      } else if (date >= monday) {
+        ;[done, planned] = agent.week[weekday]
+      } else if (date >= lastMonday) {
+        // Last week's totals spread over its five days, the remainder on the first ones.
+        planned = Math.floor(agent.lastWeek[1] / 5) + (weekday < agent.lastWeek[1] % 5 ? 1 : 0)
+        const missed = agent.lastWeek[1] - agent.lastWeek[0]
+        done = planned - (weekday < missed ? 1 : 0) - (weekday + 5 < missed ? 1 : 0)
+      } else {
+        planned = agent.total
+        const ratio = agent.lastWeek[0] / agent.lastWeek[1]
+        done = Math.max(0, Math.min(planned, Math.round(planned * ratio + ((back * 7 + agent.id.length) % 3 === 0 ? -1 : 0))))
+      }
+      for (let index = 0; index < planned; index += 1) {
+        const place = MTM_DEMO_PLACES[(index + back + agent.id.length) % MTM_DEMO_PLACES.length]
+        const id = `${agent.id}:${date}:${index}`
+        const completed = index < done
+        planPoints.push({ routePointId: `rp-${id}`, routeId: `route-${agent.id}:${date}`, agentId: agent.id, agentName: agent.name, customerId: place.id, customerName: place.name, contactId: null, date, visitType: "INDEPENDENT", brandIds: [], completed })
+        if (completed) {
+          // One visit in fifteen lacks the check-out fix; the rest carry both.
+          const gpsConfirmed = (back + index + agent.id.length) % 15 !== 0
+          visits.push({ visitId: `v-${id}`, agentId: agent.id, agentName: agent.name, customerId: place.id, customerName: place.name, contactId: null, routePointId: `rp-${id}`, date, visitType: "INDEPENDENT", brandIds: [], completed: true, gpsConfirmed })
+        }
+      }
+    }
+  }
+  return { planPoints, visits }
 }

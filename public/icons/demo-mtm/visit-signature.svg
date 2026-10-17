@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 110" role="img" aria-label="Nümunə imza">
-  <rect width="320" height="110" fill="#ffffff"/>
-  <line x1="20" y1="86" x2="300" y2="86" stroke="#cbd5e1" stroke-width="1.5"/>
-  <path d="M34 72 C 48 30, 62 30, 66 60 S 84 88, 96 50 C 104 26, 112 30, 118 58 C 124 82, 138 74, 146 52 C 152 36, 160 40, 166 60 C 172 80, 190 66, 204 48 C 214 36, 226 42, 236 56 C 246 70, 262 64, 286 44" fill="none" stroke="#1e3a8a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="160" y="104" font-family="system-ui, sans-serif" font-size="9" fill="#94a3b8" text-anchor="middle">nümunə imza · demo</text>
-</svg>

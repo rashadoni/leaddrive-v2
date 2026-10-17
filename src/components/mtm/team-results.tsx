@@ -27,6 +27,14 @@ type KpiData = {
   contract?: { truncated?: boolean }
 }
 
+/** What the results read of a report: the API's answer, or `buildExplainableKpi`'s own. */
+type TeamResultsReport = {
+  plan: { numerator: number; denominator: number; percentage: number }
+  gps: { numerator: number; denominator: number; percentage: number }
+  trend: ReadonlyArray<{ date: string; planned: number; completed: number; planPercentage: number }>
+  drilldown: Parameters<typeof mtmTeamResultsByAgent>[0]
+}
+
 const TONE_TEXT = {
   good: "text-green-700 dark:text-green-400",
   warn: "text-amber-700 dark:text-amber-400",
@@ -58,8 +66,6 @@ export function teamResultsPreset(value: string | null | undefined): Preset | nu
 }
 
 export function MtmTeamResults({ orgId, initialPreset }: { orgId?: string; initialPreset?: Preset | null }) {
-  const t = useTranslations("mtmTeamResults")
-  const locale = useLocale()
   const [preset, setPreset] = useState<Preset>(initialPreset ?? "thisMonth")
   const [teamId, setTeamId] = useState("")
   const [timezone, setTimezone] = useState<string | null>(null)
@@ -106,10 +112,49 @@ export function MtmTeamResults({ orgId, initialPreset }: { orgId?: string; initi
   }, [orgId, requestKey])
 
   const loading = loadedKey !== requestKey
-  const report = data?.report ?? null
+  return (
+    <MtmTeamResultsView
+      preset={preset}
+      onPresetChange={setPreset}
+      teams={data?.teams ?? []}
+      teamId={teamId}
+      onTeamChange={setTeamId}
+      from={range?.from ?? data?.scope?.from ?? null}
+      to={range?.to ?? null}
+      loading={loading}
+      failed={failed}
+      onRetry={() => setRetry((value) => value + 1)}
+      report={data?.report ?? null}
+      truncated={Boolean(data?.contract?.truncated)}
+    />
+  )
+}
+
+/**
+ * The results drawn from a loaded report. `MtmTeamResults` loads it; the
+ * guided demo (src/components/demo-center/journey/scenes/mtm-scene.tsx)
+ * builds one from an invented team with `buildExplainableKpi`, so a prospect
+ * sees this very screen and these very numbers.
+ */
+export function MtmTeamResultsView({ preset, onPresetChange, teams, teamId, onTeamChange, from, to, loading, failed, onRetry, report, truncated }: {
+  preset: Preset
+  onPresetChange: (preset: Preset) => void
+  teams: ReadonlyArray<{ id: string; name: string }>
+  teamId: string
+  onTeamChange: (teamId: string) => void
+  from: string | null
+  to: string | null
+  loading: boolean
+  failed: boolean
+  onRetry: () => void
+  report: TeamResultsReport | null
+  truncated: boolean
+}) {
+  const t = useTranslations("mtmTeamResults")
+  const locale = useLocale()
   const rows: MtmTeamResultsRow[] = report ? mtmTeamResultsByAgent(report.drilldown) : []
-  const shownFrom = range?.from ?? data?.scope?.from ?? null
-  const shownTo = range?.to ?? null
+  const shownFrom = from
+  const shownTo = to
   const state = failed ? "error" : loading && !report ? "loading" : "ready"
 
   return (
@@ -117,15 +162,15 @@ export function MtmTeamResults({ orgId, initialPreset }: { orgId?: string; initi
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1" role="group" aria-label={t("period")}>
           {AGENT_PERIOD_PRESETS.map((key) => (
-            <Button key={key} type="button" size="sm" variant={preset === key ? "default" : "outline"} className="min-h-10" aria-pressed={preset === key} onClick={() => setPreset(key)}>
+            <Button key={key} type="button" size="sm" variant={preset === key ? "default" : "outline"} className="min-h-10" aria-pressed={preset === key} onClick={() => onPresetChange(key)}>
               {t(`preset.${key}`)}
             </Button>
           ))}
         </div>
-        {data?.teams && data.teams.length > 0 ? (
-          <Select value={teamId} onChange={(event) => setTeamId(event.target.value)} className="min-h-10 w-[200px]" aria-label={t("team")}>
+        {teams.length > 0 ? (
+          <Select value={teamId} onChange={(event) => onTeamChange(event.target.value)} className="min-h-10 w-[200px]" aria-label={t("team")}>
             <option value="">{t("allTeams")}</option>
-            {data.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
           </Select>
         ) : null}
         {shownFrom && shownTo ? (
@@ -137,7 +182,7 @@ export function MtmTeamResults({ orgId, initialPreset }: { orgId?: string; initi
       {failed ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-card px-4 py-4 text-sm dark:border-zinc-700">
           {t("loadFailed")}
-          <Button type="button" variant="outline" size="sm" className="min-h-10" onClick={() => setRetry((value) => value + 1)}><RefreshCw className="mr-1.5 h-4 w-4" />{t("retry")}</Button>
+          <Button type="button" variant="outline" size="sm" className="min-h-10" onClick={onRetry}><RefreshCw className="mr-1.5 h-4 w-4" />{t("retry")}</Button>
         </div>
       ) : !report ? (
         <div className="grid gap-3 sm:grid-cols-3" aria-hidden="true">
@@ -145,7 +190,7 @@ export function MtmTeamResults({ orgId, initialPreset }: { orgId?: string; initi
         </div>
       ) : (
         <div className={`space-y-4 transition-opacity ${loading ? "opacity-60" : ""}`}>
-          {data?.contract?.truncated ? <p role="status" className="text-sm text-amber-700 dark:text-amber-300">{t("truncated")}</p> : null}
+          {truncated ? <p role="status" className="text-sm text-amber-700 dark:text-amber-300">{t("truncated")}</p> : null}
 
           <div data-testid="mtm-team-results-cards" className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">

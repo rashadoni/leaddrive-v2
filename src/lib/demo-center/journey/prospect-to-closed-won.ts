@@ -903,7 +903,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     {
       id: "mtm-visit",
       title: "Vizitin sübutu",
-      summary: "Hər vizit sübutla gəlir: agent müştərinin zonasında idimi və hansı məsafədə, fotolar, göstərilən təqdimat, imza. Viziti yalnız agent özü bağlayır — ofis ona xatırlada bilər.",
+      summary: "Hər vizit sübutla gəlir: giriş və çıxış müştərinin zonasında idimi, fotolar, açılan təqdimat, imza, nəticə. Viziti yalnız agent özü bağlayır — ofis ona xatırlada bilər.",
       area: "mtm",
       route: "/mtm",
       navGroup: "mtm",
@@ -916,7 +916,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "mtm-visit-proof",
           title: "Zona, foto, imza",
-          instruction: "Vizit kartında: agent zonada idimi və hansı məsafədə, çəkilmiş fotolar, göstərilən təqdimat, həkimin imzası. Bunlar agentin telefonundan gəlir — rəhbər yerində olmadan yoxlayır.",
+          instruction: "Vizit kartında: giriş və çıxış zonada idimi və hansı məsafədə, vizitin addımları, fotolar, açılan təqdimatın səhifələri, müştərinin imzası və nəticə. Bunlar agentin telefonundan gəlir — rəhbər yerində olmadan yoxlayır.",
           anchor: "mtm-visit-card",
           placement: "left",
           action: "observe",
@@ -928,7 +928,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "mtm-visit-remind",
           title: "Bağlanmamış vizit",
-          instruction: "Bir vizit dünəndən açıq qalıb. Onu yalnız agent özü bağlaya bilər, ofis bağlamır. «Agentə xatırlat» basın — agent mesaj alacaq.",
+          instruction: "Tural Babayevin viziti dünəndən açıq qalıb, buna görə o, bu gün yeni vizit aça bilmir. Viziti yalnız agent özü bağlaya bilər, ofis bağlamır. «Agentə xatırlat» basın — agent mesaj alacaq.",
           anchor: "mtm-visit-left-open",
           placement: "top",
           action: "click",
@@ -973,7 +973,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     {
       id: "mtm-results",
       title: "Nəticə: plan və fakt",
-      summary: "Həftə ərzində kim planı yerinə yetirir, kim geri qalır — nöqtələrə görə, ad-ad. Geri qalan siyahının yuxarısındadır.",
+      summary: "Seçilən dövrdə — bu həftə, keçən həftə, bu ay və ya 30 gün — kim planı yerinə yetirir, kim geri qalır: nöqtələrə görə, ad-ad. Geri qalan siyahının yuxarısındadır.",
       area: "mtm",
       route: "/mtm",
       navGroup: "mtm",
