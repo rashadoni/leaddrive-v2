@@ -916,3 +916,23 @@ Stopping point: source audit recorded only; root awaits fresh inventory and
 the matching current artifact before deciding whether the authorized bounded
 install can proceed. No frozen PR866/867/868 worktree, production file, timer,
 service, branch delivery or Kafka runtime was changed by this documentation.
+
+### Shadow authorization boundary to prove, not infer from tenant context
+
+- The existing application RLS policy uses app.org_id; setting that GUC is
+  context selection, not proof that a new worker credential is authorized
+  for that tenant. A generic PUBLIC permissive policy plus another permissive
+  policy does not narrow effective access. Do not call the application role
+  or an adapter WHERE predicate a restricted-worker credential boundary.
+- The disposable worker fixture must bind its allowed tenant/build scope
+  independently of the mutable GUC, with effective least-privilege ACL and
+  appropriately restrictive policies. Attempt an arbitrary foreign-tenant GUC
+  and direct SQL as that real login; both reads and writes must stay within
+  its authorized scope. Reuse a separate scoped login when testing a second
+  authorized tenant, not a fabricated multi-tenant permission claim.
+- This does not solve broker privacy: a tenant-qualified partition key and
+  consumer-side allowlist do not limit an all-tenant CDC snapshot or topic
+  read. Source credential/publication limitations, approved CDC data scope,
+  service ACL and canary privacy remain independent production prerequisites.
+- These are additional NOT RUN acceptance requirements for the planned adapter;
+  no role, policy, schema, application handler or broker was changed here.
