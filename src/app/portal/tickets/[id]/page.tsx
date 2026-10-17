@@ -53,7 +53,9 @@ interface TicketDetail {
   subject: string
   description: string | null
   /** Set for a ticket a chat opened; its description is the team's and is withheld. */
-  descriptionOrigin?: "whatsapp" | "assistant_chat" | null
+  descriptionOrigin?: "whatsapp" | "assistant_chat" | "website_chat" | null
+  /** The website chat the ticket was opened from — not in the comments. Absent from an older API. */
+  chatTranscript?: Array<{ text: string; author: "agent" | "assistant" | "customer"; authorName: string | null; createdAt: string }>
   status: string
   category: string
   categoryRef?: { name: string; slug: string } | null
@@ -394,7 +396,11 @@ export default function PortalTicketDetailPage() {
         {ticket.description && <p className="mt-4 whitespace-pre-wrap border-t pt-4 text-sm leading-6">{ticket.description}</p>}
         {!ticket.description && ticket.descriptionOrigin && (
           <p data-testid="portal-ticket-origin" className="mt-4 border-t pt-4 text-sm leading-6 text-muted-foreground">
-            {ticket.descriptionOrigin === "whatsapp" ? t("ticketOriginWhatsapp") : t("ticketOriginAssistantChat")}
+            {ticket.descriptionOrigin === "whatsapp"
+              ? t("ticketOriginWhatsapp")
+              : ticket.descriptionOrigin === "website_chat"
+                ? t("ticketOriginWebsiteChat")
+                : t("ticketOriginAssistantChat")}
           </p>
         )}
       </header>
@@ -405,7 +411,20 @@ export default function PortalTicketDetailPage() {
           {refreshing && <span className="text-xs text-muted-foreground" role="status">{t("updating")}</span>}
         </div>
         <div className="space-y-4 p-4">
-          {ticket.comments.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">{t("noMessages")}</p>}
+          {ticket.comments.length === 0 && !ticket.chatTranscript?.length && <p className="py-4 text-center text-sm text-muted-foreground">{t("noMessages")}</p>}
+          {ticket.chatTranscript?.map((entry, index) => {
+            const fromSupport = entry.author !== "customer"
+            return (
+              <article key={`website-chat-${index}`} data-testid="portal-ticket-website-chat-message" data-author={entry.author} className={`flex ${fromSupport ? "justify-start" : "justify-end"}`}>
+                <div className="max-w-[92%] sm:max-w-[78%]">
+                  <div className={`rounded-lg border px-3 py-2.5 text-sm ${fromSupport ? "bg-muted/30" : "bg-background"}`}>
+                    <p className="whitespace-pre-wrap leading-6">{entry.text}</p>
+                  </div>
+                  <p className={`mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground ${fromSupport ? "justify-start" : "justify-end"}`}><span>{fromSupport ? t("websiteChatSupport") : entry.authorName}</span><span>{t("commentViaChannel", { channel: t("websiteChatChannel") })}</span><time dateTime={entry.createdAt}>{formatDateTime(entry.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time></p>
+                </div>
+              </article>
+            )
+          })}
           {ticket.comments.map((comment) => (
             <article key={comment.id} data-author={comment.author ?? (comment.isAgent ? "agent" : "customer")} className={`flex ${comment.isAgent ? "justify-start" : "justify-end"}`}>
               <div className="max-w-[92%] sm:max-w-[78%]">

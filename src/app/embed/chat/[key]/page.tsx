@@ -4,7 +4,7 @@ import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import { isWidgetOnline } from "@/lib/widget-hours"
 import { parsePreChatForm } from "@/lib/web-chat-prechat"
 import { EmbedChatClient } from "./embed-chat-client"
-import { resolveWidgetLang } from "./widget-i18n"
+import { chosenWidgetLang, resolveWidgetLang } from "./widget-i18n"
 
 export const dynamic = "force-dynamic"
 
@@ -42,6 +42,7 @@ export default async function EmbedChatPage({
       online={online}
       offlineMessage={widget.offlineMessage}
       lang={lang}
+      langChosen={chosenWidgetLang(sp?.lang) !== null}
       preChatForm={parsePreChatForm(widget.preChatForm)}
       uiOptions={(widget.uiOptions as { onboardingEnabled?: boolean; historyEnabled?: boolean; customQuestions?: string[] } | null) ?? undefined}
     />

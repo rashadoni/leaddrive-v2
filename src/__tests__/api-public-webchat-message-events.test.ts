@@ -161,6 +161,34 @@ afterEach(() => {
   }
 })
 
+describe("POST /api/v1/public/web-chat/message — the visitor's language", () => {
+  function send(body: Record<string, unknown>) {
+    return POST(new NextRequest("http://localhost/api/v1/public/web-chat/message", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://site.example" },
+      body: JSON.stringify({ sessionId: "sess_1", text: "Salam", ...body }),
+    }))
+  }
+  function visitorMessageData() {
+    const call = mocks.createMessage.mock.calls.find(([arg]) => arg.data.fromRole === "visitor")
+    return call?.[0].data as { metadata?: unknown }
+  }
+
+  it("keeps the widget's language on the visitor's message when the site set it", async () => {
+    expect((await send({ lang: "az", langChosen: true })).status).toBe(200)
+    expect(visitorMessageData().metadata).toEqual({ widgetLang: "az" })
+  })
+
+  it("keeps nothing when the widget only fell back to English — or the widget is older than the flag", async () => {
+    expect((await send({ lang: "en", langChosen: false })).status).toBe(200)
+    expect(visitorMessageData().metadata).toBeUndefined()
+
+    mocks.createMessage.mockClear()
+    expect((await send({ lang: "en" })).status).toBe(200)
+    expect(visitorMessageData().metadata).toBeUndefined()
+  })
+})
+
 describe("POST /api/v1/public/web-chat/message conversation events", () => {
   it("emits inbox conversation events after visitor message ensure+notify", async () => {
     const res = await POST(request())

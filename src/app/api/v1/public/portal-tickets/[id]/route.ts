@@ -105,6 +105,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       subject: portalTicketSubject(ticket.subject),
       description: description.description,
       descriptionOrigin: description.origin,
+      // A ticket the website chat opened: that chat, which nothing copied into the comments.
+      chatTranscript: description.chatTranscript.map((entry) => ({
+        ...entry,
+        authorName: entry.author === "customer" ? user.fullName : null,
+      })),
       status: ticket.status,
       category: ticket.category,
       categoryRef: ticket.categoryRef,

@@ -84,6 +84,38 @@ export function customerFacingTicketSubject(subject: string): string {
   return match[2].trim() || subject
 }
 
+/** The subject of a ticket a website chat opened before the visitor wrote anything (an agent escalated it). */
+export function webChatTicketFallbackSubject(locale: Locale): string {
+  switch (locale) {
+    case "az":
+      return "Sayt çatından müraciət"
+    case "en":
+      return "Request from the website chat"
+    default:
+      return "Обращение из чата на сайте"
+  }
+}
+
+// ─── What the visitor reads in the website chat when it becomes a ticket ───
+
+/**
+ * The bot line the website chat shows once its ticket exists. It states the one
+ * thing that is confirmed — the ticket and its number — and nothing about who
+ * will answer or when: until 2026-10-17 it said «An agent will contact you
+ * shortly», in English for every organization, which is exactly the promise
+ * `omnichannel-commitment-rules.ts` forbids the AI replies of the same chat.
+ */
+export function webChatEscalationNotice(locale: Locale, ticketNumber: string): string {
+  switch (locale) {
+    case "az":
+      return `Müraciətiniz ${ticketNumber} nömrəsi ilə qeydə alındı. Bu məsələ ilə bağlı bizə yazsanız, həmin nömrəni göstərin.`
+    case "en":
+      return `Your request has been registered as ticket ${ticketNumber}. Please quote this number if you contact us about it.`
+    default:
+      return `Ваше обращение зарегистрировано под номером ${ticketNumber}. Укажите этот номер, если будете писать нам по этому вопросу.`
+  }
+}
+
 // ─── What the customer receives when the ticket is resolved ────────────────
 
 export function closureRequestWhatsAppText(locale: Locale, input: { ticketNumber: string; confirmationUrl: string }): string {
