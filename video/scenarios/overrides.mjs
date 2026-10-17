@@ -969,8 +969,8 @@ const DC_STATS = ["[data-tour-id='campaigns-stats']", "main"];
 const DC_LIST = ["[data-tour-id='campaigns-list']", "main"];
 const DC_HERO = ["[data-tour-id='campaigns-list'] h3:has-text('Payız kolleksiyası')"];
 const DC_KPIS = ["main .grid:has(.bg-green-500)", "main"];
-const DC_RATES = ["main :text('Delivery Rates')", "main"];
-const DC_MONEY = ["main :text('Financial')", "main"];
+const DC_RATES = ["main [data-testid='campaign-delivery-rates']", "main"];
+const DC_MONEY = ["main [data-testid='campaign-money']", "main"];
 
 const DI_ROW = (name) => [`section div[role='button'][tabindex='0']:has-text('${name}')`];
 const DI_UNANSWERED = ["section div[role='button'][tabindex='0'] :text-is('Cavabsız')"];
@@ -3692,7 +3692,10 @@ export default {
         },
       },
       {
-        voice: { az: "Aşağıda çatdırılma faizləri və xərc var: büdcə üç yüz qırx manat idi, göndəriş isə üç yüz on səkkiz manata başa gəlib." },
+        // The cost is the budget of a sent campaign (campaignCost): 340 ₼ over
+        // 214 clicks. It used to quote a 318 ₼ «actual cost» the stand had typed
+        // in and no tenant can ever have.
+        voice: { az: "Aşağıda çatdırılma faizləri və pul var: üç yüz qırx manatlıq büdcə ilə hər klik təxminən bir manat altmış qəpiyə başa gəlib." },
         do: async (p, l, h) => {
           await h.hover(DC_RATES);
           await h.holdUntil(0.5);

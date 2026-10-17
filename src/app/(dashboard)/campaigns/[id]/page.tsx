@@ -22,6 +22,7 @@ import { HelpButton } from "@/components/help/help-button"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { InfoHint } from "@/components/info-hint"
 import { rateOf, recordedCount, type CampaignAnalyticsRecord } from "@/lib/campaigns/analytics"
+import { campaignCost } from "@/lib/campaigns/roi"
 import type { Edge, Node } from "@xyflow/react"
 
 type CampaignFlowData = { nodes: Node[]; edges: Edge[] }
@@ -193,6 +194,19 @@ export default function CampaignDetailPage() {
   const countText = (n: number | null) => (n === null ? "—" : n.toLocaleString())
   const percentText = (n: number | null) => (n === null ? "—" : `${n}%`)
   const engagementNotRecorded = totalSent > 0 && campaign.type !== "email"
+  // What the campaign cost: its budget once it has gone out — the ROI
+  // screen's rule (campaignCost, src/lib/campaigns/roi.ts). This block used to
+  // read Campaign.actualCost, which nothing in the product writes, so every
+  // live campaign showed a cost of 0 ₼ under three rows all labelled «Cost».
+  const cost = campaignCost(campaign)
+  const money = (n: number) => `${n.toLocaleString(undefined, { maximumFractionDigits: 2 })} ₼`
+  const moneyRows = [
+    { key: "budget", label: t("budget"), value: money(campaign.budget || 0) },
+    { key: "cost", label: tc("cost"), value: cost > 0 ? money(cost) : "—", hint: t("detailCostHint") },
+    { key: "per-send", label: t("detailCostPerSend"), value: cost > 0 && totalSent > 0 ? money(Math.round((cost / totalSent) * 100) / 100) : "—" },
+    // Clicks are recorded on e-mail alone; elsewhere there is nothing to divide by.
+    { key: "per-click", label: t("detailCostPerClick"), value: cost > 0 && clicked ? money(Math.round((cost / clicked) * 100) / 100) : "—" },
+  ]
   const typeLabels: Record<string, string> = {
     email: t("typeEmail"),
     sms: t("typeSms"),
@@ -285,21 +299,21 @@ export default function CampaignDetailPage() {
         </div>
         <div className="bg-amber-500 text-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80 flex items-center gap-1">Bounces <InfoHint text={t("hintBounces")} size={12} className="[&_svg]:!text-white/80" /></span>
+            <span className="text-xs font-medium opacity-80 flex items-center gap-1">{t("detailBounces")} <InfoHint text={t("hintBounces")} size={12} className="[&_svg]:!text-white/80" /></span>
             <XCircle className="h-4 w-4 opacity-80" />
           </div>
           <span className="text-2xl font-bold" data-testid="campaign-kpi-bounces">{countText(bounced)}</span>
         </div>
         <div className="bg-orange-500 text-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80 flex items-center gap-1">Unsubscribes <InfoHint text={t("hintUnsubscribes")} size={12} className="[&_svg]:!text-white/80" /></span>
+            <span className="text-xs font-medium opacity-80 flex items-center gap-1">{t("detailUnsubscribes")} <InfoHint text={t("hintUnsubscribes")} size={12} className="[&_svg]:!text-white/80" /></span>
             <Users className="h-4 w-4 opacity-80" />
           </div>
           <span className="text-2xl font-bold" data-testid="campaign-kpi-unsubscribes">{countText(unsubscribed)}</span>
         </div>
         <div className="bg-red-500 text-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80 flex items-center gap-1">Spam <InfoHint text={t("hintSpam")} size={12} className="[&_svg]:!text-white/80" /></span>
+            <span className="text-xs font-medium opacity-80 flex items-center gap-1">{t("detailSpam")} <InfoHint text={t("hintSpam")} size={12} className="[&_svg]:!text-white/80" /></span>
             <AlertTriangle className="h-4 w-4 opacity-80" />
           </div>
           <span className="text-2xl font-bold" data-testid="campaign-kpi-spam">{countText(spam)}</span>
@@ -324,7 +338,7 @@ export default function CampaignDetailPage() {
         <TabsList className="bg-muted/60 p-1 h-auto">
           {campaign.status === "draft" && <TabsTrigger value="compose" className="rounded-md text-sm"><Send className="h-3.5 w-3.5 mr-1" />{t("compose") || "Compose"}</TabsTrigger>}
           <TabsTrigger value="results" className="rounded-md text-sm">{tc("results", { count: totalSent })}</TabsTrigger>
-          <TabsTrigger value="flow" className="rounded-md text-sm">Flow</TabsTrigger>
+          <TabsTrigger value="flow" className="rounded-md text-sm">{t("detailFlowTab")}</TabsTrigger>
           <TabsTrigger value="details" className="rounded-md text-sm">{tc("details")}</TabsTrigger>
           {campaign.isAbTest && <TabsTrigger value="ab-test" className="rounded-md text-sm">{tab("results")}</TabsTrigger>}
         </TabsList>
@@ -451,7 +465,7 @@ export default function CampaignDetailPage() {
           <div className="grid md:grid-cols-2 gap-4">
             <Card className="border-none shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Delivery Rates</CardTitle>
+                <CardTitle data-testid="campaign-delivery-rates" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("detailDeliveryRates")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {[
@@ -476,18 +490,13 @@ export default function CampaignDetailPage() {
 
             <Card className="border-none shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Financial</CardTitle>
+                <CardTitle data-testid="campaign-money" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("detailMoney")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {[
-                  { label: t("budget"), value: `${(campaign.budget || 0).toLocaleString()} ₼` },
-                  { label: tc("cost"), value: `${(campaign.actualCost || 0).toLocaleString()} ₼` },
-                  { label: tc("cost"), value: totalSent > 0 ? `${((campaign.actualCost || 0) / totalSent).toFixed(2)} ₼` : "—" },
-                  { label: tc("cost"), value: totalClicked > 0 ? `${((campaign.actualCost || 0) / totalClicked).toFixed(2)} ₼` : "—" },
-                ].map(f => (
-                  <div key={f.label} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{f.label}</span>
-                    <span className="font-medium">{f.value}</span>
+                {moneyRows.map(f => (
+                  <div key={f.key} className="flex justify-between text-sm" data-testid={`campaign-money-${f.key}`}>
+                    <span className="text-muted-foreground flex items-center gap-1">{f.label}{f.hint && <InfoHint text={f.hint} size={12} />}</span>
+                    <span className="font-medium tabular-nums">{f.value}</span>
                   </div>
                 ))}
               </CardContent>

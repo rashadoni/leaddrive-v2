@@ -174,3 +174,54 @@ describe("campaign page — an email campaign's records", () => {
     expect(text("campaign-rate-bounce")).toContain("0%")
   })
 })
+
+/**
+ * The money block reads the campaign's budget as its cost once it has gone
+ * out — the ROI screen's rule (campaignCost, src/lib/campaigns/roi.ts). It used
+ * to read Campaign.actualCost, which nothing in the product writes: every live
+ * campaign showed «Cost 0 ₼», under three rows all labelled «Cost», and the
+ * guided demo's clip quoted a 318 ₼ «actual cost» no tenant can ever have.
+ */
+describe("campaign page — what the campaign cost", () => {
+  const value = (key: string) => {
+    const row = container.querySelector(`[data-testid="campaign-money-${key}"]`)
+    expect(row, key).not.toBeNull()
+    return row!.lastElementChild?.textContent ?? ""
+  }
+
+  it("counts a sent campaign's budget as its cost, per send and per click", async () => {
+    // actualCost is ignored even where an old seed left one behind.
+    await renderPage({ ...EMAIL, budget: 340, actualCost: 318, totalSent: 1829, totalClicked: 214 })
+    expect(value("budget")).toBe("340 ₼")
+    expect(value("cost")).toBe("340 ₼")
+    expect(value("per-send")).toBe(`${(0.19).toLocaleString()} ₼`)
+    expect(value("per-click")).toBe(`${(1.59).toLocaleString()} ₼`)
+    // Four rows, four different words.
+    const labels = Array.from(container.querySelectorAll('[data-testid^="campaign-money-"] > span:first-child')).map((el) => el.textContent)
+    expect(new Set(labels).size).toBe(4)
+  })
+
+  it("has no cost before the campaign has gone out: a budget is a plan", async () => {
+    await renderPage({ ...EMAIL, status: "draft", budget: 410, totalSent: 0, totalClicked: 0, sentAt: null })
+    expect(value("budget")).toBe("410 ₼")
+    expect(value("cost")).toBe("—")
+    expect(value("per-send")).toBe("—")
+  })
+
+  it("has no cost per click where the channel records no clicks", async () => {
+    await renderPage({ ...REAL_SMS, budget: 229 })
+    expect(value("cost")).toBe("229 ₼")
+    expect(value("per-click")).toBe("—")
+  })
+
+  it("names every figure in the user's language, not in English", async () => {
+    await renderPage(EMAIL)
+    // (Translations are keys here: «detailBounces» is the translated label, a bare «Bounces» is not.)
+    for (const english of ["Bounces", "Unsubscribes", "Delivery Rates", "Financial"]) {
+      expect(container.textContent, english).not.toMatch(new RegExp(`(^|[^A-Za-z])${english}`))
+    }
+    for (const key of ["detailBounces", "detailUnsubscribes", "detailSpam", "detailDeliveryRates", "detailMoney"]) {
+      expect(container.textContent, key).toContain(key)
+    }
+  })
+})
