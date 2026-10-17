@@ -8,8 +8,14 @@ import { defaultLocale, locales, type Locale } from "@/i18n/routing"
  * The rule is the one the renewal cron and the tenant settings already state
  * («Fallback language for renewal / meeting-recap / social-reply when the
  * contact has no preferredLanguage»): the contact's own `preferredLanguage`;
- * else the organization's `settings.language` (tenant admin, AI delivery
- * settings), or the older `settings.locale`; else the application default.
+ * else the organization's `settings.language`, or the older `settings.locale`;
+ * else the application default.
+ *
+ * `settings.language` is «Язык общения с клиентами» in Settings → Organization
+ * (/api/v1/settings/organization/language, admin-only) and in the superadmin
+ * tenant editor. Until 2026-10-17 it was the «Язык брифинга» select of the AI
+ * delivery card; the owner moved it, as one setting, to where an admin looking
+ * for the chat's or the notices' language would find it.
  *
  * Found on 2026-10-17: the main tenant has `settings.language = "az"`, one
  * contact of 692 on production has a language of its own, and that tenant's

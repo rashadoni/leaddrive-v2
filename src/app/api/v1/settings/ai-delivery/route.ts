@@ -12,7 +12,6 @@ type DeliverySettings = {
   telegramBotToken?: unknown
   telegramChatId?: unknown
   slackWebhookUrl?: unknown
-  language?: unknown
   [key: string]: unknown
 }
 
@@ -20,7 +19,6 @@ const patchDeliverySchema = z.object({
   telegramBotToken: z.string().trim().max(4_096).optional(),
   telegramChatId: z.string().trim().max(256).optional(),
   slackWebhookUrl: z.string().trim().max(4_096).optional(),
-  language: z.enum(["ru", "en", "az"]).optional(),
 }).strict().refine((value) => Object.keys(value).length > 0)
 
 function requireDeliveryAdmin(role: string): Response | null {
@@ -41,13 +39,16 @@ function exposeDeliverySettings(settings: DeliverySettings) {
     telegramChatId: typeof settings.telegramChatId === "string" ? settings.telegramChatId : "",
     slackWebhookUrl: hasSlackWebhook ? SECRET_MASK : "",
     slackWebhookConfigured: hasSlackWebhook,
-    language: ["ru", "en", "az"].includes(String(settings.language)) ? settings.language : "ru",
   }
 }
 
 /**
  * GET /api/v1/settings/ai-delivery — read delivery channel settings
  * PATCH /api/v1/settings/ai-delivery — update delivery channel settings
+ *
+ * The organization's language is not a delivery setting any more: it decides
+ * what customers read and is set in Settings → Organization
+ * (/api/v1/settings/organization/language).
  */
 export const GET = withRlsSessionAuth(async (_req, auth) => {
   const denial = requireDeliveryAdmin(auth.role)
@@ -92,7 +93,6 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
   if (parsed.data.slackWebhookUrl !== undefined && parsed.data.slackWebhookUrl !== SECRET_MASK) {
     settings.slackWebhookUrl = parsed.data.slackWebhookUrl
   }
-  if (parsed.data.language !== undefined) settings.language = parsed.data.language
 
   if (typeof settings.slackWebhookUrl === "string" && settings.slackWebhookUrl) {
     try {
@@ -121,12 +121,10 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
       oldValue: {
         telegramConfigured: Boolean(current.telegramBotToken),
         slackConfigured: Boolean(current.slackWebhookUrl),
-        language: current.language || "ru",
       },
       newValue: {
         telegramConfigured: Boolean(settings.telegramBotToken),
         slackConfigured: Boolean(settings.slackWebhookUrl),
-        language: settings.language || "ru",
       },
     },
   )
