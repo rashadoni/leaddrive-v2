@@ -552,6 +552,7 @@ describe("POST /api/v1/mtm/agents", () => {
     }))
 
     expect(res.status).toBe(400)
+    expect((await res.json()).code).toBe("MTM_PASSWORD_WEAK")
     expect(prisma.mtmAgent.create).not.toHaveBeenCalled()
   })
 
@@ -695,6 +696,8 @@ describe("PUT /api/v1/mtm/agents/[id]", () => {
     )
 
     expect(res.status).toBe(400)
+    // The card's form says it in the page's language by this code.
+    expect((await res.json()).code).toBe("MTM_PASSWORD_WEAK")
     expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
   })
 

@@ -16,6 +16,11 @@
  * the sending organization's inbox log. The stand-ins: Meta's Graph API (a
  * fake `fetch`) and the rate limiter (limits are not what is tested here).
  *
+ * And the way round the code (owner, 2026-10-17: «сделай сброс пароля, у меня
+ * нет 3-го номера»): when no code can reach the number, the administrator sets
+ * the card's password in «Агенты» — the real PUT handler, with only the
+ * browser session stood in — and the app signs in with it.
+ *
  * Set MTM_LOGIN_CODE_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55499:5432 postgres:16
  *   MTM_LOGIN_CODE_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55499/postgres
@@ -50,6 +55,13 @@ const scratch = vi.hoisted(() => {
   process.env.MTM_LOGIN_CODE_SENDER_ORGANIZATION_ID = "org-login-code-sender"
   return { name, url: url.toString() }
 })
+
+/** The browser session of the organization's administrator, for the card's «Сбросить пароль». */
+const webSession = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
+vi.mock("@/lib/api-auth", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/api-auth")>(),
+  getSession: vi.fn(async () => webSession.current),
+}))
 
 // Limits are not under test; every request is let through.
 vi.mock("@/lib/public-abuse-guard", async (importOriginal) => ({
@@ -91,6 +103,8 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
   let verifyCode!: typeof import("@/app/api/v1/mtm/mobile/auth/code/verify/route").POST
   let setPassword!: typeof import("@/app/api/v1/mtm/mobile/auth/password/route").POST
   let signIn!: typeof import("@/app/api/v1/mtm/mobile/auth/route").POST
+  let updateAgent!: typeof import("@/app/api/v1/mtm/agents/[id]/route").PUT
+  let resolveMobileAuth!: typeof import("@/lib/mobile-auth").resolveMobileAuth
   let availability!: typeof import("@/lib/mtm/whatsapp-login-code")
   const sent: Sent[] = []
   let metaAnswers: (() => Response) | null = null
@@ -112,6 +126,8 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     verifyCode = (await import("@/app/api/v1/mtm/mobile/auth/code/verify/route")).POST
     setPassword = (await import("@/app/api/v1/mtm/mobile/auth/password/route")).POST
     signIn = (await import("@/app/api/v1/mtm/mobile/auth/route")).POST
+    updateAgent = (await import("@/app/api/v1/mtm/agents/[id]/route")).PUT
+    resolveMobileAuth = (await import("@/lib/mobile-auth")).resolveMobileAuth
     availability = await import("@/lib/mtm/whatsapp-login-code")
     vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
       sent.push({ url, authorization: new Headers(init.headers).get("authorization"), body: JSON.parse(String(init.body)) })
@@ -262,6 +278,62 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     } finally {
       await bypass(() => prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: ORG, key: "attendanceEnabled" } }, data: { value: true } }))
     }
+  })
+
+  it("signs in by number with the password the administrator set on the card, and ends the phone's older session", async () => {
+    // A manager's card linked to a CRM user, like most managers': no password
+    // of its own, and the CRM user's password is the person's, not the admin's.
+    const { cardId, userId } = await bypass(async () => {
+      const user = await prisma.user.create({ data: { organizationId: ORG, name: "Fictional manager", email: "manager@example.invalid", passwordHash: await bcrypt.hash("Crm-Web-Pass-2026!", 4), role: "manager" } })
+      const card = await prisma.mtmAgent.create({ data: { organizationId: ORG, userId: user.id, name: "Fictional manager", email: "manager@example.invalid", phone: "+994501110005", role: "MANAGER" } })
+      return { cardId: card.id, userId: user.id }
+    })
+    expect((await post(signIn, "", { phone: "+994501110005", password: STRONG, organizationSlug: ORG })).status).toBe(401)
+    // Signed in on some phone with the CRM password before the reset.
+    const before = await post(signIn, "", { phone: "+994501110005", password: "Crm-Web-Pass-2026!", organizationSlug: ORG })
+    expect(before.status).toBe(200)
+    const oldToken = (await before.json()).data.token as string
+    const withToken = (token: string) => new NextRequest("http://localhost:3000/api/v1/mtm/mobile/profile", { headers: { authorization: `Bearer ${token}` } })
+    expect(await resolveMobileAuth(withToken(oldToken))).not.toBeNull()
+
+    const reset = (password: string) => updateAgent(
+      new NextRequest(`http://localhost:3000/api/v1/mtm/agents/${cardId}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) }),
+      { params: Promise.resolve({ id: cardId }) },
+    )
+    webSession.current = { orgId: ORG, userId: "fictional-admin", role: "admin", email: "admin@example.invalid", name: "Fictional admin", principalType: "session" }
+    try {
+      const weak = await reset("short")
+      expect(weak.status).toBe(400)
+      expect((await weak.json()).code).toBe("MTM_PASSWORD_WEAK")
+      expect((await reset(STRONG)).status).toBe(200)
+    } finally {
+      webSession.current = null
+    }
+
+    const byNumber = await post(signIn, "", { phone: "050 111 00 05", password: STRONG, organizationSlug: ORG })
+    expect(byNumber.status).toBe(200)
+    expect(jwt.verify((await byNumber.json()).data.token, process.env.NEXTAUTH_SECRET!) as Record<string, unknown>).toMatchObject({ agentId: cardId, userId, orgId: ORG, role: "MANAGER" })
+    expect((await post(signIn, "", { email: "manager@example.invalid", password: STRONG, organizationSlug: ORG })).status).toBe(200)
+    // The phone that was signed in before has to sign in again.
+    expect(await resolveMobileAuth(withToken(oldToken))).toBeNull()
+
+    const [card, user] = await bypass(() => Promise.all([
+      prisma.mtmAgent.findUniqueOrThrow({ where: { id: cardId } }),
+      prisma.user.findUniqueOrThrow({ where: { id: userId } }),
+    ]))
+    expect(await bcrypt.compare(STRONG, card.passwordHash!)).toBe(true)
+    // The person's own CRM password is untouched.
+    expect(await bcrypt.compare("Crm-Web-Pass-2026!", user.passwordHash!)).toBe(true)
+    // Who set it is on record; neither the password nor its hash is.
+    const audit = await bypass(() => prisma.mtmAuditLog.findFirstOrThrow({ where: { organizationId: ORG, entityId: cardId, action: "AGENT_UPDATE" } }))
+    expect(audit.newData).toMatchObject({ passwordHash: "[redacted]" })
+    expect(JSON.stringify(audit)).not.toContain(STRONG)
+    expect(JSON.stringify(audit)).not.toContain(card.passwordHash!)
+
+    // The code still works for them afterwards: the agent may set their own.
+    await ask("+994501110005")
+    expect(sent).toHaveLength(1)
+    expect((await verify("+994501110005", codeOf(sent[0]))).status).toBe(200)
   })
 
   it("says aloud that codes cannot be sent while the template is missing — to everybody, and withdraws the code", async () => {

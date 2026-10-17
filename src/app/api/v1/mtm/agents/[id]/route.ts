@@ -298,9 +298,14 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
     // above fence whom that is, and the caller's own card was refused first.
     if (labels?.ok) data.tags = labels.tags
     if (body.mapColor !== undefined) data.mapColor = body.mapColor ?? null
+    // «Reset password» on the card (owner, 2026-10-17: «сделай сброс пароля, у
+    // меня нет 3-го номера»): when no code can reach the agent's WhatsApp, the
+    // administrator — or the manager of the card's territory, checked above —
+    // sets one and hands it over. A new hash is a new credential epoch, so the
+    // agent's sessions on other phones end.
     if (body.password) {
       const passwordError = passwordPolicyError(body.password)
-      if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 })
+      if (passwordError) return NextResponse.json({ error: passwordError, code: "MTM_PASSWORD_WEAK" }, { status: 400 })
       data.passwordHash = await bcrypt.hash(body.password, 12)
     }
 

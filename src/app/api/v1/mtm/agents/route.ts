@@ -452,11 +452,12 @@ export const POST = withRls(async (req, auth) => {
     }
 
     // A password sent by an integration or a tab opened before 2026-10-16 is
-    // still honoured; the form sends none — the agent sets his own by a code.
+    // still honoured; the form sends none — the agent sets his own by a code,
+    // or an administrator sets one later with «Reset password» on the card.
     let passwordHash: string | null = null
     if (body.password) {
       const passwordError = passwordPolicyError(body.password)
-      if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 })
+      if (passwordError) return NextResponse.json({ error: passwordError, code: "MTM_PASSWORD_WEAK" }, { status: 400 })
       passwordHash = await bcrypt.hash(body.password, 12)
     }
 

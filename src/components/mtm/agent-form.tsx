@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
-import { Check, X, MessageCircle } from "lucide-react"
+import { Check, X, MessageCircle, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -28,6 +28,7 @@ const internationalPhone = (value: string) => /^\+[1-9]\d{6,14}$/.test(value.rep
 const PHONE_ERROR: Record<string, string> = {
   MTM_AGENT_PHONE_INVALID: "whatsappPhoneInvalid",
   MTM_AGENT_PHONE_TAKEN: "whatsappPhoneTaken",
+  MTM_PASSWORD_WEAK: "passwordRules",
 }
 
 interface AgentFormProps {
@@ -139,6 +140,15 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
   // Whether the manager pressed a colour button in this form: only then is
   // the colour his to save (see what is sent in handleSubmit).
   const [mapColorTouched, setMapColorTouched] = useState(false)
+  // «Reset password» on an existing card, for when no code can reach the
+  // agent's WhatsApp. Kept out of `form`, which is sent whole: a password
+  // leaves the browser only when it was typed here.
+  const [passwordOpen, setPasswordOpen] = useState(false)
+  const [password, setPassword] = useState("")
+  // Shown in clear by default: the manager hands this password over, so what
+  // is saved must be what they can read (2026-10-06: one typed behind the dots
+  // twice, and the phone refused both).
+  const [passwordHidden, setPasswordHidden] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -163,6 +173,9 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
         mapColor: isMtmAgentMapColorKey(givenColor) ? givenColor : "",
       })
       setMapColorTouched(false)
+      setPasswordOpen(false)
+      setPassword("")
+      setPasswordHidden(false)
       setTagDraft("")
       setTagProblem(null)
       setError("")
@@ -285,6 +298,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
           ...form,
           managerId: form.managerId || null,
           phone: isEdit && !phoneChanged ? undefined : form.phone.trim() || null,
+          password: isEdit && passwordOpen && password ? password : undefined,
           tags: sendTags ? labels.tags : undefined,
           mapColor: sendMapColor ? form.mapColor || null : undefined,
         }),
@@ -370,12 +384,56 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
               </div>
             </div>
             {/* Owner, 2026-10-16: «одно и то же правило для сотрудников и агентов
-                полевых» — nobody sets an agent's password; the agent gets a code
-                in WhatsApp and sets their own (as Personnel → Add employee). */}
+                полевых» — the agent gets a code in WhatsApp and sets their own
+                password (as Personnel → Add employee). */}
             <p className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" data-testid="agent-code-login-note">
               <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>{isEdit && !form.phone.trim() ? tf("codeLoginNoPhone") : tf("codeLoginNote")}</span>
             </p>
+            {/* Owner, 2026-10-17: «сделай сброс пароля, у меня нет 3-го номера» —
+                when no code can reach the number, the card's password is set
+                here and handed over. Not on a new card: it gets its own by code. */}
+            {isEdit ? (
+              passwordOpen ? (
+                <div data-testid="agent-password-reset">
+                  <Label htmlFor="agent-password">{tf("newPassword")}</Label>
+                  <div className="relative">
+                    {/* Not `id="password"` beside an email field: that is a sign-in
+                        form to a browser, which then offers — or fills in — the
+                        manager's own saved password. */}
+                    <Input
+                      id="agent-password"
+                      name="agent-new-password"
+                      type={passwordHidden ? "password" : "text"}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder={tf("passwordRules")}
+                      maxLength={72}
+                      autoComplete={passwordHidden ? "new-password" : "off"}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      className="pr-24"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPasswordHidden(hidden => !hidden)}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                    >
+                      {passwordHidden ? tf("showPassword") : tf("hidePassword")}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{tf("passwordResetHint")}</p>
+                </div>
+              ) : (
+                <div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setPasswordOpen(true)} data-testid="agent-password-reset-open">
+                    <KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />
+                    {tf("resetPassword")}
+                  </Button>
+                </div>
+              )
+            ) : null}
             <div>
               <Label htmlFor="externalCode">{tf("externalCode")}</Label>
               <Input id="externalCode" value={form.externalCode} onChange={e => update("externalCode", e.target.value)} placeholder={tf("externalCodeHint")} />
@@ -587,6 +645,7 @@ const AGENT_FIELD_LABELS: Record<string, (labels: { tc: (key: string) => string;
   name: ({ tc }) => tc("name"), phone: ({ tf }) => tf("whatsappPhone"), email: ({ tf }) => tf("emailOptional"),
   externalCode: ({ tf }) => tf("externalCode"), role: ({ tf }) => tf("role"), status: ({ tc }) => tc("status"),
   tags: ({ tf }) => tf("tags"), mapColor: ({ tf }) => tf("mapColor"), managerId: ({ tf }) => tf("manager"),
+  password: ({ tf }) => tf("newPassword"),
 }
 /**
  * A refused save names the fields, in the page's language (owner's E2E test,
