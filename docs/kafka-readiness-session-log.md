@@ -653,3 +653,32 @@ worker, a production role change, a restore, an offset reset or customer replay.
   Once that lock is free, the planned recovery is one targeted CDC-job rerun
   for each affected PR, strictly sequentially. This journal synchronization
   itself triggers no retry, ready transition, push or production action.
+
+## 2026-10-18 — bounded shared integration queue correction
+
+- Actual CDC runs `39077023158` and `39076938841` were cancelled before any
+  job steps when multiple PR workflows contended for the shared pending slot.
+  The previous `cancel-in-progress: false` protected the running job but did
+  not retain multiple pending jobs; default concurrency permits one pending
+  waiter and replaces it with the newest one.
+- Verified the current primary [GitHub concurrency documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency):
+  job-level `queue: max` permits up to 100 pending jobs, still only one running
+  job in the shared group. Excess jobs are cancelled when the queue is full;
+  this is bounded waiting, not parallel JVM execution or unlimited capacity.
+  The documented prohibition on combining queue:max with cancel-in-progress:true
+  applies to that same concurrency mapping.
+- Added only `queue: max` to the nested job concurrency in the basic stack
+  and CDC workflows, preserving the fixed shared
+  `event-platform-disposable-integration` group and cancel-in-progress:false.
+  Workflow-level branch-specific cancel-in-progress:true remains unchanged,
+  so superseded runs of the same branch can still be cancelled normally.
+- Added one dependency-free Node regression covering both job mappings, their
+  shared one-running-stack boundary and the unchanged workflow-level behavior.
+  This prepares a scheduler correction; it does not itself dispatch/retry CI,
+  activate Kafka, change any source/offset, run replay or alter production.
+- Verification on this tree after RAM/disk/PSI inspection: 56 narrow Node
+  tooling tests PASS sequentially, asset gate PASS (27 domains, 86 topics,
+  5 concrete schemas), runner policy PASS (70 workflows), whitespace checks
+  PASS. The workflow diff is exactly one nested queue:max addition in each
+  file. Actual GitHub scheduling behavior on these new bytes is NOT RUN in
+  this local task; the regression proves configuration, not a hosted receipt.

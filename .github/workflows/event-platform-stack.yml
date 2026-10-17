@@ -25,6 +25,7 @@ jobs:
     concurrency:
       group: event-platform-disposable-integration
       cancel-in-progress: false
+      queue: max
     env:
       LD_EVENT_STACK_DISPOSABLE: '1'
       LD_EVENT_STACK_PROJECT: ld-event-test-${{ github.run_id }}-${{ github.run_attempt }}
