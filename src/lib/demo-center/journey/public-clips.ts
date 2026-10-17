@@ -19,7 +19,7 @@ export const DEMO_PUBLIC_CLIP_SLUGS: ReadonlySet<string> = new Set([
  * and renews it on every visit, so a clip re-filmed under the same URL would
  * never reach a returning visitor: change this when any public clip changes.
  */
-export const DEMO_PUBLIC_CLIPS_VERSION = "20260921"
+export const DEMO_PUBLIC_CLIPS_VERSION = "20261017"
 
 export function demoPublicClipUrl(slug: string, kind: "video" | "poster"): string {
   const file = `${slug}.az.${kind === "video" ? "VOICE.mp4" : "poster.jpg"}`

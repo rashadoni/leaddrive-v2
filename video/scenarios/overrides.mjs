@@ -3697,6 +3697,9 @@ export default {
         // in and no tenant can ever have.
         voice: { az: "Aşağıda çatdırılma faizləri və pul var: üç yüz qırx manatlıq büdcə ilə hər klik təxminən bir manat altmış qəpiyə başa gəlib." },
         do: async (p, l, h) => {
+          // Both panels sit below the fold at 720p; without this the cost per
+          // click the voice quotes is cut off under the frame.
+          await centre(p, DC_MONEY);
           await h.hover(DC_RATES);
           await h.holdUntil(0.5);
           await h.moveTo(DC_MONEY);
