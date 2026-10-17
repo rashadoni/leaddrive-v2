@@ -400,7 +400,7 @@ describe("the arrow's controls", () => {
     const sources = [
       "src/components/demo-center/journey/demo-journey-guide.tsx",
       "src/components/demo-center/journey/demo-live-call.tsx",
-      ...["campaign", "inbox", "lead", "board", "deal", "quote", "support", "calls", "mtm", "personnel", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
+      ...["campaign", "inbox", "lead", "board", "deal", "quote", "support", "calls", "mtm", "personnel", "contracts", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
     ].map((file) => readFileSync(path.join(process.cwd(), file), "utf8")).join("\n")
     const withCall = withLiveCall(PROSPECT_TO_CLOSED_WON).sections.flatMap((section) => section.steps)
     for (const step of new Map([...steps, ...withCall.map((candidate) => [candidate.id, candidate] as const)]).values()) {
@@ -883,5 +883,92 @@ describe("the Call Center module", () => {
     const table = textOf('[data-tour-id="cc-promise-report"]')
     expect(table).toContain(messages.leads.lateCallbacksTitle)
     expect(table).toContain(messages.leads.lateCallbacksNeverCalled)
+  }, 60_000)
+})
+
+/**
+ * Contracts (owner, 2026-10-13): the draft an accepted quote wrote goes
+ * through the approval chain, the product's own e-signature and into the
+ * renewal reminders — every figure the product's own arithmetic.
+ */
+describe("the Contracts module", () => {
+  const openContracts = async () => {
+    await renderPlayer()
+    const choice = document.querySelector<HTMLButtonElement>('[data-start-section="ctr-list"]')
+    expect(choice, "the first screen offers Contracts").not.toBeNull()
+    expect(choice!.textContent).toContain(messages.nav.contracts)
+    await act(async () => choice!.click())
+    await settle()
+  }
+  const demoToday = async () => {
+    const { mtmDemoToday } = await import("@/components/demo-center/journey/scenes/mtm-demo-data")
+    const raw = window.sessionStorage.getItem(STORAGE_KEY)!
+    return mtmDemoToday((JSON.parse(raw).snapshot ?? JSON.parse(raw)).startedAt as string)
+  }
+
+  it("lists the portfolio by the list page's arithmetic, with the quote's draft on top", async () => {
+    const { contractsDemoList, contractsDemoStats } = await import("@/components/demo-center/journey/scenes/contracts-demo-data")
+    await openContracts()
+    expect(frontier()).toMatchObject({ sectionId: "ctr-list", stepId: "ctr-list-figures", state: "STARTED" })
+    const today = await demoToday()
+    const rows = contractsDemoList(today)
+    const stats = contractsDemoStats(today, rows)
+    const figures = textOf('[data-tour-id="ctr-list-stats"]')
+    expect(figures).toContain(`${messages.contracts.statActive}${stats.activeCount}`)
+    expect(figures).toContain(`${messages.contracts.statExpiringSoon}${stats.expiringSoon}`)
+    // The draft's title is the one accepting the quote writes, in Azerbaijani.
+    expect(rows[0].title).toBe("Q-2026-031 təklifinin qəbulu")
+    expect(textOf('[data-tour-id="ctr-list-table"]')).toContain(rows[0].title)
+  }, 60_000)
+
+  it("sends the draft through both approval levels, then to the signer, and it turns active", async () => {
+    await openContracts()
+    await walkTo("ctr-approve-submit")
+    const status = () => textOf('[data-testid="ctr-status"]')
+    expect(status()).toBe(messages.contracts.statusDraft)
+    await act(async () => findDemoTarget("ctr-approve-submit")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("ctr-approve-submit")
+    await act(async () => findDemoTarget("ctr-approve-submit")!.click())
+    await settle()
+    expect(status()).toBe(messages.contracts.statusPendingApproval)
+    const chain = () => textOf('[data-tour-id="ctr-approve-chain"]')
+    expect(chain()).toContain(messages.contracts.approvalStatusPending)
+    expect(chain()).toContain(messages.contracts.approvalRoleManager)
+    expect(chain()).not.toMatch(/\bpending\b|\bmanager\b|h SLA/)
+    await act(async () => findDemoTarget("ctr-approve-decide")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("ctr-approve-decide")
+    await act(async () => findDemoTarget("ctr-approve-decide")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("ctr-approve-done")
+    expect(status()).toBe(messages.contracts.statusApproved)
+    await walkTo("ctr-sign-send")
+    await act(async () => findDemoTarget("ctr-sign-send")!.click())
+    await settle()
+    await act(async () => findDemoTarget("ctr-sign-send")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("ctr-sign-customer")
+    expect(textOf('[data-tour-id="ctr-sign-customer"]')).toContain(messages.signPortal.signButton)
+    await act(async () => findDemoTarget("ctr-sign-customer")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("ctr-sign-active")
+    expect(status()).toBe(messages.contracts.statusActive)
+    expect(textOf('[data-testid="ctr-envelope-status"]')).toBe(messages.contracts.esignStatusCompleted)
+  }, 60_000)
+
+  it("keeps the renewals by the product's schedule and writes the alert in the managers' language", async () => {
+    const { contractsDemoLifecycle, contractsDemoBell } = await import("@/components/demo-center/journey/scenes/contracts-demo-data")
+    await openContracts()
+    await walkTo("ctr-control-renewals")
+    const today = await demoToday()
+    const view = contractsDemoLifecycle(today)
+    expect(textOf('[data-testid="ctr-kpi-renewals"]')).toBe(String(view.renewals.total))
+    // A reminder that came due was delivered by the morning job and left the page.
+    expect(view.renewals.overdueCount).toBe(0)
+    expect(view.renewals.items.every((item) => [90, 60, 30, 14, 7].includes(item.daysBeforeExpiry))).toBe(true)
+    const bell = contractsDemoBell(today)!
+    expect(bell.title).toMatch(/^Müqavilənin müddəti bitir: /)
+    expect(textOf('[data-testid="ctr-bell-title"]')).toBe(bell.title)
   }, 60_000)
 })
