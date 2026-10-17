@@ -734,6 +734,9 @@ const CONTENT_PURGE_PRESERVE = new Set<string>([
   "event_command_receipts", "event_aggregate_heads", "domain_events", "event_outbox",
   "consumer_inbox", "projection_builds", "projection_checkpoints", "effect_outbox",
   "effect_attempts", "effect_reconciliations",
+  // Customer receiver: payloads leave only by TTL/hold, runtime security log
+  // only after its retention; their triggers refuse an early bulk DELETE.
+  "customer_receiver_payloads", "customer_receiver_security_events",
 ])
 
 /**

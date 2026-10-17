@@ -22,6 +22,7 @@ const DEDICATED_CHANNEL_TYPE_ERRORS = {
   // api/v1/integrations/slack and api/v1/integrations/teams: the notification hooks of Integrations.
   slack: "Slack configuration must be managed in Integrations",
   teams: "Microsoft Teams configuration must be managed in Integrations",
+  "customer-receiver-draft": "ERP delivery drafts must be managed in the dedicated data transfer builder",
 } as const satisfies Record<string, string>
 
 type DedicatedChannelType = keyof typeof DEDICATED_CHANNEL_TYPE_ERRORS

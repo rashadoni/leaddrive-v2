@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "openapi": "3.1.0",
+  "documentValidator": "python-jsonschema-draft202012",
+  "bodyValidator": "ajv-2020-8.17.1",
+  "officialDocumentSchema": "https://spec.openapis.org/oas/3.1/schema/2022-10-07",
+  "validatedDocuments": 2,
+  "validatedCases": 9,
+  "operationalConnectionChecked": false
+}

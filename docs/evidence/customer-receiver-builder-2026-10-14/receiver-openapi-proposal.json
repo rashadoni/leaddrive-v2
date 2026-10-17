@@ -1,0 +1,1103 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "AAC / Constructor proof — receiving API proposal",
+    "version": "1.0",
+    "description": "DRAFT for customer approval. No operational endpoint is configured. This describes structural JSON types; mapping rules and validation must also be reviewed in the profile. OAuth issuance, receipt lookup, durable deduplication and ERP processing require a separate agreed customer contract."
+  },
+  "x-leaddrive-operational": false,
+  "x-leaddrive-environment": "TEST",
+  "x-leaddrive-profile": {
+    "schemaVersion": "1.0",
+    "label": "AAC / Constructor proof",
+    "environment": "TEST",
+    "lifecycle": "draft",
+    "resources": [
+      {
+        "resource": "customers",
+        "enabled": true,
+        "method": "PUT",
+        "path": "/integration/v1/customers/{externalId}",
+        "selection": {
+          "mode": "manual",
+          "match": "all",
+          "conditions": []
+        },
+        "mappings": [
+          {
+            "id": "schemaVersion",
+            "target": "schemaVersion",
+            "source": {
+              "type": "context",
+              "field": "schemaVersion"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "eventId",
+            "target": "eventId",
+            "source": {
+              "type": "context",
+              "field": "eventId"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "externalId",
+            "target": "externalId",
+            "source": {
+              "type": "context",
+              "field": "externalId"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "entityVersion",
+            "target": "entityVersion",
+            "source": {
+              "type": "context",
+              "field": "entityVersion"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "occurredAt",
+            "target": "occurredAt",
+            "source": {
+              "type": "context",
+              "field": "occurredAt"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "source",
+            "target": "sourceSystem",
+            "source": {
+              "type": "context",
+              "field": "sourceSystem"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "type",
+            "target": "customer.type",
+            "source": {
+              "type": "constant",
+              "value": "legal_entity"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "name",
+            "target": "customer.name",
+            "source": {
+              "type": "field",
+              "field": "company.name"
+            },
+            "missing": "reject",
+            "transforms": [
+              {
+                "type": "trim"
+              }
+            ]
+          },
+          {
+            "id": "country",
+            "target": "customer.countryCode",
+            "source": {
+              "type": "field",
+              "field": "company.country"
+            },
+            "missing": "reject",
+            "transforms": [
+              {
+                "type": "upper"
+              }
+            ]
+          },
+          {
+            "id": "email",
+            "target": "customer.email",
+            "source": {
+              "type": "field",
+              "field": "company.email"
+            },
+            "missing": "omit",
+            "transforms": [
+              {
+                "type": "trim"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "resource": "contacts",
+        "enabled": false,
+        "method": "PUT",
+        "path": "/integration/v1/contacts/{externalId}",
+        "selection": {
+          "mode": "manual",
+          "match": "all",
+          "conditions": []
+        },
+        "mappings": [
+          {
+            "id": "schemaVersion",
+            "target": "schemaVersion",
+            "source": {
+              "type": "context",
+              "field": "schemaVersion"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "eventId",
+            "target": "eventId",
+            "source": {
+              "type": "context",
+              "field": "eventId"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "externalId",
+            "target": "externalId",
+            "source": {
+              "type": "context",
+              "field": "externalId"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "entityVersion",
+            "target": "entityVersion",
+            "source": {
+              "type": "context",
+              "field": "entityVersion"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "occurredAt",
+            "target": "occurredAt",
+            "source": {
+              "type": "context",
+              "field": "occurredAt"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "customer",
+            "target": "customerExternalId",
+            "source": {
+              "type": "context",
+              "field": "customerExternalId"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "name",
+            "target": "contact.name",
+            "source": {
+              "type": "field",
+              "field": "contact.fullName"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "email",
+            "target": "contact.email",
+            "source": {
+              "type": "field",
+              "field": "contact.email"
+            },
+            "missing": "omit",
+            "transforms": []
+          },
+          {
+            "id": "phone",
+            "target": "contact.phone",
+            "source": {
+              "type": "field",
+              "field": "contact.phone"
+            },
+            "missing": "omit",
+            "transforms": []
+          }
+        ]
+      },
+      {
+        "resource": "deals",
+        "enabled": true,
+        "method": "PUT",
+        "path": "/integration/v1/deals/{externalId}",
+        "selection": {
+          "mode": "manual",
+          "match": "all",
+          "conditions": []
+        },
+        "mappings": [
+          {
+            "id": "schemaVersion",
+            "target": "schemaVersion",
+            "source": {
+              "type": "context",
+              "field": "schemaVersion"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "eventId",
+            "target": "eventId",
+            "source": {
+              "type": "context",
+              "field": "eventId"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "externalId",
+            "target": "externalId",
+            "source": {
+              "type": "context",
+              "field": "externalId"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "entityVersion",
+            "target": "entityVersion",
+            "source": {
+              "type": "context",
+              "field": "entityVersion"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "occurredAt",
+            "target": "occurredAt",
+            "source": {
+              "type": "context",
+              "field": "occurredAt"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "customer",
+            "target": "customerExternalId",
+            "source": {
+              "type": "context",
+              "field": "customerExternalId"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "name",
+            "target": "deal.name",
+            "source": {
+              "type": "field",
+              "field": "deal.name"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "stage",
+            "target": "deal.stageCode",
+            "source": {
+              "type": "field",
+              "field": "deal.stage"
+            },
+            "missing": "reject",
+            "transforms": []
+          },
+          {
+            "id": "amount",
+            "target": "deal.amount",
+            "source": {
+              "type": "field",
+              "field": "deal.valueAmount"
+            },
+            "missing": "reject",
+            "transforms": [
+              {
+                "type": "decimal",
+                "scale": 2,
+                "rounding": "reject"
+              }
+            ]
+          },
+          {
+            "id": "currency",
+            "target": "deal.currency",
+            "source": {
+              "type": "field",
+              "field": "deal.currency"
+            },
+            "missing": "reject",
+            "transforms": [
+              {
+                "type": "upper"
+              }
+            ]
+          },
+          {
+            "id": "date",
+            "target": "deal.expectedCloseDate",
+            "source": {
+              "type": "field",
+              "field": "deal.expectedClose"
+            },
+            "missing": "omit",
+            "transforms": [
+              {
+                "type": "date",
+                "format": "utc_date"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "schedule": {
+      "mode": "manual",
+      "intervalSeconds": 300
+    },
+    "limits": {
+      "requestsPerSecond": 5,
+      "concurrency": 2,
+      "batchSize": 100,
+      "connectTimeoutSeconds": 5,
+      "timeoutSeconds": 30,
+      "maxBodyKiB": 256,
+      "retryWindowHours": 24
+    },
+    "receipt": {
+      "statusPath": "status",
+      "acceptedValue": "accepted",
+      "eventIdPath": "eventId",
+      "externalIdPath": "externalId",
+      "versionPath": "acceptedVersion",
+      "receiptIdPath": "receiptId",
+      "operationIdPath": "operationId",
+      "acceptedAtPath": "acceptedAt"
+    },
+    "logSources": [
+      "crm_auth",
+      "crm_access",
+      "crm_admin",
+      "crm_data",
+      "integration",
+      "azure_activity",
+      "entra",
+      "key_vault",
+      "waf",
+      "vpn",
+      "database",
+      "host",
+      "deployment",
+      "collector"
+    ],
+    "logRetentionDays": 90
+  },
+  "x-leaddrive-limits": {
+    "requestsPerSecond": 5,
+    "concurrency": 2,
+    "batchSize": 100,
+    "connectTimeoutSeconds": 5,
+    "timeoutSeconds": 30,
+    "maxBodyKiB": 256,
+    "retryWindowHours": 24,
+    "maxResponseBytes": 16384,
+    "httpsPort": 443,
+    "redirectsAllowed": false
+  },
+  "x-leaddrive-idempotency": {
+    "sameEventSameBody": "same durable receipt",
+    "sameEventDifferentBody": "409 conflict",
+    "uncertainOutcome": "lookup receipt before retry; lookup API is not yet agreed"
+  },
+  "paths": {
+    "/integration/v1/customers/{externalId}": {
+      "put": {
+        "operationId": "receive_customers_put",
+        "summary": "Durably accept approved CRM data; ERP processing is owned by the customer",
+        "x-leaddrive-resources": [
+          "customers"
+        ],
+        "parameters": [
+          {
+            "name": "externalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+              "maxLength": 128
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "schemaVersion": {
+                    "type": "string",
+                    "const": "1.0",
+                    "maxLength": 4000,
+                    "x-leaddrive-mapping": {
+                      "id": "schemaVersion",
+                      "target": "schemaVersion",
+                      "source": {
+                        "type": "context",
+                        "field": "schemaVersion"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "eventId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                    "maxLength": 4000,
+                    "x-leaddrive-mapping": {
+                      "id": "eventId",
+                      "target": "eventId",
+                      "source": {
+                        "type": "context",
+                        "field": "eventId"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "externalId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+                    "maxLength": 4000,
+                    "x-leaddrive-mapping": {
+                      "id": "externalId",
+                      "target": "externalId",
+                      "source": {
+                        "type": "context",
+                        "field": "externalId"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "entityVersion": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "x-leaddrive-mapping": {
+                      "id": "entityVersion",
+                      "target": "entityVersion",
+                      "source": {
+                        "type": "context",
+                        "field": "entityVersion"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "occurredAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                    "maxLength": 4000,
+                    "x-leaddrive-mapping": {
+                      "id": "occurredAt",
+                      "target": "occurredAt",
+                      "source": {
+                        "type": "context",
+                        "field": "occurredAt"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "sourceSystem": {
+                    "type": "string",
+                    "const": "LeadDrive",
+                    "maxLength": 4000,
+                    "x-leaddrive-mapping": {
+                      "id": "source",
+                      "target": "sourceSystem",
+                      "source": {
+                        "type": "context",
+                        "field": "sourceSystem"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "customer": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "legal_entity",
+                        "x-leaddrive-mapping": {
+                          "id": "type",
+                          "target": "customer.type",
+                          "source": {
+                            "type": "constant",
+                            "value": "legal_entity"
+                          },
+                          "missing": "reject",
+                          "transforms": []
+                        }
+                      },
+                      "name": {
+                        "type": "string",
+                        "maxLength": 4000,
+                        "x-leaddrive-mapping": {
+                          "id": "name",
+                          "target": "customer.name",
+                          "source": {
+                            "type": "field",
+                            "field": "company.name"
+                          },
+                          "missing": "reject",
+                          "transforms": [
+                            {
+                              "type": "trim"
+                            }
+                          ]
+                        }
+                      },
+                      "countryCode": {
+                        "type": "string",
+                        "maxLength": 4000,
+                        "x-leaddrive-mapping": {
+                          "id": "country",
+                          "target": "customer.countryCode",
+                          "source": {
+                            "type": "field",
+                            "field": "company.country"
+                          },
+                          "missing": "reject",
+                          "transforms": [
+                            {
+                              "type": "upper"
+                            }
+                          ]
+                        }
+                      },
+                      "email": {
+                        "type": "string",
+                        "maxLength": 4000,
+                        "x-leaddrive-mapping": {
+                          "id": "email",
+                          "target": "customer.email",
+                          "source": {
+                            "type": "field",
+                            "field": "company.email"
+                          },
+                          "missing": "omit",
+                          "transforms": [
+                            {
+                              "type": "trim"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "name",
+                      "countryCode"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "schemaVersion",
+                  "eventId",
+                  "externalId",
+                  "entityVersion",
+                  "occurredAt",
+                  "sourceSystem",
+                  "customer"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Invalid data; manual correction required"
+          },
+          "401": {
+            "description": "Authentication failed; stop delivery"
+          },
+          "403": {
+            "description": "Access denied; stop delivery"
+          },
+          "409": {
+            "description": "Event identity or payload conflict; manual investigation required"
+          },
+          "422": {
+            "description": "Validation failed; manual correction required"
+          },
+          "429": {
+            "description": "Rate limited; uncertain outcome, reconcile before retry"
+          },
+          "2XX": {
+            "description": "Durable API acceptance only. Required aliases must match the submitted event ID, external ID and entity version. HTTP success alone is insufficient.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "accepted"
+                    },
+                    "eventId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+                    },
+                    "externalId": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+                      "maxLength": 128
+                    },
+                    "acceptedVersion": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "receiptId": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+                      "maxLength": 128
+                    },
+                    "operationId": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+                      "maxLength": 128
+                    },
+                    "acceptedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "eventId",
+                    "externalId",
+                    "acceptedVersion",
+                    "receiptId",
+                    "operationId",
+                    "acceptedAt"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Uncertain outcome; reconcile before retry"
+          }
+        }
+      }
+    },
+    "/integration/v1/deals/{externalId}": {
+      "put": {
+        "operationId": "receive_deals_put",
+        "summary": "Durably accept approved CRM data; ERP processing is owned by the customer",
+        "x-leaddrive-resources": [
+          "deals"
+        ],
+        "parameters": [
+          {
+            "name": "externalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+              "maxLength": 128
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "schemaVersion": {
+                    "type": "string",
+                    "const": "1.0",
+                    "maxLength": 4000,
+                    "x-leaddrive-mapping": {
+                      "id": "schemaVersion",
+                      "target": "schemaVersion",
+                      "source": {
+                        "type": "context",
+                        "field": "schemaVersion"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "eventId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                    "maxLength": 4000,
+                    "x-leaddrive-mapping": {
+                      "id": "eventId",
+                      "target": "eventId",
+                      "source": {
+                        "type": "context",
+                        "field": "eventId"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "externalId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+                    "maxLength": 4000,
+                    "x-leaddrive-mapping": {
+                      "id": "externalId",
+                      "target": "externalId",
+                      "source": {
+                        "type": "context",
+                        "field": "externalId"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "entityVersion": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "x-leaddrive-mapping": {
+                      "id": "entityVersion",
+                      "target": "entityVersion",
+                      "source": {
+                        "type": "context",
+                        "field": "entityVersion"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "occurredAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                    "maxLength": 4000,
+                    "x-leaddrive-mapping": {
+                      "id": "occurredAt",
+                      "target": "occurredAt",
+                      "source": {
+                        "type": "context",
+                        "field": "occurredAt"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "customerExternalId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+                    "maxLength": 4000,
+                    "x-leaddrive-mapping": {
+                      "id": "customer",
+                      "target": "customerExternalId",
+                      "source": {
+                        "type": "context",
+                        "field": "customerExternalId"
+                      },
+                      "missing": "reject",
+                      "transforms": []
+                    }
+                  },
+                  "deal": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "maxLength": 4000,
+                        "x-leaddrive-mapping": {
+                          "id": "name",
+                          "target": "deal.name",
+                          "source": {
+                            "type": "field",
+                            "field": "deal.name"
+                          },
+                          "missing": "reject",
+                          "transforms": []
+                        }
+                      },
+                      "stageCode": {
+                        "type": "string",
+                        "maxLength": 4000,
+                        "x-leaddrive-mapping": {
+                          "id": "stage",
+                          "target": "deal.stageCode",
+                          "source": {
+                            "type": "field",
+                            "field": "deal.stage"
+                          },
+                          "missing": "reject",
+                          "transforms": []
+                        }
+                      },
+                      "amount": {
+                        "type": "string",
+                        "pattern": "^-?(0|[1-9]\\d*)\\.\\d{2}$",
+                        "maxLength": 4000,
+                        "x-leaddrive-mapping": {
+                          "id": "amount",
+                          "target": "deal.amount",
+                          "source": {
+                            "type": "field",
+                            "field": "deal.valueAmount"
+                          },
+                          "missing": "reject",
+                          "transforms": [
+                            {
+                              "type": "decimal",
+                              "scale": 2,
+                              "rounding": "reject"
+                            }
+                          ]
+                        }
+                      },
+                      "currency": {
+                        "type": "string",
+                        "maxLength": 4000,
+                        "x-leaddrive-mapping": {
+                          "id": "currency",
+                          "target": "deal.currency",
+                          "source": {
+                            "type": "field",
+                            "field": "deal.currency"
+                          },
+                          "missing": "reject",
+                          "transforms": [
+                            {
+                              "type": "upper"
+                            }
+                          ]
+                        }
+                      },
+                      "expectedCloseDate": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "maxLength": 4000,
+                        "x-leaddrive-mapping": {
+                          "id": "date",
+                          "target": "deal.expectedCloseDate",
+                          "source": {
+                            "type": "field",
+                            "field": "deal.expectedClose"
+                          },
+                          "missing": "omit",
+                          "transforms": [
+                            {
+                              "type": "date",
+                              "format": "utc_date"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "stageCode",
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "schemaVersion",
+                  "eventId",
+                  "externalId",
+                  "entityVersion",
+                  "occurredAt",
+                  "customerExternalId",
+                  "deal"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Invalid data; manual correction required"
+          },
+          "401": {
+            "description": "Authentication failed; stop delivery"
+          },
+          "403": {
+            "description": "Access denied; stop delivery"
+          },
+          "409": {
+            "description": "Event identity or payload conflict; manual investigation required"
+          },
+          "422": {
+            "description": "Validation failed; manual correction required"
+          },
+          "429": {
+            "description": "Rate limited; uncertain outcome, reconcile before retry"
+          },
+          "2XX": {
+            "description": "Durable API acceptance only. Required aliases must match the submitted event ID, external ID and entity version. HTTP success alone is insufficient.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "accepted"
+                    },
+                    "eventId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+                    },
+                    "externalId": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+                      "maxLength": 128
+                    },
+                    "acceptedVersion": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "receiptId": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+                      "maxLength": 128
+                    },
+                    "operationId": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+                      "maxLength": 128
+                    },
+                    "acceptedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "eventId",
+                    "externalId",
+                    "acceptedVersion",
+                    "receiptId",
+                    "operationId",
+                    "acceptedAt"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Uncertain outcome; reconcile before retry"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Token supplied by approved server-side OAuth configuration; token endpoint and scopes remain to be agreed."
+      },
+      "clientCertificate": {
+        "type": "mutualTLS"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": [],
+      "clientCertificate": []
+    }
+  ]
+}
