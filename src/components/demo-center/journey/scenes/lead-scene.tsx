@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
   ArrowLeft, ArrowRight, Brain, Building2, Calendar, DollarSign, Flame, MessageSquare,
-  Pencil, Phone, Search, ShieldCheck, Sparkles, Trash2, Zap,
+  Pencil, Phone, Search, ShieldCheck, Sparkles, Trash2, Wand2, Zap,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,10 +16,10 @@ import { InfoHint } from "@/components/info-hint"
 import { LeadEvaluationCard, LeadOverview, LeadStatBoxes } from "@/components/leads/lead-overview"
 import { formatDate, formatDateTime } from "@/lib/format-date"
 import { getLeadScoreFactorLabel } from "@/lib/leads/score-factor-labels"
-import { applyTransitionEffects, DEMO_CHANNEL_LABELS, demoMoney, type DemoActivityRecord, type DemoLeadRecord } from "@/lib/demo-center/journey"
+import { applyTransitionEffects, DEMO_CHANNEL_LABELS, DEMO_DEAL_STAGES, demoMoney, type DemoActivityRecord, type DemoLeadRecord } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import type { DemoJourneyVariant, DemoSceneProps } from "../scene-props"
-import { demoTarget } from "../demo-target"
+import { demoLabel, demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 /**
@@ -55,6 +55,12 @@ const gradeStyle: Record<string, string> = {
   C: "bg-amber-500 text-white", D: "bg-red-500 text-white", F: "bg-[#FF4D00] text-white",
 }
 
+/** The list's «hot» line counts leads from 80 up (`leads/page.tsx`), not 70. */
+const HOT_SCORE = 80
+
+/** Set once the prospect pressed «Da Vinci ilə yenidən hesabla». */
+const DA_VINCI_SCORED = "lead.daVinciScored"
+
 function gradeOf(score: number): string {
   if (score >= 80) return "A"
   if (score >= 60) return "B"
@@ -63,7 +69,7 @@ function gradeOf(score: number): string {
   return "F"
 }
 
-type TabId = "details" | "activities" | "timeline" | "sentiment" | "tasks" | "ai"
+type TabId = "details" | "activities" | "timeline" | "sentiment" | "tasks" | "aitext" | "ai"
 
 export function LeadScene(props: DemoSceneProps) {
   const { snapshot, step, reviewMode } = props
@@ -117,7 +123,7 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
           </h1>
           <p data-tour-id="leads-score" className="mt-1 text-sm text-muted-foreground">
             {t("avgScore")}: <span className="font-medium text-foreground">{score}</span>/100
-            {" · "}{t("hotLeads")}: <span className={cn("font-medium", score >= 70 ? "text-[#FF4D00]" : "text-foreground")}>{score >= 70 ? 1 : 0}</span>
+            {" · "}{t("hotLeads")}: <span className={cn("font-medium", score >= HOT_SCORE ? "text-[#FF4D00]" : "text-foreground")}>{score >= HOT_SCORE ? 1 : 0}</span>
           </p>
         </div>
         <button
@@ -134,10 +140,10 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
           { value: rows.length, label: t("title") },
           { value: 0, label: t("statusConverted") },
           { value: `${score}/100`, label: t("avgScore") },
-          { value: score >= 70 ? 1 : 0, label: t("hotLeads"), hot: true },
+          { value: score >= HOT_SCORE ? 1 : 0, label: t("hotLeads"), hot: true },
         ].map((stat, index) => (
           <div key={stat.label} className={cn("px-6 py-4", index > 0 && "border-l border-zinc-200 dark:border-zinc-700")}>
-            <div className={cn("text-3xl font-bold tracking-tight", stat.hot && score >= 70 ? "text-[#FF4D00]" : "text-foreground")}>{stat.value}</div>
+            <div className={cn("text-3xl font-bold tracking-tight", stat.hot && score >= HOT_SCORE ? "text-[#FF4D00]" : "text-foreground")}>{stat.value}</div>
             <div className="mt-1 text-xs font-medium text-muted-foreground">{stat.label}</div>
           </div>
         ))}
@@ -229,8 +235,14 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
 export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hint, lead }: DemoSceneProps & { lead: DemoLeadRecord }) {
   const t = useTranslations("leads")
   const tc = useTranslations("common")
+  const tf = useTranslations("forms")
+  const td = useTranslations("deals")
   const locale = useLocale()
   const [tab, setTab] = useState<TabId>(() => (snapshot.ui["lead.activeTab"] as TabId) ?? "details")
+  const [convertOpen, setConvertOpen] = useState(false)
+  // Da Vinci's explanation and conversion estimate exist only once asked for,
+  // as on the real card; until then the conversion reads «—».
+  const daVinciScored = snapshot.ui[DA_VINCI_SCORED] === true
 
   const statusLabels: Record<string, string> = {
     new: t("statusNew"), contacted: t("statusContacted"), qualified: t("statusQualified"),
@@ -291,6 +303,9 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
     dispatch({ type: "outcome", stepId: step.id, to: "CALL_RESULT_RECORDED" })
   }
 
+  // «Sövdələşməyə çevir» opens the product's dialog: what will be created, the
+  // pipeline, the stage and the value. The demo used to create the deal at
+  // the first click.
   const convert = () => {
     if (reviewMode) {
       hint(S.reviewOnly)
@@ -300,7 +315,25 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
       hint(S.hintFollow(step?.title ?? ""))
       return
     }
-    dispatch({ type: "transition", stepId: step.id, to: "DEAL_CREATED" })
+    setConvertOpen(true)
+  }
+
+  const confirmConvert = () => {
+    if (reviewMode || step?.id !== "deal-convert") return
+    const result = dispatch({ type: "transition", stepId: step.id, to: "DEAL_CREATED" })
+    if (result.ok) setConvertOpen(false)
+  }
+
+  const scoreWithDaVinci = () => {
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
+    if (step?.id !== "lead-scoring") {
+      hint(S.hintFollow(step?.title ?? ""))
+      return
+    }
+    dispatch({ type: "ui", path: DA_VINCI_SCORED, value: true })
   }
 
   const callResult = lead.activities.find((activity) => activity.id === "act-call") ?? null
@@ -361,6 +394,43 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
           </Button>
         </div>
       </div>
+
+      {convertOpen && (
+        <Card data-tour-id="lead-convert-dialog">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base"><ArrowRight className="h-4 w-4" /> {tf("convertLead")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="font-medium">{tf("convertingLead")}:</p>
+              <p>{lead.contactName} ({lead.companyName})</p>
+              <p className="text-xs text-muted-foreground">{lead.email}</p>
+            </div>
+            <p className="font-medium text-muted-foreground">{tf("thisWillCreate")}</p>
+            <ul className="space-y-1 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+              <li>1. {tf("contactFrom")} {lead.contactName}</li>
+              <li>2. {tf("companyFrom")} {lead.companyName}</li>
+              <li>3. {tf("dealTitle").replace(/\s*\*$/, "")}: {lead.companyName} — LeadDrive CRM</li>
+            </ul>
+            <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {([
+                { label: tf("dealCategoryPipeline"), value: td("title") },
+                { label: tf("dealStage"), value: `${td(DEMO_DEAL_STAGES[0].labelKey)} (${DEMO_DEAL_STAGES[0].probability}%)` },
+                { label: tf("dealValue"), value: demoMoney(lead.estimatedValue) },
+              ]).map((entry) => (
+                <div key={entry.label} className="rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-700">
+                  <dt className="text-xs text-muted-foreground">{entry.label}</dt>
+                  <dd className="mt-0.5 font-medium">{entry.value}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button size="sm" variant="outline" onClick={() => setConvertOpen(false)}>{tc("cancel")}</Button>
+              <Button size="sm" onClick={confirmConvert} {...demoTarget("deal-convert")} {...demoLabel(S.arrowConvertConfirm)}>{tf("convertBtn")}</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Status pipeline bar */}
       <Card data-tour-id="lead-status-bar">
@@ -427,6 +497,7 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
               { id: "timeline" as const, label: tc("timelineTab") },
               { id: "sentiment" as const, label: t("modalSentiment") },
               { id: "tasks" as const, label: t("modalTasks") },
+              { id: "aitext" as const, label: t("modalAiText") },
               { id: "ai" as const, label: t("modalAiScoring") },
             ]).map((entry) => (
               <button
@@ -434,6 +505,7 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
                 type="button"
                 onClick={() => selectTab(entry.id)}
                 {...demoTarget(entry.id === "timeline" && "lead-timeline", entry.id === "ai" && "lead-scoring")}
+                {...(entry.id === "ai" ? demoLabel(S.arrowOpenAiTab) : {})}
                 aria-current={tab === entry.id ? "page" : undefined}
                 className={cn(
                   "-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
@@ -530,22 +602,26 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
             </Card>
           )}
 
+          {/* The real tab is Da Vinci's task generator, not a list of the
+              board's tasks: it proposes next steps and creates them in one click. */}
           {tab === "tasks" && (
             <Card data-tour-id="lead-tasks">
-              <CardContent className="pt-6">
-                {snapshot.records.task ? (
-                  <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                    <p className="text-sm font-medium">{snapshot.records.task.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {tc("assignee")}: {snapshot.records.task.assigneeName} · {formatDateTime(snapshot.records.task.dueAt, locale)}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3 text-center">
-                    <Sparkles className="mx-auto h-10 w-10 text-muted-foreground" aria-hidden="true" />
-                    <p className="text-sm text-muted-foreground">{t("modalTasksDesc")}</p>
-                  </div>
-                )}
+              <CardContent className="space-y-3 pt-6 text-center">
+                <Sparkles className="mx-auto h-10 w-10 text-muted-foreground" aria-hidden="true" />
+                <Button className="gap-2" onClick={() => hint(S.demoButtonHint)}>{t("modalGenerateTasks")}</Button>
+                <p className="text-sm text-muted-foreground">{t("modalTasksDesc")}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {tab === "aitext" && (
+            <Card data-tour-id="lead-ai-text">
+              <CardContent className="space-y-3 pt-6 text-center">
+                <Wand2 className="mx-auto h-10 w-10 text-muted-foreground" aria-hidden="true" />
+                <p className="mx-auto max-w-md text-sm text-muted-foreground">{S.daVinciTextBody}</p>
+                <Button variant="outline" className="gap-2" onClick={() => hint(S.demoButtonHint)}>
+                  <Sparkles className="h-4 w-4" /> {t("modalAiText")}
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -553,18 +629,31 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
           {tab === "ai" && (
             <Card data-tour-id="lead-ai-scoring">
               <CardContent className="space-y-4 pt-6">
-                <h4 className="flex items-center gap-1.5 text-sm font-medium"><Brain className="h-4 w-4 text-purple-500" /> {t("modalAiAnalysis")}</h4>
-                <div className="ai-accent rounded-lg border border-[hsl(var(--ai-from))]/20 bg-[hsl(var(--ai-from))]/5 p-4">
-                  <p className="flex items-start gap-2 text-sm leading-relaxed">
-                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--ai-from))]" aria-hidden="true" />
-                    {lead.scoreDetails.reasoning}
-                  </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="flex items-center gap-1.5 text-sm font-medium"><Brain className="h-4 w-4 text-purple-500" /> {t("modalAiAnalysis")}</h4>
+                  <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={scoreWithDaVinci} {...(daVinciScored ? {} : demoTarget("lead-scoring"))}>
+                    {t("modalRecalculate")}
+                  </Button>
                 </div>
+                {daVinciScored && (
+                  <div className="ai-accent rounded-lg border border-[hsl(var(--ai-from))]/20 bg-[hsl(var(--ai-from))]/5 p-4">
+                    <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{S.daVinciScored}</p>
+                    <p className="flex items-start gap-2 text-sm leading-relaxed">
+                      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--ai-from))]" aria-hidden="true" />
+                      {lead.scoreDetails.daVinci.reasoning}
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <Metric value={gradeOf(lead.score)} label={t("modalGrade")} />
                   <Metric value={String(lead.score)} label={t("modalScore")} />
-                  <Metric value={`${Math.round(lead.score * 0.6)}%`} label={t("modalConversion")} />
+                  <Metric
+                    value={daVinciScored ? `${lead.scoreDetails.daVinci.conversionPercent}%` : "—"}
+                    label={t("modalConversion")}
+                    note={daVinciScored ? undefined : t("convProbNoneShort")}
+                  />
                 </div>
+                {!daVinciScored && <p className="text-xs text-muted-foreground">{t("convProbNone")}</p>}
                 <div className="space-y-2">
                   <p className="text-xs font-medium uppercase text-muted-foreground">{t("modalFactors")}</p>
                   {Object.entries(lead.scoreDetails.factors).map(([key, value]) => (
@@ -598,12 +687,13 @@ function Field({ label, value, hint }: { label: string; value: string | null; hi
   )
 }
 
-function Metric({ value, label }: { value: string; label: string }) {
+function Metric({ value, label, note }: { value: string; label: string; note?: string }) {
   return (
     <Card>
       <CardContent className="pb-4 pt-4">
-        <div className="text-3xl font-bold text-primary">{value}</div>
+        <div className={cn("text-3xl font-bold", value === "—" ? "text-muted-foreground" : "text-primary")}>{value}</div>
         <div className="mt-1 text-xs text-muted-foreground">{label}</div>
+        {note && <div className="text-[10px] text-muted-foreground">{note}</div>}
       </CardContent>
     </Card>
   )

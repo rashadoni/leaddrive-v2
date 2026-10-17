@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ColorStatCard } from "@/components/color-stat-card"
 import { formatDate } from "@/lib/format-date"
-import { DEMO_CHANNEL_LABELS, campaignRecordsEngagement } from "@/lib/demo-center/journey"
+import {
+  DEMO_CAMPAIGN_TYPE_KEYS,
+  DEMO_SAMPLE_CAMPAIGNS,
+  campaignRecordsEngagement,
+  type DemoCampaignType,
+  type DemoSampleCampaignStatus,
+} from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
@@ -20,13 +26,29 @@ import { DEMO_JOURNEY_STRINGS as S } from "../strings"
  * with its status cards, and the campaign itself — the KPI row and the
  * engagement rule of `campaigns/[id]/page.tsx`, plus the conversion funnel
  * and the money of the campaign ROI screen (`campaign-roi/page.tsx`,
- * `src/lib/campaigns/roi.ts`). Data is the session snapshot's single
- * campaign, derived from the channel the prospect chose on the request form.
+ * `src/lib/campaigns/roi.ts`). The list is a working team's
+ * (`DEMO_SAMPLE_CAMPAIGNS`) with the prospect's own campaign in it.
  *
  * The funnel is where this chapter earns its place: a mailer counts sends, a
- * CRM counts the leads, deals and won money that came of them — and the
- * prospect's own lead joins those counts later in the story.
+ * CRM counts the deals and won money that came of them — and the prospect's
+ * own deal joins those counts later in the story. It has no «leads» step: a
+ * lead carries no campaign in the product, a deal does.
  */
+
+/** The product's list colours and type marks (`campaigns/page.tsx`). */
+const STATUS_TONE: Record<DemoSampleCampaignStatus, string> = {
+  draft: "text-muted-foreground",
+  scheduled: "text-amber-500",
+  sent: "text-green-600",
+  cancelled: "text-red-500",
+}
+const TYPE_MARK: Record<DemoCampaignType, string> = { email: "📧", sms: "📱", whatsapp: "💬", telegram: "✈️" }
+const STATUS_KEY: Record<DemoSampleCampaignStatus, "statusDraft" | "statusScheduled" | "statusSent" | "statusCancelled"> = {
+  draft: "statusDraft",
+  scheduled: "statusScheduled",
+  sent: "statusSent",
+  cancelled: "statusCancelled",
+}
 export function CampaignScene({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const t = useTranslations("campaigns")
   const tr = useTranslations("campaignRoi")
@@ -53,7 +75,8 @@ export function CampaignScene({ snapshot, step, reviewMode, dispatch, hint }: De
   // Only e-mail campaigns record opens and clicks; for the rest the product
   // prints «—» and says why, so the demo does the same instead of inventing
   // an Instagram open rate.
-  const engagement = campaignRecordsEngagement(campaign.channel)
+  const engagement = campaignRecordsEngagement(campaign.type)
+  const typeLabel = t(DEMO_CAMPAIGN_TYPE_KEYS[campaign.type])
   const rate = (value: number) => (!engagement || campaign.sent === 0 ? null : Math.round((value / campaign.sent) * 100))
   const openRate = rate(campaign.opened)
   const clickRate = rate(campaign.clicked)
@@ -74,7 +97,7 @@ export function CampaignScene({ snapshot, step, reviewMode, dispatch, hint }: De
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight">{campaign.name}</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {DEMO_CHANNEL_LABELS[campaign.channel]} · {t("statusSent")} · {formatDate(campaign.sentAt, locale)}
+              {typeLabel} · {t("statusSent")} · {formatDate(campaign.sentAt, locale)}
             </p>
           </div>
         </div>
@@ -95,13 +118,14 @@ export function CampaignScene({ snapshot, step, reviewMode, dispatch, hint }: De
               </p>
               <p className="text-[11px] leading-relaxed text-muted-foreground">{S.campaignFunnelNote}</p>
               {([
-                { label: tr("recipients"), value: campaign.audience },
-                { label: t("kpiSent"), value: campaign.sent },
-                { label: tr("leads"), value: campaign.leads, tone: "bg-indigo-500" },
+                { label: tr("recipients"), value: campaign.audience, tone: "bg-slate-400" },
+                { label: t("sent"), value: campaign.sent, tone: "bg-blue-500" },
+                { label: tr("opened"), value: engagement ? campaign.opened : null, tone: "bg-indigo-500" },
+                { label: tr("clicked"), value: engagement ? campaign.clicked : null, tone: "bg-violet-500" },
                 { label: tr("deals"), value: campaign.deals, tone: "bg-amber-500" },
                 { label: tr("wonDeals"), value: campaign.wonDeals, tone: "bg-emerald-500" },
               ]).map((row) => (
-                <FunnelRow key={row.label} label={row.label} value={row.value} total={campaign.audience} tone={row.tone ?? "bg-primary"} />
+                <FunnelRow key={row.label} label={row.label} value={row.value} total={campaign.audience} tone={row.tone} />
               ))}
             </CardContent>
           </Card>
@@ -128,7 +152,7 @@ export function CampaignScene({ snapshot, step, reviewMode, dispatch, hint }: De
             <div className="grid gap-x-8 gap-y-2 border-t pt-4 @xl:grid-cols-2">
               <Field label={tr("sentAt")} value={formatDate(campaign.sentAt, locale)} />
               <Field label={t("recipients")} value={campaign.audience.toLocaleString()} />
-              <Field label={DEMO_CHANNEL_LABELS[campaign.channel]} value={t("statusSent")} />
+              <Field label={typeLabel} value={t("statusSent")} />
               <Field label={tr("linkedDeals")} value={`${campaign.deals}`} />
             </div>
           </CardContent>
@@ -137,6 +161,13 @@ export function CampaignScene({ snapshot, step, reviewMode, dispatch, hint }: De
     )
   }
 
+  // The prospect's campaign heads the list as the newest send.
+  const rows = [
+    { id: campaign.id, own: true, name: campaign.name, description: S.campaignOwn, type: campaign.type, status: "sent" as const, audience: campaign.audience, sent: campaign.sent, budget: campaign.budget },
+    ...DEMO_SAMPLE_CAMPAIGNS.map((sample) => ({ ...sample, own: false })),
+  ]
+  const countOf = (status: DemoSampleCampaignStatus | "sending") => rows.filter((row) => row.status === status).length
+
   return (
     <div data-testid="demo-scene-campaign-list" className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -144,20 +175,20 @@ export function CampaignScene({ snapshot, step, reviewMode, dispatch, hint }: De
         <div className="flex items-center gap-2">
           <div data-tour-id="campaigns-tabs" className="flex items-center gap-1 rounded-lg border border-zinc-200 p-1 dark:border-zinc-700">
             {([
-              { key: "list" as const, Icon: List },
-              { key: "analytics" as const, Icon: BarChart3 },
-            ]).map(({ key, Icon }) => (
+              { key: "analytics" as const, Icon: BarChart3, label: tc("analytics") },
+              { key: "list" as const, Icon: List, label: tc("list") },
+            ]).map(({ key, Icon, label }) => (
               <button
                 key={key}
                 type="button"
-                onClick={() => setTab(key)}
+                onClick={() => (key === "analytics" ? hint(S.hintDisabled) : setTab(key))}
                 aria-current={tab === key ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   tab === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="h-3.5 w-3.5" /> {label}
               </button>
             ))}
           </div>
@@ -169,13 +200,13 @@ export function CampaignScene({ snapshot, step, reviewMode, dispatch, hint }: De
 
       <div data-tour-id="campaigns-stats" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {([
-          { label: t("statusDraft"), value: 0 },
-          { label: t("statusScheduled"), value: 0 },
-          { label: t("statusSending"), value: 0 },
-          { label: t("statusSent"), value: 1 },
-          { label: t("statusCancelled"), value: 0 },
+          { label: t("statusDraft"), value: countOf("draft"), hint: t("hintStatusDraft") },
+          { label: t("statusScheduled"), value: countOf("scheduled"), hint: t("hintStatusScheduled") },
+          { label: t("statusSending"), value: countOf("sending") },
+          { label: t("statusSent"), value: countOf("sent") },
+          { label: t("statusCancelled"), value: countOf("cancelled") },
         ]).map((stat) => (
-          <ColorStatCard key={stat.label} label={stat.label} value={stat.value} icon={<Mail className="h-4 w-4" />} />
+          <ColorStatCard key={stat.label} label={stat.label} value={stat.value} icon={<Mail className="h-4 w-4" />} hint={stat.hint} />
         ))}
       </div>
 
@@ -190,25 +221,47 @@ export function CampaignScene({ snapshot, step, reviewMode, dispatch, hint }: De
       </div>
 
       <div data-tour-id="campaigns-list" className="space-y-3">
-        <button
-          type="button"
-          onClick={openCampaign}
-          {...demoTarget("source-open-campaign")}
-          className="w-full rounded-xl border border-zinc-200 bg-card p-4 text-left transition-all hover:border-foreground/30 hover:shadow-sm dark:border-zinc-700"
-        >
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold">{campaign.name}</span>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">{t("statusSent")}</span>
-            <span className="text-xs text-muted-foreground">{DEMO_CHANNEL_LABELS[campaign.channel]}</span>
-          </span>
-          <span className="mt-2 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {campaign.audience.toLocaleString()}</span>
-            <span className="flex items-center gap-1"><Send className="h-3.5 w-3.5" /> {campaign.sent.toLocaleString()}</span>
-            <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> {tr("leads")}: {campaign.leads}</span>
-            <span className="flex items-center gap-1"><BarChart3 className="h-3.5 w-3.5" /> {tr("wonDeals")}: {campaign.wonDeals}</span>
-            <span className="ml-auto">{formatDate(campaign.sentAt, locale)}</span>
-          </span>
-        </button>
+        {rows.map((row) => (
+          <button
+            key={row.id}
+            type="button"
+            onClick={row.own ? openCampaign : () => hint(S.campaignSampleHint)}
+            {...(row.own ? demoTarget("source-open-campaign") : {})}
+            className={cn(
+              "w-full rounded-xl border bg-card p-4 text-left transition-all hover:border-foreground/30 hover:shadow-sm",
+              row.own ? "border-primary/40 ring-1 ring-primary/20" : "border-zinc-200 dark:border-zinc-700",
+            )}
+          >
+            <span className="flex items-start justify-between gap-4">
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-base font-semibold">{row.name}</span>
+                  {row.own && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{S.campaignOwn}</span>}
+                </span>
+                {!row.own && <span className="mt-0.5 block text-sm text-muted-foreground">{row.description}</span>}
+                <span className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                  <span className={cn("font-medium", STATUS_TONE[row.status])}>{t(STATUS_KEY[row.status])}</span>
+                  <span className="text-muted-foreground">{TYPE_MARK[row.type]} {t(DEMO_CAMPAIGN_TYPE_KEYS[row.type])}</span>
+                  <span className="flex items-center gap-1 text-muted-foreground"><Users className="h-3.5 w-3.5" /> {row.audience.toLocaleString()}</span>
+                  {row.sent > 0 && <span className="flex items-center gap-1 text-muted-foreground"><Send className="h-3.5 w-3.5" /> {row.sent.toLocaleString()}</span>}
+                </span>
+              </span>
+              <span className="shrink-0 text-right">
+                {row.status === "sent" ? (
+                  <>
+                    <span className="block text-lg font-bold text-green-600">{row.sent.toLocaleString()}/{row.audience.toLocaleString()}</span>
+                    <span className="block text-xs text-muted-foreground">{t("sent")}</span>
+                  </>
+                ) : row.budget ? (
+                  <>
+                    <span className="block text-lg font-bold">{row.budget.toLocaleString()}</span>
+                    <span className="block text-xs text-muted-foreground">{t("budget")}</span>
+                  </>
+                ) : null}
+              </span>
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   )
@@ -229,20 +282,21 @@ function Rate({ label, percent, tone }: { label: string; percent: number | null;
   )
 }
 
-/** One step of the campaign ROI screen's funnel: the count, and its share of the recipients. */
-function FunnelRow({ label, value, total, tone }: { label: string; value: number; total: number; tone: string }) {
-  const percent = total > 0 ? (value / total) * 100 : 0
+/** One step of the campaign ROI screen's funnel: the count, and its share of
+ *  the recipients. A count the product does not record reads «—». */
+function FunnelRow({ label, value, total, tone }: { label: string; value: number | null; total: number; tone: string }) {
+  const percent = value !== null && total > 0 ? (value / total) * 100 : 0
   return (
     <div>
       <div className="flex items-baseline justify-between text-sm">
         <span className="text-muted-foreground">{label}</span>
         <span className="font-semibold tabular-nums">
-          {value.toLocaleString()}
-          <span className="ml-1.5 text-xs font-normal text-muted-foreground">{percent >= 100 ? "100%" : `${percent.toFixed(1)}%`}</span>
+          {value === null ? "—" : value.toLocaleString()}
+          {value !== null && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{percent >= 100 ? "100%" : `${percent.toFixed(1)}%`}</span>}
         </span>
       </div>
       <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
-        <div className={cn("h-full rounded-full", tone)} style={{ width: `${Math.min(Math.max(percent, 2), 100)}%` }} />
+        {value !== null && <div className={cn("h-full rounded-full", tone)} style={{ width: `${Math.min(Math.max(percent, 2), 100)}%` }} />}
       </div>
     </div>
   )

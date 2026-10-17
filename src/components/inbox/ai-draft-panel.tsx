@@ -21,7 +21,8 @@ type PanelDraft = {
 }
 
 type Loc = "en" | "ru" | "az"
-const COPY: Record<Loc, Record<string, string>> = {
+/** Exported so the guided demo's draft panel says exactly what this one does. */
+export const AI_DRAFT_PANEL_COPY: Record<Loc, Record<string, string>> = {
   en: {
     title: "AI draft — needs review",
     send: "Send",
@@ -73,7 +74,7 @@ export function AiDraftPanel({
   onResolved?: () => void
 }) {
   const locale = (useLocale() as Loc) || "en"
-  const c = COPY[locale] ?? COPY.en
+  const c = AI_DRAFT_PANEL_COPY[locale] ?? AI_DRAFT_PANEL_COPY.en
   const [draft, setDraft] = useState<PanelDraft | null>(null)
   const [text, setText] = useState("")
   const [busy, setBusy] = useState(false)

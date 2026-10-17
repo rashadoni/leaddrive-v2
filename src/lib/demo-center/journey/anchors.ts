@@ -123,13 +123,11 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
 
   /* ── Sales → Deals (board) ── */
   "deals-view-tabs": { area: "deals", scene: DEAL_SCENE, productFiles: [], label: "Kanban / list / analytics" },
-  "deals-pipeline-select": { area: "deals", scene: DEAL_SCENE, productFiles: [DEALS_BOARD], label: "Pipeline select" },
   "deals-new": { area: "deals", scene: DEAL_SCENE, productFiles: [DEALS_BOARD], label: "New deal" },
   "deals-summary": { area: "deals", scene: DEAL_SCENE, productFiles: [DEALS_BOARD], label: "Funnel summary" },
   "deals-kanban": { area: "deals", scene: DEAL_SCENE, productFiles: [], label: "Kanban board" },
   "deals-card": { area: "deals", scene: DEAL_SCENE, productFiles: [DEALS_BOARD], label: "Deal card on the board" },
   "deals-list": { area: "deals", scene: DEAL_SCENE, productFiles: [], label: "List view" },
-  "deal-detail-sheet": { area: "deals", scene: DEAL_SCENE, productFiles: [], label: "Quick-view sheet" },
 
   /* ── Sales → Deal card ── */
   "deal-stage-progress": { area: "deals", scene: DEAL_SCENE, productFiles: [DEAL_CARD], label: "Stage chevrons" },

@@ -71,7 +71,7 @@ export const DEMO_PREPARED_INTENTS = {
   azerbaijan_languages: {
     criteria: "Asks whether it suits a business in Azerbaijan, which interface languages it has, or whether it works in Russian or English.",
     answer: () =>
-      "LeadDrive — Bakı və bütün Azərbaycan üzrə şirkətlər üçün CRM sistemidir: Azərbaycan, rus və ingilis dilində interfeys, WhatsApp və Instagram ümumi Inbox-da, müqavilələr, AZN ilə fakturalar və dəstək.",
+      "LeadDrive — Bakı və bütün Azərbaycan üzrə şirkətlər üçün CRM sistemidir: Azərbaycan, rus və ingilis dilində interfeys, WhatsApp, Telegram, Facebook və e-poçt ümumi Inbox-da, müqavilələr, AZN ilə fakturalar və dəstək.",
   },
   demo_data: {
     criteria: "Asks whether the records, names, amounts or messages in this demo are real, or whose data this is.",

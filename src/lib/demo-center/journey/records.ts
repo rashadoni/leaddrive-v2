@@ -38,10 +38,17 @@ export interface DemoProspectIdentity {
 /** The synthetic manager who «works» the prospect's record. */
 export const DEMO_MANAGER_NAME = "Aysel Məmmədova"
 
+/**
+ * What a product campaign can be sent through — and nothing else
+ * (`src/lib/campaigns/send-campaign.ts`). The demo used to show «Veb-çat» and
+ * «Instagram» campaigns, which the product cannot send.
+ */
+export type DemoCampaignType = "email" | "sms" | "whatsapp" | "telegram"
+
 export interface DemoCampaignRecord {
   readonly id: string
   readonly name: string
-  readonly channel: DemoSourceChannel
+  readonly type: DemoCampaignType
   readonly status: "sent"
   readonly audience: number
   readonly sent: number
@@ -50,8 +57,12 @@ export interface DemoCampaignRecord {
   readonly sentAt: string
   /** What was entered for the campaign; the product counts the budget as the cost once it has gone out (src/lib/campaigns/roi.ts). */
   readonly budget: number
-  /** The funnel the campaign ROI screen draws: leads → deals → won, and the money the won ones brought. */
-  readonly leads: number
+  /**
+   * The funnel the campaign ROI screen draws (`campaign-roi/page.tsx`):
+   * recipients → sent → opened → clicked → deals → won, and the money the won
+   * ones brought. There is no «leads» step: a lead carries no campaign, a deal
+   * does — the manager picks it in the deal form («Kampaniya (ROI üçün)»).
+   */
   readonly deals: number
   readonly wonDeals: number
   readonly revenue: number
@@ -60,12 +71,11 @@ export interface DemoCampaignRecord {
 /**
  * Opens, clicks, bounces and spam are recorded for e-mail campaigns only —
  * the campaign page says so itself when the campaign is of another type
- * (`campaigns.detailEngagementEmailOnly`). Two of the demo's channels are
- * e-mail ones; for the rest the demo shows «—», exactly like a live tenant,
- * instead of inventing an open rate Instagram never reports.
+ * (`campaigns.detailEngagementEmailOnly`); for the rest the demo shows «—»,
+ * exactly like a live tenant.
  */
-export function campaignRecordsEngagement(channel: DemoSourceChannel): boolean {
-  return channel === "referral" || channel === "event"
+export function campaignRecordsEngagement(type: DemoCampaignType): boolean {
+  return type === "email"
 }
 
 export interface DemoMessageRecord {
@@ -81,6 +91,7 @@ export interface DemoMessageRecord {
 
 export interface DemoAiDraft {
   readonly text: string
+  /** 0–1, as the product's quality gate scores a draft. */
   readonly quality: number
   readonly reason: string
   readonly createdAt: string
@@ -130,7 +141,17 @@ export interface DemoLeadRecord {
   readonly status: DemoLeadStatus
   readonly priority: "low" | "medium" | "high"
   readonly score: number
-  readonly scoreDetails: { readonly reasoning: string; readonly factors: Readonly<Record<string, number>> }
+  /**
+   * The score is the product's rules (src/lib/ai/lead-scoring.ts: five
+   * factors, the seller's verdict weighs most). Da Vinci's explanation and its
+   * conversion estimate exist only after «Da Vinci ilə yenidən hesabla» — the
+   * demo used to print both as if the model had already run, the estimate
+   * being the score × 0.6 the product itself stopped inventing (#383).
+   */
+  readonly scoreDetails: {
+    readonly factors: Readonly<Record<string, number>>
+    readonly daVinci: { readonly reasoning: string; readonly conversionPercent: number }
+  }
   readonly estimatedValue: number
   readonly currency: "AZN"
   readonly assignedToName: string
@@ -142,6 +163,8 @@ export interface DemoLeadRecord {
 
 export interface DemoTaskRecord {
   readonly id: string
+  /** The board's own number (`taskKey`), as the card prints it. */
+  readonly taskKey: string
   readonly title: string
   readonly status: "todo" | "in_progress" | "done"
   readonly priority: "low" | "medium" | "high"
@@ -149,6 +172,9 @@ export interface DemoTaskRecord {
   readonly assigneeName: string
   readonly relatedLeadId: string
   readonly createdAt: string
+  /** What the AI wrote into the task when it qualified the conversation. */
+  readonly description: readonly string[]
+  readonly checklist: readonly string[]
   readonly comments: readonly { readonly id: string; readonly author: string; readonly text: string; readonly at: string }[]
 }
 
@@ -170,12 +196,13 @@ export interface DemoDealRecord {
  * `labelKey` names a key in the product's own `deals` namespace, so the demo
  * says exactly what the product says. Real tenants keep their own vocabulary
  * (`orgStageVocabulary`) — this is the sample's, and it is never written
- * into a tenant.
+ * into a tenant. The probabilities are the product's default pipeline's
+ * (`src/lib/constants.ts`).
  */
 export const DEMO_DEAL_STAGES = [
-  { key: "qualified", labelKey: "stageQualified", probability: 20 },
-  { key: "proposal", labelKey: "stageProposal", probability: 45 },
-  { key: "negotiation", labelKey: "stageNegotiation", probability: 70 },
+  { key: "qualified", labelKey: "stageQualified", probability: 25 },
+  { key: "proposal", labelKey: "stageProposal", probability: 50 },
+  { key: "negotiation", labelKey: "stageNegotiation", probability: 75 },
   { key: "won", labelKey: "stageWon", probability: 100 },
 ] as const
 
@@ -186,17 +213,25 @@ export interface DemoQuoteLine {
   readonly unitPrice: number
 }
 
+/**
+ * A quote as the product keeps it: lines, a discount, a total — no tax line.
+ * The demo used to add «ƏDV 18%», which the product's quote does not have.
+ */
 export interface DemoQuoteRecord {
   readonly id: string
   readonly quoteNumber: string
   readonly status: "draft" | "sent" | "viewed" | "accepted"
   readonly lines: readonly DemoQuoteLine[]
-  readonly vatPercent: number
   readonly validUntil: string
   readonly createdAt: string
   readonly sentAt: string | null
   readonly viewedAt: string | null
   readonly acceptedAt: string | null
+  /**
+   * Accepting a quote spawns a draft contract (`src/lib/cpq/spawn-contract.ts`,
+   * numbered `<quote>-CTR-<id tail>`); it does not touch the deal.
+   */
+  readonly contractNumber: string | null
 }
 
 export interface DemoJourneyRecords {
@@ -208,20 +243,39 @@ export interface DemoJourneyRecords {
   readonly quote: DemoQuoteRecord | null
 }
 
-const CHANNEL_CAMPAIGN: Readonly<Record<DemoSourceChannel, { name: string; sourceDetail: string }>> = {
-  website: { name: "Veb-sayt: demo forması", sourceDetail: "leaddrive.az / demo" },
-  instagram: { name: "Instagram: CRM tanıtımı", sourceDetail: "Instagram reklamı" },
-  whatsapp: { name: "WhatsApp: müraciət xətti", sourceDetail: "WhatsApp Business" },
-  referral: { name: "Tövsiyə proqramı", sourceDetail: "Tərəfdaş tövsiyəsi" },
-  event: { name: "Tədbir: CRM seminarı", sourceDetail: "Bakı, seminar" },
+/**
+ * The campaign that «brought» the prospect: always one the product can send.
+ * A WhatsApp request comes from a WhatsApp campaign; every other request from
+ * an e-mail one whose link led to the form.
+ */
+const CHANNEL_CAMPAIGN: Readonly<Record<DemoSourceChannel, { name: string; type: DemoCampaignType; sourceDetail: string }>> = {
+  website: { name: "E-poçt: demo dəvəti", type: "email", sourceDetail: "leaddrive.az / demo forması" },
+  instagram: { name: "E-poçt: CRM tanıtımı", type: "email", sourceDetail: "Instagram reklamı" },
+  whatsapp: { name: "WhatsApp: yeni imkanlar", type: "whatsapp", sourceDetail: "WhatsApp Business" },
+  referral: { name: "E-poçt: tərəfdaş tövsiyə proqramı", type: "email", sourceDetail: "Tərəfdaş tövsiyəsi" },
+  event: { name: "E-poçt: CRM seminarına dəvət", type: "email", sourceDetail: "Bakı, seminar" },
 }
 
+/**
+ * The channel the prospect's conversation came in on. Instagram Direct is not
+ * offered to customers while Meta has not approved the app (refused 1.10 and
+ * 8.10.2026; owner, 21.09: Instagram stays off screen until then), so a
+ * prospect who saw an Instagram ad writes in the site's web chat.
+ */
 export const DEMO_CHANNEL_LABELS: Readonly<Record<DemoSourceChannel, string>> = {
   website: "Veb-çat",
-  instagram: "Instagram",
+  instagram: "Veb-çat",
   whatsapp: "WhatsApp",
   referral: "E-poçt",
   event: "E-poçt",
+}
+
+/** The product's own words for a campaign type (`campaigns.type*`). */
+export const DEMO_CAMPAIGN_TYPE_KEYS: Readonly<Record<DemoCampaignType, "typeEmail" | "typeSms" | "typeWhatsapp" | "typeTelegram">> = {
+  email: "typeEmail",
+  sms: "typeSms",
+  whatsapp: "typeWhatsapp",
+  telegram: "typeTelegram",
 }
 
 function iso(base: Date, offsetMinutes: number): string {
@@ -268,11 +322,18 @@ export function demoMoney(amount: number): string {
   return `${amount.toLocaleString(undefined, { minimumFractionDigits: fraction, maximumFractionDigits: fraction })} ₼`
 }
 
-export function quoteTotals(quote: Pick<DemoQuoteRecord, "lines" | "vatPercent">): { net: number; vat: number; gross: number } {
-  const net = quote.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0)
-  const vat = Math.round(net * quote.vatPercent) / 100
-  return { net, vat, gross: net + vat }
+/** The product's quote summary: subtotal, discount (none in the sample), total. */
+export function quoteTotals(quote: Pick<DemoQuoteRecord, "lines">): { subtotal: number; discount: number; total: number } {
+  const subtotal = quote.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0)
+  return { subtotal, discount: 0, total: subtotal }
 }
+
+/** The product's checklist on a task the AI opens from a conversation (`QUALIFICATION_CHECKLIST`, src/lib/inbox/lead-qualification.ts). */
+export const DEMO_QUALIFICATION_CHECKLIST = [
+  "Əlaqə saxlanılsın",
+  "Müştərinin yazışmasının qısa xülasəsi qeyd olunsun",
+  "Nəticəni bölüş",
+] as const
 
 export function createJourneyRecords(identity: DemoProspectIdentity, now: Date): DemoJourneyRecords {
   const campaignMeta = CHANNEL_CAMPAIGN[identity.sourceChannel]
@@ -280,7 +341,7 @@ export function createJourneyRecords(identity: DemoProspectIdentity, now: Date):
     campaign: {
       id: "cmp-demo-1",
       name: campaignMeta.name,
-      channel: identity.sourceChannel,
+      type: campaignMeta.type,
       status: "sent",
       audience: 1240,
       sent: 1240,
@@ -288,7 +349,6 @@ export function createJourneyRecords(identity: DemoProspectIdentity, now: Date):
       clicked: 97,
       sentAt: iso(now, -3 * 24 * 60),
       budget: 2400,
-      leads: 37,
       deals: 6,
       wonDeals: 2,
       revenue: 9600,
@@ -312,10 +372,14 @@ export function createJourneyRecords(identity: DemoProspectIdentity, now: Date):
           delivery: "received",
         },
       ],
+      // The AI agent may not name a time or promise a call
+      // (src/lib/inbox/omnichannel-commitment-rules.ts) — the draft used to
+      // offer «sabah 11:00 və ya 15:00», which the product's own guard strips.
+      // It asks what the manager needs to know instead.
       aiDraft: {
-        text: `Salam, ${firstName(identity.name)}! Təşəkkür edirik. LeadDrive-da lidlər, sövdələşmələr və bütün yazışmalar bir kartda toplanır. Sizə uyğun vaxtda 20 dəqiqəlik demo göstərə bilərik — sabah 11:00 və ya 15:00 münasibdir?`,
-        quality: 86,
-        reason: "drafts_only",
+        text: `Salam, ${firstName(identity.name)}! Təşəkkür edirik. LeadDrive-da lidlər, sövdələşmələr və bütün yazışmalar bir kartda toplanır. Demonu işinizə uyğun qurmaq üçün deyin: satış komandanız neçə nəfərdir və hansı kanallardan müraciət alırsınız?`,
+        quality: 0.86,
+        reason: "draft_mode",
         createdAt: iso(now, -40),
       },
     },
@@ -409,9 +473,6 @@ export function applyTransitionEffects(
       const inbound = records.conversation.messages[0]
       return {
         ...records,
-        // The prospect is now one of this campaign's leads — that link
-        // (Lead.campaignId) is what the campaign ROI screen counts.
-        campaign: { ...records.campaign, leads: records.campaign.leads + 1 },
         lead: {
           id: "lead-demo-1",
           contactName: identity.name,
@@ -425,12 +486,14 @@ export function applyTransitionEffects(
           priority: "high",
           score: 72,
           scoreDetails: {
-            reasoning: "Müraciət konkretdir (satış komandası üçün CRM), şirkət və vəzifə doldurulub, ilk cavab 2 dəqiqə ərzində verilib. Demo istəyi — yüksək niyyət siqnalıdır.",
-            // The product's own factor keys (src/lib/leads/score-factor-labels.ts):
-            // anything else falls back to a humanised English word, and three of
-            // the four used to read «Engagement / Fit / Intent» on the very
-            // screen that sells the Azerbaijani AI.
-            factors: { engagementLevel: 82, dealPotential: 74, sourceQuality: 88, recency: 95 },
+            // The product's own five factor keys (src/lib/ai/lead-scoring.ts,
+            // labels in src/lib/leads/score-factor-labels.ts): anything else
+            // falls back to a humanised English word on an Azerbaijani screen.
+            factors: { contactCompleteness: 80, engagementLevel: 82, dealPotential: 74, sourceQuality: 88, recency: 95 },
+            daVinci: {
+              reasoning: "Müraciət konkretdir (satış komandası üçün CRM), şirkət və vəzifə doldurulub, ilk cavab 2 dəqiqə ərzində verilib. Demo istəyi — yüksək niyyət siqnalıdır.",
+              conversionPercent: 41,
+            },
           },
           estimatedValue: 4_800,
           currency: "AZN",
@@ -458,7 +521,7 @@ export function applyTransitionEffects(
           timeline: [
             { id: "tl-1", kind: "message", title: "Gələn müraciət", subtitle: DEMO_CHANNEL_LABELS[identity.sourceChannel], date: inbound?.at ?? at, channel: identity.sourceChannel },
             { id: "tl-2", kind: "email", title: "AI cavabı (simulyasiya)", subtitle: DEMO_MANAGER_NAME, date: at },
-            { id: "tl-3", kind: "activity", title: "Lid kartı yaradıldı", subtitle: `Mənbə: ${campaignMeta.name}`, date: at },
+            { id: "tl-3", kind: "activity", title: "Lid kartı yaradıldı", subtitle: `Mənbə: ${campaignMeta.sourceDetail}`, date: at },
           ],
         },
       }
@@ -501,26 +564,40 @@ export function applyTransitionEffects(
       }
     }
 
+    // The task the product opens by itself when its AI judges a conversation
+    // a real buyer's (src/lib/inbox/lead-qualification.ts): on the sales board,
+    // titled «<category> — <name>», due in 24 hours, for the least loaded
+    // seller, with the AI's summary and a checklist. The demo used to say a
+    // status change created it — a manual qualification creates no task.
     case "TASK_CREATED": {
       if (records.task || !records.lead) return records
+      const summary = `${identity.company} satış komandası üçün CRM axtarır: lidlər, sövdələşmələr və yazışmalar bir yerdə; demo istəyir.`
+      const pitch = "Komandanın ölçüsünü və müraciətlərin gəldiyi kanalları dəqiqləşdirin; demonu onların gündəlik işi üzərində göstərin."
       return {
         ...records,
         task: {
           id: "task-demo-1",
-          title: `İzləmə: ${identity.name} (${identity.company}) — demo vaxtını razılaşdır`,
+          taskKey: "SAT-128",
+          title: `Xüsusiyyət sorğusu — ${identity.name}`,
           status: "todo",
           priority: "high",
           dueAt: iso(now, 24 * 60),
           assigneeName: DEMO_MANAGER_NAME,
           relatedLeadId: records.lead.id,
           createdAt: at,
-          comments: [
-            { id: "cmt-1", author: "LeadDrive", text: "Tapşırıq kvalifikasiyadan sonra avtomatik yaradıldı.", at },
+          description: [
+            "AI kateqoriyası: Xüsusiyyət sorğusu",
+            "AI etibarı: 91%",
+            `Kanal: ${DEMO_CHANNEL_LABELS[identity.sourceChannel]}`,
+            `Xülasə: ${summary}`,
+            `Tövsiyə edilən təqdimat: ${pitch}`,
           ],
+          checklist: [...DEMO_QUALIFICATION_CHECKLIST, `Müştərinin əsas marağı: ${summary}`, `Satıcı üçün təklif: ${pitch}`],
+          comments: [],
         },
         lead: {
           ...records.lead,
-          timeline: [...records.lead.timeline, { id: "tl-task", kind: "task", title: "İzləmə tapşırığı yaradıldı", subtitle: "Son tarix: sabah", date: at }],
+          timeline: [...records.lead.timeline, { id: "tl-task", kind: "task", title: "Satış lövhəsində tapşırıq yaradıldı", subtitle: "Son tarix: 24 saat", date: at }],
         },
       }
     }
@@ -529,6 +606,8 @@ export function applyTransitionEffects(
       if (records.deal || !records.lead) return records
       return {
         ...records,
+        // The deal names the campaign it came from (the deal form's
+        // «Kampaniya (ROI üçün)»), which is what the campaign's funnel counts.
         campaign: { ...records.campaign, deals: records.campaign.deals + 1 },
         deal: {
           id: "deal-demo-1",
@@ -573,18 +652,18 @@ export function applyTransitionEffects(
           quoteNumber: "KT-2026-0418",
           status: "draft",
           // The prospect corrects the licence count on the «Mövqelər və cəm»
-          // step (8 → 10), and the total lands next to the lead's estimate
-          // (4 800 ₼) instead of a third of it.
+          // step (8 → 10), and the total lands on the lead's estimate
+          // (4 800 ₼): the deal keeps one number from the card to the win.
           lines: [
-            { id: "ql-1", product: "LeadDrive CRM · istifadəçi lisenziyası (illik)", quantity: 8, unitPrice: 349 },
-            { id: "ql-2", product: "Omni-Channel modulu", quantity: 1, unitPrice: 590 },
+            { id: "ql-1", product: "LeadDrive CRM · istifadəçi lisenziyası (illik)", quantity: 8, unitPrice: 390 },
+            { id: "ql-2", product: "Omni-Channel modulu", quantity: 1, unitPrice: 900 },
           ],
-          vatPercent: 18,
           validUntil: iso(now, 14 * 24 * 60),
           createdAt: at,
           sentAt: null,
           viewedAt: null,
           acceptedAt: null,
+          contractNumber: null,
         },
       }
     }
@@ -598,23 +677,36 @@ export function applyTransitionEffects(
         ...records,
         quote: sent,
         lead: records.lead
-          ? { ...records.lead, timeline: [...records.lead.timeline, { id: "tl-quote-sent", kind: "quote", title: `Təklif göndərildi: ${sent.quoteNumber}`, subtitle: demoMoney(quoteTotals(sent).gross), date: at }] }
+          ? { ...records.lead, timeline: [...records.lead.timeline, { id: "tl-quote-sent", kind: "quote", title: `Təklif göndərildi: ${sent.quoteNumber}`, subtitle: demoMoney(quoteTotals(sent).total), date: at }] }
           : records.lead,
       }
     }
 
     case "QUOTE_ACCEPTED": {
       if (!records.quote || records.quote.status === "accepted") return records
-      const accepted = { ...records.quote, status: "accepted" as const, viewedAt: records.quote.viewedAt ?? at, acceptedAt: at }
-      // The deal follows the accepted quote at once. It used to keep the
-      // estimate until the win, so the last three screens showed 4 800, then
-      // 4 814,40, then 4 814 — three numbers for one deal.
+      // The product goes draft → sent → viewed → accepted
+      // (QUOTE_TRANSITIONS, src/lib/cpq/types.ts): «viewed» is stamped by the
+      // e-mail's tracking pixel, or marked by hand, before a quote is accepted.
+      // Accepting it spawns a draft contract and leaves the deal alone.
+      const accepted = {
+        ...records.quote,
+        status: "accepted" as const,
+        viewedAt: records.quote.viewedAt ?? at,
+        acceptedAt: at,
+        contractNumber: `${records.quote.quoteNumber}-CTR-7d41c2`,
+      }
       return {
         ...records,
         quote: accepted,
-        deal: records.deal ? { ...records.deal, amount: quoteTotals(accepted).gross } : records.deal,
         lead: records.lead
-          ? { ...records.lead, timeline: [...records.lead.timeline, { id: "tl-quote-accepted", kind: "quote", title: "Təklif qəbul edildi", subtitle: demoMoney(quoteTotals(accepted).gross), date: at }] }
+          ? {
+              ...records.lead,
+              timeline: [
+                ...records.lead.timeline,
+                { id: "tl-quote-accepted", kind: "quote", title: "Təklif qəbul edildi", subtitle: demoMoney(quoteTotals(accepted).total), date: at },
+                { id: "tl-contract", kind: "quote", title: "Müqavilə qaralaması yaradıldı", subtitle: accepted.contractNumber, date: at },
+              ],
+            }
           : records.lead,
       }
     }
@@ -622,13 +714,12 @@ export function applyTransitionEffects(
     case "CLOSED_WON": {
       if (!records.deal || records.deal.wonAt) return records
       const wonIndex = DEMO_DEAL_STAGES.length - 1
-      const gross = records.quote ? quoteTotals(records.quote).gross : records.deal.amount
       return {
         ...records,
         // Won money is attributed to the campaign the deal came from, so the
         // campaign's ROI moves with this one deal.
-        campaign: { ...records.campaign, wonDeals: records.campaign.wonDeals + 1, revenue: records.campaign.revenue + gross },
-        deal: { ...records.deal, stageIndex: wonIndex, probability: 100, amount: gross, wonAt: at },
+        campaign: { ...records.campaign, wonDeals: records.campaign.wonDeals + 1, revenue: records.campaign.revenue + records.deal.amount },
+        deal: { ...records.deal, stageIndex: wonIndex, probability: 100, wonAt: at },
         lead: records.lead
           ? { ...records.lead, timeline: [...records.lead.timeline, { id: "tl-won", kind: "deal", title: "Sövdələşmə qazanıldı", subtitle: `Mənbə: ${records.campaign.name}`, date: at }] }
           : records.lead,

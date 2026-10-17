@@ -190,7 +190,7 @@ describe("the guided story, walked through the real screens", () => {
     expect(walked).toEqual(stepIdsFrom("orientation"))
   }, 60_000)
 
-  it("survives a prospect who wanders off: back from the board, the kanban on the won step", async () => {
+  it("survives a prospect who wanders off: back from the board, the wrong stage on the won step", async () => {
     await renderPlayer()
     const press = async (element: Element | null | undefined, what: string) => {
       expect(element, what).toBeTruthy()
@@ -205,16 +205,17 @@ describe("the guided story, walked through the real screens", () => {
         expect(findDemoTarget("task-open"), "the task card is back").not.toBeNull()
       }
       if (stepId === "closed-won-move") {
-        // Back to the pipeline and the kanban's «next stage»: that is not a win.
-        const before = toasts.length
+        // Back to the pipeline, and into the deal again from its card: the card
+        // opens the deal's page, as in the product (there is no quick view).
         await press(container.querySelector('button[aria-label="Satış boru xətti"]'), "the deal card's back arrow")
-        await press(buttonWithText(S.dragHint), "the kanban's next-stage button")
+        await press(container.querySelector('[data-tour-id="deals-card"] button'), "the deal card")
+        expect(container.querySelector('[data-testid="demo-scene-deal-card"]'), "the deal's page").not.toBeNull()
+        // A stage that is not «won» is not a win: the guide says so instead.
+        const before = toasts.length
+        await press(buttonWithText("Danışıqlar", container.querySelector('[data-tour-id="deal-stage-progress"]')!), "the negotiation stage")
         expect(frontier().stepId).toBe("closed-won-move")
         expect(toasts.length).toBeGreaterThan(before)
         toasts.length = before
-        // Back into the card the way a prospect would: the kanban card, then «Overview».
-        await press(container.querySelector('[data-tour-id="deals-card"] button'), "the deal card")
-        await press(container.querySelector('[data-tour-id="deal-detail-sheet"] button'), "the sheet's overview")
       }
     })
     expect(walked).toEqual(stepIdsFrom("orientation"))
@@ -307,22 +308,38 @@ describe("the guided story, walked through the real screens", () => {
  * request; and the composer must work — with a limit that says why it stops.
  */
 describe("what each chapter actually shows", () => {
-  it("does not invent opens and clicks for a channel the product does not record them on", async () => {
+  it("opens on a working team's campaigns, not a row of zeros", async () => {
     await renderPlayer()
-    await walkTo("source-analytics")
-    const rates = textOf('[data-tour-id="campaigns-analytics"]')
-    expect(rates).toContain("—")
-    expect(rates).not.toMatch(/\d+%/)
-    // The product's own sentence, from messages/az.json, is on the screen.
-    expect(textOf('[data-testid="demo-scene-campaign-detail"]')).toContain(messages.campaigns.detailEngagementEmailOnly)
+    await walkTo("source-stats")
+    const stats = [...container.querySelectorAll('[data-tour-id="campaigns-stats"] > *')].map((card) => card.textContent ?? "")
+    // Draft, scheduled, sending, sent, cancelled — counted from the list itself.
+    expect(stats.map((card) => /(\d+)/.exec(card)?.[1])).toEqual(["1", "1", "0", "4", "1"])
+    const list = textOf('[data-tour-id="campaigns-list"]')
+    for (const type of ["typeEmail", "typeSms", "typeWhatsapp", "typeTelegram"] as const) expect(list).toContain(messages.campaigns[type])
+    expect(list).not.toContain("Instagram")
+    expect(list).not.toContain("Veb-çat")
   }, 60_000)
 
-  it("counts what the campaign brought: leads, deals, won money and ROI", async () => {
+  it("records opens and clicks for the e-mail campaign that brought the prospect", async () => {
+    await renderPlayer()
+    await walkTo("source-analytics")
+    // 468 and 97 of 1,240: the e-mail counters the product does record.
+    const rates = textOf('[data-tour-id="campaigns-analytics"]')
+    expect(rates).toContain("38%")
+    expect(rates).toContain("8%")
+    // The «e-mail only» sentence is for the other campaign types.
+    expect(textOf('[data-testid="demo-scene-campaign-detail"]')).not.toContain(messages.campaigns.detailEngagementEmailOnly)
+  }, 60_000)
+
+  it("counts what the campaign brought: the product's funnel, without a «leads» step, and the money", async () => {
     await renderPlayer()
     await walkTo("source-funnel")
     const funnel = textOf('[data-tour-id="campaign-funnel"]')
-    expect(funnel).toContain(messages.campaignRoi.leads)
-    expect(funnel).toContain("37")
+    // The campaign ROI screen's own funnel: no lead carries a campaign, a deal does.
+    expect(funnel).not.toContain(messages.campaignRoi.leads)
+    for (const label of [messages.campaignRoi.opened, messages.campaignRoi.clicked, messages.campaignRoi.deals, messages.campaignRoi.wonDeals]) {
+      expect(funnel).toContain(label)
+    }
     const money = textOf('[data-tour-id="campaign-roi"]')
     expect(money).toContain("2,400 ₼")
     expect(money).toContain("9,600 ₼")
@@ -336,7 +353,9 @@ describe("what each chapter actually shows", () => {
     expect(panel).toContain("+994 ••••• 67")
     expect(panel).toContain(S.contactPhoneFromRequest)
     expect(panel).toContain("WhatsApp")
-    expect(panel).toContain("Instagram")
+    // An Instagram ad's prospect writes from the site: Direct is not offered to customers yet.
+    expect(panel).toContain("Web Chat")
+    expect(panel).not.toContain("Instagram")
   }, 60_000)
 
   it("lets the prospect write, and after five messages says why it stops", async () => {
@@ -407,7 +426,7 @@ describe("the Omni Channel module", () => {
     // The prospect's own request and the company's other conversations.
     expect(rows().length).toBeGreaterThanOrEqual(8)
     expect(rows()[0].getAttribute("data-inbox-row")).toBe("own")
-    const channels = ["whatsapp", "instagram", "telegram", "email", "facebook", "web-chat", "tiktok"]
+    const channels = ["whatsapp", "telegram", "email", "facebook", "web-chat", "tiktok"]
     for (const channel of channels) expect(rail(channel).textContent, channel).toMatch(/\d/)
     expect(container.textContent).toContain(S.unanswered)
 
@@ -422,10 +441,10 @@ describe("the Omni Channel module", () => {
   it("lets any conversation be read: who wrote, on which channel, where the AI agent answered", async () => {
     await renderPlayer()
     await walkTo("conversation-channels")
-    await act(async () => container.querySelector<HTMLElement>('[data-inbox-row="ig-price"]')!.click())
+    await act(async () => container.querySelector<HTMLElement>('[data-inbox-row="tg-price"]')!.click())
     await settle()
     const thread = container.querySelector('[data-testid="demo-inbox-sample-thread"]')!
-    expect(thread.textContent).toContain("Instagram")
+    expect(thread.textContent).toContain("Telegram")
     expect(thread.textContent).toContain(messages.inboxV2.messageAuthorAi)
     // Reading it is not a step: the story has not moved, and nothing was scolded.
     expect(frontier().stepId).toBe("conversation-channels")
