@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronRight, Circle, Flag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { activeSections, demoMoney, moduleProgress, quoteTotals } from "@/lib/demo-center/journey"
 import { navItems } from "@/lib/nav-items"
+import { demoModuleLabel } from "../module-label"
 import type { DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
@@ -26,7 +27,7 @@ export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, h
   // sidebar entry it leads to read the same.
   const moduleName = (route: string, fallback: string) => {
     const item = navItems.find((candidate) => candidate.href === route)
-    return item ? tn(item.tKey) : fallback
+    return item ? demoModuleLabel(item, tn) : fallback
   }
   const sections = activeSections(manifest).filter((section) => section.navGroup !== "demo")
   const completed = new Set(snapshot.completedSteps)

@@ -394,7 +394,7 @@ describe("the arrow's controls", () => {
     const sources = [
       "src/components/demo-center/journey/demo-journey-guide.tsx",
       "src/components/demo-center/journey/demo-live-call.tsx",
-      ...["campaign", "inbox", "lead", "board", "deal", "quote", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
+      ...["campaign", "inbox", "lead", "board", "deal", "quote", "mtm", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
     ].map((file) => readFileSync(path.join(process.cwd(), file), "utf8")).join("\n")
     const withCall = withLiveCall(PROSPECT_TO_CLOSED_WON).sections.flatMap((section) => section.steps)
     for (const step of new Map([...steps, ...withCall.map((candidate) => [candidate.id, candidate] as const)]).values()) {
@@ -576,5 +576,57 @@ describe("the talking guide", () => {
     await act(async () => clip!.click())
     await settle()
     expect(pauses, "a clip has its own voiceover; the guide falls silent").toBeGreaterThan(before)
+  }, 60_000)
+})
+
+/**
+ * Route & Field (owner, 2026-10-17: the modules in demand need a demo of
+ * their own). It opens from the first screen as a module of its own, draws an
+ * invented field team with the product's MTM components, and keeps the
+ * owner's field rules on screen: nobody's place is shown during a break.
+ */
+describe("the Route & Field module", () => {
+  it("opens from the first screen and leaves the lead story where it was", async () => {
+    await renderPlayer()
+    const choice = document.querySelector<HTMLButtonElement>('[data-start-section="mtm-today"]')
+    expect(choice, "the first screen offers Route & Field").not.toBeNull()
+    expect(choice!.textContent).toContain(messages.nav.groups["Route & Field"])
+    await act(async () => choice!.click())
+    await settle()
+    expect(frontier()).toMatchObject({ sectionId: "mtm-today", stepId: "mtm-today-figures", state: "STARTED" })
+    expect(textOf('[data-tour-id="mtm-home-kpis"]')).toContain(messages.mtmDashboardPage.home.kpiInField)
+  }, 60_000)
+
+  it("suggests a day of nearby clients and publishes it", async () => {
+    await renderPlayer()
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-start-section="mtm-today"]')!.click())
+    await settle()
+    await walkTo("mtm-plan-suggest")
+    const stops = () => document.querySelectorAll('[data-tour-id="mtm-plan-route"] ol > li')
+    expect(stops()).toHaveLength(0)
+    await act(async () => findDemoTarget("mtm-plan-suggest")!.click())
+    await settle()
+    // The product's own «suggest»: up to six clients not seen this month, nearest next.
+    expect(stops()).toHaveLength(6)
+    expect(frontier().stepId).toBe("mtm-plan-publish")
+    await act(async () => findDemoTarget("mtm-plan-publish")!.click())
+    await settle()
+    // Published: the guide goes on to the live map.
+    expect(frontier().sectionId).toBe("mtm-live")
+  }, 60_000)
+
+  it("shows nobody's place during a break, in the list and on the map", async () => {
+    const { MTM_DEMO_AGENTS, mtmDemoLiveAgents } = await import("@/components/demo-center/journey/scenes/mtm-demo-data")
+    const onBreak = MTM_DEMO_AGENTS.filter((agent) => agent.status === "PAUSED")
+    expect(onBreak.length).toBeGreaterThan(0)
+    for (const agent of onBreak) {
+      expect(agent.latitude, agent.name).toBeUndefined()
+      expect(mtmDemoLiveAgents("2026-10-20").map((marker) => marker.agentId)).not.toContain(agent.id)
+    }
+    await renderPlayer()
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-start-section="mtm-today"]')!.click())
+    await settle()
+    await walkTo("mtm-live-roster")
+    expect(textOf('[data-tour-id="mtm-live-roster"]')).toContain(S.mtmOnBreak)
   }, 60_000)
 })
