@@ -37,6 +37,16 @@ describe("HR reports on the report engine", () => {
     expect(rowOf(table, "Рашад")).toMatchObject({ workedDays: 2, absent: 1, leaveDays: 2 })
   })
 
+  // Owner, 2026-10-17 («начинай»): the threshold lives only on shift plans, so
+  // a company on plain rules always read 0:00 here, even three hours over.
+  it("counts every hour over the schedule as overtime when the company set no threshold", () => {
+    const long = buildMtmAttendanceReport({ from: "2026-10-05", to: "2026-10-05", now: "2026-10-12T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
+      employees: [{ id: "aysel", name: "Айсель", teamId: null, teamName: null }], workdays: [day("aysel", "2026-10-05", "09:00", "20:00")] })
+    const table = buildAttendanceTable(long, config("SUMMARY", [...ATTENDANCE_REPORTS.summary.columns], { from: "2026-10-05", to: "2026-10-05" }), "ru", t)
+    // 09:00–20:00 less the 13:00–14:00 lunch = 10 h against a schedule of 8 h.
+    expect(rowOf(table, "Айсель").overtimeHours).toBe("2:00")
+  })
+
   it("shows the hours balance with its sign", () => {
     const table = buildAttendanceTable(report, config("BALANCE", [...ATTENDANCE_REPORTS.balance.columns]), "ru", t)
     const nigar = rowOf(table, "Нигяр"), rashad = rowOf(table, "Рашад")

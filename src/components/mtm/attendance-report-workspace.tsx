@@ -17,7 +17,7 @@ import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendance
 import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
 import { DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
-import { attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
+import { attendanceCountedOvertimeSeconds, attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
 import { TIMESHEET_ISSUES, type TimesheetIssue } from "@/lib/mtm/attendance-timesheet-filters"
 import { MtmAttendanceHelp } from "@/components/mtm/attendance-help"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
@@ -203,7 +203,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
   // Overtime is the report's own rule: past the expected day by more than the
   // company's threshold. Without a threshold nothing is flagged — nine hours
   // against eight would otherwise mark every full day.
-  const overtimeRows = useMemo(() => new Set(layout === "timesheet" && form === "MONTH" ? attendanceOvertimeRows(rows).filter(item => item.state === "EXCEEDED").map(item => item.row) : []), [rows, form, layout])
+  const overtimeRows = useMemo(() => new Set(layout === "timesheet" && form === "MONTH" ? attendanceOvertimeRows(rows).filter(item => attendanceCountedOvertimeSeconds(item) > 0).map(item => item.row) : []), [rows, form, layout])
   const hasIssue = (row: MtmAttendanceReportRow, kind: TimesheetIssue) => kind === "late" ? (row.lateSeconds ?? 0) > 0 : kind === "absent" ? row.kind === "ABSENT"
     : kind === "missing-finish" ? row.kind === "MISSING_FINISH" : overtimeRows.has(row)
   const count = customTable ? customTable.rows.length : form === "MONTH" ? monthEmployees.length : form === "JOURNAL" ? journal.length : rows.length

@@ -1,4 +1,4 @@
-import { attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
+import { attendanceCountedOvertimeSeconds, attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import { ATTENDANCE_LOCATION_STATE_MESSAGES, attendanceDayLocationText, attendanceEndpointBranch, summarizeAttendanceBranches } from "@/lib/mtm/attendance-location-report"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
@@ -64,7 +64,7 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
     : column === "kinds" ? absenceKinds.map(kind => ({ key: `kind:${kind.key}`, label: `${kind.code} · ${attendanceDayKindLabel(kind, locale)}` }))
     : [{ key: column, label: t(config.mode === "MONTH" && column === "late" ? "reportLateCount" : COLUMN[column]) }])
   if (config.mode === "SUMMARY" || config.mode === "BALANCE" || config.mode === "ABSENCE_KINDS" || config.mode === "TEAM") {
-    const overtime = new Map(attendanceOvertimeRows(rows).filter(item => item.state === "EXCEEDED").map(item => [item.row, item.excessSeconds ?? 0]))
+    const overtime = new Map(attendanceOvertimeRows(rows).map(item => [item.row, attendanceCountedOvertimeSeconds(item)] as const).filter(([, seconds]) => seconds > 0))
     const groups = new Map<string, MtmAttendanceReportRow[]>()
     for (const row of rows) {
       const key = config.mode === "TEAM" ? row.teamId ?? "" : row.employeeId

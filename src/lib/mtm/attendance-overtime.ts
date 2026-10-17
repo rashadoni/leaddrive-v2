@@ -57,3 +57,16 @@ export function attendanceOvertimeRows(rows: readonly MtmAttendanceReportRow[]):
       state: excessSeconds === null ? "UNKNOWN" : thresholdSeconds === null ? "THRESHOLD_UNSET" : excessSeconds > thresholdSeconds ? "EXCEEDED" : "WITHIN" }
   })
 }
+
+/**
+ * The overtime that counts in totals and on the timesheet. Owner's question,
+ * 2026-10-16 → «начинай» 2026-10-17: the threshold exists only on shift plans,
+ * so a company working by its plain rules never had one and its «Overtime»
+ * column read 0:00 even for someone three hours over the schedule. Without a
+ * threshold every hour over the schedule counts; with one, only past it.
+ */
+export function attendanceCountedOvertimeSeconds(item: AttendanceOvertimeRow): number {
+  if (item.state === "EXCEEDED") return item.excessSeconds ?? 0
+  if (item.state === "THRESHOLD_UNSET") return item.excessSeconds ?? 0
+  return 0
+}
