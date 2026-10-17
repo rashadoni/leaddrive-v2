@@ -246,3 +246,27 @@ No Kafka consumers, offsets or customer replay have been activated.
   verifier and diagnostic-only A/B path. Actual CDC integration remains
   pending; no runtime pass is inferred from these unit tests. Checkpoint
   commits preserve the work independently of conversation history.
+
+## 2026-10-17 — K1 protected merge and ordered successor delivery
+
+- PR861 all required checks SUCCESS on
+  `7d768b33c0ed68202a3d5c5878210a7a00fc0d98`; full gates `39072900714`
+  completed, with real static/typecheck success, not skipped draft jobs.
+  Infrastructure smoke `39072900806` also SUCCESS. Normal exact-head merge
+  produced `c8c32582ccd54a65e5e7c887643c4226677b5373` at 22:13:47 UTC.
+- Its supported deploy `39074203195` is pending behind existing release work;
+  no foreign workflow was cancelled. Do not call this a successful new
+  production receipt until artifact/health verification actually completes.
+  Other reviewed main changes are inherited normally, not merged as foreign
+  PRs by this task.
+- Merged current main into both successor branches without resetting them.
+  The backup branch's append-only journal conflict retained both histories.
+  PR863 is next for actual libpq/full gates. Its 29 guard tests and 28 source
+  TLS safety tests, shell syntax, asset pins and runner policy pass locally;
+  no live password-file authority or credential value was changed.
+- The independent K2 read-only review is complete after the zero-exit guard
+  fix; no additional blocking harness defects found. K2 has 52 passing tooling
+  tests and remains checkpointed separately, ready for a draft PR after the
+  predecessor merge. Real CDC integration is still NOT RUN. A cold restart
+  receipt will prove delivery with retained resources, not independently audit
+  the contents of Connect's offset store or prove crash-at-commit exactly-once.
