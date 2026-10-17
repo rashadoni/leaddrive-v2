@@ -1,6 +1,8 @@
 # Event-platform write-path inventory
 
-Status: **K0.2 PARTIAL — Fund paths inspected; remaining domains not inspected.**
+Status: **K0.2 PARTIAL — Fund paths inspected; bounded non-Fund chains are
+recorded in the [separate inventory](./NON_FUND_WRITE_PATH_INVENTORY.md).
+Remaining domains and alternate writers are not inspected.**
 
 Source reviewed: `origin/main` at
 `9ead36ce7ef64cb16d521acad9bc3b210812a3c9` (2026-10-17).
