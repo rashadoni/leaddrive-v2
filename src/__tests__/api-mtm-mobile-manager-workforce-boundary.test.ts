@@ -93,7 +93,52 @@ describe("mobile manager mixed workforce boundaries", () => {
 
     expect(body.data.agents[0].workday).toMatchObject({ id: "workday-1", status: "STARTED" })
     const query = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0] as any
-    expect(query.select.workdays).toEqual(expect.objectContaining({ take: 1 }))
+    expect(query.select.workdays).toEqual(expect.objectContaining({ take: 2 }))
+    // No route data for a manager without Routes.
+    expect(body.data.agents[0]).not.toHaveProperty("routeToday")
+    expect(prisma.mtmRoute.findMany).not.toHaveBeenCalled()
+  })
+
+  // Owner, 2026-10-17: a day finished at six read «İş günü başlamayıb».
+  it("says a day was finished, and prefers a day still open — begun yesterday — to it", async () => {
+    const finished = { id: "workday-today", status: "COMPLETED", startedAt: new Date("2026-10-17T05:10:00Z"), pausedAt: null, completedAt: new Date("2026-10-17T14:00:00Z") }
+    const open = { id: "workday-yesterday", status: "STARTED", startedAt: new Date("2026-10-16T20:00:00Z"), pausedAt: null, completedAt: null }
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-1", name: "Agent One", role: "AGENT", status: "ACTIVE", teamId: "team-1", isOnline: false, lastSeenAt: null, workdays: [finished] },
+      { id: "agent-2", name: "Agent Two", role: "AGENT", status: "ACTIVE", teamId: "team-1", isOnline: true, lastSeenAt: null, workdays: [finished, open] },
+    ] as never)
+
+    const body = await (await teamGet(request("team"))).json()
+
+    expect(body.data.agents[0].workday).toMatchObject({ id: "workday-today", status: "COMPLETED" })
+    expect(body.data.agents[1].workday).toMatchObject({ id: "workday-yesterday", status: "STARTED" })
+    const query = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0] as { select: { workdays: { where: unknown } } }
+    expect(query.select.workdays.where).toEqual({ OR: [{ status: { in: ["STARTED", "PAUSED"] } }, { workDate: new Date(`${body.data.date}T00:00:00.000Z`) }] })
+  })
+
+  // «Визиты 3 из 8» on each team card (owner, 2026-10-17).
+  it("counts today's published route points of each employee by what became of them", async () => {
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-1", name: "Agent One", role: "AGENT", status: "ACTIVE", teamId: "team-1", isOnline: true, lastSeenAt: null, workdays: [] },
+      { id: "agent-2", name: "Agent Two", role: "AGENT", status: "ACTIVE", teamId: "team-1", isOnline: true, lastSeenAt: null, workdays: [] },
+    ] as never)
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([
+      { agentId: "agent-1", points: [{ status: "VISITED" }, { status: "VISITED" }, { status: "SKIPPED" }, { status: "PENDING" }] },
+      { agentId: "agent-1", points: [{ status: "PENDING" }] },
+    ] as never)
+
+    const body = await (await teamGet(request("team"))).json()
+
+    expect(body.data.agents[0].routeToday).toEqual({ planned: 5, visited: 2, skipped: 1 })
+    expect(body.data.agents[1].routeToday).toBeNull()
+    const query = vi.mocked(prisma.mtmRoute.findMany).mock.calls[0][0] as { where: unknown }
+    expect(query.where).toMatchObject({
+      organizationId: "org-1",
+      agentId: { in: ["agent-1", "agent-2"] },
+      date: new Date(`${body.data.date}T00:00:00.000Z`),
+      deletedAt: null,
+      status: { in: ["PLANNED", "IN_PROGRESS", "COMPLETED", "INCOMPLETE"] },
+    })
   })
 
   it("does not read HRM request reasons for a Routes-only manager", async () => {
