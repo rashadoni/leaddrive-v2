@@ -3,7 +3,23 @@ import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { hasMobilePermission, requireMobileCapability } from "@/lib/mtm/mobile-capabilities"
 import { resolveAgentScope } from "@/lib/mtm/territory-scope"
+import { getMtmSettings } from "@/lib/mtm-settings"
+import { currentDateKey } from "@/lib/mtm/mobile-week"
+import { isValidTimezone } from "@/lib/timezone"
 
+/** Published routes: a draft is nobody's plan yet, a cancelled one nobody's any more. */
+const ROUTE_TODAY_STATUSES = ["PLANNED", "IN_PROGRESS", "COMPLETED", "INCOMPLETE"] as const
+
+type WorkdayRow = { id: string; status: string; startedAt: Date; pausedAt: Date | null; completedAt: Date | null }
+
+/**
+ * The workday the team card speaks of: the open one if there is one — it may
+ * have begun yesterday — else today's, finished. Until 2026-10-17 only open
+ * ones were read, and a day finished at six read «İş günü başlamayıb».
+ */
+function workdayOfToday(rows: WorkdayRow[]): WorkdayRow | null {
+  return rows.find((row) => row.status === "STARTED" || row.status === "PAUSED") ?? rows[0] ?? null
+}
 /** GET /api/v1/mtm/mobile/manager/team — scoped Manager/Supervisor read model. */
 export const GET = withMobileRls(async (req, auth) => {
   const forbidden = requireMobileCapability(auth, "TEAM_READ")
@@ -29,6 +45,9 @@ export const GET = withMobileRls(async (req, auth) => {
       role: auth.role as "ADMIN" | "MANAGER" | "SUPERVISOR" | "AGENT",
     })
     const includeInactive = new URL(req.url).searchParams.get("includeInactive") === "1"
+    const settings = await getMtmSettings(auth.orgId)
+    const todayKey = currentDateKey(new Date(), isValidTimezone(settings.timezone) ? settings.timezone : "UTC")
+    const today = new Date(`${todayKey}T00:00:00.000Z`)
     const agents = await prisma.mtmAgent.findMany({
       where: {
         organizationId: auth.orgId,
@@ -46,22 +65,51 @@ export const GET = withMobileRls(async (req, auth) => {
         ...(canReadWorkforceTeam
           ? {
               workdays: {
-                where: { status: { in: ["STARTED", "PAUSED"] } },
+                where: { OR: [{ status: { in: ["STARTED", "PAUSED"] } }, { workDate: today }] },
                 orderBy: { startedAt: "desc" },
-                take: 1,
-                select: { id: true, status: true, startedAt: true, pausedAt: true },
+                take: 2,
+                select: { id: true, status: true, startedAt: true, pausedAt: true, completedAt: true },
               },
             }
           : {}),
       },
     })
+    // «Визиты 3 из 8» on each card (owner, 2026-10-17): the points of the
+    // routes published for today, by what became of them.
+    const routeToday = new Map<string, { planned: number; visited: number; skipped: number }>()
+    if (canReadRouteTeam && agents.length > 0) {
+      const routes = await prisma.mtmRoute.findMany({
+        where: {
+          organizationId: auth.orgId,
+          agentId: { in: agents.map((agent) => agent.id) },
+          date: today,
+          deletedAt: null,
+          status: { in: [...ROUTE_TODAY_STATUSES] },
+        },
+        select: { agentId: true, points: { where: { deletedAt: null }, select: { status: true } } },
+      })
+      for (const route of routes) {
+        const counts = routeToday.get(route.agentId) ?? { planned: 0, visited: 0, skipped: 0 }
+        for (const point of route.points) {
+          counts.planned += 1
+          if (point.status === "VISITED") counts.visited += 1
+          if (point.status === "SKIPPED") counts.skipped += 1
+        }
+        routeToday.set(route.agentId, counts)
+      }
+    }
     return NextResponse.json({
       success: true,
       data: {
         scope: scope.agentIds ? "TEAM_OR_REGION" : "ORGANIZATION",
+        date: todayKey,
         agents: agents.map((row) => {
-          const { workdays = [], ...agent } = row as { workdays?: unknown[] } & Record<string, unknown>
-          return { ...agent, workday: canReadWorkforceTeam ? workdays[0] ?? null : null }
+          const { workdays = [], ...agent } = row as { workdays?: WorkdayRow[] } & Record<string, unknown> & { id: string }
+          return {
+            ...agent,
+            workday: canReadWorkforceTeam ? workdayOfToday(workdays) : null,
+            ...(canReadRouteTeam ? { routeToday: routeToday.get(agent.id) ?? null } : {}),
+          }
         }),
       },
     })
