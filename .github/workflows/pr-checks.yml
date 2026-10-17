@@ -355,6 +355,17 @@ jobs:
           MTM_LOGIN_CODE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_LOGIN_CODE_DB_GATE: required
 
+      - name: MTM manager writes to the team database gate
+        # «Komandaya yaz» on the manager's phone (2026-10-17). The real send and
+        # read handlers on a real Postgres: the team is the manager's scope,
+        # and a card of another team or company, a former employee or the
+        # manager themselves gets nothing written — a mocked Prisma answers the
+        # scope queries with whatever the test hands it.
+        run: npx vitest run src/__tests__/mtm-mobile-manager-messages-postgres.test.ts
+        env:
+          MTM_MANAGER_MESSAGES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_MANAGER_MESSAGES_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:
