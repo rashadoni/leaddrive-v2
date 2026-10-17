@@ -101,7 +101,7 @@ export const DEMO_JOURNEY_STRINGS = {
   welcomeBody: (company: string) =>
     `Bu, LeadDrive-ın real interfeysidir. İndi ${company} üçün bir hekayəni birlikdə keçəcəyik: müraciətdən qazanılmış sövdələşməyə qədər.`,
   welcomePoints: [
-    "Solda — yalnız bu demo üçün açılmış beş bölmə.",
+    "Solda — yalnız bu demo üçün açılmış altı bölmə.",
     "Sağda — bələdçi: hər addımda nə etməli olduğunuzu göstərir.",
     "Hər addım yalnız real hərəkətdən sonra tamamlanmış sayılır.",
   ],
@@ -223,6 +223,12 @@ export const DEMO_JOURNEY_STRINGS = {
   mtmNote: "Agentin qeydi",
   mtmPlaceVisitInZone: "Bu yerdən edilən vizit artıq zonada sayılır.",
   mtmPlaceGuard: "Sorğu yalnız agent müştərinin yanındadırsa qəbul olunur: GPS dəqiqliyi 100 m-dən pis, nöqtəsi 2 dəqiqədən köhnə, saxta yer və ya agentdən 150 m-dən uzaq təklif rədd edilir.",
+  // Personnel (Kadr uçotu).
+  personnelTabHint: "Bu demoda Kadr uçotu bölmələrini bələdçi açır — onun addımını izləyin.",
+  personnelPrivacy: "Biometriya yoxdur: nə üz, nə barmaq izi. Fasilədə yalnız vaxt görünür — əməkdaşın yeri yazılmır. Günü əməkdaş özü bağlayır.",
+  personnelApproved: "Təsdiqləndi",
+  personnelCorrectedMark: "müraciətlə düzəliş edilib",
+  personnelCloseNote: "Bağlanmış ay olduğu kimi saxlanır: tabel və ixrac eyni qalır, sonrakı düzəlişlər ayrıca görünür.",
   aiSuggestion: "Növbəti addım",
   aiSuggestionBody: "Təklifi hazırlayın və etibarlılıq müddətini 14 günlə məhdudlaşdırın — qərar sürətlənir.",
 } as const

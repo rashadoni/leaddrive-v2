@@ -39,6 +39,7 @@ const DEAL_SCENE = "src/components/demo-center/journey/scenes/deal-scene.tsx"
 const QUOTE_SCENE = "src/components/demo-center/journey/scenes/quote-scene.tsx"
 const SUMMARY_SCENE = "src/components/demo-center/journey/scenes/summary-scene.tsx"
 const MTM_SCENE = "src/components/demo-center/journey/scenes/mtm-scene.tsx"
+const PERSONNEL_SCENE = "src/components/demo-center/journey/scenes/personnel-scene.tsx"
 
 /* Real product files */
 const LEADS_LIST = "src/app/(dashboard)/leads/page.tsx"
@@ -163,6 +164,15 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "mtm-visit-left-open": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "A visit the agent left open" },
   "mtm-place-request": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "«Client is here»: before / proposed" },
   "mtm-results-team": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Results: plan and fact per agent" },
+
+  /* ── Personnel (Kadr uçotu) ── */
+  "prs-today-kpis": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Today: came, late, absent, no check-out; now" },
+  "prs-today-requests": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Today: requests awaiting a decision" },
+  "prs-today-attention": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Today: who needs attention, explanations" },
+  "prs-timesheet": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Timesheet grid and the day card" },
+  "prs-risk": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Suspicious records" },
+  "prs-n1t": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "N-1t timesheet for accounting" },
+  "prs-month-close": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Close the month" },
 }
 
 export function isDemoAnchor(id: string): boolean {
@@ -173,5 +183,5 @@ export function isDemoAnchor(id: string): boolean {
  *  have every one of its anchors rendered — that is what stops a half-built
  *  scene from shipping with a coach mark pointing at nothing. */
 export const DEMO_BUILT_AREAS: readonly DemoJourneyArea[] = [
-  "shell", "summary", "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "mtm",
+  "shell", "summary", "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "mtm", "personnel",
 ]

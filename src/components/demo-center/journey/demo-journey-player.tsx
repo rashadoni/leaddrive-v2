@@ -47,6 +47,7 @@ import { DealScene } from "./scenes/deal-scene"
 import { InboxScene } from "./scenes/inbox-scene"
 import { LeadScene } from "./scenes/lead-scene"
 import { MtmScene } from "./scenes/mtm-scene"
+import { PersonnelScene } from "./scenes/personnel-scene"
 import { OrientationScene } from "./scenes/orientation-scene"
 import { QuoteScene } from "./scenes/quote-scene"
 import { ScenePending } from "./scenes/scene-pending"
@@ -87,6 +88,10 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   "mtm-visit": MtmScene,
   "mtm-place": MtmScene,
   "mtm-results": MtmScene,
+  "prs-today": PersonnelScene,
+  "prs-timesheet": PersonnelScene,
+  "prs-risk": PersonnelScene,
+  "prs-month": PersonnelScene,
   summary: SummaryScene,
 }
 

@@ -394,7 +394,7 @@ describe("the arrow's controls", () => {
     const sources = [
       "src/components/demo-center/journey/demo-journey-guide.tsx",
       "src/components/demo-center/journey/demo-live-call.tsx",
-      ...["campaign", "inbox", "lead", "board", "deal", "quote", "mtm", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
+      ...["campaign", "inbox", "lead", "board", "deal", "quote", "mtm", "personnel", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
     ].map((file) => readFileSync(path.join(process.cwd(), file), "utf8")).join("\n")
     const withCall = withLiveCall(PROSPECT_TO_CLOSED_WON).sections.flatMap((section) => section.steps)
     for (const step of new Map([...steps, ...withCall.map((candidate) => [candidate.id, candidate] as const)]).values()) {
@@ -628,5 +628,70 @@ describe("the Route & Field module", () => {
     await settle()
     await walkTo("mtm-live-roster")
     expect(textOf('[data-tour-id="mtm-live-roster"]')).toContain(S.mtmOnBreak)
+  }, 60_000)
+})
+
+/**
+ * Personnel («Kadr uçotu», owner, 2026-10-17): the workday module. Its days
+ * are an invented company's phone facts run through the product's own
+ * timesheet builder, so the figures on «Bu gün» are the product's arithmetic,
+ * and a corrected day shows what it was, what it became and who approved it.
+ */
+describe("the Personnel module", () => {
+  const openPersonnel = async () => {
+    await renderPlayer()
+    const choice = document.querySelector<HTMLButtonElement>('[data-start-section="prs-today"]')
+    expect(choice, "the first screen offers Personnel").not.toBeNull()
+    expect(choice!.textContent).toContain(messages.nav.groups.Personnel)
+    await act(async () => choice!.click())
+    await settle()
+  }
+
+  it("opens on the morning in four figures, without biometrics and without a place during a break", async () => {
+    await openPersonnel()
+    expect(frontier()).toMatchObject({ sectionId: "prs-today", state: "STARTED" })
+    const kpis = textOf('[data-tour-id="prs-today-kpis"]')
+    expect(kpis).toContain(messages.personnel.kpiArrived)
+    expect(kpis).toContain(S.personnelPrivacy)
+  }, 60_000)
+
+  it("approves a leave in one click, then asks the late ones for an explanation", async () => {
+    await openPersonnel()
+    await walkTo("prs-today-approve")
+    await act(async () => findDemoTarget("prs-today-approve")!.click())
+    await settle()
+    expect(textOf('[data-tour-id="prs-today-requests"]')).toContain(S.personnelApproved)
+    expect(frontier().stepId).toBe("prs-today-explain")
+    await act(async () => findDemoTarget("prs-today-explain")!.click())
+    await settle()
+    expect(frontier().sectionId).toBe("prs-timesheet")
+  }, 60_000)
+
+  it("shows a corrected day as before → after, with who approved it", async () => {
+    await openPersonnel()
+    await walkTo("prs-timesheet-day")
+    await act(async () => findDemoTarget("prs-timesheet-day")!.click())
+    await settle()
+    // The step is done and the guide moves on.
+    expect(frontier().sectionId).toBe("prs-risk")
+    // What the card printed: the product's own correction line over the product's own timesheet.
+    const { personnelDemoPlan, personnelDemoReport } = await import("@/components/demo-center/journey/scenes/personnel-demo-data")
+    const { defaultAttendanceDayKinds } = await import("@/lib/mtm/attendance-day-kinds")
+    const { attendanceCorrectionText } = await import("@/lib/mtm/attendance-presentation")
+    const kinds = defaultAttendanceDayKinds((key) => {
+      const name = (messages.mtmAttendance as Record<string, string>)[`dayKindName${key}`]
+      return { az: name, ru: name, en: name }
+    })
+    const plan = personnelDemoPlan("2026-10-15")
+    const corrected = personnelDemoReport("2026-10-15", plan.monthStart, plan.lastMonthEnd, kinds).rows.filter((row) => row.corrections?.length)
+    expect(corrected).toHaveLength(1)
+    const line = attendanceCorrectionText(corrected[0], corrected[0].corrections![0], "az", (key, values) => {
+      let text = (messages.mtmAttendance as Record<string, string>)[key]
+      for (const [name, value] of Object.entries(values ?? {})) text = text.replace(`{${name}}`, String(value))
+      return text
+    })
+    expect(line).toContain("Orxan Musayev")
+    expect(line).toContain("→")
+    expect(corrected[0].dayKind?.key).toBe("WORKED")
   }, 60_000)
 })
