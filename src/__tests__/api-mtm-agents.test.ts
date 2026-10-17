@@ -502,6 +502,31 @@ describe("POST /api/v1/mtm/agents", () => {
     expect(createArgs.select.canSelfPublishRoutes).toBe(true)
   })
 
+  // Owner's end-to-end test, 2026-10-17: «Agent əlavə et» answered «Validation
+  // failed» for every agent without an email and a code — both optional, both
+  // sent by the form as "".
+  it("creates an agent from the form as sent, with the optional email and code left empty", async () => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.create).mockResolvedValue({ id: "new-agent", name: "Test E2E Agent" } as any)
+
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", {
+      name: "Test E2E Agent", email: "", externalCode: "", role: "AGENT", status: "ACTIVE",
+      canPlanOwnRoutes: true, canSelfPublishRoutes: false, managerId: null, tags: [], mapColor: "lime",
+    }))
+
+    expect(res.status).toBe(201)
+    const createArgs = vi.mocked(prisma.mtmAgent.create).mock.calls[0][0] as any
+    expect(createArgs.data.email ?? null).toBeNull()
+    expect(createArgs.data.externalCode ?? null).toBeNull()
+  })
+
+  it("still refuses a written email that is not an email", async () => {
+    mockAgentAdministrator()
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Test", email: "not-an-email" }))
+    expect(res.status).toBe(400)
+    expect(prisma.mtmAgent.create).not.toHaveBeenCalled()
+  })
+
   it("rejects a weak mobile-agent password before hashing", async () => {
     mockAgentAdministrator()
 
