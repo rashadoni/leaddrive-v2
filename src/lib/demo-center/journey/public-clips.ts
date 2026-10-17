@@ -16,6 +16,9 @@ export const DEMO_PUBLIC_CLIP_SLUGS: ReadonlySet<string> = new Set([
   "demo-boards",
   "demo-support",
   "demo-calls",
+  "demo-mtm",
+  "demo-personnel",
+  "demo-contracts",
 ])
 
 /**

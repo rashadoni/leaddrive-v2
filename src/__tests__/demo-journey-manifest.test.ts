@@ -423,6 +423,9 @@ describe("Guided journey intro clips", () => {
       // in scenes/support-demo-data.ts and scenes/calls-demo-data.ts.
       "demo-support": "the chapter's invented morning queue, WA-0417 (Sahil Market) taken and resolved",
       "demo-calls": "the chapter's invented call log and lead Fərid Hacıyev (Xəzər Tikinti MMC)",
+      "demo-mtm": "the chapter's invented Baku field team (mtm-demo-data.ts), Nar Klinika visit and Aptek 24 place request",
+      "demo-personnel": "the chapter's invented company's day, timesheet and N-1t (personnel-demo-data.ts)",
+      "demo-contracts": "the chapter's invented service company's contracts, Xəzər Tikinti MMC draft signed by Elnur Məmmədov",
     }
     for (const section of manifest.sections) {
       if (section.intro?.status !== "available") continue
