@@ -1,8 +1,9 @@
 "use client"
 
-import { Bot, User, MessageCircle, Globe, Sparkles, Tag, AlertCircle, Zap, Hash } from "lucide-react"
-import { useTranslations } from "next-intl"
-import { parseChatDescription, parseCommentSender, type ParsedChat } from "@/lib/ticketing/chat-transcript"
+import { Bot, User, MessageCircle, Globe, Sparkles, Tag, AlertCircle, Zap, Hash, Mail, Phone, Link as LinkIcon } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
+import { formatDateTime } from "@/lib/format-date"
+import { isOperatorSenderName, parseChatDescription, parseCommentSender, type ParsedChat } from "@/lib/ticketing/chat-transcript"
 
 // The parsers live in a plain module: the customer portal's API reads the same format on the server.
 export { parseChatDescription, parseCommentSender }
@@ -52,17 +53,28 @@ function platformStyle(platform: string | null, webChatLabel: string, genericCha
   return { icon: MessageCircle, label: genericChatLabel }
 }
 
-function Chip({ icon: Icon, children, className = "" }: { icon: React.ElementType; children: React.ReactNode; className?: string }) {
+function Chip({ icon: Icon, children, className = "", title }: { icon: React.ElementType; children: React.ReactNode; className?: string; title?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
+    <span title={title} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
       <Icon className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
       <span className="truncate max-w-[180px]">{children}</span>
     </span>
   )
 }
 
+/** "example.az/pricing" — the page a website chat was started on, short enough for a chip. */
+function pageLabel(url: string): string {
+  try {
+    const parsed = new URL(url)
+    return `${parsed.host}${parsed.pathname === "/" ? "" : parsed.pathname}`
+  } catch {
+    return url
+  }
+}
+
 export function ChatHistoryView({ parsed }: { parsed: ParsedChat }) {
   const t = useTranslations("tickets")
+  const locale = useLocale()
   const ps = platformStyle(parsed.platform, t("chatHistoryWebChat"), t("chatHistoryChat"))
   const PlatformIcon = ps.icon
   const categoryLabel = parsed.category ? ({
@@ -89,6 +101,9 @@ export function ChatHistoryView({ parsed }: { parsed: ParsedChat }) {
           {ps.label}
         </span>
         {parsed.client && <Chip icon={User} className="bg-muted text-foreground/80">{parsed.client}{parsed.phone ? ` · +${parsed.phone}` : ""}</Chip>}
+        {parsed.email && <Chip icon={Mail} className="bg-muted text-foreground/80">{parsed.email}</Chip>}
+        {parsed.contactPhone && <Chip icon={Phone} className="bg-muted text-foreground/80">{parsed.contactPhone}</Chip>}
+        {parsed.pageUrl && <Chip icon={LinkIcon} className="bg-muted text-muted-foreground" title={parsed.pageUrl}>{pageLabel(parsed.pageUrl)}</Chip>}
         {categoryLabel && <Chip icon={Tag} className="bg-muted text-foreground/80">{categoryLabel}</Chip>}
         {urgencyLabel && <Chip icon={AlertCircle} className="bg-amber-500/10 text-amber-700 dark:text-amber-400">{urgencyLabel}</Chip>}
         {parsed.triggers && <Chip icon={Zap} className="bg-muted text-muted-foreground">{t("chatHistoryEscalationReason")}</Chip>}
@@ -98,7 +113,15 @@ export function ChatHistoryView({ parsed }: { parsed: ParsedChat }) {
       {/* Transcript: customer on the left, the AI engine (Da Vinci) on the right — messenger style */}
       <div className="space-y-3 bg-muted/15 px-3 py-4">
         {parsed.messages.map((m, i) => (
-          <ChatBubble key={i} sender={m.sender} text={m.text} label={m.sender === "bot" ? t("chatHistoryAssistant") : t("chatHistoryCustomer")} />
+          <ChatBubble
+            key={i}
+            sender={m.sender}
+            text={m.text}
+            label={m.sender === "customer"
+              ? t("chatHistoryCustomer")
+              : isOperatorSenderName(m.label) ? t("chatHistoryOperator") : t("chatHistoryAssistant")}
+            footer={m.at ? <time dateTime={m.at} className="text-xs text-muted-foreground">{formatDateTime(m.at, locale)}</time> : undefined}
+          />
         ))}
         {parsed.messages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground">{t("chatHistoryEmpty")}</p>

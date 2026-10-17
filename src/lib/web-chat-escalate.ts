@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { createTicketWithAssignment, fireTicketHooks } from "@/lib/ticket-factory"
 import { matchOrCreateWebChatContact } from "@/lib/web-chat-contact"
+import { webChatTicketDescription } from "@/lib/ticketing/chat-transcript"
+import { loadCustomerLanguage, loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
+import { webChatEscalationNotice, webChatTicketFallbackSubject } from "@/lib/ticketing/customer-ticket-text"
+import { webChatVisitorLocale } from "@/lib/web-chat-visitor-language"
 
 interface EscalateResult {
   ticketId: string
@@ -34,25 +38,22 @@ export async function escalateWebChatToTicket(
     }
   }
 
-  type M = { fromRole: string; text: string; createdAt: Date }
-  const firstVisitor = chat.messages.find((m: M) => m.fromRole === "visitor")
-  const rawSubject = firstVisitor?.text.split(/\r?\n/)[0] || "Web chat escalation"
+  type M = { fromRole: string; text: string; createdAt: Date; metadata?: unknown }
+  const messages: M[] = chat.messages
+  const firstVisitor = messages.find((m) => m.fromRole === "visitor")
+  // The subject is the visitor's own first line; without one (an agent escalated a chat the
+  // visitor never wrote in) a line in the organization's language — its team reads the subject.
+  const rawSubject = firstVisitor?.text.split(/\r?\n/)[0] || webChatTicketFallbackSubject(await loadOrganizationLocale(chat.organizationId))
   const subject = rawSubject.length > 100 ? rawSubject.slice(0, 97) + "…" : rawSubject
 
-  const transcript = chat.messages
-    .map((m: M) => `[${new Date(m.createdAt).toISOString()}] ${m.fromRole}: ${m.text}`)
-    .join("\n")
-  const description = [
-    chat.visitorName ? `Visitor: ${chat.visitorName}` : null,
-    chat.visitorEmail ? `Email: ${chat.visitorEmail}` : null,
-    chat.visitorPhone ? `Phone: ${chat.visitorPhone}` : null,
-    chat.pageUrl ? `Page: ${chat.pageUrl}` : null,
-    "",
-    "Transcript:",
-    transcript,
-  ]
-    .filter(Boolean)
-    .join("\n")
+  // The only record of the chat on the ticket — its format and why: chat-transcript.ts.
+  const description = webChatTicketDescription({
+    visitorName: chat.visitorName,
+    visitorEmail: chat.visitorEmail,
+    visitorPhone: chat.visitorPhone,
+    pageUrl: chat.pageUrl,
+    messages,
+  })
 
   // Prefer the contactId already linked at session creation. Fall back to email lookup.
   let contactId: string | null = chat.contactId ?? null
@@ -120,12 +121,16 @@ export async function escalateWebChatToTicket(
   // Claim won — now fire audit/workflow/webhook/notification hooks.
   await fireTicketHooks(ticket.id)
 
+  // Told in the language the visitor reads the chat in: the one the site set for the widget,
+  // else their contact's or organization's (web-chat-visitor-language.ts).
+  const locale = webChatVisitorLocale(messages)
+    ?? (await loadCustomerLanguage({ organizationId: chat.organizationId, contactId })).locale
   await prisma.webChatMessage.create({
     data: {
       organizationId: chat.organizationId,
       sessionId: chat.id,
       fromRole: "bot",
-      text: `Your chat has been escalated to ticket ${ticket.ticketNumber}. An agent will contact you shortly.`,
+      text: webChatEscalationNotice(locale, ticket.ticketNumber),
     },
   })
 

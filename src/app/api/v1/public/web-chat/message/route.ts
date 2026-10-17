@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import { buildWidgetCorsHeaders, isOriginAllowed } from "@/lib/widget-cors"
 import { escalateWebChatToTicket } from "@/lib/web-chat-escalate"
+import { visitorMessageLanguageMetadata } from "@/lib/web-chat-visitor-language"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { sendPushToUser } from "@/lib/push-send"
 import { getAnthropicClient } from "@/lib/ai/anthropic-client"
@@ -30,6 +31,8 @@ const schema = z.object({
   sessionId: z.string().min(1),
   text: z.string().min(1).max(4000),
   lang: z.enum(["en", "ru", "az"]).optional(),
+  // True when the site set the widget's language (data-lang) rather than the widget defaulting to "en".
+  langChosen: z.boolean().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -78,6 +81,8 @@ export async function POST(req: NextRequest) {
       sessionId: session.id,
       fromRole: "visitor",
       text: parsed.data.text,
+      // What the escalation notice is written in (web-chat-visitor-language.ts).
+      metadata: visitorMessageLanguageMetadata(parsed.data),
     },
   })
 

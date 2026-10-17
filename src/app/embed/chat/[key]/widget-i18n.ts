@@ -57,6 +57,12 @@ export const WIDGET_TRANSLATIONS: Record<WidgetLang, Record<string, string>> = {
   },
 }
 
+/** The language the embedding page asked for (`data-lang`), or null when the widget falls back to English. */
+export function chosenWidgetLang(raw: unknown): WidgetLang | null {
+  const v = String(raw || "").toLowerCase().slice(0, 2)
+  return v === "en" || v === "ru" || v === "az" ? v : null
+}
+
 export function resolveWidgetLang(raw: unknown): WidgetLang {
   const v = String(raw || "").toLowerCase().slice(0, 2)
   if (v === "ru" || v === "az") return v
