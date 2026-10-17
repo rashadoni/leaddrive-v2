@@ -208,6 +208,11 @@ export const GET = withRls(async (req, auth) => {
           // Read only to answer two yes/no questions below; the token itself
           // and the coordinates never leave this handler.
           expoPushToken: true,
+          // Where the Route & Field app registers its FCM address; the legacy
+          // expoPushToken column is no longer written. Reading only the column
+          // marked every agent «notifications not connected» (owner's E2E
+          // test, 2026-10-17). One live row is enough for the yes/no.
+          deviceTokens: { where: { disabledAt: null }, select: { id: true }, take: 1 },
           latestLocation: { select: { receivedAt: true } },
           // The linked web login's email, so the page can find a manager by the
           // address they sign in with (prod 2026-09-15: «rashad@guven.az» lived
@@ -344,7 +349,7 @@ export const GET = withRls(async (req, auth) => {
       success: true,
       data: {
         agents: agents.map((row) => {
-          const { expoPushToken, latestLocation, ...rest } = row
+          const { expoPushToken, deviceTokens, latestLocation, ...rest } = row
           // Taken out of the row whoever asks, and put back only for whoever
           // reads them: the select already leaves them out for everyone else,
           // and this is the second lock for the day the select grows.
@@ -368,7 +373,7 @@ export const GET = withRls(async (req, auth) => {
             app: mtmAgentAppActivity({
               lastLocationAt: latestLocation?.receivedAt ?? null,
               lastSeenAt: agent.lastSeenAt ?? null,
-              hasPushToken: Boolean(expoPushToken),
+              hasPushToken: Boolean(expoPushToken) || (deviceTokens?.length ?? 0) > 0,
               now,
             }),
           }

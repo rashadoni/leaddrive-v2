@@ -71,9 +71,13 @@ export function MtmCustomerForm({
 }: CustomerFormProps) {
   const tc = useTranslations("common")
   const tf = useTranslations("mtmForms")
+  const tCustomers = useTranslations("mtmCustomers")
+  const tTypes = useTranslations("mtmRoutesPage")
   const isEdit = !!initialData?.id
   const [form, setForm] = useState({
-    code: "", name: "", category: "B", status: "ACTIVE",
+    // Owner's E2E test, 2026-10-17: the form had no type, so every new
+    // institution was saved as a «Mağaza» (the server default STORE).
+    code: "", name: "", objectType: "CLINIC", category: "B", status: "ACTIVE",
     address: "", city: "", district: "",
     latitude: "", longitude: "",
     phone: "", contactPerson: "", notes: "",
@@ -84,7 +88,7 @@ export function MtmCustomerForm({
   useEffect(() => {
     if (open) {
       setForm({
-        code: initialData?.code || "", name: initialData?.name || "",
+        code: initialData?.code || "", name: initialData?.name || "", objectType: initialData?.objectType || "CLINIC",
         category: initialData?.category || "B", status: initialData?.status || "ACTIVE",
         address: initialData?.address || "", city: initialData?.city || "", district: initialData?.district || "",
         latitude: initialData?.latitude?.toString() || "", longitude: initialData?.longitude?.toString() || "",
@@ -117,7 +121,8 @@ export function MtmCustomerForm({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogHeader>
-        <DialogTitle>{isEdit ? tf("editCustomer") : tf("addCustomer")}</DialogTitle>
+        {/* The form is the institution's (organization explorer and card), so it says so. */}
+        <DialogTitle>{isEdit ? tCustomers("edit") : tCustomers("add")}</DialogTitle>
       </DialogHeader>
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <DialogContent>
@@ -126,6 +131,13 @@ export function MtmCustomerForm({
             <div className="grid grid-cols-2 gap-3">
               <div><Label htmlFor="code">{tf("code")}</Label><Input id="code" value={form.code} onChange={e => update("code", e.target.value)} placeholder={tf("placeholderCode")} /></div>
               <div><Label htmlFor="name">{`${tc("name")} *`}</Label><Input id="name" value={form.name} onChange={e => update("name", e.target.value)} required /></div>
+            </div>
+            <div>
+              <Label htmlFor="objectType">{`${tTypes("customerObjectType")} *`}</Label>
+              <Select id="objectType" value={form.objectType} onChange={e => update("objectType", e.target.value)}>
+                {/* An older record's own type (e.g. DOCTOR) stays selectable, so editing never changes it silently. */}
+                {[...new Set(["CLINIC", "PHARMACY", "STORE", "OTHER", form.objectType])].map(value => <option key={value} value={value}>{tTypes(`customerType.${value}`)}</option>)}
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { usePathname } from "next/navigation"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -48,6 +48,13 @@ const queryClient = new QueryClient({
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
   const pathname = usePathname()
+  // The page scrolls inside <main>, not the window, so Next's scroll-to-top on
+  // navigation never reached it: a link followed from a scrolled page opened
+  // the next page at the same depth (owner's E2E test, 2026-10-17: «Dərc et»
+  // on the MTM panel landed on /mtm/routes scrolled past the draft it named).
+  // Only a new path resets it; a page changing its own query keeps its place.
+  const mainRef = useRef<HTMLElement>(null)
+  useEffect(() => { mainRef.current?.scrollTo?.({ top: 0 }) }, [pathname])
   const { heroCommandVisible } = useDashboardHero()
   const user = session?.user
   const outboxSession = user as { id?: string; email?: string; organizationId?: string; role?: string } | undefined
@@ -176,7 +183,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 sessionLoaded={sessionLoaded}
                 onOpenLauncher={() => setLauncherOpen(true)}
               />
-              <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`}>
+              <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`} ref={mainRef}>
                 {!childrenReady ? (
                   <div className="flex h-full items-center justify-center" aria-busy="true">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary motion-reduce:animate-none" aria-hidden="true" />

@@ -292,7 +292,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       const json = await res.json()
       if (!res.ok) {
         if (PHONE_ERROR[json.code]) setTab("profile")
-        throw new Error(PHONE_ERROR[json.code] ? tf(PHONE_ERROR[json.code]) : json.error || tc("failedToSave"))
+        throw new Error(PHONE_ERROR[json.code] ? tf(PHONE_ERROR[json.code]) : agentSaveErrorMessage(json, { tc, tf }))
       }
       const savedId: string | undefined = isEdit ? agentId! : json?.data?.id
       if (savedId && !isEdit) setSavedAgentId(savedId)
@@ -581,4 +581,24 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
     />
     </>
   )
+}
+
+const AGENT_FIELD_LABELS: Record<string, (labels: { tc: (key: string) => string; tf: (key: string) => string }) => string> = {
+  name: ({ tc }) => tc("name"), phone: ({ tf }) => tf("whatsappPhone"), email: ({ tf }) => tf("emailOptional"),
+  externalCode: ({ tf }) => tf("externalCode"), role: ({ tf }) => tf("role"), status: ({ tc }) => tc("status"),
+  tags: ({ tf }) => tf("tags"), mapColor: ({ tf }) => tf("mapColor"), managerId: ({ tf }) => tf("manager"),
+}
+/**
+ * A refused save names the fields, in the page's language (owner's E2E test,
+ * 2026-10-17: the form printed the API's English «Validation failed» and left
+ * the manager to guess which input was meant — the same rule as the
+ * institution form's saveErrorMessage).
+ */
+export function agentSaveErrorMessage(body: unknown, labels: { tc: (key: string) => string; tf: (key: string) => string }): string {
+  const details = body && typeof body === "object" ? (body as { details?: unknown }).details : null
+  const fields = Array.isArray(details) ? details.map(issue => issue && typeof issue === "object" ? String((issue as { path?: unknown }).path ?? "") : "").filter(Boolean) : []
+  const named = [...new Set(fields.map(field => AGENT_FIELD_LABELS[field]?.(labels) ?? field))]
+  if (named.length) return `${labels.tf("invalidFields")}: ${named.join(", ")}`
+  const message = body && typeof body === "object" ? (body as { error?: unknown }).error : null
+  return typeof message === "string" && message && message !== "Validation failed" ? message : labels.tc("failedToSave")
 }
