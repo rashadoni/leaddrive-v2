@@ -3116,7 +3116,7 @@
     "hintContractValue": "Total monetary value of all contracts",
     "hintColNumber": "Unique contract identifier",
     "hintColType": "Contract type: Service Agreement, NDA, Maintenance, License, SLA",
-    "hintColStatus": "Lifecycle: Draft → Sent → Signed → Active → Expiring → Expired/Renewed",
+    "hintColStatus": "Lifecycle: Draft → Pending approval → Approved → Active once signed",
     "hintColDates": "Start and end dates of the contract period",
     "hintColAmount": "Monetary value of the contract",
     "deal": "Deal",
