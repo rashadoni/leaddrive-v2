@@ -4,6 +4,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { getPortalUser } from "@/lib/portal-auth"
+import { portalTicketSubject } from "@/lib/ticketing/portal-ticket-view"
 import { enrichComplaintInBackground } from "@/lib/complaint-ai"
 import { resolveTicketSla } from "@/lib/sla-resolver"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
@@ -69,7 +70,10 @@ export async function GET() {
     })
   )
 
-  return NextResponse.json({ success: true, data: tickets })
+  return NextResponse.json({
+    success: true,
+    data: tickets.map((ticket: { subject: string }) => ({ ...ticket, subject: portalTicketSubject(ticket.subject) })),
+  })
 }
 
 export async function POST(req: NextRequest) {

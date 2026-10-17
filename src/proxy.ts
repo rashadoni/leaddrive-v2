@@ -632,7 +632,11 @@ const authMiddleware = auth(async (req) => {
     // A «ссылка на местоположение» carries `?lang=` for the same reason: it is
     // the language of the manager who made it. Whoever opens it has no account
     // and usually no language cookie, and would otherwise always read Russian.
-    const linkLocaleQuery = pathname.startsWith("/legal/") || pathname.startsWith("/share/location/")
+    // So does the ticket-closure link a customer gets by WhatsApp or e-mail: it
+    // is the language that customer is written to in.
+    const linkLocaleQuery = pathname.startsWith("/legal/")
+      || pathname.startsWith("/share/location/")
+      || pathname.startsWith("/ticket-closure/")
       ? req.nextUrl.searchParams.get("lang")
       : null
     // The guided demo exists in exactly one language — the scenario's — so it

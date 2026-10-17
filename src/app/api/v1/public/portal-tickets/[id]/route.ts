@@ -4,6 +4,10 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { getPortalUser } from "@/lib/portal-auth"
+import { portalCommentView, portalDescriptionView, portalTicketSubject } from "@/lib/ticketing/portal-ticket-view"
+
+/** The portal itself calls its assistant Da Vinci in every language (messages/*.json `portal.chatTitle`). */
+const ASSISTANT_AUTHOR_NAME = "Da Vinci"
 
 const commentSchema = z.object({
   comment: z.string().trim().min(1).max(5000),
@@ -72,22 +76,35 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     : []
   const userMap = Object.fromEntries(users.map((user) => [user.id, user.name || "Support"]))
 
-  const comments = commentRows.map((comment) => ({
-    id: comment.id,
-    comment: comment.comment,
-    isAgent: Boolean(comment.userId),
-    authorName: comment.userId ? (userMap[comment.userId] || "Support") : user.fullName,
-    createdAt: comment.createdAt,
-    attachments: comment.attachments || [],
-  }))
+  // The customer's view of the thread (portal-ticket-view.ts): the sync's sender prefixes off,
+  // and Da Vinci's replies on the support side under its own name, not the customer's.
+  const comments = commentRows.map((comment) => {
+    const view = portalCommentView(comment)
+    return {
+      id: comment.id,
+      comment: view.text,
+      isAgent: view.author !== "customer",
+      author: view.author,
+      channel: view.channel,
+      authorName: view.author === "customer"
+        ? user.fullName
+        : view.author === "assistant"
+          ? ASSISTANT_AUTHOR_NAME
+          : (comment.userId && userMap[comment.userId]) || "Support",
+      createdAt: comment.createdAt,
+      attachments: comment.attachments || [],
+    }
+  })
+  const description = portalDescriptionView(ticket.description)
 
   return NextResponse.json({
     success: true,
     data: {
       id: ticket.id,
       ticketNumber: ticket.ticketNumber,
-      subject: ticket.subject,
-      description: ticket.description,
+      subject: portalTicketSubject(ticket.subject),
+      description: description.description,
+      descriptionOrigin: description.origin,
       status: ticket.status,
       category: ticket.category,
       categoryRef: ticket.categoryRef,
