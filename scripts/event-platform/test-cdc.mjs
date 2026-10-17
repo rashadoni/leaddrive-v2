@@ -201,7 +201,7 @@ async function main() {
       // payload mismatch. This diagnostic reports the ORIGINAL parity defect;
       // it is never the raw candidate's strict acceptance gate.
       const comparison = compareExpandedCdcRecords(snapshotRecords, expectedRows())
-      process.stdout.write(`cdc_current_expanded_comparison=${JSON.stringify(comparison)}\n`)
+      process.stdout.write(`cdc_legacy_expanded_comparison=${JSON.stringify(comparison)}\n`)
     } else {
       verifyCdcRecords(snapshotRecords, expectedRows())
       psql(FIXTURE.appRole, FIXTURE.appPassword, phaseSql('stream'))

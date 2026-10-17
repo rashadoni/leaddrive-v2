@@ -366,3 +366,17 @@ No Kafka consumers, offsets or customer replay have been activated.
 - Current release order remains PR861 artifact/feature inventory verification,
   then protected delivery of the ready backup/CDC predecessors, then the
   serializer correction. No caller/worker/connector was activated by this code.
+
+### 2026-10-18 — checkpoint continuity and explicit legacy label
+
+- Resumed the same clean serializer worktree at 4f036a3cf; origin remains
+  rashadoni/leaddrive-v2, registered production13.140.132.245:/opt/leaddrive-v2,
+  GitHub main/immutable-artifact route only. User requests all tasks in sequence.
+- Renamed the diagnostic expanded-result log key to
+  cdc_legacy_expanded_comparison: it describes the deliberately retained old
+  experiment, not the corrected current template. After fresh host RAM/disk/PSI
+  inspection, all 55 narrow tooling tests, asset gate, runner policy and diff
+  check PASS again. Exact changed-template runtime proof remains pending.
+- Prior c8 release build and quality gates now SUCCESS; deploy39074203195 is
+  executing its atomic production stage. Do not move own next merges ahead of
+  its receipt and read-only readiness inventory. PR863/866 full gates pending.
