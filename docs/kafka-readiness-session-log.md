@@ -231,3 +231,18 @@ No Kafka consumers, offsets or customer replay have been activated.
 - Required PR861 gates are progressing through real database/typecheck work.
   Its already successful synthetic smoke is unchanged. K2 is checkpointed
   separately and not marked complete or production ready.
+
+### K2 review correction: zero-exit consumer errors
+
+- Independent narrow review found that Kafka 4.3.1 ConsoleConsumer can catch a
+  non-timeout receive error, print a processed count and still exit zero. A
+  record count/exit-code check alone would falsely accept that observation.
+- Added a bounded observation guard requiring the single expected idle-timeout
+  terminal error and one consistent completion count, rejecting auth/format
+  failures, extra error logs, ambiguous counts and record ceilings. Regression
+  tests include exit-zero authentication failure after enough output records.
+  Confirmed behavior in the pinned upstream ConsoleConsumer source.
+- All 52 current tooling tests now pass locally, including the strict record
+  verifier and diagnostic-only A/B path. Actual CDC integration remains
+  pending; no runtime pass is inferred from these unit tests. Checkpoint
+  commits preserve the work independently of conversation history.

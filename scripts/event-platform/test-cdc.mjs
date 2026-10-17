@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { bootstrapSql, phaseSql, renderTestConnector, fixtureKafkaTopic, FIXTURE } from './cdc-fixture.mjs'
 import { verifyCdcRecords } from './verify-cdc-records.mjs'
 import { compareExpandedCdcRecords } from './compare-expanded-cdc.mjs'
+import { assertBoundedConsumerExit } from './consumer-observation.mjs'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const baseCompose = `${root}ops/event-platform/test/compose.yml`
@@ -97,16 +98,9 @@ function receive(mode, count) {
     '--formatter-property', 'print.partition=true', '--formatter-property', 'print.offset=true',
     '--formatter-property', 'print.headers=true', '--formatter-property', 'print.key=true',
     '--formatter-property', 'key.separator=\t'], { timeout: 60000, allowFailure: true })
-  // At-least-once duplicates are permitted; do not cut the dump at exactly N.
-  // Kafka's idle timeout ends this bounded observation. Only its explicit
-  // completion count + known idle-timeout exit are accepted, never arbitrary
-  // connection/auth/CLI errors with partial output.
-  const completion = result.stderr.match(/Processed a total of (\d+) messages/)
-  if (!completion || Number(completion[1]) !== result.stdout.trim().split('\n').length
-      || ![0, 1].includes(result.status)
-      || (result.status !== 0 && !result.stderr.includes('TimeoutException'))) fail('bounded consumer did not complete cleanly')
-  if (Number(completion[1]) >= 256) fail('fixture consumer reached its safety record ceiling')
-  if (result.stdout.trim().split('\n').length < count) fail('expected records did not arrive')
+  // Duplicates are allowed, not truncated at N. The pinned CLI can catch a
+  // receive failure and exit zero, so require its exact idle-timeout outcome.
+  assertBoundedConsumerExit(result, count)
   return result.stdout
 }
 function removeConnectorAndSlot(mode) {
