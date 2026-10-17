@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { AlertTriangle, CheckCircle2, Clock, DollarSign, FileText, Mail, MessageCircle, Search, Send, Trash2, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { scheduledAtInputValue } from "@/lib/campaigns/schedule-input"
 
 interface CampaignFormData {
   name: string
@@ -265,7 +266,8 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
 
   useEffect(() => {
     if (open) {
-      const sa = initialData?.scheduledAt ? new Date(initialData.scheduledAt).toISOString().slice(0, 16) : ""
+      // Local time both ways: the submit reads this input as local time too.
+      const sa = scheduledAtInputValue(initialData?.scheduledAt)
       setForm({
         name: initialData?.name || "",
         description: initialData?.description || "",
