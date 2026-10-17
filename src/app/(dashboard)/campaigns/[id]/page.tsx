@@ -645,7 +645,8 @@ export default function CampaignDetailPage() {
           id: campaign.id, name: campaign.name || "", type: campaign.type || "email",
           status: campaign.status || "draft", subject: campaign.subject || "",
           totalRecipients: String(campaign.totalRecipients ?? 0), budget: String(campaign.budget ?? 0),
-          scheduledAt: campaign.scheduledAt ? new Date(campaign.scheduledAt).toISOString().split("T")[0] : "",
+          // The whole instant: the date alone moved an edited campaign to midnight.
+          scheduledAt: campaign.scheduledAt ?? "",
           recipientMode: campaign.recipientMode ?? undefined, segmentId: campaign.segmentId ?? undefined,
           recipientIds: campaign.recipientIds, recipientSource: campaign.recipientSource ?? undefined,
           flowData: campaign.flowData,
