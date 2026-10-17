@@ -38,10 +38,15 @@ immutable event archive.
    preparation. This stage uploads no customer backup, accepts no private key,
    enables no Kafka worker and creates no new provider subscription.
    [Run 39069469912](https://github.com/rashadoni/leaddrive-v2/actions/runs/39069469912)
-   was dispatched; its result is pending in this snapshot.
-2. Verify the exact installed tools, live unit versions and pending runner-fence
-   state before any subsequent commissioning operation. Never enable timers
-   merely to make the readiness output green.
+   failed before tool installation at the connection-file ownership check.
+   Workflow cleanup succeeded; no backup, restore or Kafka operation ran.
+2. Resolve the contradictory password-file policy first: the scratch provisioner
+   creates a service-owned `0600` libpq file; commissioning/deploy/source-runner
+   checks still require root ownership and group-readable modes that libpq
+   ignores. Source-file ownership remains unverified. Collect metadata only,
+   align all consumers in a reviewed change with regression tests and updated
+   helper hashes, and retry the bounded preparation once. Do not blindly chown
+   credentials or enable timers to make the output green.
 3. Establish actual offline-key custody, independently signed decrypt/restore
    evidence and valid candidate/catalog bindings through the existing recovery
    program. Do not turn a September screenshot or a generated operator name

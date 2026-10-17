@@ -78,6 +78,22 @@ os.execvpe("psql", ["psql", "-X", "-qAt", "-v", "ON_ERROR_STOP=1"], env)
 '
 }
 
+report_connection_file_metadata() {
+  local label="$1" file="$2" owner_class=unknown mode=unknown owner_uid backup_uid
+  if [ -f "$file" ] && [ ! -L "$file" ]; then
+    owner_uid="$(stat -c '%u' "$file")"
+    backup_uid="$(id -u leaddrive-backup 2>/dev/null || true)"
+    case "$owner_uid" in 0) owner_class=root ;; *)
+      if [ -n "$backup_uid" ] && [ "$owner_uid" = "$backup_uid" ]; then owner_class=backup-service; else owner_class=other; fi ;;
+    esac
+    mode="$(stat -c '%a' "$file")"
+    [[ "$mode" =~ ^[0-7]{3,4}$ ]] || mode=unknown
+    printf 'connection_file=%s regular=yes owner=%s mode=%s\n' "$label" "$owner_class" "$mode"
+  else
+    printf 'connection_file=%s regular=no owner=unknown mode=unknown\n' "$label"
+  fi
+}
+
 inspect_production() {
   export LC_ALL=C
   local artifact=/opt/leaddrive-v2/.next/standalone/.deploy-sha
@@ -110,6 +126,10 @@ inspect_production() {
     printf 'backup_configuration=absent-or-unsafe\n'
   fi
   printf 'backup_restore_verification=not-performed\n'
+  report_connection_file_metadata source-password /etc/leaddrive/backup.pgpass
+  report_connection_file_metadata scratch-password /etc/leaddrive/restore-verifier.pgpass
+  report_connection_file_metadata source-ca /etc/leaddrive/managed-postgres-ca.crt
+  report_connection_file_metadata scratch-ca /etc/leaddrive/restore-postgres-ca.crt
 
   # default_transaction_read_only is active before parsing SQL. URLs, role
   # names, addresses, slot names, tenant IDs and payloads are never selected.
