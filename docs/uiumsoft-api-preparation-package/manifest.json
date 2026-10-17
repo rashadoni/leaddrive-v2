@@ -1,0 +1,22 @@
+{
+  "version": "1.1",
+  "design_date": "2026-10-13",
+  "operational": false,
+  "files": [
+    {
+      "file": "LeadDrive_AAC_API_Flow_AZ.docx",
+      "bytes": 62462,
+      "sha256": "ae55137a912cecd9e1f0b2e6f2667440992eb7ebbfae4728cab9db2aa0879246"
+    },
+    {
+      "file": "LeadDrive_AAC_API_Flow_EN.docx",
+      "bytes": 58299,
+      "sha256": "8c78e97432a55b94aa39d74cf67f23c642f49e91230052c0448ca9a926267fd5"
+    },
+    {
+      "file": "LeadDrive_AAC_API_Preparation.zip",
+      "bytes": 159870,
+      "sha256": "424d3c6bb9202a6d5f7ee44b7cc66e1db85b22340e28eba50b7c7fc344781889"
+    }
+  ]
+}

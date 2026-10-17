@@ -1,0 +1,17 @@
+{
+  "clientLabel": "AAC",
+  "configurationStatus": "template_only_not_loaded_by_application",
+  "binding": {
+    "integrationId": "aac-erp",
+    "organizationId": null,
+    "environment": "TEST",
+    "enabled": false,
+    "contractApproved": false
+  },
+  "exportRule": { "mode": "disabled" },
+  "target": null,
+  "credentialReferences": null,
+  "customerReceivingApiOwner": null,
+  "durableIdempotencyConfirmed": false,
+  "finalErpStatusEnabled": false
+}
