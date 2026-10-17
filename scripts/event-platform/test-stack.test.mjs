@@ -65,3 +65,11 @@ test('HTTP probes stay inside the isolated network without host port discovery',
   assert.deepEqual(result.stdout.trim().split('\n'), ['exec', '-T', 'connect', 'curl',
     '--fail', '--silent', '--show-error', '--max-time', '3', 'http://registry:8080/apis/registry/v3/system/info'])
 })
+
+test('Kafka CLI uses current property flags so stdout contains only the canary record', () => {
+  const source = readFileSync(script, 'utf8')
+  assert.doesNotMatch(source, /--property\s|--producer-property\s|--consumer-property\s/)
+  assert.match(source, /--reader-property parse\.key=true --reader-property 'key\.separator=\|' --command-property acks=all/)
+  assert.match(source, /--formatter-property print\.key=true --formatter-property 'key\.separator=\|'/)
+  assert.match(source, /\[ "\$received" = "\$canary" \]/, 'transport equality must not be weakened or filtered')
+})

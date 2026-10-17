@@ -76,10 +76,10 @@ node -e 'const plugins=JSON.parse(process.argv[1]); if(!plugins.some(p=>p.class=
 canary='synthetic-tenant:fund:synthetic-fund|{"scope":"synthetic-only","sequence":1}'
 printf '%s\n' "$canary" | kafka_cli kafka-console-producer \
   --bootstrap-server kafka:9092 --topic ld.test.finance.events.v1 \
-  --property parse.key=true --property 'key.separator=|' --producer-property acks=all
+  --reader-property parse.key=true --reader-property 'key.separator=|' --command-property acks=all
 received="$(kafka_cli kafka-console-consumer \
   --bootstrap-server kafka:9092 --topic ld.test.finance.events.v1 --from-beginning \
-  --max-messages 1 --timeout-ms 15000 --property print.key=true --property 'key.separator=|')"
+  --max-messages 1 --timeout-ms 15000 --formatter-property print.key=true --formatter-property 'key.separator=|')"
 [ "$received" = "$canary" ] || { echo 'FATAL: test key/value transport mismatch'; exit 1; }
 printf 'event_stack_scope=disposable-nonproduction\nevent_stack_topology=single-broker-not-ha\n'
 printf 'event_stack_checks=logical-wal,explicit-topics,connect-postgres-plugin,registry-http,kafka-key-value\n'

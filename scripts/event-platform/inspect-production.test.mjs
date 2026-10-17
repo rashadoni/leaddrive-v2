@@ -3,6 +3,7 @@ import { mkdtemp, writeFile, rm, access, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
@@ -57,6 +58,15 @@ test('direct invocation fails before host access without a full approved SHA', (
   assert.notEqual(result.status, 0)
   assert.match(result.stdout, /expected SHA required/)
   assert.doesNotMatch(result.stdout, /postgresql:|host_Mem|inventory=PASS/)
+})
+
+test('Actions stdin execution enters the same SHA guard without a BASH_SOURCE nounset failure', () => {
+  const result = spawnSync('bash', ['-s'], { input: readFileSync(script, 'utf8'), encoding: 'utf8',
+    env: { PATH: process.env.PATH, EXPECTED_DEPLOY_SHA: 'short' } })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FATAL: expected SHA required/)
+  assert.doesNotMatch(result.stderr, /unbound variable/)
+  assert.doesNotMatch(result.stdout, /host_Mem|inventory=PASS/)
 })
 
 test('connection credentials never enter psql argv and read-only options are forced', async () => {

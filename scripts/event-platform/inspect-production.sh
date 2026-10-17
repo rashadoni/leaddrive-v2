@@ -184,6 +184,6 @@ SQL
   printf 'event_platform_inventory=PASS\n'
 }
 
-if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
+if [[ "${BASH_SOURCE[0]:-$0}" = "$0" ]]; then
   inspect_production "$@"
 fi

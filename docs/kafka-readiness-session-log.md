@@ -149,3 +149,28 @@ No Kafka consumers, offsets or customer replay have been activated.
   reuses the real foundation migration and unchanged CDC SQL; test-only WAL/TLS
   differences and JSON expansion fidelity must be tested explicitly. This is
   not a production connector, logical-slot creation, offset reset or replay.
+
+## 2026-10-17 — verified first release and executable-path regressions
+
+- Deploy run `39070450651` completed SUCCESS. Public ping is healthy and exact
+  production `artifactSha` equals current main
+  `88f658e68d43951e2f265243224bd980a2c5a66a`; builtAt is
+  `2026-10-17T21:28:53Z`. This delivers internal K0 tooling, not Kafka activation.
+- Dispatched one current-main aggregate inventory, run `39072481170`. It failed
+  before file/DB inspection because Bash stdin execution under nounset has no
+  `BASH_SOURCE[0]`. Corrected the main-entry guard to support both direct-file
+  and Actions stdin execution, and added a regression exercising the actual
+  stdin launch form. Production data/settings were not read or changed by
+  this failed diagnostic; no unchanged rerun was started.
+- Corrected test-network smoke run `39072368740` reached all HTTP/plugin probes
+  and actually produced/consumed one Kafka record. Its strict byte comparison
+  failed because the deprecated consumer `--property` option writes its
+  deprecation notice to stdout in Kafka 4.3.1 (confirmed in that exact upstream
+  ConsoleConsumerOptions source). Switched to current reader/command/formatter
+  flags. Kept strict record equality; did not strip unknown lines or weaken the
+  assertion. Added a regression preventing reintroduction of stdout-polluting
+  legacy flags. The disposable project was cleaned successfully.
+- PR861 is draft while these executable-path corrections are checked. The new
+  exact head must pass actual smoke, static-checks and typecheck before merge;
+  a skipped draft check is not accepted as success. K0 live inventory remains
+  pending the corrected reviewed delivery. Backup PR863 remains separate.
