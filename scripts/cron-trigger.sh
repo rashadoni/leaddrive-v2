@@ -5,7 +5,7 @@
 #     lock instead of skipping. For verifiers that must see a response;
 #     scheduled ticks leave it unset. See the lock block below.
 # Mirrors scripts/cron-cdp-profile-refresh.sh (POST + x-cron-secret, localhost:3001).
-# Crontab lines are installed by scripts/install-contract-crons.sh.
+# Crontab lines are installed by scripts/install-resilience-crons.sh.
 set -euo pipefail
 
 TARGET="${1:-}"

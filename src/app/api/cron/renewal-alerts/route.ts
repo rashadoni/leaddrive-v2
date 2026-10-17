@@ -3,8 +3,9 @@
  *
  * Runs daily (recommended 09:00 server time). Picks up every
  * contractRenewalAlert where status='pending' AND dueAt <= now(),
- * sends an in-app notification to all admin/manager users in that org,
- * then marks the alert as 'sent'.
+ * sends an in-app notification to all admin/manager users in that org, in
+ * each one's own language (the organization's when unset), then marks the
+ * alert as 'sent'.
  *
  * Idempotent: already-sent alerts are skipped by the WHERE clause.
  * Safe to re-run: notifications are deduplicated by alert id.
@@ -14,6 +15,7 @@ import { prisma } from "@/lib/prisma"
 import { requireCronAuth } from "@/lib/cron-auth"
 import { createNotification } from "@/lib/notifications"
 import { runWithRlsBypass } from "@/lib/rls-context"
+import { contractRecipientLocale, renewalAlertText } from "@/lib/contract-lifecycle/notification-text"
 
 export const dynamic = "force-dynamic"
 
@@ -24,9 +26,16 @@ function notificationType(daysBeforeExpiry: number): "error" | "warning" | "info
 }
 
 export async function POST(req: NextRequest) {
-  return runWithRlsBypass(async () => {
+  // Authenticate before entering the bypass: an unauthenticated request must
+  // never reach a context that can see every tenant.
   const cronError = requireCronAuth(req)
   if (cronError) return cronError
+  // The deploy proves the schedule answers without delivering anything.
+  if (new URL(req.url).searchParams.get("smoke") === "1") {
+    return NextResponse.json({ success: true, data: { smoke: true } })
+  }
+
+  return runWithRlsBypass(async () => {
 
   const now = new Date()
   const results = { processed: 0, notified: 0, errors: 0 }
@@ -64,14 +73,15 @@ export async function POST(req: NextRequest) {
 
     for (const [orgId, alerts] of byOrg) {
       // Notify all admins + managers in this org
-      const recipients: { id: string }[] = await prisma.user.findMany({
+      const recipients: { id: string; preferredLanguage: string | null }[] = await prisma.user.findMany({
         where: {
           organizationId: orgId,
           role: { in: ["admin", "manager"] },
           isActive: true,
         },
-        select: { id: true },
+        select: { id: true, preferredLanguage: true },
       })
+      const organization = await prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } })
 
       // No active admin/manager recipients — skip entire org's alerts,
       // leave them pending so they retry tomorrow (or after user is added).
@@ -83,19 +93,16 @@ export async function POST(req: NextRequest) {
       for (const alert of alerts) {
         try {
           const contract = alert.contract
-          const endDateStr = contract?.endDate
-            ? contract.endDate.toISOString().split("T")[0]
-            : "—"
-          const company = contract?.company?.name ?? ""
-          const title = `Renewal alert: ${contract?.contractNumber ?? alert.contractId}`
-          const message = [
-            contract?.title,
-            company ? `(${company})` : null,
-            `expires ${endDateStr}`,
-            `— ${alert.daysBeforeExpiry}-day notice`,
-          ]
-            .filter(Boolean)
-            .join(" ")
+          const textFor = (preferredLanguage: string | null) => renewalAlertText(
+            contractRecipientLocale(preferredLanguage, organization?.settings),
+            {
+              contractNumber: contract?.contractNumber ?? alert.contractId,
+              title: contract?.title ?? null,
+              company: contract?.company?.name ?? null,
+              endDate: contract?.endDate ?? null,
+              daysBeforeExpiry: alert.daysBeforeExpiry,
+            },
+          )
 
           // Send in-app notification to each recipient.
           // createNotification swallows errors and returns null on failure —
@@ -106,8 +113,7 @@ export async function POST(req: NextRequest) {
                 organizationId: orgId,
                 userId: r.id,
                 type: notificationType(alert.daysBeforeExpiry),
-                title,
-                message,
+                ...textFor(r.preferredLanguage),
                 entityType: "contract",
                 entityId: alert.contractId,
                 kind: "contract.renewal_due",
