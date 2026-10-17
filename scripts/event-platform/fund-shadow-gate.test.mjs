@@ -16,7 +16,8 @@ test('both required PR verification and production release run the real Fund sha
     assert.match(step, /FUND_SHADOW_DB_GATE: required/)
     const target = workflow === 'deploy' ? '5432' : "${{ env.EVENT_PLATFORM_PG_PORT }}"
     assert.ok(step.includes(`FUND_SHADOW_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${target}/event_platform_test`))
-    assert.ok(source.indexOf('      - name: Event-platform migration and database invariant gate') < start)
+    const migration = source.indexOf('      - name: Event-platform migration and database invariant gate')
+    assert.ok(migration >= 0 && migration < start, `${workflow}: actual migration gate must exist before the shadow gate`)
     assert.doesNotMatch(step, /\b(?:if|continue-on-error):|secrets\./)
   }
 })

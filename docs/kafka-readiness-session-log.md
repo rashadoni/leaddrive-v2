@@ -1103,3 +1103,18 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   actual required-check plus dedicated real-PG receipts before merge. Continue
   monitoring the earlier7a application delivery independently; the new adapter
   remains inactive and does not enable Kafka or customer-data replay.
+
+### Draft PR871 and final review
+
+- Published draft PR871 from checkpoint52ede5973 followed by an ordinary
+  conflict-free mainfa738db merge, exact headac882bfe28572bef23f03cec9fb054a13769b915.
+  All four cheap draft checks (scope/runner/scan/config validation) SUCCESS;
+  static/typecheck SKIPPED because draft, not counted as code verification.
+- Independent final read-only review of the eight executable/test/log changes
+  found no blocking defect. Corrected the small wiring assertion so an absent
+  migration-step title cannot pass by indexOf returning -1. History-preservation
+  check confirms all origin/main lines of the three documentation files remain
+  in order. Application search confirms no non-test adapter caller exists.
+- Next frozen draft checkpoint will be marked ready only after its exact head
+  and cheap checks are observed; this starts the first real required CI/PG run.
+  No premature merge, production role setup, Kafka subscription or replay.
