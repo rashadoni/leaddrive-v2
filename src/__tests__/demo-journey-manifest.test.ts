@@ -418,6 +418,11 @@ describe("Guided journey intro clips", () => {
       "demo-inbox": "the Omni-channel reel's invented conversations, Aysu Nəbiyeva's thread opened",
       "demo-leads": "fourteen invented leads, «Leyla Məmmədova» (Northline Logistics) opened",
       "demo-boards": "the invented «Satış» and «Marketinq» boards, task SAT-1 opened",
+      // Filmed 2026-10-17 from the open demo's own chapter screens (the stand
+      // has no data for these modules): the companies and people are invented
+      // in scenes/support-demo-data.ts and scenes/calls-demo-data.ts.
+      "demo-support": "the chapter's invented morning queue, WA-0417 (Sahil Market) taken and resolved",
+      "demo-calls": "the chapter's invented call log and lead Fərid Hacıyev (Xəzər Tikinti MMC)",
     }
     for (const section of manifest.sections) {
       if (section.intro?.status !== "available") continue
