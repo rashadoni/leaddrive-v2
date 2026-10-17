@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { hasMobilePermission, requireMobileCapability } from "@/lib/mtm/mobile-capabilities"
 import { resolveAgentScope } from "@/lib/mtm/territory-scope"
+import { listAttendanceRequestsForReview, type AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
+import { mobileAttendanceReviewer } from "@/lib/mtm/mobile-attendance-reviewer"
 
 export const GET = withMobileRls(async (_req, auth) => {
   const forbidden = requireMobileCapability(auth, "TEAM_READ")
@@ -17,7 +19,15 @@ export const GET = withMobileRls(async (_req, auth) => {
   const canReadWorkforce = workforceEnabled
     && hasMobilePermission(auth.role, "WORKTIME_TEAM_READ")
     && hasMobilePermission(auth.role, "WORKTIME_REQUEST_DECIDE")
-  if (!canReadRoutes && !canReadWorkforce) {
+  // Personnel requests (leave, sick leave, hours off, corrections) — the same
+  // queue and the same review rights as Personnel → Today in the browser
+  // (owner, 2026-10-17). Hidden, not failed, when the manager may not review.
+  let attendance: AttendanceReviewItem[] = []
+  if (auth.tenantCapabilities?.personnel === true) {
+    const reviewer = await mobileAttendanceReviewer(auth)
+    if (reviewer) attendance = await listAttendanceRequestsForReview(reviewer, { status: "PENDING" }).then(page => page.items).catch(() => [])
+  }
+  if (!canReadRoutes && !canReadWorkforce && !attendance.length && auth.tenantCapabilities?.personnel !== true) {
     return NextResponse.json({
       error: "Forbidden",
       code: "MTM_MOBILE_PERMISSION_REQUIRED",
@@ -40,5 +50,5 @@ export const GET = withMobileRls(async (_req, auth) => {
       ? prisma.mtmContactChangeRequest.findMany({ where: { organizationId: auth.orgId, status: { in: ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"] }, ...(agentFilter ? { requestedByAgentId: agentFilter } : {}) }, orderBy: { updatedAt: "desc" }, take: 100, select: { id: true, contactId: true, requestedByAgentId: true, kind: true, reason: true, payload: true, status: true, submittedAt: true, contact: { select: { displayName: true } }, requestedByAgent: { select: { name: true } } } })
       : Promise.resolve([]),
   ])
-  return NextResponse.json({ success: true, data: { scope: scope.agentIds ? "TEAM_OR_REGION" : "ORGANIZATION", counts: { hrm: hrm.length, routeChanges: routeChanges.length, customers: customers.length, contactChanges: contactChanges.length }, hrm, routeChanges, customers, contactChanges } })
+  return NextResponse.json({ success: true, data: { scope: scope.agentIds ? "TEAM_OR_REGION" : "ORGANIZATION", counts: { hrm: hrm.length, routeChanges: routeChanges.length, customers: customers.length, contactChanges: contactChanges.length, attendance: attendance.length }, hrm, routeChanges, customers, contactChanges, attendance } })
 })

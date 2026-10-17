@@ -80,6 +80,11 @@ export function officeAttendanceMobilePath(method: string, path: string) {
     "/api/v1/mtm/mobile/notifications", "/api/v2/mtm/mobile/route-field/attendance/requests", "/api/v2/mtm/mobile/route-field/attendance/request-limits"].includes(path)) return true
   if (method === "POST" && ["/api/v1/mtm/mobile/sync/push", "/api/v2/mtm/mobile/route-field/attendance/requests", "/api/v2/mtm/mobile/route-field/attendance/attachments"].includes(path)) return true
   if (method === "PATCH" && path === "/api/v1/mtm/mobile/notifications") return true
+  // A manager in a Personnel-only tenant reviews his people's requests from
+  // the app (2026-10-17). The handlers themselves require TEAM_READ and the
+  // browser's review rights, so an employee gets nothing from them.
+  if (method === "GET" && path === "/api/v1/mtm/mobile/manager/approvals") return true
+  if (method === "POST" && /^\/api\/v1\/mtm\/mobile\/manager\/attendance-requests\/[a-f0-9-]{36}\/decision$/.test(path)) return true
   if (method === "DELETE" && /^\/api\/v2\/mtm\/mobile\/route-field\/attendance\/requests\/[a-f0-9-]{36}$/.test(path)) return true
   return (method === "GET" || method === "DELETE") && /^\/api\/v2\/mtm\/mobile\/route-field\/attendance\/attachments\/[a-f0-9-]{36}$/.test(path)
 }

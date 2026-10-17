@@ -12,12 +12,17 @@ vi.mock("@/lib/mobile-auth", async () => {
 vi.mock("@/lib/mtm/territory-scope", () => ({
   resolveAgentScope: vi.fn(),
 }))
+vi.mock("@/lib/mtm/attendance-request-review", () => ({ listAttendanceRequestsForReview: vi.fn() }))
+vi.mock("@/lib/mtm/attendance-request-decision", async (original) => ({ ...(await original<object>()), decideAttendanceRequest: vi.fn() }))
 
 import { GET as approvalsGet } from "@/app/api/v1/mtm/mobile/manager/approvals/route"
 import { GET as teamGet } from "@/app/api/v1/mtm/mobile/manager/team/route"
 import { resolveMobileAuth } from "@/lib/mobile-auth"
 import { prisma } from "@/lib/prisma"
 import { resolveAgentScope } from "@/lib/mtm/territory-scope"
+import { POST as attendanceDecision } from "@/app/api/v1/mtm/mobile/manager/attendance-requests/[id]/decision/route"
+import { listAttendanceRequestsForReview } from "@/lib/mtm/attendance-request-review"
+import { decideAttendanceRequest } from "@/lib/mtm/attendance-request-decision"
 
 const AUTH = {
   orgId: "org-1",
@@ -125,5 +130,42 @@ describe("mobile manager mixed workforce boundaries", () => {
     expect(prisma.mtmRouteChangeRequest.findMany).not.toHaveBeenCalled()
     expect(prisma.mtmCustomerCreateRequest.findMany).not.toHaveBeenCalled()
     expect(prisma.mtmContactChangeRequest.findMany).not.toHaveBeenCalled()
+  })
+
+  // Owner, 2026-10-17: Personnel leave requests never reached the manager's
+  // «Təsdiqlər» — that section was read only behind the withdrawn Workforce HRM.
+  it("lists Personnel requests for review as the manager's linked CRM user", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ userId: "user-togrul" } as never)
+    vi.mocked(listAttendanceRequestsForReview).mockResolvedValue({ items: [{ id: "11111111-1111-4111-8111-111111111111", employeeName: "Aygün" }], nextCursor: null } as never)
+    const body = await (await approvalsGet(request("approvals"))).json()
+    expect(body.data.counts.attendance).toBe(1)
+    expect(body.data.attendance).toEqual([expect.objectContaining({ employeeName: "Aygün" })])
+    expect(listAttendanceRequestsForReview).toHaveBeenCalledWith({ organizationId: "org-1", userId: "user-togrul", principalType: "session" }, { status: "PENDING" })
+  })
+
+  it("shows no Personnel requests to a manager card without a CRM login, and still answers", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ userId: null } as never)
+    const response = await approvalsGet(request("approvals"))
+    expect(response.status).toBe(200)
+    expect((await response.json()).data.attendance).toEqual([])
+    expect(listAttendanceRequestsForReview).not.toHaveBeenCalled()
+  })
+
+  it("decides a Personnel request from the app with the browser's own decision", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ userId: "user-togrul" } as never)
+    vi.mocked(decideAttendanceRequest).mockResolvedValue({ request: { id: "r1", status: "APPROVED" }, idempotent: false } as never)
+    const id = "11111111-1111-4111-8111-111111111111"
+    const body = { decision: "APPROVED", version: "2026-10-17T08:00:00.000Z", note: null }
+    const response = await attendanceDecision(new NextRequest(`http://localhost:3000/api/v1/mtm/mobile/manager/attendance-requests/${id}/decision`, {
+      method: "POST", headers: { Authorization: "Bearer valid-token", "content-type": "application/json" }, body: JSON.stringify(body) }), { params: Promise.resolve({ id }) })
+    expect(response.status).toBe(200)
+    expect(decideAttendanceRequest).toHaveBeenCalledWith({ organizationId: "org-1", userId: "user-togrul", principalType: "session" }, id, body)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ userId: null } as never)
+    const refused = await attendanceDecision(new NextRequest(`http://localhost:3000/api/v1/mtm/mobile/manager/attendance-requests/${id}/decision`, {
+      method: "POST", headers: { Authorization: "Bearer valid-token", "content-type": "application/json" }, body: JSON.stringify(body) }), { params: Promise.resolve({ id }) })
+    expect(refused.status).toBe(403)
   })
 })
