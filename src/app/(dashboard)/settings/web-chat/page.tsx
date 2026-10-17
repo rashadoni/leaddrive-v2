@@ -71,6 +71,10 @@ const COPY: Record<Loc, Record<string, string>> = {
     rolloutLabel: "AI audience share",
     rolloutHint: "Share of chat sessions the AI answers; the rest go straight to agents. Deterministic per session — a dialog never flips between AI and human.",
     rolloutAll: "Everyone",
+    langHint: 'The chat speaks to visitors in your organization’s language — currently {lang}: the window’s text, the default title and greeting, and the AI’s replies. For a page of your site in another language, add data-lang="az", "ru" or "en" to the code.',
+    lang_az: "Azerbaijani",
+    lang_ru: "Russian",
+    lang_en: "English",
   },
   ru: {
     regenerateHint: "Генерируйте новый ключ только если старый утек или нужно отозвать все текущие embeds. Все сайты со старым snippet надо будет обновить.",
@@ -94,6 +98,10 @@ const COPY: Record<Loc, Record<string, string>> = {
     rolloutLabel: "Доля диалогов для AI",
     rolloutHint: "Какую долю сессий чата обрабатывает AI; остальные сразу к операторам. Детерминировано на сессию — диалог не «мигает» между AI и человеком.",
     rolloutAll: "Все",
+    langHint: 'Чат говорит с посетителем на языке организации — сейчас {lang}: надписи окна, стандартные заголовок и приветствие, ответы AI. Для страницы сайта на другом языке добавьте в код data-lang="az", "ru" или "en".',
+    lang_az: "азербайджанский",
+    lang_ru: "русский",
+    lang_en: "английский",
   },
   az: {
     regenerateHint: "Yeni açarı yalnız köhnə açar sızıbsa və ya bütün mövcud embed-ləri ləğv etmək istəyirsinizsə yaradın. Köhnə snippet olan bütün saytlar yenilənməlidir.",
@@ -117,6 +125,10 @@ const COPY: Record<Loc, Record<string, string>> = {
     rolloutLabel: "AI üçün dialoq payı",
     rolloutHint: "Çat sessiyalarının hansı hissəsinə AI cavab verir; qalanları birbaşa operatorlara gedir. Sessiya üzrə deterministikdir — dialoq AI ilə insan arasında «yanıb-sönmür».",
     rolloutAll: "Hamı",
+    langHint: 'Çat ziyarətçi ilə təşkilatın dilində danışır — hazırda {lang}: pəncərənin yazıları, standart başlıq və salamlama, AI cavabları. Saytın başqa dildəki səhifəsi üçün koda data-lang="az", "ru" və ya "en" əlavə edin.',
+    lang_az: "Azərbaycan dili",
+    lang_ru: "rus dili",
+    lang_en: "ingilis dili",
   },
 }
 
@@ -128,6 +140,8 @@ export default function WebChatSettingsPage() {
   const { data: session } = useSession()
   const orgId = session?.user?.organizationId
   const [cfg, setCfg] = useState<WidgetConfig | null>(null)
+  // What the widget speaks on a page without data-lang: the organization's language.
+  const [widgetLang, setWidgetLang] = useState<Loc | null>(null)
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
   const [originsText, setOriginsText] = useState("")
@@ -143,6 +157,7 @@ export default function WebChatSettingsPage() {
       .then(res => {
         if (res.success) {
           setCfg(res.data)
+          if (res.language === "en" || res.language === "ru" || res.language === "az") setWidgetLang(res.language)
           setOriginsText((res.data.allowedOrigins || []).join("\n"))
           if (res.data.workingHours && typeof res.data.workingHours === "object") {
             setWorkingHours(res.data.workingHours)
@@ -292,6 +307,7 @@ export default function WebChatSettingsPage() {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">{t("embedHint")}</p>
+        {widgetLang && <p className="text-xs text-muted-foreground">{c.langHint.replace("{lang}", c[`lang_${widgetLang}`])}</p>}
         <p className="text-xs text-amber-700 dark:text-amber-300">{c.regenerateHint}</p>
       </div>
 

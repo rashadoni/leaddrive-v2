@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   notifyRecipients: vi.fn(),
   emitEvents: vi.fn(),
   sendPush: vi.fn(),
+  findOrganization: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -46,8 +47,9 @@ vi.mock("@/lib/prisma", () => ({
       updateMany: mocks.convUpdateMany,
     },
     // A6 — granular limits read org settings (defaults) before generation.
+    // …and the widget's language when the site set none (web-chat-visitor-language.ts).
     organization: {
-      findUnique: vi.fn(async () => ({ settings: {} })),
+      findUnique: mocks.findOrganization,
     },
   },
 }))
@@ -101,7 +103,8 @@ function request(text = "Hello from visitor") {
   return new NextRequest("http://localhost/api/v1/public/web-chat/message", {
     method: "POST",
     headers: { "content-type": "application/json", origin: "https://site.example" },
-    body: JSON.stringify({ sessionId: "sess_1", text, lang: "en" }),
+    // An English site: data-lang="en" (without it the widget speaks the organization's language).
+    body: JSON.stringify({ sessionId: "sess_1", text, lang: "en", langChosen: true }),
   })
 }
 
@@ -151,6 +154,7 @@ beforeEach(() => {
   mocks.createInteractionLog.mockResolvedValue({})
   mocks.convFindFirst.mockResolvedValue({ metadata: {}, assignedTo: null, platform: "web-chat" })
   mocks.convUpdateMany.mockResolvedValue({ count: 1 })
+  mocks.findOrganization.mockResolvedValue({ settings: {} })
 })
 
 afterEach(() => {
@@ -174,18 +178,54 @@ describe("POST /api/v1/public/web-chat/message — the visitor's language", () =
     return call?.[0].data as { metadata?: unknown }
   }
 
-  it("keeps the widget's language on the visitor's message when the site set it", async () => {
-    expect((await send({ lang: "az", langChosen: true })).status).toBe(200)
+  /** The system prompt the AI answers this message under. */
+  async function aiAnswersUnder(body: Record<string, unknown>) {
+    process.env.ANTHROPIC_API_KEY = "test-key"
+    const create = vi.fn().mockResolvedValue({ content: [{ type: "text", text: "Salam!" }] })
+    mocks.getAnthropicClient.mockReturnValue({ messages: { create } })
+    mocks.findWidget.mockResolvedValueOnce({
+      organizationId: "org_1",
+      enabled: true,
+      allowedOrigins: ["https://site.example"],
+      escalateToTicket: false,
+      aiEnabled: true,
+    })
+    expect((await send(body)).status).toBe(200)
+    // The first call is the reply; a second one is the response scorer judging it.
+    return create.mock.calls[0][0].system as string
+  }
+  const AZ_PROMPT = "Azərbaycanca qısa (1–3 cümlə) cavab ver."
+  const RU_PROMPT = "Отвечай кратко (1–3 предложения) на русском языке."
+  const EN_PROMPT = "Reply briefly (1-3 sentences) in English."
+
+  it("answers in the organization's language when the site set none — not English", async () => {
+    mocks.findOrganization.mockResolvedValue({ settings: { language: "az" } })
+    const system = await aiAnswersUnder({ lang: "az", langChosen: false })
+    expect(system).toContain(AZ_PROMPT)
+    expect(system).not.toContain(EN_PROMPT)
+    // …and records it: the ticket notice is written in it (web-chat-escalate.ts).
     expect(visitorMessageData().metadata).toEqual({ widgetLang: "az" })
   })
 
-  it("keeps nothing when the widget only fell back to English — or the widget is older than the flag", async () => {
-    expect((await send({ lang: "en", langChosen: false })).status).toBe(200)
-    expect(visitorMessageData().metadata).toBeUndefined()
+  it("does not take a widget opened before it sent the flag for a choice of English", async () => {
+    mocks.findOrganization.mockResolvedValue({ settings: { language: "az" } })
+    expect(await aiAnswersUnder({ lang: "en" })).toContain(AZ_PROMPT)
+    expect(visitorMessageData().metadata).toEqual({ widgetLang: "az" })
+  })
+
+  it("answers in the language the site set, over the organization's", async () => {
+    mocks.findOrganization.mockResolvedValue({ settings: { language: "az" } })
+    expect(await aiAnswersUnder({ lang: "ru", langChosen: true })).toContain(RU_PROMPT)
+    expect(visitorMessageData().metadata).toEqual({ widgetLang: "ru" })
 
     mocks.createMessage.mockClear()
-    expect((await send({ lang: "en" })).status).toBe(200)
-    expect(visitorMessageData().metadata).toBeUndefined()
+    expect(await aiAnswersUnder({ lang: "en", langChosen: true })).toContain(EN_PROMPT)
+    expect(visitorMessageData().metadata).toEqual({ widgetLang: "en" })
+  })
+
+  it("answers an organization with no language in the application's default", async () => {
+    expect(await aiAnswersUnder({ lang: "ru", langChosen: false })).toContain(RU_PROMPT)
+    expect(visitorMessageData().metadata).toEqual({ widgetLang: "ru" })
   })
 })
 

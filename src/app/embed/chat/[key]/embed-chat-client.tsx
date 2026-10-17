@@ -139,6 +139,8 @@ export function EmbedChatClient({ publicKey, title, greeting, primaryColor, orga
           visitorEmail: onboardingEnabled && form.email.enabled ? emailV || undefined : undefined,
           visitorPhone: onboardingEnabled && form.phone.enabled ? phoneV || undefined : undefined,
           pageUrl: typeof window !== "undefined" ? document.referrer : undefined,
+          lang,
+          langChosen,
         }),
       })
       const data = await res.json().catch(() => null)

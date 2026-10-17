@@ -37,7 +37,7 @@ import { getPortalUser } from "@/lib/portal-auth"
 import { escalateWebChatToTicket } from "@/lib/web-chat-escalate"
 import { guardOmnichannelCommitments } from "@/lib/inbox/omnichannel-commitment-rules"
 import { parseChatDescription } from "@/lib/ticketing/chat-transcript"
-import { visitorMessageLanguageMetadata } from "@/lib/web-chat-visitor-language"
+import { widgetLangMetadata } from "@/lib/web-chat-visitor-language"
 import { GET as GET_PORTAL_TICKET } from "@/app/api/v1/public/portal-tickets/[id]/route"
 
 type ChatMessage = { fromRole: "visitor" | "bot" | "agent"; text: string; createdAt: Date; metadata?: unknown }
@@ -120,26 +120,32 @@ beforeEach(() => {
 })
 
 describe("what the visitor reads in the widget once the ticket exists", () => {
-  it("is in the organization's language when the site left the widget on its English default", async () => {
-    // The CRM's own embed code has no data-lang: the widget says "en", but nobody chose it.
-    const metadata = visitorMessageLanguageMetadata({ lang: "en", langChosen: false })
-    expect(metadata).toBeUndefined()
+  // What the session and message routes record on the greeting and each visitor message:
+  // the widget's language — the site's data-lang, else the organization's.
+  const AZ = widgetLangMetadata("az")
+  const RU = widgetLangMetadata("ru")
+  const RU_GREETING: ChatMessage = { ...GREETING, text: "Здравствуйте! Чем можем помочь?", metadata: RU }
 
-    const { notice } = await escalate(session([GREETING, visitor("Qiymətlər barədə sualım var", 5, metadata)]), { orgLanguage: "az" })
+  it("is in the widget's language — the organization's, on a site that set none — even when the contact has another", async () => {
+    // One chat, one language: the window, its greeting and the AI's replies were Azerbaijani.
+    const { notice } = await escalate(session([{ ...GREETING, metadata: AZ }, visitor("Qiymətlər barədə sualım var", 5, AZ)]), { orgLanguage: "az", contactLanguage: "en" })
 
     expect(notice).toBe("Müraciətiniz TKT-0042 nömrəsi ilə qeydə alındı. Bu məsələ ilə bağlı bizə yazsanız, həmin nömrəni göstərin.")
   })
 
   it("is in the language the site set for the widget, over the organization's", async () => {
-    const metadata = visitorMessageLanguageMetadata({ lang: "ru", langChosen: true })
-    expect(metadata).toEqual({ widgetLang: "ru" })
-
-    const { notice } = await escalate(session([GREETING, visitor("Здравствуйте, вопрос по ценам", 5, metadata)]), { orgLanguage: "az", contactLanguage: "en" })
+    const { notice } = await escalate(session([RU_GREETING, visitor("Здравствуйте, вопрос по ценам", 5, RU)]), { orgLanguage: "az", contactLanguage: "en" })
 
     expect(notice).toBe("Ваше обращение зарегистрировано под номером TKT-0042. Укажите этот номер, если будете писать нам по этому вопросу.")
   })
 
-  it("is in the contact's own language when the site did not set one", async () => {
+  it("is in the widget's language when an agent escalates a chat the visitor never wrote in", async () => {
+    const { notice } = await escalate(session([RU_GREETING]), { orgLanguage: "az", contactLanguage: "en" })
+
+    expect(notice).toBe("Ваше обращение зарегистрировано под номером TKT-0042. Укажите этот номер, если будете писать нам по этому вопросу.")
+  })
+
+  it("is in the contact's own language for a chat started before the widget recorded its language", async () => {
     const { notice } = await escalate(session([GREETING, visitor("Question about pricing", 5)]), { orgLanguage: "az", contactLanguage: "en" })
 
     expect(notice).toBe("Your request has been registered as ticket TKT-0042. Please quote this number if you contact us about it.")

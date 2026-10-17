@@ -121,8 +121,9 @@ export async function escalateWebChatToTicket(
   // Claim won — now fire audit/workflow/webhook/notification hooks.
   await fireTicketHooks(ticket.id)
 
-  // Told in the language the visitor reads the chat in: the one the site set for the widget,
-  // else their contact's or organization's (web-chat-visitor-language.ts).
+  // Told in the language the visitor reads the chat in — the widget's, recorded on the chat's
+  // messages; a chat from before it was recorded: their contact's or organization's
+  // (web-chat-visitor-language.ts).
   const locale = webChatVisitorLocale(messages)
     ?? (await loadCustomerLanguage({ organizationId: chat.organizationId, contactId })).locale
   await prisma.webChatMessage.create({
