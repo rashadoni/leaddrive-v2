@@ -39,6 +39,9 @@ interface CommentItem {
   id: string
   comment: string
   isAgent: boolean
+  /** Absent in a reply this tab just sent, and from an API older than this page. */
+  author?: "agent" | "assistant" | "customer"
+  channel?: string | null
   authorName: string
   createdAt: string
   attachments: Attachment[]
@@ -49,6 +52,8 @@ interface TicketDetail {
   ticketNumber: string
   subject: string
   description: string | null
+  /** Set for a ticket a chat opened; its description is the team's and is withheld. */
+  descriptionOrigin?: "whatsapp" | "assistant_chat" | null
   status: string
   category: string
   categoryRef?: { name: string; slug: string } | null
@@ -387,6 +392,11 @@ export default function PortalTicketDetailPage() {
           {sla.kind !== "none" && <div className="sm:col-span-2"><dt className="text-muted-foreground">{t("serviceTarget")}</dt><dd className="mt-0.5">{sla.kind === "complete" ? t("slaComplete") : t(sla.kind === "firstResponse" ? "firstResponseTarget" : "resolutionTarget", { date: formatDateTime(sla.dueAt, locale, { dateStyle: "medium", timeStyle: "short" }) })}</dd></div>}
         </dl>
         {ticket.description && <p className="mt-4 whitespace-pre-wrap border-t pt-4 text-sm leading-6">{ticket.description}</p>}
+        {!ticket.description && ticket.descriptionOrigin && (
+          <p data-testid="portal-ticket-origin" className="mt-4 border-t pt-4 text-sm leading-6 text-muted-foreground">
+            {ticket.descriptionOrigin === "whatsapp" ? t("ticketOriginWhatsapp") : t("ticketOriginAssistantChat")}
+          </p>
+        )}
       </header>
 
       <section data-testid="portal-ticket-conversation" className="rounded-lg border bg-background" aria-labelledby="portal-conversation-title">
@@ -397,7 +407,7 @@ export default function PortalTicketDetailPage() {
         <div className="space-y-4 p-4">
           {ticket.comments.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">{t("noMessages")}</p>}
           {ticket.comments.map((comment) => (
-            <article key={comment.id} className={`flex ${comment.isAgent ? "justify-start" : "justify-end"}`}>
+            <article key={comment.id} data-author={comment.author ?? (comment.isAgent ? "agent" : "customer")} className={`flex ${comment.isAgent ? "justify-start" : "justify-end"}`}>
               <div className="max-w-[92%] sm:max-w-[78%]">
                 <div className={`rounded-lg border px-3 py-2.5 text-sm ${comment.isAgent ? "bg-muted/30" : "bg-background"}`}>
                   <p className="whitespace-pre-wrap leading-6">{comment.comment}</p>
@@ -413,7 +423,7 @@ export default function PortalTicketDetailPage() {
                     </div>
                   )}
                 </div>
-                <p className={`mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground ${comment.isAgent ? "justify-start" : "justify-end"}`}><span>{comment.authorName}</span><time dateTime={comment.createdAt}>{formatDateTime(comment.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time></p>
+                <p className={`mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground ${comment.isAgent ? "justify-start" : "justify-end"}`}><span>{comment.authorName}</span>{comment.channel && <span>{t("commentViaChannel", { channel: comment.channel })}</span>}<time dateTime={comment.createdAt}>{formatDateTime(comment.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time></p>
               </div>
             </article>
           ))}

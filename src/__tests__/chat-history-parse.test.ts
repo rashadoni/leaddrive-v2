@@ -59,6 +59,24 @@ describe("parseChatDescription", () => {
     expect(p.messages[1].sender).toBe("bot")
   })
 
+  it("reads the ticket one inbound WhatsApp text opened as a chat card, not as Russian headers", () => {
+    // The agent of an Azerbaijani organization used to read this blob verbatim.
+    const raw = "Создан из входящего WhatsApp сообщения.\nКлиент: Aysel (+994501234567)\n\n--- СООБЩЕНИЕ ---\nSalam, sifarişim gəlmədi.\nNə vaxt gələcək?"
+    const p = parseChatDescription(raw)
+    expect(p).toMatchObject({ platform: "WhatsApp", client: "Aysel", phone: "994501234567" })
+    expect(p?.messages).toEqual([{ sender: "customer", label: "Клиент", text: "Salam, sifarişim gəlmədi.\nNə vaxt gələcək?" }])
+  })
+
+  it.each([
+    ["az", "Da Vinci çatından yaradıldı.\n\n--- ÇAT TARİXÇƏSİ ---\n[Müştəri] Kömək edin\n\n[Da Vinci] Əlbəttə"],
+    ["en", "Created from Da Vinci chat.\n\n--- CHAT HISTORY ---\n[Client] Help me\n\n[Da Vinci] Of course"],
+    ["ru", "Создано из Da Vinci чата.\n\n--- ИСТОРИЯ ЧАТА ---\n[Клиент] Помогите\n\n[Da Vinci] Конечно"],
+  ])("reads the transcript the portal chat widget writes in the customer's language (%s)", (_locale, raw) => {
+    const p = parseChatDescription(raw)
+    expect(p?.platform).toBe("Da Vinci")
+    expect(p?.messages.map((m) => m.sender)).toEqual(["customer", "bot"])
+  })
+
   it("returns null for a normal hand-typed description (no transcript marker)", () => {
     expect(parseChatDescription("Printer is broken, please help.")).toBeNull()
     expect(parseChatDescription("")).toBeNull()
@@ -85,6 +103,11 @@ describe("parseCommentSender", () => {
     expect(r.name).toBe("Da Vinci")
     expect(r.channel).toBeNull()
     expect(r.body).toContain("İkinci sətir") // multi-line body preserved
+  })
+
+  it("recognises the labels of tickets written before the Russian prefixes", () => {
+    expect(parseCommentSender("[AI Bot] Hello")).toMatchObject({ sender: "bot", body: "Hello" })
+    expect(parseCommentSender("[Customer (WhatsApp)] Hi")).toMatchObject({ sender: "customer", channel: "WhatsApp", body: "Hi" })
   })
 
   it("returns null for a normal agent/internal comment (no sender prefix)", () => {

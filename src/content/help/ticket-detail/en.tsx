@@ -280,8 +280,9 @@ export default function ticketdetailHelpEn() {
         <p>
           On this page you only see your own organization's tickets, agents, and customer
           context — Customer 360, the assignee list, and Knowledge Base articles are all scoped
-          to your tenant. <strong>Internal notes are never sent to the customer</strong>; only
-          regular replies (and email/messenger integrations) reach them.
+          to your tenant. <strong>Internal notes are never sent to the customer</strong>; a
+          regular reply is shown to them in the customer portal, and when the ticket came from
+          WhatsApp it is also sent to them on WhatsApp. Replies are not sent by e-mail.
         </p>
       </HelpCallout>
     </div>

@@ -26,6 +26,10 @@ import {
   guardOmnichannelCommitments,
 } from "@/lib/inbox/omnichannel-commitment-rules"
 import { syncWhatsAppExchangeToTicket } from "@/lib/inbox/ticket-sync"
+import { ensureInboundWhatsAppTicket } from "@/lib/inbox/whatsapp-inbound-ticket"
+import { CHAT_TRANSCRIPT_MARKER, WHATSAPP_CHAT_DESCRIPTION_HEAD } from "@/lib/ticketing/chat-transcript"
+import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
+import { whatsappTicketSubject } from "@/lib/ticketing/customer-ticket-text"
 import { ensureComplaintRegistered, notifyComplaintRegistered } from "@/lib/inbox/complaint-register"
 import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
@@ -137,7 +141,6 @@ type WaInboundMessagePayload = WaRecord & {
 type KbArticleSummary = { title: string; content: string | null }
 type AiChatHistoryRow = { role: string; content: string }
 type TicketChatMessageRow = { role: string; content: string; createdAt: Date }
-type InboundTicketResult = { ticketId: string | null; ticketNumber: string | null; created: boolean; commentAdded: boolean }
 
 function isWaCallStatus(value: unknown): value is WaCallStatusPayload {
   return !!value && typeof value === "object" && (value as WaRecord).type === "call"
@@ -1355,91 +1358,6 @@ async function processMessages(
   }
 }
 
-async function ensureInboundWhatsAppTicket({
-  organizationId,
-  waPhone,
-  senderName,
-  messageText,
-  contactId,
-  leadId,
-  companyId,
-  channelMessageId,
-  waMessageId,
-}: {
-  organizationId: string
-  waPhone: string
-  senderName: string
-  messageText: string
-  contactId: string | null
-  leadId: string | null
-  companyId: string | null
-  channelMessageId: string
-  waMessageId?: string
-}): Promise<InboundTicketResult> {
-  try {
-    const existingTicket = await prisma.ticket.findFirst({
-      where: {
-        organizationId,
-        tags: { has: "whatsapp" },
-        sourceMeta: { path: ["phone"], equals: waPhone },
-        status: { in: ["new", "open", "in_progress"] },
-      },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, ticketNumber: true },
-    })
-
-    if (existingTicket) {
-      await prisma.ticketComment.create({
-        data: {
-          ticketId: existingTicket.id,
-          comment: `[Клиент (WhatsApp)] ${messageText.trim()}`,
-          isInternal: false,
-        },
-      })
-      return { ticketId: existingTicket.id, ticketNumber: existingTicket.ticketNumber, created: false, commentAdded: true }
-    }
-
-    const ticket = await createTicketWithAssignment({
-      organizationId,
-      ticketNumberPrefix: "WA",
-      subject: `[WhatsApp Тикет] ${messageText.trim().slice(0, 80)}`,
-      description: `Создан из входящего WhatsApp сообщения.\nКлиент: ${senderName} (+${waPhone})\n\n--- СООБЩЕНИЕ ---\n${messageText.trim()}`,
-      priority: "medium",
-      initialStatus: "open",
-      category: "general",
-      contactId,
-      companyId,
-      leadId,
-      tags: ["whatsapp", "inbound_whatsapp", "auto_created"],
-      source: "whatsapp",
-      sourceMeta: {
-        phone: waPhone,
-        channelMessageId,
-        waMessageId: waMessageId || null,
-        reasons: ["inbound_message"],
-      },
-      requesterName: senderName,
-      requesterPhone: `+${waPhone}`,
-      requesterExternalId: contactId || waPhone,
-      requesterMeta: { source: "whatsapp", channelMessageId, waMessageId: waMessageId || null },
-    })
-
-    await prisma.ticketComment.create({
-      data: {
-        ticketId: ticket.id,
-        comment: `[Клиент (WhatsApp)] ${messageText.trim()}`,
-        isInternal: false,
-      },
-    })
-
-    console.log(`[WA Webhook] Ticket ${ticket.ticketNumber} created from inbound WhatsApp message ${sanitizeLog(waPhone)}`)
-    return { ticketId: ticket.id, ticketNumber: ticket.ticketNumber, created: true, commentAdded: true }
-  } catch (err) {
-    console.error("[WA Webhook] Failed to ensure inbound WhatsApp ticket:", err)
-    return { ticketId: null, ticketNumber: null, created: false, commentAdded: false }
-  }
-}
-
 // ─── Da Vinci Auto-Reply for WhatsApp ───────────────────────────────────────────
 
 const WA_SYSTEM_PROMPT = `Ты — Da Vinci, интеллектуальный движок компании, подключённый через WhatsApp.
@@ -1922,16 +1840,9 @@ async function handleAiAutoReply(
 
         // Subject prefix follows resolved category — so when a ticket lands
         // in /tickets the department can tell at a glance what it's about
-        // without opening the description.
-        const subjectPrefixByCat: Record<typeof ticketCategoryResolved, string> = {
-          complaint:       "Жалоба WhatsApp",
-          technical:       "Техподдержка WhatsApp",
-          billing:         "Финансы/Оплата WhatsApp",
-          sales:           "Продажи/Запрос WhatsApp",
-          ai_escalation:   "WhatsApp Эскалация",
-          general:         "WhatsApp Тикет",
-        }
-        const subjectPrefix = subjectPrefixByCat[ticketCategoryResolved]
+        // without opening the description. In the organization's language;
+        // the portal shows the customer the message without it.
+        const subject = whatsappTicketSubject(await loadOrganizationLocale(organizationId), ticketCategoryResolved, userMessage)
 
         // Collect all detected reasons so the description tells the operator
         // WHY the ticket was auto-created — debuggable + audit trail.
@@ -1965,8 +1876,8 @@ async function handleAiAutoReply(
         const ticket = await createTicketWithAssignment({
           organizationId,
           ticketNumberPrefix: "DV",
-          subject: `[${subjectPrefix}] ${userMessage.slice(0, 80)}`,
-          description: `Создан из WhatsApp чата.\nКлиент: ${senderName} (+${waPhone})\nКатегория: ${ticketCategoryResolved} · Срочность: ${ticketUrgency}\nТриггеры: ${reasons.join(", ") || "—"}\n\n--- ИСТОРИЯ ЧАТА ---\n${chatHistory}`,
+          subject,
+          description: `${WHATSAPP_CHAT_DESCRIPTION_HEAD}\nКлиент: ${senderName} (+${waPhone})\nКатегория: ${ticketCategoryResolved} · Срочность: ${ticketUrgency}\nТриггеры: ${reasons.join(", ") || "—"}\n\n${CHAT_TRANSCRIPT_MARKER}\n${chatHistory}`,
           priority: normalizedPriority,
           initialStatus: "open",
           category: ticketCategoryResolved,

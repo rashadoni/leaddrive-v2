@@ -285,6 +285,34 @@ describe("middleware", async () => {
     expect(forwardedRequestHeader(res, "x-locale")).toBe("en")
   })
 
+  it.each(["az", "en", "ru"])(
+    "opens a ticket-closure link in the customer's language (?lang=%s) — the customer has no cookie",
+    async (lang) => {
+      // The link reaches the customer by WhatsApp or e-mail; without ?lang= an
+      // Azerbaijani customer read the confirmation page in the default Russian.
+      const res = await authMiddleware(makeReq({
+        pathname: `/ticket-closure/${"t".repeat(43)}?lang=${lang}`,
+        host: "app.leaddrivecrm.org",
+        auth: null,
+      }))
+
+      expect(res.status).toBe(200)
+      expect(forwardedRequestHeader(res, "x-locale")).toBe(lang)
+    },
+  )
+
+  it("keeps a ticket-closure link without a known ?lang= on the visitor's own language", async () => {
+    const withCookie = await authMiddleware(makeReq({
+      pathname: `/ticket-closure/${"t".repeat(43)}?lang=tr`,
+      host: "app.leaddrivecrm.org",
+      auth: null,
+      cookies: { NEXT_LOCALE: "en" },
+    }))
+    expect(forwardedRequestHeader(withCookie, "x-locale")).toBe("en")
+    const bare = await authMiddleware(makeReq({ pathname: `/ticket-closure/${"t".repeat(43)}`, host: "app.leaddrivecrm.org", auth: null }))
+    expect(forwardedRequestHeader(bare, "x-locale")).toBeNull()
+  })
+
   it.each(["/demo-open", "/demo-access/abc123"])(
     "pins %s to the scenario language whatever the visitor's cookie says",
     async (pathname) => {

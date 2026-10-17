@@ -7,6 +7,7 @@ import {
   getTicketClosureRequestByHash,
   hashTicketClosureToken,
 } from "@/lib/ticketing/closure-requests"
+import { portalTicketSubject } from "@/lib/ticketing/portal-ticket-view"
 
 const actionSchema = z.object({
   action: z.enum(["confirm", "reject"]),
@@ -32,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
         confirmedAt: request.confirmedAt,
         rejectedAt: request.rejectedAt,
         expiredAt: request.expiredAt,
-        ticket: request.ticket,
+        ticket: request.ticket ? { ...request.ticket, subject: portalTicketSubject(request.ticket.subject) } : request.ticket,
       },
     })
   })
