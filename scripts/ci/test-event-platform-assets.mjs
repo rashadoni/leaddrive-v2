@@ -200,10 +200,18 @@ assert.equal(config["transforms.outbox.table.field.event.payload"], "envelope")
 assert.equal(config["transforms.outbox.route.by.field"], "topic")
 assert.equal(config["transforms.outbox.route.topic.regex"], "leaddrive\\.domain\\.([a-z][a-z0-9-]*)\\.v1")
 assert.equal(config["transforms.outbox.route.topic.replacement"], "ld.__ENV__.$1.events.v1")
-assert.equal(config["transforms.outbox.table.expand.json.payload"], "true")
+// Preserve existing PostgreSQL JSON text; schema inference/JSON expansion can
+// silently drop empty arrays. Actual A/B CDC run39075079346 proved the loss.
+assert.equal(config["transforms.outbox.table.expand.json.payload"], "false")
 assert.equal(config["transforms.outbox.table.field.additional.missing"], "error")
-assert.equal(config["transforms.outbox.table.json.payload.null.behavior"], "optional_bytes")
-assert.equal(config["value.converter.schemas.enable"], "false")
+assert.equal(config["key.converter"], "org.apache.kafka.connect.storage.StringConverter")
+assert.equal(config["value.converter"], "org.apache.kafka.connect.storage.StringConverter")
+assert.equal(Object.hasOwn(config, "transforms.outbox.table.json.payload.null.behavior"), false)
+assert.equal(Object.hasOwn(config, "value.converter.schemas.enable"), false)
+// Header-only additions keep the unexpanded payload a String rather than a
+// wrapper Struct that StringConverter would stringify incorrectly.
+assert.equal(config["transforms.outbox.table.fields.additional.placement"],
+  "eventType:header:eventtype,organizationId:header:organizationid,payloadHash:header:payloadhash")
 assert.match(config["slot.name"], /^leaddrive_event_outbox___ENV__$/)
 assert.match(
   config["snapshot.select.statement.overrides.public.event_outbox"],

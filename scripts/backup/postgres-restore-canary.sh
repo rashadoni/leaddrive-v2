@@ -49,12 +49,16 @@ assert_connection_file() {
   [ -f "$file" ] && [ ! -L "$file" ] && [ -r "$file" ] \
     || fatal "$label must be a readable regular non-symlink file"
   owner="$(stat -c '%u' "$file")"
+  mode="$(stat -c '%a' "$file")"
+  if [ "$kind" = password ]; then
+    [ "$owner" = "$(id -u)" ] || fatal "$label must belong to the verifier account"
+    case "$mode" in 400|600) ;; *) fatal "$label must use private mode 0400 or 0600" ;; esac
+    return 0
+  fi
   { [ "$owner" = "0" ] || [ "$owner" = "$(id -u)" ]; } \
     || fatal "$label must belong to root or the verifier account"
-  mode="$(stat -c '%a' "$file")"
   case "$kind:$mode" in
     ca:400|ca:440|ca:444|ca:600|ca:640|ca:644) ;;
-    password:400|password:440|password:600|password:640) ;;
     *) fatal "$label has an unsafe mode" ;;
   esac
 }

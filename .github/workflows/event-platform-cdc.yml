@@ -1,0 +1,52 @@
+name: Event platform synthetic CDC
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'ops/event-platform/test/**'
+      - 'ops/event-platform/debezium/**'
+      - 'ops/event-platform/postgres/prepare-cdc.sql'
+      - 'scripts/event-platform/**'
+      - 'prisma/migrations/20260901090000_event_platform_foundation/**'
+      - '.github/workflows/event-platform-cdc.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: event-platform-cdc-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cdc-smoke:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: event-platform-disposable-integration
+      cancel-in-progress: false
+    env:
+      LD_EVENT_STACK_DISPOSABLE: '1'
+      LD_EVENT_STACK_CDC: '1'
+      LD_EVENT_STACK_PROJECT: ld-event-test-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate synthetic fixture
+        run: |
+          bash -n scripts/event-platform/test-stack.sh
+          node --check scripts/event-platform/test-cdc.mjs
+          node --test scripts/event-platform/*.test.mjs
+      - name: Real foundation, restricted CDC, A/B payload and cold restart
+        run: bash scripts/event-platform/test-stack.sh
+      - name: Cleanup this run only
+        if: always()
+        run: |
+          docker compose -p "$LD_EVENT_STACK_PROJECT" -f ops/event-platform/test/compose.yml -f ops/event-platform/test/cdc.compose.yml down --volumes --remove-orphans --timeout 10

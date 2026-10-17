@@ -8,6 +8,9 @@ set -euo pipefail
 [[ "${LD_EVENT_STACK_PROJECT:-}" =~ ^ld-event-test-[a-z0-9][a-z0-9-]{0,40}$ ]] || {
   echo 'FATAL: an isolated test-project name is required'; exit 1;
 }
+[[ "${LD_EVENT_STACK_CDC:-0}" =~ ^[01]$ ]] || {
+  echo 'FATAL: CDC fixture mode must be explicitly zero or one'; exit 1;
+}
 task_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 task_compose="$task_root/ops/event-platform/test/compose.yml"
 compose() { docker compose -p "$LD_EVENT_STACK_PROJECT" -f "$task_compose" "$@"; }
@@ -84,3 +87,6 @@ received="$(kafka_cli kafka-console-consumer \
 printf 'event_stack_scope=disposable-nonproduction\nevent_stack_topology=single-broker-not-ha\n'
 printf 'event_stack_checks=logical-wal,explicit-topics,connect-postgres-plugin,registry-http,kafka-key-value\n'
 printf 'event_stack_cdc_connector=not-started\nevent_stack_production_readiness=not-proven\nevent_stack_smoke=PASS\n'
+if [ "${LD_EVENT_STACK_CDC:-0}" = 1 ]; then
+  node "$task_root/scripts/event-platform/test-cdc.mjs"
+fi
