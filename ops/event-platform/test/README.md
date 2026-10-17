@@ -29,8 +29,10 @@ This is a small synthetic fixture, not a performance sizing claim.
 
 The Compose network is internal. No service mounts host paths, production
 configuration, Docker sockets or credentials. PostgreSQL and Kafka have no host
-port. Connect and Registry expose only dynamically allocated **127.0.0.1** ports
-for the runner's HTTP probes; the harness discovers them with `compose port`.
+port. Connect and Registry also publish **no host ports**. HTTP probes execute
+inside the existing Connect container over the same isolated network. This
+avoids relying on host port mappings that internal-only bridges can suppress;
+it does not add an externally routable network or relax isolation.
 Their interfaces have no production authentication/TLS setup and must not be
 published beyond that runner. Passwords in this fixture are public synthetic
 values and must never be reused for real data.

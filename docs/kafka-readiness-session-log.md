@@ -124,3 +124,28 @@ verified. PR861 remains the isolated test-stack draft; PR863 is a separate
 backup prerequisite draft. Next: confirm the first release's artifact/health,
 dispatch read-only inventory, then run the prepared CI test phases in sequence.
 No Kafka consumers, offsets or customer replay have been activated.
+
+## 2026-10-17 — first disposable runtime failure and scoped correction
+
+- PR861 was made ready after PR860's required checks and the release's quality
+  gates had succeeded. This started actual stack smoke `39071794001` and full
+  PR gates `39071794088` on `7dd52d3ed37d7de531654a400e1dacd418b8e6b8`.
+  The production release continued through its independent supported workflow;
+  no JVM/test services were started on Contabo.
+- The runtime smoke failed before HTTP readiness: PostgreSQL and Kafka were
+  healthy and Connect/Registry started, but Docker reported no published
+  `8083/tcp` port for the internal-only bridge. Read the actual failing job
+  logs; this was not a CDC or application-data failure. Project-scoped cleanup
+  removed the disposable services and network.
+- Converted only this PR back to draft while correcting the fixture. Removed
+  all host port publication and run bounded HTTP probes from the existing
+  Connect container over the private network. Internal isolation, image pins,
+  memory ceilings and production gates remain unchanged. Added a regression
+  asserting that no service publishes ports and HTTP probes use the internal
+  container path. No unchanged retry or workflow gate bypass was issued.
+- Prepared a clean successor worktree/branch
+  `leaddrive-kafka-cdc-synthetic-20261017` /
+  `codex/kafka-cdc-synthetic-20261017` for K2 transport tests only. Its design
+  reuses the real foundation migration and unchanged CDC SQL; test-only WAL/TLS
+  differences and JSON expansion fidelity must be tested explicitly. This is
+  not a production connector, logical-slot creation, offset reset or replay.

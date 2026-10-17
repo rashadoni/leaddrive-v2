@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
@@ -22,11 +23,7 @@ test('disposable topology is bounded, private and independent of production', ()
     for (const volume of service.volumes ?? []) {
       assert.notEqual(volume.type, 'bind', name + ' must not mount host files or credentials')
     }
-    for (const port of service.ports ?? []) {
-      assert.ok(['connect', 'registry'].includes(name))
-      assert.equal(port.host_ip, '127.0.0.1')
-      assert.ok(!port.published || port.published === '0', 'host ports must be allocated per run')
-    }
+    assert.equal((service.ports ?? []).length, 0, name + ' must not depend on host port publication')
     assert.ok(Object.keys(service.networks ?? {}).length > 0)
   }
   assert.ok(memory <= 3 * 1024 ** 3, 'test stack exceeds the agreed memory budget')
@@ -54,4 +51,17 @@ test('test stack refuses a broad or existing application project name', () => {
     assert.notEqual(result.status, 0)
     assert.match(result.stdout, /isolated test-project name/)
   }
+})
+
+test('HTTP probes stay inside the isolated network without host port discovery', () => {
+  const source = readFileSync(script, 'utf8')
+  const helper = source.match(/^http_get\(\) \{\n[\s\S]*?^\}/m)?.[0]
+  assert.ok(helper)
+  assert.doesNotMatch(source, /compose port/)
+  const result = spawnSync('bash', ['--noprofile', '--norc', '-c',
+    `compose(){ printf '%s\\n' "$@"; }; ${helper}\nhttp_get http://registry:8080/apis/registry/v3/system/info`],
+  { encoding: 'utf8', env: { PATH: process.env.PATH } })
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(result.stdout.trim().split('\n'), ['exec', '-T', 'connect', 'curl',
+    '--fail', '--silent', '--show-error', '--max-time', '3', 'http://registry:8080/apis/registry/v3/system/info'])
 })

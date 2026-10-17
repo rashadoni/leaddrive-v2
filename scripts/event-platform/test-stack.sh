@@ -11,6 +11,11 @@ set -euo pipefail
 task_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 task_compose="$task_root/ops/event-platform/test/compose.yml"
 compose() { docker compose -p "$LD_EVENT_STACK_PROJECT" -f "$task_compose" "$@"; }
+http_get() {
+  # Probe from the existing Connect container, not a host-published port.
+  # Internal-only Docker bridges may suppress host port publication entirely.
+  compose exec -T connect curl --fail --silent --show-error --max-time 3 "$1"
+}
 kafka_cli() {
   local command="$1"; shift
   compose exec -T -e KAFKA_HEAP_OPTS='-Xms32m -Xmx128m' kafka "/opt/kafka/bin/$command.sh" "$@"
@@ -55,19 +60,17 @@ kafka_cli kafka-topics --bootstrap-server kafka:9092 \
   --create --topic ld.test.finance.events.v1 --partitions 2 --replication-factor 1
 
 compose up -d connect registry
-connect_address="$(compose port connect 8083)"
-registry_address="$(compose port registry 8080)"
-[[ "$connect_address" =~ ^127\.0\.0\.1:[0-9]+$ ]] && [[ "$registry_address" =~ ^127\.0\.0\.1:[0-9]+$ ]]
+compose exec -T connect curl --version >/dev/null
 ready=0
 for ((attempt=0; attempt<120; attempt++)); do
-  if curl --fail --silent --max-time 3 "http://$connect_address/connectors" >/dev/null \
-    && curl --fail --silent --max-time 3 "http://$registry_address/apis/registry/v3/system/info" >/dev/null; then
+  if http_get http://connect:8083/connectors >/dev/null 2>&1 \
+    && http_get http://registry:8080/apis/registry/v3/system/info >/dev/null 2>&1; then
     ready=1; break
   fi
   sleep 2
 done
 [ "$ready" = 1 ] || { echo 'FATAL: test Connect/Registry readiness deadline exceeded'; exit 1; }
-plugins="$(curl --fail --silent --show-error --max-time 10 "http://$connect_address/connector-plugins")"
+plugins="$(http_get http://connect:8083/connector-plugins)"
 node -e 'const plugins=JSON.parse(process.argv[1]); if(!plugins.some(p=>p.class==="io.debezium.connector.postgresql.PostgresConnector"))process.exit(1)' "$plugins"
 
 canary='synthetic-tenant:fund:synthetic-fund|{"scope":"synthetic-only","sequence":1}'
