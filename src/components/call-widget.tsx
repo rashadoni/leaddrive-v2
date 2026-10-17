@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Phone, PhoneOff, FileText, X, Loader2 } from "lucide-react"
+import { callStatusLabelKey } from "@/lib/calls/status-label"
 import { useLocale, useTranslations } from "next-intl"
 import { formatDateTime } from "@/lib/format-date"
 import {
@@ -224,7 +225,7 @@ export function CallWidget({ callLogId, phoneNumber, contactName, onClose }: Cal
           <div className="text-sm text-muted-foreground">{phoneNumber}</div>
           <div className="flex items-center justify-between">
             <span className={`text-sm font-medium capitalize ${statusColors[status] || ""}`}>
-              {status === "in-progress" ? t("connected") : status}
+              {status === "in-progress" ? t("connected") : t(`statusLabels.${callStatusLabelKey(status)}`)}
             </span>
             {isActive && (
               <span className="text-sm font-mono">{formatDuration(duration)}</span>
@@ -506,11 +507,11 @@ export function ClickToCallButton({ phone, contactId, contactName, leadId, compa
         size={showLabel ? "sm" : "icon"}
         onClick={handleCall}
         disabled={calling || (showProviderPicker && !selectedProviderConfigId)}
-        title={`Call ${phone}`}
+        title={`${t("call")} ${phone}`}
         className={className || (showLabel ? "h-8 gap-1.5" : "h-8 w-8")}
       >
         {calling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4 text-green-600" />}
-        {showLabel ? <span>{label || "Call"}</span> : null}
+        {showLabel ? <span>{label || t("call")}</span> : null}
       </Button>
       {activeCall && (
         <CallWidget

@@ -175,12 +175,14 @@ describe("where a promise from a call lands", () => {
     expect(createNotification).not.toHaveBeenCalled()
   })
 
-  it("enriches a manual callback without changing its promised time, owner or relation", async () => {
+  // The manual title is written in the employee's language since 2026-10-17;
+  // tasks filed before carry the English «Callback».
+  it.each(["Callback", "Geri zəng", "Перезвонить", "Call back"])("enriches a manual callback titled «%s» without changing its promised time, owner or relation", async (placeholder) => {
     const manualDue = new Date("2026-08-15T13:30:00.000Z")
     const updatedAt = new Date("2026-08-14T08:00:00.000Z")
     const manual = {
       id: "call_callback_call-1",
-      title: "Callback",
+      title: placeholder,
       description: null,
       priority: "medium",
       dueDate: manualDue,

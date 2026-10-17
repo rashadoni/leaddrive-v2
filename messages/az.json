@@ -11015,6 +11015,7 @@
       "noAnswer": "Cavab yoxdur",
       "busy": "Məşğuldur",
       "failed": "Uğursuz",
+      "canceled": "Ləğv edildi",
       "unknown": "Status mövcud deyil"
     },
     "dialDiagnostics": {

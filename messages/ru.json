@@ -11019,6 +11019,7 @@
       "noAnswer": "Нет ответа",
       "busy": "Занято",
       "failed": "Ошибка",
+      "canceled": "Отменён",
       "unknown": "Статус недоступен"
     },
     "dialDiagnostics": {

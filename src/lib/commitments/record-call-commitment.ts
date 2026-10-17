@@ -10,6 +10,7 @@ import {
   callbackReminderId,
 } from "@/lib/commitments/call-commitment-identity"
 import type { ConversationInsight } from "@/lib/conversation-intel/types"
+import { isCallbackPlaceholderTitle } from "@/lib/calls/callback-title"
 
 /**
  * Writing a promise down where it can be missed — and telling the person who
@@ -163,12 +164,13 @@ export async function recordCallCommitment(input: {
         // Manual-first and analysis-first must leave the same useful task.
         // Enrich the placeholder, but preserve the explicit time, owner and
         // relation the person just chose. A custom title/description also wins
-        // over the analyser; literal "Callback" and an empty description are
-        // the untouched placeholder values.
+        // over the analyser; the manual title in any language (or the old
+        // English «Callback») and an empty description are the untouched
+        // placeholder values.
         customFields[COMMITMENT_CALL_FIELD] = input.callId
         customFields.commitmentStatedByCustomer = draft.statedByCustomer
         const enrichment: Prisma.TaskUpdateManyMutationInput = {
-          ...(existing.title === "Callback" ? { title: draft.title } : {}),
+          ...(isCallbackPlaceholderTitle(existing.title) ? { title: draft.title } : {}),
           ...(existing.description === null ? { description: draft.description } : {}),
           priority: draft.priority,
           ...(

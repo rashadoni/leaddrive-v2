@@ -1316,8 +1316,10 @@ describe("PATCH /api/v1/calls/[id]/disposition", () => {
     expect(activityIds).toEqual(["call_callback_cl1", "call_callback_cl1"])
   })
 
-  it("files a deterministic task for the installed callback reminder", async () => {
+  it("files a deterministic task for the installed callback reminder, titled in the caller's language", async () => {
     const callbackAt = new Date(Date.now() + 86_400_000).toISOString()
+    // The task is the employee's: an Azerbaijani-speaking seller reads «Geri zəng», not «Callback».
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({ preferredLanguage: "az", organization: { settings: { language: "ru" } } } as never)
     vi.mocked(getOrgId).mockResolvedValue("org1")
     vi.mocked(getSession).mockResolvedValue({ orgId: "org1", userId: "sales-1", role: "sales" } as never)
     const txCallLogUpdateMany = vi.fn().mockResolvedValue({ count: 1 })
@@ -1359,7 +1361,7 @@ describe("PATCH /api/v1/calls/[id]/disposition", () => {
       create: expect.objectContaining({
         id: "call_callback_cl1",
         organizationId: "org1",
-        title: "Callback",
+        title: "Geri zəng",
         dueDate: new Date(callbackAt),
         assignedTo: "sales-1",
         relatedType: "lead",
