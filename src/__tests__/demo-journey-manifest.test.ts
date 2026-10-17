@@ -34,12 +34,14 @@ const ROOT = process.cwd()
 const read = (relative: string) => readFileSync(path.join(ROOT, relative), "utf8")
 
 /** Sidebar group label → group-module id, for the groups the demo shows.
- *  Route & Field joined on 2026-10-17 as a module of its own. */
+ *  Route & Field, Personnel and Service Desk joined in October 2026 as
+ *  modules of their own. */
 const NAV_GROUP_TO_MODULE: Record<string, string> = {
   CRM: "crm",
   Sales: "sales",
   Communication: "omnichannel",
   Marketing: "marketing",
+  Support: "support",
   "Route & Field": "mtm",
   Personnel: "mtm",
 }
@@ -76,8 +78,9 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
   })
 
   it("shows only the groups the owner chose and only real sidebar routes", () => {
-    expect(manifest.navGroups).toEqual(["crm", "sales", "omnichannel", "marketing", "mtm"])
+    expect(manifest.navGroups).toEqual(["crm", "sales", "omnichannel", "marketing", "support", "mtm"])
     expect(manifest.visibleRoutes).toContain("/mtm/attendance")
+    expect(manifest.visibleRoutes).toContain("/tickets")
     const entries = navEntries()
     expect(entries.length).toBeGreaterThan(100)
     for (const route of manifest.visibleRoutes) {
@@ -88,8 +91,10 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
     }
     const inScope = entries.filter((entry) => NAV_GROUP_TO_MODULE[entry.group])
     // The whole point of the limited version: the prospect sees a handful of
-    // pages, not the full navigation of the four groups.
-    expect(manifest.visibleRoutes.length).toBeLessThanOrEqual(8)
+    // pages, not the full navigation of the groups. Since the demo became a
+    // set of modules (owner, 2026-10-13) each module adds its entry, so the
+    // bound is per group: at most two pages each.
+    expect(manifest.visibleRoutes.length).toBeLessThanOrEqual(manifest.navGroups.length * 2)
     expect(inScope.length).toBeGreaterThan(manifest.visibleRoutes.length * 4)
   })
 
@@ -125,7 +130,12 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
       "deal",
       "quote",
       "closed-won",
-      // A module of its own beside the story (2026-10-17).
+      // Modules of their own beside the story (October 2026).
+      "sd-queue",
+      "sd-ticket",
+      "sd-resolve",
+      "sd-rules",
+      "sd-results",
       "mtm-today",
       "mtm-plan",
       "mtm-live",
@@ -265,6 +275,8 @@ describe("Guided journey coverage", () => {
     tasks: { included: 12, total: 14, percent: 86 },
     deals: { included: 13, total: 16, percent: 81 },
     quotes: { included: 9, total: 11, percent: 82 },
+    // 2026-10-17: Service Desk, a module of its own.
+    support: { included: 14, total: 17, percent: 82 },
     // 2026-10-17: Route & Field, a module of its own.
     mtm: { included: 16, total: 20, percent: 80 },
     personnel: { included: 12, total: 15, percent: 80 },

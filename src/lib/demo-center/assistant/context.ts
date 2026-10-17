@@ -112,7 +112,7 @@ export function buildAssistantGrounding(
   }
 
   lines.push("")
-  lines.push("Bu demoda görünən bölmələr: Əsas, Satış, Kommunikasiya, Marketinq, Marşrut & Sahə, Kadr uçotu. Marşrut & Sahə və Kadr uçotu ayrıca modullardır: uydurma komanda və şirkət, lid hekayəsi ilə bağlı deyil. Kadr uçotunda biometriya yoxdur, fasilədə yer yazılmır, günü əməkdaş özü bağlayır. Qalan modullar bu sessiyada gizlədilib.")
+  lines.push("Bu demoda görünən bölmələr: Əsas, Satış, Marketinq, Omni-Channel, Dəstək (Service Desk), Marşrut & Sahə, Kadr uçotu. Service Desk, Marşrut & Sahə və Kadr uçotu ayrıca modullardır: uydurma komanda və şirkət, lid hekayəsi ilə bağlı deyil. Service Desk-də agentin cavabı müştəriyə WhatsApp ilə (bilet WhatsApp-dan gəlibsə) və müştəri portalında çatır, e-poçtla getmir; bilet kartında Da Vinci cavabı yalnız qaralama kimi yazır, göndərən agentdir. Kadr uçotunda biometriya yoxdur, fasilədə yer yazılmır, günü əməkdaş özü bağlayır. Qalan modullar bu sessiyada gizlədilib.")
   lines.push("AI telefon zəngi bu sessiyada söndürülüb — zəng edilmir.")
   lines.push("Bütün yuxarıdakı qeydlər nümunədir və yalnız bu sessiya üçün yaradılıb.")
 

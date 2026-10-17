@@ -394,7 +394,7 @@ describe("the arrow's controls", () => {
     const sources = [
       "src/components/demo-center/journey/demo-journey-guide.tsx",
       "src/components/demo-center/journey/demo-live-call.tsx",
-      ...["campaign", "inbox", "lead", "board", "deal", "quote", "mtm", "personnel", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
+      ...["campaign", "inbox", "lead", "board", "deal", "quote", "support", "mtm", "personnel", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
     ].map((file) => readFileSync(path.join(process.cwd(), file), "utf8")).join("\n")
     const withCall = withLiveCall(PROSPECT_TO_CLOSED_WON).sections.flatMap((section) => section.steps)
     for (const step of new Map([...steps, ...withCall.map((candidate) => [candidate.id, candidate] as const)]).values()) {
@@ -693,5 +693,85 @@ describe("the Personnel module", () => {
     expect(line).toContain("Orxan Musayev")
     expect(line).toContain("→")
     expect(corrected[0].dayKind?.key).toBe("WORKED")
+  }, 60_000)
+})
+
+/**
+ * Service Desk (owner, 2026-10-13): the support module. The queue's deadlines
+ * come from the product's working-hours SLA clock, and what the screens say
+ * about a reply is what the product does with one: WhatsApp and the portal,
+ * never e-mail; Da Vinci drafts, the agent sends.
+ */
+describe("the Service Desk module", () => {
+  const openServiceDesk = async () => {
+    await renderPlayer()
+    const choice = document.querySelector<HTMLButtonElement>('[data-start-section="sd-queue"]')
+    expect(choice, "the first screen offers Service Desk").not.toBeNull()
+    expect(choice!.textContent).toContain(messages.nav.tickets)
+    await act(async () => choice!.click())
+    await settle()
+  }
+
+  it("opens on the morning queue, counted from its own tickets", async () => {
+    await openServiceDesk()
+    expect(frontier()).toMatchObject({ sectionId: "sd-queue", stepId: "sd-queue-figures", state: "STARTED" })
+    expect(textOf('[data-tour-id="sd-queue-kpis"]')).toContain(messages.tickets.newQueue)
+    expect(textOf('[data-testid="sd-queue-new"]')).toBe("2")
+    expect(textOf('[data-testid="sd-queue-unassigned"]')).toBe("3")
+    expect(textOf('[data-testid="sd-queue-sla"]')).toBe("1")
+    // The ticket past its deadline reads as breached, by the working-hours clock.
+    expect(document.querySelectorAll('[data-tour-id="sd-queue-list"] [data-sla-state="breached"]').length).toBeGreaterThan(0)
+  }, 60_000)
+
+  it("takes the next ticket, lets Da Vinci draft and sends the reply where the product sends it", async () => {
+    const { SUPPORT_DEMO_DRAFT } = await import("@/components/demo-center/journey/scenes/support-demo-data")
+    await openServiceDesk()
+    await walkTo("sd-queue-take")
+    await act(async () => findDemoTarget("sd-queue-take")!.click())
+    await settle()
+    expect(frontier().sectionId).toBe("sd-ticket")
+    await walkTo("sd-ticket-draft")
+    const composer = () => document.querySelector<HTMLTextAreaElement>('[data-testid="sd-ticket-composer"]')!
+    expect(composer().value).toBe("")
+    await act(async () => findDemoTarget("sd-ticket-draft")!.click())
+    await settle()
+    // Drafted, not sent: the text waits in the reply box for the agent.
+    expect(composer().value).toBe(SUPPORT_DEMO_DRAFT)
+    expect(frontier().stepId).toBe("sd-ticket-send")
+    expect(textOf('[data-testid="sd-ticket-audience"]')).toBe(messages.tickets.replyAudienceWhatsapp)
+    await act(async () => findDemoTarget("sd-ticket-send")!.click())
+    await settle()
+    expect(frontier()).toMatchObject({ sectionId: "sd-resolve", stepId: "sd-resolve-close" })
+  }, 60_000)
+
+  it("resolving asks the customer on WhatsApp to confirm, and the ticket closes itself after a week of silence", async () => {
+    const { SUPPORT_DEMO_TIMES } = await import("@/components/demo-center/journey/scenes/support-demo-data")
+    await openServiceDesk()
+    await walkTo("sd-resolve-close")
+    // The reply and the customer's answer are on the ticket before it is resolved.
+    expect(document.querySelector('[data-testid="sd-ticket-reply"]')).not.toBeNull()
+    await act(async () => findDemoTarget("sd-resolve-close")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("sd-resolve-wait")
+    const closure = textOf('[data-tour-id="sd-resolve-closure"]')
+    expect(closure).toContain(messages.tickets.closureRequestPending)
+    expect(closure).toContain(messages.tickets.closureRequestSentDesc)
+    expect(closure).toContain("whatsapp")
+    // closure-requests.ts: seven days from the moment it was resolved.
+    expect(closure).toContain(`${messages.tickets.closureRequestAutoClose}:`)
+    expect(closure).toContain(SUPPORT_DEMO_TIMES.resolved)
+  }, 60_000)
+
+  it("shows the agent's month as the product's own arithmetic", async () => {
+    const { supportDemoAgentMetrics } = await import("@/components/demo-center/journey/scenes/support-demo-data")
+    const { mtmDemoToday } = await import("@/components/demo-center/journey/scenes/mtm-demo-data")
+    await openServiceDesk()
+    await walkTo("sd-results-metrics")
+    const raw = window.sessionStorage.getItem(STORAGE_KEY)!
+    const startedAt = (JSON.parse(raw).snapshot ?? JSON.parse(raw)).startedAt as string
+    const metrics = supportDemoAgentMetrics(mtmDemoToday(startedAt))
+    expect(textOf('[data-testid="sd-metric-rate"]')).toBe(`${metrics.resolutionRatePct}%`)
+    expect(textOf('[data-testid="sd-metric-sla"]')).toBe(`${metrics.slaCompliancePct}%`)
+    expect(metrics.csatSample).toBeGreaterThan(10)
   }, 60_000)
 })

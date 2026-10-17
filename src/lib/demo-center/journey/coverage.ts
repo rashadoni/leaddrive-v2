@@ -169,6 +169,32 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
     ],
   },
   {
+    // A module of its own (owner, 2026-10-13): an invented service company's
+    // morning queue, its SLA dates from the product's working-hours clock.
+    area: "support",
+    title: "Service Desk (поддержка клиентов)",
+    routes: ["/tickets", "/tickets/[id]", "/settings/sla-policies", "/settings/escalation", "/support/agent-desktop"],
+    sections: [
+      { id: "support.nav", label: "Меню модуля: Service Desk, рабочее место агента, база знаний, SLA, эскалации, макросы", included: true, kind: "observe" },
+      { id: "support.queue.kpis", label: "Счётчики очереди: новые, без исполнителя, SLA", included: true, kind: "observe" },
+      { id: "support.queue.next", label: "«Следующий приоритет» и «Взять следующий»", included: true, kind: "interactive" },
+      { id: "support.queue.list", label: "Список: остаток SLA, уровень эскалации, время ответа, исполнитель", included: true, kind: "observe" },
+      { id: "support.queue.kanban", label: "Канбан по статусам", included: false, reason: "Те же тикеты в другом виде; в первом знакомстве достаточно списка." },
+      { id: "support.queue.reports", label: "Отчёты Service Desk", included: false, reason: "Сводные отчёты имеют смысл на месяцах настоящих тикетов; показаны личные цифры агента, посчитанные продуктом." },
+      { id: "support.ticket.status", label: "Полоса статуса и факты: клиент, канал, исполнитель, срок", included: true, kind: "observe" },
+      { id: "support.ticket.transcript", label: "Сообщения клиента из WhatsApp в ленте тикета (тикет открыт первым сообщением)", included: true, kind: "observe" },
+      { id: "support.ticket.ai-draft", label: "Da Vinci: черновик ответа по базе знаний", included: true, kind: "interactive" },
+      { id: "support.ticket.reply", label: "Ответ клиенту: WhatsApp и портал, без e-mail; внутренняя заметка", included: true, kind: "interactive" },
+      { id: "support.ticket.sla", label: "Карточка SLA: первый ответ, срок решения", included: true, kind: "observe" },
+      { id: "support.ticket.kb", label: "Статьи базы знаний на тикете", included: true, kind: "observe" },
+      { id: "support.ticket.closure", label: "Запрос подтверждения закрытия, автозакрытие через 7 дней", included: true, kind: "interactive" },
+      { id: "support.ticket.customer360", label: "Контекст клиента (Customer 360)", included: false, reason: "Нужна история клиента в CRM; у выдуманного магазина её нет." },
+      { id: "support.sla.matrix", label: "Политики SLA по приоритетам, рабочие часы", included: true, kind: "observe" },
+      { id: "support.escalation", label: "Правила эскалации L1–L5 и когда они сработают", included: true, kind: "observe" },
+      { id: "support.agent.metrics", label: "Рабочее место агента: очередь и показатели за 30 дней", included: true, kind: "observe" },
+    ],
+  },
+  {
     // A module of its own (owner, 2026-10-17): the product's MTM components
     // drawn from an invented field team, beside the lead story.
     area: "mtm",
