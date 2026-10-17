@@ -17,7 +17,8 @@
  * Set MTM_MANAGER_MESSAGES_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55499:5432 postgres:16
  *   MTM_MANAGER_MESSAGES_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55499/postgres
- * Without it the suite is skipped. CI runs it in `static-checks`, where
+ * Without it the suite is skipped. CI runs it in `static-checks` and again in
+ * the deploy («MTM manager writes to the team database gate»), where
  * `MTM_MANAGER_MESSAGES_DB_GATE=required` turns a missing URL into a failure
  * so the gate cannot go quietly green.
  */
