@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { NextResponse } from "next/server"
-import { notifyAgents } from "@/lib/mtm/push-notify"
+import { MTM_TEAM_MESSAGES_PUSH_CHANNEL, notifyAgents } from "@/lib/mtm/push-notify"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { writeMtmAudit } from "@/lib/mtm-audit"
@@ -121,6 +121,7 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
       title: input.type === "BROADCAST" ? sanitizedSubject! : `${auth.name || auth.email}`,
       body: sanitizedBody,
       data: { target: "Messages", threadId: result.threadId },
+      channelId: MTM_TEAM_MESSAGES_PUSH_CHANNEL,
     }).catch((error) => console.warn("[MTM/operations/messages POST] push failed", error))
 
     await writeMtmAudit({
