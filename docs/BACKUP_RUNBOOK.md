@@ -163,8 +163,15 @@ membership count `0`; app-role остаётся `rolbypassrls=f`.
    плавающему tag.
 3. Скопировать `ops/backup/backup.env.example` в
    `/etc/leaddrive/backup.env`, заполнить значения и выставить
-   `root:leaddrive-backup 0640`. Pgpass-файлы — `root:leaddrive-backup 0640`
-   либо принадлежат service user и имеют `0600`.
+   `root:leaddrive-backup 0640`. Оба pgpass-файла должны принадлежать
+   `leaddrive-backup:leaddrive-backup` и иметь приватный mode `0600`
+   (проверки допускают также `0400`). Libpq игнорирует pgpass с доступом
+   группы/остальных, поэтому `root:leaddrive-backup 0440/0640` не подходит.
+   Родительский каталог остаётся под управлением root, без права записи у
+   service user. CA-файлы остаются root-owned и доступны сервису для чтения;
+   их нельзя проверять по правилам секретного pgpass. Автономный offline
+   verifier использует свой отдельный pgpass, принадлежащий вызывающему
+   пользователю, с теми же приватными правами.
    Для source TLS `PGHOST` задаёт имя, проверяемое сертификатом, а обязательный
    числовой `PGHOSTADDR` — отдельно проверенный сетевой маршрут к тому же
    endpoint. Не подменять `verify-full` режимом без проверки имени.
