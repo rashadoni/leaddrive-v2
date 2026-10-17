@@ -371,3 +371,116 @@ export function mtmDemoPlaceRequest(today: string) {
     comment: "Aptek prospektin o biri tərəfindədir, giriş Atatürk pr. 40-dan.",
   }
 }
+
+/** Each agent's day on «Bu gün»: the stops done and where he goes next (Baku time). */
+const HOME_DAY: Record<string, { visits: ReadonlyArray<{ place: string; checkIn: string; checkOut?: string }>; next?: { place: string; planned: string } }> = {
+  "agent-elvin": { visits: ELVIN_DAY.filter((stop) => stop.checkIn).map((stop) => ({ place: stop.place, checkIn: stop.checkIn!, checkOut: stop.checkOut })) },
+  "agent-nermin": {
+    visits: [
+      { place: "pl-yasamal", checkIn: "09:20", checkOut: "09:41" },
+      { place: "pl-aile5", checkIn: "10:05", checkOut: "10:26" },
+      { place: "pl-xetai", checkIn: "10:50", checkOut: "11:12" },
+      { place: "pl-aptsaglam", checkIn: "11:30", checkOut: "11:44" },
+    ],
+    next: { place: "pl-apt24", planned: "12:20" },
+  },
+  "agent-tural": {
+    visits: [{ place: "pl-usaq", checkIn: "09:45", checkOut: "10:10" }, { place: "pl-aptderman", checkIn: "10:40", checkOut: "11:02" }],
+    next: { place: "pl-nar", planned: "12:30" },
+  },
+  "agent-aysu": { visits: [{ place: "pl-aptplus", checkIn: "09:50", checkOut: "10:12" }], next: { place: "pl-deniz", planned: "11:35" } },
+  "agent-rauf": {
+    visits: [
+      { place: "pl-respublika", checkIn: "09:25", checkOut: "09:49" },
+      { place: "pl-yasamal", checkIn: "10:30", checkOut: "10:52" },
+      { place: "pl-apt24", checkIn: "11:38", checkOut: "11:50" },
+    ],
+    next: { place: "pl-xetai", planned: "12:40" },
+  },
+}
+
+/**
+ * «Bu gün» in the shapes the product's three answers have: today's team
+ * rows, the week's plan points and visits (the same facts «Nəticələr»
+ * counts), and the lower row's base and visit quality. The figures on the
+ * screen are the product's own arithmetic over them
+ * (`src/lib/mtm/home-dashboard.ts`).
+ */
+export function mtmDemoHome(today: string) {
+  const clock = Date.parse(mtmDemoAt(today, MTM_DEMO_CLOCK))
+  const monday = addDays(today, -((new Date(`${today}T12:00:00.000Z`).getUTCDay() + 6) % 7))
+  const rows = MTM_DEMO_AGENTS.map((agent) => {
+    const day = HOME_DAY[agent.id]
+    const visits = day.visits.map((visit) => ({
+      customerName: placeOf(visit.place).name,
+      status: visit.checkOut ? "CHECKED_OUT" : "CHECKED_IN",
+      checkInAt: mtmDemoAt(today, visit.checkIn),
+      checkOutAt: visit.checkOut ? mtmDemoAt(today, visit.checkOut) : null,
+    }))
+    return {
+      agentId: agent.id,
+      name: agent.name,
+      teamName: MTM_DEMO_TEAMS[agent.team].teamName,
+      lastGpsAt: agent.beforeBreak ? mtmDemoAt(today, agent.beforeBreak.at) : new Date(clock - MINUTE).toISOString(),
+      route: { visited: agent.visited, total: agent.total },
+      visits,
+      visitCount: visits.length,
+      openAlerts: 0,
+      workday: agent.beforeBreak
+        ? { kind: "paused" as const, since: mtmDemoAt(today, agent.beforeBreak.pausedAt) }
+        : { kind: "working" as const, since: mtmDemoAt(today, "09:02") },
+      nextStop: day.next && !visits.some((visit) => visit.status === "CHECKED_IN")
+        ? { customerName: placeOf(day.next.place).name, plannedAt: mtmDemoAt(today, day.next.planned) }
+        : null,
+    }
+  })
+
+  // The week's plan points and visits, Monday to today, as «Результаты» counts them.
+  const planPoints: Array<{ agentId: string; date: string; completed: boolean }> = []
+  const factVisits: Array<{ agentId: string; date: string; gpsConfirmed: boolean }> = []
+  for (const agent of MTM_DEMO_AGENTS) {
+    const days = mtmDemoWeekSoFar(agent).days
+    days.forEach(([done, planned], index) => {
+      const date = addDays(monday, index)
+      for (let point = 0; point < planned; point += 1) planPoints.push({ agentId: agent.id, date, completed: point < done })
+      for (let visit = 0; visit < done; visit += 1) factVisits.push({ agentId: agent.id, date, gpsConfirmed: visit !== 1 || agent.id !== "agent-tural" })
+    })
+  }
+  // The same days of last week (Monday to Thursday), for «than last week».
+  const previous = MTM_DEMO_AGENTS.reduce((sum, agent) => ({
+    planned: sum.planned + Math.round((agent.lastWeek[1] * 4) / 5),
+    done: sum.done + Math.round((agent.lastWeek[0] * 4) / 5),
+  }), { planned: 0, done: 0 })
+
+  const recentVisits = rows
+    .flatMap((row) => row.visits.map((visit) => ({
+      id: `${row.agentId}:${visit.checkInAt}`,
+      at: visit.checkInAt!,
+      customerName: visit.customerName,
+      agentName: row.name,
+      durationMinutes: visit.checkOutAt ? Math.round((Date.parse(visit.checkOutAt) - Date.parse(visit.checkInAt!)) / MINUTE) : null,
+      flag: null,
+    })))
+    .sort((left, right) => right.at.localeCompare(left.at))
+    .slice(0, 5)
+
+  return {
+    rows,
+    facts: { planPoints, visits: factVisits },
+    previous,
+    recentVisits,
+    monthStart: `${today.slice(0, 8)}01`,
+    base: {
+      subject: "contacts" as const,
+      byClass: [
+        { key: "VIP", total: 12, visited: 11 },
+        { key: "A", total: 46, visited: 34 },
+        { key: "B", total: 71, visited: 39 },
+        { key: "C", total: 58, visited: 16 },
+      ],
+      secondary: [],
+      classOrder: ["VIP", "A", "B", "C", "D"],
+    },
+    quality: { visits: 64, atPlace: 58, awayFromPlace: 4, placeUnknown: 2, withPhoto: 55, tooLong: 2, tooShort: 1, longMinutes: 60, shortMinutes: 2 },
+  }
+}

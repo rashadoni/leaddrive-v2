@@ -3,19 +3,23 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from "react"
 import dynamic from "next/dynamic"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowLeft, BellRing, CheckCircle2, ChevronLeft, ChevronRight, Clock, GripVertical, History, MapPin, MessageSquare, Radio, Route as RouteIcon, Send, Sparkles, TrendingUp, Users } from "lucide-react"
+import { ArrowLeft, BellRing, CheckCircle2, ChevronLeft, ChevronRight, Clock, GripVertical, History, MapPin, MessageSquare, Radio, RefreshCw, Route as RouteIcon, Send, Sparkles, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { HomeAttentionCard } from "@/components/mtm/home-attention-card"
-import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/home-parts"
+import { HomeAttentionCard, attentionRowCount } from "@/components/mtm/home-attention-card"
+import { HomeBaseCard, HomeQualityCard } from "@/components/mtm/home-insight-cards"
+import { HomeTeamCard } from "@/components/mtm/home-team-card"
+import { HomeKpi, HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { LiveMapDaySteps } from "@/components/mtm/live-map-day-steps"
 import { LiveMapLayersControl } from "@/components/mtm/live-map-layers-control"
-import { LiveMapRoster, ROSTER_STATUS_DOT_CLASS } from "@/components/mtm/live-map-roster"
+import { LiveMapRoster } from "@/components/mtm/live-map-roster"
 import { LiveMapTools } from "@/components/mtm/live-map-tools"
-import { MtmFilterBar, MtmFilterSearch } from "@/components/mtm/filter-bar"
+import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 import { createDateFormatter } from "@/lib/format-date"
-import { FIELD_STATUS_LABEL_KEYS, isLiveMapAgentPositionVisible, type LiveMapAgent, type MtmFieldStatus } from "@/lib/mtm-types"
+import { isLiveMapAgentPositionVisible, type LiveMapAgent } from "@/lib/mtm-types"
+import { defaultWeek, fieldNow, finishedDaysPercent, homeTeam, percentOf, planCard, todayPlan, weekComparison, weekTotals } from "@/lib/mtm/home-dashboard"
+import { buildHomeBase } from "@/lib/mtm/home-insights"
 import { applyRosterFilters, foldRosterText, ROSTER_DEFAULT_VIEW, sortRoster, type RosterFilters, type RosterView } from "@/lib/mtm/live-map-roster"
 import {
   routePlannerDayMinutes,
@@ -42,13 +46,13 @@ import {
   mtmDemoAttention,
   mtmDemoElvinRoute,
   mtmDemoElvinSteps,
+  mtmDemoHome,
   mtmDemoLeftOpen,
   mtmDemoRosterAgents,
   mtmDemoPlaceRequest,
   mtmDemoPlannerCandidates,
   mtmDemoToday,
   mtmDemoVisit,
-  mtmDemoWeekSoFar,
 } from "./mtm-demo-data"
 
 /**
@@ -156,30 +160,75 @@ function useBakuFormat() {
 
 /* ── «Bu gün» ─────────────────────────────────────────────────────────── */
 
-function TodayScreen({ snapshot }: DemoSceneProps) {
+/**
+ * «Bu gün» as `MtmHomeDashboard` draws it: the date and «İş günü · 12:10
+ * üzrə», the team filter, four figures, what waits, the team with a strip of
+ * the week, and below it the base and the visits judged. The product's
+ * dashboard reads three answers itself; here the same answers come from
+ * `mtmDemoHome` and every figure is the product's own arithmetic over them
+ * (`src/lib/mtm/home-dashboard.ts`, `buildHomeBase`), «than last week»
+ * included — none is typed in.
+ */
+function TodayScreen({ snapshot, hint }: DemoSceneProps) {
   const t = useTranslations("mtmDashboardPage.home")
+  const tw = useTranslations("mtmDashboardPage.operationalWeek")
   const today = mtmDemoToday(snapshot.startedAt)
   const format = useBakuFormat()
   const attention = useMemo(() => mtmDemoAttention(today), [today])
+  const home = useMemo(() => mtmDemoHome(today), [today])
 
-  const inField = MTM_DEMO_AGENTS.filter((agent) => agent.status !== "PAUSED").length
-  const atCustomer = MTM_DEMO_AGENTS.filter((agent) => agent.status === "CHECKED_IN").length
-  const onRoad = MTM_DEMO_AGENTS.filter((agent) => agent.status === "ON_ROAD").length
-  const planned = MTM_DEMO_AGENTS.reduce((sum, agent) => sum + agent.total, 0)
-  const done = MTM_DEMO_AGENTS.reduce((sum, agent) => sum + agent.visited, 0)
-  const weekPlanned = MTM_DEMO_AGENTS.reduce((sum, agent) => sum + mtmDemoWeekSoFar(agent).planned, 0)
-  const weekDone = MTM_DEMO_AGENTS.reduce((sum, agent) => sum + mtmDemoWeekSoFar(agent).done, 0)
-  const percent = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0)
-  const weekPercent = percent(weekDone, weekPlanned)
-  const requests = attention.items.filter((item) => item.kind !== "photosPendingReview").reduce((sum, item) => sum + item.count, 0)
-  const photos = attention.items.find((item) => item.kind === "photosPendingReview")?.count ?? 0
-  const waiting = attention.items.length + (attention.nextWorkday && attention.nextWorkday.withoutRoute > 0 ? 1 : 0)
+  const entries = homeTeam(home.rows, true)
+  const now = fieldNow(entries)
+  const plan = todayPlan(entries)
+  const weekDays = attention.week.length === 7 ? attention.week : defaultWeek(today)
+  const totals = weekTotals(home.facts, { from: weekDays[0].date, to: today })
+  const comparison = weekComparison(totals, home.previous)
+  const card = planCard({ today, plan, nextWorkday: attention.nextWorkday ?? null })
+  const waiting = attentionRowCount(attention) ?? 0
+  const base = buildHomeBase(home.base)
+
+  const lastVisitParts = [
+    now.heading > 0 ? t("partHeading", { count: now.heading }) : null,
+    now.notStarted > 0 ? t("partNotStarted", { count: now.notStarted }) : null,
+    now.planDone > 0 ? t("partPlanDone", { count: now.planDone }) : null,
+    now.idle > 0 ? t("partIdle", { count: now.idle }) : null,
+  ].filter(Boolean).join(" · ")
+  const planPercent = card.kind === "today" ? percentOf(card.done, card.planned) : null
+  const weekPercent = percentOf(totals.done, totals.planned)
+  const finishedPercent = finishedDaysPercent(home.facts, { from: weekDays[0].date, today })
+  const weekTone: HomeTone = weekPercent === null ? "zinc" : finishedPercent === null ? (weekPercent >= 95 ? "green" : "amber") : PLAN_TONE[mtmPlanTone(finishedPercent)]
+  const weekSub = totals.planned === 0
+    ? t("weekNoPlan")
+    : comparison.kind === "delta"
+      ? comparison.delta > 0
+        ? t("weekDeltaUp", { percent: comparison.previousPercent, delta: comparison.delta })
+        : comparison.delta < 0
+          ? t("weekDeltaDown", { percent: comparison.previousPercent, delta: Math.abs(comparison.delta) })
+          : t("weekDeltaSame", { percent: comparison.previousPercent })
+      : comparison.kind === "no-plan" ? t("weekNoPlanLastWeek") : totals.planned > totals.done ? t("weekRemaining", { count: totals.planned - totals.done }) : t("weekAllDone")
+  const countOf = (...kinds: string[]) => attention.items.filter((item) => kinds.includes(item.kind)).reduce((sum, item) => sum + item.count, 0)
+  const requests = countOf("customerLocationRequests", "contactCreateRequests", "customerCreateRequests", "routeChangeRequests")
+  const waitingParts = [
+    requests > 0 ? t("shortRequests", { count: requests }) : null,
+    countOf("routesAwaitingPublish") > 0 ? t("shortDrafts", { count: countOf("routesAwaitingPublish") }) : null,
+    countOf("olderAlerts") > 0 ? t("shortAlerts", { count: countOf("olderAlerts") }) : null,
+    countOf("photosPendingReview") > 0 ? t("shortPhotos", { count: countOf("photosPendingReview") }) : null,
+    attention.nextWorkday && attention.nextWorkday.withoutRoute > 0 ? t("shortNextDay") : null,
+  ].filter(Boolean).join(" · ")
 
   return (
     <div data-testid="mtm-home" className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight first-letter:uppercase">{format.day(today)}</h2>
-        <p className="text-sm text-muted-foreground">{t("workingDay")} · {S.mtmAsOf(MTM_DEMO_CLOCK)}</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold tracking-tight first-letter:uppercase">{format.day(today)}</h2>
+          <p className="min-h-5 text-sm text-muted-foreground">{[t(attention.todayIsWorkingDay ? "workingDay" : "dayOff"), tw("summaryAsOf", { time: MTM_DEMO_CLOCK }), S.mtmSampleDayNote].join(" · ")}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <MtmFilterBar testId="mtm-week-filters">
+            <MtmFilterSelect testId="mtm-week-team" label={tw("team")} value="" allLabel={tw("allTeams")} options={[{ value: "team-center", label: "Bakı — Mərkəz" }, { value: "team-south", label: "Bakı — Cənub" }]} onChange={() => hint(S.demoButtonHint)} />
+          </MtmFilterBar>
+          <Button type="button" variant="outline" size="icon" className="h-11 w-11" aria-label={tw("refresh")} onClick={() => hint(S.demoButtonHint)}><RefreshCw className="h-4 w-4" aria-hidden="true" /></Button>
+        </div>
       </div>
 
       <div data-tour-id="mtm-home-kpis" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -188,45 +237,45 @@ function TodayScreen({ snapshot }: DemoSceneProps) {
           label={t("kpiInField")}
           hint={t("hint.kpiInField")}
           icon={<MapPin className="h-[18px] w-[18px]" aria-hidden="true" />}
-          tone="green"
-          value={String(inField)}
-          unit={t("kpiInFieldUnit", { total: MTM_DEMO_AGENTS.length })}
-          pill={t("pillAtCustomer", { count: atCustomer })}
-          sub={[t("partHeading", { count: onRoad }), S.mtmOnBreakCount(1)].join(" · ")}
+          tone={now.inField > 0 ? "green" : "zinc"}
+          value={String(now.inField)}
+          unit={t("kpiInFieldUnit", { total: now.total })}
+          pill={now.atCustomer > 0 ? t("pillAtCustomer", { count: now.atCustomer }) : null}
+          sub={lastVisitParts || null}
         />
         <HomeKpi
           testId="mtm-home-kpi-plan"
           label={t("kpiTodayPlan")}
           hint={t("hint.kpiTodayPlan")}
           icon={<CheckCircle2 className="h-[18px] w-[18px]" aria-hidden="true" />}
-          tone="amber"
-          value={String(done)}
-          unit={t("kpiPointsUnit", { total: planned })}
-          pill={`${percent(done, planned)}%`}
-          progress={percent(done, planned)}
-          sub={t("todayVisits", { count: done })}
+          tone={planPercent !== null && planPercent >= 95 ? "green" : "amber"}
+          value={card.kind === "today" ? String(card.done) : null}
+          unit={card.kind === "today" ? t("kpiPointsUnit", { total: card.planned }) : null}
+          pill={planPercent !== null ? `${planPercent}%` : null}
+          progress={planPercent}
+          sub={card.kind === "today" ? t("todayVisits", { count: card.visits }) : null}
         />
         <HomeKpi
           testId="mtm-home-kpi-week"
           label={t("kpiWeekPlan")}
           hint={t("hint.kpiWeekPlan")}
           icon={<TrendingUp className="h-[18px] w-[18px]" aria-hidden="true" />}
-          tone={PLAN_TONE[mtmPlanTone(weekPercent)]}
-          value={String(weekDone)}
-          unit={t("kpiPointsUnit", { total: weekPlanned })}
-          pill={`${weekPercent}%`}
+          tone={weekTone}
+          value={totals.planned > 0 ? String(totals.done) : null}
+          unit={totals.planned > 0 ? t("kpiPointsUnit", { total: totals.planned }) : null}
+          pill={weekPercent !== null ? `${weekPercent}%` : null}
           progress={weekPercent}
-          sub={t("weekDeltaUp", { percent: weekPercent - 4, delta: 4 })}
+          sub={weekSub}
         />
         <HomeKpi
           testId="mtm-home-kpi-attention"
           label={t("kpiAttention")}
           hint={t("hint.kpiAttention")}
           icon={<BellRing className="h-[18px] w-[18px]" aria-hidden="true" />}
-          tone="amber"
+          tone={waiting > 0 ? "amber" : "green"}
           value={String(waiting)}
-          unit={t("issuesUnit", { count: waiting })}
-          sub={[t("shortRequests", { count: requests }), t("shortPhotos", { count: photos }), t("shortNextDay")].join(" · ")}
+          unit={waiting ? t("issuesUnit", { count: waiting }) : null}
+          sub={waiting === 0 ? t("attentionClear") : waitingParts}
         />
       </div>
 
@@ -234,47 +283,30 @@ function TodayScreen({ snapshot }: DemoSceneProps) {
         <div data-tour-id="mtm-home-attention">
           <HomeAttentionCard state={{ data: attention, failed: false, retry: () => {} }} />
         </div>
-        <TeamWeekCard />
+        <HomeTeamCard
+          team={entries}
+          hasCards
+          loading={false}
+          failed={false}
+          today={today}
+          timezone={MTM_DEMO_TIMEZONE}
+          week={weekDays}
+          facts={home.facts}
+          weekFailed={false}
+          totals={totals}
+          recentVisits={home.recentVisits}
+          onRetry={() => {}}
+          onRetryWeek={() => {}}
+          onOpenAgent={() => hint(S.mtmTabHint)}
+        />
+      </div>
+
+      <div className="grid gap-4 min-[1400px]:grid-cols-2">
+        <HomeBaseCard base={base} monthStart={home.monthStart} />
+        <HomeQualityCard quality={home.quality} />
       </div>
     </div>
   )
-}
-
-/** «Komanda · bu həftə»: each agent's week so far, day by day. */
-function TeamWeekCard() {
-  const t = useTranslations("mtmDashboardPage.home")
-  const tMap = useTranslations("mtmMap")
-  return (
-    <HomeCard testId="mtm-home-team" titleId="mtm-home-team-title" icon={<Users className="h-4 w-4" aria-hidden="true" />} tone="blue" title={t("teamTitle")}>
-      <ul className="divide-y divide-zinc-100 py-1 dark:divide-zinc-800">
-        {MTM_DEMO_AGENTS.map((agent) => {
-          const week = mtmDemoWeekSoFar(agent)
-          const percent = Math.round((week.done / week.planned) * 100)
-          return (
-            <li key={agent.id} className="flex items-center gap-3 py-2 text-sm">
-              <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", agent.status === "PAUSED" ? "bg-violet-400" : ROSTER_STATUS_DOT_CLASS[agent.status])} aria-hidden="true" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{agent.name}</span>
-                <span className="block truncate text-xs text-muted-foreground">{statusLabel(agent.status, tMap)}</span>
-              </span>
-              <span className="flex items-end gap-1" aria-hidden="true">
-                {week.days.map(([dayDone, dayPlanned], index) => (
-                  <span key={index} className="flex h-7 w-3 items-end overflow-hidden rounded-sm bg-muted">
-                    <span className={cn("w-full", dayDone >= dayPlanned ? "bg-emerald-500" : "bg-amber-500")} style={{ height: `${Math.round((dayDone / dayPlanned) * 100)}%` }} />
-                  </span>
-                ))}
-              </span>
-              <HomePill tone={PLAN_TONE[mtmPlanTone(percent)]}>{percent}%</HomePill>
-            </li>
-          )
-        })}
-      </ul>
-    </HomeCard>
-  )
-}
-
-function statusLabel(status: MtmFieldStatus | "PAUSED", tMap: (key: string) => string): string {
-  return status === "PAUSED" ? S.mtmOnBreak : tMap(`fieldStatus.${FIELD_STATUS_LABEL_KEYS[status]}`)
 }
 
 /* ── Marşrut xəritədə ─────────────────────────────────────────────────── */
