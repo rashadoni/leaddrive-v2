@@ -27,6 +27,7 @@ import {
   type DemoProspectIdentity,
 } from "@/lib/demo-center/journey"
 import { DEMO_JOURNEY_HAPPY_PATH } from "@/lib/demo-center/journey/state"
+import { SUPPORT_DEMO_DRAFT } from "@/components/demo-center/journey/scenes/support-demo-data"
 
 // The checklist lives next to the code that writes it to the database; only the constant is read here.
 vi.mock("@/lib/prisma", () => ({ prisma: {}, logAudit: vi.fn() }))
@@ -45,6 +46,8 @@ describe("the demo's AI agent obeys the product's commitment rules", () => {
   const aiLines = [
     ...DEMO_INBOX_THREADS.flatMap((thread) => thread.messages.filter((message) => message.from === "ai").map((message) => ({ where: thread.id, text: message.text }))),
     ...DEMO_SOURCE_CHANNELS.map((channel) => ({ where: `draft (${channel})`, text: createJourneyRecords(identityFor(channel), NOW).conversation.aiDraft!.text })),
+    // Service Desk: the reply Da Vinci drafts on the ticket.
+    { where: "service desk draft", text: SUPPORT_DEMO_DRAFT },
   ]
 
   it.each(aiLines)("$where passes the guard untouched", ({ text }) => {

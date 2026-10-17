@@ -38,6 +38,7 @@ const BOARD_SCENE = "src/components/demo-center/journey/scenes/board-scene.tsx"
 const DEAL_SCENE = "src/components/demo-center/journey/scenes/deal-scene.tsx"
 const QUOTE_SCENE = "src/components/demo-center/journey/scenes/quote-scene.tsx"
 const SUMMARY_SCENE = "src/components/demo-center/journey/scenes/summary-scene.tsx"
+const SUPPORT_SCENE = "src/components/demo-center/journey/scenes/support-scene.tsx"
 const MTM_SCENE = "src/components/demo-center/journey/scenes/mtm-scene.tsx"
 const PERSONNEL_SCENE = "src/components/demo-center/journey/scenes/personnel-scene.tsx"
 
@@ -165,6 +166,16 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "mtm-place-request": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "«Client is here»: before / proposed" },
   "mtm-results-team": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Results: plan and fact per agent" },
 
+  /* ── Service Desk ── */
+  "sd-queue-kpis": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "Queue counters and «take next»" },
+  "sd-queue-list": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "Ticket list with SLA time left and escalation level" },
+  "sd-ticket-status": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "Ticket status bar and fact strip" },
+  "sd-ticket-thread": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "Comments and the reply box with Da Vinci" },
+  "sd-ticket-sla": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "SLA card: first response and resolution" },
+  "sd-resolve-closure": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "Closure request to the customer" },
+  "sd-rules-sla": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "SLA policies by priority" },
+  "sd-rules-escalation": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "Escalation rules and when they fire" },
+  "sd-results-metrics": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "Agent desk: my figures" },
   /* ── Personnel (Kadr uçotu) ── */
   "prs-today-kpis": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Today: came, late, absent, no check-out; now" },
   "prs-today-requests": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Today: requests awaiting a decision" },
@@ -183,5 +194,5 @@ export function isDemoAnchor(id: string): boolean {
  *  have every one of its anchors rendered — that is what stops a half-built
  *  scene from shipping with a coach mark pointing at nothing. */
 export const DEMO_BUILT_AREAS: readonly DemoJourneyArea[] = [
-  "shell", "summary", "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "mtm", "personnel",
+  "shell", "summary", "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "support", "mtm", "personnel",
 ]

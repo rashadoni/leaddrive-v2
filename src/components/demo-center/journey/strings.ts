@@ -229,6 +229,12 @@ export const DEMO_JOURNEY_STRINGS = {
   personnelApproved: "Təsdiqləndi",
   personnelCorrectedMark: "müraciətlə düzəliş edilib",
   personnelCloseNote: "Bağlanmış ay olduğu kimi saxlanır: tabel və ixrac eyni qalır, sonrakı düzəlişlər ayrıca görünür.",
+  // Service Desk.
+  supportTabHint: "Bu demoda Service Desk bölmələrini bələdçi açır — onun addımını izləyin.",
+  supportYou: (name: string) => `${name} (siz)`,
+  supportEscalationOn: (ticket: string) => `${ticket} üzrə qaydalar nə vaxt işləyir`,
+  supportEscalationFired: "işləyib",
+  supportEscalationNext: "gözlənilir",
   aiSuggestion: "Növbəti addım",
   aiSuggestionBody: "Təklifi hazırlayın və etibarlılıq müddətini 14 günlə məhdudlaşdırın — qərar sürətlənir.",
 } as const

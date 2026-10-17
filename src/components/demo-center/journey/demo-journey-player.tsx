@@ -52,6 +52,7 @@ import { OrientationScene } from "./scenes/orientation-scene"
 import { QuoteScene } from "./scenes/quote-scene"
 import { ScenePending } from "./scenes/scene-pending"
 import { SummaryScene } from "./scenes/summary-scene"
+import { SupportScene } from "./scenes/support-scene"
 import type { DemoJourneyVariant, DemoSceneProps } from "./scene-props"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 import type { DemoLiveCallState } from "./demo-live-call"
@@ -82,6 +83,11 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   deal: DealScene,
   quote: QuoteScene,
   "closed-won": DealScene,
+  "sd-queue": SupportScene,
+  "sd-ticket": SupportScene,
+  "sd-resolve": SupportScene,
+  "sd-rules": SupportScene,
+  "sd-results": SupportScene,
   "mtm-today": MtmScene,
   "mtm-plan": MtmScene,
   "mtm-live": MtmScene,
