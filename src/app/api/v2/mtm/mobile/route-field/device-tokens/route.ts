@@ -5,7 +5,7 @@ import { z } from "zod"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
-import { requireMobilePermission } from "@/lib/mtm/mobile-capabilities"
+import { hasMobileCapability, requireMobilePermission } from "@/lib/mtm/mobile-capabilities"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { pushConfigured } from "@/lib/mtm/push-send"
 
@@ -39,7 +39,17 @@ type MobileAuth = Parameters<Parameters<typeof withMobileRls>[0]>[1]
  * rule; other roles require explicit attendance enrollment. The handler's
  * freshly resolved identity is the sole source of the owner ID.
  */
+/** A manager signed in to the app's manager tabs (2026-10-17) registers his
+ * own address on his team grant; he need not be in attendance himself. */
+function isTeamPrincipal(auth: MobileAuth): boolean {
+  return ["MANAGER", "SUPERVISOR", "ADMIN"].includes(auth.role) && hasMobileCapability(auth.role, "TEAM_READ")
+}
+
 async function ownDeviceAgent(auth: MobileAuth): Promise<string | null> {
+  if (isTeamPrincipal(auth)) {
+    const card = await prisma.mtmAgent.findFirst({ where: { id: auth.agentId, organizationId: auth.orgId, status: "ACTIVE" }, select: { id: true } })
+    return card?.id ?? null
+  }
   if (auth.role !== "AGENT") {
     try {
       await requireAttendanceSelf(prisma, { organizationId: auth.orgId, agentId: auth.agentId, role: auth.role })
@@ -60,7 +70,7 @@ async function ownDeviceAgent(auth: MobileAuth): Promise<string | null> {
  * execution. Recheck under the same feature/employee locks as own requests. */
 async function writeOwnToken(auth: MobileAuth, write: (tx: Prisma.TransactionClient) => Promise<NextResponse>): Promise<NextResponse> {
   try {
-    if (auth.role === "AGENT") return await write(prisma)
+    if (auth.role === "AGENT" || isTeamPrincipal(auth)) return await write(prisma)
     return await prisma.$transaction(async tx => {
       const self = { organizationId: auth.orgId, agentId: auth.agentId, role: auth.role }
       await lockAttendanceRequests(tx, self)
