@@ -174,3 +174,24 @@ No Kafka consumers, offsets or customer replay have been activated.
   exact head must pass actual smoke, static-checks and typecheck before merge;
   a skipped draft check is not accepted as success. K0 live inventory remains
   pending the corrected reviewed delivery. Backup PR863 remains separate.
+
+## 2026-10-17 — next bounded Fund balance reducer preparation
+
+- Historical draft status above is superseded: PR861 merged as
+  `c8c32582ccd54a65e5e7c887643c4226677b5373`; its normal deploy39074203195 is
+  still being verified. K2 synthetic CDC39075079346 succeeded on770d576a1,
+  with raw8source events exact across restart, but legacyexpanded4payloads
+  changed. PR866 full gates and separate serializer fix PR867 remain pending.
+- Created a separate clean current-main worktree/branch for the next pure
+  Fund balance reducer only: `leaddrive-kafka-fund-shadow-20261018` /
+  `codex/kafka-fund-shadow-reducer-20261018`. This is preparation, not a live
+  worker or production rollout; merge is not allowed before predecessor
+  delivery and its own actual verification.
+- Reuse the exact five Fund contracts and independent SQL rebuild formula:
+  one opening, plus signed deltas, every prefix inside NUMERIC(18,4), metadata/
+  archive/reactivation increment version without changing balance. No floating
+  point math, Fund/currentBalance/v1 write, promotion, send or broker dependency.
+  This balance projection must not re-judge historical transaction eligibility
+  from today's archive flag: legacy snapshots may describe an inactive Fund
+  before copying its historical ledger. Full broker/hash/inbox/role boundaries
+  remain later required work, not inferred from a pure reducer test.
