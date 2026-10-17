@@ -208,3 +208,26 @@ No Kafka consumers, offsets or customer replay have been activated.
   are not production TLS, HA, a credential-compromise boundary or business
   projection/replay safety. No customer data, consumers, offsets or replay
   were activated in this phase.
+
+### K2 bounded harness prepared
+
+- Connected the optional synthetic CDC phase to the existing CI-only stack
+  harness. Added a separate path-filtered Ubuntu job sharing the same global
+  disposable-integration concurrency lock; no production secret/environment.
+- The metadata assertion runs inside a read-only transaction with exact
+  fixture DBA/database guards. The runtime uses real TCP/SCRAM auth and
+  SQLSTATE-specific denied operations; it does not accept a syntax or network
+  failure as a permission result. Cold restart retains the same connector,
+  database, slots and Connect offset/config/status topics.
+- Added a diagnostic-only expanded-JSON comparator so an early payload defect
+  cannot hide later header/ID-set/source-order failures. It preserves the
+  original parity failure separately and never replaces the strict raw
+  transport acceptance gate. Ten focused A/B tests pass.
+- All 49 current event-tooling tests, JavaScript/shell syntax, runner policy
+  (69 workflow files), asset gate (27 domains, 86 topics, 5 schemas) and
+  `git diff --check` passed locally. Heavy stack/CDC/DB integration and full
+  TypeScript/build gates are NOT RUN on Contabo by placement policy; GitHub
+  integration remains pending. Unit success is not a runtime receipt.
+- Required PR861 gates are progressing through real database/typecheck work.
+  Its already successful synthetic smoke is unchanged. K2 is checkpointed
+  separately and not marked complete or production ready.

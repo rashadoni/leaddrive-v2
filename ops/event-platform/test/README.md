@@ -1,6 +1,7 @@
 # Disposable event-platform test stack
 
-Status: **K1.2 fixture preparation — infrastructure smoke only.**
+Status: **K1 infrastructure smoke passed in run39072900806; K2 synthetic CDC
+drill prepared, integration receipt pending.** Neither is production activation.
 Current progress and production authorization boundaries remain in the
 [Kafka session journal](../../../docs/kafka-readiness-session-log.md).
 
@@ -84,6 +85,68 @@ a separately sized cap of at least 4 GiB and will reject this fixture setting.
 A later CDC drill must explicitly define its test configuration without
 modifying the production preflight or pretending this small cap is sufficient
 for production outages.
+
+## Synthetic CDC drill (K2)
+
+The separate `event-platform-cdc.yml` job enables the CI-only CDC extension of
+the same harness. Its global disposable-integration concurrency group is shared
+with the infrastructure smoke, so two JVM stacks do not run simultaneously.
+No production environment, secret, SSH alias or endpoint is used.
+
+The drill starts from an empty `event_platform_test` database. A small fixture
+creates only organization/Fund ownership anchors and distinct non-superuser
+application/migration logins. It then applies the **complete, unchanged** real
+foundation migration. The Fund anchor is not the application Fund model or an
+adopted business command. Real RLS, grants, hashes and deferred head/event/outbox
+coherence triggers remain enabled; the fixture does not reimplement them.
+
+The unchanged CDC preparation must first reject the base 64 MiB WAL ceiling
+without creating its role. Only then does the explicit
+[`cdc.compose.yml`](./cdc.compose.yml) test override recreate this run's PG
+container with a finite 4096 MiB ceiling and its existing anonymous volume.
+This is not preallocated WAL space or a production sizing result. Preparation
+runs twice to check its repeatability. Read-only catalog assertions verify
+role attributes/memberships, current effective table/column/sequence grants,
+FORCE RLS, the named cross-tenant SELECT policy and the exact unfiltered
+INSERT-only outbox publication. Actual TCP authentication and denied SQL
+operations distinguish permissions from connection/syntax failures.
+
+Two organizations share an aggregate ID but have distinct tenant-qualified
+keys. Snapshot inserts are physically v2-before-v1 with reverse-sorted UUIDs;
+the connector's actual snapshot query must deliver semantic version order.
+The raw candidate additionally streams v3, stops Connect, commits v4 while it
+is down and starts the same worker again. Config/offset/status topics, connector
+name, source database and logical slot are retained. No offset reset, topic
+deletion or client-data replay is used. Source SQL rows provide expected event
+IDs, envelope JSON, PG-computed payload hashes and timestamps. The strict
+verifier rejects incomplete IDs, altered scalar headers/key/time, JSON loss,
+key partition changes and out-of-order first-seen versions. Identical duplicate
+deliveries at new offsets are permitted, not counted as new business events.
+
+The A/B test uses separate `ld.testexpanded.transport.events.v1` and
+`ld.testraw.transport.events.v1` topics. `expanded` keeps the current production
+template's JsonConverter/JSON expansion; `raw` tests unexpanded existing JSON
+text plus StringConverter. Unicode, null/false/zero, nested objects and empty
+arrays exercise serializer fidelity. A detected current-template defect is
+reported separately from transport metadata and from the raw candidate's strict
+pass. **The production connector template is not changed by this test.** Any
+correction requires actual evidence and its own reviewed delivery.
+
+Successful cleanup deletes only the known test connector and its validated,
+inactive `pgoutput` slot in `event_platform_test`; outer teardown always removes
+only this run's project and disposable volume. On failure there is no host-DB
+or production fallback.
+
+Limits remain explicit: this does not prove concurrent-snapshot writes,
+business/Fund writers or projections, schema compatibility, crash-at-commit
+exactly-once behavior, production TLS/auth/HA, archive/DR, or safe side effects.
+App SQL trusts the selected `app.org_id` context; the application credential
+can change that context. A REPLICATION credential is not an outbox-only
+compromise boundary. The ordinary SQL privilege assertions cover the current
+fixture, not arbitrary future PUBLIC/default grants or a compromised DBA.
+The distinction follows PostgreSQL's
+[logical replication security model](https://www.postgresql.org/docs/16/logical-replication-security.html);
+the actual pinned fixture run remains the evidence for these test results.
 
 Replication factor 1, one fault domain, plaintext test traffic, ephemeral H2,
 and the absence of archive/DR evidence mean this stack **cannot** satisfy the
