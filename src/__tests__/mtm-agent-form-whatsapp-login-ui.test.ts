@@ -5,11 +5,13 @@
  * заходит в приложение, авторизуется через OTP. Одно и то же правило для
  * сотрудников и агентов полевых».
  *
- * So the agent's card asks for a WhatsApp number and no password: nobody but
- * the agent ever knows it (before, a manager typed it and handed it over — on
- * 2026-10-06 one typed it twice and the phone refused both, the card held
- * something else). The real form, rendered with the Russian copy; only the
- * network is stubbed.
+ * So the agent's card asks for a WhatsApp number and no password: the agent
+ * sets their own by a code. Owner, 2026-10-17: «сделай сброс пароля, у меня
+ * нет 3-го номера» — when no code can reach the number, an existing card has
+ * «Сбросить пароль», a password the manager sets and hands over, shown in
+ * clear (2026-10-06: one typed it twice behind the dots and the phone refused
+ * both). The real form, rendered with the Russian copy; only the network is
+ * stubbed.
  */
 import { act, createElement, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
@@ -60,6 +62,11 @@ async function show(open: boolean, card: typeof CARD | null = CARD) {
 }
 
 const field = (id: string) => container.querySelector<HTMLInputElement>(`#${id}`)
+const passwordInputs = () => [...container.querySelectorAll("input")].filter((input) => input.type === "password" || /password/i.test(input.id + input.name))
+const resetButton = () => container.querySelector<HTMLButtonElement>('[data-testid="agent-password-reset-open"]')
+async function click(button: HTMLElement | null) {
+  await act(async () => { button?.dispatchEvent(new MouseEvent("click", { bubbles: true })) })
+}
 const note = () => container.querySelector('[data-testid="agent-code-login-note"]')?.textContent ?? ""
 const alert = () => container.querySelector(".text-red-500")?.textContent ?? ""
 
@@ -103,13 +110,59 @@ afterEach(async () => {
 })
 
 describe("agent card — signing in by a code from WhatsApp", () => {
-  it("has no password field at all, on a new card or an existing one", async () => {
-    for (const card of [null, CARD]) {
-      await show(true, card)
-      expect([...container.querySelectorAll("input")].filter((input) => input.type === "password" || /password/i.test(input.id + input.name))).toEqual([])
-      expect(note()).toBe(ru.mtmForms.codeLoginNote)
-      await show(false, card)
-    }
+  it("has no password field on a new card, and on an existing one only behind «Сбросить пароль»", async () => {
+    await show(true, null)
+    expect(passwordInputs()).toEqual([])
+    expect(resetButton()).toBeNull()
+    expect(note()).toBe(ru.mtmForms.codeLoginNote)
+    await show(false, null)
+
+    await show(true, CARD)
+    expect(note()).toBe(ru.mtmForms.codeLoginNote)
+    expect(passwordInputs()).toEqual([])
+    expect(resetButton()?.textContent).toBe(ru.mtmForms.resetPassword)
+  })
+
+  it("sets the password a manager types after «Сбросить пароль», shown as written", async () => {
+    await show(true, CARD)
+    await click(resetButton())
+    const input = field("agent-password") as HTMLInputElement
+    expect(input.type).toBe("text")
+    expect(container.querySelector('[data-testid="agent-password-reset"]')?.textContent).toContain(ru.mtmForms.passwordResetHint)
+    await type(input, "Fictional-Pass-2026!")
+    await save()
+    expect(writes()).toHaveLength(1)
+    expect(writes()[0]).toMatchObject({ method: "PUT", url: "/api/v1/mtm/agents/agent-1", body: { password: "Fictional-Pass-2026!" } })
+    expect(onSaved).toHaveBeenCalledTimes(1)
+  })
+
+  it("sends no password when the reset was not pressed or the field was left empty", async () => {
+    await show(true, CARD)
+    await type(field("name") as HTMLInputElement, "Renamed Agent")
+    await save()
+    expect("password" in writes()[0].body).toBe(false)
+
+    fetchMock.mockClear()
+    await show(false, CARD)
+    await show(true, CARD)
+    await click(resetButton())
+    await save()
+    expect(writes()).toHaveLength(1)
+    expect("password" in writes()[0].body).toBe(false)
+  })
+
+  it("says the password rules in words when the server finds the password weak", async () => {
+    fetchMock.mockImplementation(async (_url: string, init?: { method?: string }) => init?.method === "PUT"
+      ? { ok: false, status: 400, json: async () => ({ error: "Password must contain a special character", code: "MTM_PASSWORD_WEAK" }) }
+      : { ok: true, status: 200, json: async () => ({ success: true, data: { agents: [] } }) })
+    await show(true, CARD)
+    await click(resetButton())
+    await type(field("agent-password") as HTMLInputElement, "Fictional2026pass")
+    await save()
+    expect(alert()).toBe(ru.mtmForms.passwordRules)
+    expect(onSaved).not.toHaveBeenCalled()
+    // The typed password stays, to be corrected.
+    expect(field("agent-password")?.value).toBe("Fictional2026pass")
   })
 
   it("asks a new card for the number, starting with the country code, and sends no password", async () => {
