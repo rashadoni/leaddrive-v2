@@ -1,19 +1,10 @@
 import { locales, type Locale } from "@/i18n/routing"
 import { organizationLocale } from "@/lib/ticketing/customer-locale"
+import { CALLBACK_TASK_TITLES } from "@/lib/calls/callback-task-titles"
 
-/**
- * The title of the task a «Geri zəng» outcome files for the employee who
- * made the call. It was the English word «Callback» for everybody, so an
- * Azerbaijani or Russian team found an English task in its list. It is
- * written in the employee's own language, the organization's when he has
- * none set — the same rule the briefings follow.
- */
-export const CALLBACK_TASK_TITLES: Record<Locale, string> = {
-  az: "Geri zəng",
-  ru: "Перезвонить",
-  en: "Call back",
-}
+export { CALLBACK_TASK_TITLES }
 
+/** In the employee's own language, the organization's when none is set. */
 export function callbackTaskTitle(input: { preferredLanguage?: string | null; organizationSettings?: unknown }): string {
   const own = (locales as readonly string[]).includes(input.preferredLanguage ?? "") ? (input.preferredLanguage as Locale) : null
   return CALLBACK_TASK_TITLES[own ?? organizationLocale(input.organizationSettings)]

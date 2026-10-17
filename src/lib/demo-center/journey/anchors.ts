@@ -39,6 +39,7 @@ const DEAL_SCENE = "src/components/demo-center/journey/scenes/deal-scene.tsx"
 const QUOTE_SCENE = "src/components/demo-center/journey/scenes/quote-scene.tsx"
 const SUMMARY_SCENE = "src/components/demo-center/journey/scenes/summary-scene.tsx"
 const SUPPORT_SCENE = "src/components/demo-center/journey/scenes/support-scene.tsx"
+const CALLS_SCENE = "src/components/demo-center/journey/scenes/calls-scene.tsx"
 const MTM_SCENE = "src/components/demo-center/journey/scenes/mtm-scene.tsx"
 const PERSONNEL_SCENE = "src/components/demo-center/journey/scenes/personnel-scene.tsx"
 
@@ -176,6 +177,13 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "sd-rules-sla": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "SLA policies by priority" },
   "sd-rules-escalation": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "Escalation rules and when they fire" },
   "sd-results-metrics": { area: "support", scene: SUPPORT_SCENE, productFiles: [], label: "Agent desk: my figures" },
+  /* ── Call Center ── */
+  "cc-log-summary": { area: "voip", scene: CALLS_SCENE, productFiles: [], label: "Call log: 30-day summary" },
+  "cc-log-timeline": { area: "voip", scene: CALLS_SCENE, productFiles: [], label: "Call log: timeline and direction filter" },
+  "cc-call-card": { area: "voip", scene: CALLS_SCENE, productFiles: [], label: "Lead card: phone and the call button" },
+  "cc-call-widget": { area: "voip", scene: CALLS_SCENE, productFiles: [], label: "Call window: end, outcome, callback time" },
+  "cc-promise-alerts": { area: "voip", scene: CALLS_SCENE, productFiles: [], label: "Overdue promise: seller, then managers" },
+  "cc-promise-report": { area: "voip", scene: CALLS_SCENE, productFiles: [], label: "Late callbacks report" },
   /* ── Personnel (Kadr uçotu) ── */
   "prs-today-kpis": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Today: came, late, absent, no check-out; now" },
   "prs-today-requests": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Today: requests awaiting a decision" },
@@ -194,5 +202,5 @@ export function isDemoAnchor(id: string): boolean {
  *  have every one of its anchors rendered — that is what stops a half-built
  *  scene from shipping with a coach mark pointing at nothing. */
 export const DEMO_BUILT_AREAS: readonly DemoJourneyArea[] = [
-  "shell", "summary", "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "support", "mtm", "personnel",
+  "shell", "summary", "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "support", "voip", "mtm", "personnel",
 ]

@@ -42,6 +42,7 @@ import { DemoJourneySidebar } from "./demo-journey-sidebar"
 import { useGuideVoice } from "./demo-guide-voice"
 import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { BoardScene } from "./scenes/board-scene"
+import { CallsScene } from "./scenes/calls-scene"
 import { CampaignScene } from "./scenes/campaign-scene"
 import { DealScene } from "./scenes/deal-scene"
 import { InboxScene } from "./scenes/inbox-scene"
@@ -88,6 +89,9 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   "sd-resolve": SupportScene,
   "sd-rules": SupportScene,
   "sd-results": SupportScene,
+  "cc-log": CallsScene,
+  "cc-call": CallsScene,
+  "cc-promise": CallsScene,
   "mtm-today": MtmScene,
   "mtm-plan": MtmScene,
   "mtm-live": MtmScene,

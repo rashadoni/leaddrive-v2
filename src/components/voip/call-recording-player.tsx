@@ -28,7 +28,9 @@ export function CallRecordingPlayer({
   const [mediaDuration, setMediaDuration] = useState<number | null>(null)
 
   if (!url) {
-    return <span data-testid="call-recording-unavailable" className="text-xs text-muted-foreground">{t("recordingUnavailable")}</span>
+    // A line of its own: in the phone-width call card it follows the contact's
+    // name, and inline the two ran together («Tofiq BabayevQeyd yoxdur»).
+    return <span data-testid="call-recording-unavailable" className="block text-xs text-muted-foreground">{t("recordingUnavailable")}</span>
   }
 
   const retry = () => {

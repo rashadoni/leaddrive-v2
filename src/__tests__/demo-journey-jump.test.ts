@@ -358,7 +358,7 @@ describe("a module of its own: Route & Field", () => {
     expect(current.completedSteps.filter((id) => !id.startsWith("mtm-") && !id.startsWith("prs-"))).toEqual([])
   })
 
-  it("opens Service Desk from the start, walks its five screens and goes on to Route & Field", () => {
+  it("opens Service Desk from the start, walks its five screens and goes on to Call Center", () => {
     const before = start()
     const opened = jump(before, "sd-queue")
     expect(opened.ok).toBe(true)
@@ -370,9 +370,26 @@ describe("a module of its own: Route & Field", () => {
       expect(current.state).toBe("STARTED")
       current = walkSection(current, sectionId)
     }
-    expect(current.sectionId).toBe("mtm-today")
+    expect(current.sectionId).toBe("cc-log")
     expect(sectionStatus(current, manifest, "sd-results")).toBe("done")
     expect(current.completedSteps.filter((id) => !id.startsWith("sd-"))).toEqual([])
+  })
+
+  it("opens Call Center from the start, walks its three screens and goes on to Route & Field", () => {
+    const before = start()
+    const opened = jump(before, "cc-log")
+    expect(opened.ok).toBe(true)
+    expect(opened.snapshot).toMatchObject({ sectionId: "cc-log", stepId: "cc-log-figures", state: "STARTED" })
+    expect(opened.snapshot.records).toEqual(before.records)
+    let current = opened.snapshot
+    for (const sectionId of ["cc-log", "cc-call", "cc-promise"]) {
+      expect(current.sectionId).toBe(sectionId)
+      expect(current.state).toBe("STARTED")
+      current = walkSection(current, sectionId)
+    }
+    expect(current.sectionId).toBe("mtm-today")
+    expect(sectionStatus(current, manifest, "cc-promise")).toBe("done")
+    expect(current.completedSteps.filter((id) => !id.startsWith("cc-"))).toEqual([])
   })
 
   it("lets the prospect leave it for a story module, which starts over as usual", () => {
