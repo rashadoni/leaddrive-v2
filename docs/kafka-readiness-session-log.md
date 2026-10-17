@@ -349,3 +349,20 @@ No Kafka consumers, offsets or customer replay have been activated.
   existing invoker deferred coherence trigger checks that row. Writes stay
   limited to the worker's shadow build. Actual restricted-role, crash, duplicate,
   tenant-isolation and fixed-cutoff parity tests are NOT RUN at this point.
+
+### Serializer correction checkpoint
+
+- Checkpoint `275ceb90b` pushed as draft PR867, depending on PR866. The raw
+  renderer now preserves every production serializer property; only a fixed
+  test target/TLS/identity/routing allowlist differs. Expanded mode has exactly
+  four explicit legacy-only overrides, and raw is the default. Reverted
+  serializer values/legacy-only keys are rejected rather than normalized.
+- All 55 narrow tooling tests PASS after resource inspection. Asset gate
+  (27 domains/86 topics/5 schemas), runner policy (69 files) and diff check
+  PASS. Heavy changed-template integration and full required gates are NOT RUN
+  locally; PR867 remains draft until the predecessor delivery phase allows its
+  own proof. Previous candidate success is evidence for the fix, not a passing
+  result on these new exact bytes.
+- Current release order remains PR861 artifact/feature inventory verification,
+  then protected delivery of the ready backup/CDC predecessors, then the
+  serializer correction. No caller/worker/connector was activated by this code.
