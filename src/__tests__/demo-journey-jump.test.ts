@@ -341,9 +341,9 @@ describe("a module of its own: Route & Field", () => {
     expect(reopened.snapshot.records.deal?.wonAt).not.toBeNull()
   })
 
-  it("walks through its six screens, on to Personnel, and hands over to the last screen with the story staged", () => {
+  it("walks through its six screens, on to Personnel and Contracts, and hands over to the last screen with the story staged", () => {
     let current = jump(start(), "mtm-today").snapshot
-    for (const sectionId of ["mtm-today", "mtm-plan", "mtm-live", "mtm-visit", "mtm-place", "mtm-results", "prs-today", "prs-timesheet", "prs-risk", "prs-month"]) {
+    for (const sectionId of ["mtm-today", "mtm-plan", "mtm-live", "mtm-visit", "mtm-place", "mtm-results", "prs-today", "prs-timesheet", "prs-risk", "prs-month", "ctr-list", "ctr-approve", "ctr-sign", "ctr-control"]) {
       expect(current.sectionId).toBe(sectionId)
       // Neither module moves the lead story.
       expect(current.state).toBe("STARTED")
@@ -354,8 +354,9 @@ describe("a module of its own: Route & Field", () => {
     expect(current.state).toBe("CLOSED_WON")
     expect(sectionStatus(current, manifest, "mtm-results")).toBe("done")
     expect(sectionStatus(current, manifest, "prs-month")).toBe("done")
+    expect(sectionStatus(current, manifest, "ctr-control")).toBe("done")
     // The lead story's own steps were not done in the prospect's name.
-    expect(current.completedSteps.filter((id) => !id.startsWith("mtm-") && !id.startsWith("prs-"))).toEqual([])
+    expect(current.completedSteps.filter((id) => !id.startsWith("mtm-") && !id.startsWith("prs-") && !id.startsWith("ctr-"))).toEqual([])
   })
 
   it("opens Service Desk from the start, walks its five screens and goes on to Call Center", () => {
@@ -390,6 +391,23 @@ describe("a module of its own: Route & Field", () => {
     expect(current.sectionId).toBe("mtm-today")
     expect(sectionStatus(current, manifest, "cc-promise")).toBe("done")
     expect(current.completedSteps.filter((id) => !id.startsWith("cc-"))).toEqual([])
+  })
+
+  it("opens Contracts from the start and walks its four screens to the last one", () => {
+    const before = start()
+    const opened = jump(before, "ctr-list")
+    expect(opened.ok).toBe(true)
+    expect(opened.snapshot).toMatchObject({ sectionId: "ctr-list", stepId: "ctr-list-figures", state: "STARTED" })
+    expect(opened.snapshot.records).toEqual(before.records)
+    let current = opened.snapshot
+    for (const sectionId of ["ctr-list", "ctr-approve", "ctr-sign", "ctr-control"]) {
+      expect(current.sectionId).toBe(sectionId)
+      expect(current.state).toBe("STARTED")
+      current = walkSection(current, sectionId)
+    }
+    expect(current.sectionId).toBe("summary")
+    expect(sectionStatus(current, manifest, "ctr-control")).toBe("done")
+    expect(current.completedSteps.filter((id) => !id.startsWith("ctr-"))).toEqual([])
   })
 
   it("lets the prospect leave it for a story module, which starts over as usual", () => {

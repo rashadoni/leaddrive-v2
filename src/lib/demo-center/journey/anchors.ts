@@ -42,6 +42,7 @@ const SUPPORT_SCENE = "src/components/demo-center/journey/scenes/support-scene.t
 const CALLS_SCENE = "src/components/demo-center/journey/scenes/calls-scene.tsx"
 const MTM_SCENE = "src/components/demo-center/journey/scenes/mtm-scene.tsx"
 const PERSONNEL_SCENE = "src/components/demo-center/journey/scenes/personnel-scene.tsx"
+const CONTRACTS_SCENE = "src/components/demo-center/journey/scenes/contracts-scene.tsx"
 
 /* Real product files */
 const LEADS_LIST = "src/app/(dashboard)/leads/page.tsx"
@@ -192,6 +193,15 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "prs-risk": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Suspicious records" },
   "prs-n1t": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "N-1t timesheet for accounting" },
   "prs-month-close": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Close the month" },
+  /* ── Contracts ── */
+  "ctr-list-stats": { area: "contracts", scene: CONTRACTS_SCENE, productFiles: [], label: "Contracts list: the six figures" },
+  "ctr-list-table": { area: "contracts", scene: CONTRACTS_SCENE, productFiles: [], label: "Contracts table with the quote's draft" },
+  "ctr-detail-header": { area: "contracts", scene: CONTRACTS_SCENE, productFiles: [], label: "Contract card: header, status and actions" },
+  "ctr-approve-chain": { area: "contracts", scene: CONTRACTS_SCENE, productFiles: [], label: "Approval chain: levels, SLA, decisions" },
+  "ctr-sign-envelope": { area: "contracts", scene: CONTRACTS_SCENE, productFiles: [], label: "E-signature: envelope and signer" },
+  "ctr-sign-customer": { area: "contracts", scene: CONTRACTS_SCENE, productFiles: [], label: "The signer's page" },
+  "ctr-control-renewals": { area: "contracts", scene: CONTRACTS_SCENE, productFiles: [], label: "Lifecycle: renewal alerts and approval queue" },
+  "ctr-control-bell": { area: "contracts", scene: CONTRACTS_SCENE, productFiles: [], label: "Renewal alert in the managers' bell" },
 }
 
 export function isDemoAnchor(id: string): boolean {
@@ -202,5 +212,5 @@ export function isDemoAnchor(id: string): boolean {
  *  have every one of its anchors rendered — that is what stops a half-built
  *  scene from shipping with a coach mark pointing at nothing. */
 export const DEMO_BUILT_AREAS: readonly DemoJourneyArea[] = [
-  "shell", "summary", "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "support", "voip", "mtm", "personnel",
+  "shell", "summary", "campaigns", "inbox", "leads", "tasks", "deals", "quotes", "support", "voip", "mtm", "personnel", "contracts",
 ]

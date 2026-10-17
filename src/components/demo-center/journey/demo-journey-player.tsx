@@ -44,6 +44,7 @@ import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { BoardScene } from "./scenes/board-scene"
 import { CallsScene } from "./scenes/calls-scene"
 import { CampaignScene } from "./scenes/campaign-scene"
+import { ContractsScene } from "./scenes/contracts-scene"
 import { DealScene } from "./scenes/deal-scene"
 import { InboxScene } from "./scenes/inbox-scene"
 import { LeadScene } from "./scenes/lead-scene"
@@ -102,6 +103,10 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   "prs-timesheet": PersonnelScene,
   "prs-risk": PersonnelScene,
   "prs-month": PersonnelScene,
+  "ctr-list": ContractsScene,
+  "ctr-approve": ContractsScene,
+  "ctr-sign": ContractsScene,
+  "ctr-control": ContractsScene,
   summary: SummaryScene,
 }
 

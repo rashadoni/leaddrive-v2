@@ -130,6 +130,13 @@ export function contractDate(date: Date | null | undefined, locale: Locale): str
   return formatDate(date, locale, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }) || "—"
 }
 
+/** How loud a renewal alert is: red within two weeks of the end, amber within a month. */
+export function renewalAlertType(daysBeforeExpiry: number): "error" | "warning" | "info" {
+  if (daysBeforeExpiry <= 14) return "error"
+  if (daysBeforeExpiry <= 30) return "warning"
+  return "info"
+}
+
 export function renewalAlertText(locale: Locale, input: { contractNumber: string; title: string | null; company: string | null; endDate: Date | null; daysBeforeExpiry: number }) {
   const text = TEXT[locale]
   const named = [input.title, input.company ? `(${input.company})` : null].filter(Boolean).join(" ")

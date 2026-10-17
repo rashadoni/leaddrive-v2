@@ -44,6 +44,7 @@ const NAV_GROUP_TO_MODULE: Record<string, string> = {
   Support: "support",
   "Route & Field": "mtm",
   Personnel: "mtm",
+  "Contracts Control": "contracts",
 }
 
 /** Pulls `{ href, group }` pairs out of nav-items.ts without importing it
@@ -78,7 +79,7 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
   })
 
   it("shows only the groups the owner chose and only real sidebar routes", () => {
-    expect(manifest.navGroups).toEqual(["crm", "sales", "omnichannel", "marketing", "support", "mtm"])
+    expect(manifest.navGroups).toEqual(["crm", "sales", "omnichannel", "marketing", "support", "mtm", "contracts"])
     expect(manifest.visibleRoutes).toContain("/mtm/attendance")
     expect(manifest.visibleRoutes).toContain("/tickets")
     const entries = navEntries()
@@ -149,6 +150,10 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
       "prs-timesheet",
       "prs-risk",
       "prs-month",
+      "ctr-list",
+      "ctr-approve",
+      "ctr-sign",
+      "ctr-control",
       "summary",
     ])
   })
@@ -285,6 +290,8 @@ describe("Guided journey coverage", () => {
     // 2026-10-17: Route & Field, a module of its own.
     mtm: { included: 16, total: 20, percent: 80 },
     personnel: { included: 12, total: 15, percent: 80 },
+    // 2026-10-17: Contracts, a module of its own.
+    contracts: { included: 16, total: 20, percent: 80 },
   }
 
   it("meets the 80 % target in every shown product area", () => {

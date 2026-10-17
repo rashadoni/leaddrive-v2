@@ -229,6 +229,14 @@ export const DEMO_JOURNEY_STRINGS = {
   callsAlertSeller: (name: string) => `${name} (satıcı) — söz verilən vaxt`,
   callsAlertManagers: "Rəhbərlər — 45 dəqiqə sonra",
   callsAlertNote: "Hər iki bildiriş yalnız «Geri zəng» tapşırığı hələ açıqdırsa gəlir: satıcı tapşırığı bağlayıbsa, heç kimə yazılmır.",
+  // Contracts.
+  contractsTabHint: "Bu demoda Müqavilə nəzarəti bölmələrini bələdçi açır — onun addımını izləyin.",
+  contractsOpenDraftHint: "Bu addımda yuxarıdakı qaralamanı açın — təklifdən yaranan müqavilə.",
+  contractsArrowSubmit: "«Razılaşmaya göndər» basın",
+  contractsArrowSend: "«İmza üçün göndər» basın",
+  contractsRejectHint: "Demoda bu müqavilə təsdiqlənir — bələdçinin oxunu izləyin.",
+  contractsCustomerCaption: (name: string) => `Müştərinin ekranı: ${name} e-poçtdakı linki açıb`,
+  contractsBellCaption: "Rəhbərlərin bildirişi — səhər işi xəbərdarlığı vaxtı çatanda yazır",
   aiSuggestion: "Növbəti addım",
   aiSuggestionBody: "Təklifi hazırlayın və etibarlılıq müddətini 14 günlə məhdudlaşdırın — qərar sürətlənir.",
 } as const

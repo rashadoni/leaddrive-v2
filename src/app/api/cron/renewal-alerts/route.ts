@@ -15,15 +15,9 @@ import { prisma } from "@/lib/prisma"
 import { requireCronAuth } from "@/lib/cron-auth"
 import { createNotification } from "@/lib/notifications"
 import { runWithRlsBypass } from "@/lib/rls-context"
-import { contractRecipientLocale, renewalAlertText } from "@/lib/contract-lifecycle/notification-text"
+import { contractRecipientLocale, renewalAlertText, renewalAlertType } from "@/lib/contract-lifecycle/notification-text"
 
 export const dynamic = "force-dynamic"
-
-function notificationType(daysBeforeExpiry: number): "error" | "warning" | "info" {
-  if (daysBeforeExpiry <= 14) return "error"
-  if (daysBeforeExpiry <= 30) return "warning"
-  return "info"
-}
 
 export async function POST(req: NextRequest) {
   // Authenticate before entering the bypass: an unauthenticated request must
@@ -112,7 +106,7 @@ export async function POST(req: NextRequest) {
               createNotification({
                 organizationId: orgId,
                 userId: r.id,
-                type: notificationType(alert.daysBeforeExpiry),
+                type: renewalAlertType(alert.daysBeforeExpiry),
                 ...textFor(r.preferredLanguage),
                 entityType: "contract",
                 entityId: alert.contractId,
