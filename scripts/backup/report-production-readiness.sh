@@ -52,10 +52,10 @@ AWS_BIN="$AWS_ROOT/v2/current/bin/aws"
 AWS_PROVENANCE="$AWS_ROOT/LEADDRIVE_PROVENANCE"
 CUSTODY_VERIFIER_SHA256="a02101a2e9ae313c7486d31337b9efe771ea2127d565b059d6e2427df86eca91"
 ARCHIVE_VERIFIER_SHA256="c6d4caabb1f44db3036c79d59b63253f961fa8ce29780724c9d15667dac644a6"
-POSTGRES_BACKUP_SHA256="b2b0ca62ab77afe5ff2cda88351f71a038163b791484adc886cad806fe07edff"
+POSTGRES_BACKUP_SHA256="7a49edc70a9f9ba0711006b7aa986ca3c60f84c92bbcf2a1a7e3349e52cc8b42"
 SECRETS_SNAPSHOT_SHA256="16d4bf083ad2549cd34e1bd89a53ee958f1625605235fe5370c8acecc401de99"
 RUNTIME_FILES_SNAPSHOT_SHA256="d5fe33b4b0b0e581194b3aff770eca45a14a493774ec314340146bd69475e53e"
-RESTORE_CANARY_SHA256="af743a9bd8df3daa6ba6b60d90141daea28629f6140d8d12d1623f6b083f5d9e"
+RESTORE_CANARY_SHA256="c4f2aadacf8618f643667aa305a6f2197badc0d23a1acf16f43f765f72304e36"
 PII_PROOF_SHA256="e83f3fc65c56e0dc8db7eb26e47780c0901917908c05d7aa6552792a37f99e18"
 CANARY_SQL_SHA256="5c3a9bf2b14c84c4deafa31525ac23518ba2290ab32a7cf5f66e2d05d4b249c9"
 ISSUES=0
@@ -184,23 +184,27 @@ require_config_key() {
 check_service_secret_file() {
   local key="$1"
   local path="${CONFIG[$key]:-}"
-  local owner mode
+  local owner group mode backup_uid backup_gid
 
   [ -n "$path" ] || return 0
   if [[ "$path" != /* ]] || [ ! -f "$path" ] || [ -L "$path" ]; then
     fail "$key does not name a regular absolute non-symlink file"
     return 0
   fi
-  owner="$(stat -c '%U:%G' "$path" 2>/dev/null || true)"
+  owner="$(stat -c '%u' "$path" 2>/dev/null || true)"
+  group="$(stat -c '%g' "$path" 2>/dev/null || true)"
   mode="$(stat -c '%a' "$path" 2>/dev/null || true)"
+  backup_uid="$(id -u leaddrive-backup 2>/dev/null || true)"
+  backup_gid="$(id -g leaddrive-backup 2>/dev/null || true)"
   case "$mode" in
-    440|600|640) ;;
-    *) fail "$key file must use mode 0440, 0600 or 0640 (observed mode redacted from output)" ;;
+    400|600) ;;
+    *) fail "$key file must use private mode 0400 or 0600 (observed mode redacted from output)" ;;
   esac
-  case "$owner:$mode" in
-    leaddrive-backup:*:600|root:leaddrive-backup:440|root:leaddrive-backup:640) ;;
-    *) fail "$key file ownership is not service-user 0600 or root:service-group 0440/0640" ;;
-  esac
+  if [ -z "$backup_uid" ] || [ -z "$backup_gid" ] \
+    || [ "$backup_uid" = 0 ] || [ "$backup_gid" = 0 ] \
+    || [ "$owner:$group" != "$backup_uid:$backup_gid" ]; then
+    fail "$key file must belong to the backup service account and group"
+  fi
   if command -v runuser >/dev/null 2>&1 \
     && runuser -u leaddrive-backup -- /bin/sh -c 'test -r "$1"' sh "$path"; then
     pass "$key file is readable by the backup service user"

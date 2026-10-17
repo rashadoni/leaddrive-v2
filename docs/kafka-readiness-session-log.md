@@ -55,6 +55,56 @@ been changed in this phase.
 - Independent review found no blocker in the inspection design, and noted the inherited psql-argv credential pattern. Replaced that pattern with standard-library URI parsing and environment-only libpq credentials; unknown/duplicate options and read-only overrides fail closed. Seven targeted tooling tests now pass, including credential-argv and override regressions.
 - Checkpoint `3231e6dbb` was pushed to the task branch. Draft PR: https://github.com/rashadoni/leaddrive-v2/pull/860. No mandatory branch/environment gate was added or weakened. Next: complete existing required GitHub checks, merge this internal tooling, verify deployment, then dispatch the aggregate inventory from current main.
 
+## 2026-10-17 — K0 delivery and backup prerequisite correction
+
+- PR #860 completed all five required checks on exact head
+  `074028396c208fec187c7a69a2976bf2308b2c4b`; static-checks and typecheck were
+  actually successful, not skipped. Merged through normal GitHub protection as
+  `88f658e68d43951e2f265243224bd980a2c5a66a`. Its deployment and the new live
+  inventory are pending verification; merge alone is not an activation receipt.
+- Public production before this merge was healthy on exact artifact
+  `9ead36ce7ef64cb16d521acad9bc3b210812a3c9`, deploy run `39066347230` SUCCESS.
+- Existing read-only backup-readiness workflow run `39069172504` failed with
+  `machine_ready=no`, 26 issues and nine explicit enterprise gaps. Missing
+  pinned tools, inactive/uncommissioned recovery runners and missing durable
+  evidence were reported. This does not establish that every other backup
+  mechanism is absent, and is not a Kafka runtime or restore-drill receipt.
+- Bounded `install-backup-tools` commissioning attempt `39069469912` failed
+  before downloading/installing tools at the shared root-ownership guard for
+  database connection files. Its transient runner fence was cleaned up; no
+  backup, restore, customer-data repair, consumer, offset reset or replay ran.
+  No unchanged retry was started.
+- Code review identified a contradictory password-file contract: scratch
+  provisioning already creates service-owned 0600 pgpass, while commissioning,
+  deployment and the source runner required root/group-readable authority.
+  Libpq ignores Unix pgpass files accessible to group/world users. Source live
+  ownership is still unverified; do not infer bad database credentials or
+  silently change ownership/credential contents.
+- Prepared an isolated fix in branch `codex/backup-pgpass-contract-20261017`:
+  production guards require the exact backup service UID/GID and private
+  0400/0600; source/offline runners require their invoking UID and those private
+  modes. CA/root-owned environment protections remain distinct. Updated helper
+  SHA pins consistently and retained historical TLS-remediation allowlist
+  entries without rewriting historical evidence or signatures.
+- Added extracted-function guard regressions plus an opt-in disposable CI
+  PostgreSQL authentication test. Local guard tests pass; actual libpq
+  integration is NOT RUN on Contabo and awaits its GitHub job. Full builds and
+  full typechecks are NOT RUN locally by host policy.
+- Separately prepared draft PR #861, head
+  `1a37a4f44bc03b4df7bdf685fad12d6b2355016d`, for the pinned private disposable
+  PostgreSQL/Kafka/Connect/Registry stack. Its actual runtime smoke and heavy
+  checks are intentionally not started while the predecessor release is in
+  progress. RF1/plaintext synthetic test setup is explicitly NOT production
+  Kafka readiness. Existing production topology and recovery evidence gates
+  were not weakened.
+
+### Current execution position
+
+PR #860 is merged; verify its normal deployment and exact artifact, then run
+the new aggregate production inventory. Finish/push the separate pgpass fix
+as a draft with explicit paths; run its full gates and real libpq test in CI
+before merge. The disposable Kafka stack remains a prepared draft. Production
+Kafka consumers, offsets and replay remain unchanged.
 ## 2026-10-17 — disposable test-stack preparation during K0 checks
 
 - PR #860 is ready on exact head `074028396c208fec187c7a69a2976bf2308b2c4b`. Tooling validation, secret scan, runner policy and pr-scope passed; static-checks/typecheck were still running. GitHub auto-merge is disabled, so the task keeps one local checks watcher (no duplicate workflow attempt).
@@ -174,3 +224,19 @@ No Kafka consumers, offsets or customer replay have been activated.
   exact head must pass actual smoke, static-checks and typecheck before merge;
   a skipped draft check is not accepted as success. K0 live inventory remains
   pending the corrected reviewed delivery. Backup PR863 remains separate.
+
+## 2026-10-17 — K1 merged; backup contract rebased onto current delivery
+
+- Superseding the historical draft/pending entries above: PR861 passed all
+  five required checks on `7d768b33c0ed68202a3d5c5878210a7a00fc0d98` and
+  actual disposable smoke `39072900806` succeeded, including teardown. Normal
+  protected merge produced `c8c32582ccd54a65e5e7c887643c4226677b5373`.
+  Deploy `39074203195` is pending; production verification is not yet claimed.
+- Merged current main into the separate PR863 branch before its real libpq
+  and full gates. Only the append-only session journal conflicted; retained
+  both historical branch entries and appended this superseding status. No
+  canonical dirty checkout or foreign worktree was changed.
+- This branch corrects pgpass ownership/modes in code and synchronized pins,
+  not live file contents or owners. Live aggregate inventory and operational
+  commissioning still await a deployed current-main receipt. No Kafka
+  consumers, source offsets or customer replay have been activated.
