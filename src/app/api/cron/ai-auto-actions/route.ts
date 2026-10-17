@@ -30,6 +30,7 @@ import { evaluateAdvisorExecutionGuardrails } from "@/lib/ai/advisor/execution-g
 import { persistAdvisorSignalSnapshot } from "@/lib/ai/advisor/snapshots"
 import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 import { isSupportAiEnabled } from "@/lib/ai/support-feature"
+import { enrollContactInJourney } from "@/lib/journey-enroll"
 
 const SUPPORT_AUTOMATION_FEATURES = new Set([
   "ai_auto_acknowledge",
@@ -550,17 +551,10 @@ async function runAutoPaymentReminder(orgId: string, now: Date, shadow: boolean)
           },
         })
 
-        if (journey && invoice.contactId) {
-          await prisma.journeyEnrollment.create({
-            data: {
-              organizationId: orgId,
-              journeyId: journey.id,
-              contactId: invoice.contactId,
-              status: "active",
-              currentStepIndex: 0,
-            },
-          })
-
+        const enrolled = journey && invoice.contactId
+          ? await enrollContactInJourney({ organizationId: orgId, journeyId: journey.id, contactId: invoice.contactId })
+          : null
+        if (enrolled) {
           // Notify finance team
           const admins = await prisma.user.findMany({
             where: { organizationId: orgId, role: { in: ["admin", "manager"] }, isActive: true },
@@ -1149,20 +1143,8 @@ async function executeApprovedShadowActions(now: Date): Promise<number> {
             },
           })
           if (journey) {
-            const existing = await prisma.journeyEnrollment.findFirst({
-              where: { contactId: payload.contactId, journeyId: journey.id, status: "active" },
-            })
-            if (!existing) {
-              await prisma.journeyEnrollment.create({
-                data: {
-                  organizationId: action.organizationId,
-                  journeyId: journey.id,
-                  contactId: payload.contactId,
-                  status: "active",
-                  currentStepIndex: 0,
-                },
-              })
-            }
+            // Already enrolled (active or paused) is a no-op inside the helper.
+            await enrollContactInJourney({ organizationId: action.organizationId, journeyId: journey.id, contactId: payload.contactId })
           }
           break
         }
