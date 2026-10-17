@@ -29,6 +29,8 @@ import {
   type DemoJourneyState,
 } from "@/lib/demo-center/journey"
 import { getHelpVideoForSlug } from "@/content/help/video-assets"
+import { DEMO_JOURNEY_STRINGS } from "@/components/demo-center/journey/strings"
+import { activeSections } from "@/lib/demo-center/journey"
 
 const ROOT = process.cwd()
 const read = (relative: string) => readFileSync(path.join(ROOT, relative), "utf8")
@@ -375,6 +377,22 @@ describe("Guided journey state machine", () => {
     expect(journeyProgressPercent("COMPLETED")).toBe(100)
     expect(journeyProgressPercent("LEAD_CREATED")).toBeGreaterThan(journeyProgressPercent("AI_REPLIED"))
     expect(journeyProgressPercent("EXPIRED")).toBe(0)
+  })
+})
+
+describe("The last screen", () => {
+  it("says what every module gives a business — a new module cannot ship without its line", () => {
+    // Owner's criterion for each module (2026-10-13): at the end, what you did
+    // and how it ties to sales. The «what you did» is the steps' own results;
+    // the business line is written once per module, keyed by its menu route.
+    // The modules as moduleProgress groups them: one per menu route.
+    const routes = [...new Set(activeSections(PROSPECT_TO_CLOSED_WON).filter((section) => section.navGroup !== "demo").map((section) => section.route.replace(/\/\[[a-zA-Z]+\]$/, "")))]
+    expect(routes.length).toBeGreaterThan(5)
+    for (const route of routes) {
+      expect(DEMO_JOURNEY_STRINGS.moduleValue[route], route).toMatch(/\S/)
+    }
+    // And no line for a module the demo no longer has.
+    expect(Object.keys(DEMO_JOURNEY_STRINGS.moduleValue).sort()).toEqual([...routes].sort())
   })
 })
 

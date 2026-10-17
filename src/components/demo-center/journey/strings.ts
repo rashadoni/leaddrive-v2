@@ -106,6 +106,26 @@ export const DEMO_JOURNEY_STRINGS = {
     "Hər addım yalnız real hərəkətdən sonra tamamlanmış sayılır.",
   ],
   summaryDone: "Tamamlandı",
+  // The last screen, per module the prospect walked: what they did (the
+  // steps' own results) and one line on what the module gives a business.
+  summaryYouDid: "Siz etdiniz",
+  summaryYouSaw: "Baxdınız",
+  summaryForBusiness: "Biznes üçün",
+  summaryModuleSteps: (done: number, total: number) => `${done} / ${total} addım`,
+  /** Keyed by the module's menu route — a module without a line fails demo-journey-manifest.test.ts. */
+  moduleValue: {
+    "/campaigns": "Hər müraciətin hansı kampaniyadan gəldiyi görünür — büdcəni nəticə verən kanala yönəltmək olur.",
+    "/inbox": "Bütün kanalların yazışması bir qutuda — müraciət itmir, AI cavabı yalnız sizin təsdiqinizlə gedir.",
+    "/leads": "Lid itmir: kim, haradan gəlib və nə qədər hazırdır — hamısı bir kartda.",
+    "/boards": "Razılaşdırılan növbəti addım tapşırıq kimi lövhədə qalır — iş unudulmur.",
+    "/deals": "Sövdələşmələr mərhələlərlə gedir — hansının harada olduğu bir baxışda görünür.",
+    "/quotes": "Təklif CRM-də hazırlanır və izlənir; qəbul edilmiş kimi qeyd olunanda müqavilə qaralaması özü yaranır.",
+    "/tickets": "Müraciətlər SLA saatı ilə idarə olunur — gecikən bilet rəhbərə görünür, müştəri cavabsız qalmır.",
+    "/inbox/voip": "Hər zəng və verilən hər söz CRM-də qalır — geri zəng vaxtında xatırladılır.",
+    "/mtm": "Sahə komandasının günü görünür: plan, vizitin sübutu və nəticə — hesabatı heç kim əl ilə yazmır.",
+    "/mtm/attendance": "İş vaxtı telefondakı faktlarla, biometriyasız sayılır — tabel özü hazırlanır.",
+    "/contracts": "Müqavilə təklifdən imzaya qədər bir yerdə gedir, müddətlər vaxtında xatırladılır.",
+  } as Record<string, string>,
   summarySkipped: "Keçildi",
   summaryAttribution: (campaign: string, amount: string) => `Mənbə «${campaign}» → qazanılmış sövdələşmə ${amount}`,
   demoButtonHint: "Bu düymə demoda simulyasiya edilir",
