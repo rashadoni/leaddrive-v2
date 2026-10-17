@@ -126,6 +126,9 @@ const HELP_VIDEO_ENTRIES_RAW = [
   // else.
   { slug: "demo-support", routes: [] },
   { slug: "demo-calls", routes: [] },
+  { slug: "demo-mtm", routes: [] },
+  { slug: "demo-personnel", routes: [] },
+  { slug: "demo-contracts", routes: [] },
 ] as const satisfies readonly HelpVideoEntry[]
 
 export const HELP_VIDEO_ENTRIES: readonly HelpVideoEntry[] = HELP_VIDEO_ENTRIES_RAW
