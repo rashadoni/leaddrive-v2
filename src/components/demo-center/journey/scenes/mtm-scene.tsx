@@ -1,10 +1,13 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react"
 import dynamic from "next/dynamic"
+import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowLeft, BellRing, CheckCircle2, ChevronLeft, ChevronRight, Clock, GripVertical, History, MapPin, MessageSquare, Radio, RefreshCw, Route as RouteIcon, Send, Sparkles, TrendingUp } from "lucide-react"
+import { ArrowLeft, BarChart3, BellRing, Check, CheckCircle2, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Clock, Clock3, FileSpreadsheet, Grid2X2, GripVertical, HelpCircle, History, MapPin, Plus, Radio, RefreshCw, Route as RouteIcon, Search, Send, Sparkles, TrendingUp, X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 import { HomeAttentionCard, attentionRowCount } from "@/components/mtm/home-attention-card"
 import { HomeBaseCard, HomeQualityCard } from "@/components/mtm/home-insight-cards"
 import { HomeTeamCard } from "@/components/mtm/home-team-card"
@@ -13,13 +16,19 @@ import { LiveMapDaySteps } from "@/components/mtm/live-map-day-steps"
 import { LiveMapLayersControl } from "@/components/mtm/live-map-layers-control"
 import { LiveMapRoster } from "@/components/mtm/live-map-roster"
 import { LiveMapTools } from "@/components/mtm/live-map-tools"
-import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
-import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
+import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
+import { VisitReviewView, visitStatusClasses } from "@/app/(dashboard)/mtm/visits/visit-review-panel"
+import { useOpenForText } from "@/app/(dashboard)/mtm/visits/visit-left-open"
+import { PageDescription } from "@/components/page-description"
+import { AGENT_PERIOD_PRESETS, agentPeriodPreset } from "@/components/mtm/agent-period-view"
+import { MtmTeamResultsView } from "@/components/mtm/team-results"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
-import { createDateFormatter } from "@/lib/format-date"
+import { createDateFormatter, formatDate, formatDateTime } from "@/lib/format-date"
+import { MTM_ROUTE_TIME_SLOTS } from "@/lib/mtm/route-time-slots"
 import { isLiveMapAgentPositionVisible, type LiveMapAgent } from "@/lib/mtm-types"
 import { defaultWeek, fieldNow, finishedDaysPercent, homeTeam, percentOf, planCard, todayPlan, weekComparison, weekTotals } from "@/lib/mtm/home-dashboard"
 import { buildHomeBase } from "@/lib/mtm/home-insights"
+import { buildExplainableKpi } from "@/lib/mtm/explainable-kpi"
 import { applyRosterFilters, foldRosterText, ROSTER_DEFAULT_VIEW, sortRoster, type RosterFilters, type RosterView } from "@/lib/mtm/live-map-roster"
 import {
   routePlannerDayMinutes,
@@ -29,8 +38,10 @@ import {
   suggestRoutePlannerStops,
   type RoutePlannerCandidate,
 } from "@/lib/mtm/route-planner"
+import { isMtmNavigationItemActive, MTM_PRIMARY_NAVIGATION } from "@/lib/mtm/navigation"
 import { mtmPlanTone } from "@/lib/mtm/team-results"
-import { mtmVisitOpenFor } from "@/lib/mtm/visit-left-open"
+import { medianVisitDurationMinutes } from "@/lib/mtm/visit-duration-median"
+import { visitStatusKey } from "@/lib/mtm/visit-review"
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
@@ -47,12 +58,15 @@ import {
   mtmDemoElvinRoute,
   mtmDemoElvinSteps,
   mtmDemoHome,
+  mtmDemoKpiFacts,
   mtmDemoLeftOpen,
   mtmDemoRosterAgents,
   mtmDemoPlaceRequest,
   mtmDemoPlannerCandidates,
   mtmDemoToday,
-  mtmDemoVisit,
+  mtmDemoVisitHistory,
+  mtmDemoVisitReview,
+  type MtmDemoHistoryVisit,
 } from "./mtm-demo-data"
 
 /**
@@ -86,15 +100,15 @@ const SCREEN_OF: Record<string, MtmScreen> = {
   "mtm-results": "results",
 }
 
-/** The module's own menu (MTM_PRIMARY_NAVIGATION) and the screen each lights up. */
-const NAV: ReadonlyArray<{ key: "today" | "routes" | "calendar" | "map" | "visits" | "results"; screens: readonly MtmScreen[] }> = [
-  { key: "today", screens: ["today"] },
-  { key: "routes", screens: ["plan", "place"] },
-  { key: "calendar", screens: [] },
-  { key: "map", screens: ["live"] },
-  { key: "visits", screens: ["visit"] },
-  { key: "results", screens: ["results"] },
-]
+/** The page each screen is in the product: the module's menu lights up as it does there. */
+const PATH_OF: Record<MtmScreen, string> = {
+  today: "/mtm",
+  plan: "/mtm/routes/plan",
+  live: "/mtm/map",
+  visit: "/mtm/visits",
+  place: "/mtm/routes",
+  results: "/mtm/analytics",
+}
 
 const PLAN_TONE: Record<ReturnType<typeof mtmPlanTone>, HomeTone> = { good: "green", warn: "amber", bad: "red", none: "zinc" }
 
@@ -114,31 +128,43 @@ export function MtmScene(props: DemoSceneProps) {
 
   return (
     <div data-testid="demo-scene-mtm" className="space-y-4" onClickCapture={keepInDemo}>
-      <nav aria-label={t("primaryNavigationLabel")} className="flex flex-wrap gap-1 rounded-2xl border border-zinc-200 bg-card p-1 dark:border-zinc-700">
-        {NAV.map((item) => {
-          const active = item.screens.includes(screen)
-          return (
-            <button
-              key={item.key}
-              type="button"
-              aria-current={active ? "page" : undefined}
-              onClick={() => (active ? undefined : hint(S.mtmTabHint))}
-              className={cn(
-                "rounded-xl px-3 py-1.5 text-sm font-medium transition-colors",
-                active ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {t(item.key)}
-            </button>
-          )
-        })}
-      </nav>
+      {/* The product's MtmModuleNavigation, drawn from its own list: it reads the session to filter the tools. */}
+      <div className="mb-2 border-b border-zinc-200/80 pb-3 dark:border-zinc-700/80">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+          <nav aria-label={t("primaryNavigationLabel")} className="-mx-1 flex min-w-0 flex-wrap gap-1 px-1 sm:flex-1">
+            {MTM_PRIMARY_NAVIGATION.map((item) => {
+              const active = isMtmNavigationItemActive(item.href, PATH_OF[screen])
+              const Icon = item.icon
+              return (
+                <button
+                  key={item.href}
+                  type="button"
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => (active ? undefined : hint(S.mtmTabHint))}
+                  className={cn(
+                    "flex min-h-11 shrink-0 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors",
+                    active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  <span>{t(item.labelKey)}</span>
+                </button>
+              )
+            })}
+          </nav>
+          <button type="button" onClick={() => hint(S.mtmTabHint)} className="flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted/60 sm:w-auto dark:border-zinc-700">
+            <Grid2X2 className="h-4 w-4" aria-hidden="true" />
+            <span>{t("allTools")}</span>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
       {screen === "today" && <TodayScreen {...props} />}
       {screen === "plan" && <PlanScreen {...props} />}
       {screen === "live" && <LiveScreen {...props} />}
       {screen === "visit" && <VisitScreen {...props} />}
       {screen === "place" && <PlaceScreen {...props} />}
-      {screen === "results" && <ResultsScreen />}
+      {screen === "results" && <ResultsScreen {...props} />}
     </div>
   )
 }
@@ -311,112 +337,151 @@ function TodayScreen({ snapshot, hint }: DemoSceneProps) {
 
 /* ── Marşrut xəritədə ─────────────────────────────────────────────────── */
 
+/**
+ * «Yeni marşrut» as `MtmRoutePlanner` draws it, with its rules: the map opens
+ * on the clients nobody has seen this month, a point on the map adds its
+ * client, «Marşrut təklif et» adds the nearest of those not yet in the route
+ * (`suggestRoutePlannerStops`), a moved stop takes the time of the place it
+ * lands on, every time can be changed and every stop removed. The planner
+ * saves through the API, so its frame is drawn here with its words.
+ */
 interface PlannedStop {
   readonly key: string
+  readonly customerId: string
+  readonly contactId: string | null
   readonly name: string
   readonly placeName: string
   readonly address: string | null
-  readonly contactId: string | null
   readonly latitude: number | null
   readonly longitude: number | null
   readonly plannedTime: string
 }
 
-function stopsFrom(candidates: readonly RoutePlannerCandidate[]): PlannedStop[] {
-  let previous: string | null = null
-  return candidates.map((candidate) => {
-    const plannedTime = routePlannerNextSlot(previous)
-    previous = plannedTime
-    return { key: candidate.key, name: candidate.name, placeName: candidate.placeName, address: candidate.address, contactId: candidate.contactId, latitude: candidate.latitude, longitude: candidate.longitude, plannedTime }
-  })
+function plannedStop(candidate: RoutePlannerCandidate, plannedTime: string): PlannedStop {
+  return { key: candidate.key, customerId: candidate.customerId, contactId: candidate.contactId, name: candidate.contactId ? candidate.name : candidate.placeName, placeName: candidate.placeName, address: candidate.address, latitude: candidate.latitude, longitude: candidate.longitude, plannedTime }
 }
 
-/** Times follow the order, as the product's planner re-times a moved stop. */
-function retimed(stops: readonly PlannedStop[]): PlannedStop[] {
-  let previous: string | null = null
-  return stops.map((stop) => {
-    const plannedTime = routePlannerNextSlot(previous)
-    previous = plannedTime
-    return { ...stop, plannedTime }
-  })
+/** The planner's own rule: times stay with the positions. */
+function retimed(order: readonly PlannedStop[], times: readonly string[]): PlannedStop[] {
+  const slots = [...times].sort()
+  return order.map((stop, index) => ({ ...stop, plannedTime: slots[index] ?? routePlannerNextSlot(slots[slots.length - 1]) }))
 }
 
 function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const t = useTranslations("mtmRoutePlanner")
   const locale = useLocale()
-  const format = useBakuFormat()
   const today = mtmDemoToday(snapshot.startedAt)
   const day = addDays(today, 1)
   const candidates = useMemo(() => mtmDemoPlannerCandidates(), [])
-  const places = useMemo(() => routePlannerPlaces(candidates), [candidates])
-  const suggestion = useMemo(() => stopsFrom(suggestRoutePlannerStops({ candidates, route: [] })), [candidates])
-  const suggested = snapshot.ui["mtm.planSuggested"] === true
-  const published = snapshot.ui["mtm.planPublished"] === true
-  const [order, setOrder] = useState<PlannedStop[] | null>(null)
+  const allPlaces = useMemo(() => routePlannerPlaces(candidates), [candidates])
+  const categories = useMemo(() => [...new Set(candidates.map((candidate) => candidate.category).filter((value): value is string => Boolean(value)))].sort(), [candidates])
+  const [onlyDue, setOnlyDue] = useState(true)
+  const [category, setCategory] = useState("")
+  const [query, setQuery] = useState("")
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const stops = suggested ? order ?? suggestion : []
+  const [focusPlaceId, setFocusPlaceId] = useState<string | null>(null)
+  const [stops, setStops] = useState<PlannedStop[]>(() => snapshot.ui["mtm.planSuggested"] === true
+    ? (() => { let previous: string | undefined; return suggestRoutePlannerStops({ candidates, route: [] }).map((candidate) => { previous = routePlannerNextSlot(previous); return plannedStop(candidate, previous) }) })()
+    : [])
+  const dragIndex = useRef<number | null>(null)
   const agent = MTM_DEMO_AGENTS.find((candidate) => candidate.id === MTM_DEMO_PLAN_AGENT)!
-  const monthLabel = createDateFormatter(locale, { timeZone: "UTC", month: "long" }).format(new Date(`${day}T12:00:00.000Z`))
-  const due = places.filter((place) => place.dueThisMonth).length
+  const monthLabel = formatDate(`${day}T12:00:00.000Z`, locale, { month: "long", timeZone: "UTC" })
+  const dayLabel = formatDate(`${day}T12:00:00.000Z`, locale, { weekday: "short", day: "numeric", month: "long", timeZone: "UTC" })
+  const routeDayLabel = formatDate(`${day}T12:00:00.000Z`, locale, { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" })
+  const places = useMemo(() => allPlaces.filter((place) => (!onlyDue || place.dueThisMonth)
+    && (!category || place.candidates.some((candidate) => candidate.category === category))), [allPlaces, category, onlyDue])
+  const duePlaces = allPlaces.filter((place) => place.dueThisMonth).length
+  const searchResults = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase(locale)
+    if (needle.length < 2) return []
+    return allPlaces.filter((place) => [place.name, place.address ?? "", ...place.candidates.map((candidate) => candidate.name)]
+      .some((text) => text.toLocaleLowerCase(locale).includes(needle))).slice(0, 8)
+  }, [allPlaces, locale, query])
   const lengthKm = routePlannerLengthKm(stops)
   const dayMinutes = routePlannerDayMinutes(stops.map((stop) => stop.plannedTime))
 
-  const press = (stepId: string, path: string) => {
+  const addCandidates = (added: readonly RoutePlannerCandidate[]) => setStops((current) => {
+    const next = [...current]
+    for (const candidate of added) {
+      if (next.some((stop) => stop.key === candidate.key)) continue
+      next.push(plannedStop(candidate, routePlannerNextSlot(next[next.length - 1]?.plannedTime)))
+    }
+    return next
+  })
+  const moveStop = (from: number, to: number) => setStops((current) => {
+    if (from === to || from < 0 || to < 0 || from >= current.length || to >= current.length) return current
+    const order = [...current]
+    const [moved] = order.splice(from, 1)
+    order.splice(to, 0, moved)
+    return retimed(order, current.map((stop) => stop.plannedTime))
+  })
+  const removeStop = (key: string) => setStops((current) => {
+    const left = current.filter((stop) => stop.key !== key)
+    return retimed(left, left.map((stop) => stop.plannedTime))
+  })
+  const suggest = () => {
     if (reviewMode) {
       hint(S.reviewOnly)
       return
     }
-    if (step?.id !== stepId) {
-      hint(S.hintFollow(step?.title ?? ""))
+    const picked = suggestRoutePlannerStops({ candidates, route: stops })
+    if (picked.length === 0) {
+      toast.info(t("suggestNothing", { month: monthLabel }))
       return
     }
-    dispatch({ type: "ui", path, value: true })
+    addCandidates(picked)
+    toast.success(t("suggestAdded", { count: picked.length }))
+    if (step?.id === "mtm-plan-suggest") dispatch({ type: "ui", path: "mtm.planSuggested", value: true })
   }
   const publish = () => {
-    if (!suggested) {
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
+    if (stops.length === 0) {
       hint(t("needStops"))
       return
     }
-    press("mtm-plan-publish", "mtm.planPublished")
-  }
-  const move = (from: number, to: number) => {
-    if (to < 0 || to >= stops.length || from === to) return
-    const next = [...stops]
-    const [moved] = next.splice(from, 1)
-    next.splice(to, 0, moved)
-    setOrder(retimed(next))
+    if (step?.id !== "mtm-plan-publish") {
+      hint(S.hintFollow(step?.title ?? ""))
+      return
+    }
+    toast.success(t("published"))
+    dispatch({ type: "ui", path: "mtm.planPublished", value: true })
   }
 
   return (
     <div className="space-y-3" data-testid="mtm-route-planner">
       <header className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex h-9 items-center gap-1 rounded-full border border-zinc-200 bg-card px-3 text-sm font-medium dark:border-zinc-700"><ArrowLeft className="h-4 w-4" aria-hidden="true" />{t("back")}</span>
+        <button type="button" onClick={() => hint(S.mtmTabHint)} className="inline-flex h-9 items-center gap-1 rounded-full border border-zinc-200 bg-card px-3 text-sm font-medium hover:bg-muted/60 dark:border-zinc-700"><ArrowLeft className="h-4 w-4" aria-hidden="true" />{t("back")}</button>
         <h1 className="text-lg font-semibold">{t("title")}</h1>
-        <HomePill tone={published ? "green" : "amber"}>{published ? S.mtmPublishedBadge : t("draftBadge")}</HomePill>
-        <span className="inline-flex h-9 items-center rounded-full border border-zinc-200 bg-card px-3 text-sm font-semibold dark:border-zinc-700">{agent.name}</span>
-        <span className="inline-flex h-9 items-center gap-1 rounded-full border border-zinc-200 bg-card px-2 text-sm dark:border-zinc-700">
-          <ChevronLeft className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-          <span className="font-semibold first-letter:uppercase">{format.day(day)}</span>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-        </span>
+        <HomePill tone="amber">{t("draftBadge")}</HomePill>
+        <label className="inline-flex h-9 items-center rounded-full border border-zinc-200 bg-card pl-3 pr-1 text-sm dark:border-zinc-700">
+          <span className="sr-only">{t("agent")}</span>
+          <select value={agent.id} onChange={() => hint(S.demoButtonHint)} className="h-8 max-w-[220px] bg-transparent pr-1 font-semibold outline-none">
+            {MTM_DEMO_AGENTS.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
+          </select>
+        </label>
+        <div className="inline-flex h-9 items-center gap-0.5 rounded-full border border-zinc-200 bg-card px-1 text-sm dark:border-zinc-700">
+          <button type="button" aria-label={t("prevDay")} onClick={() => hint(S.demoButtonHint)} className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-muted"><ChevronLeft className="h-4 w-4" aria-hidden="true" /></button>
+          <span className="px-1 font-semibold first-letter:uppercase">{dayLabel}</span>
+          <button type="button" aria-label={t("nextDay")} onClick={() => hint(S.demoButtonHint)} className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-muted"><ChevronRight className="h-4 w-4" aria-hidden="true" /></button>
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" onClick={() => hint(S.demoButtonHint)}>{t("save")}</Button>
-          <Button onClick={publish} disabled={published} {...(suggested && !published ? demoTarget("mtm-plan-publish") : {})}>
-            <Send aria-hidden="true" />{t("publish")}
-          </Button>
+          <Button onClick={publish} {...(stops.length > 0 && snapshot.ui["mtm.planPublished"] !== true ? demoTarget("mtm-plan-publish") : {})}><Send aria-hidden="true" />{t("publish")}</Button>
         </div>
       </header>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div data-tour-id="mtm-plan-map" className="relative h-[460px] overflow-hidden rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
+        <div data-tour-id="mtm-plan-map" className="relative h-[560px] overflow-hidden rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
           <RoutePlannerMap
             places={places}
             stops={stops.map((stop) => ({ key: stop.key, latitude: stop.latitude, longitude: stop.longitude }))}
             selectedPlaceId={selectedPlaceId}
-            focusPlaceId={null}
+            focusPlaceId={focusPlaceId}
             onSelectPlace={setSelectedPlaceId}
-            onAdd={() => hint(S.demoButtonHint)}
+            onAdd={(candidate) => addCandidates([candidate])}
             words={{
               label: t("mapLabel"),
               dueThisMonth: t("legendDue", { month: monthLabel }),
@@ -430,9 +495,37 @@ function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
               ].filter(Boolean).join(" · "),
             }}
           />
-          <div className="pointer-events-none absolute left-3 top-3 z-[500] flex flex-wrap gap-2">
-            <span className="h-9 rounded-full bg-orange-500 px-3 text-sm font-semibold leading-9 text-white shadow-sm">{t("onlyDue", { month: monthLabel, count: due })}</span>
-            <span className="h-9 rounded-full border border-zinc-200 bg-white px-3 text-sm font-semibold leading-9 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">{t("all", { count: places.length })}</span>
+          <div className="pointer-events-none absolute inset-x-3 top-3 z-[500] flex flex-wrap items-start gap-2">
+            <div className="pointer-events-auto relative">
+              <label className="flex h-10 w-[300px] max-w-full items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                <Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <span className="sr-only">{t("search")}</span>
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("search")} className="min-w-0 flex-1 bg-transparent outline-none" />
+              </label>
+              {searchResults.length > 0 ? (
+                <ul className="absolute left-0 right-0 top-11 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                  {searchResults.map((place) => (
+                    <li key={place.customerId}>
+                      <button type="button" className="block w-full rounded-lg px-3 py-1.5 text-left text-sm hover:bg-muted" onClick={() => { setFocusPlaceId(place.customerId); setSelectedPlaceId(place.customerId); setQuery("") }}>
+                        <span className="block truncate font-medium">{place.name}</span>
+                        {place.address ? <span className="block truncate text-xs text-muted-foreground">{place.address}</span> : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            <button type="button" aria-pressed={onlyDue} onClick={() => setOnlyDue(true)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", onlyDue ? "bg-orange-500 text-white" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+              {t("onlyDue", { month: monthLabel, count: duePlaces })}
+            </button>
+            <button type="button" aria-pressed={!onlyDue} onClick={() => setOnlyDue(false)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", !onlyDue ? "bg-orange-500 text-white" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+              {t("all", { count: allPlaces.length })}
+            </button>
+            {categories.map((value) => (
+              <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory((current) => (current === value ? "" : value))} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-medium shadow-sm", category === value ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+                {t("category", { category: value })}
+              </button>
+            ))}
           </div>
           <div className="absolute bottom-3 left-3 z-[500] flex flex-wrap items-center gap-3 rounded-full bg-white/95 px-3 py-1.5 text-xs shadow-sm dark:bg-zinc-900/95">
             <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-full bg-orange-500" />{t("legendDue", { month: monthLabel })}</span>
@@ -443,13 +536,11 @@ function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
 
         <aside data-tour-id="mtm-plan-route" className="flex min-w-0 flex-col rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
           <div className="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
-            <h2 className="text-[15px] font-semibold first-letter:uppercase">{t("routeOf", { day: format.day(day) })}</h2>
+            <h2 className="text-[15px] font-semibold first-letter:uppercase">{t("routeOf", { day: routeDayLabel })}</h2>
             <div className="mt-1 flex flex-wrap gap-1.5">
               <HomePill tone={stops.length > 0 ? "green" : "zinc"}>{t("stops", { count: stops.length })}</HomePill>
               {stops.length > 1 ? <HomePill tone="zinc">{t("km", { km: lengthKm.toLocaleString(locale, { maximumFractionDigits: 1 }) })}</HomePill> : null}
-              {dayMinutes !== null && stops.length > 0 ? (
-                <HomePill tone="zinc">{dayMinutes % 60 === 0 ? t("durationHours", { hours: dayMinutes / 60 }) : t("duration", { hours: Math.floor(dayMinutes / 60), minutes: dayMinutes % 60 })}</HomePill>
-              ) : null}
+              {dayMinutes !== null ? <HomePill tone="zinc">{dayMinutes % 60 === 0 ? t("durationHours", { hours: dayMinutes / 60 }) : t("duration", { hours: Math.floor(dayMinutes / 60), minutes: dayMinutes % 60 })}</HomePill> : null}
             </div>
           </div>
           {stops.length === 0 ? (
@@ -459,39 +550,37 @@ function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
               {stops.map((stop, index) => (
                 <li
                   key={stop.key}
-                  draggable={!published}
-                  onDragStart={() => setDragIndex(index)}
+                  draggable
+                  tabIndex={0}
+                  onDragStart={() => { dragIndex.current = index }}
                   onDragOver={(event: DragEvent<HTMLLIElement>) => event.preventDefault()}
                   onDrop={(event: DragEvent<HTMLLIElement>) => {
                     event.preventDefault()
-                    if (dragIndex !== null) move(dragIndex, index)
-                    setDragIndex(null)
+                    if (dragIndex.current !== null) moveStop(dragIndex.current, index)
+                    dragIndex.current = null
                   }}
+                  aria-label={t("stopAria", { position: index + 1, name: stop.name })}
                   className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-card px-2 py-2 dark:border-zinc-700"
                 >
-                  <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" aria-hidden="true" />
+                  <span className="cursor-grab text-muted-foreground"><GripVertical className="h-4 w-4" aria-hidden="true" /></span>
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[12px] font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">{index + 1}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-semibold">{stop.name}</span>
                     <span className="block truncate text-[11px] text-muted-foreground">{stop.contactId ? stop.placeName : stop.address}</span>
                   </span>
-                  <span className="h-7 rounded-full bg-muted px-2 text-[11px] font-semibold leading-7 tabular-nums">{stop.plannedTime}</span>
+                  <select aria-label={t("time")} value={stop.plannedTime} onChange={(event) => setStops((current) => current.map((item) => (item.key === stop.key ? { ...item, plannedTime: event.target.value } : item)))} className="h-7 rounded-full bg-muted px-2 text-[11px] font-semibold tabular-nums outline-none">
+                    {MTM_ROUTE_TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}
+                  </select>
+                  <button type="button" aria-label={t("remove")} onClick={() => removeStop(stop.key)} className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><X className="h-4 w-4" aria-hidden="true" /></button>
                 </li>
               ))}
             </ol>
           )}
           <div className="space-y-2 border-t border-zinc-100 p-3 dark:border-zinc-800">
-            <Button
-              variant="outline"
-              className="w-full border-primary/50 bg-primary/5 font-semibold text-primary"
-              onClick={() => press("mtm-plan-suggest", "mtm.planSuggested")}
-              disabled={suggested}
-              {...(suggested ? {} : demoTarget("mtm-plan-suggest"))}
-            >
+            <Button variant="outline" className="w-full border-primary/50 bg-primary/5 font-semibold text-primary" onClick={suggest} {...(snapshot.ui["mtm.planSuggested"] === true ? {} : demoTarget("mtm-plan-suggest"))}>
               <Sparkles aria-hidden="true" />{t("suggest")}
             </Button>
             <p className="text-center text-[11px] leading-4 text-muted-foreground">{t("suggestNote", { month: monthLabel })}</p>
-            {published ? <p role="status" className="rounded-xl bg-emerald-50 p-2 text-center text-xs font-medium text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">{t("published")}</p> : null}
           </div>
         </aside>
       </div>
@@ -731,20 +820,32 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
   )
 }
 
-/* ── Vizitin sübutu ───────────────────────────────────────────────────── */
+/* ── Vizitlər ─────────────────────────────────────────────────────────── */
 
+/**
+ * «Vizitlər» as `/mtm/visits` lays it out for a manager with a visit opened:
+ * the page heading, the product's own review card (`VisitReviewView`, the
+ * very component the page draws once its answer has loaded), the visits
+ * going on now, the ones the agents left open, and today's history. Only the
+ * reminder is the demo's: the product's button sends a real message.
+ */
 function VisitScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
-  const tVisits = useTranslations("mtmVisitsPage")
-  const format = useBakuFormat()
+  const t = useTranslations("mtmVisitsPage")
+  const tNav = useTranslations("nav")
+  const tFilters = useTranslations("mtmFilters")
+  const locale = useLocale()
   const today = mtmDemoToday(snapshot.startedAt)
-  const visit = useMemo(() => mtmDemoVisit(today), [today])
+  const now = useMemo(() => new Date(mtmDemoAt(today, MTM_DEMO_CLOCK)), [today])
+  const review = useMemo(() => mtmDemoVisitReview(today), [today])
+  const history = useMemo(() => mtmDemoVisitHistory(today), [today])
   const leftOpen = useMemo(() => mtmDemoLeftOpen(today), [today])
-  const place = useMemo(() => visitPlaceSummary(visit.placeInput), [visit])
+  const openForText = useOpenForText()
   const reminded = snapshot.ui["mtm.reminded"] === true
-  const minutes = Math.round((Date.parse(visit.checkOutAt) - Date.parse(visit.checkInAt)) / 60_000)
-  const openMinutes = Math.round((Date.parse(mtmDemoAt(today, MTM_DEMO_CLOCK)) - Date.parse(leftOpen.since)) / 60_000)
-  const openFor = mtmVisitOpenFor(openMinutes)
-  const openForText = tVisits(openFor.unit === "days" ? "openForDays" : openFor.unit === "hours" ? "openForHours" : "openForMinutes", { count: openFor.value })
+  const active = history.filter((visit) => visit.status === "CHECKED_IN")
+  const median = medianVisitDurationMinutes(history)
+  const confirmed = history.filter((visit) => visitPlaceSummary(visit.place).verdict === "at_point").length
+  const dateTime = (value: string) => formatDateTime(value, locale, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: MTM_DEMO_TIMEZONE }) || "—"
+  const since = (value: string) => formatDateTime(value, locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: MTM_DEMO_TIMEZONE }) || "—"
 
   const remind = () => {
     if (reviewMode) {
@@ -759,95 +860,195 @@ function VisitScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <Panel className="space-y-4 p-4">
-        <div data-tour-id="mtm-visit-card" className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-lg font-semibold">{visit.place}</h2>
-              <p className="text-sm text-muted-foreground">{visit.doctor} · {visit.specialty} · {visit.address}</p>
-              <p className="mt-1 text-sm">{visit.agent}</p>
-            </div>
-            <HomePill tone="green">{S.mtmVisitClosed}</HomePill>
-          </div>
-          <dl className="grid grid-cols-3 gap-2 text-sm">
-            <Fact label={tVisits("colCheckIn")} value={format.clock(visit.checkInAt)} />
-            <Fact label={tVisits("colCheckOut")} value={format.clock(visit.checkOutAt)} />
-            <Fact label={S.mtmDuration} value={S.mtmMinutes(minutes)} />
-          </dl>
-          <VisitPlaceBadge place={place} showDistanceDetail />
-          <section>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{S.mtmPhotos}</h3>
-            <VisitPhotoGrid
-              photos={visit.photos}
-              formatTime={(value) => format.clock(value)}
-              openLabel={(index) => S.mtmPhotoOpen(index + 1)}
-              titleLabel={(index) => S.mtmPhotoOpen(index + 1)}
-            />
-          </section>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <section className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{S.mtmPresentationTitle}</h3>
-              <p className="mt-1 text-sm font-medium">{visit.presentation.title}</p>
-              <p className="text-xs text-muted-foreground">{S.mtmPresentationShown(visit.presentation.slides, visit.presentation.minutes)}</p>
-            </section>
-            <section className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{S.mtmSignature}</h3>
-              {/* eslint-disable-next-line @next/next/no-img-element -- a static sample, not a tenant upload */}
-              <img src={visit.signature} alt={S.mtmSignature} className="mt-1 h-16 w-auto" />
-            </section>
-          </div>
-          <section className="rounded-xl bg-muted/40 p-3 text-sm">
-            <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground"><MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />{S.mtmNote}</h3>
-            <p className="mt-1">{visit.note}</p>
-          </section>
+    <div className="space-y-6" data-testid="mtm-visits-guided-history">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-2">
+          <PageDescription icon={CheckSquare} title={t("title")} description={t("subtitle")} />
+          <Button variant="outline" size="sm" onClick={() => hint(S.demoButtonHint)} className="border-orange-200 bg-orange-50/60 text-orange-800 hover:bg-orange-100 dark:border-orange-900/60 dark:bg-orange-950/20 dark:text-orange-300">
+            <HelpCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />{tNav("help")}
+          </Button>
         </div>
-      </Panel>
+        <Button className="min-h-11" onClick={() => hint(S.demoButtonHint)}><Plus className="mr-2 h-4 w-4" aria-hidden="true" />{t("add")}</Button>
+      </div>
 
-      <Panel className="h-fit p-4">
-        <div data-tour-id="mtm-visit-left-open" className="space-y-3">
-          <h3 className="text-[15px] font-semibold">{tVisits("leftOpenTitle", { count: 1 })}</h3>
-          <p className="text-xs leading-relaxed text-muted-foreground">{tVisits("leftOpenHint")}</p>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/30">
-            <p className="font-medium">{leftOpen.agent}</p>
-            <p className="text-xs text-muted-foreground">{leftOpen.place} · {leftOpen.doctor}</p>
-            <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-300">{tVisits("leftOpenSince", { since: format.short(leftOpen.since), openFor: openForText })}</p>
+      <div data-tour-id="mtm-visit-card">
+        <VisitReviewView data={review} closeHref="/mtm/visits" now={now} />
+      </div>
+
+      {active.length > 0 ? (
+        <section className="rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800" aria-labelledby="team-active-visits-title">
+          <div className="border-b border-zinc-200 p-4 dark:border-zinc-800 sm:p-5">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-blue-500 ring-4 ring-blue-100 dark:ring-blue-950" aria-hidden="true" />
+              <h2 id="team-active-visits-title" className="font-semibold text-foreground">{t("teamActiveTitle", { count: active.length })}</h2>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">{t("teamActiveHint")}</p>
           </div>
-          {reminded ? (
-            <p role="status" className="rounded-xl bg-emerald-50 p-2 text-center text-xs font-medium text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">{tVisits("reminded")}</p>
-          ) : (
-            <Button className="w-full" onClick={remind} {...demoTarget("mtm-visit-remind")}>
-              <BellRing aria-hidden="true" />{tVisits("remindAgent")}
-            </Button>
-          )}
+          <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            {active.map((visit) => (
+              <li key={visit.id}>
+                <button type="button" onClick={() => hint(S.demoButtonHint)} className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40 sm:px-5">
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-foreground">{visit.customer}</span>
+                    <span className="block truncate text-sm text-muted-foreground">{visit.agent} · {t("activeSince", { time: dateTime(visit.checkInAt) })}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section data-tour-id="mtm-visit-left-open" data-testid="mtm-visits-left-open" className="rounded-2xl border border-amber-200 bg-amber-50/60 shadow-sm dark:border-amber-900 dark:bg-amber-950/20" aria-labelledby="left-open-visits-title">
+        <div className="border-b border-amber-200 p-4 dark:border-amber-900 sm:p-5">
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />
+            <h2 id="left-open-visits-title" className="font-semibold text-foreground">{t("leftOpenTitle", { count: 1 })}</h2>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{t("leftOpenHint")}</p>
         </div>
-      </Panel>
+        <ul className="divide-y divide-amber-200 dark:divide-amber-900">
+          <li className="flex min-h-14 flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium text-foreground">{leftOpen.place}</span>
+              <span className="block truncate text-sm text-muted-foreground">
+                {leftOpen.agent} · <span className="font-medium text-amber-800 dark:text-amber-300">{t("leftOpenSince", { since: since(leftOpen.since), openFor: openForText(leftOpen.since, now) })}</span>
+              </span>
+            </span>
+            {/* The product's RemindAgentButton, drawn: the real one sends a message to the agent's phone. */}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={reminded}
+              onClick={remind}
+              {...(reminded ? {} : demoTarget("mtm-visit-remind"))}
+              className="min-h-9 shrink-0 border-amber-300 bg-white text-amber-900 hover:bg-amber-50 dark:border-amber-700 dark:bg-transparent dark:text-amber-200"
+            >
+              {reminded ? <Check aria-hidden="true" /> : <BellRing aria-hidden="true" />}
+              {reminded ? t("reminded") : t("remindAgent")}
+            </Button>
+          </li>
+        </ul>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800" aria-labelledby="visit-history-title">
+        <header className="space-y-4 border-b border-zinc-200 p-4 dark:border-zinc-800 sm:p-5">
+          <h2 id="visit-history-title" className="text-lg font-semibold text-foreground">{t("historyTitle")}</h2>
+          <MtmFilterBar testId="mtm-visits-filters">
+            <MtmFilterSearch value="" onChange={() => hint(S.demoButtonHint)} delayMs={0} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tFilters("clearSearch")} />
+            <MtmFilterSelect testId="mtm-visits-range" label={t("rangeLabel")} value="today" emptyValue="today" showValue allLabel={t("rangeToday")} options={[{ value: "today", label: t("rangeToday") }]} onChange={() => hint(S.demoButtonHint)} />
+            <MtmFilterSelect testId="mtm-visits-status" label={t("statusFilterLabel")} value="all" emptyValue="all" allLabel={t("all")} options={[{ value: "all", label: `${t("all")} (${history.length})` }]} onChange={() => hint(S.demoButtonHint)} />
+            <MtmFilterSelect testId="mtm-visits-sort" label={tFilters("sort")} value="date_desc" emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")} options={[{ value: "date_desc", label: t("sortDateDesc") }]} onChange={() => hint(S.demoButtonHint)} />
+          </MtmFilterBar>
+          <MtmResultLine aside={<span>{t("statTotal")}: {history.length} · {t("statCheckedOut")}: {history.length - active.length} · {t("statMedianDuration")}: {median == null ? "—" : `${median} ${t("min")}`} · {t("statGpsConfirmed")}: {confirmed}</span>}>
+            <span role="status" className="font-medium text-foreground">{t("resultCount", { count: history.length })}</span>
+          </MtmResultLine>
+        </header>
+        <div className="p-3 sm:p-5">
+          <div className="hidden overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 xl:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50 text-left">
+                  <th className="px-4 py-3 font-medium">{t("colCustomer")}</th>
+                  <th className="px-4 py-3 font-medium">{t("colAgent")}</th>
+                  <th className="px-4 py-3 font-medium">{t("colStatus")}</th>
+                  <th className="px-4 py-3 font-medium">{t("colTiming")}</th>
+                  <th className="px-4 py-3 font-medium">{t("colDuration")}</th>
+                  <th className="px-4 py-3 font-medium">{t("colGps")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((visit) => (
+                  <tr key={visit.id} className="border-b last:border-0">
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-foreground">{visit.customer}</span>
+                      <p className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground">{visit.address}</p>
+                    </td>
+                    <td className="px-4 py-3 text-foreground">{visit.agent}</td>
+                    <td className="px-4 py-3"><VisitStatusPill status={visit.status} /></td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-foreground">{dateTime(visit.checkInAt)}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{visit.checkOutAt ? t("finishedAt", { time: dateTime(visit.checkOutAt) }) : t("notFinished")}</p>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{visit.duration != null ? `${visit.duration} ${t("min")}` : "—"}</td>
+                    <td className="px-4 py-3"><VisitGps visit={visit} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="grid gap-3 xl:hidden">
+            {history.map((visit) => (
+              <article key={visit.id} className="rounded-xl border border-zinc-200 bg-background p-4 dark:border-zinc-800">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-semibold text-foreground">{visit.customer}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{visit.agent} · {dateTime(visit.checkInAt)}</p>
+                  </div>
+                  <VisitStatusPill status={visit.status} />
+                </div>
+                <div className="mt-3"><VisitGps visit={visit} /></div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
 
-/** A card in the MTM home screen's own frame (home-parts.tsx CARD). */
-function Panel({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn("rounded-2xl border border-zinc-200 bg-card text-card-foreground shadow-[0_1px_3px_rgba(0,0,0,0.05)] dark:border-zinc-700", className)}>{children}</div>
+/** The history's status pill, as the page's own `statusBadge` draws it. */
+function VisitStatusPill({ status }: { status: string }) {
+  const t = useTranslations("mtmVisitsPage")
+  const Icon = status === "CHECKED_IN" ? Clock : CheckCircle2
+  return (
+    <span className={`inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${visitStatusClasses(status)}`}>
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      {t(visitStatusKey(status))}
+    </span>
+  )
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+/** The history's GPS cell: the product's place badge, and «Ünvan yoxlanılır» while the agent's report on the pin waits. */
+function VisitGps({ visit }: { visit: MtmDemoHistoryVisit }) {
+  const t = useTranslations("mtmVisitsPage")
   return (
-    <div className="rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-700">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-semibold tabular-nums">{value}</dd>
-    </div>
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <VisitPlaceBadge place={visitPlaceSummary(visit.place)} />
+      {visit.locationRequest === "SUBMITTED" ? (
+        <span data-testid="mtm-visit-location-request" className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">{t("locationRequestWaiting")}</span>
+      ) : null}
+    </span>
   )
 }
 
 /* ── «Müştəri buradadır» ──────────────────────────────────────────────── */
 
+/**
+ * «Marşrutlar → Təsdiqlər» as `/mtm/routes?view=approvals` shows it: the
+ * routes heading and its tabs, and the queue of `MtmCustomerLocationRequestQueue`
+ * — one card per request, the map beside the facts, the visit the agent
+ * already checked in from there, and the two worded buttons. Approving
+ * removes the card, as in the product; the queue fetches and decides through
+ * the API, so its frame is drawn here with its words.
+ */
 function PlaceScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const t = useTranslations("mtmRoutesPage")
-  const format = useBakuFormat()
+  const tNav = useTranslations("nav")
+  const locale = useLocale()
   const today = mtmDemoToday(snapshot.startedAt)
   const request = useMemo(() => mtmDemoPlaceRequest(today), [today])
   const approved = snapshot.ui["mtm.placeApproved"] === true
+  const when = createDateFormatter(locale, { dateStyle: "medium", timeStyle: "short", timeZone: MTM_DEMO_TIMEZONE })
+  const clock = createDateFormatter(locale, { timeStyle: "short", timeZone: MTM_DEMO_TIMEZONE })
+  const facts: Array<[string, string]> = [
+    [t("locationFactMoved"), t("locationMeters", { meters: request.movedMeters })],
+    [t("locationFactAccuracy"), t("locationAccuracyValue", { meters: request.agentFix.accuracyMeters })],
+    [t("locationFactAgentDistance"), request.agentToProposedMeters <= 5 ? t("locationAgentOnPoint") : t("locationMeters", { meters: request.agentToProposedMeters })],
+    [t("locationFactOutOfZone", { days: 90 }), request.outsideVisitsHere90Days > 0 ? String(request.outsideVisitsHere90Days) : t("locationOutOfZoneNone")],
+  ]
 
   const approve = () => {
     if (reviewMode) {
@@ -862,127 +1063,148 @@ function PlaceScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
   }
 
   return (
-    <Panel className="p-4">
-      <div data-tour-id="mtm-place-request" className="space-y-3">
-        <h2 className="text-[15px] font-semibold">{t("locationQueueTitle")}</h2>
-        <div>
-          <p className="font-medium">{t("locationHeadline", { customer: request.customer })}</p>
-          <p className="text-xs text-muted-foreground">{t("locationSentBy", { agent: request.agent, when: format.clock(request.sentAt) })}</p>
-          <p className="text-xs text-muted-foreground">{t("locationAddress", { address: request.address })}</p>
+    <div className="space-y-4">
+      <header className="flex flex-col gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700">
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
+          <RouteIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+          <h1 className="text-lg font-semibold leading-6 text-foreground">{t("title")}</h1>
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0 border-orange-200 bg-orange-50/60 text-orange-800 dark:border-orange-900/60 dark:bg-orange-950/20 dark:text-orange-300" aria-label={tNav("help")} onClick={() => hint(S.demoButtonHint)}><HelpCircle className="h-4 w-4" aria-hidden="true" /></Button>
         </div>
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="relative h-[320px] overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
-            <CustomerLocationRequestMap
-              previous={approved ? null : request.previous}
-              proposed={request.proposed}
-              agentFix={request.agentFix}
-              labels={{ previous: t("locationMapPrevious"), proposed: t("locationMapProposed") }}
-            />
+        <div className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center">
+          <div className="flex min-w-0 flex-1 flex-wrap gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700" role="group" aria-label={t("primaryViews")}>
+            <Button variant="ghost" size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => hint(S.mtmTabHint)}>{t("viewList")}</Button>
+            <Button aria-pressed size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3">
+              <ClipboardCheck className="mr-1 h-4 w-4" aria-hidden="true" />{t("viewApprovals")}
+              {approved ? null : <span className="ml-1.5 min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-[11px] font-semibold leading-5 text-white">1</span>}
+            </Button>
           </div>
-          <div className="space-y-2 text-sm">
-            <dl className="space-y-1.5">
-              <PlaceFact label={t("locationFactMoved")} value={t("locationMeters", { meters: request.movedMeters })} />
-              <PlaceFact label={t("locationFactAccuracy")} value={t("locationAccuracyValue", { meters: request.agentFix.accuracyMeters })} />
-              <PlaceFact label={t("locationFactAgentDistance")} value={t("locationMeters", { meters: request.agentToProposedMeters })} />
-            </dl>
-            <div className="rounded-xl bg-muted/40 p-2.5">
-              <p className="text-xs font-semibold text-muted-foreground">{t("locationAgentComment")}</p>
-              <p className="mt-0.5">{request.comment}</p>
-            </div>
-            {approved ? (
-              <p role="status" className="rounded-xl bg-emerald-50 p-2.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
-                {t("locationAccepted")} {S.mtmPlaceVisitInZone}
-              </p>
-            ) : (
-              <div className="flex gap-2">
-                <Button className="flex-1" onClick={approve} {...demoTarget("mtm-place-approve")}>
-                  <CheckCircle2 aria-hidden="true" />{t("locationAccept")}
-                </Button>
-                <Button variant="outline" className="flex-1" onClick={() => hint(S.demoButtonHint)}>{t("locationReject")}</Button>
-              </div>
-            )}
-            <p className="text-[11px] leading-relaxed text-muted-foreground">{S.mtmPlaceGuard}</p>
+          <div className="flex shrink-0 items-center justify-end gap-2">
+            <Button variant="outline" className="min-h-10 whitespace-nowrap px-3" onClick={() => hint(S.demoButtonHint)}><FileSpreadsheet className="mr-1 h-4 w-4" aria-hidden="true" />{t("excelExchange")}</Button>
+            <Button className="min-h-10 whitespace-nowrap px-4" onClick={() => hint(S.demoButtonHint)}><Plus className="mr-1 h-4 w-4" aria-hidden="true" />{t("add")}</Button>
           </div>
         </div>
-      </div>
-    </Panel>
-  )
-}
+      </header>
 
-function PlaceFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-zinc-100 pb-1.5 dark:border-zinc-800">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-semibold tabular-nums">{value}</dd>
+      {approved ? (
+        <p role="status" data-testid="mtm-place-approved" className="rounded-xl border border-zinc-200 bg-card px-4 py-6 text-center text-sm text-muted-foreground dark:border-zinc-700">
+          {t("locationAccepted")} {t("needsAttentionClearDescription")}
+        </p>
+      ) : (
+        <section data-tour-id="mtm-place-request" className="overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700" aria-labelledby="customer-location-heading">
+          <header className="flex flex-wrap items-center gap-2 border-b border-zinc-200 px-4 py-4 dark:border-zinc-700 sm:px-5">
+            <h2 id="customer-location-heading" className="flex items-center gap-2 text-base font-semibold">
+              <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
+              {t("locationQueueTitle")}
+            </h2>
+            <Badge variant="warning">{t("pendingApprovalsCount", { count: 1 })}</Badge>
+          </header>
+          <article className="grid gap-4 p-4 sm:p-5 xl:grid-cols-2">
+            <div className="relative isolate h-64 overflow-hidden rounded-lg border border-zinc-200 bg-muted xl:h-full xl:min-h-72 dark:border-zinc-700">
+              <CustomerLocationRequestMap
+                previous={request.previous}
+                proposed={request.proposed}
+                agentFix={request.agentFix}
+                labels={{ previous: t("locationMapPrevious"), proposed: t("locationMapProposed") }}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col gap-3">
+              <div>
+                <h3 className="text-lg font-semibold leading-tight text-balance">{t("locationHeadline", { customer: request.customer })}</h3>
+                <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+                  <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("locationSentBy", { agent: request.agent, when: when.format(new Date(request.sentAt)) })}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("locationAddress", { address: `${request.address}, Bakı` })}</p>
+              </div>
+              <dl className="grid grid-cols-2 gap-2">
+                {facts.map(([label, value]) => (
+                  <div key={label} className="rounded-lg border border-zinc-200 bg-muted/40 px-3 py-2 dark:border-zinc-700">
+                    <dt className="text-[11px] text-muted-foreground">{label}</dt>
+                    <dd className="text-sm font-semibold text-foreground">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700">
+                <span className="block text-[11px] text-muted-foreground">{t("locationAgentComment")}</span>
+                {request.comment}
+              </p>
+              <p data-testid="mtm-customer-location-visits" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                {t("locationVisitsNote", { count: 1, time: clock.format(new Date(request.checkedInFromHereAt)) })}
+              </p>
+              <div className="mt-auto space-y-2">
+                <Textarea readOnly placeholder={t("locationRejectComment")} aria-label={t("locationRejectComment")} rows={2} onClick={() => hint(S.demoButtonHint)} />
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button type="button" onClick={approve} {...demoTarget("mtm-place-approve")}><Check className="mr-2 h-4 w-4" aria-hidden="true" />{t("locationAccept")}</Button>
+                  <Button type="button" variant="outline" onClick={() => hint(S.demoButtonHint)}><X className="mr-2 h-4 w-4" aria-hidden="true" />{t("locationReject")}</Button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+      )}
     </div>
   )
 }
 
 /* ── Nəticələr ────────────────────────────────────────────────────────── */
 
-/** Last week, whole: a finished week reads cleaner than one cut at Thursday noon. */
-function ResultsScreen() {
-  const t = useTranslations("mtmTeamResults")
-  const rows = [...MTM_DEMO_AGENTS]
-    .map((agent) => ({ agent, done: agent.lastWeek[0], planned: agent.lastWeek[1], percent: Math.round((agent.lastWeek[0] / agent.lastWeek[1]) * 100) }))
-    // Behind the plan first, as the product's table orders them.
-    .sort((left, right) => left.percent - right.percent)
-  const planned = rows.reduce((sum, row) => sum + row.planned, 0)
-  const done = rows.reduce((sum, row) => sum + row.done, 0)
-  const percent = Math.round((done / planned) * 100)
+/**
+ * «Nəticələr» as `/mtm/analytics` shows it: the heading, the product's own
+ * results (`MtmTeamResultsView` — the component the page draws once its
+ * report has loaded) and the folded «how the figures are counted». The report
+ * is the product's KPI registry (`buildExplainableKpi`) over five weeks of
+ * the invented team's plan points and visits, so every period and team the
+ * prospect picks shows the product's arithmetic. It opens on «Bu ay», as the
+ * page does.
+ */
+function ResultsScreen({ snapshot, hint }: DemoSceneProps) {
+  const ta = useTranslations("mtmAnalytics")
+  const tr = useTranslations("mtmTeamResults")
+  const tNav = useTranslations("nav")
+  const today = mtmDemoToday(snapshot.startedAt)
+  const facts = useMemo(() => mtmDemoKpiFacts(today), [today])
+  const [preset, setPreset] = useState<(typeof AGENT_PERIOD_PRESETS)[number]>("thisMonth")
+  const [teamId, setTeamId] = useState("")
+  const range = agentPeriodPreset(preset, today)
+  const report = useMemo(() => {
+    const inScope = (item: { agentId: string; date: string }) => item.date >= range.from && item.date <= range.to
+      && (!teamId || MTM_DEMO_AGENTS.find((agent) => agent.id === item.agentId)?.team === (teamId === "team-center" ? "center" : "south"))
+    return buildExplainableKpi({
+      planPoints: facts.planPoints.filter(inScope),
+      visits: facts.visits.filter(inScope),
+      visitType: "ALL",
+      brandId: null,
+      generatedAt: new Date(mtmDemoAt(today, MTM_DEMO_CLOCK)),
+    })
+  }, [facts, range.from, range.to, teamId, today])
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">{t("period")}:</span>
-        {(["thisWeek", "lastWeek", "thisMonth"] as const).map((preset) => (
-          <span key={preset} className={cn("rounded-full px-3 py-1 text-sm font-medium", preset === "lastWeek" ? "bg-foreground text-background" : "border border-zinc-200 text-muted-foreground dark:border-zinc-700")}>
-            {t(`preset.${preset}`)}
-          </span>
-        ))}
+        <PageDescription icon={BarChart3} title={ta("title")} />
+        <Button variant="outline" size="sm" onClick={() => hint(S.demoButtonHint)} className="border-orange-200 bg-orange-50/60 text-orange-800 hover:bg-orange-100 dark:border-orange-900/60 dark:bg-orange-950/20 dark:text-orange-300">
+          <HelpCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />{tNav("help")}
+        </Button>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <HomeKpi
-          testId="mtm-results-plan"
-          label={t("cardPlan")}
-          icon={<RouteIcon className="h-[18px] w-[18px]" aria-hidden="true" />}
-          tone={PLAN_TONE[mtmPlanTone(percent)]}
-          value={`${percent}%`}
-          progress={percent}
-          sub={t("cardPlanDetail", { planned, done })}
-        />
-        <HomeKpi
-          testId="mtm-results-visits"
-          label={t("cardVisits")}
-          icon={<CheckCircle2 className="h-[18px] w-[18px]" aria-hidden="true" />}
-          tone="blue"
-          value={String(done)}
-          sub={t("cardVisitsDetail")}
+      <div data-tour-id="mtm-results-team">
+        <MtmTeamResultsView
+          preset={preset}
+          onPresetChange={setPreset}
+          teams={[{ id: "team-center", name: "Bakı — Mərkəz" }, { id: "team-south", name: "Bakı — Cənub" }]}
+          teamId={teamId}
+          onTeamChange={setTeamId}
+          from={range.from}
+          to={range.to}
+          loading={false}
+          failed={false}
+          onRetry={() => {}}
+          report={report}
+          truncated={false}
         />
       </div>
-      <Panel className="p-4">
-        <div data-tour-id="mtm-results-team">
-          <h3 className="text-[15px] font-semibold">{t("tableTitle")}</h3>
-          <table className="mt-3 w-full text-sm">
-            <thead className="text-left text-xs text-muted-foreground">
-              <tr>
-                <th className="py-1.5 font-medium">{t("colAgent")}</th>
-                <th className="py-1.5 font-medium">{t("colPlan")}</th>
-                <th className="py-1.5 text-right font-medium">{t("colPercent")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ agent, done: agentDone, planned: agentPlanned, percent: agentPercent }) => (
-                <tr key={agent.id} className="border-t border-zinc-100 dark:border-zinc-800">
-                  <td className="py-2 font-medium">{agent.name}</td>
-                  <td className="py-2 tabular-nums text-muted-foreground">{t("doneOfPlanned", { planned: agentPlanned, done: agentDone })}</td>
-                  <td className="py-2 text-right"><HomePill tone={PLAN_TONE[mtmPlanTone(agentPercent)]}>{agentPercent}%</HomePill></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
+      <button type="button" onClick={() => hint(S.demoButtonHint)} className="flex min-h-12 w-full items-center rounded-xl border border-zinc-200 bg-card px-4 py-3 text-left text-sm font-medium text-muted-foreground hover:text-foreground dark:border-zinc-700">
+        {tr("formulasTitle")}
+      </button>
     </div>
   )
 }

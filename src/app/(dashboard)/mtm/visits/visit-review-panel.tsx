@@ -182,16 +182,10 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
   onVisitLoaded?: (visit: ReviewedVisitFacts) => void
 }) {
   const t = useTranslations("mtmVisitsPage") as unknown as Translator
-  const tw = useTranslations("mtmVisitWorkspace") as unknown as Translator
-  const locale = useLocale()
-  // Place labels are shared with the visits list, route detail and GPS history.
-  const tPlace = useTranslations("mtmPlaceCheck") as unknown as Translator
-  const distanceText = useMtmDistanceText()
   const [data, setData] = useState<VisitReviewData | null>(null)
   const [state, setState] = useState<"loading" | "ready" | "unavailable" | "failed">("loading")
   const requestRef = useRef<AbortController | null>(null)
   const now = useMinuteClock()
-  const openForText = useOpenForText()
   const onVisitLoadedRef = useRef(onVisitLoaded)
   useEffect(() => { onVisitLoadedRef.current = onVisitLoaded }, [onVisitLoaded])
 
@@ -233,15 +227,7 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
   }, [load, refreshToken, visitId])
   useEffect(() => () => requestRef.current?.abort(), [])
 
-  const shell = (children: ReactNode) => (
-    <section
-      className="rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800"
-      aria-labelledby="visit-review-title"
-      data-testid="mtm-visit-review"
-    >
-      {children}
-    </section>
-  )
+  const shell = (children: ReactNode) => <VisitReviewShell>{children}</VisitReviewShell>
 
   if (state === "loading" && !data) {
     return shell(
@@ -267,6 +253,42 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
       </div>,
     )
   }
+
+  return <VisitReviewView data={data} closeHref={closeHref} longOpenMinutes={longOpenMinutes} orgId={orgId} now={now} />
+}
+
+function VisitReviewShell({ children }: { children: ReactNode }) {
+  return (
+    <section
+      className="rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800"
+      aria-labelledby="visit-review-title"
+      data-testid="mtm-visit-review"
+    >
+      {children}
+    </section>
+  )
+}
+
+/**
+ * The review itself, drawn from a loaded answer. The panel above loads it;
+ * the guided demo (src/components/demo-center/journey/scenes/mtm-scene.tsx)
+ * hands it an invented visit, so a prospect sees this very card.
+ */
+export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES, orgId, now }: {
+  data: VisitReviewData
+  closeHref: string
+  longOpenMinutes?: number
+  orgId?: string
+  /** The clock «left open» is judged by. */
+  now: Date
+}) {
+  const t = useTranslations("mtmVisitsPage") as unknown as Translator
+  const tw = useTranslations("mtmVisitWorkspace") as unknown as Translator
+  const locale = useLocale()
+  const tPlace = useTranslations("mtmPlaceCheck") as unknown as Translator
+  const distanceText = useMtmDistanceText()
+  const openForText = useOpenForText()
+  const shell = (children: ReactNode) => <VisitReviewShell>{children}</VisitReviewShell>
 
   const { visit } = data
   // Owner, 2026-10-15: «21:21 → ещё не завершён» on a visit opened three days
