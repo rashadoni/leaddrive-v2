@@ -3146,3 +3146,43 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   dispatched the existing read-only readiness workflow once on main. Its result
   is pending; no retry or runtime/backup action. Next: record fresh aggregate
   inventory, remaining readiness boundaries and the next inactive prerequisite.
+
+### Fresh post-release inventory and exact stopping point — 2026-10-18 19:31 UTC
+
+- Read-only run39158980732/job117768050954 SUCCESS19:29:42Z, observed19:29:40Z
+  on exact deployed4cbdece263fa78d67f763fc32f7c03b17035c9b4. One dispatch only;
+  protected pinned SSH route, aggregate READ ONLY transaction, no production
+  configuration/data changes. Current source PostgreSQL160015: wal_level=replica,
+  replication slots0/active0, outbox publication absent, max_slot_wal_keep_size=-1.
+  Source logical CDC is not commissioned. All8 inspected event/projection/effect
+  tables exist with RLS+FORCE RLS; estimatedRows0 is not an exact data count.
+- Four scoped timers (postgres-backup, secrets-snapshot, runtime-files-snapshot,
+  log-ship) remain inactive; backup configuration exists. Source/scratch passfile
+  and CA metadata indicate regular, canonical, service-readable files. This is
+  not credential validation, a successful backup/restore or evidence that no
+  other backup system exists. backup_restore_verification=not-performed.
+  About85% RAM and85% application filesystem were available; one-host spare
+  capacity is not independent Kafka failure domains or a tested load budget.
+- Completed scope: inactive worker lifecycle implementation, actual scoped
+  failure proof, all protected gates, ordinary PR889 merge, successful normal
+  application release and exact public/inventory SHA verification. No activation,
+  offset reset/replay, WAL/slot/publication change, timer enablement or restore.
+  No new paid resource or service was purchased. No autonomous background
+  monitor was created; these receipts describe checks actually performed.
+- Next smallest inactive implementation: governed worker launch/config plan
+  and immutable artifact binding, reusing existing Fund scope/build contracts
+  and activation evidence boundary. Read-only design review distinguishes
+  offline configured pins from actual live broker/DB metadata, and artifact
+  byte verification from equality of two supplied SHA strings. Kafka topic ID
+  must not be mistaken for a PostgreSQL build UUID. Existing secret-manager
+  reference policy must not be bypassed by arbitrary credential-file paths;
+  any runtime file resolution needs its own controlled provenance. JSON names
+  or booleans are not authenticated human approval. No such new implementation
+  or production configuration was started in this delivery turn.
+- Overall NOT COMPLETE: governed separate JVM packaging/launcher and actual
+  direct-JVM supervision composition, full Debezium-to-restricted-SQL rebuild,
+  production HA/TLS/ACL and finite retention/WAL budgets, independently proven
+  recovery/approval, operator lifecycle/promotion and all-module adoption.
+  Current stop: verified PR889 release, clean task worktree with local receipt
+  checkpoint commits preserved. Next source work starts from current main in a
+  dedicated worktree and carries these task-owned receipts, not unrelated work.

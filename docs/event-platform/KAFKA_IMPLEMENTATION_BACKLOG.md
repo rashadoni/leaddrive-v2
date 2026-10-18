@@ -894,3 +894,21 @@ not a separately packaged or active Kafka/JVM service. K4.1/K4.8 overall,
 full CDC-to-SQL composition, independent recovery and governed activation
 remain open. A single fresh aggregate read-only inventory is pending; no
 consumer/offset/replay, WAL/slot, timer or recovery mutation was performed.
+
+### Fresh inventory after delivered lifecycle slice — 2026-10-18 19:31 UTC
+
+Read-only39158980732 SUCCESS on exact deployed4cbdece263fa, observed19:29:40Z:
+source wal_level=replica, slots0/active0, outbox publication absent, WAL slot
+cap=-1. All8 inspected tables retain RLS+FORCE RLS; estimated rows are not
+exact counts. Four scoped recovery timers remain inactive; restore verification
+was not performed. About85% host memory/filesystem available is not HA proof.
+No source/runtime/backup mutation followed this successful inventory.
+
+The delivered prerequisite does not complete K4.1/K4.8 or production readiness.
+Next source slice is offline governed launch/config admission and immutable
+worker binding, reusing current Fund scope/build and activation contracts.
+Offline validation must not claim actual broker metadata, artifact bytes,
+authenticated independent approval or real recovery. Existing secret-manager
+references remain authoritative; arbitrary local credential files are not a
+replacement. Actual direct JVM composition, full CDC-to-SQL proof and the
+previously listed activation/all-domain gaps remain open.
