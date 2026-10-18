@@ -550,3 +550,20 @@
   runner39173688250. Protected static/type39173688248 remain in progress.
   Mac-tested workbench/owner key verifier files are byte-identical to430c,
   verified with path-scoped git diff; no key/VM re-creation needed.
+
+## 2026-10-19 (Asia/Baku): integrated A3 exact-source acceptance
+
+- Integrated sourcee7f6e44ae6da8c3cac7b18188596a8c1b30644db now passes all five
+  required contexts:pr-scope/static-checks/typecheck39173688248,
+  runner39173688250,scan39173688257. Additional owner39173688242,
+  pgpass39173688265,tenant39173688241 PASS. No stale/cancelled/skipped result
+  substituted. Application build skipped by PR scope; no A3 release build yet.
+- Common main421260026 deployment39173487040 quality and artifact build PASS;
+  actual atomic deployment/post-smoke still in progress. Pending-deployments
+  API returned[]; earlier queue had no runner assigned, then deployment started.
+  No approval bypass, concurrency change or direct production operation.
+- Reserved/requested next A3 slot via coordinator comment6256216834 and sent
+  final exact-source readiness in PR892. Holding A3 merge while root production
+  change is active. Owner route does not replace independent Farah acceptance.
+- Reconfirmed source backup helpers enforce real tmpfs/private capacity before
+  plaintext staging; no unsafe workspace fallback introduced by owner selector.
