@@ -363,3 +363,28 @@ ran; this report does not inventory every other backup mechanism on the host.
 Next is bounded source-only error classification/privacy proof, not a retry of
 the unchanged report or runtime corrective operation. Recovery/HA/archive and
 independent operator/custody confirmations are still prerequisites, not waived.
+
+### Observed WAL interval, not an approved capacity budget — 2026-10-18 04:11 UTC
+
+Exactly one additional protected read-only inventory39096218310 SUCCESS on
+delivered ce71dacf9, observed04:11:39Z, was taken for K0.3/K2.2 measurement,
+not as a retry of failed backup readiness. PG16.15/readOnly=on, replica WAL,
+zero slots/active slots/retained slot WAL, no outbox publication, slot cap-1.
+All8 expected tables present with RLS+FORCE; planner estimates are not counts.
+RAM12247548/9931968kB total/available, swap0; filesystem206900281344bytes,
+175266586624available. Four timers inactive; restore NOT PERFORMED. Both
+pgpass0600/CA0640 canonical and service-readable; masked CA owners not inferred.
+
+The same-reset pg_stat_wal samples are:
+
+| Inventory / PG observation (UTC) | Cumulative WAL bytes |
+|---|---:|
+| 39091217812 /02:45:51.420078 | 17891881657 |
+| 39096218310 /04:11:39.529597 | 17907414978 |
+
+Difference15533321bytes (14.81MiB) over about5148.109seconds, observed mean
+about3017bytes/second (2.95KiB/s). statsReset remained2026-09-04T12:58:40.679899+02:00.
+This is cluster-wide WAL over an interval that includes a deployment, NOT
+canonical-event throughput, peak/day rate, tenant skew, RPO/RTO or an approved
+slot/outage budget. Do not extrapolate it to approve logical-WAL activation.
+No SQL/config/service/source/consumer/offset/replay mutation or new subscription.

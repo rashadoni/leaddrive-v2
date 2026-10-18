@@ -1885,3 +1885,26 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   focused Fund04:07:51Z and real-PG04:08:06Z; terminal counts/general baseline
   and typecheck117581470258 remain pending. These step statuses are not a
   completed PR or new production receipt. No duplicate run was started.
+
+## 2026-10-18 04:11 UTC — K0.3 bounded observed WAL interval
+
+- Re-read the full existing inventory workflow/script, current maince71 and
+  absence of active inventory; dispatched ONE main-only read-only inventory
+  39096218310 for a second same-reset WAL observation. This is not a retry of
+  failed backup-readiness or a heavy parallel build. It completed SUCCESS,
+  observed04:11:39Z, verifying deployed ce71 and aggregate-only read-only SQL.
+- PG160015/readOnlyon/replica, slots0/active0/retained0, publication absent,
+  maxSlotWalKeepSize-1;8 event tables RLS+FORCE. RAM12247548/9931968kB,
+  swap0, filesystem206900281344/175266586624bytes total/available. Timers
+  inactive, restore NOT PERFORMED; file guards readable/canonical, masked CA
+  owners not inferred. No data/config/service/source/offset/replay mutation.
+- Old gh run --log returned empty for the earlier successful inventory; its
+  run/job still exist SUCCESS. Read the bounded old job log via API instead,
+  without altering/cache-deleting or rerunning anything. Same reset verified:
+  2026-09-04T12:58:40.679899+02:00; old02:45:51.420078UTC17891881657bytes,
+  new04:11:39.529597UTC17907414978bytes. Arithmetic gives15533321bytes
+  (14.81MiB) over approximately5148.109s, mean3017B/s /2.95KiB/s.
+- These are cluster-wide observed WAL counters over a deployment interval,
+  NOT peak/day/event/tenant rate, outage/slot approval or RPO/RTO. Capacity,
+  logical-WAL maintenance and all Kafka runtime gates remain open. Baseline
+  and backlog updated locally; frozen a222 source CI is not disturbed.

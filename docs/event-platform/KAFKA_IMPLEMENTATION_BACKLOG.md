@@ -574,3 +574,14 @@ MemorySwapMax/fresh-run gaps открыты. Никакого backup/restore/rep
 error classes и неизвестный формат без raw code/body/секретов. Не повторять
 старый report вслепую и не менять доступы/retention/таймеры ради зелёного gate.
 K8 activation, независимое восстановление, HA и all-module coverage не готовы.
+
+### K0.3/K2.2: измерен интервал WAL, не peak budget — 2026-10-18 04:11 UTC
+
+Один новый protected read-only inventory39096218310 SUCCESS на deliveredce71
+добавил вторую точку с тем же reset:02:45:51.420078→04:11:39.529597UTC,
+17891881657→17907414978bytes. Рост15533321bytes (14.81MiB), среднее около
+3017bytes/s за5148.109s. Точные receipts/ограничения сохранены в baseline.
+Это WAL всего PostgreSQL-кластера за интервал с выкладкой, не event rate,
+пик/сутки/tenant skew и не согласованный лимит слота/простоя. K0.3/K2.2
+остаются partial; source всё ещё replica/slots0/publication absent/cap-1.
+Restore не выполнялся; четыре recovery timers inactive; activation не было.
