@@ -19,6 +19,15 @@ const request = (body: unknown) => new NextRequest("http://localhost/api/v2/mtm/
 const post = (body: unknown = input()) => POST(request(body))
 function workday() { return { id: "source-workday", workDate: at("00:00"), status: "PAUSED", startedAt: at("05:21"), pausedAt: at("12:00"), completedAt: null as Date | null, totalPausedSeconds: 1800 } }
 const saved = () => vi.mocked(prisma.mtmHrmRequest.create).mock.calls.at(-1)![0].data
+/** The source day's own journal, consistent with its facts: the submission now replays it (a finish before the day's later marks is refused). */
+function journal(day: ReturnType<typeof workday>) {
+  const event = (id: string, type: string, occurredAt: Date) => ({ id, type, occurredAt, appliedAt: occurredAt, clientEventId: id })
+  const rows = [event("start", "START", day.startedAt)]
+  if (day.totalPausedSeconds) rows.push(event("pause-1", "PAUSE", at("07:00")), event("resume-1", "RESUME", at("07:30")))
+  if (day.status === "PAUSED" && day.pausedAt) rows.push(event("pause-2", "PAUSE", day.pausedAt))
+  if (day.status === "COMPLETED" && day.completedAt) rows.push(event("finish", "FINISH", day.completedAt))
+  return rows
+}
 beforeEach(() => {
   vi.resetAllMocks(); vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-10-13T15:00:00Z"))
   vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: self.organizationId, agentId: self.agentId, role: "AGENT", tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
@@ -32,6 +41,11 @@ beforeEach(() => {
   vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])
+  vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockImplementation((async () => {
+    const day = await vi.mocked(prisma.mtmAgentWorkday.findFirst).mock.results.at(-1)?.value as ReturnType<typeof workday> | null | undefined
+    return day ? journal(day) : []
+  }) as never)
+  vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmHrmRequest.create).mockImplementation((async ({ data }: { data: Record<string, unknown> }) => ({ ...data, status: "PENDING", updatedAt: new Date(), decisionNote: null, decidedAt: null, cancelledAt: null })) as never)
 })
 afterEach(() => vi.useRealTimers())
@@ -106,6 +120,12 @@ describe("employee TIME_CORRECTION submission uses a complete proposed interval 
     const result = await post(value)
     expect([400, 409]).toContain(result.status)
     expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled(); expect(prisma.workforceTimeCorrection.create).not.toHaveBeenCalled()
+  })
+  it("refuses a finish before the day's own later marks: nobody could approve it", async () => {
+    // Owner's phone, 2026-10-18. The day's break opened at 12:00 UTC (16:00 in Baku); 15:30 in Baku is before it.
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(workday() as never)
+    await expect(submitAttendanceRequest(self, { ...input(), endTime: "15:30" })).rejects.toHaveProperty("code", "MTM_ATTENDANCE_CORRECTION_OUTSIDE_MARKS")
+    expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
   })
   it("retries the original proposal and frozen basis after the live workday changes, but refuses changed payload", async () => {
     const value = input()

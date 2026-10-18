@@ -1,6 +1,7 @@
 import { notifyAttendanceRequestReviewers } from "@/lib/mtm/attendance-request-notify"
 import { pushAttendanceRequestToReviewers } from "@/lib/mtm/attendance-request-push"
 import { autoApproveForgottenDayClose, isForgottenDayClose } from "@/lib/mtm/attendance-auto-close"
+import { attendanceCorrectionFitsJournal } from "@/lib/mtm/attendance-time-correction"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -91,6 +92,11 @@ export async function submitAttendanceRequestInTransaction(db: Prisma.Transactio
       correctionBasis = { kind: "WORKDAY", facts: workforceWorkdayCorrectionFacts(workday) }
       if (workday.status === "COMPLETED" && workday.startedAt.getTime() === requestedStartAt.getTime() && workday.completedAt?.getTime() === requestedEndAt.getTime()) {
         throw new AttendanceRequestError("MTM_ATTENDANCE_CORRECTION_UNCHANGED")
+      }
+      // A finish before the day's own later marks (or a start after its first)
+      // could never be approved: say so now, not after it waits for nobody.
+      if (!await attendanceCorrectionFitsJournal(db, { organizationId: self.organizationId, agentId: self.agentId, workday, start: requestedStartAt, end: requestedEndAt })) {
+        throw new AttendanceRequestError("MTM_ATTENDANCE_CORRECTION_OUTSIDE_MARKS")
       }
     } else correctionBasis = { kind: "MISSING", workDate: input.startDate }
     const pending = await db.mtmHrmRequest.findFirst({ where: { organizationId: self.organizationId, agentId: self.agentId, type: "TIME_CORRECTION", status: "PENDING", startDate }, select: { id: true } })
