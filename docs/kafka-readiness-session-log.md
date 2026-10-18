@@ -2388,3 +2388,363 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   simulated database effects, not combined production acceptance/activation.
   Disposable stack39128687970 also SUCCESS. Current old-head static/typecheck
   continue; synthetic CDC39128688071 is running. No manual job retry was made.
+
+### Corrected frozen head for PR880 — 2026-10-18 12:59 UTC
+
+- Synthetic CDC39128688071 completed SUCCESS: raw8/8 identity/payload parity
+  and cold restart PASS; TLS and business projection explicitly NOT PROVEN/
+  NOT RUN. All old-head disposable integrations completed before the correction
+  was published. Old-head static Fund units/actual PG/concurrency/invariant
+  steps also passed, but the unfinished full PR run is superseded, not PASS.
+- Pushed exact7ec815288af3465428ec6694d60d7b47b7bbaecf. Normal workflow
+  concurrency superseded stale PR work; no manual cancel/rerun or duplicate
+  heavy dispatch. Waited for its draft check run39129513374 to finish, verified
+  the API head, then marked ready to obtain actual static/typecheck and broker
+  runs. Draft skips do not satisfy this code change's delivery gate.
+- Corrected-head scan39129513379, runner-policy39129513377 and tooling39129513365
+  already SUCCESS. Final required checks, actual broker, release and public
+  exact-SHA verification remain PENDING. No production activation occurred.
+- Artifact-boundary inspection: deploy.yml currently bundles selected recovery/
+  systemd assets, not ops/event-platform/driver Java classes or a Kafka worker
+  entrypoint. This is intentional for the inactive source increment. A later
+  successful application artifact receipt must not be described as installation
+  of a runnable Java worker; its governed packaging/release remains a next task.
+
+### Corrected-head broker proof complete — 2026-10-18 13:09 UTC
+
+- Broker39129612814 SUCCESS13:09:10Z on exact7ec815288af3465428ec6694d60d7b47b7bbaecf.
+  Root rechecked exact head and all13 PASS markers; concurrent takeover PASS
+ 13:09:03Z, cleanup/poststeps SUCCESS. Single-broker disposable fixture, DB
+  effects simulated; not an HA/TLS/combined production recovery certificate.
+- Corrected-head synthetic CDC39129612815 and stack39129612771 SUCCESS.
+  Full required PR39129612882 still running (typecheck and baseline/security
+  work). No merge/deploy claim until actual protected contexts finish green.
+- Pre-release public observation: artifactSha7868ec2fd9a208bc146198452ddfc8aebec5ce68
+  matches unchanged origin/main, builtAt11:50:47Z; ping ok=true. This proves
+  only the predecessor app is healthy. Source branch remains frozen at7ec815;
+  local documentation checkpoints are not additional published code revisions.
+
+### PR880 verified and merged; release pending — 2026-10-18 13:20 UTC
+
+- Actual final-head PR run39129612882 completed SUCCESS on exact7ec815288af3465428ec6694d60d7b47b7bbaecf.
+  Root read the logs:278/278 focused units,14/14 actual restricted-PostgreSQL
+  tests PASS; full test baseline18=18 with no new failures. Typecheck baseline
+ 64 gated pairs=64 with1326 existing advisory diagnostics; both blocking gates
+  passed. This is not a claim that the entire repository has zero diagnostics.
+- All five live required contexts were SUCCESS, bound to Actions app15368;
+  enforce_admins enabled, force push/deletion forbidden. Broker/stack/CDC and
+  tooling final-head runs also SUCCESS. An independent read-only review
+  confirmed the inactive runtime boundary; no external review gate was added.
+- Main advanced7868ec2 to759ffddd832e026574cbd10d5873b8ed3e8f50de via unrelated
+  PR879 while checks ran. Root fetched/reviewed the non-overlapping demo-only
+  path delta and preserved its active deploy39130903381. No cancellation or
+  duplicate dispatch. Production routing and release workflow remain unchanged.
+- Normal head-bound merge of PR880 completed13:20:11Z, merge SHA
+  e1e50cb5032f21f5f6295006420126ede28a52d5. No admin bypass/direct main push.
+  Automatic exact-merge release, immutable artifact and public smoke remain
+  PENDING. Local journal checkpoints stay preserved and are not pushed to
+  disturb the completed source revision.
+- Next programming increment is a combined actual Kafka + restricted-PG
+  disposable drill using the existing Fund worker composition. Preserve the
+ 15-second SQL transaction timeout; takeover holds must occur after the real
+  SQL COMMIT, not inside an extended transaction. This is a plan, not executed
+  proof. No production consumer, offset, replay, WAL/slot, recovery ceremony
+  or human approval was created by this merge.
+
+### Combined broker/database drill started — 2026-10-18 13:22 UTC
+
+- New isolated worktree:
+  `/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-kafka-postgres-combined-20261018`,
+  branch `codex/kafka-postgres-combined-20261018`, based on merged e1e50cb50.
+  The previous worktree and all three local journal checkpoints are preserved;
+  those journal entries were cherry-picked here without erasing their history.
+- Scope: reusable disposable PostgreSQL fixture with unchanged restricted
+  grants/RLS and three real migrations, exact immutable outbox bytes published
+  to a disposable Kafka topic, existing bridge/Fund worker, real SQL COMMIT
+  and duplicate/restart/stale-member assertions. No production code/SQL grant
+  changes or new service provisioning follow from this test-only increment.
+- Split work by file ownership: helper extracts the existing SQL fixture and
+  preserves all existing tests; root owns broker fixture composition and CI.
+  Heavy verification remains GitHub-only, one shared disposable phase at a
+  time. No push/second integration run before the preceding release completes.
+- Preceding PR880 automatic deploy39131091042 is queued/building behind the
+  existing PR879 release. Its production receipt remains pending; the new
+  worktree is not evidence of a completed production deployment.
+
+### Combined drill implemented; local verification — 2026-10-18 13:41 UTC
+
+- Test-only composition now joins the actual Java broker bridge/private IPC,
+  existing Fund partition worker and actual restricted Prisma transactions.
+  Six scenarios check broker cursor vs real COMMIT, rollback, durable inbox,
+  exact final balance/version/event/offset checkpoints, tenant order and stale
+  member fencing. Source/active projections/read pointers/effects must remain
+  unchanged. Synthetic outbox publication preserves original key/value/hash
+  bytes; it is not represented as a Debezium-to-rebuild test.
+- Extracted the existing PostgreSQL fixture without relaxing its actual three
+  migrations, per-login grants/RLS or the15-second transaction timeout. New
+  afterCommit hooks run outside that transaction. Clients/pools are bounded;
+  cleanup targets only successfully created unique databases/roles. Existing
+ 14 real-PG cases retained. Fixture administration admits only brand-new
+  synthetic broker groups; resetting an existing group's cursor is rejected.
+- Existing bounded GitHub broker job now includes one separate pinned
+  PostgreSQL service and sequential combined phase, with strict generated-
+  Prisma typecheck and explicit fixture-unit gate. No new concurrent heavy
+  job, production dependency/secret or runtime entrypoint was introduced.
+- PASS locally: focused278/278, new fixture22/22, script/contract guards10/10,
+  strict targeted broker-only TypeScript, assets27 domains/86 topics/5 schemas,
+  runner policy71 workflows, shell syntax and diff whitespace. The extraction
+  initially tripped the source-location guard; it now verifies the imported
+  actual fixture and migrations rather than weakening the runtime requirement.
+- NOT RUN locally: actual Java compile/broker+SQL drill, existing14 SQL tests,
+  generated-client combined TypeScript, full typecheck/build. These require
+  the GitHub heavy executor; a temporary ungenerated Prisma test dependency
+  was used only for mocked local fixture units, never as real SQL evidence.
+- Preceding deploy39131091042 has started its production artifact build and
+  still runs the full baseline. No release/activation claim yet. This branch
+  remains unpublished while that release is in progress.
+
+### Pre-publication review corrections — 2026-10-18 13:43 UTC
+
+- Independent review identified three test-harness deadline weaknesses, not
+  observed production failures. Replacement's post-COMMIT hold now covers the
+  observation budget; takeover/old ACK have explicit deadlines below Java's
+ 60-second command timeout. The test requires a live old process, a completed
+  stale ACK pipe write and exit1 without a signal before that timeout, so a
+  timeout/dead process cannot masquerade as membership-fencing evidence.
+- All fixture admin/producer JVMs now also have an in-container timeout shorter
+  than the host Docker command deadline. Too-small or unbounded observation
+  budgets fail before spawning. This prevents a timed-out Docker shim from
+  leaving an unbounded synthetic producer alive. Existing own-stack EXIT
+  cleanup remains mandatory. Broker-only strict TypeScript and diff check PASS.
+- These are test-only corrections. Actual combined proof and final review
+  still require the generated client and disposable GitHub executor.
+
+### Test harness review complete — 2026-10-18 13:51 UTC
+
+- Independent re-review accepted the bounded stale-ACK observation and JVM
+  timeout fixes; no further concrete blocker found. A reference to the old
+  running member inside its later ACK callback is not a synchronous TDZ read;
+  actual generated-client strict TypeScript remains a required CI gate.
+- Root reran all six focused suites together:300/300 PASS in5.14s. Helper
+  added27 mock-only broker fixture tests and ran27/27 PASS in361ms with one
+  worker after resource checks. Root read the entire test: no actual Docker,
+  Java, database, network or config writes. These tests verify exact base64
+  transport, decimal offsets beyond Number precision, command deadlines,
+  synthetic-only guards and sanitized failures, not broker semantics.
+- Added a structural contract gate for generated types, actual SQL bootstrap
+  and sequential combined execution. Its three contract tests PASS. All
+  real combined/delivery claims still require exact-SHA GitHub receipts.
+- Preceding deploy39131091042 quality gate is SUCCESS, including full
+  baseline18=18 (no new failures). Production artifact build now runs Next.js.
+  No runtime activation, consumer replay or extra heavy dispatch occurred.
+
+### PR880 production receipt; combined increment ready — 2026-10-18 14:11 UTC
+
+- Deploy39131091042 attempt1 whole SUCCESS14:09:15Z on exact merge
+  e1e50cb5032f21f5f6295006420126ede28a52d5. Immutable artifact12138947773,
+  name leaddrive-prod-e1e50cb5032f21f5f6295006420126ede28a52d5,
+  SHA2569a5c7c88946854c7dbcd9fc6ff2dae99e984d95e91da4997d853854e294b3e90,
+  size471494323bytes. Root independently read build/quality/runtime receipts.
+- Release repeated278 focused units and14 actual restricted-PG cases PASS;
+  full baseline18=18. Server14:07:55Z event-platform structural ledger/RLS/
+  ownership/exact-money/Fund projection postconditions PASS. Public run ping,
+  exact revision and login/CSS/JS smokes PASS14:08:49–52Z. Root's independent
+  public check also verified exacte1e50cb before/after login/CSS/JS requests,
+  each HTTP200, ping ok=true. This supersedes release-pending, not activation.
+- Fresh deploy receipt still reports encrypted recovery commissioning and
+  off-box log shipping inactive. No Java worker is packaged/installed by this
+  app artifact. This release is not Kafka activation, restore or full recovery
+  acceptance; it does not supersede the historical operational NO-GO.
+- Final local combined-source control-flow rerun:7 files327/327 PASS5.87s;
+  contract/script guards11/11 and runner-policy71 PASS. Real combined CI remains
+  NOT RUN. The completed previous release now permits publishing this prepared
+  test-only increment; no existing workflow is rerun or cancelled.
+- Main advanced to d3a1281d6bf8769302c3fa8431ce39c47dca08ec via unrelated
+  MTM correction PR881. Root inspected all six paths; no Kafka/test-fixture,
+  routing/deployment overlap. Normal merge of current main into this unpublished
+  branch preserves both histories, with no force push. Foreign automatic
+  deploy39133684288 is preserved; it is not this task's own completed receipt.
+
+### Combined drill published as PR883 — 2026-10-18 14:12 UTC
+
+- Pushed frozen source ae2c2a6b901e0ed97f7c2874f8348b28cece079b and opened
+  https://github.com/rashadoni/leaddrive-v2/pull/883 ready after local review.
+  No pre-existing PR for this branch; no duplicate, draft-skip evidence or
+  manual CI dispatch. Current protected branch policy remains unchanged.
+- Actual required PR run39134939135, runner-policy39134939158,
+  scan39134939144, tooling39134939128 are pending/running. Disposable phases
+  share the existing queue: CDC39134939127 first; broker+SQL39134939137 and
+  stack39134939195 pending. No CI result is claimed before completion.
+- Next: inspect real generated-client strict types and13 broker +6 combined
+  scenarios on this exact source; diagnose any actual failure, preserve all
+  successful gates, normal merge only after every required/feature gate is
+  green, then actual release/artifact/public/runtime smoke. Source stays
+  frozen while local journal checkpoints preserve this waiting point.
+
+### PR883 strict-client gate found an ES2017 incompatibility — 2026-10-18 14:30 UTC
+
+- Exact source ae2c2a6b901e0ed97f7c2874f8348b28cece079b combined run
+ 39134939137 failed at the newly strict generated-Prisma TypeScript gate:
+ `fund-contracts.ts:32` used `10_000n`, disallowed by the project's ES2017
+ target. Root and independent helper read the completed job117697425702
+ log. Actual Prisma generation and cleanup succeeded; the49 fixture units,
+ broker13 and combined6 scenarios did NOT run in this job. No broker/SQL
+ defect or successful combined proof is inferred from this compile failure.
+- PR883 returned to draft for the correction. Replaced only that literal
+ with `BigInt(10000)`, preserving exact bigint arithmetic and the existing
+ ES2017 target/strict gate. Existing regression coverage includes signed
+ deltas, the smallest quantum and NUMERIC(18,4) maximum above Number precision.
+- Corrected tree: strict targeted contract/broker TypeScript,327/327 focused
+ tests (7 files,5.63s),11/11 script/contract guards and whitespace PASS locally.
+ Full generated-Prisma integration remains GitHub-only, not simulated locally.
+- Earlier-source synthetic CDC39134939127 and basic stack39134939195 are
+ SUCCESS. Required PR39134939135 still finishes its existing static gate;
+ its actual Fund restricted-login PostgreSQL step passed14:25:34Z and its
+ typecheck job is SUCCESS. These receipts do not certify the corrected SHA.
+ No running job was manually cancelled/rerun and no runtime operation occurred.
+- Next: finish preserving the earlier run, publish the reviewed correction,
+ verify GitHub has that exact new HEAD before marking ready, then require
+  actual current-SHA checks and combined drill before normal merge/release.
+
+### Exact-money correction regression coverage — 2026-10-18 14:32 UTC
+
+- Added two direct Fund contract tests (not only reducer output assertions):
+  a one-quantum signed-delta mismatch beyond Number's safe scaled integer
+  limit and a negative large legacy total with exact0.0001 remainder. Both
+  valid facts are accepted and their one-quantum corruptions rejected.
+- Seven focused files now329/329 PASS5.78s. ES2017 strict check still uses
+  the project's unchanged target; no rounding, floating-point substitution,
+  migration, baseline weakening or runtime configuration was introduced.
+- Independent failed-run review measured10m25s for setup/install/generation/
+  strict-check before failure, leaving about9m35s of the unchanged20-minute
+  job budget for the actual combined phase on the correction. This is a
+  budget to observe, not evidence of a timeout or permission to skip tests.
+
+### Second exact-source CI finding: test fixture classification — 2026-10-18 14:43 UTC
+
+- PR39134939135 completed FAILURE on old source ae2c2a6b9. Its full test
+ baseline reported19 failing files against18; the sole newly failing file
+ was `rls-bypass-classifier.test.ts`. The extracted synthetic PostgreSQL
+ fixture constructed its own client under `scripts/`, where operator scripts
+ must use the application's classified RLS factory. All actual14 Fund SQL
+ cases and278 focused units passed; typecheck64 gated pairs matched64, with
+1326 advisory diagnostics. This is not a globally clean TypeScript result.
+- The fixture intentionally exercises raw restricted logins and actual RLS;
+ giving it the normal operator factory's session-wide bypass would invalidate
+ its purpose. Correct classification is test support under `src/__tests__/`
+ (the original SQL test's area), not an operator script or a new allowlist
+ exception. A narrowly scoped move/import update is being prepared, with an
+ additional check against production callers. Classifier, baseline, URL
+ fence, roles/grants and production code paths are not being weakened.
+- All earlier-source runs are now completed; none was manually cancelled.
+ Preserve both diagnosed failures. Publish only after the combined correction
+  passes focused local checks, then require new exact-source actual CI.
+
+### Both CI findings corrected and checked locally — 2026-10-18 14:47 UTC
+
+- Shared PostgreSQL support now resides at
+ `src/__tests__/fixtures/fund-shadow-postgres.ts`; its only internal changes
+ are relative type-import paths. Root compared the entire moved file against
+ its predecessor. Exact disposable URL, independent logins/RLS/grants, real
+ migrations, real COMMIT ordering and owned-resource cleanup are unchanged.
+- All callers and strict workflow input/path trigger were updated. New
+ structural tests resolve static/alias/relative/dynamic/CommonJS/re-export
+ imports and admit exactly the two test files and gated combined CI script.
+ The RLS classifier and generic script factory remain unchanged. Caller
+ disposable/required admissions also have explicit structural assertions.
+- PASS sequentially on the corrected tree:341/341 tests across8 files,
+ including the previously failing RLS classifier and the new importer checks
+ (8.30s);11/11 script/contract guards;71-workflow runner policy; whitespace.
+ Fixture mock suite now24 plus broker fixture27 =51. Earlier49 counts describe
+ the older source only. Real combined/generated-client proof remains NOT RUN
+ locally by host policy; no full build or actual service was launched here.
+- Main remains d3a1281d6bf8769302c3fa8431ce39c47dca08ec. Old runs have all
+ completed. Next publication keeps the same PR883 and unchanged gates; only
+  a current-source actual successful integration will satisfy this increment.
+
+### Corrected PR883 source frozen — 2026-10-18 14:49 UTC
+
+- Published97aa83b12ffc7123818b1fb6600c4e1251e5d054 in the same PR883;
+ verified GitHub's head equals local HEAD before marking ready. No manual
+ CI rerun/dispatch or cancellation. Draft synchronize jobs skipped as designed;
+ ready-for-review starts actual current-source PR39137630590 and integrations.
+ The older same-source PR39137621176 was automatically superseded by workflow
+ concurrency, not used as test evidence or manually cancelled.
+- Actual heavy queue: synthetic CDC39137630596, combined broker/SQL39137630643,
+ basic stack39137630601. Runner-policy39137621117, scan39137621104 and
+ tooling39137621091 already SUCCESS. Source remains frozen while these run.
+- Independent helper watches only the combined job; root owns required checks
+ and release. No background watcher process or extra heavy job was launched.
+ Next: read actual results, fix any concrete remaining failure, then normal
+ green merge and GitHub production receipt. Runtime activation remains out
+ of this increment and is not inferred from eventual application delivery.
+
+### Corrected generated-client gates passed; live drill running — 2026-10-18 15:07 UTC
+
+- Source remains frozen at97aa83b12ffc7123818b1fb6600c4e1251e5d054 in PR883.
+ Combined39137630643 has passed actual Prisma generation, strict ES2017
+ generated-client compilation, fixture isolation/hooks and migration bootstrap;
+ the sequential actual broker then combined SQL drill is now running. These
+ prerequisites alone are not a successful combined-test receipt.
+- Required PR39137630590 typecheck117705473699 SUCCESS15:02:38Z:64 gated
+ pairs match64, with1325 advisory diagnostics. Static checks continue their
+ existing database gates. No baseline, compiler target or policy was weakened.
+- Re-read main protection: the same five Actions-bound checks, enforce_admins,
+ no force push/deletion; production branch policy permits only main. Main
+ advanced normally to e81353f058939910b254edd2a491b80edbb2ee1a via foreign
+ PR882 (attendance-settings UI/messages/tests), with no overlap in this task's
+ Kafka/SQL fixture/workflow paths. Its deploy39138480109 remains untouched;
+ no second release or duplicate integration was dispatched.
+- PR883 description now records both diagnosed first-run failures and the
+ corrected341 local tests. Normal gh PR metadata update encountered a Classic
+ Projects API error; the supported REST pull-request update succeeded. No
+ source commit changed. Next: actual complete drill and required gates, then
+ normal exact-head merge, automatic release and verified production receipt.
+
+### Combined takeover remains red; fixture pipe defect reproduced — 2026-10-18 15:16 UTC
+
+- Combined39137630643/job117705287961 completed FAILURE on97aa83b12 after
+ 15m03s, not the20-minute limit. Actual strict generated-client compilation,
+ 51/51 fixture tests, migration bootstrap,13/13 broker scenarios and the first
+ five combined SQL scenarios passed. The last scenario reported only
+ `broker_postgres_phase=concurrent-takeover` at15:09:15Z. Compose cleanup and
+ service-container shutdown succeeded. PR883 returned to draft; no merge or
+ retry was used to hide this finding.
+- Independent small-process reproduction found a real fixture transport bug:
+ the private channel destroys stdout on FAIL, while child cleanup can still
+ write REVOKE. Three of three probes ended in SIGPIPE; leaving the true child
+ stdout draining produced exit1/no signal in three of three corrected probes.
+ This proves the pipe defect, not yet the exact original CI assertion because
+ its old catch hid that location. Static takeover subphase labels now retain
+ precise safe failure location without payload/exception/credential logging.
+- Fix is fixture-only: a64KiB backpressured PassThrough forwards private frames;
+ after channel closure it discards remaining child stdout while awaiting the
+ existing actual child termination. Runtime bridge, deadlines, old exit1/no
+ signal, actual stale ACK write, unchanged cursor and all parity assertions
+ are preserved. No synthetic timeout/failure is accepted as fencing evidence.
+- Current local checks PASS:343/343 targeted tests in8files (including two
+ pipe-lifecycle regressions, one with a tiny real shell child),12/12 script
+ contracts, narrow strict ES2017 contract/broker compilation,71-workflow
+ runner policy and whitespace. No Docker/Java/real DB/full build ran here.
+- Required static39137630590 is still finishing its already-started baseline
+ suite; no cancellation or duplicate run. Next: preserve its receipt, finish
+ independent patch review, publish corrected source once, then require actual
+ current-source combined and mandatory gates before the ordinary release.
+
+### Pipe correction reviewed; old mandatory gates complete — 2026-10-18 15:18 UTC
+
+- Independent read-only review found no blocker in the fixture-only proxy,
+ strict exit/ACK/deadline preservation or regression tests. Exact original CI
+ failure location remains unproven until the corrected real drill; the small
+ subprocess reproduction must not be represented as Kafka success.
+- Old-source PR39137630590 completed SUCCESS: static baseline18 failures
+ against18, typecheck64 gated pairs against64/1325 advisory diagnostics.
+ The separate combined failure still prevents merge; five green mandatory
+ contexts alone do not satisfy this task's real integration criterion.
+- Normally merged current origin/main89c1bd9a70978f41ddada0ce5b2873f7c3f9343c
+ into the dedicated branch, retaining foreign PR882 attendance settings and
+ PR885 demo-call changes. No task-file overlaps or conflicts. Reran343/343
+ focused tests (4.19s),12/12 script guards and whitespace successfully after
+ the merge. All prior own runs are complete before the forthcoming publication.
+- No production or GitHub policy mutation, foreign-run cancellation, runtime
+ activation, source replay/offset change or paid resource was performed.

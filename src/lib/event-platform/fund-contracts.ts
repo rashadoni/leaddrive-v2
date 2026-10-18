@@ -29,7 +29,7 @@ function fixedMoney(value: string): bigint | null {
   const negative = value.startsWith("-")
   const unsigned = negative ? value.slice(1) : value
   const [whole, fraction] = unsigned.split(".")
-  const scaled = BigInt(whole) * 10_000n + BigInt(fraction)
+  const scaled = BigInt(whole) * BigInt(10000) + BigInt(fraction)
   return negative ? -scaled : scaled
 }
 

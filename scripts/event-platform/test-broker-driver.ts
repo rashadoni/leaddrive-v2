@@ -1,71 +1,11 @@
 /** Actual Kafka/IPC test, disposable CI only; database effects are simulated. */
 import assert from "node:assert/strict"
-import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process"
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { resolve } from "node:path"
-import { createKafkaBridgeChannel, runKafkaBridge } from "../../src/lib/event-platform/kafka-bridge"
+import { runKafkaBridge } from "../../src/lib/event-platform/kafka-bridge"
 import { createPartitionProcessor } from "../../src/lib/event-platform/partition-processor"
+import { createBrokerFixtureHarness } from "./fixtures/kafka-broker-harness"
 
-const root = resolve(process.cwd()) // harness always invokes from repository root
-const project = process.env.LD_EVENT_STACK_PROJECT ?? ""
-assert.equal(process.env.GITHUB_ACTIONS, "true")
-assert.equal(process.env.LD_EVENT_STACK_DISPOSABLE, "1")
-assert.match(project, /^ld-event-test-[a-z0-9][a-z0-9-]{0,40}$/)
-const compose = ["compose", "-p", project, "-f", resolve(root, "ops/event-platform/test/compose.yml")]
-const temporary = mkdtempSync(resolve(tmpdir(), "leaddrive-broker-driver-"))
-function execute(binary: string, args: string[], timeout = 60_000) {
-  const result = spawnSync(binary, args, { cwd: root, encoding: "utf8", maxBuffer: 1024 * 1024, timeout })
-  assert.equal(result.status, 0, `synthetic command failed: ${result.error?.name ?? (result.stderr ?? "").slice(-1500)}`)
-  return result.stdout.trim()
-}
-const java = [...compose, "exec", "-T", "-u", "0", "-e", "GITHUB_ACTIONS=true", "-e", "LD_EVENT_STACK_DISPOSABLE=1", "kafka", "java",
-  "-Xms16m", "-Xmx96m", "-XX:ActiveProcessorCount=1", "-Dlog4j2.configurationFile=/tmp/bridge-log4j2.properties", "-cp", "/opt/kafka/libs/*:/tmp/bridge-classes"]
-function fixture(action: string, name: string, mode?: string) {
-  return execute("docker", [...java, "KafkaBridgeFixture", action, `ld.testbroker.${name}.events.v1`, `ld-testbroker-${name}`, ...(mode ? [mode] : [])])
-}
-mkdirSync(resolve(temporary, "classes"))
-execute("docker", [...compose, "cp", "kafka:/opt/kafka/libs", resolve(temporary, "libs")])
-execute("javac", ["-J-Xmx128m", "-cp", resolve(temporary, "libs/*"), "-d", resolve(temporary, "classes"),
-  "ops/event-platform/driver/KafkaPartitionBridge.java", "ops/event-platform/test/KafkaBridgeFixture.java"])
-execute("docker", [...compose, "cp", resolve(temporary, "classes"), "kafka:/tmp/bridge-classes"])
-writeFileSync(resolve(temporary, "logging.properties"), "status=OFF\nrootLogger.level=OFF\n", { mode: 0o600 })
-execute("docker", [...compose, "cp", resolve(temporary, "logging.properties"), "kafka:/tmp/bridge-log4j2.properties"])
-const configurations = new Map<string, { cluster: string; topicId: string }>()
-function create(name: string, mode = "plain") {
-  const [cluster, topicId] = fixture("create", name, mode).split("\t")
-  assert.ok(cluster && topicId)
-  configurations.set(name, { cluster, topicId })
-  const path = resolve(temporary, `${name}.properties`)
-  writeFileSync(path, `expected.cluster.id=${cluster}\nexpected.topic.id=${topicId}\nexpected.partitions=1\nbootstrap.servers=kafka:9092\nsecurity.protocol=PLAINTEXT\ntest.profile=disposable-ci\ngroup.id=ld-testbroker-${name}\ntopic=ld.testbroker.${name}.events.v1\n`, { mode: 0o600 })
-  execute("docker", [...compose, "cp", path, `kafka:/tmp/bridge-${name}.properties`])
-}
-const children = new Set<ChildProcessWithoutNullStreams>()
-async function terminate(child: ChildProcessWithoutNullStreams) {
-  if (child.exitCode !== null || child.signalCode !== null) return
-  // SIGTERM of docker exec does not guarantee killing its process in-container.
-  // EOF on stdin makes the bridge close; external timeout bounds it as well.
-  child.stdin.end()
-  await new Promise<void>((resolve, reject) => {
-    // Wait for the *container* timeout/exit, not merely a killed Docker shim.
-    // If Docker cannot report it, stop the suite; never reuse that group.
-    const timer = setTimeout(() => { child.kill("SIGKILL"); reject(new Error("fixture exit not confirmed")) }, 100_000)
-    child.once("exit", () => { clearTimeout(timer); resolve() })
-    child.once("error", () => { clearTimeout(timer); reject(new Error("fixture spawn failed")) })
-  })
-  children.delete(child)
-}
-function driver(name: string, timeoutMs = 35_000) {
-  // Container timeout is independent of a broken host-side Docker pipe.
-  const timeoutJava = [...java]
-  timeoutJava.splice(timeoutJava.indexOf("java"), 0, "timeout", "-k", "5", "90")
-  const child = spawn("docker", [...timeoutJava, "KafkaPartitionBridge", `/tmp/bridge-${name}.properties`], { cwd: root, stdio: ["pipe", "pipe", "pipe"] })
-  children.add(child)
-  child.on("error", () => { child.stdout.destroy(); child.stdin.destroy() })
-  child.stderr.resume() // private diagnostics never copied to job output
-  const channel = createKafkaBridgeChannel({ stdout: child.stdout, stdin: child.stdin, terminate: () => terminate(child), timeoutMs })
-  return { child, channel }
-}
+const harness = createBrokerFixtureHarness()
+const { create, fixture, driver, configurations } = harness
 type Apply = (record: { offset: string; key: Buffer | string | null; value: Buffer | string | null }) => Promise<unknown>
 async function consume(name: string, count: number, apply: Apply, options: { dropAck?: boolean; dropReceipt?: boolean } = {}) {
   const { channel } = driver(name)
@@ -181,8 +121,7 @@ try {
         })])
       } finally { if (timer) clearTimeout(timer) }
     }
-    const committedOffset = () => execute("docker", [...java, "KafkaBridgeFixture", "offset",
-      `ld.testbroker.${name}.events.v1`, `ld-testbroker-${name}`], Math.max(1, Math.min(10_000, deadline - Date.now())))
+    const committedOffset = () => fixture("offset", name, undefined, Math.max(1, Math.min(10_000, deadline - Date.now())))
     type Outcome = { ok: true; processed: number } | { ok: false }
     const oldEntered = gate(), newEntered = gate(), releaseOld = gate(), releaseNew = gate()
     const channels: ReturnType<typeof driver>["channel"][] = []
@@ -249,6 +188,6 @@ try {
   }
   console.log("broker_driver_integration=PASS; database_effects=simulated; production_activation=not-performed")
 } catch { throw new Error(`broker_driver_phase=${phase}`) }
-finally { await Promise.all([...children].map(terminate)) }
+finally { await harness.close() }
 }
 void main().catch(error => { console.error(error.message.startsWith("broker_driver_phase=") ? error.message : "broker_driver_integration=FAIL"); process.exitCode = 1 })

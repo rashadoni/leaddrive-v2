@@ -734,3 +734,36 @@ durable lifecycle/leases, protected broker topology/ACLs and full-history
 coverage, independently verified recovery, monitoring and separately governed
 activation/read-cutover remain open. No production consumer/offset/replay,
 source WAL/slot, recovery commissioning or new service purchase occurred.
+
+### K4 combined broker + SQL drill prepared — 2026-10-18 13:41 UTC
+
+PR880 final source7ec815288af3465428ec6694d60d7b47b7bbaecf passed all five
+actual protected checks and broker39129612814 (13 scenarios); normal merge
+produced e1e50cb5032f21f5f6295006420126ede28a52d5. Automatic deploy39131091042
+is still in progress. This supersedes the earlier final-revision-pending entry,
+but is not yet the app's production receipt or installation of a Java worker.
+
+The next isolated branch prepares six real Kafka + restricted PostgreSQL
+scenarios: tenant interleaving/restart/exact parity, hold before real COMMIT,
+deferred COMMIT rejection, pre-send ACK loss, committed receipt loss and stale
+member takeover after actual SQL COMMIT. Shared SQL fixture preserves the
+existing14 real-PG tests, actual three migrations and restricted grants/RLS.
+New control-flow tests22/22 pass locally; actual combined integration is
+NOT RUN until the dedicated GitHub gate executes on the frozen source.
+
+This uses an exact-byte synthetic outbox producer, not Debezium; it does not
+close the full CDC-to-rebuild, runtime packaging/lifecycle, broker HA/TLS/ACL,
+full-history, independent recovery, or production activation/read-cutover
+tasks. No real offsets, source data, consumers or recovery services changed.
+
+### PR880 app release confirmed — 2026-10-18 14:11 UTC
+
+Deploy39131091042 whole SUCCESS14:09:15Z on e1e50cb5032f21f5f6295006420126ede28a52d5;
+immutable artifact12138947773, runtime Fund/structural postconditions and root's
+independent exact public SHA/ping/login/CSS/JS checks passed. This supersedes
+the preceding release-pending entry. Java worker packaging/installation and
+Kafka activation did not occur; encrypted recovery/log shipping remain inactive.
+
+The prepared combined-test branch now has327/327 local control-flow tests and
+11/11 script/contract guards passing. Actual combined broker+SQL execution is
+still NOT RUN until its forthcoming frozen-source GitHub gate returns.

@@ -34,12 +34,60 @@ test('both required PR verification and production release run the real Fund sha
 
 test('real PG gate fails closed on missing admission and applies actual migrations, not mocks/db-push', () => {
   const source = readFileSync(new URL('src/__tests__/event-platform-fund-shadow-postgres.test.ts', root), 'utf8')
+  const fixture = readFileSync(new URL('src/__tests__/fixtures/fund-shadow-postgres.ts', root), 'utf8')
   assert.match(source, /!adminUrl && process\.env\.FUND_SHADOW_DB_GATE === "required"/)
+  assert.match(source, /from "\.\/fixtures\/fund-shadow-postgres"/)
+  assert.match(source, /fundShadowDatabase as database/)
+  assert.match(source, /postgres = createFundShadowPostgresFixture\(/)
+  assert.match(source, /await postgres\.setup\(\)/)
   for (const migration of ['20260901090000_event_platform_foundation', '20260901100000_fund_event_source_pilot', '20260906120000_projection_replay_control_plane']) {
-    assert.ok(source.includes(`"${migration}"`))
+    assert.ok(fixture.includes(`"${migration}"`))
   }
-  assert.match(source, /client\.\$transaction\(async real/)
-  assert.doesNotMatch(source, /vi\.mock\(|\["db", "push"/)
-  assert.ok(source.includes('url.hostname !== "127.0.0.1"'))
-  assert.ok(source.includes('url.pathname !== "/event_platform_test"'))
+  assert.match(fixture, /await client\.\$transaction\(async real/)
+  assert.doesNotMatch(source + fixture, /vi\.mock\(|\["db", "push"/)
+  assert.ok(fixture.includes('url.hostname !== "127.0.0.1"'))
+  assert.ok(fixture.includes('url.pathname !== "/event_platform_test"'))
+})
+
+test('combined broker proof requires actual generated types and SQL before its sequential drill', () => {
+  const workflow = readFileSync(new URL('.github/workflows/event-platform-broker.yml', root), 'utf8')
+  const stack = readFileSync(new URL('scripts/event-platform/test-stack.sh', root), 'utf8')
+  const drill = readFileSync(new URL('scripts/event-platform/test-broker-postgres.ts', root), 'utf8')
+  const ordered = [
+    'run: npx prisma generate --schema prisma/schema.prisma',
+    'npx tsc --noEmit --skipLibCheck --strict',
+    'run: npx vitest run src/__tests__/event-platform-fund-shadow-fixture.test.ts',
+    'run: node scripts/ci/test-event-platform-migrations.mjs',
+    'run: bash scripts/event-platform/test-stack.sh',
+  ].map(required => { const index = workflow.indexOf(required); assert.ok(index >= 0, required); return index })
+  assert.deepEqual(ordered, [...ordered].sort((a, b) => a - b))
+  assert.match(workflow, /LD_EVENT_STACK_COMBINED: '1'/)
+  assert.match(workflow, /FUND_SHADOW_DB_GATE: required/)
+  assert.match(workflow, /src\/__tests__\/fixtures\/fund-shadow-postgres\.ts/)
+  assert.match(workflow, /image: postgres:16\.13-alpine@sha256:[a-f0-9]{64}/)
+  assert.match(workflow, /--memory 512m --memory-swap 512m --cpus 1/)
+  assert.match(workflow, /group: event-platform-disposable-integration/)
+  assert.doesNotMatch(workflow, /continue-on-error:|secrets\./)
+  assert.ok(stack.indexOf('"$task_root/scripts/event-platform/test-broker-driver.ts"')
+    < stack.indexOf('"$task_root/scripts/event-platform/test-broker-postgres.ts"'))
+  for (const contract of ['createFundShadowPostgresFixture(', 'await db.setup()', 'runKafkaBridge(',
+    'createFundShadowPartitionWorker(', 'fundShadowDatabase(context.client)']) {
+    assert.ok(drill.includes(contract), contract)
+  }
+  assert.match(drill, /from "\.\.\/\.\.\/src\/__tests__\/fixtures\/fund-shadow-postgres"/)
+  for (const [name, value] of [['GITHUB_ACTIONS', 'true'], ['LD_EVENT_STACK_DISPOSABLE', '1'],
+    ['LD_EVENT_STACK_COMBINED', '1'], ['FUND_SHADOW_DB_GATE', 'required']]) {
+    assert.ok(drill.includes(`assert.equal(process.env.${name}, "${value}")`), `combined admission: ${name}`)
+  }
+  // Broker cleanup failure cannot prevent the independent SQL cleanup attempt.
+  assert.match(drill, /await Promise\.allSettled\(\[db\.close\(\)\]\)/)
+  assert.doesNotMatch(drill, /vi\.mock\(|mockResolvedValue|\bdb push\b/)
+  // Pipe cleanup must not replace real membership-fencing evidence with a
+  // generic failure, timeout or host-side signal. Keep precise safe phases.
+  assert.ok(drill.includes('phase = "takeover-assert-old-exit"'))
+  assert.ok(drill.includes('phase = "takeover-wait-replacement-commit"'))
+  assert.ok(drill.includes('assert.equal(old.child.exitCode, 1); assert.equal(old.child.signalCode, null)'))
+  assert.ok(drill.includes('assert.equal(oldAck, 1); assert.equal(oldAckWritten, 1)'))
+  assert.ok(drill.includes('Date.now() - old.recordReceivedAt < 60_000'))
+  assert.match(drill, /catch \{ throw new Error\(`broker_postgres_phase=\$\{phase\}`\) \}/)
 })
