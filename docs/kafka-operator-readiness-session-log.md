@@ -754,3 +754,42 @@ receipts/inbox/checkpoints/build/pointer/effects remain outside the six source
 guards and retain their independent contracts. Current reader snapshots cannot
 be silently promoted into final transaction evidence. Syntax/diff PASS; final
 source hosted proof pending. Real observer/source+pointer executor still absent.
+
+## 2026-10-19 — source barrier exact-source proof
+
+Executable source50e25065803d98225639dbfb57689527b6f5e8d6 passed hosted run
+https://github.com/rashadoni/leaddrive-v2/actions/runs/39172199816,
+job117807448828:158/158 unit,24/24 admission PostgreSQL,9/9 stop-challenge,
+22/22 actual-schema recovery/canary and8/8 new actual-schema source-barrier cases;
+cleanup PASS. Initial1322700b3 run39172099517 had all steps complete but the whole
+run was CANCELLED by our higher-priority queued checkpoint; it is not counted as
+whole-run PASS. No source/fixture failure or guard weakening in this phase.
+
+Proof: incomplete/disabled/non-ALWAYS/conditional/inherited profile denies;
+active writer denies acquisition; held barrier denies source/new-aggregate/
+ledger/shadow writes without changing org-a fingerprint while org-b proceeds;
+transaction/savepoint handle reuse denies; wrong action/controller/isolation
+and revoked admission deny; replica/TRUNCATE bypass attempts deny; staged lease
+expiry at actual COMMIT rolls back barrier/audit and releases writers. Controller
+still lacks business-table privileges. This is a transaction source primitive,
+not final reducer proof or an authenticated real pointer executor.
+
+Syntax/diff, runner-policy72 and domain catalog map27/27 PASS. Pinned redacted
+scanner still exactly1 old6ca3b5e2e:operator/README.md:82 prose finding; no new
+finding, no exceptions/history/policy changes. Required scan stays red, PR894
+stays draft. Latest resources14.0GB available/199GB disk/swap1004MB/avg10 pressure0;
+no heavy local install/build/PG, host services or unrelated worktrees touched.
+NOT RUN: full app static/typecheck/build (draft and Contabo limits); production
+source triggers/barrier, physical observer/challenge delivery, actual workers/
+stop/catch-up/soak/restore/alerts, consumers/offsets/replay/provider sends,
+merge/deploy. Addon and guards were installed only in hosted disposable DB.
+
+Result: inactive scoped source-barrier preparation verified; A5 operation remains
+open and27-domain A7 map unchanged. Last action: exact158+24+9+22+8 hosted proof.
+Stop: barrier acquisition and later canonical-source verification/lease/build/
+evidence/pointer CAS are not yet one restricted executor; real observer/broker
+proof and continuous promoted-worker lifecycle still absent. Next concrete step:
+prepare isolated same-transaction executor composition using this guard before
+source reads, exact final verification and pointer CAS, with concurrent source/
+lease/revoke/rollback denial. Actual overall delivery stays with original session
+«Проверить защиту Kafka-консюмера»; no new business activation is authorized.
