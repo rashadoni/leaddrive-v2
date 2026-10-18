@@ -2564,3 +2564,19 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   routing/deployment overlap. Normal merge of current main into this unpublished
   branch preserves both histories, with no force push. Foreign automatic
   deploy39133684288 is preserved; it is not this task's own completed receipt.
+
+### Combined drill published as PR883 — 2026-10-18 14:12 UTC
+
+- Pushed frozen source ae2c2a6b901e0ed97f7c2874f8348b28cece079b and opened
+  https://github.com/rashadoni/leaddrive-v2/pull/883 ready after local review.
+  No pre-existing PR for this branch; no duplicate, draft-skip evidence or
+  manual CI dispatch. Current protected branch policy remains unchanged.
+- Actual required PR run39134939135, runner-policy39134939158,
+  scan39134939144, tooling39134939128 are pending/running. Disposable phases
+  share the existing queue: CDC39134939127 first; broker+SQL39134939137 and
+  stack39134939195 pending. No CI result is claimed before completion.
+- Next: inspect real generated-client strict types and13 broker +6 combined
+  scenarios on this exact source; diagnose any actual failure, preserve all
+  successful gates, normal merge only after every required/feature gate is
+  green, then actual release/artifact/public/runtime smoke. Source stays
+  frozen while local journal checkpoints preserve this waiting point.
