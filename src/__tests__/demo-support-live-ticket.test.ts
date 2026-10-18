@@ -58,12 +58,12 @@ afterEach(() => {
   document.body.innerHTML = ""
 })
 
-async function renderQueue(live: DemoSceneProps["live"]) {
+async function renderQueue(live: DemoSceneProps["live"], sectionId = "sd-queue") {
   const manifest = PROSPECT_TO_CLOSED_WON
   const props: DemoSceneProps = {
     manifest,
     snapshot: createJourneySnapshot(manifest, identity, new Date("2026-10-18T05:00:00.000Z")),
-    section: findSection(manifest, "sd-queue")!,
+    section: findSection(manifest, sectionId)!,
     step: null,
     reviewMode: true,
     variant: "granted",
@@ -105,3 +105,10 @@ it("draws nothing without a ticket, or where the page reads no live thread", asy
   await renderQueue(undefined)
   expect(card()).toBeNull()
 })
+
+it("stays on every Service Desk screen — the sample queue's note only above the queue", async () => {
+  await renderQueue({ whatsappTicket: TICKET }, "sd-rules")
+  expect(card()!.textContent).toContain("WA-0031")
+  expect(card()!.textContent).not.toContain(S.supportLiveNote)
+})
+

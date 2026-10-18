@@ -36,7 +36,8 @@ const POLL_MS = 5_000
 export function useDemoLiveWhatsApp(token: string, active: boolean): DemoLiveWhatsAppHandle {
   const [state, setState] = useState<DemoLiveWhatsAppData | null>(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // Each press keeps its own error until the thread moves past it.
+  const [failure, setFailure] = useState<{ text: string; action: "welcome" | "ticket" } | null>(null)
   const base = `/api/v1/public/demo-access/${encodeURIComponent(token)}/whatsapp`
 
   // One loop: the first read straight away, then a poll — the prospect writes
@@ -51,8 +52,12 @@ export function useDemoLiveWhatsApp(token: string, active: boolean): DemoLiveWha
       if (cancelled) return
       if (payload?.success) {
         setState(payload)
-        // A failed press is history once the thread moved on.
-        if (payload.proven || payload.welcomeSentAt) setError(null)
+        // A failed press is history once the thread moved past it.
+        setFailure((current) => {
+          if (!current) return null
+          if (current.action === "welcome") return payload.proven || payload.welcomeSentAt ? null : current
+          return payload.ticketMode || payload.ticket || !payload.agentActive ? null : current
+        })
       }
       // A session without a live thread says so once; there is nothing to
       // watch for, so the loop stops instead of polling an empty answer.
@@ -66,9 +71,9 @@ export function useDemoLiveWhatsApp(token: string, active: boolean): DemoLiveWha
     }
   }, [base, active])
 
-  const post = useCallback(async (body: Record<string, unknown>) => {
+  const post = useCallback(async (body: Record<string, unknown>, action: "welcome" | "ticket", fallback: string) => {
     setBusy(true)
-    setError(null)
+    setFailure(null)
     const response = await fetch(base, {
       method: "POST",
       credentials: "same-origin",
@@ -78,14 +83,14 @@ export function useDemoLiveWhatsApp(token: string, active: boolean): DemoLiveWha
     const payload = (await response?.json().catch(() => null)) as (DemoLiveWhatsAppData & { success?: boolean; error?: string }) | null
     setBusy(false)
     if (!payload?.success) {
-      setError(payload?.error ?? S.whatsappFailed)
+      setFailure({ text: payload?.error ?? fallback, action })
       return
     }
     setState((current) => ({ ...payload, qr: payload.qr ?? current?.qr ?? null }))
   }, [base])
 
-  const welcome = useCallback(() => post({ action: "welcome", consent: true }), [post])
-  const startTicket = useCallback(() => post({ action: "ticket" }), [post])
+  const welcome = useCallback(() => post({ action: "welcome", consent: true }, "welcome", S.whatsappFailed), [post])
+  const startTicket = useCallback(() => post({ action: "ticket" }, "ticket", S.whatsappTicketFailed), [post])
 
-  return { state, busy, error, welcome, startTicket }
+  return { state, busy, error: failure?.text ?? null, welcome, startTicket }
 }

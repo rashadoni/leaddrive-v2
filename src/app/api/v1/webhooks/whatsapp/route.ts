@@ -1303,6 +1303,7 @@ async function processMessages(
         ticketNumber: result.ticketNumber,
         created: result.created,
         reopened: result.reopened === true,
+        missing: result.missing === true,
         appendReply: (reply: string) => (result.ticketId ? appendWhatsAppBotReplyToTicket(result.ticketId, reply) : Promise.resolve(false)),
         notifyReopen: () => {
           if (!result.ticketNumber) return

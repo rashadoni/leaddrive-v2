@@ -80,10 +80,28 @@ describe("the demo's ticket", () => {
     expect(mocks.createComment).not.toHaveBeenCalled()
   })
 
-  it("opens a new one when the ticket it held was deleted", async () => {
+  it("reports a held ticket that was deleted, and opens none itself — the demo lets one message open the next", async () => {
     mocks.findTicket.mockResolvedValue(null)
     const result = await ensureInboundWhatsAppTicket({ ...BASE, demo: { grantId: "grant-1", ticketId: "ticket-gone" } })
-    expect(result).toMatchObject({ ticketId: "ticket-new", created: true })
+    expect(result).toEqual({ ticketId: null, ticketNumber: null, created: false, commentAdded: false, missing: true })
+    expect(mocks.createTicket).not.toHaveBeenCalled()
+  })
+
+  it("does not write the message twice when another message reopened the ticket a moment ago", async () => {
+    mocks.findTicket.mockResolvedValue({ id: "ticket-1", ticketNumber: "WA-0030", status: "resolved" })
+    mocks.reopen.mockResolvedValue({ reopened: false, reason: "ticket_already_open", commentAdded: true })
+    const result = await ensureInboundWhatsAppTicket({ ...BASE, demo: { grantId: "grant-1", ticketId: "ticket-1" } })
+    expect(result).toMatchObject({ ticketId: "ticket-1", commentAdded: true })
+    expect(result.reopened).toBeUndefined()
+    expect(mocks.createComment).not.toHaveBeenCalled()
+  })
+
+  it("still names the demo's ticket when a step after creating it failed", async () => {
+    mocks.createComment.mockRejectedValue(new Error("connection reset"))
+    const result = await ensureInboundWhatsAppTicket({ ...BASE, demo: { grantId: "grant-1", ticketId: null } })
+    expect(result).toMatchObject({ ticketId: "ticket-new", ticketNumber: "WA-0031", created: true })
+    // The ordinary path keeps its old answer.
+    expect(await ensureInboundWhatsAppTicket(BASE)).toMatchObject({ ticketId: null, created: false })
   })
 })
 

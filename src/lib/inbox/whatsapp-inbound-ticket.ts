@@ -14,6 +14,8 @@ export type InboundTicketResult = {
   commentAdded: boolean
   /** The demo's resolved or closed ticket was reopened by this message (see `demo`). */
   reopened?: boolean
+  /** The ticket the demo holds is gone (deleted): nothing was filed, and the demo opens the next one itself. */
+  missing?: boolean
 }
 
 /** What marks the ticket a demo opened in its sales organisation. */
@@ -34,8 +36,9 @@ export const DEMO_WHATSAPP_TICKET_TAGS = ["demo", "demo_whatsapp"] as const
  * demo-whatsapp-agent.ts), opened only after the prospect pressed for it: it
  * is found by the id the demo's thread keeps — never by the phone, which may
  * have older tickets of its own — reopened when it was resolved or closed
- * (and its closure link cancelled), and created with the demo's mark.
- * Without `demo` nothing changes.
+ * (and its closure link cancelled), and created with the demo's mark. A held
+ * ticket that is gone is reported `missing` rather than replaced here: the
+ * demo lets one message open the replacement. Without `demo` nothing changes.
  */
 export async function ensureInboundWhatsAppTicket({
   organizationId,
@@ -60,6 +63,8 @@ export async function ensureInboundWhatsAppTicket({
   waMessageId?: string
   demo?: { grantId: string; ticketId: string | null }
 }): Promise<InboundTicketResult> {
+  // A demo ticket committed before a later step failed: the demo must still keep its id.
+  let createdForDemo: { id: string; ticketNumber: string } | null = null
   try {
     if (demo?.ticketId) {
       const own = await prisma.ticket.findFirst({
@@ -78,6 +83,10 @@ export async function ensureInboundWhatsAppTicket({
           await cancelPendingTicketClosureRequests(organizationId, own.id).catch(() => 0)
           return { ticketId: own.id, ticketNumber: own.ticketNumber, created: false, commentAdded: true, reopened: true }
         }
+        // Another message reopened it a moment ago: the helper already stored this one.
+        if (reopened.commentAdded) {
+          return { ticketId: own.id, ticketNumber: own.ticketNumber, created: false, commentAdded: true }
+        }
       }
       if (own) {
         await prisma.ticketComment.create({
@@ -85,7 +94,7 @@ export async function ensureInboundWhatsAppTicket({
         })
         return { ticketId: own.id, ticketNumber: own.ticketNumber, created: false, commentAdded: true }
       }
-      // Deleted since: the demo opens a new one below.
+      return { ticketId: null, ticketNumber: null, created: false, commentAdded: false, missing: true }
     }
 
     const existingTicket = demo ? null : await prisma.ticket.findFirst({
@@ -135,6 +144,7 @@ export async function ensureInboundWhatsAppTicket({
       requesterExternalId: contactId || waPhone,
       requesterMeta: { source: "whatsapp", channelMessageId, waMessageId: waMessageId || null },
     })
+    if (demo) createdForDemo = { id: ticket.id, ticketNumber: ticket.ticketNumber }
 
     await prisma.ticketComment.create({
       data: {
@@ -148,6 +158,8 @@ export async function ensureInboundWhatsAppTicket({
     return { ticketId: ticket.id, ticketNumber: ticket.ticketNumber, created: true, commentAdded: true }
   } catch (err) {
     console.error("[WA Webhook] Failed to ensure inbound WhatsApp ticket:", err)
+    // The ticket exists and its description holds the message.
+    if (createdForDemo) return { ticketId: createdForDemo.id, ticketNumber: createdForDemo.ticketNumber, created: true, commentAdded: false }
     return { ticketId: null, ticketNumber: null, created: false, commentAdded: false }
   }
 }

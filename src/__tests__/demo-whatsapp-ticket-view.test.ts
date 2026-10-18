@@ -65,4 +65,11 @@ describe("the demo's ticket in its customer's view", () => {
     expect(view.messages.at(-1)!.text).toBe("mesaj 9")
     expect(view.messageCount).toBe(9)
   })
+
+  it("says in Azerbaijani what a message without words was", () => {
+    const view = demoWhatsAppTicketView(row({ subject: "[WhatsApp müraciəti] [Изображение]", comments: [{ comment: "[Клиент (WhatsApp)] [Голосовое сообщение]", userId: null, createdAt: at(1) }] }))
+    expect(view.subject).toBe("Şəkil")
+    expect(view.messages[0].text).toBe("Səsli mesaj")
+  })
 })
+

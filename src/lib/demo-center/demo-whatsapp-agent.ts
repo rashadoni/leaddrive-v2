@@ -79,6 +79,8 @@ export interface DemoTicketHandle {
   created: boolean
   /** The demo's resolved or closed ticket was reopened by this message. */
   reopened: boolean
+  /** The ticket the thread held is gone (deleted): nothing was filed. */
+  missing?: boolean
   /** Writes the agent's reply into the ticket, as the product stores AI replies. Never throws. */
   appendReply: (reply: string) => Promise<boolean>
   /** The product's «your ticket was reopened» message to the customer. */
@@ -227,7 +229,15 @@ async function fileForThread(params: {
   now: Date
 }): Promise<DemoTicketHandle | null> {
   const { thread, fileTicket, now } = params
-  if (thread.ticketId) return await fileTicket({ grantId: thread.grantId, ticketId: thread.ticketId })
+  if (thread.ticketId) {
+    const ticket = await fileTicket({ grantId: thread.grantId, ticketId: thread.ticketId })
+    if (!ticket.missing) return ticket
+    // The team deleted it: let go of the dead id, and one message opens the next.
+    await runWithRlsBypass(() =>
+      prisma.demoWhatsAppThread.updateMany({ where: { id: thread.id, ticketId: thread.ticketId }, data: { ticketId: null, ticketClaimedAt: null } }),
+    )
+    return await fileForThread({ ...params, thread: { ...thread, ticketId: null } })
+  }
   const claimed = await runWithRlsBypass(() =>
     prisma.demoWhatsAppThread.updateMany({
       where: {
@@ -241,12 +251,15 @@ async function fileForThread(params: {
   if (claimed.count) {
     const ticket = await fileTicket({ grantId: thread.grantId, ticketId: null })
     if (ticket.ticketId) {
-      await runWithRlsBypass(async () => {
-        await prisma.demoWhatsAppThread.updateMany({ where: { id: thread.id }, data: { ticketId: ticket.ticketId } })
-        if (ticket.created) {
-          await prisma.demoAccessEvent.create({ data: { grantId: thread.grantId, eventType: "WHATSAPP_TICKET_OPENED", metadata: {} } })
-        }
-      }).catch((error: unknown) => console.error("[demo-whatsapp-agent] ticket not recorded on the thread", { errorType: error instanceof Error ? error.name : "unknown" }))
+      // Kept on the thread, or the next message would open a second ticket: one retry.
+      const record = () => runWithRlsBypass(() => prisma.demoWhatsAppThread.updateMany({ where: { id: thread.id }, data: { ticketId: ticket.ticketId } }))
+      await record().catch(() => record()).catch((error: unknown) =>
+        console.error("[demo-whatsapp-agent] ticket not recorded on the thread", { errorType: error instanceof Error ? error.name : "unknown" }))
+      if (ticket.created) {
+        await runWithRlsBypass(() =>
+          prisma.demoAccessEvent.create({ data: { grantId: thread.grantId, eventType: "WHATSAPP_TICKET_OPENED", metadata: {} } }),
+        ).catch(() => {})
+      }
     } else {
       await runWithRlsBypass(() =>
         prisma.demoWhatsAppThread.updateMany({ where: { id: thread.id, ticketId: null, ticketClaimedAt: now }, data: { ticketClaimedAt: null } }),
@@ -265,10 +278,12 @@ async function fileForThread(params: {
 }
 
 /**
- * A photo, voice message or other non-text message from a phone whose demo
- * is in ticket mode: filed into the demo's ticket, as the product files one,
- * and answered by no AI (the product's AI answers text only). True when it
- * was filed — the webhook then leaves it.
+ * A photo, voice message or other non-text message from a phone in a live
+ * demo. In ticket mode it is filed into the demo's ticket, as the product
+ * files one; before the press it opens no ticket — the owner's rule, as for
+ * text. No AI answers it either way (the product's AI answers text only).
+ * True when the demo took it — the webhook then leaves it. A revoked demo,
+ * or one whose day or answers are over, is an ordinary customer's.
  */
 export async function fileDemoWhatsAppMedia(
   inbound: { organizationId: string; waPhone: string; now?: Date },
@@ -281,12 +296,21 @@ export async function fileDemoWhatsAppMedia(
     const now = inbound.now ?? new Date()
     const thread = await runWithRlsBypass(() =>
       prisma.demoWhatsAppThread.findFirst({
-        where: { phoneE164, closedAt: null, provenAt: { not: null }, ticketModeAt: { not: null }, expiresAt: { gt: now } },
+        where: { phoneE164, closedAt: null, provenAt: { not: null }, expiresAt: { gt: now } },
         orderBy: { createdAt: "desc" },
-        select: { id: true, grantId: true, ticketId: true },
+        select: {
+          id: true,
+          grantId: true,
+          ticketId: true,
+          ticketModeAt: true,
+          aiReplies: true,
+          grant: { select: { status: true, liveWhatsAppEnabled: true, liveCallEnabled: true } },
+        },
       }),
     )
     if (!thread) return false
+    if (thread.grant.status === "REVOKED" || !(thread.grant.liveWhatsAppEnabled || thread.grant.liveCallEnabled)) return false
+    if (!thread.ticketModeAt) return thread.aiReplies < DEMO_WHATSAPP_MAX_AI_REPLIES
     const ticket = await fileForThread({ thread, fileTicket: deps.fileTicket, now })
     if (!ticket?.ticketId) return false
     if (ticket.reopened) ticket.notifyReopen()

@@ -30,6 +30,26 @@ export interface DemoWhatsAppTicketView {
   readonly messages: readonly DemoWhatsAppTicketMessage[]
 }
 
+/**
+ * The webhook files a message without words by a placeholder in Russian
+ * («[Изображение]»); the demo is Azerbaijani, and says what it was.
+ */
+const MEDIA_PLACEHOLDERS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/^\[Изображение\]$/, "Şəkil"],
+  [/^\[Видео\]$/, "Video"],
+  [/^\[(?:Аудио|Голосовое) сообщение\]$/, "Səsli mesaj"],
+  [/^\[Документ: [^\]]*\]$/, "Sənəd"],
+  [/^\[Стикер\]$/, "Stiker"],
+  [/^\[Локация: [^\]]*\]$/, "Məkan"],
+  [/^\[Контакт\]$/, "Kontakt"],
+]
+
+export function demoMediaLabel(text: string): string {
+  const trimmed = text.trim()
+  for (const [pattern, label] of MEDIA_PLACEHOLDERS) if (pattern.test(trimmed)) return label
+  return text
+}
+
 /** How many of the latest messages the demo shows; the rest are counted. */
 export const DEMO_WHATSAPP_TICKET_MESSAGES = 6
 
@@ -47,7 +67,7 @@ export function demoWhatsAppTicketView(row: {
 }): DemoWhatsAppTicketView {
   return {
     number: row.ticketNumber,
-    subject: portalTicketSubject(row.subject),
+    subject: demoMediaLabel(portalTicketSubject(row.subject)),
     status: isPublicTicketStatus(row.status) ? row.status : "unknown",
     createdAt: row.createdAt.toISOString(),
     sla: publicSlaPhase({
@@ -67,7 +87,7 @@ export function demoWhatsAppTicketView(row: {
         const view = comment.userId || parseCommentSender(comment.comment) || comment.comment.startsWith(EMAIL_COMMENT_PREFIX)
           ? portalCommentView(comment)
           : { text: comment.comment, author: "assistant" as const }
-        return { author: view.author, text: view.text, at: comment.createdAt.toISOString() }
+        return { author: view.author, text: demoMediaLabel(view.text), at: comment.createdAt.toISOString() }
       }),
   }
 }

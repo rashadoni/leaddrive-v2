@@ -428,15 +428,37 @@ describe("ticket mode", () => {
     expect(guardOmnichannelCommitments(demoWhatsAppTicketClosing("WA-0031"), { locale: "az" }).violations).toEqual([])
   })
 
+  it("opens exactly one new ticket when the team deleted the one the thread held", async () => {
+    mocks.findThreads.mockResolvedValue([proven({ ticketId: "ticket-gone" })])
+    const fileTicket = vi.fn(async (target: { ticketId: string | null }) =>
+      target.ticketId ? handle({ ticketId: null, ticketNumber: null, created: false, missing: true }) : handle({ ticketId: "ticket-2", ticketNumber: "WA-0032" }))
+    await handleDemoWhatsAppInbound(inbound("Hələ də işləmir"), { generate, fileTicket })
+    expect(fileTicket.mock.calls.map(([target]) => target.ticketId)).toEqual(["ticket-gone", null])
+    // The dead id is let go, then the claim path opens the next ticket and keeps it.
+    expect(mocks.updateThread.mock.calls[0][0]).toEqual({ where: { id: "thread-1", ticketId: "ticket-gone" }, data: { ticketId: null, ticketClaimedAt: null } })
+    expect(mocks.updateThread.mock.calls.some(([call]) => call.data?.ticketId === "ticket-2")).toBe(true)
+    expect(generate.mock.calls[0][0].system).toContain("WA-0032")
+  })
+
   it("files a photo from a phone in ticket mode into the demo's ticket, and answers it with nothing", async () => {
-    mocks.findOneThread.mockResolvedValue({ id: "thread-1", grantId: "grant-1", ticketId: "ticket-1" })
+    mocks.findOneThread.mockResolvedValue({ id: "thread-1", grantId: "grant-1", ticketId: "ticket-1", ticketModeAt: NOW, aiReplies: 2, grant: { status: "ACTIVE", liveWhatsAppEnabled: true, liveCallEnabled: false } })
     const fileTicket = vi.fn(async () => handle({ created: false }))
     expect(await fileDemoWhatsAppMedia({ organizationId: "org-leaddrive-inc", waPhone: "994501234567", now: NOW }, { fileTicket })).toBe(true)
-    expect(mocks.findOneThread.mock.calls[0][0].where).toMatchObject({ phoneE164: "+994501234567", ticketModeAt: { not: null }, provenAt: { not: null }, closedAt: null })
+    expect(mocks.findOneThread.mock.calls[0][0].where).toMatchObject({ phoneE164: "+994501234567", provenAt: { not: null }, closedAt: null })
     expect(generate).not.toHaveBeenCalled()
     mocks.findOneThread.mockResolvedValue(null)
     expect(await fileDemoWhatsAppMedia({ organizationId: "org-leaddrive-inc", waPhone: "994501234567", now: NOW }, { fileTicket })).toBe(false)
     expect(await fileDemoWhatsAppMedia({ organizationId: "org-other", waPhone: "994501234567", now: NOW }, { fileTicket })).toBe(false)
+  })
+
+  it("before the press, a photo opens no ticket — the owner's rule, as for text — and a revoked demo leaves it to the line", async () => {
+    const fileTicket = vi.fn(async () => handle())
+    mocks.findOneThread.mockResolvedValue({ id: "thread-1", grantId: "grant-1", ticketId: null, ticketModeAt: null, aiReplies: 2, grant: { status: "ACTIVE", liveWhatsAppEnabled: true, liveCallEnabled: false } })
+    expect(await fileDemoWhatsAppMedia({ organizationId: "org-leaddrive-inc", waPhone: "994501234567", now: NOW }, { fileTicket })).toBe(true)
+    expect(fileTicket).not.toHaveBeenCalled()
+    mocks.findOneThread.mockResolvedValue({ id: "thread-1", grantId: "grant-1", ticketId: "ticket-1", ticketModeAt: NOW, aiReplies: 2, grant: { status: "REVOKED", liveWhatsAppEnabled: true, liveCallEnabled: false } })
+    expect(await fileDemoWhatsAppMedia({ organizationId: "org-leaddrive-inc", waPhone: "994501234567", now: NOW }, { fileTicket })).toBe(false)
+    expect(fileTicket).not.toHaveBeenCalled()
   })
 })
 

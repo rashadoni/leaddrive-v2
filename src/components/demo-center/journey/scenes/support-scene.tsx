@@ -111,7 +111,7 @@ const ESCALATION_PILL: Record<number, string> = {
 }
 
 export function SupportScene(props: DemoSceneProps) {
-  const { section, hint } = props
+  const { section, hint, live } = props
   const tNav = useTranslations("nav")
   const screen = SCREEN_OF[section.id] ?? "queue"
 
@@ -141,6 +141,8 @@ export function SupportScene(props: DemoSceneProps) {
           )
         })}
       </nav>
+      {/* The prospect's own ticket, on every Service Desk screen (the page reads it). */}
+      {live?.whatsappTicket ? <LiveTicketCard ticket={live.whatsappTicket} aboveQueue={screen === "queue"} /> : null}
       {screen === "queue" && <QueueScreen {...props} />}
       {(screen === "ticket" || screen === "resolve") && <TicketScreen {...props} resolveStage={screen === "resolve"} />}
       {screen === "rules" && <RulesScreen {...props} />}
@@ -210,7 +212,7 @@ function initials(name: string): string {
 
 /* ── Dəstək Mərkəzi: the queue ───────────────────────────────────────── */
 
-function QueueScreen({ snapshot, step, reviewMode, dispatch, hint, live }: DemoSceneProps) {
+function QueueScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const t = useTranslations("tickets")
   const labels = useLabels()
   const format = useFormat()
@@ -247,8 +249,6 @@ function QueueScreen({ snapshot, step, reviewMode, dispatch, hint, live }: DemoS
         </div>
         <Button onClick={() => hint(S.demoButtonHint)}>+ {t("newTicket")}</Button>
       </header>
-
-      {live?.whatsappTicket ? <LiveTicketCard ticket={live.whatsappTicket} /> : null}
 
       <Panel data-tour-id="sd-queue-kpis" className="p-2">
         <div className="grid grid-cols-3 gap-1">
@@ -342,7 +342,7 @@ function QueueScreen({ snapshot, step, reviewMode, dispatch, hint, live }: DemoS
  * page's live read (`live`), in its customer's view: the portal's status and
  * service-target words, the last messages, nobody's name but «Siz».
  */
-function LiveTicketCard({ ticket }: { ticket: NonNullable<DemoSceneLive["whatsappTicket"]> }) {
+function LiveTicketCard({ ticket, aboveQueue }: { ticket: NonNullable<DemoSceneLive["whatsappTicket"]>; aboveQueue: boolean }) {
   const tp = useTranslations("portal")
   const labels = useLabels()
   const locale = useLocale()
@@ -352,10 +352,10 @@ function LiveTicketCard({ ticket }: { ticket: NonNullable<DemoSceneLive["whatsap
   return (
     <Panel data-testid="sd-live-ticket" className="border-emerald-300 p-4 dark:border-emerald-500/50">
       <h2 className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">{S.supportLiveTitle}</h2>
-      <p className="mt-0.5 text-xs text-muted-foreground">{S.supportLiveNote}</p>
+      {aboveQueue ? <p className="mt-0.5 text-xs text-muted-foreground">{S.supportLiveNote}</p> : null}
       <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
         <span className="font-mono text-xs text-muted-foreground">{ticket.number}</span>
-        <span className="min-w-0 flex-1 font-medium">{ticket.subject}</span>
+        <span className="min-w-0 flex-1 break-words font-medium">{ticket.subject}</span>
         {ticket.status === "unknown" ? (
           <span className="text-xs text-muted-foreground">{tp("statusUnknown")}</span>
         ) : (
@@ -373,7 +373,7 @@ function LiveTicketCard({ ticket }: { ticket: NonNullable<DemoSceneLive["whatsap
           message.author === "agent" ? (
             <div key={`${message.at}-${index}`} className="rounded-lg bg-muted/50 px-3 py-2">
               <p className="text-xs font-medium">{S.supportLiveTeam}</p>
-              <p className="mt-0.5 whitespace-pre-wrap text-sm text-muted-foreground">{message.text}</p>
+              <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-muted-foreground">{message.text}</p>
             </div>
           ) : (
             <ChatBubble
