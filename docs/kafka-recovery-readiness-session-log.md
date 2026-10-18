@@ -623,3 +623,19 @@
   owner/diagnostic and B2 endpoint/explicit-denial tests and both runbook entries.
   No working-tree/branch mutation, no actual B2 merge, no tests claimed on the
   preview tree. Reported bounded reconciliation plan to coordinator in PR892.
+
+## 2026-10-19 (Asia/Baku): prove actual CI integration instead of main-chasing
+
+- Main advanced again via unrelated Support PR902 to6912a0ac30570c7ec458f0af1b5b3127078855d0.
+  Its diff after4f touches only Support transcript/tests/handlers, no backup or
+  workflow files. Did not blindly merge/push/restart a third integration cycle.
+- Existing PR checks use default actions/checkout merge ref. Retrieved actual
+  completed pr-scope job117819957555 logs:checked-out HEAD is
+  2a5e07fe1c49b92057b06d6626440b681a17e928, merging A3cb8 into CURRENT6912.
+  Fetched refs/pull/892/merge and independently verified both parent hashes.
+- Run39176431730 API still reports historical base4f in pull_requests metadata;
+  that field is not proof of actual checkout. Actual logs/tree parents provide
+  the useful integration evidence. Static/type use same workflow SHA/default
+  checkout; their exact log/acceptance will be verified when completed.
+- No new source change, unnecessary CI duplicate or main mutation. Current
+  cb8 source remains frozen; root release/readiness hold and B2 dependency apply.
