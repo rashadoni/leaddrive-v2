@@ -16,6 +16,8 @@ on:
       - 'src/__tests__/event-platform-fund-shadow-fixture.test.ts'
       - 'src/__tests__/fixtures/fund-shadow-postgres.ts'
       - 'src/__tests__/event-platform-broker-fixture.test.ts'
+      - 'src/__tests__/event-platform-worker-process.test.ts'
+      - 'src/__tests__/event-platform-worker-session.test.ts'
       - 'scripts/ci/fixtures/fund-shadow/**'
       - 'scripts/ci/test-event-platform-migrations.mjs'
       - 'prisma/migrations/**'
@@ -81,12 +83,15 @@ jobs:
         run: >-
           npx tsc --noEmit --skipLibCheck --strict --target ES2017 --lib ESNext
           --module commonjs --moduleResolution node --esModuleInterop --types node
+          node_modules/next/types/global.d.ts
           src/__tests__/fixtures/fund-shadow-postgres.ts
           scripts/event-platform/fixtures/kafka-broker-harness.ts
           scripts/event-platform/test-broker-driver.ts
           scripts/event-platform/test-broker-postgres.ts
+          src/__tests__/event-platform-worker-process.test.ts
+          src/__tests__/event-platform-worker-session.test.ts
       - name: Prove fixture isolation and actual transaction hook ordering
-        run: npx vitest run src/__tests__/event-platform-fund-shadow-fixture.test.ts src/__tests__/event-platform-broker-fixture.test.ts
+        run: npx vitest run src/__tests__/event-platform-fund-shadow-fixture.test.ts src/__tests__/event-platform-broker-fixture.test.ts src/__tests__/event-platform-worker-process.test.ts src/__tests__/event-platform-worker-session.test.ts
       - name: Bootstrap and prove the existing disposable migration contract
         run: node scripts/ci/test-event-platform-migrations.mjs
         env:

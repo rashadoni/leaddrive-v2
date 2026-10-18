@@ -25,7 +25,8 @@ test('both required PR verification and production release run the real Fund sha
     assert.ok(unitStart < start, `${workflow}: focused unit proof precedes real PG proof`)
     const unitStep = source.slice(unitStart, start)
     assert.match(unitStep, /run: npx vitest run src\/__tests__\/event-platform-fund-balance-reducer\.test\.ts src\/__tests__\/event-platform-fund-shadow-consumer\.test\.ts/)
-    for (const testFile of ['event-platform-partition-processor', 'event-platform-fund-shadow-worker', 'event-platform-kafka-bridge']) {
+    for (const testFile of ['event-platform-partition-processor', 'event-platform-fund-shadow-worker', 'event-platform-kafka-bridge',
+      'event-platform-worker-process', 'event-platform-worker-session']) {
       assert.ok(unitStep.includes(`src/__tests__/${testFile}.test.ts`), `${workflow}: ${testFile} must execute`)
     }
     assert.doesNotMatch(unitStep, /\b(?:if|continue-on-error):|secrets\./)
@@ -61,6 +62,10 @@ test('combined broker proof requires actual generated types and SQL before its s
     'run: bash scripts/event-platform/test-stack.sh',
   ].map(required => { const index = workflow.indexOf(required); assert.ok(index >= 0, required); return index })
   assert.deepEqual(ordered, [...ordered].sort((a, b) => a - b))
+  // The actual Next ambient ProcessEnv contract requires NODE_ENV. Checking
+  // only Node types would miss subprocess-environment errors in these tests.
+  const strictStep = workflow.slice(ordered[1], workflow.indexOf('\n      - name:', ordered[1]))
+  assert.match(strictStep, /node_modules\/next\/types\/global\.d\.ts/)
   assert.match(workflow, /LD_EVENT_STACK_COMBINED: '1'/)
   assert.match(workflow, /FUND_SHADOW_DB_GATE: required/)
   assert.match(workflow, /src\/__tests__\/fixtures\/fund-shadow-postgres\.ts/)
@@ -70,7 +75,7 @@ test('combined broker proof requires actual generated types and SQL before its s
   assert.doesNotMatch(workflow, /continue-on-error:|secrets\./)
   assert.ok(stack.indexOf('"$task_root/scripts/event-platform/test-broker-driver.ts"')
     < stack.indexOf('"$task_root/scripts/event-platform/test-broker-postgres.ts"'))
-  for (const contract of ['createFundShadowPostgresFixture(', 'await db.setup()', 'runKafkaBridge(',
+  for (const contract of ['createFundShadowPostgresFixture(', 'await db.setup()', 'startKafkaWorkerSession(',
     'createFundShadowPartitionWorker(', 'fundShadowDatabase(context.client)']) {
     assert.ok(drill.includes(contract), contract)
   }
@@ -90,4 +95,12 @@ test('combined broker proof requires actual generated types and SQL before its s
   assert.ok(drill.includes('assert.equal(oldAck, 1); assert.equal(oldAckWritten, 1)'))
   assert.ok(drill.includes('Date.now() - old.recordReceivedAt < 60_000'))
   assert.match(drill, /catch \{ throw new Error\(`broker_postgres_phase=\$\{phase\}`\) \}/)
+  const session = readFileSync(new URL('src/lib/event-platform/worker-session.ts', root), 'utf8')
+  assert.match(session, /await runKafkaBridge\(/)
+  for (const marker of ['broker_postgres_stop_after_commit_restart=PASS', 'broker_postgres_stop_during_commit_restart=PASS',
+    'assert.equal(ackAttempts, 0); assert.equal(cursor(test), test.start)', 'assert.equal(observed[0].offset, test.start)',
+    'assert.equal(released, false', 'assert.equal(released, true']) assert.ok(drill.includes(marker), marker)
+  for (const name of ['worker-process', 'worker-session']) {
+    assert.ok(workflow.includes(`src/__tests__/event-platform-${name}.test.ts`))
+  }
 })

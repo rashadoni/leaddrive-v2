@@ -767,3 +767,95 @@ Kafka activation did not occur; encrypted recovery/log shipping remain inactive.
 The prepared combined-test branch now has327/327 local control-flow tests and
 11/11 script/contract guards passing. Actual combined broker+SQL execution is
 still NOT RUN until its forthcoming frozen-source GitHub gate returns.
+
+### K4 combined Kafka + restricted PostgreSQL verified — 2026-10-18 15:33 UTC
+
+PR883 source92aa3c5d380625dfbb86d85bbbea22d600f8d934 passed actual combined
+run39139978362/job117712215441 (SUCCESS15:32:34Z): strict generated-client
+ES2017 compilation,53 fixture tests, real migrations,13 broker scenarios and
+all6 combined cases. This supersedes the preceding NOT RUN for the bounded
+combined drill, not for all K4. Exact ordering/parity, no pre-COMMIT ACK,
+deferred COMMIT rollback, durable-inbox ACK loss, receipt loss and actual stale
+member fencing after committed SQL are now exercised together. Test cleanup
+passed. The earlier takeover failure and corrected private-pipe lifecycle are
+preserved in the append-only session journal rather than hidden by a retry.
+
+Mandatory PR gates and normal production delivery remain pending at this entry.
+Exact outbox fixture publication is not Debezium. Full CDC-to-rebuild, governed
+worker packaging/lifecycle, HA/TLS/ACL, independent recovery, all modules and
+production activation/replay/read-cutover remain open and unperformed.
+
+### PR883 verified and merged; release pending — 2026-10-18 15:39 UTC
+
+All five actual protected contexts on92aa3c5d passed; required PR39139978372
+includes280 focused and14 real-PG tests, unchanged18-file/64-pair baselines.
+Separate combined39139978362 (13+6), CDC39139978367 and stack39139978571 all
+SUCCESS. Normal exact-head merge producedf41ba03328b5aeda9c06f5e5baf27437683d255b
+at15:38:55Z. Automatic application release remains pending at this entry; no
+Java-worker installation, Kafka consumer activation or data replay occurred.
+
+### PR883 delivered and independently verified — 2026-10-18 16:13 UTC
+
+Automatic release39141430405 whole SUCCESS on
+f41ba03328b5aeda9c06f5e5baf27437683d255b. Quality repeated280 focused and14
+real restricted-PG tests with unchanged18-file baseline; actual full build
+and immutable artifact12141838839 succeeded. Production structural/RLS/Fund
+postconditions and public exact SHA/ping/login/assets passed; root repeated
+public checks16:12:32Z. This supersedes the preceding release-pending entry.
+
+The completed bounded proof is13 actual broker scenarios plus6 combined
+broker/restricted-SQL scenarios, not all K4/K8. Production recovery remains
+plain/uncommissioned, its four timers stopped and off-box log shipping
+inactive according to the actual release log. Java-worker packaging/service,
+full CDC-to-rebuild, governed lifecycle/promotion, HA/TLS/ACL, independent
+recovery, all-module adoption and specifically authorized activation remain
+open. One current-SHA read-only aggregate inventory39143994149 is pending;
+it cannot certify restoration or activate consumers/replay.
+
+### Fresh runtime inventory after PR883 — 2026-10-18 16:14 UTC
+
+Inventory39143994149 SUCCESS16:13:30Z on exactf41ba033; pending above is
+superseded for inspection only. PostgreSQL160015 is still wal_level=replica,
+max_slot_wal_keep_size=-1, slots0/active0, intended outbox publication absent.
+All8 expected event/projection tables exist with forced RLS. Planner row
+estimates are not exact history counts. The4 scoped recovery timers are
+inactive; restore verification NOT PERFORMED. Present passfiles/CAs do not
+prove recovery. Earlier23/9 readiness totals were not rerun; do not relabel
+them as fresh evidence or this successful inventory as activation readiness.
+
+Next bounded software work is K4.1/K4.8 worker entrypoint/artifact and graceful
+stop/restart admission, plus separate full Debezium-to-restricted-SQL proof.
+No production startup/automatic replay follows from those preparations.
+Production CDC/source maintenance, recovery commissioning, independently
+verified restore/approval, HA/TLS/ACL, lifecycle/promotion and all-module
+adoption remain open. No subscriptions/resources were purchased.
+
+### K4.1/K4.8 lifecycle prerequisite in progress — 2026-10-18
+
+Next dedicated branch prepares owned-child supervision (private bounded pipes,
+EOF/TERM/KILL, actual-close evidence, sanitized failures) and a finite bridge
+session (intake deadline, immediate stop/ACK fence, SQL settlement before client
+release, no automatic restart). The combined CI drill is extended from6 to8
+scenarios: stop during SQL and after actual COMMIT, then resume from unchanged
+broker offset without duplicate shadow effects. At this entry the new actual
+integration is NOT RUN, pending the frozen-source GitHub gate.
+
+These are prerequisites, not a complete standalone production entrypoint.
+Direct-child tests use tiny Node children; existing CI Java uses its established
+container-specific reaping harness. Immutable worker packaging, governed config
+admission, direct-JVM lifecycle composition, full Debezium-to-SQL rebuild,
+independent recovery, HA/TLS/ACL, all-module adoption and authorized activation
+remain open. No production service, WAL/slot, offset/replay or backup action is
+performed by preparing these modules.
+
+### Lifecycle bounded proof verified; release still pending — 2026-10-18 18:08 UTC
+
+PR889 exact sourcedbba7c0f16075c17b91a9b8d6685a3cf1e47eb2d passed
+broker run39151613583/job117746248594: generated-client strict types,
+113 fixture/lifecycle tests,13 broker cases plus all8 real restricted-SQL
+combined scenarios. Both new stop/restart cases preserve durable inbox, fence
+ACKs and release owned connections only after SQL settlement. Prior NOT RUN
+is superseded for this scoped integration proof only. Separate synthetic CDC
+39151613585 passed, but full CDC-to-rebuild/direct-JVM runtime composition is
+still open. Mandatory static-checks and normal merge/release remain pending;
+no production consumer, replay or recovery commissioning occurred.

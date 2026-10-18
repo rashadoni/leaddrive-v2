@@ -74,6 +74,38 @@ the command reader 60 seconds, client APIs 10 seconds and max poll interval
 Fixture processes have an independent container timeout and are reaped before
 reusing their groups. These canary defaults are not a production sizing SLA.
 
+### Inactive process/session lifecycle prerequisites
+
+`src/lib/event-platform/worker-process.ts` supervises exactly one owned child
+supplied by trusted launch wiring. It forwards only private bounded pipes,
+discards stderr, sends EOF on normal close, and waits for actual child `close`
+(not just `exit` or a successful kill request). Defaults:2s EOF grace,1s after
+TERM,1s after KILL. Each budget is at most10s. Forced/nonzero/signal exit or
+unconfirmed reaping is failure, never a graceful success receipt. The caller
+must spawn the actual worker directly; supervising a Docker CLI or shell does
+not prove reaping of its remote/grandchild process. Tests use tiny direct Node
+children, not a production JVM. Executable/config admission, immutable worker
+artifact, environment scrubbing and deployment/service wiring remain open.
+
+`src/lib/event-platform/worker-session.ts` runs one finite bridge session with
+an explicit intake/ACK deadline (maximum10min) and record budget. It snapshots
+identities, owns one acquisition/release cycle, and never restarts itself.
+Stop or AbortSignal immediately revokes ACK capability and closes the channel;
+it then waits for the active processor/SQL transaction and child close before
+releasing session-owned database clients. A stopped run rejects even when SQL
+has already committed. Restart must use the real broker cursor and durable
+inbox, not a local checkpoint or offset reset. The deadline cannot cancel an
+arbitrary SQL callback; the existing Fund adapter's5s wait/15s transaction
+timeout remains required. Resource factories own partial-acquisition cleanup
+and bounded disconnect. No process-global signal handler or app startup hook
+is installed by importing either module.
+
+The real combined CI drill exercises this session wrapper using its existing
+container-specific reaping harness; it does not substitute the new direct-child
+supervisor around Docker and claim JVM ownership. Direct-child supervision and
+real broker/SQL stop/restart are separate proofs until the governed standalone
+runtime artifact and launch wiring are composed and verified.
+
 ## Proof and limits
 
 `event-platform-broker.yml` runs only on GitHub's pinned Linux image. It uses
@@ -105,10 +137,12 @@ private Compose topology. No production secret, source connection or live data
 is available. Connections are capped to one per client, closed per scenario,
 and only confirmed fixture-created databases/roles can be cleaned up.
 
-The six combined scenarios assert exact A/B/A reconstruction and unchanged
+The eight combined scenarios assert exact A/B/A reconstruction and unchanged
 source/active/pointers/effects; no ACK before real COMMIT; real deferred COMMIT
 rejection with full rollback; pre-send ACK loss with durable inbox replay;
-post-commit receipt loss with broker-cursor restart; and concurrent takeover
+post-commit receipt loss with broker-cursor restart; stop during SQL and after
+COMMIT with no ACK, settlement-before-disconnect and idempotent broker-cursor
+restart; and concurrent takeover
 with a real committed duplicate while the old member's ACK is fenced. The
 takeover hold is **after** the actual SQL transaction, never an extension of
 its15-second timeout. Fixture administration seeds only new synthetic groups

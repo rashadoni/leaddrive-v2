@@ -2748,3 +2748,324 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  the merge. All prior own runs are complete before the forthcoming publication.
 - No production or GitHub policy mutation, foreign-run cancellation, runtime
  activation, source replay/offset change or paid resource was performed.
+
+### Corrected pipe lifecycle published; actual new-source gates started — 2026-10-18 15:20 UTC
+
+- Frozen published source92aa3c5d380625dfbb86d85bbbea22d600f8d934. GitHub's
+ PR head was re-read until it matched after push; only then was PR883 marked
+ ready. Earlier draft jobs skipped normally and are not accepted as proof.
+- Actual current-source runs: required PR39139978372, combined39139978362,
+ synthetic CDC39139978367 and basic stack39139978571 (one shared disposable
+ queue). Runner-policy39139920566, scan39139920481 and tooling39139920594
+ SUCCESS. Helper owns read-only combined observation; root owns required gates
+ and release. No manual rerun/dispatch or cancellation was performed.
+- Source is frozen again. Next: all actual current-source results including
+53 fixture tests and six combined scenarios; ordinary merge only afterwards.
+
+### Real combined broker + restricted SQL proof passed — 2026-10-18 15:33 UTC
+
+- Combined39139978362/job117712215441 SUCCESS15:32:34Z on exact published
+92aa3c5d380625dfbb86d85bbbea22d600f8d934,12m47s. Root read the completed
+ logs: actual generated-client strict ES2017 check,53/53 fixture tests,
+ migration integration,13/13 broker scenarios and all6 combined scenarios
+ passed. Scoped Compose cleanup and service-container shutdown also SUCCESS.
+- Last formerly failing scenario passed15:32:27Z with unchanged requirements:
+ actual SQL COMMIT/durable inbox; replacement higher generation; old child
+ alive before stale ACK, ACK actually written, rejected before command timeout;
+ old exit1/no signal; no old cursor advance; replacement and restart finish
+ exact projection/checkpoint parity. Final marker explicitly reports real
+ Kafka and restricted-real-commit SQL, separate CDC proof, no activation.
+- This supersedes the prior failed combined receipt for this corrected source
+ only. It does not prove production HA/TLS/ACL, Java-worker packaging/service,
+ full Debezium-to-rebuild, lifecycle/promotion/rollback, independent recovery,
+ all-module adoption or production consumers/replay.
+- Required PR39139978372 is still executing its full baseline suite; typecheck
+ SUCCESS with64 gated pairs=64 and1324 advisory diagnostics. Synthetic CDC
+39139978367 is next in the shared queue. Do not merge until all actual gates
+ finish. No source push during the frozen-source checks.
+
+### PR883 normally merged after all actual gates — 2026-10-18 15:39 UTC
+
+- Source92aa3c5d380625dfbb86d85bbbea22d600f8d934: actual PR39139978372
+ SUCCESS, including280 focused tests,14/14 real restricted-PG tests and full
+ baseline18=18; typecheck64=64/1324 advisory diagnostics. Combined39139978362
+ SUCCESS13+6; CDC39139978367 SUCCESS raw8/8/no duplicates and cold restart
+ (TLS/business projection/activation explicitly NOT_PROVEN/NOT_RUN); basic
+ stack39139978571 SUCCESS. Policy, secret scan and tooling also SUCCESS.
+- Rechecked protection: five Actions-bound contexts, enforce_admins, no force
+ or deletion. PR head exact92aa, ready and mergeable clean. Main advanced only
+ through unrelated PR884 MTM styling to6dbf839f; inspected changed paths, no
+ Kafka/fixture/workflow overlap. No source update was used to bypass checks.
+- Normal exact-head merge (no admin/force) at15:38:55Z produced
+ f41ba03328b5aeda9c06f5e5baf27437683d255b. Automatic GitHub main deployment
+ is the only release path; receipt is pending. Foreign deployments remain
+ untouched. Java-worker activation, offset/replay and recovery commissioning
+ are NOT performed or implied by this application merge.
+
+### Release quality complete; existing build still running — 2026-10-18 16:05 UTC
+
+- Continued in the same clean dedicated worktree/branch; origin remains
+  rashadoni/leaddrive-v2, registered production remains Contabo
+  13.140.132.245:/opt/leaddrive-v2 through GitHub Actions only. Canonical dirty
+  checkout and foreign jobs were not changed.
+- Automatic release39141430405 on exact mergef41ba033 completed quality
+  job117716501339 SUCCESS16:03:44Z. Root read the completed logs: actual
+  migrations, Fund control-flow and14 restricted-PG cases passed; full suite
+  reports18 failing files against the unchanged18-file baseline, no new failures.
+  This is a passing baseline gate, not a claim that the full suite has zero
+  known failures. Helper independently monitors the same release read-only.
+- Build117716501200 has completed dependency/client preparation and is
+  compiling the standalone application. No duplicate dispatch/retry or foreign
+  cancellation. Deployment/artifact/public-SHA verification remain pending.
+- Next: complete this release, verify immutable artifact and runtime/public
+  receipt; only if current main and public artifact match and the production
+  queue is free, run the existing aggregate-only readiness inventory. That
+  inventory must not be described as backup restoration or Kafka activation.
+
+### PR883 production delivery and independent public receipt — 2026-10-18 16:13 UTC
+
+- Release39141430405 is whole SUCCESS on exact merge
+  f41ba03328b5aeda9c06f5e5baf27437683d255b: quality, build, deployment/smoke
+  and the workflow's normal retention stage all completed successfully.
+  This supersedes the preceding release-pending entries for this increment.
+- Quality completed16:03:44Z; actual280/280 Fund units and14/14 restricted
+  PostgreSQL cases passed again. Full baseline18=18, no new failures.
+  Build117716501200 completed16:05:36Z. Independent helper and root verified
+  artifact12141838839, leaddrive-prod-f41ba03328b5aeda9c06f5e5baf27437683d255b,
+  471505963bytes, SHA-256
+  bafac5ad79219bdbab6ef5844fbe1779403e71988c1cedc2961ee48baf3257de.
+- Deployment117722329471 verified structural ledger, RLS, ownership,
+  exact-money and Fund projection postconditions16:10:53Z. Public workflow
+  probes16:11:51–53Z returned ping200, exact artifact SHA, login/CSS/JS200.
+  Root independently repeated all five public checks16:12:32Z with the same
+  full artifact SHA; no cached-marker-only evidence was used.
+- Deployment also explicitly reports plain recovery mode, encrypted recovery
+  commissioning inactive, four recovery timers stopped and off-box log
+  shipping inactive. Application health does not supersede those gaps. This
+  application release did not install/start the Java worker, activate Kafka,
+  change offsets, replay source data, commission recovery or buy resources.
+- Rechecked current main=public artifact=f41ba033, production policy exactmain,
+  all recent deployment runs completed and no active inventory duplicate.
+  Reviewed inventory script's Git blob matches current main. Started exactly
+  one existing aggregate-only inspection39143994149 at16:13:04Z; receipt
+  pending. No direct production SSH fallback or secret output was used.
+
+### Current production inventory and exact stopping point — 2026-10-18 16:14 UTC
+
+- Read-only inventory39143994149/job117723997019 SUCCESS, observed16:13:30Z,
+  exact production artifactf41ba033. This supersedes the pending inventory
+  entry. SQL was transaction_read_only=on; no SQL mutation, backup/restore,
+  consumer activation, offset change or replay was performed.
+- Fresh source evidence: PostgreSQL160015, wal_level=replica,
+  max_slot_wal_keep_size=-1, zero replication slots/active slots/retained-slot
+  WAL, outbox publication absent. Therefore the intended source CDC path is
+  not activated; this does not enumerate every external Kafka process.
+  All eight expected event/projection tables exist with RLS and FORCE RLS.
+  Planner estimatedRows=0 is not an exact count or evidence of empty history.
+- All four scoped recovery timers are inactive. Configuration and both
+  passfiles/CAs are present/readable with bounded file permissions; presence
+  does not prove TLS login, decryptability or successful recovery. The runner
+  masked CA owner classification, so it is not reinterpreted from the log.
+  backup_restore_verification=not-performed remains explicit. Earlier recovery
+  23-issue/9-gap assessment was not rerun and is historical, not a fresh count.
+- Capacity snapshot: available memory10173380kB of12247548kB, swap0;
+  available app filesystem175247155200bytes of206900281344bytes;
+  database502848535bytes. Cumulative WAL18026680838bytes since the reported
+  reset is not a peak/events-per-second or production sizing measurement.
+  This single web/DB host does not establish independent Kafka failure domains.
+- Completed boundary: PR883 merged and delivered through the normal workflow,
+  real13+6 broker/SQL proof retained, whole release SUCCESS16:12:16Z
+  (deploy job SUCCESS16:11:55Z), exact public artifact/smoke and fresh read-only
+  inventory confirmed. The journal/backlog receipts are local checkpoint
+  commits after the frozen published source; no second documentation-only
+  production release was triggered from the already-merged branch.
+- Next software slice: create a clean dedicated branch from then-current
+  origin/main for a bounded worker entrypoint/artifact and graceful stop/restart
+  contract, with no production startup hook or automatic replay; separately
+  compose actual Debezium delivery with the restricted-SQL rebuild proof.
+  Production activation still requires governed provisioning/topology/TLS/ACL,
+  full-history/lifecycle and resource evidence, commissioned independently
+  verified recovery and actual second-operator approval. The nominated person
+  is not presumed to have signed or performed that drill. No100% claim.
+
+### Owner-reported outage; diagnosis only, Claude handling recovery — 2026-10-18 16:35 UTC
+
+- Owner reports the site down and asks whether Kafka caused it; subsequently
+  states Claude is trying to restore it. This turn is read-only diagnosis, not
+  an authorization inferred for a concurrent restart, rollback or new deploy.
+- At16:32:40Z marketing leaddrivecrm.org returned200. CRM public ping,
+  build-info and login each exceeded the15-second request timeout16:32:55Z.
+  At16:33:56Z TCP connection probes to registered production ports22/80/443
+  all timed out after6seconds. A single bounded production SSH attempt also
+  timed out before authentication/remote command execution. These results
+  establish reachability failure from this development host, not its cause
+  or proof the machine is powered off. Development host itself is reachable
+  with roughly13GiB available memory; it is not the production host.
+- Independent read-only GitHub correlation found main stillf41ba033 and no
+  later production deployment through16:34Z. Our normal deployment restarted
+  app/softphone16:11:04Z, then health/ping/login/assets passed. Exact public
+  receipt16:12:32Z and aggregate inventory16:13:30Z precede this incident.
+  That inventory had roughly83% available memory/85% free appdisk, replica
+  WAL, zero CDC slots and absent outbox publication. These are historical
+  observations, not current host metrics. No actual OOM evidence was found
+  in the completed deployment log; current kernel/service logs are unavailable.
+- Kafka integration stacks ran on disposable GitHub Linux runners, not this
+  production host. No production Kafka activation or replay was performed by
+  this task. Evidence therefore weighs against Kafka/CDC resource overload,
+  but does not rule out another effect of the normal app release or establish
+  a provider/network/firewall/host root cause.
+- No incident workflow, restart, restore, rollback, offset change, production
+  mutation or competing recovery was started. Claude owns the ongoing restore
+  according to the owner. Precise stopping point: production is unreachable
+  from this task; current host/kernel/service evidence is missing. Next after
+  reachability returns: correlate reboot/OOM/service logs with16:11–16:34UTC,
+  recheck live artifact/ping, and separate application fault from host/network
+  fault without a speculative rollback.
+
+### Connectivity recovered; current public revision confirmed — 2026-10-18 17:33 UTC
+
+- Owner asks to check whether connection has returned. At17:32:27Z
+  (21:32 Asia/Baku), root independently observed CRM ping200/ok=true,
+  build-info200, login200 and marketing200. Registered production TCP22
+  connects again. Public artifact is now
+  6ce9a1ef1d5ddeb54f4534dd7b4e4d72b13b4938, not the earlier f41ba033.
+- Independent read-only helper verified normal release39146735082 for6ce9a1e
+  SUCCESS: production/smoke17:19:15Z, whole workflow17:19:36Z. Public DB ping,
+  exact revision and login/assets gates passed. GitHub comparison shows
+  f41ba033 is its exact merge base:2 commits ahead,0 behind. The earlier
+  delivered Kafka work has not been removed by an application rollback.
+- A single bounded strict-host-key production SSH attempt now reaches
+  authentication but rejects this task's configured public key. No remote
+  command executed. Network reachability is recovered; direct-shell access
+  for this task is not restored. No alternate key, credential extraction,
+  workflow dispatch, restart or production mutation was attempted.
+- Current result: public service recovered; outage root cause remains
+  unproven. Stop after the requested availability check without competing with
+  Claude's recovery. Next incident action, if pursued: obtain sanitized host/
+  kernel/service evidence through the established authorized production route,
+  distinguish the cause from the restored availability, then resume the saved
+  Kafka work without assuming runtime activation or successful restoration.
+
+### Resume lifecycle prerequisite after service recovery — 2026-10-18
+
+- Owner requests continuation and reports that Claude attributed the outage to
+  a Contabo technical reboot. This is an owner-reported explanation, not an
+  independently verified kernel/provider incident finding. No competing host
+  recovery, restart, rollback or Kafka runtime action is authorized by inference.
+- Fresh routing check: dedicated worktree
+  `leaddrive-kafka-worker-lifecycle-20261018`, branch
+  `codex/kafka-worker-lifecycle-20261018`, origin
+  `https://github.com/rashadoni/leaddrive-v2.git`, base
+  `6ce9a1ef1d5ddeb54f4534dd7b4e4d72b13b4938`. Production remains registered
+  `13.140.132.245:/opt/leaddrive-v2`; release only through normal GitHub PR,
+  actual required checks and SHA-bound deploy workflow. Eight unpublished
+  task-owned receipt/journal checkpoints were carried forward without erasing
+  prior evidence. Old and dirty unrelated worktrees are preserved.
+- Next scoped prerequisite: private child-process supervision and explicit
+  bounded-session stop/restart behavior. Stop must revoke acknowledgements
+  immediately, wait for an in-flight SQL transaction to settle before releasing
+  its database connection, and never present a forced exit as graceful success.
+  Prove controlled stop/restart with real disposable Kafka and restricted SQL
+  in CI, preserving the existing fencing, parity and isolation gates.
+- This slice does not itself deliver governed production worker provisioning,
+  immutable runtime packaging, an unlimited background service, CDC activation,
+  offsets/replay, recovery commissioning or human approval. No startup hook.
+  Full builds/Java/Docker/database integration remain CI-only; small sequential
+  tests locally after resource checks. Current stop point: implementation and
+  targeted checks; no new PR, push, merge or deployment for this branch yet.
+
+### Lifecycle implementation and local verification — 2026-10-18 17:54 UTC
+
+- Added inactive owned-child supervisor and finite worker-session primitive.
+  Supervisor preserves actual stdin/stdout through EOF/late output, discards
+  stderr, confirms child close and rejects forced/abnormal/unconfirmed exits.
+  Session revokes ACKs immediately on stop/deadline, drains actual processing
+  before client release and never retries or resets offsets. Intake deadline
+  is not falsely presented as cancellation of an arbitrary SQL callback.
+- Combined disposable drill now uses per-session restricted connections and
+  adds stop during SQL/after COMMIT, unchanged broker cursor, durable inbox and
+  exact no-duplicate restart parity. Independent review found an old takeover
+  connection bypassing new session ownership; corrected it to use the owned
+  replacement connection, removing concurrent disconnect beneath pending SQL.
+  Existing explicit stale-generation exit1/no-signal/ACK-written assertions
+  and source/active/effect snapshots remain intact.
+- Local verification on this tree:393/393 tests across9 focused suites PASS
+  (340 lifecycle/Fund/bridge +53 fixture tests); strict ES2017 typecheck of new
+  modules/tests PASS;3 required-gate contract tests PASS; runner policy71
+  workflows PASS; event assets27 domains/86 topics/5 schemas PASS; whitespace
+  check PASS. Supervisor tests include3 tiny direct Node children, including
+  actual private-bridge/session composition; no Java/Docker/network required.
+- Prior temporary dependencies had disappeared. A fresh isolated minimal
+  test install initially failed with npm edgesOut; one local-temp-only retry
+  with legacy peer resolution installed49 packages. No repository lockfile
+  change, application install, Prisma generation or baseline relaxation.
+- NOT RUN locally: actual generated-client combined typecheck, real Kafka/
+  PostgreSQL8-case drill, full suite/typecheck/build (GitHub-only). Existing
+  Docker fixture remains its own container reaper: direct JVM supervision,
+  governed entrypoint/package/config admission and production activation are
+  not claimed. Next: freeze this scoped revision, ordinary GitHub PR and actual
+  required/feature gates. No runtime mutation was performed.
+
+### Frozen lifecycle revision published as PR889 — 2026-10-18 17:54 UTC
+
+- Ordinary feature push and ready PR889 created for exact source
+  `dbba7c0f16075c17b91a9b8d6685a3cf1e47eb2d`, base main. Account is rashadoni;
+  all5 actual protected checks remain bound to GitHub Actions app15368,
+  enforce_admins=true, approvals0, force pushes forbidden. No rule changes.
+- Required PR run39151613526: pr-scope SUCCESS, static/typecheck executing.
+  Runner policy39151613528, scan39151613631 and tooling39151613551 SUCCESS.
+  Synthetic CDC39151613585 executing; broker/8-case SQL run39151613583 is
+  pending the existing shared disposable-integration queue, not hung. No
+  duplicate dispatch, retry, foreign-job cancellation or heavy local fallback.
+- Current boundary: no merge/deploy yet; wait for actual mandatory and feature
+  checks on frozen source, then use the normal guarded release. This receipt
+  is a local checkpoint, not another source push while CI is active.
+
+### Real lifecycle failure drill passed on frozen source — 2026-10-18 18:08 UTC
+
+- Broker run39151613583/job117746248594 SUCCESS18:08:00Z for exact
+  dbba7c0f16075c17b91a9b8d6685a3cf1e47eb2d. Actual generated-client strict
+  ES2017 typecheck,113 fixture/lifecycle tests, migration bootstrap, all13
+  broker scenarios and all8 real broker/restricted-SQL cases passed; scoped
+  cleanup succeeded. New stop-during-COMMIT marker18:06:51Z and stop-after-
+  COMMIT18:06:57Z confirm no ACK, unchanged broker cursor, SQL settlement
+  before owned disconnect, durable inbox and exact no-duplicate restart parity.
+- Existing takeover remains genuine stale-generation rejection after actual
+  SQL COMMIT, not timeout/signal: ACK written, exit1 with no signal, replacement
+  held until fencing observed, exact cursor and source/effect snapshots.
+- Separate synthetic CDC39151613585 also SUCCESS with SQL/WAL boundary and
+  cold-restart markers. Exact-byte combined publication still is not Debezium;
+  these separate successful proofs do not close full CDC-to-rebuild composition.
+- Required typecheck SUCCESS; static-checks still running. No merge/deploy
+  performed yet. Current main advanced independently to7c0d75f1b via unrelated
+  WhatsApp PR886; no path overlap with this slice, no conflict and no foreign
+  release was cancelled. App ping/build-info remained healthy on6ce9a1e at the
+  last independent public observation before that release. Next: finish actual
+  protected checks, normal exact-head merge and SHA-bound application release.
+
+### Pre-merge advisory finding corrected, no gate bypass — 2026-10-18 18:28 UTC
+
+- All five protected checks passed on PR889/dbba7c0f1, but reading the full
+  advisory type report found three task-owned TS2769 errors: the tiny process
+  tests supplied an empty child environment whereas Next's actual global
+  ProcessEnv requires NODE_ENV. Held merge despite green protected status.
+  The global report retained64 gated baseline pairs and18 known failing test
+  files; green baseline checks are not an error-free whole-codebase claim.
+- Fixed only the three child environments to NODE_ENV=test, without inheriting
+  host secrets. The strict broker CI now explicitly includes the installed
+  next/types/global.d.ts, and its existing contract guard asserts this within
+  that strict step. No diagnostic baseline, production guard or test weakened.
+- Local narrow recheck:60/60 lifecycle tests, strict ES2017 typecheck with
+  exact upstream Next16.2.11 ambient declaration,3 gate contracts,71-workflow
+  runner policy and whitespace PASS. A separate temporary negative control
+  with the original empty environment failed specifically with TS2769 and
+  missing NODE_ENV, proving the additional declaration catches this regression.
+  Independent read-only review found no issue in the three changed code/gate
+  files. Full application typecheck/build remain GitHub-only, NOT RUN locally.
+- Current main advanced to1c5d752c3116ead4f0d8c84158a836f992c18c34 via
+  unrelated attendance test PR888, no own overlap or routing change. Current
+  registry/DEPLOYMENT still specify13.140.132.245:/opt/leaddrive-v2 and GitHub
+  SHA-bound release. All previous own CI runs completed before this next push;
+  no duplicate retry or active/foreign cancellation. Next: one normal PR889
+  source update, all new-head actual checks plus own-path advisory review,
+  then normal merge/deploy. Kafka activation/offset/replay remain untouched.

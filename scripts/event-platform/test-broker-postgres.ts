@@ -1,7 +1,7 @@
 /** Real Kafka + real restricted PostgreSQL; synthetic disposable CI only. */
 import assert from "node:assert/strict"
 import type { KafkaEventRecord } from "../../src/lib/event-platform/consumer"
-import { runKafkaBridge } from "../../src/lib/event-platform/kafka-bridge"
+import { startKafkaWorkerSession } from "../../src/lib/event-platform/worker-session"
 import { createFundShadowPartitionWorker } from "../../src/lib/event-platform/fund-shadow-worker"
 import type { FundShadowDatabase } from "../../src/lib/event-platform/fund-shadow-consumer"
 import type { PartitionAssignment } from "../../src/lib/event-platform/partition-processor"
@@ -53,10 +53,10 @@ async function main() {
       dropAck?: boolean; dropReceipt?: boolean; timeoutMs?: number
       assignment?: (value: Readonly<PartitionAssignment>) => void
       ack?: () => void; ackWritten?: () => void; observed?: KafkaEventRecord[]
+      released?: () => void
     } = {}) {
       const config = harness.configurations.get(test.name)!
       const { channel, child } = harness.driver(test.name, options.timeoutMs)
-      const controller = new AbortController()
       const expected = new Map(test.published.map(record => [record.offset, record]))
       let recordReceivedAt = 0
       const privateChannel = { ...channel, async read() {
@@ -72,32 +72,46 @@ async function main() {
         await channel.write(command)
         if (command.startsWith("ACK\t")) options.ackWritten?.()
       } }
-      const outcome = runKafkaBridge({ channel: privateChannel, clusterId: config.cluster, groupId: config.group,
-        topic: config.topic, maxRecords: count, signal: controller.signal,
-        createProcessor(assignment, broker) {
-          options.assignment?.(assignment)
-          const worker = createFundShadowPartitionWorker({ assignment, broker, environment: "testbroker",
-            routes: test.contexts.map(context => ({ scope: context.scope,
-              database: options.databaseFor?.(context) ?? fundShadowDatabase(context.client) })) })
-          return { revoke: () => worker.revoke(), async processBatch(batch: { fetchOffset: string; records: KafkaEventRecord[] }) {
-            for (const record of batch.records) {
-              const source = expected.get(record.offset); assert.ok(source)
-              assert.equal(record.key?.toString(), source.key?.toString())
-              assert.equal(record.value?.toString(), source.value?.toString())
-              assert.deepEqual(Object.keys(record.headers ?? {}).sort(), Object.keys(source.headers ?? {}).sort())
-              for (const name of ["id", "eventtype", "organizationid", "payloadhash"]) {
-                assert.ok(!Array.isArray(record.headers?.[name]))
-                assert.equal(record.headers?.[name]?.toString(), source.headers?.[name]?.toString())
-              }
-              options.observed?.push(record)
-            }
-            return worker.processBatch(batch)
-          } }
+      const session = startKafkaWorkerSession({ clusterId: config.cluster, groupId: config.group,
+        topic: config.topic, maxRecords: count, maxDurationMs: 120_000,
+        open() {
+          // Session-owned restricted logins, never the application/admin pool.
+          const contexts = test.contexts.map(context => ({ ...context, client: db.connect(context) }))
+          return {
+            channel: privateChannel,
+            async release() {
+              const closed = await Promise.allSettled(contexts.map(context => context.client.$disconnect()))
+              assert.ok(closed.every(result => result.status === "fulfilled"))
+              options.released?.()
+            },
+            createProcessor(assignment, broker) {
+              options.assignment?.(assignment)
+              const worker = createFundShadowPartitionWorker({ assignment, broker, environment: "testbroker",
+                routes: contexts.map(context => ({ scope: context.scope,
+                  database: options.databaseFor?.(context) ?? fundShadowDatabase(context.client) })) })
+              return { revoke: () => worker.revoke(), async processBatch(batch: { fetchOffset: string; records: KafkaEventRecord[] }) {
+                for (const record of batch.records) {
+                  const source = expected.get(record.offset); assert.ok(source)
+                  assert.equal(record.key?.toString(), source.key?.toString())
+                  assert.equal(record.value?.toString(), source.value?.toString())
+                  assert.deepEqual(Object.keys(record.headers ?? {}).sort(), Object.keys(source.headers ?? {}).sort())
+                  for (const name of ["id", "eventtype", "organizationid", "payloadhash"]) {
+                    assert.ok(!Array.isArray(record.headers?.[name]))
+                    assert.equal(record.headers?.[name]?.toString(), source.headers?.[name]?.toString())
+                  }
+                  options.observed?.push(record)
+                }
+                return worker.processBatch(batch)
+              } }
+            },
+          }
         },
-      }).then<Outcome, Outcome>(result => ({ ok: true, processed: result.processed }), () => ({ ok: false }))
+      })
+      const outcome = session.done.then<Outcome, Outcome>(result => ({ ok: true, processed: result.processed }), () => ({ ok: false }))
       // Attach handlers immediately, including while another member is held.
       const running = { outcome, child, get recordReceivedAt() { return recordReceivedAt },
-        async stop() { controller.abort(); await channel.close(); await outcome } }
+        requestStop: session.stop,
+        async stop() { session.stop(); await outcome; await channel.close() } }
       active.push(running)
       return running
     }
@@ -166,6 +180,34 @@ async function main() {
       console.log("broker_postgres_no_ack_before_real_commit=PASS")
     }
 
+    for (const afterCommit of [false, true]) {
+      phase = afterCommit ? "stop-after-commit" : "stop-during-commit"
+      const test = await prepare(`combined-${phase}`), entered = gate(), release = gate()
+      let ackAttempts = 0, released = false
+      const hold = async () => { entered.release(); await bounded(release.promise, 8_000) }
+      const running = start(test, 6, { ack: () => { ackAttempts++ }, released: () => { released = true },
+        databaseFor: context => fundShadowDatabase(context.client, afterCommit ? { afterCommit: hold } : { beforeCommit: hold }) })
+      try {
+        await enteredBeforeExit(entered, running.outcome)
+        running.requestStop()
+        assert.equal(released, false, "stop must not disconnect under an unsettled SQL operation")
+        assert.equal(ackAttempts, 0)
+      } finally { release.release() }
+      assert.equal((await bounded(running.outcome)).ok, false, "stop is never a successful completed run")
+      assert.equal(released, true, "owned SQL clients must be released after transaction settlement")
+      assert.equal(running.child.exitCode, 0); assert.equal(running.child.signalCode, null)
+      assert.equal(ackAttempts, 0); assert.equal(cursor(test), test.start)
+      assert.deepEqual(await db.counts(test.contexts[0]), { shadows: 1, inbox: 1, checkpoints: 1 })
+      await unchanged(test)
+      // Restart from the broker cursor, including the already-committed record.
+      // Actual inbox identity suppresses duplicate effects; no offset reset.
+      const observed: KafkaEventRecord[] = []
+      assert.deepEqual(await start(test, 6, { observed }).outcome, { ok: true, processed: 6 })
+      assert.equal(observed[0].offset, test.start)
+      await complete(test)
+      console.log(afterCommit ? "broker_postgres_stop_after_commit_restart=PASS" : "broker_postgres_stop_during_commit_restart=PASS")
+    }
+
     phase = "deferred-commit-rejection"
     {
       const test = await prepare("combined-commit-reject")
@@ -224,14 +266,13 @@ async function main() {
           oldEntered.release(); await bounded(releaseOld.promise, 70_000)
         } }) })
       let replacement: ReturnType<typeof start> | undefined
-      const replacementClient = db.connect(context)
       try {
         phase = "takeover-wait-old-commit"
         await enteredBeforeExit(oldEntered, old.outcome)
         phase = "takeover-assert-old-durable"
         assert.deepEqual(await db.counts(context), { shadows: 1, inbox: 1, checkpoints: 1 })
         replacement = start(test, 1, { timeoutMs: 60_000, assignment: a => members.set("new", a), ack: () => { newAck++ },
-          databaseFor: () => fundShadowDatabase(replacementClient, { afterCommit: async () => {
+          databaseFor: c => fundShadowDatabase(c.client, { afterCommit: async () => {
             newEntered.release(); await bounded(releaseNew.promise, 40_000)
           } }) })
         // Hold only AFTER actual SQL COMMIT: the 15s SQL timeout is unchanged.
@@ -265,7 +306,7 @@ async function main() {
         assert.equal(cursor(test), (BigInt(test.start) + BigInt(1)).toString())
       } finally {
         releaseOld.release(); releaseNew.release()
-        const cleanup = await Promise.allSettled([old.stop(), replacement?.stop(), replacementClient.$disconnect()])
+        const cleanup = await Promise.allSettled([old.stop(), replacement?.stop()])
         assert.ok(cleanup.every(result => result.status === "fulfilled"), "both members and restricted connection must close")
       }
       phase = "takeover-resume-tail"
