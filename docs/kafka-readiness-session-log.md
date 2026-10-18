@@ -1705,3 +1705,20 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   No name/role has been supplied or invented. This question does not pause
   the current normal release/read-only diagnostic and is not a new request
   for a paid subscription, credentials, offset reset or activation approval.
+
+### PR872 release quality/build completed; runtime still pending
+
+- Exactce71dacf9 deploy39093089774 quality117573779697 SUCCESS03:37:32Z:
+  diagnostic10/10, Fund43+78=121/121, real PostgreSQL10/10; baseline18=18
+  PASS03:37:29Z (03:28:55→03:37:29). No rerun or gate relaxation.
+- Build117573779411 SUCCESS03:37:26Z. Standalone compile03:26:41→03:36:29;
+  SHA artifact upload03:37:12→03:37:21. Root independently read metadata:
+  artifact12123643657, leaddrive-prod-ce71dacf9a413facda602fb433963e1cbe79412b,
+  471263574bytes, digest
+  sha256:ffd62b9cf68dca093bf3355e7c4637ebf1c7b2faffdc0dad3c9ec72ff7e3ff70,
+  unexpired, expires2026-11-17T03:37:12Z. Metadata only: no large download to
+  the development host; existing30-day Actions retention is not DR/archive proof.
+- Runtime117577352388 started after both gates; whole deploy/public marker,
+  ping and feature structural receipt remain PENDING at this entry. Existing
+  read-only inspection workflow has no active run; its next dispatch remains
+  deferred until verified normal delivery, not inferred from artifact upload.
