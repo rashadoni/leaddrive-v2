@@ -1456,3 +1456,23 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   frozenf504 during actual CI. Do not push it into that run or mistake the local
   docs HEAD for its tested source SHA. Next: read explicit Fund unit counts,
   actual PG10/10 and all required gates onf504, then normal release/ping/SHA.
+
+### Automatic final-head transport and stack receipts
+
+- On the same frozen remote f504f1353, automatic CDC39087214341 is SUCCESS:
+  runtime plugin admission, stack smoke, source/WAL boundary, exact raw8-event
+  transport, cold restart and cleanup passed. The separate serialized stack
+  run39087214349 is also SUCCESS and removed its four containers/network.
+  The manual image-validation run had already completed before these started;
+  no duplicate retry or concurrent synthetic stack was introduced.
+- Required full39087214329 is still running. No merge, deploy, broker worker,
+  source logical-WAL change, offset reset or replay follows from these two
+  disposable-stack successes. Preserve remote f504 until its required checks,
+  explicit reducer/control-flow units and actual PG transaction tests finish.
+- Read-only preparation for the next sequential task confirms that the current
+  backup-readiness report discards AWS stderr and reports only a generic Object
+  Lock failure. The actual cause is UNKNOWN, not proof of absent immutability
+  or bad credentials. After this Fund release, a narrow report-only diagnostic
+  may emit fixed allowlisted categories while preserving policy, one read-only
+  request, bounded output/time and secret redaction. Do not commission recovery
+  services, change retention/credentials or enable timers as part of diagnosis.
