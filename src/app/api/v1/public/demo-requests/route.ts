@@ -10,6 +10,7 @@ import {
   withDemoRequestCors,
 } from "@/lib/demo-request-cors"
 import { sendDemoRequestNotification } from "@/lib/demo-center/email"
+import { verifyDemoFormSolution } from "@/lib/demo-center/form-challenge"
 import { emailDomain } from "@/lib/demo-center/security"
 import { demoRequestSchema } from "@/lib/demo-center/validation"
 import { runWithRlsBypass } from "@/lib/rls-context"
@@ -56,8 +57,26 @@ export async function POST(request: Request) {
 
   // Filled honeypots receive the same generic response without creating a row.
   if (parsed.data.website) {
-    return jsonResponse(request, { success: true, message: "Demo sorğusu qəbul edildi" }, { status: 201 })
+    return quietlyDropped(request)
   }
+
+  // The bot check (src/lib/demo-center/form-challenge.ts). A person can end up
+  // without a usable one — it did not load, the tab sat open for hours — and
+  // is asked to send again. Everything else only a script produces, and gets
+  // the honeypot's answer so it cannot tell which check stopped it.
+  const verdict = verifyDemoFormSolution(parsed.data.challenge)
+  if (verdict === "missing" || verdict === "expired") {
+    return jsonResponse(
+      request,
+      { success: false, code: `challenge_${verdict}`, error: "Səhifəni yeniləyib sorğunu yenidən göndərin." },
+      { status: 400 },
+    )
+  }
+  if (verdict !== "ok") {
+    console.warn("[demo-request] bot check refused", { verdict })
+    return quietlyDropped(request)
+  }
+  const challengeSalt = (parsed.data.challenge as { salt: string }).salt
 
   const created = await runWithRlsBypass(() =>
     prisma.demoRequest.create({
@@ -73,6 +92,7 @@ export async function POST(request: Request) {
         requestedModules: parsed.data.requestedModules,
         locale: parsed.data.locale,
         consentAt: new Date(),
+        formChallengeSalt: challengeSalt,
       },
       select: {
         id: true,
@@ -87,10 +107,17 @@ export async function POST(request: Request) {
         requestedModules: true,
       },
     }),
-  ).catch((error) => {
+  ).catch((error: unknown) => {
+    // A solved challenge already spent on another request: a replay.
+    if ((error as { code?: string })?.code === "P2002") return "replayed" as const
     console.error("[demo-request] could not store the request", error)
     return null
   })
+
+  if (created === "replayed") {
+    console.warn("[demo-request] bot check refused", { verdict: "replayed" })
+    return quietlyDropped(request)
+  }
 
   if (!created) {
     return jsonResponse(
@@ -134,4 +161,8 @@ export async function POST(request: Request) {
     { success: true, requestId: created.id, invitation, message: "Demo sorğusu qəbul edildi" },
     { status: 201 },
   )
+}
+
+function quietlyDropped(request: Request) {
+  return jsonResponse(request, { success: true, message: "Demo sorğusu qəbul edildi" }, { status: 201 })
 }

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
@@ -27,6 +28,16 @@ vi.mock("@/lib/constants", () => ({
 }))
 
 import { OPTIONS, POST } from "@/app/api/v1/public/demo-requests/route"
+import { issueDemoFormChallenge } from "@/lib/demo-center/form-challenge"
+
+/** What the form's script sends: a challenge issued a while ago, solved. */
+function solvedChallenge() {
+  const challenge = issueDemoFormChallenge(Date.now() - 30_000)
+  for (let number = 0; number <= challenge.maxNumber; number += 1) {
+    if (createHash("sha256").update(`${challenge.salt}${number}`).digest("hex") === challenge.challenge) return { ...challenge, number }
+  }
+  throw new Error("unsolvable challenge")
+}
 
 const API_URL = "https://app.leaddrivecrm.org/api/v1/public/demo-requests"
 const CANONICAL_ORIGIN = "https://leaddrivecrm.org"
@@ -43,6 +54,7 @@ const validPayload = {
   requestedModules: ["crm"],
   locale: "az",
   consent: true,
+  challenge: solvedChallenge(),
 }
 
 const createdRequest = {
@@ -170,6 +182,44 @@ describe("demo request POST outcomes", () => {
     expect(response.status).toBe(201)
     expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull()
     expect(response.headers.get("Vary")).toBe("Origin")
+  })
+})
+
+describe("the bot check", () => {
+  it("asks a form without a solved challenge to send again, and stores nothing", async () => {
+    const withoutChallenge: Partial<typeof validPayload> = { ...validPayload }
+    delete withoutChallenge.challenge
+    const response = await POST(request(CANONICAL_ORIGIN, withoutChallenge))
+
+    expect(response.status).toBe(400)
+    expectAllowedCors(response)
+    await expect(response.json()).resolves.toMatchObject({ success: false, code: "challenge_missing" })
+    expect(mocks.create).not.toHaveBeenCalled()
+  })
+
+  it("answers a forged or unsolved challenge like the honeypot, and stores nothing", async () => {
+    for (const challenge of [
+      { ...validPayload.challenge, signature: "0".repeat(64) },
+      { ...validPayload.challenge, number: (validPayload.challenge.number + 1) % (validPayload.challenge.maxNumber + 1) },
+    ]) {
+      const response = await POST(request(CANONICAL_ORIGIN, { ...validPayload, challenge }))
+      expect(response.status).toBe(201)
+      await expect(response.json()).resolves.toEqual({ success: true, message: "Demo sorğusu qəbul edildi" })
+    }
+    expect(mocks.create).not.toHaveBeenCalled()
+    expect(mocks.autoIssue).not.toHaveBeenCalled()
+  })
+
+  it("stores the solved challenge with the request, so it opens no second one", async () => {
+    await POST(request(CANONICAL_ORIGIN))
+    expect(mocks.create.mock.calls[0][0].data.formChallengeSalt).toBe(validPayload.challenge.salt)
+
+    mocks.create.mockRejectedValueOnce(Object.assign(new Error("Unique constraint failed"), { code: "P2002" }))
+    const replay = await POST(request(CANONICAL_ORIGIN))
+
+    expect(replay.status).toBe(201)
+    await expect(replay.json()).resolves.toEqual({ success: true, message: "Demo sorğusu qəbul edildi" })
+    expect(mocks.autoIssue).toHaveBeenCalledTimes(1)
   })
 })
 

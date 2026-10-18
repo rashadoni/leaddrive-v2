@@ -6,11 +6,17 @@
 --
 -- Pressing the button is recorded as EMAIL_CONFIRMED. The six-digit code it
 -- replaces stays in the allowed list for the rows already written.
+--
+-- `formChallengeSalt` is the form's solved bot check, stored with the request
+-- it let in; unique, so one solved challenge never opens a second request
+-- (src/lib/demo-center/form-challenge.ts). Null on every earlier row.
 
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 
 ALTER TABLE "demo_requests" ADD COLUMN "emailConfirmedAt" TIMESTAMP(3);
+ALTER TABLE "demo_requests" ADD COLUMN "formChallengeSalt" TEXT;
+CREATE UNIQUE INDEX "demo_requests_form_challenge_salt_key" ON "demo_requests"("formChallengeSalt");
 
 ALTER TABLE "demo_access_events" DROP CONSTRAINT "demo_access_events_type_check";
 

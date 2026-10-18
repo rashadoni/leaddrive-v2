@@ -20,6 +20,10 @@ progress, and a terminal completion screen.
    «Yeni demo sorğusu» — once per request (owner, 2026-10-18). A request whose
    link could not be sent is reported to him straight away, marked as not
    confirmed, because nobody could confirm it.
+   The form also carries a solved bot check: a signed proof of work the
+   visitor's browser solves while they type, refused when missing, forged,
+   unsolved, younger than three seconds or already spent on another request
+   (`src/lib/demo-center/form-challenge.ts`; owner, 2026-10-18).
 3. A superadmin opens **Admin → Demo Center** and reviews the request.
 4. The superadmin selects and orders any of the 19 approved module demos, then
    sets link validity, absolute session duration, and inactivity timeout.

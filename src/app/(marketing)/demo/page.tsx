@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ModuleScenes } from "@/components/marketing/module-scenes"
 import Link from "next/link"
 import { Particles } from "@/components/ui/particles"
@@ -8,12 +8,18 @@ import {
   ArrowRight, Send, Building2, User, Mail, Phone, MessageSquare, Sparkles,
 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
+import { prepareDemoFormSolution, type DemoFormSolutionPayload } from "@/lib/demo-center/form-challenge-client"
+
+const CHALLENGE_ENDPOINT = "/api/v1/public/demo-requests/challenge"
 
 /* ── Demo request form ── */
 function DemoRequestForm({ t, locale }: { t: (key: string) => string; locale: string }) {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // The bot check is solved while the visitor types (form-challenge.ts).
+  const solution = useRef<Promise<DemoFormSolutionPayload | null> | null>(null)
+  useEffect(() => { solution.current = prepareDemoFormSolution(CHALLENGE_ENDPOINT) }, [])
 
   if (submitted) {
     return (
@@ -36,6 +42,9 @@ function DemoRequestForm({ t, locale }: { t: (key: string) => string; locale: st
         const form = e.currentTarget
         const data = new FormData(form)
         try {
+          const challenge = await (solution.current ?? prepareDemoFormSolution(CHALLENGE_ENDPOINT))
+          // Spent by this attempt either way; a retry needs a fresh one.
+          solution.current = prepareDemoFormSolution(CHALLENGE_ENDPOINT)
           const response = await fetch("/api/v1/public/demo-requests", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -50,6 +59,7 @@ function DemoRequestForm({ t, locale }: { t: (key: string) => string; locale: st
               locale: ["az", "ru", "en"].includes(locale) ? locale : "az",
               consent: data.has("consent"),
               website: data.get("website"),
+              challenge,
             }),
           })
           const result = await response.json().catch(() => ({})) as { error?: string }

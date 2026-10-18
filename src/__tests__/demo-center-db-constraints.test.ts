@@ -192,6 +192,35 @@ pgDescribe("demo tables on a real Postgres", () => {
     expect(events).toHaveLength(2)
   })
 
+  it("lets one solved bot check in once: the same solution sent again stores nothing", async () => {
+    const { createHash } = await import("node:crypto")
+    const { POST } = await import("@/app/api/v1/public/demo-requests/route")
+    const { issueDemoFormChallenge } = await import("@/lib/demo-center/form-challenge")
+    const challenge = issueDemoFormChallenge(Date.now() - 30_000)
+    let number = 0
+    while (createHash("sha256").update(`${challenge.salt}${number}`).digest("hex") !== challenge.challenge) number += 1
+    const body = JSON.stringify({
+      name: "Nigar Əliyeva",
+      company: "Xəzər Logistika MMC",
+      email: "replay@example.az",
+      locale: "az",
+      consent: true,
+      challenge: { ...challenge, number },
+    })
+    const send = () => POST(new Request("http://localhost:3000/api/v1/public/demo-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    }))
+
+    expect((await send()).status).toBe(201)
+    expect((await send()).status).toBe(201) // the same answer, so a script learns nothing
+
+    const rows = await bypass(() => prisma.demoRequest.findMany({ where: { emailNormalized: "replay@example.az" } }))
+    expect(rows).toHaveLength(1)
+    expect(rows[0].formChallengeSalt).toBe(challenge.salt)
+  })
+
   it("still refuses a grant that is both a scenario and a playlist, or neither", async () => {
     const request = await storedRequest("invalid@example.az")
     const base = {
