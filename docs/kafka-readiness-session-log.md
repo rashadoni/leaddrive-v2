@@ -3272,3 +3272,27 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   Current stop: checkpoint combined code/workflow candidate, no CI run started.
   Next: owner starts the three visible chats; each reports its actual branch,
   evidence and blocker, with root retaining the normal gated delivery route.
+
+### Three owner-started app sessions confirmed — 2026-10-19 Asia/Baku
+
+- Owner reports launching the chats. Read the app thread list and current turns:
+  all three are genuinely active, not internal helper threads. Exact titles:
+  «Подготовить проверку восстановления» (01a150b0-1f02-7790-857f-7fdb24eb9335),
+  «Подготовить готовность Kafka A4» (01a150b0-0162-79b2-a475-88949bd12936),
+  «Подготовить Kafka operator readiness» (01a150af-bdb2-7092-8e77-44557523d15e).
+  Each created a dedicated worktree/branch. A3 owns backup/recovery acceptance;
+  A4 owns finite infrastructure budget/security admission; A5 owns alert-delivery
+  evidence and the27-domain readiness map. Their task prompts forbid production
+  mutation and merge/deploy; root retains A1/A2 and normal release coordination.
+- Resumed root from clean e298057d9, fetched current main226dde0e77c0c36a4de991bb703ba8f8416c5a64.
+  Its five intervening commits belong to already-merged PR890 demo/AI screens,
+  not Kafka. Merged current main normally into the feature branch; no conflicts,
+  force push or changes to those application paths. Fresh protection still
+  requires pr-scope/static-checks/typecheck/runner-policy/scan with enforce_admins.
+  deploy.yml is active; registry/deployment still agree on registered Contabo
+ 13.140.132.245:/opt/leaddrive-v2 and the GitHub Actions release route.
+- Existing322 focused and70 contract successes belong to pre-main-merge source;
+  no claim of rerunning those or full integration in the merged tree. Heavy
+  generated-client, Java/Kafka/SQL/CDC and release checks remain GitHub-only.
+  Next: publish the prepared branch as a draft PR, then start one normal
+  exact-source review-ready verification after branch preparation is complete.
