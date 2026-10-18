@@ -574,3 +574,106 @@ MemorySwapMax/fresh-run gaps открыты. Никакого backup/restore/rep
 error classes и неизвестный формат без raw code/body/секретов. Не повторять
 старый report вслепую и не менять доступы/retention/таймеры ради зелёного gate.
 K8 activation, независимое восстановление, HA и all-module coverage не готовы.
+
+### K0.3/K2.2: измерен интервал WAL, не peak budget — 2026-10-18 04:11 UTC
+
+Один новый protected read-only inventory39096218310 SUCCESS на deliveredce71
+добавил вторую точку с тем же reset:02:45:51.420078→04:11:39.529597UTC,
+17891881657→17907414978bytes. Рост15533321bytes (14.81MiB), среднее около
+3017bytes/s за5148.109s. Точные receipts/ограничения сохранены в baseline.
+Это WAL всего PostgreSQL-кластера за интервал с выкладкой, не event rate,
+пик/сутки/tenant skew и не согласованный лимит слота/простоя. K0.3/K2.2
+остаются partial; source всё ещё replica/slots0/publication absent/cap-1.
+Restore не выполнялся; четыре recovery timers inactive; activation не было.
+
+### PR873 доставлен; новый recovery report ожидается — 2026-10-18 04:54 UTC
+
+Следующий report-only change завершён: PR873 actual five required SUCCESS на
+a222b769f2cd773e80177b7e8403591f721e1d7f, normal merge24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2.
+Deploy39096745285 whole SUCCESS04:52:25Z: diagnostic/freshness12/12,
+Fund121/121, realPG10/10, baseline18=18; runtime structural ledger/RLS/
+ownership/exact-money/Fund и ping/revision/login/assets подтверждены. Root
+независимо сверил public exact24ce artifactSha и успешный ping.
+
+Исправлена ложная свежесть пустой даты и добавлены фиксированные service
+категории без раскрытия сырых ошибок. Это не исправление storage policy или
+свидетельство backup/restore. K2.1/K3.2/K3.6 по-прежнему открыты. После whole
+delivery запущен ровно один protected read-only readiness39098707822 на24ce;
+его новый verdict PENDING, предыдущий завершённый остаётся22issues/9gaps.
+Не запускать старый report повторно ради зелёного результата; не включать
+timers/шифрование, не менять ключи/retention и не начинать source CDC/replay
+на основании одного merge/deploy. K4 broker worker и K8 activation не закрыты.
+
+### Новый фактический verdict и граница следующего шага — 2026-10-18 04:55 UTC
+
+Readiness39098707822 завершён FAILURE04:55:37Z на exact24ce; full SUMMARY:
+machine_ready=no, issues23, enterprise_gaps9, operator_attestation_required=yes.
+Это заменяет pending/22issue выше; appdeploy39096745285 остаётся SUCCESS.
+ObjectLock=service_error_format_unrecognized: CLI254, ожидаемый точный формат
+ошибки не распознан. Причина, права/ключи, регион, HTTP status и наличие lock
+не установлены. Не делать предположительные policy/key изменения/новый retry.
+
+Runtime-files freshness теперь FAIL вместо прежнегоPASS; исходная скрытая
+метадата отдельно не проверена. Все4 freshness и4 MemorySwapMax FAIL, шифрование
+OFF; три таймера disabled/inactive, четвёртый отсутствует. Tools/file guards/
+immutable program PASS.23 FAIL-строки включают агрегирующие проверки, это не
+23 независимых задачи. K2.1/K3.2/K3.6, topology/archive/DR и K8 остаются NO-GO.
+
+Следующая эксплуатационная операция требует отдельного подтверждённого scope:
+закрытая диагностика storage и настоящее подтверждение custody/восстановления
+с независимым ответственным. Исторический Mac/Drive copy receipt и AI не
+заменяют подписанный drill. Платные услуги/новые ресурсы не заказывались.
+Программный остаток P1/K4 тоже явно открыт: broker worker, assignment/high-water,
+restricted runtime provisioning, интегрированный rebuild и read cutover ещё не
+сделаны. Инвентарь Payments/OTP не означает миграцию их application writers;
+покрытие всех модулей и100% здесь не объявляются.
+
+### K0.4: второй человек назван владельцем — 2026-10-18
+
+Владелец ответил на вопрос о втором ответственном и назвал человека в чате.
+Прежняя формулировка «ответ не получен» заменяется этим фактом; персональное
+имя не публикуется в этом открытом репозитории. K0.4 остаётся partial: согласие
+самого проверяющего, фактическое участие, привязка лично контролируемого
+подписывающего ключа и проверенной identity ещё не подтверждены. Имя не даёт
+доступ, не является approval/signature и не доказывает custody/restore.
+
+Далее — согласовать участие и поддерживаемую независимую машину для уже
+описанного offline canary/custody, затем отдельного exact-version scratch
+restore. Storage/candidate prerequisites проверяются до соответствующей
+операции. Не генерировать подпись от имени человека и не передавать private
+keys/пароли в чат, GitHub или production. Последний23/9 NO-GO остаётся
+историческим operational verdict; в этом ходе runtime не перепроверялся.
+
+### K4.1/K4.5: partition coordinator — implementation in progress
+
+Added inactive `partition-processor.ts` and `fund-shadow-worker.ts`. One
+assignment owns the complete ordered partition stream across admitted tenants.
+Each actual SQL COMMIT precedes its broker acknowledgement. A tenant-local
+checkpoint is never a broker resume/commit position: an old duplicate can
+return a newer tenant checkpoint while other tenants still need processing.
+The worker holds a snapshot of the trusted tenant/build/database routing plan.
+Unknown tenants/types, poison records, uncertain acknowledgement, invalid
+delivery boundaries or revoked membership stop the assignment without skipping.
+There is one in-flight batch, with bounded record/byte counts and no hidden
+queue or automatic retry. Legitimate numeric holes in Kafka offsets are allowed;
+the driver must supply every record from the unfiltered ordered broker fetch.
+
+The broker port must bind cluster/group/member/generation/topic/partition to
+the original assignment, disable auto-commit and reject stale membership at
+the broker, including the race after a local liveness check. A local token is
+not a durable database lease. Already-running SQL can commit after revoke; the
+coordinator withholds acknowledgement and the inbox makes replay repeatable.
+Changing the routing/build plan requires a separately governed group/history
+plan; do not reuse a group's advanced offsets to initialize a new build.
+
+This increment does not create a Kafka connection, production entrypoint,
+worker deployment, runtime credentials, durable assignment fence or activation.
+Real group join/rebalance/retention-gap and integrated Kafka+restricted-PG
+tests remain open. New control-flow and real PostgreSQL coordinator tests are
+prepared; execution receipts must be appended before claiming verification.
+The existing recovery NO-GO and independent restore prerequisites are unchanged.
+
+Protocol references: [Apache Kafka consumer offsets](https://kafka.apache.org/41/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html)
+and [Kafka group/offset protocol](https://kafka.apache.org/41/design/protocol/).
+The commit position denotes the next record to consume; it is not the
+maximum checkpoint returned by any tenant callback.

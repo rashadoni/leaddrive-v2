@@ -1831,3 +1831,318 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   timestamp was queried. This demonstrates the code defect, not its actual
   occurrence in today's production report. No existing age/skew/swap gate
   was weakened and arbitrary failures remain failures.
+
+## 2026-10-18 04:00 UTC — PR873 frozen source and one ready transition
+
+- Checkpoint a222b769f2cd773e80177b7e8403591f721e1d7f contains the bounded
+  source/tests/runbook change. Independent read-only helper review found no
+  concrete false-PASS, raw-output leak or policy/bound regression; it ran no
+  extra tests/production calls and is not an agent-review gate.
+- Authenticated account API is rashadoni. Confirmed no existing same-branch PR,
+  pushed own codex/kafka-object-lock-service-errors-20261018 and opened draft
+  PR873. Actual cheap checks at that exact head: scope39095558573,
+  runner39095558595 and scan39095558642 SUCCESS. Static/TS/pgpass draft
+  SKIPPED are not accepted as test/authentication proof.
+- Root re-read live exact head/check-runs and marked READY once without a
+  second push. Next automatic actual full/pgpass runs are pending discovery;
+  one helper monitors them. All later journal updates remain LOCAL checkpoints
+  until those frozen gates/release finish; no new head/retry/build is injected.
+- Current production remains verified ce71dacf9; readiness39094842540 remains
+  failed closed22issues/9gaps/service_error. New12/12 hosted proof, new
+  production delivery and a meaningfully refined live report are NOT YET
+  performed. No runtime policy/key/timer/source/consumer/offset/replay change.
+
+### K0.2 Payments source inventory while frozen PR873 runs
+
+- Actual ready CI39095643498 and pgpass39095643679 discovered on exacta222;
+  separate pgpass actual30/30 SUCCESS04:02:11Z, including real libpq. One
+  helper continues full gates; no second heavy phase or new push was started.
+- Root read only the named Payments intent/refund/webhook/SDK/schema chains
+  on ce71 source, documenting them in NON_FUND_WRITE_PATH_INVENTORY section10.
+  This is a bounded K0.2 extension; application code is unchanged and remains
+  frozen. Invoice/bill/Accounting/Warehouse and alternate writers are excluded.
+- Actual Stripe SDK create/refund calls supersede stale stub comments; the
+  inspected operation interfaces/callers lack a supplied stable business key.
+  Refund provider call is inside a SQL transaction: rollback cannot undo the
+  external result. Webhook receipt admission and completion are separate, with
+  duplicate P2002 returning200 before checking receipt status/hash. Actual
+  domain handlers ARE Serializable (old contrary comments are stale).
+- Preserved settlement restrictions, unique receipt and SQL transaction
+  safeguards in the inventory. No provider settings/live use, real duplicate
+  charge, current SDK retry behavior, all writers or complete domain adoption
+  is asserted. PayPal/YooKassa/Robokassa differences and exact-money/currency
+  boundaries are recorded. Existing tests were located, NOT RUN for this
+  read-only scope; no provider/API/SQL mutation or new financial feature.
+- The docs delta remains LOCAL only, without invalidating a222 CI. Current
+  source CI/release remains the report-only task, not a Payments runtime change.
+
+### Payments inventory review and actual CI progress
+
+- Read-only helper confirmed the named Payments source claims and lack of
+  current live-activity proof. Corrected docs wording to3 total P2034 attempts,
+  at most2 retries; no app code or frozen remote head was changed.
+- Actual full39095643498 static117581470319 passed the safety step04:07:42Z,
+  focused Fund04:07:51Z and real-PG04:08:06Z; terminal counts/general baseline
+  and typecheck117581470258 remain pending. These step statuses are not a
+  completed PR or new production receipt. No duplicate run was started.
+
+## 2026-10-18 04:11 UTC — K0.3 bounded observed WAL interval
+
+- Re-read the full existing inventory workflow/script, current maince71 and
+  absence of active inventory; dispatched ONE main-only read-only inventory
+  39096218310 for a second same-reset WAL observation. This is not a retry of
+  failed backup-readiness or a heavy parallel build. It completed SUCCESS,
+  observed04:11:39Z, verifying deployed ce71 and aggregate-only read-only SQL.
+- PG160015/readOnlyon/replica, slots0/active0/retained0, publication absent,
+  maxSlotWalKeepSize-1;8 event tables RLS+FORCE. RAM12247548/9931968kB,
+  swap0, filesystem206900281344/175266586624bytes total/available. Timers
+  inactive, restore NOT PERFORMED; file guards readable/canonical, masked CA
+  owners not inferred. No data/config/service/source/offset/replay mutation.
+- Old gh run --log returned empty for the earlier successful inventory; its
+  run/job still exist SUCCESS. Read the bounded old job log via API instead,
+  without altering/cache-deleting or rerunning anything. Same reset verified:
+  2026-09-04T12:58:40.679899+02:00; old02:45:51.420078UTC17891881657bytes,
+  new04:11:39.529597UTC17907414978bytes. Arithmetic gives15533321bytes
+  (14.81MiB) over approximately5148.109s, mean3017B/s /2.95KiB/s.
+- These are cluster-wide observed WAL counters over a deployment interval,
+  NOT peak/day/event/tenant rate, outage/slot approval or RPO/RTO. Capacity,
+  logical-WAL maintenance and all Kafka runtime gates remain open. Baseline
+  and backlog updated locally; frozen a222 source CI is not disturbed.
+
+## 2026-10-18 04:20 UTC — PR873 verified and normally merged
+
+- Full39095643498 SUCCESS04:18:46Z on exact frozen
+  a222b769f2cd773e80177b7e8403591f721e1d7f. Completed logs: diagnostic/freshness
+  12/12 with real timeout/KILL/no residual fixture PID; Fund43+78=121/121;
+  restricted-LOGIN PostgreSQL10/10; baseline18=18 PASS04:18:42Z.
+  Typecheck117581470258 SUCCESS04:12:55Z,64 gated pairs=64 baseline,
+  1326 advisory diagnostics overall/zero in five own Fund TS paths. Separate
+  pgpass39095643679 actual30/30 with real libpq SUCCESS04:02:11Z.
+- Root re-read current origin/maince71, PR head/base/mergeability and all five
+  actual required SUCCESS contexts from Actions app15368. Protection remains
+  enforce_admins=true, PR-only, force/delete=false; documented/registered
+  production13.140.132.245:/opt/leaddrive-v2 and GitHub Actions route agree.
+  Old draft skipped gates were not used; no bypass or retry was introduced.
+- Normal match-head merge PR873 at04:20:25Z produced new main
+  24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2. Automatic deploy39096745285
+  queued04:20:28Z, build117584684571/quality117584684792 now in progress.
+  One helper monitors only this release; root will verify public SHA/ping and
+  actual feature/whole-workflow receipt before one refined read-only report.
+- Four local-only journal/Payments/WAL commits after a222 were preserved and
+  NOT pushed into its active CI or merged by accident. No payment application
+  code, runtime Kafka, replay, provider policy/key, timer or backup/restore
+  change was authorized/performed through this ordinary report-code delivery.
+
+### K0.2 SMS-OTP source boundaries, while PR873 deploy runs
+
+- Root read named send/verify helper, generic SMS-OTP verify, authenticated
+  SMS2FA verify, cleanup helper/HTTP caller and located their existing tests.
+  NON_FUND inventory section11 records actual cryptographic generation/hash,
+  expiry/attempt guards and conditional one-use consumption (count=1). These
+  safeguards are preserved, not described as absent or replaced by Kafka.
+- Generic pre-auth/org verification and dedicated session/user-bound2FA have
+  different authority; nonce creation follows consumption separately. Cleanup
+  deletes expired/old challenge rows, so that table is not full immutable
+  history. Future events must exclude code/hash/phone/nonce/session secrets;
+  replay must not regenerate/send or revive access, expiry or used state.
+- No auth/OTP/provider/cleanup request or runtime test ran; actual live use,
+  every alternate caller and full isolation/retention protocol are NOT VERIFIED.
+  No application code, authentication policy, session, live data, configuration
+  or paid service changed. These docs remain LOCAL; delivery remains only
+  reviewed PR873 report code on24ce6e9c, not an auth feature rollout.
+
+### PR873 artifact built; runtime delivery still pending — 2026-10-18 04:41 UTC
+
+- Existing deploy39096745285 build117584684571 SUCCESS04:40:33Z on exact
+  main24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2. Root independently read
+  artifact metadata:12125357695, leaddrive-prod-24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2,
+  471263674bytes, sha256:a0b3627ef65ace2061178f63ef16a5ed2c3ab700f1bd3e44622c16ac3b57cc87,
+  unexpired, expires2026-11-17T04:40:25Z. This30-day Actions retention is not
+  an independent immutable disaster-recovery archive or decrypt/restore proof.
+- Quality117584684792 is still running its blocking unit-baseline stage;
+  whole deploy, runtime installation, public exactSHA/ping and refined live
+  readiness remain PENDING. No duplicate build, retry or diagnostic dispatch.
+- Helper read-only OTP review confirmed the named source boundaries, including
+  explicit user binding under the dedicated2FA bypass; this does not prove
+  RLS there. No additional application code, auth/provider request or test ran.
+- Local-only documentation checkpoints remain preserved and unpushed; the
+  released source is still frozen reviewed a222b769f, merged normally as24ce.
+  Kafka activation, offsets, replay, backup/restore and policy/key/timer changes
+  were not performed or inferred from artifact-build success.
+
+## 2026-10-18 04:54 UTC — PR873 delivered and independently checked
+
+- Deploy39096745285 whole SUCCESS04:52:25Z, attempt1, exact merged main
+  24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2. Quality117584684792 finished
+  SUCCESS04:45:04Z: diagnostic/freshness12/12, Fund121/121, restricted-LOGIN
+  real PostgreSQL10/10, baseline18 failing files=18 known PASS04:45:01Z.
+  Its long baseline stage finished normally; no timeout/retry/gate weakening.
+- Runtime117588820864 SUCCESS04:51:51Z. Completed log: existing Fund cutover
+  already durably verified04:50:28.197Z; structural ledger/RLS/ownership/
+  exact-money/Fund projection postconditions verified04:50:52.858Z. Atomic
+  deploy04:47:38→04:51:38Z; public DB-path ping step SUCCESS04:51:46Z;
+  actual login200 and hashed CSS/JS200 feature smoke04:51:48.821Z.
+  Retention117589952332 SUCCESS04:52:24Z; artifact metadata remains as above.
+- Root independently checked public build-info at04:53UTC: artifactSha EXACT
+  24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2, builtAt04:29:44Z; ping ok=true.
+  Fresh main matches. This supersedes the preceding pending-runtime notes,
+  not the failed recovery verdict or inactive Kafka/source state.
+- No active existing inspection found. After those receipts, root dispatched
+  ONE main-only protected read-only backup-readiness39098707822 at04:54:23Z,
+  expected_main_sha exact24ce. It is QUEUED at this entry; new live category,
+  issue count and freshness findings remain PENDING. Whole report may correctly
+  FAIL closed while recovery prerequisites remain unmet; do not rerun unchanged.
+- Read-only app-thread discovery found a separate historical Mac Contabo-file
+  backup session. Its October6 text records file-copy/hash receipts, incomplete
+  later roundtrip and application runtime0/9. These historical copies do not
+  prove current LeadDrive production13.140.132.245 restore, key custody or a
+  signed independent operator drill. No other task was woken/messaged, no
+  credentials/private keys read and no Drive or browser transfer initiated.
+- No backup/restore/commissioning, runtime policy/encryption/key/timer, source
+  logical-WAL/restart/slot/publication, consumer/offset/replay or paid-service
+  action was performed through this report-code delivery. Local-only docs
+  checkpoints stay preserved and unpushed; no later local SHA entered release.
+
+## 2026-10-18 04:55 UTC — refined recovery verdict:23 issues,9 gaps, NO-GO
+
+- The single protected read-only39098707822/job117590370645 completed FAILURE
+  04:55:37Z on exact24ce, attempt1. Its sanitized report ran04:54:47→04:55:33Z
+  and reached the full SUMMARY: machine_ready=no enterprise_ga_ready=no
+  issues=23 enterprise_gaps=9 operator_attestation_required=yes. This supersedes
+  the queued/pending refined report and preceding22-issue snapshot, not the
+  SUCCESS app deploy39096745285/public exactSHA/ping/feature receipts.
+- New actual ObjectLock category=service_error_format_unrecognized. CLI254
+  was observed but the expected exact CLI error envelope was not recognized.
+  No actual service code, HTTP status or root cause is established; do not
+  infer missing lock, AccessDenied, bad credentials/region or provider5xx.
+  No raw error/config, debug request, policy/access-key change or retry ran.
+- Compared with the preceding completed report, runtime-files freshness now
+  FAILs instead of PASS (+1). The stricter source gate must reject uncertain
+  metadata, but hidden raw service/date fields were not separately inspected;
+  the precise failing predicate or a new production regression is NOT proven.
+  All4 freshness and all4 MemorySwapMax=0 checks FAIL. DB/secrets/log timers
+  remain loaded:disabled:inactive; runtime-files remains not-found:not-found:inactive.
+- Pinned age/AWS, private pgpass/CA guards, persistent locks and immutable
+  operations artifact remain PASS. Encryption remains explicitly OFF. The
+  prior6 unit/authority/byte/aggregate-drift FAILs, genesis and2 evidence FAILs,
+  timer/run/swap/ObjectLock gaps remain.23 is the count of FAIL lines including
+  aggregate checks, not23 independent implementation tasks.9 broader recovery
+  gaps still include PITR, independent storage, full authority/media/host/log
+  restoration and schema/retention/custody evidence.
+- No unchanged inspection rerun or speculative diagnostic/policy fix follows
+  this unknown-format result. Needed next are a separately scoped private
+  storage/operator investigation and real current offline custody/independently
+  signed restore proof; never fabricate them from historical screenshots,
+  file-copy receipts, another owner account or an AI identity. The earlier
+  asynchronous question about a second real human is still unanswered.
+- K4 broker worker/assignment fencing, runtime shadow-role provisioning,
+  projection read cutover, archive/HA/alerts, source logical-WAL maintenance,
+  production CDC/consumer activation/replay and remaining-domain adoption
+  are NOT completed. Fund's bounded tested adapter is inactive; Payments/OTP
+  additions are LOCAL read-only inventories, not application migrations.
+- Stopping point: delivered report source plus actual refined NO-GO, with
+  task-owned docs checkpointed and canonical dirty tree/old worktrees preserved.
+  No claim of100%, no new paid service, no runtime backup/restore/Kafka changes.
+
+### 2026-10-18 04:59 UTC — delivery record synchronized, no running task jobs
+
+- Updated the existing closed PR873 description with actual five-check proof,
+  whole deploy/public/feature receipts and the refined23/9 NO-GO; API confirmed
+  closed PR and merge24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2. No duplicate
+  PR, new push, Actions retry or extra production diagnostic was created.
+- Helper's one deploy monitor and one refined-report monitor both completed;
+  this is not a persistent scheduled monitor. No automation was created and
+  no ongoing background task should be inferred after this turn.
+- Current task worktree remains its dedicated codex branch, clean before this
+  journal seal. Source release ends at remote a222b769f; later task-owned docs
+  checkpoints, including0305a8ff3, are LOCAL and preserved, not new CI/deploy
+  evidence. Docs-only verification: git diff --check PASS; no local full build.
+- Visible continuation: first bounded deliveries verified, all-task objective
+  unfinished. Last action is release/readiness record synchronization. Stop
+  before any speculative storage correction or operational restore; next
+  obtain the real independent operator/custody decision and separately scoped
+  storage investigation while retaining the open P1/K4/module backlog.
+
+## 2026-10-18 — owner designates the second human reviewer
+
+- The owner answered the pending asynchronous question by naming a second
+  responsible person. This supersedes the earlier "unanswered" appointment
+  notes ONLY. The name is retained in the owner's chat, not repeated in this
+  public repository; no personal contact details are needed for this record.
+- This is an owner nomination, not the nominee's consent, authenticated
+  identity/public-key binding, approval, key custody, signed evidence or a
+  completed independent restore. No operator principal or allowed-signers
+  entry was invented from the name; no account/access/invitation/signature
+  was created and no other session was messaged on the person's behalf.
+- Read the existing runbook/operator boundaries: custody requires independent
+  canary decryption using both physically separate offline copies and a
+  personally controlled signing key; the later restore must bind the exact
+  reviewed candidate/version/SHA and prove actual isolated restoration. Private
+  keys/passwords never belong in chat, GitHub, production or evidence bundles.
+  The nominee's name alone cannot set those verification fields to true.
+- Next preparation: agree the nominee's actual participation and a supported
+  independent verification workstation, then use the existing custody/restore
+  procedure once its storage/candidate prerequisites are met. Do not assume
+  the Linux offline verifier can run unchanged in the owner's Mac shell, or
+  treat two mount devices as proof of physical separation.
+- Last operational observations remain the04:55UTC23/9 NO-GO and earlier
+  successful24ce app delivery, not fresh measurements in this turn. Naming
+  the person does not close storage, encryption, restore or Kafka gates. No
+  inspection retry, commissioning, backup/restore, production change, consumer
+  activation, offset/replay, paid service or workflow was started.
+- This turn changes task-owned documentation only; no publication of the
+  nominee's name or automatic access grant is authorized. Exact next stopping
+  point is preparation for the real person's participation, not certification.
+
+## 2026-10-18 — resume K4 partition coordination from current main
+
+- Owner said "begin" after the second-reviewer nomination. Continued the
+  already-authorized Kafka implementation/delivery scope. Nomination is still
+  not independent custody or restore evidence; no private identity was used.
+- Reconciled recorded cwd via codex-project-context, actual task branch,
+  origin rashadoni/leaddrive-v2, production13.140.132.245:/opt/leaddrive-v2,
+  registry/deployment/delivery docs, current GitHub identity rashadoni and
+  all5 protected required contexts. Main advanced to08407d944 (unrelated PR874).
+- Created a clean task-owned worktree from that main at
+  /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-kafka-partition-processing-20261018,
+  branch codex/kafka-partition-processing-20261018. Preserved prior worktree
+  and all11 local docs checkpoints; cherry-picked those docs onto this branch
+  (through81dafaa6f). Canonical dirty tree remains untouched.
+- Implementing an inactive partition processor and Fund routing wrapper:
+  ordered cross-tenant prefix, SQL COMMIT before broker ack, original immutable
+  membership, immediate revoke/post-await guards, byte/record bounds, no queue,
+  fail-closed poison/uncertain-ack behavior. Numeric Kafka holes are allowed,
+  but driver-side unfiltered fetch and actual broker generation fencing remain
+  required. Existing tenant checkpoints never seed the broker cursor.
+- Independent helper reviewed design and writes only the two new unit tests.
+  Root adds real restricted-PostgreSQL coordinator scenarios to the existing
+  mandatory gate: A/B/A failure barrier, ack-loss duplicate/older checkpoint,
+  real deferred-COMMIT failure, and revoke while SQL commits.
+- Verification is PENDING. Small isolated test tools installation first hit
+  npm resolver edgesOut before installing; retry uses an explicit temporary
+  package manifest outside the repo. No dependency changes to application.
+  Full build/typecheck/realPG run on GitHub; no heavy local phase, production
+  backup/restore, source WAL/CDC, Kafka activation, offsets or replay executed.
+
+### K4 coordinator local verification before PR
+
+- Four focused Vitest4.1.2 files executed on this tree with one worker and
+  768MiB Node heap:189/189 PASS (existing121 plus68 new), duration1.70s.
+  These cover processor/coordinator control flow; the broker port is fake.
+- Targeted TypeScript5.9.3 strict checks of both new source and both new unit
+  files PASS with ES2020. An initial ES2017 targeted run found only the
+  pre-existing fund-contracts.ts:32 TS2737 bigint literal; no own-file error.
+  This does not replace the actual repository baseline/typecheck GitHub gate.
+- Runner policy70workflows PASS; mandatory Fund unit/realPG wiring2/2 PASS;
+  git diff --check PASS. Real PostgreSQL14-case gate and full repo checks are
+  NOT RUN locally, reserved for GitHub. No source runtime was activated.
+- Temporary isolated test dependencies required npm's legacy peer resolver
+  after two bounded edgesOut resolver failures. Only48 test-tool packages
+  installed under /tmp/leaddrive-kafka-tests.RqjLlq; ignored node_modules
+  symlink belongs to this worktree. No application manifest/lockfile changed,
+  no install scripts ran; hosted CI still uses the full frozen application lock.
+- Helper found a synchronous revoke-inside-isCurrent race. Root fixed it by
+  checking state after that callback; regressions at before-DB/after-DB/after-ack
+  boundaries pass. Read-only helper review found no remaining concrete blocker
+  in this inactive scope. Actual membership/retention/generation integration,
+  worker entrypoint/deployment and independent recovery remain future work.

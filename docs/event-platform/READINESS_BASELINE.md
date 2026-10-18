@@ -363,3 +363,80 @@ ran; this report does not inventory every other backup mechanism on the host.
 Next is bounded source-only error classification/privacy proof, not a retry of
 the unchanged report or runtime corrective operation. Recovery/HA/archive and
 independent operator/custody confirmations are still prerequisites, not waived.
+
+### Observed WAL interval, not an approved capacity budget — 2026-10-18 04:11 UTC
+
+Exactly one additional protected read-only inventory39096218310 SUCCESS on
+delivered ce71dacf9, observed04:11:39Z, was taken for K0.3/K2.2 measurement,
+not as a retry of failed backup readiness. PG16.15/readOnly=on, replica WAL,
+zero slots/active slots/retained slot WAL, no outbox publication, slot cap-1.
+All8 expected tables present with RLS+FORCE; planner estimates are not counts.
+RAM12247548/9931968kB total/available, swap0; filesystem206900281344bytes,
+175266586624available. Four timers inactive; restore NOT PERFORMED. Both
+pgpass0600/CA0640 canonical and service-readable; masked CA owners not inferred.
+
+The same-reset pg_stat_wal samples are:
+
+| Inventory / PG observation (UTC) | Cumulative WAL bytes |
+|---|---:|
+| 39091217812 /02:45:51.420078 | 17891881657 |
+| 39096218310 /04:11:39.529597 | 17907414978 |
+
+Difference15533321bytes (14.81MiB) over about5148.109seconds, observed mean
+about3017bytes/second (2.95KiB/s). statsReset remained2026-09-04T12:58:40.679899+02:00.
+This is cluster-wide WAL over an interval that includes a deployment, NOT
+canonical-event throughput, peak/day rate, tenant skew, RPO/RTO or an approved
+slot/outage budget. Do not extrapolate it to approve logical-WAL activation.
+No SQL/config/service/source/consumer/offset/replay mutation or new subscription.
+
+### Refined report source delivered — 2026-10-18 04:54 UTC
+
+[PR873](https://github.com/rashadoni/leaddrive-v2/pull/873) passed all five
+actual required checks on a222b769f2cd773e80177b7e8403591f721e1d7f and was
+normally merged as24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2. It adds only
+fixed public service-error categories and fail-closed successful-run timestamp
+validation; it does not change storage policy, credentials, timers or backups.
+The empty-date negative control proves the old source can falsely PASS with
+synthetic default metadata, not that such metadata occurred in production.
+
+[Deploy39096745285](https://github.com/rashadoni/leaddrive-v2/actions/runs/39096745285)
+whole SUCCESS04:52:25Z, attempt1: diagnostic/freshness12/12, Fund121/121,
+restricted-login real PostgreSQL10/10, baseline18=18; build/runtime/retention
+SUCCESS. Artifact12125357695 is bound to exact24ce. Runtime structural
+ledger/RLS/ownership/exact-money/Fund postconditions verified04:50:52.858Z;
+the existing Fund cutover was already durably verified, not re-executed.
+Ping/revision/login/hashed-assets smoke passed. Root independently checked
+public artifactSha EXACT24ce and ok=true ping; builtAt04:29:44Z.
+
+After whole delivery and confirming current main/no active inspection, root
+dispatched exactly one protected main-only read-only
+[readiness39098707822](https://github.com/rashadoni/leaddrive-v2/actions/runs/39098707822)
+at04:54:23Z with expected_main_sha exact24ce. New service category/summary
+is PENDING here; the preceding22issues/9gaps/service_error remains the last
+completed observation. A failed readiness gate is not a failed app deployment.
+No recovery, source CDC, consumer, offset or replay action was performed.
+
+### Completed refined report, not recovery readiness — 2026-10-18 04:55 UTC
+
+[Readiness39098707822](https://github.com/rashadoni/leaddrive-v2/actions/runs/39098707822)
+completed FAILURE04:55:37Z, exact24ce, with full sanitized SUMMARY:
+machine_ready=no enterprise_ga_ready=no issues=23 enterprise_gaps=9
+operator_attestation_required=yes. App deploy39096745285 remains SUCCESS.
+This supersedes the immediately preceding pending/22-issue observation.
+
+Actual ObjectLock category is service_error_format_unrecognized: CLI254, but
+the expected exact CLI error envelope was not recognized. No root cause,
+service code, HTTP status, missing lock or permission/credential defect has
+been proven; no raw error or speculative policy/credential correction follows.
+The new23rd FAIL is runtime-files freshness (previously PASS); its hidden
+raw metadata was not separately examined, so do not assert an empty timestamp
+or new production failure. All4 freshness and4 MemorySwapMax checks FAIL.
+
+Three DB/secrets/log timers remain loaded:disabled:inactive; runtime-files
+not-found:not-found:inactive. Encryption explicitly OFF; unit/authority drift,
+genesis/evidence/restore gaps persist. Tools, private connection-file guards,
+persistent locks and immutable operations program remain PASS.23 FAIL lines
+include aggregate checks, not23 independent tasks.9 wider gaps remain open.
+Historical Mac file-copy/hash receipts do not prove current application restore
+or independent signed custody. No backup/restore, key/policy/timer/source CDC,
+consumer, offset or replay action ran. No unchanged report retry is planned.
