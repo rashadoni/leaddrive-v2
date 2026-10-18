@@ -26,8 +26,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const MONEY = /^-?(?:0|[1-9][0-9]{0,13})\.[0-9]{4}$/
 const NON_NEGATIVE_MONEY = /^(?:0|[1-9][0-9]{0,13})\.[0-9]{4}$/
 const UTC_TIMESTAMP = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?Z$/
-const SCALE = 10_000n
-const BALANCE_LIMIT = 1_000_000_000_000_000_000n // Exclusive NUMERIC(18,4) scaled bound.
+const SCALE = BigInt(10_000)
+const BALANCE_LIMIT = BigInt("1000000000000000000") // Exclusive NUMERIC(18,4) scaled bound.
 
 function reject(message: string): never {
   throw new FundBalanceReductionError(message)
@@ -71,7 +71,7 @@ function scaledMoney(value: unknown, nonNegative = false): bigint {
 }
 
 function requireBalance(scaled: bigint): void {
-  if (scaled < 0n || scaled >= BALANCE_LIMIT) reject("Fund balance is outside non-negative NUMERIC(18,4)")
+  if (scaled < BigInt(0) || scaled >= BALANCE_LIMIT) reject("Fund balance is outside non-negative NUMERIC(18,4)")
 }
 
 function formatBalance(scaled: bigint): string {

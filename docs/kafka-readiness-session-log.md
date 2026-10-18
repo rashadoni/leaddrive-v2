@@ -1142,3 +1142,26 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   yet. Old-run typecheck continues; no manual cancellation, rerun or duplicate
   full CI was started. Root waits for its useful diagnostics before pushing
   the next frozen draft checkpoint for ordinary new-SHA verification.
+
+### Completed first-run diagnostics before the next ordinary CI run
+
+- Run39081041370 completed FAILURE; typecheck117537933905 itself SUCCESS by
+  its current blocking gates (64 diagnostic pairs equal baseline64). Its full
+  compiler exited2 with1331 diagnostics, so this is not a repository-wide
+  clean-TypeScript claim. No diagnostic was reported in the new adapter/mock
+  tests, and syntax/missing-module/undefined-name gates passed.
+- Read actual diagnostics rather than ignoring the advisory section: TS2737
+  identified two bigint literals in the new PG test and three in our previously
+  merged pure reducer, against the repository's ES2017 target. Replaced only
+  those five literals with exact BigInt constructors, using a string for the
+  large bound. No tsconfig, baseline or gate was changed; fixed-point arithmetic
+  and amount bounds are unchanged. Actual updated TS/Vitest/PG proof still awaits
+  the next CI run.
+- The completed static failure remains the seven pre-adapter fixture23514
+  failures. The local correctioncef7093e3 was independently reviewed as matching
+  the actual INSERT-first source contract. A possible concurrent23505 remains
+  only a hypothesis, not a demonstrated result or permitted generic success.
+- With the old run complete and no active same-head retry, publish one new
+  frozen draft checkpoint, observe cheap checks/head propagation, then mark
+  ready for the normal full required gates. No failed-old-SHA rerun is useful
+  for this corrected-code/fixture problem.
