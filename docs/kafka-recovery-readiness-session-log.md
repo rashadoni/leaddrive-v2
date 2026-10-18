@@ -202,3 +202,25 @@
   no gate weakening, no unreviewed production recipient edit. Offline storage
   gap does not prevent retaining candidate or continuing documentation/checks,
   but currently prevents encrypted commissioning through existing workflow.
+
+## 2026-10-19: continued independent checks and coordinator synchronization
+
+- Resumed recorded branch/ac94f9228; clean worktree; origin/main unchanged
+  226dde0e77c0c36a4de991bb703ba8f8416c5a64. Route remains GitHub Actions only.
+- Exact published ac94f9228 PR892 checks finished: pr-scope35s PASS
+  (39166735144), runner-policy20s PASS (39166735182), scan23s PASS
+  (39166735154). static-checks/typecheck/build SKIPPED by docs-only policy.
+- Current public /api/v1/ping returned {ok:true}; build-info artifactSha equals
+  exact main226dde0e77c0c36a4de991bb703ba8f8416c5a64. No new release inferred.
+- Read originating chat progress: coordinator actively executes full CDC proof
+  and repairs own code gates; common merge/deploy sequence remains theirs.
+  Public PR coordination update records new candidate/Mac/USB evidence so
+  owner is not used as message bus. No messages to Farah.
+- No arbitrary code/test/workflow changes introduced to simulate progress.
+  Independent preparation/verification exhausted; actual custody certification
+  cannot use online server copy as a false offline attestation. A3 OPEN.
+- Journal-only checkpoint kept local per coordinator's request to avoid CI
+  reruns solely for journal entries. PR content unchanged; ready for their
+  common release. Next operational step requires truthful independent custody
+  evidence or an explicitly reviewed change to recovery policy; current user
+  request to retain online copy is not itself such a policy change.
