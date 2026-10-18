@@ -2580,3 +2580,28 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   successful gates, normal merge only after every required/feature gate is
   green, then actual release/artifact/public/runtime smoke. Source stays
   frozen while local journal checkpoints preserve this waiting point.
+
+### PR883 strict-client gate found an ES2017 incompatibility — 2026-10-18 14:30 UTC
+
+- Exact source ae2c2a6b901e0ed97f7c2874f8348b28cece079b combined run
+ 39134939137 failed at the newly strict generated-Prisma TypeScript gate:
+ `fund-contracts.ts:32` used `10_000n`, disallowed by the project's ES2017
+ target. Root and independent helper read the completed job117697425702
+ log. Actual Prisma generation and cleanup succeeded; the49 fixture units,
+ broker13 and combined6 scenarios did NOT run in this job. No broker/SQL
+ defect or successful combined proof is inferred from this compile failure.
+- PR883 returned to draft for the correction. Replaced only that literal
+ with `BigInt(10000)`, preserving exact bigint arithmetic and the existing
+ ES2017 target/strict gate. Existing regression coverage includes signed
+ deltas, the smallest quantum and NUMERIC(18,4) maximum above Number precision.
+- Corrected tree: strict targeted contract/broker TypeScript,327/327 focused
+ tests (7 files,5.63s),11/11 script/contract guards and whitespace PASS locally.
+ Full generated-Prisma integration remains GitHub-only, not simulated locally.
+- Earlier-source synthetic CDC39134939127 and basic stack39134939195 are
+ SUCCESS. Required PR39134939135 still finishes its existing static gate;
+ its actual Fund restricted-login PostgreSQL step passed14:25:34Z and its
+ typecheck job is SUCCESS. These receipts do not certify the corrected SHA.
+ No running job was manually cancelled/rerun and no runtime operation occurred.
+- Next: finish preserving the earlier run, publish the reviewed correction,
+ verify GitHub has that exact new HEAD before marking ready, then require
+ actual current-SHA checks and combined drill before normal merge/release.
