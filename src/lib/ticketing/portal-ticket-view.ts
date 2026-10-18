@@ -1,8 +1,10 @@
 import {
   ASSISTANT_ESCALATION_DESCRIPTION_HEAD,
+  DESCRIPTION_CHAT_MARKERS,
   EMAIL_COMMENT_PREFIX,
   WHATSAPP_CHAT_DESCRIPTION_HEAD,
   WHATSAPP_INBOUND_DESCRIPTION_HEAD,
+  WEB_CHAT_TRANSCRIPT_HEAD,
   isOperatorSenderName,
   parseCommentSender,
   parseWebChatDescription,
@@ -107,6 +109,55 @@ export function portalDescriptionView(description: string | null): PortalDescrip
   return generated
     ? { description: null, origin: generated[1], chatTranscript: [] }
     : { description, origin: null, chatTranscript: [] }
+}
+
+/**
+ * U+2060 WORD JOINER: no width and no line break, so a text shows exactly the
+ * same with it — and a token with it inside is no longer that token.
+ */
+const WORD_JOINER = "\u2060"
+
+function withWordJoiner(token: string): string {
+  return token[0] + WORD_JOINER + token.slice(1)
+}
+
+/**
+ * The description the customer typed in the portal, as it is stored.
+ *
+ * Nothing on a ticket says its description is the customer's: the agent's page
+ * (`parseChatDescription`) and the portal (`portalDescriptionView`) decide from
+ * the text itself whether a chat channel wrote it. A description with a line
+ * «--- ИСТОРИЯ ЧАТА ---» followed by «[Оператор] …» or «[Da Vinci] …» lines
+ * showed on the agent's page as a chat card with messages the team never
+ * wrote; one in the website chat's format did the same, in the customer's own
+ * portal too; one that began with a generated head («Создан из WhatsApp чата.»)
+ * was withheld from the customer's own portal as the team's summary (until
+ * 2026-10-19).
+ *
+ * Each of those tokens is stored with a WORD JOINER after its first character:
+ * on screen the text is exactly what the customer typed, and no reader takes it
+ * for a generated description. The readers are unchanged, so what the channels
+ * write, and every description stored before, reads as it did. A description
+ * with none of the tokens is stored as typed.
+ *
+ * The portal chat widget's «create ticket» button sends the chat it built in
+ * the customer's browser through the same route; it is the customer's text as
+ * much as anything typed, and reads on the agent's page as text.
+ */
+export function customerDescriptionForStorage(text: string): string {
+  let stored = text
+  for (const marker of DESCRIPTION_CHAT_MARKERS) {
+    // One at a time: «--- X --- X ---» holds two that overlap.
+    while (stored.includes(marker)) stored = stored.replace(marker, withWordJoiner(marker))
+  }
+  // `parseWebChatDescription` opens at a line that is exactly the head.
+  stored = stored.replace(new RegExp(`^${WEB_CHAT_TRANSCRIPT_HEAD}$`, "gm"), withWordJoiner(WEB_CHAT_TRANSCRIPT_HEAD))
+  const indent = stored.length - stored.trimStart().length
+  const head = stored.slice(indent).split("\n", 1)[0].trim()
+  if (GENERATED_DESCRIPTION_ORIGIN.some(([known]) => head === known)) {
+    stored = stored.slice(0, indent + 1) + WORD_JOINER + stored.slice(indent + 1)
+  }
+  return stored
 }
 
 export const portalTicketSubject = customerFacingTicketSubject
