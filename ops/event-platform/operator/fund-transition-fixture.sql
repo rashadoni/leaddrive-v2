@@ -41,6 +41,26 @@ RETURNS text LANGUAGE sql STABLE SET search_path=pg_catalog,pg_temp SET timezone
  'inbox',(SELECT jsonb_agg(to_jsonb(i) ORDER BY i.id) FROM public.consumer_inbox i WHERE i."organizationId"=p_org AND i."consumerName"='fund-shadow:'||p_build::text AND i."consumerVersion"=1)
  )::text,'UTF8'),'sha256'),'hex')
 $$;
+-- PostgreSQL 16 deferred invoker guards use the COMMIT role. This policy
+-- helper permits only the exact approved target/event in a live barrier tx,
+-- including settlement, and exposes no source/private rows. Provisioning of
+-- corresponding SELECT/row-lock column rights is isolated fixture-only below.
+CREATE FUNCTION ld_kafka_operator.fund_guard_scope(p_org text,p_build uuid,p_key text DEFAULT NULL)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
+DECLARE token record;
+BEGIN
+ FOR token IN SELECT q.id,q.plan_hash,q.generation FROM ld_kafka_operator.source_barriers s
+ JOIN ld_kafka_operator.requests q ON q.id=s.request_id AND q.generation=s.generation
+ WHERE s.transaction_id=pg_current_xact_id_if_assigned() AND s.backend_pid=pg_backend_pid()
+ AND s.organization_id=p_org AND q.organization_id=p_org AND q.controller=session_user
+ AND q.plan->>'buildId'=p_build::text AND (p_key IS NULL OR p_key=q.id::text) LOOP
+  PERFORM ld_kafka_operator.check_token(token.id,token.plan_hash,token.generation,true);
+  RETURN true;
+ END LOOP;
+ RETURN false;
+END $$;
+REVOKE EXECUTE ON FUNCTION ld_kafka_operator.fund_guard_scope(text,uuid,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ld_kafka_operator.fund_guard_scope(text,uuid,text) TO ld_kafka_operator_controller;
 CREATE FUNCTION ld_kafka_operator.apply_fund_transition(p_request uuid,p_hash text,p_generation bigint)
 RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
 DECLARE q ld_kafka_operator.requests; e ld_kafka_operator.fund_verified_evidence;

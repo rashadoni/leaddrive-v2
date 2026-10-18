@@ -862,3 +862,23 @@ Default shared transport behavior unchanged; extra verbosity is privately parsed
 not printed. Syntax/diff PASS. PostgreSQL upstream docs/commit consulted for
 version-specific deferred-trigger role behavior; runtime target stays pinned16.13.
 Next diagnostic hosted run; no guard timing/security changes made.
+
+### Upstream integration advanced during the diagnostic run
+
+Fresh fetch now resolves origin/main4212600260f5ed28b9c2b73e28c363a0fc7d39f3:
+original session merged PR891 (head2936f4c2) at2026-10-18T22:43:39Z. This session
+did not merge/deploy it. PR894 became conflicted, so diagnostic head776a51e13
+has NO Actions run; absence was not a passing check. Earlier42501 diagnosis
+remains unresolved until exact diagnostics run on a conflict-free feature head.
+
+Preparing routine merge of current main INTO our feature branch only, preserving
+checkpoint history and all append-only journal content. Keep upstream admission
+fixture/guard test exact; move our later shadow tests to their own addon rather
+than modifying original session checks. Retain upstream ready_for_review trigger
+and new fixture routing guards in CI. No push to main, PR merge or production.
+An unprovisioned exact-target RLS helper candidate for PG16 deferred context is
+checkpointed for continuity; it grants no caller privilege yet and is not
+claimed proven. Upstream PostgreSQL commit01463e1cccd33fb11b33a4dd6dbebcad3c534102
+(https://www.postgresql.org/message-id/E1tb0y4-0037sb-1e@gemulon.postgresql.org)
+describes the deferred-role change as master-only, not back-patched. Diagnosis
+and any least-privilege closure still require actual pinned16.13 evidence.
