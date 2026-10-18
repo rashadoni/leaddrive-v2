@@ -35,6 +35,7 @@ vi.mock("@/lib/demo-center/sales-org", () => ({ demoSalesOrganizationId: () => "
 
 import {
   carriesDemoCode,
+  DEMO_WHATSAPP_AGENT_MODEL,
   DEMO_WHATSAPP_CLOSING,
   DEMO_WHATSAPP_MAX_AI_REPLIES,
   demoAgentHistory,
@@ -42,7 +43,7 @@ import {
   handleDemoWhatsAppInbound,
 } from "@/lib/demo-center/demo-whatsapp-agent"
 import { demoWhatsAppThreadEnds } from "@/lib/demo-center/demo-whatsapp-welcome"
-import { LEADDRIVE_AGENT_PROFILE } from "@/lib/demo-center/journey/leaddrive-agent-profile"
+import { LEADDRIVE_AGENT_PROFILE, LEADDRIVE_AGENT_PROMPT_WITH_STYLE } from "@/lib/demo-center/journey/leaddrive-agent-profile"
 import { guardOmnichannelCommitments } from "@/lib/inbox/omnichannel-commitment-rules"
 
 // 15:00 in Baku.
@@ -289,6 +290,14 @@ describe("answers until the day or the allowance runs out", () => {
 describe("the words the agent may say", () => {
   it("closes with a line the product's guard lets through unchanged", () => {
     expect(guardOmnichannelCommitments(DEMO_WHATSAPP_CLOSING, { locale: "az" }).violations).toEqual([])
+  })
+
+  it("answers from exactly what the demo's «AI agent» screen shows: the prompt with its style, the knowledge base, the model", () => {
+    const system = demoWhatsAppAgentSystemPrompt()
+    expect(system.startsWith(`${LEADDRIVE_AGENT_PROMPT_WITH_STYLE}\n\n# Bilik bazası\n${LEADDRIVE_AGENT_PROFILE.knowledgeBase.trim()}`)).toBe(true)
+    // And what the product appends after it: how to word a sentence for the guard.
+    expect(system).toContain(LEADDRIVE_AGENT_PROFILE.guardWording.trim())
+    expect(DEMO_WHATSAPP_AGENT_MODEL).toBe(LEADDRIVE_AGENT_PROFILE.model)
   })
 
   it("carries the product's commitment rules, and treats the prospect's words as data", () => {

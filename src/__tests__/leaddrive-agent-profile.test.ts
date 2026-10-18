@@ -5,11 +5,14 @@
  * WhatsApp. What a sales agent says is what LeadDrive promises, so the rules
  * the profile was written under are held here.
  */
+import { readFileSync, readdirSync, statSync } from "node:fs"
+import path from "node:path"
 import { describe, expect, it } from "vitest"
-import { LEADDRIVE_AGENT_PROFILE as P } from "@/lib/demo-center/journey/leaddrive-agent-profile"
+import { LEADDRIVE_AGENT_PROFILE as P, LEADDRIVE_AGENT_PROMPT_WITH_STYLE } from "@/lib/demo-center/journey/leaddrive-agent-profile"
+import { LEADDRIVE_AGENT_SOURCES } from "@/lib/demo-center/leaddrive-agent-sources"
 import { guardOmnichannelCommitments } from "@/lib/inbox/omnichannel-commitment-rules"
 
-const everything = [P.greeting, P.systemPrompt, P.style, P.knowledgeBase, ...P.articles.flatMap((article) => [article.title, article.body]), ...P.sampleReplies.map((reply) => reply.agent)]
+const everything = [P.greeting, P.systemPrompt, P.style, P.knowledgeBase, P.guardWording, ...P.articles.flatMap((article) => [article.title, article.body]), ...P.sampleReplies.map((reply) => reply.agent)]
 
 describe("LeadDrive's own agent profile", () => {
   it("has the three parts the demo shows: a prompt, a style and a knowledge base", () => {
@@ -20,7 +23,26 @@ describe("LeadDrive's own agent profile", () => {
     expect(P.knowledgeBase.length).toBeGreaterThan(500)
     expect(P.knowledgeBase.length).toBeLessThanOrEqual(6_000)
     expect(P.articles.length).toBeGreaterThanOrEqual(10)
-    for (const article of P.articles) expect(article.sources.length, article.title).toBeGreaterThan(0)
+    for (const article of P.articles) expect(LEADDRIVE_AGENT_SOURCES[article.title]?.length, article.title).toBeGreaterThan(0)
+    expect(Object.keys(LEADDRIVE_AGENT_SOURCES).sort()).toEqual(P.articles.map((article) => article.title).sort())
+  })
+
+  it("holds the prompt the product's one prompt field shows: the rules, then the style — and not how to word around our guard", () => {
+    expect(LEADDRIVE_AGENT_PROMPT_WITH_STYLE).toBe(`${P.systemPrompt.trim()}\n\n${P.style.trim()}`)
+    expect(LEADDRIVE_AGENT_PROMPT_WITH_STYLE).not.toContain(P.guardWording.split("\n")[1].slice(0, 40))
+    expect(P.guardWording).toMatch(/^# /)
+  })
+
+  it("ships nothing of where its facts came from: the profile reaches the browser, its sources stay on the server", () => {
+    const profileSource = readFileSync(path.join(process.cwd(), "src/lib/demo-center/journey/leaddrive-agent-profile.ts"), "utf8")
+    expect(profileSource).not.toMatch(/\/home\/|\/mnt\/|sources:/)
+    const pages = (dir: string): string[] => readdirSync(dir).flatMap((name) => {
+      const full = path.join(dir, name)
+      return statSync(full).isDirectory() ? pages(full) : /\.(ts|tsx)$/.test(name) ? [full] : []
+    })
+    for (const file of [...pages(path.join(process.cwd(), "src/components")), ...pages(path.join(process.cwd(), "src/app"))]) {
+      expect(readFileSync(file, "utf8"), file).not.toContain("leaddrive-agent-sources")
+    }
   })
 
   it("lets every line the agent says to a prospect through the product's commitment guard unchanged", () => {
