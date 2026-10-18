@@ -784,3 +784,12 @@ Mandatory PR gates and normal production delivery remain pending at this entry.
 Exact outbox fixture publication is not Debezium. Full CDC-to-rebuild, governed
 worker packaging/lifecycle, HA/TLS/ACL, independent recovery, all modules and
 production activation/replay/read-cutover remain open and unperformed.
+
+### PR883 verified and merged; release pending — 2026-10-18 15:39 UTC
+
+All five actual protected contexts on92aa3c5d passed; required PR39139978372
+includes280 focused and14 real-PG tests, unchanged18-file/64-pair baselines.
+Separate combined39139978362 (13+6), CDC39139978367 and stack39139978571 all
+SUCCESS. Normal exact-head merge producedf41ba03328b5aeda9c06f5e5baf27437683d255b
+at15:38:55Z. Automatic application release remains pending at this entry; no
+Java-worker installation, Kafka consumer activation or data replay occurred.

@@ -2783,3 +2783,21 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  SUCCESS with64 gated pairs=64 and1324 advisory diagnostics. Synthetic CDC
 39139978367 is next in the shared queue. Do not merge until all actual gates
  finish. No source push during the frozen-source checks.
+
+### PR883 normally merged after all actual gates — 2026-10-18 15:39 UTC
+
+- Source92aa3c5d380625dfbb86d85bbbea22d600f8d934: actual PR39139978372
+ SUCCESS, including280 focused tests,14/14 real restricted-PG tests and full
+ baseline18=18; typecheck64=64/1324 advisory diagnostics. Combined39139978362
+ SUCCESS13+6; CDC39139978367 SUCCESS raw8/8/no duplicates and cold restart
+ (TLS/business projection/activation explicitly NOT_PROVEN/NOT_RUN); basic
+ stack39139978571 SUCCESS. Policy, secret scan and tooling also SUCCESS.
+- Rechecked protection: five Actions-bound contexts, enforce_admins, no force
+ or deletion. PR head exact92aa, ready and mergeable clean. Main advanced only
+ through unrelated PR884 MTM styling to6dbf839f; inspected changed paths, no
+ Kafka/fixture/workflow overlap. No source update was used to bypass checks.
+- Normal exact-head merge (no admin/force) at15:38:55Z produced
+ f41ba03328b5aeda9c06f5e5baf27437683d255b. Automatic GitHub main deployment
+ is the only release path; receipt is pending. Foreign deployments remain
+ untouched. Java-worker activation, offset/replay and recovery commissioning
+ are NOT performed or implied by this application merge.
