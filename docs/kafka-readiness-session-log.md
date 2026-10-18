@@ -1571,3 +1571,16 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   checks, leaving its heavy gates off until prior287047e2 production delivery
   has an actual receipt. No deployment/inspection is dispatched from this
   feature branch and no old successful workflow is rerun.
+
+### Diagnostic draft published; no second heavy phase started
+
+- Draft PR872 published at remote dca465cf967441df1eedf5e22517f9543ffd60a5,
+  base287047e2. Cheap pr-scope39089695934, runner-policy39089695945 and
+  scan39089695852 actual SUCCESS. Static/typecheck and separate pgpass-contract
+  are draft SKIPPED, explicitly NOT code/authentication proof. No new optional
+  production build or manual diagnostic/commissioning was dispatched.
+- PR871's automatic deploy39089075829 is still the only active delivery phase;
+  helper watches its quality/build/runtime result. Keep PR872 draft until the
+  exact previous merge's deploy, public marker/ping and feature postconditions
+  are confirmed. New actual required checks will run after the final draft
+  receipt update and one ready transition, not from these skipped checks.
