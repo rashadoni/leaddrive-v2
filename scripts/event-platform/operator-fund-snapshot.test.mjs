@@ -4,11 +4,11 @@ import { collectFundRecoveryDatabaseSnapshot } from './operator-fund-snapshot.mj
 function fixture(){
  const eventId='00000000-0000-4000-8000-000000000001',buildId='00000000-0000-4000-8000-000000000002'
  const scope={organizationId:'org-a',buildId,buildKey:'shadow-a',projectionVersion:2,codeSha:'a'.repeat(40),expectedReaderRole:'reader_a',environment:'staging',fundIds:['fund-a']}
- const state={organizationId:'org-a',fundId:'fund-a',balance:'10.0000',currency:'AZN',aggregateVersion:1,lastEventId:eventId}
- const raw={builds:[{id:buildId,org:'org-a',projection:'finance.fund-balance',version:2,key:'shadow-a',sha:scope.codeSha,mode:'shadow',status:'running',fenced:true,replay_from:null,replay_to:null}],
+ const state={organizationId:'org-a',fundId:'fund-a',balance:'10.0000',currency:'AZN',aggregateVersion:1,lastEventId:eventId,lastEventAt:'2026-10-19T00:00:00.000Z'}
+ const raw={observedAt:'2026-10-19T00:00:00.000Z',databaseSnapshot:'100:100:',builds:[{id:buildId,org:'org-a',projection:'finance.fund-balance',version:2,key:'shadow-a',sha:scope.codeSha,mode:'shadow',status:'running',fenced:true,replay_from:null,replay_to:null}],
   funds:[{id:'fund-a',balance:'10.0000',currency:'AZN'}],events:[{id:eventId,fund:'fund-a',version:'1',type:'finance.fund-opened.v1',integrity:true,data_hash:'b'.repeat(64),outbox_hash:'c'.repeat(64),envelope:{organizationid:'org-a',aggregateid:'fund-a',id:eventId,aggregateversion:1,type:'finance.fund-opened.v1'}}],
   heads:[{fund:'fund-a',version:'1',last_event:eventId}],active:[{fund:'fund-a',balance:'10.0000',currency:'AZN',version:'1',last_event:eventId}],
-  shadow:[{fund:'fund-a',balance:'10.0000',currency:'AZN',version:'1',last_event:eventId,status:'shadow'}],
+  shadow:[{fund:'fund-a',balance:'10.0000',currency:'AZN',version:'1',last_event:eventId,status:'shadow',evidence_last_event:eventId,evidence_last_at:state.lastEventAt}],
   checkpoints:[{topic:'ld.staging.finance.events.v1',partition:0,last_offset:'0',last_event:eventId}],
   inbox:[{event:eventId,type:'finance.fund-opened.v1',hash:'c'.repeat(64),topic:'ld.staging.finance.events.v1',partition:0,offset:'0'}],nonLiveEffectPresent:false}
  const roles=[{current_role:'reader_a',session_role:'reader_a',restricted:true}],access=[{count:9,safe:true}],calls=[]
@@ -31,6 +31,7 @@ test('control flow sets READ ONLY before first read and returns only aggregate e
 })
 const cases={
  'unsafe table access':f=>f.access[0].safe=false,'missing forced RLS table':f=>f.access[0].count=8,
+ 'wrong shadow timestamp':f=>f.raw.shadow[0].evidence_last_at='2026-10-18T00:00:00.000Z','missing snapshot provenance':f=>delete f.raw.databaseSnapshot,
  'wrong role':f=>f.roles[0].session_role='other', 'unsafe role':f=>f.roles[0].restricted=false,
  'missing build':f=>f.raw.builds=[], 'wrong code':f=>f.raw.builds[0].sha='d'.repeat(40),
  'ranged build':f=>f.raw.builds[0].replay_from='2026-01-01', 'unfenced build':f=>f.raw.builds[0].fenced=false,

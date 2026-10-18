@@ -369,3 +369,21 @@ TRUNCATE/REFERENCES/TRIGGER privilege. Added actual write-grant and FORCE-RLS
 negative cases, plus unit doubles. Local collector25/25 PASS after correction
 of one Node CLI option-order typo; revised actual PG9 cases pending CI.
 Continue to next exact-source run; no consumer or production action.
+
+## 2026-10-19 — real-schema reader verified; full shadow-state evidence refined
+
+Run39167585197/job hosted admission onf8c1985245a90edf3d1a8b69d3ad79a0ec7bcd59
+whole SUCCESS:89/89 unit gates,24/24 original operator PG and9/9 actual-migration
+reader PG. Actual backward checkpoint refusal23514, read-only sequence refusal
+25006, FORCE-RLS/write-privilege checks and concurrent writer snapshot passed.
+No existing migration or A1/A2 gate changed. All positions here remain synthetic,
+not real broker proof. These receipts do not certify subsequent source edits.
+
+Final snapshot refinement adds DB transaction timestamp and MVCC snapshot ID
+(not an export/restore token), and verifies shadow evidence.lastEventId /
+lastEventAt against canonical reducer state. State digest now includes tenant
+and lastEventAt. Previously only balance/version/event-ID parity was checked;
+matching those could conceal corrupted shadow time evidence. Added actual PG
+negative case for that corruption and two unit cases. Collector27/27 local
+control-flow tests PASS; revised actual10-case proof pending next CI source.
+Continue to real run and review, not an end-of-step user handoff.

@@ -34,7 +34,8 @@ WITH b AS MATERIALIZED (
   ORDER BY "fundId" LIMIT $3
 ), shadow AS MATERIALIZED (
   SELECT p."fundId" AS fund,p.balance::text AS balance,p.currency,p."aggregateVersion"::text AS version,
-    p."lastEventId"::text AS last_event,p.status
+    p."lastEventId"::text AS last_event,p.status,p.evidence->>'lastEventId' AS evidence_last_event,
+    p.evidence->>'lastEventAt' AS evidence_last_at
   FROM public.fund_balance_projections p JOIN b ON p."projectionVersion"=b.version AND p."buildKey"=b.key
   WHERE p."organizationId"=$1 ORDER BY p."fundId" LIMIT $3
 ), c AS MATERIALIZED (
@@ -50,6 +51,8 @@ WITH b AS MATERIALIZED (
   SELECT id FROM public.effect_outbox WHERE "organizationId"=$1 AND "executionMode" IN ('shadow','replay') LIMIT 1
 )
 SELECT jsonb_build_object(
+  'observedAt',to_char(transaction_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+  'databaseSnapshot',pg_current_snapshot()::text,
   'builds',coalesce((SELECT jsonb_agg(to_jsonb(b)) FROM b),'[]'::jsonb),
   'funds',coalesce((SELECT jsonb_agg(to_jsonb(f) ORDER BY id) FROM f),'[]'::jsonb),
   'events',coalesce((SELECT jsonb_agg(to_jsonb(e) ORDER BY fund,version::bigint) FROM e),'[]'::jsonb),

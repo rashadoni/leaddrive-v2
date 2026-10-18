@@ -45,6 +45,8 @@ export async function collectFundRecoveryDatabaseSnapshot(database, input, reduc
       check(result.length===1)
       const raw = result[0].snapshot
       check(raw && Buffer.byteLength(JSON.stringify(raw))<=limits.bytes && raw.nonLiveEffectPresent===false)
+      check(typeof raw.observedAt==='string' && new Date(raw.observedAt).toISOString()===raw.observedAt)
+      check(typeof raw.databaseSnapshot==='string' && /^\d+:\d+:(?:\d+(?:,\d+)*)?$/.test(raw.databaseSnapshot))
       check(Array.isArray(raw.builds) && raw.builds.length===1)
       const b = raw.builds[0]
       check(b.id===scope.buildId && b.org===scope.organizationId && b.projection==='finance.fund-balance' && b.version===scope.projectionVersion &&
@@ -79,11 +81,12 @@ export async function collectFundRecoveryDatabaseSnapshot(database, input, reduc
       for (const [fundId,state] of states) {
         const f=funds.get(fundId), h=heads.get(fundId), a=active.get(fundId), s=shadow.get(fundId)
         check(f && h && a && s && s.status==='shadow')
+        check(s.evidence_last_event===state.lastEventId && s.evidence_last_at===state.lastEventAt)
         check(f.balance===state.balance && f.currency===state.currency &&
           h.version===String(state.aggregateVersion) && h.last_event===state.lastEventId)
         for (const p of [a,s]) check(p.balance===state.balance && p.currency===state.currency && p.version===String(state.aggregateVersion) && p.last_event===state.lastEventId)
         const row = Object.freeze({ aggregateId:fundId,eventCount:String(histories.get(fundId).length),aggregateVersion:String(state.aggregateVersion),
-          historyHash:digest(histories.get(fundId)),stateHash:digest([fundId,state.balance,state.currency,String(state.aggregateVersion),state.lastEventId]),balance:state.balance,currency:state.currency })
+          historyHash:digest(histories.get(fundId)),stateHash:digest([scope.organizationId,fundId,state.balance,state.currency,String(state.aggregateVersion),state.lastEventId,state.lastEventAt]),balance:state.balance,currency:state.currency })
         source.push(row); target.push(Object.freeze({...row}))
       }
       const inboxIds=new Set(), positions=new Set(), maxima=new Map()
@@ -106,7 +109,7 @@ export async function collectFundRecoveryDatabaseSnapshot(database, input, reduc
       }
       check(partitions.size===maxima.size)
       return Object.freeze({ kind:'FundRecoveryDatabaseSnapshot',organizationId:scope.organizationId,buildId:scope.buildId,
-        codeSha:scope.codeSha,source:Object.freeze(source),shadow:Object.freeze(target),checkpoints:Object.freeze(checkpoints),
+        codeSha:scope.codeSha,observedAt:raw.observedAt,databaseSnapshot:raw.databaseSnapshot,source:Object.freeze(source),shadow:Object.freeze(target),checkpoints:Object.freeze(checkpoints),
         brokerPositionsAuthenticated:false,externalEvidenceVerified:false })
     },{isolationLevel:'RepeatableRead',maxWait:2000,timeout:10000})
   } catch { throw new Error('FUND_RECOVERY_SNAPSHOT_INVALID') }

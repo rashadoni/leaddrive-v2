@@ -35,8 +35,10 @@ await admin(`UPDATE funds SET name='Synthetic renamed' WHERE id='fund-a';UPDATE 
  VALUES(${q(buildId)},'org-a','finance.fund-balance',2,'operator-snapshot',${q(expected.codeSha)},'shadow'),
  (${q(foreignBuild)},'org-b','finance.fund-balance',2,'foreign-snapshot',${q(expected.codeSha)},'shadow');
  UPDATE projection_builds SET status='running',"startedAt"=clock_timestamp() WHERE id IN (${q(buildId)},${q(foreignBuild)});
- INSERT INTO fund_balance_projections("organizationId","fundId","projectionVersion","buildKey",status,balance,currency,"aggregateVersion","lastEventId")
- SELECT "organizationId","fundId",2,'operator-snapshot','shadow',balance,currency,"aggregateVersion","lastEventId" FROM fund_balance_projections WHERE status='active' AND "organizationId"='org-a';
+ INSERT INTO fund_balance_projections("organizationId","fundId","projectionVersion","buildKey",status,balance,currency,"aggregateVersion","lastEventId",evidence)
+ SELECT a."organizationId",a."fundId",2,'operator-snapshot','shadow',a.balance,a.currency,a."aggregateVersion",a."lastEventId",
+ jsonb_build_object('lastEventId',a."lastEventId"::text,'lastEventAt',(SELECT envelope->>'time' FROM event_outbox WHERE "eventId"=a."lastEventId"))
+ FROM fund_balance_projections a WHERE a.status='active' AND a."organizationId"='org-a';
  INSERT INTO consumer_inbox("organizationId","consumerName","consumerVersion","eventId","eventType","payloadHash","sourceTopic","sourcePartition","sourceOffset")
  SELECT e."organizationId",${q(`fund-shadow:${buildId}`)},1,e.id,e."eventType",o."payloadHash",'ld.staging.finance.events.v1',0,row_number() OVER(ORDER BY e."aggregateId",e."aggregateVersion")-1
  FROM domain_events e JOIN event_outbox o ON o."eventId"=e.id AND o."organizationId"=e."organizationId" WHERE e."organizationId"='org-a';
@@ -79,6 +81,7 @@ await test('real migration tables + canonical reducer produce exact scoped snaps
  assert.equal(result.source.find(s=>s.aggregateId==='fund-a').eventCount,'6')
  assert.equal(result.source.find(s=>s.aggregateId==='fund-a2').balance,'50.1234')
  assert.equal(result.checkpoints[0].lastOffset,'6');assert.equal(result.checkpoints[0].nextOffset,'7')
+ assert.match(result.observedAt,/Z$/);assert.match(result.databaseSnapshot,/^\d+:\d+:/)
  assert.equal(result.brokerPositionsAuthenticated,false);assert.equal(result.externalEvidenceVerified,false)
  assert.equal(await fingerprint(),before)
  assert.equal(JSON.stringify(result).includes('Synthetic renamed'),false)
@@ -105,6 +108,10 @@ await test('stale shadow balance or event version is rejected without a pointer 
   await admin(`UPDATE fund_balance_projections SET ${mutation} WHERE "fundId"='fund-a' AND status='shadow';`)
   try{await rejected(read())}finally{await admin(`UPDATE fund_balance_projections s SET balance=a.balance,"aggregateVersion"=a."aggregateVersion" FROM fund_balance_projections a WHERE s."fundId"=a."fundId" AND s.status='shadow' AND a.status='active';`)}
  }
+})
+await test('matching money/version cannot conceal corrupted shadow timestamp evidence',async()=>{
+ await admin(`UPDATE fund_balance_projections SET evidence=jsonb_set(evidence,'{lastEventAt}','"2000-01-01T00:00:00.000Z"'::jsonb) WHERE "fundId"='fund-a' AND status='shadow';`)
+ try{await rejected(read())}finally{await admin(`UPDATE fund_balance_projections p SET evidence=jsonb_set(p.evidence,'{lastEventAt}',to_jsonb(o.envelope->>'time')) FROM event_outbox o WHERE p."lastEventId"=o."eventId" AND p."fundId"='fund-a' AND p.status='shadow';`)}
 })
 await test('actual transaction is READ ONLY even for a permitted sequence operation',async()=>{
  let readonly=false
