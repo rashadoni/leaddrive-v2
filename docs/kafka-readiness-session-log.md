@@ -1831,3 +1831,23 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   timestamp was queried. This demonstrates the code defect, not its actual
   occurrence in today's production report. No existing age/skew/swap gate
   was weakened and arbitrary failures remain failures.
+
+## 2026-10-18 04:00 UTC — PR873 frozen source and one ready transition
+
+- Checkpoint a222b769f2cd773e80177b7e8403591f721e1d7f contains the bounded
+  source/tests/runbook change. Independent read-only helper review found no
+  concrete false-PASS, raw-output leak or policy/bound regression; it ran no
+  extra tests/production calls and is not an agent-review gate.
+- Authenticated account API is rashadoni. Confirmed no existing same-branch PR,
+  pushed own codex/kafka-object-lock-service-errors-20261018 and opened draft
+  PR873. Actual cheap checks at that exact head: scope39095558573,
+  runner39095558595 and scan39095558642 SUCCESS. Static/TS/pgpass draft
+  SKIPPED are not accepted as test/authentication proof.
+- Root re-read live exact head/check-runs and marked READY once without a
+  second push. Next automatic actual full/pgpass runs are pending discovery;
+  one helper monitors them. All later journal updates remain LOCAL checkpoints
+  until those frozen gates/release finish; no new head/retry/build is injected.
+- Current production remains verified ce71dacf9; readiness39094842540 remains
+  failed closed22issues/9gaps/service_error. New12/12 hosted proof, new
+  production delivery and a meaningfully refined live report are NOT YET
+  performed. No runtime policy/key/timer/source/consumer/offset/replay change.
