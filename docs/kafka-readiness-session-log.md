@@ -3005,3 +3005,18 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   governed entrypoint/package/config admission and production activation are
   not claimed. Next: freeze this scoped revision, ordinary GitHub PR and actual
   required/feature gates. No runtime mutation was performed.
+
+### Frozen lifecycle revision published as PR889 — 2026-10-18 17:54 UTC
+
+- Ordinary feature push and ready PR889 created for exact source
+  `dbba7c0f16075c17b91a9b8d6685a3cf1e47eb2d`, base main. Account is rashadoni;
+  all5 actual protected checks remain bound to GitHub Actions app15368,
+  enforce_admins=true, approvals0, force pushes forbidden. No rule changes.
+- Required PR run39151613526: pr-scope SUCCESS, static/typecheck executing.
+  Runner policy39151613528, scan39151613631 and tooling39151613551 SUCCESS.
+  Synthetic CDC39151613585 executing; broker/8-case SQL run39151613583 is
+  pending the existing shared disposable-integration queue, not hung. No
+  duplicate dispatch, retry, foreign-job cancellation or heavy local fallback.
+- Current boundary: no merge/deploy yet; wait for actual mandatory and feature
+  checks on frozen source, then use the normal guarded release. This receipt
+  is a local checkpoint, not another source push while CI is active.
