@@ -165,6 +165,7 @@ async function main() {
     const before = await snapshot()
     const expected = new Map(contexts.flatMap(context => context.records).map(record => [String(record.headers!.id), record]))
     const observed: KafkaEventRecord[] = []
+    let ackLossInjected = false
     function start(count: number, loseAck = false, options: {
       contexts?: FundShadowContext[]; groupName?: string; observed?: KafkaEventRecord[]
     } = {}) {
@@ -175,8 +176,20 @@ async function main() {
         maxRecords: count, maxDurationMs: 120_000,
         open() {
           const clients = (options.contexts ?? contexts).map(context => ({ ...context, client: db.connect(context) }))
-          return { channel: { ...channel, async write(command: string) {
-            if (loseAck && command.startsWith("ACK\t")) { await channel.close(); throw new Error("synthetic post-COMMIT ACK loss") }
+          return { channel: { ...channel, async read() {
+            phase = "bridge-frame-read"
+            const frame = await channel.read()
+            // Fixed protocol-stage labels only, never record/header contents.
+            for (const kind of ["HELLO", "ASSIGN", "RECORD", "REVOKE", "COMMITTED", "FAIL", "IDLE"]) {
+              if (frame === kind || frame.startsWith(`${kind}\t`)) phase = `bridge-frame-${kind.toLowerCase()}`
+            }
+            return frame
+          }, async write(command: string) {
+            if (loseAck && command.startsWith("ACK\t")) {
+              phase = "post-commit-ack-loss-injected"
+              ackLossInjected = true
+              await channel.close(); throw new Error("synthetic post-COMMIT ACK loss")
+            }
             await channel.write(command)
           } },
           async release() { await Promise.all(clients.map(context => context.client.$disconnect())) },
@@ -185,18 +198,28 @@ async function main() {
               routes: clients.map(context => ({ scope: context.scope, database: fundShadowDatabase(context.client) })) })
             return { revoke: () => worker.revoke(), async processBatch(batch: { fetchOffset: string; records: KafkaEventRecord[] }) {
               for (const record of batch.records) {
+                phase = "record-event-binding"
                 const source = expected.get(record.headers?.id?.toString() ?? ""); assert.ok(source)
+                phase = "record-byte-types"
                 assert.ok(Buffer.isBuffer(record.key)); assert.ok(Buffer.isBuffer(record.value))
+                phase = "record-key-binding"
                 assert.equal(record.key.toString("utf8"), source.key)
+                phase = "record-value-byte-binding"
                 assert.equal(record.value.toString("utf8"), source.value, "raw JSONB bytes must survive actual EventRouter/StringConverter")
+                phase = "record-header-set-binding"
                 assert.deepEqual(Object.keys(record.headers ?? {}).sort(), Object.keys(source.headers!).sort())
+                phase = "record-header-value-binding"
                 for (const name of ["id", "eventtype", "organizationid", "payloadhash"]) {
                   const bytes = record.headers?.[name]; assert.ok(Buffer.isBuffer(bytes))
                   assert.equal(bytes.toString("utf8"), source.headers![name])
                 }
+                phase = "record-partition-binding"
                 assert.equal(record.partition, 0); (options.observed ?? observed).push(record)
               }
-              return worker.processBatch(batch)
+              phase = "restricted-sql-apply"
+              const result = await worker.processBatch(batch)
+              phase = "restricted-sql-committed"
+              return result
             } }
           } }
         } })
@@ -205,10 +228,17 @@ async function main() {
     }
     phase = "committed-ack-loss"
     await assert.rejects(start(1, true))
+    // A transport, parser or SQL failure is NOT the intended ACK-loss result.
+    // Keep its last safe stage if this assertion fails, rather than masking it.
+    assert.equal(ackLossInjected, true, "must reach the actual post-COMMIT ACK-loss boundary")
+    phase = "ack-loss-cursor-evidence"
     assert.equal(harness.fixture("offset", "finance"), "0")
+    phase = "ack-loss-record-evidence"
     assert.equal(observed.length, 1)
     const firstTenant = contexts.find(context => context.scope.organizationId === observed[0].headers!.organizationid!.toString())!
+    phase = "ack-loss-durable-inbox-evidence"
     assert.deepEqual(await db.counts(firstTenant), { shadows: 1, inbox: 1, checkpoints: 1 })
+    phase = "ack-loss-source-effects-evidence"
     assert.deepEqual(await snapshot(), before)
     phase = "duplicate-restart-prefix"
     assert.deepEqual(await start(3), { processed: 3 })

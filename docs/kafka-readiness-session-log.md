@@ -3400,3 +3400,35 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   Remaining before PR merge: full static-checks, current stack/CDC and the NEW
   full Debezium-to-Fund faulty-shadow/new-build recovery job. No replay or
   infrastructure readiness is inferred from the successful direct-child phase.
+
+### Full CDC drill fails closed; narrow diagnostic iteration — 2026-10-19 Asia/Baku
+
+- All five protected checks on source1d526a126 succeeded. Static job117785796576
+  finished SUCCESS; actual log reports18 failing files matching18 baseline,
+  no new failures. This is unchanged accepted baseline, not an all-green
+  application test suite. Current-source infrastructure and legacy CDC passed.
+- NEW full-cdc-fund job117790297393/run39164817265 FAILED at safe phase
+  committed-ack-loss. Its actual generated-client strict compile, pure guards,
+  app-role source fixture, real six-event snapshot and clean restart delivering
+ 12 events completed far enough to enter the first consumer attempt. However
+  exact record/SQL/ACK boundary is NOT established: a generic expected-rejection
+  check hid whether the intended post-COMMIT ACK loss was reached. No complete
+  full-chain recovery verdict is claimed. No PostgreSQL/Connect ERROR message
+  was present in the filtered fixture service logs; this does not prove SQL was
+  attempted or succeeded. All owned disposable services/volumes were cleaned.
+- Converted PR891 back to draft before further source iteration, retaining
+  every required gate and the failed receipt. Added fixed safe record/frame,
+  SQL and evidence stage labels, plus an explicit ackLossInjected assertion so
+  an unrelated failure cannot satisfy the intended ACK-loss case. Raw values,
+  event IDs, headers, SQL or provider exception text are not logged. Existing
+  exact byte/header/parity/source/effect assertions are unchanged and not relaxed.
+- Small local guards13/13 PASS (full CDC contracts, workflow and queue), runner
+  TS transpile syntax PASS and diff whitespace PASS after resource preflight.
+  New actual strict client/runtime checks NOT RUN locally. Next publish this
+  diagnostic source while draft and dispatch the existing disposable CDC
+  workflow once on its exact branch; no full application rerun while iterating.
+  This manual debug run is NOT a substitute for final ready-event protected,
+  broker, stack and both CDC jobs on the eventual final source before merge.
+- No merge/deploy, production consumer/offset/replay, backup or infrastructure
+  mutation, scanner waiver or new expenditure. Root continues until the exact
+  own failure is diagnosed; independent recovery and infrastructure gates remain.

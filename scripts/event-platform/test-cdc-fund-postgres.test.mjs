@@ -121,6 +121,22 @@ test('full-chain acceptance uses actual CDC as sole producer and restart/duplica
   assert.doesNotMatch(source, /--reset-offsets|pg_replication_slot_advance|DISABLE TRIGGER|session_replication_role|ALTER SYSTEM|\bssh\b/)
 })
 
+test('expected ACK-loss requires its actual injection and preserves sanitized failure boundaries', () => {
+  for (const stage of ['record-event-binding', 'record-byte-types', 'record-key-binding', 'record-value-byte-binding',
+    'record-header-set-binding', 'record-header-value-binding', 'record-partition-binding', 'restricted-sql-apply',
+    'restricted-sql-committed', 'post-commit-ack-loss-injected', 'ack-loss-cursor-evidence',
+    'ack-loss-durable-inbox-evidence', 'ack-loss-source-effects-evidence']) assert.ok(source.includes(`"${stage}"`), stage)
+  const injection = source.indexOf('if (loseAck && command.startsWith("ACK\\t"))')
+  const flag = source.indexOf('ackLossInjected = true', injection)
+  const close = source.indexOf('await channel.close()', injection)
+  assert.ok(injection > 0 && flag > injection && close > flag)
+  const rejection = source.indexOf('await assert.rejects(start(1, true))')
+  const confirmed = source.indexOf('assert.equal(ackLossInjected, true', rejection)
+  assert.ok(rejection > 0 && confirmed > rejection)
+  assert.ok(confirmed < source.indexOf('phase = "ack-loss-cursor-evidence"', rejection))
+  assert.doesNotMatch(source, /console\.(?:log|error)\([^\n]*(?:JSON\.stringify\(record|record\.value|record\.headers)/)
+})
+
 test('recovery injects only an old restricted shadow fault and replays unchanged Kafka history into new builds/group', () => {
   const faultStart = source.indexOf('phase = "shadow-only-wrong-reducer-fault-injection"')
   const recoveryStart = source.indexOf('phase = "corrected-new-build-full-history-recovery"')
