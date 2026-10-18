@@ -444,3 +444,20 @@
 - Requested transfer only Mac owner-evidence.pub to administrative temporary
   path so unused developer signer can be replaced with exact Mac public trust;
   no private signing/age key transfer requested.
+
+## 2026-10-19: actual Mac identity canary and owner public trust
+
+- Owner screenshot confirms Mac key canary:passed for actual copied age identity
+  after matching recipient digest and random64byte encrypt/decrypt/compare in
+  networkless tmpfs container. This is real key-readability, not archive restore.
+- Received only owner-evidence.pub(121bytes), validated owned regular non-symlink
+  bounded file, SSH Ed25519 binary structure and ssh-keygen fingerprint:
+  SHA256:A6gGAR9C4HX/2BlJ9JnX6NBwO+Imaby5ASBEhdi9zRk.
+- Confirmed GitHub actor rashadoni and replaced unused public owner trust setting
+  BACKUP_OWNER_ALLOWED_SIGNERS with exact Mac public signer. Metadata update
+  confirmed2026-10-18T22:12:41Z. This supersedes earlier developer public signer;
+  old developer key remains retained/unused outside Git for continuity/rollback.
+  No independent signer setting changed and no private key moved/printed.
+- No fresh commissioning proof signed against unreviewed feature SHA. Actual
+  source operation still waits reviewed main and verified Object Lock; final
+  protected checks39170796977 still executing. Coordinator release hold intact.
