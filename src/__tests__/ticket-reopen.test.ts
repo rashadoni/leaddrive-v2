@@ -14,6 +14,9 @@ vi.mock("@/lib/prisma", () => ({
     contact: {
       findFirst: vi.fn(),
     },
+    ticketClosureRequest: {
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
   },
   logAudit: vi.fn(),
 }))

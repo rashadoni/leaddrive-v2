@@ -584,3 +584,35 @@
   of reserved next slot after confirmed common delivery; no parallel main merge
   or deploy, production backup/restore still NOT RUN. Await ownership/slot
   coordination before code delivery. No further user authorization requested.
+
+## 2026-10-19 (Asia/Baku): concurrent main updates and concrete B2 dependency
+
+- Current main advanced independently via Support PR895(99ce1ae3c) and
+  PR896(4f00c46216a2b02d669fcf1b36545ea70772ee3d). Their releases
+ 39174243373/39174654109 are active/queued. A3 did not race any main mutation.
+- Root clarified status:DEPLOY JOB117816465335 SUCCESS with independent public
+ 421smoke, but WHOLE workflow39173487040 remains queued for retained-artifact
+  housekeeping117818371043. Supersedes earlier journal wording that whole run
+  completed SUCCESS. Corrected PR6256412114; actual curl421 smoke still valid.
+- Read-only discovered related B2 PR899, branch
+  claude/leaddrive-backblaze-b2-backups-426412. PR903 merged only into that
+  feature branch, not main. Its three endpoint guards overlap A3 commission,
+  readiness/server-deploy; existing main still has old-provider predicate.
+- B2 source docs report no actual B2 backup, Object Lock disabled and production
+  backup.env/commissioning NOT RUN. Prior synthetic restore-write denial had
+  empty code and was NOT proof; PR903 requires explicit AccessDenied and a live
+  retest remains pending. These are branch/document evidence, not live bucket
+  assertions by this session. No private credentials read/requested and no
+  storage/billing/lock mutation by A3. No new expense authorized.
+- Coordinated dependencies/one commissioning owner in PR899 comment6256444960
+  and PR892 comments6256445099/6256454515. Root acknowledges approved separate
+  owner route and holds main/runtime while current release/readiness slot clears;
+  no duplicate root readiness dispatch, no Mac key/VM recreation.
+- Reconciled current4f00c4621 into feature branch without conflicts; workflow
+  auto-merge retains both delivery and A3 checks. This follows root instruction
+  to reconcile new main, not permission to mutate production.
+- Resources before sequential targeted checks:15.2GB available RAM, pressure
+ 0.00, swap3.7GB used.13diagnostic tests,12real synthetic owner tests, assets,
+ 74-workflow runner policy, shell syntax and diff checks PASS in merged tree.
+  Updated exact-source heavy gates belong only to GitHub; older e7 checks are
+  historical and cannot substitute for this newly integrated source acceptance.

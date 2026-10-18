@@ -331,6 +331,19 @@ jobs:
           FINANCE_TELEGRAM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           FINANCE_TELEGRAM_DB_GATE: required
 
+      - name: WhatsApp ticket path database gate
+        # Which ticket a customer's WhatsApp message lands on, read off the
+        # tables after the real intake ran on a real Postgres under the
+        # production RLS policies, as a role they apply to. Until 2026-10-18 a
+        # reply to a ticket waiting for the customer opened a second ticket, an
+        # old resolved ticket was reopened over an open one, two simultaneous
+        # deliveries opened two tickets, and the customer's old closure link
+        # closed a ticket their reply had just reopened.
+        run: npx vitest run src/__tests__/whatsapp-ticket-path-postgres.test.ts
+        env:
+          WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          WHATSAPP_TICKET_DB_GATE: required
+
       - name: MTM break coordinates database gate
         # Where an employee spent a break is not stored, read off the table
         # after the real GPS ingestion handlers ran on a real Postgres. Until
