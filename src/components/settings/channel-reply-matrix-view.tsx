@@ -30,8 +30,7 @@ export interface ChannelReplyRow {
 export type UiMode = "agent" | "ai_draft" | "ai"
 
 /**
- * Per-channel "who replies" matrix. Reads/writes the reply policy via
- * /api/v1/settings/channel-reply. Only the channels in ENFORCED actually honor the setting
+ * Per-channel "who replies" matrix. Only the channels in ENFORCED actually honor the setting
  * end-to-end today (TikTok↔Chatwoot, Facebook, Instagram, Telegram, VKontakte, WhatsApp);
  * any other channel stores it but its webhook doesn't act on it yet → shown disabled with a
  * "coming soon" badge so the control never reads as live when it isn't. NOTE: WhatsApp's AI

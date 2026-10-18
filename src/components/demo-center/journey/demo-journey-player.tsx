@@ -47,6 +47,7 @@ import { CampaignScene } from "./scenes/campaign-scene"
 import { ContractsScene } from "./scenes/contracts-scene"
 import { DealScene } from "./scenes/deal-scene"
 import { InboxScene } from "./scenes/inbox-scene"
+import { AiAgentScene } from "./scenes/ai-agent-scene"
 import { LeadScene } from "./scenes/lead-scene"
 import { MtmScene } from "./scenes/mtm-scene"
 import { PersonnelScene } from "./scenes/personnel-scene"
@@ -78,6 +79,7 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   source: CampaignScene,
   conversation: InboxScene,
   "ai-reply": InboxScene,
+  "ai-agent-setup": AiAgentScene,
   "lead-created": LeadScene,
   "lead-qualified": LeadScene,
   "ai-call": LeadScene,

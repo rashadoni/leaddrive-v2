@@ -41,6 +41,7 @@ import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { DEMO_JOURNEY_STRINGS as S } from "@/components/demo-center/journey/strings"
 import { DEMO_LIVE_CALL_STEP_ID, PROSPECT_TO_CLOSED_WON, withLiveCall, type DemoJourneyStep } from "@/lib/demo-center/journey"
 import { DEMO_JOURNEY_MODULES, DEMO_NEXT_MODULE_STEP_ID, getDemoJourneyModule } from "@/lib/demo-center/journey"
+import { LEADDRIVE_AGENT_PROFILE, LEADDRIVE_AGENT_PROMPT_WITH_STYLE } from "@/lib/demo-center/journey/leaddrive-agent-profile"
 
 const messages = JSON.parse(readFileSync(path.join(process.cwd(), "messages/az.json"), "utf8"))
 const TOKEN = "walk-test-token-0001"
@@ -457,7 +458,7 @@ describe("the arrow's controls", () => {
     const sources = [
       "src/components/demo-center/journey/demo-journey-guide.tsx",
       "src/components/demo-center/journey/demo-live-call.tsx",
-      ...["campaign", "inbox", "lead", "board", "deal", "quote", "support", "calls", "mtm", "personnel", "contracts", "next-module", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
+      ...["campaign", "inbox", "ai-agent", "lead", "board", "deal", "quote", "support", "calls", "mtm", "personnel", "contracts", "next-module", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
     ].map((file) => readFileSync(path.join(process.cwd(), file), "utf8")).join("\n")
     const withCall = withLiveCall(PROSPECT_TO_CLOSED_WON).sections.flatMap((section) => section.steps)
     for (const step of new Map([...steps, ...withCall.map((candidate) => [candidate.id, candidate] as const)]).values()) {
@@ -551,6 +552,69 @@ describe("the Omni Channel module", () => {
     await settle()
     expect(textOf('[data-tour-id="inbox-assign"]')).toContain(name)
     expect(frontier().stepId).toBe("ai-reply-composer")
+  }, 60_000)
+})
+
+/**
+ * Owner, 2026-10-18: «гид направлял на готовый промт, стиль общения и база
+ * знаний, а там уже стояло для LeadDrive CRM». The product's own AI agent
+ * screen, with LeadDrive's own agent in it — the one its WhatsApp agent
+ * answers with.
+ */
+describe("the AI agent's setup", () => {
+  it("shows LeadDrive's own agent on the product's AI agent screen, and lets one choice be the prospect's", async () => {
+    await renderPlayer()
+    await walkTo("ai-agent-reply-mode")
+    const scene = container.querySelector('[data-testid="demo-scene-ai-agent"]')!
+    expect(scene).not.toBeNull()
+    // The matrix lists channels this agent answers by the setting today — and no other.
+    const matrix = textOf('[data-tour-id="inbox-reply-matrix"]')
+    expect(matrix).toContain("Telegram")
+    for (const absent of ["WhatsApp", "TikTok", "Facebook", "Instagram", "Da Vinci"]) expect(matrix, absent).not.toContain(absent)
+
+    await act(async () => findDemoTarget("ai-agent-reply-mode")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("ai-agent-prompt")
+
+    const [prompt, knowledge] = [...scene.querySelectorAll<HTMLTextAreaElement>("textarea")]
+    expect(prompt.value).toBe(LEADDRIVE_AGENT_PROMPT_WITH_STYLE)
+    expect(prompt.value).toContain("# Ünsiyyət tərzi")
+    expect(prompt.value).not.toContain(LEADDRIVE_AGENT_PROFILE.guardWording.split("\n")[1].slice(0, 40))
+    expect(prompt.readOnly).toBe(true)
+    expect(knowledge.value).toBe(LEADDRIVE_AGENT_PROFILE.knowledgeBase)
+    const [model, language] = [...scene.querySelectorAll<HTMLSelectElement>('[data-tour-id="inbox-agent-settings"] select')]
+    expect(model.value).toBe(LEADDRIVE_AGENT_PROFILE.model)
+    expect(language.value).toBe("")
+    // No field shows the product's placeholder — another business's example.
+    for (const field of scene.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("textarea, input:not([type=range]):not([type=checkbox])")) {
+      expect(field.value, field.outerHTML.slice(0, 80)).toMatch(/\S/)
+    }
+    // The first five of LeadDrive's articles, and how many there are.
+    const sources = textOf('[data-tour-id="inbox-agent-sources"]')
+    expect(sources).toContain(`${LEADDRIVE_AGENT_PROFILE.articles.length} ${messages.settings.aiAgentKnowledgePublished}`)
+    for (const article of LEADDRIVE_AGENT_PROFILE.articles.slice(0, 5)) expect(sources).toContain(article.title)
+    expect(sources).not.toContain(LEADDRIVE_AGENT_PROFILE.articles[5].title)
+    // Nothing leaves the demo: no link, no file picker.
+    expect(scene.querySelector("a[href]")).toBeNull()
+    expect(scene.querySelector('input[type="file"]')).toBeNull()
+  }, 60_000)
+
+  it("says the setup is shown, not edited, and the story does not move for it", async () => {
+    await renderPlayer()
+    await walkTo("ai-agent-prompt")
+    const scene = container.querySelector('[data-testid="demo-scene-ai-agent"]')!
+    const model = scene.querySelector<HTMLSelectElement>('[data-tour-id="inbox-agent-settings"] select')!
+    await act(async () => {
+      model.value = "claude-opus-4-8"
+      model.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+    await settle()
+    expect(toasts).toContain(S.agentSetupReadOnly)
+    await act(async () => buttonWithText(messages.settings.saveBtn, scene)!.click())
+    await settle()
+    expect(toasts).toContain(S.demoButtonHint)
+    expect(frontier().stepId).toBe("ai-agent-prompt")
+    expect(steps.get("ai-agent-sources")!.instruction).toContain(String(LEADDRIVE_AGENT_PROFILE.articles.length))
   }, 60_000)
 })
 

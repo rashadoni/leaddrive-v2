@@ -43,7 +43,7 @@ LeadDrive** и проходит одну историю на реальных э
 |---|---|---|
 | Основная (`crm`) | `/boards` (доски задач; карточка задачи открывается с доски), `/contacts`, `/dashboard` | Компании, продукты, CDP, проекты — не участвуют в истории. `/tasks` в меню продукта нет — его намеренно убрали в пользу досок, и демо это повторяет |
 | Sales (`sales`) | `/leads`, `/deals`, `/quotes` | Сценарии продаж, прогноз, настройки воронок/квот/территорий — администрирование |
-| Communication (`omnichannel`) | `/inbox` | Аналитика, чат-бот, автоматизация, каналы, VoIP — настройки |
+| Communication (`omnichannel`) | `/inbox`, `/inbox/ai-agent` (готовый AI-агент самого LeadDrive: промпт, стиль, база знаний) | Аналитика, чат-бот, автоматизация, каналы — настройки |
 | Marketing (`marketing`) | `/campaigns` | Сегменты, шаблоны, атрибуция-редактор, ROI, journeys, события — не нужны первому знакомству |
 
 Тест `demo-journey-manifest.test.ts` проверяет, что каждый маршрут — реальная
@@ -58,6 +58,7 @@ LeadDrive** и проходит одну историю на реальных э
 | 1 | `source` | `/campaigns` | STARTED → SOURCE_SEEN | 2 |
 | 2 | `conversation` | `/inbox` | SOURCE_SEEN → CONVERSATION_OPENED | 3 |
 | 3 | `ai-reply` | `/inbox` | CONVERSATION_OPENED → AI_REPLIED | 2 |
+| 3a | `ai-agent-setup` | `/inbox/ai-agent` | AI_REPLIED → AI_REPLIED | 2 |
 | 4 | `lead-created` | `/leads/[id]` | AI_REPLIED → LEAD_CREATED | 4 |
 | 5 | `lead-qualified` | `/leads/[id]` | LEAD_CREATED → LEAD_QUALIFIED | 2 |
 | 6 | `ai-call` | `/leads/[id]` | LEAD_QUALIFIED → CALL_SKIPPED | 1 |
@@ -87,7 +88,7 @@ TASK_CREATED — путь без звонка всегда проходим; и�
 | Якоря | `.../anchors.ts` | кто рисует якорь (`scene`) и где тот же id живёт в продукте (`productFiles`) |
 | Покрытие | `.../coverage.ts` | инвентарь разделов и расчёт 80 % |
 | Рендерер | `src/components/demo-center/journey/demo-journey-player.tsx` | снимок, шапка, сайдбар, сцена, панель, коуч-марка |
-| Сцены | `.../journey/scenes/*` | `orientation`, `campaign`, `inbox`, `lead` (список + карточка), `board`, `deal` (доска + быстрый просмотр + карточка), `quote` (список + диалог + карточка), `summary` |
+| Сцены | `.../journey/scenes/*` | `orientation`, `campaign`, `inbox`, `ai-agent` (чистые view продукта из `src/components/settings/*-view.tsx` с профилем `journey/leaddrive-agent-profile.ts`), `lead` (список + карточка), `board`, `deal` (доска + быстрый просмотр + карточка), `quote` (список + диалог + карточка), `summary` |
 
 Редьюсер чистый: сцена не меняет состояние сама, а диспатчит действие, и
 если действие не соответствует текущему шагу — оно отклоняется. Поэтому
@@ -173,7 +174,7 @@ TASK_CREATED — путь без звонка всегда проходим; и�
 | Область | Включено / всего | % | Исключено |
 |---|---|---|---|
 | Marketing → Кампании | 7 / 8 | 88 | редактор кампании |
-| Communication → Inbox | 10 / 12 | 83 | вкладка звонков, массовые действия |
+| Communication → Inbox и AI agent | 16 / 20 | 80 | вкладка звонков, массовые действия; приветствие, «Передать человеку», автономия и экспорт агента; карточки TikTok (дожимы, стоп-слова) |
 | Sales → Лиды (список + карточка) | 21 / 23 | 91 | аналитика списка, Advisor risk |
 | Основная → Доски задач | 12 / 14 | 86 | настройки доски, вложения/кастомные поля |
 | Sales → Сделки (доска + карточка) | 13 / 16 | 81 | аналитика, кнопка Da Vinci, MEDDPICC |

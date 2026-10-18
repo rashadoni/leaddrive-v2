@@ -29,7 +29,7 @@ export const DEMO_JOURNEY_MODULES = [
     id: "omnichannel",
     title: "Omni-kanal və AI agent",
     pitch: "Bütün kanallardan yazışmalar bir qutuda; AI agent cavab yazır və müştərini lid edir.",
-    sections: ["conversation", "ai-reply", "lead-created", "lead-qualified"],
+    sections: ["conversation", "ai-reply", "ai-agent-setup", "lead-created", "lead-qualified"],
   },
   {
     id: "ai-calls",

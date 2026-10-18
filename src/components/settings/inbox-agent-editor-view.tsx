@@ -352,7 +352,8 @@ export function InboxAgentEditorView({
       {error && <p className="text-sm text-red-600 dark:text-red-400">{t("saveError")}: {error}</p>}
 
       {decorate("actions",
-        <div className="flex items-center gap-3">
+        // Wraps on a phone: Save and the two transfer buttons do not fit one 302px line.
+        <div className="flex flex-wrap items-center gap-3">
           <Button onClick={onSave} disabled={saving} className="gap-1.5">
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {t("saveBtn")}
