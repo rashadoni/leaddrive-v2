@@ -461,3 +461,37 @@
 - No fresh commissioning proof signed against unreviewed feature SHA. Actual
   source operation still waits reviewed main and verified Object Lock; final
   protected checks39170796977 still executing. Coordinator release hold intact.
+
+## 2026-10-19: final available independent preparation acceptance and stopping point
+
+- Exact published code430c7b9f92ca2776316238c3f09db41920e49c6b now passes all
+  required contexts:pr-scope/static-checks/typecheck run39170796977,
+  runner-policy39170796972, scan39170797015. Static18m7s and type13m45s
+  completed SUCCESS; old/cancelled/skipped results not substituted. Production
+  application build was scope-skipped, NOT RUN, no app build claim.
+- Additional exact-head PASS:owner-proof39170797003(12real synthetic age/SSH
+  admission/fence/staging tests and actual pinned networkless scratch PG self-test),
+  pgpass39170797011, tenant PostgreSQL39170796990. Actual owner Mac ARM64
+  workbench self-test and actual copied age-key random canary PASS as observed.
+- Fetched main still226dde0e77c0c36a4de991bb703ba8f8416c5a64. PR892 is clean
+  and ready; final actual acceptance sent to coordinator in comment6255932181.
+  Coordinator explicitly holds main during PR891 acceptance and will reconcile
+  A3 after A1/A2 delivery. No parallel merge, deploy or production mutation.
+- Remaining blocker:latest existing read-only storage inspection cannot confirm
+  Object Lock(service_error_format_unrecognized). Do not infer an underlying
+  provider/credential cause or bypass immutable-storage admission. No successful
+  real production candidate exists for this ceremony.
+- NOT RUN:production encrypted backup, real-data scratch restore, signed actual
+  commissioning/restore receipt, timer activation, PITR and independent Farah
+  acceptance. Local key canary/file presence/code tests do not substitute.
+- Status:available independent technical preparation and exact-source checks
+  complete; A3 remains OPEN/NO-GO. Last completed action:all final code gates
+  verified and exact source passed to common coordinator. Precise stopping
+  point:before reviewed-main commissioning/storage admission and any real
+  backup/restore operation. Next action:after coordinator releases/reconciles
+  A3, re-resolve exact main and safely diagnose Object Lock through approved
+  read-only Actions; only after verified storage produce fresh main-bound Mac
+  key proof, create encrypted candidate and perform real isolated Mac restore.
+- All private material retained outside Git; only Mac public signer registered.
+  Local journal-only checkpoints intentionally not pushed to churn completed CI.
+  Dirty canonical checkout and unrelated worktrees remain untouched.
