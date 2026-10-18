@@ -1266,3 +1266,22 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   a LOCAL docs checkpoint, deliberately not pushed into the active CI head.
   Next: complete that actual gate and normal release, then the separate
   bounded/sanitized Object Lock diagnostic. No activation/replay performed.
+
+## 2026-10-18 00:44 UTC — deterministic race reached; actual wrapper still unknown
+
+- Full39083337348 static job117544746669 failed its real-PG gate8/9: the new
+  bounded barrier DID produce exactly one committed and one rejected factory.
+  PostgreSQL again records the exact shadow build-key unique constraint, but
+  the Prisma error does not satisfy the assumed code/meta/message shape. This
+  invalidates the wrapper assumption, not the completed tenant/hash/rollback
+  and controller tests. The whole-transaction retry assertions were not reached.
+- Returned PR871 to draft, preserving the active typecheck job for diagnostics.
+  Added only an allowlisted structural error diagnostic and a no-leak negative
+  control. Codes are restricted to Prisma/SQLSTATE shapes; all other outputs
+  are fixed booleans. Raw messages, targets, SQL, IDs, paths, credentials and
+  connection strings are never printed. The existing rejection classifier is
+  NOT broadened by this probe, and the runtime adapter is unchanged.
+- This is a source diagnostic correction, not an infrastructure retry. Wait
+  for the existing typecheck to finish, then use one ordinary new frozen-head
+  CI to obtain actual wrapper facts before changing acceptance. Unknown errors
+  must still fail closed; no merge, production adapter activation or replay.

@@ -113,6 +113,31 @@ async function counts(context: Context) {
 
 const permissionDenied = { code: "P2010", meta: { code: "42501" } }
 
+// Print only allowlisted structural facts, never raw SQL, key values, unknown
+// metadata, connection strings or error messages, even for a failed assertion.
+function concurrentAbortShape(error: unknown) {
+  const typed = (error && typeof error === "object" ? error : {}) as {
+    code?: unknown; message?: unknown; meta?: { code?: unknown; message?: unknown; target?: unknown }
+  }
+  const safeCode = (value: unknown) => typeof value === "string" && /^(?:P[0-9]{4}|[0-9A-Z]{5})$/.test(value) ? value : "unknown"
+  const top = typeof typed.message === "string" ? typed.message : ""
+  const meta = typeof typed.meta?.message === "string" ? typed.meta.message : ""
+  const target = typed.meta?.target
+  const fields = ["organizationId", "fundId", "projectionVersion", "buildKey"]
+  return {
+    prismaCode: safeCode(typed.code), sqlState: safeCode(typed.meta?.code),
+    metaMessagePresent: meta.length > 0,
+    exactConstraintInTop: top.includes('"fund_balance_projections_build_key"'),
+    exactConstraintInMeta: meta.includes('"fund_balance_projections_build_key"'),
+    uniqueViolationInMeta: meta.includes("duplicate key value violates unique constraint"),
+    keyExistsInMeta: meta.includes(" already exists"),
+    exactKeyFieldsInMeta: /Key \("?organizationId"?, "?fundId"?, "?projectionVersion"?, "?buildKey"?\)=/.test(meta),
+    targetIsFieldList: Array.isArray(target),
+    targetIsExactKeyFields: Array.isArray(target) && target.length === fields.length && fields.every((field, i) => target[i] === field),
+    targetIsExactConstraint: target === "fund_balance_projections_build_key",
+  }
+}
+
 function isExpectedConcurrentAbort(error: unknown): boolean {
   if (!error || typeof error !== "object") return false
   const typed = error as { code?: string; meta?: { code?: string; message?: string } }
@@ -129,6 +154,13 @@ function isExpectedConcurrentAbort(error: unknown): boolean {
 }
 
 describe("Fund concurrency test's narrow abort classification", () => {
+  it("never leaks error text, target values, SQL or credentials through its diagnostic", () => {
+    const secret = "synthetic-credential-not-for-output"
+    const result = concurrentAbortShape({ code: secret, message: secret, meta: { code: secret, message: secret, target: [secret] } })
+    expect(JSON.stringify(result)).not.toContain(secret)
+    expect(result).toMatchObject({ prismaCode: "unknown", sqlState: "unknown", exactConstraintInMeta: false, targetIsExactKeyFields: false })
+  })
+
   it("never treats arbitrary SQL/permission/unique violations as an expected competing shadow INSERT", () => {
     const message = 'duplicate key value violates unique constraint "fund_balance_projections_build_key"'
     expect(isExpectedConcurrentAbort({ code: "P2010", meta: { code: "23505", message } })).toBe(true)
@@ -411,7 +443,7 @@ pgDescribe("Fund shadow on actual PostgreSQL: immutable source, restricted login
     expect(outcomes.filter(value => value.status === "rejected")).toHaveLength(1)
     for (const [index, outcome] of outcomes.entries()) {
       if (outcome.status !== "rejected") continue
-      expect(isExpectedConcurrentAbort(outcome.reason), "Unexpected concurrent SQL/ACL failure must not be hidden").toBe(true)
+      expect(isExpectedConcurrentAbort(outcome.reason), `Unexpected concurrent SQL/ACL failure: ${JSON.stringify(concurrentAbortShape(outcome.reason))}`).toBe(true)
       // Retry the actual rejected connection in a NEW factory, not inside the
       // failed transaction, and prove the committed duplicate's current state.
       expect(await consumeFundShadowRecord(database(connections[index]), context.scope, context.records[0])).toMatchObject({
