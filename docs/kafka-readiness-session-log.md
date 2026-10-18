@@ -682,3 +682,749 @@ worker, a production role change, a restore, an offset reset or customer replay.
   PASS. The workflow diff is exactly one nested queue:max addition in each
   file. Actual GitHub scheduling behavior on these new bytes is NOT RUN in
   this local task; the regression proves configuration, not a hosted receipt.
+
+## 2026-10-18 — next Fund shadow DB phase: PLANNED / NOT IMPLEMENTED
+
+- Created a separate managed worktree and branch
+  `codex/kafka-fund-shadow-db-20261018` from frozen PR868 checkpoint
+  `572b3ed36e0bdff668a2bc2e13b0b84a101940bb`. The earlier reducer/queue branch
+  is unchanged. codex-project-context confirms Contabo remote-alt, the
+  rashadoni/leaddrive-v2 origin and the existing GitHub Actions release route.
+- This entry records the next adapter design and unresolved test obligations
+  only. No DB adapter, worker, role, ACL, schema, SQL runtime, dependency,
+  broker, production or delivery change is implemented by this checkpoint.
+  The eight real-PostgreSQL cases above remain pending and NOT RUN.
+
+### Build lock and least-privilege candidate
+
+- A worker must hold a row lock on its tenant's existing ProjectionBuild
+  throughout the projection/inbox/checkpoint transaction. Check exact build
+  identity, version/build key/code SHA, shadow mode, effect fence and running
+  status on the locked row returned after any wait, not an earlier snapshot.
+  Use bounded lock waiting and retry the whole transaction outside an aborted
+  transaction; do not use SKIP LOCKED to acknowledge an unprocessed event.
+- PostgreSQL 16 requires UPDATE privilege on at least one column for a
+  locking SELECT. The existing replay-control checkpoint trigger also takes
+  FOR SHARE as the invoking role, so a SELECT-only worker is insufficient.
+  Primary references: [SELECT privileges](https://www.postgresql.org/docs/16/sql-select.html)
+  and [row-lock conflicts](https://www.postgresql.org/docs/16/explicit-locking.html).
+- The narrow candidate is table SELECT plus column-only UPDATE(createdAt)
+  on projection_builds for the future restricted worker. This is a proposal,
+  not an applied grant. The foundation state-machine trigger explicitly
+  rejects changing createdAt, while a same-value update can still occur for
+  a running build; do not describe this role as literally SELECT-only.
+  Prove that no inherited/table-wide UPDATE, ownership, BYPASSRLS or trigger
+  disabling authority defeats that boundary before considering it usable.
+- Do not substitute UPDATE(id): the current build guard does not explicitly
+  make id immutable. Do not grant lifecycle/evidence/timestamp-update columns
+  as a shortcut. The actual immutable createdAt guard must be exercised with
+  the deployed migration, restricted role and PostgreSQL 16, not inferred
+  from a mocked client or an administrator connection.
+- FOR UPDATE conflicts with an ordinary controller UPDATE of terminal status,
+  so it can serialize worker writes against that transition without inventing
+  a controller advisory-lock protocol. After the controller wins, the worker
+  must recheck terminal status and perform no writes. An advisory lock used
+  only by the worker does not protect against the controller; FOR KEY SHARE
+  does not block a normal non-key status update either.
+
+### Duplicate delivery and checkpoint decisions
+
+This narrows the earlier instruction to always record the current delivery
+checkpoint: a verified older duplicate must not call the monotonic upsert with
+a lower offset. All cases first validate the complete PostgreSQL-jsonb envelope
+hash and identity, tenant/build binding, exact topic/key/partition and required
+headers, then hold the build lock and inspect both event-ID and occupied-position
+receipts. Never replace current shadow state with an inbox's historical result.
+
+1. Known event, identical hash, incoming offset greater than the checkpoint:
+   skip monetary application; atomically advance the checkpoint in the same
+   transaction. Leave the original append-only inbox receipt unchanged.
+2. Known event at the checkpoint offset: accept a no-op only when the
+   checkpoint lastEventId matches; a different ID at that position is a
+   conflict, not a duplicate.
+3. Known event below the checkpoint: accept only a proven same-event delivery
+   with matching tenant/build/hash/topic/partition and no contradictory
+   occupied-position receipt. Skip application and leave the checkpoint
+   unchanged; do not send the lower offset into recordProjectionCheckpoint.
+4. Unknown event at or below the checkpoint: fail closed without applying or
+   acknowledging it. A checkpoint alone cannot prove that an unknown event
+   was processed; silently skipping it could hide a missing business fact.
+5. Unknown event above the checkpoint: apply the pure reducer, write only the
+   shadow row, insert the inbox receipt and advance the checkpoint atomically.
+6. A known inbox with a missing checkpoint is an atomic-state inconsistency
+   for this new adapter, not automatic repair authorization. Likewise reject
+   an incoming offset earlier than that event's recorded original offset in
+   the same partition until its identity/position is independently established.
+7. Hash, tenant, build, topic or partition conflicts fail before any write or
+   acknowledgement, including on a duplicate path. The inbox records the
+   original event delivery, not every later duplicate position; this design
+   must not claim to be a complete historical broker-position journal.
+
+### Broker partition high-water and assignment generation
+
+- Database checkpoints are tenant/build-specific; broker commits are per
+  consumer group and partition. Never derive the broker commit by taking a
+  maximum across tenant checkpoints or by acknowledging every duplicate as
+  incomingOffset+1: an older duplicate could rewind a commit, while a maximum
+  could skip another tenant's unfinished delivery in the same partition.
+- A future broker adapter must maintain a monotonic safe high-water for the
+  entire assigned partition and commit only through the processed delivery
+  sequence, never past an earlier failed/in-flight record. Numeric offsets
+  need not be consecutive. Partition processing is sequential in the initial
+  design; the build row lock alone does not establish broker ordering.
+- Associate acknowledgement/commit decisions with the current assignment and
+  consumer generation. A revoked or stale generation must not acknowledge,
+  even if its DB transaction already committed; the new owner can redeliver
+  and use the database dedupe receipt. Generation fencing and actual Kafka
+  rebalance behavior require separate broker integration evidence, not just
+  a successful database transaction or a mocked acknowledgement callback.
+
+### Additional pending regressions (all NOT RUN)
+
+1. With real restricted roles, prove SELECT-only FOR UPDATE and the checkpoint
+   trigger fail with permission denied; the candidate createdAt-only grant
+   permits the intended row lock and checkpoint, not lifecycle changes.
+2. A real createdAt change fails its immutable guard; id/status/evidence and
+   startedAt/completedAt/promotedAt/updatedAt updates plus build INSERT/DELETE
+   remain denied. Inspect effective grants and role membership in that test.
+3. Two PostgreSQL connections: worker lock blocks the controller transition
+   until commit (or a bounded lock timeout); reverse the order and prove a
+   worker observes the terminal state after waiting and changes nothing.
+4. After A at offset 10 then B at 20, duplicate A at 10 leaves checkpoint 20/B
+   unchanged; duplicate A at 30 advances to 30/A without changing the balance.
+5. Unknown valid IDs at offsets 10/15/20, wrong ID at the current offset and
+   hash/topic/partition conflicts roll back with no acknowledgement.
+6. Missing checkpoint for an existing inbox, or incoming offset below that
+   inbox's original position, fails closed rather than silently repairing it.
+7. In adapter tests, an older duplicate cannot rewind the partition commit
+   candidate and a stale/revoked generation cannot acknowledge. Real Kafka
+   commit/rebalance proof remains a later disposable integration test.
+
+The next authorized implementation decision is the smallest restricted-role
+DB adapter and its real PostgreSQL test seam. No activation, promotion, active
+v1/read-pointer change, offset reset or customer-data replay follows from this
+planning checkpoint. Current verification is documentation-only diff checking;
+runtime, Vitest, full TypeScript/build and PostgreSQL tests are NOT RUN here.
+
+### Coordinator delivery receipts received during this planning checkpoint
+
+- Root verified targeted recovery CDC866 run `39077023158` SUCCESS on `12bf`:
+  raw eight-record exact parity, four legacy mismatches and cleanup completed.
+  CDC867 run `39076938841` SUCCESS on `6c97`: corrected checked-in template,
+  cdc_legacy diagnostic label, raw eight-record exact parity, cold restart and
+  cleanup passed. These are actual disposable-runtime receipts, not inference
+  from unit tests; no runtime was started by this documentation task.
+- Basic stack runs `39076938829` (867) and `39077023226` (866) both SUCCESS.
+  This supersedes their earlier running/cancelled notes without removing them.
+- Root also verified adjacent production release `39075973582` SUCCESS on
+  `3799ff4398ea6afdec9968ec153eba9306a36a53`, with matching public artifact SHA
+  and ping. Main `3cdca2` still awaits its own matching artifact; the readiness
+  SHA boundary remains enforced and this is not a current-main readiness PASS.
+- PR868 at frozen `572b` is now ready. Both queue:max integration jobs remained
+  pending together, then one basic job began running. This is observed queue
+  scheduling progress, not a completed receipt for either job or all PR checks.
+
+## 2026-10-18 — backup tool commissioning: read-only operational audit
+
+- Inspected the install-backup-tools branch, its preflights/fence/cleanup,
+  workflow and runbook from exact origin/main
+  `3cdca2db68823dde281526837fce5ac3aa0af280` without executing any production
+  command, commissioning stage, test suite or retry. This is a source audit,
+  not a fresh inventory or proof that the operation is safe to run now.
+- The prior root-owned pgpass conflict is removed in the source contract:
+  commissioner/readiness/deploy require both canonical password files to
+  belong to the exact non-root leaddrive-backup UID and GID, private mode
+  0400/0600 and regular/non-symlink type. The runner requires ownership by
+  its current UID and the same private modes. Group-readable root-owned
+  0440/0640 pgpass is not accepted and is not a valid libpq substitute.
+- Backup, restore-canary, offline-backup verifier and custody-verifier Git
+  object hashes match the updated pins in commissioner/readiness/deploy.
+  This does not prove which helpers are currently installed. The tool-install
+  operation itself installs age/AWS CLI, not the backup runner scripts.
+  Live source and scratch pgpass ownership/readability remain UNKNOWN to this
+  audit; do not infer either from an old screenshot or earlier readiness PASS.
+
+### Required fresh facts and exact operation scope before dispatch
+
+1. Root first verifies the current production artifact SHA and performs fresh
+   read-only inventory. Obtain enabled/active/load states of all four recovery
+   timers and activity/mask states of their services, plus any durable fence
+   journal. Confirm that the authorized scope includes leaving all four
+   schedules disabled/inactive; do not run based on an old disabled-state
+   snapshot. If schedules now run, successful install intentionally stops
+   their automatic coverage until later commissioning/delivery stages.
+2. Inspect both pgpass files' numeric owner/group, mode, regular/non-symlink
+   status, service readability and safe parent-directory traversal. Separately
+   inspect root-owned CA files and their actual readability by leaddrive-backup.
+   Root metadata acceptance is not proof that the restricted runner can read
+   a file. Do not blindly chown files or replace their contents to pass a gate.
+3. Confirm Ubuntu 24.04 x86_64, the required curl/gpg/sha256sum/tar/unzip tools,
+   at least 2 GiB free and 10000 free inodes in both /var/tmp and /usr/local,
+   permitted outbound downloads, expected tool paths/provenance and the absence
+   of another active commissioning/deployment. The runtime checks also enforce
+   canonical recovery paths, verify-full settings, bounded connection timeouts,
+   monitoring configuration and the absence of reviewed legacy remnant patterns.
+4. Use only Commission production backup on main with operation
+   `install-backup-tools` and confirmation
+   `INSTALL_PINNED_BACKUP_TOOLS_AND_EXTEND_LOG_RETENTION_ON_13_140_132_245`.
+   expected_main_sha must be the fresh exact 40-character main SHA at dispatch;
+   the audited 3cdca2 SHA is valid only while it is still current. All optional
+   recipient/custody/evidence/candidate inputs must be empty. The workflow
+   enforces current-main equality, the production branch policy and the shared
+   production-deploy lock. The install branch does not itself check the SHA
+   of the running application, so root's separate artifact check remains needed.
+
+### Actual mutations and explicit non-actions
+
+- The operation durably records previous timer states, disables all four
+  timers, waits for running recovery services, applies temporary runtime
+  service masks and acquires fixed persistent locks. Missing reviewed
+  runtime/state directories and lock files can be created.
+- It atomically changes only an absent/365 LOG_SHIP_RETENTION_DAYS to 400;
+  unreviewed smaller values fail instead of being silently repaired. It
+  installs pinned age 1.3.2 and signed AWS CLI 2.36.40 into versioned roots
+  with provenance and global command symlinks, refusing unknown conflicting
+  installations. It also migrates only allowlisted legacy lock paths to the
+  reviewed persistent lock authority.
+- On success, service masks are removed but all four recovery timers remain
+  disabled/inactive. Install is therefore not an activation of backups.
+- It does not run backup/restore, start scratch, authenticate to PostgreSQL,
+  prove TLS connectivity or Object Lock, switch backup encryption, generate
+  keys, change pgpass ownership, deploy the application or activate/replay Kafka.
+  An install SUCCESS cannot be reported as working or certified recovery.
+
+### Concrete partial-failure/readability risks
+
+- Log-retention migration occurs before assert_backup_env. A later failure
+  does not roll that env change back. Created runtime/state directories and
+  lock files also remain; timer rollback must not be described as rollback
+  of every filesystem/configuration mutation.
+- INSTALL_COMMITTED is set before the final timer-state commit and legacy
+  lock-policy migration. A failed run can therefore leave validated tools
+  installed, and after timer commit can leave schedules disabled. Inspect
+  the actual phase, journal, tools and timer states before any retry; do not
+  assume a failed Actions result means nothing changed.
+- The CA metadata guard permits root-owned 0400/0600 as well as shared-readable
+  modes, but it does not check service-user readability. A root:root 0600 CA
+  may pass this stage and still fail in the restricted backup runner. The
+  fresh metadata inspection must cover that distinction without weakening TLS.
+- Even after all metadata passes, password correctness, source/scratch
+  availability and end-to-end recovery remain unproven by this operation.
+  Those are separate bounded stages, not implicit permission to start them.
+
+Stopping point: source audit recorded only; root awaits fresh inventory and
+the matching current artifact before deciding whether the authorized bounded
+install can proceed. No frozen PR866/867/868 worktree, production file, timer,
+service, branch delivery or Kafka runtime was changed by this documentation.
+
+### Shadow authorization boundary to prove, not infer from tenant context
+
+- The existing application RLS policy uses app.org_id; setting that GUC is
+  context selection, not proof that a new worker credential is authorized
+  for that tenant. A generic PUBLIC permissive policy plus another permissive
+  policy does not narrow effective access. Do not call the application role
+  or an adapter WHERE predicate a restricted-worker credential boundary.
+- The disposable worker fixture must bind its allowed tenant/build scope
+  independently of the mutable GUC, with effective least-privilege ACL and
+  appropriately restrictive policies. Attempt an arbitrary foreign-tenant GUC
+  and direct SQL as that real login; both reads and writes must stay within
+  its authorized scope. Reuse a separate scoped login when testing a second
+  authorized tenant, not a fabricated multi-tenant permission claim.
+- This does not solve broker privacy: a tenant-qualified partition key and
+  consumer-side allowlist do not limit an all-tenant CDC snapshot or topic
+  read. Source credential/publication limitations, approved CDC data scope,
+  service ACL and canary privacy remain independent production prerequisites.
+- These are additional NOT RUN acceptance requirements for the planned adapter;
+  no role, policy, schema, application handler or broker was changed here.
+
+## 2026-10-18 — baseline/backlog reconciled with fresh production and CI receipts
+
+- Resumed only the separate DB-plan worktree at clean checkpoint
+  `99936930385202acda433d8fc72fd8a779421cca`. Read READINESS_BASELINE.md and
+  KAFKA_IMPLEMENTATION_BACKLOG.md completely, then appended evidence/status
+  sections to those files and this journal. Earlier snapshots are retained;
+  no frozen PR866/867/868 worktree or executable file was changed.
+- Root confirmed current main/production
+  `3cdca2db68823dde281526837fce5ac3aa0af280`, deploy `39076392003` SUCCESS,
+  matching public artifact SHA and ping. Read-only inventory `39079029627`
+  SUCCESS observed `23:27:25 UTC`: RAM 12247548/10243736 kB total/available,
+  disk 206900281344/175675301888 bytes total/available, swap 0. PostgreSQL
+  160015 still has wal_level=replica, slot WAL cap -1, zero slots and no outbox
+  publication. Logical-WAL configuration/restart remains NOT DONE.
+- All eight expected event-platform tables are present with FORCE RLS.
+  EstimatedRows=0 is not an exact count; cumulative WAL 17852077336 since
+  September 4 is not a rate/peak measurement. The new baseline explicitly
+  prevents capacity or empty-history claims from those observations.
+- Source/scratch pgpass now have fresh service UID/GID, 0600, regular/canonical,
+  one-link/readable evidence; both CA files are service-readable. This
+  supersedes the earlier unknown-live-metadata note for this snapshot only.
+  All four timers are inactive; enabled states and the complete backup verdict
+  still await queued readiness run `39079208286`. No install authorization is
+  inferred solely from stale timer states or the metadata result.
+- All five required checks are SUCCESS on exact PR866 `12bf` / run39077023050,
+  PR867 `6c97` / run39076938861, PR868 `572b` / run39077546346. Actual basic/CDC
+  success pairs are respectively 39077023226/39077023158,
+  39076938829/39076938841 and 39077546339/39077546451. These heads remain
+  NOT MERGED at this update; full SHA/run links are appended in both documents.
+- Pure Fund Vitest was included in the successful required suite, separately
+  from the 56 Node tooling checks. The typecheck gate's diagnostic baseline
+  does not prove repository-wide zero TS diagnostics. Synthetic raw transport
+  parity/restart is not a real Fund API-to-worker test or production activation.
+- K-ID statuses are deliberately bounded/partial: no production TLS/HA/archive,
+  all-module adoption, broker worker, DB adapter, operator replay or consumer
+  activation is claimed. The source hash/payload and shadow-role/ack plans
+  remain implementation/test obligations, not completed protection.
+- This checkpoint performs docs-only diff/append-only verification. No source
+  code, dependency, SQL, test suite, CI dispatch, push, merge or runtime action
+  belongs to it. Root continues the separate live readiness/delivery work.
+
+### Later receipt received before this docs-only commit
+
+- Backup-readiness39079208286 finished FAILURE at the commissioned-program
+  gate: machine_ready=no, enterprise_ga_ready=no, issues=26, enterprise_gaps=9,
+  operator_attestation_required=yes. This supersedes queued above, not the
+  successful inventory, and does not establish absence of all other backups.
+- Ubuntu24.04 x86_64 confirmed, both pgpass private/readable contract PASS,
+  CA guards PASS and metadata readability yes. All eight canonical ops scripts
+  and pins match artifact3cdca2. DB/secrets/log timer states are
+  loaded:disabled:inactive; runtime-files is not-found:not-found:inactive.
+  Missing pinned age/AWS, unit drift, evidence/genesis and stale runner gaps
+  persist; no commissioned recovery PASS is inferred.
+- Root dispatched only install-tools39079299803 against reviewed3cdca2 with
+  all optional custody/candidate/evidence inputs empty. It remains QUEUED at
+  receipt time; no backup/restore/Kafka activation occurred. The final receipt
+  must be inspected for actual stage and partial writes before another action.
+  Both appended status documents include this newer result without deleting
+  the earlier queued snapshot. This subtask still performs documentation only.
+
+## 2026-10-18 — tools commissioned; own PRs merged; final deployment pending
+
+- Resumed the separate DB-plan branch from clean
+  `55bb517c4d7e84d842b7065c5dd7665a330920fa`, verified its root/branch/origin
+  through codex-project-context, and performed an ordinary no-commit merge of
+  exact origin/main `7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd`. The merge had
+  no conflicts. Inherited source changes from already-merged PR869 are retained
+  exactly; this task did not edit or merge that foreign PR. Own edits in this
+  checkpoint are append-only to baseline, backlog and this journal.
+- Root verified install-tools39079299803 SUCCESS on reviewed3cdca2: age1.3.2
+  and AWS CLI2.36.40 provenance/pins validated, persistent lock paths migrated,
+  automatic timers left disabled and backup encryption unchanged. No DB
+  backup/restore or Kafka action ran. The earlier queued-install note is now
+  superseded by this actual receipt, not by an assumption of completion.
+- Post-readiness39079476339 FAILURE reports machine_ready=no, issues=22,
+  enterprise_gaps=9, operator_attestation_required=yes. Toolchain now PASS;
+  newly runnable S3 Object Lock read could not be verified, exact cause UNKNOWN.
+  Do not claim the bucket lacks Object Lock or guess a credential/network cause.
+  Three DB/secrets/log timers remain disabled/inactive, runtime-files timer is
+  still not found; CA/service credential file contracts are good. Existing
+  unit/evidence/genesis and remaining readiness gaps still block full recovery.
+- Root normally merged own PR866 ->90eaf1625e114fc3ba6f229c4b9618938ebc7c79,
+  PR867 ->97f00bd6b1914e87e3b7b3acdc285eaea7d430ba and
+  PR868 ->7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd after the previously
+  recorded exact-head successful gates. Concurrent foreign PR869 ->85dd493fa
+  had reached main first; this Kafka task did not merge it and must preserve it.
+- Final deploy39079668201 for7a1cf49e remains pending. The last public artifact
+  checked by root is3cdca2; this entry does not declare7a1cf49e delivered or
+  current-main readiness proven. Root monitors actual deployment/public SHA
+  and ping before issuing that receipt.
+- Appended the same bounded evidence/status in READINESS_BASELINE.md and
+  KAFKA_IMPLEMENTATION_BACKLOG.md. Tools are installed and code is merged,
+  but restricted Fund shadow DB adapter remains PLANNED / NOT IMPLEMENTED.
+  Logical WAL/restart, production TLS/HA/archive/recovery, broker worker,
+  replay and all-module adoption remain open; no activation is implied.
+- Documentation verification only: preserve all historical document lines
+  against both merge parents, diff-check, explicit three-path staging followed
+  by the ordinary merge checkpoint. No push, CI dispatch, new source edit,
+  dependency installation or runtime action is part of this synchronization.
+
+## 2026-10-18 — next K4.2 shadow adapter prepared; exact-main CDC passed
+
+- Continued in the same DB-plan worktree/branch; codex-project-context again
+  resolves Contabo development, origin rashadoni/leaddrive-v2 and the registered
+  Actions-only production route. The canonical checkout remains untouched.
+- Exact-main synthetic CDC run39079754380 on
+  7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd completed SUCCESS, including actual
+  migration/restricted-CDC/A-B fidelity/cold-restart and scoped cleanup steps.
+  This is synthetic transport evidence, not production Kafka activation or a
+  real business-worker transaction test.
+- Final deploy39079668201 is IN PROGRESS: actual build started; quality gates
+  reached blocking unit tests. Public artifact still3cdca2db68823dde281526837fce5ac3aa0af280
+  with ping ok. Concurrent foreign PR870 reached main as
+  fa738db91d5e9a7621f86f113a305db4cafba582, an ordinary descendant containing
+  all own merges. Its six-file change is demo UI/audio/test only, not routing
+  or Kafka; preserve it. This task did not merge or cancel the foreign work.
+  A later successful exact descendant receipt may be required if7a is superseded.
+- Prepared an INACTIVE Fund shadow SQL adapter with real interactive factory,
+  exact immutable-outbox PostgreSQL full-envelope hash/parsing equality,
+  independently provisioned restricted LOGIN precondition, locked build fence,
+  pure reducer, per-build inbox and duplicate-aware monotonic checkpoint in
+  the same transaction. No broker/ack caller, source/v1/pointer/effect writes,
+  provisioning DDL or production migration was introduced in application code.
+- Control-flow unit tests are explicitly mocks, not SQL/role/COMMIT evidence.
+  Prepared a separate, exact loopback-only disposable CI database fixture that
+  applies the actual foundation/Fund/replay migrations and scoped login/RLS
+  policies. Tests target two-tenant parity, duplicates, concurrency, actual
+  rollback/deferred-COMMIT error and denial of active/source/lifecycle writes.
+  The tests are still being independently reviewed; real-PG execution, Vitest
+  and TypeScript are NOT RUN locally because dependencies are absent and the
+  persistent development host is not the heavy test executor.
+- Added the dedicated real-PG step to existing required PR/static and production
+  quality jobs, after their migration gate. Missing fixture admission fails
+  closed; neither test step can access a production secret. Two lightweight
+  gate-wiring checks and the 70-workflow runner policy PASS on this tree.
+  These do not establish that the PostgreSQL test itself passes. No PR/push or
+  merge for the new adapter yet; no publication until review/checkpoint, and no
+  merge until all five actual required checks plus real-PG gate SUCCESS.
+- Kafka remains OFF. Backup tools/provenance are installed, but recovery
+  readiness, Object Lock verification cause, offline operator evidence,
+  HA/TLS/archive, source logical-WAL maintenance and real broker/replay work
+  remain open. No unchanged commissioning retry or runtime activation ran.
+
+### Adapter/fixture review checkpoint before publishing a draft
+
+- Independently reviewed the adapter and all mock tests; helper reviewed the
+  actual-PG fixture, then tightened denial assertions to exact SQLSTATE42501
+  rather than accepting a missing-field/constraint error. Direct foreign-GUC
+  reads/inserts and adoption of a different same-tenant build are tested using
+  independently scoped real LOGIN credentials. Column-only build-lock privilege
+  has a negative control and immutable-createdAt guard assertion.
+- Added a real PostgreSQL blocking-pids controller race, bounded waits and
+  exact expected serialization/lock-abort classification; arbitrary concurrent
+  failures cannot be counted as a safe duplicate. A deferred constraint error
+  after the callback must reject before an acknowledgement callback is reached.
+  These tests are prepared/reviewed, NOT RUN yet; no mock PASS is substituted.
+- Local dependency-free tooling58 tests PASS, 27-domain/86-topic/5-schema asset
+  gate PASS, runner policy70 workflows PASS. Resources before the small checks:
+  13GiB available RAM, memory pressure avg10/60/300 zero, disk213GiB available.
+  Local full build/Vitest/TypeScript/real-PG NOT RUN: missing dependencies and
+  heavy verification belongs to GitHub CI. No package was installed here.
+- Next: checkpoint only the eight task-owned paths, ordinary merge of current
+  main demo-only descendant if still current, publish a draft PR, and obtain
+  actual required-check plus dedicated real-PG receipts before merge. Continue
+  monitoring the earlier7a application delivery independently; the new adapter
+  remains inactive and does not enable Kafka or customer-data replay.
+
+### Draft PR871 and final review
+
+- Published draft PR871 from checkpoint52ede5973 followed by an ordinary
+  conflict-free mainfa738db merge, exact headac882bfe28572bef23f03cec9fb054a13769b915.
+  All four cheap draft checks (scope/runner/scan/config validation) SUCCESS;
+  static/typecheck SKIPPED because draft, not counted as code verification.
+- Independent final read-only review of the eight executable/test/log changes
+  found no blocking defect. Corrected the small wiring assertion so an absent
+  migration-step title cannot pass by indexOf returning -1. History-preservation
+  check confirms all origin/main lines of the three documentation files remain
+  in order. Application search confirms no non-test adapter caller exists.
+- Next frozen draft checkpoint will be marked ready only after its exact head
+  and cheap checks are observed; this starts the first real required CI/PG run.
+  No premature merge, production role setup, Kafka subscription or replay.
+
+### First real PostgreSQL gate FAILURE — fixture transaction corrected
+
+- Marked exact ca07832962fab8993fae455733ff05c78b43ae8d ready only after all
+  cheap checks completed. Actual required run39081041370 started static and
+  typecheck; synthetic CDC39081041329 SUCCESS on that same head.
+- Static job117537933925 failed in the new real-PG gate: all seven cases
+  stopped while preparing source data, before calling the shadow adapter.
+  PostgreSQL23514 reported missing coherent active Fund state at COMMIT.
+  The opening had correctly created active v1; the test's later ledger INSERT
+  was wrongly autocommitted without the mandatory second source balance update.
+  This is a fixture bug, not an infrastructure outage or an adapter race result.
+- Compared the actual migration779–877 and existing migration harness259–270 /
+  314–326: the compatibility trigger intentionally appends event/outbox and
+  changes active v1, but does not change funds.currentBalance. Each movement
+  must be its own real INSERT-first + conditional source UPDATE transaction.
+  Grouping both movements into one commit would also violate each event's
+  resultingBalance contract; no migration/trigger/guard was weakened.
+- Converted PR871 back to draft. Corrected only fixture transaction preparation
+  and added a negative control: an orphan ledger INSERT must still fail23514
+  and leave source facts/projection unchanged. The corrected test is NOT RUN
+  yet. Old-run typecheck continues; no manual cancellation, rerun or duplicate
+  full CI was started. Root waits for its useful diagnostics before pushing
+  the next frozen draft checkpoint for ordinary new-SHA verification.
+
+### Completed first-run diagnostics before the next ordinary CI run
+
+- Run39081041370 completed FAILURE; typecheck117537933905 itself SUCCESS by
+  its current blocking gates (64 diagnostic pairs equal baseline64). Its full
+  compiler exited2 with1331 diagnostics, so this is not a repository-wide
+  clean-TypeScript claim. No diagnostic was reported in the new adapter/mock
+  tests, and syntax/missing-module/undefined-name gates passed.
+- Read actual diagnostics rather than ignoring the advisory section: TS2737
+  identified two bigint literals in the new PG test and three in our previously
+  merged pure reducer, against the repository's ES2017 target. Replaced only
+  those five literals with exact BigInt constructors, using a string for the
+  large bound. No tsconfig, baseline or gate was changed; fixed-point arithmetic
+  and amount bounds are unchanged. Actual updated TS/Vitest/PG proof still awaits
+  the next CI run.
+- The completed static failure remains the seven pre-adapter fixture23514
+  failures. The local correctioncef7093e3 was independently reviewed as matching
+  the actual INSERT-first source contract. A possible concurrent23505 remains
+  only a hypothesis, not a demonstrated result or permitted generic success.
+- With the old run complete and no active same-head retry, publish one new
+  frozen draft checkpoint, observe cheap checks/head propagation, then mark
+  ready for the normal full required gates. No failed-old-SHA rerun is useful
+  for this corrected-code/fixture problem.
+
+## 2026-10-18 00:18 UTC — actual production receipt for the previous Kafka increment
+
+- Deploy39079668201 completed SUCCESS for merge
+  7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd. Quality, immutable build, exact
+  artifact validation/staging, atomic deployment, post-deploy public DB-path
+  ping, revision comparison and login/hashed-asset smoke all SUCCESS. This
+  supersedes the earlier pending/in-progress deployment snapshots.
+- Fresh public build-info after completion reports exact artifactSha
+  7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd; /api/v1/ping returns ok=true.
+  Production job117539969992 completed00:18:12UTC. Its actual log confirms the
+  existing Fund cutover gate was already durably verified and STRUCTURAL
+  event-platform ledger/RLS/ownership/exact-money/Fund-projection postconditions
+  passed. This was not a new deep per-Fund data rebuild/parity exercise.
+- Exact-main synthetic CDC39079754380 on7a had already passed full actual
+  foundation/restricted source/A-B fidelity/cold restart/cleanup. The corrected
+  serializer and pure balance source component are merged; the app artifact
+  is delivered. No active Kafka cluster/connector/worker, SQL adapter execution
+  or real replay follows from this app delivery. Unreferenced source modules
+  and passive ops templates are not claimed as an active deployed worker.
+- Concurrent mainfa738db91d5e9a7621f86f113a305db4cafba582 still builds in
+ 39080638658. It contains7a unchanged. The current-main-only read-only inventory
+  is intentionally not dispatched against a mismatched older live marker;
+  refresh it when current main and actual public artifact match.
+- Corrected PR871 head628d7092698d9222264398aa5b026ef640914671 passed all four
+  cheap draft checks, then was marked ready once. New required full run
+ 39082180225 and synthetic CDC39082180252 are in progress. The first failed
+  old-head run is retained; no duplicate old-SHA retry or cancelled foreign job.
+- This receipt is a LOCAL journal-only checkpoint while the remote PR head
+  stays frozen628d for actual CI. It is not pushed into that active run. Root
+  will compare/merge the remote exact head, not mistake this local docs commit
+  for the tested source SHA. Next material action is reading actual corrected
+  PostgreSQL/typecheck results, then normal merge only if all required checks
+  and real-PG proof succeed. Kafka and recovery timers remain OFF.
+
+## 2026-10-18 00:33 UTC — second actual PostgreSQL result and narrow race proof correction
+
+- PR871 run39082180225 on628d7092698d9222264398aa5b026ef640914671 completed
+  FAILURE. Actual PostgreSQL7/8 scenarios PASS: source atomic guard, two-tenant
+  exact parity/independent RLS, duplicate/monotonic checkpoints/build isolation,
+  full-envelope canonicalization/tamper rejection, SQL/deferred-COMMIT rollback,
+  restricted LOGIN/privilege denial, and real controller blocking. The only
+  failed assertion classified the competing shadow INSERT abort.
+- PostgreSQL server log confirms the exact unique constraint
+  fund_balance_projections_build_key. The first assertion did not print the
+  Prisma wrapper, so P2010/meta23505 remains the expected wrapper rather than
+  an already observed structured receipt. Unknown wrappers remain a failure.
+  PostgreSQL16 serialization-failure-handling documentation allows justified
+  unique-conflict retry only by restarting the COMPLETE transaction; arbitrary
+  unique violations are not interchangeable with successful processing.
+- Updated only the disposable PG test: allow P2010+23505 only for the exact
+  quoted shadow constraint; negative controls reject other SQLSTATEs, wrappers,
+  missing metadata and similarly named/other constraints. A bounded barrier
+  makes both real Serializable role SELECTs happen before either INSERT. Require
+  one committed result and one rejected factory, then retry the actual rejected
+  connection with a NEW factory and check opening balance0.0000/version1,
+  exact event/checkpoint, exactly one shadow/inbox/checkpoint and unchanged
+  source/active/pointers/effects. No runtime catch, isolation, grants, guard or
+  migration was relaxed. Updated actual PG proof is NOT RUN until the next CI.
+- Completed typecheck117541321827 SUCCESS under its current blocking gates:
+  compiler exit2/1326 diagnostics/64 gated pairs equal baseline64, not a globally
+  clean repository. All five task-owned Fund TS paths have zero diagnostics;
+  the five previous TS2737 warnings are gone. Exact-head CDC39082180252 SUCCESS.
+- Old full run is finished, PR871 is draft, no retry exists or is being added.
+  Local focused Node wiring2/2 and diff checks PASS. Next: review this narrow
+  test change, checkpoint/push one new draft head, cheap checks then ready once
+  for actual full gates. Product adapter stays unreferenced/inactive; Kafka,
+  production offsets, replay and recovery timers remain OFF.
+
+## 2026-10-18 00:41 UTC — current-main delivery and fresh read-only inventory
+
+- Concurrent, independently owned mainfa738db91d5e9a7621f86f113a305db4cafba582
+  deploy39080638658 completed SUCCESS, including production job117543963567.
+  Root freshly verified that public artifactSha equals this main exactly and
+  /api/v1/ping returns ok=true. No foreign branch/job was changed or restarted.
+  This descendant contains the previous Kafka increment7a unchanged; PR871
+  remains a separate, not-yet-merged transaction adapter/test change.
+- With current main/public marker equality and no other active inventory run,
+  dispatched exactly one existing read-only workflow39083640492 onfa.
+  Run/job117545570993 SUCCESS, observed2026-10-18T00:41:05Z,
+  event_platform_inventory=PASS. This did not change production or run restore.
+- Production RAM12247548kB total/10038012kB available, swap0; filesystem
+  206900281344 total/175297921024 available bytes. PG160015, DB500710423bytes,
+  readOnly=on, wal_level=replica, max_slot_wal_keep_size=-1, slots0,
+  active slots0, retained slot WAL0 and outbox publication absent. All eight
+  expected tables present with RLS+FORCE. EstimatedRows0 are planner estimates,
+  not an exact history count. Capacity/HA/WAL activation gates remain open.
+- WAL counter17864896685 with same September4 stats-reset identity. This is
+  a second instantaneous sample, not a measured peak or approved outage/slot
+  budget; it does not authorize logical WAL, a PostgreSQL restart or CDC start.
+- Four recovery timers are inactive. Both pgpass files remain canonical,
+  single-link, backup-service owned0600/readable; both CA files canonical,
+  single-link0640/service-readable. Fresh metadata is not authentication,
+  restore certification, signed custody or immutable storage proof.
+- PR871 new frozen0917e6227e42e1034e0d0157011529117c590503 passed cheap draft
+  checks then was marked ready once. Actual full39083337348 is running;
+  exact-head CDC39083337253 already SUCCESS. New PostgreSQL/TypeScript proof
+  still awaited. Focused Node checks14/14 and asset/diff checks PASS. This is
+  a LOCAL docs checkpoint, deliberately not pushed into the active CI head.
+  Next: complete that actual gate and normal release, then the separate
+  bounded/sanitized Object Lock diagnostic. No activation/replay performed.
+
+## 2026-10-18 00:44 UTC — deterministic race reached; actual wrapper still unknown
+
+- Full39083337348 static job117544746669 failed its real-PG gate8/9: the new
+  bounded barrier DID produce exactly one committed and one rejected factory.
+  PostgreSQL again records the exact shadow build-key unique constraint, but
+  the Prisma error does not satisfy the assumed code/meta/message shape. This
+  invalidates the wrapper assumption, not the completed tenant/hash/rollback
+  and controller tests. The whole-transaction retry assertions were not reached.
+- Returned PR871 to draft, preserving the active typecheck job for diagnostics.
+  Added only an allowlisted structural error diagnostic and a no-leak negative
+  control. Codes are restricted to Prisma/SQLSTATE shapes; all other outputs
+  are fixed booleans. Raw messages, targets, SQL, IDs, paths, credentials and
+  connection strings are never printed. The existing rejection classifier is
+  NOT broadened by this probe, and the runtime adapter is unchanged.
+- This is a source diagnostic correction, not an infrastructure retry. Wait
+  for the existing typecheck to finish, then use one ordinary new frozen-head
+  CI to obtain actual wrapper facts before changing acceptance. Unknown errors
+  must still fail closed; no merge, production adapter activation or replay.
+
+### Diagnostic checkpoint and status reconciliation — 00:52 UTC
+
+- Prior0917 typecheck117544746619 completed SUCCESS at00:49:38UTC: zero own
+  Fund diagnostics,1326 repository advisory diagnostics/64 gated pairs equal
+  baseline64, syntax/missing-module/undefined-name gates PASS. Its overall run
+  remains FAILURE because the competing PG error wrapper is still unknown.
+- After that old run became terminal, pushed diagnostic3da0223f5c7b0ce9b461e5373f77013d4e341f59
+  once as draft. No rerun, manual cancellation, classifier widening or runtime
+  change. Independent read-only diff review found no diagnostic data leak;
+  completed old logs contain no actual Prisma code/meta, so inference is not
+  substituted for the next real probe.
+- Appended current production/inventory and partial8/9 adapter state to baseline
+  and backlog, explicitly superseding stale pending/PLANNED snapshots rather
+  than erasing them. These are LOCAL docs checkpoints while the remote head
+  remains frozen3da for actual CI. Next required proof is its safe structural
+  error result, then a justified narrow fix and full green release.
+
+## 2026-10-18 01:08 UTC — actual error shape and statement-scoped race proof
+
+- Diagnostic run39084430902 on3da0223f5 completed FAILURE; actual PG9/10 PASS
+  including the no-leak control. Observed structural error: PrismaP2010,
+  SQLSTATE23505, a metadata message present, but NO constraint name in top/meta,
+  NO recognized unique/detail/key-fields text and NO exact target metadata.
+  Do not claim that the client preserved the named constraint or that its
+  raw message is a guessed sentinel. The server separately confirms the
+  expected build-key index conflict. This disproves message-based classification.
+- Same run typecheck117548045827 SUCCESS at01:05:29UTC:1326 advisory
+  diagnostics/64 gated pairs=baseline64, zero diagnostics in all five own Fund
+  TS files. Exact3da CDC39084430965 SUCCESS. No old run remains active.
+- Replaced the test's unsupported client-message assumption with stronger
+  statement-scoped observations. The disposable factory observes rejection
+  ONLY around awaited real execute SQL, stores per-connection original error,
+  query and parameters privately, and immediately rethrows the SAME object.
+  It does not catch an injected afterExecute failure or convert failure to
+  success. P2010/23505 requires error identity, anchored actual shadow INSERT,
+  exactly9 parameters, trusted tenant/Fund/version/build tuple and event ID.
+- Added negative controls: no receipt, cloned error, other SQL/table/marker,
+  wrong tuple/event/parameter count, foreign SQLSTATE and unrelated errors
+  fail. Before retry, assert the one committed winner's exact opening state,
+  one shadow/inbox/checkpoint and unchanged source. Then retry the actual
+  rejected connection in a NEW factory and require a coherent duplicate,
+  exact checkpoint/state and still-one counts. Original constraint metadata
+  is NOT asserted; it is unavailable. The proof is scoped SQL failure plus
+  actual commit/rollback/deduplication, not a generic23505 exception.
+- Original runtime adapter, Serializable isolation, source/migrations, SQL
+  guards and grants are unchanged. PR871 is draft; new actual PostgreSQL,
+  retry error-identity and TypeScript proof are NOT RUN yet. Next: review this
+  exact test patch and publish one normal frozen draft head; merge remains
+  blocked until actual required tests succeed. No activation/replay performed.
+
+## 2026-10-18 01:15 UTC — independent pinned-image availability failure
+
+- Frozen97437cac7 passed cheap checks and entered full39085527339. Actual
+  PG/typecheck are still running. Separate CDC39085527336 failed before Connect
+  started: Quay no longer serves the previously tested Debezium digest
+  e37dee587fc65dcaed9467c07f6370fb33a421793c5dcad84392792298bd0da0.
+  Cleanup succeeded. This is not a new Fund/CDC correctness assertion failure.
+- Root independently GET-checked the exact public manifest with OCI and Docker
+  Accept types: HTTP404/MANIFEST_UNKNOWN. Official3.7.0.Final tag serves index
+  c804b88d97b74e0834b45f35f33210051159078b31e295d5daeceab36ab7d908;
+  its Linux/amd64 child is
+  d76ab3d1d412e9aa38fa8532ac01d99d36b87355a21ee99fbe6f847c168be924.
+  Retrieved only public manifest/config metadata, not image layers or containers
+  on development. Both payload hashes match their declared SHA-256 digests.
+- Config7172c82542f0c932b1fdf92a9e858cd475676b04ce0c47767a1a810b9201d7ea
+  confirms Linux/amd64, expected entrypoint, Debezium3.7.0.Final/Kafka4.3.1.
+  Prepared the minimal same-version immutable repin, with stronger runtime
+  plugin admission for exactly one PostgreSQL source plugin at3.7.0.Final and
+  positive/negative tests executing that actual admission. No latest/tag-only
+  fallback, disabled check, alternate registry credentials or production change.
+- This metadata is identity/availability evidence, not publisher-signature or
+  permanent-image-retention proof. Owned immutable image distribution remains
+  a production prerequisite. New image behavior/CDC are NOT RUN until its new
+  head passes integration. Preserve current974 PG/typecheck results; no rerun
+  of a demonstrably unavailable old image and no cancellation of active jobs.
+
+### Actual transaction step passed; full release remains blocked
+
+- On exact97437cac7, full39085527339 static117551232155 now reports the
+  explicit restricted-LOGIN Fund PostgreSQL transaction step SUCCESS. This is
+  actual real-database execution of the statement-scoped conflict/whole-factory
+  retry path, not a local mock or permission to merge. Exact test totals await
+  the completed job log; remaining static gates and typecheck117551232121 are
+  still running. Do not label the entire run green prematurely.
+- CDC39085527336 remains FAILURE on the demonstrably unavailable old image;
+  a prior-head CDC success does not replace the required new image behavior.
+  Prepared repin checkpoint7467ef949 remains LOCAL while remote974 is frozen;
+  PR871 is draft during this correction. No stale-SHA rerun or job cancellation.
+- Independently read-checked the other three public manifest pins without
+  pulling image layers: PostgreSQL, Kafka and Apicurio each HTTP200 and exact
+  SHA-256 match. New same-version Debezium manifest/config metadata also match.
+  These checks are not runtime/plugin/CDC or publisher-signature attestations.
+- Local refreshed-pin shell syntax, actual plugin admission positive/negative
+  unit cases6/6, asset gate27domains/86topics/5schemas and diff checks PASS.
+  No full build/TS/Vitest/containers on development: NOT RUN by workload policy.
+  Next: preserve finished974 gate receipts, then one ordinary repinned draft
+  head and actual full tests/CDC before normal merge/deploy.
+
+### Explicit focused unit receipt, without changing the repository baseline
+
+- Read the actual baseline runner: it suppresses ordinary Vitest stdout and
+  deletes its temporary JSON report after comparison. A general baseline PASS
+  is not an available per-file/count receipt for the new Fund mock unit suite.
+  Do not infer printed results that the completed logs cannot contain.
+- Added one small explicit Fund reducer/shadow control-flow Vitest step before
+  the actual PG step in BOTH required PR static and deploy-quality workflows.
+  Added wiring assertions for its exact two files, single occurrence, order and
+  lack of skip/continue-on-error/secrets. Existing full baseline and all other
+  gates stay unchanged. This is stronger task verification, not a bypass.
+- Refreshed-pin tree locally passes59 tooling tests; current remote974 run is
+  unchanged and still finishes its baseline gate. New focused unit/runtime
+  proof is NOT RUN until the next frozen-head Actions execution. No local
+  dependency install, full build or production mutation.
+
+### Completed974 proof before the image-only/runtime-admission correction
+
+- Full39085527339 completed SUCCESS on exact
+  97437cac7e04a6d92fd5738ba1e930db4fd3ef38. All five required checks
+  pr-scope/static-checks/typecheck/runner-policy/scan are SUCCESS; tooling also
+  SUCCESS. Root/helper read completed job logs, not only the aggregate badge.
+- Actual PG10/10 PASS in static117551232155, completed step01:17:52UTC.
+  The two-connection conflict/whole-factory retry case passed953ms: exactly
+  one committed winner and one real rejection; winner state/counts/source
+  checked before retry; SAME observed error at scoped SQL and actual losing
+  connection retried in a NEW factory; duplicate/current state/checkpoint and
+  counts1 verified. All other tenant/RLS/hash/rollback/controller cases PASS.
+  This supersedes the earlier unknown retry error-identity/result snapshots.
+- Typecheck117551232121 SUCCESS at01:22:46UTC: zero diagnostics in all five
+  own Fund TS paths,1326 advisory diagnostics/64 gated pairs equal baseline64.
+  Repository unit baseline18 failing files equals baseline18, no new failure.
+  Individual successful reducer/mock counts remain unavailable in that runner;
+  the new explicit scoped step is intended to produce those actual receipts.
+- CDC39085527336 is still FAILURE before assertions because of upstream404.
+  Therefore do NOT merge974 or claim all feature delivery green from five checks
+  alone. Same-version immutable repin7467ef949 and explicit unit gate5b0414582
+  reviewed; local tooling59/59, runner-policy70 and asset/diff/shell checks PASS.
+- With all old jobs terminal and current main stillfa738db9, next publish one
+  frozen draft head, observe cheap checks and run the EXISTING synthetic CDC
+  workflow_dispatch on that exact branch before marking ready for full gates.
+  This bounds image risk before another full typecheck; it does not deploy or
+  use production credentials. Wait its terminal result before ready, so the
+  ordinary ready-event CDC never overlaps that manual image validation.

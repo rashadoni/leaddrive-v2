@@ -74,7 +74,7 @@ for ((attempt=0; attempt<120; attempt++)); do
 done
 [ "$ready" = 1 ] || { echo 'FATAL: test Connect/Registry readiness deadline exceeded'; exit 1; }
 plugins="$(http_get http://connect:8083/connector-plugins)"
-node -e 'const plugins=JSON.parse(process.argv[1]); if(!plugins.some(p=>p.class==="io.debezium.connector.postgresql.PostgresConnector"))process.exit(1)' "$plugins"
+node -e 'const plugins=JSON.parse(process.argv[1]); const matches=Array.isArray(plugins)?plugins.filter(p=>p?.class==="io.debezium.connector.postgresql.PostgresConnector"):[]; if(matches.length!==1||matches[0].type!=="source"||matches[0].version!=="3.7.0.Final")process.exit(1)' "$plugins"
 
 canary='synthetic-tenant:fund:synthetic-fund|{"scope":"synthetic-only","sequence":1}'
 printf '%s\n' "$canary" | kafka_cli kafka-console-producer \

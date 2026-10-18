@@ -28,6 +28,30 @@ the harness requires at least 4 GiB of available runner memory for additional
 tooling and Docker overhead. Swap growth is disabled per service and logs rotate.
 This is a small synthetic fixture, not a performance sizing claim.
 
+### Debezium pin refresh — 2026-10-18
+
+The previously tested Connect digest `e37dee587fc65dcaed9467c07f6370fb33a421793c5dcad84392792298bd0da0`
+became unavailable: actual CDC run39085527336 and a separate public registry
+GET returned `MANIFEST_UNKNOWN`/404 before Connect started. No CDC assertion
+failed and the test cleanup succeeded. Repeating that missing digest is not
+a fix, and removing the digest or falling back to an unreviewed tag is forbidden.
+
+The same official `3.7.0.Final` tag now indexes Linux/amd64 manifest
+`d76ab3d1d412e9aa38fa8532ac01d99d36b87355a21ee99fbe6f847c168be924`
+(index `c804b88d97b74e0834b45f35f33210051159078b31e295d5daeceab36ab7d908`).
+The public manifest and config bytes were SHA-256 checked; config
+`7172c82542f0c932b1fdf92a9e858cd475676b04ce0c47767a1a810b9201d7ea`
+identifies Linux/amd64, `/docker-entrypoint.sh`, `DEBEZIUM_VERSION=3.7.0.Final`
+and `KAFKA_VERSION=4.3.1`. The pin remains immutable and platform-specific.
+Runtime admission now also requires exactly one PostgreSQL **source** plugin
+reporting version `3.7.0.Final`; a versionless, different or ambiguous plugin
+fails closed. The refreshed image still needs an actual new-head CDC receipt.
+
+A digest proves content identity, not permanent upstream availability or
+publisher signatures. Production image retention/mirroring and provenance
+remain separate K1.2 prerequisites; this disposable pin refresh does not close
+them or change production services.
+
 The Compose network is internal. No service mounts host paths, production
 configuration, Docker sockets or credentials. PostgreSQL and Kafka have no host
 port. Connect and Registry also publish **no host ports**. HTTP probes execute

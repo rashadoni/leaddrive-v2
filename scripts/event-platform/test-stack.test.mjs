@@ -73,3 +73,15 @@ test('Kafka CLI uses current property flags so stdout contains only the canary r
   assert.match(source, /--formatter-property print\.key=true --formatter-property 'key\.separator=\|'/)
   assert.match(source, /\[ "\$received" = "\$canary" \]/, 'transport equality must not be weakened or filtered')
 })
+
+test('actual Connect plugin must be exactly one PostgreSQL source at the reviewed version', () => {
+  const source = readFileSync(script, 'utf8')
+  const check = source.match(/^node -e '([^'\n]+)' "\$plugins"$/m)?.[1]
+  assert.ok(check, 'run the actual runtime plugin admission, not a second validator')
+  const plugin = { class: 'io.debezium.connector.postgresql.PostgresConnector', type: 'source', version: '3.7.0.Final' }
+  const run = value => spawnSync(process.execPath, ['-e', check, JSON.stringify(value)], { encoding: 'utf8', timeout: 5_000 })
+  assert.equal(run([plugin]).status, 0)
+  for (const value of [[], {}, [plugin, plugin], [null], [{ ...plugin, type: 'sink' }],
+    [{ ...plugin, version: 'other' }], [{ ...plugin, version: undefined }], [{ ...plugin, class: 'other' }],
+  ]) assert.notEqual(run(value).status, 0, 'unverified/ambiguous plugin must fail closed')
+})
