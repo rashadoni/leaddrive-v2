@@ -530,41 +530,55 @@ describe("a chapter's clip", () => {
 })
 
 describe("the talking guide", () => {
-  it("is silent until asked, then reads each step as it opens, and stops for a clip", async () => {
-    const played: string[] = []
-    let pauses = 0
-    let players = 0
+  function fakeAudio(options: { refuse?: () => boolean } = {}) {
+    const log = { played: [] as string[], rates: [] as number[], pauses: 0, players: 0 }
     class FakeAudio {
       src = ""
+      playbackRate = 1
+      defaultPlaybackRate = 1
+      preservesPitch = false
       constructor() {
-        players += 1
+        log.players += 1
       }
       play() {
-        played.push(this.src)
+        if (options.refuse?.()) return Promise.reject(Object.assign(new Error("needs a click"), { name: "NotAllowedError" }))
+        log.played.push(this.src)
+        log.rates.push(this.playbackRate)
         return Promise.resolve()
       }
       pause() {
-        pauses += 1
+        log.pauses += 1
       }
     }
     vi.stubGlobal("Audio", FakeAudio)
     window.localStorage.removeItem("ld_demo_guide_voice")
+    return log
+  }
 
+  it("speaks at once and briskly, reads each step as it opens, and picks up again after a clip", async () => {
+    // Owner, 2026-10-18: «сразу не включен звук… как открывается демо сразу
+    // гид с ним говорил» and «гид очень медленно разговаривает».
+    const log = fakeAudio()
     await renderPlayer()
+    await settle()
     const first = steps.get(frontier().stepId)!
-    expect(played, "no sound before the prospect asks for it").toEqual([])
+    expect(log.played, "the first step speaks without being asked").toEqual([stepVoiceUrl(first)])
+    expect(log.rates[0]).toBeGreaterThan(1)
 
     // On a phone the coach card is what is on screen, so the switch is there —
     // and only there: the panel does not repeat it while the card is up.
     const panelSwitch = () => container.querySelector<HTMLButtonElement>('[data-testid="demo-guide-voice"]')
     expect(panelSwitch()).toBeNull()
-    const toggle = document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-voice"]')
-    expect(toggle?.textContent).toContain(S.voiceOn)
-    await act(async () => toggle!.click())
+    const toggle = () => document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-voice"]')
+    expect(toggle()?.textContent).toContain(S.voiceOff)
+
+    // Off stops it; on again says the current step inside the click.
+    await act(async () => toggle()!.click())
     await settle()
-    // The click itself starts the current step — the browser allows sound inside it.
-    expect(played).toEqual([stepVoiceUrl(first)])
-    expect(document.querySelector('[data-testid="demo-coach-voice"]')?.textContent).toContain(S.voiceOff)
+    expect(toggle()?.textContent).toContain(S.voiceOn)
+    await act(async () => toggle()!.click())
+    await settle()
+    expect(log.played.at(-1)).toBe(stepVoiceUrl(first))
 
     // With the card put away the panel carries the same switch, already on.
     await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-close"]')!.click())
@@ -572,16 +586,41 @@ describe("the talking guide", () => {
     expect(panelSwitch()?.textContent).toContain(S.voiceOff)
 
     await walkTo("source-stats")
-    expect(played.at(-1)).toBe(stepVoiceUrl(steps.get("source-stats")!))
+    expect(log.played.at(-1)).toBe(stepVoiceUrl(steps.get("source-stats")!))
     // Two switches, one voice: every recording went through the same player.
-    expect(players).toBe(1)
+    expect(log.players).toBe(1)
 
     const clip = container.querySelector<HTMLButtonElement>('[data-testid="demo-intro-clip-play"]')
     expect(clip, "the campaigns chapter offers its clip").not.toBeNull()
-    const before = pauses
+    const before = log.pauses
     await act(async () => clip!.click())
     await settle()
-    expect(pauses, "a clip has its own voiceover; the guide falls silent").toBeGreaterThan(before)
+    expect(log.pauses, "a clip has its own voiceover; the guide falls silent").toBeGreaterThan(before)
+    const played = log.played.length
+    await act(async () => {
+      container.querySelector("video")!.dispatchEvent(new Event("ended"))
+    })
+    await settle()
+    expect(log.played.length, "after the clip the guide says the step again").toBe(played + 1)
+    expect(log.played.at(-1)).toBe(stepVoiceUrl(steps.get(frontier().stepId)!))
+  }, 60_000)
+
+  it("turns a refused start into the button that starts it, instead of a silent «on»", async () => {
+    let refuse = true
+    const log = fakeAudio({ refuse: () => refuse })
+    await renderPlayer()
+    await settle()
+    expect(log.played).toEqual([])
+    const button = () => document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-voice"]')
+    expect(button()?.dataset.blocked).toBe("true")
+    expect(button()?.textContent).toContain(S.voiceUnblock)
+
+    refuse = false
+    await act(async () => button()!.click())
+    await settle()
+    expect(log.played).toEqual([stepVoiceUrl(steps.get(frontier().stepId)!)])
+    expect(button()?.dataset.blocked).toBeUndefined()
+    expect(button()?.textContent).toContain(S.voiceOff)
   }, 60_000)
 })
 

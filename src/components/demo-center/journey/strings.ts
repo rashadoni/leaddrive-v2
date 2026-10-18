@@ -48,6 +48,7 @@ export const DEMO_JOURNEY_STRINGS = {
   coachShow: "İpucunu ekranda göstər",
   voiceOn: "Bələdçini səsləndir",
   voiceOff: "Səsi söndür",
+  voiceUnblock: "Bələdçini dinləyin",
   coachArrowFallback: "Buraya basın",
   // The arrow's words on a step's first control, when the step takes two clicks.
   arrowOpenAiTab: "«Da Vinci Reytinq» vərəqini açın",

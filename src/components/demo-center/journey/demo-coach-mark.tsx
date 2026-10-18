@@ -2,11 +2,12 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react"
 import { useReducedMotion } from "framer-motion"
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, SkipForward, Volume2, VolumeX, X } from "lucide-react"
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronLeft, ChevronRight, SkipForward, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { DemoStepPlacement } from "@/lib/demo-center/journey"
 import { findDemoTarget, hasLayoutBox } from "./demo-target"
+import { GuideVoiceSwitch } from "./guide-voice-switch"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 
 /**
@@ -57,7 +58,7 @@ export interface DemoCoachMarkProps {
   onClose: () => void
   onMissing: (missing: boolean) => void
   /** The talking guide's switch — here, because on a phone this card is what is on screen. */
-  voice?: { on: boolean; onToggle: () => void }
+  voice?: { on: boolean; blocked: boolean; onToggle: () => void; onUnblock: () => void }
   /** Step id whose `data-demo-target` control the arrow points at (action steps). */
   targetStepId?: string
   /** Words on the arrow, verb first. */
@@ -290,7 +291,7 @@ export function DemoCoachMark({
         ? previous
         : { width: box.width, height },
     )
-  }, [title, instruction, counter, mode, rect, targetRect, collapsed, voice?.on])
+  }, [title, instruction, counter, mode, rect, targetRect, collapsed, voice?.on, voice?.blocked])
 
   // Move focus to the card so screen readers announce the step; the control
   // itself stays reachable with Tab.
@@ -360,10 +361,48 @@ export function DemoCoachMark({
         </button>
       )
     }
-    // The arrow's tip sits on the control's centre line, right at the ring;
-    // the words sit beyond it. Above the control, or below when there is no room.
     const glyph = 18
     const pillHeight = 26
+    // Beside a row-sized control first, on its own line (owner, 2026-10-18,
+    // «указки стрелками не всегда понятны»): above it, the words sat on the
+    // row before — «Elvin Qasımovu seçin» over Aysu Kərimli's name — and the
+    // arrow's tip was lost between two rows. On the same line the words can
+    // only be about this one. Right of it, else left; above or below only for
+    // something taller than a row, or with no room at either side.
+    const sidePillWidth = Math.min(240, 28 + arrowLabel.length * 7)
+    const sideRoom = 4 + glyph + 4 + sidePillWidth
+    const rowSized = ring.height <= 72
+    const middle = clamp(ring.top + ring.height / 2, VIEWPORT_MARGIN + pillHeight / 2, viewHeight - VIEWPORT_MARGIN - pillHeight / 2)
+    const toRight = rowSized && ring.left + ring.width + sideRoom <= viewWidth - VIEWPORT_MARGIN
+    const toLeft = rowSized && !toRight && ring.left - sideRoom >= VIEWPORT_MARGIN
+    if (toRight || toLeft) {
+      const glyphLeft = toRight ? ring.left + ring.width + 4 : ring.left - 4 - glyph
+      const SideGlyph = toRight ? ArrowLeft : ArrowRight
+      return (
+        <>
+          {ringElement}
+          <div aria-hidden="true" data-testid="demo-coach-arrow" data-side={toRight ? "right" : "left"} className="pointer-events-none">
+            <SideGlyph
+              className={cn("fixed z-[10002] text-[#c2410c] drop-shadow", !reducedMotion && "motion-safe:animate-pulse")}
+              style={{ left: glyphLeft, top: middle - glyph / 2, width: glyph, height: glyph }}
+              strokeWidth={3}
+            />
+            <span
+              className={cn("fixed z-[10002] flex", toRight ? "justify-start" : "justify-end")}
+              style={{
+                left: toRight ? glyphLeft + glyph + 4 : glyphLeft - 4 - sidePillWidth,
+                width: sidePillWidth,
+                top: middle - pillHeight / 2,
+              }}
+            >
+              <span className="max-w-full truncate rounded-full bg-[#c2410c] px-3 py-1 text-xs font-semibold leading-[18px] text-white shadow-lg">{arrowLabel}</span>
+            </span>
+          </div>
+        </>
+      )
+    }
+    // The arrow's tip sits on the control's centre line, right at the ring;
+    // the words sit beyond it. Above the control, or below when there is no room.
     const room = 4 + glyph + 4 + pillHeight
     const above = ring.top - room >= VIEWPORT_MARGIN
     const below = !above && ring.top + ring.height + room <= viewHeight - VIEWPORT_MARGIN
@@ -418,8 +457,14 @@ export function DemoCoachMark({
     right: space.right >= width,
     left: space.left >= width,
   }
+  // A row-sized control — a table row, a button in a toolbar — gets the card
+  // beside it: below or above, the card lay over the next rows and its notch
+  // was easy to read as pointing at one of them (owner, 2026-10-18).
+  const rowSizedTarget = ring.height <= 72
   const preferred: Exclude<DemoStepPlacement, "auto">[] =
-    placement === "auto" ? ["bottom", "top", "right", "left"] : [placement, "bottom", "top", "right", "left"]
+    placement === "auto"
+      ? rowSizedTarget ? ["right", "left", "bottom", "top"] : ["bottom", "top", "right", "left"]
+      : [placement, "bottom", "top", "right", "left"]
   const fitting = preferred.find((candidate) => fits[candidate])
   // Nothing fits whole: take the side with the most room and make the card
   // shorter there (its body scrolls), which still leaves the control visible.
@@ -484,7 +529,9 @@ export function DemoCoachMark({
   return (
     <>
       {ringElement}
-      {ringOnScreen ? (
+      {/* Beside the control the card's notch already points at it; a second
+          arrow above it would sit on the row before. */}
+      {ringOnScreen && !(caret && (side === "left" || side === "right")) ? (
         <CardGlyph
           aria-hidden="true"
           data-testid="demo-coach-ring-arrow"
@@ -523,17 +570,14 @@ export function DemoCoachMark({
         <p className="mt-1 text-sm font-semibold leading-tight">{title}</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{instruction}</p>
         {voice ? (
-          <Button
-            size="sm"
-            variant={voice.on ? "secondary" : "outline"}
-            className="mt-2 h-7 px-2.5 text-xs"
-            aria-pressed={voice.on}
-            data-testid="demo-coach-voice"
-            onClick={voice.onToggle}
-          >
-            {voice.on ? <VolumeX className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> : <Volume2 className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />}
-            {voice.on ? S.voiceOff : S.voiceOn}
-          </Button>
+          <GuideVoiceSwitch
+            className="mt-2 h-7 px-2.5"
+            testId="demo-coach-voice"
+            on={voice.on}
+            blocked={voice.blocked}
+            onToggle={voice.onToggle}
+            onUnblock={voice.onUnblock}
+          />
         ) : null}
         {pointsAtControl ? (
           <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[#c2410c] dark:text-orange-300">

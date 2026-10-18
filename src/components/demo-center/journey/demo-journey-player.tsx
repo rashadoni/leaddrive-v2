@@ -465,8 +465,11 @@ export function DemoJourneyPlayer({
                   variant={variant}
                   compact={reviewMode || stepIndex > 0}
                   onClipEvent={(name) => {
-                    // A clip carries its own voiceover: the guide falls silent for it.
+                    // A clip carries its own voiceover: the guide falls silent for
+                    // it, and picks the step up again when it ends — before, the
+                    // rest of the chapter's first step went unsaid.
                     if (name === "video.started") voice.stop()
+                    if (name === "video.completed" && step) voice.play(stepVoiceUrl(step))
                     reporterRef.current?.report({ eventType: "JOURNEY", name, sectionId: viewSection.id })
                   }}
                 />
@@ -532,7 +535,7 @@ export function DemoJourneyPlayer({
             onSkip={() => dispatch({ type: "skip-step", stepId: step.id })}
             onClose={() => setHiddenCoachKey(coachKey)}
             onMissing={setAnchorMissing}
-            voice={{ on: voice.on, onToggle: () => voice.toggle(stepVoiceUrl(step)) }}
+            voice={{ on: voice.on, blocked: voice.blocked, onToggle: () => voice.toggle(stepVoiceUrl(step)), onUnblock: voice.unblock }}
           />
         )}
       </section>
