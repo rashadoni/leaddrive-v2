@@ -2887,3 +2887,37 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   full-history/lifecycle and resource evidence, commissioned independently
   verified recovery and actual second-operator approval. The nominated person
   is not presumed to have signed or performed that drill. No100% claim.
+
+### Owner-reported outage; diagnosis only, Claude handling recovery — 2026-10-18 16:35 UTC
+
+- Owner reports the site down and asks whether Kafka caused it; subsequently
+  states Claude is trying to restore it. This turn is read-only diagnosis, not
+  an authorization inferred for a concurrent restart, rollback or new deploy.
+- At16:32:40Z marketing leaddrivecrm.org returned200. CRM public ping,
+  build-info and login each exceeded the15-second request timeout16:32:55Z.
+  At16:33:56Z TCP connection probes to registered production ports22/80/443
+  all timed out after6seconds. A single bounded production SSH attempt also
+  timed out before authentication/remote command execution. These results
+  establish reachability failure from this development host, not its cause
+  or proof the machine is powered off. Development host itself is reachable
+  with roughly13GiB available memory; it is not the production host.
+- Independent read-only GitHub correlation found main stillf41ba033 and no
+  later production deployment through16:34Z. Our normal deployment restarted
+  app/softphone16:11:04Z, then health/ping/login/assets passed. Exact public
+  receipt16:12:32Z and aggregate inventory16:13:30Z precede this incident.
+  That inventory had roughly83% available memory/85% free appdisk, replica
+  WAL, zero CDC slots and absent outbox publication. These are historical
+  observations, not current host metrics. No actual OOM evidence was found
+  in the completed deployment log; current kernel/service logs are unavailable.
+- Kafka integration stacks ran on disposable GitHub Linux runners, not this
+  production host. No production Kafka activation or replay was performed by
+  this task. Evidence therefore weighs against Kafka/CDC resource overload,
+  but does not rule out another effect of the normal app release or establish
+  a provider/network/firewall/host root cause.
+- No incident workflow, restart, restore, rollback, offset change, production
+  mutation or competing recovery was started. Claude owns the ongoing restore
+  according to the owner. Precise stopping point: production is unreachable
+  from this task; current host/kernel/service evidence is missing. Next after
+  reachability returns: correlate reboot/OOM/service logs with16:11–16:34UTC,
+  recheck live artifact/ping, and separate application fault from host/network
+  fault without a speculative rollback.
