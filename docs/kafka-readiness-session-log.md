@@ -2423,3 +2423,30 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   matches unchanged origin/main, builtAt11:50:47Z; ping ok=true. This proves
   only the predecessor app is healthy. Source branch remains frozen at7ec815;
   local documentation checkpoints are not additional published code revisions.
+
+### PR880 verified and merged; release pending — 2026-10-18 13:20 UTC
+
+- Actual final-head PR run39129612882 completed SUCCESS on exact7ec815288af3465428ec6694d60d7b47b7bbaecf.
+  Root read the logs:278/278 focused units,14/14 actual restricted-PostgreSQL
+  tests PASS; full test baseline18=18 with no new failures. Typecheck baseline
+ 64 gated pairs=64 with1326 existing advisory diagnostics; both blocking gates
+  passed. This is not a claim that the entire repository has zero diagnostics.
+- All five live required contexts were SUCCESS, bound to Actions app15368;
+  enforce_admins enabled, force push/deletion forbidden. Broker/stack/CDC and
+  tooling final-head runs also SUCCESS. An independent read-only review
+  confirmed the inactive runtime boundary; no external review gate was added.
+- Main advanced7868ec2 to759ffddd832e026574cbd10d5873b8ed3e8f50de via unrelated
+  PR879 while checks ran. Root fetched/reviewed the non-overlapping demo-only
+  path delta and preserved its active deploy39130903381. No cancellation or
+  duplicate dispatch. Production routing and release workflow remain unchanged.
+- Normal head-bound merge of PR880 completed13:20:11Z, merge SHA
+  e1e50cb5032f21f5f6295006420126ede28a52d5. No admin bypass/direct main push.
+  Automatic exact-merge release, immutable artifact and public smoke remain
+  PENDING. Local journal checkpoints stay preserved and are not pushed to
+  disturb the completed source revision.
+- Next programming increment is a combined actual Kafka + restricted-PG
+  disposable drill using the existing Fund worker composition. Preserve the
+ 15-second SQL transaction timeout; takeover holds must occur after the real
+  SQL COMMIT, not inside an extended transaction. This is a plan, not executed
+  proof. No production consumer, offset, replay, WAL/slot, recovery ceremony
+  or human approval was created by this merge.
