@@ -585,3 +585,21 @@ K8 activation, независимое восстановление, HA и all-mo
 пик/сутки/tenant skew и не согласованный лимит слота/простоя. K0.3/K2.2
 остаются partial; source всё ещё replica/slots0/publication absent/cap-1.
 Restore не выполнялся; четыре recovery timers inactive; activation не было.
+
+### PR873 доставлен; новый recovery report ожидается — 2026-10-18 04:54 UTC
+
+Следующий report-only change завершён: PR873 actual five required SUCCESS на
+a222b769f2cd773e80177b7e8403591f721e1d7f, normal merge24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2.
+Deploy39096745285 whole SUCCESS04:52:25Z: diagnostic/freshness12/12,
+Fund121/121, realPG10/10, baseline18=18; runtime structural ledger/RLS/
+ownership/exact-money/Fund и ping/revision/login/assets подтверждены. Root
+независимо сверил public exact24ce artifactSha и успешный ping.
+
+Исправлена ложная свежесть пустой даты и добавлены фиксированные service
+категории без раскрытия сырых ошибок. Это не исправление storage policy или
+свидетельство backup/restore. K2.1/K3.2/K3.6 по-прежнему открыты. После whole
+delivery запущен ровно один protected read-only readiness39098707822 на24ce;
+его новый verdict PENDING, предыдущий завершённый остаётся22issues/9gaps.
+Не запускать старый report повторно ради зелёного результата; не включать
+timers/шифрование, не менять ключи/retention и не начинать source CDC/replay
+на основании одного merge/deploy. K4 broker worker и K8 activation не закрыты.

@@ -1969,3 +1969,36 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   released source is still frozen reviewed a222b769f, merged normally as24ce.
   Kafka activation, offsets, replay, backup/restore and policy/key/timer changes
   were not performed or inferred from artifact-build success.
+
+## 2026-10-18 04:54 UTC — PR873 delivered and independently checked
+
+- Deploy39096745285 whole SUCCESS04:52:25Z, attempt1, exact merged main
+  24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2. Quality117584684792 finished
+  SUCCESS04:45:04Z: diagnostic/freshness12/12, Fund121/121, restricted-LOGIN
+  real PostgreSQL10/10, baseline18 failing files=18 known PASS04:45:01Z.
+  Its long baseline stage finished normally; no timeout/retry/gate weakening.
+- Runtime117588820864 SUCCESS04:51:51Z. Completed log: existing Fund cutover
+  already durably verified04:50:28.197Z; structural ledger/RLS/ownership/
+  exact-money/Fund projection postconditions verified04:50:52.858Z. Atomic
+  deploy04:47:38→04:51:38Z; public DB-path ping step SUCCESS04:51:46Z;
+  actual login200 and hashed CSS/JS200 feature smoke04:51:48.821Z.
+  Retention117589952332 SUCCESS04:52:24Z; artifact metadata remains as above.
+- Root independently checked public build-info at04:53UTC: artifactSha EXACT
+  24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2, builtAt04:29:44Z; ping ok=true.
+  Fresh main matches. This supersedes the preceding pending-runtime notes,
+  not the failed recovery verdict or inactive Kafka/source state.
+- No active existing inspection found. After those receipts, root dispatched
+  ONE main-only protected read-only backup-readiness39098707822 at04:54:23Z,
+  expected_main_sha exact24ce. It is QUEUED at this entry; new live category,
+  issue count and freshness findings remain PENDING. Whole report may correctly
+  FAIL closed while recovery prerequisites remain unmet; do not rerun unchanged.
+- Read-only app-thread discovery found a separate historical Mac Contabo-file
+  backup session. Its October6 text records file-copy/hash receipts, incomplete
+  later roundtrip and application runtime0/9. These historical copies do not
+  prove current LeadDrive production13.140.132.245 restore, key custody or a
+  signed independent operator drill. No other task was woken/messaged, no
+  credentials/private keys read and no Drive or browser transfer initiated.
+- No backup/restore/commissioning, runtime policy/encryption/key/timer, source
+  logical-WAL/restart/slot/publication, consumer/offset/replay or paid-service
+  action was performed through this report-code delivery. Local-only docs
+  checkpoints stay preserved and unpushed; no later local SHA entered release.

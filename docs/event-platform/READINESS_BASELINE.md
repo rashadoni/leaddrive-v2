@@ -388,3 +388,30 @@ This is cluster-wide WAL over an interval that includes a deployment, NOT
 canonical-event throughput, peak/day rate, tenant skew, RPO/RTO or an approved
 slot/outage budget. Do not extrapolate it to approve logical-WAL activation.
 No SQL/config/service/source/consumer/offset/replay mutation or new subscription.
+
+### Refined report source delivered — 2026-10-18 04:54 UTC
+
+[PR873](https://github.com/rashadoni/leaddrive-v2/pull/873) passed all five
+actual required checks on a222b769f2cd773e80177b7e8403591f721e1d7f and was
+normally merged as24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2. It adds only
+fixed public service-error categories and fail-closed successful-run timestamp
+validation; it does not change storage policy, credentials, timers or backups.
+The empty-date negative control proves the old source can falsely PASS with
+synthetic default metadata, not that such metadata occurred in production.
+
+[Deploy39096745285](https://github.com/rashadoni/leaddrive-v2/actions/runs/39096745285)
+whole SUCCESS04:52:25Z, attempt1: diagnostic/freshness12/12, Fund121/121,
+restricted-login real PostgreSQL10/10, baseline18=18; build/runtime/retention
+SUCCESS. Artifact12125357695 is bound to exact24ce. Runtime structural
+ledger/RLS/ownership/exact-money/Fund postconditions verified04:50:52.858Z;
+the existing Fund cutover was already durably verified, not re-executed.
+Ping/revision/login/hashed-assets smoke passed. Root independently checked
+public artifactSha EXACT24ce and ok=true ping; builtAt04:29:44Z.
+
+After whole delivery and confirming current main/no active inspection, root
+dispatched exactly one protected main-only read-only
+[readiness39098707822](https://github.com/rashadoni/leaddrive-v2/actions/runs/39098707822)
+at04:54:23Z with expected_main_sha exact24ce. New service category/summary
+is PENDING here; the preceding22issues/9gaps/service_error remains the last
+completed observation. A failed readiness gate is not a failed app deployment.
+No recovery, source CDC, consumer, offset or replay action was performed.
