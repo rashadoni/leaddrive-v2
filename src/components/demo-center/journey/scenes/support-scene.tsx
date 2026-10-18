@@ -656,6 +656,7 @@ function CustomerSide({ ticket, resolvedAt, confirmed, onConfirm, onReject }: {
             error=""
             onSubmit={(action) => (action === "confirm" ? onConfirm() : onReject())}
             confirmButtonProps={demoTarget("sd-resolve-wait")}
+            timeZone={SUPPORT_DEMO_TIMEZONE}
           />
         </div>
       </div>

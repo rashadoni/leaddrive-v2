@@ -33,6 +33,7 @@ export function TicketClosureRequestView({
   error,
   onSubmit,
   confirmButtonProps,
+  timeZone,
 }: {
   request: TicketClosureRequest
   submitting: "confirm" | "reject" | null
@@ -41,6 +42,8 @@ export function TicketClosureRequestView({
   onSubmit: (action: "confirm" | "reject") => void
   /** Extra attributes for «Müraciəti bağla» — the demo points its guide at it. */
   confirmButtonProps?: Partial<ComponentProps<typeof Button>> & Record<`data-${string}`, string | undefined>
+  /** The clock to show the auto-close time on; the page leaves it to the customer's own. */
+  timeZone?: string
 }) {
   const t = useTranslations("portal")
   const locale = useLocale()
@@ -62,7 +65,7 @@ export function TicketClosureRequestView({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
           <dt className="text-muted-foreground">{t("closureAutoClose")}</dt>
-          <dd className="font-medium"><time dateTime={request.dueAt}>{formatDateTime(request.dueAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time></dd>
+          <dd className="font-medium"><time dateTime={request.dueAt}>{formatDateTime(request.dueAt, locale, { dateStyle: "medium", timeStyle: "short", ...(timeZone ? { timeZone } : {}) })}</time></dd>
         </div>
       </dl>
 

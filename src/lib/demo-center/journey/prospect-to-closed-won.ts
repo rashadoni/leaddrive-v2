@@ -47,7 +47,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     // refused by policy rather than improvised (assistant/policy.ts).
     assistant: true,
   },
-  estimatedMinutes: 77,
+  estimatedMinutes: 78,
   sections: [
     {
       id: "orientation",
@@ -939,11 +939,12 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       standalone: true,
       steps: [
         {
-          // whatsapp-inbound-ticket.ts: one open ticket per phone — a later
-          // message joins it while it is new, open or in progress.
+          // whatsapp-inbound-ticket.ts joins a later message to the phone's
+          // open ticket; before it, ticket-reopen.ts reopens a known contact's
+          // resolved or closed WhatsApp ticket (webhooks/whatsapp/route.ts).
           id: "sd-ticket-context",
           title: "Bilet WhatsApp-dan özü açılıb",
-          instruction: "Müştərinin ilk WhatsApp mesajı bileti özü açıb, ikincisi yeni bilet açmayıb — eyni biletə düşüb: bilet yeni, açıq və ya işdə olduqca belə olur. Altda komanda rəhbərinin daxili qeydi var — onu müştəri görmür.",
+          instruction: "Müştərinin ilk WhatsApp mesajı bileti özü açıb, ikincisi yeni bilet açmayıb — eyni biletə düşüb. Altda komanda rəhbərinin daxili qeydi var — onu müştəri görmür.",
           anchor: "sd-ticket-thread",
           placement: "top",
           action: "observe",
@@ -1001,7 +1002,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       area: "support",
       route: "/tickets",
       navGroup: "support",
-      estimatedMinutes: 2,
+      estimatedMinutes: 3,
       requires: [],
       entryStates: ["CLOSED_WON"],
       exitStates: ["CLOSED_WON"],
@@ -1036,6 +1037,20 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
           covers: ["support.ticket.closure", "support.ticket.customer-side"],
           result: "Müştəri təsdiqlədi — bilet bağlandı.",
           analyticsEvent: "journey.step_completed",
+        },
+        {
+          // Confirming closes the ticket (closure-requests.ts); a later message
+          // from a known contact reopens it and counts a reopen (ticket-reopen.ts).
+          id: "sd-resolve-closed",
+          title: "Bilet bağlandı",
+          instruction: "Müştəri təsdiqlədi: bilet «Bağlı» statusuna keçdi, bağlama sorğusu «Təsdiqləndi», müştərinin səhifəsi isə ona təşəkkür edir. Müştəri sonra yenə yazsa, yeni bilet açılmır — bu bilet yenidən açılır və təkrar açılma kimi sayılır.",
+          anchor: "sd-resolve-customer",
+          placement: "top",
+          action: "observe",
+          required: true,
+          completion: { kind: "viewed" },
+          covers: ["support.ticket.customer-side"],
+          analyticsEvent: "journey.step_viewed",
         },
       ],
     },

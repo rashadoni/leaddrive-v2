@@ -959,9 +959,16 @@ describe("the Service Desk module", () => {
 
     await act(async () => findDemoTarget("sd-resolve-wait")!.click())
     await settle()
-    // Confirmed: the chapter is done and the guide says what happened.
+    // Confirmed, and shown: the ticket reads closed, the request confirmed, the customer thanked.
+    expect(frontier().stepId).toBe("sd-resolve-closed")
+    expect(textOf('[data-tour-id="sd-ticket-status"]')).toContain(messages.tickets.statusClosed)
+    expect(textOf('[data-tour-id="sd-resolve-closure"]')).toContain(messages.tickets.closureRequestConfirmed)
+    expect(textOf('[data-tour-id="sd-resolve-customer"]')).toContain(messages.portal.closureConfirmedMessage)
+    // The agent's card and the customer's page give one auto-close time, on Baku's clock.
+    const { SUPPORT_DEMO_TIMES } = await import("@/components/demo-center/journey/scenes/support-demo-data")
+    expect(textOf('[data-tour-id="sd-resolve-customer"]')).toContain(SUPPORT_DEMO_TIMES.resolved)
+    await walkTo("sd-rules-sla")
     expect(frontier().sectionId).toBe("sd-rules")
-    expect(document.body.textContent).toContain(steps.get("sd-resolve-wait")!.result!)
   }, 60_000)
 
   it("shows the agent's month as the product's own arithmetic", async () => {
