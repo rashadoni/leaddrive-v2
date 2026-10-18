@@ -544,3 +544,9 @@
   shell/diff checks PASS. Full exact merged-source verification goes to GitHub.
 - Prior follow-up checks0cc5e87ba are superseded for final acceptance because
   the source now includes current main. No stale source acceptance substituted.
+
+- Merged-source e7f6e44ae6da8c3cac7b18188596a8c1b30644db narrow CI PASS:
+  owner39173688242,pgpass39173688265,tenant39173688241,scan39173688257,
+  runner39173688250. Protected static/type39173688248 remain in progress.
+  Mac-tested workbench/owner key verifier files are byte-identical to430c,
+  verified with path-scoped git diff; no key/VM re-creation needed.
