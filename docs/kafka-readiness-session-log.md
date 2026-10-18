@@ -2355,3 +2355,36 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   not claimed as passed. Final guard/config+wiring suite9/9 PASS, targeted
   strict ES2017 TypeScript rerun PASS after fixture additions; Java compilation
   and broker integration remain NOT RUN on this development host by policy.
+
+### Frozen PR880 submitted — 2026-10-18 12:46 UTC
+
+- Checkpoint a094193d41331810bcc74220365ac5c414042d0c pushed to the dedicated
+  origin branch; PR880 created as draft, exact API head verified, then marked
+  ready. No subsequent code push or duplicate retry. Draft-only integration
+  skips are not accepted as proof; the ready event started actual workflows.
+- Real broker run39128688023 is pending the shared integration queue. One
+  helper owns read-only monitoring of this run; root owns remaining checks.
+  Required static/typecheck, actual Java/broker/CDC/PG evidence and release
+  remain pending. No merge or runtime mutation has occurred in this phase.
+
+### Final-review correction before merge — 2026-10-18 12:53 UTC
+
+- Added a negative header-name BOM test: it FAILS on a094 because TextDecoder
+  silently strips the BOM and aliases a different identifier. Fixed by
+  preserving BOM bytes as part of the decoded name; adapter89/89 now PASS.
+  No production data was used. This is a code-review regression, not an
+  allegation of an observed production exploit.
+- Returned PR880 to draft while retaining the existing running attempts for
+  real-broker diagnostics. No cancellation/manual retry. The correction is
+  local until the current integration evidence is collected; a subsequent
+  frozen head must pass all actual checks before normal merge. a094 results
+  alone will not authorize delivery of the revised source.
+- Real broker39128688023 whole SUCCESS12:52:29Z on a094. Root independently
+  read all13 PASS markers: ordered restart, poison/no ACK, pre-send ACK loss,
+  post-commit receipt loss, transaction holes, missing offset, compaction,
+  expired history, recreated topic, retention/recreation during DB work,
+  expired membership and concurrent takeover. Java compiled against actual
+  pinned broker jars and cleanup succeeded. This is actual broker proof with
+  simulated database effects, not combined production acceptance/activation.
+  Disposable stack39128687970 also SUCCESS. Current old-head static/typecheck
+  continue; synthetic CDC39128688071 is running. No manual job retry was made.

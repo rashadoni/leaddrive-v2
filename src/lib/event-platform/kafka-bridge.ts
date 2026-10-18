@@ -173,7 +173,9 @@ export async function runKafkaBridge(input: {
         for (let index = 6; index < frame.length; index += 2) {
           const nameBytes = decode(frame[index]), bytes = decode(frame[index + 1])
           requireFrame(nameBytes && nameBytes.length > 0 && nameBytes.length <= 128 && bytes)
-          const name = new TextDecoder("utf-8", { fatal: true }).decode(nameBytes)
+          // Header identifiers are exact strings, not text documents: a BOM
+          // must remain part of the name rather than alias a trusted header.
+          const name = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(nameBytes)
           size += nameBytes.length + bytes.length
           const previous = headers[name]
           if (previous === undefined) headers[name] = bytes

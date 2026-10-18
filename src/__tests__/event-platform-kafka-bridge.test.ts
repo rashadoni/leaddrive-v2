@@ -164,6 +164,13 @@ describe("Kafka private bridge adapter", () => {
     expect(Buffer.isBuffer(incoming.value)).toBe(true)
   })
 
+  it("preserves a header-name BOM rather than aliasing a different trusted header", async () => {
+    const h = harness([READY, assigned(), record("0", { headers: [["\uFEFFeventId", "untrusted-name"]] }), "COMMITTED\t1\t1"])
+    await h.run()
+    expect(h.apply.mock.calls[0][0].headers?.["\uFEFFeventId"]).toEqual(Buffer.from("untrusted-name"))
+    expect(h.apply.mock.calls[0][0].headers?.eventId).toBeUndefined()
+  })
+
   it("does not acknowledge an adapter DB failure or request another record", async () => {
     const failure = new Error("synthetic deferred database COMMIT failure")
     const h = harness([READY, assigned(), record(), "COMMITTED\t1\t1", record("1")], {

@@ -710,3 +710,27 @@ The previously recorded recovery23/9 NO-GO is historical and not superseded
 by app health. Broker driver, actual rebalance/retention integration, runtime
 provisioning, independent restore, read cutover and K8 activation remain open.
 Consumer activation, offsets and replay were not changed by PR877.
+
+### K4 broker driver: real failure drill, final revision pending — 2026-10-18
+
+PR880 adds an inactive Apache Kafka4.3.1 classic/EAGER Java bridge plus a
+bounded private-pipe adapter for the existing partition coordinator. Actual
+broker run39128688023 SUCCESS12:52:29UTC on sourcea094193d41331810bcc74220365ac5c414042d0c:
+13 scenarios passed, including expired membership, concurrent takeover,
+retention and topic recreation during database-callback work, restart,
+transaction holes and pre-send/post-commit acknowledgement uncertainty.
+Fixture cleanup passed. Database effects in this fixture are simulated;
+the independent restricted-PostgreSQL gate remains mandatory.
+
+Final review then reproduced a header-name BOM normalization defect. The
+local correction preserves the exact identifier and passes89 adapter tests.
+PR880 returned to draft; updated exact-head checks/broker proof, normal merge
+and production artifact verification are still pending at this entry. Do not
+infer that the old passing run certifies the revised source or an active worker.
+
+This advances K4 implementation, not all K4/K8 admission. Combined actual
+Kafka+restricted-DB failure testing, runtime entrypoint/provisioning,
+durable lifecycle/leases, protected broker topology/ACLs and full-history
+coverage, independently verified recovery, monitoring and separately governed
+activation/read-cutover remain open. No production consumer/offset/replay,
+source WAL/slot, recovery commissioning or new service purchase occurred.
