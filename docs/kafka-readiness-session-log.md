@@ -1908,3 +1908,27 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   NOT peak/day/event/tenant rate, outage/slot approval or RPO/RTO. Capacity,
   logical-WAL maintenance and all Kafka runtime gates remain open. Baseline
   and backlog updated locally; frozen a222 source CI is not disturbed.
+
+## 2026-10-18 04:20 UTC — PR873 verified and normally merged
+
+- Full39095643498 SUCCESS04:18:46Z on exact frozen
+  a222b769f2cd773e80177b7e8403591f721e1d7f. Completed logs: diagnostic/freshness
+  12/12 with real timeout/KILL/no residual fixture PID; Fund43+78=121/121;
+  restricted-LOGIN PostgreSQL10/10; baseline18=18 PASS04:18:42Z.
+  Typecheck117581470258 SUCCESS04:12:55Z,64 gated pairs=64 baseline,
+  1326 advisory diagnostics overall/zero in five own Fund TS paths. Separate
+  pgpass39095643679 actual30/30 with real libpq SUCCESS04:02:11Z.
+- Root re-read current origin/maince71, PR head/base/mergeability and all five
+  actual required SUCCESS contexts from Actions app15368. Protection remains
+  enforce_admins=true, PR-only, force/delete=false; documented/registered
+  production13.140.132.245:/opt/leaddrive-v2 and GitHub Actions route agree.
+  Old draft skipped gates were not used; no bypass or retry was introduced.
+- Normal match-head merge PR873 at04:20:25Z produced new main
+  24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2. Automatic deploy39096745285
+  queued04:20:28Z, build117584684571/quality117584684792 now in progress.
+  One helper monitors only this release; root will verify public SHA/ping and
+  actual feature/whole-workflow receipt before one refined read-only report.
+- Four local-only journal/Payments/WAL commits after a222 were preserved and
+  NOT pushed into its active CI or merged by accident. No payment application
+  code, runtime Kafka, replay, provider policy/key, timer or backup/restore
+  change was authorized/performed through this ordinary report-code delivery.
