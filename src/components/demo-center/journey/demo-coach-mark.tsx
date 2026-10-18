@@ -163,10 +163,14 @@ export function DemoCoachMark({
     const sidewaysInView = !clippedSideways(element, box)
     if (verticallyInView && sidewaysInView) return
     scrolledFor.current = stepKey
+    // A region taller than the screen cannot be shown whole, and its middle is
+    // the least useful part: the AI agent's full-height prompt hid its label
+    // and «# Rol», which the step names. Such a region lines up by its top.
+    const taller = box.height > window.innerHeight
     element.scrollIntoView({
       behavior: reducedMotionRef.current ? "auto" : "smooth",
       // Already in view vertically: only the rail moves, the page stays put.
-      block: verticallyInView ? "nearest" : "center",
+      block: verticallyInView ? "nearest" : taller ? "start" : "center",
       inline: "nearest",
     })
   }

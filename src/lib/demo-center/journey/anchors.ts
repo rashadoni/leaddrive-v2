@@ -34,6 +34,7 @@ const GUIDE = "src/components/demo-center/journey/demo-journey-guide.tsx"
 const LEAD_SCENE = "src/components/demo-center/journey/scenes/lead-scene.tsx"
 const CAMPAIGN_SCENE = "src/components/demo-center/journey/scenes/campaign-scene.tsx"
 const INBOX_SCENE = "src/components/demo-center/journey/scenes/inbox-scene.tsx"
+const AI_AGENT_SCENE = "src/components/demo-center/journey/scenes/ai-agent-scene.tsx"
 const BOARD_SCENE = "src/components/demo-center/journey/scenes/board-scene.tsx"
 const DEAL_SCENE = "src/components/demo-center/journey/scenes/deal-scene.tsx"
 const QUOTE_SCENE = "src/components/demo-center/journey/scenes/quote-scene.tsx"
@@ -89,6 +90,11 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "inbox-composer": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Reply / internal note composer" },
   "inbox-ai-draft": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "AI draft review panel" },
   "inbox-contact-panel": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Contact side panel" },
+  "inbox-reply-matrix": { area: "inbox", scene: AI_AGENT_SCENE, productFiles: [], label: "Who answers in each channel: Human / Draft / AI agent" },
+  "inbox-agent-prompt": { area: "inbox", scene: AI_AGENT_SCENE, productFiles: [], label: "The agent's system prompt, with its communication style" },
+  "inbox-agent-knowledge": { area: "inbox", scene: AI_AGENT_SCENE, productFiles: [], label: "The agent's knowledge base: facts apart from rules" },
+  "inbox-agent-settings": { area: "inbox", scene: AI_AGENT_SCENE, productFiles: [], label: "Model, reply language and temperature" },
+  "inbox-agent-sources": { area: "inbox", scene: AI_AGENT_SCENE, productFiles: [], label: "Published knowledge-base articles the AI answers from" },
 
   /* ── Sales → Leads (list) ── */
   "leads-list": { area: "leads", scene: LEAD_SCENE, productFiles: [LEADS_LIST], label: "Lead list heading" },

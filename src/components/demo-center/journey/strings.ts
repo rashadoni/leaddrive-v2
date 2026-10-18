@@ -127,7 +127,8 @@ export const DEMO_JOURNEY_STRINGS = {
   /** Keyed by the module's menu route — a module without a line fails demo-journey-manifest.test.ts. */
   moduleValue: {
     "/campaigns": "Hər müraciətin hansı kampaniyadan gəldiyi görünür — büdcəni nəticə verən kanala yönəltmək olur.",
-    "/inbox": "Bütün kanalların yazışması bir qutuda — müraciət itmir, AI cavabı yalnız sizin təsdiqinizlə gedir.",
+    "/inbox": "Bütün kanalların yazışması bir qutuda — müraciət itmir, söhbət komandada bir kliklə ötürülür.",
+    "/inbox/ai-agent": "AI agentin xarakteri, qaydaları və bilikləri bir ekranda yazılır, hər kanalda onun cavabının necə gedəcəyini isə Siz seçirsiniz.",
     "/leads": "Lid itmir: kim, haradan gəlib və nə qədər hazırdır — hamısı bir kartda.",
     "/boards": "Razılaşdırılan növbəti addım tapşırıq kimi lövhədə qalır — iş unudulmur.",
     "/deals": "Sövdələşmələr mərhələlərlə gedir — hansının harada olduğu bir baxışda görünür.",
@@ -141,6 +142,8 @@ export const DEMO_JOURNEY_STRINGS = {
   summarySkipped: "Keçildi",
   summaryAttribution: (campaign: string, amount: string) => `Mənbə «${campaign}» → qazanılmış sövdələşmə ${amount}`,
   demoButtonHint: "Bu düymə demoda simulyasiya edilir",
+  agentSetupReadOnly: "Bu, LeadDrive-ın öz AI agentinin ayarlarıdır — demoda dəyişdirilmir. Öz hesabınızda bu sahələri özünüz doldurursunuz.",
+  agentArticleHint: "Məqalə Bilik bazası modulunda açılır — bu demoda yalnız siyahısı göstərilir.",
   simulatedSend: "simulyasiya",
   aiDraftReason: "Bu kanalda «yalnız qaralama» rejimi seçilib: cavabı operator təsdiqləməyincə göndərilmir. Başqa kanalda AI özü cavab verə bilər — bunu hər kanal üçün ayrıca seçirsiniz.",
   contactPanelTitle: "Müştəri",

@@ -76,7 +76,7 @@ export interface DemoJourneyGuideProps {
 export type DemoClipEvent = "video.started" | "video.completed" | "video.error"
 
 /** Chapters that show the live WhatsApp panel: the prospect's own conversation. */
-const WHATSAPP_SECTIONS = new Set(["conversation", "ai-reply"])
+const WHATSAPP_SECTIONS = new Set(["conversation", "ai-reply", "ai-agent-setup"])
 
 export function DemoJourneyGuide({
   manifest,

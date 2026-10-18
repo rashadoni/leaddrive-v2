@@ -57,8 +57,8 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
   },
   {
     area: "inbox",
-    title: "Communication → Gələnlər qutusu",
-    routes: ["/inbox"],
+    title: "Communication → Gələnlər qutusu və AI agent",
+    routes: ["/inbox", "/inbox/ai-agent"],
     sections: [
       { id: "inbox.views", label: "Представления: Все / Мои / Без ответственного / Чат-бот …", included: true, kind: "observe" },
       { id: "inbox.channels", label: "Каналы в рейке со счётчиками: клик оставляет диалоги одного канала", included: true, kind: "interactive" },
@@ -72,6 +72,14 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
       { id: "inbox.contact-panel", label: "Правая панель: контакт, теги, этап, связанный лид", included: true, kind: "observe" },
       { id: "inbox.calls", label: "Вкладка звонков и управление WhatsApp-звонком", included: false, reason: "Телефония выключена до Phase D; показывать кнопку звонка без возможности позвонить — обман." },
       { id: "inbox.bulk", label: "Массовые действия над диалогами", included: false, reason: "С одним диалогом клиента массовые действия бессмысленны." },
+      { id: "inbox.ai-agent.reply-matrix", label: "AI agent: кто отвечает в каждом канале — Человек / Черновик / AI агент", included: true, kind: "interactive" },
+      { id: "inbox.ai-agent.master-switch", label: "AI agent: главный переключатель «AI отвечает автоматически»", included: true, kind: "observe" },
+      { id: "inbox.ai-agent.prompt", label: "AI agent: системный промпт (роль, цель, правила) со стилем общения в конце", included: true, kind: "observe" },
+      { id: "inbox.ai-agent.knowledge", label: "AI agent: база знаний — факты отдельно от правил", included: true, kind: "observe" },
+      { id: "inbox.ai-agent.settings", label: "AI agent: модель, язык ответа, температура", included: true, kind: "observe" },
+      { id: "inbox.ai-agent.sources", label: "AI agent: опубликованные статьи базы знаний, из которых отвечает AI", included: true, kind: "observe" },
+      { id: "inbox.ai-agent.persona-extras", label: "AI agent: приветствие, «Передать человеку», «Автономная работа», экспорт и импорт", included: false, reason: "Показаны как в продукте, но гид их не разбирает: демо-агент в WhatsApp не использует ни приветствие, ни передачу человеку; автономная работа в живом аккаунте создаёт лиды и задачи; экспорт и импорт — перенос файла администратором." },
+      { id: "inbox.ai-agent.tiktok-cards", label: "AI agent: карточки дожимов и стоп-слов", included: false, reason: "Работают только для TikTok через Chatwoot, отвечать в TikTok сегодня нельзя; обе карточки читают сессию тенанта — в демо не показаны." },
     ],
   },
   {

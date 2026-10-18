@@ -3,13 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
-import { Bot, Loader2, Check, History, UserRoundCheck, Workflow, Download, Upload } from "lucide-react"
 import { toast } from "sonner"
 import {
   INBOX_QUALIFICATION_BOARD_PREFIX,
@@ -20,6 +13,7 @@ import {
   loadOrganizationFeatures,
   updateOrganizationFeature,
 } from "@/lib/client/organization-features"
+import { InboxAgentEditorView, type InboxAgent } from "@/components/settings/inbox-agent-editor-view"
 
 /**
  * Inbox AI agent persona editor — writes `AiAgentConfig(agentType="inbox")` (the
@@ -28,29 +22,11 @@ import {
  * (`Organization.features` "aiAutoReply") that the engine self-gates on. For AI to
  * actually answer a channel you need: this master ON + the channel set to "AI" in the
  * matrix below + (optional) a custom persona here.
+ *
+ * This is the container: it loads and saves for the signed-in tenant. What the
+ * card looks like is `InboxAgentEditorView` (./inbox-agent-editor-view.tsx),
+ * which the guided demo renders too.
  */
-
-const MODELS = [
-  { value: "claude-haiku-4-5-20251001", labelKey: "modelHaiku" },
-  { value: "claude-sonnet-4-6", labelKey: "modelSonnet" },
-  { value: "claude-opus-4-8", labelKey: "modelOpus" },
-]
-
-interface InboxAgent {
-  id?: string
-  systemPrompt: string
-  knowledgeBase: string
-  replyLanguage: string
-  model: string
-  temperature: number
-  escalationEnabled: boolean
-  greeting: string
-  autoLeadEnabled: boolean
-  autoAssignSales: boolean
-  autonomousBacklogEnabled: boolean
-  autonomousLookbackDays: number
-  autonomousBatchSize: number
-}
 
 const DEFAULTS: InboxAgent = {
   systemPrompt: "",
@@ -288,266 +264,36 @@ export function InboxAgentEditor() {
   if (loading) return <div className="h-48 bg-muted rounded-lg animate-pulse" />
 
   return (
-    <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card p-4 space-y-5">
-      <div className="flex items-start gap-2">
-        <Bot className="h-5 w-5 text-violet-500 mt-0.5 shrink-0" />
-        <div>
-          <h2 className="font-semibold">{t("personaTitle")}</h2>
-          <p className="text-sm text-muted-foreground">{t("personaDesc")}</p>
-        </div>
-      </div>
-
-      {/* Master switch — the org-level aiAutoReply flag the engine self-gates on. */}
-      <div className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 bg-muted/30">
-        <div className="pr-3">
-          <Label className="font-medium">{t("aiMasterToggle")}</Label>
-          <p className="text-xs text-muted-foreground">{t("aiMasterHint")}</p>
-        </div>
-        <Switch checked={aiOn} onCheckedChange={toggleAi} />
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <Label>{t("fieldPrompt")}</Label>
-          <Textarea
-            value={agent.systemPrompt}
-            onChange={(e) => setAgent((a) => ({ ...a, systemPrompt: e.target.value }))}
-            rows={6}
-            placeholder={t("fieldPromptHint")}
-            className="mt-1"
-          />
-        </div>
-
-        {/* Facts live apart from behaviour, as they do for the voice agent:
-            a price list changes often, the rules almost never, and mixing them
-            means every content edit risks disturbing how the agent behaves. */}
-        <div>
-          <Label>{t("fieldKnowledge")}</Label>
-          <Textarea
-            value={agent.knowledgeBase}
-            onChange={(e) => setAgent((a) => ({ ...a, knowledgeBase: e.target.value }))}
-            rows={8}
-            placeholder={t("fieldKnowledgeHint")}
-            className="mt-1"
-          />
-          <p className="mt-1 text-xs text-muted-foreground">{t("fieldKnowledgeHelp")}</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label>{t("fieldModel")}</Label>
-            <Select value={agent.model} onChange={(e) => setAgent((a) => ({ ...a, model: e.target.value }))} className="mt-1 w-full">
-              {MODELS.map((m) => (
-                <option key={m.value} value={m.value}>{t(m.labelKey)}</option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            {/* A brand that answers in one language has to be able to say so.
-                The default — follow the customer — is right for a mixed
-                audience and wrong for a single-language brand, and until now
-                there was no way to tell the two apart. */}
-            <Label>{t("fieldReplyLanguage")}</Label>
-            <Select
-              value={agent.replyLanguage}
-              onChange={(e) => setAgent((a) => ({ ...a, replyLanguage: e.target.value }))}
-              className="mt-1 w-full"
-            >
-              <option value="">{t("replyLanguageAuto")}</option>
-              <option value="az">{t("replyLanguageAz")}</option>
-              <option value="ru">{t("replyLanguageRu")}</option>
-              <option value="en">{t("replyLanguageEn")}</option>
-            </Select>
-            <p className="mt-1 text-xs text-muted-foreground">{t("fieldReplyLanguageHelp")}</p>
-          </div>
-          <div>
-            <Label>{t("fieldTemperature")} — {agent.temperature.toFixed(1)}</Label>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.1}
-              value={agent.temperature}
-              onChange={(e) => setAgent((a) => ({ ...a, temperature: parseFloat(e.target.value) }))}
-              className="mt-3 w-full accent-violet-500"
-            />
-          </div>
-        </div>
-
-        <div>
-          <Label>{t("fieldGreeting")}</Label>
-          <Input
-            value={agent.greeting}
-            onChange={(e) => setAgent((a) => ({ ...a, greeting: e.target.value }))}
-            placeholder={t("fieldGreetingHint")}
-            className="mt-1"
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
-          <div className="pr-3">
-            <Label className="font-medium">{t("fieldEscalation")}</Label>
-            <p className="text-xs text-muted-foreground">{t("fieldEscalationHint")}</p>
-          </div>
-          <Switch checked={agent.escalationEnabled} onCheckedChange={(v) => setAgent((a) => ({ ...a, escalationEnabled: v }))} />
-        </div>
-
-        <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4 dark:border-orange-900/60 dark:bg-orange-950/20">
-          <div className="flex items-start gap-2">
-            <Workflow className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" />
-            <div>
-              <h3 className="font-semibold">{t("autonomyTitle")}</h3>
-              <p className="text-sm text-muted-foreground">{t("autonomyDesc")}</p>
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between rounded-lg border bg-card p-3">
-              <div className="pr-3">
-                <Label className="flex items-center gap-1.5 font-medium">
-                  <UserRoundCheck className="h-4 w-4 text-orange-600" />
-                  {t("autoLeadTitle")}
-                </Label>
-                <p className="text-xs leading-5 text-muted-foreground">{t("autoLeadHint")}</p>
-              </div>
-              <Switch
-                checked={agent.autoLeadEnabled}
-                onCheckedChange={(value) => setAgent((current) => ({ ...current, autoLeadEnabled: value }))}
-              />
-            </div>
-
-            {agent.autoLeadEnabled && (
-              <div className="grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2">
-                <div>
-                  <Label>{t("autonomyBoardLabel")}</Label>
-                  <Select
-                    value={qualificationBoardId}
-                    onChange={(event) => setQualificationBoardId(event.target.value)}
-                    className="mt-1 w-full"
-                  >
-                    <option value="">{t("autonomyBoardPlaceholder")}</option>
-                    {boards.map((board) => (
-                      <option key={board.id} value={board.id}>{board.name}</option>
-                    ))}
-                  </Select>
-                  <p className="mt-1 text-xs text-muted-foreground">{t("autonomyBoardHint")}</p>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border bg-muted/20 p-3">
-                  <div className="pr-3">
-                    <Label className="font-medium">{t("autoAssignTitle")}</Label>
-                    <p className="text-xs leading-5 text-muted-foreground">{t("autoAssignHint")}</p>
-                  </div>
-                  <Switch
-                    checked={agent.autoAssignSales}
-                    onCheckedChange={(value) => setAgent((current) => ({ ...current, autoAssignSales: value }))}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="rounded-lg border bg-card p-3">
-              <div className="flex items-center justify-between">
-                <div className="pr-3">
-                  <Label className="flex items-center gap-1.5 font-medium">
-                    <History className="h-4 w-4 text-violet-500" />
-                    {t("backlogTitle")}
-                  </Label>
-                  <p className="text-xs leading-5 text-muted-foreground">{t("backlogHint")}</p>
-                </div>
-                <Switch
-                  checked={agent.autonomousBacklogEnabled}
-                  onCheckedChange={(value) =>
-                    setAgent((current) => ({ ...current, autonomousBacklogEnabled: value }))
-                  }
-                />
-              </div>
-              {agent.autonomousBacklogEnabled && (
-                <div className="mt-3 grid grid-cols-1 gap-3 border-t pt-3 sm:grid-cols-2">
-                  <div>
-                    <Label>{t("backlogDaysLabel")}</Label>
-                    <Select
-                      value={String(agent.autonomousLookbackDays)}
-                      onChange={(event) =>
-                        setAgent((current) => ({
-                          ...current,
-                          autonomousLookbackDays: Number(event.target.value),
-                        }))
-                      }
-                      className="mt-1 w-full"
-                    >
-                      <option value="1">1</option>
-                      <option value="3">3</option>
-                      <option value="7">7</option>
-                      <option value="14">14</option>
-                      <option value="30">30</option>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>{t("backlogBatchLabel")}</Label>
-                    <Select
-                      value={String(agent.autonomousBatchSize)}
-                      onChange={(event) =>
-                        setAgent((current) => ({
-                          ...current,
-                          autonomousBatchSize: Number(event.target.value),
-                        }))
-                      }
-                      className="mt-1 w-full"
-                    >
-                      <option value="5">5</option>
-                      <option value="10">10</option>
-                      <option value="20">20</option>
-                      <option value="50">50</option>
-                    </Select>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{t("saveError")}: {error}</p>}
-
-      <div className="flex items-center gap-3">
-        <Button onClick={save} disabled={saving} className="gap-1.5">
-          {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-          {t("saveBtn")}
-        </Button>
-        {savedTick && !saving && (
-          <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
-            <Check className="h-4 w-4" /> {t("saved")}
-          </span>
-        )}
-
-        {/* Moving this agent to another tenant. Copying the two text boxes by
-            hand looks equivalent and is not: the switches below them change
-            what the engine appends to the prompt, so the same words produce a
-            different assistant. The whole card travels as one file, with a
-            checksum, so a partial transfer fails instead of passing quietly. */}
-        <div className="ml-auto flex items-center gap-2">
-          <Button type="button" variant="outline" onClick={exportAgent} className="gap-1.5">
-            <Download className="h-4 w-4" /> {t("exportBtn")}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => importInputRef.current?.click()} disabled={importing} className="gap-1.5">
-            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {t("importBtn")}
-          </Button>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              // Cleared immediately so choosing the SAME file twice still fires
-              // a change event — otherwise a failed import cannot be retried.
-              event.target.value = ""
-              if (file) void importAgent(file)
-            }}
-          />
-        </div>
-      </div>
-    </div>
+    <InboxAgentEditorView
+      agent={agent}
+      onAgentChange={(patch) => setAgent((a) => ({ ...a, ...patch }))}
+      aiOn={aiOn}
+      onAiOnChange={toggleAi}
+      boards={boards}
+      qualificationBoardId={qualificationBoardId}
+      onQualificationBoardChange={setQualificationBoardId}
+      saving={saving}
+      savedTick={savedTick}
+      error={error}
+      onSave={save}
+      importing={importing}
+      onExport={exportAgent}
+      onImport={() => importInputRef.current?.click()}
+      importSlot={
+        <input
+          ref={importInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            // Cleared immediately so choosing the SAME file twice still fires
+            // a change event — otherwise a failed import cannot be retried.
+            event.target.value = ""
+            if (file) void importAgent(file)
+          }}
+        />
+      }
+    />
   )
 }
