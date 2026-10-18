@@ -209,7 +209,7 @@ export function RouteBuilderInlineAssignmentPanel({
       </div>
 
       {confirming ? (
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/20">
+        <div className="mt-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3">
           <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
             {t("inlineAssignmentTransferTitle", { name: confirming.name })}
           </p>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertTriangle, CheckCircle2, FilePlus2, Loader2, RefreshCw, WifiOff } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Hint, HintValue } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -377,11 +377,11 @@ export function PharmacyPromotionAgentCapture({ scopeKey }: { scopeKey: string }
 
   return (
     <>
-    <section className="border border-sky-200/80 bg-gradient-to-br from-sky-50/80 via-background to-background dark:border-sky-900/70 dark:from-sky-950/25" aria-labelledby="promotion-agent-capture-title">
+    <section className="border border-zinc-200 bg-card dark:border-zinc-700" aria-labelledby="promotion-agent-capture-title">
       <div className="grid gap-4 p-4 lg:p-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,.72fr)]">
         <div>
           <div className="flex items-start gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-600 text-white"><FilePlus2 className="h-5 w-5" /></span>
+            <span className="grid h-10 w-10 shrink-0 place-items-center text-muted-foreground"><FilePlus2 className="h-5 w-5" /></span>
             <div className="min-w-0"><h2 id="promotion-agent-capture-title" className="font-semibold tracking-tight">{t("title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p></div>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(190px,.75fr)_180px_auto]">

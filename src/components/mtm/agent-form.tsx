@@ -352,17 +352,17 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
               >
                 {key === "profile" ? tf("tabProfile") : tf("tabClients")}
                 {key === "clients" && clientChoice.contactIds.length > 0 ? (
-                  <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">+{clientChoice.contactIds.length}</span>
+                  <span className="ml-1.5 text-[11px] font-bold text-primary">+{clientChoice.contactIds.length}</span>
                 ) : null}
                 {key === "clients" && (clientChoice.removeIds?.length ?? 0) > 0 ? (
-                  <span className="ml-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-700 dark:bg-red-950 dark:text-red-200">−{clientChoice.removeIds?.length}</span>
+                  <span className="ml-1 rounded-full px-1.5 py-0.5 text-[11px] font-bold text-red-700 dark:text-red-300">−{clientChoice.removeIds?.length}</span>
                 ) : null}
               </button>
             ))}
           </div>
         ) : null}
         <DialogContent>
-          {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
+          {error && <div role="alert" data-testid="mtm-form-error" className="mb-3 rounded border border-l-4 border-zinc-200 border-l-red-500 bg-card p-2 text-sm text-foreground dark:border-zinc-700 dark:border-l-red-500">{error}</div>}
           {form.role === "AGENT" && clientsOpened ? (
             <div className={cn(tab !== "clients" && "hidden")}>
               <MtmAgentClientPicker agentId={agentId} orgId={orgId} onChange={setClientChoice} />
@@ -386,7 +386,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
             {/* Owner, 2026-10-16: «одно и то же правило для сотрудников и агентов
                 полевых» — the agent gets a code in WhatsApp and sets their own
                 password (as Personnel → Add employee). */}
-            <p className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" data-testid="agent-code-login-note">
+            <p className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm" data-testid="agent-code-login-note">
               <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>{isEdit && !form.phone.trim() ? tf("codeLoginNoPhone") : tf("codeLoginNote")}</span>
             </p>

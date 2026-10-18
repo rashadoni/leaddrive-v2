@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { CheckCircle2, FileText, History, MessageSquareText, Send } from "lucide-react"
 
 import { type MtmTaskTimelineEvent } from "@/components/mtm/task-workspace"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"

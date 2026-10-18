@@ -22,7 +22,7 @@ import {
   Sigma,
 } from "lucide-react"
 import { Hint, HintValue } from "@/components/hint"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
@@ -364,7 +364,7 @@ function MetricLedger({
     <article className="min-w-0 border-y border-zinc-200 bg-card px-4 py-5 dark:border-zinc-700 sm:px-5">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full", isPlan ? "bg-primary/10 text-primary" : "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300")}>
+          <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full", isPlan ? "text-primary" : "text-emerald-700 dark:text-emerald-300")}>
             <Icon className="h-5 w-5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
@@ -1156,7 +1156,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
         <div className="flex flex-col gap-4 px-4 py-5 sm:px-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary">
+              <span className="grid h-9 w-9 place-items-center text-muted-foreground">
                 <Sigma className="h-4 w-4" aria-hidden="true" />
               </span>
               <h2 className="text-lg font-semibold tracking-tight">{t("title")}</h2>
@@ -1269,7 +1269,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
       </section>
 
       {error && report ? (
-        <div className="flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200 sm:flex-row sm:items-center" role="alert">
+        <div className="flex flex-col gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-4 py-3 text-sm sm:flex-row sm:items-center" role="alert">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
           <Button type="button" variant="outline" size="sm" className="sm:ml-auto" onClick={() => setRefreshSequence((value) => value + 1)} disabled={invalidRange}>{t("retry")}</Button>
@@ -1277,13 +1277,13 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
       ) : null}
 
       {exportError ? (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200" role="alert">
+        <div className="flex items-center gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-4 py-3 text-sm" role="alert">
           <AlertTriangle className="h-4 w-4 shrink-0" />{exportError}
         </div>
       ) : null}
 
       {data?.contract?.truncated ? (
-        <div className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" role="status">
+        <div className="flex gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm" role="status">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div><strong>{t("truncatedTitle")}</strong><p className="mt-1 text-xs leading-5 opacity-80">{t("truncatedDescription", { count: (data.contract.partialLimit ?? data.contract.maxFacts).toLocaleString(locale) })}</p></div>
         </div>
@@ -1376,7 +1376,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
               </div>
 
               {adjustmentNotice ? (
-                <div className="flex items-center gap-2 border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200" role="status">
+                <div className="flex items-center gap-2 border-b border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 px-4 py-3 text-sm" role="status">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />{adjustmentNotice}
                 </div>
               ) : null}

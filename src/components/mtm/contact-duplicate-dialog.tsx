@@ -227,7 +227,7 @@ export function MtmContactDuplicateReportDialog({
                     aria-checked={active}
                     className={cn(
                       "grid min-h-11 w-full gap-1 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      active ? "border-primary bg-primary/5" : "border-zinc-200 hover:bg-muted/60 dark:border-zinc-700",
+                      active ? "border-foreground ring-1 ring-inset ring-foreground" : "border-zinc-200 hover:bg-muted/60 dark:border-zinc-700",
                     )}
                     onClick={() => { setSelected(candidate); setError(""); submission.current = null }}
                   >
@@ -245,7 +245,7 @@ export function MtmContactDuplicateReportDialog({
           ) : null}
 
           {selected ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100">
+            <div className="rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
               <p className="font-medium">{t("duplicateSelected", { name: selected.displayName })}</p>
               <p className="mt-1 text-xs leading-5">{t("duplicateApprovalHint")}</p>
             </div>

@@ -16,7 +16,7 @@ import {
 
 import { localRecurrencePreview, TaskScheduleDstNotice } from "@/components/mtm/task-form"
 import { type MtmTaskDetail } from "@/components/mtm/task-workspace"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

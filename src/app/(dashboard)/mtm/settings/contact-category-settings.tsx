@@ -265,7 +265,7 @@ export function ContactCategorySettings({
   }
   if (loadError && !loaded) {
     return (
-      <section className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+      <section className="rounded-2xl border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-4 text-sm">
         <p>{loadError}</p>
         <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void load()}>{t("retry")}</Button>
       </section>
@@ -510,7 +510,7 @@ export function ContactCategorySettings({
       </p>
 
       {removedFields.length > 0 ? (
-        <p role="status" className="mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-100">
+        <p role="status" className="mt-3 flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
           <CircleAlert className="mt-0.5 h-4 w-4 flex-none" aria-hidden="true" />
           <span>{t("removedFields", { fields: removedFields.join(", ") })}</span>
         </p>

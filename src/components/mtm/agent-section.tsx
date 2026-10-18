@@ -12,6 +12,7 @@ import { MtmAgentAttachByPlace } from "@/components/mtm/agent-attach-by-place"
 import { MtmAgentForm, type MtmAgentFormData } from "@/components/mtm/agent-form"
 import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
+import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
 
 type SectionAgent = MtmAgentFormData & {
   id: string
@@ -133,7 +134,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
     return (
       <div className="space-y-4" data-testid="mtm-agent-section">
         {back}
-        <div role="alert" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{error}</span>
         </div>
       </div>
@@ -153,14 +154,15 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
   const canReceiveClients = agent.role === "AGENT" && agent.status === "ACTIVE"
   const roleLabel = mtmStatusLabel(ts, "role", agent.role)
   const statusLabel = mtmStatusLabel(ts, "agentStatus", agent.status)
-  const tabClass = (active: boolean) => `inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-zinc-200 bg-card hover:bg-muted dark:border-zinc-700"}`
+  // Tabs inside the page are words over a line, not a second filled pill (owner-approved colours, 2026-10-18).
+  const tabClass = (active: boolean) => `inline-flex items-center gap-1.5 text-sm font-medium transition-colors ${mtmTabClass(active)}`
 
   return (
     <div className="space-y-4" data-testid="mtm-agent-section">
       {back}
       <header className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-lg font-semibold text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400" aria-hidden="true">{agent.name.charAt(0).toUpperCase()}</div>
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary" aria-hidden="true">{agent.name.charAt(0).toUpperCase()}</div>
           <div className="min-w-0">
             <h1 className="text-lg font-semibold [overflow-wrap:anywhere]">{agent.name}</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
@@ -188,7 +190,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
         </div>
       </header>
 
-      <div role="tablist" aria-label={t("tabs")} className="flex flex-wrap gap-2">
+      <div role="tablist" aria-label={t("tabs")} className={MTM_TAB_ROW}>
         <Hint text={t("hint.sectionAssigned")}>
           <button type="button" role="tab" aria-selected={view === "assigned"} data-testid="mtm-agent-tab-assigned" className={tabClass(view === "assigned")} onClick={() => openView("assigned")}>
             <UsersRound className="h-4 w-4" aria-hidden="true" />
@@ -204,7 +206,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
       </div>
 
       {view === "candidates" && !canReceiveClients ? (
-        <div className="flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-100" data-testid="mtm-agent-attach-unavailable">
+        <div className="flex items-start gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-4 text-sm" data-testid="mtm-agent-attach-unavailable">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <div>
             <p className="font-medium">{t("attachUnavailableTitle")}</p>

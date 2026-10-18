@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { Download, FileText, RefreshCw, Trash2, Upload, WifiOff } from "lucide-react"
 
 import { type MtmTaskDocument } from "@/components/mtm/task-workspace"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Hint, HintValue } from "@/components/hint"
 import { formatInTimezone } from "@/lib/timezone"
@@ -213,7 +213,7 @@ export function MtmTaskFilesPanel({
         ) : null}
       </div>
 
-      {!online ? <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50/60 p-4 text-sm text-amber-950 print:hidden dark:border-amber-800 dark:bg-amber-950/25 dark:text-amber-100" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0" /><span>{t("filesOfflineHint")}</span></div> : null}
+      {!online ? <div className="flex items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm print:hidden" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0" /><span>{t("filesOfflineHint")}</span></div> : null}
       {message ? <p className="text-sm text-muted-foreground print:hidden" role="status">{message}</p> : null}
 
       {queued.length ? (

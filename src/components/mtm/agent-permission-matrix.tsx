@@ -254,7 +254,7 @@ function MatrixRow({
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
                 row.kind === "always"
-                  ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                  ? "text-emerald-700 dark:text-emerald-300"
                   : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
               )}
             >

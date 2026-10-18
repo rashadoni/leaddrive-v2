@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useLocale } from "next-intl"
 import { AlertTriangle, Check, RefreshCw, UserPlus, X } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -103,8 +103,8 @@ export function ContactCreateRequestQueue() {
   ].join(" · ")
   return (
     <section data-testid="mtm-contact-create-requests" className="mb-4 space-y-2">
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
-        <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-amber-200 px-1.5 text-xs font-bold text-amber-950">{rows.length}</span>
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-[13px]">
+        <span className="flex h-6 min-w-6 items-center justify-center rounded-full border border-zinc-300 px-1.5 text-xs font-bold text-foreground dark:border-zinc-600">{rows.length}</span>
         <span className="min-w-0 flex-1">
           <b className="font-semibold">{rows.length === 1 ? copy.waitingOne : copy.waitingMany}</b>
           {" — "}{summary}{rows.length > 1 ? ` ${copy.andMore.replace("{count}", String(rows.length - 1))}` : ""}
@@ -133,7 +133,7 @@ export function ContactCreateRequestQueue() {
                       <Badge variant="outline">{copy.from}: {row.requestedByAgent.name}</Badge>
                     </div>
                     <div className="mt-3 rounded-md bg-muted/40 p-3 text-sm"><div className="font-medium">{row.clinicName}</div>{row.address ? <div className="text-muted-foreground">{row.address}</div> : null}{row.notes ? <div className="mt-2 text-muted-foreground">{row.notes}</div> : null}</div>
-                    {duplicates.length ? <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><div className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{copy.duplicate}</div><ul className="mt-1 list-inside list-disc">{duplicates.map((item) => <li key={item.id}>{item.displayName}{item.exact ? " — exact" : ""}</li>)}</ul></div> : null}
+                    {duplicates.length ? <div className="mt-3 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm"><div className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{copy.duplicate}</div><ul className="mt-1 list-inside list-disc">{duplicates.map((item) => <li key={item.id}>{item.displayName}{item.exact ? " — exact" : ""}</li>)}</ul></div> : null}
                     <Textarea className="mt-3" rows={2} placeholder={copy.comment} value={comments[row.id] || ""} onChange={(event) => setComments((current) => ({ ...current, [row.id]: event.target.value }))} />
                     <div className="mt-3 flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" onClick={() => void decide(row.id, "REJECTED")} disabled={busy === row.id}><X className="mr-1 h-4 w-4" />{copy.reject}</Button><Button type="button" onClick={() => void decide(row.id, "APPROVED")} disabled={busy === row.id}><Check className="mr-1 h-4 w-4" />{copy.approve}</Button></div>
                   </article>

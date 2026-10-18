@@ -231,7 +231,7 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
                     ))}
                   </div>
                   {result.errors.length > 0 ? (
-                    <div className="border border-red-200 bg-red-50/60 p-3 dark:border-red-900 dark:bg-red-950/20">
+                    <div className="border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3">
                       <div className="mb-2 flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-300"><AlertTriangle className="h-4 w-4" />{t("fixErrors")}</div>
                       <div className="space-y-1 text-xs">
                         {result.errors.slice(0, 5).map((error, index) => <p key={`${error.rowNumber}-${error.columnName}-${index}`}>{t("errorAt", { row: error.rowNumber, column: error.columnName || "-", message: error.message })}</p>)}
@@ -257,7 +257,7 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
               <div className="flex items-center gap-2 text-sm font-semibold"><span className="grid h-6 w-6 place-items-center rounded-full bg-foreground text-xs text-background">4</span>{t("applyAndReview")}</div>
               {summary?.requiresConflictOverride ? (
                 <Hint text={t("hint.excelConflict")} align="start">
-                  <label className="flex items-start gap-2 border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/20">
+                  <label className="flex items-start gap-2 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
                     <input type="checkbox" className="mt-0.5 h-4 w-4 accent-foreground" checked={allowConflicts} onChange={(event) => setAllowConflicts(event.target.checked)} />
                     <span>{t("confirmConflictOverride")}</span>
                   </label>

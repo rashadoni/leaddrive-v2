@@ -130,12 +130,12 @@ export function MtmFilterSelect({
   const active = value !== emptyValue
   const current = options.find((option) => option.value === value)?.label ?? (value || allLabel)
   return (
-    <span className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-full border pl-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/30 ${disabled ? "opacity-50" : ""} ${active ? "border-primary/40 bg-primary/10 pr-1.5 text-primary" : "border-zinc-200 bg-card pr-3 text-muted-foreground hover:border-zinc-300 hover:text-foreground dark:border-zinc-700"}`}>
+    <span className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-full border pl-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/30 ${disabled ? "opacity-50" : ""} ${active ? "border-foreground pr-1.5 font-semibold text-foreground" : "border-zinc-200 bg-card pr-3 text-muted-foreground hover:border-zinc-300 hover:text-foreground dark:border-zinc-700"}`}>
       <span className="truncate">{active || showValue ? `${label}: ${current}` : label}</span>
       {active && clearable && !disabled ? (
         <button
           type="button"
-          className="relative z-10 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-primary/15"
+          className="relative z-10 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-muted"
           aria-label={`${label}: ${allLabel}`}
           onClick={() => onChange(emptyValue)}
         >
@@ -194,7 +194,7 @@ export function MtmFilterMore({ open, onToggle, count, label, testId }: { open: 
       data-testid={testId}
       aria-expanded={open}
       onClick={onToggle}
-      className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${open || count > 0 ? "border-primary/40 bg-primary/10 text-primary" : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}
+      className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${open || count > 0 ? "border-foreground font-semibold text-foreground" : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}
     >
       <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
       {label}
@@ -235,11 +235,11 @@ export function MtmQuickChips({ label, chips, value, onChange, renderChip }: {
             data-testid={chip.testId}
             aria-pressed={on}
             onClick={() => onChange(chip.value)}
-            className={`inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${on ? "border-primary bg-primary text-primary-foreground" : "border-zinc-200 bg-card text-foreground hover:bg-muted/60 dark:border-zinc-700"}`}
+            className={`inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${on ? "border-foreground font-semibold text-foreground" : "border-zinc-200 bg-card text-foreground hover:bg-muted/60 dark:border-zinc-700"}`}
           >
             {chip.label}
             {typeof chip.count === "number" ? (
-              <span className={`ml-1.5 rounded-full px-1.5 text-xs font-semibold tabular-nums ${on ? "bg-white/25" : "bg-muted"}`}>{chip.count}</span>
+              <span className="ml-1.5 text-xs font-semibold tabular-nums text-muted-foreground">{chip.count}</span>
             ) : null}
           </button>
         )
@@ -290,7 +290,7 @@ export function MtmFilterGrid({ children, testId }: { children: ReactNode; testI
 
 const FIELD_BOX = "h-10 w-full min-w-0 rounded-lg border text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/20"
 const FIELD_IDLE = "border-zinc-200 bg-card dark:border-zinc-700"
-const FIELD_SET = "border-primary/50 bg-primary/5"
+const FIELD_SET = "border-foreground"
 
 function MtmFilterFieldLabel({ htmlFor, id, children }: { htmlFor?: string; id?: string; children: ReactNode }) {
   return (

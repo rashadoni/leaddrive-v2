@@ -425,7 +425,7 @@ export function LiveMapRoster({
       data-testid="live-map-roster-filters-button"
       aria-expanded={filtersOpen}
       onClick={filtersFloat ? undefined : () => setFiltersOpen((open) => !open)}
-      className={cn(TOOL_BUTTON, (filteredColumns.length > 0 || filtersOpen) && "border-primary/50 bg-primary/5")}
+      className={cn(TOOL_BUTTON, (filteredColumns.length > 0 || filtersOpen) && "border-foreground font-semibold")}
     >
       <Filter className={cn("h-3.5 w-3.5", filteredColumns.length > 0 && "fill-current")} aria-hidden="true" />{tMap("roster.filters")}
       {filteredColumns.length > 0 ? <span className="tabular-nums">· {filteredColumns.length}</span> : null}
@@ -466,7 +466,7 @@ export function LiveMapRoster({
                     data-testid={`live-map-roster-filters-value-${column}-${option.value}`}
                     className={cn(
                       "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors [@media(pointer:coarse)]:min-h-11",
-                      on ? "border-primary bg-primary/10 font-semibold text-foreground" : "border-zinc-300 hover:bg-muted dark:border-zinc-600",
+                      on ? "border-foreground font-semibold text-foreground" : "border-zinc-300 hover:bg-muted dark:border-zinc-600",
                       option.count === 0 && !on && "text-muted-foreground",
                     )}
                   >
@@ -870,7 +870,7 @@ export function LiveMapRoster({
                       data-testid={`live-map-roster-sort-${direction}`}
                       className={cn(
                         "inline-flex min-h-9 items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                        view.sort.direction === direction ? "border-primary bg-primary/10" : "border-zinc-200 hover:bg-muted dark:border-zinc-700",
+                        view.sort.direction === direction ? "border-foreground font-semibold" : "border-zinc-200 hover:bg-muted dark:border-zinc-700",
                       )}
                     >
                       {tMap(`roster.sort.${SORT_KIND[view.sort.column]}.${direction}`)}
@@ -944,7 +944,7 @@ export function LiveMapRoster({
         {filteredColumns.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1 px-3 pb-1" data-testid="live-map-roster-filters">
             {filteredColumns.map((column) => (
-              <span key={column} className="inline-flex max-w-full items-center gap-1 rounded-full border border-primary/40 bg-primary/5 py-0.5 pl-2 pr-0.5 text-[11px] font-medium" data-testid={`live-map-roster-filter-chip-${column}`}>
+              <span key={column} className="inline-flex max-w-full items-center gap-1 rounded-full border border-foreground py-0.5 pl-2 pr-0.5 text-[11px] font-medium" data-testid={`live-map-roster-filter-chip-${column}`}>
                 <span className="min-w-0 truncate">{filterSummary(column)}</span>
                 <button type="button" onClick={() => setFilter(column, undefined)} aria-label={tMap("roster.filter.remove", { column: columnLabel(column) })} className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full hover:bg-primary/15 [@media(pointer:coarse)]:h-9 [@media(pointer:coarse)]:w-9">
                   <X className="h-3 w-3" aria-hidden="true" />
@@ -1057,7 +1057,7 @@ export function LiveMapRoster({
                         "min-h-9 cursor-pointer border-b border-zinc-100 transition-colors hover:bg-muted/50 dark:border-zinc-800 [@media(pointer:coarse)]:min-h-11",
                         // Rows far off the screen are not laid out until they come near (a row is 36 px + its line, 44 px on touch).
                         !isSelected && "[contain-intrinsic-size:auto_37px] [content-visibility:auto] [@media(pointer:coarse)]:[contain-intrinsic-size:auto_45px]",
-                        isSelected && "border-blue-200 bg-blue-50/80 hover:bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/30 dark:hover:bg-blue-950/30",
+                        isSelected && "bg-muted/60 shadow-[inset_3px_0_0_hsl(var(--primary))] hover:bg-muted/60",
                       )}
                     >
                       <div role="cell" className="flex justify-center">
@@ -1083,7 +1083,7 @@ export function LiveMapRoster({
                     {isSelected ? (
                       // Brought into view together with the row above it: the
                       // margin is the heading plus that one row.
-                      <div ref={selectedDetailRef} role="row" data-testid="live-map-roster-detail-row" className="scroll-mb-2 scroll-mt-[calc(var(--roster-head,11rem)+3rem)] border-b border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+                      <div ref={selectedDetailRef} role="row" data-testid="live-map-roster-detail-row" className="scroll-mb-2 scroll-mt-[calc(var(--roster-head,11rem)+3rem)] border-b border-zinc-200 bg-card shadow-[inset_3px_0_0_hsl(var(--primary))] dark:border-zinc-700">
                         <div role="cell" className="p-2">{renderDetail(agent)}</div>
                       </div>
                     ) : null}

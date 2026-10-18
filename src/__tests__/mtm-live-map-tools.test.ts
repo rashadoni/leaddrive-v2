@@ -397,7 +397,8 @@ describe("the tools on the map, in words", () => {
     expect(state.picking).toBe(true)
     expect(byTestId("live-map-point-panel")).toBeNull()
     // The tool stays lit while the map waits for the press, and the hint has its own way out.
-    expect(byTestId("live-map-tool-point")?.className).toContain("bg-primary")
+    // Lit is a dark outline, not an orange fill: the orange fill is the page's one main button (owner-approved colours, 2026-10-18).
+    expect(byTestId("live-map-tool-point")?.className).toContain("ring-foreground")
     expect(byTestId("live-map-picking")?.textContent).toBe("Нажмите на карту в нужном местеОтмена")
     await press(byTestId("live-map-picking-cancel"))
     expect(state.picking).toBe(false)

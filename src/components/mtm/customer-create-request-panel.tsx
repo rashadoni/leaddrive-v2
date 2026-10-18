@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertTriangle, Check, ChevronDown, CircleHelp, LocateFixed, MapPin, Plus, RefreshCw, Send, Smartphone, X } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -305,7 +305,7 @@ export function MtmCustomerCreateRequestPanel({ open, routeId, orgId, onClose, o
             </section>
 
             {duplicates && duplicates.length > 0 ? (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+              <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
                 <div className="flex items-center gap-2 font-medium"><AlertTriangle className="h-4 w-4" />{t("possibleDuplicates", { count: duplicates.length })}</div>
                 <p className="mt-1 text-xs">{duplicates.map((candidate) => candidate.name).join(", ")}</p>
               </div>

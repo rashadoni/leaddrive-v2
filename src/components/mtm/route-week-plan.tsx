@@ -385,7 +385,7 @@ export function MtmRouteWeekPlan({
                         <span className="flex items-center gap-1 text-xs font-medium tabular-nums">
                           <span className="truncate">{summary}</span>
                           {execution.lateCount > 0 ? (
-                            <span className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300">{t("stopFact.weekLate")}</span>
+                            <span className="shrink-0 rounded px-1 text-[10px] font-medium text-red-700 dark:text-red-300">{t("stopFact.weekLate")}</span>
                           ) : null}
                         </span>
                         <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">

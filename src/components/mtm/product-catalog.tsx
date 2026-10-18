@@ -318,13 +318,13 @@ export function MtmProductCatalog() {
       </header>
 
       {loadError ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
           {loadError}
           <Button size="sm" variant="outline" className="ml-auto" onClick={() => void load()}>{t("retry")}</Button>
         </div>
       ) : null}
       {notice ? (
-        <div role="status" className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+        <div role="status" className="flex items-center gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm">
           <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />{notice}
         </div>
       ) : null}
@@ -380,7 +380,7 @@ export function MtmProductCatalog() {
                       style={{ paddingLeft: `${12 + depth * 18}px` }}
                       className={cn(
                         "flex min-h-14 w-full items-center gap-3 rounded-xl py-2.5 pr-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-                        selected ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : "hover:bg-muted/60",
+                        selected ? "bg-muted/60 font-semibold shadow-[inset_3px_0_0_hsl(var(--primary))]" : "hover:bg-muted/60",
                       )}
                     >
                       <FolderOpen className={cn("h-4 w-4 shrink-0", selected ? "text-primary" : "text-muted-foreground")} aria-hidden="true" />
@@ -438,7 +438,7 @@ function StepBadge({ n, done }: { n: number; done: boolean }) {
       aria-hidden="true"
       className={cn(
         "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] font-bold",
-        done ? "bg-emerald-500 text-white" : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
+        done ? "text-emerald-600 dark:text-emerald-400" : "text-amber-700 ring-1 ring-inset ring-amber-500 dark:text-amber-300",
       )}
     >
       {done ? <Check className="h-4 w-4" /> : n}
@@ -560,7 +560,7 @@ function GroupDetail(props: {
                   <li key={product.id} data-testid={`mtm-product-${product.id}`} className="flex items-center gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
                     <span className={cn(
                       "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold",
-                      kind === "PPT" ? "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300" : "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300",
+                      kind === "PPT" ? "text-orange-700 dark:text-orange-300" : "text-rose-700 dark:text-rose-300",
                     )}>{kind ?? <FileText className="h-4 w-4" aria-hidden="true" />}</span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
@@ -600,7 +600,7 @@ function GroupDetail(props: {
 
           {group.canManage ? (
             draft ? (
-              <div data-testid="mtm-product-draft" className="space-y-3 rounded-xl border border-primary/40 bg-primary/5 p-3">
+              <div data-testid="mtm-product-draft" className="space-y-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-3">
                 <div className="flex items-center gap-2 text-sm">
                   <Presentation className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                   <span className="min-w-0 flex-1 truncate font-medium">{draft.file.name}</span>
@@ -634,7 +634,7 @@ function GroupDetail(props: {
                 onDrop={props.onDrop}
                 className={cn(
                   "flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-4 py-4 text-center transition-colors focus-within:ring-2 focus-within:ring-ring/40",
-                  props.dragging ? "border-primary bg-primary/10" : "border-zinc-300 hover:border-primary/60 hover:bg-muted/40 dark:border-zinc-700",
+                  props.dragging ? "border-primary" : "border-zinc-300 hover:border-primary/60 hover:bg-muted/40 dark:border-zinc-700",
                 )}
               >
                 <UploadCloud className="h-6 w-6 text-primary" aria-hidden="true" />
@@ -694,7 +694,7 @@ function GroupDetail(props: {
                     data-testid={`mtm-product-agent-${agent.id}`}
                     className={cn(
                       "flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors",
-                      checked || viaParent ? "border-primary/40 bg-primary/5" : "border-zinc-200 dark:border-zinc-700",
+                      checked || viaParent ? "border-foreground" : "border-zinc-200 dark:border-zinc-700",
                       group.canManage && !viaParent ? "cursor-pointer hover:border-primary/60" : "cursor-default",
                     )}
                   >

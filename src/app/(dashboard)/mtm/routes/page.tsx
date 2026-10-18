@@ -56,12 +56,12 @@ import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 const MtmRouteMap = dynamic(() => import("@/components/mtm/route-map"), { ssr: false })
 
 const statusBadge: Record<string, { className: string }> = {
-  DRAFT: { className: "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300" },
-  PLANNED: { className: "bg-muted text-foreground/70" },
-  IN_PROGRESS: { className: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
-  COMPLETED: { className: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
-  INCOMPLETE: { className: "bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300" },
-  CANCELLED: { className: "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300" },
+  DRAFT: { className: "text-amber-700 dark:text-amber-300" },
+  PLANNED: { className: "text-foreground/70" },
+  IN_PROGRESS: { className: "text-sky-700 dark:text-sky-300" },
+  COMPLETED: { className: "text-emerald-700 dark:text-emerald-300" },
+  INCOMPLETE: { className: "text-orange-700 dark:text-orange-300" },
+  CANCELLED: { className: "text-red-700 dark:text-red-300" },
 }
 
 
@@ -975,13 +975,13 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
       />
 
       {!capabilities.canCreateRoute ? (
-        <p data-testid="mtm-route-self-planning-disabled" role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+        <p data-testid="mtm-route-self-planning-disabled" role="status" className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-sm">
           {t("selfPlanningDisabled")}
         </p>
       ) : null}
 
       {focusedRouteUnavailable && requestedRouteId ? (
-        <div role="status" className="border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+        <div role="status" className="border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm">
           {t("focusedUnavailable")}
         </div>
       ) : null}
@@ -1121,15 +1121,15 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
                 return (
                 <div key={p.id} data-testid="mtm-route-detail-stop" className="border-b border-zinc-200 py-2 text-xs last:border-b-0 dark:border-zinc-700">
                   <div className="flex items-center gap-2">
-                  <span className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${p.status === "VISITED" ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300" : p.status === "SKIPPED" ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
+                  <span className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${p.status === "VISITED" ? "text-emerald-700 dark:text-emerald-300" : p.status === "SKIPPED" ? "text-red-700 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
                   <span className="min-w-0 flex-1 font-medium">
                     {visit ? (
                       <Hint text={t("hint.openVisit")}><Link className="hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`}>{p.customer?.name || "—"}</Link></Hint>
                     ) : (p.customer?.name || "—")}
                   </span>
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] ${p.status === "VISITED" ? "bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-300" : p.status === "SKIPPED" ? "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-300" : "bg-muted/50 text-muted-foreground"}`}>{t(pointStatusLabelKey[p.status] ?? "pointStatusUnknown")}</span>
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] ${p.status === "VISITED" ? "text-emerald-700 dark:text-emerald-300" : p.status === "SKIPPED" ? "text-red-700 dark:text-red-300" : "text-muted-foreground"}`}>{t(pointStatusLabelKey[p.status] ?? "pointStatusUnknown")}</span>
                   {p.changeRequests?.some((request) => request.changeType === "REMOVE_STOP") ? (
-                    <HintValue className="border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300" text={t("hint.removalPending")}>{t("removalPending")}</HintValue>
+                    <HintValue className="px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-300" text={t("hint.removalPending")}>{t("removalPending")}</HintValue>
                   ) : null}
                   {selectedRoute.historicalAccessOnly !== true && (selectedRoute.status === "PLANNED" || selectedRoute.status === "IN_PROGRESS") && p.status !== "VISITED" && !p.changeRequests?.some((request) => request.changeType === "REMOVE_STOP") ? (
                     <Hint text={t("hint.requestRemoval")}><Button variant="ghost" size="sm" onClick={() => { setRemovalPointId(p.id); setRemovalReason("") }}>{t("requestRemoval")}</Button></Hint>
@@ -1150,14 +1150,14 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
                       <span>{t("stopFact.notVisited")}</span>
                     ) : null}
                     {fact?.timing === "LATE" && fact.delayMinutes !== null ? (
-                      <HintValue className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300" text={t("hint.late")}>{t("stopFact.late", { delay: durationLabel(fact.delayMinutes) })}</HintValue>
+                      <HintValue className="rounded px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:text-red-300" text={t("hint.late")}>{t("stopFact.late", { delay: durationLabel(fact.delayMinutes) })}</HintValue>
                     ) : fact?.timing === "EARLY" && fact.delayMinutes !== null ? (
-                      <HintValue className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300" text={t("hint.early")}>{t("stopFact.early", { delay: durationLabel(Math.abs(fact.delayMinutes)) })}</HintValue>
+                      <HintValue className="rounded px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300" text={t("hint.early")}>{t("stopFact.early", { delay: durationLabel(Math.abs(fact.delayMinutes)) })}</HintValue>
                     ) : fact?.timing === "ON_TIME" ? (
-                      <HintValue className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-950/20 dark:text-green-300" text={t("hint.onTime")}>{t("stopFact.onTime")}</HintValue>
+                      <HintValue className="rounded px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300" text={t("hint.onTime")}>{t("stopFact.onTime")}</HintValue>
                     ) : null}
                     {fact?.outOfOrder && fact.actualSequence !== null ? (
-                      <HintValue className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300" text={t("hint.outOfOrder")}><ArrowDownUp className="h-3 w-3" />{t("stopFact.outOfOrder", { actual: fact.actualSequence })}</HintValue>
+                      <HintValue className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300" text={t("hint.outOfOrder")}><ArrowDownUp className="h-3 w-3" />{t("stopFact.outOfOrder", { actual: fact.actualSequence })}</HintValue>
                     ) : null}
                     {visit?.locationHidden ? (
                       <span data-place-verdict="location_hidden" className="text-[10px] text-muted-foreground">{tPlace("locationHidden")}</span>

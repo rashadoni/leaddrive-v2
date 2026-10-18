@@ -169,7 +169,7 @@ export default function MtmActivityPage() {
             onChange={(value) => { setType(value); setViolations(false) }} />
           <Hint text={t("hint.violations")}>
             <button type="button" data-testid="mtm-activity-violations" aria-pressed={violations} onClick={toggleViolations}
-              className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${violations ? "border-red-400 bg-red-50 text-red-700 dark:border-red-500/50 dark:bg-red-500/10 dark:text-red-300" : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}>
+              className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${violations ? "border-red-400 text-red-700 dark:border-red-500/50 dark:text-red-300" : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}>
               <ShieldAlert className="h-4 w-4" aria-hidden="true" />
               {t("violations")} ({kpi.totalViolations})
             </button>
@@ -181,7 +181,7 @@ export default function MtmActivityPage() {
       </div>
 
       {errorKey ? (
-        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200 sm:flex-row sm:items-center">
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm sm:flex-row sm:items-center">
           <Lock className="h-5 w-5 shrink-0" aria-hidden="true" />
           <p className="min-w-0 flex-1">{tt(`accessError.${errorKey}`)}</p>
           {errorKey === "loadFailed" && (

@@ -57,7 +57,7 @@ export function MtmFieldScopeGate({ children }: { children: ReactNode }) {
     <div
       role="status"
       data-testid="mtm-field-scope-notice"
-      className="mx-auto mt-10 flex max-w-2xl gap-3 rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200"
+      className="mx-auto mt-10 flex max-w-2xl gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-5"
     >
       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
       <div className="min-w-0">

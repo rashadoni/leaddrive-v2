@@ -64,7 +64,7 @@ export function MtmAttendanceSettingsHub({ isAdmin }: { isAdmin: boolean }) {
         <div className="grid gap-3 md:grid-cols-2">{cards.map((card, index) => <Link key={card} href={`/mtm/attendance/settings?tab=${card}`} prefetch={false} data-testid={`attendance-settings-card-${card}`}
           // A card left alone in its row takes the whole row: no half-empty rows.
           className={`${cards.length % 2 && index === cards.length - 1 ? "md:col-span-2 " : ""}group flex min-h-20 items-center gap-4 rounded-2xl border bg-card p-4 outline-none transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring`}>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary" aria-hidden="true">{ICONS[card]}</span>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center text-muted-foreground" aria-hidden="true">{ICONS[card]}</span>
           <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2 font-semibold">{p(`settingsCards.${card}.title`)}</span>
             <span className="mt-0.5 block text-sm text-muted-foreground first-letter:uppercase">{summary(card)}</span></span>
           <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary">{p("open")}<ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>

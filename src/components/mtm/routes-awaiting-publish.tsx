@@ -50,7 +50,7 @@ export function MtmRoutesAwaitingPublish({
     <section
       data-testid="mtm-routes-awaiting-publish"
       aria-labelledby="mtm-routes-awaiting-publish-title"
-      className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30"
+      className="rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3"
     >
       <h2 id="mtm-routes-awaiting-publish-title" className="text-sm font-semibold text-amber-950 dark:text-amber-100">
         {t("awaitingTitle", { count: waiting.length })}

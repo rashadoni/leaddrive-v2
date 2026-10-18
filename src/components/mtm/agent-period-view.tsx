@@ -12,6 +12,7 @@ import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
 import type { AgentPeriod, AgentPeriodDayStatus } from "@/lib/mtm/agent-period"
 import { agentPeriodChoices, agentPeriodDefaultAgentId, type AgentPeriodChoice } from "@/lib/mtm/agent-period-choice"
 import type { DistanceBasis } from "@/lib/mtm/road-distance"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
 
 /**
  * Owner 2026-09-25: «a manager wants to see what one field agent did over a
@@ -42,13 +43,13 @@ export function agentPeriodPreset(preset: Preset, today: string): { from: string
 }
 
 const STATUS_TONE: Record<AgentPeriodDayStatus, string> = {
-  FULL: "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300",
-  PARTIAL: "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
-  NOT_WORKED: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300",
+  FULL: "text-emerald-700 dark:text-emerald-300",
+  PARTIAL: "text-amber-700 dark:text-amber-300",
+  NOT_WORKED: "text-red-700 dark:text-red-300",
   UNPLANNED: "bg-muted text-muted-foreground",
   DAY_OFF: "bg-transparent text-muted-foreground",
   UPCOMING: "bg-transparent text-muted-foreground",
-  SHIFT_OPEN: "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+  SHIFT_OPEN: "text-amber-700 dark:text-amber-300",
   GPS_ONLY: "bg-muted text-muted-foreground",
 }
 
@@ -124,7 +125,7 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
           {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
         </Select>
         {AGENT_PERIOD_PRESETS.map((value) => (
-          <Hint key={value} text={t("hint.presets")}><Button type="button" variant={preset === value ? "default" : "outline"} aria-pressed={preset === value} className="min-h-11" onClick={() => { setPreset(value); setRange(agentPeriodPreset(value, today)) }}>
+          <Hint key={value} text={t("hint.presets")}><Button type="button" variant="outline" aria-pressed={preset === value} className={`min-h-11 ${mtmChipClass(preset === value)}`} onClick={() => { setPreset(value); setRange(agentPeriodPreset(value, today)) }}>
             {t(`presets.${value}`)}
           </Button></Hint>
         ))}

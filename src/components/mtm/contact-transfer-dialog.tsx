@@ -253,7 +253,7 @@ export function ContactTransferDialog({
         <div data-testid="mtm-contact-transfer-dialog" className="space-y-4">
           {step === "PARAMETERS" ? (
           <>
-            <div className="rounded-lg border border-sky-200 bg-sky-50/70 p-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-100">
+            <div className="rounded-lg border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
               <div className="flex items-start gap-2">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>
@@ -312,12 +312,12 @@ export function ContactTransferDialog({
               <HintValue className="ml-auto text-xs text-muted-foreground" text={tt("hint.transferEffectiveFrom")}>{preview.effectiveFrom}</HintValue>
             </div>
             {preview.warnings.length > 0 ? (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-100">
+              <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
                 {preview.warnings.map((warning) => <p key={warning}>{tt(`transfer.warnings.${warning}`)}</p>)}
               </div>
             ) : null}
             {preview.summary.openTasks > 0 ? (
-              <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-100">
+              <div className="rounded-lg border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
                 <p className="font-medium">{tt("transfer.openTaskImpactTitle")}</p>
                 <p className="mt-1 text-xs opacity-80">{tt("transfer.openTaskImpactDescription", {
                   tasks: preview.summary.openTasks,
@@ -325,7 +325,7 @@ export function ContactTransferDialog({
                 })}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {preview.rows.filter((row) => row.openTaskCount > 0).map((row) => (
-                    <span key={row.contactId} className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] text-sky-900 dark:bg-sky-900/30 dark:text-sky-100">
+                    <span key={row.contactId} className="rounded-full px-2 py-0.5 text-[11px] text-sky-700 dark:text-sky-300">
                       {row.displayName || row.contactId}: {row.openTaskCount}
                     </span>
                   ))}
@@ -343,7 +343,7 @@ export function ContactTransferDialog({
                         {row.issues.map((issue) => {
                           const hintKey = issueHintKey(issue)
                           return (
-                            <HintValue key={issue} text={hintKey ? tt(hintKey) : null} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
+                            <HintValue key={issue} text={hintKey ? tt(hintKey) : null} className="rounded-full px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-300">
                               {tt(`transfer.issues.${issue}`)}
                             </HintValue>
                           )
@@ -354,7 +354,7 @@ export function ContactTransferDialog({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">
+              <div className="flex items-center gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm">
                 <CheckCircle2 className="h-4 w-4" />
                 {tt("transfer.noConflicts")}
               </div>
@@ -377,7 +377,7 @@ export function ContactTransferDialog({
 
         {step === "RESULT" && result ? (
           <div className="space-y-4">
-            <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">
+            <div className="flex items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-4">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
                 <p className="font-semibold">{tt("transfer.completedTitle")}</p>
@@ -392,8 +392,8 @@ export function ContactTransferDialog({
             ) : null}
             <div className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${
               receiptStored
-                ? "border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-100"
-                : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100"
+                ? "border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500"
+                : "border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500"
             }`}>
               {receiptStored
                 ? <HardDriveDownload className="mt-0.5 h-4 w-4 shrink-0" />
@@ -411,7 +411,7 @@ export function ContactTransferDialog({
         ) : null}
 
           {error ? (
-            <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+            <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -464,9 +464,9 @@ function Summary({
   return (
     <div className={`rounded-lg border p-3 ${
       tone === "positive"
-        ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20"
+        ? "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500"
         : tone === "warning"
-          ? "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20"
+          ? "border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500"
           : "border-zinc-200 bg-muted/30 dark:border-zinc-700"
     }`}>
       <p className="text-[11px] text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p>

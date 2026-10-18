@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { CheckCircle2, FileJson2, Loader2, RefreshCw, ShieldCheck, Upload } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Hint, HintValue } from "@/components/hint"
 import { Input } from "@/components/ui/input"
@@ -276,7 +276,7 @@ export function CoveragePolicyAdmin() {
         </Button>
       </header>
 
-      {loadError ? <div role="alert" className="border-b border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{loadError}</div> : null}
+      {loadError ? <div role="alert" className="border-b border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">{loadError}</div> : null}
 
       <div className="grid divide-y xl:grid-cols-[1.1fr_1fr_1fr] xl:divide-x xl:divide-y-0">
         <div className="p-4">
@@ -286,7 +286,7 @@ export function CoveragePolicyAdmin() {
             {loading && !policies.length ? <div className="grid min-h-32 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" /></div> : null}
             {!loading && !policies.length ? <div className="border border-dashed p-4 text-sm text-muted-foreground">{t("empty")}</div> : null}
             {policies.map((policy) => (
-              <article key={policy.id} className={`border p-3 ${activationId === policy.id ? "border-primary bg-primary/5" : "border-zinc-200/70 dark:border-zinc-800"}`}>
+              <article key={policy.id} className={`border p-3 ${activationId === policy.id ? "border-l-4 border-l-primary" : "border-zinc-200/70 dark:border-zinc-800"}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0"><p className="font-medium">{policy.code} · v{policy.version}</p><p className="truncate text-xs text-muted-foreground">{policy.nameRu}</p></div>
                   <HintValue text={t(COVERAGE_STATUS_HINT[policy.status])}><StatusBadge status={policy.status} /></HintValue>
@@ -356,7 +356,7 @@ export function CoveragePolicyAdmin() {
       </div>
 
       {activation ? (
-        <div className="border-t bg-amber-50/70 p-4 dark:bg-amber-950/20">
+        <div className="border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4">
           <h3 className="font-semibold">{t("activationTitle", { code: activation.code, version: activation.version })}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{t("activationDescription")}</p>
           <p className="mt-3 break-all border bg-background p-2 font-mono text-xs">{activation.definitionHash}</p>

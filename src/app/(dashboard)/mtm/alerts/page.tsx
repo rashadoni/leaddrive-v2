@@ -39,7 +39,7 @@ import { addDateKeyDays } from "@/lib/mtm/mobile-week"
  * the filter shows that one day as before.
  */
 
-const categoryColors: Record<string, string> = { CRITICAL: "bg-red-100 text-red-700 border-red-200", WARNING: "bg-amber-100 text-amber-700 border-amber-200", INFO: "bg-blue-100 text-blue-700 border-blue-200" }
+const categoryColors: Record<string, string> = { CRITICAL: "text-red-700 border-zinc-200", WARNING: "text-amber-700 border-zinc-200", INFO: "text-sky-700 border-zinc-200" }
 
 // Per-type friendly icon (human label + "what to do" hint come from i18n:
 // typeLabel_<TYPE> / typeHint_<TYPE>). Unknown types fall back to AlertTriangle.
@@ -343,7 +343,7 @@ export default function MtmAlertsPage() {
       <div className="space-y-4">
         {header}
         {errorKey === "agentOutOfScope" && filters}
-        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200 sm:flex-row sm:items-center">
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm sm:flex-row sm:items-center">
           <Lock className="h-5 w-5 shrink-0" aria-hidden="true" />
           <p className="min-w-0 flex-1">{tt(`accessError.${errorKey}`)}</p>
           {errorKey === "loadFailed" && (
@@ -441,7 +441,7 @@ export default function MtmAlertsPage() {
               <Link className="text-[11px] font-medium underline-offset-2 hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(item.visitId)}`}>{t("openVisit")}</Link>
             )}
             {item.isResolved
-              ? <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700">{t("resolved")}</span>
+              ? <span className="rounded px-1.5 py-0.5 text-[10px] text-emerald-700">{t("resolved")}</span>
               : data?.canResolve && (
                   <Hint wrap text={t("hint.resolve")}>
                     <Button size="sm" variant="outline" className="h-6 bg-white/50 text-[10px] hover:bg-white/80" onClick={() => resolveIds([item.id], item.id)} disabled={busyGroup === item.id}>
@@ -494,7 +494,7 @@ export default function MtmAlertsPage() {
               <section key={day.dateKey} data-testid={`mtm-alerts-day-${day.dateKey}`} aria-labelledby={`mtm-alerts-day-title-${day.dateKey}`} className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 id={`mtm-alerts-day-title-${day.dateKey}`} className="text-sm font-semibold first-letter:uppercase">{dayLabel(day.dateKey)}</h2>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">{t("openOfDay", { count: day.openIds.length })}</span>
+                  <span className="rounded-full px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">{t("openOfDay", { count: day.openIds.length })}</span>
                   {data?.canResolve && day.openIds.length > 0 ? (
                     <Hint text={t("hint.resolveDay")}>
                       <Button data-testid={`mtm-alerts-resolve-day-${day.dateKey}`} size="sm" variant="outline" className="ml-auto h-8" disabled={busyGroup === `day:${day.dateKey}`} onClick={() => (day.openIds.length > 1 ? setDayConfirm({ key: `day:${day.dateKey}`, ids: day.openIds }) : resolveIds(day.openIds, `day:${day.dateKey}`))}>

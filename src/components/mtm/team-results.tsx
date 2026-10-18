@@ -11,6 +11,7 @@ import { AGENT_PERIOD_PRESETS, agentPeriodPreset } from "@/components/mtm/agent-
 import { formatDate } from "@/lib/format-date"
 import { dateInputValueInTimezone } from "@/lib/timezone"
 import { mtmPlanTone, mtmTeamResultsByAgent, type MtmTeamResultsRow } from "@/lib/mtm/team-results"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
 
 type Preset = (typeof AGENT_PERIOD_PRESETS)[number]
 
@@ -162,7 +163,7 @@ export function MtmTeamResultsView({ preset, onPresetChange, teams, teamId, onTe
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1" role="group" aria-label={t("period")}>
           {AGENT_PERIOD_PRESETS.map((key) => (
-            <Button key={key} type="button" size="sm" variant={preset === key ? "default" : "outline"} className="min-h-10" aria-pressed={preset === key} onClick={() => onPresetChange(key)}>
+            <Button key={key} type="button" size="sm" variant="outline" className={`min-h-10 ${mtmChipClass(preset === key)}`} aria-pressed={preset === key} onClick={() => onPresetChange(key)}>
               {t(`preset.${key}`)}
             </Button>
           ))}

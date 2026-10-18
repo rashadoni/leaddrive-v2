@@ -22,13 +22,13 @@ interface KpiCardProps {
   className?: string
 }
 
-const colorMap: Record<KpiCardColor, { bar: string; text: string; bg: string }> = {
-  teal:   { bar: "bg-teal-500",   text: "text-teal-600",   bg: "bg-teal-50" },
-  green:  { bar: "bg-green-500",  text: "text-green-600",  bg: "bg-green-50" },
-  blue:   { bar: "bg-blue-500",   text: "text-blue-600",   bg: "bg-blue-50" },
-  amber:  { bar: "bg-amber-500",  text: "text-amber-600",  bg: "bg-amber-50" },
-  red:    { bar: "bg-red-500",    text: "text-red-600",    bg: "bg-red-50" },
-  violet: { bar: "bg-violet-500", text: "text-violet-600", bg: "bg-violet-50" },
+const colorMap: Record<KpiCardColor, { bar: string; text: string }> = {
+  teal:   { bar: "bg-teal-500",   text: "text-teal-600" },
+  green:  { bar: "bg-green-500",  text: "text-green-600" },
+  blue:   { bar: "bg-blue-500",   text: "text-blue-600" },
+  amber:  { bar: "bg-amber-500",  text: "text-amber-600" },
+  red:    { bar: "bg-red-500",    text: "text-red-600" },
+  violet: { bar: "bg-violet-500", text: "text-violet-600" },
 }
 
 export function KpiCard({
@@ -58,7 +58,7 @@ export function KpiCard({
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs text-muted-foreground leading-tight">{label}</p>
         {icon && (
-          <span className={cn("p-1.5 rounded-md", c.bg, c.text)}>
+          <span className={cn("p-1.5", c.text)}>
             {icon}
           </span>
         )}

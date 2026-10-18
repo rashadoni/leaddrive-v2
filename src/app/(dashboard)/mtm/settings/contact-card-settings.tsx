@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { ContactCategorySettings } from "./contact-category-settings"
 import { ContactFieldSettings } from "./contact-required-field-settings"
 import { ContactSpecialtySettings } from "./contact-specialty-settings"
+import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
 
 type Tab = "categories" | "classes" | "fields" | "specialties"
 
@@ -129,7 +130,7 @@ export function ContactCardSettings({
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </div>
 
-      <div role="tablist" aria-labelledby="mtm-contact-card-title" className="mt-4 flex flex-wrap gap-2 border-b border-zinc-200 pb-3 dark:border-zinc-700">
+      <div role="tablist" aria-labelledby="mtm-contact-card-title" className={`mt-4 ${MTM_TAB_ROW}`}>
         {tabs.map((item) => (
           <button
             key={item.id}
@@ -141,10 +142,8 @@ export function ContactCardSettings({
             data-testid={`mtm-contact-card-tab-${item.id}`}
             onClick={() => setTab(item.id)}
             className={cn(
-              "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors",
-              tab === item.id
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-zinc-200 bg-background text-foreground hover:border-zinc-300 dark:border-zinc-700",
+              "inline-flex items-center gap-2 text-sm font-medium transition-colors",
+              mtmTabClass(tab === item.id),
             )}
           >
             {item.label}
@@ -161,7 +160,7 @@ export function ContactCardSettings({
             // Doctors pick a specialty; say so where their fields are listed,
             // with the way to the list.
             legacyContactTypeForCategory(category.code) === "DOCTOR" && showsSpecialty ? (
-              <p data-testid="mtm-contact-category-specialty-note" className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-primary/5 px-3 py-2 text-sm">
+              <p data-testid="mtm-contact-category-specialty-note" className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 px-3 py-2 text-sm">
                 <span>{t("specialtyNote", { count: specialtiesDraft.length })}</span>
                 <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => setTab("specialties")}>
                   {t("openSpecialties")}

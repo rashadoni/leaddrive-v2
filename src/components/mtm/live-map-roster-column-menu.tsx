@@ -98,7 +98,7 @@ export function RosterColumnValueList({
           const ticked = rosterFilterTicked(filter, option.value)
           return (
             <li key={option.value}>
-              <label className={cn("flex min-h-9 cursor-pointer items-center gap-2 px-3 text-sm hover:bg-muted/60 [@media(pointer:coarse)]:min-h-11", ticked && "bg-primary/5 font-medium")}>
+              <label className={cn("flex min-h-9 cursor-pointer items-center gap-2 px-3 text-sm hover:bg-muted/60 [@media(pointer:coarse)]:min-h-11", ticked && "font-semibold")}>
                 <input
                   type="checkbox"
                   checked={ticked}
@@ -141,7 +141,7 @@ export function RosterColumnMenuPanel({
               onClick={() => onSort(direction)}
               className={cn(
                 "inline-flex min-h-9 items-center gap-1.5 rounded-md border px-2 text-left text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                current ? "border-primary bg-primary/10" : "border-zinc-200 hover:bg-muted dark:border-zinc-700",
+                current ? "border-foreground font-semibold" : "border-zinc-200 hover:bg-muted dark:border-zinc-700",
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />

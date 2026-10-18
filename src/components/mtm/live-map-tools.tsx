@@ -19,7 +19,8 @@ const MAX_HITS_SHOWN = 3
 
 const TOOL = "pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium shadow-md transition-colors"
 const TOOL_IDLE = "border-zinc-300 bg-card hover:bg-muted dark:border-zinc-600"
-const TOOL_ON = "border-primary bg-primary text-primary-foreground"
+// A tool that is on is outlined dark, not filled: the orange fill is the page's one main button (owner-approved colours, 2026-10-18).
+const TOOL_ON = "border-foreground bg-card font-semibold text-foreground ring-1 ring-inset ring-foreground"
 
 /**
  * The tools of the live map, in words, on the map itself: find an address or

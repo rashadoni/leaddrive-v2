@@ -32,6 +32,7 @@ import {
   type MtmRouteTargetType,
 } from "@/lib/mtm/route-target-types"
 import type { MtmRoutePlannerContextPatch } from "@/lib/mtm/route-planner-context"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
 
 type Direction = MtmRouteTargetDirection
 type Period = "5_DAYS" | "7_DAYS" | "MONTH"
@@ -384,7 +385,7 @@ export function MtmRoutePlanningMatrix({
         </div>
       </header>
 
-      {error ? <div role="alert" className="flex items-start gap-2 border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div> : null}
+      {error ? <div role="alert" className="flex items-start gap-2 border-b border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-4 py-3 text-sm"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div> : null}
       {!agentId ? (
         <div className="grid min-h-52 place-items-center px-4 py-8 text-center">
           <div><MapPin className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-3 font-semibold">{t("weekPlannerChooseAgent")}</p></div>
@@ -408,7 +409,7 @@ export function MtmRoutePlanningMatrix({
                   onClick={() => setActiveDay(expanded ? "" : day.date)}
                   aria-expanded={expanded}
                 >
-                  <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-semibold ${expanded ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>{index + 1}</span>
+                  <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-semibold ${expanded ? "text-primary ring-2 ring-inset ring-primary" : "bg-muted text-foreground"}`}>{index + 1}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold capitalize">{dayLabel(day.date, locale)}</span>
                     <span className="mt-0.5 block truncate text-xs text-muted-foreground">
@@ -444,7 +445,7 @@ export function MtmRoutePlanningMatrix({
                       </div>
                     ) : null}
                     {snapshot.locked || snapshot.multipleDrafts ? (
-                      <div className="flex items-start gap-3 border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                      <div className="flex items-start gap-3 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm">
                         <Lock className="mt-0.5 h-4 w-4 shrink-0" />
                         <p>{snapshot.multipleDrafts ? t("weekPlannerMultipleDrafts", { date: compactDayLabel(day.date, locale) }) : t("weekPlannerPublishedLocked")}</p>
                       </div>
@@ -482,9 +483,9 @@ export function MtmRoutePlanningMatrix({
                               <Hint key={target.id} text={t("hint.matrixTargetType")}>
                                 <Button
                                   type="button"
-                                  variant={selectedTargetId === target.id ? "default" : "outline"}
+                                  variant="outline"
                                   size="sm"
-                                  className="min-h-11"
+                                  className={`min-h-11 ${mtmChipClass(selectedTargetId === target.id)}`}
                                   disabled={loading}
                                   onClick={() => {
                                     setDayTargetTypes((current) => ({ ...current, [day.date]: target.id }))
@@ -511,7 +512,7 @@ export function MtmRoutePlanningMatrix({
                                   onClick={() => openPlannerForDay(day, snapshot, selectedTarget, candidate.name)}
                                   aria-label={`${t("openDayPlanner")}: ${candidate.name}`}
                                 >
-                                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><CalendarDays className="h-4 w-4" /></span>
+                                  <span className="grid h-9 w-9 shrink-0 place-items-center text-muted-foreground"><CalendarDays className="h-4 w-4" /></span>
                                   <span className="min-w-0 flex-1">
                                     <span className="block truncate text-sm font-semibold">{candidate.name}</span>
                                     <span className="mt-0.5 block truncate text-xs text-muted-foreground">{[candidate.specialtyName, candidate.customer.name, candidate.customer.address].filter(Boolean).join(" · ")}</span>

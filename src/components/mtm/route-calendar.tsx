@@ -76,10 +76,10 @@ function buildMonthDays(month: Date, routes: MtmRouteRecord[]) {
 }
 
 function routeTone(status: MtmRouteRecord["status"]) {
-  if (status === "COMPLETED") return "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300"
-  if (status === "IN_PROGRESS") return "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300"
-  if (status === "CANCELLED") return "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
-  if (status === "DRAFT") return "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300"
+  if (status === "COMPLETED") return "border-zinc-200 text-emerald-700 dark:border-zinc-700 dark:text-emerald-300"
+  if (status === "IN_PROGRESS") return "border-zinc-200 text-sky-700 dark:border-zinc-700 dark:text-sky-300"
+  if (status === "CANCELLED") return "border-zinc-200 text-red-700 dark:border-zinc-700 dark:text-red-300"
+  if (status === "DRAFT") return "border-zinc-200 text-amber-700 dark:border-zinc-700 dark:text-amber-300"
   return "border-zinc-200 bg-muted/60 text-foreground dark:border-zinc-700"
 }
 
@@ -223,7 +223,7 @@ export function MtmRouteCalendar({
                 disabled={!isCurrentMonth}
                 aria-pressed={isSelected}
                 aria-label={formatDate(day.date, locale, { weekday: "long", day: "numeric", month: "long" })}
-                className={`relative min-h-11 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-25 ${isSelected ? "bg-primary text-primary-foreground" : "hover:bg-muted"} ${isToday && !isSelected ? "text-primary" : ""}`}
+                className={`relative min-h-11 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-25 ${isSelected ? "font-semibold text-foreground ring-2 ring-inset ring-primary" : "hover:bg-muted"} ${isToday && !isSelected ? "text-primary" : ""}`}
                 onClick={() => {
                   selectDate(key)
                   revealSelectedDayPanel()
@@ -287,7 +287,7 @@ export function MtmRouteCalendar({
               className={`group min-h-32 border-b border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700 xl:min-h-28 ${isCurrentMonth ? (closedReason ? "bg-muted/40" : isPastDay ? "bg-muted/20" : "bg-card") : "bg-muted/30 text-muted-foreground/50"}`}
             >
               <div className="mb-1 flex min-h-9 items-center justify-between gap-1">
-                <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${isToday ? "bg-primary text-primary-foreground" : isPastDay ? "text-muted-foreground" : ""}`}>{day.date.getDate()}</span>
+                <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${isToday ? "font-bold text-primary ring-1 ring-inset ring-primary" : isPastDay ? "text-muted-foreground" : ""}`}>{day.date.getDate()}</span>
                 {/* Audit 2026-09-21: a dashed «+ Запланировать» block in every
                     empty day filled the month with ~25 identical buttons. One
                     quiet «+» in the day header serves full and empty days alike:
@@ -312,7 +312,7 @@ export function MtmRouteCalendar({
                   data-testid="mtm-route-calendar-day-summary"
                   aria-pressed={isSelected}
                   aria-label={`${formatDate(day.date, locale, { weekday: "long", day: "numeric", month: "long" })}: ${t("routesOnDate", { count: summary.routes })}`}
-                  className={`block w-full rounded-lg border px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isSelected ? "border-primary bg-primary/5" : "border-zinc-200 hover:bg-muted/60 dark:border-zinc-700"}`}
+                  className={`block w-full rounded-lg border px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isSelected ? "border-foreground ring-1 ring-inset ring-foreground" : "border-zinc-200 hover:bg-muted/60 dark:border-zinc-700"}`}
                   onClick={() => {
                     selectDate(key)
                     revealSelectedDayPanel()

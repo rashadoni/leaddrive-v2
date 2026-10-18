@@ -100,7 +100,7 @@ export function MtmRouteForm({ open, onOpenChange, onSaved, initialData, orgId }
       </DialogHeader>
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <DialogContent>
-          {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
+          {error && <div role="alert" data-testid="mtm-form-error" className="mb-3 rounded border border-l-4 border-zinc-200 border-l-red-500 bg-card p-2 text-sm text-foreground dark:border-zinc-700 dark:border-l-red-500">{error}</div>}
           <div className="grid gap-4">
             <div><Label htmlFor="name">{tf("routeName")}</Label><Input id="name" value={form.name} onChange={e => update("name", e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">

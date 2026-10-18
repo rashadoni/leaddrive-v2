@@ -35,7 +35,7 @@ export function MtmAttendanceFeatureSwitch({ enabled, canChange }: { enabled: bo
   }
 
   if (!enabled) return <section className="mx-auto max-w-xl space-y-4 rounded-2xl border bg-card p-6 text-center" data-testid="attendance-feature-off">
-    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground" aria-hidden="true"><Power className="h-6 w-6" /></span>
+    <span className="mx-auto flex h-12 w-12 items-center justify-center text-muted-foreground" aria-hidden="true"><Power className="h-6 w-6" /></span>
     <h1 className="text-xl font-bold">{p("featureOff")}</h1>
     <p className="text-sm leading-relaxed text-muted-foreground">{p("featureOffHint")}</p>
     {canChange ? <Button type="button" className="min-h-11 rounded-full px-6" disabled={saving} onClick={() => void save(true)}>{p("featureEnable")}</Button> : null}
@@ -44,7 +44,7 @@ export function MtmAttendanceFeatureSwitch({ enabled, canChange }: { enabled: bo
 
   return <section className="space-y-3 rounded-2xl border bg-card p-4" data-testid="attendance-feature-on">
     <div className="flex flex-wrap items-center gap-3">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" aria-hidden="true"><Power className="h-5 w-5" /></span>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-emerald-700 dark:text-emerald-300" aria-hidden="true"><Power className="h-5 w-5" /></span>
       <p className="min-w-0 flex-1 font-semibold">{p("featureOn")}</p>
       {canChange && !confirming ? <Button type="button" variant="outline" className="min-h-10 rounded-full" onClick={() => setConfirming(true)}>{p("featureDisable")}</Button> : null}
     </div>

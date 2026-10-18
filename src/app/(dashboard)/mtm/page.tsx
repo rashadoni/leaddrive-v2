@@ -181,7 +181,7 @@ export default function MtmDashboardPage() {
                   </p>
                 </div>
                 {operational.announcement.acknowledgedAt ? (
-                  <span className="inline-flex min-h-10 shrink-0 items-center gap-2 border border-emerald-200 bg-emerald-50 px-3 text-xs font-medium text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+                  <span className="inline-flex min-h-10 border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 shrink-0 items-center gap-2 px-3 text-xs font-medium">
                     <Check className="h-4 w-4" />{td("announcementAcknowledged")}
                   </span>
                 ) : (

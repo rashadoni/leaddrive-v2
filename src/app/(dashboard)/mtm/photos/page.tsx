@@ -21,8 +21,9 @@ import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogTitle } from "@/components/ui/dialog"
 import { Camera, Check, X, Trash2, LayoutGrid, Columns, CheckSquare, ImageOff, ExternalLink } from "lucide-react"
+import { MTM_TAB_ROW, mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
 
-const statusColors: Record<string, string> = { PENDING: "bg-amber-100 text-amber-700", APPROVED: "bg-green-100 text-green-700", REJECTED: "bg-red-100 text-red-600" }
+const statusColors: Record<string, string> = { PENDING: "text-amber-700", APPROVED: "text-emerald-700", REJECTED: "text-red-700" }
 
 type MtmPhotoRow = {
   id: string
@@ -269,10 +270,10 @@ export default function MtmPhotosPage() {
         <div className="flex gap-2">
           {/* Audit 2026-09-26: three bare icons nobody could read, and an
               «Export» button with no handler at all. */}
-          <div data-testid="mtm-photos-modes" className="flex overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("viewModes")}>
-            <Hint text={t("hint.modeGallery")}><Button aria-pressed={viewMode === "gallery"} variant={viewMode === "gallery" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => setViewMode("gallery")}><LayoutGrid className="mr-1.5 h-4 w-4" />{t("modeGallery")}</Button></Hint>
-            <Hint text={t("hint.modeCompare")}><Button aria-pressed={viewMode === "compare"} variant={viewMode === "compare" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => setViewMode("compare")}><Columns className="mr-1.5 h-4 w-4" />{t("modeCompare")}</Button></Hint>
-            <Hint text={t("hint.modeBatch")}><Button aria-pressed={viewMode === "batch"} variant={viewMode === "batch" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => { setViewMode("batch"); setSelectedPhotos(new Set()) }}><CheckSquare className="mr-1.5 h-4 w-4" />{t("modeBatch")}</Button></Hint>
+          <div data-testid="mtm-photos-modes" className={MTM_TAB_ROW} role="group" aria-label={t("viewModes")}>
+            <Hint text={t("hint.modeGallery")}><Button aria-pressed={viewMode === "gallery"} variant="ghost" size="sm" className={mtmTabClass(viewMode === "gallery")} onClick={() => setViewMode("gallery")}><LayoutGrid className="mr-1.5 h-4 w-4" />{t("modeGallery")}</Button></Hint>
+            <Hint text={t("hint.modeCompare")}><Button aria-pressed={viewMode === "compare"} variant="ghost" size="sm" className={mtmTabClass(viewMode === "compare")} onClick={() => setViewMode("compare")}><Columns className="mr-1.5 h-4 w-4" />{t("modeCompare")}</Button></Hint>
+            <Hint text={t("hint.modeBatch")}><Button aria-pressed={viewMode === "batch"} variant="ghost" size="sm" className={mtmTabClass(viewMode === "batch")} onClick={() => { setViewMode("batch"); setSelectedPhotos(new Set()) }}><CheckSquare className="mr-1.5 h-4 w-4" />{t("modeBatch")}</Button></Hint>
           </div>
         </div>
       </div>
@@ -296,9 +297,9 @@ export default function MtmPhotosPage() {
             onChange={setAgentFilter} />
         </Hint>
         <div role="group" aria-label={tfl("status")} className="flex flex-wrap gap-1">
-          <Hint text={t("hint.status")}><Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{t("all")} ({periodTotal})</Button></Hint>
+          <Hint text={t("hint.status")}><Button variant="outline" size="sm" className={`h-10 rounded-full ${mtmChipClass(activeFilter === "all")}`} onClick={() => setActiveFilter("all")}>{t("all")} ({periodTotal})</Button></Hint>
           {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
-            <Hint key={s} text={t("hint.status")}><Button variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>
+            <Hint key={s} text={t("hint.status")}><Button variant="outline" size="sm" className={`h-10 rounded-full ${mtmChipClass(activeFilter === s)}`} onClick={() => setActiveFilter(s)}>
               {t(PHOTO_FILTER_LABELS[s])} ({statusCounts[s] || 0})
             </Button></Hint>
           ))}
@@ -322,7 +323,7 @@ export default function MtmPhotosPage() {
 
       {/* Batch action bar */}
       {viewMode === "batch" && selectedPhotos.size > 0 && (
-        <div className="flex items-center gap-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-primary/5">
+        <div className="flex items-center gap-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card">
           <span className="text-xs font-medium">{t("batchSelected", { n: selectedPhotos.size })}</span>
           <Hint text={t("hint.approveAll")}>
             <Button size="sm" variant="outline" className="h-6 text-xs text-green-600" onClick={() => { selectedPhotos.forEach(id => { if (!missingFiles.has(id)) updatePhotoStatus(id, "APPROVED") }); setSelectedPhotos(new Set()) }}>
@@ -421,8 +422,8 @@ export default function MtmPhotosPage() {
                       <p data-testid="mtm-photo-review-unavailable" className="mt-2 text-[11px] text-muted-foreground">{t("reviewUnavailable")}</p>
                     ) : photo.status === "PENDING" ? (
                       <div className="mt-2 grid grid-cols-2 gap-1">
-                        <Hint text={t("hint.approve")}><Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-green-600 hover:bg-green-50" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "APPROVED") }}><Check className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("approve")}</span></Button></Hint>
-                        <Hint text={t("hint.reject")}><Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-red-600 hover:bg-red-50" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "REJECTED") }}><X className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("reject")}</span></Button></Hint>
+                        <Hint text={t("hint.approve")}><Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-emerald-700 hover:bg-muted" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "APPROVED") }}><Check className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("approve")}</span></Button></Hint>
+                        <Hint text={t("hint.reject")}><Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-red-700 hover:bg-muted" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "REJECTED") }}><X className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("reject")}</span></Button></Hint>
                       </div>
                     ) : null}
                   </div>

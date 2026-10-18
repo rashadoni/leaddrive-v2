@@ -287,7 +287,7 @@ export function MtmRouteTravelPanel({ route, canCalculate, locale, orgId }: Prop
       ) : null}
 
       {result && distanceValue !== null ? (
-        <div className="grid gap-2 rounded-md border border-cyan-200 bg-cyan-50 p-3 text-sm dark:border-cyan-900 dark:bg-cyan-950/30 sm:grid-cols-2">
+        <div className="grid gap-2 rounded-md border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm sm:grid-cols-2">
           <div>
             <div className="text-xs text-muted-foreground">{t("routeTravelDistance")}</div>
             <div className="mt-0.5 font-semibold">{t("routeTravelDistanceValue", { value: distanceValue })}</div>

@@ -25,7 +25,7 @@ import { MtmFilterBar, MtmFilterReset, MtmFilterSearch, MtmFilterSelect } from "
 import { PageDescription } from "@/components/page-description"
 import { mtmTaskDueFormat } from "@/lib/mtm/task-due"
 import { MtmTaskForm, type TaskAgentOption, type TaskGroupOption } from "@/components/mtm/task-form"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { invalidateOperationalWeekSnapshotsAfterTaskMutation } from "@/lib/mtm/operational-week-cache"
@@ -344,9 +344,9 @@ export default function MtmTasksPage() {
         <MtmFilterBar testId="mtm-task-filters">
           <MtmFilterSearch value={searchInput} onChange={setSearchInput} delayMs={0} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tFilters("clearSearch")} />
           {contactId ? (
-            <span role="status" className="inline-flex h-10 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 pl-3 pr-1.5 text-sm text-primary">
+            <span role="status" className="inline-flex h-10 items-center gap-1 rounded-full border border-foreground pl-3 pr-1.5 text-sm font-semibold text-foreground">
               {t("contactContext", { name: data?.contactName ?? "…" })}
-              <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-primary/15" onClick={() => { setContactId(""); setPage(1) }} aria-label={t("clearContactContext")}><X className="h-3.5 w-3.5" /></button>
+              <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-muted" onClick={() => { setContactId(""); setPage(1) }} aria-label={t("clearContactContext")}><X className="h-3.5 w-3.5" /></button>
             </span>
           ) : null}
           {(data?.filters.teams || []).length > 0 ? (
@@ -393,7 +393,7 @@ export default function MtmTasksPage() {
                   type="button"
                   aria-pressed={pressed}
                   onClick={() => { setStatus(chip.value); setPage(1) }}
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors ${pressed ? "border-primary bg-primary/10 font-semibold text-primary" : "border-zinc-200 hover:bg-muted dark:border-zinc-700"}`}
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors ${pressed ? "border-foreground font-semibold text-foreground" : "border-zinc-200 hover:bg-muted dark:border-zinc-700"}`}
                 >
                   <span className={pressed ? "" : chip.tone}>{chip.label}</span>
                   {!data ? null : <span className="tabular-nums text-muted-foreground">{chip.count}</span>}

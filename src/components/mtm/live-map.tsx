@@ -1357,7 +1357,7 @@ export default function MtmLiveMap({
           </div>
           <button
             type="button"
-            className="mt-2 inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-400 bg-background px-4 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:hover:bg-amber-950/30"
+            className="mt-2 inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-400 bg-background px-4 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             onClick={retryBaseMap}
           >
             {tMap("retryMapBackground")}

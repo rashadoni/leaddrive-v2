@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { BadgeCheck, BookOpenCheck, Check, CopyPlus, FileClock, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Hint, HintValue } from "@/components/hint"
 import {
@@ -411,7 +411,7 @@ export function ContactDictionarySettings() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50/70 p-3 text-sm text-sky-950 dark:border-sky-900/70 dark:bg-sky-950/20 dark:text-sky-100">
+      <div className="mt-4 rounded-lg border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
         <p className="font-medium">{t("governanceTitle")}</p>
         <p className="mt-0.5 text-xs leading-relaxed opacity-80">{t("governanceDescription")}</p>
       </div>
@@ -419,7 +419,7 @@ export function ContactDictionarySettings() {
       {loading && dictionaries.length === 0 ? (
         <div className="mt-5 grid gap-3 lg:grid-cols-2">{[1, 2].map((item) => <div key={item} className="h-44 animate-pulse rounded-lg bg-muted" />)}</div>
       ) : loadError && dictionaries.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+        <div className="mt-5 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-4 text-sm">
           <p>{loadError}</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void load()}>{t("retry")}</Button>
         </div>
       ) : ordered.length === 0 ? (
@@ -431,7 +431,7 @@ export function ContactDictionarySettings() {
       ) : (
         <div className="mt-5 grid gap-3 lg:grid-cols-2">
           {ordered.map((dictionary) => (
-            <article key={dictionary.id} className={`rounded-lg border p-4 ${dictionary.status === "ACTIVE" ? "border-emerald-300 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/15" : "border-zinc-200 bg-card dark:border-zinc-700"}`}>
+            <article key={dictionary.id} className={`rounded-lg border p-4 ${dictionary.status === "ACTIVE" ? "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500" : "border-zinc-200 bg-card dark:border-zinc-700"}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -484,7 +484,7 @@ export function ContactDictionarySettings() {
               <div><Label htmlFor="contact-dictionary-observed">{t("sourceObservedAt")}</Label><Input id="contact-dictionary-observed" type="datetime-local" value={form.sourceObservedAt} onChange={(event) => setForm((current) => ({ ...current, sourceObservedAt: event.target.value }))} className="mt-1.5 min-h-11" required /></div>
               <div><Label htmlFor="contact-dictionary-effective">{t("effectiveFrom")}</Label><Input id="contact-dictionary-effective" type="date" value={form.effectiveFrom} onChange={(event) => setForm((current) => ({ ...current, effectiveFrom: event.target.value }))} className="mt-1.5 min-h-11" required /></div>
             </div>
-            {formError ? <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">{formError}</p> : null}
+            {formError ? <p role="alert" className="rounded-md border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">{formError}</p> : null}
           </DialogContent>
           <DialogFooter><Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>{t("cancel")}</Button><Button type="submit" disabled={saving}>{saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}{saving ? t("creating") : t("createDraft")}</Button></DialogFooter>
         </form>
@@ -493,7 +493,7 @@ export function ContactDictionarySettings() {
       <Dialog open={Boolean(activateTarget)} onOpenChange={(open) => !open && !saving && setActivateTarget(null)}>
         <DialogHeader><DialogTitle>{t("activateTitle")}</DialogTitle><DialogDescription>{activateTarget ? t("activateDescription", { name: nameFor(activateTarget), version: activateTarget.version }) : ""}</DialogDescription></DialogHeader>
         <DialogContent className="space-y-4">
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-100"><p className="font-medium">{t("activationEffectTitle")}</p><p className="mt-1 text-xs leading-relaxed opacity-80">{t("activationEffectDescription")}</p></div>
+          <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm"><p className="font-medium">{t("activationEffectTitle")}</p><p className="mt-1 text-xs leading-relaxed opacity-80">{t("activationEffectDescription")}</p></div>
           <div><Label htmlFor="contact-dictionary-approval">{t("approvalReference")}</Label><Input id="contact-dictionary-approval" value={approvalReference} onChange={(event) => setApprovalReference(event.target.value)} className="mt-1.5 min-h-11" maxLength={500} required /></div>
         </DialogContent>
         <DialogFooter><Button type="button" variant="outline" onClick={() => setActivateTarget(null)} disabled={saving}>{t("cancel")}</Button><Hint wrap text={!saving && approvalReference.trim().length < 3 ? t("hint.dictionaryApprovalNeeded") : null}><Button type="button" onClick={() => void activateDictionary()} disabled={saving || approvalReference.trim().length < 3}>{saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}{saving ? t("activating") : t("confirmActivation")}</Button></Hint></DialogFooter>

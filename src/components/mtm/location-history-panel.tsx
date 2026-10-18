@@ -573,14 +573,14 @@ export function LocationHistoryPanel() {
       </form>
 
       {rosterError && (
-        <div data-testid="mtm-location-history-roster-error" role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
+        <div data-testid="mtm-location-history-roster-error" role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
           <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" />{t("rosterLoadFailed")}: {rosterError}</span>
           <Button data-testid="mtm-location-history-roster-retry" variant="outline" className="min-h-11" onClick={() => void loadRoster()}>{t("retryEmployees")}</Button>
         </div>
       )}
 
       {historyError && (
-        <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
           <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" />{t("loadFailed")}: {historyError}</span>
           <Button data-testid="mtm-location-history-history-retry" variant="outline" className="min-h-11" onClick={() => void loadHistory()}>{t("retryHistory")}</Button>
         </div>
@@ -622,7 +622,7 @@ export function LocationHistoryPanel() {
           </div>
 
           {(data.quality.rawTruncated || data.quality.downsampled || data.quality.rejectedByAccuracy > 0) && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+            <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-xs">
               {data.quality.rawTruncated
                 ? t("truncatedWarning")
                 : t("qualitySummary", {
@@ -644,7 +644,7 @@ export function LocationHistoryPanel() {
                       type="button"
                       aria-pressed={layers[layer]}
                       onClick={() => setLayers((current) => ({ ...current, [layer]: !current[layer] }))}
-                      className={`min-h-11 rounded-md border px-3 py-2 text-xs transition-colors ${layers[layer] ? "border-primary/30 bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                      className={`min-h-11 rounded-md border px-3 py-2 text-xs transition-colors ${layers[layer] ? "border-foreground font-semibold text-foreground" : "text-muted-foreground hover:bg-muted"}`}
                     >
                       {t(`layer.${layer}`)}
                     </button>
@@ -851,7 +851,7 @@ export function LocationHistoryPanel() {
                         <span>{t("battery")}: {stop.batteryStart == null ? "—" : stop.batteryStart === stop.batteryEnd ? `${Math.round(stop.batteryStart)}%` : `${Math.round(stop.batteryStart)}–${Math.round(stop.batteryEnd ?? stop.batteryStart)}%`}</span>
                         <HintValue text={stop.connectivity === "ONLINE" ? t("hint.historyStopOnline") : t("hint.historyStopOfflineGaps")}>{stop.connectivity === "ONLINE" ? t("online") : t("offlineGaps")}</HintValue>
                       </div>
-                      <div className={`rounded-md px-2 py-1.5 ${stop.visit ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+                      <div className={`rounded-md px-2 py-1.5 ${stop.visit ? "text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
                         {stop.visit
                           ? <><HintValue text={t("hint.historyStopVisit")}>{t("confirmedVisit")}</HintValue>: {stop.visit.customerName}</>
                           : t("stopIsNotVisit")}
@@ -895,7 +895,7 @@ export function LocationHistoryPanel() {
           </div>
 
           {data.anomalies.length > 0 && (
-            <section className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/40 dark:bg-amber-950/10">
+            <section className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3">
               <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold"><AlertTriangle className="h-4 w-4 text-amber-600" />{t("evidenceWarnings")}</h3>
               <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {data.anomalies.slice(0, 30).map((anomaly) => (

@@ -95,6 +95,7 @@ import {
 } from "@/lib/mtm/route-links"
 import type { MtmClientQuickCounts } from "@/lib/mtm/client-list-quick"
 import { createDateFormatter, formatDate } from "@/lib/format-date"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
 
 type Agent = {
   id: string
@@ -1148,7 +1149,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
 
 
       {isRouteOrganizationFlow && routeAssignmentHandoff ? (
-        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">{tx("explorer.routeFlowTitle")}</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -1376,8 +1377,8 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                       key={value}
                       type="button"
                       size="sm"
-                      variant={density === value ? "default" : "outline"}
-                      className="min-h-9"
+                      variant="outline"
+                      className={`min-h-9 ${mtmChipClass(density === value)}`}
                       data-testid={`mtm-organization-density-${value.toLowerCase()}`}
                       aria-pressed={density === value}
                       onClick={() => {
@@ -2051,7 +2052,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100">
+                <div className="flex items-center gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm">
                   <UserRoundCheck className="h-5 w-5 flex-none" />
                   {tx("explorer.noConflicts")}
                 </div>

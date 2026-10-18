@@ -219,7 +219,7 @@ export function MtmAttendanceCalendar() {
               : <span className="text-xs text-muted-foreground">{t(day.date <= data.today ? "calendarPastReadOnly" : !day.canEdit ? "calendarPairedReadOnly" : "calendarViewOnly")}</span>}</td>
           </tr>)}</tbody>
         </table></div> : <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-5 text-sm text-muted-foreground dark:border-zinc-700">{t("calendarEmpty", { year: year ?? String(currentYear) })}</p>}
-        {data.canManage && year ? <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4" data-testid="attendance-calendar-official">
+        {data.canManage && year ? <div className="space-y-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4" data-testid="attendance-calendar-official">
           <p className="text-sm font-semibold">{t("calendarOfficialTitle", { year })}</p>
           <p className="max-w-prose text-sm text-muted-foreground">{azOfficialCalendar(Number(year)).complete ? t("calendarOfficialHint", { source: azOfficialCalendar(Number(year)).source ?? "" }) : t("calendarOfficialPartial", { year })}</p>
           <Button type="button" className="min-h-11 rounded-full" disabled={disabled} onClick={() => void addOfficial()}>{t("calendarOfficialAdd", { year })}</Button>

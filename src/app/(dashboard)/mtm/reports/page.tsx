@@ -15,6 +15,7 @@ import {
   MANAGEMENT_REPORT_TYPES, REPORT_TYPES, REPORTS, statusClass, statusLabelKey, roleLabelKey, type ReportType,
 } from "@/lib/mtm/report-config"
 import { formatDate, formatDateTime } from "@/lib/format-date"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
 
 type Period = "today" | "week" | "month"
 const PERIODS: Period[] = ["today", "week", "month"]
@@ -150,7 +151,7 @@ export default function MtmReportsPage() {
         </div>
         <div className="flex gap-2 flex-wrap">
           {PERIODS.map(p => (
-            <Hint key={p} text={t("hint.period")}><Button variant={period === p ? "default" : "outline"} size="sm" onClick={() => setPeriod(p)}>
+            <Hint key={p} text={t("hint.period")}><Button variant="outline" size="sm" onClick={() => setPeriod(p)} className={mtmChipClass(period === p)}>
               {t(PERIOD_KEY[p])}
             </Button></Hint>
           ))}

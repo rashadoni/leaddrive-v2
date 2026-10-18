@@ -80,6 +80,7 @@ import { saveRouteCache, loadRouteCache, routeCacheKey } from "@/lib/mtm/route-c
 import type { LiveMapReferencePoint, RouteStop } from "@/components/mtm/live-map"
 import type { MtmRoutePoint, MtmRouteRecord } from "@/components/mtm/route-types"
 import { LocationHistoryPanel } from "@/components/mtm/location-history-panel"
+import { MTM_TAB_ROW, mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
 import {
   MapPin, RefreshCw, Clock, WifiOff, Navigation,
   Radio, AlertTriangle, History,
@@ -1551,7 +1552,7 @@ export default function MtmMapPage() {
               onClick={() => setFollowSelected((on) => !on)}
               data-testid="live-map-follow"
               className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${followSelected
-                ? "border-blue-600 bg-blue-600 text-white"
+                ? "border-foreground font-semibold text-foreground"
                 : "border-zinc-300 text-foreground hover:bg-muted dark:border-zinc-600"}`}
             >
               <Crosshair className="h-3 w-3" aria-hidden="true" />{tMap("follow")}
@@ -1576,7 +1577,7 @@ export default function MtmMapPage() {
     <div className="flex flex-col gap-3">
       {/* G — offline: the day-route below is served from the on-device cache */}
       {mapMode === "live" && routeFromCache && (
-        <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+        <div className="flex items-center gap-2 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-xs">
           <WifiOff className="h-3.5 w-3.5 shrink-0" /> {tMap("offlineCachedRoute")}
         </div>
       )}
@@ -1601,16 +1602,16 @@ export default function MtmMapPage() {
               </Button>
             </Hint>
           ) : null}
-          <div className="flex rounded-md border bg-muted/40 p-0.5" role="tablist" aria-label={tMap("modeLabel")}>
+          <div className={MTM_TAB_ROW} role="tablist" aria-label={tMap("modeLabel")}>
             <Hint text={tMap("hint.live")}>
               <Button
                 data-testid="mtm-map-mode-live"
                 type="button"
                 role="tab"
                 aria-selected={mapMode === "live"}
-                variant={mapMode === "live" ? "default" : "ghost"}
+                variant="ghost"
                 size="sm"
-                className="min-h-11"
+                className={mtmTabClass(mapMode === "live")}
                 onClick={() => switchMapMode("live")}
               >
                 <Radio className="mr-1.5 h-3.5 w-3.5" />{tMap("liveMode")}
@@ -1622,9 +1623,9 @@ export default function MtmMapPage() {
                 type="button"
                 role="tab"
                 aria-selected={mapMode === "history"}
-                variant={mapMode === "history" ? "default" : "ghost"}
+                variant="ghost"
                 size="sm"
-                className="min-h-11"
+                className={mtmTabClass(mapMode === "history")}
                 onClick={() => switchMapMode("history")}
               >
                 <History className="mr-1.5 h-3.5 w-3.5" />{tMap("historyMode")}
@@ -1650,7 +1651,7 @@ export default function MtmMapPage() {
           stays up here is for a roster too long to load whole (over 500): the
           server narrows it by team before the list can. */}
       {contract?.rosterTruncated || teamFilter ? (
-        <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+        <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-sm">
           {contract?.rosterTruncated ? <span>{tMap("rosterTruncated", { shown: contract.returnedAgents })}</span> : null}
           {teams.length > 0 ? (
             <Hint wrap text={tMap("hint.teamFilter")}>
@@ -1662,7 +1663,7 @@ export default function MtmMapPage() {
         </div>
       ) : null}
       {visibleLoadError ? (
-        <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+        <div role="alert" className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-sm">
           <div>{visibleLoadError}</div>
           {roster ? <div className="mt-1 text-xs">{tMap("refreshFailedAging")}</div> : null}
         </div>
@@ -1670,43 +1671,43 @@ export default function MtmMapPage() {
       {/* Status filter tabs */}
       <div className="-mx-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label={tc("status")}>
         <Hint text={tMap("hint.chipAll")}>
-          <Button className="min-h-11 shrink-0" variant={statusFilter ? "outline" : "default"} size="sm" aria-pressed={!statusFilter} data-testid="mtm-map-status-chip-all" onClick={() => pickStatus(null)}>
+          <Button className={`min-h-11 shrink-0 ${mtmChipClass(!statusFilter)}`} variant="outline" size="sm" aria-pressed={!statusFilter} data-testid="mtm-map-status-chip-all" onClick={() => pickStatus(null)}>
             {tc("all")} ({statusCounts.total})
           </Button>
         </Hint>
         <Hint text={tMap("hint.chipCheckedIn")}>
-          <Button variant={statusChipOn("CHECKED_IN") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("CHECKED_IN")} data-testid="mtm-map-status-chip-CHECKED_IN" onClick={() => pickStatus("CHECKED_IN")}
-            className={`min-h-11 shrink-0 ${statusChipOn("CHECKED_IN") ? "" : "text-green-600 border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950/20"}`}>
+          <Button variant="outline" size="sm" aria-pressed={statusChipOn("CHECKED_IN")} data-testid="mtm-map-status-chip-CHECKED_IN" onClick={() => pickStatus("CHECKED_IN")}
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("CHECKED_IN"), "text-green-700 dark:text-green-400")}`}>
             <MapPin className="h-3 w-3 mr-1" /> {tMap("fieldStatus.checkedIn")} ({statusCounts.checkedIn})
           </Button>
         </Hint>
         <Hint text={tMap("hint.chipOnRoad")}>
-          <Button variant={statusChipOn("ON_ROAD") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("ON_ROAD")} data-testid="mtm-map-status-chip-ON_ROAD" onClick={() => pickStatus("ON_ROAD")}
-            className={`min-h-11 shrink-0 ${statusChipOn("ON_ROAD") ? "" : "text-blue-600 border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-950/20"}`}>
+          <Button variant="outline" size="sm" aria-pressed={statusChipOn("ON_ROAD")} data-testid="mtm-map-status-chip-ON_ROAD" onClick={() => pickStatus("ON_ROAD")}
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("ON_ROAD"), "text-blue-700 dark:text-blue-400")}`}>
             <Navigation className="h-3 w-3 mr-1" /> {tMap("fieldStatus.onRoad")} ({statusCounts.onRoad})
           </Button>
         </Hint>
         <Hint text={tMap("hint.chipStopped")}>
-          <Button variant={statusChipOn("STOPPED") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("STOPPED")} data-testid="mtm-map-status-chip-STOPPED" onClick={() => pickStatus("STOPPED")}
-            className={`min-h-11 shrink-0 ${statusChipOn("STOPPED") ? "" : "text-amber-700 border-amber-200 hover:bg-amber-50 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-950/20"}`}>
+          <Button variant="outline" size="sm" aria-pressed={statusChipOn("STOPPED")} data-testid="mtm-map-status-chip-STOPPED" onClick={() => pickStatus("STOPPED")}
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("STOPPED"), "text-amber-700 dark:text-amber-300")}`}>
             <PauseCircle className="h-3 w-3 mr-1" /> {tMap("fieldStatus.stopped")} ({statusCounts.stopped})
           </Button>
         </Hint>
         <Hint text={tMap("hint.chipRouteFinished")}>
-          <Button variant={statusChipOn("ROUTE_FINISHED") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("ROUTE_FINISHED")} data-testid="mtm-map-status-chip-ROUTE_FINISHED" onClick={() => pickStatus("ROUTE_FINISHED")}
-            className={`min-h-11 shrink-0 ${statusChipOn("ROUTE_FINISHED") ? "" : "text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-950/20"}`}>
+          <Button variant="outline" size="sm" aria-pressed={statusChipOn("ROUTE_FINISHED")} data-testid="mtm-map-status-chip-ROUTE_FINISHED" onClick={() => pickStatus("ROUTE_FINISHED")}
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("ROUTE_FINISHED"), "text-emerald-700 dark:text-emerald-300")}`}>
             <Flag className="h-3 w-3 mr-1" /> {tMap("fieldStatus.routeFinished")} ({statusCounts.routeFinished})
           </Button>
         </Hint>
         <Hint text={tMap("hint.chipLate")}>
-          <Button variant={statusChipOn("LATE") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("LATE")} data-testid="mtm-map-status-chip-LATE" onClick={() => pickStatus("LATE")}
-            className={`min-h-11 shrink-0 ${statusChipOn("LATE") ? "" : "text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/20"}`}>
+          <Button variant="outline" size="sm" aria-pressed={statusChipOn("LATE")} data-testid="mtm-map-status-chip-LATE" onClick={() => pickStatus("LATE")}
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("LATE"), "text-red-600 dark:text-red-400")}`}>
             <AlertTriangle className="h-3 w-3 mr-1" /> {tMap("fieldStatus.late")} ({statusCounts.late})
           </Button>
         </Hint>
         <Hint text={tMap("hint.chipOffline", { minutes: delayedMinutes })}>
-          <Button variant={statusChipOn("OFFLINE") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("OFFLINE")} data-testid="mtm-map-status-chip-OFFLINE" onClick={() => pickStatus("OFFLINE")}
-            className={`min-h-11 shrink-0 ${statusChipOn("OFFLINE") ? "" : "text-muted-foreground"}`}>
+          <Button variant="outline" size="sm" aria-pressed={statusChipOn("OFFLINE")} data-testid="mtm-map-status-chip-OFFLINE" onClick={() => pickStatus("OFFLINE")}
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("OFFLINE"), "text-muted-foreground")}`}>
             <WifiOff className="h-3 w-3 mr-1" /> {tMap("fieldStatus.offline")} ({statusCounts.offline})
           </Button>
         </Hint>

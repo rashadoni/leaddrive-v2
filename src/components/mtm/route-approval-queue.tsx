@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertCircle, Check, ClipboardCheck, HelpCircle, MapPin, X } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { formatDateTime } from "@/lib/format-date"
@@ -117,7 +117,7 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
             <article key={request.id} className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.65fr)]">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                  <span className="px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
                     {request.changeType === "REMOVE_STOP" ? t("requestRemoval") : request.changeType === "ADD_STOP" ? t("requestAddition") : request.changeType}
                   </span>
                   <span className="text-xs text-muted-foreground">{formatDateTime(new Date(request.submittedAt), locale)}</span>

@@ -87,11 +87,13 @@ describe("MTM route detail hydration UI contract", () => {
   })
 
   it("preserves readable route and stop status contrast in the existing dark theme", () => {
-    expect(routesPage).toContain('dark:bg-blue-950/40 dark:text-blue-300')
-    expect(routesPage).toContain('dark:bg-green-950/40 dark:text-green-300')
-    expect(routesPage).toContain('dark:bg-red-950/40 dark:text-red-300')
-    expect(routesPage).toContain('dark:bg-green-950/20 dark:text-green-300')
-    expect(routesPage).toContain('dark:bg-red-950/20 dark:text-red-300')
+    // Since 2026-10-18 (owner-approved colours) a status is the colour of its
+    // words, not a tinted pill: the dark theme keeps a light shade of each.
+    expect(routesPage).toContain('IN_PROGRESS: { className: "text-sky-700 dark:text-sky-300" }')
+    expect(routesPage).toContain('COMPLETED: { className: "text-emerald-700 dark:text-emerald-300" }')
+    expect(routesPage).toContain('CANCELLED: { className: "text-red-700 dark:text-red-300" }')
+    expect(routesPage).toContain('p.status === "VISITED" ? "text-emerald-700 dark:text-emerald-300" : p.status === "SKIPPED" ? "text-red-700 dark:text-red-300"')
+    expect(routesPage).not.toMatch(/bg-(blue|green|red)-(50|100)\b/)
   })
 
   it("formats route-detail visit times in the selected application locale and the tenant timezone", () => {

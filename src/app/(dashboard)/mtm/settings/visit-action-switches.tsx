@@ -194,7 +194,7 @@ export function VisitActionSwitches({
       {scope ? <p className="mt-0.5 text-sm text-muted-foreground">{scope}</p> : null}
 
       {status.kind === "failed" ? (
-        <p role="alert" className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+        <p role="alert" className="mt-2 flex items-start gap-2 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{status.message}</span>
         </p>
       ) : null}

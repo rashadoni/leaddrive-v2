@@ -247,7 +247,7 @@ export function MtmAssessmentCreateDialog({
         <DialogContent>
           <div className="grid gap-5">
             <ErrorNotice message={error} />
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-100">
+            <div className="rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
               <FileCheck2 className="mr-2 inline h-4 w-4" />
               {t("appendOnlyAssessmentHint")}
             </div>
@@ -472,7 +472,7 @@ export function MtmPotentialCreateDialog({
         <DialogContent>
           <div className="grid gap-5">
             <ErrorNotice message={error} />
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-100">
+            <div className="rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
               <Link2 className="mr-2 inline h-4 w-4" />
               {t("appendOnlyPotentialHint")}
             </div>
@@ -642,7 +642,7 @@ export function MtmPotentialEndDialog({
         <DialogContent>
           <div className="grid gap-4">
             <ErrorNotice message={error} />
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+            <div className="rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
               <CalendarClock className="mr-2 inline h-4 w-4" />
               {t("potentialEndAppendOnlyHint")}
             </div>

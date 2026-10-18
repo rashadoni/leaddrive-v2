@@ -123,8 +123,8 @@ function AssignmentBadge({
       <span tabIndex={0} className={cn(
         "inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
         assignment.valid
-          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200"
-          : "bg-amber-100 text-amber-950 dark:bg-amber-900/30 dark:text-amber-100",
+          ? "text-emerald-700 dark:text-emerald-300"
+          : "text-amber-700 dark:text-amber-300",
       )}>
         {assignment.valid ? <BadgeCheck className="h-3.5 w-3.5 flex-none" /> : <CircleAlert className="h-3.5 w-3.5 flex-none" />}
         <span className="truncate">{assignment.entry ? localized(assignment.entry.labels, locale) : assignment.entryCode}</span>
@@ -367,7 +367,7 @@ export function MtmContactDictionaryAssignmentPanel({
     <section className="rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="rounded-xl bg-primary/10 p-2 text-primary"><ShieldCheck className="h-5 w-5" /></div>
+          <div className="p-2 text-muted-foreground"><ShieldCheck className="h-5 w-5" /></div>
           <h2 className="text-base font-semibold">{t("title")}</h2>
         </div>
         {(canManage || canRequestChanges) && dictionaries.length ? (
@@ -413,7 +413,7 @@ export function MtmContactDictionaryAssignmentPanel({
       </div> : null}
 
       {pendingRequests.length ? (
-        <div className="grid gap-3 border-t border-zinc-200 bg-amber-50/60 p-4 dark:border-zinc-700 dark:bg-amber-950/10 sm:p-5">
+        <div className="grid gap-3 border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 sm:p-5">
           <div className="flex items-center gap-2 text-sm font-semibold"><CircleAlert className="h-4 w-4" />{t("pendingTitle")}</div>
           {pendingRequests.map((request) => (
             <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 text-sm">

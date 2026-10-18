@@ -281,7 +281,7 @@ export function LiveMapZoneGone({ onClose, className }: { onClose: () => void; c
     <div
       role="status"
       data-testid="live-map-zone-gone"
-      className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200", className)}
+      className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-2.5 py-1.5 text-xs", className)}
     >
       <span>{tMap("areas.errors.gone")}</span>
       <button
