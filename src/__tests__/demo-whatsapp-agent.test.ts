@@ -10,6 +10,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
   findThreads: vi.fn(),
+  findThread: vi.fn(),
+  findOneThread: vi.fn(),
   updateThread: vi.fn(),
   createEvent: vi.fn(),
   findMessages: vi.fn(),
@@ -20,7 +22,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    demoWhatsAppThread: { findMany: mocks.findThreads, updateMany: mocks.updateThread },
+    demoWhatsAppThread: { findMany: mocks.findThreads, findUnique: mocks.findThread, findFirst: mocks.findOneThread, updateMany: mocks.updateThread },
     demoAccessEvent: { create: mocks.createEvent },
     channelMessage: { findMany: mocks.findMessages, create: mocks.createMessage },
     aiInteractionLog: { create: mocks.createAiLog },
@@ -39,6 +41,9 @@ import {
   DEMO_WHATSAPP_CLOSING,
   DEMO_WHATSAPP_MAX_AI_REPLIES,
   demoAgentHistory,
+  demoWhatsAppTicketClosing,
+  fileDemoWhatsAppMedia,
+  type DemoTicketHandle,
   demoWhatsAppAgentSystemPrompt,
   handleDemoWhatsAppInbound,
 } from "@/lib/demo-center/demo-whatsapp-agent"
@@ -317,3 +322,121 @@ describe("the end of the day in Baku", () => {
     expect(demoWhatsAppThreadEnds(new Date("2026-10-18T20:10:00.000Z"))).toEqual(new Date("2026-10-19T19:10:00.000Z"))
   })
 })
+
+/**
+ * The demo's Service Desk on the prospect's own WhatsApp (owner, 2026-10-18:
+ * a ticket only on the prospect's own press). After «Mesajımdan bilet
+ * açılsın» every message goes into the demo's real ticket — through the
+ * product's own path, handed in by the webhook — before anything answers it.
+ */
+describe("ticket mode", () => {
+  const proven = (overrides: Record<string, unknown> = {}) => thread({
+    provenAt: new Date(NOW.getTime() - 10 * 60_000),
+    expiresAt: new Date("2026-10-18T19:59:59.999Z"),
+    aiReplies: 2,
+    lastAiReplyAt: new Date(NOW.getTime() - 60_000),
+    ticketModeAt: new Date(NOW.getTime() - 5 * 60_000),
+    ticketId: null,
+    ...overrides,
+  })
+  const handle = (overrides: Partial<DemoTicketHandle> = {}): DemoTicketHandle => ({
+    ticketId: "ticket-1",
+    ticketNumber: "WA-0031",
+    created: true,
+    reopened: false,
+    appendReply: vi.fn(async () => true),
+    notifyReopen: vi.fn(),
+    ...overrides,
+  })
+
+  it("never files the message that carries the code", async () => {
+    mocks.findThreads.mockResolvedValue([thread()])
+    const fileTicket = vi.fn(async () => handle())
+    await handleDemoWhatsAppInbound(inbound("Kod: LD-1A2B3C"), { generate, fileTicket })
+    expect(fileTicket).not.toHaveBeenCalled()
+  })
+
+  it("files the first message into a new ticket, records it on the thread, and writes the answer into it", async () => {
+    mocks.findThreads.mockResolvedValue([proven()])
+    const ticket = handle()
+    const fileTicket = vi.fn(async () => ticket)
+    expect(await handleDemoWhatsAppInbound(inbound("Kassa çeki çap etmir"), { generate, fileTicket })).toEqual({ handled: true, action: "answered" })
+    expect(fileTicket).toHaveBeenCalledWith({ grantId: "grant-1", ticketId: null })
+    // Claimed, then the ticket's id kept on the thread.
+    expect(mocks.updateThread.mock.calls[0][0].data).toEqual({ ticketClaimedAt: NOW })
+    expect(mocks.updateThread.mock.calls[1][0]).toEqual({ where: { id: "thread-1" }, data: { ticketId: "ticket-1" } })
+    expect(mocks.createEvent.mock.calls.map(([call]) => call.data.eventType)).toContain("WHATSAPP_TICKET_OPENED")
+    // The agent knows the one fact it may state: which ticket the message is in.
+    expect(generate.mock.calls[0][0].system).toContain("WA-0031 biletinə düşür")
+    expect(ticket.appendReply).toHaveBeenCalledWith(mocks.send.mock.calls[0][0].body)
+  })
+
+  it("files a later message into the ticket the thread already holds", async () => {
+    mocks.findThreads.mockResolvedValue([proven({ ticketId: "ticket-1" })])
+    const fileTicket = vi.fn(async () => handle({ created: false }))
+    await handleDemoWhatsAppInbound(inbound("Hələ də işləmir"), { generate, fileTicket })
+    expect(fileTicket).toHaveBeenCalledWith({ grantId: "grant-1", ticketId: "ticket-1" })
+  })
+
+  it("opens one ticket for two first messages arriving together: the second waits for the first's id", async () => {
+    mocks.findThreads.mockResolvedValue([proven()])
+    mocks.updateThread.mockResolvedValueOnce({ count: 0 }) // the claim went to the other message
+    mocks.findThread.mockResolvedValue({ ticketId: "ticket-1" })
+    const fileTicket = vi.fn(async () => handle({ created: false }))
+    await handleDemoWhatsAppInbound(inbound("Salam"), { generate, fileTicket })
+    expect(fileTicket).toHaveBeenCalledTimes(1)
+    expect(fileTicket).toHaveBeenCalledWith({ grantId: "grant-1", ticketId: "ticket-1" })
+  }, 10_000)
+
+  it("files a held message too, and never hands a filed message back to the ordinary path", async () => {
+    mocks.findThreads.mockResolvedValue([proven()])
+    generate.mockRejectedValue(new Error("overloaded"))
+    const fileTicket = vi.fn(async () => handle())
+    expect(await handleDemoWhatsAppInbound(inbound("Salam"), { generate, fileTicket })).toEqual({ handled: true, action: "held" })
+    expect(fileTicket).toHaveBeenCalledTimes(1)
+
+    mocks.findMessages.mockRejectedValue(new Error("database down"))
+    expect(await handleDemoWhatsAppInbound(inbound("Salam"), { generate, fileTicket })).toEqual({ handled: true, action: "held" })
+  })
+
+  it("still answers when filing failed — without saying the message is in a ticket", async () => {
+    mocks.findThreads.mockResolvedValue([proven()])
+    const fileTicket = vi.fn(async () => handle({ ticketId: null, ticketNumber: null, created: false }))
+    expect(await handleDemoWhatsAppInbound(inbound("Salam"), { generate, fileTicket })).toEqual({ handled: true, action: "answered" })
+    expect(generate.mock.calls[0][0].system).not.toContain("biletinə düşür")
+  })
+
+  it("lets a reopened ticket say so, as the product does, and answers nothing on top", async () => {
+    mocks.findThreads.mockResolvedValue([proven({ ticketId: "ticket-1" })])
+    const ticket = handle({ created: false, reopened: true })
+    expect(await handleDemoWhatsAppInbound(inbound("Yenə işləmir"), { generate, fileTicket: vi.fn(async () => ticket) })).toEqual({ handled: true, action: "reopened" })
+    expect(ticket.notifyReopen).toHaveBeenCalledTimes(1)
+    expect(generate).not.toHaveBeenCalled()
+  })
+
+  it("sends one message when the closing message also reopens the ticket: the closing line, naming the ticket", async () => {
+    mocks.findThreads.mockResolvedValue([proven({ ticketId: "ticket-1", aiReplies: DEMO_WHATSAPP_MAX_AI_REPLIES })])
+    const ticket = handle({ created: false, reopened: true })
+    expect(await handleDemoWhatsAppInbound(inbound("Daha bir sual"), { generate, fileTicket: vi.fn(async () => ticket) })).toEqual({ handled: true, action: "closed" })
+    expect(mocks.send).toHaveBeenCalledTimes(1)
+    expect(mocks.send.mock.calls[0][0].body).toBe(demoWhatsAppTicketClosing("WA-0031"))
+    expect(ticket.notifyReopen).not.toHaveBeenCalled()
+    expect(ticket.appendReply).toHaveBeenCalledWith(demoWhatsAppTicketClosing("WA-0031"))
+  })
+
+  it("closes with a line the product's guard lets through unchanged", () => {
+    expect(guardOmnichannelCommitments(demoWhatsAppTicketClosing("WA-0031"), { locale: "az" }).violations).toEqual([])
+  })
+
+  it("files a photo from a phone in ticket mode into the demo's ticket, and answers it with nothing", async () => {
+    mocks.findOneThread.mockResolvedValue({ id: "thread-1", grantId: "grant-1", ticketId: "ticket-1" })
+    const fileTicket = vi.fn(async () => handle({ created: false }))
+    expect(await fileDemoWhatsAppMedia({ organizationId: "org-leaddrive-inc", waPhone: "994501234567", now: NOW }, { fileTicket })).toBe(true)
+    expect(mocks.findOneThread.mock.calls[0][0].where).toMatchObject({ phoneE164: "+994501234567", ticketModeAt: { not: null }, provenAt: { not: null }, closedAt: null })
+    expect(generate).not.toHaveBeenCalled()
+    mocks.findOneThread.mockResolvedValue(null)
+    expect(await fileDemoWhatsAppMedia({ organizationId: "org-leaddrive-inc", waPhone: "994501234567", now: NOW }, { fileTicket })).toBe(false)
+    expect(await fileDemoWhatsAppMedia({ organizationId: "org-other", waPhone: "994501234567", now: NOW }, { fileTicket })).toBe(false)
+  })
+})
+

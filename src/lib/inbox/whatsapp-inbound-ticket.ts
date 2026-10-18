@@ -4,8 +4,20 @@ import { sanitizeLog } from "@/lib/sanitize"
 import { INBOUND_MESSAGE_MARKER, WHATSAPP_INBOUND_DESCRIPTION_HEAD } from "@/lib/ticketing/chat-transcript"
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { whatsappTicketSubject } from "@/lib/ticketing/customer-ticket-text"
+import { cancelPendingTicketClosureRequests } from "@/lib/ticketing/closure-requests"
+import { reopenTicketForCustomerReply } from "@/lib/ticket-reopen"
 
-export type InboundTicketResult = { ticketId: string | null; ticketNumber: string | null; created: boolean; commentAdded: boolean }
+export type InboundTicketResult = {
+  ticketId: string | null
+  ticketNumber: string | null
+  created: boolean
+  commentAdded: boolean
+  /** The demo's resolved or closed ticket was reopened by this message (see `demo`). */
+  reopened?: boolean
+}
+
+/** What marks the ticket a demo opened in its sales organisation. */
+export const DEMO_WHATSAPP_TICKET_TAGS = ["demo", "demo_whatsapp"] as const
 
 /**
  * Every inbound WhatsApp text lands on a ticket: appended to the sender's open
@@ -17,6 +29,13 @@ export type InboundTicketResult = { ticketId: string | null; ticketNumber: strin
  * The description and the comment keep the stored format of
  * `@/lib/ticketing/chat-transcript` (the agent page and the status
  * notification read it back).
+ *
+ * `demo` is the guided demo's own ticket (src/lib/demo-center/
+ * demo-whatsapp-agent.ts), opened only after the prospect pressed for it: it
+ * is found by the id the demo's thread keeps — never by the phone, which may
+ * have older tickets of its own — reopened when it was resolved or closed
+ * (and its closure link cancelled), and created with the demo's mark.
+ * Without `demo` nothing changes.
  */
 export async function ensureInboundWhatsAppTicket({
   organizationId,
@@ -28,6 +47,7 @@ export async function ensureInboundWhatsAppTicket({
   companyId,
   channelMessageId,
   waMessageId,
+  demo,
 }: {
   organizationId: string
   waPhone: string
@@ -38,9 +58,37 @@ export async function ensureInboundWhatsAppTicket({
   companyId: string | null
   channelMessageId: string
   waMessageId?: string
+  demo?: { grantId: string; ticketId: string | null }
 }): Promise<InboundTicketResult> {
   try {
-    const existingTicket = await prisma.ticket.findFirst({
+    if (demo?.ticketId) {
+      const own = await prisma.ticket.findFirst({
+        where: { id: demo.ticketId, organizationId },
+        select: { id: true, ticketNumber: true, status: true },
+      })
+      if (own && (own.status === "resolved" || own.status === "closed")) {
+        const reopened = await reopenTicketForCustomerReply({
+          organizationId,
+          channel: "whatsapp",
+          customerMessage: messageText.trim(),
+          ticketId: own.id,
+        })
+        if (reopened.reopened) {
+          // The link sent with «resolved» must not close the reopened ticket.
+          await cancelPendingTicketClosureRequests(organizationId, own.id).catch(() => 0)
+          return { ticketId: own.id, ticketNumber: own.ticketNumber, created: false, commentAdded: true, reopened: true }
+        }
+      }
+      if (own) {
+        await prisma.ticketComment.create({
+          data: { ticketId: own.id, comment: `[Клиент (WhatsApp)] ${messageText.trim()}`, isInternal: false },
+        })
+        return { ticketId: own.id, ticketNumber: own.ticketNumber, created: false, commentAdded: true }
+      }
+      // Deleted since: the demo opens a new one below.
+    }
+
+    const existingTicket = demo ? null : await prisma.ticket.findFirst({
       where: {
         organizationId,
         tags: { has: "whatsapp" },
@@ -73,13 +121,14 @@ export async function ensureInboundWhatsAppTicket({
       contactId,
       companyId,
       leadId,
-      tags: ["whatsapp", "inbound_whatsapp", "auto_created"],
+      tags: ["whatsapp", "inbound_whatsapp", "auto_created", ...(demo ? DEMO_WHATSAPP_TICKET_TAGS : [])],
       source: "whatsapp",
       sourceMeta: {
         phone: waPhone,
         channelMessageId,
         waMessageId: waMessageId || null,
-        reasons: ["inbound_message"],
+        reasons: demo ? ["inbound_message", "demo_whatsapp"] : ["inbound_message"],
+        ...(demo ? { demoGrantId: demo.grantId } : {}),
       },
       requesterName: senderName,
       requesterPhone: `+${waPhone}`,

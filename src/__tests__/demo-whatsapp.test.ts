@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   countThreads: vi.fn(),
   updateThread: vi.fn(),
   lock: vi.fn(),
+  findTicket: vi.fn(),
   createEvent: vi.fn(),
   findMessages: vi.fn(),
   createMessage: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock("@/lib/prisma", () => {
       demoWhatsAppThread,
       demoAccessEvent: { create: mocks.createEvent },
       channelMessage: { findMany: mocks.findMessages, create: mocks.createMessage },
+      ticket: { findFirst: mocks.findTicket },
       $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ $executeRaw: mocks.lock, demoWhatsAppThread }),
     },
   }
@@ -54,7 +56,7 @@ vi.mock("@/lib/demo-center/whatsapp-number", () => ({
   demoWhatsAppConversationId: vi.fn(async () => "conv-1"),
 }))
 
-import { DEMO_WHATSAPP_WELCOMES_PER_DAY, demoWhatsAppCode, demoWhatsAppState, sendDemoWhatsAppWelcome } from "@/lib/demo-center/demo-whatsapp"
+import { DEMO_WHATSAPP_WELCOMES_PER_DAY, demoWhatsAppCode, demoWhatsAppState, sendDemoWhatsAppWelcome, startDemoWhatsAppTicketMode } from "@/lib/demo-center/demo-whatsapp"
 import { DEMO_WHATSAPP_MAX_AI_REPLIES } from "@/lib/demo-center/demo-whatsapp-agent"
 import { DEMO_WHATSAPP_WELCOME } from "@/lib/demo-center/demo-whatsapp-welcome"
 
@@ -238,3 +240,78 @@ describe("our first message to the prospect's own phone", () => {
     expect(JSON.parse(mocks.fetch.mock.calls[0][1].body).template.components[0].parameters[0].text).toBe("dost")
   })
 })
+
+/**
+ * The demo's Service Desk: the real ticket a prospect's own WhatsApp opened,
+ * after their own press (owner, 2026-10-18).
+ */
+describe("the demo's ticket", () => {
+  const provenAt = new Date(NOW.getTime() - 10 * 60_000)
+  const proven = (overrides: Record<string, unknown> = {}) =>
+    threadRow({ provenAt, expiresAt: new Date("2026-10-18T19:59:59.999Z"), aiReplies: 2, ticketModeAt: new Date(NOW.getTime() - 60_000), ticketId: "ticket-1", ...overrides })
+  const TICKET_ROW = {
+    ticketNumber: "WA-0031",
+    subject: "[WhatsApp müraciəti] Kassa çeki çap etmir",
+    status: "open",
+    createdAt: NOW,
+    slaFirstResponseDueAt: new Date(NOW.getTime() + 30 * 60_000),
+    firstResponseAt: null,
+    slaDueAt: null,
+    comments: [{ comment: "[Клиент (WhatsApp)] Kassa çeki çap etmir", userId: null, createdAt: NOW }],
+    _count: { comments: 1 },
+  }
+
+  it("is read by the id the thread holds, inside the sales organisation, and shown in its customer's view", async () => {
+    mocks.upsertThread.mockResolvedValue(proven())
+    mocks.findTicket.mockResolvedValue(TICKET_ROW)
+    const state = await demoWhatsAppState({ grant, requestPhone: PHONE, now: NOW })
+    expect(mocks.findTicket.mock.calls[0][0].where).toEqual({ id: "ticket-1", organizationId: "org-leaddrive-inc" })
+    // Public comments only, read by the ticket's id — never found by the phone.
+    expect(mocks.findTicket.mock.calls[0][0].select.comments.where).toEqual({ isInternal: false })
+    expect(JSON.stringify(mocks.findTicket.mock.calls[0][0])).not.toContain("994")
+    expect(state).toMatchObject({ ticketMode: true, ticketModeEnded: false, ticket: { number: "WA-0031", status: "open", messageCount: 1 } })
+  })
+
+  it("is not read before the press, nor before the proof", async () => {
+    mocks.upsertThread.mockResolvedValue(proven({ ticketModeAt: null, ticketId: null }))
+    expect((await demoWhatsAppState({ grant, requestPhone: PHONE, now: NOW })).ticket).toBeNull()
+    mocks.upsertThread.mockResolvedValue(threadRow({ ticketId: "ticket-1" }))
+    expect((await demoWhatsAppState({ grant, requestPhone: PHONE, now: NOW })).ticket).toBeNull()
+    expect(mocks.findTicket).not.toHaveBeenCalled()
+  })
+
+  it("says ticket mode ended when the agent's day ran out before a first message opened one", async () => {
+    mocks.upsertThread.mockResolvedValue(proven({ ticketId: null, expiresAt: new Date(NOW.getTime() - 1) }))
+    expect(await demoWhatsAppState({ grant, requestPhone: PHONE, now: NOW })).toMatchObject({ ticketMode: true, ticketModeEnded: true, ticket: null })
+  })
+
+  it("starts ticket mode only on a proven thread whose agent still answers, once", async () => {
+    mocks.upsertThread.mockResolvedValue(threadRow())
+    expect(await startDemoWhatsAppTicketMode({ grant, requestPhone: PHONE, now: NOW })).toEqual({ ok: false, code: "not_proven" })
+    mocks.upsertThread.mockResolvedValue(proven({ ticketModeAt: null, ticketId: null, aiReplies: DEMO_WHATSAPP_MAX_AI_REPLIES }))
+    expect(await startDemoWhatsAppTicketMode({ grant, requestPhone: PHONE, now: NOW })).toEqual({ ok: false, code: "agent_done" })
+    expect(mocks.updateThread).not.toHaveBeenCalled()
+
+    mocks.upsertThread.mockResolvedValue(proven({ ticketModeAt: null, ticketId: null }))
+    const started = await startDemoWhatsAppTicketMode({ grant, requestPhone: PHONE, now: NOW })
+    expect(started.ok).toBe(true)
+    expect(mocks.updateThread.mock.calls[0][0]).toEqual({
+      where: { id: "thread-1", ticketModeAt: null, provenAt: { not: null }, closedAt: null },
+      data: { ticketModeAt: NOW },
+    })
+  })
+
+  it("labels the product's own AI replies as AI, and a template by what it is, not by its placeholder", async () => {
+    mocks.upsertThread.mockResolvedValue(proven({ ticketModeAt: null, ticketId: null }))
+    mocks.findMessages.mockResolvedValue([
+      { id: "tpl", direction: "outbound", body: "[template:ticket_status_az]", createdAt: NOW, metadata: {} },
+      { id: "dv", direction: "outbound", body: "Printer siyahıda görünürmü?", createdAt: NOW, metadata: { aiAutoReply: true } },
+    ])
+    const state = await demoWhatsAppState({ grant, requestPhone: PHONE, now: NOW })
+    expect(state.messages.map((message) => [message.by, message.text])).toEqual([
+      ["ai", "Printer siyahıda görünürmü?"],
+      ["team", "WhatsApp şablon mesajı"],
+    ])
+  })
+})
+
