@@ -1,7 +1,7 @@
 # A5 operator readiness и A7: карта незакрытых доказательств
 
 Срез: 19 октября 2026: Kafka base421260026, проверенный `origin/main`
-6912a0ac3 (последующие изменения Support/demo/CI не меняют Kafka contracts).
+9cd84838d (последующие изменения Support/demo/CI не меняют Kafka contracts).
 Это подготовка, не разрешение
 активации. A5 соответствует K5 backlog; A7 — K7 recovery drills и проверке
 полноты K6 по всем доменам. Ни один новый бизнес-consumer не подключён.
@@ -25,10 +25,12 @@ inactive verifier теперь проверяет семь signed-purpose attest
 source/shadow/checkpoints и регистрирует evidence отдельным именованным логином.
 Tenant/key-policy, lease и verifier recheck действуют до final COMMIT; реальных
 producer/adapter/key provisioning в этом изменении нет. Material capped по
-строкам/1MiB, превышение отвергается, производительность больших tenants не доказана. Hosted [run39174440765](https://github.com/rashadoni/leaddrive-v2/actions/runs/39174440765)
-на exact1bf112fe7 прошёл249/249:174 unit +17 admission +8 shadow +9 stop +
-24 actual-schema reader/canary +8 barrier +9 atomic transition. Все fixtures
-синтетические; runtime/operational evidence этим не получено.
+строкам/1MiB, превышение отвергается, производительность больших tenants не доказана. Hosted [run39177477825](https://github.com/rashadoni/leaddrive-v2/actions/runs/39177477825)
+на exactbd8f89872 прошёл298/298:214 unit +17 admission +8 shadow +9 stop +
+24 actual-schema reader/canary +8 barrier +18 atomic transition/registry/material.
+Это заменяет ранние249/297 оценки, сохраняя их в append-only журнале. Signed
+claims и ключи fixtures синтетические; реальные operational observations этим
+не получены.
 
 Collector проверяет все поля provenance реального worker и точное соответствие
 checkpoint lastEventId → inbox topic/partition/offset. Более новый broker offset
@@ -140,7 +142,8 @@ shared senders/legacy dispatch обязателен перед признани�
 ## Точный порядок следующей работы
 
 1. Isolated actual-schema transition gate завершён: final-COMMIT expiry,
-   scoped PG16 privileges, stale material и pointer races PASS на1bf112fe7.
+   scoped PG16 privileges, stale material и pointer races, named verifier/key
+   revocation и material caps PASS наbd8f89872.
    Это fixture proof, не runtime activation. Upstream A1/A2 проверены отдельно.
 2. Inactive verifier/registration и fixed material budget реализованы; exact
    hosted result этой новой фазы см. session log. Runtime требует независимого
@@ -471,3 +474,24 @@ permission change was made. A future
 runtime installation must independently prove this extra boundary and all scoped
 source/read-only grants before enabling material certification. Generic app.org_id
 context is not tenant authorization. Fixed caps do not prove index/scan/RTO cost.
+
+
+### External prerequisites and ownership after this preparation
+
+No missing network/physical fact can be replaced by a fixture or signed self-claim.
+Original session «Проверить защиту Kafka-консюмера» owns overall delivery.
+
+| Owner | Concrete action, once prerequisites/authorization exist |
+|---|---|
+| Owner personally | Decide whether to republish a clean-history PR while preserving PR894/checkpoints: the historical prose scan finding cannot be removed by an ordinary follow-up commit and gate/history rewriting is not authorized |
+| Owner personally | Approve a named isolated staging tenant/build, independent signers, receipt archive and alert destination, plus explicit permission for real consumers/replay/drill sends; these operations remain forbidden here |
+| Original delivery session | Provision the chosen service identities/key policy and configure real readonly DB/receipt/key/archive adapters for createFundEvidenceVerifier; no fixture module may be used |
+| Original delivery session | Execute the seven-purpose real acceptance procedure in PROJECTION_RECOVERY_RUNBOOK.md, retaining authentic signed bytes and exact release/manifest/material hashes |
+| Owner personally | Choose first-pointer bootstrap, Fund correction/reversal and promoted-worker lifecycle policy; terminal stopped canary is the only currently specified bounded design |
+| Original delivery session | After those decisions, implement/verify application cutover and lifecycle/correction drill using the existing guards; keep all27 domains gated by their A7 writer/effect/history evidence |
+| Production workflow | Only after separately authorized reviewed merge, release the immutable main artifact through .github/workflows/deploy.yml and verify SHA-bound post-deploy smoke; no feature deployment |
+
+Whole-app static/typecheck/build remain draft-skipped; making PR ready also
+triggers separate Kafka/consumer gates and is outside the present no-consumer
+boundary. This task does not weaken draft gates, rewrite history, merge red or
+activate business integrations to produce a green badge.

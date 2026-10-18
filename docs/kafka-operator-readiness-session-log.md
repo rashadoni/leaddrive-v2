@@ -1125,3 +1125,43 @@ has not been changed. Added own actual-role negative test for missing FORCE RLS
 and column-only write grants, followed by restored valid hash/transition. This
 makes future missing ledger provisioning deny automatically, rather than merely
 relying on documentation. Fresh hosted result pending for this final code delta.
+
+
+### Final executable proof and bounded autonomous work completion
+
+Exact bd8f89872120ad8f3bf06b83bbf24c426b8ee646 hosted run39177477825 SUCCESS.
+Downloaded logs checked:214 units+17 upstream admission+8 own shadow+9 stop+
+24 actual-schema reader/canary+8 source barrier+18 transition/registry/material
+=298 PASS; all seven fail counters0. Includes missing ledger FORCE RLS and
+column-only DML denial/restoration, bounded row/byte probes, signed provenance,
+one-use named registration, wrong tenant/generation, verifier/key remap/revoke/
+expiry including final staged COMMIT rollback. No untrusted operator registers
+its own evidence; actual observation truth and trusted provisioning stay separate.
+
+Read-only latest origin/main9cd84838d adds demo navigation/player tests/source
+only after6912a0ac3; no Kafka contract delta. Original admission and guard tests
+remain identical to currentmain. Full27-domain/six-column map, runner-policy72,
+syntax, diff checks PASS. Latest pinned scanner exactly one historical6ca prose
+false positive; no actual/new credential finding. No ignore/history rewrite.
+Current worktree kept task-scoped; canonical dirty checkout and all prior
+checkpoint history preserved. PR894 stays draft, no merge/deploy or production
+access. This final checkpoint updates readiness/journal prose only; executable
+and workflow source match the exact298-case proof above. Its automatic CI is
+watched with timeout1800 gh pr checks894 --watch --interval60; results retained
+in GitHub and PR description, no endless journal-only rerun cycle.
+
+NOT RUN: whole-app static/typecheck/build, draft-skipped; ready_for_review would
+also start separately gated Kafka consumer/CDC workflows, conflicting with the
+active no-consumer restriction. No heavy Contabo check, production mutation,
+real consumer/offset/replay, provider send/money, physical stop/broker/soak/archive/
+restore/alarm drill or new business integration. Real keys/provider identities,
+receipt archive, allowed staging scope and policy decisions were not invented.
+
+Autonomous software work available in the authorized inactive readiness scope
+is finished. Remaining decisions/actions and owner are listed in the existing
+readiness document: owner clean-history publication decision; explicit staging/
+provider/signer/drill permission; original-session trusted provisioning/adapters
+and genuine seven-purpose acceptance; owner bootstrap/correction/lifecycle
+choice and original-session application/domain drills; only separately approved
+reviewed-main workflow may release. These require external authority/evidence
+or belong to the original delivery scope, not another routine permission to code.
