@@ -1,5 +1,5 @@
 // ISOLATED COMPOSITION PROOF. Actual schema/reducer; physical receipts and
-// verifier registration are synthetic owner-seeded claims, not runtime wiring.
+// operational observations/signatures are synthetic, not runtime wiring.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {randomUUID,createHash} from 'node:crypto'
@@ -7,6 +7,8 @@ import {readFile} from 'node:fs/promises'
 import {fixtureSql,fixtureConnection,fixtureDatabase,quoteFixture as q} from './operator-postgres-client.fixture.mjs'
 import {collectFundRecoveryDatabaseSnapshot} from './operator-fund-snapshot.mjs'
 import {validateOperatorRecoveryEvidence} from './operator-recovery-evidence.mjs'
+import {createFundEvidenceVerifier} from './operator-fund-verifier.mjs'
+import {signedFundAttestations} from './operator-fund-verifier.fixture.mjs'
 const modulePath=process.env.LD_OPERATOR_REDUCER_MODULE
 assert.ok(modulePath?.startsWith(process.env.RUNNER_TEMP+'/'))
 const {reduceFundBalance}=await import(modulePath)
@@ -36,6 +38,12 @@ for(const table of ['funds','fund_transactions','domain_events','event_outbox','
 for(const table of ['consumer_inbox','projection_checkpoints','effect_outbox']) await admin(`CREATE TRIGGER kafka_source_row_guard BEFORE INSERT OR UPDATE OR DELETE ON ${table} FOR EACH ROW EXECUTE FUNCTION ld_kafka_operator.source_write_guard();
  CREATE TRIGGER kafka_source_truncate_guard BEFORE TRUNCATE ON ${table} FOR EACH STATEMENT EXECUTE FUNCTION ld_kafka_operator.source_write_guard();
  ALTER TABLE ${table} ENABLE ALWAYS TRIGGER kafka_source_row_guard;ALTER TABLE ${table} ENABLE ALWAYS TRIGGER kafka_source_truncate_guard;`)
+await admin(`CREATE ROLE ld_kafka_operator_verifier NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION;
+ CREATE ROLE op_final_verifier LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD 'operator-fixture-only';
+ GRANT ld_kafka_operator_verifier TO op_final_verifier;`)
+await owned(`INSERT INTO ld_kafka_operator.identities(login_name,principal_id,organization_id,enabled,valid_until)
+ VALUES('op_final_verifier','fund-verifier-1','org-a',true,clock_timestamp()+interval '1 hour');`)
+await owned(await readFile(new URL('../../ops/event-platform/operator/fund-evidence-registry.sql',import.meta.url),'utf8'))
 let version=20
 async function seed() {
  const id=randomUUID(),key=`final-${id}`,v=++version
@@ -58,7 +66,7 @@ async function readerScope(target) {
  for(const [table,condition] of Object.entries(conditions)) await admin(`DROP POLICY IF EXISTS operator_final_scope ON ${table};CREATE POLICY operator_final_scope ON ${table} AS RESTRICTIVE TO op_final_reader USING("organizationId"='org-a' AND ${condition});`)
 }
 const pointer=async()=>JSON.parse(await admin(`SELECT json_build_object('id',"activeBuildId",'version',"activationVersion"::text) FROM projection_activations WHERE "organizationId"='org-a' AND "projectionName"='finance.fund-balance';`))
-async function prepared(target,action='promote') {
+async function prepared(target,action='promote',options={}) {
  target ??= await seed()
  await readerScope(target)
  const inventory=JSON.parse(await admin(`SELECT json_agg(id ORDER BY id) FROM funds WHERE "organizationId"='org-a';`))
@@ -73,14 +81,20 @@ async function prepared(target,action='promote') {
  validateOperatorRecoveryEvidence(raw,{plan,now:new Date().toISOString(),maxAgeMs:60000,minSoakMs:60000,partitionCount:snapshot.checkpoints.length,previousBuildId:previous.id})
  const hash=await call('op_requester','request',`${q(id)},${json(plan)},clock_timestamp()+interval '10 minutes'`)
  await call('op_approver','approve',`${q(id)},${q(hash)}`)
- // Owner registration is deliberately a fixture trust boundary, not a real
- // verifier implementation. Captured hash and canonical fold share one RR tx.
- await owned(`INSERT INTO ld_kafka_operator.fund_verified_evidence VALUES(${q(id)},${json(plan)},${q(raw)},${q(materialHash)},${q(previous.id)},clock_timestamp()+interval '1 minute',clock_timestamp()+interval '1 hour');`)
  const generation=await call('op_controller','consume',`${q(id)},${q(hash)},${json(plan)}`)
- return {id,hash,generation,plan,target,previous,materialHash}
+ const context={...JSON.parse(await call('op_final_verifier','read_fund_verification_request',q(id))),maxAgeMs:60000,minSoakMs:60000,partitionCount:snapshot.checkpoints.length,retainedUntil:new Date(Date.now()+3600000).toISOString()}
+ const signing=signedFundAttestations(context,materialHash,new Date().toISOString())
+ let registration
+ const verifier=createFundEvidenceVerifier({readContext:async()=>context,readManifest:async()=>raw,
+ readSnapshot:async()=>({snapshot,materialHash}),readAttestation:async gate=>signing.packets[gate],readKey:async gate=>signing.keys[gate],clock:()=>new Date().toISOString(),
+ register:async row=>{registration=row;if(!options.skipRegistration)await register(row)}})
+ await verifier(id)
+ return {id,hash,generation,plan,target,previous,materialHash,registration}
 }
+const registrationArgs=r=>`${q(r.requestId)},${q(r.planHash)},${r.generation},${q(r.raw)},${q(r.materialHash)},${q(r.previousBuildId)},${q(r.validUntil)},${q(r.retainedUntil)},${q(r.provenanceHash)}`
+const register=(row,login='op_final_verifier')=>call(login,'register_fund_evidence',registrationArgs(row))
 const args=f=>`${q(f.id)},${q(f.hash)},${f.generation}`
-const apply=f=>fixtureSql('op_controller',`BEGIN;SELECT set_config('app.org_id',${q(f.plan.organizationId)},true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});SELECT ld_kafka_operator.apply_fund_transition(${args(f)});COMMIT;`,{sanitizedDiagnostics:true})
+const apply=f=>fixtureSql('op_controller',`BEGIN;SET LOCAL statement_timeout='5s';SET LOCAL lock_timeout='2s';SELECT set_config('app.org_id',${q(f.plan.organizationId)},true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});SELECT ld_kafka_operator.apply_fund_transition(${args(f)});COMMIT;`,{sanitizedDiagnostics:true})
 await test('canonical proof + frozen material + authenticated actual pointer promotion and retained rollback',async()=>{
  const promoted=await prepared();await apply(promoted)
  assert.equal((await pointer()).id,promoted.target.id)
@@ -120,7 +134,7 @@ await test('held final barrier denies source/checkpoint/inbox writes and wrong c
  const f=await prepared(),connection=fixtureConnection('op_controller',{sanitizedDiagnostics:true})
  await denied(call('op_controller2','apply_fund_transition',args(f)))
  try{
-  await connection.command(`BEGIN;SELECT set_config('app.org_id',${q(f.plan.organizationId)},true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
+  await connection.command(`BEGIN;SET LOCAL statement_timeout='5s';SET LOCAL lock_timeout='2s';SELECT set_config('app.org_id',${q(f.plan.organizationId)},true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
   await denied(admin("UPDATE funds SET name='Synthetic blocked transition writer' WHERE id='fund-a';"))
   // Target is ready, so the original checkpoint guard also denies mutations.
   await assert.rejects(admin(`UPDATE projection_checkpoints SET "sourceOffset"="sourceOffset"+1 WHERE "buildId"=${q(f.target.id)};`),/P0001|23514/)
@@ -133,7 +147,7 @@ await test('actual final evidence expiry at COMMIT rolls back pointer/build/even
  await owned(`UPDATE ld_kafka_operator.fund_verified_evidence SET valid_until=clock_timestamp()+interval '3 seconds' WHERE request_id=${q(f.id)};`)
  let staged=false
  try{
-  await connection.command(`BEGIN;SELECT set_config('app.org_id',${q(f.plan.organizationId)},true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
+  await connection.command(`BEGIN;SET LOCAL statement_timeout='5s';SET LOCAL lock_timeout='2s';SELECT set_config('app.org_id',${q(f.plan.organizationId)},true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
   const version=await connection.command(`SELECT ld_kafka_operator.apply_fund_transition(${args(f)});`)
   staged=version===String(BigInt(before.version)+1n)
   await connection.command('SELECT pg_sleep(4);');await denied(connection.command('COMMIT;'))
@@ -160,18 +174,81 @@ await test('retained actual build with expired rollback window cannot replace cu
 
 await test('PG16 deferred guard rights expose only exact live-barrier target and cannot change its effect fence',async()=>{
  const f=await prepared()
- assert.equal(await fixtureSql('op_controller',`BEGIN;SELECT set_config('app.org_id','org-a',true);SELECT count(*) FROM projection_builds WHERE id=${q(f.target.id)};COMMIT;`),'org-a\n0')
+ assert.equal(await fixtureSql('op_controller',`BEGIN;SET LOCAL statement_timeout='5s';SET LOCAL lock_timeout='2s';SELECT set_config('app.org_id','org-a',true);SELECT count(*) FROM projection_builds WHERE id=${q(f.target.id)};COMMIT;`),'org-a\n0')
  const connection=fixtureConnection('op_controller',{sanitizedDiagnostics:true})
  try{
-  await connection.command(`BEGIN;SELECT set_config('app.org_id','org-a',true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
+  await connection.command(`BEGIN;SET LOCAL statement_timeout='5s';SET LOCAL lock_timeout='2s';SELECT set_config('app.org_id','org-a',true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
   assert.equal(await connection.command(`SELECT count(*) FROM projection_builds WHERE id=${q(f.target.id)};`),'1')
   assert.equal(await connection.command(`SELECT count(*) FROM projection_builds WHERE id<>${q(f.target.id)};`),'0')
   await connection.command('ROLLBACK;')
  }finally{await connection.close()}
- await assert.rejects(fixtureSql('op_controller',`BEGIN;SELECT set_config('app.org_id','org-a',true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});UPDATE projection_builds SET "effectsFenced"=false WHERE id=${q(f.target.id)};COMMIT;`),/23514/)
+ await assert.rejects(fixtureSql('op_controller',`BEGIN;SET LOCAL statement_timeout='5s';SET LOCAL lock_timeout='2s';SELECT set_config('app.org_id','org-a',true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});UPDATE projection_builds SET "effectsFenced"=false WHERE id=${q(f.target.id)};COMMIT;`),/23514/)
  await assert.rejects(fixtureSql('op_controller','SET session_replication_role=replica;'),/42501/)
  await assert.rejects(fixtureSql('op_controller','ALTER TABLE projection_builds DISABLE TRIGGER projection_builds_state_machine_trigger;'),/42501/)
  await assert.rejects(fixtureSql('op_controller',`UPDATE projection_builds SET status='failed' WHERE id=${q(f.target.id)};`),/42501/)
  assert.equal(await admin(`SELECT "effectsFenced" FROM projection_builds WHERE id=${q(f.target.id)};`),'t')
  await apply(f)
+})
+
+await test('named independent verifier registers one immutable generation and cannot read or change private/source state',async()=>{
+ const f=await prepared(undefined,'promote',{skipRegistration:true})
+ await assert.rejects(register(f.registration,'op_controller'),/42501/)
+ await assert.rejects(register(f.registration,'op_requester'),/42501/)
+ await register(f.registration)
+ await assert.rejects(register(f.registration),/23505/)
+ assert.equal(await owned(`SELECT verifier::text||':'||verifier_principal FROM ld_kafka_operator.fund_evidence_registrations WHERE request_id=${q(f.id)};`),'op_final_verifier:fund-verifier-1')
+ assert.equal(await owned(`SELECT actor::text FROM ld_kafka_operator.audit WHERE request_id=${q(f.id)} AND transition='fund-evidence-registered';`),'op_final_verifier')
+ for(const sql of ['SELECT * FROM ld_kafka_operator.fund_verified_evidence;','DELETE FROM ld_kafka_operator.fund_evidence_registrations;','UPDATE funds SET name=name;','UPDATE projection_activations SET "activationVersion"="activationVersion"+1;']) await assert.rejects(fixtureSql('op_final_verifier',sql),/42501/)
+ await apply(f)
+})
+await test('registration rejects wrong generation/hash/raw/previous/expiry and does not create evidence',async()=>{
+ const f=await prepared(undefined,'promote',{skipRegistration:true})
+ for(const edit of [{generation:String(BigInt(f.generation)+1n)},{planHash:'f'.repeat(64)},{raw:f.registration.raw+' '},{previousBuildId:f.target.id},{materialHash:'invalid'},{provenanceHash:'invalid'},{validUntil:new Date(Date.now()-1000).toISOString()},{validUntil:new Date(Date.now()+120000).toISOString()},{retainedUntil:new Date(Date.now()-1000).toISOString()}]) await denied(register({...f.registration,...edit}))
+ assert.equal(await owned(`SELECT count(*) FROM ld_kafka_operator.fund_verified_evidence WHERE request_id=${q(f.id)};`),'0')
+ await denied(apply(f));await register(f.registration);await apply(f)
+})
+await test('verifier tenant, capability, membership, revocation and remapping are checked again at transition',async()=>{
+ const f=await prepared(),before=await pointer()
+ for(const [change,restore]of [
+ ["organization_id='org-b'","organization_id='org-a'"],["enabled=false","enabled=true"],["may_request=true","may_request=false"],["principal_id='changed-verifier'","principal_id='fund-verifier-1'"],["valid_until=clock_timestamp()-interval '1 second'","valid_until=clock_timestamp()+interval '1 hour'"]]){
+  await owned(`UPDATE ld_kafka_operator.identities SET ${change} WHERE login_name='op_final_verifier';`)
+  try{await denied(apply(f));await denied(call('op_final_verifier','read_fund_verification_request',q(f.id)))}finally{await owned(`UPDATE ld_kafka_operator.identities SET ${restore} WHERE login_name='op_final_verifier';`)}
+ }
+ await admin('GRANT ld_kafka_operator_observer TO op_final_verifier;')
+ try{await denied(apply(f))}finally{await admin('REVOKE ld_kafka_operator_observer FROM op_final_verifier;')}
+ assert.deepEqual(await pointer(),before);await apply(f)
+})
+await test('registration staged by verifier rolls back on revocation at COMMIT, including evidence and audit',async()=>{
+ const f=await prepared(undefined,'promote',{skipRegistration:true}),connection=fixtureConnection('op_final_verifier')
+ try{
+  await connection.command(`BEGIN;SELECT ld_kafka_operator.register_fund_evidence(${registrationArgs(f.registration)});`)
+  await owned("UPDATE ld_kafka_operator.identities SET enabled=false WHERE login_name='op_final_verifier';")
+  await denied(connection.command('COMMIT;'))
+ }finally{await connection.close();await owned("UPDATE ld_kafka_operator.identities SET enabled=true WHERE login_name='op_final_verifier';")}
+ for(const table of ['fund_verified_evidence','fund_evidence_registrations']) assert.equal(await owned(`SELECT count(*) FROM ld_kafka_operator.${table} WHERE request_id=${q(f.id)};`),'0')
+ assert.equal(await owned(`SELECT count(*) FROM ld_kafka_operator.audit WHERE request_id=${q(f.id)} AND transition='fund-evidence-registered';`),'0')
+ await register(f.registration);await apply(f)
+})
+await test('verifier identity expiry after staged pointer transition rolls back all final effects',async()=>{
+ const f=await prepared(),before=await pointer(),connection=fixtureConnection('op_controller')
+ await owned("UPDATE ld_kafka_operator.identities SET valid_until=clock_timestamp()+interval '3 seconds' WHERE login_name='op_final_verifier';")
+ try{
+  await connection.command(`BEGIN;SET LOCAL statement_timeout='5s';SET LOCAL lock_timeout='2s';SELECT set_config('app.org_id','org-a',true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
+  assert.equal(await connection.command(`SELECT ld_kafka_operator.apply_fund_transition(${args(f)});`),String(BigInt(before.version)+1n))
+  await connection.command('SELECT pg_sleep(4);');await denied(connection.command('COMMIT;'))
+ }finally{await connection.close();await owned("UPDATE ld_kafka_operator.identities SET valid_until=clock_timestamp()+interval '1 hour' WHERE login_name='op_final_verifier';")}
+ assert.deepEqual(await pointer(),before)
+ assert.equal(await admin(`SELECT status FROM projection_builds WHERE id=${q(f.target.id)};`),'ready')
+ assert.equal(await admin(`SELECT count(*) FROM projection_promotion_events WHERE "requestKey"=${q(f.id)};`),'0')
+ assert.equal(await owned(`SELECT status FROM ld_kafka_operator.requests WHERE id=${q(f.id)};`),'consumed')
+})
+
+await test('material fingerprint rejects oversized fixture scopes and encoded bytes before hashing',async()=>{
+ const f=await prepared(),before=await pointer()
+ const hash=()=>fixtureSql('op_final_reader',`BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;SET LOCAL statement_timeout='5s';SELECT set_config('app.org_id','org-a',true);SELECT coalesce(ld_kafka_operator.fund_material_hash('org-a',${q(f.target.id)}),'DENIED');COMMIT;`)
+ await admin(`INSERT INTO funds(id,"organizationId",name,currency,"currentBalance") SELECT 'operator-cap-'||g,'org-a','Synthetic cap probe','AZN',0.0000 FROM generate_series(1,201) g;`)
+ try{assert.equal(await hash(),'org-a\nDENIED');await denied(apply(f))}finally{await admin("DELETE FROM funds WHERE id LIKE 'operator-cap-%';")}
+ await admin("UPDATE funds SET name=repeat('x',1048577) WHERE id='fund-a';")
+ try{assert.equal(await hash(),'org-a\nDENIED');await denied(apply(f))}finally{await admin("UPDATE funds SET name='Synthetic material-budget restored' WHERE id='fund-a';")}
+ assert.deepEqual(await pointer(),before)
 })

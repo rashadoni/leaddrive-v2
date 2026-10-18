@@ -1028,3 +1028,47 @@ rewriting history or weakening checks. Next technical action in original deliver
 session: implement trusted verifier/owner-only evidence registration with
 independent provenance and bounded material queries; then physical/broker/alarm/
 restore and domain/lifecycle drills. Preserve draft, no production mutation.
+
+
+### Autonomous continuation requested: verifier boundary and remaining available CI
+
+User explicitly requested continued code/tests/CI/journal work in this same turn,
+no routine handback and no merge/deploy. Resumed423d98b93 clean worktree;
+codex-project-context and AGENTS reconfirmed. Origin/main6912a0ac3 adds Support
+changes after previously inspected4f00c4621; Kafka source/contracts unchanged.
+Production remains13.140.132.245:/opt/leaddrive-v2 via GitHub Actions reviewedmain.
+Plan: replace owner-only fixture evidence seeding with an inactive named verifier
+registration boundary, independently signed operational provenance validation and
+fresh canonical snapshot comparison; bound material reads; add negative/real-role
+cases and hosted CI. No live receipt producer, key provisioning, consumer/replay,
+sends or production installation. Required historical scan remains a blocker;
+no history rewrite or scanner bypass. Small sequential checks only; resource
+preflight15GB available RAM/195GB disk/pressure0, swap3.7GB.
+
+
+### Verifier implementation checkpoint, hosted real-role proof pending
+
+Added inactive server-only verifier: fixed seven-purpose Ed25519 signatures pin
+exact request/plan/generation/manifest/material, independently managed current
+key policy and non-operator signer identity, freshness and canonical DB source/
+shadow/checkpoint comparison. Rechecks prior key policy after async reads; no
+operator callbacks/URLs, credential fallback or unsigned approval path.39 new
+negative/positive units and all213 units PASS locally. Real observations and
+trusted key/adapter provisioning are still absent; generated test keys do not
+prove physical events. Keys are ephemeral and never committed.
+
+New named verifier SQL registry permits only a non-elevated independently mapped
+identity without operator/observer groups/capabilities, same tenant, fresh exact
+consumed generation and distinct principals. Atomic append-only registration
+pins raw-byte hash/material/provenance, bounds time, audits actual session_user,
+and defers revocation/expiry checks to COMMIT. Transition now requires this
+registration and rechecks verifier at final COMMIT. No source write grants.
+Fixture uses the actual named login and signed validator instead of direct owner
+registration; new cases cover forbidden self-registration, replay/wrong pins,
+verifier remap/capability/revoke/expiry and staged finalization rollback.
+
+Material hash now uses cap+1 sentinels for every participating relation and a
+1MiB encoded cap, returns no certificate for oversized scope/effect intents;
+fixture executor explicitly sets5s statement/2s lock timeouts. Index/scan/RTO and
+physical instrumentation remain unproved. Hosted PG16 proof pending; syntax,
+runner-policy72 and diff check PASS. No existing upstream test altered.
