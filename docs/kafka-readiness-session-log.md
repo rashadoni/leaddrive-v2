@@ -2388,3 +2388,24 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   simulated database effects, not combined production acceptance/activation.
   Disposable stack39128687970 also SUCCESS. Current old-head static/typecheck
   continue; synthetic CDC39128688071 is running. No manual job retry was made.
+
+### Corrected frozen head for PR880 — 2026-10-18 12:59 UTC
+
+- Synthetic CDC39128688071 completed SUCCESS: raw8/8 identity/payload parity
+  and cold restart PASS; TLS and business projection explicitly NOT PROVEN/
+  NOT RUN. All old-head disposable integrations completed before the correction
+  was published. Old-head static Fund units/actual PG/concurrency/invariant
+  steps also passed, but the unfinished full PR run is superseded, not PASS.
+- Pushed exact7ec815288af3465428ec6694d60d7b47b7bbaecf. Normal workflow
+  concurrency superseded stale PR work; no manual cancel/rerun or duplicate
+  heavy dispatch. Waited for its draft check run39129513374 to finish, verified
+  the API head, then marked ready to obtain actual static/typecheck and broker
+  runs. Draft skips do not satisfy this code change's delivery gate.
+- Corrected-head scan39129513379, runner-policy39129513377 and tooling39129513365
+  already SUCCESS. Final required checks, actual broker, release and public
+  exact-SHA verification remain PENDING. No production activation occurred.
+- Artifact-boundary inspection: deploy.yml currently bundles selected recovery/
+  systemd assets, not ops/event-platform/driver Java classes or a Kafka worker
+  entrypoint. This is intentional for the inactive source increment. A later
+  successful application artifact receipt must not be described as installation
+  of a runnable Java worker; its governed packaging/release remains a next task.
