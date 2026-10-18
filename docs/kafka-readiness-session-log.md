@@ -1428,3 +1428,31 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   This bounds image risk before another full typecheck; it does not deploy or
   use production credentials. Wait its terminal result before ready, so the
   ordinary ready-event CDC never overlaps that manual image validation.
+
+## 2026-10-18 01:38 UTC — refreshed image actual CDC passed; final full gates started
+
+- Published frozen draftf504f1353df3902d72d021e00cf515ca1e74e1d0 after all
+  old974 jobs completed. Four cheap checks SUCCESS; automatic draft CDC/stack
+  completed SKIPPED (not treated as runtime evidence). New local tooling59/59,
+  runner-policy70, shell/asset/diff checks PASS in this exact tree.
+- Dispatched exactly one existing synthetic CDC workflow39086876592 on that
+  branch after verifying no active same-branch CDC. Run/job117555183790
+  SUCCESS: new pinned Connect image pulled/started; exact single PostgreSQL
+  source plugin version3.7.0.Final admission executed; infrastructure smoke,
+  restricted source/WAL boundary, raw8-event original-envelope fidelity for
+  two keys, cold restart and cleanup PASS. The observed records used one
+  partition, not a cross-partition/rebalance proof. Legacy expanded experiment
+  still diagnoses4 payload mismatches separately from metadata/order.
+- This closes the missing-image behavior blocker for the disposable fixture,
+  not publisher-signature/long-term-image-retention or production Kafka HA.
+  All four test containers and the run network were removed; no production
+  credentials, database, connector, worker, offset or replay were involved.
+- After manual CDC became terminalSUCCESS, marked the same exactf504 PR ready
+  once. Final full39087214329 started01:38:19UTC; its ordinary automatic
+  CDC39087214341 and stack39087214349 use the existing serialized queue, with
+  no overlap or duplicate retry of the completed manual run. New explicit Fund
+  unit/PG/full typecheck proof remains pending before normal merge/deploy.
+- This receipt is a LOCAL journal checkpoint only: remote PR head stays
+  frozenf504 during actual CI. Do not push it into that run or mistake the local
+  docs HEAD for its tested source SHA. Next: read explicit Fund unit counts,
+  actual PG10/10 and all required gates onf504, then normal release/ping/SHA.
