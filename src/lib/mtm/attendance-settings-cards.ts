@@ -3,16 +3,18 @@
  * client hub both read it, and a value from a "use client" file reaches a
  * server component as a stub. Each card opens `?tab=<key>`. */
 export const ATTENDANCE_SETTINGS_GROUPS = [
-  { key: "workday", cards: ["hours", "holidays", "shifts", "day-kinds"] },
-  { key: "leave", cards: ["leave", "requests"] },
+  // «reminders», «approval» and «checks» came from MTM → Settings → Company
+  // (owner, 2026-10-18: settings of the time module belong to the module).
+  { key: "workday", cards: ["hours", "holidays", "shifts", "day-kinds", "reminders"] },
+  { key: "leave", cards: ["leave", "requests", "approval"] },
   // Suspicious marks are a daily queue on Today (/mtm/attendance/review), not a setting.
-  { key: "marks", cards: ["qr", "location"] },
+  { key: "marks", cards: ["qr", "location", "checks"] },
   { key: "access", cards: ["access"] },
 ] as const
 export type AttendanceSettingsCard = (typeof ATTENDANCE_SETTINGS_GROUPS)[number]["cards"][number]
 export const ATTENDANCE_SETTINGS_CARDS: readonly AttendanceSettingsCard[] = ATTENDANCE_SETTINGS_GROUPS.flatMap(group => [...group.cards])
 /** Administrator-only like their endpoints. */
-export const ATTENDANCE_ADMIN_SETTINGS: readonly AttendanceSettingsCard[] = ["location"]
+export const ATTENDANCE_ADMIN_SETTINGS: readonly AttendanceSettingsCard[] = ["location", "reminders", "approval", "checks"]
 
 /** Working days as runs: [1,2,3,4,5] → "Mon–Fri", [1,2,4] → "Mon, Tue, Thu".
  * `weekendDays` uses JavaScript's numbering (0 = Sunday); the week starts on Monday. */

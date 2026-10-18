@@ -11,7 +11,7 @@ import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import {
   Settings, Save, Satellite, Lock, Wrench, MapPin, Camera, BellRing, Route, Clock3, LifeBuoy, LayoutGrid, Radar, UserCog,
-  AlertTriangle, RotateCcw, ChevronDown, CheckCircle2,
+  AlertTriangle, RotateCcw, ChevronDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -58,11 +58,6 @@ type SettingItem = {
  * daily work comes first; what only an implementer touches is last.
  */
 const SETTINGS_TABS = ["visit", "routes", "alerts", "clients", "company", "admin"] as const
-const ATTENDANCE_TOUCH_SETTING_KEYS = new Set([
-  "attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled", "attendanceAutoCloseForgottenDay",
-  "attendanceRejectOutsideBranch", "attendanceAllowSharedInstallations",
-  "attendanceRejectMockLocations", "attendanceClockDifferenceSeconds",
-])
 type SettingsTab = typeof SETTINGS_TABS[number]
 const SETTINGS_TAB_LABEL: Record<SettingsTab, string> = {
   visit: "tabVisit", routes: "tabRoutes", alerts: "tabAlerts", clients: "tabClients", company: "tabCompany", admin: "tabAdmin",
@@ -401,7 +396,6 @@ export default function MtmSettingsPage() {
       items: [
         { key: "fieldContactsEnabled", labelKey: "lblFieldContacts", hintKey: "hintFieldContacts", type: "boolean", adminOnly: true },
         { key: "pharmacyPromotionsEnabled", labelKey: "lblPharmacyPromotions", hintKey: "hintPharmacyPromotions", type: "boolean", adminOnly: true },
-        { key: "attendanceRejectOutsideBranch", labelKey: "lblAttendanceRejectOutsideBranch", hintKey: "hintAttendanceRejectOutsideBranch", type: "boolean", adminOnly: true },
       ],
     },
     {
@@ -487,35 +481,10 @@ export default function MtmSettingsPage() {
         { key: "teamScheduleVisibilityEnabled", labelKey: "lblTeamScheduleVisibility", hintKey: "hintTeamScheduleVisibility", type: "boolean" },
       ],
     },
-    {
-      titleKey: "groupAttendanceReminders",
-      tab: "company",
-      icon: BellRing,
-      items: [
-        { key: "attendanceEmployeeRemindersEnabled", labelKey: "lblAttendanceEmployeeReminders", hintKey: "hintAttendanceEmployeeReminders", type: "boolean", adminOnly: true },
-        { key: "attendanceManagerAlertsEnabled", labelKey: "lblAttendanceManagerAlerts", hintKey: "hintAttendanceManagerAlerts", type: "boolean", adminOnly: true },
-      ],
-    },
-    {
-      // Owner, 2026-10-18: «автоподтверждение, но чтоб были показаны опоздания» —
-      // only «Закрыть день», only with the start untouched (attendance-auto-close.ts).
-      titleKey: "groupAttendanceAutoApproval",
-      tab: "company",
-      icon: CheckCircle2,
-      items: [
-        { key: "attendanceAutoCloseForgottenDay", labelKey: "lblAttendanceAutoCloseForgottenDay", hintKey: "hintAttendanceAutoCloseForgottenDay", type: "boolean", adminOnly: true },
-      ],
-    },
-    {
-      titleKey: "groupAttendanceRisk",
-      tab: "company",
-      icon: AlertTriangle,
-      items: [
-        { key: "attendanceAllowSharedInstallations", labelKey: "lblAttendanceAllowSharedInstallations", hintKey: "hintAttendanceAllowSharedInstallations", type: "boolean", adminOnly: true },
-        { key: "attendanceRejectMockLocations", labelKey: "lblAttendanceRejectMockLocations", hintKey: "hintAttendanceRejectMockLocations", type: "boolean", adminOnly: true },
-        { key: "attendanceClockDifferenceSeconds", labelKey: "lblAttendanceClockDifferenceSeconds", hintKey: "hintAttendanceClockDifferenceSeconds", type: "number", unitKey: "unitSeconds", adminOnly: true },
-      ],
-    },
+    // Attendance reminders, «Закрыть день» approval and the checks of marks
+    // live in Personnel → Settings (owner, 2026-10-18: «настройки, которые
+    // относятся к учёту времени, перемести в настройки соответствующего
+    // модуля»), like the attendance switch itself (2026-10-15).
     {
       // Set once when the module is rolled out and then left alone: the kill
       // switch of the visit rules and two switches about data, none of which
@@ -585,7 +554,7 @@ export default function MtmSettingsPage() {
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `mtm-setting-error-${key}` : undefined}
           onChange={(e) => updateNumber(key, e.target.value)}
-          className={`w-24 rounded-md border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${ATTENDANCE_TOUCH_SETTING_KEYS.has(key) ? "h-11" : ""} ${error ? "border-destructive" : "border-zinc-200 dark:border-zinc-700"}`}
+          className={`w-24 rounded-md border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${error ? "border-destructive" : "border-zinc-200 dark:border-zinc-700"}`}
         />
         {/* The unit used to live only in the screen-reader label and in a
             «(м)» glued to some titles; a number without it is a guess. */}
@@ -604,9 +573,8 @@ export default function MtmSettingsPage() {
       aria-label={ts(item.labelKey)}
       disabled={disabled}
       onClick={() => updateSetting(item.key, !settings[item.key])}
-      className={`relative inline-flex w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${ATTENDANCE_TOUCH_SETTING_KEYS.has(item.key) ? "h-11" : `h-6 ${settings[item.key] ? "bg-primary" : "bg-muted"}`}`}
+      className={`relative inline-flex w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 h-6 ${settings[item.key] ? "bg-primary" : "bg-muted"}`}
     >
-      {ATTENDANCE_TOUCH_SETTING_KEYS.has(item.key) ? <span aria-hidden="true" className={`absolute inset-x-0 h-6 rounded-full ${settings[item.key] ? "bg-primary" : "bg-muted"}`} /> : null}
       <span className={`relative inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings[item.key] ? "translate-x-6" : "translate-x-1"}`} />
     </button>
   )
@@ -633,11 +601,10 @@ export default function MtmSettingsPage() {
   // `lockNote`: a switch that cannot be pressed says why. The advanced block
   // says it once for all of its rows instead.
   const renderItem = (item: SettingItem, lockNote = true) => {
-    if (item.key === "attendanceRejectOutsideBranch" && settings.attendanceEnabled !== true) return null
     const disabled = item.adminOnly === true && !canChangeAdminOnly
     const switchOn = settings[item.key] === true
     return (
-      <div key={item.key} data-setting-row={item.key} className={`space-y-3 ${item.key === "attendanceRejectOutsideBranch" ? "border-t border-zinc-200 pt-4 dark:border-zinc-700" : ""}`}>
+      <div key={item.key} data-setting-row={item.key} className="space-y-3">
         <div className={`flex items-start justify-between gap-4 ${item.type === "text" ? "flex-col sm:flex-row" : ""}`}>
           <div className="min-w-0">
             <div className="text-sm font-medium">{ts(item.labelKey)}</div>
@@ -706,7 +673,7 @@ export default function MtmSettingsPage() {
   // блоки»). A card is either half of a pair — the pair shares one height —
   // or, when it would stand alone, the whole row with its settings laid out
   // in columns of its own. There is no third kind.
-  const groupsOf = (name: SettingsTab) => settingGroups.filter((group) => group.tab === name && (!["groupAttendanceRisk", "groupAttendanceReminders", "groupAttendanceAutoApproval"].includes(group.titleKey) || settings.attendanceEnabled === true))
+  const groupsOf = (name: SettingsTab) => settingGroups.filter((group) => group.tab === name)
   const renderGroup = (group: SettingGroup, span: "half" | "full", extraClass = "") => {
     const GroupIcon = group.icon
     const columns = span === "half" ? "space-y-4" : `grid gap-x-8 gap-y-4 ${group.items.length % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-2"}`

@@ -453,25 +453,14 @@ describe("allowing a check-in outside the zone, beside the radius it lifts", () 
   })
 })
 
-describe("attendance reminders in company settings", () => {
-  it("hides both switches while attendance is off and preserves company groups", async () => {
+describe("attendance reminders are no longer in company settings", () => {
+  // Owner, 2026-10-18: they moved to Personnel → Settings with the other attendance switches.
+  it.each([false, true])("shows none of them, attendance on: %s", async (enabled) => {
+    viewer.role = "admin"; stored.attendanceEnabled = enabled
     await openAt("/mtm/settings?tab=company")
-    expect(settingRow("attendanceEmployeeRemindersEnabled")).toBeNull()
-    expect(settingRow("attendanceManagerAlertsEnabled")).toBeNull()
+    for (const key of ["attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled", "attendanceAllowSharedInstallations", "attendanceAutoCloseForgottenDay", "attendanceEnabled"]) {
+      expect(settingRow(key)).toBeNull()
+    }
     expect(settingRow("taskSelfCreate")).not.toBeNull()
-    // The switch itself moved to Personnel → Settings (one setting, one place).
-    expect(settingRow("attendanceEnabled")).toBeNull()
-  })
-  it("allows an administrator to enable both in one changed-key save", async () => {
-    viewer.role = "admin"; stored.attendanceEnabled = true
-    await openAt("/mtm/settings?tab=company")
-    await flip("attendanceEmployeeRemindersEnabled"); await flip("attendanceManagerAlertsEnabled")
-    await pressSave()
-    expect(writes).toEqual([{ attendanceEmployeeRemindersEnabled: true, attendanceManagerAlertsEnabled: true }])
-    expect(settingRow("attendanceAllowSharedInstallations")).not.toBeNull()
-  })
-  it("leaves both controls disabled for a manager", async () => {
-    stored.attendanceEnabled = true; await openAt("/mtm/settings?tab=company")
-    for (const key of ["attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled"]) expect((settingRow(key).querySelector('[role="switch"]') as HTMLButtonElement).disabled).toBe(true)
   })
 })
