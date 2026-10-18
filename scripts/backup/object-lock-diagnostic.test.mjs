@@ -112,10 +112,10 @@ test('rejects empty, malformed, multi-line and success-looking failed responses'
     `${compliant}${compliant}`, `${compliant}${privateText}\n`]) {
     assert.equal(execute({ stdout }), 'invalid_response')
   }
-  assert.equal(execute({ stdout: compliant, status: 254 }), 'service_error')
+  assert.equal(execute({ stdout: compliant, status: 254 }), 'service_error_format_unrecognized')
   assert.equal(execute({ stdout: compliant, status: 255 }), 'unknown_failure')
   assert.equal(execute({ stdout: compliant, status: 124 }), 'request_timeout')
-  assert.equal(execute({ stdout: `${compliant}\0LEADDRIVE_CLI_EXIT=0\0`, status: 254 }), 'service_error')
+  assert.equal(execute({ stdout: `${compliant}\0LEADDRIVE_CLI_EXIT=0\0`, status: 254 }), 'service_error_format_unrecognized')
 })
 
 test('emits only allowlisted reported service categories without error body', () => {
@@ -125,15 +125,31 @@ test('emits only allowlisted reported service categories without error body', ()
     ['NoSuchBucket', 'bucket_not_found'],
     ['ObjectLockConfigurationNotFoundError', 'lock_configuration_missing'],
     ['NotImplemented', 'operation_unsupported'], ['UnsupportedOperation', 'operation_unsupported'],
-    ['InvalidRequest', 'service_error'], ['UnknownSensitiveCode', 'service_error'],
+    ['AuthorizationHeaderMalformed', 'auth_request_rejected'],
+    ['AuthorizationQueryParametersError', 'auth_request_rejected'],
+    ['RequestTimeTooSkewed', 'request_time_rejected'],
+    ['IncorrectEndpoint', 'routing_rejected'], ['IllegalLocationConstraintException', 'routing_rejected'],
+    ['PermanentRedirect', 'routing_rejected'], ['TemporaryRedirect', 'routing_rejected'],
+    ['InvalidRequest', 'request_rejected'], ['InvalidArgument', 'request_rejected'],
+    ['InvalidBucketState', 'bucket_state_rejected'], ['InternalError', 'provider_failure'],
+    ['ServiceUnavailable', 'provider_failure'], ['SlowDown', 'throttled'],
+    ['UnknownSensitiveCode', 'service_code_unrecognized'],
+    // Even a secret-looking unknown code must never be printed verbatim.
+    ['SYNTHETICLOCKSECRET', 'service_code_unrecognized'],
   ]
   for (const [code, expected] of cases) {
     const stderr = `\nAn error occurred (${code}) when calling the GetObjectLockConfiguration operation: ${privateText}\n`
-    assert.equal(execute({ stderr, status: 254 }), expected)
+    const output = execute({ stderr, status: 254 })
+    assert.equal(output, expected)
+    assert.equal(output.includes(code), false)
   }
-  assert.equal(execute({ stderr: `An error occurred (AccessDenied) when calling the PutObject operation: ${privateText}`, status: 254 }), 'service_error')
-  assert.equal(execute({ stderr: `prefix An error occurred (AccessDenied) when calling the GetObjectLockConfiguration operation: ${privateText}`, status: 254 }), 'service_error')
-  assert.equal(execute({ stderr: privateText, status: 254 }), 'service_error')
+  for (const stderr of [
+    `An error occurred (AccessDenied) when calling the PutObject operation: ${privateText}`,
+    `prefix An error occurred (AccessDenied) when calling the GetObjectLockConfiguration operation: ${privateText}`,
+    `An error occurred (InternalError\nAccessDenied) when calling the GetObjectLockConfiguration operation: ${privateText}`,
+    `An error occurred (AccessDenied) when calling the GetObjectLockConfiguration\noperation: ${privateText}`,
+    privateText,
+  ]) assert.equal(execute({ stderr, status: 254 }), 'service_error_format_unrecognized')
 })
 
 test('distinguishes local TLS/network/CLI/timeout failures without inventing a cause', () => {
@@ -146,7 +162,7 @@ test('distinguishes local TLS/network/CLI/timeout failures without inventing a c
     [1, 'unknown_failure'], [255, 'unknown_failure']]) {
     assert.equal(execute({ stderr: privateText, status }), expected)
   }
-  assert.equal(execute({ stderr: `SSL validation failed for ${privateText}`, status: 254 }), 'service_error')
+  assert.equal(execute({ stderr: `SSL validation failed for ${privateText}`, status: 254 }), 'service_error_format_unrecognized')
 })
 
 test('bounds retained output and never leaks oversized stdout or stderr', () => {
@@ -175,6 +191,9 @@ test('actual report handler fails closed on missing, failed or untrusted classif
     ['verified', 0, 0, 'PASS: bucket default Object Lock is COMPLIANCE'],
     ['policy_mismatch', 0, 1, 'FAIL: bucket default Object Lock is not COMPLIANCE'],
     ['access_denied', 0, 1, 'diagnostic=access_denied; values redacted'],
+    ...['auth_request_rejected', 'request_time_rejected', 'routing_rejected', 'request_rejected',
+      'bucket_state_rejected', 'provider_failure', 'throttled', 'service_code_unrecognized',
+      'service_error_format_unrecognized'].map(value => [value, 0, 1, `diagnostic=${value}; values redacted`]),
     ['verified', 124, 1, 'diagnostic=unavailable; values redacted'],
     ['', 127, 1, 'diagnostic=unavailable; values redacted'],
     [privateText, 0, 1, 'diagnostic=unavailable; values redacted'],
@@ -223,4 +242,117 @@ test('probe retains fixed time/output bounds and integration accepts only the en
   assert.match(source, /case "\$lock_diagnostic" in\n\s+verified\)/)
   assert.equal(source.includes('lock_state="$(env'), false, 'raw CLI output must no longer enter shell capture')
   assert.doesNotMatch(probe, /\b(?:put-object|delete-object|create-bucket|systemctl|pg_dump|psql|curl)\b/)
+})
+
+const freshnessFunctions = [...source.matchAll(/^check_recent_service_success\(\) \{\n[\s\S]*?^\}/gm)]
+assert.equal(freshnessFunctions.length, 1, 'extract the actual freshness decision, never source operational top level')
+const fixedNow = Date.parse('2026-10-18T12:00:00Z') / 1000
+
+function freshness({ load = 'loaded', result = 'success', status = '0', timestamp = 'Sun 2026-10-18 11:00:00 UTC',
+  epoch = String(fixedNow - 3_600), dateStatus = 0, swap = '0', systemctlStatus = 0,
+  realDate = false } = {}) {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'leaddrive-service-freshness-'))
+  const parseReceipt = join(fixtureRoot, 'parse-calls')
+  try {
+    const child = spawnSync('/bin/bash', ['--noprofile', '--norc', '-c', `
+set -euo pipefail
+ISSUES=0
+pass() { printf 'PASS: %s\\n' "$*"; }
+fail() { ISSUES=$((ISSUES + 1)); printf 'FAIL: %s\\n' "$*"; }
+systemctl() {
+  [ "$#" -eq 4 ] && [ "$1" = show ] && [ "$3" = --value ] && [ "$4" = synthetic.service ] || return 97
+  case "$2" in
+    --property=LoadState) printf '%s\\n' "$MOCK_LOAD" ;;
+    --property=Result) printf '%s\\n' "$MOCK_RESULT" ;;
+    --property=ExecMainStatus) printf '%s\\n' "$MOCK_STATUS" ;;
+    --property=ExecMainExitTimestamp) printf '%s\\n' "$MOCK_TIMESTAMP" ;;
+    --property=MemorySwapMax) printf '%s\\n' "$MOCK_SWAP" ;;
+    *) return 98 ;;
+  esac
+  # Nonzero calls deliberately also emit plausible stdout: it must be discarded.
+  return "$MOCK_SYSTEMCTL_STATUS"
+}
+date() {
+  if [ "$#" -eq 2 ] && [ "$1" = -u ] && [ "$2" = +%s ]; then
+    printf '%s\\n' "$MOCK_NOW"
+  elif [ "$#" -eq 4 ] && [ "$1" = -u ] && [ "$2" = -d ] && [ "$4" = +%s ]; then
+    printf 'parse\\n' >> "$PARSE_RECEIPT"
+    if [ "$MOCK_REAL_DATE" = yes ]; then
+      /usr/bin/date -u -d "$3" +%s
+    else
+      # Empty timestamps intentionally produce a plausible fresh midnight here,
+      # reproducing GNU date's dangerous default independently of today's date.
+      printf '%s\\n' "$MOCK_EPOCH"
+      return "$MOCK_DATE_STATUS"
+    fi
+  else
+    return 99
+  fi
+}
+${freshnessFunctions[0][0]}
+check_recent_service_success synthetic.service synthetic-backup 93600
+printf 'RESULT_ISSUES=%s\\n' "$ISSUES"
+`], {
+      cwd: fixtureRoot, encoding: 'utf8', timeout: 2_000, maxBuffer: 4_096,
+      env: { PATH: '/usr/bin:/bin', LC_ALL: 'C', TZ: 'UTC',
+        MOCK_LOAD: load, MOCK_RESULT: result, MOCK_STATUS: status, MOCK_TIMESTAMP: timestamp,
+        MOCK_EPOCH: epoch, MOCK_DATE_STATUS: String(dateStatus), MOCK_SWAP: swap,
+        MOCK_SYSTEMCTL_STATUS: String(systemctlStatus), MOCK_NOW: String(fixedNow),
+        MOCK_REAL_DATE: realDate ? 'yes' : 'no', PARSE_RECEIPT: parseReceipt },
+    })
+    assert.ifError(child.error)
+    assert.equal(child.status, 0)
+    assert.equal(child.stderr, '')
+    for (const value of [...canaries, 'SYNTHETICLOCKSECRET']) {
+      assert.equal(child.stdout.includes(value), false)
+    }
+    let parses = 0
+    try { parses = readFileSync(parseReceipt, 'utf8').trim().split('\n').length } catch (error) {
+      if (error.code !== 'ENOENT') throw error
+    }
+    return { output: child.stdout, parses }
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true })
+  }
+}
+
+test('freshness cannot use empty metadata or an absent unit as a successful-run receipt', () => {
+  for (const options of [
+    { timestamp: '', epoch: String(fixedNow - 43_200) },
+    { timestamp: '   \t\n' },
+    ...['not-found', 'error', ''].map(load => ({ load })),
+  ]) {
+    const observed = freshness(options)
+    assert.match(observed.output, /FAIL: synthetic-backup last run failed, never completed, or is stale/)
+    assert.match(observed.output, /RESULT_ISSUES=1\n/)
+    assert.equal(observed.parses, 0, 'empty/unloaded metadata must never reach date parsing')
+    assert.doesNotMatch(observed.output, /last successful run is fresh/)
+  }
+  const failedMetadata = freshness({ systemctlStatus: 1 })
+  assert.match(failedMetadata.output, /RESULT_ISSUES=2\n/)
+  assert.equal(failedMetadata.parses, 0, 'reject plausible partial output from a failed systemctl call')
+})
+
+test('freshness keeps real date parsing, result/age/skew boundaries and the independent swap fence', () => {
+  const valid = freshness({ realDate: true })
+  assert.match(valid.output, /PASS: synthetic-backup last successful run is fresh/)
+  assert.match(valid.output, /RESULT_ISSUES=0\n/)
+  assert.equal(valid.parses, 1)
+  for (const epoch of [String(fixedNow - 93_600), String(fixedNow + 300)]) {
+    assert.match(freshness({ epoch }).output, /RESULT_ISSUES=0\n/)
+  }
+  for (const options of [
+    { timestamp: privateText, realDate: true }, { dateStatus: 1 },
+    ...['', '0', '-1', 'not-an-epoch', String(fixedNow - 93_601), String(fixedNow + 301)].map(epoch => ({ epoch })),
+    { result: 'failed' }, { result: '' }, { status: '1' }, { status: '' },
+  ]) {
+    const observed = freshness(options)
+    assert.match(observed.output, /FAIL: synthetic-backup last run failed, never completed, or is stale/)
+    assert.match(observed.output, /RESULT_ISSUES=1\n/)
+    assert.doesNotMatch(observed.output, /last successful run is fresh/)
+  }
+  const swapFailure = freshness({ swap: 'infinity' })
+  assert.match(swapFailure.output, /PASS: synthetic-backup last successful run is fresh/)
+  assert.match(swapFailure.output, /FAIL: synthetic-backup does not enforce MemorySwapMax=0/)
+  assert.match(swapFailure.output, /RESULT_ISSUES=1\n/)
 })

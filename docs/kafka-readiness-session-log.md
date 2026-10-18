@@ -1776,3 +1776,58 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   tests, ordinary verified PR/release. No raw unknown error code or its hash,
   body, endpoint, bucket, key or request ID may be exposed. No new runtime
   permission/key/retention/timer/source/consumer/offset/replay authority follows.
+
+## 2026-10-18 — next bounded source phase: service errors and false-fresh guard
+
+- Created clean ce71dacf9 origin/main worktree at
+  /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-kafka-object-lock-service-errors-20261018,
+  branch codex/kafka-object-lock-service-errors-20261018. codex-project-context,
+  full AGENTS and current route agree; carried ONLY seven unpushed docs/journal
+  checkpoints from completed PR872 worktree. Both older worktrees/canonical
+  dirty checkout are preserved. Origin rashadoni/leaddrive-v2, production
+  13.140.132.245:/opt/leaddrive-v2, normal GitHub Actions main release unchanged.
+- Narrow safety plan: refine documented fixed S3 response categories; reject
+  unknown-format separately without emitting code/hash/body; fix empty-date
+  false-fresh decision in the existing read-only metadata helper; synthetic
+  tests and independent source review; draft/frozen actual CI/normal release.
+  No policy, permission, key, timer, backup/restore, source or Kafka operation.
+- Fresh report's22 FAIL lines include duplicate/aggregate findings, not22
+  independent defects. Its runtime-files freshness PASS alone does not prove
+  a backup or restore. Source inspection found that GNU date accepts empty
+  text as today's midnight; root reproduced that actual GNU behavior locally.
+  Today's production timestamp was never retrieved, so a LIVE false-positive
+  is not asserted. New helper requires loaded service/nonblank exit timestamp,
+  positive parsed epoch and unchanged age/skew bounds; failed metadata/date
+  commands discard plausible partial stdout. Swap policy remains separate.
+- Extended fixed S3 code categories according to primary AWS ErrorResponses
+  (current path is /latest/developerguide/ErrorResponses.html) and API_Error.
+  CLI254 only establishes a service error. New unknown-code/unknown-envelope
+  categories remain FAIL; categories neither identify actual HTTP status nor
+  authorize route/credential changes. No raw unrecognized code or hash escapes.
+- RAM/disk/PSI checked before small sequential local tests: about12GiB
+  available,211GiB disk free, memory pressure0, swap2.2GiB unchanged. Actual
+  extracted-probe/handler/freshness tests12/12 PASS in8.0sec, zero skips; real
+  GNU TERM/KILL/parser-timeout/no residual PID and output bounds retained.
+  Freshness fixtures use synthetic systemctl and frozen clock; one actual
+  GNU date parse included. Empty/unloaded/partial-error cases, status/age/skew
+  boundaries and independent swap fence verified. No real systemctl, provider,
+  DB, production configuration or secret was accessed by those fixtures.
+- Shell syntax/diff PASS. Full local TS/build/Vitest/realPG NOT RUN (host
+  workload policy/no TS/schema changes); new hosted exact-head proof and
+  production report remain NOT RUN. Prior ce71 production stays delivered.
+  Independent helper review of actual delta is pending; no PR pushed yet.
+- The asynchronous independent-human question is still unanswered; no operator
+  identity, signature, private-key custody or restore evidence has been invented.
+
+### Local regression control and unchanged file/asset guards
+
+- After another RAM/disk/PSI check, private pgpass/CA guards29/29 PASS in
+  this new tree; event assets27domains/86topics/5schemas PASS, shell syntax
+  and diff PASS. No install/full build/database/provider command was run.
+- Executed both real extracted metadata functions with the SAME synthetic
+  default-success/0/empty timestamp and frozen midnight: old ce71 function
+  incorrectly reports fresh; new function rejects. Negative control PASS.
+  No operational top-level script was sourced; no real service/production
+  timestamp was queried. This demonstrates the code defect, not its actual
+  occurrence in today's production report. No existing age/skew/swap gate
+  was weakened and arbitrary failures remain failures.

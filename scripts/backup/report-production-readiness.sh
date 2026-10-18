@@ -168,8 +168,21 @@ def classify():
                 b"ObjectLockConfigurationNotFoundError": "lock_configuration_missing",
                 b"NotImplemented": "operation_unsupported",
                 b"UnsupportedOperation": "operation_unsupported",
-            }.get(service[1], "service_error")
-        return "service_error"
+                b"AuthorizationHeaderMalformed": "auth_request_rejected",
+                b"AuthorizationQueryParametersError": "auth_request_rejected",
+                b"RequestTimeTooSkewed": "request_time_rejected",
+                b"IncorrectEndpoint": "routing_rejected",
+                b"IllegalLocationConstraintException": "routing_rejected",
+                b"PermanentRedirect": "routing_rejected",
+                b"TemporaryRedirect": "routing_rejected",
+                b"InvalidRequest": "request_rejected",
+                b"InvalidArgument": "request_rejected",
+                b"InvalidBucketState": "bucket_state_rejected",
+                b"InternalError": "provider_failure",
+                b"ServiceUnavailable": "provider_failure",
+                b"SlowDown": "throttled",
+            }.get(service[1], "service_code_unrecognized")
+        return "service_error_format_unrecognized"
     if status == 255:
         if body.lstrip().startswith(b"SSL validation failed for "):
             return "tls_error"
@@ -2241,15 +2254,22 @@ check_recent_service_success() {
   local service="$1"
   local label="$2"
   local maximum_age="$3"
-  local result status exit_timestamp exit_epoch now_epoch swap_max
-  result="$(systemctl show --property=Result --value "$service" 2>/dev/null || true)"
-  status="$(systemctl show --property=ExecMainStatus --value "$service" 2>/dev/null || true)"
-  exit_timestamp="$(systemctl show --property=ExecMainExitTimestamp --value "$service" 2>/dev/null || true)"
-  swap_max="$(systemctl show --property=MemorySwapMax --value "$service" 2>/dev/null || true)"
-  exit_epoch="$(date -u -d "$exit_timestamp" '+%s' 2>/dev/null || true)"
+  local load_state result status exit_timestamp exit_epoch now_epoch swap_max
+  load_state="$(systemctl show --property=LoadState --value "$service" 2>/dev/null)" || load_state=""
+  result="$(systemctl show --property=Result --value "$service" 2>/dev/null)" || result=""
+  status="$(systemctl show --property=ExecMainStatus --value "$service" 2>/dev/null)" || status=""
+  exit_timestamp="$(systemctl show --property=ExecMainExitTimestamp --value "$service" 2>/dev/null)" || exit_timestamp=""
+  swap_max="$(systemctl show --property=MemorySwapMax --value "$service" 2>/dev/null)" || swap_max=""
+  # GNU date parses an empty/blank string as today's midnight. Default success/0
+  # metadata for a never-run or absent unit must not become a fresh-run receipt.
+  exit_epoch=""
+  if [ "$load_state" = "loaded" ] && [[ "$exit_timestamp" =~ [^[:space:]] ]]; then
+    exit_epoch="$(date -u -d "$exit_timestamp" '+%s' 2>/dev/null)" || exit_epoch=""
+  fi
   now_epoch="$(date -u '+%s')"
-  if [ "$result" = "success" ] && [ "$status" = "0" ] \
+  if [ "$load_state" = "loaded" ] && [ "$result" = "success" ] && [ "$status" = "0" ] \
     && [[ "$exit_epoch" =~ ^[0-9]+$ ]] \
+    && [ "$exit_epoch" -gt 0 ] \
     && [ "$exit_epoch" -le $((now_epoch + 300)) ] \
     && [ "$exit_epoch" -ge $((now_epoch - maximum_age)) ]; then
     pass "$label last successful run is fresh"
@@ -2328,7 +2348,7 @@ if [ "$AWS_TOOLCHAIN_READY" -eq 1 ] \
       policy_mismatch)
         fail "bucket default Object Lock is not COMPLIANCE for at least 14 days"
         ;;
-      access_denied|credentials_rejected|bucket_not_found|lock_configuration_missing|operation_unsupported|tls_error|endpoint_unreachable|request_timeout|process_killed|cli_usage_error|cli_configuration_error|service_error|unknown_failure|invalid_response|oversized_response)
+      access_denied|credentials_rejected|bucket_not_found|lock_configuration_missing|operation_unsupported|auth_request_rejected|request_time_rejected|routing_rejected|request_rejected|bucket_state_rejected|provider_failure|throttled|service_code_unrecognized|service_error_format_unrecognized|tls_error|endpoint_unreachable|request_timeout|process_killed|cli_usage_error|cli_configuration_error|service_error|unknown_failure|invalid_response|oversized_response)
         fail "writer credential cannot verify bucket Object Lock (diagnostic=$lock_diagnostic; values redacted)"
         ;;
       *)
