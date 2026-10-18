@@ -4,7 +4,8 @@ const check = value => { if (!value) throw new Error('FUND_CANARY_READ_INVALID')
 /** Inactive restricted DB adapter. Trusted server composition supplies an
  * independently authorized opt-in scope and an actual transaction factory
  * resolving only after COMMIT. No credentials/env fallback or API wiring.
- * One MVCC snapshot is not a freshness, broker, lease, or source-write barrier.
+ * Source heads must match each row within the snapshot. This is not a broker,
+ * lease, source-write barrier, or proof of reducer correctness.
  */
 export async function readFundCanary(database,input) {
   try {
@@ -20,10 +21,11 @@ export async function readFundCanary(database,input) {
       const profile=await tx.$queryRawUnsafe(`SELECT count(*)::int AS count,
         bool_and(c.relkind='r' AND c.relrowsecurity AND c.relforcerowsecurity
           AND NOT pg_has_role(current_user,c.relowner,'MEMBER')
-          AND NOT has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')) AS safe
+          AND NOT has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+          AND NOT has_any_column_privilege(current_user,c.oid,'INSERT,UPDATE,REFERENCES')) AS safe
         FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
-        WHERE n.nspname='public' AND c.relname IN ('projection_activations','projection_builds','fund_balance_projections')`)
-      check(profile.length===1 && profile[0].count===3 && profile[0].safe===true)
+        WHERE n.nspname='public' AND c.relname IN ('projection_activations','projection_builds','fund_balance_projections','event_aggregate_heads')`)
+      check(profile.length===1 && profile[0].count===4 && profile[0].safe===true)
       await tx.$queryRawUnsafe("SELECT set_config('app.org_id',$1,true),set_config('statement_timeout','5s',true),set_config('lock_timeout','2s',true)",scope.organizationId)
       const result=await tx.$queryRawUnsafe(`SELECT jsonb_build_object(
         'pointer',jsonb_build_object('organizationId',a."organizationId",'projectionName',a."projectionName",'activeBuildId',a."activeBuildId",'activationVersion',a."activationVersion"::text),
@@ -31,6 +33,8 @@ export async function readFundCanary(database,input) {
         'rows',coalesce((SELECT jsonb_agg(to_jsonb(r)) FROM (
           SELECT p."organizationId",p."fundId",b.id AS "buildId",p."buildKey",p."projectionVersion",p.status,p.balance::text AS balance,p.currency,p."aggregateVersion"::text AS "aggregateVersion",p."lastEventId"
           FROM public.fund_balance_projections p
+          JOIN public.event_aggregate_heads h ON h."organizationId"=p."organizationId" AND h."aggregateType"='fund' AND h."aggregateId"=p."fundId"
+            AND h."currentVersion"=p."aggregateVersion" AND h."lastEventId"=p."lastEventId"
           WHERE p."organizationId"=b."organizationId" AND p."buildKey"=b."buildKey" AND p."projectionVersion"=b."projectionVersion"
           ORDER BY p."fundId" LIMIT 201
         ) r),'[]'::jsonb)) AS snapshot

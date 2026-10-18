@@ -489,3 +489,16 @@ no schema/migration changed. Consumers/replay/provider sends/production NOT RUN
 running/verifying only, so changing worker status admission alone is insufficient.
 Next: hosted actual-schema proof, fix any own fixture/adapter defects, then
 reconcile remaining preparation tasks without changing A1/A2 or activating API.
+
+### Reader review hardening before final source proof
+
+Added denial of column-only INSERT/UPDATE/REFERENCES grants (table-level check
+alone does not cover these). Added same-snapshot exact source-head version and
+last-event matching per authorized Fund, with restricted/RLS profile on that
+fourth table. Lagging/missing/hidden heads refuse a result. This is still not
+reducer correctness or proof of no new aggregate outside trusted inventory.
+Fixture-only shadow catch-up seed after the prior deliberate concurrent writer
+keeps the reader test honest; no consumer/checkpoint/source mutation used for
+catch-up. Renamed the injected pre-COMMIT failure case to finalization failure:
+it does not claim a PostgreSQL deferred-COMMIT rejection. Added actual column
+permission and head-lag tests. Syntax/diff PASS; final CI proof pending.

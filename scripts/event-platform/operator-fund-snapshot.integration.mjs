@@ -146,7 +146,8 @@ const canary=(scope=canaryScope,hooks={})=>readFundCanary(fixtureDatabase('op_ca
 const canaryRejected=p=>assert.rejects(p,{message:'FUND_CANARY_READ_INVALID'})
 await admin(`CREATE ROLE op_canary_reader LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD 'operator-fixture-only';
  GRANT USAGE ON SCHEMA public TO op_canary_reader;
- GRANT SELECT ON projection_activations,projection_builds,fund_balance_projections TO op_canary_reader;
+ GRANT SELECT ON projection_activations,projection_builds,fund_balance_projections,event_aggregate_heads TO op_canary_reader;
+ CREATE POLICY operator_canary_scope ON event_aggregate_heads AS RESTRICTIVE TO op_canary_reader USING("organizationId"='org-a');
  CREATE POLICY operator_canary_scope ON projection_activations AS RESTRICTIVE TO op_canary_reader USING("organizationId"='org-a');
  CREATE POLICY operator_canary_scope ON projection_builds AS RESTRICTIVE TO op_canary_reader USING("organizationId"='org-a' AND id IN (${q(buildId)}::uuid,${q(retainedBuild)}::uuid));
  CREATE POLICY operator_canary_scope ON fund_balance_projections AS RESTRICTIVE TO op_canary_reader USING("organizationId"='org-a' AND status='shadow' AND "buildKey" IN ('operator-snapshot','operator-retained'));
@@ -155,6 +156,10 @@ await admin(`CREATE ROLE op_canary_reader LOGIN NOSUPERUSER NOBYPASSRLS NOCREATE
  INSERT INTO fund_balance_projections("organizationId","fundId","projectionVersion","buildKey",status,balance,currency,"aggregateVersion","lastEventId",evidence)
  SELECT "organizationId","fundId",3,'operator-retained','shadow',balance,currency,"aggregateVersion","lastEventId",evidence
  FROM fund_balance_projections WHERE "organizationId"='org-a' AND status='shadow' AND "projectionVersion"=2;`)
+// Previous snapshot test deliberately left the shadow behind a metadata event.
+// Fixture-only catch-up seed; no worker, source event or checkpoint is executed.
+await admin(`UPDATE fund_balance_projections s SET balance=a.balance,currency=a.currency,"aggregateVersion"=a."aggregateVersion","lastEventId"=a."lastEventId"
+ FROM fund_balance_projections a WHERE s."organizationId"=a."organizationId" AND s."fundId"=a."fundId" AND s.status='shadow' AND a.status='active';`)
 await test('canary actual restricted reader denies missing activation without fallback',async()=>{
  const before=await fingerprint();await canaryRejected(canary());assert.equal(await fingerprint(),before)
 })
@@ -185,11 +190,13 @@ await test('canary hidden rows, write grant and missing FORCE RLS fail closed',a
  try{await canaryRejected(canary())}finally{await admin('DROP POLICY operator_canary_hidden ON fund_balance_projections;')}
  await admin('GRANT UPDATE ON projection_activations TO op_canary_reader;')
  try{await canaryRejected(canary())}finally{await admin('REVOKE UPDATE ON projection_activations FROM op_canary_reader;')}
+ await admin('GRANT UPDATE (balance) ON fund_balance_projections TO op_canary_reader;')
+ try{await canaryRejected(canary())}finally{await admin('REVOKE UPDATE (balance) ON fund_balance_projections FROM op_canary_reader;')}
  await admin('ALTER TABLE projection_activations NO FORCE ROW LEVEL SECURITY;')
  try{await canaryRejected(canary())}finally{await admin('ALTER TABLE projection_activations FORCE ROW LEVEL SECURITY;')}
 })
 await admin('GRANT USAGE ON SEQUENCE public.operator_snapshot_probe TO op_canary_reader;')
-await test('canary genuine READ ONLY aborts attempted write and never returns on failed commit',async()=>{
+await test('canary genuine READ ONLY aborts attempted write and finalization failure returns no result',async()=>{
  let readonly=false
  await canaryRejected(canary(canaryScope,{afterQuery:async(sql,tx)=>{
   if(sql.includes('FROM pg_catalog.pg_roles')) {
@@ -226,4 +233,12 @@ await test('canary freezes authorized inventory before asynchronous database acc
   if(sql.includes('FROM pg_catalog.pg_roles')){scope.organizationId='org-b';scope.fundIds.length=0}
  }})
  assert.equal(result.organizationId,'org-a');assert.equal(result.funds.length,2)
+})
+
+await test('canary rejects lagging row or hidden source head inside actual snapshot',async()=>{
+ const scope={...canaryScope,pointerVersion:'3'}
+ await admin(`UPDATE fund_balance_projections SET "aggregateVersion"="aggregateVersion"-1 WHERE "organizationId"='org-a' AND "fundId"='fund-a' AND "projectionVersion"=2;`)
+ try{await canaryRejected(canary(scope))}finally{await admin(`UPDATE fund_balance_projections SET "aggregateVersion"="aggregateVersion"+1 WHERE "organizationId"='org-a' AND "fundId"='fund-a' AND "projectionVersion"=2;`)}
+ await admin(`CREATE POLICY operator_canary_hidden_head ON event_aggregate_heads AS RESTRICTIVE TO op_canary_reader USING("aggregateId"<>'fund-a');`)
+ try{await canaryRejected(canary(scope))}finally{await admin('DROP POLICY operator_canary_hidden_head ON event_aggregate_heads;')}
 })
