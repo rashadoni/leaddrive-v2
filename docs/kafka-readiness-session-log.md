@@ -3186,3 +3186,27 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   Current stop: verified PR889 release, clean task worktree with local receipt
   checkpoint commits preserved. Next source work starts from current main in a
   dedicated worktree and carries these task-owned receipts, not unrelated work.
+
+### Owner requests all seven stages and parallel preparation — 2026-10-18
+
+- Owner explicitly requests recording all seven remaining stages and autonomous
+  sequential execution, then authorizes multiple sessions where faster. Added
+  A1–A7 with acceptance evidence, existing K-task mappings and current state to
+  KAFKA_IMPLEMENTATION_BACKLOG.md; no stage is declared complete by planning.
+- Resumed saved successful PR889/4cbdece263fa state, fetched current main4cbdece,
+  verified five protected contexts/enforce_admins and active deploy workflow.
+  Canonical checkout contains unrelated conflicts and obsolete docs, preserved.
+  Current origin/main instructions confirm rashadoni and registered Contabo
+ 13.140.132.245:/opt/leaddrive-v2; GitHub Actions is the sole release route.
+- New root worktree leaddrive-kafka-worker-admission-20261018 on
+  codex/kafka-worker-admission-20261018 from current main; carried five own
+  receipt checkpoints. No unrelated application edits copied. Separate helper
+  session owns launch-plan validation/tests in its own worktree. Root owns
+  artifact/direct-JVM integration and documentation. One local targeted-test
+  slot is allocated to helper; root performs editing/inspection meanwhile.
+- Current A1 work: strict offline plan pins, immutable artifact bytes and actual
+  direct-child JVM composition with existing broker/SQL fixtures. No runtime
+  service activation, data replay or recovery mutation follows from preparation.
+  Existing activation/recovery evidence gates remain authoritative; source
+  maintenance, actual independent confirmation and no-new-cost constraints
+  stay visible for later stages. Next: implement and verify A1 components.
