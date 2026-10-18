@@ -9,7 +9,7 @@ import { resolve } from "node:path"
 import type { KafkaEventRecord } from "../../src/lib/event-platform/consumer"
 import { startKafkaWorkerSession } from "../../src/lib/event-platform/worker-session"
 import { createFundShadowPartitionWorker } from "../../src/lib/event-platform/fund-shadow-worker"
-import { createFundShadowPostgresFixture, fundShadowDatabase } from "../../src/__tests__/fixtures/fund-shadow-postgres"
+import { createFundShadowPostgresFixture, fundShadowDatabase, type FundShadowContext } from "../../src/__tests__/fixtures/fund-shadow-postgres"
 import { createBrokerFixtureHarness } from "./fixtures/kafka-broker-harness"
 import { assertFullCdcEnvironment, assertPrivatePostgresTarget, FULL_CDC_CONNECTOR, FULL_CDC_SLOT,
   FULL_CDC_TOPIC, renderFullCdcBoundary, renderFullCdcConnector } from "./fixtures/cdc-fund-contract.mjs"
@@ -165,13 +165,16 @@ async function main() {
     const before = await snapshot()
     const expected = new Map(contexts.flatMap(context => context.records).map(record => [String(record.headers!.id), record]))
     const observed: KafkaEventRecord[] = []
-    function start(count: number, loseAck = false) {
-      const { channel } = harness!.driver("finance")
-      const config = harness!.configurations.get("finance")!
+    function start(count: number, loseAck = false, options: {
+      contexts?: FundShadowContext[]; groupName?: string; observed?: KafkaEventRecord[]
+    } = {}) {
+      const groupName = options.groupName ?? "finance"
+      const { channel } = harness!.driver(groupName)
+      const config = harness!.configurations.get(groupName)!
       const session = startKafkaWorkerSession({ clusterId: config.cluster, groupId: config.group, topic: config.topic,
         maxRecords: count, maxDurationMs: 120_000,
         open() {
-          const clients = contexts.map(context => ({ ...context, client: db.connect(context) }))
+          const clients = (options.contexts ?? contexts).map(context => ({ ...context, client: db.connect(context) }))
           return { channel: { ...channel, async write(command: string) {
             if (loseAck && command.startsWith("ACK\t")) { await channel.close(); throw new Error("synthetic post-COMMIT ACK loss") }
             await channel.write(command)
@@ -191,7 +194,7 @@ async function main() {
                   const bytes = record.headers?.[name]; assert.ok(Buffer.isBuffer(bytes))
                   assert.equal(bytes.toString("utf8"), source.headers![name])
                 }
-                assert.equal(record.partition, 0); observed.push(record)
+                assert.equal(record.partition, 0); (options.observed ?? observed).push(record)
               }
               return worker.processBatch(batch)
             } }
@@ -217,30 +220,97 @@ async function main() {
     assert.equal(harness.fixture("offset", "finance"), "12")
     assert.deepEqual(observed.slice(1).map(record => record.offset), Array.from({ length: 12 }, (_, index) => String(index)))
     assert.equal(new Set(observed.map(record => record.headers!.id!.toString())).size, 12)
-    phase = "exact-parity"
-    for (const context of contexts) {
-      assert.deepEqual(await db.counts(context), { shadows: 1, inbox: 6, checkpoints: 1 })
-      const records = observed.slice(1).filter(record => record.headers!.organizationid!.toString() === context.scope.organizationId)
-      assert.deepEqual(records.map(record => JSON.parse(record.value!.toString()).aggregateversion), [1, 2, 3, 4, 5, 6])
-      const parity = await db.scratch.$queryRawUnsafe(`SELECT s.balance::text AS balance, s.currency, s."aggregateVersion"::text AS version,
-        s.balance=a.balance AND s.currency=a.currency AND s."aggregateVersion"=a."aggregateVersion" AND s."lastEventId"=a."lastEventId" AS exact
-        FROM fund_balance_projections s JOIN fund_balance_projections a ON a."organizationId"=s."organizationId"
-        AND a."fundId"=s."fundId" AND a.status='active' WHERE s."organizationId"=$1 AND s."buildKey"=$2`, context.scope.organizationId, context.scope.buildKey)
-      assert.deepEqual(parity, [{ balance: "10.0000", currency: "USD", version: "6", exact: true }])
-      const inbox = await db.scratch.$queryRawUnsafe(`SELECT "sourceOffset"::text AS offset, "eventId"::text AS event, "payloadHash" AS hash
-        FROM consumer_inbox WHERE "organizationId"=$1 AND "consumerName"=$2 ORDER BY "sourceOffset"`,
-      context.scope.organizationId, `fund-shadow:${context.scope.buildId}`)
-      assert.deepEqual(inbox, records.map(record => ({ offset: record.offset, event: record.headers!.id!.toString(), hash: record.headers!.payloadhash!.toString() })))
-      const last = records.at(-1)!
-      const checkpoint = await db.scratch.$queryRawUnsafe(`SELECT "sourceOffset"::text AS offset, "lastEventId"::text AS event,
-        "sourceTopic" AS topic, "sourcePartition" AS partition FROM projection_checkpoints WHERE "organizationId"=$1 AND "buildId"=$2::uuid`,
-      context.scope.organizationId, context.scope.buildId)
-      assert.deepEqual(checkpoint, [{ offset: last.offset, event: last.headers!.id!.toString(), topic: FULL_CDC_TOPIC, partition: 0 }])
+    async function assertExactBuilds(builds: FundShadowContext[], deliveries: KafkaEventRecord[]) {
+      for (const context of builds) {
+        assert.deepEqual(await db.counts(context), { shadows: 1, inbox: 6, checkpoints: 1 })
+        const records = deliveries.filter(record => record.headers!.organizationid!.toString() === context.scope.organizationId)
+        assert.deepEqual(records.map(record => JSON.parse(record.value!.toString()).aggregateversion), [1, 2, 3, 4, 5, 6])
+        const parity = await db.scratch.$queryRawUnsafe(`SELECT s.balance::text AS balance, s.currency, s."aggregateVersion"::text AS version,
+          s.balance=a.balance AND s.currency=a.currency AND s."aggregateVersion"=a."aggregateVersion" AND s."lastEventId"=a."lastEventId" AS exact
+          FROM fund_balance_projections s JOIN fund_balance_projections a ON a."organizationId"=s."organizationId"
+          AND a."fundId"=s."fundId" AND a.status='active' WHERE s."organizationId"=$1 AND s."buildKey"=$2`, context.scope.organizationId, context.scope.buildKey)
+        assert.deepEqual(parity, [{ balance: "10.0000", currency: "USD", version: "6", exact: true }])
+        const inbox = await db.scratch.$queryRawUnsafe(`SELECT "sourceOffset"::text AS offset, "eventId"::text AS event, "payloadHash" AS hash
+          FROM consumer_inbox WHERE "organizationId"=$1 AND "consumerName"=$2 ORDER BY "sourceOffset"`,
+        context.scope.organizationId, `fund-shadow:${context.scope.buildId}`)
+        assert.deepEqual(inbox, records.map(record => ({ offset: record.offset, event: record.headers!.id!.toString(), hash: record.headers!.payloadhash!.toString() })))
+        const last = records.at(-1)!
+        const checkpoint = await db.scratch.$queryRawUnsafe(`SELECT "sourceOffset"::text AS offset, "lastEventId"::text AS event,
+          "sourceTopic" AS topic, "sourcePartition" AS partition FROM projection_checkpoints WHERE "organizationId"=$1 AND "buildId"=$2::uuid`,
+        context.scope.organizationId, context.scope.buildId)
+        assert.deepEqual(checkpoint, [{ offset: last.offset, event: last.headers!.id!.toString(), topic: FULL_CDC_TOPIC, partition: 0 }])
+      }
     }
+    phase = "exact-parity"
+    await assertExactBuilds(contexts, observed.slice(1))
+    assert.deepEqual(await snapshot(), before)
+
+    phase = "shadow-only-wrong-reducer-fault-injection"
+    // Synthetic fault injection ONLY: represent a reducer's wrong persisted
+    // result without pretending this checked-out source contains a historical
+    // reducer bug. The actual old restricted login can update only its shadow.
+    for (const context of contexts) {
+      await context.client.$transaction(async tx => {
+        const [role] = await tx.$queryRawUnsafe<Array<{ currentRole: string; sessionRole: string; restricted: boolean }>>(`SELECT
+          current_user::text AS "currentRole", session_user::text AS "sessionRole",
+          NOT (rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication) AS restricted
+          FROM pg_roles WHERE rolname=current_user`)
+        assert.deepEqual(role, { currentRole: context.scope.expectedWorkerRole, sessionRole: context.scope.expectedWorkerRole, restricted: true })
+        await tx.$queryRawUnsafe("SELECT set_config('app.org_id', $1, true)", context.scope.organizationId)
+        const changed = await tx.$executeRawUnsafe(`UPDATE fund_balance_projections SET balance=balance+1.0000::numeric
+          WHERE "organizationId"=$1 AND "fundId"=$2 AND "buildKey"=$3 AND "projectionVersion"=2 AND status='shadow'`,
+        context.scope.organizationId, context.fundId, context.scope.buildKey)
+        assert.equal(changed, 1, "fault injection must change exactly this restricted fixture-owned shadow")
+      }, { isolationLevel: "Serializable", maxWait: 5000, timeout: 15000 })
+      const mismatched = await db.scratch.$queryRawUnsafe(`SELECT s.balance::text AS balance, s.currency,
+        s."aggregateVersion"::text AS version, s.balance=a.balance AS exact,
+        s.currency=a.currency AND s."aggregateVersion"=a."aggregateVersion" AND s."lastEventId"=a."lastEventId" AS "metadataUnchanged"
+        FROM fund_balance_projections s JOIN fund_balance_projections a ON a."organizationId"=s."organizationId"
+        AND a."fundId"=s."fundId" AND a.status='active' WHERE s."organizationId"=$1 AND s."buildKey"=$2`,
+      context.scope.organizationId, context.scope.buildKey)
+      assert.deepEqual(mismatched, [{ balance: "11.0000", currency: "USD", version: "6", exact: false, metadataUnchanged: true }])
+    }
+    assert.deepEqual(await snapshot(), before, "injected shadow defect must not affect source, active state, effects or the other tenant")
+    const snapshotOldBuilds = () => Promise.all(contexts.map(context => db.scratch.$queryRawUnsafe(`SELECT jsonb_build_object(
+      'build', (SELECT to_jsonb(x) FROM projection_builds x WHERE "organizationId"=$1 AND id=$2::uuid),
+      'shadows', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM fund_balance_projections x WHERE "organizationId"=$1 AND "buildKey"=$3),
+      'inbox', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM consumer_inbox x WHERE "organizationId"=$1 AND "consumerName"=$4),
+      'checkpoints', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM projection_checkpoints x WHERE "organizationId"=$1 AND "buildId"=$2::uuid)) AS old`,
+    context.scope.organizationId, context.scope.buildId, context.scope.buildKey, `fund-shadow:${context.scope.buildId}`)))
+    const badBuildsBeforeRecovery = await snapshotOldBuilds()
+    assert.equal(harness.fixture("offset", "finance"), "12")
+
+    phase = "corrected-new-build-full-history-recovery"
+    const corrected: FundShadowContext[] = []
+    for (const context of contexts) {
+      const fresh = await db.newBuild(context.scope.organizationId, context.fundId, context.records)
+      assert.notEqual(fresh.scope.buildId, context.scope.buildId)
+      assert.notEqual(fresh.scope.buildKey, context.scope.buildKey)
+      assert.notEqual(fresh.scope.expectedWorkerRole, context.scope.expectedWorkerRole)
+      assert.equal(fresh.scope.codeSha, codeSha)
+      assert.deepEqual(await db.counts(fresh), { shadows: 0, inbox: 0, checkpoints: 0 })
+      corrected.push(fresh)
+    }
+    // Initial admission of a NEW synthetic group only. Never reset, delete,
+    // recreate or mutate the old group's already-acknowledged cursor/builds.
+    harness.admitGroup("finance-corrected", "finance", "0")
+    assert.equal(harness.fixture("offset", "finance-corrected"), "0")
+    assert.equal(harness.fixture("offset", "finance"), "12")
+    const replayed: KafkaEventRecord[] = []
+    assert.deepEqual(await start(12, false, { contexts: corrected, groupName: "finance-corrected", observed: replayed }), { processed: 12 })
+    assert.equal(harness.fixture("offset", "finance-corrected"), "12")
+    assert.equal(harness.fixture("offset", "finance"), "12")
+    assert.equal(replayed.length, 12)
+    // The same broker bytes and original positions, not republished fixture
+    // messages or modified/rehashed source events, drive the corrected build.
+    assert.deepEqual(replayed, observed.slice(1))
+    await assertExactBuilds(corrected, replayed)
+    assert.deepEqual(await snapshotOldBuilds(), badBuildsBeforeRecovery, "corrected replay must preserve both bad old builds and their inbox/checkpoint evidence")
     assert.deepEqual(await snapshot(), before)
     console.log("full_cdc_fund_source_role=PASS; snapshot=PASS; connect_cold_restart_wal=PASS; raw_kafka_bytes_hash=PASS")
     console.log("full_cdc_fund_restricted_sql_exact_two_tenant_parity=PASS; committed_ack_loss_duplicate=PASS; worker_restart=PASS")
     console.log("full_cdc_fund_source_active_effects_other_tenant_unchanged=PASS; replay_sends=NONE")
+    console.log("full_cdc_fund_shadow_only_fault_injection=PASS; historical_bug_source=NOT_CLAIMED; corrected_new_build_recovery=PASS; old_bad_builds_and_group_preserved=PASS")
     console.log("full_cdc_fund_integration=PASS; fixture_tls_acl=NOT_PROVEN; production_activation=NOT_RUN")
   } catch { throw new Error(`full_cdc_fund_phase=${phase}`) }
   finally {
