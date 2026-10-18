@@ -121,10 +121,17 @@ describe("employee TIME_CORRECTION submission uses a complete proposed interval 
     expect([400, 409]).toContain(result.status)
     expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled(); expect(prisma.workforceTimeCorrection.create).not.toHaveBeenCalled()
   })
-  it("refuses a finish before the day's own later marks: nobody could approve it", async () => {
-    // Owner's phone, 2026-10-18. The day's break opened at 12:00 UTC (16:00 in Baku); 15:30 in Baku is before it.
+  it("takes a finish before the day's later marks: they stay in the journal, not in the day", async () => {
+    // Owner, 2026-10-18: «отметки после указанного окончания не считаются рабочим временем, но остаются в истории дня».
+    // The day's break opened at 12:00 UTC (16:00 in Baku); 15:30 in Baku is before it.
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(workday() as never)
-    await expect(submitAttendanceRequest(self, { ...input(), endTime: "15:30" })).rejects.toHaveProperty("code", "MTM_ATTENDANCE_CORRECTION_OUTSIDE_MARKS")
+    await expect(submitAttendanceRequest(self, { ...input(), endTime: "15:30" })).resolves.toMatchObject({ idempotent: false })
+    expect(prisma.mtmHrmRequest.create).toHaveBeenCalledTimes(1)
+  })
+  it("refuses a correction of a day whose own journal does not replay: nobody could approve it", async () => {
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(workday() as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([] as never)
+    await expect(submitAttendanceRequest(self, input())).rejects.toHaveProperty("code", "MTM_ATTENDANCE_CORRECTION_OUTSIDE_MARKS")
     expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
   })
   it("retries the original proposal and frozen basis after the live workday changes, but refuses changed payload", async () => {

@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client"
 import { AttendanceCorrectionBasisSchema, AttendanceRequestDetailsSchema, AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { workforceWorkdayCorrectionFacts, type WorkforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 import {
-  replayWorkforceWorkdayFacts, workforceReplayMatchesWorkdayCorrectionFacts, workforceWorkdayEventFact,
+  clipWorkdayPauseIntervals, replayWorkforceWorkdayFacts, workdayClosedPauseSeconds, workforceReplayMatchesWorkdayCorrectionFacts, workforceWorkdayEventFact,
   WORKFORCE_WORKDAY_JOURNAL_ORDER, WORKFORCE_WORKDAY_JOURNAL_SELECT, WorkforceWorkdayFactsReplayError,
 } from "@/lib/workforce/workday-facts-replay"
 
@@ -86,18 +86,29 @@ export async function applyAttendanceTimeCorrectionInTransaction(tx: Prisma.Tran
     : !current || current.id !== request.correctionWorkdayId || !sameFacts(workforceWorkdayCorrectionFacts(current), basis.facts)) conflict()
   const workdayId = current?.id ?? randomUUID()
   const before = current ? workforceWorkdayCorrectionFacts(current) : { kind: "MISSING" as const, workDate }
-  const after = attendanceCorrectionAfterFacts({ workdayId, workDate, current, start, end })
-  if (current && sameFacts(workforceWorkdayCorrectionFacts(current), after)) conflict("MTM_ATTENDANCE_CORRECTION_UNCHANGED")
   const [events, corrections] = current ? await Promise.all([
     tx.mtmAgentWorkdayEvent.findMany({ where: { organizationId, agentId: request.agentId, workdayId },
       orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER], select: WORKFORCE_WORKDAY_JOURNAL_SELECT }),
     tx.workforceTimeCorrection.findMany({ where: { organizationId, agentId: request.agentId, workdayId }, select: { id: true, beforeFacts: true, afterFacts: true } }),
   ]) : [[], []]
   const correctionId = randomUUID()
+  // The day as its journal has it now: its breaks decide what the corrected day keeps.
+  let pauseIntervals: ReadonlyArray<{ startedAt: string; endedAt: string | null }> = []
   try {
-    if (current && !workforceReplayMatchesWorkdayCorrectionFacts(replayWorkforceWorkdayFacts({ workdayId, events: events.map(workforceWorkdayEventFact), corrections }), workforceWorkdayCorrectionFacts(current))) {
-      throw new WorkforceWorkdayFactsReplayError("Current projection does not match the immutable history")
+    if (current) {
+      const replayed = replayWorkforceWorkdayFacts({ workdayId, events: events.map(workforceWorkdayEventFact), corrections })
+      if (!workforceReplayMatchesWorkdayCorrectionFacts(replayed, workforceWorkdayCorrectionFacts(current))) {
+        throw new WorkforceWorkdayFactsReplayError("Current projection does not match the immutable history")
+      }
+      pauseIntervals = replayed.pauseIntervals
     }
+  } catch (error) {
+    if (error instanceof WorkforceWorkdayFactsReplayError) conflict("MTM_ATTENDANCE_CORRECTION_HISTORY_INVALID")
+    throw error
+  }
+  const after = attendanceCorrectionAfterFacts({ workdayId, workDate, start, end, pauseIntervals })
+  if (current && sameFacts(workforceWorkdayCorrectionFacts(current), after)) conflict("MTM_ATTENDANCE_CORRECTION_UNCHANGED")
+  try {
     replayWorkforceWorkdayFacts({ workdayId, events: events.map(workforceWorkdayEventFact), corrections: [...corrections, { id: correctionId, beforeFacts: before, afterFacts: after }] })
   } catch (error) {
     if (error instanceof WorkforceWorkdayFactsReplayError) conflict("MTM_ATTENDANCE_CORRECTION_HISTORY_INVALID")
@@ -122,25 +133,32 @@ export async function applyAttendanceTimeCorrectionInTransaction(tx: Prisma.Tran
   return { requestId, correctionId, workdayId, workday: after, idempotent: false }
 }
 
-type CorrectionCurrent = { totalPausedSeconds: number; pausedAt: Date | null } | null
-
-/** The facts an approved correction leaves the day in: one rule for the approval and for the probe below. */
-export function attendanceCorrectionAfterFacts(input: { workdayId: string; workDate: string; current: CorrectionCurrent; start: Date; end: Date }): WorkforceWorkdayCorrectionFacts {
-  const { workdayId, workDate, current, start, end } = input
+/**
+ * The facts an approved correction leaves the day in: one rule for the approval
+ * and for the probe below. Breaks count only inside the corrected start–finish
+ * (`clipWorkdayPauseIntervals`): marks after the finish stay in the journal but
+ * are not working time (owner, 2026-10-18). An open break closes at the finish.
+ */
+export function attendanceCorrectionAfterFacts(input: {
+  workdayId: string; workDate: string; start: Date; end: Date
+  pauseIntervals: ReadonlyArray<{ startedAt: string; endedAt: string | null }>
+}): WorkforceWorkdayCorrectionFacts {
+  const { workdayId, workDate, start, end } = input
+  const closed = input.pauseIntervals.map((interval) => ({ startedAt: interval.startedAt, endedAt: interval.endedAt ?? end.toISOString() }))
   return {
     id: workdayId, workDate, status: "COMPLETED", startedAt: start.toISOString(), completedAt: end.toISOString(), pausedAt: null,
-    totalPausedSeconds: (current?.totalPausedSeconds ?? 0) + (current?.pausedAt ? Math.floor((end.getTime() - current.pausedAt.getTime()) / 1000) : 0),
+    totalPausedSeconds: workdayClosedPauseSeconds(clipWorkdayPauseIntervals(closed, start.toISOString(), end.toISOString())),
   }
 }
 
 /**
  * Would the day's journal take this correction? The same replay the approval
- * runs, asked when the employee submits. Owner's phone, 2026-10-18: «Günü
- * bağla» at 18:30 for a day whose journal had a return to work at 21:53 and a
- * break at 22:18 — no finish can precede the marks after it, so the request sat
- * PENDING where neither the manager nor the company's auto-approval could ever
- * approve it (MTM_ATTENDANCE_CORRECTION_HISTORY_INVALID at approval). Refusing
- * at submission tells the employee while they are still holding the phone.
+ * runs, asked when the employee submits, so a request nobody could approve is
+ * refused while the employee still holds the phone instead of waiting for good
+ * (owner's phone, 2026-10-18: it waited, MTM_ATTENDANCE_CORRECTION_HISTORY_INVALID
+ * at approval). Marks after the finish no longer refuse it — they stay in the
+ * journal and out of the day (`attendanceCorrectionAfterFacts`) — so what is
+ * left is a journal that does not replay at all.
  */
 export async function attendanceCorrectionFitsJournal(
   tx: Prisma.TransactionClient,
@@ -149,13 +167,14 @@ export async function attendanceCorrectionFitsJournal(
   const { organizationId, agentId, workday, start, end } = input
   const workDate = workday.workDate.toISOString().slice(0, 10)
   const before = workforceWorkdayCorrectionFacts(workday)
-  const after = attendanceCorrectionAfterFacts({ workdayId: workday.id, workDate, current: workday, start, end })
   const [events, corrections] = await Promise.all([
     tx.mtmAgentWorkdayEvent.findMany({ where: { organizationId, agentId, workdayId: workday.id },
       orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER], select: WORKFORCE_WORKDAY_JOURNAL_SELECT }),
     tx.workforceTimeCorrection.findMany({ where: { organizationId, agentId, workdayId: workday.id }, select: { id: true, beforeFacts: true, afterFacts: true } }),
   ])
   try {
+    const replayed = replayWorkforceWorkdayFacts({ workdayId: workday.id, events: events.map(workforceWorkdayEventFact), corrections })
+    const after = attendanceCorrectionAfterFacts({ workdayId: workday.id, workDate, start, end, pauseIntervals: replayed.pauseIntervals })
     replayWorkforceWorkdayFacts({ workdayId: workday.id, events: events.map(workforceWorkdayEventFact), corrections: [...corrections, { id: "submission-probe", beforeFacts: before, afterFacts: after }] })
     return true
   } catch (error) {
