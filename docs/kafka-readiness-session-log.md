@@ -3123,3 +3123,26 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   and post-deploy smoke. Unused lifecycle source is not a separately packaged
   or installed JVM worker. Production Kafka consumers, offsets, replay, WAL,
   slots, restore and recovery timers have not been activated by this task.
+
+### PR889 application release delivered and independently verified — 2026-10-18 19:29 UTC
+
+- Deploy39156579615 SUCCESS for exact merge/source artifact
+  `4cbdece263fa78d67f763fc32f7c03b17035c9b4`. Build job117760941184 completed
+ 19:19:31Z; actual Next standalone build, package verification and immutable
+  upload succeeded. Artifact leaddrive-prod-4cbdece263fa78d67f763fc32f7c03b17035c9b4
+  is471562548 bytes, digest
+  sha256:e40f5d07b1c2ca068dfdcde4be6045b5d50dbf1473f417d98f74fb3a8a7f6d94.
+- Release quality job117760941141 passed340 focused unit tests,14 actual
+  restricted-SQL tests and unchanged18-file failure baseline. Production
+  job117766465860 SUCCESS19:27:57Z. Existing Fund cutover receipt reused;
+  structural event-platform ledger/RLS/ownership/money-schema/projection
+  postconditions PASS19:27:05Z. Structural mode is not a fresh deep rebuild.
+- GitHub public revision smoke matched exact4cbdece263fa on its first attempt;
+  login/CSS/JS smoke passed. Independently repeated ping200/ok=true, exact public
+  artifact SHA, login200, hashed CSS200/text-css and JS200/javascript from this
+  task; independent_public_release_smoke=PASS. No production Kafka worker
+  installation/activation or replay is inferred from application release.
+- After confirming current main equals deployed SHA and no active inventory,
+  dispatched the existing read-only readiness workflow once on main. Its result
+  is pending; no retry or runtime/backup action. Next: record fresh aggregate
+  inventory, remaining readiness boundaries and the next inactive prerequisite.

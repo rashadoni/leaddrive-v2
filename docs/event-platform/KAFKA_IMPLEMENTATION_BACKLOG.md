@@ -880,3 +880,17 @@ to restricted-SQL rebuild, infrastructure HA/TLS/ACL, recovery evidence and
 independent confirmation, operator lifecycle/promotion and other domain
 adoption remain open. No production consumers, offset/reset/replay or backup
 commissioning was performed by this delivery.
+
+### PR889 application release verified — 2026-10-18 19:29 UTC
+
+Release39156579615 SUCCESS; production job117766465860 completed19:27:57Z.
+Actual standalone artifact and independent public build-info both identify
+`4cbdece263fa78d67f763fc32f7c03b17035c9b4`. Public ping, login, hashed CSS/JS
+and structural event-platform/RLS postconditions passed. Existing Fund
+cutover receipt was reused; no fresh deep rebuild is claimed.
+
+The inactive lifecycle prerequisite is delivered as source/application release,
+not a separately packaged or active Kafka/JVM service. K4.1/K4.8 overall,
+full CDC-to-SQL composition, independent recovery and governed activation
+remain open. A single fresh aggregate read-only inventory is pending; no
+consumer/offset/replay, WAL/slot, timer or recovery mutation was performed.
