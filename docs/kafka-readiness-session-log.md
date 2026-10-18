@@ -2748,3 +2748,16 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  the merge. All prior own runs are complete before the forthcoming publication.
 - No production or GitHub policy mutation, foreign-run cancellation, runtime
  activation, source replay/offset change or paid resource was performed.
+
+### Corrected pipe lifecycle published; actual new-source gates started — 2026-10-18 15:20 UTC
+
+- Frozen published source92aa3c5d380625dfbb86d85bbbea22d600f8d934. GitHub's
+ PR head was re-read until it matched after push; only then was PR883 marked
+ ready. Earlier draft jobs skipped normally and are not accepted as proof.
+- Actual current-source runs: required PR39139978372, combined39139978362,
+ synthetic CDC39139978367 and basic stack39139978571 (one shared disposable
+ queue). Runner-policy39139920566, scan39139920481 and tooling39139920594
+ SUCCESS. Helper owns read-only combined observation; root owns required gates
+ and release. No manual rerun/dispatch or cancellation was performed.
+- Source is frozen again. Next: all actual current-source results including
+53 fixture tests and six combined scenarios; ordinary merge only afterwards.
