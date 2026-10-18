@@ -12,6 +12,8 @@ interface LiveWhatsApp {
   enabled: boolean
   displayNumber: string | null
   link: string | null
+  /** This session's code, already in the link's opening line. */
+  code?: string | null
   qr?: string | null
   windowOpen: boolean
   sent: number
@@ -99,6 +101,11 @@ export function DemoLiveWhatsApp({ token }: { token: string }) {
       {!state.windowOpen ? (
         <>
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{S.whatsappIntro(state.displayNumber ?? "")}</p>
+          {state.code ? (
+            <p data-testid="demo-whatsapp-code" className="mt-2 text-[11px] leading-relaxed">
+              {S.whatsappCode(state.code)}
+            </p>
+          ) : null}
           {state.link && (
             <Button asChild size="sm" className="mt-2 bg-emerald-600 hover:bg-emerald-700">
               <a href={state.link} target="_blank" rel="noopener noreferrer">

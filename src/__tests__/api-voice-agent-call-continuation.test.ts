@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   updateMany: vi.fn(),
   findMessages: vi.fn(),
   findConfigs: vi.fn(),
+  findLead: vi.fn(),
+  createEvents: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -21,6 +23,8 @@ vi.mock("@/lib/prisma", () => ({
     callLog: { findFirst: mocks.findFirst, updateMany: mocks.updateMany },
     channelMessage: { findMany: mocks.findMessages },
     channelConfig: { findMany: mocks.findConfigs },
+    lead: { findFirst: mocks.findLead },
+    callEvent: { createMany: mocks.createEvents },
   },
 }))
 vi.mock("@/lib/rls-context", () => ({
@@ -360,6 +364,74 @@ describe("an inbound call the AI answered", () => {
       expect(body).toEqual({ continuation: null, conversation: null })
     }
     expect(mocks.findConfigs).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * A call the demo placed (2026-10-18). The station speaks `opening` word for
+ * word and appends `context` to that one call; without them the prospect was
+ * greeted with the line's own greeting — another business's — and asked about
+ * building materials and square metres.
+ */
+describe("a call the demo placed", () => {
+  const demoRow = (overrides: Record<string, unknown> = {}) => callbackRow({
+    continuesCallId: null,
+    direction: "outbound",
+    leadId: "lead-demo",
+    consentAudit: { via: "demo_center" },
+    ...overrides,
+  })
+
+  beforeEach(() => {
+    mocks.findLead.mockReset()
+    mocks.findLead.mockResolvedValue({ contactName: "Nigar Əliyeva" })
+    mocks.createEvents.mockReset()
+    mocks.createEvents.mockResolvedValue({ count: 1 })
+  })
+
+  it("opens as LeadDrive with the approved first sentence, frames the call and caps it at two minutes", async () => {
+    const { buildDemoCallContext, demoCallOpening, DEMO_CALL_MAX_SECONDS } = await import("@/lib/demo-center/call-prompt")
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    const body = await (await GET(request())).json()
+    expect(body).toEqual({
+      continuation: null,
+      conversation: null,
+      opening: demoCallOpening("Nigar"),
+      context: buildDemoCallContext(),
+      maxSeconds: DEMO_CALL_MAX_SECONDS,
+    })
+    expect(body.opening).toMatch(/^Salam, Nigar! Mən LeadDrive-ın AI köməkçisiyəm/)
+    expect(body.opening).not.toMatch(/Gobustone/i)
+    expect(DEMO_CALL_MAX_SECONDS).toBe(120)
+  })
+
+  it("fits what the station reads: 500 characters of opening, 2,000 of context, 8,192 bytes in all", async () => {
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    const response = await GET(request())
+    const text = await response.text()
+    const body = JSON.parse(text)
+    expect(body.opening.length).toBeLessThanOrEqual(500)
+    expect(body.context.length).toBeLessThanOrEqual(2_000)
+    expect(Buffer.byteLength(text, "utf8")).toBeLessThan(8_192)
+    // It tells the agent the line's own rules are not for this call.
+    expect(body.context).toContain("kvadratmetr")
+    expect(body.context).toContain("aid deyil")
+  })
+
+  it("greets without a name it cannot read, and never hands over the prospect's phone, email or correspondence", async () => {
+    mocks.findLead.mockResolvedValueOnce({ contactName: "123 <x>" })
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    const body = await (await GET(request())).json()
+    expect(body.opening).toMatch(/^Salam! Mən LeadDrive-ın/)
+    expect(body.conversation).toBeNull()
+    expect(mocks.findMessages).not.toHaveBeenCalled()
+  })
+
+  it("leaves every other call exactly as it was", async () => {
+    mocks.findFirst.mockResolvedValueOnce(demoRow({ consentAudit: { via: "manual" } }))
+    expect(await (await GET(request())).json()).toEqual({ continuation: null, conversation: null })
+    mocks.findFirst.mockResolvedValueOnce(demoRow({ callMode: "human" }))
+    expect(await (await GET(request())).json()).toEqual({ continuation: null, conversation: null })
   })
 })
 
