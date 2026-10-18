@@ -675,3 +675,34 @@ observations, live-only read-back and absent historical adapter/real producer/
 challenge delivery/final source barrier. No new readiness claims for27 domains.
 Syntax/diff PASS. Initial hosted proof on d3ba98aa5 passed new registry step;
 final hardening is unverified until its own exact-source hosted run.
+
+## 2026-10-19 — durable stop registry exact-source proof
+
+Source63724db7a302a2557538a61d3b9cf7c519079114 passed hosted run
+https://github.com/rashadoni/leaddrive-v2/actions/runs/39171262518,
+job117804626680:158/158 unit,24/24 admission PostgreSQL,9/9 new actual PostgreSQL
+stop-challenge tests,22/22 actual-schema Fund recovery/canary, cleanup PASS.
+Initial d3ba98aa5 run39171097449 also succeeded but is historical only. Proof
+covers authenticated DB claim provenance, readonly read-back composition, audit,
+exactly one concurrent acceptance and genuine staged-COMMIT rollback. It does
+not prove physical process/SQL/ACK observation. No fixture failures in this phase.
+
+Syntax/diff, runner-policy72 and catalog map27/27 PASS. Redacted pinned scanner
+still exactly the historical prose fingerprint6ca3b5e2e:operator/README.md:82;
+no new findings, no scanner policy/exception/history changes. Required scan stays
+red and PR894 remains draft. Available RAM13.3GB/disk201GB/swap3MB/pressure avg10=0.
+NOT RUN: full app static/typecheck/build (draft, heavy Contabo checks forbidden),
+physical observer/challenge transport, actual stop/catch-up/soak/restore/alerts,
+consumers/offsets/replay/external sends/production. No app/migration/worker/status
+or foreign branch/check changes; addon installed only inside disposable hosted DB.
+
+Result: inactive durable one-time stop-challenge registry and isolated proof
+prepared; requested A5 preparation/A7 map remains reviewable without activation.
+Last action: exact-source158+24+9+22 hosted verification. Stop: no physical
+observer or challenge transport, later historical reader, final source barrier
+or actual restricted pointer executor. Accepted authenticated claims still carry
+no business privileges or activation authority. Next concrete integration step:
+original delivery session binds its frozen A1/A2 process observations to this
+challenge contract, then prepares same-transaction source/lease/barrier+pointer
+CAS proof with concurrent writer/revoke/rollback denial. Continuous promoted
+processing remains a separate guarded lifecycle design; do not relax its guards.
