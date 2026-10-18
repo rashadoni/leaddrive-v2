@@ -1233,3 +1233,36 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   test change, checkpoint/push one new draft head, cheap checks then ready once
   for actual full gates. Product adapter stays unreferenced/inactive; Kafka,
   production offsets, replay and recovery timers remain OFF.
+
+## 2026-10-18 00:41 UTC — current-main delivery and fresh read-only inventory
+
+- Concurrent, independently owned mainfa738db91d5e9a7621f86f113a305db4cafba582
+  deploy39080638658 completed SUCCESS, including production job117543963567.
+  Root freshly verified that public artifactSha equals this main exactly and
+  /api/v1/ping returns ok=true. No foreign branch/job was changed or restarted.
+  This descendant contains the previous Kafka increment7a unchanged; PR871
+  remains a separate, not-yet-merged transaction adapter/test change.
+- With current main/public marker equality and no other active inventory run,
+  dispatched exactly one existing read-only workflow39083640492 onfa.
+  Run/job117545570993 SUCCESS, observed2026-10-18T00:41:05Z,
+  event_platform_inventory=PASS. This did not change production or run restore.
+- Production RAM12247548kB total/10038012kB available, swap0; filesystem
+  206900281344 total/175297921024 available bytes. PG160015, DB500710423bytes,
+  readOnly=on, wal_level=replica, max_slot_wal_keep_size=-1, slots0,
+  active slots0, retained slot WAL0 and outbox publication absent. All eight
+  expected tables present with RLS+FORCE. EstimatedRows0 are planner estimates,
+  not an exact history count. Capacity/HA/WAL activation gates remain open.
+- WAL counter17864896685 with same September4 stats-reset identity. This is
+  a second instantaneous sample, not a measured peak or approved outage/slot
+  budget; it does not authorize logical WAL, a PostgreSQL restart or CDC start.
+- Four recovery timers are inactive. Both pgpass files remain canonical,
+  single-link, backup-service owned0600/readable; both CA files canonical,
+  single-link0640/service-readable. Fresh metadata is not authentication,
+  restore certification, signed custody or immutable storage proof.
+- PR871 new frozen0917e6227e42e1034e0d0157011529117c590503 passed cheap draft
+  checks then was marked ready once. Actual full39083337348 is running;
+  exact-head CDC39083337253 already SUCCESS. New PostgreSQL/TypeScript proof
+  still awaited. Focused Node checks14/14 and asset/diff checks PASS. This is
+  a LOCAL docs checkpoint, deliberately not pushed into the active CI head.
+  Next: complete that actual gate and normal release, then the separate
+  bounded/sanitized Object Lock diagnostic. No activation/replay performed.
