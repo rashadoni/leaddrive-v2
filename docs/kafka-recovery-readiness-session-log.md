@@ -43,3 +43,12 @@
 - Remaining blocker: recovery commissioning prerequisites and successful
   independent exact-version restore + Farah decision. Next coordinator action:
   review this packet, scope prerequisite remediation and authorize isolated drill.
+
+## 2026-10-19: review checkpoint
+
+- Preparation checkpoint 4d176604d published on codex/kafka-recovery-readiness.
+- Draft PR: https://github.com/rashadoni/leaddrive-v2/pull/892 (attached to chat).
+- Current result: bounded preparation complete; A3 recovery remains NO-GO.
+  Last action: created draft PR; no merge/deploy. Stopping at reviewable docs
+  and fresh read-only diagnostic. Next: originating coordinator reviews gaps
+  and arranges separately authorized isolated recovery with Farah acceptance.
