@@ -151,3 +151,87 @@ existing hosts plus allocated capacity, independently verifiable failure
 boundaries, private routing/service identity ownership, archive allocation and
 an authorized isolated drill target. No provider panel or account credentials
 were accessed or requested here.
+
+## Hosting recommendation requested by owner — 2026-10-19
+
+Owner asked to propose hosting rather than asking them to invent the resource
+map. This authorizes research/recommendation only: no purchase, subscription,
+installation, production-routing change or relaxation of the no-spend gate.
+Current application production remains the registered Contabo host and the
+existing Actions release route. Proposed hosts below have no addresses,
+credentials, allocation, attestation or activation evidence yet.
+
+**Preferred cost-conscious candidate:** a new dedicated Kafka environment on
+Hetzner Cloud across Falkenstein/fsn1, Nuremberg/nbg1 and Helsinki/hel1, plus an
+independently administered Backblaze B2 immutable archive/copy. Hetzner documents
+three locations in eu-central and a private Network spanning those locations;
+Networks are free. This makes multi-location placement feasible, but does not
+prove rack/power/host independence, meet a multi-provider live failover SLA, or
+supply measured Kafka latency/IOPS. See [locations](https://docs.hetzner.com/cloud/general/locations/)
+and [Networks FAQ](https://docs.hetzner.com/networking/networks/faq/).
+
+The repository architecture requires separate KRaft controller and broker
+roles for self-managed critical environments. A conservative initial bill of
+materials is therefore **8 VMs**, not a three-container/three-combined-node
+shortcut: one broker and one controller per location; two Connect/Registry
+workers spread across two locations outside the application host. Select node
+sizes after load/retention measurement and resource-reserve review. Example
+catalog-price arithmetic, not an orderable quote or approved sizing:
+
+| Proposed role | Example plan/count | Listed monthly compute, excluding VAT/IPv4 |
+|---|---|---:|
+| Broker | 3 x CX43 | 3 x EUR15.99 = EUR47.97 |
+| Controller | 3 x CX23 | 3 x EUR5.49 = EUR16.47 |
+| Connect/Registry worker | 2 x CX33 | 2 x EUR8.49 = EUR16.98 |
+| Compute subtotal | 8 VMs | EUR81.42 |
+
+Sources: [official price adjustment](https://docs.hetzner.com/general/infrastructure-and-availability/price-adjustment/),
+[plan specifications/stock](https://www.hetzner.com/cloud/cost-optimized/),
+[Primary IP pricing](https://docs.hetzner.com/cloud/servers/primary-ips/overview/).
+Eight optional public IPv4s would add EUR4/month (EUR0.50 each), yielding
+EUR85.42 before taxes, archives, additional disks, egress and operations. Public
+IP allocation does not permit public broker/Connect/Registry listeners. An
+approved encrypted private overlay would still be needed to connect the
+Contabo source to the proposed private Kafka network.
+
+**Stock limitation:** the public cost-optimized page currently marks these CX
+plans unavailable. The EUR81.42/EUR85.42 arithmetic is a price-list floor, not a
+promise that this configuration can be bought now. Do not order eight machines
+in one location, collapse controller/broker roles, or switch to a more expensive
+family without an approved quote and measured capacity. New per-location stock
+and the complete invoice must be checked in the owner's provider account.
+Operations approval is separately required for self-managed Kafka. Shared-vCPU
+plans have variable performance; local NVMe capacity is not a 90-day retention
+approval, and losing one location must be tested under representative load.
+
+For off-provider archival, [Backblaze B2 pricing](https://www.backblaze.com/cloud-storage/pricing)
+starts at USD6.95/TB/month on the published pricing page; region, stored bytes,
+retained versions and egress determine the actual bill. [Object Lock](https://www.backblaze.com/docs/cloud-storage-object-lock)
+supports COMPLIANCE retention and1–3000 days, so >=400 days is a feasible
+configuration to review and prove, not an enabled guarantee. Encryption,
+independent keys/account custody, manifests, restore/rehydration, archive lag
+and any primary archive copy remain implementation/evidence dependencies.
+Neither broker RF3 nor an archive alone closes the separate second-cluster DR
+requirements in architecture section13.1; those resources/operations are not
+included in the compute subtotal.
+
+**Free evaluation alternative:** [Aiven free Kafka](https://aiven.io/docs/products/kafka/free-tier/kafka-free-tier)
+includes Registry but limits topics to5 with2 partitions each, fixed retention,
+no managed Connect or SLA, and idle shutdown. [Aiven pricing](https://aiven.io/pricing/kafka)
+shows Free USD0 and Developer USD35/month; Developer is capped at20 topics /
+100 partitions with3-day retention. Neither fits LeadDrive's86-topic catalog
+or the90-day event-retention/HA/private-network/archive requirements. They can
+be considered only for a separate synthetic prototype, not production A4.
+For managed production operations, Aiven Professional is the alternative to
+request a target-specific multi-zone/private-network/Connect quote for; no
+unsupported fixed price or plan capability is assumed.
+
+**Contabo comparison:** [Private Networking documentation](https://docs.contabo.com/docs/network-services/private-networking/)
+describes a per-instance add-on confined to one region. It does not by itself
+establish three independent sites or cross-region private Kafka connectivity.
+Do not assume the currently running Contabo hosts gain that capability for free.
+
+Recommendation: retain the no-cost verified CI contour now. If a new budget is
+approved, obtain actual stock/placement and a complete Hetzner+B2 quote for the
+8-VM topology, compare it with a managed Aiven Professional quote, and commission
+only after the existing gates/drills. No resource has been ordered or activated.
