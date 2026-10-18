@@ -114,3 +114,44 @@
   original explicit limits and independent evidence requirement.
   Next: originating coordinator scopes/authorizes operational prerequisites;
   no production mutation, restore, merge/deploy or messages to Farah occurred.
+
+## 2026-10-19: expanded commissioning authorization and prerequisite audit
+
+- User explicitly supersedes earlier no-commissioning/no-merge/no-deploy limits:
+  permits reviewed GitHub Actions commissioning, age encryption, units/timers,
+  encrypted copies and restore ONLY into isolated scratch. Still forbids
+  production restore/data deletion, Kafka/offset/replay changes, new spending,
+  private-key transfer and substituting Farah confirmation. Coordinate overall
+  delivery with originating chat «Проверить защиту Kafka-консюмера».
+- Resumed b7d397f4a in dedicated worktree; root/origin/branch resolved correctly;
+  fetched main226dde0e77c0c36a4de991bb703ba8f8416c5a64. Production target remains
+  registry13.140.132.245:/opt/leaddrive-v2; Actions-only delivery.
+- Read current AGENTS.md, DELIVERY-ARCHITECTURE, commissioning workflow and
+  activation/fencing implementation. Existing durable timer rollback journal
+  fences all runners; activation verifies signed custody and Object Lock before
+  atomically changing encryption, commits with all timers disabled. Timers
+  activate only after certificates and normal reviewed deploy. Do not bypass.
+- Exact external blocker verified by GitHub secret NAMES ONLY:
+  BACKUP_OFFLINE_ALLOWED_SIGNERS absent from both repository and production
+  environment secret lists. Four monitoring URL secret names exist; their
+  values were neither read nor printed. No signed custody bundle supplied.
+- activate-backup-encryption requires TWO_READABLE_OFFLINE_COPIES_AND_INDEPENDENT_
+  DECRYPT_CONFIRMED plus existing verifier-generated signed bundle/operator/time,
+  exact recipient digest and trusted public signer allowlist. Codex cannot
+  truthfully assert these inputs or retrieve private keys. Consequently bootstrap
+  creation/certification/full backup/offline drill/activation depend on missing
+  external evidence, regardless of expanded operational authorization.
+- Tools already passed exact pinned age/AWS validation in latest diagnostic;
+  no gratuitous reinstall or retention extension performed. Unit replacement
+  and timer activation cannot be detached from certificate-backed deployment.
+  Object Lock unknown_failure remains unresolved, not relabelled as success.
+- Coordinator chat located/read (01a05e9c-4a3e-7f22-aeb7-53735f885366), active on
+  PR891 with code gates under repair. No send_message_to_thread tool available.
+  Use explicit PR892 coordination comment; leave main merge/deploy to common
+  release sequence rather than racing coordinator. Every main push triggers
+  deploy.yml, even docs-only, so uncoordinated docs merge is not harmless.
+- All independent technical preparation complete; ready PR is reviewable.
+  Production mutations and real backup/restore NOT RUN because signed custody
+  prerequisite cannot be met. Actual private key custody/decrypt must remain
+  with independent operator; request only public allowlist and PII-free signed
+  evidence, never private material.
