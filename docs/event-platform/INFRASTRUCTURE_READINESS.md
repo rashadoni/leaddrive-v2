@@ -235,3 +235,39 @@ Recommendation: retain the no-cost verified CI contour now. If a new budget is
 approved, obtain actual stock/placement and a complete Hetzner+B2 quote for the
 8-VM topology, compare it with a managed Aiven Professional quote, and commission
 only after the existing gates/drills. No resource has been ordered or activated.
+
+### Budget refinement: 6 versus 8 VMs
+
+The8-VM proposal above isolates Connect/Registry from brokers; that isolation is
+an operational design choice, not a literal8-VM requirement in the repository
+contract. A leaner pilot candidate is3 dedicated broker-role VMs plus3 separate
+controller-role VMs, with the two Connect/Registry workers colocated on two of
+the broker VMs (still outside the application/PostgreSQL host and spread across
+locations). The controller and broker roles remain on separate VMs. This ties
+transport/service capacity to broker capacity, so measured CPU/RAM/IO/GC reserve
+and failover/rebalance under a node/site loss must be proven before accepting
+it; no sizing approval is implied.
+
+At the same published, currently unavailable CX prices:3CX43 +3CX23 gives
+EUR64.44/month compute, or EUR67.44 with6optionalIPv4. The8-VM variant gives
+EUR85.42 with8IPv4 and separates those workers. Both exclude taxes, storage/
+archive, traffic, operations and second-cluster DR. Start comparison from the
+6-VM pilot candidate when cost is the main constraint; choose8only if worker
+isolation/capacity evidence justifies the extra cost. Neither is a purchase
+recommendation at unavailable stock, a quote for every domain at full load, or
+an authorization to weaken activation gates. Sources and all availability/
+private-network/operations caveats in the preceding section apply unchanged.
+
+## Admission follow-up verified — 2026-10-19
+
+Source checkpoint `e55bbd2b452d35cb042796ffc9240c9453dc5fa7` additionally rejects
+placeholder receipt IDs, padded self-approval, arbitrary credential-role keys
+and empty secret-manager locations. The CLI regression proves a malformed
+reference is blocked without echoing it. [Full required PR gates](https://github.com/rashadoni/leaddrive-v2/actions/runs/39167043668)
+PASS on that exact source, including static27m52s and typecheck13m40s; unit
+baseline remains18known failing files with no new failures.
+[Explicit synthetic CDC](https://github.com/rashadoni/leaddrive-v2/actions/runs/39167127117)
+also PASS62/62safety, raw8/8envelopes and cold restart. The automatic draft-event
+CDC check was skipped; it is not relabelled as passing. No live activation,
+resource allocation, operator identity or secret/receipt existence is proven
+by these offline guards. Hosting remains a proposal only.
