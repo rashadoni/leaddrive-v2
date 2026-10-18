@@ -1006,3 +1006,25 @@ original session «Проверить защиту Kafka-консюмера». N
 trusted verifier/owner evidence registration with independent provenance and
 bounded material queries, then genuine physical/broker/delivery evidence and
 runtime cutover/lifecycle/correction/restore drills. No merge/deploy authorized.
+
+
+### Published draft and repeated checkpoint proof
+
+Documentation checkpoint9a7c22aa391ae086e2322000cfe8484c65f833a8 pushed to
+codex/kafka-operator-readiness; draftPR894 updated and attached:
+https://github.com/rashadoni/leaddrive-v2/pull/894 . No merge/deploy.
+Repeated hosted run39175349351 on exact9a7c22aa3 also SUCCESS; logs inspected:
+174+17+8+9+24+8+9=249 PASS, all seven fail counters0. PR scope and runner policy
+SUCCESS, scan remains historical-prose FAILURE, static/typecheck/build SKIPPED
+for draft. All NOT RUN and remaining-runtime boundaries above still apply.
+This final continuity checkpoint changes only this append-only journal; no
+executable or workflow change, no further repeated test needed for prose.
+
+Final status: requested bounded A5 preparation and27-domain A7 map complete,
+operator activation still NO-GO. Last completed action: published draft and
+verified repeated249/249 at9a7c22aa3. Precise stop: journal-only checkpoint after
+successful source proof; required historical scan finding unresolved without
+rewriting history or weakening checks. Next technical action in original delivery
+session: implement trusted verifier/owner-only evidence registration with
+independent provenance and bounded material queries; then physical/broker/alarm/
+restore and domain/lifecycle drills. Preserve draft, no production mutation.
