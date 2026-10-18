@@ -690,3 +690,23 @@ label is superseded for this inactive coordinator only, not for all K4.
 Real broker membership/retention integration, connected worker entrypoint,
 runtime provisioning/release, recovery and activation remain open. No actual
 consumer group, production offsets or data replay was started by this change.
+
+### K4 coordinator delivered; activation still separate — 2026-10-18 11:32 UTC
+
+PR877 release39121398342 attempt1 whole SUCCESS11:31:59Z on merged
+133654f4a064adcbb81b6458d05f80b8b7423dec. Release gates repeated189/189 focused
+unit and14/14 actual restricted-PG cases; baseline18=18. Immutable artifact
+12135041765 and its SHA-256 are recorded in the session journal. Runtime
+structural/Fund postconditions and public revision/ping/login/assets passed.
+Root independently confirmed exact public133654 and ping/login/CSS/JS at11:32.
+This supersedes the release-pending entry, for this inactive component only.
+
+One exact-SHA aggregate inspection via the registered production alias was
+rejected by SSH authentication before executing the script. Fresh source
+WAL/slot/timer inventory is NOT RUN. Current-main readiness was not dispatched
+against a mismatched artifact or allowed to replace another release's pending
+production operation; foreign39123362068 was building and remains untouched.
+The previously recorded recovery23/9 NO-GO is historical and not superseded
+by app health. Broker driver, actual rebalance/retention integration, runtime
+provisioning, independent restore, read cutover and K8 activation remain open.
+Consumer activation, offsets and replay were not changed by PR877.

@@ -2251,3 +2251,44 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   was started. Production consumer activation, offsets and replay remain out
   of this inactive coordinator release. The artifact receipt is not a live
   deployment receipt or proof of recovery readiness.
+
+### PR877 delivered and independently verified — 2026-10-18 11:32 UTC
+
+- Release39121398342 attempt1 whole SUCCESS11:31:59Z on exact
+  133654f4a064adcbb81b6458d05f80b8b7423dec. This supersedes the pending
+  release entries above. Quality117657579482 SUCCESS11:23:52Z:189/189 focused
+  units (51 partition,17 worker,43 reducer,78 consumer), real restricted-PG
+  14/14, baseline18 failing files=18 known/no new failures. Build and artifact
+  are the exact immutable receipt recorded above, not a rebuilt local bundle.
+- Runtime117662461406 SUCCESS11:31:35Z. Completed logs confirm the already
+  durably verified Fund cutover gate11:29:54Z, event-platform structural
+  ledger/RLS/ownership/exact-money/Fund projection postconditions11:30:34Z,
+  public ping/revision11:31:32Z and login/CSS/JS smoke11:31:33Z. Retention
+  job117664013670 SUCCESS11:31:58Z. No new backup commissioning was performed;
+  the runtime log still identifies plain recovery mode/age not commissioned.
+- Root independently checked the public application at11:32:26.563Z:
+  artifactSha=133654f4a064adcbb81b6458d05f80b8b7423dec, /api/v1/ping ok=true,
+  login and its actual referenced CSS/JS all HTTP200. A successful app release
+  does not prove the new inactive coordinator is a running Kafka worker.
+- Main advanced to6f276879a07ede898afd64d75c0ebb8917b2b3ea while our runtime
+  completed. Its foreign release39123362068 is building and was not touched.
+  GitHub compare proves our merge is its ancestor; the delta is Demo Center,
+  schema/migration and translations, not Kafka/inspection/deployment routing.
+  Do not mistake that other release for ours or cancel it to run diagnostics.
+- One additional aggregate-only inventory attempt over registered
+  leaddrive-prod was rejected by SSH public-key authentication before any
+  remote script ran. StrictHostKeyChecking=yes was enforced; no key was
+  copied, changed or printed. The inspected script blob931e21e3795979fdea7785f22e16e46f94cf5b8b
+  matches current main, and the command was guarded by our exact deployedSHA.
+  Fresh source WAL/slot/timer inventory is therefore NOT RUN, not PASS. Do
+  not bypass access controls, use retired aliases or dispatch a current-main
+  inventory against a different still-live artifact. Existing04:11 source
+  inventory and04:55 recovery23/9 NO-GO remain historical, not fresh proofs.
+- Current result: bounded K4 partition coordinator is merged and delivered,
+  with verified test/artifact/public receipts. Actual connected broker driver,
+  real membership/retention integration, runtime provisioning, independent
+  recovery proof, read-path cutover and all-module adoption remain open.
+  No consumer activation, offset reset or data replay was requested by this
+  release or performed. Next code unit is a broker driver admitted by actual
+  failure-mode integration tests; recovery/activation prerequisites stay
+  fail-closed. The nominated reviewer is not recorded as having approved.
