@@ -73,7 +73,11 @@ function checkedAdmin(value: string): URL {
  * This fixture never creates, replaces or drops those shared roles. Its own
  * exactly named database and restricted worker roles are the only drop targets.
  */
-export function createFundShadowPostgresFixture(input: { adminUrl: string; environment: "test" | "testbroker"; codeSha?: string }) {
+export function createFundShadowPostgresFixture(input: {
+  adminUrl: string; environment: "test" | "testbroker"; codeSha?: string
+  /** Full CDC proof must exercise source writes through the non-bypass app login. */
+  sourceAppWrites?: boolean
+}) {
   const base = checkedAdmin(input.adminUrl)
   assert.ok(input.environment === "test" || input.environment === "testbroker", "synthetic Fund environment required")
   const environment = input.environment, topic = `ld.${environment}.finance.events.v1`
@@ -234,12 +238,27 @@ export function createFundShadowPostgresFixture(input: { adminUrl: string; envir
 
   async function fixture(): Promise<FundShadowContext> {
     const db = active(), organizationId = `shadow-org-${randomUUID()}`, fundId = `shadow-fund-${randomUUID()}`
-    await db.$executeRawUnsafe(`INSERT INTO organizations (id, name) VALUES ($1, 'synthetic Fund shadow tenant')`, organizationId)
-    await db.$executeRawUnsafe(`INSERT INTO funds (id, "organizationId", name, currency, "currentBalance") VALUES ($1, $2, 'Synthetic Fund', 'USD', 0.0000)`, fundId, organizationId)
+    const writerUrl = scratchUrl(); writerUrl.username = "event_app"; writerUrl.password = "event-app-password"
+    const writer = input.sourceAppWrites ? clientFor(writerUrl) : db
+    async function sourceWrite(work: (tx: Prisma.TransactionClient) => Promise<void>) {
+      await writer.$transaction(async tx => {
+        await tx.$queryRawUnsafe("SELECT set_config('app.org_id', $1, true)", organizationId)
+        if (input.sourceAppWrites) {
+          const [identity] = await tx.$queryRawUnsafe<Array<{ safe: boolean }>>(`SELECT current_user = 'event_app'
+            AND NOT rolsuper AND NOT rolbypassrls AND NOT rolreplication AS safe FROM pg_roles WHERE rolname = current_user`)
+          assert.equal(identity.safe, true, "canonical source fixture must use the real non-bypass app login")
+        }
+        await work(tx)
+      })
+    }
+    await sourceWrite(async tx => {
+      await tx.$executeRawUnsafe(`INSERT INTO organizations (id, name) VALUES ($1, 'synthetic Fund shadow tenant')`, organizationId)
+      await tx.$executeRawUnsafe(`INSERT INTO funds (id, "organizationId", name, currency, "currentBalance") VALUES ($1, $2, 'Synthetic Fund', 'USD', 0.0000)`, fundId, organizationId)
+    })
     for (const [type, amount] of [["deposit", "10.1234"], ["withdrawal", "0.1234"]]) {
       // INSERT-first compatibility route: the real deferred source guard
       // requires both ledger insertion and its matching balance update.
-      await db.$transaction(async tx => {
+      await sourceWrite(async tx => {
         await tx.$executeRawUnsafe(`INSERT INTO fund_transactions (id, "organizationId", "fundId", type, amount) VALUES ($1, $2, $3, $4, $5::numeric)`,
         randomUUID(), organizationId, fundId, type, amount)
         const changed = await tx.$executeRawUnsafe(`UPDATE funds SET "currentBalance" = "currentBalance" + $3::numeric
@@ -248,9 +267,11 @@ export function createFundShadowPostgresFixture(input: { adminUrl: string; envir
         assert.equal(changed, 1)
       })
     }
-    await db.$executeRawUnsafe(`UPDATE funds SET name = 'Synthetic renamed' WHERE id = $1`, fundId)
-    await db.$executeRawUnsafe(`UPDATE funds SET "isActive" = false WHERE id = $1`, fundId)
-    await db.$executeRawUnsafe(`UPDATE funds SET "isActive" = true WHERE id = $1`, fundId)
+    for (const statement of [`UPDATE funds SET name = 'Synthetic renamed' WHERE id = $1`,
+      `UPDATE funds SET "isActive" = false WHERE id = $1`, `UPDATE funds SET "isActive" = true WHERE id = $1`]) {
+      await sourceWrite(async tx => { await tx.$executeRawUnsafe(statement, fundId) })
+    }
+    if (writer !== db) await disconnect([writer])
     const outbox = await db.$queryRawUnsafe<Array<{ value: string; hash: string; key: string; eventId: string; eventType: string }>>(`
       SELECT o.envelope::text AS value, o."payloadHash" AS hash, o."partitionKey" AS key, o."eventId"::text AS "eventId", o."eventType"
       FROM event_outbox o JOIN domain_events e ON e.id = o."eventId" AND e."organizationId" = o."organizationId"
@@ -306,5 +327,7 @@ export function createFundShadowPostgresFixture(input: { adminUrl: string; envir
   }
   return { setup, close, fixture, newBuild, snapshotSource, counts, connect, closeContext,
     sql(source: string) { active(); sqlAt(scratchUrl(), source) },
-    get scratch() { return active() }, get topic() { return topic } }
+    get scratch() { return active() }, get topic() { return topic },
+    /** Generated fixture identity only; not a caller-selected database target. */
+    get databaseName() { active(); return databaseName } }
 }
