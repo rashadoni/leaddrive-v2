@@ -1072,3 +1072,22 @@ Material hash now uses cap+1 sentinels for every participating relation and a
 fixture executor explicitly sets5s statement/2s lock timeouts. Index/scan/RTO and
 physical instrumentation remain unproved. Hosted PG16 proof pending; syntax,
 runner-policy72 and diff check PASS. No existing upstream test altered.
+
+
+### First verifier CI failure and durable key-policy closure
+
+Rune39176836914 on e8fb03332: preceding213 units/17 admission/8 shadow/9 stop/
+24 reader/8 barrier passed; new transition1/15 PASS,14 FAIL at sanitized verifier
+boundary. Inspection identified read-context definer missing approved tenant GUC
+before FORCE-RLS pointer read, producing no previous-build authority. Set org
+context from the authenticated request before that read; no RLS bypass.
+
+Also close key-revocation gap AFTER JS verification: private tenant/purpose/key
+fingerprint policy registry, exact immutable provenance records and deferred
+SQL revalidation now bind registration and final transition to current enabled
+keys. SQL cannot forge signatures; named verifier remains trusted signing-check
+service. Key principal, fingerprint, validity and tenant must all match; operator
+cannot edit policy. New actual-role cases revoke a key after staging pointer
+mutation and demand full COMMIT rollback. Per-request ephemeral fixture key IDs
+prevent one test/request's provisioning from invalidating another.40 verifier
+unit cases PASS; new exact-source PostgreSQL result still pending.

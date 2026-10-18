@@ -6,8 +6,8 @@ export function signedFundAttestations(context,materialHash,now) {
  const keys={},packets={}
  const expiry=new Date(Date.parse(now)+45000).toISOString()
  for(const gate of FUND_PROVENANCE_GATES) {
-  const keyId=`synthetic-${gate}`,principalId='synthetic-observer'
-  keys[gate]={enabled:true,keyId,gate,principalId,publicKeyPem:publicKey.export({type:'spki',format:'pem'}),validFrom:new Date(Date.parse(now)-60000).toISOString(),validUntil:expiry}
+  const keyId=`synthetic-${context.requestId}-${gate}`,principalId='synthetic-observer'
+  keys[gate]={organizationId:context.plan.organizationId,enabled:true,keyId,gate,principalId,publicKeyPem:publicKey.export({type:'spki',format:'pem'}),validFrom:new Date(Date.parse(now)-60000).toISOString(),validUntil:expiry}
   const receipt={apiVersion:'event-platform.leaddrive.io/v1',kind:'FundOperationalAttestation',gate,principalId,result:'verified',receiptId:`synthetic-receipt-${gate}`,requestId:context.requestId,planHash:context.planHash,generation:context.generation,evidenceSha256:context.plan.evidenceSha256,materialHash,observedAt:now,validUntil:expiry}
   const raw=JSON.stringify(receipt)
   packets[gate]={keyId,raw,signature:sign(null,Buffer.from(raw),privateKey).toString('base64')}

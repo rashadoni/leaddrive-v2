@@ -30,6 +30,7 @@ const cases={
  'disabled signer':f=>f.keys.soak.enabled=false,
  'operator signer':f=>f.keys.approval.principalId='controller',
  'wrong key purpose':f=>f.keys.alerts.gate='stop',
+ 'wrong key tenant':f=>f.keys.alerts.organizationId='org-b',
  'expired key':f=>f.keys.archive.validUntil=f.now,
  'future key':f=>f.keys.broker.validFrom='2026-10-19T00:01:00.000Z',
  'oversized packet':f=>f.packets.restore.raw='x'.repeat(65537),

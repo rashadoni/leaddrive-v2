@@ -56,7 +56,7 @@ export function createFundEvidenceVerifier(config) {
         // Key lookup is controlled by the fixed gate and trusted key registry.
         const key=structuredClone(await readKey(gate,packet.keyId));now=clock();check(instant(now))
         const publicKey=createPublicKey(key.publicKeyPem)
-        check(publicKey.asymmetricKeyType==='ed25519' && key.enabled===true && key.gate===gate && key.keyId===packet.keyId)
+        check(publicKey.asymmetricKeyType==='ed25519' && key.organizationId===plan.organizationId && key.enabled===true && key.gate===gate && key.keyId===packet.keyId)
         check(token(key.principalId) && !context.operatorPrincipals.includes(key.principalId))
         check(instant(key.validFrom) && instant(key.validUntil) && Date.parse(key.validFrom)<=Date.parse(now) && Date.parse(now)<Date.parse(key.validUntil))
         check(verify(null,Buffer.from(packet.raw,'utf8'),publicKey,Buffer.from(packet.signature,'base64')))
@@ -73,7 +73,7 @@ export function createFundEvidenceVerifier(config) {
       // remapped earlier key cannot survive a later receipt fetch.
       for(const record of records) {
         const key=await readKey(record.gate,record.keyId)
-        check(key.enabled===true && key.principalId===record.principalId && key.gate===record.gate && key.keyId===record.keyId && instant(key.validUntil) && instant(key.validFrom) && Date.parse(key.validFrom)<=Date.parse(now) && digest(key.publicKeyPem)===record.keyHash && key.validFrom===record.validFrom && key.validUntil===record.validUntil)
+        check(key.organizationId===plan.organizationId && key.enabled===true && key.principalId===record.principalId && key.gate===record.gate && key.keyId===record.keyId && instant(key.validUntil) && instant(key.validFrom) && Date.parse(key.validFrom)<=Date.parse(now) && digest(key.publicKeyPem)===record.keyHash && key.validFrom===record.validFrom && key.validUntil===record.validUntil)
         expiry=Math.min(expiry,Date.parse(key.validUntil))
       }
       now=clock();check(instant(now) && expiry>Date.parse(now))
@@ -82,7 +82,8 @@ export function createFundEvidenceVerifier(config) {
       check(instant(retainedUntil) && Date.parse(retainedUntil)>Date.parse(now))
       // The named-verifier SQL endpoint must independently recheck current
       // principals/lease/generation, enforce one registration and bound expiry.
-      await register(Object.freeze({...pins,raw,previousBuildId:context.previousBuildId,validUntil:new Date(expiry).toISOString(),retainedUntil,provenanceHash:digest(JSON.stringify(records))}))
+      const provenanceRaw=JSON.stringify(records)
+      await register(Object.freeze({...pins,raw,previousBuildId:context.previousBuildId,validUntil:new Date(expiry).toISOString(),retainedUntil,provenanceRaw,provenanceHash:digest(provenanceRaw)}))
       return Object.freeze({kind:'FundEvidenceRegistered',requestId,evidenceSha256:plan.evidenceSha256,gateCount:records.length})
     } catch {throw new Error('FUND_VERIFIER_DENIED')}
   }

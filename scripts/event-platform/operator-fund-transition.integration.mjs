@@ -84,14 +84,15 @@ async function prepared(target,action='promote',options={}) {
  const generation=await call('op_controller','consume',`${q(id)},${q(hash)},${json(plan)}`)
  const context={...JSON.parse(await call('op_final_verifier','read_fund_verification_request',q(id))),maxAgeMs:60000,minSoakMs:60000,partitionCount:snapshot.checkpoints.length,retainedUntil:new Date(Date.now()+3600000).toISOString()}
  const signing=signedFundAttestations(context,materialHash,new Date().toISOString())
+ for(const key of Object.values(signing.keys))await owned(`INSERT INTO ld_kafka_operator.fund_provenance_keys(organization_id,gate,key_id,principal_id,public_key_hash,valid_from,valid_until,enabled) VALUES('org-a',${q(key.gate)},${q(key.keyId)},${q(key.principalId)},${q(createHash('sha256').update(key.publicKeyPem).digest('hex'))},${q(key.validFrom)},${q(key.validUntil)},true);`)
  let registration
  const verifier=createFundEvidenceVerifier({readContext:async()=>context,readManifest:async()=>raw,
  readSnapshot:async()=>({snapshot,materialHash}),readAttestation:async gate=>signing.packets[gate],readKey:async gate=>signing.keys[gate],clock:()=>new Date().toISOString(),
  register:async row=>{registration=row;if(!options.skipRegistration)await register(row)}})
  await verifier(id)
- return {id,hash,generation,plan,target,previous,materialHash,registration}
+ return {id,hash,generation,plan,target,previous,materialHash,registration,signing}
 }
-const registrationArgs=r=>`${q(r.requestId)},${q(r.planHash)},${r.generation},${q(r.raw)},${q(r.materialHash)},${q(r.previousBuildId)},${q(r.validUntil)},${q(r.retainedUntil)},${q(r.provenanceHash)}`
+const registrationArgs=r=>`${q(r.requestId)},${q(r.planHash)},${r.generation},${q(r.raw)},${q(r.materialHash)},${q(r.previousBuildId)},${q(r.validUntil)},${q(r.retainedUntil)},${q(r.provenanceHash)},${q(r.provenanceRaw)}`
 const register=(row,login='op_final_verifier')=>call(login,'register_fund_evidence',registrationArgs(row))
 const args=f=>`${q(f.id)},${q(f.hash)},${f.generation}`
 const apply=f=>fixtureSql('op_controller',`BEGIN;SET LOCAL statement_timeout='5s';SET LOCAL lock_timeout='2s';SELECT set_config('app.org_id',${q(f.plan.organizationId)},true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});SELECT ld_kafka_operator.apply_fund_transition(${args(f)});COMMIT;`,{sanitizedDiagnostics:true})
@@ -251,4 +252,30 @@ await test('material fingerprint rejects oversized fixture scopes and encoded by
  await admin("UPDATE funds SET name=repeat('x',1048577) WHERE id='fund-a';")
  try{assert.equal(await hash(),'org-a\nDENIED');await denied(apply(f))}finally{await admin("UPDATE funds SET name='Synthetic material-budget restored' WHERE id='fund-a';")}
  assert.deepEqual(await pointer(),before)
+})
+
+await test('DB provenance registry rejects missing, duplicate and remapped signed-purpose keys',async()=>{
+ const f=await prepared(undefined,'promote',{skipRegistration:true}),records=JSON.parse(f.registration.provenanceRaw)
+ for(const entries of [[],records.map((r,i)=>i===6?records[0]:r),records.map((r,i)=>i===0?{...r,keyHash:'f'.repeat(64)}:r)]){
+  const provenanceRaw=JSON.stringify(entries)
+  await denied(register({...f.registration,provenanceRaw,provenanceHash:createHash('sha256').update(provenanceRaw).digest('hex')}))
+ }
+ const key=f.signing.keys.stop
+ await owned(`UPDATE ld_kafka_operator.fund_provenance_keys SET organization_id='org-b' WHERE key_id=${q(key.keyId)};`)
+ try{await denied(register(f.registration))}finally{await owned(`UPDATE ld_kafka_operator.fund_provenance_keys SET organization_id='org-a' WHERE key_id=${q(key.keyId)};`)}
+ await assert.rejects(fixtureSql('op_final_verifier','UPDATE ld_kafka_operator.fund_provenance_keys SET enabled=true;'),/42501/)
+ await register(f.registration);await apply(f)
+})
+await test('signed-key revocation after staging is checked at final COMMIT and rolls pointer/build/event back',async()=>{
+ const f=await prepared(),before=await pointer(),connection=fixtureConnection('op_controller'),key=f.signing.keys.stop
+ try{
+  await connection.command(`BEGIN;SET LOCAL statement_timeout='5s';SET LOCAL lock_timeout='2s';SELECT set_config('app.org_id','org-a',true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
+  assert.equal(await connection.command(`SELECT ld_kafka_operator.apply_fund_transition(${args(f)});`),String(BigInt(before.version)+1n))
+  await owned(`UPDATE ld_kafka_operator.fund_provenance_keys SET enabled=false WHERE key_id=${q(key.keyId)};`)
+  await denied(connection.command('COMMIT;'))
+ }finally{await connection.close();await owned(`UPDATE ld_kafka_operator.fund_provenance_keys SET enabled=true WHERE key_id=${q(key.keyId)};`)}
+ assert.deepEqual(await pointer(),before)
+ assert.equal(await admin(`SELECT status FROM projection_builds WHERE id=${q(f.target.id)};`),'ready')
+ assert.equal(await admin(`SELECT count(*) FROM projection_promotion_events WHERE "requestKey"=${q(f.id)};`),'0')
+ assert.equal(await owned(`SELECT status FROM ld_kafka_operator.requests WHERE id=${q(f.id)};`),'consumed')
 })

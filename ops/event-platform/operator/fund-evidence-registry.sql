@@ -8,11 +8,21 @@ DO $$ BEGIN
  AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolreplication) THEN
  RAISE EXCEPTION 'FUND_VERIFICATION_DENIED'; END IF;
 END $$;
+CREATE TABLE ld_kafka_operator.fund_provenance_keys (
+ organization_id text NOT NULL,
+ gate text NOT NULL CHECK(gate IN ('stop','broker','soak','archive','restore','approval','alerts')),
+ key_id text NOT NULL,principal_id text NOT NULL,
+ public_key_hash text NOT NULL CHECK(public_key_hash ~ '^[0-9a-f]{64}$'),
+ valid_from timestamptz NOT NULL,valid_until timestamptz NOT NULL,enabled boolean NOT NULL DEFAULT false,
+ PRIMARY KEY(organization_id,gate,key_id),CHECK(valid_from<valid_until)
+);
+REVOKE ALL ON ld_kafka_operator.fund_provenance_keys FROM PUBLIC,ld_kafka_operator_verifier,ld_kafka_operator_controller,ld_kafka_operator_admitter;
 CREATE TABLE ld_kafka_operator.fund_evidence_registrations (
  request_id uuid PRIMARY KEY REFERENCES ld_kafka_operator.fund_verified_evidence(request_id),
  plan_hash text NOT NULL,generation bigint NOT NULL,
  verifier name NOT NULL,verifier_principal text NOT NULL,
  provenance_hash text NOT NULL CHECK(provenance_hash ~ '^[0-9a-f]{64}$'),
+ provenance_raw text NOT NULL,
  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 REVOKE ALL ON ld_kafka_operator.fund_evidence_registrations FROM PUBLIC,ld_kafka_operator_verifier,ld_kafka_operator_controller,ld_kafka_operator_admitter;
@@ -60,12 +70,32 @@ DECLARE q ld_kafka_operator.requests; previous uuid;
 BEGIN
  SELECT * INTO q FROM ld_kafka_operator.requests WHERE id=p_id;
  q:=ld_kafka_operator.fund_registration_current(q.id,q.plan_hash,q.generation,session_user);
+ PERFORM set_config('app.org_id',q.organization_id,true);
  SELECT "activeBuildId" INTO previous FROM public.projection_activations WHERE "organizationId"=q.organization_id AND "projectionName"=q.plan->>'projectionName';
  RETURN jsonb_build_object('requestId',q.id,'plan',q.plan,'planHash',q.plan_hash,'generation',q.generation::text,
  'operatorPrincipals',jsonb_build_array(q.requester_principal,q.approver_principal,q.controller_principal),
  'previousBuildId',previous,'leaseUntil',to_char(q.lease_until AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'));
 END $$;
-CREATE FUNCTION ld_kafka_operator.register_fund_evidence(p_id uuid,p_hash text,p_generation bigint,p_raw text,p_material text,p_previous uuid,p_valid timestamptz,p_retained timestamptz,p_provenance text)
+CREATE FUNCTION ld_kafka_operator.assert_fund_provenance(p_id uuid,p_raw text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
+DECLARE q ld_kafka_operator.requests; entries jsonb; item jsonb; k ld_kafka_operator.fund_provenance_keys;
+BEGIN
+ IF p_raw IS NULL OR octet_length(p_raw)>32768 THEN RAISE EXCEPTION 'FUND_VERIFICATION_DENIED'; END IF;
+ SELECT * INTO q FROM ld_kafka_operator.requests WHERE id=p_id;
+ entries:=p_raw::jsonb;
+ IF jsonb_typeof(entries)<>'array' OR jsonb_array_length(entries)<>7
+ OR (SELECT count(DISTINCT x->>'gate') FROM jsonb_array_elements(entries) x)<>7 THEN RAISE EXCEPTION 'FUND_VERIFICATION_DENIED'; END IF;
+ FOR item IN SELECT * FROM jsonb_array_elements(entries) LOOP
+ SELECT * INTO k FROM ld_kafka_operator.fund_provenance_keys WHERE organization_id=q.organization_id AND gate=item->>'gate' AND key_id=item->>'keyId';
+ IF k.key_id IS NULL OR NOT k.enabled OR k.valid_from>clock_timestamp() OR k.valid_until<=clock_timestamp()
+ OR k.principal_id IN(q.requester_principal,q.approver_principal,q.controller_principal)
+ OR k.principal_id IS DISTINCT FROM item->>'principalId' OR k.public_key_hash IS DISTINCT FROM item->>'keyHash'
+ OR k.valid_from IS DISTINCT FROM (item->>'validFrom')::timestamptz OR k.valid_until IS DISTINCT FROM (item->>'validUntil')::timestamptz
+ OR item->>'hash' IS NULL OR item->>'hash' !~ '^[0-9a-f]{64}$'
+ THEN RAISE EXCEPTION 'FUND_VERIFICATION_DENIED'; END IF;
+ END LOOP;
+END $$;
+CREATE FUNCTION ld_kafka_operator.register_fund_evidence(p_id uuid,p_hash text,p_generation bigint,p_raw text,p_material text,p_previous uuid,p_valid timestamptz,p_retained timestamptz,p_provenance text,p_provenance_raw text)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
 DECLARE q ld_kafka_operator.requests; m jsonb; k text; v ld_kafka_operator.identities;
 BEGIN
@@ -84,9 +114,11 @@ BEGIN
  IF m->>k IS DISTINCT FROM q.plan->>k THEN RAISE EXCEPTION 'FUND_VERIFICATION_DENIED'; END IF;
  END LOOP;
  v:=ld_kafka_operator.fund_verifier(session_user,q.organization_id);
+ PERFORM ld_kafka_operator.assert_fund_provenance(p_id,p_provenance_raw);
+ IF p_provenance<>encode(public.digest(convert_to(p_provenance_raw,'UTF8'),'sha256'),'hex') THEN RAISE EXCEPTION 'FUND_VERIFICATION_DENIED'; END IF;
  INSERT INTO ld_kafka_operator.fund_verified_evidence VALUES(q.id,q.plan,p_raw,p_material,p_previous,p_valid,p_retained);
- INSERT INTO ld_kafka_operator.fund_evidence_registrations(request_id,plan_hash,generation,verifier,verifier_principal,provenance_hash)
- VALUES(q.id,q.plan_hash,q.generation,session_user,v.principal_id,p_provenance);
+ INSERT INTO ld_kafka_operator.fund_evidence_registrations(request_id,plan_hash,generation,verifier,verifier_principal,provenance_hash,provenance_raw)
+ VALUES(q.id,q.plan_hash,q.generation,session_user,v.principal_id,p_provenance,p_provenance_raw);
  INSERT INTO ld_kafka_operator.audit(request_id,actor,transition,generation) VALUES(q.id,session_user,'fund-evidence-registered',q.generation);
 END $$;
 CREATE FUNCTION ld_kafka_operator.assert_fund_registration(p_id uuid,p_hash text,p_generation bigint,p_settled boolean DEFAULT false)
@@ -98,6 +130,7 @@ BEGIN
  q:=ld_kafka_operator.fund_registration_current(p_id,p_hash,p_generation,r.verifier,p_settled);
  v:=ld_kafka_operator.fund_verifier(r.verifier,q.organization_id);
  IF v.principal_id<>r.verifier_principal THEN RAISE EXCEPTION 'FUND_VERIFICATION_DENIED'; END IF;
+ PERFORM ld_kafka_operator.assert_fund_provenance(p_id,r.provenance_raw);
 END $$;
 CREATE FUNCTION ld_kafka_operator.fund_registration_commit_guard()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
@@ -110,8 +143,8 @@ END $$;
 CREATE CONSTRAINT TRIGGER fund_registration_commit_guard AFTER INSERT ON ld_kafka_operator.fund_evidence_registrations
 DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION ld_kafka_operator.fund_registration_commit_guard();
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA ld_kafka_operator FROM ld_kafka_operator_verifier;
-REVOKE EXECUTE ON FUNCTION ld_kafka_operator.fund_verifier(name,text),ld_kafka_operator.fund_registration_current(uuid,text,bigint,name,boolean),ld_kafka_operator.read_fund_verification_request(uuid),ld_kafka_operator.register_fund_evidence(uuid,text,bigint,text,text,uuid,timestamptz,timestamptz,text),ld_kafka_operator.assert_fund_registration(uuid,text,bigint,boolean),ld_kafka_operator.fund_registration_commit_guard() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION ld_kafka_operator.fund_verifier(name,text),ld_kafka_operator.fund_registration_current(uuid,text,bigint,name,boolean),ld_kafka_operator.read_fund_verification_request(uuid),ld_kafka_operator.register_fund_evidence(uuid,text,bigint,text,text,uuid,timestamptz,timestamptz,text,text),ld_kafka_operator.assert_fund_provenance(uuid,text),ld_kafka_operator.assert_fund_registration(uuid,text,bigint,boolean),ld_kafka_operator.fund_registration_commit_guard() FROM PUBLIC;
 GRANT USAGE ON SCHEMA ld_kafka_operator TO ld_kafka_operator_verifier;
-GRANT EXECUTE ON FUNCTION ld_kafka_operator.register_fund_evidence(uuid,text,bigint,text,text,uuid,timestamptz,timestamptz,text) TO ld_kafka_operator_verifier;
+GRANT EXECUTE ON FUNCTION ld_kafka_operator.register_fund_evidence(uuid,text,bigint,text,text,uuid,timestamptz,timestamptz,text,text) TO ld_kafka_operator_verifier;
 GRANT EXECUTE ON FUNCTION ld_kafka_operator.read_fund_verification_request(uuid) TO ld_kafka_operator_verifier;
 COMMIT;
