@@ -549,3 +549,29 @@ original delivery session resolves frozen A1/A2 worker+checkpoint lifecycle,
 then composes authenticated admission/final source verification/real pointer CAS
 and retained rollback in an isolated proof before any separately authorized
 activation. Existing scan block also remains a delivery prerequisite.
+
+## 2026-10-19 — independent worker stop read-back preparation
+
+User again requested autonomous continuation. Resumed clean recorded worktree
+onf0291aeef; project-context/routing/AGENTS reconciled, origin/main freshly
+fetched at226dde0e77c0c36a4de991bb703ba8f8416c5a64. Production route unchanged,
+no canonical checkout or production touched. PR891 read-only head remains draft
+267507fcca5c59d5b19cb80652485a1b985b1fae; no worker/status/checkpoint guard edits.
+
+Prepared inactive verifyOperatorRecoveryStop composition: first existing exact
+raw-byte recovery-manifest validation, then trusted read-only receipt retrieval
+for an independently pinned stop request/lease/process/challenge/observer. Checks
+exact tenant/build/release/artifact/broker identity/pointer, ordered fresh stop
+stages, zero SQL/ACK/children, real-close claim, complete exact next-offset
+checkpoints. Independent expected scope copied before await, all failures
+sanitized. No stop signal, sender, consumer, credential fallback, challenge
+consumption, permission grant, activation or status change. The observer and its
+actual receipt producer are NOT implemented; mock tests are validation proof,
+not proof that any real worker stopped. This closes only the missing read-back
+validation component beyond a manifest's bare actualCloseReceiptId reference.
+
+Local37/37 focused cases PASS; resources before check12.5GB available,201GB disk,
+swap3MB,pressure avg10=0. Added tests to our own hosted workflow only. Next:
+review composition boundaries, hosted exact-source proof, update remaining map.
+Full app build/typecheck and all operational consumers/replay/sends/production
+NOT RUN per workload/authorization limits; A1/A2 and overall delivery untouched.
