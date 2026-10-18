@@ -1635,3 +1635,28 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   bounded scope. No activation/replay was performed. Finalize these receipts
   in PR872 while still draft, publish once, wait its new-head cheap checks and
   transition ready once; no product/diagnostic code changed since local10/10.
+
+## 2026-10-18 02:50 UTC — diagnostic frozen head enters actual required CI
+
+- Published final3a6be7bf7b01d87ff474889a7c77ace993dff53d while still draft.
+  Three cheap checks actual SUCCESS: scope39091385929, runner39091385896,
+  scan39091385863. Static/TS/pgpass draft SKIPPED are NOT verification.
+  After live PR head propagation and completed cheap checks, marked ready once.
+- Automatic actual full39091474520 created02:50:01Z on that exact frozen head;
+  static117569053686 and typecheck117569053682 are running. No source push,
+  rerun or extra optional build into this active phase. All later journal
+  updates remain LOCAL checkpoints until the run/release concludes.
+- Separate pgpass39091475113/job117568975909 SUCCESS: actual30/30, no skips,
+  including real libpq authentication and group/world-readable rejection.
+  This is current CI authentication proof, distinct from local29 guard tests.
+  New diagnostic10/10 actual hosted execution and all five required checks
+  remain pending; no merge or live Object Lock diagnosis yet.
+- Rechecked primary AWS CLI documentation: text output is tab-separated and
+  explicit list query fixes column order; return-code categories retain the
+  fail-closed policy. This validates the parser contract, not live S3 policy:
+  https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-output-format.html
+  https://docs.aws.amazon.com/cli/latest/topic/return-codes.html
+- Next: one helper monitors only these new exact-head gates. On actual green,
+  re-read main/protection/head and merge normally, verify Actions release/
+  public marker/ping, then one existing main-only read-only backup-readiness
+  dispatch. No credential/policy/timer/slot/source/replay mutation follows.
