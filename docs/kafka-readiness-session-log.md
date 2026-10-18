@@ -2201,3 +2201,36 @@ service, branch delivery or Kafka runtime was changed by this documentation.
 - Prior b62a87a deploy39119843829 passed build/checks and is staging its
   own immutable artifact. It was not interrupted. The new release must use
   the existing queues, not a duplicate manual build or direct server copy.
+
+### Connected-driver preparation during release — pinned API boundary
+
+- Read-only review of KafkaJS2.2.4 found a concrete mismatch with our
+  fail-closed contract: recoverFromOffsetOutOfRange calls setDefaultOffset,
+  which sends an offset commit without checking autoCommit. Merely setting
+  autoCommit=false/fromBeginning=true does not prevent implicit reset after
+  retention loss. No KafkaJS package was added or selected for production.
+  [Fetch recovery](https://github.com/tulios/kafkajs/blob/v2.2.4/src/consumer/consumerGroup.js#L540),
+  [default offset commit](https://github.com/tulios/kafkajs/blob/v2.2.4/src/consumer/offsetManager/index.js#L131).
+- Public consumer.commitOffsets also has retry/stopped-no-op behavior.
+  Explicit eachBatch commit avoids that wrapper, but neither public entry
+  accepts our original generation; isStale checks seek, not full membership.
+  GROUP_JOIN lacks generation and HEARTBEAT may be interval-suppressed.
+  Local callbacks alone therefore do not prove the broker-side fence.
+  [Runner](https://github.com/tulios/kafkajs/blob/v2.2.4/src/consumer/runner.js),
+  [group state](https://github.com/tulios/kafkajs/blob/v2.2.4/src/consumer/consumerGroup.js).
+- This is candidate API research, not an observed production incident or
+  completed network adapter. Next actual integration must test retention
+  loss, original-membership rejection, full fetch boundaries and shutdown
+  against a real broker before admitting a driver. No vendor purchase,
+  package change, private SDK hook or weakened offset contract was used.
+- One alternative was inspected, not installed: Confluent JavaScript1.11.0.
+  In the pinned source commitCb's worker calls native Commit, which queues
+  commitAsync; callback success is not evidence of the broker response.
+  commitSync uses the native synchronous call, but no original-generation
+  binding is established by that alone. The native message binding exposes
+  offset as a JS Number: reject unsafe integers, never pretend String()
+  recovers lost INT64 precision. These are API-admission constraints, not
+  evidence that this project's runtime suffered such an incident.
+  [Callback worker](https://github.com/confluentinc/confluent-kafka-javascript/blob/v1.11.0/src/workers.cc#L1049),
+  [native commit](https://github.com/confluentinc/confluent-kafka-javascript/blob/v1.11.0/src/kafka-consumer.cc#L273),
+  [offset conversion](https://github.com/confluentinc/confluent-kafka-javascript/blob/v1.11.0/src/common.cc#L737).
