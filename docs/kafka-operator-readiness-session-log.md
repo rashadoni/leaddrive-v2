@@ -387,3 +387,45 @@ matching those could conceal corrupted shadow time evidence. Added actual PG
 negative case for that corruption and two unit cases. Collector27/27 local
 control-flow tests PASS; revised actual10-case proof pending next CI source.
 Continue to real run and review, not an end-of-step user handoff.
+
+## 2026-10-19 — actual-schema reader final proof and concrete cutover audit
+
+Run https://github.com/rashadoni/leaddrive-v2/actions/runs/39167881109,
+job117794570853 on465d9b9750cecddf11657145d0cb4d0e7d8233e0 whole SUCCESS:
+91/91 unit gates,24/24 operator PostgreSQL and10/10 actual-schema reader cases;
+cleanup PASS. This supersedes pending proof of timestamp/full-shadow-state
+changes. Exact schema migrations and canonical reducer reused without edits.
+Local collector27/27, syntax/runner-policy/diff checks PASS. Full app
+static/typecheck/build NOT RUN (draft; no app runtime import/boundary changed).
+Only bounded tests and lock generation on Contabo; dependency install and
+canonical reducer compilation took place on hosted Linux. Final resources~13GB
+available/203GB disk/swap0/pressure averages0.
+
+Pinned branch scan still reproduces exactly one old README prose finding in
+6ca3b5e2e: no new finding and no scanner policy/history exception. Draft remains
+blocked by that scan; no merge/deploy attempted. All real operational alerts,
+consumers, offsets/replay and production remain NOT RUN/prohibited.
+
+Audited next actual integration rather than silently switching a generic SDK
+pointer: list/detail Fund GET read Fund.currentBalance directly; transaction
+commands also use it; worker admits running only while SDK promotes status;
+read-only MVCC snapshot cannot serve as a later source-write barrier. Documented
+these exact dependencies and correction-authority/drift policy as A5 next steps.
+The bounded reader currently rejects baseline drift; it cannot be called a
+completed bad-reducer repair or runtime promotion/rollback proof. No guessed
+financial correction or unsolicited activation is implemented.
+
+Fresh read-only PR891 observation: now DRAFT onf47224e2b250274278e88e72a08b0c7fe5424ae6,
+latest heavy checks skipped. Prior head1d526a126f receipts remain historical;
+not reused as current proof, not dispatched/cancelled/edited by this session.
+Overall runtime/delivery remains «Проверить защиту Kafka-консюмера».
+
+Current result: real-schema read-only evidence producer prepared and verified;
+A5 cutover and authentic operational proof remain open, A7 map27/27 preserved.
+Last completed action: actual91+24+10 CI proof and real read/write/worker contract audit.
+Stopping boundary: no real read routing, writer lifecycle, source barrier or
+activation is changed; draft/scan barrier remains, executable source frozen.
+Next action: original delivery session establishes those linked Fund/A1/A2
+contracts, then verifies restricted real controller/canary composition on its
+frozen source; real consumers/replay/sends/production still require separate
+permission and are not implied by this preparation.

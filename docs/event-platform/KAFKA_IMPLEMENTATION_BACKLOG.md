@@ -906,3 +906,21 @@ worker/consumer startup, actual delivered alerts, restore or27-domain adoption.
 K5 real controller integration and K7 runtime/domain proof remain open.
 Historical README scan false positive still blocks delivery; existing scanner
 policy/history and A1/A2 checks have not been altered. Merge/deploy not performed.
+
+### A5 actual-schema read-only Fund evidence verified — 2026-10-19
+
+Operator branch source465d9b9750cecddf11657145d0cb4d0e7d8233e0 passed own
+run39167881109/job117794570853:91 unit gates,24 operator PG and10 reader PG,
+cleanup PASS. Reader reuses real foundation/Fund/replay migrations and canonical
+reducer, bounded independent inventory, restricted FORCE-RLS/no-write login,
+READ ONLY/RepeatableRead, hashes/state/inbox/checkpoint parity and exact money4.
+No consumer, actual offsets/replay, live pointer or production change occurred.
+
+A5 actual cutover remains open: Fund GET still reads Fund rather than generic
+pointer; shadow worker requires running while SDK promotion sets promoted;
+command-side currentBalance and intentional correction/drift policy require
+an explicit contract; final snapshot→promotion write barrier and authentic
+stop/soak/restore/alert receipts are unproved. Exact source references and next
+steps are appended to KAFKA_OPERATOR_READINESS.md. A7 map remains27/27 with
+Fund-only implementation and no whole-domain safety claim. PR891 latest draft
+headf47224e2b is not certified by older passing runs; its checks are untouched.

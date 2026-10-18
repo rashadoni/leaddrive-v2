@@ -121,3 +121,40 @@ back the whole switch. The fixture's trusted owner registers evidence after
 calling the manifest checker; controller privileges cannot mint verification.
 This does not close integration with the real Fund pointer/read path or any
 other domain, which remains subject to independent restricted-SQL proof.
+
+## Real-schema read-only Fund evidence (inactive)
+
+`operator-fund-snapshot.mjs` and its parameterized SQL read the actual Fund /
+event/outbox/head/projection/inbox/checkpoint schema. This is not a CLI and
+has no credential/production fallback or application startup integration.
+The caller supplies a real transaction factory, trusted scoped inventory and
+the existing canonical Fund reducer from the verified artifact. The function
+cannot authenticate a caller-supplied replacement reducer: that provenance is
+part of trusted server composition and the separate A1/A2 artifact contract.
+
+The reader sets READ ONLY first, requires RepeatableRead, a named restricted
+login, nine real FORCE-RLS tables, no inherited ownership and no write grants.
+The independent complete Fund-ID inventory is mandatory: internally consistent
+partial RLS visibility must not certify a whole tenant. Limits200 funds/1000
+source events/128 checkpoint entries,16KiB per source envelope and1MiB returned
+raw data fail closed. Larger histories need a separately designed bounded
+paging/snapshot contract; the reader never silently truncates or admits them.
+
+Source envelopes are processed internally with the existing pure reducer and
+are not returned or logged. The output contains aggregate hashes/exact money,
+DB timestamp/MVCC snapshot identity and last→next DB checkpoint positions.
+Fund money is NUMERIC(18,4), superseding the earlier synthetic six-place format.
+The MVCC identifier is not an exported snapshot, PITR point or archive watermark.
+It cannot bridge a later promotion transaction or authenticate broker offsets.
+`brokerPositionsAuthenticated` and `externalEvidenceVerified` remain false.
+
+The pilot deliberately requires canonical source, Fund, active-v1 and shadow
+parity, including shadow last-event time evidence. It does not approve a repair
+that intentionally diverges from active-v1/Fund. Such a repair needs a separately
+approved baseline-drift/correction policy and command-side financial invariants;
+it must not be enabled by relaxing this checker or overwriting source facts.
+
+Own CI reuses the unchanged legacy base.sql and all three actual migrations,
+compiles the existing canonical reducer with minimal pinned fixture dependencies,
+and runs restricted-reader tests. All seeded source/positions are disposable
+fixtures, not actual Kafka delivery, consumer execution or runtime cutover.

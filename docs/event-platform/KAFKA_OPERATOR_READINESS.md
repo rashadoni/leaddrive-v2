@@ -247,3 +247,58 @@ so an earlier admission error cannot falsely satisfy them. Concurrent loser
 reasons are also constrained. Executable contracts are unchanged by subsequent
 documentation; authentic operational evidence and shared runtime delivery
 remain open as described above.
+
+## Actual-schema read-only evidence — 2026-10-19
+
+Source465d9b9750cecddf11657145d0cb4d0e7d8233e0, run39167881109 /
+job117794570853 whole SUCCESS:91/91 unit gates,24/24 operator PG and10/10
+real-schema reader PG cases, cleanup PASS. The reader uses the actual three
+unchanged migrations and existing canonical Fund reducer. It is not the earlier
+replacement shadow-pointer schema and does not run a consumer.
+
+Verified: canonical/outbox hashes and complete independent Fund inventory;
+source/head/active-v1/Fund/shadow/inbox/checkpoint parity; exact NUMERIC(18,4);
+shadow lastEventId/time; immutable source fingerprints before/after reading;
+real READ ONLY refusal25006; checkpoint rewind guard23514 preserved; FORCE RLS,
+no-owner/no-write reader profile; partial/whole-aggregate visibility rejection;
+and a consistent RepeatableRead snapshot while another canonical writer commits.
+The next collection then rejects the now-stale shadow. Source payloads remain
+internal and are not included in the returned evidence.
+
+This DB-only producer leaves broker positions and external evidence explicitly
+unverified. All inbox/checkpoint seed positions are synthetic. DB MVCC identity
+is not a transfer token for a later promotion. Inventory and reducer provenance
+are trusted server inputs, not operator-supplied authority. Caps and strict
+baseline parity deliberately reject unsupported large/drift-repair scopes.
+
+### Concrete prerequisites for actual Fund cutover
+
+1. Fund list GET in `src/app/api/finance/funds/route.ts` reads
+   `prisma.fund.findMany`; detail GET in `funds/[id]/route.ts` reads
+   `prisma.fund.findFirst`. Neither resolves `projection_activations`.
+   A generic SDK pointer switch therefore does not switch these responses.
+   Add and independently verify an explicitly governed canary/versioned read
+   path before treating pointer promotion as a delivered read cutover.
+2. `consumeFundShadowRecord` in `fund-shadow-consumer.ts` admits only
+   `build.mode=shadow`, `build.status=running`. Generic SDK promotion changes
+   that status to `promoted`; blindly combining them stops further shadow
+   processing. A1/A2 owner must define/test ready/promotion/active/rollback
+   lifecycle and durable admission fencing before that composition.
+3. Fund transaction commands validate and update `funds.currentBalance`.
+   Replacing a GET response alone does not repair command-side balance checks.
+   Define correction authority and approved baseline drift for intentional
+   repairs; the current reader requires existing Fund/active-v1 parity and is
+   not a bypass for that decision. No history rewrite or direct money patch.
+4. A read-only audit snapshot does not freeze ongoing writes/new aggregates
+   across a later controller transaction. Final source/broker watermark,
+   writer/worker settlement and pointer CAS need a real barrier/transaction
+   contract, including concurrent command/new-Fund and SQL-COMMIT failure tests.
+5. Stop/soak/archive/restore/alert evidence must come from independently trusted
+   producers/read-back. Their synthetic references and booleans are not receipts.
+   Current prohibitions prevent obtaining real consumer/replay/send evidence here.
+
+A1/A2 current PR891 was observed DRAFT on
+f47224e2b250274278e88e72a08b0c7fe5424ae6 with latest heavy jobs skipped.
+Older head1d526a126f successes cannot certify it. This session neither modifies
+nor schedules those checks; original-session runtime/delivery ownership remains.
+These are exact remaining integration tasks, not reasons to mark A5/K7 ready.
