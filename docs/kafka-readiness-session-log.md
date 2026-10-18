@@ -2660,4 +2660,21 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  locally by host policy; no full build or actual service was launched here.
 - Main remains d3a1281d6bf8769302c3fa8431ce39c47dca08ec. Old runs have all
  completed. Next publication keeps the same PR883 and unchanged gates; only
- a current-source actual successful integration will satisfy this increment.
+  a current-source actual successful integration will satisfy this increment.
+
+### Corrected PR883 source frozen — 2026-10-18 14:49 UTC
+
+- Published97aa83b12ffc7123818b1fb6600c4e1251e5d054 in the same PR883;
+ verified GitHub's head equals local HEAD before marking ready. No manual
+ CI rerun/dispatch or cancellation. Draft synchronize jobs skipped as designed;
+ ready-for-review starts actual current-source PR39137630590 and integrations.
+ The older same-source PR39137621176 was automatically superseded by workflow
+ concurrency, not used as test evidence or manually cancelled.
+- Actual heavy queue: synthetic CDC39137630596, combined broker/SQL39137630643,
+ basic stack39137630601. Runner-policy39137621117, scan39137621104 and
+ tooling39137621091 already SUCCESS. Source remains frozen while these run.
+- Independent helper watches only the combined job; root owns required checks
+ and release. No background watcher process or extra heavy job was launched.
+ Next: read actual results, fix any concrete remaining failure, then normal
+ green merge and GitHub production receipt. Runtime activation remains out
+ of this increment and is not inferred from eventual application delivery.
