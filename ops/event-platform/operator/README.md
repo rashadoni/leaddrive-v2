@@ -79,8 +79,8 @@ absence of an executor.
 ## Proof and remaining gates
 
 The fixture uses actual separate TCP logins and PostgreSQL transactions. It
-covers identity/tenant/plan denial, self-approval/SET ROLE, direct-access denial,
-expiry/revocation/principal remapping, controller binding, concurrent consume,
+covers rejection of invalid tenants and plans, self-approval and SET ROLE;
+expiry, revoked or remapped identities, controller binding and concurrent consume;
 transaction rollback, audit, and revoke serialization against a held lock.
 See the append-only session journal for exact source/run and actual results;
 preparing this fixture alone is not a passing receipt.

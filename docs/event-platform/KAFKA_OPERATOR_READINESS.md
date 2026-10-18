@@ -126,3 +126,29 @@ shared senders/legacy dispatch обязателен перед признани�
 HA/TLS/ACL, независимый restore, архив, ресурсный бюджет, реальные owners и
 отдельное activation authorization остаются обязательными. Нет автоматического
 перехода от подготовки к production startup, offset reset или replay.
+
+## Дополнение: inactive durable admission — 2026-10-19
+
+Первоначальный следующий A5 software slice выше теперь подготовлен в
+`ops/event-platform/operator/admission.sql` и отдельном integration fixture.
+Это уточняет строки admission/lease, но не превращает их в runtime readiness:
+в production ничего не установлено, HTTP API и executor отсутствуют.
+
+Именованные TCP DB-logins дают session_user identity; отдельная закрытая
+mapping связывает principal/tenant/capabilities/expiry. Неизменный Fund plan
+и DB jsonb hash проходят separate approval, one-time consume с generation,
+controller-bound lease, assert-current, revoke и settle. Прямые записи/чтение
+control tables недоступны операторам. Полная схема и trust boundary —
+[operator README](../../ops/event-platform/operator/README.md).
+
+На ab0aff696 реальный isolated PG16 run39164468500 завершился SUCCESS:
+13/13 integration и28/28 receipt units, включая actual concurrent consume,
+transaction rollback, TCP identities и revoke serialization. Это доказательство
+данного неактивного contract, не A1/A2, Kafka, full rebuild или production.
+Последующее усиление role/expiry/revocation coverage требует нового receipt.
+
+Открыты: authentic human/JIT provisioning, web adapter при необходимости,
+композиция с restricted business SQL и COMMIT/deadline fence, worker lifecycle,
+catch-up/final parity, actual read-pointer promotion/rollback и доставленные
+alarms. Возврат токена не разрешает автоматический запуск. Общая доставка
+остаётся исходной сессии; draft PR894 не предназначен для merge этой сессией.

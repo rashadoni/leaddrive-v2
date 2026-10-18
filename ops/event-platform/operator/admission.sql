@@ -4,6 +4,16 @@
 -- No functions here connect to Kafka, change business state or grant access.
 BEGIN;
 SET LOCAL standard_conforming_strings = on;
+DO $$
+BEGIN
+  IF current_user <> 'ld_kafka_control_owner' OR
+     (SELECT count(*) FROM pg_catalog.pg_roles WHERE rolname IN
+       ('ld_kafka_control_owner','ld_kafka_operator_admitter','ld_kafka_operator_controller')
+       AND NOT rolcanlogin AND NOT rolsuper AND NOT rolbypassrls AND NOT rolcreaterole
+       AND NOT rolcreatedb AND NOT rolreplication) <> 3 THEN
+    RAISE EXCEPTION 'KAFKA_OPERATOR_ADMISSION_DENIED';
+  END IF;
+END $$;
 CREATE SCHEMA ld_kafka_operator AUTHORIZATION ld_kafka_control_owner;
 REVOKE ALL ON SCHEMA ld_kafka_operator FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES IN SCHEMA ld_kafka_operator REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
@@ -61,6 +71,7 @@ BEGIN
   SELECT * INTO r FROM pg_catalog.pg_roles WHERE rolname = p_login;
   IF i.login_name IS NULL OR NOT i.enabled OR i.valid_until <= clock_timestamp()
      OR r.rolname IS NULL OR NOT r.rolcanlogin OR r.rolsuper OR r.rolbypassrls
+     OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication
      OR (r.rolvaliduntil IS NOT NULL AND r.rolvaliduntil <= clock_timestamp())
      OR pg_catalog.pg_has_role(p_login, 'ld_kafka_control_owner', 'MEMBER')
      OR (p_capability = 'request' AND (NOT i.may_request OR NOT pg_catalog.pg_has_role(p_login, 'ld_kafka_operator_admitter', 'MEMBER')))
@@ -121,6 +132,7 @@ BEGIN
   a := ld_kafka_operator.identity(session_user, q.organization_id, 'approve');
   r := ld_kafka_operator.identity(q.requester, q.organization_id, 'request');
   IF a.principal_id = r.principal_id OR r.principal_id <> q.requester_principal THEN RAISE EXCEPTION 'KAFKA_OPERATOR_ADMISSION_DENIED'; END IF;
+  IF q.expires_at <= clock_timestamp() THEN RAISE EXCEPTION 'KAFKA_OPERATOR_ADMISSION_DENIED'; END IF;
   UPDATE ld_kafka_operator.requests SET approver = session_user, approver_principal = a.principal_id, status = 'approved' WHERE id = p_id;
   INSERT INTO ld_kafka_operator.audit(request_id,actor,transition,generation) VALUES(p_id,session_user,'approved',0);
 END $$;
@@ -142,6 +154,7 @@ BEGIN
   a := ld_kafka_operator.identity(q.approver, q.organization_id, 'approve');
   IF r.principal_id <> q.requester_principal OR a.principal_id <> q.approver_principal
      OR r.principal_id = a.principal_id THEN RAISE EXCEPTION 'KAFKA_OPERATOR_ADMISSION_DENIED'; END IF;
+  IF q.expires_at <= clock_timestamp() THEN RAISE EXCEPTION 'KAFKA_OPERATOR_ADMISSION_DENIED'; END IF;
   g := nextval('ld_kafka_operator.fence_generation');
   UPDATE ld_kafka_operator.requests SET status = 'consumed', generation = g, controller = session_user, controller_principal = c.principal_id,
     lease_until = LEAST(q.expires_at, clock_timestamp() + interval '5 minutes') WHERE id = p_id;
@@ -163,6 +176,9 @@ BEGIN
   a := ld_kafka_operator.identity(q.approver, q.organization_id, 'approve');
   IF r.principal_id <> q.requester_principal OR a.principal_id <> q.approver_principal
      OR r.principal_id = a.principal_id THEN RAISE EXCEPTION 'KAFKA_OPERATOR_ADMISSION_DENIED'; END IF;
+  IF q.expires_at <= clock_timestamp() OR q.lease_until <= clock_timestamp() THEN
+    RAISE EXCEPTION 'KAFKA_OPERATOR_ADMISSION_DENIED';
+  END IF;
 END $$;
 
 CREATE FUNCTION ld_kafka_operator.revoke(p_id uuid, p_hash text)

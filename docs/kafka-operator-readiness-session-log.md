@@ -115,3 +115,26 @@ job.services context is unavailable. Moved it to the integration step's env.
 This is a workflow-definition failure, NOT SQL test evidence. Existing CDC
 job skipped on draft, as required; no consumer was started. Required heavy
 app checks likewise remain skipped while this PR stays draft.
+
+## 2026-10-19 — real isolated admission proof and hardening
+
+Run39164468500/job117784407296 whole SUCCESS on
+ab0aff696d2b1f6bdf0a6079e7abd6ac64fd3674: actual separate TCP PostgreSQL16
+logins,13/13 admission/transaction/race cases and28/28 receipt units. Container
+cleanup passed. This supersedes NOT RUN for that exact inactive SQL source,
+not A1/A2, runtime controller, Kafka integration, actual alerts or production.
+
+PR scan39164468608 failed with a false positive in original source6ca3b5e2e,
+ops/event-platform/operator/README.md lines82–83. Pinned gitleaks8.30.1 archive
+checksum verified against repository workflow; bounded branch-range scan
+reproduced exactly one generic-api-key match spanning ordinary prose:
+'direct-access denial' followed by 'expiry/revocation/principal'. No credential.
+Changed current prose to avoid new occurrence. Historical commit still scans.
+No .gitleaksignore/.gitleaks.toml/workflow exception or history rewrite made:
+user forbids changing others' checks and checkpoint history must be preserved.
+Leave that check standing; draft is not mergeable and no merge is attempted.
+
+Follow-up self-review hardened install-role validation (three restricted
+NOLOGIN roles), rejects elevated operator logins, rechecks expiry after identity
+locks, adds live role revocation/controller remap/identity expiry tests.
+New exact-source PG proof pending next push. No production or Kafka operations.

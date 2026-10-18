@@ -162,3 +162,22 @@ await test('assert-current holds request row through transaction settlement; rev
   await Promise.all([transaction, revocation]); await deny(current(q, generation))
   assert.equal(JSON.parse(await call('op_controller', 'inspect', quote(q.id))).status, 'revoked')
 })
+await test('live capability revocation and controller principal remapping reject old token', async () => {
+  const q = await request(); await approve(q); const generation = await consume(q)
+  await admin('REVOKE ld_kafka_operator_admitter FROM op_approver;')
+  try { await deny(current(q, generation)) } finally { await admin('GRANT ld_kafka_operator_admitter TO op_approver;') }
+  await owned("UPDATE ld_kafka_operator.identities SET principal_id='replacement-service' WHERE login_name='op_controller';")
+  try { await deny(current(q, generation)) } finally { await owned("UPDATE ld_kafka_operator.identities SET principal_id='service-1' WHERE login_name='op_controller';") }
+})
+await test('unsafe elevated login, expired identity and excessive request expiry denied', async () => {
+  await admin('ALTER ROLE op_requester CREATEROLE;')
+  try { await deny(request()) } finally { await admin('ALTER ROLE op_requester NOCREATEROLE;') }
+  await owned("UPDATE ld_kafka_operator.identities SET valid_until=clock_timestamp()-interval '1 second' WHERE login_name='op_requester';")
+  try { await deny(request()) } finally { await owned("UPDATE ld_kafka_operator.identities SET valid_until=clock_timestamp()+interval '1 hour' WHERE login_name='op_requester';") }
+  await deny(call('op_requester','request',`${quote(randomUUID())},${json(plan())},clock_timestamp()+interval '1 day'`))
+})
+await test('public/unmapped login cannot execute controller functions or consume', async () => {
+  const q = await request(); await approve(q)
+  await assert.rejects(consume(q, 'op_unknown'), /permission denied/)
+  await assert.rejects(call('op_requester', 'assert_current', `${quote(q.id)},${quote(q.hash)},0`), /permission denied/)
+})
