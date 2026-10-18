@@ -15,6 +15,8 @@ const instant = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:
 
 export async function verifyOperatorAlertEvidence(evidence, expected, readReceipt) {
   try {
+    // Keep independent authority stable across every asynchronous read-back.
+    expected = structuredClone(expected)
     check(typeof readReceipt === 'function')
     check(expected && /^[a-z][a-z0-9]{0,31}$/.test(expected.environment))
     check(/^[0-9a-f]{40}$/.test(expected.releaseSha))

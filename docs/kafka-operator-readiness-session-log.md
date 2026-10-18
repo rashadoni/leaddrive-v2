@@ -588,3 +588,16 @@ drift. Continuous promoted processing remains a separate unimplemented contract.
 Historical close never proves no later writer; current lease/barrier must be
 checked with pointer mutation. Observer producer/challenge consumption absent.
 No operational stop occurred. Final source hosted proof pending.
+
+### Alert read-back authority race correction
+
+Reviewing the same asynchronous boundary found our alert verifier retained a
+shared expected authority object across awaits. A concurrent mutation could
+replace the expected environment/destination/challenge before read-back checks.
+Copied independent expected values before any await; added three regressions
+for scope replacement denial, stable original authority/result, and stable
+complete validated receipt manifest. No provider sender or operational activation.
+All158 focused unit cases PASS locally (31 alert+36 recovery+27 snapshot+24
+canary+40 stop); runner-policy72 and diff PASS. Resources13.7GB available,
+201GB disk,swap3MB,pressure averages0. Prior b05d8f00e run39170401611 whole SUCCESS,
+not a receipt for this later code. Next final hosted source verification.
