@@ -89,3 +89,14 @@ Kafka broker inventory, TLS handshake, archive receipt or topology proof.
 The source is currently not CDC-ready. No PostgreSQL, firewall, service,
 consumer, slot, offset or replay mutation was made. No unchanged diagnostic
 retry is needed. Production activation remains BLOCKED.
+
+## Fresh isolated verification — 2026-10-19
+
+[Synthetic CDC 39164115388](https://github.com/rashadoni/leaddrive-v2/actions/runs/39164115388)
+passed on preparation checkpoint `814b80107e9bdd55c7979965a4d6619382f333e0`:
+62/62 safety tests, SQL/WAL guards, 8/8 source-envelope transport and cold
+restart, followed by scoped cleanup. This strengthens transport evidence only;
+fixture TLS remains NOT PROVEN, business projection and production activation
+NOT RUN. [PR checks 39164115435](https://github.com/rashadoni/leaddrive-v2/actions/runs/39164115435)
+also completed its typecheck gate successfully. Static gate's final result is
+recorded in the append-only session journal and the linked run.
