@@ -6,7 +6,7 @@ const uint = value => typeof value === 'string' && /^(0|[1-9][0-9]{0,18})$/.test
 const hash = value => typeof value === 'string' && /^sha256:[0-9a-f]{64}$/.test(value)
 const id = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(value)
 const instant = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value
-const decimal = value => typeof value === 'string' && /^-?(0|[1-9][0-9]{0,37})\.[0-9]{6}$/.test(value) && value !== '-0.000000'
+const decimal = value => typeof value === 'string' && /^(0|[1-9][0-9]{0,13})\.[0-9]{4}$/.test(value)
 
 /** OFFLINE gate, not a worker/controller, signed receipt, or activation authority.
  * raw must be authentic bytes fetched through a trusted read-only adapter.

@@ -306,3 +306,50 @@ Stopping boundary: clean draft branch, scanner remains FAIL, no activation.
 Next action: shared delivery owner composes real A1/A2 worker/read-path with
 these inactive contracts and obtains authorized authentic evidence; forbidden
 production/consumer/replay/send operations are not attempted by this session.
+
+## 2026-10-19 — start next authorized real-schema preparation
+
+User says «начинай». Resume same clean55f6e3405 worktree/branch; context and
+origin/main226dde0e7 reconfirmed. Original PR891 remains OPEN on1d526a126f;
+broker/CDC smoke/stack passed, full-CDC/static pending at inspection. Do not
+schedule, change or duplicate those gates. Production13.140.132.245:/opt/leaddrive-v2,
+release GitHub Actions main; no production authorization added.
+
+Next bounded slice: READ-ONLY Fund database evidence collection against the
+three real existing migrations, not a replacement synthetic pointer. Reuse
+existing legacy base.sql fixture anchors, run only our hosted-PG job; no
+consumer, broker, source replay or application-pointer mutation. Fix recovery
+manifest money scale6 to actual Fund NUMERIC(18,4). Add restricted-reader,
+RLS/build boundaries, completeness/hash/parity and snapshot-consistency cases.
+Do not label DB-only evidence as broker/stop/archive/alert readiness.
+
+## 2026-10-19 — read-only real-schema slice prepared
+
+Added parameterized operator-fund-snapshot.sql and inactive collector. It owns
+no credentials/CLI/startup and requires a real RepeatableRead transaction plus
+the existing canonical pure Fund reducer supplied by trusted composition.
+First statement sets READ ONLY; real restricted session/current role required.
+Trusted fixed tenant/build/version/key/SHA/environment and independent Fund-ID
+inventory prevent a consistently hidden aggregate from looking complete.
+Read caps200 funds/1000 events/128 checkpoints, payload16KiB/event and output
+1MiB reject oversized/incomplete work. GUC is context only; independent RLS
+provisioning remains mandatory. Source payloads are internal reducer inputs,
+not returned or logged. Returned snapshot explicitly leaves broker positions
+and external evidence unauthenticated.
+
+Checks actual event/data/outbox hashes and canonical reducer results against
+Fund/heads/active-v1/shadow, inbox identities/hashes and DB checkpoint coverage.
+Checkpoints are LAST processed: next=last+1, never mistaken for broker proof.
+Corrected manifest scale6 to actual nonnegative NUMERIC(18,4); old synthetic
+six-decimal fixture convention is superseded. Existing reducer not duplicated.
+
+Local targeted59/59 PASS (23 collector control-flow doubles +36 recovery gate),
+syntax/runner-policy72/diff PASS. These doubles are not real-schema evidence.
+Own CI adds minimal pinned esbuild0.25.12/zod4.4.3 dependencies (versions from
+existing locks), compiles only canonical reducer, then runs8 actual PG cases.
+They reuse unchanged scripts/ci/fixtures/fund-shadow/base.sql and the three
+actual foundation/Fund/replay migrations; no foreign fixture/check is edited.
+No consumer or Kafka is used; seeded inbox/checkpoint positions are synthetic.
+Real PG proof pending next exact-source run. No full build/install on Contabo;
+only small lock generation and focused Node tests, RAM~14GB/disk203GB/swap0.
+Continue through actual CI, fixes and documentation without a user prompt.

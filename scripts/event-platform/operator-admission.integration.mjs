@@ -204,7 +204,7 @@ async function recovery(action = 'promote', targetId, overrides = {}) {
   if (!targetId) await owned(`INSERT INTO ld_operator_shadow_fixture.builds VALUES('org-a',${quote(target)},${quote('a'.repeat(40))},'ready',true,clock_timestamp()+interval '1 hour');`)
   const input = { ...plan(), buildId: target, action, expectedPointerVersion: pointer.version, ...overrides }
   const observedAt = new Date().toISOString()
-  const state = { aggregateId: 'fund-fixture', eventCount: '2', aggregateVersion: '2', historyHash: `sha256:${'d'.repeat(64)}`, stateHash: `sha256:${'e'.repeat(64)}`, balance: '25.000000', currency: 'AZN' }
+  const state = { aggregateId: 'fund-fixture', eventCount: '2', aggregateVersion: '2', historyHash: `sha256:${'d'.repeat(64)}`, stateHash: `sha256:${'e'.repeat(64)}`, balance: '25.0000', currency: 'AZN' }
   const receipt = { apiVersion: 'event-platform.leaddrive.io/v1', kind: 'OperatorRecoveryEvidence', ...input,
     previousBuildId: pointer.buildId, receiptId: `receipt-${randomUUID()}`, observedAt,
     soakStartedAt: new Date(Date.now()-120000).toISOString(), targetEffectsFenced: true, externalEffectAttempts: '0', unresolvedQuarantine: '0',

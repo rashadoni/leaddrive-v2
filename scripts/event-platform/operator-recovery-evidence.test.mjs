@@ -7,15 +7,15 @@ function fixture(action = 'promote') {
     artifactSha256: `sha256:${'b'.repeat(64)}`, environment: 'staging', clusterId: 'cluster-a', topicId: 'topic-a',
     groupId: 'group-a', action, expectedPointerVersion: '2' }
   const state = { aggregateId: 'fund-a', eventCount: '3', aggregateVersion: '3', historyHash: `sha256:${'c'.repeat(64)}`,
-    stateHash: `sha256:${'d'.repeat(64)}`, balance: '10.000000', currency: 'AZN' }
+    stateHash: `sha256:${'d'.repeat(64)}`, balance: '10.0000', currency: 'AZN' }
   const receipt = { apiVersion: 'event-platform.leaddrive.io/v1', kind: 'OperatorRecoveryEvidence', ...plan,
     previousBuildId: 'old-build', receiptId: 'receipt-1', observedAt: '2026-10-19T00:00:00.000Z', soakStartedAt: '2026-10-18T23:59:00.000Z',
     targetEffectsFenced: true, externalEffectAttempts: '0', unresolvedQuarantine: '0',
     stop: { intakeStopped: true, acksFenced: true, sqlSettled: true, childClosed: true, actualCloseReceiptId: 'close-1' },
     sourceHistoryComplete: true, archiveVerified: true, restoreReceiptId: 'restore-1', independentApprovalReceiptId: 'approval-1',
     partitions: [{ partition: 0, historyStart: '0', replayStart: '0', frozenEndExclusive: '5', checkpointNext: '5', archiveNext: '5' }],
-    source: [state, { ...state, aggregateId: 'fund-b', balance: '20.000000' }],
-    shadow: [structuredClone(state), { ...state, aggregateId: 'fund-b', balance: '20.000000' }],
+    source: [state, { ...state, aggregateId: 'fund-b', balance: '20.0000' }],
+    shadow: [structuredClone(state), { ...state, aggregateId: 'fund-b', balance: '20.0000' }],
     rollback: { retainedBuildId: plan.buildId, compatibilityVerified: true, windowEndsAt: '2026-10-19T01:00:00.000Z', writeFenceApplied: true } }
   const expected = { plan, now: '2026-10-19T00:00:10.000Z', maxAgeMs: 30000, minSoakMs: 60000, partitionCount: 1, previousBuildId: 'old-build' }
   const pin = () => { const raw = JSON.stringify(receipt); plan.evidenceSha256 = `sha256:${createHash('sha256').update(raw).digest('hex')}`; return raw }
@@ -53,7 +53,7 @@ const cases = {
   'wrong currency': f => f.receipt.shadow[0].currency = 'USD',
   'sequence gap': f => f.receipt.source[0].eventCount = '2',
   'float balance': f => f.receipt.shadow[0].balance = 10,
-  'offsetting wrong reducer balances': f => { f.receipt.shadow[0].balance = '11.000000'; f.receipt.shadow[1].balance = '19.000000' },
+  'offsetting wrong reducer balances': f => { f.receipt.shadow[0].balance = '11.0000'; f.receipt.shadow[1].balance = '19.0000' },
 }
 for (const [name, change] of Object.entries(cases)) test(`reject ${name}`, () => {
   const f = fixture(); change(f)
