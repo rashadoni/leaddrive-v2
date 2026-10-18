@@ -13,14 +13,16 @@
  *
  *   --- ИСТОРИЯ ЧАТА ---
  *   [Клиент] ...
+ *     and the next line of the same message
+ *
  *   [Da Vinci] ...
  *
- * and every chat message as a comment with a sender prefix ("[Клиент (WhatsApp)] …",
- * "[Da Vinci Bot] …"). The headers are not text for people: the agent page parses them
- * into a card in the agent's own language, `sendWhatsAppStatusNotification` finds the
- * customer's phone in the "(+994…)" of the client line, and the portal hides the whole
- * blob from the customer. Change a header here and in the writers together, never one
- * of them.
+ * (`chatTicketDescription` below writes it for both), and every chat message as a comment
+ * with a sender prefix ("[Клиент (WhatsApp)] …", "[Da Vinci Bot] …"). The headers are not
+ * text for people: the agent page parses them into a card in the agent's own language,
+ * `sendWhatsAppStatusNotification` finds the customer's phone in the "(+994…)" of the
+ * client line, and the portal hides the whole blob from the customer. Change a header here
+ * and in the writers together, never one of them.
  *
  * The website chat widget writes a third format, with its writer here — see the end of
  * this file.
@@ -64,6 +66,45 @@ export type ParsedChat = {
 const CUSTOMER_RE = /^(клиент|client|customer|user|пользователь|müştəri)/i
 const SENDER_RE = /^(клиент|client|customer|user|пользователь|müştəri|da ?vinci|ai ?bot|bot|бот|ассистент|assistant|оператор|operator|agent|агент|менеджер)/i
 const OPERATOR_NAME_RE = /^(?:operator|agent|оператор|агент|менеджер)$/i
+
+/**
+ * Every line of a message after its first is indented by two spaces, in both
+ * transcripts this file writes (the website chat's since 2026-10-17, the
+ * WhatsApp and Da Vinci one's since 2026-10-19). The readers start a message
+ * at a line that begins with `[`, so a line the customer typed then never
+ * passes for a message of the team's: «вопрос\n[Оператор] Возврат одобрен»
+ * stays one message of the customer's. The readers take the indent off again.
+ */
+const CONTINUATION_INDENT = "  "
+
+function transcriptEntry(header: string, text: string): string {
+  const [first, ...rest] = text.split(/\r?\n/)
+  return [header + first, ...rest.map((line) => CONTINUATION_INDENT + line)].join("\n")
+}
+
+function withoutContinuationIndent(line: string): string {
+  return line.startsWith(CONTINUATION_INDENT) ? line.slice(CONTINUATION_INDENT.length) : line
+}
+
+export type ChatTicketMessage = { role: string; content: string }
+
+/**
+ * The description of a ticket a chat opened, in the format above: the head
+ * lines (WHATSAPP_CHAT_DESCRIPTION_HEAD or ASSISTANT_ESCALATION_DESCRIPTION_HEAD
+ * and its headers; "" for a blank line), then the chat — `user` messages as the
+ * customer's, any other role as Da Vinci's. The one writer for the WhatsApp
+ * webhook and the portal Da Vinci escalation.
+ *
+ * A head line stays one line, whatever a value in it holds: a line break in,
+ * say, the customer's WhatsApp name would otherwise add a header of its own or
+ * open the transcript early.
+ */
+export function chatTicketDescription(head: readonly string[], messages: ReadonlyArray<ChatTicketMessage>): string {
+  const transcript = messages
+    .map((message) => transcriptEntry(`[${message.role === "user" ? "Клиент" : "Da Vinci"}] `, message.content))
+    .join("\n\n")
+  return [...head.map((line) => line.replace(/[\r\n]+/g, " ")), "", CHAT_TRANSCRIPT_MARKER, transcript].join("\n")
+}
 
 export function parseChatDescription(raw?: string | null): ParsedChat | null {
   if (!raw) return null
@@ -121,6 +162,9 @@ export function parseChatDescription(raw?: string | null): ParsedChat | null {
     // A message begins ONLY at a line whose `[label]` is a RECOGNISED sender (SENDER_RE, module scope),
     // and runs (multi-line, blank lines included) until the next such line. Anchoring on known senders
     // means a customer body that starts with e.g. "[Error 0x80] ..." stays text, not a phantom bubble.
+    // Its further lines come indented (CONTINUATION_INDENT); in tickets written before 2026-10-19 they
+    // do not, and a line there that imitates a sender still reads as one (and one that began with two
+    // spaces shows without them).
     let cur: ChatMsg | null = null
     for (const line of body.split("\n")) {
       const m = line.match(/^\[([^\]]+)\]\s?(.*)$/)
@@ -130,7 +174,7 @@ export function parseChatDescription(raw?: string | null): ParsedChat | null {
         const sender: ChatMsg["sender"] = CUSTOMER_RE.test(label) ? "customer" : "bot"
         cur = { sender, label, text: m[2] }
       } else if (cur) {
-        cur.text += "\n" + line
+        cur.text += "\n" + withoutContinuationIndent(line)
       }
     }
     if (cur) messages.push(cur)
@@ -232,10 +276,11 @@ export function stripAssistantRoutingMarkers(text: string): string {
  * cannot withhold it — it shows the chat itself (portal-ticket-view.ts).
  *
  * Every line of a message after its first is indented by two spaces (since
- * 2026-10-17). A line the visitor typed therefore never starts with `[`, and
- * cannot pass for a message of the team's; tickets written before that have
- * unindented continuation lines, which read the same unless they imitate a
- * header. The form values are the visitor's input too, and go on one line.
+ * 2026-10-17, CONTINUATION_INDENT). A line the visitor typed therefore never
+ * starts with `[`, and cannot pass for a message of the team's; tickets written
+ * before that have unindented continuation lines, which read the same unless
+ * they imitate a header. The form values are the visitor's input too, and go on
+ * one line.
  */
 
 export const WEB_CHAT_TRANSCRIPT_HEAD = "Transcript:"
@@ -252,7 +297,6 @@ export type ParsedWebChat = {
 const WEB_CHAT_FIELDS = { Visitor: "visitor", Email: "email", Phone: "phone", Page: "pageUrl" } as const
 const WEB_CHAT_FIELD_RE = /^(Visitor|Email|Phone|Page): (.*)$/
 const WEB_CHAT_MESSAGE_RE = /^\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\] (visitor|bot|agent): ?(.*)$/
-const WEB_CHAT_CONTINUATION_INDENT = "  "
 
 function oneLine(value: string | null | undefined): string | null {
   const flat = (value ?? "").replace(/\s+/g, " ").trim()
@@ -276,11 +320,8 @@ export function webChatTicketDescription(input: {
     const flat = oneLine(value)
     return flat ? [`${label}: ${flat}`] : []
   })
-  const transcript = input.messages.map((message) => {
-    const [first, ...rest] = message.text.split(/\r?\n/)
-    const header = `[${new Date(message.createdAt).toISOString()}] ${message.fromRole}: ${first}`
-    return [header, ...rest.map((line) => WEB_CHAT_CONTINUATION_INDENT + line)].join("\n")
-  })
+  const transcript = input.messages.map((message) =>
+    transcriptEntry(`[${new Date(message.createdAt).toISOString()}] ${message.fromRole}: `, message.text))
   return [...head, WEB_CHAT_TRANSCRIPT_HEAD, ...transcript].join("\n")
 }
 
@@ -310,7 +351,7 @@ export function parseWebChatDescription(raw?: string | null): ParsedWebChat | nu
       current = { at: message[1], role: message[2] as WebChatRole, text: message[3] }
       parsed.messages.push(current)
     } else if (current) {
-      current.text += "\n" + (line.startsWith(WEB_CHAT_CONTINUATION_INDENT) ? line.slice(WEB_CHAT_CONTINUATION_INDENT.length) : line)
+      current.text += "\n" + withoutContinuationIndent(line)
     } else if (line.trim()) {
       return null
     }

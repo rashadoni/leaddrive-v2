@@ -9,7 +9,7 @@ import { decimalToNumber } from "@/lib/prisma-decimal"
 import { getSupportAgentConfig } from "@/lib/ai/support-agent"
 import { isSupportAiEnabled, SUPPORT_AI_DISABLED_ERROR } from "@/lib/ai/support-feature"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
-import { ASSISTANT_ESCALATION_DESCRIPTION_HEAD, CHAT_TRANSCRIPT_MARKER } from "@/lib/ticketing/chat-transcript"
+import { ASSISTANT_ESCALATION_DESCRIPTION_HEAD, chatTicketDescription } from "@/lib/ticketing/chat-transcript"
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { assistantEscalationSubject } from "@/lib/ticketing/customer-ticket-text"
 import { resolveAiModel } from "@/lib/ai/budget"
@@ -91,16 +91,11 @@ async function createEscalationTicket(
       select: { role: true, content: true, createdAt: true },
     })
 
-    // Build description with full chat history
-    const chatHistory = chatMessages
-      .map((m: { role: string; content: string; createdAt: Date }) => `[${m.role === "user" ? "Клиент" : "Da Vinci"}] ${m.content}`)
-      .join("\n\n")
-
     const ticket = await createTicketWithAssignment({
       organizationId,
       ticketNumberPrefix: "DV",
       subject: assistantEscalationSubject(await loadOrganizationLocale(organizationId), userMessage),
-      description: `${ASSISTANT_ESCALATION_DESCRIPTION_HEAD}\n\nСессия: ${sessionId}\n\n${CHAT_TRANSCRIPT_MARKER}\n${chatHistory}`,
+      description: chatTicketDescription([ASSISTANT_ESCALATION_DESCRIPTION_HEAD, "", `Сессия: ${sessionId}`], chatMessages),
       priority: "high",
       initialStatus: "open",
       category: "ai_escalation",
