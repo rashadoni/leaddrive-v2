@@ -19,6 +19,13 @@ test('both required PR verification and production release run the real Fund sha
     const migration = source.indexOf('      - name: Event-platform migration and database invariant gate')
     assert.ok(migration >= 0 && migration < start, `${workflow}: actual migration gate must exist before the shadow gate`)
     assert.doesNotMatch(step, /\b(?:if|continue-on-error):|secrets\./)
+    const unitTitle = '      - name: Fund exact reducer and shadow control-flow unit gate'
+    assert.equal(source.split(unitTitle).length, 2, `${workflow}: explicit Fund unit gate must occur once`)
+    const unitStart = source.indexOf(unitTitle)
+    assert.ok(unitStart < start, `${workflow}: focused unit proof precedes real PG proof`)
+    const unitStep = source.slice(unitStart, start)
+    assert.match(unitStep, /run: npx vitest run src\/__tests__\/event-platform-fund-balance-reducer\.test\.ts src\/__tests__\/event-platform-fund-shadow-consumer\.test\.ts/)
+    assert.doesNotMatch(unitStep, /\b(?:if|continue-on-error):|secrets\./)
   }
 })
 

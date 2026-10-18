@@ -1383,3 +1383,19 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   No full build/TS/Vitest/containers on development: NOT RUN by workload policy.
   Next: preserve finished974 gate receipts, then one ordinary repinned draft
   head and actual full tests/CDC before normal merge/deploy.
+
+### Explicit focused unit receipt, without changing the repository baseline
+
+- Read the actual baseline runner: it suppresses ordinary Vitest stdout and
+  deletes its temporary JSON report after comparison. A general baseline PASS
+  is not an available per-file/count receipt for the new Fund mock unit suite.
+  Do not infer printed results that the completed logs cannot contain.
+- Added one small explicit Fund reducer/shadow control-flow Vitest step before
+  the actual PG step in BOTH required PR static and deploy-quality workflows.
+  Added wiring assertions for its exact two files, single occurrence, order and
+  lack of skip/continue-on-error/secrets. Existing full baseline and all other
+  gates stay unchanged. This is stronger task verification, not a bypass.
+- Refreshed-pin tree locally passes59 tooling tests; current remote974 run is
+  unchanged and still finishes its baseline gate. New focused unit/runtime
+  proof is NOT RUN until the next frozen-head Actions execution. No local
+  dependency install, full build or production mutation.
