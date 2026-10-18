@@ -859,3 +859,19 @@ is superseded for this scoped integration proof only. Separate synthetic CDC
 39151613585 passed, but full CDC-to-rebuild/direct-JVM runtime composition is
 still open. Mandatory static-checks and normal merge/release remain pending;
 no production consumer, replay or recovery commissioning occurred.
+
+### A5/A7 operator preparation — 2026-10-19
+
+На main226dde0e7 отдельная operator-readiness ветка добавляет inactive
+read-back verifier доставки десяти monitoring alarms и
+[KAFKA_OPERATOR_READINESS.md](./KAFKA_OPERATOR_READINESS.md): A5 boundary audit,
+27-domain source/projection/effect/idempotency/rebuild/evidence map и точную
+очередь следующей работы. Это не authenticated operator API и не activation.
+Boolean monitoring flags остаются недостаточным доказательством доставки;
+provider adapter/real challenge/ack receipts ещё NOT RUN.
+
+A1/A2 подготовлены отдельно в codex/kafka-worker-admission-20261018,
+e298057d94804417d38fb105d960721bae6fc1cc; здесь не дублируются. Новые реальные
+integration checks ещё NOT RUN. Общая доставка остаётся исходной сессии
+«Проверить защиту Kafka-консюмера». Никаких production mutations, consumer
+startup, offset/replay, sends, merge или deploy эта подготовка не выполняет.

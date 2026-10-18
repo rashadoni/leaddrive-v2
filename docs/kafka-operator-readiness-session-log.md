@@ -23,3 +23,48 @@ receipts remain NOT RUN; earlier broker/SQL receipts cover their exact scope.
 Plan: audit operator/lifecycle/effect boundaries; add an inactive, offline
 alert-delivery receipt gate with negative tests (no sends); document 27-domain
 source/effect/rebuild gaps; run small sequential checks and checkpoint commits.
+
+## 2026-10-19 — bounded A5 component and A7 inventory completed
+
+Added inactive scripts/event-platform/operator-alert-evidence.mjs and dedicated
+negative tests. Trusted read-only adapter must independently return matching
+provider/archive receipts for ten gates, exact environment/SHA/change/challenge,
+destination and responder, delivered+acknowledged status and fresh ordered UTC
+times. No sender, network, credentials, consumer or activation wiring added.
+This verifier does not authenticate operators, prove a real alert was delivered,
+or atomically consume a challenge. These remain explicit follow-up gates.
+Existing activation validator and other sessions' tests/workflows unchanged.
+
+Added docs/event-platform/KAFKA_OPERATOR_READINESS.md: audited authenticated
+admission gap, tenant/build fences, assignment versus durable lease distinction,
+stop/SQL settlement, catch-up, atomic promotion, rollback and legacy effects.
+27 catalog domains each list observed facts/state, derived projections, effects,
+known/unknown idempotency, safe rebuild requirements and missing evidence.
+Schema/catalog inspection of verticals is not an exhaustive writer audit.
+Appended scoped status/link to KAFKA_IMPLEMENTATION_BACKLOG.md.
+
+Verification in this exact worktree:
+- Before targeted checks: ~15 GB available RAM, swap unused, 205 GB disk free,
+  memory pressure averages zero. Node20.20.2. No install or heavy build.
+- node --test scripts/event-platform/operator-alert-evidence.test.mjs
+  scripts/event-platform/consumer-observation.test.mjs: PASS31/31
+  (28 new receipt tests +3 unchanged observation tests).
+- node --check both new mjs files: PASS.
+- Catalog/document ID comparison: PASS27/27, no duplicate/missing domains.
+- git diff --check: PASS for tracked diff; repeat staged check before commit.
+- Full tsc/build/browser/whole-suite: NOT RUN; standalone mjs/docs change,
+  no app imports and heavy verification forbidden on Contabo.
+- Real Kafka/PG/CDC/worker integrations and A1/A2 new gates: NOT RUN here;
+  require isolated CI/worker, owned by original delivery session.
+- Real alarm delivery/provider read-back/ack: NOT RUN; no sends authorized.
+- Production inspection/mutation, consumers, offsets/replay, sends: NOT RUN
+  by task restriction. No push/PR/merge/deploy performed.
+
+Current result: bounded A5 verifier and exact 27-domain evidence-gap map ready
+for review; operational A5/A7 remain incomplete and activation fail-closed.
+Last completed action: local targeted validation and evidence inventory.
+Stopping point: local checkpoint only, no external delivery action.
+Next action: originating session obtains exact-head A1/A2 integration receipts;
+next A5 code slice is durable immutable operator request + two authenticated,
+tenant-scoped admissions and atomic consume/revoke with restricted-SQL race
+and isolation tests. Overall delivery remains «Проверить защиту Kafka-консюмера».
