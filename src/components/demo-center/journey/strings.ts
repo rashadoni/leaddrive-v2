@@ -162,6 +162,8 @@ export const DEMO_JOURNEY_STRINGS = {
   whatsappIntro: (number: string) =>
     `Bu demoda WhatsApp real işləyir: ${number} nömrəsinə yazın — mesajınız LeadDrive-ın Gələnlər qutusuna düşəcək, cavab isə həmin nömrədən sizin telefonunuza gələcək. WhatsApp qaydası belədir: biznes birinci yalnız təsdiqlənmiş şablonla yaza bilər, ona görə söhbəti siz başlayırsınız.`,
   whatsappWrite: "WhatsApp-da yazın",
+  whatsappCode: (code: string) =>
+    `Mesajda bu demonun kodu var — ${code}. Onu silməyin: yazışma yalnız bu kodla gələn mesajdan sonra burada görünür.`,
   whatsappQr: "Kompüterdəsiniz? Telefonla skan edin",
   whatsappWaiting: "Mesajınız gözlənilir…",
   whatsappPlaceholder: "Cavabınızı yazın — WhatsApp-a gedəcək",

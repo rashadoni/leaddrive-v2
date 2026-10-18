@@ -3,6 +3,13 @@ import { timingSafeEqual } from "crypto"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { noteDemoCallConnecting } from "@/lib/demo-center/call-prompt-match"
+import {
+  buildDemoCallContext,
+  demoCallFirstName,
+  demoCallOpening,
+  DEMO_CALL_MAX_SECONDS,
+  isDemoPlacedCall,
+} from "@/lib/demo-center/call-prompt"
 import { CALLBACK_FRESHNESS_MS } from "@/lib/voice-agent/callback-decision"
 import { inboundCallContext } from "@/lib/voip/inbound-answer"
 import { loadInboundAnswerPolicy } from "@/lib/voip/inbound-answer-config"
@@ -48,6 +55,15 @@ export const dynamic = "force-dynamic"
  * you") and `context` (the incoming-call scope and organisation's inbound rules).
  * Both are settings text, not customer data, so they add nothing to what a
  * stolen token can read.
+ *
+ * A call the demo placed gets them too (2026-10-18): the approved LeadDrive
+ * first sentence as `opening`, the demo's framing as `context` and the
+ * two-minute ceiling as `maxSeconds`. The station speaks `opening` word for
+ * word and appends `context` to that call only — read per call, with no
+ * cache — so this is the one place that reliably reaches a demo call today.
+ * Without it the agent greeted the prospect with the line's own greeting,
+ * another business's. The prospect's first name is the only thing about them
+ * in it, reduced to letters, as in the demo's call prompt.
  */
 
 /** How many trailing transcript lines the agent needs to pick the thread back up. */
@@ -152,6 +168,18 @@ export async function GET(request: NextRequest) {
     // the demo's script (src/lib/demo-center/call-prompt-match.ts).
     await noteDemoCallConnecting(organizationId, callId, call)
     if (!call) return { continuation: null, conversation: null }
+    if (call.callMode === "ai" && call.direction !== "inbound" && isDemoPlacedCall(call.consentAudit)) {
+      const lead = call.leadId
+        ? await prisma.lead.findFirst({ where: { id: call.leadId, organizationId }, select: { contactName: true } })
+        : null
+      return {
+        continuation: null,
+        conversation: null,
+        opening: demoCallOpening(demoCallFirstName(lead?.contactName)),
+        context: buildDemoCallContext(),
+        maxSeconds: DEMO_CALL_MAX_SECONDS,
+      }
+    }
     const inboundAi = call.callMode === "ai" && call.direction === "inbound" && !call.continuesCallId
     const inboundPolicy = inboundAi
       ? await loadInboundAnswerPolicy(organizationId)

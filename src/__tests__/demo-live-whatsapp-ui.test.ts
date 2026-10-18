@@ -29,7 +29,8 @@ beforeEach(() => {
     success: true,
     enabled: true,
     displayNumber: NUMBER,
-    link: "https://wa.me/994105313065?text=LeadDrive%20demo",
+    link: "https://wa.me/994105313065?text=LeadDrive%20demo%20Kod%3A%20LD-1A2B3C",
+    code: "LD-1A2B3C",
     qr: "data:image/png;base64,AAAA",
     windowOpen: false,
     sent: 0,
@@ -89,9 +90,10 @@ describe("the demo's live WhatsApp thread", () => {
     expect(panel()).toBeNull()
   })
 
-  it("asks the prospect to write first, with the number, a link and a QR", async () => {
+  it("asks the prospect to write first, with the number, a link and a QR, and the session's code in plain sight", async () => {
     await render()
     expect(panel()!.textContent).toContain(NUMBER)
+    expect(container.querySelector('[data-testid="demo-whatsapp-code"]')?.textContent).toContain("LD-1A2B3C")
     expect(panel()!.textContent).toContain(S.whatsappWaiting)
     expect(container.querySelector<HTMLAnchorElement>("a")!.href).toContain("wa.me/994105313065")
     expect(container.querySelector("img")).not.toBeNull()
