@@ -34,6 +34,7 @@ import {
   closureRequestWhatsAppText,
   ticketStatusWhatsAppText,
 } from "@/lib/ticketing/customer-ticket-text"
+import { systemCommentText } from "@/lib/ticketing/chat-transcript"
 
 type WhatsAppStatusNotificationResult = { surveyHandled: boolean } | undefined
 type WhatsAppTicketStatusSettings = {
@@ -45,7 +46,7 @@ type ChannelMessageMetadata = {
 type SurveyTriggerSettings = {
   afterTicketResolve?: boolean
 }
-type TicketCommentRow = { userId: string | null; [key: string]: unknown }
+type TicketCommentRow = { userId: string | null; comment: string; [key: string]: unknown }
 type UserNameRow = { id: string; name: string | null; email: string | null }
 type TicketEntitlementMilestoneRow = {
   id: string
@@ -247,7 +248,9 @@ export const GET = withRls(async (_req: NextRequest, { orgId, session }, { param
 
     const enrichedComments = comments.map((c: TicketCommentRow) => ({
       ...c,
-      userName: c.userId ? userMap[c.userId] || "Support" : contactName,
+      // No userId is the customer — unless the product wrote it itself (the AI
+      // auto-actions cron): that has no author name, and the page labels it «System».
+      userName: c.userId ? userMap[c.userId] || "Support" : systemCommentText(c.comment) !== null ? null : contactName,
     }))
 
     const fieldPerms = await getFieldPermissions(orgId, role, "ticket")

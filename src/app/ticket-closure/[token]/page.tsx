@@ -61,7 +61,9 @@ export default function TicketClosurePage() {
         status: body.data.status,
         ticket: body.data.ticket || current.ticket,
       } : current)
-      setMessage(action === "confirm" ? t("closureConfirmedMessage") : t("closureRejectedMessage"))
+      // A ticket reopened since the link was sent is neither closed nor returned by
+      // it: the request comes back canceled, and its outcome line says so.
+      setMessage(body.data.status === "confirmed" ? t("closureConfirmedMessage") : body.data.status === "rejected" ? t("closureRejectedMessage") : "")
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : t("closureSaveFailed"))
     } finally {

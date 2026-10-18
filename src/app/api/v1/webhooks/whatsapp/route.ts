@@ -12,7 +12,6 @@ import { readAiReplyPolicy, decideAiReplyAction, isInAiRollout } from "@/lib/inb
 import { saveConversationAiDraft } from "@/lib/inbox/ai-draft"
 import { enrichComplaintInBackground } from "@/lib/complaint-ai"
 import { createHash, createHmac, timingSafeEqual } from "crypto"
-import { reopenTicketForCustomerReply } from "@/lib/ticket-reopen"
 import { normalizeTicketPriority } from "@/lib/sla-resolver"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
 import { matchInboundLeadId } from "@/lib/inbound-lead-match"
@@ -1293,36 +1292,10 @@ async function processMessages(
       if (demo.handled) continue
     }
 
-    // Check if customer has a closed/resolved WhatsApp ticket — auto-reopen.
-    // Uses the shared reopenTicketForCustomerReply helper (DV-0026 fix):
-    //   • Old tryReopenTicket required tags:{has:"whatsapp"} AND ≤7 days — both dropped.
-    //   • New helper: matches by source="whatsapp" OR tags has "whatsapp", no time window,
-    //     adds audit log + workflow execution that the old inline version skipped.
-    if (msg.type === "text" && text.trim()) {
-      const result = await reopenTicketForCustomerReply({
-        organizationId: orgId,
-        channel: "whatsapp",
-        customerMessage: text,
-        contactId: contactId ?? null,
-        fallbackPhone: waId,
-      })
-      if (result.reopened && result.ticketNumber) {
-        // WA-specific: notify the customer that their ticket was reopened.
-        // Not part of the shared helper — WA is the only channel that sends
-        // this back-channel confirmation message. The sender owns the final
-        // deterministic guard so this early-return path cannot bypass it.
-        void sendGuardedWhatsAppReopenNotification({
-          to: waId,
-          organizationId: orgId,
-          ticketNumber: result.ticketNumber,
-          customerText: text,
-          contactId: contactId ?? undefined,
-        }).catch(err => console.error("[WA Reopen] notification error:", err))
-        console.log(`[WA Reopen] Ticket ${sanitizeLog(result.ticketNumber)} reopened for ${sanitizeLog(waId)}`)
-        continue // Skip Da Vinci auto-reply
-      }
-    }
-
+    // The message lands on the sender's ticket that is still being worked; failing that, a typed
+    // text reopens their latest resolved/closed WhatsApp ticket (reopenTicketForCustomerReply,
+    // the DV-0026 helper); failing that, a new ticket. One lock per phone around all three
+    // (whatsapp-inbound-ticket.ts) — the reopen used to run first, here, and won over an open ticket.
     const inboundTicket = text.trim()
       ? await ensureInboundWhatsAppTicket({
         organizationId: orgId,
@@ -1334,8 +1307,25 @@ async function processMessages(
         companyId: ticketCompanyId,
         channelMessageId: savedMsg.id,
         waMessageId: messageId,
+        reopenResolved: msg.type === "text",
       })
-      : { ticketId: null, ticketNumber: null, created: false, commentAdded: false }
+      : { ticketId: null, ticketNumber: null, created: false, commentAdded: false, reopened: false }
+
+    if (inboundTicket.reopened && inboundTicket.ticketNumber) {
+      // WA-specific: notify the customer that their ticket was reopened.
+      // Not part of the shared helper — WA is the only channel that sends
+      // this back-channel confirmation message. The sender owns the final
+      // deterministic guard so this early-return path cannot bypass it.
+      void sendGuardedWhatsAppReopenNotification({
+        to: waId,
+        organizationId: orgId,
+        ticketNumber: inboundTicket.ticketNumber,
+        customerText: text,
+        contactId: contactId ?? undefined,
+      }).catch(err => console.error("[WA Reopen] notification error:", err))
+      console.log(`[WA Reopen] Ticket ${sanitizeLog(inboundTicket.ticketNumber)} reopened for ${sanitizeLog(waId)}`)
+      continue // Skip Da Vinci auto-reply
+    }
 
     // Phase 7 slice-2 — rule-based auto-reply runs BEFORE Da Vinci. If a rule owns the
     // turn (sent or deliberately rate-limited) we skip the AI → no double-reply.
