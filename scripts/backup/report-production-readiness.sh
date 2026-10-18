@@ -272,6 +272,13 @@ if command -v apt-cache >/dev/null 2>&1; then
   info "apt candidates: age=${age_candidate:-none}, awscli=${aws_candidate:-none}"
 fi
 
+# Object Storage is Backblaze B2 (S3-compatible API). Hetzner Object Storage
+# went away with the Hetzner account in September 2026; its endpoint form is no
+# longer accepted. The region is B2's cluster name, e.g. eu-central-003.
+object_storage_endpoint_matches_region() {
+  [[ "$2" =~ ^[a-z]{2}-[a-z]+-[0-9]{3}$ ]] && [ "$1" = "https://s3.$2.backblazeb2.com" ]
+}
+
 looks_like_placeholder() {
   local value="${1,,}"
   case "$value" in
@@ -951,10 +958,10 @@ for health_key in BACKUP_HEALTHCHECK_URL SECRETS_HEALTHCHECK_URL \
 done
 
 if [ -n "${CONFIG[BACKUP_S3_ENDPOINT]:-}" ] && [ -n "${CONFIG[BACKUP_S3_REGION]:-}" ] \
-  && [ "${CONFIG[BACKUP_S3_ENDPOINT]}" = "https://${CONFIG[BACKUP_S3_REGION]}.your-objectstorage.com" ]; then
-  pass "Object Storage endpoint matches the configured Hetzner region"
+  && object_storage_endpoint_matches_region "${CONFIG[BACKUP_S3_ENDPOINT]}" "${CONFIG[BACKUP_S3_REGION]}"; then
+  pass "Object Storage endpoint matches the configured B2 region"
 else
-  fail "Object Storage endpoint does not match the configured Hetzner region"
+  fail "Object Storage endpoint does not match the configured B2 region"
 fi
 
 backup_encryption="${CONFIG[BACKUP_ENCRYPTION]:-age}"
