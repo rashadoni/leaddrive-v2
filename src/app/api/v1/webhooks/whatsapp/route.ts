@@ -27,7 +27,7 @@ import {
 } from "@/lib/inbox/omnichannel-commitment-rules"
 import { syncWhatsAppExchangeToTicket } from "@/lib/inbox/ticket-sync"
 import { ensureInboundWhatsAppTicket } from "@/lib/inbox/whatsapp-inbound-ticket"
-import { CHAT_TRANSCRIPT_MARKER, WHATSAPP_CHAT_DESCRIPTION_HEAD } from "@/lib/ticketing/chat-transcript"
+import { WHATSAPP_CHAT_DESCRIPTION_HEAD, chatTicketDescription } from "@/lib/ticketing/chat-transcript"
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { whatsappTicketSubject } from "@/lib/ticketing/customer-ticket-text"
 import { ensureComplaintRegistered, notifyComplaintRegistered } from "@/lib/inbox/complaint-register"
@@ -1850,10 +1850,6 @@ async function handleAiAutoReply(
           select: { role: true, content: true, createdAt: true },
         })
 
-        const chatHistory = chatMessages
-          .map((m) => `[${m.role === "user" ? "Клиент" : "Da Vinci"}] ${m.content}`)
-          .join("\n\n")
-
         // Subject prefix follows resolved category — so when a ticket lands
         // in /tickets the department can tell at a glance what it's about
         // without opening the description. In the organization's language;
@@ -1893,7 +1889,12 @@ async function handleAiAutoReply(
           organizationId,
           ticketNumberPrefix: "DV",
           subject,
-          description: `${WHATSAPP_CHAT_DESCRIPTION_HEAD}\nКлиент: ${senderName} (+${waPhone})\nКатегория: ${ticketCategoryResolved} · Срочность: ${ticketUrgency}\nТриггеры: ${reasons.join(", ") || "—"}\n\n${CHAT_TRANSCRIPT_MARKER}\n${chatHistory}`,
+          description: chatTicketDescription([
+            WHATSAPP_CHAT_DESCRIPTION_HEAD,
+            `Клиент: ${senderName} (+${waPhone})`,
+            `Категория: ${ticketCategoryResolved} · Срочность: ${ticketUrgency}`,
+            `Триггеры: ${reasons.join(", ") || "—"}`,
+          ], chatMessages),
           priority: normalizedPriority,
           initialStatus: "open",
           category: ticketCategoryResolved,
