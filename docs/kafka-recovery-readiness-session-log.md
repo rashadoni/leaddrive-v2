@@ -430,3 +430,17 @@
   rebuilt workbench and actual noexec scratch interpretation probe. Exact-head
   scan39170797015, runner39170796972, pgpass39170797011 and tenant integration
   39170796990 PASS. Protected main checks39170796977 remain in progress.
+
+## 2026-10-19: actual Mac ARM64 workbench self-test passed
+
+- Owner screenshot of exact supplied430c7b9f9 bundle shows native ARM64 image
+  built successfully and final networkless ephemeral PostgreSQL, interpreted
+  scratch helper and pinned age:passed. ARM64 workbench self-test now PASS,
+  superseding earlier NOT RUN; this remains synthetic, not production restore.
+- Supplied bounded networkless 128MiB local Mac canary command for actual copied
+  age identity, matching previously recorded public recipient digest, with
+  random64byte round trip and private diagnostics confined to tmpfs. No signed
+  commissioning receipt is generated before reviewed main, no real data used.
+- Requested transfer only Mac owner-evidence.pub to administrative temporary
+  path so unused developer signer can be replaced with exact Mac public trust;
+  no private signing/age key transfer requested.
