@@ -3537,3 +3537,33 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  without asking the user to relay messages. Root will correct/re-prove this
  later bounded A5 slice after the current A1/A2 software delivery; no import of
  known-incomplete evidence collectors or unsupported 27-domain readiness.
+
+### Corrected actual full CDC-to-Fund recovery PASS — 2026-10-19 00:01 Europe/Berlin
+
+- Manual run39169379400 SUCCESS on exact source
+267507fcca5c59d5b19cb80652485a1b985b1fae, completed2026-10-18T22:01:49Z.
+ Legacy job117799064969 SUCCESS; NEW full-cdc-fund117799892184 SUCCESS.
+ Read actual completed logs, not only workflow status. Generated actual Prisma
+ client strict fixture types passed;9 source/isolation/header guards passed.
+- Actual final markers at22:01:23Z: non-bypass source-role writes PASS, six-event
+ snapshot PASS, stopped-Connect source writes and cold-restart WAL PASS, exact
+ Kafka key/value/business/context bytes/hash PASS. Full restricted SQL exact
+ two-tenant parity PASS; actual post-COMMIT ACK loss with durable inbox and
+ zero broker advancement, safe duplicate and restarted worker PASS.
+- Synthetic old restricted-shadow balance fault injection PASS, corrected NEW
+ builds/roles/group replaying unchanged original Kafka history PASS; exact
+10.0000 USD/aggregate versions/inboxes/checkpoints PASS. Both old bad builds and
+ old acknowledged group remain unchanged; source/active/effects/third tenant
+ remain unchanged. External sends NONE; historical buggy source NOT CLAIMED.
+- This corrects the prior four-header fixture expectation against pinned
+ Debezium behavior without ignoring extras or weakening business byte/hash
+ assertions. All8 headers and source incarnation continuity are now checked.
+ Actual cleanup succeeded. Fixture TLS/ACL NOT PROVEN; production activation
+ NOT RUN. Earlier direct-JVM proof and this full-CDC proof are different
+ composed drills; no claim that the CDC drill itself uses direct JVM rather
+ than its existing container bridge. No production service installation.
+- Final tree also contains workflow-only029c41231 and review-receipt33aa26e13,
+ not yet published when this source proof completed. Next publish one final
+ checkpoint and run ready-event all5 protected contexts plus broker, stack,
+ BOTH CDC jobs and actual operator PG again. No earlier SHA result substitutes
+ for that final verification, normal merge, release or actual deployed SHA.

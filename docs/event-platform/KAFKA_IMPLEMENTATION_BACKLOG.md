@@ -976,4 +976,25 @@ K7 full-domain recovery, actual delivered monitoring or K8 activation.
 The existing scanner flags historical ordinary README prose as generic-api-key;
 no scanner policy/check/history was altered to bypass it. PR remains draft,
 without merge/deploy. Original A1/A2 PR891 and integration scheduling remain
-owned by the originating session; this branch neither starts nor reruns them.
+ owned by the originating session; this branch neither starts nor reruns them.
+
+### A1/A2 exact synthetic software proofs obtained — 2026-10-19
+
+Superseding the earlier pending integration receipts only, NOT runtime gates:
+actual direct-JVM/Kafka/restricted-SQL lifecycle passed in39164817267 on
+source1d526a126, with verified client-only candidate bound to checked-out merge
+SHA3b4fde212f. Corrected full canonical app-role SQL → Debezium snapshot/WAL
+cold restart → Kafka → restricted Fund SQL passed BOTH jobs of39169379400 on
+267507fcca5c59d5b19cb80652485a1b985b1fae. Exact two-tenant decimal parity,
+post-COMMIT ACK loss/redelivery, synthetic bad old shadow and corrected NEW
+build/group full-history rebuild passed; source/active/effects/third tenant,
+old bad builds and old group unchanged. External sends NONE. Historical buggy
+binary NOT CLAIMED. Full-CDC drill uses its existing container bridge; the
+separate direct-JVM lifecycle proof is not relabeled as that same drill.
+
+PR891 remains draft pending FINAL-source protected and feature checks, normal
+merge and release. Earlier frozen A5 admission snapshot passed17 actual PG
+cases; later A5 evidence collectors are held separately for concrete negative
+controls. These proofs do not commission a production worker, logical CDC,
+HA/TLS/ACL, independent recovery/Farah confirmation, real alerts/controller,
+Fund canary or27-domain adoption. A3/A4 and activation remain NO-GO.
