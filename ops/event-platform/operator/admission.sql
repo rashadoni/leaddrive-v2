@@ -162,12 +162,12 @@ BEGIN
   RETURN g;
 END $$;
 
-CREATE FUNCTION ld_kafka_operator.assert_current(p_id uuid, p_hash text, p_generation bigint)
+CREATE FUNCTION ld_kafka_operator.check_token(p_id uuid, p_hash text, p_generation bigint, p_settled boolean)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
 DECLARE q ld_kafka_operator.requests; r ld_kafka_operator.identities; a ld_kafka_operator.identities; c ld_kafka_operator.identities;
 BEGIN
   SELECT * INTO q FROM ld_kafka_operator.requests WHERE id = p_id FOR UPDATE;
-  IF q.id IS NULL OR q.status <> 'consumed' OR q.controller IS DISTINCT FROM session_user OR q.generation IS DISTINCT FROM p_generation
+  IF q.id IS NULL OR (q.status <> 'consumed' AND NOT (p_settled AND q.status='settled')) OR q.controller IS DISTINCT FROM session_user OR q.generation IS DISTINCT FROM p_generation
      OR q.plan_hash IS DISTINCT FROM p_hash OR q.expires_at <= clock_timestamp()
      OR q.lease_until <= clock_timestamp() THEN RAISE EXCEPTION 'KAFKA_OPERATOR_ADMISSION_DENIED'; END IF;
   c := ld_kafka_operator.identity(session_user, q.organization_id, 'consume');
@@ -180,6 +180,30 @@ BEGIN
     RAISE EXCEPTION 'KAFKA_OPERATOR_ADMISSION_DENIED';
   END IF;
 END $$;
+
+-- Deferred by default; protected controller code MUST NOT issue SET CONSTRAINTS
+-- IMMEDIATE (PostgreSQL permits callers to advance deferrable checks). No raw
+-- operator SQL or runtime executor is exposed by this contract.
+CREATE FUNCTION ld_kafka_operator.assert_current(p_id uuid, p_hash text, p_generation bigint)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
+BEGIN
+  PERFORM ld_kafka_operator.check_token(p_id,p_hash,p_generation,false);
+  INSERT INTO ld_kafka_operator.audit(request_id,actor,transition,generation)
+    VALUES(p_id,session_user,'guarded',p_generation);
+END $$;
+
+CREATE FUNCTION ld_kafka_operator.commit_guard()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
+DECLARE h text;
+BEGIN
+  SELECT plan_hash INTO h FROM ld_kafka_operator.requests WHERE id=NEW.request_id;
+  PERFORM ld_kafka_operator.check_token(NEW.request_id,h,NEW.generation,true);
+  RETURN NULL;
+END $$;
+CREATE CONSTRAINT TRIGGER kafka_operator_commit_guard
+  AFTER INSERT ON ld_kafka_operator.audit DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW WHEN (NEW.transition IN ('consumed','guarded','settled'))
+  EXECUTE FUNCTION ld_kafka_operator.commit_guard();
 
 CREATE FUNCTION ld_kafka_operator.revoke(p_id uuid, p_hash text)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$

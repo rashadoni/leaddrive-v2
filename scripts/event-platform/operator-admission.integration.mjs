@@ -79,7 +79,7 @@ await test('separate real logins admit once, assert lease, settle and audit', as
   await deny(consume(q))
   await call('op_controller', 'settle', `${quote(q.id)},${quote(q.hash)},${generation}`)
   await deny(current(q, generation))
-  assert.equal(await owned(`SELECT string_agg(transition,',' ORDER BY sequence) FROM ld_kafka_operator.audit WHERE request_id=${quote(q.id)};`), 'requested,approved,consumed,settled')
+  assert.equal(await owned(`SELECT string_agg(transition,',' ORDER BY sequence) FROM ld_kafka_operator.audit WHERE request_id=${quote(q.id)};`), 'requested,approved,consumed,guarded,guarded,settled')
 })
 await test('self approval and SET ROLE cannot impersonate another authenticated login', async () => {
   const q = await request()
@@ -180,4 +180,12 @@ await test('public/unmapped login cannot execute controller functions or consume
   const q = await request(); await approve(q)
   await assert.rejects(consume(q, 'op_unknown'), /permission denied/)
   await assert.rejects(call('op_requester', 'assert_current', `${quote(q.id)},${quote(q.hash)},0`), /permission denied/)
+})
+
+await test('deferred COMMIT rejects expired lease and rolls back settle plus audit', async () => {
+  const q = await request(); await approve(q); const generation = await consume(q)
+  await owned(`UPDATE ld_kafka_operator.requests SET lease_until=clock_timestamp()+interval '3 seconds' WHERE id=${quote(q.id)};`)
+  await deny(execute('op_controller', `BEGIN; SELECT ld_kafka_operator.assert_current(${quote(q.id)},${quote(q.hash)},${generation}); SELECT ld_kafka_operator.settle(${quote(q.id)},${quote(q.hash)},${generation}); SELECT pg_sleep(4); COMMIT;`))
+  assert.equal(await owned(`SELECT status FROM ld_kafka_operator.requests WHERE id=${quote(q.id)};`), 'consumed')
+  assert.equal(await owned(`SELECT count(*) FROM ld_kafka_operator.audit WHERE request_id=${quote(q.id)} AND transition IN ('guarded','settled');`), '0')
 })

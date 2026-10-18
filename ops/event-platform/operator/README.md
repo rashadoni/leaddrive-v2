@@ -65,9 +65,14 @@ administrative power; this contract cannot protect against its own provisioner.
    the separately authorized controller. Neither operation retries or restarts
    anything. A fresh attempt needs a new reviewed request.
 
-Expiry is checked at function execution, **not a deferred COMMIT-time fence**.
-Long-running transactions must have a bounded deadline and settlement/revoke
-handling before this can become runtime authority. A lease is not proof of
+Expiry is checked both at admission and by an initially deferred constraint
+trigger on consume/guard/settle audit rows. Expiry at transaction end rejects
+COMMIT and rolls back that transaction's guarded SQL and audit writes. As with
+any PostgreSQL deferrable constraint, privileged controller SQL can advance the
+check using SET CONSTRAINTS IMMEDIATE: the future executor must expose no raw
+SQL and must keep this guard deferred. That trust boundary is not enforced by
+a new HTTP API here. Long-running transactions still need bounded deadlines
+and settlement/revoke handling before this can become runtime authority. A lease is not proof of
 child termination, SQL settlement, provider absence or delivered alerts.
 `settle` records completion of this token only, not runtime success evidence.
 No controller execution path, build-table parity, final watermark, artifact
@@ -81,13 +86,14 @@ absence of an executor.
 The fixture uses actual separate TCP logins and PostgreSQL transactions. It
 covers rejection of invalid tenants and plans, self-approval and SET ROLE;
 expiry, revoked or remapped identities, controller binding and concurrent consume;
-transaction rollback, audit, and revoke serialization against a held lock.
+transaction rollback, audit, and revoke serialization against a held lock. A separate case forces lease
+expiry before actual COMMIT and proves settle/audit rollback.
 See the append-only session journal for exact source/run and actual results;
 preparing this fixture alone is not a passing receipt.
 
 Before activation: trusted role/JIT provisioning and revocation operational
 contract; web/session adapter if needed; restricted business-SQL composition;
-COMMIT/deadline handling; worker stop/actual-close; catch-up/full-history parity;
+trusted executor deferral/deadline handling; worker stop/actual-close; catch-up/full-history parity;
 real alarm challenge/read-back; promotion/rollback under load; independent
 restore, HA/TLS/ACL and separate authorization. No permission to execute those
 production operations is implied by this SQL file.

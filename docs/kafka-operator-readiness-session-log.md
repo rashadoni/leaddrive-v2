@@ -138,3 +138,20 @@ Follow-up self-review hardened install-role validation (three restricted
 NOLOGIN roles), rejects elevated operator logins, rechecks expiry after identity
 locks, adds live role revocation/controller remap/identity expiry tests.
 New exact-source PG proof pending next push. No production or Kafka operations.
+
+## 2026-10-19 — transaction-end expiry fence prepared
+
+Before freezing the next proof, closed another bounded contract gap: initial
+lease checks alone did not reject COMMIT after lease expiry. Added initially
+deferred constraint trigger on consume/guard/settle audit rows. assert-current
+schedules an audit guard in the same transaction; final trigger revalidates
+lease, generation, holder and fresh operator identities. Added actual PG test
+that performs guard+settle, waits past the lease, then expects COMMIT rejection
+and verifies both settle and its audit rows rolled back.
+
+PostgreSQL allows deferrable constraints to be advanced with SET CONSTRAINTS;
+this remains a documented trusted-executor boundary, not an invented guarantee
+against arbitrary controller SQL. No HTTP/raw-SQL executor or business write is
+exposed. Previous README statement of no deferred fence is superseded only
+for the new isolated source; runtime deadline/deferral composition stays open.
+Node syntax and diff check PASS; revised exact-source integration pending CI.
