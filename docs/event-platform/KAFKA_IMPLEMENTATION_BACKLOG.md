@@ -755,3 +755,15 @@ This uses an exact-byte synthetic outbox producer, not Debezium; it does not
 close the full CDC-to-rebuild, runtime packaging/lifecycle, broker HA/TLS/ACL,
 full-history, independent recovery, or production activation/read-cutover
 tasks. No real offsets, source data, consumers or recovery services changed.
+
+### PR880 app release confirmed — 2026-10-18 14:11 UTC
+
+Deploy39131091042 whole SUCCESS14:09:15Z on e1e50cb5032f21f5f6295006420126ede28a52d5;
+immutable artifact12138947773, runtime Fund/structural postconditions and root's
+independent exact public SHA/ping/login/CSS/JS checks passed. This supersedes
+the preceding release-pending entry. Java worker packaging/installation and
+Kafka activation did not occur; encrypted recovery/log shipping remain inactive.
+
+The prepared combined-test branch now has327/327 local control-flow tests and
+11/11 script/contract guards passing. Actual combined broker+SQL execution is
+still NOT RUN until its forthcoming frozen-source GitHub gate returns.

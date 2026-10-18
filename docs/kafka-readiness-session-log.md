@@ -2537,3 +2537,30 @@ service, branch delivery or Kafka runtime was changed by this documentation.
 - Preceding deploy39131091042 quality gate is SUCCESS, including full
   baseline18=18 (no new failures). Production artifact build now runs Next.js.
   No runtime activation, consumer replay or extra heavy dispatch occurred.
+
+### PR880 production receipt; combined increment ready — 2026-10-18 14:11 UTC
+
+- Deploy39131091042 attempt1 whole SUCCESS14:09:15Z on exact merge
+  e1e50cb5032f21f5f6295006420126ede28a52d5. Immutable artifact12138947773,
+  name leaddrive-prod-e1e50cb5032f21f5f6295006420126ede28a52d5,
+  SHA2569a5c7c88946854c7dbcd9fc6ff2dae99e984d95e91da4997d853854e294b3e90,
+  size471494323bytes. Root independently read build/quality/runtime receipts.
+- Release repeated278 focused units and14 actual restricted-PG cases PASS;
+  full baseline18=18. Server14:07:55Z event-platform structural ledger/RLS/
+  ownership/exact-money/Fund projection postconditions PASS. Public run ping,
+  exact revision and login/CSS/JS smokes PASS14:08:49–52Z. Root's independent
+  public check also verified exacte1e50cb before/after login/CSS/JS requests,
+  each HTTP200, ping ok=true. This supersedes release-pending, not activation.
+- Fresh deploy receipt still reports encrypted recovery commissioning and
+  off-box log shipping inactive. No Java worker is packaged/installed by this
+  app artifact. This release is not Kafka activation, restore or full recovery
+  acceptance; it does not supersede the historical operational NO-GO.
+- Final local combined-source control-flow rerun:7 files327/327 PASS5.87s;
+  contract/script guards11/11 and runner-policy71 PASS. Real combined CI remains
+  NOT RUN. The completed previous release now permits publishing this prepared
+  test-only increment; no existing workflow is rerun or cancelled.
+- Main advanced to d3a1281d6bf8769302c3fa8431ce39c47dca08ec via unrelated
+  MTM correction PR881. Root inspected all six paths; no Kafka/test-fixture,
+  routing/deployment overlap. Normal merge of current main into this unpublished
+  branch preserves both histories, with no force push. Foreign automatic
+  deploy39133684288 is preserved; it is not this task's own completed receipt.
