@@ -197,19 +197,28 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
       expect(await prisma.mtmHrmRequest.findUnique({ where: { id: request.id } })).toMatchObject({ status: "PENDING", correctionWorkdayId: null })
     })
   })
-  it("refuses at submission a finish before the day's own later marks — nobody could ever approve it", async () => {
-    // Owner's phone, 2026-10-18: «Günü bağla» at 18:30 for a day with a break at 22:18 sat PENDING for good.
-    await seedDay("2026-09-05", "PAUSED") // START 09:30, a break open since 12:00
-    await expect(submit(input("2026-09-05", "09:30", "11:00"))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_CORRECTION_OUTSIDE_MARKS" })
-    // A start after the first mark is refused the same way.
-    await expect(submit(input("2026-09-05", "12:30", "18:00"))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_CORRECTION_OUTSIDE_MARKS" })
-    await tenant(ORG, async () => {
-      expect(await prisma.mtmHrmRequest.count({ where: { agentId: AGENT, startDate: new Date("2026-09-05") } })).toBe(0)
+  it("closes a day before its own later marks: they stay in the journal, not in the day", async () => {
+    // Owner, 2026-10-18: «отметки после указанного окончания не считаются рабочим временем, но остаются в истории дня».
+    // A day left open: started 09:30, a break pressed at 19:00 and lifted at 19:10 — after the real 18:00 finish.
+    const date = "2026-09-05"
+    const day = await tenant(ORG, async () => {
+      const row = await prisma.mtmAgentWorkday.create({ data: { organizationId: ORG, agentId: AGENT, workDate: new Date(`${date}T00:00:00Z`), status: "STARTED", startedAt: at(date, "09:30"), totalPausedSeconds: 600 } })
+      await prisma.mtmAgentWorkdayEvent.createMany({ data: ([["START", "09:30"], ["PAUSE", "19:00"], ["RESUME", "19:10"]] as const).map(([type, time]) => ({
+        organizationId: ORG, agentId: AGENT, workdayId: row.id, clientEventId: randomUUID(), type, occurredAt: at(date, time), appliedAt: at(date, time), claimedAt: at(date, time), serverReceivedAt: at(date, time) })) })
+      return row
     })
-    // At or after the last mark it is an ordinary request.
-    const { request } = await submit(input("2026-09-05", "09:30", "12:00"))
+    const { request } = await submit(input(date, "09:30", "18:00"))
     expect(request.status).toBe("PENDING")
     await approve(request)
+    await tenant(ORG, async () => {
+      expect(await prisma.mtmAgentWorkday.findUnique({ where: { id: day.id } })).toMatchObject({ status: "COMPLETED", completedAt: at(date, "18:00"), totalPausedSeconds: 0 })
+      // The evening marks are still there…
+      expect(await prisma.mtmAgentWorkdayEvent.count({ where: { workdayId: day.id } })).toBe(3)
+      expect(await prisma.workforceTimeCorrection.findFirstOrThrow({ where: { requestId: request.id } })).toMatchObject({ afterFacts: expect.objectContaining({ totalPausedSeconds: 0, completedAt: at(date, "18:00").toISOString() }) })
+      // …and not in the day: no break counted, nothing left early.
+      const result = await report.readMtmAttendanceReport({ organizationId: ORG, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { form: "ALL", from: date, to: date } })
+      expect(result.rows[0]).toMatchObject({ factsState: "VALID", pausedSeconds: 0, earlyLeaveSeconds: 0 })
+    })
   })
   it("auto-approves «Закрыть день» where the company switched it on — only with the start untouched, so lateness stays", async () => {
     // Owner, 2026-10-18: «автоподтверждение, но чтоб были показаны опоздания» — only «Закрыть день».
