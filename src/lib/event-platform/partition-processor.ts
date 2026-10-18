@@ -51,10 +51,12 @@ function identity(value: unknown): void {
 /**
  * INACTIVE building block, not a network consumer or a durable SQL lease.
  * One instance owns ONE assignment of ONE partition across ALL its tenants.
- * The driver must supply every record from its ordered, unfiltered fetch.
+ * The driver must supply every record from its ordered, unfiltered visible
+ * delivery stream (read_committed excludes aborted/control records).
  * Numeric holes can be legitimate Kafka positions; this module cannot prove
  * that a caller omitted a record. fetchOffset binds successive deliveries to
- * the cursor, not to an arbitrary topic high-water mark.
+ * the logical acknowledged cursor, not a raw FetchRequest position, cached
+ * consumer position or arbitrary topic high-water mark.
  *
  * applyCommitted must resolve only after its real, bounded DB COMMIT. Its
  * result (including any tenant checkpoint) is deliberately ignored. No

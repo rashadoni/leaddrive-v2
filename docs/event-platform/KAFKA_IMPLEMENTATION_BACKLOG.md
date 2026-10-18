@@ -677,3 +677,60 @@ Protocol references: [Apache Kafka consumer offsets](https://kafka.apache.org/41
 and [Kafka group/offset protocol](https://kafka.apache.org/41/design/protocol/).
 The commit position denotes the next record to consume; it is not the
 maximum checkpoint returned by any tenant callback.
+
+### K4 coordinator verified and merged; release pending — 2026-10-18 10:59 UTC
+
+PR877 source1cfdb3ed passed actual189/189 focused units,14/14 restricted-PG
+tests and all5 protected checks in39119897984. Synthetic CDC39119897962
+also passed raw8/8 and cold restart, independently of the new worker port.
+Normal merge produced133654f4a064adcbb81b6458d05f80b8b7423dec. Production
+release is still pending at this entry. The above implementation-in-progress
+label is superseded for this inactive coordinator only, not for all K4.
+
+Real broker membership/retention integration, connected worker entrypoint,
+runtime provisioning/release, recovery and activation remain open. No actual
+consumer group, production offsets or data replay was started by this change.
+
+### K4 coordinator delivered; activation still separate — 2026-10-18 11:32 UTC
+
+PR877 release39121398342 attempt1 whole SUCCESS11:31:59Z on merged
+133654f4a064adcbb81b6458d05f80b8b7423dec. Release gates repeated189/189 focused
+unit and14/14 actual restricted-PG cases; baseline18=18. Immutable artifact
+12135041765 and its SHA-256 are recorded in the session journal. Runtime
+structural/Fund postconditions and public revision/ping/login/assets passed.
+Root independently confirmed exact public133654 and ping/login/CSS/JS at11:32.
+This supersedes the release-pending entry, for this inactive component only.
+
+One exact-SHA aggregate inspection via the registered production alias was
+rejected by SSH authentication before executing the script. Fresh source
+WAL/slot/timer inventory is NOT RUN. Current-main readiness was not dispatched
+against a mismatched artifact or allowed to replace another release's pending
+production operation; foreign39123362068 was building and remains untouched.
+The previously recorded recovery23/9 NO-GO is historical and not superseded
+by app health. Broker driver, actual rebalance/retention integration, runtime
+provisioning, independent restore, read cutover and K8 activation remain open.
+Consumer activation, offsets and replay were not changed by PR877.
+
+### K4 broker driver: real failure drill, final revision pending — 2026-10-18
+
+PR880 adds an inactive Apache Kafka4.3.1 classic/EAGER Java bridge plus a
+bounded private-pipe adapter for the existing partition coordinator. Actual
+broker run39128688023 SUCCESS12:52:29UTC on sourcea094193d41331810bcc74220365ac5c414042d0c:
+13 scenarios passed, including expired membership, concurrent takeover,
+retention and topic recreation during database-callback work, restart,
+transaction holes and pre-send/post-commit acknowledgement uncertainty.
+Fixture cleanup passed. Database effects in this fixture are simulated;
+the independent restricted-PostgreSQL gate remains mandatory.
+
+Final review then reproduced a header-name BOM normalization defect. The
+local correction preserves the exact identifier and passes89 adapter tests.
+PR880 returned to draft; updated exact-head checks/broker proof, normal merge
+and production artifact verification are still pending at this entry. Do not
+infer that the old passing run certifies the revised source or an active worker.
+
+This advances K4 implementation, not all K4/K8 admission. Combined actual
+Kafka+restricted-DB failure testing, runtime entrypoint/provisioning,
+durable lifecycle/leases, protected broker topology/ACLs and full-history
+coverage, independently verified recovery, monitoring and separately governed
+activation/read-cutover remain open. No production consumer/offset/replay,
+source WAL/slot, recovery commissioning or new service purchase occurred.

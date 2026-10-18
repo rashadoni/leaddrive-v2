@@ -2146,3 +2146,245 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   boundaries pass. Read-only helper review found no remaining concrete blocker
   in this inactive scope. Actual membership/retention/generation integration,
   worker entrypoint/deployment and independent recovery remain future work.
+
+### PR877 frozen source and actual hosted verification started
+
+- Committed/pushed source1cfdb3edbb3e322cd5218be9b22fe19085ad0058 and opened
+  PR877 as draft, then marked ready after confirming the exact remote HEAD.
+  https://github.com/rashadoni/leaddrive-v2/pull/877
+- Authoritative ready-for-review run39119897984 uses exact1cfdb3ed. pr-scope
+  SUCCESS10:36:40Z; static117653291841 and typecheck117653291848 actually
+  started10:36:43Z. Earlier draft39119865162 was superseded/cancelled and is
+  not test evidence. Required runner-policy/scan and tooling validate already
+  SUCCESS; final static/typecheck/realPG results remain PENDING.
+- Existing path-filtered synthetic CDC39119897962 started normally through
+  the PR event, with its existing disposable integration concurrency control.
+  No manual duplicate workflow was dispatched. One helper monitor owns CI
+  observation; root owns any later permitted merge/deploy.
+- While coding, main advanced to b62a87a2142ce852f0c070e3a2d688d836405c52
+  (MTM attendance files/translations only, no Kafka-path overlap). Its foreign
+  deploy39119843829 was active; it was not cancelled or duplicated. Earlier
+  main08407d944 deploy39113010398 is SUCCESS. These are routing observations,
+  not the current PR's release or a new recovery/activation proof.
+- This journal update is a LOCAL checkpoint after frozen source. Do not
+  silently substitute it for the head tested by hosted checks. No production
+  runtime/configuration, data restore, broker activation or replay occurred.
+
+### PR877 hosted integration progress — 2026-10-18 10:45 UTC
+
+- Synthetic CDC run39119897962 SUCCESS10:40:12Z on exact1cfdb3ed. Its actual
+  log reports stack smoke, SQL/WAL boundaries, raw8/8 full-envelope fidelity,
+  cold restart and final CDC smoke PASS. This is an isolated fixture stack,
+  not the new Fund worker's broker driver or production Kafka availability.
+- Ready run39119897984 reports Fund unit step SUCCESS10:44:45Z and real
+  restricted-login PostgreSQL step SUCCESS10:45:11Z. Final job logs/counts
+  and whole static/typecheck outcomes still pending at this checkpoint.
+- Independent public read before this release returned exact08407d944bb700e023b883f4484cd019dd6710bb
+  and /api/v1/ping={ok:true}. Foreign b62a87a deploy39119843829 is still
+  building; it remains untouched. PR877 has not yet merged or deployed.
+
+### PR877 all gates verified and normally merged — 2026-10-18 10:59 UTC
+
+- Ready run39119897984 whole SUCCESS10:58:25Z on exact1cfdb3ed. Completed
+  logs: partition51 + worker17 + reducer43 + consumer78 =189/189 PASS;
+  actual restricted PostgreSQL14/14 PASS. Full baseline18 failing files=18
+  known PASS10:58:22Z. Typecheck SUCCESS10:50:29Z: no diagnostics in the9
+  own Fund/partition source/test paths;64 gated pairs=64 accepted baseline,
+  1326 total advisory diagnostics. Do not call the whole repository TS-clean.
+- Root freshly verified exact PR head/base, clean mergeability and all5
+  protected contexts actually SUCCESS, plus tooling/CDC success. The main
+  delta from the branch base touches MTM only, with no own-path overlap.
+- Normal gh match-head merge877 completed10:59:12Z, without admin bypass,
+  changing protection or deleting either branch/worktree. Merge SHA:
+  133654f4a064adcbb81b6458d05f80b8b7423dec. Normal Actions release and public
+  artifact/SHA/health verification are now pending; merge is not deployment.
+- Prior b62a87a deploy39119843829 passed build/checks and is staging its
+  own immutable artifact. It was not interrupted. The new release must use
+  the existing queues, not a duplicate manual build or direct server copy.
+
+### Connected-driver preparation during release — pinned API boundary
+
+- Read-only review of KafkaJS2.2.4 found a concrete mismatch with our
+  fail-closed contract: recoverFromOffsetOutOfRange calls setDefaultOffset,
+  which sends an offset commit without checking autoCommit. Merely setting
+  autoCommit=false/fromBeginning=true does not prevent implicit reset after
+  retention loss. No KafkaJS package was added or selected for production.
+  [Fetch recovery](https://github.com/tulios/kafkajs/blob/v2.2.4/src/consumer/consumerGroup.js#L540),
+  [default offset commit](https://github.com/tulios/kafkajs/blob/v2.2.4/src/consumer/offsetManager/index.js#L131).
+- Public consumer.commitOffsets also has retry/stopped-no-op behavior.
+  Explicit eachBatch commit avoids that wrapper, but neither public entry
+  accepts our original generation; isStale checks seek, not full membership.
+  GROUP_JOIN lacks generation and HEARTBEAT may be interval-suppressed.
+  Local callbacks alone therefore do not prove the broker-side fence.
+  [Runner](https://github.com/tulios/kafkajs/blob/v2.2.4/src/consumer/runner.js),
+  [group state](https://github.com/tulios/kafkajs/blob/v2.2.4/src/consumer/consumerGroup.js).
+- This is candidate API research, not an observed production incident or
+  completed network adapter. Next actual integration must test retention
+  loss, original-membership rejection, full fetch boundaries and shutdown
+  against a real broker before admitting a driver. No vendor purchase,
+  package change, private SDK hook or weakened offset contract was used.
+- One alternative was inspected, not installed: Confluent JavaScript1.11.0.
+  In the pinned source commitCb's worker calls native Commit, which queues
+  commitAsync; callback success is not evidence of the broker response.
+  commitSync uses the native synchronous call, but no original-generation
+  binding is established by that alone. The native message binding exposes
+  offset as a JS Number: reject unsafe integers, never pretend String()
+  recovers lost INT64 precision. These are API-admission constraints, not
+  evidence that this project's runtime suffered such an incident.
+  [Callback worker](https://github.com/confluentinc/confluent-kafka-javascript/blob/v1.11.0/src/workers.cc#L1049),
+  [native commit](https://github.com/confluentinc/confluent-kafka-javascript/blob/v1.11.0/src/kafka-consumer.cc#L273),
+  [offset conversion](https://github.com/confluentinc/confluent-kafka-javascript/blob/v1.11.0/src/common.cc#L737).
+
+### PR877 release artifact built; final quality gate pending — 2026-10-18 11:23 UTC
+
+- Automatic production run39121398342 uses exact merged
+  133654f4a064adcbb81b6458d05f80b8b7423dec. Build117657579277 SUCCESS11:16:11Z.
+  Root independently verified artifact12135041765, name
+  leaddrive-prod-133654f4a064adcbb81b6458d05f80b8b7423dec, created11:16:07Z,
+  size471516746bytes, not expired, and digest
+  sha256:b2bf6b3eee03505b58afcf2e100448b2d43008daa1e4fec95d78c4a5bf069415.
+- Quality117657579482 passed its Fund unit/restricted-PG steps and all
+  preceding targeted/security gates. The full baseline stage started11:12:53Z
+  and is still running at this checkpoint. Whole release, runtime deployment,
+  public exact-SHA postflight and fresh source inventory remain PENDING.
+- One existing helper monitor owns this run; no duplicate build/deploy/retry
+  was started. Production consumer activation, offsets and replay remain out
+  of this inactive coordinator release. The artifact receipt is not a live
+  deployment receipt or proof of recovery readiness.
+
+### PR877 delivered and independently verified — 2026-10-18 11:32 UTC
+
+- Release39121398342 attempt1 whole SUCCESS11:31:59Z on exact
+  133654f4a064adcbb81b6458d05f80b8b7423dec. This supersedes the pending
+  release entries above. Quality117657579482 SUCCESS11:23:52Z:189/189 focused
+  units (51 partition,17 worker,43 reducer,78 consumer), real restricted-PG
+  14/14, baseline18 failing files=18 known/no new failures. Build and artifact
+  are the exact immutable receipt recorded above, not a rebuilt local bundle.
+- Runtime117662461406 SUCCESS11:31:35Z. Completed logs confirm the already
+  durably verified Fund cutover gate11:29:54Z, event-platform structural
+  ledger/RLS/ownership/exact-money/Fund projection postconditions11:30:34Z,
+  public ping/revision11:31:32Z and login/CSS/JS smoke11:31:33Z. Retention
+  job117664013670 SUCCESS11:31:58Z. No new backup commissioning was performed;
+  the runtime log still identifies plain recovery mode/age not commissioned.
+- Root independently checked the public application at11:32:26.563Z:
+  artifactSha=133654f4a064adcbb81b6458d05f80b8b7423dec, /api/v1/ping ok=true,
+  login and its actual referenced CSS/JS all HTTP200. A successful app release
+  does not prove the new inactive coordinator is a running Kafka worker.
+- Main advanced to6f276879a07ede898afd64d75c0ebb8917b2b3ea while our runtime
+  completed. Its foreign release39123362068 is building and was not touched.
+  GitHub compare proves our merge is its ancestor; the delta is Demo Center,
+  schema/migration and translations, not Kafka/inspection/deployment routing.
+  Do not mistake that other release for ours or cancel it to run diagnostics.
+- One additional aggregate-only inventory attempt over registered
+  leaddrive-prod was rejected by SSH public-key authentication before any
+  remote script ran. StrictHostKeyChecking=yes was enforced; no key was
+  copied, changed or printed. The inspected script blob931e21e3795979fdea7785f22e16e46f94cf5b8b
+  matches current main, and the command was guarded by our exact deployedSHA.
+  Fresh source WAL/slot/timer inventory is therefore NOT RUN, not PASS. Do
+  not bypass access controls, use retired aliases or dispatch a current-main
+  inventory against a different still-live artifact. Existing04:11 source
+  inventory and04:55 recovery23/9 NO-GO remain historical, not fresh proofs.
+- Current result: bounded K4 partition coordinator is merged and delivered,
+  with verified test/artifact/public receipts. Actual connected broker driver,
+  real membership/retention integration, runtime provisioning, independent
+  recovery proof, read-path cutover and all-module adoption remain open.
+  No consumer activation, offset reset or data replay was requested by this
+  release or performed. Next code unit is a broker driver admitted by actual
+  failure-mode integration tests; recovery/activation prerequisites stay
+  fail-closed. The nominated reviewer is not recorded as having approved.
+
+### Resume: connected-driver implementation — 2026-10-18
+
+- Owner said «продолжай». Resume from verified PR877 delivery, not from a
+  claim of active Kafka. Canonical dirty checkout and prior task worktree
+  remain untouched. New codex/kafka-broker-driver-20261018 worktree is based
+  on current main7868ec2fd9a208bc146198452ddfc8aebec5ce68; all six local
+  documentation checkpoints were preserved by scoped cherry-picks.
+- Fresh routing/protection: rashadoni, origin=rashadoni/leaddrive-v2;
+  production13.140.132.245:/opt/leaddrive-v2; active GitHub deploy.yml only.
+  Five required contexts bound to Actions15368, enforce_admins=true,
+  no force/deletion, no bypass. No Azure or direct production deployment.
+- Safety-lane plan: admit a concrete broker API preserving original group
+  membership and explicit acknowledgement, implement a bounded transport
+  adapter for the existing partition processor, prove failure scenarios in
+  disposable GitHub integration, then normal required checks/PR/release.
+  Apache Java classic-group client is under review as an alternative to the
+  two previously rejected public JS API paths; it is not yet selected or
+  proven. No new dependency, service purchase or runtime activation occurred.
+- Existing no-activation boundary remains: no production consumer, offset
+  reset, replay, source WAL/slot change, recovery commissioning or human
+  approval is inferred from this code-development instruction.
+
+### Connected-driver implementation and local proof — 2026-10-18
+
+- Selected the pinned Apache Kafka4.3.1 Java classic/EAGER public API after
+  primary-source review, superseding the tentative selection above. Added an
+  inactive bounded stdin/stdout bridge, explicit NEXT/ACK adapter, exact INT64
+  offsets, frozen partition assignments and terminal/sanitized failure paths.
+  No runtime launcher or production credentials/startup hook was installed.
+- Review caught and fixed raw cleanup-error escape, large-base64 regex stack
+  risk, Docker-shim-only termination and missing pre-commit topic/range
+  revalidation. Stable-generation guard after heartbeat reset was verified
+  against pinned source: no hidden generation=-1/manual-assignment fallback.
+  Name-based OffsetCommit still requires runtime ACLs against topic recreation;
+  current range alone is not proof of archival/full-history coverage.
+- Local targeted bridge88 + partition51 =139/139 PASS; gate-wiring2/2 and
+  disposable-stack guard/config6/6 PASS. Targeted strict ES2017 TypeScript for
+  adapter/tests/fixture PASS. Runner policy PASS across71 workflows; asset
+  contract PASS27 domains/86 topics/5 schemas; shell syntax/diff checks PASS.
+  Only small sequential checks were run after resource inspection; no JVM,
+  broker, full build, full app typecheck or full E2E ran on Contabo.
+- Added a locked, isolated TS fixture runner (tsx4.20.6; lock-only audit0
+  vulnerabilities), Java compilation from pinned broker jars and a Linux-only
+  shared-queue disposable workflow. Broker scenarios remain NOT RUN locally:
+  CI must prove compile/real broker behavior. Simulated DB callbacks in that
+  fixture do not replace the separately required actual PostgreSQL gate or a
+  future combined broker/database failure drill. New adapter units are wired
+  into both existing PR and production quality gates without weakening any.
+- Current stopping point: final fixture/review/documentation before checkpoint
+  and draft PR, then frozen-head required checks plus actual broker integration.
+  Production consumers, offsets/replay, recovery provisioning/commissioning,
+  timers and source WAL/slots remain unchanged. No claim of100% readiness.
+- Final focused unit suite277/277 PASS across five files (adapter88,
+  partition51, worker17, reducer43, consumer78); no skipped cases. Fresh
+  GitHub protection/user/origin recheck matches the current route and five
+  bound mandatory checks. No existing PR for this new branch was found.
+- Added a bounded two-real-consumer takeover scenario: hold replacement DB
+  work, assert old-generation ACK rejection with broker offset still0, then
+  release replacement and require offset1. It is pending actual GitHub proof,
+  not claimed as passed. Final guard/config+wiring suite9/9 PASS, targeted
+  strict ES2017 TypeScript rerun PASS after fixture additions; Java compilation
+  and broker integration remain NOT RUN on this development host by policy.
+
+### Frozen PR880 submitted — 2026-10-18 12:46 UTC
+
+- Checkpoint a094193d41331810bcc74220365ac5c414042d0c pushed to the dedicated
+  origin branch; PR880 created as draft, exact API head verified, then marked
+  ready. No subsequent code push or duplicate retry. Draft-only integration
+  skips are not accepted as proof; the ready event started actual workflows.
+- Real broker run39128688023 is pending the shared integration queue. One
+  helper owns read-only monitoring of this run; root owns remaining checks.
+  Required static/typecheck, actual Java/broker/CDC/PG evidence and release
+  remain pending. No merge or runtime mutation has occurred in this phase.
+
+### Final-review correction before merge — 2026-10-18 12:53 UTC
+
+- Added a negative header-name BOM test: it FAILS on a094 because TextDecoder
+  silently strips the BOM and aliases a different identifier. Fixed by
+  preserving BOM bytes as part of the decoded name; adapter89/89 now PASS.
+  No production data was used. This is a code-review regression, not an
+  allegation of an observed production exploit.
+- Returned PR880 to draft while retaining the existing running attempts for
+  real-broker diagnostics. No cancellation/manual retry. The correction is
+  local until the current integration evidence is collected; a subsequent
+  frozen head must pass all actual checks before normal merge. a094 results
+  alone will not authorize delivery of the revised source.
+- Real broker39128688023 whole SUCCESS12:52:29Z on a094. Root independently
+  read all13 PASS markers: ordered restart, poison/no ACK, pre-send ACK loss,
+  post-commit receipt loss, transaction holes, missing offset, compaction,
+  expired history, recreated topic, retention/recreation during DB work,
+  expired membership and concurrent takeover. Java compiled against actual
+  pinned broker jars and cleanup succeeded. This is actual broker proof with
+  simulated database effects, not combined production acceptance/activation.
+  Disposable stack39128687970 also SUCCESS. Current old-head static/typecheck
+  continue; synthetic CDC39128688071 is running. No manual job retry was made.
