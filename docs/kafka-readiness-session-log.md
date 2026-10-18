@@ -2604,4 +2604,18 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  No running job was manually cancelled/rerun and no runtime operation occurred.
 - Next: finish preserving the earlier run, publish the reviewed correction,
  verify GitHub has that exact new HEAD before marking ready, then require
- actual current-SHA checks and combined drill before normal merge/release.
+  actual current-SHA checks and combined drill before normal merge/release.
+
+### Exact-money correction regression coverage — 2026-10-18 14:32 UTC
+
+- Added two direct Fund contract tests (not only reducer output assertions):
+  a one-quantum signed-delta mismatch beyond Number's safe scaled integer
+  limit and a negative large legacy total with exact0.0001 remainder. Both
+  valid facts are accepted and their one-quantum corruptions rejected.
+- Seven focused files now329/329 PASS5.78s. ES2017 strict check still uses
+  the project's unchanged target; no rounding, floating-point substitution,
+  migration, baseline weakening or runtime configuration was introduced.
+- Independent failed-run review measured10m25s for setup/install/generation/
+  strict-check before failure, leaving about9m35s of the unchanged20-minute
+  job budget for the actual combined phase on the correction. This is a
+  budget to observe, not evidence of a timeout or permission to skip tests.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { DomainEventEnvelope } from "../lib/event-platform/envelope"
 import type { CanonicalJsonValue } from "../lib/event-platform/canonical-json"
-import { EventContractValidationError } from "../lib/event-platform/fund-contracts"
+import { EventContractValidationError, FUND_EVENT_CONTRACTS } from "../lib/event-platform/fund-contracts"
 import { FundBalanceReductionError, reduceFundBalance, type FundBalanceState } from "../lib/event-platform/fund-balance-reducer"
 
 const schemas = {
@@ -98,6 +98,27 @@ describe("pure Fund balance reducer", () => {
     const maximum = reduceFundBalance(almost, transaction(2, "deposit", "0.0001", "0.0001"))
     expect(maximum.balance).toBe("99999999999999.9999")
     expect(reduceFundBalance(maximum, transaction(3, "withdrawal", "99999999999999.9999", "-99999999999999.9999")).balance).toBe("0.0000")
+  })
+
+  it("rejects a one-quantum signed-delta mismatch above safe-integer precision at the contract boundary", () => {
+    const schema = FUND_EVENT_CONTRACTS["finance.fund-transaction-recorded.v1"].data
+    const data = {
+      fundId: "fund-a", transactionId: "large-withdrawal", currency: "USD",
+      transactionType: "withdrawal", amount: "900719925474.0993", signedDelta: "-900719925474.0993",
+    }
+    expect(schema.safeParse(data).success).toBe(true)
+    expect(schema.safeParse({ ...data, signedDelta: "-900719925474.0992" }).success).toBe(false)
+  })
+
+  it("checks a negative legacy total exactly before the reducer sees the bootstrap fact", () => {
+    const schema = FUND_EVENT_CONTRACTS["finance.fund-opened.v1"].data
+    const data = {
+      fundId: "fund-a", currency: "USD", legacyBootstrap: true, legacyTransactionCount: 1,
+      openingBalance: "900719925474.0993", signedLegacyTransactionTotal: "-900719925474.0992",
+      storedBalance: "0.0001",
+    }
+    expect(schema.safeParse(data).success).toBe(true)
+    expect(schema.safeParse({ ...data, storedBalance: "0.0000" }).success).toBe(false)
   })
 
   it("rejects overflow and negative prefixes immediately, even if a later fact could conceal them", () => {
