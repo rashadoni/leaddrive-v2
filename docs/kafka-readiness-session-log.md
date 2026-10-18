@@ -1199,3 +1199,37 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   for the tested source SHA. Next material action is reading actual corrected
   PostgreSQL/typecheck results, then normal merge only if all required checks
   and real-PG proof succeed. Kafka and recovery timers remain OFF.
+
+## 2026-10-18 00:33 UTC — second actual PostgreSQL result and narrow race proof correction
+
+- PR871 run39082180225 on628d7092698d9222264398aa5b026ef640914671 completed
+  FAILURE. Actual PostgreSQL7/8 scenarios PASS: source atomic guard, two-tenant
+  exact parity/independent RLS, duplicate/monotonic checkpoints/build isolation,
+  full-envelope canonicalization/tamper rejection, SQL/deferred-COMMIT rollback,
+  restricted LOGIN/privilege denial, and real controller blocking. The only
+  failed assertion classified the competing shadow INSERT abort.
+- PostgreSQL server log confirms the exact unique constraint
+  fund_balance_projections_build_key. The first assertion did not print the
+  Prisma wrapper, so P2010/meta23505 remains the expected wrapper rather than
+  an already observed structured receipt. Unknown wrappers remain a failure.
+  PostgreSQL16 serialization-failure-handling documentation allows justified
+  unique-conflict retry only by restarting the COMPLETE transaction; arbitrary
+  unique violations are not interchangeable with successful processing.
+- Updated only the disposable PG test: allow P2010+23505 only for the exact
+  quoted shadow constraint; negative controls reject other SQLSTATEs, wrappers,
+  missing metadata and similarly named/other constraints. A bounded barrier
+  makes both real Serializable role SELECTs happen before either INSERT. Require
+  one committed result and one rejected factory, then retry the actual rejected
+  connection with a NEW factory and check opening balance0.0000/version1,
+  exact event/checkpoint, exactly one shadow/inbox/checkpoint and unchanged
+  source/active/pointers/effects. No runtime catch, isolation, grants, guard or
+  migration was relaxed. Updated actual PG proof is NOT RUN until the next CI.
+- Completed typecheck117541321827 SUCCESS under its current blocking gates:
+  compiler exit2/1326 diagnostics/64 gated pairs equal baseline64, not a globally
+  clean repository. All five task-owned Fund TS paths have zero diagnostics;
+  the five previous TS2737 warnings are gone. Exact-head CDC39082180252 SUCCESS.
+- Old full run is finished, PR871 is draft, no retry exists or is being added.
+  Local focused Node wiring2/2 and diff checks PASS. Next: review this narrow
+  test change, checkpoint/push one new draft head, cheap checks then ready once
+  for actual full gates. Product adapter stays unreferenced/inactive; Kafka,
+  production offsets, replay and recovery timers remain OFF.

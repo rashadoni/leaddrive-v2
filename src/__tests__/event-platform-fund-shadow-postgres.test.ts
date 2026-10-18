@@ -59,13 +59,18 @@ function sql(url: URL, source: string): void {
 // Optional instrumentation injects a failure AFTER real SQL or just before
 // the real COMMIT. The enclosing Prisma factory still owns COMMIT/ROLLBACK.
 function database(client: Client, input?: {
+  afterQuery?: (query: string, tx: FundShadowTransaction) => Promise<void>
   afterExecute?: (query: string, tx: FundShadowTransaction) => Promise<void>
   beforeCommit?: (tx: FundShadowTransaction) => Promise<void>
 }): FundShadowDatabase {
   return {
     $transaction: (work, options) => client.$transaction(async real => {
       const tx: FundShadowTransaction = {
-        $queryRawUnsafe: <T>(query: string, ...values: unknown[]) => real.$queryRawUnsafe<T>(query, ...values),
+        $queryRawUnsafe: async <T>(query: string, ...values: unknown[]) => {
+          const result = await real.$queryRawUnsafe<T>(query, ...values)
+          await input?.afterQuery?.(query, tx)
+          return result
+        },
         $executeRawUnsafe: async (query, ...values) => {
           const count = await real.$executeRawUnsafe(query, ...values)
           await input?.afterExecute?.(query, tx)
@@ -110,12 +115,30 @@ const permissionDenied = { code: "P2010", meta: { code: "42501" } }
 
 function isExpectedConcurrentAbort(error: unknown): boolean {
   if (!error || typeof error !== "object") return false
-  const typed = error as { code?: string; meta?: { code?: string } }
+  const typed = error as { code?: string; meta?: { code?: string; message?: string } }
   // Prisma may surface serialization failures directly as P2034 or wrap the
   // PostgreSQL SQLSTATE from a raw query. Only the adapter's bounded lock wait
-  // (55P03), not an arbitrary SQL/permission/constraint error, is an alternative.
-  return typed.code === "P2034" || (typed.code === "P2010" && ["40001", "55P03"].includes(typed.meta?.code ?? ""))
+  // (55P03) or the exact competing shadow INSERT constraint is an alternative.
+  // PostgreSQL can report 23505 when a Serializable snapshot predates that
+  // INSERT. This is NOT a generic unique-error exception: the failed factory
+  // must still reject, then the entire transaction must be retried and checked.
+  const shadowInsertConflict = typed.meta?.code === "23505" && typeof typed.meta.message === "string"
+    && typed.meta.message.includes('duplicate key value violates unique constraint "fund_balance_projections_build_key"')
+  return typed.code === "P2034" || (typed.code === "P2010"
+    && (["40001", "55P03"].includes(typed.meta?.code ?? "") || shadowInsertConflict))
 }
+
+describe("Fund concurrency test's narrow abort classification", () => {
+  it("never treats arbitrary SQL/permission/unique violations as an expected competing shadow INSERT", () => {
+    const message = 'duplicate key value violates unique constraint "fund_balance_projections_build_key"'
+    expect(isExpectedConcurrentAbort({ code: "P2010", meta: { code: "23505", message } })).toBe(true)
+    for (const error of [null, new Error(message), { code: "P2002", meta: { code: "23505", message } },
+      { code: "P2010", meta: { code: "42501", message } }, { code: "P2010", meta: { code: "23505" } },
+      { code: "P2010", meta: { code: "23505", message: message.replace("fund_balance_projections_build_key", "consumer_inbox_pkey") } },
+      { code: "P2010", meta: { code: "23505", message: message.replace('build_key"', 'build_key_other"') } },
+    ]) expect(isExpectedConcurrentAbort(error)).toBe(false)
+  })
+})
 
 function signal<T>() {
   let resolve!: (value: T) => void
@@ -370,22 +393,38 @@ pgDescribe("Fund shadow on actual PostgreSQL: immutable source, restricted login
 
   it("serializes two real connections, rejects gaps/old unknown events, and retries aborted duplicate transactions safely", async () => {
     const context = await fixture()
+    const before = await snapshotSource(context.scope.organizationId)
     const url = new URL(scratchUrl())
     url.username = context.scope.expectedWorkerRole
     url.password = password
     const second = clientFor(url)
-    const outcomes = await Promise.allSettled([context.client, second].map(client => consumeFundShadowRecord(database(client), context.scope, context.records[0])))
-    expect(outcomes.filter(value => value.status === "fulfilled").length).toBeGreaterThanOrEqual(1)
-    for (const outcome of outcomes) {
-      if (outcome.status === "rejected") expect(isExpectedConcurrentAbort(outcome.reason), "Unexpected concurrent SQL/ACL failure must not be hidden").toBe(true)
+    const connections = [context.client, second]
+    const bothSnapshotsStarted = signal<void>()
+    let snapshots = 0
+    const afterQuery = async (query: string) => {
+      if (!query.includes("fund-shadow:role")) return
+      if (++snapshots === 2) bothSnapshotsStarted.resolve()
+      await bounded(bothSnapshotsStarted.promise, "two real Serializable snapshots before either INSERT")
     }
-    // Serializable may abort the waiting transaction. The future broker must
-    // retry the WHOLE transaction; an in-tx swallowed error is never success.
-    expect((await consumeFundShadowRecord(database(second), context.scope, context.records[0])).duplicate).toBe(true)
+    const outcomes = await Promise.allSettled(connections.map(client => consumeFundShadowRecord(database(client, { afterQuery }), context.scope, context.records[0])))
+    expect(outcomes.filter(value => value.status === "fulfilled")).toHaveLength(1)
+    expect(outcomes.filter(value => value.status === "rejected")).toHaveLength(1)
+    for (const [index, outcome] of outcomes.entries()) {
+      if (outcome.status !== "rejected") continue
+      expect(isExpectedConcurrentAbort(outcome.reason), "Unexpected concurrent SQL/ACL failure must not be hidden").toBe(true)
+      // Retry the actual rejected connection in a NEW factory, not inside the
+      // failed transaction, and prove the committed duplicate's current state.
+      expect(await consumeFundShadowRecord(database(connections[index]), context.scope, context.records[0])).toMatchObject({
+        duplicate: true, checkpointAdvanced: false,
+        state: { organizationId: context.scope.organizationId, fundId: context.fundId, balance: "0.0000", currency: "USD", aggregateVersion: 1, lastEventId: context.records[0].headers!.id },
+        checkpoint: { sourceOffset: BigInt(context.records[0].offset), lastEventId: context.records[0].headers!.id },
+      })
+    }
     expect(await counts(context)).toEqual({ shadows: 1, inbox: 1, checkpoints: 1 })
     await expect(consumeFundShadowRecord(database(context.client), context.scope, context.records[2])).rejects.toThrow()
     await expect(consumeFundShadowRecord(database(context.client), context.scope, at(context.records[1], 9))).rejects.toThrow()
     expect(await counts(context)).toEqual({ shadows: 1, inbox: 1, checkpoints: 1 })
+    expect(await snapshotSource(context.scope.organizationId)).toEqual(before)
   })
 
   it("requires a real restricted LOGIN, cannot mutate active/source/effects/lifecycle or inherit privileged roles", async () => {
