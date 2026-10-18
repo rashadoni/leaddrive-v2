@@ -495,3 +495,28 @@
 - All private material retained outside Git; only Mac public signer registered.
   Local journal-only checkpoints intentionally not pushed to churn completed CI.
   Dirty canonical checkout and unrelated worktrees remain untouched.
+
+## 2026-10-19 (Asia/Baku): autonomous continuation and bounded storage diagnostic fix
+
+- Resumed saved stopping point in same worktree/branch. Re-ran project context,
+  read current instructions, fetched main:still226dde0e77c0c36a4de991bb703ba8f8416c5a64.
+  PR891 remains open awaiting final full CDC; coordinator main/release hold intact.
+- Dispatched existing exact-main read-only backup-readiness run39172424961;
+  completed FAILURE. No producer, restore, timer, DB or Kafka action dispatched.
+- Independent investigation found a real format incompatibility: official
+  botocore ClientError.MSG_TEMPLATE/_get_retry_info accepts an optional
+  '(reached max retries: N)' suffix before the error colon. Current strict
+  diagnostic parser rejected that valid format. Primary reference:
+  https://github.com/boto/botocore/blob/develop/botocore/exceptions.py
+- Added bounded optional decimal0..999 retry suffix for exact
+  GetObjectLockConfiguration error prefix only. This maps service failures to
+  existing sanitized enums; it never turns a failed CLI response into verified,
+  outputs raw error contents, or bypasses Object Lock readiness. Whether this
+  explains actual production format is still unproven until reviewed main probe.
+- Resources before targeted sequential check:13.5GB RAM available,198GB disk,
+  memory pressure some0.16/full0.10; swap1GB used. No heavy check on Contabo.
+ 13diagnostic tests PASS, including bounded suffix, bad/multiline/oversized
+  variants, failed-success-looking output, actual timeouts and quiet fail-closed
+  report handler. Existing assets PASS; Bash syntax/diff check PASS.
+- This follow-up supersedes earlier frozen A3 code acceptance for final delivery;
+  exact-head gates must rerun. Earlier430c acceptance remains historical evidence.

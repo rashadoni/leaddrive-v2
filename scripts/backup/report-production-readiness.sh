@@ -157,7 +157,7 @@ def classify():
     if status == 253:
         return "cli_configuration_error"
     if status == 254:
-        service = re.match(rb"\s*An error occurred \(([A-Za-z0-9]+)\) when calling the GetObjectLockConfiguration operation:", body)
+        service = re.match(rb"\s*An error occurred \(([A-Za-z0-9]+)\) when calling the GetObjectLockConfiguration operation(?: \(reached max retries: [0-9]{1,3}\))?:", body)
         if service:
             return {
                 b"AccessDenied": "access_denied",
