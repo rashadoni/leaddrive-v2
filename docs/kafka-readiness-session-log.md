@@ -3331,3 +3331,39 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   supersede its old source, and diagnose actual results. No blind rerun of the
   same failed SHA. No production Kafka activation, offsets/replay, database or
   backup mutation and no release is claimed.
+
+### Second source verification and direct cross-session coordination — 2026-10-19 Asia/Baku
+
+- Published correction1d526a126fd540d86b38ed8bbea09b435fc4a408 on PR891.
+  New normal source-event runs: PR39164817257, broker39164817267,
+  CDC39164817265, stack39164817285. Scan39164817294,
+  runner-policy39164817423 and tooling39164817330 SUCCESS on this source.
+  Full generated-client and runtime proof are still in progress/queued;
+  do not reuse the old source's unit successes as complete current verification.
+  Standard workflow concurrency superseded old own-source work after the fix;
+  no manual rerun, unrelated job cancellation or gate change was performed.
+- Read actual owner-started sessions directly, not via owner-relayed messages.
+  A3 preparation PR892 is docs-only and NO-GO for recovery. A4 PR893 adds
+  finite WAL budget/topology/security gates; its checks continue independently.
+  A5 draft PR894 final source5bd0b2334a6204f6cf4a6fb45cf84c83474ad1d5 has
+  actual admission-postgres run39164956608 SUCCESS (17 real PostgreSQL cases,
+ 28 alert-receipt units); authenticated admission contract remains inactive and
+  its controller/business execution is not implemented or commissioned.
+- A5 scan job117785851542/run39164956501 reports one finding. Independently
+  reviewed the exact original README in checkpoint6ca3b5e2e: generic-api-key
+  matches ordinary test-description prose, not a credential. Current prose is
+  corrected but full branch-range scanning still includes that checkpoint.
+  No scanner exception, baseline change, force-push, checkpoint deletion or
+  false green is authorized or performed. PR894 remains draft/red; source
+  snapshot integration is a possible later normal delivery decision, not an
+  already performed merge or permission to bypass scanning.
+- Sent normal coordination comments directly in existing PRs:
+  https://github.com/rashadoni/leaddrive-v2/pull/893#issuecomment-6255018436
+  (preserve exact-SHA checks and local-only receipt checkpoints while running),
+  https://github.com/rashadoni/leaddrive-v2/pull/894#issuecomment-6255018598
+  (preserve branch/history and red scan; root owns later gated delivery).
+  Comments are delivered, not evidence that a session has read them or acted.
+- Current stop/checkpoint while monitoring: PR891 source1d526a126 under actual
+  verification; root has no production delivery/activation receipt for it.
+  Next: evaluate current full checks, broker/CDC runtime markers and fix only
+  demonstrated own defects. Overall A3/A4 runtime and Farah gates remain open.
