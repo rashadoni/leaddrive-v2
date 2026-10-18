@@ -35,7 +35,7 @@ WITH b AS MATERIALIZED (
 ), shadow AS MATERIALIZED (
   SELECT p."fundId" AS fund,p.balance::text AS balance,p.currency,p."aggregateVersion"::text AS version,
     p."lastEventId"::text AS last_event,p.status,p.evidence->>'lastEventId' AS evidence_last_event,
-    p.evidence->>'lastEventAt' AS evidence_last_at
+    p.evidence->>'lastEventAt' AS evidence_last_at,p.evidence AS worker_evidence
   FROM public.fund_balance_projections p JOIN b ON p."projectionVersion"=b.version AND p."buildKey"=b.key
   WHERE p."organizationId"=$1 ORDER BY p."fundId" LIMIT $3
 ), c AS MATERIALIZED (

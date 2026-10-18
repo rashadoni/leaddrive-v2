@@ -44,6 +44,8 @@ await admin(`UPDATE funds SET name='Synthetic renamed' WHERE id='fund-a';UPDATE 
  FROM domain_events e JOIN event_outbox o ON o."eventId"=e.id AND o."organizationId"=e."organizationId" WHERE e."organizationId"='org-a';
  INSERT INTO projection_checkpoints("organizationId","buildId","sourceTopic","sourcePartition","sourceOffset","lastEventId")
  SELECT 'org-a',${q(buildId)},"sourceTopic",0,"sourceOffset","eventId" FROM consumer_inbox WHERE "consumerName"=${q(`fund-shadow:${buildId}`)} ORDER BY "sourceOffset" DESC OFFSET 1 LIMIT 1;
+ UPDATE fund_balance_projections s SET evidence=s.evidence||jsonb_build_object('adapterVersion',1,'buildId',${q(buildId)},'codeSha',${q(expected.codeSha)},'sourceTopic',i."sourceTopic",'sourcePartition',i."sourcePartition",'lastSourceOffset',i."sourceOffset"::text)
+ FROM consumer_inbox i WHERE s."organizationId"=i."organizationId" AND s."lastEventId"=i."eventId" AND i."consumerName"=${q(`fund-shadow:${buildId}`)} AND s."buildKey"='operator-snapshot' AND s."projectionVersion"=2;
  ALTER TABLE funds ENABLE ROW LEVEL SECURITY;ALTER TABLE funds FORCE ROW LEVEL SECURITY;
  CREATE POLICY operator_snapshot_tenant ON funds USING("organizationId"=current_setting('app.org_id',true));
  GRANT USAGE ON SCHEMA public TO op_fund_reader;
@@ -130,6 +132,23 @@ await test('write-capable reader or missing FORCE RLS is rejected before evidenc
  try{await rejected(read())}finally{await admin('REVOKE UPDATE (balance) ON fund_balance_projections FROM op_fund_reader;')}
  await admin('ALTER TABLE domain_events NO FORCE ROW LEVEL SECURITY;')
  try{await rejected(read())}finally{await admin('ALTER TABLE domain_events FORCE ROW LEVEL SECURITY;')}
+})
+await test('actual stored worker adapter/build/code/position provenance cannot be omitted or changed',async()=>{
+ const original=await admin(`SELECT evidence::text FROM fund_balance_projections WHERE "organizationId"='org-a' AND "fundId"='fund-a' AND "projectionVersion"=2;`)
+ for(const [field,value] of [['adapterVersion',2],['buildId',foreignBuild],['codeSha','b'.repeat(40)],['sourceTopic','wrong-topic'],['sourcePartition',1],['lastSourceOffset','999']]) {
+  const changed={...JSON.parse(original),[field]:value}
+  await admin(`UPDATE fund_balance_projections SET evidence=${q(JSON.stringify(changed))}::jsonb WHERE "organizationId"='org-a' AND "fundId"='fund-a' AND "projectionVersion"=2;`)
+  try{await rejected(read())}finally{await admin(`UPDATE fund_balance_projections SET evidence=${q(original)}::jsonb WHERE "organizationId"='org-a' AND "fundId"='fund-a' AND "projectionVersion"=2;`)}
+ }
+})
+await test('real checkpoint known-event mismatch is rejected at an otherwise complete offset',async()=>{
+ const original=JSON.parse(await admin(`SELECT to_jsonb(c)::text FROM projection_checkpoints c WHERE "buildId"=${q(buildId)};`)),before=await fingerprint()
+ const wrong=await admin(`SELECT "eventId"::text FROM consumer_inbox WHERE "consumerName"=${q(`fund-shadow:${buildId}`)} ORDER BY "sourceOffset" LIMIT 1;`)
+ assert.notEqual(wrong,original.lastEventId)
+ const replace=row=>admin(`DELETE FROM projection_checkpoints WHERE "buildId"=${q(buildId)};INSERT INTO projection_checkpoints SELECT * FROM jsonb_populate_record(NULL::projection_checkpoints,${q(JSON.stringify(row))}::jsonb);`)
+ await replace({...original,lastEventId:wrong})
+ try{await rejected(read())}finally{await replace(original)}
+ assert.equal(await fingerprint(),before)
 })
 await test('REPEATABLE READ keeps one snapshot across concurrent canonical writer; next collection sees stale shadow',async()=>{
  let changed=false

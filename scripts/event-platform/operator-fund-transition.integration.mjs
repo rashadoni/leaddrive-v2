@@ -19,6 +19,12 @@ await owned(await readFile(new URL('../../ops/event-platform/operator/fund-trans
 await admin(`GRANT USAGE ON SCHEMA public TO ld_kafka_control_owner;
  GRANT SELECT ON funds,fund_transactions,domain_events,event_outbox,event_aggregate_heads,fund_balance_projections,projection_builds,projection_checkpoints,consumer_inbox,effect_outbox,projection_activations,projection_promotion_events TO ld_kafka_control_owner;
  GRANT UPDATE ON projection_builds,projection_activations TO ld_kafka_control_owner;
+ GRANT SELECT ON projection_builds,projection_promotion_events TO ld_kafka_operator_controller;
+ GRANT UPDATE ("effectsFenced") ON projection_builds TO ld_kafka_operator_controller;
+ CREATE POLICY operator_final_deferred_target ON projection_builds AS RESTRICTIVE TO ld_kafka_operator_controller
+ USING("projectionName"='finance.fund-balance' AND ld_kafka_operator.fund_guard_scope("organizationId",id)) WITH CHECK("projectionName"='finance.fund-balance' AND ld_kafka_operator.fund_guard_scope("organizationId",id));
+ CREATE POLICY operator_final_deferred_event ON projection_promotion_events AS RESTRICTIVE TO ld_kafka_operator_controller
+ USING("projectionName"='finance.fund-balance' AND ld_kafka_operator.fund_guard_scope("organizationId","targetBuildId","requestKey")) WITH CHECK("projectionName"='finance.fund-balance' AND ld_kafka_operator.fund_guard_scope("organizationId","targetBuildId","requestKey"));
  GRANT INSERT ON projection_promotion_events TO ld_kafka_control_owner;
  CREATE ROLE op_final_reader LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD 'operator-fixture-only';
  GRANT USAGE ON SCHEMA public,ld_kafka_operator TO op_final_reader;
@@ -41,6 +47,8 @@ async function seed() {
  SELECT e."organizationId",${q(`fund-shadow:${id}`)},1,e.id,e."eventType",o."payloadHash",'ld.staging.finance.events.v1',0,row_number() OVER(ORDER BY e."aggregateId",e."aggregateVersion")-1
  FROM domain_events e JOIN event_outbox o ON o."eventId"=e.id AND o."organizationId"=e."organizationId" WHERE e."organizationId"='org-a' AND e."aggregateType"='fund';
  INSERT INTO projection_checkpoints("organizationId","buildId","sourceTopic","sourcePartition","sourceOffset","lastEventId") SELECT 'org-a',${q(id)},"sourceTopic",0,"sourceOffset","eventId" FROM consumer_inbox WHERE "consumerName"=${q(`fund-shadow:${id}`)} ORDER BY "sourceOffset" DESC LIMIT 1;
+ UPDATE fund_balance_projections s SET evidence=s.evidence||jsonb_build_object('adapterVersion',1,'buildId',${q(id)},'codeSha',repeat('a',40),'sourceTopic',i."sourceTopic",'sourcePartition',i."sourcePartition",'lastSourceOffset',i."sourceOffset"::text)
+ FROM consumer_inbox i WHERE s."organizationId"=i."organizationId" AND s."lastEventId"=i."eventId" AND i."consumerName"=${q(`fund-shadow:${id}`)} AND s."projectionVersion"=${v} AND s."buildKey"=${q(key)};
  UPDATE projection_builds SET status='verifying' WHERE id=${q(id)};
  UPDATE projection_builds SET status='ready',"completedAt"=clock_timestamp() WHERE id=${q(id)};`)
  return {id,key,version:v}
@@ -69,10 +77,10 @@ async function prepared(target,action='promote') {
  // verifier implementation. Captured hash and canonical fold share one RR tx.
  await owned(`INSERT INTO ld_kafka_operator.fund_verified_evidence VALUES(${q(id)},${json(plan)},${q(raw)},${q(materialHash)},${q(previous.id)},clock_timestamp()+interval '1 minute',clock_timestamp()+interval '1 hour');`)
  const generation=await call('op_controller','consume',`${q(id)},${q(hash)},${json(plan)}`)
- return {id,hash,generation,target,previous,materialHash}
+ return {id,hash,generation,plan,target,previous,materialHash}
 }
 const args=f=>`${q(f.id)},${q(f.hash)},${f.generation}`
-const apply=f=>fixtureSql('op_controller',`BEGIN;SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});SELECT ld_kafka_operator.apply_fund_transition(${args(f)});COMMIT;`,{sanitizedDiagnostics:true})
+const apply=f=>fixtureSql('op_controller',`BEGIN;SELECT set_config('app.org_id',${q(f.plan.organizationId)},true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});SELECT ld_kafka_operator.apply_fund_transition(${args(f)});COMMIT;`,{sanitizedDiagnostics:true})
 await test('canonical proof + frozen material + authenticated actual pointer promotion and retained rollback',async()=>{
  const promoted=await prepared();await apply(promoted)
  assert.equal((await pointer()).id,promoted.target.id)
@@ -112,7 +120,7 @@ await test('held final barrier denies source/checkpoint/inbox writes and wrong c
  const f=await prepared(),connection=fixtureConnection('op_controller',{sanitizedDiagnostics:true})
  await denied(call('op_controller2','apply_fund_transition',args(f)))
  try{
-  await connection.command(`BEGIN;SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
+  await connection.command(`BEGIN;SELECT set_config('app.org_id',${q(f.plan.organizationId)},true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
   await denied(admin("UPDATE funds SET name='Synthetic blocked transition writer' WHERE id='fund-a';"))
   // Target is ready, so the original checkpoint guard also denies mutations.
   await assert.rejects(admin(`UPDATE projection_checkpoints SET "sourceOffset"="sourceOffset"+1 WHERE "buildId"=${q(f.target.id)};`),/P0001|23514/)
@@ -125,7 +133,7 @@ await test('actual final evidence expiry at COMMIT rolls back pointer/build/even
  await owned(`UPDATE ld_kafka_operator.fund_verified_evidence SET valid_until=clock_timestamp()+interval '3 seconds' WHERE request_id=${q(f.id)};`)
  let staged=false
  try{
-  await connection.command(`BEGIN;SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
+  await connection.command(`BEGIN;SELECT set_config('app.org_id',${q(f.plan.organizationId)},true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
   const version=await connection.command(`SELECT ld_kafka_operator.apply_fund_transition(${args(f)});`)
   staged=version===String(BigInt(before.version)+1n)
   await connection.command('SELECT pg_sleep(4);');await denied(connection.command('COMMIT;'))
@@ -148,4 +156,22 @@ await test('retained actual build with expired rollback window cannot replace cu
  const rollback=await prepared(first.target,'rollback'),before=await pointer()
  await owned(`UPDATE ld_kafka_operator.fund_verified_evidence SET retained_until=clock_timestamp()-interval '1 second' WHERE request_id=${q(rollback.id)};`)
  await denied(apply(rollback));assert.deepEqual(await pointer(),before)
+})
+
+await test('PG16 deferred guard rights expose only exact live-barrier target and cannot change its effect fence',async()=>{
+ const f=await prepared()
+ assert.equal(await fixtureSql('op_controller',`BEGIN;SELECT set_config('app.org_id','org-a',true);SELECT count(*) FROM projection_builds WHERE id=${q(f.target.id)};COMMIT;`),'org-a\n0')
+ const connection=fixtureConnection('op_controller',{sanitizedDiagnostics:true})
+ try{
+  await connection.command(`BEGIN;SELECT set_config('app.org_id','org-a',true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
+  assert.equal(await connection.command(`SELECT count(*) FROM projection_builds WHERE id=${q(f.target.id)};`),'1')
+  assert.equal(await connection.command(`SELECT count(*) FROM projection_builds WHERE id<>${q(f.target.id)};`),'0')
+  await connection.command('ROLLBACK;')
+ }finally{await connection.close()}
+ await assert.rejects(fixtureSql('op_controller',`BEGIN;SELECT set_config('app.org_id','org-a',true);SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});UPDATE projection_builds SET "effectsFenced"=false WHERE id=${q(f.target.id)};COMMIT;`),/23514/)
+ await assert.rejects(fixtureSql('op_controller','SET session_replication_role=replica;'),/42501/)
+ await assert.rejects(fixtureSql('op_controller','ALTER TABLE projection_builds DISABLE TRIGGER projection_builds_state_machine_trigger;'),/42501/)
+ await assert.rejects(fixtureSql('op_controller',`UPDATE projection_builds SET status='failed' WHERE id=${q(f.target.id)};`),/42501/)
+ assert.equal(await admin(`SELECT "effectsFenced" FROM projection_builds WHERE id=${q(f.target.id)};`),'t')
+ await apply(f)
 })

@@ -900,3 +900,47 @@ No diagnostic PG run exists yet for conflicted776a51e13. After this feature-only
 merge commit, rerun its pending exact-object diagnosis; target remains PG16.13,
 no existing trigger altered or made immediate. Main's deployed delivery activity
 belongs to the original session, not this preparation branch.
+
+### Exact denied object found; scoped PG16 commit-role closure prepared
+
+Merged-head diagnostic run39174030204 on64472ecd0 confirms42501 object=
+projection_builds at finalization (new transition3/8,5 FAIL); all preceding
+own/upstream gates succeeded. This supersedes incomplete owner-grant diagnosis.
+Pinned PG16 deferred invoker guards need COMMIT-role row access; no trigger is
+changed, disabled, converted to SECURITY DEFINER or forced IMMEDIATE.
+Prepared fixture-only SELECT on builds/events and UPDATE(effectsFenced) solely
+for SELECT-FOR-SHARE privilege, restricted by a new private RLS helper to exact
+Fund projection/tenant/build/requestKey in the current request/generation/backend/
+xid8 barrier context with fresh check_token allowing settlement. No context means
+zero visible rows; other targets remain hidden. Existing immutable field guard
+must reject effect-fence changes, while status UPDATE, ALTER TRIGGER and replica
+mode remain forbidden. New actual-role case proves those boundaries plus normal
+transition success. Controller still cannot mutate the pointer directly or
+register evidence; earlier absolute “no control-table privileges” is superseded
+only by this narrowly scoped fixture commit-guard accommodation. Explicit caller
+org context is set from approved fixture plan before entering definer function.
+
+### Upstream independent review findings corrected in owned snapshot collector
+
+Read current main's kafka-readiness-session-log: later A5 snapshot findings were
+not imported into PR891 and remain our bounded preparation work. Column-only
+DML grant issue was already fixed earlier. Now add exact checkpoint lastEventId
+→ inbox topic/partition/offset equality and actual worker evidence fields
+adapterVersion1/buildId/codeSha/sourceTopic/sourcePartition/lastSourceOffset plus
+last-event identity/time. A newer-offset duplicate without its own durable
+byte/position receipt is conservatively unsupported, never certified by an
+unrelated event or mere maximum offset. This does not change the actual worker's
+duplicate handling. SQL now reads full worker evidence and fixtures seed its real
+contract shape, explicitly not actual worker-execution proof.
+
+Local snapshot41/41 and all174 unit cases PASS, including a valid two-partition
+control and known cross-partition swap, missing/wrong worker provenance and
+unproven duplicate position denial. Added two real-schema cases before the
+deliberate stale-writer phase: corrupted header denial/restoration and an actual
+otherwise-complete checkpoint known-event mismatch. Only our disposable checkpoint
+seed is replaced/restored via existing permitted DELETE/INSERT, preserving exact
+original row/fingerprint; no production/Kafka offset reset or guard bypass.
+Own final composition fixture also seeds full worker provenance. Syntax/diff,
+runner-policy72 and upstream admission-file exact comparison PASS. Resources
+15.5GB available/195GB disk/swap3770MB/pressure avg10=0; no heavy local check.
+Fresh hosted exact-source proof pending; prior failures remain failures.

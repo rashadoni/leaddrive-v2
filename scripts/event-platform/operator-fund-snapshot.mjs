@@ -90,21 +90,32 @@ export async function collectFundRecoveryDatabaseSnapshot(database, input, reduc
           historyHash:digest(histories.get(fundId)),stateHash:digest([scope.organizationId,fundId,state.balance,state.currency,String(state.aggregateVersion),state.lastEventId,state.lastEventAt]),balance:state.balance,currency:state.currency })
         source.push(row); target.push(Object.freeze({...row}))
       }
-      const inboxIds=new Set(), positions=new Set(), maxima=new Map()
+      const inboxIds=new Set(), inboxById=new Map(), positions=new Set(), maxima=new Map()
       for (const receipt of raw.inbox) {
         const event=events.get(receipt.event)
         check(event && !inboxIds.has(receipt.event) && receipt.type===event.type && receipt.hash===event.outbox_hash)
-        inboxIds.add(receipt.event)
+        inboxIds.add(receipt.event);inboxById.set(receipt.event,receipt)
         check(receipt.topic===`ld.${scope.environment}.finance.events.v1` &&
           Number.isInteger(receipt.partition) && receipt.partition>=0 && receipt.partition<128 && unsigned(receipt.offset))
         const key=`${receipt.topic}:${receipt.partition}`, position=`${key}:${receipt.offset}`
         check(!positions.has(position)); positions.add(position)
         if (!maxima.has(key) || BigInt(maxima.get(key))<BigInt(receipt.offset)) maxima.set(key,receipt.offset)
       }
+      for (const [fundId,state] of states) {
+        const proof=shadow.get(fundId).worker_evidence, receipt=inboxById.get(state.lastEventId)
+        check(proof && proof.adapterVersion===1 && proof.buildId===scope.buildId && proof.codeSha===scope.codeSha)
+        check(proof.lastEventId===state.lastEventId && proof.lastEventAt===state.lastEventAt)
+        check(proof.sourceTopic===receipt.topic && proof.sourcePartition===receipt.partition && proof.lastSourceOffset===receipt.offset)
+      }
       const partitions=new Set(), checkpoints=[]
       for (const c of raw.checkpoints) {
         check(c.topic===`ld.${scope.environment}.finance.events.v1` &&
           Number.isInteger(c.partition) && c.partition>=0 && c.partition<128 && unsigned(c.last_offset) && BigInt(c.last_offset)<9223372036854775807n && uuid(c.last_event) && eventIds.has(c.last_event))
+        const receipt=inboxById.get(c.last_event)
+        // Inbox preserves first application position. A checkpoint at a newer
+        // duplicate position needs a separate durable byte/position receipt;
+        // this bounded collector cannot certify it and fails closed.
+        check(receipt && receipt.topic===c.topic && receipt.partition===c.partition && receipt.offset===c.last_offset)
         const key=`${c.topic}:${c.partition}`; check(!partitions.has(key) && maxima.has(key) && BigInt(c.last_offset)>=BigInt(maxima.get(key))); partitions.add(key)
         checkpoints.push(Object.freeze({ topic:c.topic,partition:c.partition,lastOffset:c.last_offset,nextOffset:String(BigInt(c.last_offset)+1n),lastEventId:c.last_event }))
       }
