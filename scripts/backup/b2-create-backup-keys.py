@@ -158,7 +158,8 @@ def main():
         print(f"created {name}: keyId {created['applicationKeyId']} bucket-restricted, capabilities {granted}")
         print(f"  secret written to {os.path.join(out, filename)} (0600)")
 
-    print("Next: bash scripts/backup/b2-verify-backup-keys.sh "
+    verifier = os.path.join(os.path.dirname(os.path.abspath(__file__)), "b2-verify-backup-keys.sh")
+    print(f"Next: bash {verifier} "
           f"{os.path.join(out, 'writer.env')} {os.path.join(out, 'restore.env')}")
 
 
