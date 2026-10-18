@@ -2234,3 +2234,20 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   [Callback worker](https://github.com/confluentinc/confluent-kafka-javascript/blob/v1.11.0/src/workers.cc#L1049),
   [native commit](https://github.com/confluentinc/confluent-kafka-javascript/blob/v1.11.0/src/kafka-consumer.cc#L273),
   [offset conversion](https://github.com/confluentinc/confluent-kafka-javascript/blob/v1.11.0/src/common.cc#L737).
+
+### PR877 release artifact built; final quality gate pending — 2026-10-18 11:23 UTC
+
+- Automatic production run39121398342 uses exact merged
+  133654f4a064adcbb81b6458d05f80b8b7423dec. Build117657579277 SUCCESS11:16:11Z.
+  Root independently verified artifact12135041765, name
+  leaddrive-prod-133654f4a064adcbb81b6458d05f80b8b7423dec, created11:16:07Z,
+  size471516746bytes, not expired, and digest
+  sha256:b2bf6b3eee03505b58afcf2e100448b2d43008daa1e4fec95d78c4a5bf069415.
+- Quality117657579482 passed its Fund unit/restricted-PG steps and all
+  preceding targeted/security gates. The full baseline stage started11:12:53Z
+  and is still running at this checkpoint. Whole release, runtime deployment,
+  public exact-SHA postflight and fresh source inventory remain PENDING.
+- One existing helper monitor owns this run; no duplicate build/deploy/retry
+  was started. Production consumer activation, offsets and replay remain out
+  of this inactive coordinator release. The artifact receipt is not a live
+  deployment receipt or proof of recovery readiness.
