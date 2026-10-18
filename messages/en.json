@@ -20623,6 +20623,18 @@
     }
   },
   "demo": {
+    "modulesLabel": "Which modules interest you? The demo starts with them",
+    "modules": {
+      "marketing": "Marketing campaigns",
+      "omnichannel": "Omni-channel and AI agent",
+      "ai-calls": "AI calls",
+      "deals": "Sales: deals and quotes",
+      "service-desk": "Service Desk",
+      "call-center": "Call Center",
+      "route-field": "Route & Field",
+      "personnel": "Attendance",
+      "contracts": "Contracts"
+    },
     "badge": "Private demo",
     "heroTitle1": "Discover LeadDrive CRM",
     "heroTitle2": "explore it",

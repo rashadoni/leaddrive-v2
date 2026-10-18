@@ -20623,6 +20623,18 @@
     }
   },
   "demo": {
+    "modulesLabel": "Какие модули интересны? Демо начнётся с них",
+    "modules": {
+      "marketing": "Маркетинговые кампании",
+      "omnichannel": "Омниканал и ИИ-агент",
+      "ai-calls": "ИИ-звонки",
+      "deals": "Продажи: сделки и КП",
+      "service-desk": "Service Desk",
+      "call-center": "Call Center",
+      "route-field": "Маршрут и поле",
+      "personnel": "Учёт персонала",
+      "contracts": "Договоры"
+    },
     "badge": "Персональное демо",
     "heroTitle1": "Откройте для себя LeadDrive CRM",
     "heroTitle2": "исследуйте",

@@ -132,6 +132,39 @@ describe("demo coach card", () => {
     expect(document.querySelector('[data-testid="demo-coach-arrow"]')?.textContent).toContain("Kampaniyanı açın")
   })
 
+  it("puts the words beside a row, on its own line — never over the row above it", async () => {
+    // Owner, 2026-10-18: «Elvin Qasımovu seçin» sat over Aysu Kərimli's row,
+    // its arrow lost between the two («указки стрелками не всегда понятны»).
+    layout({ top: 300, left: 400, width: 220, height: 36 }, { width: 1470, height: 900 })
+    await renderAction({ targetStepId: "source-open-campaign", targetLabel: "Elvin Qasımovu seçin", collapsed: true })
+    const arrow = document.querySelector<HTMLElement>('[data-testid="demo-coach-arrow"]')!
+    expect(arrow.dataset.side).toBe("right")
+    const words = arrow.querySelector<HTMLElement>("span")!
+    const top = Number.parseFloat(words.style.top)
+    // The words' line is the row's line: inside its top and bottom.
+    expect(top).toBeGreaterThanOrEqual(300)
+    expect(top + 26).toBeLessThanOrEqual(300 + 36 + 12)
+    expect(Number.parseFloat(words.style.left)).toBeGreaterThan(400 + 220)
+  })
+
+  it("keeps above-or-below for a row with no room at either side, and for a tall region", async () => {
+    layout({ top: 300, left: 16, width: 358, height: 36 }, { width: 390, height: 700 })
+    await renderAction({ targetStepId: "source-open-campaign", targetLabel: "Elvin Qasımovu seçin", collapsed: true })
+    expect(["top", "bottom"]).toContain(document.querySelector<HTMLElement>('[data-testid="demo-coach-arrow"]')!.dataset.side)
+
+    layout({ top: 200, left: 400, width: 300, height: 260 }, { width: 1470, height: 900 })
+    await renderAction({ stepKey: "source:other", targetStepId: "source-open-campaign", targetLabel: "Kampaniyanı açın", collapsed: true })
+    expect(["top", "bottom"]).toContain(document.querySelector<HTMLElement>('[data-testid="demo-coach-arrow"]')!.dataset.side)
+  })
+
+  it("opens the card beside a row, not over the rows below it", async () => {
+    layout({ top: 300, left: 400, width: 220, height: 36 }, { width: 1470, height: 900 })
+    await renderAction({ placement: "auto", targetStepId: "source-open-campaign", targetLabel: "Elvin Qasımovu seçin" })
+    expect(document.querySelector<HTMLElement>('[data-testid="demo-coach-card"]')!.dataset.side).toBe("right")
+    // Its notch points at the row; no second arrow sits on the row above.
+    expect(document.querySelector('[data-testid="demo-coach-ring-arrow"]')).toBeNull()
+  })
+
   it("lets Escape alone once the card is away", async () => {
     await renderAction({ targetStepId: "source-open-campaign", collapsed: true })
     await act(async () => {
@@ -239,7 +272,7 @@ describe("demo coach card height", () => {
         canBack: false,
         canSkip: false,
         onNext: vi.fn(), onBack: vi.fn(), onSkip: vi.fn(), onClose: vi.fn(), onMissing: vi.fn(),
-        voice: { on: false, onToggle },
+        voice: { on: false, blocked: false, onToggle, onUnblock: vi.fn() },
       }))
     })
     await act(async () => {

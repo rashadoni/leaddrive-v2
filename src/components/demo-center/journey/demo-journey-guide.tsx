@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleDot, Play, PlayCircle, SkipForward, Sparkles, Volume2, VolumeX } from "lucide-react"
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleDot, Play, PlayCircle, SkipForward, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { getHelpVideoAsset, getHelpVideoForSlug } from "@/content/help/video-assets"
@@ -24,6 +24,7 @@ import { DemoLiveCall, type DemoLiveCallState } from "./demo-live-call"
 import { DemoLiveWhatsApp } from "./demo-live-whatsapp"
 import { demoTarget } from "./demo-target"
 import { useGuideVoice, type GuideVoice } from "./demo-guide-voice"
+import { GuideVoiceSwitch } from "./guide-voice-switch"
 import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 
 /**
@@ -143,17 +144,14 @@ export function DemoJourneyGuide({
             the owner found unreadable. While the coach card carries the step
             it carries this switch too — one control on screen, not two. */}
         {!stepIsOnScene && (
-        <Button
-          size="sm"
-          variant={voice.on ? "secondary" : "outline"}
-          className="mt-2 h-8 text-xs"
-          aria-pressed={voice.on}
-          data-testid="demo-guide-voice"
-          onClick={() => voice.toggle(narration)}
-        >
-          {voice.on ? <VolumeX className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> : <Volume2 className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />}
-          {voice.on ? S.voiceOff : S.voiceOn}
-        </Button>
+          <GuideVoiceSwitch
+            className="mt-2"
+            testId="demo-guide-voice"
+            on={voice.on}
+            blocked={voice.blocked}
+            onToggle={() => voice.toggle(narration)}
+            onUnblock={voice.unblock}
+          />
         )}
       </div>
 
