@@ -192,3 +192,70 @@ industry modules, analytics/Data Cloud, builders and integration imports.
 Warehouse/Accounting remain explicitly excluded. Use the
 [module catalogue](./MODULE_EVENT_CATALOG.md) as an inventory queue, not a claim
 that all 27 modules are complete. K0.2 remains open.
+
+## 10. Bounded Payments extension — 2026-10-18
+
+Source reviewed: main `ce71dacf9a413facda602fb433963e1cbe79412b`; the current
+task's frozen `a222b769f` changes only recovery-report code, not these payment
+writers. This supersedes **NOT INSPECTED** above only for the named Payments
+chains below. No provider account/settings, live transactions or credentials
+were inspected; no payment/refund, webhook, runtime test, rebuild or replay ran.
+Invoice/bill writers, subscriptions/checkout/import/cron alternate callers,
+Warehouse and Accounting remain outside this pass and their existing process.
+
+| Named source boundary | Observed identity / transaction | Recovery constraint |
+|---|---|---|
+| [POST payment-intents](../../src/app/api/v1/payment-intents/route.ts) | `withRlsAuth("payments", "write")`; tenant/active provider lookup, then `provider.createIntent`, then local intent INSERT. Inspected caller/provider parameters carry no stable business-operation/idempotency key or canonical command/event/effect receipt. | Provider acceptance and local INSERT are not atomic. A missing local row is not permission to recreate an external intent. Creating an intent is not itself proof of a captured charge. |
+| [POST payment-refunds](../../src/app/api/v1/payment-refunds/route.ts) | Tenant/active provider and refundable-state checks precede a Serializable transaction. Inside it: sum nonfailed refunds, over-refund guard, `provider.refund`, refund INSERT, optional intent state update. Caller gets retryable409 on serialization conflict. | Preserve the DB sum/transaction guard, but a DB rollback cannot undo a successful external refund. Do not retry this provider tail from replay or treat every conflict/timeout as safe to reissue. Inspected request/provider interface has no stable operation key. |
+| [Webhook admission](../../src/app/api/v1/payment-webhooks/[provider]/route.ts) | Provider-row ID resolves tenant under bounded bypass; active/secret checks and provider signature parse precede tenant-scoped receipt INSERT. Prisma schema declares unique `(organizationId, providerId, externalId)`. P2002 returns200/duplicate without checking existing status or comparing payload hashes. | Preserve the existing uniqueness boundary, but received/processing/failed is not completed. Receipt INSERT, domain handler and final status update are separate. A crash after receipt admission can suppress redelivery without completed domain work. |
+| Same webhook's state handlers | Actual code already uses Serializable transactions for intent transitions and refund+parent updates, with up to3 P2034 retries outside the handler. Refund success checks existing status. Unknown event type/missing referenced object may become ignored; failures are marked failed and receive200. | The header's old “without transaction”/slice-3 comment is stale. Preserve real atomic updates while adding durable admission/completion/reconciliation. SQL transaction retry here does not establish provider-call retry safety elsewhere. |
+| [PATCH payment-intents/id](../../src/app/api/v1/payment-intents/[id]/route.ts) | Tenant write authorization; rejects client-supplied succeeded/partially_refunded/refunded. Reads prior status, validates pure state machine, then updates by ID; inspected chain has no expected-state compare-and-swap transaction/command receipt. | Preserve provider-controlled settlement restriction. Rebuild is not permission to invoke mutable live status routes; concurrent ordering needs its own proof. [Refund/id](../../src/app/api/v1/payment-refunds/[id]/route.ts) is GET-only. |
+
+### Real provider versus stale stub comments
+
+- [Stripe](../../src/lib/payments/providers/stripe.ts) actually imports the
+  Stripe SDK and calls `paymentIntents.create` and `refunds.create`; inspected
+  calls do not supply a stable business idempotency option. Current route/
+  registry/type comments calling every provider a slice-1 stub are stale.
+  Whether a live configured provider exists or any duplicate operation has
+  happened is **NOT INSPECTED**. No claim of a real repeated charge is made.
+- Reviewed [PayPal](../../src/lib/payments/providers/paypal.ts) and
+  [YooKassa](../../src/lib/payments/providers/yookassa.ts) create/refund methods
+  still return synthetic references; [Robokassa](../../src/lib/payments/providers/robokassa.ts)
+  creation is synthetic and refund rejects for manual handling. PayPal/
+  Robokassa webhook verification rejects as unimplemented; YooKassa has its
+  own local verifier/payload shape. These source facts are not certification
+  of provider protocol/SDK integration, configuration or real delivery.
+- The inspected [provider interfaces](../../src/lib/payments/types.ts) have
+  amount/currency or externalRef/reason, not a durable operation key. Stripe
+  converts major-unit JS numbers with `Math.round(amount * 100)` and explicitly
+  notes unsupported zero-decimal currencies; refund totals convert DB Decimal
+  to number. A future exact-money replay must have a governed currency contract,
+  not copy this live provider arithmetic as its source of truth.
+- [Schema](../../prisma/schema.prisma) stores intent/refund amounts as
+  Decimal(18,4); webhook uniqueness is not the generic immutable event store.
+  Named routes do not explicitly append canonical events or effect-outbox
+  receipts. This named-chain finding does not exhaust aliases, middleware,
+  SQL triggers, migrations or every alternate writer in the application.
+
+### Required before Payments can join a replay scope
+
+1. Define immutable provider-confirmed facts/corrections and typed schemas,
+   privacy/minimization and historical provenance. Do not copy credentials,
+   client secrets or unrestricted raw provider payloads into Kafka/receipts.
+2. Claim a stable tenant/provider/business-operation identity durably before
+   sending; retain request hash, lease/fence, attempts and accepted/unknown
+   outcome independently of projection version. An ambiguous provider result
+   requires read-back/reconciliation, not a blind new refund/create request.
+3. Couple admission/completion to durable processing state; distinguish
+   duplicate-done, pending, failed and altered payload. Preserve existing
+   tenant/signature/uniqueness and real Serializable domain updates; do not
+   collapse them into “event ID seen means all work completed”.
+4. Build a separate exact, currency-aware shadow projection from accepted
+   facts; never call create/refund or re-enter live webhook/status routes.
+5. Add synthetic crash-before/after-provider and DB-commit, ambiguous outcome,
+   duplicate/altered event, concurrent refund, wrong-tenant, out-of-order and
+   zero-replay-send tests. Existing `api-payment-intents`, `api-payment-refunds`,
+   `api-payment-webhooks` and `api-payment-providers` test files were located
+   but NOT RUN/re-certified in this read-only inventory. Provider/currency and
+   full source-writer coverage remain open before any production adoption.

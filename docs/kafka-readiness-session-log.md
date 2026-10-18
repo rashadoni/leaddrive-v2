@@ -1851,3 +1851,27 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   failed closed22issues/9gaps/service_error. New12/12 hosted proof, new
   production delivery and a meaningfully refined live report are NOT YET
   performed. No runtime policy/key/timer/source/consumer/offset/replay change.
+
+### K0.2 Payments source inventory while frozen PR873 runs
+
+- Actual ready CI39095643498 and pgpass39095643679 discovered on exacta222;
+  separate pgpass actual30/30 SUCCESS04:02:11Z, including real libpq. One
+  helper continues full gates; no second heavy phase or new push was started.
+- Root read only the named Payments intent/refund/webhook/SDK/schema chains
+  on ce71 source, documenting them in NON_FUND_WRITE_PATH_INVENTORY section10.
+  This is a bounded K0.2 extension; application code is unchanged and remains
+  frozen. Invoice/bill/Accounting/Warehouse and alternate writers are excluded.
+- Actual Stripe SDK create/refund calls supersede stale stub comments; the
+  inspected operation interfaces/callers lack a supplied stable business key.
+  Refund provider call is inside a SQL transaction: rollback cannot undo the
+  external result. Webhook receipt admission and completion are separate, with
+  duplicate P2002 returning200 before checking receipt status/hash. Actual
+  domain handlers ARE Serializable (old contrary comments are stale).
+- Preserved settlement restrictions, unique receipt and SQL transaction
+  safeguards in the inventory. No provider settings/live use, real duplicate
+  charge, current SDK retry behavior, all writers or complete domain adoption
+  is asserted. PayPal/YooKassa/Robokassa differences and exact-money/currency
+  boundaries are recorded. Existing tests were located, NOT RUN for this
+  read-only scope; no provider/API/SQL mutation or new financial feature.
+- The docs delta remains LOCAL only, without invalidating a222 CI. Current
+  source CI/release remains the report-only task, not a Payments runtime change.
