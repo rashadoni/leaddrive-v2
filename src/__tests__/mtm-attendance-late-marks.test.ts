@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { attendanceCorrectionAfterFacts } from "@/lib/mtm/attendance-time-correction"
+import { projectAttendanceCorrectionFacts } from "@/lib/mtm/attendance-correction-facts"
 import { clipWorkdayPauseIntervals, replayWorkforceWorkdayFacts } from "@/lib/workforce/workday-facts-replay"
 
 /**
@@ -67,5 +68,26 @@ describe("a corrected day keeps only the marks inside its start and finish", () 
       pauseIntervals: [{ startedAt: "2026-10-13T12:00:00.000Z", endedAt: null }],
     })
     expect(paused.totalPausedSeconds).toBe(7200)
+  })
+})
+
+describe("the report reads the corrected day the same way", () => {
+  const open = replayWorkforceWorkdayFacts({ workdayId, events: journal })
+  const before = { id: workdayId, workDate: "2026-10-13", status: open.status, startedAt: open.startedAt, pausedAt: open.pausedAt, completedAt: open.completedAt, totalPausedSeconds: open.totalPausedSeconds }
+  const after = attendanceCorrectionAfterFacts({
+    workdayId, workDate: "2026-10-13", start: new Date("2026-10-13T06:21:00.000Z"), end: new Date("2026-10-13T14:00:00.000Z"), pauseIntervals: open.pauseIntervals,
+  })
+  const row = {
+    id: workdayId, workDate: new Date("2026-10-13T00:00:00.000Z"), status: "COMPLETED", startedAt: new Date(after.startedAt), pausedAt: null,
+    completedAt: new Date(after.completedAt!), totalPausedSeconds: after.totalPausedSeconds,
+    events: journal.map((item) => ({ id: item.id, type: item.type, occurredAt: new Date(item.occurredAt), appliedAt: item.appliedAt ? new Date(item.appliedAt) : null, clientEventId: item.clientEventId ?? null })),
+  }
+  const correction = { id: "correction", requestId: "request", source: "REQUEST_APPROVAL", occurredAt: new Date("2026-10-18T12:26:05.000Z"),
+    beforeFacts: before, afterFacts: after, actorUser: { id: "fixture-admin", name: null } }
+
+  it("is valid, with only the break inside 10:21–18:00", () => {
+    const projected = projectAttendanceCorrectionFacts(row as never, [correction], new Date("2026-10-18T13:00:00.000Z"))
+    expect(projected).toMatchObject({ valid: true })
+    expect(projected && projected.valid ? projected.pauseIntervals : null).toEqual([{ startedAt: "2026-10-13T06:56:04.415Z", endedAt: "2026-10-13T09:16:15.236Z" }])
   })
 })
