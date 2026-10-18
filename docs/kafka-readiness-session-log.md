@@ -3512,3 +3512,28 @@ service, branch delivery or Kafka runtime was changed by this documentation.
 - Confirmed current main protection still requires all5 named contexts with
  enforce_admins=true; approving-review count0 does not replace independent
  runtime recovery approval. No merge, release or Kafka activation yet.
+
+### Later A5 additions held for concrete review findings — 2026-10-19 Asia/Baku
+
+- Actual user-created operator thread completed later prepared source at
+10866dad5b3cd42e5412d20cb87a824be60a7044. Reviewed frozen5bd..108 diff separately;
+ these additions are NOT in current PR891. Current earlier admission SQL is
+ unchanged by the findings below. Original branch/worktree/checkpoints retained.
+- Read-only parallel review found three P2 gaps in later snapshot collector:
+ table-only privilege inspection misses effective column DML grants (READ ONLY
+ still protects the current transaction); checkpoint lastEventId is not bound
+ to its inbox topic/partition/position (small in-memory reproduction accepts a
+ cross-partition event); snapshot SQL omits actual worker evidence provenance
+ adapterVersion/buildId/codeSha/topic/partition/offset and its fixture seeds
+ only last-event ID/time. Root independently read pinned collector/SQL and
+ confirmed these missing checks. No production flaw is inferred from inactive
+ preparation, and green baseline tests do not cover these negative controls.
+- Separate fixture-only promotion receipt expiry is checked before locks, not
+ deferred at COMMIT; the lease has a deferred fence but receipts do not. This
+ is a future lifecycle-composition gap, not an active production endpoint.
+- Original later A5 run39169472133 SUCCESS on c745b5b67 was independently
+ checked; c745..108 changes only docs. No heavy tests or writes were performed
+ by review. Findings/ownership recorded directly on PR894 comment6255633608,
+ without asking the user to relay messages. Root will correct/re-prove this
+ later bounded A5 slice after the current A1/A2 software delivery; no import of
+ known-incomplete evidence collectors or unsupported 27-domain readiness.
