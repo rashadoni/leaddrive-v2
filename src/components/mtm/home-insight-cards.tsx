@@ -5,7 +5,7 @@ import type { ReactNode } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { ArrowUpRight, Clock3, Image as ImageIcon, MapPin, ShieldCheck, Stethoscope, Wrench } from "lucide-react"
-import { HomeCard, HomeCardFoot, HomePill, HOME_ICON, type HomeTone } from "@/components/mtm/home-parts"
+import { HomeCard, HomeCardFoot, HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { createDateFormatter } from "@/lib/format-date"
 import { percentOf } from "@/lib/mtm/home-dashboard"
 import { HOME_BASE_OTHER_KEY, type HomeBase, type HomeQuality, type HomeSetupKind, type HomeSetupStep } from "@/lib/mtm/home-insights"
@@ -36,8 +36,10 @@ export function HomeSetupStrip({ steps }: { steps: readonly HomeSetupStep[] }) {
   const t = useTranslations("mtmDashboardPage.home")
   if (steps.length === 0) return null
   return (
-    <div data-testid="mtm-home-setup" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
-      <Wrench className="h-4 w-4 shrink-0" aria-hidden="true" />
+    // White with a border and orange links, not a blue strip of pills
+    // (owner-approved colours, 2026-10-18).
+    <div data-testid="mtm-home-setup" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-zinc-200 bg-card px-4 py-2.5 text-sm text-foreground dark:border-zinc-700">
+      <Wrench className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="font-semibold">{t("setupTitle", { count: steps.length })}</span>
       {steps.map((step) => (
         <Hint key={step.kind} text={t(SETUP_HINT[step.kind])}>
@@ -45,7 +47,7 @@ export function HomeSetupStrip({ steps }: { steps: readonly HomeSetupStep[] }) {
             href={SETUP_HREF[step.kind]}
             prefetch={false}
             data-testid={`mtm-home-setup-${step.kind}`}
-            className="inline-flex min-h-9 items-center gap-1 rounded-full bg-white px-3 text-xs font-semibold text-sky-800 ring-1 ring-inset ring-sky-200 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:bg-sky-950/60 dark:text-sky-100 dark:ring-sky-800 md:min-h-7"
+            className="inline-flex min-h-9 items-center gap-1 rounded text-[13px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:min-h-7"
           >
             {step.kind === "noVisitNorms" ? t("setupNoVisitNorms") : t(SETUP_KEY[step.kind], { count: step.count })}
             <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
@@ -63,13 +65,14 @@ const SETUP_HINT = {
   noVisitNorms: "hint.setupNoVisitNorms",
 } as const satisfies Record<HomeSetupKind, string>
 
+/** Bars are the brand orange; how far a share got is said by its % in colour. */
 const BAR: Record<HomeTone, string> = {
-  green: "bg-emerald-500",
-  amber: "bg-amber-500",
-  red: "bg-rose-500",
-  blue: "bg-sky-500",
+  green: "bg-primary",
+  amber: "bg-primary",
+  red: "bg-primary",
+  blue: "bg-primary",
   zinc: "bg-zinc-300 dark:bg-zinc-600",
-  orange: "bg-orange-500",
+  orange: "bg-primary",
 }
 
 /** A share of the base, coloured by how much of it was reached: the scale of «Результаты». */
@@ -156,12 +159,12 @@ export function HomeBaseCard({ base, monthStart }: { base: HomeBase | null; mont
 function QualityRow({ testId, icon, tone, label, sub, value, hint }: { testId: string; icon: ReactNode; tone: HomeTone; label: string; sub: string; value: string; hint: string }) {
   return (
     <li data-testid={testId} className="flex items-center gap-3 border-b border-zinc-100 py-2.5 last:border-b-0 dark:border-zinc-800">
-      <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", HOME_ICON[tone])}>{icon}</span>
+      <span className="flex h-9 w-6 shrink-0 items-center justify-center text-muted-foreground">{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold"><HintValue text={hint}>{label}</HintValue></p>
         <p className="text-xs text-muted-foreground">{sub}</p>
       </div>
-      <HomePill tone={tone} className="px-2.5 py-1 text-sm font-bold tabular-nums">{value}</HomePill>
+      <HomePill tone={tone} className="text-sm font-bold tabular-nums">{value}</HomePill>
     </li>
   )
 }

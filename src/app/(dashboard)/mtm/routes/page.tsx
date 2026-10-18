@@ -940,19 +940,19 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
               Excel exchange is a button with words, not a menu item. */}
           <nav data-testid="mtm-route-view-switcher" className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label={t("primaryViews")}>
             {showViewTabs ? (
-            <div data-testid="mtm-route-view-tabs" className="flex min-w-0 flex-wrap gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700" role="group" aria-label={t("primaryViews")}>
-              {calendarSurface ? <Hint text={t("hint.viewCalendar")}><Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant={viewMode === "calendar" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("calendar")}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button></Hint> : null}
-              {calendarSurface && capabilities.canReview ? <Hint text={t("hint.viewWeek")}><Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("week")}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button></Hint> : null}
-              {!calendarSurface ? <Hint text={t("hint.viewList")}><Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("list")}><List className="mr-1 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button></Hint> : null}
+            <div data-testid="mtm-route-view-tabs" className="flex min-w-0 flex-wrap gap-1 border-b border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("primaryViews")}>
+              {calendarSurface ? <Hint text={t("hint.viewCalendar")}><Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant="ghost" size="sm" className={viewTabClass(viewMode === "calendar")} onClick={() => setViewMode("calendar")}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button></Hint> : null}
+              {calendarSurface && capabilities.canReview ? <Hint text={t("hint.viewWeek")}><Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant="ghost" size="sm" className={viewTabClass(viewMode === "week")} onClick={() => setViewMode("week")}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button></Hint> : null}
+              {!calendarSurface ? <Hint text={t("hint.viewList")}><Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant="ghost" size="sm" className={viewTabClass(viewMode === "list")} onClick={() => setViewMode("list")}><List className="mr-1 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button></Hint> : null}
               {/* Shown only when something waits, or while it is open: an empty
                   tab was one more place to look for nothing. */}
-              {showApprovalsTab ? <Hint text={t("hint.viewApprovals")}><Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}{approvalTotal > 0 ? <span data-testid="mtm-routes-approvals-count" className="ml-1.5 min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-[11px] font-semibold leading-5 text-white">{approvalTotal}</span> : null}</Button></Hint> : null}
+              {showApprovalsTab ? <Hint text={t("hint.viewApprovals")}><Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant="ghost" size="sm" className={viewTabClass(viewMode === "approvals")} onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}{approvalTotal > 0 ? <span data-testid="mtm-routes-approvals-count" className="ml-1.5 min-w-5 rounded-full border border-zinc-300 px-1.5 text-center text-[11px] font-semibold leading-5 text-foreground dark:border-zinc-600">{approvalTotal}</span> : null}</Button></Hint> : null}
               {/* A view without a tab, opened by a name or a link: lit while it is open, with a way back. */}
               {viewMode === "agent" || viewMode === "matrix" ? (
-                <span data-testid="mtm-routes-side-view" className="inline-flex min-h-10 items-center gap-1 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground">
+                <span data-testid="mtm-routes-side-view" className="-mb-px inline-flex min-h-10 items-center gap-1 border-b-2 border-primary px-3 text-sm font-semibold text-foreground">
                   {viewMode === "agent" ? <UserRound className="h-4 w-4" aria-hidden="true" /> : <TableProperties className="h-4 w-4" aria-hidden="true" />}
                   {t(viewMode === "agent" ? "viewAgentPeriod" : "viewMatrix")}
-                  <Hint text={t("hint.closeSideView")}><button type="button" data-testid="mtm-routes-side-view-close" aria-label={t("closeSideView")} onClick={closeSideView} className="ml-1 flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/20"><X className="h-3.5 w-3.5" aria-hidden="true" /></button></Hint>
+                  <Hint text={t("hint.closeSideView")}><button type="button" data-testid="mtm-routes-side-view-close" aria-label={t("closeSideView")} onClick={closeSideView} className="ml-1 flex h-6 w-6 items-center justify-center rounded-full hover:bg-muted"><X className="h-3.5 w-3.5" aria-hidden="true" /></button></Hint>
                 </span>
               ) : null}
             </div>
@@ -1198,9 +1198,9 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
           <MtmFilterBar testId="mtm-route-list-filters">
             <MtmFilterSearch testId="mtm-route-list-search" value={search} onChange={setSearch} delayMs={150} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tFilters("clearSearch")} />
             <div data-testid="mtm-route-status-filters" role="group" aria-label={t("routeSummary")} className="flex flex-wrap gap-1">
-              <Hint text={t("hint.statusAll")}><Button aria-pressed={activeFilter === "all"} variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{routesTotal > routes.length ? t("allLatest", { shown: routes.length, total: routesTotal }) : `${t("all")} (${routes.length})`}</Button></Hint>
+              <Hint text={t("hint.statusAll")}><Button aria-pressed={activeFilter === "all"} variant="outline" size="sm" className={filterChipClass(activeFilter === "all")} onClick={() => setActiveFilter("all")}>{routesTotal > routes.length ? t("allLatest", { shown: routes.length, total: routesTotal }) : `${t("all")} (${routes.length})`}</Button></Hint>
               {(["DRAFT", "PLANNED", "IN_PROGRESS", "COMPLETED", "INCOMPLETE", "CANCELLED"] as const).map(s => (
-                <Hint key={s} text={t(`hint.status${s}`)}><Button aria-pressed={activeFilter === s} variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>
+                <Hint key={s} text={t(`hint.status${s}`)}><Button aria-pressed={activeFilter === s} variant="outline" size="sm" className={filterChipClass(activeFilter === s)} onClick={() => setActiveFilter(s)}>
                   {mtmStatusLabel(statusT, "route", s)} ({statusCounts[s] || 0})
                 </Button></Hint>
               ))}
@@ -1348,6 +1348,20 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
       <DeleteConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={confirmDelete} title={t("delete")} itemName={deleteItem?.name || tf("thisRoute")} />
     </div>
   )
+}
+
+/**
+ * One menu at the top of the module, and inside the page plain tabs with an
+ * underline: the orange fill is kept for the page's main button (owner-
+ * approved colours, 2026-10-18). The same for the status filters: the chosen
+ * one is dark, not orange.
+ */
+function viewTabClass(active: boolean): string {
+  return `-mb-px min-h-10 whitespace-nowrap rounded-none border-b-2 px-3 hover:bg-transparent ${active ? "border-primary font-semibold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`
+}
+
+function filterChipClass(active: boolean): string {
+  return `h-10 rounded-full ${active ? "border-foreground font-semibold text-foreground" : "text-muted-foreground"}`
 }
 
 export default function MtmRoutesPage() {

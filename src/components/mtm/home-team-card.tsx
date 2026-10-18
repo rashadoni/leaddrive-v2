@@ -39,15 +39,26 @@ export const HOME_TEAM_RECENT_UP_TO = 2
 
 export type HomeTeamCardRow = HomeTeamRow & { agentId: string; name: string }
 
+/*
+ * A day is a white cell with its figure; how it went is the dot under the
+ * figure, not a cell filled red or green (owner-approved colours, 2026-10-18).
+ */
 const CELL: Record<HomeCellTone, string> = {
-  full: "bg-emerald-500 text-white",
-  partial: "bg-amber-400 text-amber-950",
-  missed: "bg-rose-500 text-white",
+  full: "border border-zinc-200 text-foreground dark:border-zinc-700",
+  partial: "border border-zinc-200 text-foreground dark:border-zinc-700",
+  missed: "border border-zinc-200 text-foreground dark:border-zinc-700",
   pending: "border border-zinc-300 text-foreground dark:border-zinc-600",
   upcoming: "border border-zinc-200 text-muted-foreground dark:border-zinc-700",
-  visited: "bg-sky-500 text-white",
+  visited: "border border-zinc-200 text-foreground dark:border-zinc-700",
   off: "border border-dashed border-zinc-300 text-transparent dark:border-zinc-600",
-  none: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+  none: "border border-zinc-200 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400",
+}
+
+const DOT: Partial<Record<HomeCellTone, string>> = {
+  full: "bg-emerald-500",
+  partial: "bg-amber-400",
+  missed: "bg-rose-500",
+  visited: "bg-sky-500",
 }
 
 const LEGEND: ReadonlyArray<{ tone: HomeCellTone; key: "legendFull" | "legendPartial" | "legendMissed" | "legendNone" | "legendOff" }> = [
@@ -269,7 +280,7 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
                             href={`/mtm/alerts?agentId=${encodeURIComponent(row.agentId)}`}
                             prefetch={false}
                             aria-label={tw("teamRowOpenAlerts", { count: row.openAlerts })}
-                            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-full px-1 py-0.5 text-[11px] font-semibold text-amber-700 hover:underline dark:text-amber-300"
                           >
                             <AlertTriangle className="h-3 w-3" aria-hidden="true" />{row.openAlerts}
                           </Link>
@@ -291,13 +302,14 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
                               data-tone={cell.tone}
                               aria-label={cellTitle(cell)}
                               className={cn(
-                                "flex h-8 w-8 items-center justify-center rounded-md text-[11px] font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                                "relative flex h-8 w-8 items-center justify-center rounded-md text-[11px] font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
                                 CELL[cell.tone],
                                 cell.isToday && "ring-2 ring-primary/70 ring-offset-1 ring-offset-card",
                               )}
                               onClick={() => onOpenAgent(row.agentId, cell.date)}
                             >
                               {cellText(cell)}
+                              {DOT[cell.tone] ? <span className={cn("absolute bottom-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full", DOT[cell.tone])} aria-hidden="true" /> : null}
                             </button>
                           </Hint>
                         ))}
@@ -334,7 +346,7 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
             {facts ? (
               <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 pt-3 text-[11px] text-muted-foreground" data-testid="mtm-home-team-legend">
                 {LEGEND.map((item) => (
-                  <span key={item.key} className="inline-flex items-center gap-1.5"><span className={cn("h-3 w-3 rounded-sm", CELL[item.tone])} aria-hidden="true" />{t(item.key)}</span>
+                  <span key={item.key} className="inline-flex items-center gap-1.5"><span className={cn("h-2 w-2 rounded-full", DOT[item.tone] ?? CELL[item.tone])} aria-hidden="true" />{t(item.key)}</span>
                 ))}
               </div>
             ) : weekFailed ? (

@@ -42,7 +42,8 @@ describe("MTM routes view indicator", () => {
     expect(page).toContain('data-testid="mtm-routes-side-view"')
     for (const view of ["calendar", "week", "list", "approvals"]) {
       expect(page).toContain(`aria-pressed={viewMode === "${view}"}`)
-      expect(page).toContain(`variant={viewMode === "${view}" ? "default" : "ghost"}`)
+      // An underline, not an orange fill, since 2026-10-18 (one fill per screen).
+      expect(page).toContain(`className={viewTabClass(viewMode === "${view}")}`)
     }
     // Excel is an action, not a view: a button with words beside «Plan route».
     expect(page.indexOf('data-testid="mtm-routes-excel-exchange"')).toBeLessThan(page.indexOf('data-testid="mtm-route-builder-open"'))
