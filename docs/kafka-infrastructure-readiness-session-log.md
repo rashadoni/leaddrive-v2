@@ -30,3 +30,11 @@
 ## 2026-10-19 — draft checks completed
 - On published d83a50473: pr-scope PASS, runner-policy PASS, scan PASS, validate PASS. Static-checks, typecheck, production build and CDC smoke SKIPPED by draft policy; they are NOT RUN, not passing gates. No failing available checks.
 - Bounded A4 source preparation/draft delivery is complete. Final journal checkpoint changes documentation only. Stop at draft PR893; original delivery owner must arrange remaining CI and evidence review before any separately authorized activation. No merge/deploy or infrastructure mutation performed.
+
+## 2026-10-19 — autonomous completion correction and fresh evidence
+- User reiterated that every remaining authorized step must be completed autonomously. Earlier stop at draft-only checks was premature; resumed available full verification and read-only evidence gathering. Original no-merge/no-deploy/no-cost/no-production-mutation limits remain in force.
+- Finished source branch promoted ready for review to execute existing PR static/typecheck and synthetic CDC gates, per repository CI workflow. No gate bypass or merge. Earlier draft stopping point is superseded.
+- Verified public repository, standard ubuntu-24.04 CI routing; current main/deploy exact226dde0e7 and no active deploy/readiness run before dispatch. Inspected existing main-only readiness workflow and script; script blob931e21e3795979fdea7785f22e16e46f94cf5b8b matches local/main.
+- Dispatched one existing read-only inventory39163966627 on main; SUCCESS at2026-10-18T20:35:36Z /2026-10-19 00:35 Baku. Main artifact exact226dde0e7. RAM total/available12247544/9852636KiB; app disk total/available206900281344/175302717440bytes; swap0.
+- PG16.15 readOnly=on, replica WAL, slot cap-1, slots/active/retainedWAL0, publication absent, DB502995991bytes. Four inspected backup/log timers inactive; config present but restore NOT PERFORMED. Cumulative WAL18067188472 is not a peak budget. No payloads/credentials stored.
+- Readiness matrix appended with fresh receipt; historic no-live-inspection statements explicitly superseded. No live Kafka endpoints/resource allocations discovered by this aggregate inventory, so independent topology/private network/TLS/ACL/archive/monitoring evidence still absent.

@@ -63,3 +63,29 @@ The validator now rejects non-finite/coerced budgets and inconsistent threshold
 relations, and requires explicit topology, ACL, effective replication, disk and
 alert-delivery claims. Defaults remain false/zero. It performs no network or
 runtime action. Synthetic PASS tests establish admission behavior only.
+
+## Fresh read-only receipt — 2026-10-19 00:35 Baku
+
+This supersedes the earlier statement that this task did not inspect runtime;
+all earlier historical observations remain historical. Protected main-only
+[inventory 39163966627](https://github.com/rashadoni/leaddrive-v2/actions/runs/39163966627)
+completed SUCCESS at deployed/current-main
+`226dde0e77c0c36a4de991bb703ba8f8416c5a64`. Observation was
+2026-10-18T20:35:36Z (2026-10-19 00:35 Baku). The inspected script exactly
+matched main blob `931e21e3795979fdea7785f22e16e46f94cf5b8b`.
+
+- Host total/available RAM: 12247544/9852636 KiB; swap 0.
+- App filesystem total/available: 206900281344/175302717440 bytes.
+- PostgreSQL 16.15: readOnly=on; wal_level=replica; max slots/senders=10;
+  max_slot_wal_keep_size=-1; slots/active slots/retained slot WAL=0;
+  event_outbox publication absent; databaseBytes=502995991.
+- Four inspected backup/secrets/runtime-files/log timers inactive; backup
+  configuration present, restore verification NOT PERFORMED.
+- Cumulative WAL=18067188472 with reset 2026-09-04T12:58:40.679899+02:00.
+  This is not a peak/outage budget. Table estimates are not exact counts.
+
+These are actual source-host capacity/settings observations, not an allocation,
+Kafka broker inventory, TLS handshake, archive receipt or topology proof.
+The source is currently not CDC-ready. No PostgreSQL, firewall, service,
+consumer, slot, offset or replay mutation was made. No unchanged diagnostic
+retry is needed. Production activation remains BLOCKED.
