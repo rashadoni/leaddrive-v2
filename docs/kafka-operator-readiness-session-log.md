@@ -466,3 +466,26 @@ PR894, A5 operational readiness not claimed. Last action: hosted exact-source
 barrier and authentic evidence absent, scan unresolved. Next: original delivery
 session integrates real restricted pointer reader with its frozen A1/A2 source,
 then follows ordered acceptance table; no automatic activation authorized here.
+
+## 2026-10-19 — autonomous real canary reader preparation
+
+User said «начинай». Resumed clean dedicated worktree on10866dad5, ran project
+context and fresh origin/main fetch (still226dde0e77c0c36a4de991bb703ba8f8416c5a64).
+Root/branch/origin/production route unchanged; no canonical checkout mutation.
+Prepared inactive restricted readFundCanary adapter: explicit independent scope,
+separate nonprivileged exact DB login, FORCE RLS/read-only table profile, real
+RepeatableRead transaction resolving after COMMIT, parameterized bounded joined
+pointer/build/projection query, immutable bigint/decimal result via prior gate.
+No credential/env fallback, runtime API import or business activation.
+Added real-schema fixture cases for missing pointer, read immutability, tenant/
+build/code/key/inventory denial, hidden rows, read-only enforcement, write grant/
+RLS denial, failed commit, genuine pointer rollback snapshot and next-read denial,
+input mutation, and real promoted-checkpoint prohibition. Fixture promotion
+seeding is NOT authenticated controller approval evidence. Actual CI pending.
+Local24/24 canary cases PASS, syntax/diff and runner-policy72 PASS; available
+RAM13.7GB,disk202GB,swap0,pressure0. Heavy app build/typecheck NOT RUN on Contabo;
+no schema/migration changed. Consumers/replay/provider sends/production NOT RUN
+(prohibited). Important remaining lifecycle fact: checkpoint guard also accepts
+running/verifying only, so changing worker status admission alone is insufficient.
+Next: hosted actual-schema proof, fix any own fixture/adapter defects, then
+reconcile remaining preparation tasks without changing A1/A2 or activating API.

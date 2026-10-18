@@ -40,3 +40,14 @@ const mutations={
 for(const [name,mutate] of Object.entries(mutations)) test(`reject ${name} without fallback or payload disclosure`,()=>{
   const f=fixture();mutate(f);assert.throws(()=>validateFundCanaryRead(f.scope,f.snapshot),{message:'FUND_CANARY_READ_INVALID'})
 })
+
+const {readFundCanary}=await import('./operator-fund-canary-reader.mjs')
+test('reader validates opt-in and login contract before opening any transaction',async()=>{
+ let calls=0
+ const db={$transaction:async()=>{calls++;throw new Error('must not connect')}}
+ for(const patch of [{enabled:false},{fundIds:[]},{pointerVersion:1},{expectedReaderRole:'Invalid Role'}]) {
+  const {scope}=fixture()
+  await assert.rejects(readFundCanary(db,{...scope,expectedReaderRole:'op_reader',...patch}),{message:'FUND_CANARY_READ_INVALID'})
+ }
+ assert.equal(calls,0)
+})

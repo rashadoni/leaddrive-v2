@@ -137,3 +137,93 @@ await test('REPEATABLE READ keeps one snapshot across concurrent canonical write
  assert.equal(changed,true);assert.equal(result.source.find(s=>s.aggregateId==='fund-a').eventCount,'6')
  await rejected(read())
 })
+
+// Inactive canary adapter proof shares only this disposable real-schema fixture.
+const {readFundCanary}=await import('./operator-fund-canary-reader.mjs')
+const retainedBuild=randomUUID()
+const canaryScope={...expected,enabled:true,pointerVersion:'1',expectedReaderRole:'op_canary_reader'}
+const canary=(scope=canaryScope,hooks={})=>readFundCanary(fixtureDatabase('op_canary_reader',hooks),scope)
+const canaryRejected=p=>assert.rejects(p,{message:'FUND_CANARY_READ_INVALID'})
+await admin(`CREATE ROLE op_canary_reader LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD 'operator-fixture-only';
+ GRANT USAGE ON SCHEMA public TO op_canary_reader;
+ GRANT SELECT ON projection_activations,projection_builds,fund_balance_projections TO op_canary_reader;
+ CREATE POLICY operator_canary_scope ON projection_activations AS RESTRICTIVE TO op_canary_reader USING("organizationId"='org-a');
+ CREATE POLICY operator_canary_scope ON projection_builds AS RESTRICTIVE TO op_canary_reader USING("organizationId"='org-a' AND id IN (${q(buildId)}::uuid,${q(retainedBuild)}::uuid));
+ CREATE POLICY operator_canary_scope ON fund_balance_projections AS RESTRICTIVE TO op_canary_reader USING("organizationId"='org-a' AND status='shadow' AND "buildKey" IN ('operator-snapshot','operator-retained'));
+ INSERT INTO projection_builds(id,"organizationId","projectionName","projectionVersion","buildKey","codeSha",mode)
+ VALUES(${q(retainedBuild)},'org-a','finance.fund-balance',3,'operator-retained',${q(expected.codeSha)},'shadow');
+ INSERT INTO fund_balance_projections("organizationId","fundId","projectionVersion","buildKey",status,balance,currency,"aggregateVersion","lastEventId",evidence)
+ SELECT "organizationId","fundId",3,'operator-retained','shadow',balance,currency,"aggregateVersion","lastEventId",evidence
+ FROM fund_balance_projections WHERE "organizationId"='org-a' AND status='shadow' AND "projectionVersion"=2;`)
+await test('canary actual restricted reader denies missing activation without fallback',async()=>{
+ const before=await fingerprint();await canaryRejected(canary());assert.equal(await fingerprint(),before)
+})
+// All promotion writes below are test seed through unchanged production guards,
+// not the authenticated operational controller or recovery approval proof.
+await admin(`UPDATE projection_builds SET status='running',"startedAt"=clock_timestamp() WHERE id=${q(retainedBuild)};
+ UPDATE projection_builds SET status='verifying' WHERE id IN (${q(buildId)},${q(retainedBuild)});
+ UPDATE projection_builds SET status='ready',"completedAt"=clock_timestamp() WHERE id IN (${q(buildId)},${q(retainedBuild)});
+ UPDATE projection_builds SET status='promoted',"promotedAt"=clock_timestamp() WHERE id IN (${q(buildId)},${q(retainedBuild)});
+ BEGIN;
+ INSERT INTO projection_promotion_events("organizationId","projectionName","targetBuildId",action,"requestKey","requestedBy","approvedBy","evidenceHash","resultingPointerVersion")
+ VALUES('org-a','finance.fund-balance',${q(buildId)},'promote','canary-seed','fixture-requester','fixture-approver',repeat('a',64),1);
+ INSERT INTO projection_activations("organizationId","projectionName","activeBuildId") VALUES('org-a','finance.fund-balance',${q(buildId)});
+ COMMIT;`)
+await test('canary reads real promoted pointer and exact decimals without changing business tables',async()=>{
+ const before=await fingerprint(),result=await canary()
+ assert.equal(result.pointerVersion,'1');assert.equal(result.funds.length,2)
+ assert.equal(result.funds[0].balance,'10.0000');assert.equal(result.funds[1].balance,'50.1234')
+ assert.equal(await fingerprint(),before)
+})
+await test('canary rejects tenant/build/code/key/version/inventory and login mismatches',async()=>{
+ for(const patch of [{enabled:false},{organizationId:'org-b'},{buildId:foreignBuild},{pointerVersion:'2'},
+ {codeSha:'b'.repeat(40)},{buildKey:'wrong'},{projectionVersion:3},{fundIds:['fund-a']},{expectedReaderRole:'event_app'}]) await canaryRejected(canary({...canaryScope,...patch}))
+ await canaryRejected(readFundCanary(fixtureDatabase('control_test_admin'),{...canaryScope,expectedReaderRole:'control_test_admin'}))
+})
+await test('canary hidden rows, write grant and missing FORCE RLS fail closed',async()=>{
+ await admin(`CREATE POLICY operator_canary_hidden ON fund_balance_projections AS RESTRICTIVE TO op_canary_reader USING("fundId"<>'fund-a');`)
+ try{await canaryRejected(canary())}finally{await admin('DROP POLICY operator_canary_hidden ON fund_balance_projections;')}
+ await admin('GRANT UPDATE ON projection_activations TO op_canary_reader;')
+ try{await canaryRejected(canary())}finally{await admin('REVOKE UPDATE ON projection_activations FROM op_canary_reader;')}
+ await admin('ALTER TABLE projection_activations NO FORCE ROW LEVEL SECURITY;')
+ try{await canaryRejected(canary())}finally{await admin('ALTER TABLE projection_activations FORCE ROW LEVEL SECURITY;')}
+})
+await admin('GRANT USAGE ON SEQUENCE public.operator_snapshot_probe TO op_canary_reader;')
+await test('canary genuine READ ONLY aborts attempted write and never returns on failed commit',async()=>{
+ let readonly=false
+ await canaryRejected(canary(canaryScope,{afterQuery:async(sql,tx)=>{
+  if(sql.includes('FROM pg_catalog.pg_roles')) {
+   try{await tx.$queryRawUnsafe("SELECT nextval('public.operator_snapshot_probe')")}catch(error){readonly=error.message.includes('25006');throw error}
+  }
+ }}))
+ // A sequence grant makes the failure specifically READ ONLY, not permissions.
+ assert.equal(readonly,true)
+ await canaryRejected(canary(canaryScope,{beforeCommit:async()=>{throw new Error('private failure')}}))
+})
+const movePointer=(target,previous,version,key)=>admin(`BEGIN;
+ INSERT INTO projection_promotion_events("organizationId","projectionName","targetBuildId","previousBuildId",action,"requestKey","requestedBy","approvedBy","evidenceHash","resultingPointerVersion")
+ VALUES('org-a','finance.fund-balance',${q(target)},${q(previous)},'rollback',${q(key)},'fixture-requester','fixture-approver',repeat('b',64),${version});
+ UPDATE projection_activations SET "activeBuildId"=${q(target)},"activationVersion"=${version} WHERE "organizationId"='org-a' AND "activationVersion"=${version-1};COMMIT;`)
+await test('canary concurrent real rollback keeps original snapshot; next read rejects stale opt-in',async()=>{
+ let changed=false
+ const result=await canary(canaryScope,{afterQuery:async sql=>{
+  if(sql.includes('FROM pg_catalog.pg_roles')&&!changed){changed=true;await movePointer(retainedBuild,buildId,2,'canary-rollback')}
+ }})
+ assert.equal(changed,true);assert.equal(result.pointerVersion,'1');assert.equal(result.buildId,buildId)
+ await canaryRejected(canary())
+ const retainedScope={...canaryScope,buildId:retainedBuild,buildKey:'operator-retained',projectionVersion:3,pointerVersion:'2'}
+ const retained=await canary(retainedScope);assert.equal(retained.buildId,retainedBuild)
+ await movePointer(buildId,retainedBuild,3,'canary-return')
+ await canaryRejected(canary(retainedScope))
+ assert.equal((await canary({...canaryScope,pointerVersion:'3'})).buildId,buildId)
+})
+await test('actual promoted checkpoint guard refuses continuation: lifecycle remains open',async()=>{
+ await assert.rejects(admin(`UPDATE projection_checkpoints SET "sourceOffset"=7 WHERE "buildId"=${q(buildId)};`),/23514/)
+})
+await test('canary freezes authorized inventory before asynchronous database access',async()=>{
+ const scope={...canaryScope,pointerVersion:'3',fundIds:[...canaryScope.fundIds]}
+ const result=await canary(scope,{afterQuery:async sql=>{
+  if(sql.includes('FROM pg_catalog.pg_roles')){scope.organizationId='org-b';scope.fundIds.length=0}
+ }})
+ assert.equal(result.organizationId,'org-a');assert.equal(result.funds.length,2)
+})
