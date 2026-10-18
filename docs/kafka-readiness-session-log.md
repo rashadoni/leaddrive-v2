@@ -3497,3 +3497,18 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  next: one existing disposable CDC workflow dispatch on this corrected source,
  after confirming no active duplicate. PR891 remains draft until actual result.
  No production mutation, consumer/offset/replay, backup commissioning or spend.
+
+### Final-source operator gate trigger retained — 2026-10-19 Asia/Baku
+
+- Corrected header source267507fcca5c59d5b19cb80652485a1b985b1fae published.
+ One manual disposable CDC run39169379400 started21:47:26Z on that exact SHA;
+ prior diagnostic completed, no active duplicate was created. PR remains draft.
+- Added ready_for_review to the inactive operator admission workflow trigger
+ so final ready-event verification includes actual PG admissions again, rather
+ than silently relying on the earlier snapshot. Added literal contract test;
+2/2 guard tests PASS, runner policy72 workflows PASS, whitespace PASS. This
+ trigger change is checkpointed locally while the existing CDC run is pinned;
+ no acceptance check or protected-context requirement is relaxed.
+- Confirmed current main protection still requires all5 named contexts with
+ enforce_admins=true; approving-review count0 does not replace independent
+ runtime recovery approval. No merge, release or Kafka activation yet.

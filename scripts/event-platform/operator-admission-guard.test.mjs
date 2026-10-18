@@ -1,12 +1,20 @@
 /** Negative route-guard tests only: psql/Docker/DB are never invoked here. */
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const runner = new URL('./operator-admission.integration.mjs', import.meta.url)
 const environment = { GITHUB_ACTIONS: 'true', LD_OPERATOR_DISPOSABLE: '1',
   PGDATABASE: 'kafka_operator_test', PGHOST: '127.0.0.1', PGPORT: '5432', PGUSER: 'control_test_admin',
   PATH: '/nonexistent-no-psql' }
+
+test('final ready-for-review event executes the real operator SQL gate again', () => {
+  const workflow = readFileSync(new URL('../../.github/workflows/kafka-operator-admission.yml', import.meta.url), 'utf8')
+  assert.match(workflow, /types: \[opened, synchronize, reopened, ready_for_review\]/)
+  assert.match(workflow, /run: node --test scripts\/event-platform\/operator-admission\.integration\.mjs/)
+  assert.doesNotMatch(workflow, /continue-on-error:/)
+})
 
 test('operator SQL fixture rejects non-CI, ambiguous and non-loopback routes before SQL', () => {
   const invalid = [
