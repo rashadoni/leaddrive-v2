@@ -3106,3 +3106,20 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   main artifact1c5d752c3116ead4f0d8c84158a836f992c18c34 independently observed.
   Next: actual static success, verify live head/main/protection, normal PR merge
   and monitor the automatic SHA-bound release, then public and read-only checks.
+
+### PR889 normally merged after all actual gates — 2026-10-18 18:58 UTC
+
+- All five protected GitHub Actions checks passed on exact source ea6d16965.
+  Required static run39154320847 additionally confirmed340 focused unit tests,
+ 14 real restricted-PostgreSQL tests and18 failing files matching the18-file
+  existing full-suite baseline. Separate actual broker/CDC/tooling checks also
+  passed on that same source. No bypass, baseline edit or admin merge.
+- Immediately rechecked main1c5d752c3, clean mergeability, exact PR head and
+  all5 required contexts bound to Actions app15368/enforce_admins=true. Normal
+  merge at18:58:04Z created `4cbdece263fa78d67f763fc32f7c03b17035c9b4`.
+  Automatic production run39156579615 started for precisely that merge SHA;
+  no manual dispatch, duplicate job or direct-server fallback.
+- Delivery is still pending actual build, quality gates, production promotion
+  and post-deploy smoke. Unused lifecycle source is not a separately packaged
+  or installed JVM worker. Production Kafka consumers, offsets, replay, WAL,
+  slots, restore and recovery timers have not been activated by this task.

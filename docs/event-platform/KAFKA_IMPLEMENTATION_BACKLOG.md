@@ -859,3 +859,24 @@ is superseded for this scoped integration proof only. Separate synthetic CDC
 39151613585 passed, but full CDC-to-rebuild/direct-JVM runtime composition is
 still open. Mandatory static-checks and normal merge/release remain pending;
 no production consumer, replay or recovery commissioning occurred.
+
+### Corrected lifecycle source verified and merged — 2026-10-18 18:58 UTC
+
+Superseding the preceding pending-source receipt: PR889 final source
+`ea6d16965fdafdf5f0245f6bd88ed3485311edbf` passes all5 mandatory checks,
+actual Next/generated-client strict types,113 fixture/lifecycle tests,
+13 broker cases and8 combined restricted-SQL cases (run39154321016).
+Full typecheck report contains zero diagnostics in the task-owned files;
+three previously advisory NODE_ENV test errors were corrected before merge,
+and strict CI now includes the real Next ambient declaration to prevent return.
+No full-suite/type diagnostic baselines were weakened.
+
+Ordinary merge SHA `4cbdece263fa78d67f763fc32f7c03b17035c9b4` at18:58:04Z;
+automatic application release39156579615 is pending build/quality/smoke.
+This does not package/install/activate the separate worker. Next smallest
+inactive prerequisite is governed launch/config admission and immutable worker
+manifest, followed by actual direct-JVM lifecycle composition. Full Debezium
+to restricted-SQL rebuild, infrastructure HA/TLS/ACL, recovery evidence and
+independent confirmation, operator lifecycle/promotion and other domain
+adoption remain open. No production consumers, offset/reset/replay or backup
+commissioning was performed by this delivery.
