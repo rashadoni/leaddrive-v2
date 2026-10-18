@@ -520,3 +520,9 @@
   report handler. Existing assets PASS; Bash syntax/diff check PASS.
 - This follow-up supersedes earlier frozen A3 code acceptance for final delivery;
   exact-head gates must rerun. Earlier430c acceptance remains historical evidence.
+
+- Follow-up published source0cc5e87ba1462af9fffaaf8315ae68fa938fc3c7:
+  owner39172571943,tenant39172571894,runner39172571994,scan39172572053,
+  pgpass39172571929 all SUCCESS. Protected static/type39172572032 pending.
+  PR description updated so prior430c acceptance is not mistaken for current.
+  Coordinator PR891 now awaits only active final full-cdc-fund; no merge yet.
