@@ -1335,3 +1335,29 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   retry error-identity and TypeScript proof are NOT RUN yet. Next: review this
   exact test patch and publish one normal frozen draft head; merge remains
   blocked until actual required tests succeed. No activation/replay performed.
+
+## 2026-10-18 01:15 UTC — independent pinned-image availability failure
+
+- Frozen97437cac7 passed cheap checks and entered full39085527339. Actual
+  PG/typecheck are still running. Separate CDC39085527336 failed before Connect
+  started: Quay no longer serves the previously tested Debezium digest
+  e37dee587fc65dcaed9467c07f6370fb33a421793c5dcad84392792298bd0da0.
+  Cleanup succeeded. This is not a new Fund/CDC correctness assertion failure.
+- Root independently GET-checked the exact public manifest with OCI and Docker
+  Accept types: HTTP404/MANIFEST_UNKNOWN. Official3.7.0.Final tag serves index
+  c804b88d97b74e0834b45f35f33210051159078b31e295d5daeceab36ab7d908;
+  its Linux/amd64 child is
+  d76ab3d1d412e9aa38fa8532ac01d99d36b87355a21ee99fbe6f847c168be924.
+  Retrieved only public manifest/config metadata, not image layers or containers
+  on development. Both payload hashes match their declared SHA-256 digests.
+- Config7172c82542f0c932b1fdf92a9e858cd475676b04ce0c47767a1a810b9201d7ea
+  confirms Linux/amd64, expected entrypoint, Debezium3.7.0.Final/Kafka4.3.1.
+  Prepared the minimal same-version immutable repin, with stronger runtime
+  plugin admission for exactly one PostgreSQL source plugin at3.7.0.Final and
+  positive/negative tests executing that actual admission. No latest/tag-only
+  fallback, disabled check, alternate registry credentials or production change.
+- This metadata is identity/availability evidence, not publisher-signature or
+  permanent-image-retention proof. Owned immutable image distribution remains
+  a production prerequisite. New image behavior/CDC are NOT RUN until its new
+  head passes integration. Preserve current974 PG/typecheck results; no rerun
+  of a demonstrably unavailable old image and no cancellation of active jobs.
