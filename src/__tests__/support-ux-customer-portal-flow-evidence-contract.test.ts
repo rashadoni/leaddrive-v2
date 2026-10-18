@@ -6,7 +6,8 @@ const workflow = readFileSync(".github/workflows/support-ux-evidence.yml", "utf8
 const list = readFileSync("src/app/portal/tickets/page.tsx", "utf8")
 const detail = readFileSync("src/app/portal/tickets/[id]/page.tsx", "utf8")
 const chat = readFileSync("src/app/portal/chat/page.tsx", "utf8")
-const closure = readFileSync("src/app/ticket-closure/[token]/page.tsx", "utf8")
+// The page loads and saves; what the customer sees is its view (shown in the demo too).
+const closure = readFileSync("src/app/ticket-closure/[token]/page.tsx", "utf8") + readFileSync("src/components/tickets/ticket-closure-request-view.tsx", "utf8")
 
 describe("Customer Support Portal flow evidence contract", () => {
   it("fails closed outside the disposable loopback tenant", () => {

@@ -194,6 +194,8 @@ export const SUPPORT_DEMO_DRAFT = [
 ].join("\n")
 
 /** The customer's answer on WhatsApp, which lands in the ticket by itself. */
+/** The confirmation link in the resolve message: the product's shape (`/ticket-closure/<token>?lang=az`) on an invented domain. */
+export const SUPPORT_DEMO_CLOSURE_LINK = "https://destek.servis-numune.az/ticket-closure/k7Qm2vX9?lang=az"
 export const SUPPORT_DEMO_CUSTOMER_CONFIRMS = "Yenilə basdım, printer göründü, test çeki çıxdı. Satışa davam edirik, təşəkkürlər!"
 
 /** Baku wall-clock times of the morning's moves on the ticket. */

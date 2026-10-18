@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from "next-intl"
 import { AlertTriangle, ArrowLeft, BookOpen, Bot, CheckCircle2, CircleDot, Clock, FileText, Keyboard, Lock, MessageSquareWarning, Paperclip, Send, ShieldAlert, Star, Timer, UserCheck, UserX, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ChatBubble } from "@/components/tickets/chat-history-view"
+import { TicketClosureRequestView } from "@/components/tickets/ticket-closure-request-view"
+import { closureRequestWhatsAppText, ticketStatusWhatsAppText } from "@/lib/ticketing/customer-ticket-text"
 import { compareAgentQueueRows } from "@/lib/ticketing/agent-desktop"
 import { SLA_POLICY_PRIORITIES, splitSlaDuration, summarizeSlaPolicyCoverage } from "@/lib/ticketing/sla-policy"
 import { createDateFormatter } from "@/lib/format-date"
@@ -17,6 +19,7 @@ import {
   SUPPORT_DEMO_AGENT,
   SUPPORT_DEMO_ARTICLE,
   SUPPORT_DEMO_CLOCK,
+  SUPPORT_DEMO_CLOSURE_LINK,
   SUPPORT_DEMO_CUSTOMER_MESSAGES,
   SUPPORT_DEMO_CUSTOMER_CONFIRMS,
   SUPPORT_DEMO_DRAFT,
@@ -44,18 +47,19 @@ import {
  * from `triggerTimeFromDeadline`
  * and the agent's figures from `calculateAgentDesktopMetrics`. The live
  * screens fetch their data, so their frames are redrawn here with the
- * product's parts (`ChatHistoryView`, `ChatBubble`) and words.
+ * product's parts (`ChatBubble`) and words.
  *
  * What the screens say is what the product does: a reply goes to the
  * customer's WhatsApp and the portal, never by e-mail; Da Vinci drafts and the
- * agent sends; resolving asks the customer to confirm and closes by itself
- * after seven days without an answer; an internal note never reaches the
- * customer.
+ * agent sends; resolving sends the customer two WhatsApp messages — the
+ * status and the closure link (`customer-ticket-text.ts`, the product's own
+ * words) — and closes by itself after seven days without an answer; an
+ * internal note never reaches the customer.
  *
- * The customer's portal is left out on purpose: for a ticket opened from
- * WhatsApp it shows the messages with their stored «[Клиент (WhatsApp)]»
- * prefix and the Russian auto-description — the demo shows neither a cleaned
- * copy nor that.
+ * The customer's side of resolving is the product's own closure page
+ * (`TicketClosureRequestView`, what the link opens); the two messages are
+ * plain bubbles from «Dəstək xidməti» — not the AI's, whose marker a status
+ * message never carries.
  */
 
 type SupportScreen = "queue" | "ticket" | "resolve" | "rules" | "results"
@@ -385,12 +389,13 @@ function TicketScreen({ snapshot, step, reviewMode, dispatch, hint, resolveStage
   const drafted = resolveStage || snapshot.ui["sd.drafted"] === true
   const replied = resolveStage || snapshot.ui["sd.replied"] === true
   const resolved = resolveStage && snapshot.ui["sd.resolved"] === true
+  const confirmed = resolved && snapshot.ui["sd.confirmed"] === true
   const at = (hhmm: string) => mtmDemoAt(today, hhmm)
   const ticket: SupportDemoTicket = {
     ...base,
     assigneeName: me,
     firstResponseAt: replied ? at(SUPPORT_DEMO_TIMES.reply) : null,
-    status: resolved ? "resolved" : base.status,
+    status: confirmed ? "closed" : resolved ? "resolved" : base.status,
     resolvedAt: resolved ? at(SUPPORT_DEMO_TIMES.resolved) : null,
   }
   const sla = slaReading(ticket, now, t("hrAbbr"), t("minAbbr"))
@@ -506,10 +511,19 @@ function TicketScreen({ snapshot, step, reviewMode, dispatch, hint, resolveStage
             </div>
             {!resolveStage ? <Composer drafted={drafted} replied={replied} press={press} hint={hint} /> : null}
           </Panel>
+          {resolved ? (
+            <CustomerSide
+              ticket={ticket}
+              resolvedAt={at(SUPPORT_DEMO_TIMES.resolved)}
+              confirmed={confirmed}
+              onConfirm={() => press("sd-resolve-wait", "sd.confirmed")}
+              onReject={() => hint(S.supportRejectHint)}
+            />
+          ) : null}
         </div>
 
         <aside className="flex min-w-0 flex-col gap-4">
-          {resolved ? <ClosureCard ticket={ticket} resolvedAt={at(SUPPORT_DEMO_TIMES.resolved)} /> : null}
+          {resolved ? <ClosureCard ticket={ticket} resolvedAt={at(SUPPORT_DEMO_TIMES.resolved)} confirmed={confirmed} /> : null}
           <Panel data-tour-id="sd-ticket-sla" className="p-4 text-sm">
             <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Clock className="h-3.5 w-3.5" aria-hidden="true" />{t("slaCard")}</h2>
             <dl className="space-y-2">
@@ -526,12 +540,11 @@ function TicketScreen({ snapshot, step, reviewMode, dispatch, hint, resolveStage
               <span className="block text-xs text-muted-foreground">{SUPPORT_DEMO_ARTICLE.category}</span>
             </button>
           </Panel>
-          {!resolveStage ? (
-            <Panel className="p-4">
-              <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold"><Star className="h-3.5 w-3.5" aria-hidden="true" />{t("csatCard")}</h2>
-              <p className="text-sm text-muted-foreground">{t("notRated")}</p>
-            </Panel>
-          ) : null}
+          {/* The ticket page shows the rating card at every stage. */}
+          <Panel className="p-4">
+            <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold"><Star className="h-3.5 w-3.5" aria-hidden="true" />{t("csatCard")}</h2>
+            <p className="text-sm text-muted-foreground">{t("notRated")}</p>
+          </Panel>
         </aside>
       </div>
     </div>
@@ -541,7 +554,7 @@ function TicketScreen({ snapshot, step, reviewMode, dispatch, hint, resolveStage
 function Composer({ drafted, replied, press, hint }: { drafted: boolean; replied: boolean; press: (stepId: string, path: string) => void; hint: (message: string) => void }) {
   const t = useTranslations("tickets")
   return (
-    <div className="mt-4 space-y-3 border-t pt-4">
+    <div data-tour-id="sd-ticket-composer" className="mt-4 space-y-3 border-t pt-4">
       <div className="flex w-fit rounded-full border bg-card p-0.5" role="group" aria-label={t("messageVisibility")}>
         <span className="rounded-full bg-foreground px-3 py-2 text-xs font-medium text-background"><Send className="mr-1.5 inline h-3.5 w-3.5" aria-hidden="true" />{t("replyBtn")}</span>
         <button type="button" className="rounded-full px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted" onClick={() => hint(S.demoButtonHint)}><Lock className="mr-1.5 inline h-3.5 w-3.5" aria-hidden="true" />{t("internalNote")}</button>
@@ -575,7 +588,7 @@ function Composer({ drafted, replied, press, hint }: { drafted: boolean; replied
   )
 }
 
-function ClosureCard({ ticket, resolvedAt }: { ticket: SupportDemoTicket; resolvedAt: string }) {
+function ClosureCard({ ticket, resolvedAt, confirmed }: { ticket: SupportDemoTicket; resolvedAt: string; confirmed: boolean }) {
   const t = useTranslations("tickets")
   const format = useFormat()
   // closure-requests.ts: the customer has seven days to answer.
@@ -584,7 +597,7 @@ function ClosureCard({ ticket, resolvedAt }: { ticket: SupportDemoTicket; resolv
     <Panel data-tour-id="sd-resolve-closure" className="border-blue-200 bg-blue-50/40 p-4 text-sm dark:border-blue-900/60 dark:bg-blue-950/10">
       <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold"><CheckCircle2 className="h-4 w-4 text-blue-600" aria-hidden="true" />{t("closureRequestCard")}</h2>
       <div className="flex items-center justify-between gap-2">
-        <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">{t("closureRequestPending")}</span>
+        <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">{confirmed ? t("closureRequestConfirmed") : t("closureRequestPending")}</span>
       </div>
       <p className="mt-2 text-xs leading-5 text-muted-foreground">{t("closureRequestSentDesc")}</p>
       <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
@@ -592,6 +605,60 @@ function ClosureCard({ ticket, resolvedAt }: { ticket: SupportDemoTicket; resolv
         <div className="rounded-md bg-background/70 p-2"><span className="block text-muted-foreground">{t("closureRequestRecipient")}</span><span className="block truncate font-medium">{ticket.requesterDetail}</span></div>
       </div>
       <p className="mt-2 rounded-md border border-blue-200/70 bg-background/70 p-2 text-xs text-muted-foreground dark:border-blue-900/60">{t("closureRequestAutoClose")}: <span className="font-medium text-foreground">{format.dayTime(dueAt)}</span></p>
+    </Panel>
+  )
+}
+
+/**
+ * What the customer gets when the ticket is resolved: the product's two
+ * WhatsApp messages, and the closure page the link opens — the prospect
+ * answers as the customer.
+ */
+function CustomerSide({ ticket, resolvedAt, confirmed, onConfirm, onReject }: {
+  ticket: SupportDemoTicket
+  resolvedAt: string
+  confirmed: boolean
+  onConfirm: () => void
+  onReject: () => void
+}) {
+  const tp = useTranslations("portal")
+  const format = useFormat()
+  const messages = [
+    ticketStatusWhatsAppText("az", "resolved", ticket.ticketNumber) ?? "",
+    closureRequestWhatsAppText("az", { ticketNumber: ticket.ticketNumber, confirmationUrl: SUPPORT_DEMO_CLOSURE_LINK }),
+  ]
+  // closure-requests.ts: the customer has seven days to answer.
+  const dueAt = new Date(Date.parse(resolvedAt) + 7 * 24 * 60 * 60 * 1000).toISOString()
+  return (
+    <Panel data-tour-id="sd-resolve-customer" className="p-4">
+      <h2 className="mb-3 text-base font-semibold">{S.supportCustomerSide}</h2>
+      {/* One column: the closure page is laid out for a whole screen, and beside
+          the messages its two buttons ran out of the card. */}
+      <div className="space-y-4">
+        <ol className="space-y-2">
+          {messages.map((text) => (
+            <li key={text} className="rounded-lg rounded-tl-sm border bg-background px-3 py-2">
+              <p className="text-xs font-medium text-muted-foreground">{S.supportCustomerSideFrom} · {format.time(resolvedAt)}</p>
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">{text}</p>
+            </li>
+          ))}
+        </ol>
+        <div className="rounded-lg border bg-background p-4">
+          <TicketClosureRequestView
+            request={{
+              id: "demo-closure",
+              status: confirmed ? "confirmed" : "pending",
+              dueAt,
+              ticket: { ticketNumber: ticket.ticketNumber, subject: ticket.subject, status: ticket.status },
+            }}
+            submitting={null}
+            message={confirmed ? tp("closureConfirmedMessage") : ""}
+            error=""
+            onSubmit={(action) => (action === "confirm" ? onConfirm() : onReject())}
+            confirmButtonProps={demoTarget("sd-resolve-wait")}
+          />
+        </div>
+      </div>
     </Panel>
   )
 }

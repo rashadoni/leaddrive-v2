@@ -934,6 +934,36 @@ describe("the Service Desk module", () => {
     expect(closure).toContain(SUPPORT_DEMO_TIMES.resolved)
   }, 60_000)
 
+  it("shows the customer's side — the product's two WhatsApp messages and its closure page — and closes when the customer confirms", async () => {
+    const { closureRequestWhatsAppText, ticketStatusWhatsAppText } = await import("@/lib/ticketing/customer-ticket-text")
+    const { SUPPORT_DEMO_CLOSURE_LINK } = await import("@/components/demo-center/journey/scenes/support-demo-data")
+    await openServiceDesk()
+    await walkTo("sd-resolve-close")
+    // Nothing reached the customer before the ticket is resolved.
+    expect(document.querySelector('[data-tour-id="sd-resolve-customer"]')).toBeNull()
+    await act(async () => findDemoTarget("sd-resolve-close")!.click())
+    await settle()
+    const side = textOf('[data-tour-id="sd-resolve-customer"]')
+    expect(side).toContain(ticketStatusWhatsAppText("az", "resolved", "WA-0417")!)
+    expect(side).toContain(closureRequestWhatsAppText("az", { ticketNumber: "WA-0417", confirmationUrl: SUPPORT_DEMO_CLOSURE_LINK }))
+    expect(side).toContain(messages.portal.closureTitle)
+    expect(side).toContain(messages.portal.closureStatus.pending)
+    // The customer's messages come from the support line, never with the AI's marker.
+    expect(document.querySelector('[data-tour-id="sd-resolve-customer"] svg.lucide-sparkles')).toBeNull()
+
+    // «Dəstəyə qaytar» would reopen it; the demo explains instead of acting.
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-tour-id="sd-resolve-customer"] [data-testid="ticket-closure-reject"]')!.click())
+    await settle()
+    expect(toasts).toContain(S.supportRejectHint)
+    expect(frontier().stepId).toBe("sd-resolve-wait")
+
+    await act(async () => findDemoTarget("sd-resolve-wait")!.click())
+    await settle()
+    // Confirmed: the chapter is done and the guide says what happened.
+    expect(frontier().sectionId).toBe("sd-rules")
+    expect(document.body.textContent).toContain(steps.get("sd-resolve-wait")!.result!)
+  }, 60_000)
+
   it("shows the agent's month as the product's own arithmetic", async () => {
     const { supportDemoAgentMetrics } = await import("@/components/demo-center/journey/scenes/support-demo-data")
     const { mtmDemoToday } = await import("@/components/demo-center/journey/scenes/mtm-demo-data")
