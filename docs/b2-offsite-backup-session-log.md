@@ -81,3 +81,19 @@
   `~/leaddrive-b2-keys/{writer,restore}.env` (0600) на Маке; сессия их не видела.
 - Подсказка «Next:» в скрипте печатала относительный путь — теперь путь рядом со
   скриптом.
+
+## 2026-10-19 00:49 — проверка ключей
+
+- Владелец поставил `awscli` 2.38.1 (Homebrew) и запустил
+  `b2-verify-backup-keys.sh` на Маке. Итог `RESULT: 0 failure(s)`:
+  - multipart-загрузка 9 МиБ writer'ом — PASS, контрольные суммы AWS CLI по
+    умолчанию B2 принимает (`when_required` не нужен);
+  - `head-object` writer'ом: размер, sha256-метаданные, version id — PASS;
+  - скачивание restore-ключом побайтно совпало — PASS;
+  - writer: удаление версии и листинг — `AccessDenied`, PASS;
+  - restore: удаление — `AccessDenied`, запись — отклонена, но код ошибки пустой
+    (скрипт не поймал S3-код; отказ есть, причина не зафиксирована);
+  - объект на месте после попыток удаления — PASS.
+- Object Lock не настроен (`ObjectLockConfigurationNotFoundError`) — как задумано.
+- Синтетический объект `leaddrive-b2-synthetic-check/20261018T224905Z-1423031217.bin`
+  уберёт lifecycle-правило.
