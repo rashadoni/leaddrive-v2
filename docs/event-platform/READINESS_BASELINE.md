@@ -415,3 +415,28 @@ at04:54:23Z with expected_main_sha exact24ce. New service category/summary
 is PENDING here; the preceding22issues/9gaps/service_error remains the last
 completed observation. A failed readiness gate is not a failed app deployment.
 No recovery, source CDC, consumer, offset or replay action was performed.
+
+### Completed refined report, not recovery readiness — 2026-10-18 04:55 UTC
+
+[Readiness39098707822](https://github.com/rashadoni/leaddrive-v2/actions/runs/39098707822)
+completed FAILURE04:55:37Z, exact24ce, with full sanitized SUMMARY:
+machine_ready=no enterprise_ga_ready=no issues=23 enterprise_gaps=9
+operator_attestation_required=yes. App deploy39096745285 remains SUCCESS.
+This supersedes the immediately preceding pending/22-issue observation.
+
+Actual ObjectLock category is service_error_format_unrecognized: CLI254, but
+the expected exact CLI error envelope was not recognized. No root cause,
+service code, HTTP status, missing lock or permission/credential defect has
+been proven; no raw error or speculative policy/credential correction follows.
+The new23rd FAIL is runtime-files freshness (previously PASS); its hidden
+raw metadata was not separately examined, so do not assert an empty timestamp
+or new production failure. All4 freshness and4 MemorySwapMax checks FAIL.
+
+Three DB/secrets/log timers remain loaded:disabled:inactive; runtime-files
+not-found:not-found:inactive. Encryption explicitly OFF; unit/authority drift,
+genesis/evidence/restore gaps persist. Tools, private connection-file guards,
+persistent locks and immutable operations program remain PASS.23 FAIL lines
+include aggregate checks, not23 independent tasks.9 wider gaps remain open.
+Historical Mac file-copy/hash receipts do not prove current application restore
+or independent signed custody. No backup/restore, key/policy/timer/source CDC,
+consumer, offset or replay action ran. No unchanged report retry is planned.

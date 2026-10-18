@@ -2002,3 +2002,44 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   logical-WAL/restart/slot/publication, consumer/offset/replay or paid-service
   action was performed through this report-code delivery. Local-only docs
   checkpoints stay preserved and unpushed; no later local SHA entered release.
+
+## 2026-10-18 04:55 UTC — refined recovery verdict:23 issues,9 gaps, NO-GO
+
+- The single protected read-only39098707822/job117590370645 completed FAILURE
+  04:55:37Z on exact24ce, attempt1. Its sanitized report ran04:54:47→04:55:33Z
+  and reached the full SUMMARY: machine_ready=no enterprise_ga_ready=no
+  issues=23 enterprise_gaps=9 operator_attestation_required=yes. This supersedes
+  the queued/pending refined report and preceding22-issue snapshot, not the
+  SUCCESS app deploy39096745285/public exactSHA/ping/feature receipts.
+- New actual ObjectLock category=service_error_format_unrecognized. CLI254
+  was observed but the expected exact CLI error envelope was not recognized.
+  No actual service code, HTTP status or root cause is established; do not
+  infer missing lock, AccessDenied, bad credentials/region or provider5xx.
+  No raw error/config, debug request, policy/access-key change or retry ran.
+- Compared with the preceding completed report, runtime-files freshness now
+  FAILs instead of PASS (+1). The stricter source gate must reject uncertain
+  metadata, but hidden raw service/date fields were not separately inspected;
+  the precise failing predicate or a new production regression is NOT proven.
+  All4 freshness and all4 MemorySwapMax=0 checks FAIL. DB/secrets/log timers
+  remain loaded:disabled:inactive; runtime-files remains not-found:not-found:inactive.
+- Pinned age/AWS, private pgpass/CA guards, persistent locks and immutable
+  operations artifact remain PASS. Encryption remains explicitly OFF. The
+  prior6 unit/authority/byte/aggregate-drift FAILs, genesis and2 evidence FAILs,
+  timer/run/swap/ObjectLock gaps remain.23 is the count of FAIL lines including
+  aggregate checks, not23 independent implementation tasks.9 broader recovery
+  gaps still include PITR, independent storage, full authority/media/host/log
+  restoration and schema/retention/custody evidence.
+- No unchanged inspection rerun or speculative diagnostic/policy fix follows
+  this unknown-format result. Needed next are a separately scoped private
+  storage/operator investigation and real current offline custody/independently
+  signed restore proof; never fabricate them from historical screenshots,
+  file-copy receipts, another owner account or an AI identity. The earlier
+  asynchronous question about a second real human is still unanswered.
+- K4 broker worker/assignment fencing, runtime shadow-role provisioning,
+  projection read cutover, archive/HA/alerts, source logical-WAL maintenance,
+  production CDC/consumer activation/replay and remaining-domain adoption
+  are NOT completed. Fund's bounded tested adapter is inactive; Payments/OTP
+  additions are LOCAL read-only inventories, not application migrations.
+- Stopping point: delivered report source plus actual refined NO-GO, with
+  task-owned docs checkpointed and canonical dirty tree/old worktrees preserved.
+  No claim of100%, no new paid service, no runtime backup/restore/Kafka changes.

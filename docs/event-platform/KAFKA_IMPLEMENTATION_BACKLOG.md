@@ -603,3 +603,27 @@ delivery запущен ровно один protected read-only readiness3909870
 Не запускать старый report повторно ради зелёного результата; не включать
 timers/шифрование, не менять ключи/retention и не начинать source CDC/replay
 на основании одного merge/deploy. K4 broker worker и K8 activation не закрыты.
+
+### Новый фактический verdict и граница следующего шага — 2026-10-18 04:55 UTC
+
+Readiness39098707822 завершён FAILURE04:55:37Z на exact24ce; full SUMMARY:
+machine_ready=no, issues23, enterprise_gaps9, operator_attestation_required=yes.
+Это заменяет pending/22issue выше; appdeploy39096745285 остаётся SUCCESS.
+ObjectLock=service_error_format_unrecognized: CLI254, ожидаемый точный формат
+ошибки не распознан. Причина, права/ключи, регион, HTTP status и наличие lock
+не установлены. Не делать предположительные policy/key изменения/новый retry.
+
+Runtime-files freshness теперь FAIL вместо прежнегоPASS; исходная скрытая
+метадата отдельно не проверена. Все4 freshness и4 MemorySwapMax FAIL, шифрование
+OFF; три таймера disabled/inactive, четвёртый отсутствует. Tools/file guards/
+immutable program PASS.23 FAIL-строки включают агрегирующие проверки, это не
+23 независимых задачи. K2.1/K3.2/K3.6, topology/archive/DR и K8 остаются NO-GO.
+
+Следующая эксплуатационная операция требует отдельного подтверждённого scope:
+закрытая диагностика storage и настоящее подтверждение custody/восстановления
+с независимым ответственным. Исторический Mac/Drive copy receipt и AI не
+заменяют подписанный drill. Платные услуги/новые ресурсы не заказывались.
+Программный остаток P1/K4 тоже явно открыт: broker worker, assignment/high-water,
+restricted runtime provisioning, интегрированный rebuild и read cutover ещё не
+сделаны. Инвентарь Payments/OTP не означает миграцию их application writers;
+покрытие всех модулей и100% здесь не объявляются.
