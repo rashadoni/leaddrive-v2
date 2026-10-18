@@ -516,3 +516,36 @@ other session check changed. Local all115 unit cases PASS; syntax/diff PASS,
 RAM13.7GB,disk202GB,swap0,pressure0. Prior c02431867 hosted run39169864714 whole
 SUCCESS (115+24+18); those receipts do not certify this later hardening.
 Next: final hardened source hosted real-schema proof and documentation update.
+
+## 2026-10-19 — final restricted canary reader proof
+
+Executable source b647e0bf01079332bd91237d2b494e76fbc46cf8 passed
+https://github.com/rashadoni/leaddrive-v2/actions/runs/39170024941,
+job117800961002:115/115 unit,24/24 actual admission PostgreSQL,22/22 actual-schema
+Fund recovery/canary cases, cleanup PASS. No own fixture failures in this phase;
+069569305 run was superseded/cancelled by our workflow concurrency, not a pass.
+Local115/115, syntax, diff, runner-policy72 PASS. Map checked against actual
+catalog27/27. Pinned redacted gitleaks8.30.1 scans current branch: exactly the
+same historical prose fingerprint6ca3b5e2e:ops/event-platform/operator/README.md:
+generic-api-key:82; no new finding. Gate stays red, no exclusions/history rewrite.
+Full app build/static/typecheck NOT RUN (draft and Contabo workload restriction;
+no application imports, migration, API or runtime changed). Operational consumers,
+offsets/replay, actual alert delivery/soak/restore and production NOT RUN, forbidden
+or unavailable as authentic evidence; test fixture writes are isolated hosted DB.
+
+Fresh read-only observation PR891 is now draft on
+267507fcca5c59d5b19cb80652485a1b985b1fae. Its Fund worker still requires running;
+worker-admission is a pure plan validator. Older receipts cannot certify that
+head. Its changed-file list now includes earlier operator preparation paths;
+no changes, dispatches or merges were made to that branch or its checks here.
+
+Result: inactive real restricted canary adapter prepared and proven on actual
+schema; A5 runtime readiness remains open and A7 domain evidence map retained.
+Last completed action:115+24+22 hosted proof, permission/inventory review and
+read-only upstream contract reconciliation. Stop: no active canary API, no real
+authenticated pointer mutation executor, promoted worker continuation or final
+source barrier; no operational evidence fabricated. Next integration step:
+original delivery session resolves frozen A1/A2 worker+checkpoint lifecycle,
+then composes authenticated admission/final source verification/real pointer CAS
+and retained rollback in an isolated proof before any separately authorized
+activation. Existing scan block also remains a delivery prerequisite.
