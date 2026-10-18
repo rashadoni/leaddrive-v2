@@ -1399,3 +1399,32 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   unchanged and still finishes its baseline gate. New focused unit/runtime
   proof is NOT RUN until the next frozen-head Actions execution. No local
   dependency install, full build or production mutation.
+
+### Completed974 proof before the image-only/runtime-admission correction
+
+- Full39085527339 completed SUCCESS on exact
+  97437cac7e04a6d92fd5738ba1e930db4fd3ef38. All five required checks
+  pr-scope/static-checks/typecheck/runner-policy/scan are SUCCESS; tooling also
+  SUCCESS. Root/helper read completed job logs, not only the aggregate badge.
+- Actual PG10/10 PASS in static117551232155, completed step01:17:52UTC.
+  The two-connection conflict/whole-factory retry case passed953ms: exactly
+  one committed winner and one real rejection; winner state/counts/source
+  checked before retry; SAME observed error at scoped SQL and actual losing
+  connection retried in a NEW factory; duplicate/current state/checkpoint and
+  counts1 verified. All other tenant/RLS/hash/rollback/controller cases PASS.
+  This supersedes the earlier unknown retry error-identity/result snapshots.
+- Typecheck117551232121 SUCCESS at01:22:46UTC: zero diagnostics in all five
+  own Fund TS paths,1326 advisory diagnostics/64 gated pairs equal baseline64.
+  Repository unit baseline18 failing files equals baseline18, no new failure.
+  Individual successful reducer/mock counts remain unavailable in that runner;
+  the new explicit scoped step is intended to produce those actual receipts.
+- CDC39085527336 is still FAILURE before assertions because of upstream404.
+  Therefore do NOT merge974 or claim all feature delivery green from five checks
+  alone. Same-version immutable repin7467ef949 and explicit unit gate5b0414582
+  reviewed; local tooling59/59, runner-policy70 and asset/diff/shell checks PASS.
+- With all old jobs terminal and current main stillfa738db9, next publish one
+  frozen draft head, observe cheap checks and run the EXISTING synthetic CDC
+  workflow_dispatch on that exact branch before marking ready for full gates.
+  This bounds image risk before another full typecheck; it does not deploy or
+  use production credentials. Wait its terminal result before ready, so the
+  ordinary ready-event CDC never overlaps that manual image validation.
