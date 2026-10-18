@@ -47,6 +47,8 @@ function open(login) {
     async close(){ if(!closed)child.stdin.end();await done },
   }
 }
+// Explicit connection lifetime for deterministic concurrent barrier proofs.
+export const fixtureConnection = login => open(login)
 export async function fixtureSql(login,sql) {
   const connection=open(login)
   try{return await connection.command(sql)}finally{await connection.close()}

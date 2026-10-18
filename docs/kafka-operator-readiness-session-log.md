@@ -706,3 +706,40 @@ original delivery session binds its frozen A1/A2 process observations to this
 challenge contract, then prepares same-transaction source/lease/barrier+pointer
 CAS proof with concurrent writer/revoke/rollback denial. Continuous promoted
 processing remains a separate guarded lifecycle design; do not relax its guards.
+
+## 2026-10-19 — inactive transactional tenant source barrier preparation
+
+User requested start, then repeated «начинай» while work was active; continued
+same task without restarting or asking permission. Resumed clean dedicated
+worktree on5d3a0af91; project-context and fresh origin/main fetch unchanged at
+226dde0e77c0c36a4de991bb703ba8f8416c5a64. Production route unchanged, no canonical
+or production changes. PR891 observed read-only on2936f4c2f4dc7cd682429cd5d87fa9ec4dfbf9d6,
+non-draft; no foreign branch/check modifications or certification.
+
+Prepared source-barrier.sql kernel plus separate fixture attachment (not a
+migration/bootstrap): ALWAYS row+TRUNCATE guards on six real tables funds,
+fund_transactions,domain_events,event_outbox,event_aggregate_heads and
+fund_balance_projections. Every old/new tenant row scope takes a nonwaiting
+shared transaction advisory lock; authorized promote/rollback controller takes
+exclusive matching tenant lock, failing immediately on existing writer. A
+private request/generation/xid8/backend record makes handles transaction-bound;
+assert rechecks lease. Requires exact12 ALWAYS unfiltered guards on ordinary
+non-inherited tables and READ COMMITTED control transaction. No source write or
+business read grants for controller, no installed app runtime or active triggers
+outside disposable CI. Table-owner DDL must stay frozen/trusted. Six shared
+source tables mean same-tenant non-Fund writes there also participate; other
+tenants are independent except theoretical hash-collision denial/serialization.
+Command receipts, inbox/checkpoints/build/pointer/effects are not source-fenced;
+worker lease/effect/pointer constraints remain separate. No whole-A5 claim.
+
+Added8 actual-schema hosted cases: missing/disabled profile; existing/new Fund,
+ledger/projection write denial with independent tenant success and fingerprint;
+active writer excludes barrier; transaction/savepoint replay denial; correct
+identity/action/isolation; ALWAYS replica+truncate denial; real staged lease
+expiry at COMMIT rollback and writer release. Extended only our guarded disposable
+transport with explicit connection lifetime for deterministic races. Syntax,
+runner-policy72 and diff PASS. PostgreSQL proof pending hosted CI. Resources
+before local syntax check12.8GB available/199GB disk/swap3MB/pressure0.
+NOT RUN: heavy local build/typecheck, actual source barrier installation/runtime,
+consumers/offset/replay/provider sends/production. Next hosted source proof and
+own fixes, then ordered map with exact remaining executor/observer boundaries.

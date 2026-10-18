@@ -68,3 +68,8 @@ jobs:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           LD_OPERATOR_REDUCER_MODULE: ${{ runner.temp }}/operator-canonical-reducer.mjs
         run: node --test scripts/event-platform/operator-fund-snapshot.integration.mjs
+
+      - name: Tenant source-write barrier against actual Fund migrations
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+        run: node --test scripts/event-platform/operator-source-barrier.integration.mjs
