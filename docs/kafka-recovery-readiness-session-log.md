@@ -567,3 +567,20 @@
   change is active. Owner route does not replace independent Farah acceptance.
 - Reconfirmed source backup helpers enforce real tmpfs/private capacity before
   plaintext staging; no unsafe workspace fallback introduced by owner selector.
+
+## 2026-10-19 (Asia/Baku): common release verified, A3 slot pending
+
+- Common deploy39173487040 completed SUCCESS for main421260026.
+- Initial separate public urllib GET returned HTTP403 before either semantic
+  smoke assertion. A subsequent shell line incorrectly posted a premature
+  independent-smoke claim to PR comment6256412114 despite that failure.
+  Corrected that comment immediately and visibly acknowledged the mistake.
+  No failed check was retained as PASS and no underlying403cause was guessed.
+- Retried existing public curl route:HTTP200 for both ping and build-info.
+  Parsed bodies in a separate successful check:ok=true and artifactSha exactly
+  4212600260f5ed28b9c2b73e28c363a0fc7d39f3. These actual observations supersede
+  the premature claim; failed urllib attempt remains historical evidence here.
+- A3 sourcee7f6e44ae all required contexts PASS. Requested coordinator release
+  of reserved next slot after confirmed common delivery; no parallel main merge
+  or deploy, production backup/restore still NOT RUN. Await ownership/slot
+  coordination before code delivery. No further user authorization requested.
