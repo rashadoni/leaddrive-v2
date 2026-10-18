@@ -341,7 +341,11 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       // agent (./leaddrive-agent-profile.ts) on the product's AI agent screen.
       id: "ai-agent-setup",
       title: "AI agent necə qurulub",
-      summary: `LeadDrive-ın öz AI agentinin hazır ayarları məhsulun «AI agent» ekranında: hər kanalda kim cavab verir, sistem promptu, ünsiyyət tərzi və bilik bazası. Demoda WhatsApp hissəsi açılıbsa, orada Sizə cavab verən AI agent də məhz bu prompt, ünsiyyət tərzi və bilik bazası ilə işləyir.`,
+      // In the product this card drives the inbox agent (Telegram and the
+      // like); WhatsApp's AI answer is Da Vinci's. Only the demo's own
+      // WhatsApp line was given this agent — the summary feeds the guide's
+      // assistant, so it says exactly that.
+      summary: "LeadDrive-ın öz AI agentinin hazır ayarları məhsulun «AI agent» ekranında: hər kanalda kim cavab verir, sistem promptu, ünsiyyət tərzi və bilik bazası. Məhsulda bu ekran Telegram kimi kanallarda cavab verən AI agenti qurur. Demonun WhatsApp hissəsində Sizə cavab verən agentə də LeadDrive eyni prompt, ünsiyyət tərzi və bilik bazasını verib.",
       area: "inbox",
       route: "/inbox/ai-agent",
       navGroup: "omnichannel",
