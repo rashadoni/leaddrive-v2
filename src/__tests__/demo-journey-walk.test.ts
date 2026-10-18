@@ -801,6 +801,38 @@ describe("the Route & Field module", () => {
     expect(textOf('[data-testid="live-map-agent-status-agent-rauf"]')).toContain(messages.mtmMap.fieldStatus.offline)
     expect(textOf('[data-testid="mtm-live-last-known"]')).toContain(messages.mtmMap.lastKnownShown.split("{count}")[0].trim())
   }, 60_000)
+
+  it("finds who is nearest, shows the evening's road with the break as its length only, and ends on last week", async () => {
+    await renderPlayer()
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-start-section="mtm-today"]')!.click())
+    await settle()
+    await walkTo("mtm-live-nearest")
+    await act(async () => findDemoTarget("mtm-live-nearest")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("mtm-live-nearest-list")
+    // The product's own distance column, the nearest first; nobody on a break is measured.
+    expect(document.querySelector('[data-testid="live-map-agent-distance-agent-aysu"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="live-map-agent-distance-agent-rauf"]')).toBeNull()
+    const order = Array.from(document.querySelectorAll('[data-tour-id="mtm-live-roster"] [data-testid^="live-map-agent-card-"]')).map((row) => row.getAttribute("data-testid"))
+    expect(order[0]).toBe("live-map-agent-card-agent-aysu")
+
+    await walkTo("mtm-history-show")
+    expect(document.querySelector('[data-tour-id="mtm-history-trip"]')).toBeNull()
+    await act(async () => findDemoTarget("mtm-history-show")!.click())
+    await settle()
+    const trip = textOf('[data-tour-id="mtm-history-trip"]')
+    // Along the roads, and the break a line of its own with nothing but its length.
+    expect(trip).toContain(messages.mtmMap.history.trip.roadsNote)
+    const pause = Array.from(document.querySelectorAll('[data-tour-id="mtm-history-trip"] li')).find((row) => row.textContent?.includes(messages.mtmMap.history.trip.pause))
+    expect(pause, "a break line").toBeDefined()
+    expect(pause!.textContent).not.toMatch(/km|\d+ m\b|Klinika|Aptek|Mərkəz/)
+
+    await walkTo("mtm-results-team")
+    await act(async () => findDemoTarget("mtm-results-team")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("mtm-results-read")
+    expect(document.querySelector('[data-tour-id="mtm-results-team"] button[aria-pressed="true"]')?.textContent).toBe(messages.mtmTeamResults.preset.lastWeek)
+  }, 90_000)
 })
 
 /**

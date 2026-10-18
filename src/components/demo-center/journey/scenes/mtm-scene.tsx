@@ -4,10 +4,13 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent }
 import dynamic from "next/dynamic"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowLeft, BarChart3, BellRing, Check, CheckCircle2, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Clock, Clock3, FileSpreadsheet, Grid2X2, GripVertical, HelpCircle, History, MapPin, Plus, Radio, RefreshCw, Route as RouteIcon, Search, Send, Sparkles, TrendingUp, X } from "lucide-react"
+import { Activity, ArrowLeft, BarChart3, BellRing, Check, CheckCircle2, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Clock, Clock3, Download, FileSpreadsheet, Grid2X2, GripVertical, HelpCircle, History, Layers3, LocateFixed, MapPin, Pause, PhoneIncoming, Play, Plus, Radio, RefreshCw, RotateCcw, Route as RouteIcon, Satellite, Search, Send, Sparkles, TrendingUp, WifiOff, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { HintValue } from "@/components/hint"
+import { DayTripLedger, type DayTripFocus } from "@/components/mtm/day-trip-ledger"
+import type { LiveMapReferencePoint } from "@/components/mtm/live-map"
 import { HomeAttentionCard, attentionRowCount } from "@/components/mtm/home-attention-card"
 import { HomeBaseCard, HomeQualityCard } from "@/components/mtm/home-insight-cards"
 import { HomeTeamCard } from "@/components/mtm/home-team-card"
@@ -16,7 +19,7 @@ import { LiveMapDaySteps } from "@/components/mtm/live-map-day-steps"
 import { LiveMapLayersControl } from "@/components/mtm/live-map-layers-control"
 import { LiveMapRoster } from "@/components/mtm/live-map-roster"
 import { LiveMapTools } from "@/components/mtm/live-map-tools"
-import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
+import { MtmFilterBar, MtmFilterDate, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { VisitReviewView, visitStatusClasses } from "@/app/(dashboard)/mtm/visits/visit-review-panel"
 import { useOpenForText } from "@/app/(dashboard)/mtm/visits/visit-left-open"
 import { PageDescription } from "@/components/page-description"
@@ -29,7 +32,11 @@ import { isLiveMapAgentPositionVisible, type LiveMapAgent } from "@/lib/mtm-type
 import { defaultWeek, fieldNow, finishedDaysPercent, homeTeam, percentOf, planCard, todayPlan, weekComparison, weekTotals } from "@/lib/mtm/home-dashboard"
 import { buildHomeBase } from "@/lib/mtm/home-insights"
 import { buildExplainableKpi } from "@/lib/mtm/explainable-kpi"
-import { applyRosterFilters, foldRosterText, ROSTER_DEFAULT_VIEW, sortRoster, type RosterFilters, type RosterView } from "@/lib/mtm/live-map-roster"
+import { applyRosterFilters, foldRosterText, rosterDistanceToPoint, ROSTER_DEFAULT_VIEW, sortRoster, type RosterFilters, type RosterSort, type RosterView } from "@/lib/mtm/live-map-roster"
+import type { LiveMapClient } from "@/lib/mtm/live-map-clients"
+import { extendLiveMapTrails, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
+import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
+import { formatInTimezone } from "@/lib/timezone"
 import {
   routePlannerDayMinutes,
   routePlannerLengthKm,
@@ -50,6 +57,7 @@ import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 import {
   MTM_DEMO_AGENTS,
   MTM_DEMO_CLOCK,
+  MTM_DEMO_EVENING,
   MTM_DEMO_PLAN_AGENT,
   MTM_DEMO_TIMEZONE,
   addDays,
@@ -60,6 +68,7 @@ import {
   mtmDemoHome,
   mtmDemoKpiFacts,
   mtmDemoLeftOpen,
+  mtmDemoMapClients,
   mtmDemoRosterAgents,
   mtmDemoPlaceRequest,
   mtmDemoPlannerCandidates,
@@ -68,6 +77,7 @@ import {
   mtmDemoVisitReview,
   type MtmDemoHistoryVisit,
 } from "./mtm-demo-data"
+import { mtmDemoElvinHistoryView } from "./mtm-demo-day"
 
 /**
  * Route & Field (MTM): a module of its own, beside the lead story.
@@ -86,17 +96,19 @@ import {
  */
 
 const MtmLiveMap = dynamic(() => import("@/components/mtm/live-map"), { ssr: false })
+const LocationHistoryMap = dynamic(() => import("@/components/mtm/location-history-map"), { ssr: false })
 const RoutePlannerMap = dynamic(() => import("@/components/mtm/route-planner-map"), { ssr: false })
 const CustomerLocationRequestMap = dynamic(() => import("@/components/mtm/customer-location-request-map"), { ssr: false })
 
-type MtmScreen = "today" | "plan" | "live" | "visit" | "place" | "results"
+type MtmScreen = "today" | "plan" | "live" | "visit" | "place" | "history" | "results"
 
 const SCREEN_OF: Record<string, MtmScreen> = {
   "mtm-today": "today",
+  "mtm-place": "place",
   "mtm-plan": "plan",
   "mtm-live": "live",
   "mtm-visit": "visit",
-  "mtm-place": "place",
+  "mtm-history": "history",
   "mtm-results": "results",
 }
 
@@ -107,6 +119,7 @@ const PATH_OF: Record<MtmScreen, string> = {
   live: "/mtm/map",
   visit: "/mtm/visits",
   place: "/mtm/routes",
+  history: "/mtm/map",
   results: "/mtm/analytics",
 }
 
@@ -164,6 +177,7 @@ export function MtmScene(props: DemoSceneProps) {
       {screen === "live" && <LiveScreen {...props} />}
       {screen === "visit" && <VisitScreen {...props} />}
       {screen === "place" && <PlaceScreen {...props} />}
+      {screen === "history" && <HistoryScreen {...props} />}
       {screen === "results" && <ResultsScreen {...props} />}
     </div>
   )
@@ -598,6 +612,14 @@ function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
  * (`LiveMapRoster`) — one row per person, a tick for the map, status and
  * signal. The rows are the roster the server would send for this team
  * (`mtmDemoRosterAgents`); a click on a name opens his day under the row.
+ *
+ * The page asks the server again every thirty seconds; here each answer comes
+ * every two seconds, so somebody on the way visibly moves down his street and
+ * leaves the product's own trail behind him (`extendLiveMapTrails`), for ten
+ * minutes of the sample day. «Kim daha yaxındır» is the product's: from a
+ * client's balloon on the map, or from the sample call above it, the list
+ * measures everyone from that client (`rosterDistanceToPoint`) and puts the
+ * nearest first; nobody on a break is measured.
  */
 const LIVE_STATUS_CHIPS = [
   { status: "CHECKED_IN", key: "checkedIn", tone: "text-green-600 border-green-200 dark:border-green-800" },
@@ -616,20 +638,30 @@ const LIVE_SIMULATED_CONTROLS = [
   "live-map-tool-point",
   "live-map-tool-ruler",
   "live-map-tool-fullscreen",
-  "mtm-map-mode-history",
 ].map((id) => `[data-testid="${id}"]`).join(",")
 
-function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
+/** One answer of the roster per this many milliseconds of the demo, for this many answers. */
+const LIVE_TICK_MS = 2_000
+const LIVE_TICK_SECONDS = 30
+const LIVE_TICKS = 20
+const NEAREST_FIRST: RosterSort = { column: "distance", direction: "asc" }
+/** The client the sample call is from. */
+const NEAREST_CLIENT_ID = "pl-nar"
+
+function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }: DemoSceneProps) {
   const tMap = useTranslations("mtmMap")
   const tNav = useTranslations("nav")
   const tc = useTranslations("common")
   const tf = useTranslations("mtmFilters")
   const format = useBakuFormat()
   const today = mtmDemoToday(snapshot.startedAt)
-  const nowMs = Date.parse(mtmDemoAt(today, MTM_DEMO_CLOCK))
-  const agents = useMemo(() => mtmDemoRosterAgents(today), [today])
+  const startMs = Date.parse(mtmDemoAt(today, MTM_DEMO_CLOCK))
+  const [tick, setTick] = useState(0)
+  const nowMs = startMs + tick * LIVE_TICK_SECONDS * 1_000
+  const roster = useMemo(() => mtmDemoRosterAgents(today, nowMs), [today, nowMs])
   const route = useMemo(() => mtmDemoElvinRoute(today), [today])
   const steps = useMemo(() => mtmDemoElvinSteps(today), [today])
+  const clients = useMemo(() => mtmDemoMapClients(), [])
   const chosen = typeof snapshot.ui["mtm.liveAgent"] === "string" ? (snapshot.ui["mtm.liveAgent"] as string) : null
   const [selected, setSelected] = useState<string | null>(chosen)
   const [stopOrder, setStopOrder] = useState<number | null>(null)
@@ -638,14 +670,40 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
   const [view, setView] = useState<RosterView>(ROSTER_DEFAULT_VIEW)
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => new Set())
   const [showLastKnown, setShowLastKnown] = useState(true)
-  const [layers, setLayers] = useState({ agents: true, route: true, labels: true })
+  const [layers, setLayers] = useState({ agents: true, route: true, trails: true, clients: true, labels: true })
+  const [referencePoint, setReferencePoint] = useState<LiveMapReferencePoint | null>(() => {
+    const client = snapshot.ui["mtm.nearestShown"] === true ? clients.find((candidate) => candidate.id === NEAREST_CLIENT_ID) : null
+    return client ? { latitude: client.latitude, longitude: client.longitude, label: client.name } : null
+  })
+  // The trail the page would have drawn since it opened: the answers of the last few minutes.
+  const [trails, setTrails] = useState<LiveMapTrails>(() => {
+    let seeded: LiveMapTrails = new Map()
+    for (let at = startMs - 6 * 60_000; at <= startMs; at += LIVE_TICK_SECONDS * 1_000) seeded = extendLiveMapTrails(seeded, mtmDemoRosterAgents(today, at), at)
+    return seeded
+  })
   const rosterRef = useRef<HTMLDivElement>(null)
 
+  // The next answer of the roster, until the sample's ten minutes are up.
+  useEffect(() => {
+    if (tick >= LIVE_TICKS) return
+    const timer = setTimeout(() => setTick((current) => current + 1), LIVE_TICK_MS)
+    return () => clearTimeout(timer)
+  }, [tick])
+  useEffect(() => {
+    if (tick > 0) setTrails((current) => extendLiveMapTrails(current, roster, nowMs))
+  }, [tick, roster, nowMs])
+
+  // With a point picked every row says how far its employee is from it — only
+  // from a position the map itself would draw (the page's own rule).
+  const agents = useMemo(() => roster.map((agent) => referencePoint
+    ? { ...agent, distanceMeters: isLiveMapAgentPositionVisible(agent.freshness, agent.workdayState) ? rosterDistanceToPoint(agent, referencePoint) : null }
+    : agent), [referencePoint, roster])
   const searched = useMemo(() => {
     const query = foldRosterText(search.trim())
     return query ? agents.filter((agent) => foldRosterText(agent.name).includes(query)) : agents
   }, [agents, search])
-  const rows = useMemo(() => sortRoster(applyRosterFilters(searched, filters), view.sort, "az"), [searched, filters, view.sort])
+  const sort = referencePoint ? NEAREST_FIRST : view.sort.column === "distance" ? ROSTER_DEFAULT_VIEW.sort : view.sort
+  const rows = useMemo(() => sortRoster(applyRosterFilters(searched, filters), sort, "az"), [searched, filters, sort])
   // The page's own rule: a live position while the workday runs, and the
   // last known one — grey — when the signal is old, never a point from a break.
   const mapAgents: LiveMapAgent[] = rows.flatMap((agent) => {
@@ -656,6 +714,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
   })
   const stalePositions = rows.filter((agent) => agent.freshness === "STALE").length
   const count = (status: string) => agents.filter((agent) => agent.fieldStatus === status).length
+  const nearestStep = step?.id === "mtm-live-nearest"
 
   // The guide's arrow points at Elvin's name in the product's own row.
   useEffect(() => {
@@ -670,13 +729,27 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
     setStopOrder(null)
     if (!reviewMode && step?.id === "mtm-live-agent" && agentId === "agent-elvin") dispatch({ type: "ui", path: "mtm.liveAgent", value: agentId })
   }
+  const nearestTo = (client: LiveMapClient) => {
+    setReferencePoint({ latitude: client.latitude, longitude: client.longitude, label: client.name })
+    if (!reviewMode && nearestStep) dispatch({ type: "ui", path: "mtm.nearestShown", value: true })
+  }
   const simulated = (event: MouseEvent<HTMLDivElement>) => {
-    if (!(event.target as Element | null)?.closest?.(LIVE_SIMULATED_CONTROLS)) return
+    const target = event.target as Element | null
+    // «Tarixçə» is the evening's chapter of this module: the guide opens it there.
+    if (target?.closest?.('[data-testid="mtm-map-mode-history"]')) {
+      event.preventDefault()
+      event.stopPropagation()
+      if (openSection && !reviewMode) openSection("mtm-history")
+      else hint(S.mtmTabHint)
+      return
+    }
+    if (!target?.closest?.(LIVE_SIMULATED_CONTROLS)) return
     event.preventDefault()
     event.stopPropagation()
     hint(S.demoButtonHint)
   }
   const layer = (id: keyof typeof layers, label: string, layerHint: string) => ({ id, label, hint: layerHint, on: layers[id], onToggle: () => setLayers((current) => ({ ...current, [id]: !current[id] })), shownByDefault: true })
+  const callFrom = clients.find((client) => client.id === NEAREST_CLIENT_ID)!
 
   return (
     <div className="space-y-3" onClickCapture={simulated}>
@@ -687,7 +760,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
             <Button type="button" role="tab" aria-selected size="sm" className="min-h-9"><Radio className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("liveMode")}</Button>
             <Button type="button" role="tab" aria-selected={false} variant="ghost" size="sm" className="min-h-9" data-testid="mtm-map-mode-history"><History className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("historyMode")}</Button>
           </div>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" aria-hidden="true" />{tMap("lastUpdate")}: {S.mtmAsOf(MTM_DEMO_CLOCK)}</span>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" aria-hidden="true" />{tMap("lastUpdate")}: {S.mtmAsOf(format.clock(new Date(nowMs).toISOString()))}</span>
         </div>
       </div>
 
@@ -718,6 +791,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
           <span className="text-emerald-700 dark:text-emerald-400">{tMap("workday.active")} {agents.filter((agent) => agent.workdayState === "ACTIVE").length}</span>
           <span className="text-amber-700 dark:text-amber-300">{tMap("workday.paused")} {agents.filter((agent) => agent.workdayState === "PAUSED").length}</span>
         </span>
+        <span className="text-muted-foreground">{S.mtmLiveMovingNote}</span>
       </div>
 
       {stalePositions > 0 ? (
@@ -727,6 +801,17 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
           <button type="button" onClick={() => setShowLastKnown((value) => !value)} className="font-semibold text-foreground underline underline-offset-2">
             {showLastKnown ? tMap("hideLastKnown") : tMap("showLastKnown")}
           </button>
+        </div>
+      ) : null}
+
+      {/* The sample's own call: a client wants somebody today. «Kim daha yaxındır» is the button of the client's balloon on the map. */}
+      {nearestStep || referencePoint ? (
+        <div data-tour-id="mtm-live-call" data-testid="mtm-live-call" className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <PhoneIncoming className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1"><span className="font-semibold">{S.mtmNearestCallTitle}:</span> {S.mtmNearestCall}</span>
+          <Button type="button" size="sm" className="min-h-9 shrink-0" onClick={() => nearestTo(callFrom)} {...(nearestStep && !referencePoint ? demoTarget("mtm-live-nearest") : {})}>
+            <MapPin aria-hidden="true" />{tMap("clients.nearest")}
+          </Button>
         </div>
       ) : null}
 
@@ -742,11 +827,18 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
             showLabels={layers.labels}
             showWorkdayStatus
             timeZone={MTM_DEMO_TIMEZONE}
+            trails={layers.trails ? trails : null}
+            glideMarkers
+            referencePoint={referencePoint}
+            clients={layers.clients ? clients : undefined}
+            onClientNearest={nearestTo}
           />
           <LiveMapLayersControl
             layers={[
               layer("agents", tMap("layers.agents"), tMap("layers.agentsHint")),
               layer("route", tMap("layers.route"), tMap("layers.routeHint")),
+              layer("trails", tMap("layers.trails"), tMap("layers.trailsHint")),
+              layer("clients", tMap("layers.clients"), tMap("layers.clientsHint")),
               layer("labels", tMap("layers.labels"), tMap("layers.labelsHint")),
             ]}
             hiddenAgentCount={hiddenIds.size}
@@ -755,8 +847,8 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
           />
           <LiveMapTools
             near={mapAgents[0] ? { latitude: mapAgents[0].latitude, longitude: mapAgents[0].longitude } : null}
-            referencePoint={null}
-            onReferencePointChange={() => hint(S.demoButtonHint)}
+            referencePoint={referencePoint}
+            onReferencePointChange={(point) => setReferencePoint(point)}
             pickingPoint={false}
             onPickingPointChange={() => hint(S.demoButtonHint)}
             rulerActive={false}
@@ -764,7 +856,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
             rulerMeters={0}
             rulerPointCount={0}
             onRulerUndo={() => undefined}
-            formatDistance={(meters) => `${Math.round(meters)} m`}
+            formatDistance={formatMeters}
             fullscreen={false}
             onFullscreenToggle={() => hint(S.demoButtonHint)}
             fullscreenSupported
@@ -781,7 +873,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
             }
             filters={filters}
             onFiltersChange={setFilters}
-            view={view}
+            view={{ ...view, sort }}
             onViewChange={setView}
             onHide={() => hint(S.demoButtonHint)}
             hiddenAgentIds={hiddenIds}
@@ -811,11 +903,233 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
             formatClock={format.clock}
             formatVisitOpened={(value) => format.clock(value)}
             isEarlierDay={() => false}
+            formatDistance={formatMeters}
             exportFileName={() => "leaddrive-demo-xerite"}
             printTitle={() => `${tNav("mtmMap")} · ${MTM_DEMO_CLOCK}`}
           />
         </div>
       </div>
+    </div>
+  )
+}
+
+/** «450 m», «7,8 km» — the roster's distance to the picked point. */
+function formatMeters(meters: number): string {
+  return meters < 1_000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1_000).toLocaleString("az", { maximumFractionDigits: 1 })} km`
+}
+
+/* ── Axşam: günün yolu ────────────────────────────────────────────────── */
+
+/**
+ * «Tarixçə» on `/mtm/map`, as `LocationHistoryPanel` lays it out once its
+ * answer has loaded: the filters and «Göstər», the six figures, the layers,
+ * the replay, the product's own history map (`LocationHistoryMap`) and the
+ * day told as legs (`DayTripLedger`). The panel fetches; its answer here is
+ * Elvin's day run through the product's own history functions
+ * (`mtm-demo-day.ts`), read in the evening. A break is a leg with its
+ * length and nothing else — where he was is not recorded.
+ */
+function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }: DemoSceneProps) {
+  const t = useTranslations("mtmMap.history")
+  const tMap = useTranslations("mtmMap")
+  const tNav = useTranslations("nav")
+  const locale = useLocale()
+  const today = mtmDemoToday(snapshot.startedAt)
+  const data = useMemo(() => mtmDemoElvinHistoryView(today), [today])
+  const shown = snapshot.ui["mtm.historyShown"] === true
+  const [loaded, setLoaded] = useState(shown)
+  const [layers, setLayers] = useState({ planned: true, actual: true, stops: true, visits: true, gaps: true, roads: true })
+  const [playbackIndex, setPlaybackIndex] = useState(data.points.length - 1)
+  const [playing, setPlaying] = useState(false)
+  const [tripFocus, setTripFocus] = useState<DayTripFocus | null>(null)
+  const lastIndex = data.points.length - 1
+  const formatMoment = (value: string, options?: Intl.DateTimeFormatOptions) =>
+    formatInTimezone(value, MTM_DEMO_TIMEZONE, options ?? { dateStyle: "short", timeStyle: "short" }, locale)
+  const formatDuration = (seconds: number) => {
+    const minutes = Math.round(seconds / 60)
+    return minutes < 60 ? t("durationMinutes", { minutes }) : t("durationHoursMinutes", { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
+  }
+
+  // The panel's own replay: one fix after another.
+  useEffect(() => {
+    if (!playing || playbackIndex >= lastIndex) return
+    const timer = setTimeout(() => {
+      setPlaybackIndex((index) => Math.min(index + 1, lastIndex))
+      if (playbackIndex + 1 >= lastIndex) setPlaying(false)
+    }, 60)
+    return () => clearTimeout(timer)
+  }, [lastIndex, playbackIndex, playing])
+
+  const show = () => {
+    setLoaded(true)
+    if (reviewMode) return
+    if (step?.id === "mtm-history-show") dispatch({ type: "ui", path: "mtm.historyShown", value: true })
+  }
+  const toLive = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    if (openSection && !reviewMode) openSection("mtm-live")
+    else hint(S.mtmTabHint)
+  }
+  const playbackPoint = data.points[Math.min(playbackIndex, lastIndex)]
+  const distance = data.summary.distanceMeters
+  const metrics = [
+    { icon: RouteIcon, label: t("distance"), value: distance < 1_000 ? `${distance} m` : `${(distance / 1_000).toFixed(2)} km`, hint: t("hint.historyDistanceRoads") },
+    { icon: LocateFixed, label: t("acceptedPoints"), value: String(data.summary.acceptedPointCount), hint: t("hint.historyAcceptedPoints", { accuracy: data.policy.maxAccuracyMeters }) },
+    { icon: MapPin, label: t("stops"), value: String(data.summary.stopCount), hint: t("hint.historyStops", { minutes: data.policy.stopMinimumMinutes, radius: data.policy.stopRadiusMeters }) },
+    { icon: CheckCircle2, label: t("visits"), value: String(data.summary.visitCount), hint: t("hint.historyVisits") },
+    { icon: WifiOff, label: t("gaps"), value: String(data.summary.gapCount), hint: t("hint.historyGaps", { minutes: Math.round(data.policy.gapThresholdSeconds / 6) / 10 }) },
+    { icon: Activity, label: t("anomalies"), value: String(data.summary.anomalyCount), hint: t("hint.historyAnomalies", { accuracy: data.policy.maxAccuracyMeters }) },
+  ]
+
+  return (
+    <div className="space-y-3" data-testid="mtm-history">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold tracking-tight">{tNav("mtmMap")}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-md border bg-muted/40 p-0.5" role="tablist" aria-label={tMap("modeLabel")}>
+            <Button type="button" role="tab" aria-selected={false} variant="ghost" size="sm" className="min-h-9" onClick={toLive}><Radio className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("liveMode")}</Button>
+            <Button type="button" role="tab" aria-selected size="sm" className="min-h-9"><History className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("historyMode")}</Button>
+          </div>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" aria-hidden="true" />{S.mtmEveningAsOf(MTM_DEMO_EVENING)}</span>
+        </div>
+      </div>
+
+      <form
+        data-testid="mtm-location-history-filter-form"
+        data-tour-id="mtm-history-filter"
+        className="rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700"
+        onSubmit={(event) => {
+          event.preventDefault()
+          show()
+        }}
+      >
+        <MtmFilterBar testId="mtm-location-history-filters">
+          <MtmFilterSelect testId="mtm-location-history-agent" label={t("agent")} value="agent-elvin" emptyValue="__none__" showValue clearable={false} allLabel={t("noAgents")}
+            options={MTM_DEMO_AGENTS.map((agent) => ({ value: agent.id, label: `${agent.name} · ${agent.team === "center" ? "Bakı — Mərkəz" : "Bakı — Cənub"}` }))}
+            onChange={() => hint(S.demoButtonHint)} />
+          <MtmFilterDate testId="mtm-location-history-date-from" label={t("dateFrom")} value={today} onChange={() => hint(S.demoButtonHint)} />
+          <MtmFilterDate testId="mtm-location-history-date-to" label={t("dateTo")} value={today} onChange={() => hint(S.demoButtonHint)} />
+          <MtmFilterDate type="time" label={t("from")} value="00:00" onChange={() => hint(S.demoButtonHint)} />
+          <MtmFilterDate type="time" label={t("to")} value={MTM_DEMO_EVENING} onChange={() => hint(S.demoButtonHint)} />
+          <Button data-testid="mtm-location-history-submit" type="submit" className="h-10 rounded-full px-4" {...(loaded ? {} : demoTarget("mtm-history-show"))}>
+            <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" />{t("show")}
+          </Button>
+        </MtmFilterBar>
+        <p className="mt-2 text-xs text-muted-foreground">{t("timezoneHint", { timezone: MTM_DEMO_TIMEZONE })}</p>
+      </form>
+
+      {!loaded ? (
+        <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
+          <Satellite className="mx-auto mb-2 h-7 w-7" aria-hidden="true" />
+          {t("chooseRange")}
+        </div>
+      ) : (
+        <>
+          <div data-testid="mtm-location-history-results" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
+            {metrics.map((metric) => (
+              <div key={metric.label} className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
+                <metric.icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <div>
+                  <div className="text-xs text-muted-foreground">{metric.label}</div>
+                  <div className="text-lg font-semibold tabular-nums"><HintValue text={metric.hint}>{metric.value}</HintValue></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-card p-2 dark:border-zinc-700">
+            <div className="flex flex-wrap items-center gap-1.5" aria-label={t("layers")}>
+              <span className="mr-1 inline-flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground"><Layers3 className="h-3.5 w-3.5" aria-hidden="true" />{t("layers")}</span>
+              {(Object.keys(layers) as Array<keyof typeof layers>).map((key) => (
+                <button key={key} type="button" aria-pressed={layers[key]} onClick={() => setLayers((current) => ({ ...current, [key]: !current[key] }))} className={`min-h-11 rounded-md border px-3 py-2 text-xs transition-colors ${layers[key] ? "border-foreground font-semibold text-foreground" : "text-muted-foreground hover:bg-muted"}`}>
+                  {t(`layer.${key}`)}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={() => hint(S.demoButtonHint)} className="inline-flex min-h-11 items-center rounded-md border px-3 text-xs font-medium hover:bg-muted">
+              <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{t("exportCsv")}
+            </button>
+          </div>
+
+          <section data-testid="mtm-location-history-replay" className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700" aria-labelledby="day-replay-title">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h3 id="day-replay-title" className="flex items-center gap-2 text-sm font-semibold"><Play className="h-4 w-4 text-primary" aria-hidden="true" />{t("replayTitle")}</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">{t("replayHint")}</p>
+              </div>
+              <div className="text-right text-xs" aria-live="polite">
+                <div className="font-medium tabular-nums">{formatMoment(playbackPoint.recordedAt)}</div>
+                <div className="text-muted-foreground">{t("pointProgress", { current: playbackIndex + 1, total: data.points.length })}</div>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-[auto_auto_minmax(180px,1fr)] md:items-center">
+              <Button data-testid="mtm-location-history-play" type="button" variant={playing ? "secondary" : "default"} className="min-h-11" onClick={() => {
+                if (playing) return setPlaying(false)
+                if (playbackIndex >= lastIndex) setPlaybackIndex(0)
+                setPlaying(true)
+              }}>
+                {playing ? <Pause className="mr-1.5 h-4 w-4" aria-hidden="true" /> : <Play className="mr-1.5 h-4 w-4" aria-hidden="true" />}
+                {playing ? t("pause") : playbackIndex >= lastIndex ? t("replayFromStart") : t("play")}
+              </Button>
+              <Button type="button" variant="outline" className="min-h-11" disabled={playbackIndex === 0} onClick={() => { setPlaying(false); setPlaybackIndex(0) }}>
+                <RotateCcw className="mr-1.5 h-4 w-4" aria-hidden="true" />{t("restart")}
+              </Button>
+              <label className="flex min-h-11 items-center gap-3 rounded-md border px-3">
+                <span className="sr-only">{t("replayPosition")}</span>
+                <input type="range" min={0} max={lastIndex} step={1} value={playbackIndex} aria-label={t("replayPosition")} onChange={(event) => { setPlaying(false); setPlaybackIndex(Number(event.target.value)) }} className="h-2 w-full cursor-pointer accent-primary" />
+              </label>
+            </div>
+          </section>
+
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+            <div className="space-y-2">
+              <div data-tour-id="mtm-history-map" className="relative isolate h-[56vh] min-h-[420px] overflow-hidden rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
+                <LocationHistoryMap
+                  points={data.points}
+                  stops={data.stops}
+                  visits={data.visits}
+                  workday={data.workday}
+                  plannedRoutes={data.plannedRoutes}
+                  gaps={data.gaps}
+                  layers={layers}
+                  locale={locale}
+                  timezone={MTM_DEMO_TIMEZONE}
+                  playbackIndex={playbackIndex}
+                  focus={tripFocus}
+                  matchedTrack={data.matchedTrack}
+                />
+              </div>
+              <ul data-testid="mtm-history-map-legend" className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">
+                <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{layers.roads ? t("legendRoads") : t("legendTrack")}</li>
+                {layers.roads ? <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-2 border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.raw }} />{t("legendRaw")}</li> : null}
+                <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.gap }} />{t("legendGap")}</li>
+                <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dashed" style={{ borderColor: HISTORY_MAP_COLORS.plan }} />{t("legendPlan")}</li>
+                <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.stop }} />{t("legendStop")}</li>
+                <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.visit }} />{t("legendVisit")}</li>
+              </ul>
+            </div>
+            <aside data-tour-id="mtm-history-trip" className="space-y-3">
+              <DayTripLedger
+                trip={data.trip}
+                multiDay={false}
+                focusId={tripFocus?.id ?? null}
+                onFocus={setTripFocus}
+                formatMoment={formatMoment}
+                formatDuration={formatDuration}
+                roadsMatched
+              />
+              <section className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
+                <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Clock3 className="h-4 w-4" aria-hidden="true" />{t("workday")}</h3>
+                <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 text-xs">
+                  <dt className="text-muted-foreground">{t("status")}</dt><dd>{t("workdayStatus.COMPLETED")}</dd>
+                  <dt className="text-muted-foreground">{t("workdayStart")}</dt><dd>{formatMoment(data.workday.startedAt)}</dd>
+                  <dt className="text-muted-foreground">{t("workdayEnd")}</dt><dd>{formatMoment(data.workday.completedAt)}</dd>
+                </dl>
+              </section>
+            </aside>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -1155,15 +1469,29 @@ function PlaceScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
  * is the product's KPI registry (`buildExplainableKpi`) over five weeks of
  * the invented team's plan points and visits, so every period and team the
  * prospect picks shows the product's arithmetic. It opens on «Bu ay», as the
- * page does.
+ * page does; the guide asks for «Keçən həftə» — the week that is whole.
  */
-function ResultsScreen({ snapshot, hint }: DemoSceneProps) {
+function ResultsScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const ta = useTranslations("mtmAnalytics")
   const tr = useTranslations("mtmTeamResults")
   const tNav = useTranslations("nav")
   const today = mtmDemoToday(snapshot.startedAt)
   const facts = useMemo(() => mtmDemoKpiFacts(today), [today])
-  const [preset, setPreset] = useState<(typeof AGENT_PERIOD_PRESETS)[number]>("thisMonth")
+  const chosenPeriod = snapshot.ui["mtm.resultsPeriod"] === "lastWeek" ? "lastWeek" : null
+  const [preset, setPreset] = useState<(typeof AGENT_PERIOD_PRESETS)[number]>(chosenPeriod ?? "thisMonth")
+  const resultsRef = useRef<HTMLDivElement>(null)
+  const lastWeekLabel = tr("preset.lastWeek")
+  // The guide's arrow points at the product's own «Keçən həftə».
+  useEffect(() => {
+    const button = Array.from(resultsRef.current?.querySelectorAll<HTMLElement>("button[aria-pressed]") ?? []).find((candidate) => candidate.textContent?.trim() === lastWeekLabel)
+    if (!button) return
+    if (preset === "lastWeek" || step?.id !== "mtm-results-team") button.removeAttribute(DEMO_TARGET_ATTRIBUTE)
+    else for (const [attribute, value] of Object.entries(demoTarget("mtm-results-team"))) button.setAttribute(attribute, value)
+  })
+  const choosePreset = (next: (typeof AGENT_PERIOD_PRESETS)[number]) => {
+    setPreset(next)
+    if (!reviewMode && step?.id === "mtm-results-team" && next === "lastWeek") dispatch({ type: "ui", path: "mtm.resultsPeriod", value: "lastWeek" })
+  }
   const [teamId, setTeamId] = useState("")
   const range = agentPeriodPreset(preset, today)
   const report = useMemo(() => {
@@ -1186,10 +1514,10 @@ function ResultsScreen({ snapshot, hint }: DemoSceneProps) {
           <HelpCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />{tNav("help")}
         </Button>
       </div>
-      <div data-tour-id="mtm-results-team">
+      <div data-tour-id="mtm-results-team" ref={resultsRef}>
         <MtmTeamResultsView
           preset={preset}
-          onPresetChange={setPreset}
+          onPresetChange={choosePreset}
           teams={[{ id: "team-center", name: "Bakı — Mərkəz" }, { id: "team-south", name: "Bakı — Cənub" }]}
           teamId={teamId}
           onTeamChange={setTeamId}

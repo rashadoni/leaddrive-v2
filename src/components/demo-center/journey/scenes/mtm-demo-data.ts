@@ -8,11 +8,13 @@
  * product's own (`import type` only — nothing here reaches a tenant), so the
  * product's MTM components draw them exactly as they draw a live team.
  *
- * One fixed clock: a Thursday at 12:10 Baku time — the latest one on or
- * before the session's day. A visitor at night or at the weekend still sees a
- * working day in progress with a working day after it, the week has three
- * days behind it, and every time on every screen agrees. Screens say «nümunə
- * gün».
+ * One day: a Thursday — the latest one on or before the session's day in
+ * Baku. A visitor at night or at the weekend still sees a working day with a
+ * working day after it, and the week has three days behind it. The day runs
+ * on two clocks: 12:10, while it is under way (today, the plan, the live map,
+ * the visits), and the evening, when the manager looks back at its road
+ * (`mtm-demo-day.ts`). What either clock shows is one list of facts read at
+ * that hour, so every time on every screen agrees. Screens say «nümunə gün».
  */
 import type { MtmDashboardAgent } from "@/lib/mtm-types"
 import type { VisitReviewData } from "@/app/(dashboard)/mtm/visits/visit-review-panel"
@@ -23,6 +25,9 @@ import type { LiveMapDayStep } from "@/lib/mtm/live-map-day-steps"
 import type { MtmPanelAttention } from "@/lib/mtm/panel-attention"
 import type { RoutePlannerCandidate } from "@/lib/mtm/route-planner"
 import type { VisitPlaceInput } from "@/lib/mtm/visit-place-check"
+import type { LiveMapClient } from "@/lib/mtm/live-map-clients"
+import { mtmDemoDrivePosition, type MtmDemoDrive } from "./mtm-demo-motion"
+import type { MtmDemoRoadId } from "./mtm-demo-roads"
 
 export const MTM_DEMO_TIMEZONE = "Asia/Baku"
 /** Baku keeps UTC+4 all year. */
@@ -44,8 +49,10 @@ export function mtmDemoAt(today: string, hhmm: string, dayOffset = 0): string {
   return new Date(midnight + (hours * 60 + minutes - BAKU_OFFSET_MINUTES) * MINUTE).toISOString()
 }
 
-/** The demo's «now»: 12:10 in Baku on the demo day. */
+/** The demo's «now» while the day is under way: 12:10 in Baku on the demo day. */
 export const MTM_DEMO_CLOCK = "12:10"
+/** The evening the manager reads the day's road at. */
+export const MTM_DEMO_EVENING = "18:40"
 
 export function addDays(dateKey: string, days: number): string {
   return new Date(Date.parse(`${dateKey}T12:00:00.000Z`) + days * 24 * 60 * MINUTE).toISOString().slice(0, 10)
@@ -80,6 +87,8 @@ export interface MtmDemoAgent {
   readonly forMinutes: number
   readonly where: string
   readonly mapColor: string
+  /** On the way: the street he drives along, and when (Baku time). His point on the map follows it. */
+  readonly drive?: { readonly road: MtmDemoRoadId; readonly departs: string; readonly arrives: string }
 }
 
 export const MTM_DEMO_AGENTS: readonly MtmDemoAgent[] = [
@@ -89,7 +98,9 @@ export const MTM_DEMO_AGENTS: readonly MtmDemoAgent[] = [
     where: "Şəfa Tibb Mərkəzi", mapColor: "green", team: "center", battery: 78,
   },
   {
-    id: "agent-nermin", name: "Nərmin Hüseynli", status: "ON_ROAD", latitude: 40.39850, longitude: 49.87000,
+    // Left Aptek 24 at 12:04, on her way to Aptek Sağlam in Əhmədli (due 12:40).
+    id: "agent-nermin", name: "Nərmin Hüseynli", status: "ON_ROAD",
+    drive: { road: "apt24ToSaglam", departs: "12:04", arrives: "12:36" },
     visited: 4, total: 6, week: [[6, 6], [5, 6], [6, 6]], lastWeek: [27, 30], forMinutes: 6,
     where: "Aptek Sağlam — Əhmədli istiqamətində", mapColor: "blue", team: "center", battery: 64,
   },
@@ -132,9 +143,15 @@ const MTM_DEMO_TEAMS = {
  * «dayandırılıb», and the only coordinate there is is the one from before the
  * break — which the page draws grey as «the phone's last signal, not where he
  * is now».
+ *
+ * `atMs` is the moment the roster answers for: the live map asks again every
+ * thirty seconds, so the phones' last signals move on with it, and somebody on
+ * the way is further along his street.
  */
-export function mtmDemoRosterAgents(today: string): MtmDashboardAgent[] {
-  const clock = Date.parse(mtmDemoAt(today, MTM_DEMO_CLOCK))
+export function mtmDemoRosterAgents(today: string, atMs = Date.parse(mtmDemoAt(today, MTM_DEMO_CLOCK))): MtmDashboardAgent[] {
+  const clock = atMs
+  // How long a status has lasted is counted from the sample's noon; later answers do not move its start.
+  const noon = Date.parse(mtmDemoAt(today, MTM_DEMO_CLOCK))
   return MTM_DEMO_AGENTS.map((agent) => {
     const common = {
       agentId: agent.id,
@@ -168,25 +185,32 @@ export function mtmDemoRosterAgents(today: string): MtmDashboardAgent[] {
         recordedAt: mtmDemoAt(today, before.at),
       }
     }
+    const position = agent.drive ? mtmDemoDrivePosition(mtmDemoAgentDrive(today, agent)!, clock - MINUTE) : { latitude: agent.latitude, longitude: agent.longitude }
     return {
       ...common,
       fieldStatus: agent.status,
       freshness: "ONLINE" as const,
       workdayState: "ACTIVE" as const,
-      latitude: agent.latitude,
-      longitude: agent.longitude,
+      latitude: position.latitude,
+      longitude: position.longitude,
       accuracy: 9,
       speed: agent.status === "ON_ROAD" ? 8 : 0,
       recordedAt: new Date(clock - MINUTE).toISOString(),
       openVisitSince: agent.status !== "CHECKED_IN" ? null
         : agent.openVisit ? mtmDemoAt(today, agent.openVisit.at, agent.openVisit.dayOffset)
-          : new Date(clock - agent.forMinutes * MINUTE).toISOString(),
-      stationarySince: agent.status === "STOPPED" ? new Date(clock - agent.forMinutes * MINUTE).toISOString() : null,
+          : new Date(noon - agent.forMinutes * MINUTE).toISOString(),
+      stationarySince: agent.status === "STOPPED" ? new Date(noon - agent.forMinutes * MINUTE).toISOString() : null,
     }
   })
 }
 
-interface MtmDemoPlace {
+/** Somebody's drive as instants on the demo day. */
+export function mtmDemoAgentDrive(today: string, agent: MtmDemoAgent): MtmDemoDrive | null {
+  if (!agent.drive) return null
+  return { road: agent.drive.road, departsMs: Date.parse(mtmDemoAt(today, agent.drive.departs)), arrivesMs: Date.parse(mtmDemoAt(today, agent.drive.arrives)) }
+}
+
+export interface MtmDemoPlace {
   readonly id: string
   readonly name: string
   readonly address: string
@@ -222,6 +246,22 @@ export const MTM_DEMO_PLACES: readonly MtmDemoPlace[] = [
     doctors: [{ id: "dr-cavadova", name: "Dr. Səbinə Cavadova", specialty: "Ginekoloq", visitsThisMonth: 0 }] },
 ]
 
+/**
+ * The client base on the live map's «Müştərilər» layer, in the shape its
+ * answer has (`LiveMapClient`): every clinic and pharmacy, its class, its zone.
+ */
+export function mtmDemoMapClients(): LiveMapClient[] {
+  return MTM_DEMO_PLACES.map((place) => ({
+    id: place.id,
+    name: place.name,
+    latitude: place.latitude,
+    longitude: place.longitude,
+    category: place.category,
+    objectType: place.doctors.length === 0 ? "PHARMACY" : "CLINIC",
+    geofenceRadius: 100,
+  }))
+}
+
 /** The planner's candidates — the product's shape: a pharmacy as itself, a clinic as its doctors. */
 export function mtmDemoPlannerCandidates(): RoutePlannerCandidate[] {
   return MTM_DEMO_PLACES.flatMap((place): RoutePlannerCandidate[] => {
@@ -243,18 +283,36 @@ export function mtmDemoPlannerCandidates(): RoutePlannerCandidate[] {
 /** Who the planner plans for: the agent with no route for the next working day («Qərar gözləyir»). */
 export const MTM_DEMO_PLAN_AGENT = "agent-aysu"
 
-const ELVIN_DAY: ReadonlyArray<{ place: string; planned: string; checkIn?: string; checkOut?: string }> = [
+/**
+ * Elvin's whole day as it happened (Baku time). A screen reads it at its own
+ * clock (`elvinDayAt`): at 12:10 he is in Şəfa since 11:52 and the afternoon
+ * is still a plan; in the evening every stop is done.
+ */
+export const MTM_DEMO_ELVIN_DAY: ReadonlyArray<{ readonly place: string; readonly planned: string; readonly checkIn: string; readonly checkOut: string }> = [
   { place: "pl-nar", planned: "09:30", checkIn: "09:34", checkOut: "09:58" },
-  { place: "pl-aptplus", planned: "10:30", checkIn: "10:36", checkOut: "10:51" },
+  { place: "pl-aptplus", planned: "10:00", checkIn: "10:07", checkOut: "10:51" },
   { place: "pl-respublika", planned: "11:00", checkIn: "11:08", checkOut: "11:29" },
-  { place: "pl-sefa", planned: "12:00", checkIn: "11:52" },
-  { place: "pl-usaq", planned: "13:30" },
-  { place: "pl-aptderman", planned: "14:30" },
+  { place: "pl-sefa", planned: "12:00", checkIn: "11:52", checkOut: "12:24" },
+  { place: "pl-usaq", planned: "13:30", checkIn: "13:24", checkOut: "13:52" },
+  { place: "pl-aptderman", planned: "14:30", checkIn: "14:08", checkOut: "14:31" },
 ]
 
-function placeOf(id: string): MtmDemoPlace {
+/** The day as it stands at `clock`: what has not happened yet is not there. */
+function elvinDayAt(clock: string): ReadonlyArray<{ place: string; planned: string; checkIn?: string; checkOut?: string }> {
+  return MTM_DEMO_ELVIN_DAY.map((stop) => ({
+    place: stop.place,
+    planned: stop.planned,
+    checkIn: stop.checkIn <= clock ? stop.checkIn : undefined,
+    checkOut: stop.checkOut <= clock ? stop.checkOut : undefined,
+  }))
+}
+
+const ELVIN_DAY = elvinDayAt(MTM_DEMO_CLOCK)
+
+export function mtmDemoPlace(id: string): MtmDemoPlace {
   return MTM_DEMO_PLACES.find((place) => place.id === id)!
 }
+const placeOf = mtmDemoPlace
 
 /** Elvin's day on the live map: the product's route-stop shape. */
 export function mtmDemoElvinRoute(today: string): RouteStop[] {
@@ -600,8 +658,8 @@ export interface MtmDemoHistoryVisit {
   readonly locationRequest: "SUBMITTED" | null
 }
 
-/** A point a few dozen metres from a pin, inside its 100 m zone. */
-function near(place: MtmDemoPlace, seed: number): { latitude: number; longitude: number } {
+/** A point a few dozen metres from a pin, inside its 100 m zone: where the phone checked in, the `seed`-th visit of the day. */
+export function mtmDemoNearPlace(place: MtmDemoPlace, seed: number): { latitude: number; longitude: number } {
   return { latitude: place.latitude + 0.00022 + (seed % 3) * 0.00006, longitude: place.longitude - 0.00018 + (seed % 2) * 0.0001 }
 }
 
@@ -614,7 +672,7 @@ export function mtmDemoVisitHistory(today: string): MtmDemoHistoryVisit[] {
     const reported = agent.id === "agent-nermin" && visit.place === "pl-apt24"
     // Elvin's first visit is the one «Vizitlər» opens: the same fixes as its review card.
     const reviewed = agent.id === "agent-elvin" && visit.place === "pl-nar" ? mtmDemoVisit(today).placeInput : null
-    const fix = reported ? request.agentFix : reviewed ? { latitude: reviewed.checkInLat!, longitude: reviewed.checkInLng! } : near(place, index)
+    const fix = reported ? request.agentFix : reviewed ? { latitude: reviewed.checkInLat!, longitude: reviewed.checkInLng! } : mtmDemoNearPlace(place, index)
     const checkInAt = mtmDemoAt(today, visit.checkIn)
     const checkOutAt = visit.checkOut ? mtmDemoAt(today, visit.checkOut) : null
     return {
