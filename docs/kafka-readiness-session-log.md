@@ -2730,3 +2730,21 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  suite; no cancellation or duplicate run. Next: preserve its receipt, finish
  independent patch review, publish corrected source once, then require actual
  current-source combined and mandatory gates before the ordinary release.
+
+### Pipe correction reviewed; old mandatory gates complete — 2026-10-18 15:18 UTC
+
+- Independent read-only review found no blocker in the fixture-only proxy,
+ strict exit/ACK/deadline preservation or regression tests. Exact original CI
+ failure location remains unproven until the corrected real drill; the small
+ subprocess reproduction must not be represented as Kafka success.
+- Old-source PR39137630590 completed SUCCESS: static baseline18 failures
+ against18, typecheck64 gated pairs against64/1325 advisory diagnostics.
+ The separate combined failure still prevents merge; five green mandatory
+ contexts alone do not satisfy this task's real integration criterion.
+- Normally merged current origin/main89c1bd9a70978f41ddada0ce5b2873f7c3f9343c
+ into the dedicated branch, retaining foreign PR882 attendance settings and
+ PR885 demo-call changes. No task-file overlaps or conflicts. Reran343/343
+ focused tests (4.19s),12/12 script guards and whitespace successfully after
+ the merge. All prior own runs are complete before the forthcoming publication.
+- No production or GitHub policy mutation, foreign-run cancellation, runtime
+ activation, source replay/offset change or paid resource was performed.
