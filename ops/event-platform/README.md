@@ -199,3 +199,45 @@ space, outbox-to-Kafka watermark age, consumer lag, offline/under-replicated
 partitions, min-ISR violations, rejected schemas, quarantine rate, archive
 watermark lag, and per-tenant projection parity. Logs and metric labels must not
 contain event payloads or customer PII.
+
+## Inactive worker admission and client-only candidate
+
+`src/lib/event-platform/worker-admission.ts` validates a strict, copied and
+deeply frozen `FundShadowWorkerPlan`. Release SHA, manifest digest, environment,
+cluster/topic identity, partition count, stable versioned group and distinct
+tenant/build/worker-role routes must agree. Secret values and arbitrary local
+credential-file paths are not accepted: the plan contains only opaque,
+governed secret references. Parsing those references does not resolve them,
+authenticate an operator, inspect live metadata, grant a role or approve
+activation. The actual activation/recovery gates above remain mandatory.
+
+`worker-artifact.ts` compares every actual file against an independently
+supplied manifest digest and release pin. It rejects unlisted payloads, links,
+special files, group/world-writable paths, oversized or changing files and
+classpath delimiters in the root. The explicit classpath contains only listed
+members; there is no classpath wildcard. Manifest digest equality is byte
+verification, not proof that an arbitrary caller-provided digest is trusted.
+Production must keep the artifact tree read-only to the worker principal
+throughout its lifetime, and verify release provenance separately.
+
+The disposable broker workflow compiles the driver from its exact checked-out
+commit and takes client, compression and logging dependencies from the pinned
+Kafka image. Broker/Connect/Streams/admin fixture classes are excluded from the
+candidate. It exercises the actual supervised Java child (not a Docker CLI
+proxy) with the admitted plan and real restricted PostgreSQL transactions:
+two-tenant exact parity across restart, stop during COMMIT, stop after COMMIT
+before acknowledgement, and durable-inbox redelivery. Existing membership
+takeover/fencing tests still run unchanged. The private test broker is resolved
+only inside that Java process using JDK21's documented
+[`jdk.net.hosts.file` test facility](https://docs.oracle.com/en/java/javase/21/core/java-networking.html);
+no system hosts/DNS change or broker host-port publication is performed.
+
+Only after all combined scenarios succeed does the workflow export and
+reverify `fund-shadow-worker-candidate-<checkout SHA>`. Its `manifest.json`
+contains exact member lengths/hashes and the checkout SHA. The safe job output
+records the manifest digest. A PR merge-test candidate is not the later main
+release artifact. This is a short-retention CI candidate, not an installed
+worker, production service unit, resolved secret configuration, authenticated
+operator approval or Kafka activation. The separate full CDC drill, recovery
+proof, production HA/TLS/ACL and operational gates must not be inferred from
+these direct-child test markers.

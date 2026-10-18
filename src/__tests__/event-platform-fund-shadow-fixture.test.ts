@@ -116,6 +116,12 @@ describe("shared disposable Fund fixture boundary", () => {
     expect(mocks.spawn).not.toHaveBeenCalled()
   })
 
+  it.each(["", "f".repeat(39), "F".repeat(40), "f".repeat(41), "main"])("rejects an invalid fixture release pin before client creation: %s", codeSha => {
+    expect(() => createFundShadowPostgresFixture({ adminUrl, environment: "testbroker", codeSha })).toThrow()
+    expect(mocks.construct).not.toHaveBeenCalled()
+    expect(mocks.spawn).not.toHaveBeenCalled()
+  })
+
   it("requires existing bootstrap roles and never creates or drops shared roles", async () => {
     const fixture = createFundShadowPostgresFixture({ adminUrl, environment: "test" })
     const original = mocks.construct.getMockImplementation()!

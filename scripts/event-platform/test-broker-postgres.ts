@@ -1,5 +1,6 @@
 /** Real Kafka + real restricted PostgreSQL; synthetic disposable CI only. */
 import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
 import type { KafkaEventRecord } from "../../src/lib/event-platform/consumer"
 import { startKafkaWorkerSession } from "../../src/lib/event-platform/worker-session"
 import { createFundShadowPartitionWorker } from "../../src/lib/event-platform/fund-shadow-worker"
@@ -28,21 +29,24 @@ async function main() {
   assert.equal(process.env.LD_EVENT_STACK_DISPOSABLE, "1")
   assert.equal(process.env.LD_EVENT_STACK_COMBINED, "1")
   assert.equal(process.env.FUND_SHADOW_DB_GATE, "required")
-  const db = createFundShadowPostgresFixture({ adminUrl: process.env.FUND_SHADOW_TEST_DATABASE_URL ?? "", environment: "testbroker" })
+  const codeSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", timeout: 5000 }).trim()
+  assert.match(codeSha, /^[0-9a-f]{40}$/)
+  const db = createFundShadowPostgresFixture({ adminUrl: process.env.FUND_SHADOW_TEST_DATABASE_URL ?? "", environment: "testbroker", codeSha })
   const harness = createBrokerFixtureHarness()
   let phase = "setup"
   const active: Array<{ stop: () => Promise<void>; outcome: Promise<Outcome> }> = []
   try {
     await db.setup()
     harness.create("finance", "empty")
-    async function prepare(name: string, two = false) {
+    async function prepare(name: string, two = false, direct = false) {
       const a = await db.fixture(), contexts = [a]
       if (two) contexts.push(await db.fixture())
       const records = two
         ? [a.records[0], contexts[1].records[0], a.records[1], ...a.records.slice(2), ...contexts[1].records.slice(1)]
         : a.records
       const published = harness.produce("finance", records)
-      harness.admitGroup(name, "finance", published[0].offset)
+      harness.admitGroup(name, "finance", published[0].offset,
+        direct ? `ld.testbroker.finance.fund-shadow.v2.${name}` : undefined)
       const before = await Promise.all(contexts.map(context => db.snapshotSource(context.scope.organizationId)))
       return { name, contexts, published, before, start: published[0].offset,
         end: (BigInt(published[published.length - 1].offset) + BigInt(1)).toString() }
@@ -54,9 +58,17 @@ async function main() {
       assignment?: (value: Readonly<PartitionAssignment>) => void
       ack?: () => void; ackWritten?: () => void; observed?: KafkaEventRecord[]
       released?: () => void
+      driver?: ReturnType<typeof harness.driver> | Awaited<ReturnType<typeof harness.directDriver>>
     } = {}) {
       const config = harness.configurations.get(test.name)!
-      const { channel, child } = harness.driver(test.name, options.timeoutMs)
+      const driver = options.driver ?? harness.driver(test.name, options.timeoutMs)
+      const { channel, child } = driver
+      const plan = "plan" in driver ? driver.plan : undefined
+      if (plan) {
+        assert.equal(plan.broker.groupId, config.group); assert.equal(plan.broker.topic, config.topic)
+        assert.equal(plan.limits.maxRecords, count); assert.equal(plan.releaseSha, codeSha)
+        assert.deepEqual(plan.routes.map(route => route.scope), test.contexts.map(context => context.scope))
+      }
       const expected = new Map(test.published.map(record => [record.offset, record]))
       let recordReceivedAt = 0
       const privateChannel = { ...channel, async read() {
@@ -73,10 +85,11 @@ async function main() {
         if (command.startsWith("ACK\t")) options.ackWritten?.()
       } }
       const session = startKafkaWorkerSession({ clusterId: config.cluster, groupId: config.group,
-        topic: config.topic, maxRecords: count, maxDurationMs: 120_000,
+        topic: config.topic, maxRecords: plan?.limits.maxRecords ?? count, maxDurationMs: plan?.limits.maxDurationMs ?? 120_000,
         open() {
           // Session-owned restricted logins, never the application/admin pool.
-          const contexts = test.contexts.map(context => ({ ...context, client: db.connect(context) }))
+          const contexts = test.contexts.map((context, index) => ({ ...context,
+            scope: plan?.routes[index].scope ?? context.scope, client: db.connect(context) }))
           return {
             channel: privateChannel,
             async release() {
@@ -163,6 +176,20 @@ async function main() {
       console.log("broker_postgres_ordered_restart_exact_parity=PASS")
     }
 
+    phase = "direct-jvm-ordered"
+    {
+      const test = await prepare("jvm-ordered", true, true), observed: KafkaEventRecord[] = []
+      const first = await harness.directDriver(test.name, test.contexts.map(context => context.scope), 3)
+      assert.deepEqual(await start(test, 3, { observed, driver: first }).outcome, { ok: true, processed: 3 })
+      assert.deepEqual(await first.exited, { code: 0, signal: null })
+      const second = await harness.directDriver(test.name, test.contexts.map(context => context.scope), 9)
+      assert.deepEqual(await start(test, 9, { observed, driver: second }).outcome, { ok: true, processed: 9 })
+      assert.deepEqual(await second.exited, { code: 0, signal: null })
+      assert.deepEqual(observed.map(record => record.offset), test.published.map(record => record.offset))
+      await complete(test)
+      console.log("worker_jvm_ordered_restart_exact_parity=PASS")
+    }
+
     phase = "before-commit"
     {
       const test = await prepare("combined-before-commit"), entered = gate(), release = gate()
@@ -180,12 +207,15 @@ async function main() {
       console.log("broker_postgres_no_ack_before_real_commit=PASS")
     }
 
-    for (const afterCommit of [false, true]) {
-      phase = afterCommit ? "stop-after-commit" : "stop-during-commit"
-      const test = await prepare(`combined-${phase}`), entered = gate(), release = gate()
+    for (const direct of [false, true]) for (const afterCommit of [false, true]) {
+      const stopPhase = afterCommit ? "stop-after-commit" : "stop-during-commit"
+      phase = `${direct ? "direct-jvm" : "combined"}-${stopPhase}`
+      const test = await prepare(`${direct ? "jvm" : "combined"}-${stopPhase}`, false, direct), entered = gate(), release = gate()
       let ackAttempts = 0, released = false
       const hold = async () => { entered.release(); await bounded(release.promise, 8_000) }
+      const first = direct ? await harness.directDriver(test.name, test.contexts.map(context => context.scope), 6) : undefined
       const running = start(test, 6, { ack: () => { ackAttempts++ }, released: () => { released = true },
+        driver: first,
         databaseFor: context => fundShadowDatabase(context.client, afterCommit ? { afterCommit: hold } : { beforeCommit: hold }) })
       try {
         await enteredBeforeExit(entered, running.outcome)
@@ -202,10 +232,15 @@ async function main() {
       // Restart from the broker cursor, including the already-committed record.
       // Actual inbox identity suppresses duplicate effects; no offset reset.
       const observed: KafkaEventRecord[] = []
-      assert.deepEqual(await start(test, 6, { observed }).outcome, { ok: true, processed: 6 })
+      if (first) assert.deepEqual(await first.exited, { code: 0, signal: null })
+      const second = direct ? await harness.directDriver(test.name, test.contexts.map(context => context.scope), 6) : undefined
+      assert.deepEqual(await start(test, 6, { observed, driver: second }).outcome, { ok: true, processed: 6 })
+      if (second) assert.deepEqual(await second.exited, { code: 0, signal: null })
       assert.equal(observed[0].offset, test.start)
       await complete(test)
-      console.log(afterCommit ? "broker_postgres_stop_after_commit_restart=PASS" : "broker_postgres_stop_during_commit_restart=PASS")
+      console.log(direct
+        ? afterCommit ? "worker_jvm_stop_after_commit_restart=PASS" : "worker_jvm_stop_during_commit_restart=PASS"
+        : afterCommit ? "broker_postgres_stop_after_commit_restart=PASS" : "broker_postgres_stop_during_commit_restart=PASS")
     }
 
     phase = "deferred-commit-rejection"
@@ -315,6 +350,8 @@ async function main() {
       await complete(test)
       console.log("broker_postgres_takeover_durable_inbox_stale_ack_fenced=PASS")
     }
+    await harness.exportArtifact()
+    console.log("worker_jvm_integration=PASS; child=direct-java; artifact=verified-client-only; sql=restricted-real-commit; production_activation=not-performed")
     console.log("broker_postgres_integration=PASS; kafka=real; sql=restricted-real-commit; cdc=separate-proof; production_activation=not-performed")
   } catch { throw new Error(`broker_postgres_phase=${phase}`) }
   finally {

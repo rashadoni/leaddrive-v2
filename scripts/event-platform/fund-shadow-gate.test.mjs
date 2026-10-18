@@ -26,7 +26,7 @@ test('both required PR verification and production release run the real Fund sha
     const unitStep = source.slice(unitStart, start)
     assert.match(unitStep, /run: npx vitest run src\/__tests__\/event-platform-fund-balance-reducer\.test\.ts src\/__tests__\/event-platform-fund-shadow-consumer\.test\.ts/)
     for (const testFile of ['event-platform-partition-processor', 'event-platform-fund-shadow-worker', 'event-platform-kafka-bridge',
-      'event-platform-worker-process', 'event-platform-worker-session']) {
+      'event-platform-worker-process', 'event-platform-worker-session', 'event-platform-worker-admission', 'event-platform-worker-artifact']) {
       assert.ok(unitStep.includes(`src/__tests__/${testFile}.test.ts`), `${workflow}: ${testFile} must execute`)
     }
     assert.doesNotMatch(unitStep, /\b(?:if|continue-on-error):|secrets\./)
@@ -100,7 +100,12 @@ test('combined broker proof requires actual generated types and SQL before its s
   for (const marker of ['broker_postgres_stop_after_commit_restart=PASS', 'broker_postgres_stop_during_commit_restart=PASS',
     'assert.equal(ackAttempts, 0); assert.equal(cursor(test), test.start)', 'assert.equal(observed[0].offset, test.start)',
     'assert.equal(released, false', 'assert.equal(released, true']) assert.ok(drill.includes(marker), marker)
-  for (const name of ['worker-process', 'worker-session']) {
+  for (const name of ['worker-process', 'worker-session', 'worker-admission', 'worker-artifact']) {
     assert.ok(workflow.includes(`src/__tests__/event-platform-${name}.test.ts`))
   }
+  for (const marker of ['worker_jvm_ordered_restart_exact_parity=PASS', 'worker_jvm_stop_after_commit_restart=PASS',
+    'worker_jvm_stop_during_commit_restart=PASS', 'await first.exited', 'await second.exited']) assert.ok(drill.includes(marker), marker)
+  const harness = readFileSync(new URL('scripts/event-platform/fixtures/kafka-broker-harness.ts', root), 'utf8')
+  for (const contract of ['verifyKafkaWorkerArtifact(', 'validateKafkaWorkerPlan(', 'createSupervisedKafkaChannel(',
+    'verified.classpath.join(":")', 'plan', '-Djdk.net.hosts.file=']) assert.ok(harness.includes(contract), contract)
 })

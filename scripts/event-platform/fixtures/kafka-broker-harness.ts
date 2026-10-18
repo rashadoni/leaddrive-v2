@@ -1,11 +1,16 @@
 /** Runner-only broker fixture. Nothing here is a production launcher. */
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process"
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
+import { copyFileSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { resolve } from "node:path"
+import { isAbsolute, resolve } from "node:path"
 import { PassThrough, type Readable, type Writable } from "node:stream"
 import { createKafkaBridgeChannel } from "../../../src/lib/event-platform/kafka-bridge"
+import { verifyKafkaWorkerArtifact } from "../../../src/lib/event-platform/worker-artifact"
+import { createSupervisedKafkaChannel } from "../../../src/lib/event-platform/worker-process"
+import { validateKafkaWorkerPlan } from "../../../src/lib/event-platform/worker-admission"
+import type { FundShadowScope } from "../../../src/lib/event-platform/fund-shadow-consumer"
 import type { KafkaEventRecord } from "../../../src/lib/event-platform/consumer"
 
 /**
@@ -81,10 +86,11 @@ export function createBrokerFixtureHarness() {
     assert.ok(cluster && topicId)
     configure(name, { cluster, topicId, topic: `ld.testbroker.${name}.events.v1`, group: `ld-testbroker-${name}` })
   }
-  function admitGroup(name: string, source: string, start: string) {
+  function admitGroup(name: string, source: string, start: string, groupId?: string) {
     nameGuard(name); assert.match(start, /^(0|[1-9][0-9]*)$/)
     const original = configurations.get(source); assert.ok(original)
-    const config = { ...original, group: `ld-testbroker-${name}` }
+    if (groupId) assert.match(groupId, /^ld\.testbroker\.finance\.fund-shadow\.v(?:[2-9]|[1-9][0-9]{1,9})\.[a-z][a-z0-9-]{0,62}$/)
+    const config = { ...original, group: groupId ?? `ld-testbroker-${name}` }
     executeFixture(["seed", config.topic, config.group, start], 60_000)
     configure(name, config)
   }
@@ -111,6 +117,39 @@ export function createBrokerFixtureHarness() {
     })
   }
   const children = new Set<ChildProcessWithoutNullStreams>()
+  const directChildren = new Set<ReturnType<typeof createSupervisedKafkaChannel>>()
+  let artifact: Promise<Awaited<ReturnType<typeof verifyKafkaWorkerArtifact>>> | undefined
+  function verifiedArtifact() {
+    if (!artifact) artifact = (async () => {
+      // The compiled driver and dependencies come from this exact checkout and
+      // digest-pinned disposable Kafka image. Fixture/admin classes stay out.
+      const artifactRoot = resolve(temporary, "worker-artifact")
+      mkdirSync(artifactRoot, { mode: 0o700 }); mkdirSync(resolve(artifactRoot, "classes"), { mode: 0o700 })
+      mkdirSync(resolve(artifactRoot, "lib"), { mode: 0o700 })
+      const files: Array<{ path: string; bytes: number; sha256: string }> = []
+      const digest = (bytes: Buffer) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`
+      function member(path: string, source: string) {
+        copyFileSync(source, resolve(artifactRoot, path))
+        const bytes = readFileSync(resolve(artifactRoot, path))
+        files.push({ path, bytes: bytes.length, sha256: digest(bytes) })
+      }
+      for (const name of readdirSync(resolve(temporary, "classes")).sort()) {
+        if (/^KafkaPartitionBridge(?:\$[A-Za-z0-9_]+)?\.class$/.test(name)) member(`classes/${name}`, resolve(temporary, "classes", name))
+      }
+      for (const name of readdirSync(resolve(temporary, "libs")).sort()) {
+        // Client-only package: no broker/Connect/Streams tooling or RocksDB.
+        if (!/^(?:kafka-clients|slf4j-api|log4j-api|log4j-core|log4j-slf4j2?-impl|zstd-jni|lz4-java|snappy-java)-[0-9][A-Za-z0-9_.-]*\.jar$/.test(name)) continue
+        member(`lib/${name}`, resolve(temporary, "libs", name))
+      }
+      member("logging.properties", resolve(temporary, "logging.properties"))
+      const releaseSha = execute("git", ["rev-parse", "HEAD"], 10_000); assert.match(releaseSha, /^[0-9a-f]{40}$/)
+      const manifest = Buffer.from(JSON.stringify({ apiVersion: "event-platform.leaddrive.io/v1", kind: "KafkaBridgeArtifact",
+        releaseSha, kafkaVersion: "4.3.1", files }))
+      writeFileSync(resolve(artifactRoot, "manifest.json"), manifest, { mode: 0o600 })
+      return verifyKafkaWorkerArtifact({ root: artifactRoot, expectedReleaseSha: releaseSha, expectedManifestSha256: digest(manifest) })
+    })()
+    return artifact
+  }
   async function terminate(child: ChildProcessWithoutNullStreams) {
     if (child.exitCode !== null || child.signalCode !== null) { children.delete(child); return }
     child.stdin.end()
@@ -132,5 +171,71 @@ export function createBrokerFixtureHarness() {
     child.stderr.resume()
     return { child, channel: createBrokerFixtureChannel({ stdout: child.stdout, stdin: child.stdin, terminate: () => terminate(child), timeoutMs }) }
   }
-  return { create, fixture, admitGroup, produce, driver, configurations, close: () => Promise.all([...children].map(terminate)) }
+  async function directDriver(name: string, scopes: readonly FundShadowScope[], maxRecords: number, timeoutMs = 35_000) {
+    nameGuard(name); assert.ok(configurations.has(name))
+    assert.ok(process.env.JAVA_HOME && resolve(process.env.JAVA_HOME).startsWith("/"), "controlled CI JDK required")
+    const verified = await verifiedArtifact()
+    const configured = configurations.get(name)!
+    const plan = validateKafkaWorkerPlan({ apiVersion: "event-platform.leaddrive.io/v1", kind: "FundShadowWorkerPlan",
+      releaseSha: verified.releaseSha, artifactSha256: verified.manifestSha256, environment: "testbroker",
+      broker: { clusterId: configured.cluster, groupId: configured.group, topic: configured.topic, topicId: configured.topicId, partitionCount: 1 },
+      limits: { maxRecords, maxDurationMs: 120_000 }, kafkaSecretReference: "vault://synthetic/kafka",
+      routes: scopes.map(scope => ({ scope, databaseSecretReference: `vault://synthetic/workers/${scope.expectedWorkerRole}` })),
+    }, { releaseSha: verified.releaseSha, artifactSha256: verified.manifestSha256, environment: "testbroker" })
+    const id = execute("docker", [...compose, "ps", "-q", "kafka"], 10_000)
+    assert.match(id, /^[a-f0-9]{12,64}$/)
+    const networks = JSON.parse(execute("docker", ["inspect", "--format", "{{json .NetworkSettings.Networks}}", id], 10_000))
+    const address = networks[`${project}_default`]?.IPAddress
+    assert.equal(typeof address, "string")
+    const octets = address.split(".").map(Number)
+    assert.ok(octets.length === 4 && octets.every((n: number) => Number.isInteger(n) && n >= 0 && n <= 255)
+      && (octets[0] === 10 || octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31 || octets[0] === 192 && octets[1] === 168))
+    // JDK21's documented per-process test hosts file: no published Kafka port,
+    // system DNS/hosts mutation, Docker shim or shell between Node and JVM.
+    const hosts = resolve(temporary, `${name}.hosts`)
+    writeFileSync(hosts, `127.0.0.1 localhost\n${address} kafka\n`, { mode: 0o600 })
+    let child!: ChildProcessWithoutNullStreams
+    const supervised = createSupervisedKafkaChannel({ stopGraceMs: 5000, killGraceMs: 1000, timeoutMs,
+      spawn() {
+        child = spawn(resolve(process.env.JAVA_HOME!, "bin/java"), ["-Xms16m", "-Xmx96m", "-XX:ActiveProcessorCount=1",
+          "-XX:MaxDirectMemorySize=32m", "-XX:MaxMetaspaceSize=128m", "-XX:+ExitOnOutOfMemoryError",
+          `-Djdk.net.hosts.file=${hosts}`, `-Dlog4j2.configurationFile=${verified.loggingConfiguration}`,
+          "-cp", verified.classpath.join(":"), "KafkaPartitionBridge", resolve(temporary, `${name}.properties`)],
+        { cwd: temporary, stdio: ["pipe", "pipe", "pipe"], env: { NODE_ENV: "test", LANG: "C.UTF-8",
+          GITHUB_ACTIONS: "true", LD_EVENT_STACK_DISPOSABLE: "1" } })
+        return child
+      },
+    })
+    directChildren.add(supervised)
+    return { child, channel: supervised.channel, exited: supervised.exited, plan }
+  }
+  async function exportArtifact() {
+    // CI candidate only, never a production installation. Refuse replacement
+    // of an existing package; all contents are reverified at the new path.
+    const runnerTemporary = process.env.RUNNER_TEMP
+    assert.ok(runnerTemporary && isAbsolute(runnerTemporary) && resolve(runnerTemporary) === runnerTemporary
+      && runnerTemporary !== "/", "controlled runner temporary directory required")
+    const verified = await verifiedArtifact()
+    await verifyKafkaWorkerArtifact({ root: verified.root, expectedReleaseSha: verified.releaseSha,
+      expectedManifestSha256: verified.manifestSha256 })
+    const destination = resolve(runnerTemporary, "leaddrive-worker-artifact")
+    mkdirSync(destination, { mode: 0o700 })
+    mkdirSync(resolve(destination, "classes"), { mode: 0o700 })
+    mkdirSync(resolve(destination, "lib"), { mode: 0o700 })
+    const manifest = JSON.parse(readFileSync(resolve(verified.root, "manifest.json"), "utf8"))
+    for (const file of manifest.files as Array<{ path: string }>) {
+      copyFileSync(resolve(verified.root, file.path), resolve(destination, file.path))
+    }
+    copyFileSync(resolve(verified.root, "manifest.json"), resolve(destination, "manifest.json"))
+    await verifyKafkaWorkerArtifact({ root: destination, expectedReleaseSha: verified.releaseSha,
+      expectedManifestSha256: verified.manifestSha256 })
+    console.log(`worker_candidate_release_sha=${verified.releaseSha}; manifest_sha256=${verified.manifestSha256}; production_installation=not-performed`)
+  }
+  async function close() {
+    const results = await Promise.allSettled([...children].map(terminate).concat([...directChildren].map(async supervised => {
+      try { await supervised.channel.close() } finally { await supervised.exited; directChildren.delete(supervised) }
+    })))
+    assert.ok(results.every(result => result.status === "fulfilled"), "fixture cleanup not confirmed")
+  }
+  return { create, fixture, admitGroup, produce, driver, directDriver, exportArtifact, configurations, close }
 }

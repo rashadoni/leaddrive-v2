@@ -73,13 +73,14 @@ function checkedAdmin(value: string): URL {
  * This fixture never creates, replaces or drops those shared roles. Its own
  * exactly named database and restricted worker roles are the only drop targets.
  */
-export function createFundShadowPostgresFixture(input: { adminUrl: string; environment: "test" | "testbroker" }) {
+export function createFundShadowPostgresFixture(input: { adminUrl: string; environment: "test" | "testbroker"; codeSha?: string }) {
   const base = checkedAdmin(input.adminUrl)
   assert.ok(input.environment === "test" || input.environment === "testbroker", "synthetic Fund environment required")
   const environment = input.environment, topic = `ld.${environment}.finance.events.v1`
   const suffix = `${process.pid}_${randomUUID().replaceAll("-", "").slice(0, 12)}`
   const databaseName = `ld_fund_shadow_${suffix}`
-  const codeSha = "f".repeat(40), password = "synthetic-shadow-fixture-only"
+  const codeSha = input.codeSha ?? "f".repeat(40), password = "synthetic-shadow-fixture-only"
+  assert.match(codeSha, /^[0-9a-f]{40}$/, "synthetic fixture release SHA required")
   let admin: PrismaClient | undefined, scratch: PrismaClient | undefined
   let created = false, counter = 0
   let state: "new" | "starting" | "ready" | "closing" | "closed" = "new"

@@ -3210,3 +3210,31 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   Existing activation/recovery evidence gates remain authoritative; source
   maintenance, actual independent confirmation and no-new-cost constraints
   stay visible for later stages. Next: implement and verify A1 components.
+
+### A1 admission/artifact composition and parallel A2 preparation — 2026-10-18
+
+- Helper admission change checkpoint083f4719d adds the offline strict launch
+  plan validator and181 tests. It reuses the existing Fund scope validator and
+  stable group semantics; no runtime credentials or approval are fabricated.
+- Root adds bounded actual artifact-byte verification, explicit client-only
+  classpath, direct supervised JDK21 child composition and three real combined
+  broker/SQL lifecycle scenarios. A test-candidate export is reverified before
+  CI upload; it is not a production installation or trusted release authority.
+  Review caught FIFO blocking, unbounded growing-file reads, unbounded directory
+  enumeration and classpath-delimiter injection; all four are now rejected.
+- Small sequential verification actually run:313 tests across six focused
+  artifact/admission/process/session/fixture suites PASS; strictES2017 artifact
+  and admission checks including actual Next ambient types PASS; three focused
+  gate contracts PASS,71-workflow runner policy PASS,27-domain/86-topic/five-schema
+  assets PASS and diff whitespace PASS. Subsequent candidate export/docs and
+  five invalid fixture-SHA cases await the next focused rerun. Full generated
+  Prisma typecheck, Java compilation and real JVM/Kafka/SQL are NOT RUN locally:
+  they belong to GitHub, not this shared Contabo development host.
+- Owner requested parallel sessions from this root; active helper
+  kafka_full_cdc_fund_proof owns a separate worktree and the A2 full real
+  Debezium-to-Fund SQL scenario. It alone holds the next small local-test slot.
+  Heavy checks remain sequential in the shared GitHub integration queue.
+- Scope remains inactive preparation: no production change, connector, slot,
+  WAL setting, consumer activation, offset reset/replay, backup/restore or timer
+  enablement. Next: combine A2 proof, review/typecheck in CI and deliver only
+  after all applicable green gates; A3–A7 remain explicitly incomplete.
