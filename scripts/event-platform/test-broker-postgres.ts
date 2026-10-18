@@ -63,7 +63,7 @@ async function main() {
       const config = harness.configurations.get(test.name)!
       const driver = options.driver ?? harness.driver(test.name, options.timeoutMs)
       const { channel, child } = driver
-      const plan = "plan" in driver ? driver.plan : undefined
+      const plan = driver.kind === "direct" ? driver.plan : undefined
       if (plan) {
         assert.equal(plan.broker.groupId, config.group); assert.equal(plan.broker.topic, config.topic)
         assert.equal(plan.limits.maxRecords, count); assert.equal(plan.releaseSha, codeSha)

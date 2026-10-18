@@ -104,7 +104,8 @@ test('combined broker proof requires actual generated types and SQL before its s
     assert.ok(workflow.includes(`src/__tests__/event-platform-${name}.test.ts`))
   }
   for (const marker of ['worker_jvm_ordered_restart_exact_parity=PASS', 'worker_jvm_stop_after_commit_restart=PASS',
-    'worker_jvm_stop_during_commit_restart=PASS', 'await first.exited', 'await second.exited']) assert.ok(drill.includes(marker), marker)
+    'worker_jvm_stop_during_commit_restart=PASS', 'await first.exited', 'await second.exited',
+    'driver.kind === "direct"']) assert.ok(drill.includes(marker), marker)
   const harness = readFileSync(new URL('scripts/event-platform/fixtures/kafka-broker-harness.ts', root), 'utf8')
   for (const contract of ['verifyKafkaWorkerArtifact(', 'validateKafkaWorkerPlan(', 'createSupervisedKafkaChannel(',
     'verified.classpath.join(":")', 'plan', '-Djdk.net.hosts.file=']) assert.ok(harness.includes(contract), contract)

@@ -3296,3 +3296,38 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   generated-client, Java/Kafka/SQL/CDC and release checks remain GitHub-only.
   Next: publish the prepared branch as a draft PR, then start one normal
   exact-source review-ready verification after branch preparation is complete.
+
+### PR891 first exact-source verification and own type correction — 2026-10-19 Asia/Baku
+
+- Published root branch at d75cdb48290d6b4f5e62a754cb9b96876853e738 and opened
+  https://github.com/rashadoni/leaddrive-v2/pull/891 as draft, then marked ready.
+  Ready-event runs: PR checks39163401337, broker39163401298,
+  CDC39163401281, stack39163401353. Test-merge source was
+  e587ec989ccf5341943b02df787fccdbb61e6776 on main226dde0e7.
+  Earlier draft skips are NOT verification. Scan, runner-policy and tooling
+  checks succeeded; ready-event legacy CDC job117781259690 SUCCESS in4m11s.
+- Broker job117781260166 failed BEFORE Java/SQL scenarios at the generated
+  Prisma strict typecheck:9 diagnostics in test-broker-postgres.ts, caused by
+  structural union collapse of old container and new direct driver results.
+  A mere `"plan" in driver` narrowed the plan to{} rather than the admitted plan.
+  Full typecheck job117781356000 independently identified the same sole new
+  defect-shaped pair TS2339 in that file (8 occurrences; plus implicit-any).
+  Baseline64 pairs was not changed or weakened; old source had65 gated pairs.
+- Corrected fixture results to explicit literal `kind: container|direct` and
+  select the plan through that discriminant. Added regression contract guard.
+  After resource preflight (about14.9GiB available, zero memory pressure),
+  narrow strictES2017 compile of actual harness+fixture tests including Next
+  ambient declarations PASS,210 focused broker/admission tests PASS, four
+  workflow gate contracts PASS and diff whitespace PASS. No local Prisma
+  generation, Docker stack, Java run, full build or full typecheck attempted.
+- Other sessions: A3 draft PR892 at56abd74e6e1d2058d29428cba567f81b67c4ce1b
+  supplies evidence/acceptance documentation, NOT a commissioned restore.
+  Its fresh read-only backup report39163236284 is NO-GO: machine_ready=no,
+  enterprise_ga_ready=no,24 issues/9 gaps, scoped encryption off and drift;
+  independent restore and Farah decision NOT RUN. A4 PR893 prepared finite
+  budget/security gates; A5 is separately preparing authenticated operator
+  contracts. No other session's branch/job was cancelled or merged here.
+- Next: push this justified source correction once, let normal same-branch CI
+  supersede its old source, and diagnose actual results. No blind rerun of the
+  same failed SHA. No production Kafka activation, offsets/replay, database or
+  backup mutation and no release is claimed.

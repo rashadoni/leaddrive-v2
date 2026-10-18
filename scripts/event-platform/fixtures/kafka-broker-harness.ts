@@ -169,7 +169,7 @@ export function createBrokerFixtureHarness() {
     children.add(child)
     child.on("error", () => { child.stdout.destroy(); child.stdin.destroy() })
     child.stderr.resume()
-    return { child, channel: createBrokerFixtureChannel({ stdout: child.stdout, stdin: child.stdin, terminate: () => terminate(child), timeoutMs }) }
+    return { kind: "container" as const, child, channel: createBrokerFixtureChannel({ stdout: child.stdout, stdin: child.stdin, terminate: () => terminate(child), timeoutMs }) }
   }
   async function directDriver(name: string, scopes: readonly FundShadowScope[], maxRecords: number, timeoutMs = 35_000) {
     nameGuard(name); assert.ok(configurations.has(name))
@@ -207,7 +207,7 @@ export function createBrokerFixtureHarness() {
       },
     })
     directChildren.add(supervised)
-    return { child, channel: supervised.channel, exited: supervised.exited, plan }
+    return { kind: "direct" as const, child, channel: supervised.channel, exited: supervised.exited, plan }
   }
   async function exportArtifact() {
     // CI candidate only, never a production installation. Refuse replacement
