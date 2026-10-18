@@ -71,3 +71,25 @@
   Farah's behalf and no approval requested or manufactured.
 - Stopping point: draft PR ready for originating coordinator; next action is
   coordinator review and separately scoped prerequisite remediation/drill.
+
+## 2026-10-19: autonomous follow-through and executable documentation repair
+
+- User reiterates autonomous completion. Previous stopping point omitted direct
+  remediation of documented instruction conflicts; resumed that bounded work.
+- Confirmed root/branch/origin/production route using codex-project-context.
+  Final prior checkpoint56abd74 CI: pr-scope/runner-policy/scan PASS;
+  static/typecheck/build SKIPPED, no review comments.
+- Corrected BACKUP_RUNBOOK required-reviewer setup/stop instructions to current
+  main-only environment policy without weakening independent signed recovery.
+  Removed unverified provider attribution in its failure-domain summary.
+- Replaced obsolete ISMS-04 current action sequence with v2 bootstrap -> v3
+  full/log-genesis drill -> certification -> separately authorized normal-deploy
+  four-timer activation -> fresh-run readiness. Historical evidence retained;
+  old bootstrap drill explicitly scoped as historical rather than full proof.
+- Resource preflight: available14931MiB, swap0, disk204G, memory pressure0.
+  Repeated affected event-platform assets check PASS and diff whitespace PASS.
+- Reviewed backup-pgpass-contract CI: no manual dispatch, paths exclude docs,
+  job excludes draft PR. Do not change workflow/PR readiness just to force an
+  unrelated integration run; real libpq remains explicitly NOT RUN here.
+- Actual production prerequisites and independent Farah acceptance remain open;
+  no production mutation, restore, merge or deploy performed.

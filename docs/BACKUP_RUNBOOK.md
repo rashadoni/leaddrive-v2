@@ -6,7 +6,7 @@
 версии и recovery catalog действительно защищены Object Lock.
 
 Это ещё не enterprise 3-2-1/PITR: все object copies пока находятся в одном
-Hetzner bucket/регионе/account failure domain, PostgreSQL WAL archive не
+object-storage bucket/регионе/account failure domain, PostgreSQL WAL archive не
 commissioned, а полный суперпользовательский restore ролей/owners/ACL ещё не
 прошёл независимый drill. `backup-readiness` поэтому может показать
 `machine_ready=yes`, но всегда сообщает `enterprise_ga_ready=no` до закрытия
@@ -306,7 +306,9 @@ production, тикет или этот документ.
 До первой изменяющей стадии владелец репозитория обязан:
 
 1. ограничить environment `production` веткой `main`;
-2. назначить required reviewer, который не запускает свой собственный stage;
+2. сверить действующий release contract в `docs/DEPLOYMENT.md`: обязательный
+   GitHub required reviewer снят; независимый offline signer и проверка его
+   evidence остаются обязательными и не заменяются workflow actor;
 3. добавить environment secret `BACKUP_OFFLINE_ALLOWED_SIGNERS` ровно в формате
    OpenSSH allowed-signers:
 
@@ -791,7 +793,8 @@ authority/PITR/second-failure-domain/runtime gates; его нельзя инте
   только внутри того же catalog/bucket;
 - пытаются считать v3 catalog clean-host backup либо запускать bootstrap с
   committed anchor без approved signed discontinuity/reseed protocol;
-- GitHub `production` environment не требует независимого review и `main`;
+- GitHub `production` environment не ограничен точной deployment branch policy
+  `main`; независимое signed recovery evidence отсутствует или не прошло проверку;
 - любой из четырёх timer не `loaded`, `enabled`, `active` после полного normal
   deployment (не после commissioning certification).
 
