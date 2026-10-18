@@ -859,3 +859,17 @@ is superseded for this scoped integration proof only. Separate synthetic CDC
 39151613585 passed, but full CDC-to-rebuild/direct-JVM runtime composition is
 still open. Mandatory static-checks and normal merge/release remain pending;
 no production consumer, replay or recovery commissioning occurred.
+
+### A3 recovery preparation: fresh read-only NO-GO — 2026-10-19 (Asia/Baku)
+
+Dedicated preparation starts from main226dde0e77c0c36a4de991bb703ba8f8416c5a64.
+See [A3 evidence/acceptance checklist](A3_RECOVERY_READINESS.md).
+[Read-only run39163236284](https://github.com/rashadoni/leaddrive-v2/actions/runs/39163236284)
+failed: machine_ready=no, enterprise_ga_ready=no, issues24, enterprise_gaps9.
+This supersedes old23/9 totals for this snapshot only. Encryption explicitly
+off; live units drift; runtime timer absent, other3 disabled/inactive; fresh
+runs/MemorySwapMax not proved; Object Lock query unknown_failure. Pinned tools
+and passfile readability passed, but neither backup nor restore is certified.
+A3/K2.1/K3.2/K3.6 remain OPEN. Independent Farah Rahimova acceptance PENDING;
+Codex cannot substitute her decision. No backup/restore, production mutation,
+Kafka/offset/replay, purchase, merge or deployment performed by this task.
