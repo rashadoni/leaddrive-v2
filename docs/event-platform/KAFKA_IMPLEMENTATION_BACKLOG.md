@@ -767,3 +767,20 @@ Kafka activation did not occur; encrypted recovery/log shipping remain inactive.
 The prepared combined-test branch now has327/327 local control-flow tests and
 11/11 script/contract guards passing. Actual combined broker+SQL execution is
 still NOT RUN until its forthcoming frozen-source GitHub gate returns.
+
+### K4 combined Kafka + restricted PostgreSQL verified — 2026-10-18 15:33 UTC
+
+PR883 source92aa3c5d380625dfbb86d85bbbea22d600f8d934 passed actual combined
+run39139978362/job117712215441 (SUCCESS15:32:34Z): strict generated-client
+ES2017 compilation,53 fixture tests, real migrations,13 broker scenarios and
+all6 combined cases. This supersedes the preceding NOT RUN for the bounded
+combined drill, not for all K4. Exact ordering/parity, no pre-COMMIT ACK,
+deferred COMMIT rollback, durable-inbox ACK loss, receipt loss and actual stale
+member fencing after committed SQL are now exercised together. Test cleanup
+passed. The earlier takeover failure and corrected private-pipe lifecycle are
+preserved in the append-only session journal rather than hidden by a retry.
+
+Mandatory PR gates and normal production delivery remain pending at this entry.
+Exact outbox fixture publication is not Debezium. Full CDC-to-rebuild, governed
+worker packaging/lifecycle, HA/TLS/ACL, independent recovery, all modules and
+production activation/replay/read-cutover remain open and unperformed.

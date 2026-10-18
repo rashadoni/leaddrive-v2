@@ -2761,3 +2761,25 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  and release. No manual rerun/dispatch or cancellation was performed.
 - Source is frozen again. Next: all actual current-source results including
 53 fixture tests and six combined scenarios; ordinary merge only afterwards.
+
+### Real combined broker + restricted SQL proof passed — 2026-10-18 15:33 UTC
+
+- Combined39139978362/job117712215441 SUCCESS15:32:34Z on exact published
+92aa3c5d380625dfbb86d85bbbea22d600f8d934,12m47s. Root read the completed
+ logs: actual generated-client strict ES2017 check,53/53 fixture tests,
+ migration integration,13/13 broker scenarios and all6 combined scenarios
+ passed. Scoped Compose cleanup and service-container shutdown also SUCCESS.
+- Last formerly failing scenario passed15:32:27Z with unchanged requirements:
+ actual SQL COMMIT/durable inbox; replacement higher generation; old child
+ alive before stale ACK, ACK actually written, rejected before command timeout;
+ old exit1/no signal; no old cursor advance; replacement and restart finish
+ exact projection/checkpoint parity. Final marker explicitly reports real
+ Kafka and restricted-real-commit SQL, separate CDC proof, no activation.
+- This supersedes the prior failed combined receipt for this corrected source
+ only. It does not prove production HA/TLS/ACL, Java-worker packaging/service,
+ full Debezium-to-rebuild, lifecycle/promotion/rollback, independent recovery,
+ all-module adoption or production consumers/replay.
+- Required PR39139978372 is still executing its full baseline suite; typecheck
+ SUCCESS with64 gated pairs=64 and1324 advisory diagnostics. Synthetic CDC
+39139978367 is next in the shared queue. Do not merge until all actual gates
+ finish. No source push during the frozen-source checks.
