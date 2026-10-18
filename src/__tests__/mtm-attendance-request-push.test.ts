@@ -95,7 +95,7 @@ describe("a new attendance request reaches the manager's phone", () => {
     const store = readFileSync(join(process.cwd(), "src/lib/mtm/attendance-request-store.ts"), "utf8")
     const submit = store.slice(store.indexOf("export async function submitAttendanceRequest("), store.indexOf("export async function listOwnAttendanceRequests("))
     expect(submit.indexOf("await prisma.$transaction(")).toBeLessThan(submit.indexOf("pushAttendanceRequestToReviewers("))
-    expect(submit).toContain("if (!result.idempotent) {")
+    expect(submit).toContain("if (!result.idempotent && result.request.status === \"PENDING\") {")
     expect(submit).toContain(".catch((error) =>")
   })
 })
