@@ -294,3 +294,26 @@
 - Runbook documents source operation, Linux scratch requirements, proof
   packaging/certification, rollback/no-schedule boundary and honest statuses.
   Public GitHub actor resolved as rashadoni; no impersonation needed.
+
+## 2026-10-19: CI findings and boundary hardening
+
+- Exact52fc1cd79 GitHub owner-proof39168045137 PASS including real pinned age;
+  pgpass-contract39168045102 PASS including real libpq fixture; tenant cascade
+  PostgreSQL integration39168016701 PASS. Full static/typecheck still running.
+- scan39168016708 found4 generic-api-key matches, all verified public helper
+  checksums: new secrets snapshot digest at3 existing pin sites and owner-key
+  verifier digest at1 pin site. No private key material in tracked files.
+- Used exact pinned gitleaks8.30.1, SHA verified, redacted report (only rule/path/
+  line/commit inspected). Added exact checksum+path/line allowlists, retaining
+  historical checksum for commit-history scan. No rule, path family or check
+  disabled. Full branch-history scan PASS with corrected config. Synthetic
+  randomized non-allowlisted high-entropy value in the same protected file is
+  still rejected (negative control PASS). First plain-word canary was ignored
+  by default detector, so it was NOT treated as a passing negative control.
+- Hardened common archive verifier against mixed owner claims in independent
+  receipt. Actual SSH/tar admission test now verifies unchanged independent
+  certificate positive path as well as owner/cross-mode negatives. All9 owner
+  tests rerun with real age: PASS, no skip. Assets/diff check PASS.
+- Owner restore evidence now records start time and elapsed seconds for the
+  actual verifier invocation; this is restore duration, not full incident RTO
+  or measured source RPO. Updated exact archive-verifier pins accordingly.

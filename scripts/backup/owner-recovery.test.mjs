@@ -243,4 +243,14 @@ case "$WORK_DIR" in /var/tmp/leaddrive-backup-evidence.*) rm -rf -- "$WORK_DIR";
   sign({}, 'leaddrive-backup-evidence'); assert.notEqual(admission().status, 0, 'wrong namespace denied')
   sign({ EVIDENCE_TYPE: 'archive-restore', RECOVERY_SCOPE: 'log-genesis-bootstrap-only' }, 'leaddrive-backup-evidence')
   assert.notEqual(admission('archive-restore').status, 0, 'owner candidate scope cannot enter independent admission even with independent-looking signature')
+  writeFileSync(candidate, serialize({ ...binding, RECOVERY_SCOPE: 'log-genesis-bootstrap-only' }))
+  const independent = { ...claims, EVIDENCE_TYPE: 'archive-restore', RECOVERY_SCOPE: 'log-genesis-bootstrap-only',
+    CANDIDATE_SHA256: sha(readFileSync(candidate)) }
+  for (const field of ['OPERATOR_MODEL', 'INDEPENDENT_HUMAN_REVIEW', 'TWO_OFFLINE_MEDIA']) delete independent[field]
+  writeFileSync(receipt, serialize(independent))
+  rmSync(`${receipt}.sig`)
+  run('ssh-keygen', ['-Y', 'sign', '-f', key, '-n', 'leaddrive-backup-evidence', receipt])
+  run('tar', ['-C', dir, '-cf', bundle, 'evidence.env', 'evidence.env.sig'])
+  result = admission('archive-restore')
+  assert.equal(result.status, 0, 'existing independent archive verification still accepts its original scope/signature/claims: ' + result.stderr)
 }))

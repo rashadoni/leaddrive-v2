@@ -84,7 +84,7 @@ AWS_LINK="/usr/local/bin/aws"
 # bytes from the exact main revision, not an arbitrary look-alike verifier.
 OWNER_KEY_VERIFIER_SHA256="d72e3bcd19b0838e3d47ff45d3f5580eac3c668fde8aef07dea900971b33a7ca"
 CUSTODY_VERIFIER_SHA256="a02101a2e9ae313c7486d31337b9efe771ea2127d565b059d6e2427df86eca91"
-ARCHIVE_VERIFIER_SHA256="87ef8fdfdc26baaa41353f2b070862bd52571601bce97ec382348e2274dabf00"
+ARCHIVE_VERIFIER_SHA256="24cb830c0f6a18de2226e19bb6f2b87bfb17a241e6062c31d9ae1df02389dd6d"
 POSTGRES_BACKUP_SHA256="88ce748f168a67a88442143864e2652d4b347918cf234cab2341f90ef0bfa681"
 SECRETS_SNAPSHOT_SHA256="c43f3d14fcd68c95b56585ae3844fb8db21db4aefac06b5f210861fd3e2b3907"
 RUNTIME_FILES_SNAPSHOT_SHA256="e32fa4fdab76e4ad162d7c1463916a3847824c3d438a972051b095da4b4e8330"
@@ -1692,6 +1692,9 @@ verify_signed_evidence() {
     esac
   fi
 
+  if [ "$expected_type" = archive-restore ] && grep -Eq '^(OPERATOR_MODEL|INDEPENDENT_HUMAN_REVIEW|TWO_OFFLINE_MEDIA)=' "$evidence_file"; then
+    fatal "independent archive evidence must not carry owner-mode claims"
+  fi
   if [ "$expected_type" = owner-archive-restore ]; then
     [ "$OPERATION" = certify-owner-restore ] && [ "$candidate_format" = 2 ] \
       && [ "$(read_unique_value_from "$candidate_file" RECOVERY_SCOPE)" = owner-operated-data-only ] \

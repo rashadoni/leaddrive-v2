@@ -9,11 +9,15 @@ umask 077
 
 # A distinct owner-only technical proof; never an independent certificate.
 OWNER_OPERATED=0
+OWNER_RESTORE_STARTED_AT_UTC=""
+OWNER_RESTORE_STARTED_EPOCH=0
 EVIDENCE_TYPE=archive-restore
 SIGNATURE_NAMESPACE=leaddrive-backup-evidence
 if [ "${1:-}" = --owner-operated ]; then
   shift
   OWNER_OPERATED=1
+  OWNER_RESTORE_STARTED_AT_UTC="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  OWNER_RESTORE_STARTED_EPOCH="$(date -u '+%s')"
   EVIDENCE_TYPE=owner-archive-restore
   SIGNATURE_NAMESPACE=leaddrive-owner-backup-evidence
   [ "$#" -eq 12 ] || { printf '%s\n' 'owner mode requires the data-only 12-argument interface' >&2; exit 1; }
@@ -1289,7 +1293,9 @@ printf '%s\n' \
   "VERIFIED_AT_UTC=$verified_at"
 if [ "$OWNER_OPERATED" = 1 ]; then
   printf '%s\n' 'OPERATOR_MODEL=owner_operated' \
-    'INDEPENDENT_HUMAN_REVIEW=not_performed' 'TWO_OFFLINE_MEDIA=not_met'
+    'INDEPENDENT_HUMAN_REVIEW=not_performed' 'TWO_OFFLINE_MEDIA=not_met' \
+    "RESTORE_STARTED_AT_UTC=$OWNER_RESTORE_STARTED_AT_UTC" \
+    "RESTORE_DURATION_SECONDS=$(($(date -u '+%s') - OWNER_RESTORE_STARTED_EPOCH))"
 fi
 } >"$evidence_file"
 chmod 0600 "$evidence_file"
