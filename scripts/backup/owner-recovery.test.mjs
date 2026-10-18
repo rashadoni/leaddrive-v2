@@ -297,3 +297,13 @@ test('private verifier staging includes the reviewed migration SQL dependency', 
   assert.ok(source.includes(digest))
   assert.ok(source.includes(`"$migration_ledger_sql_sha256"`))
 })
+
+test('actual restore dispatch interprets a staged helper without execute permission', () => fixture((dir) => {
+  const source = readFileSync(join(root, 'scripts/backup/verify-offline-backup.sh'), 'utf8')
+  const invocation = source.match(/^if ! (TMPDIR="\$WORK_DIR" bash "\$SCRIPT_DIR\/postgres-restore-canary.sh")/m)
+  assert.ok(invocation, 'scratch restore must work on noexec plaintext mount')
+  writeFileSync(join(dir, 'postgres-restore-canary.sh'), 'printf interpreted-helper', { mode: 0o600 })
+  const result = spawnSync('bash', ['-c', invocation[1]], { env: { ...env, WORK_DIR: dir, SCRIPT_DIR: dir }, encoding: 'utf8', timeout: 5000 })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, 'interpreted-helper')
+}))

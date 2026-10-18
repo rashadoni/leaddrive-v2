@@ -64,7 +64,10 @@ SQL
   [ "$role" = '0|1' ] || fatal 'scratch role privileges differ'
   if [ "$mode" = --self-test ]; then
     [ "$(age --version)" = v1.3.2 ] || fatal 'unexpected age version'
-    printf 'networkless ephemeral PostgreSQL and pinned age: passed\n'
+    printf '#!/bin/bash\nprintf scratch-script-readable\n' >/scratch/noexec-probe.sh
+    chmod 0600 /scratch/noexec-probe.sh
+    [ "$(bash /scratch/noexec-probe.sh)" = scratch-script-readable ] || fatal 'scratch script interpretation failed'
+    printf 'networkless ephemeral PostgreSQL, interpreted scratch helper and pinned age: passed\n'
     exit 0
   fi
   install -d -m 0700 /scratch/keys /scratch/output

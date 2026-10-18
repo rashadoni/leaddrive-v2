@@ -1160,7 +1160,7 @@ case "${VERIFY_PGSSLMODE:-verify-full}" in
   *) fatal "offline scratch VERIFY_PGSSLMODE must be verify-full or explicit loopback disable" ;;
 esac
 restore_log="$WORK_DIR/restore-proof.log"
-if ! TMPDIR="$WORK_DIR" "$SCRIPT_DIR/postgres-restore-canary.sh" \
+if ! TMPDIR="$WORK_DIR" bash "$SCRIPT_DIR/postgres-restore-canary.sh" \
   "$WORK_DIR/database/database.dump" "$WORK_DIR/database/source-canary.tsv" \
   "$source_system_identifier" "$WORK_DIR/database/authority.tsv" \
   "$WORK_DIR/database/migration-ledger.tsv" "$WORK_DIR/database/recovery-db-contract.tsv" \

@@ -401,3 +401,19 @@
   preparation(2CPU/4GiB/20GiB) and Docker OS/architecture observation, because
   no callable Mac execution route exists. Existing default profile untouched.
   No real keys, archives, production data or signing receipt involved yet.
+
+## 2026-10-19: noexec scratch compatibility correction before delivery
+
+- Continued review found offline verifier directly executed its private staged
+  canary script although new workbench deliberately mounts plaintext scratch
+  noexec. Changed the reviewed invocation to Bash interpretation, retaining
+  noexec isolation and exact staged helper hashes; refreshed archive pins.
+- Added executable regression using actual dispatch expression and a mode0600
+  staged helper; added container self-test probe on its actual noexec mount.
+ 12owner tests with real synthetic crypto PASS, assets PASS, shell syntax PASS.
+- Owner first VM invocation failed on pasted trailing comma in disk value20;
+  no VM success claimed. Supplied standalone corrected command blocks.
+- Coordinator explicitly requests no main/merge/deploy while PR891 final
+  source2936f4c2f checks run. Acknowledged in PR892 comment6255711594. This
+  correctness fix supersedes frozen A3 source6bec17958 before reconciliation;
+  repeat exact-head gates required, old green results cannot certify new SHA.
