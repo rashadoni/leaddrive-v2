@@ -1660,3 +1660,31 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   re-read main/protection/head and merge normally, verify Actions release/
   public marker/ping, then one existing main-only read-only backup-readiness
   dispatch. No credential/policy/timer/slot/source/replay mutation follows.
+
+## 2026-10-18 03:17 UTC — Object Lock diagnostic verified and merged
+
+- Frozen remote3a6be7bf7b01d87ff474889a7c77ace993dff53d completed full
+  run39091474520 SUCCESS03:13:15Z. Actual hosted diagnostic10/10, zero skips,
+  including GNU TERM/KILL, parser timeout, private output bounds, no residual
+  fixture process and fail-closed report handler. Fund reducer43+shadow78=121,
+  real restricted-LOGIN PostgreSQL10/10, general unit baseline18=18 PASS.
+  Typecheck64 gated pairs=64 baseline,1326 advisory diagnostics overall;
+  five task-owned Fund TS paths have zero diagnostics. Separate current-head
+  pgpass39091475113 SUCCESS30/30 includes real libpq authentication.
+- Root independently read all five actual required SUCCESS checks from Actions
+  app15368 (not older draft SKIPPED), current PR head/base and main protection.
+  enforce_admins=true, force/delete=false, current origin/main287047e2 and
+  registered13.140.132.245:/opt/leaddrive-v2 match the documented Actions route.
+  No bypass, source push into active CI, retry or weakened timeout was used.
+- Normal --match-head-commit merge of PR872 completed03:17:20Z as
+  ce71dacf9a413facda602fb433963e1cbe79412b. Fresh main API matches. Preserved
+  local journal-only checkpoint2f7a4128d was NOT pushed into the frozen gates.
+  Automatic deploy is pending discovery/completion; previous public artifact
+  remains287047e2 until independently rechecked after a successful release.
+- One helper monitors only that merge-SHA automatic deploy. After its actual
+  quality/build/runtime/whole-workflow success, root will verify public exact
+  SHA/ping and run one existing protected main-only backup-readiness diagnostic.
+  An expected fail-closed readiness report is not a failed app delivery and
+  must not be made green by enabling timers or changing keys/retention.
+- No backup, restore, commissioning, source logical WAL/restart/slot,
+  publication, consumer, offset/replay or paid-service change was performed.
