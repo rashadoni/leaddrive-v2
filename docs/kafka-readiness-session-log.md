@@ -3069,3 +3069,20 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   no duplicate retry or active/foreign cancellation. Next: one normal PR889
   source update, all new-head actual checks plus own-path advisory review,
   then normal merge/deploy. Kafka activation/offset/replay remain untouched.
+
+### Corrected revision in CI — 2026-10-18 18:36 UTC
+
+- PR889 now freezes source `ea6d16965fdafdf5f0245f6bd88ed3485311edbf`.
+  Required run39154320847 is active; pr-scope, runner policy39154321168,
+  scan39154320882 and tooling39154320893 have passed. Full typecheck/static
+  verification still running. Do not reuse old-source green checks for merge.
+- Synthetic CDC39154320972 SUCCESS: restricted SQL/WAL boundary, raw transport
+  and cold restart passed, scoped cleanup passed. Its explicit remaining scope
+  is business_projection=NOT_RUN, fixture_tls=NOT_PROVEN and no production
+  activation. Broker+restricted SQL run39154321016 is now executing after the
+  shared integration queue. No extra dispatch or retry was created.
+- Fresh public ping200/ok=true and artifact7c0d75f1b observed during an unrelated
+  main1c5d752c3 release. Production remains outside this PR until verified merge.
+  Next: current-head full gates and own advisory diagnostic review, then normal
+  release and exact artifact/postcondition verification. This is a local receipt
+  checkpoint only; no additional source push while CI runs.
