@@ -315,3 +315,47 @@ The independent archive remains a separate requirement/cost. Existing B2
 research above is a candidate, not an enabled archive. Overall A4 stays NO-GO
 until all original evidence gates are satisfied. No hosting purchase, provider
 migration, registry change or production installation follows from this note.
+
+## Owner refocus: protect LeadDrive CRM only — 2026-10-19
+
+Owner clarified: «мне нужен только проект leaddrivecrm зашиитить и всё».
+Interpret in the original calculation/data-recovery context: protect this CRM's
+data and derived calculations, without repeating payments/sends or losing
+unaffected tenants' work. Earlier cluster estimates were for this one product,
+not multiple projects, but buying Kafka infrastructure is not the product's
+protection outcome. **Pause hosting selection/procurement as the immediate
+path.** Previous vendor comparisons remain historical proposals; no new paid
+resource is selected or ordered. No change to the existing Kafka HA gate.
+
+Use existing PostgreSQL/source/deployment assets for the next product-focused
+work, coordinated by the original delivery chat and its recovery/operator tracks:
+
+1. Establish a current verified LeadDrive recovery point covering DB, required
+   files, secrets/keys and operating state; restore into an isolated permitted
+   target and verify integrity plus actual recovery timing. A dump file or
+   inactive timer is not acceptance. An independent copy/custody remains an
+   explicit dependency if existing resources cannot prove it.
+2. Prove Fund correction from immutable PostgreSQL events into a new, isolated
+   calculation version, preserving unaffected tenants/data and fencing all
+   external effects. Review the database-only containment procedure in the
+   existing projection recovery runbook. No execution or live read-pointer
+   change is authorized by this clarification.
+3. Extend measured write/history/idempotency/rebuild coverage to other CRM
+   aggregates one domain at a time using the existing adoption inventory.
+   Do not report the whole product protected from the Fund pilot or topic list.
+
+The existing [event recovery audit](../../.github/workflows/event-recovery-audit.yml)
+is source-only, read-only and has no added server prerequisite. Latest completed
+[receipt39107488591](https://github.com/rashadoni/leaddrive-v2/actions/runs/39107488591)
+SUCCESS was created2026-10-18T07:23:37Z, on24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2.
+This is a historical Fund/event-authority receipt, not a new audit of current
+main226dde0e7, a full app restore receipt or protection of all domains. No audit
+was redispatched and no backup/restore/service mutation ran in this follow-up.
+
+Kafka delivery/HA/DR remains optional future infrastructure work for the owner
+to commission after the original prerequisites; this note neither changes its
+contract nor claims PostgreSQL alone supplies multi-host resilience. Product
+protection work can progress without activating Kafka or buying a cluster.
+Current no-install/no-production-WAL-slot-consumer-offset-replay/no-merge-deploy
+and no-spend limits remain in force. This is a scoped priority clarification,
+not permission to bypass recovery/operator evidence or activate a repair.
