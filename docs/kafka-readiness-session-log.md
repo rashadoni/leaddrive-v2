@@ -2700,3 +2700,33 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  Projects API error; the supported REST pull-request update succeeded. No
  source commit changed. Next: actual complete drill and required gates, then
  normal exact-head merge, automatic release and verified production receipt.
+
+### Combined takeover remains red; fixture pipe defect reproduced — 2026-10-18 15:16 UTC
+
+- Combined39137630643/job117705287961 completed FAILURE on97aa83b12 after
+ 15m03s, not the20-minute limit. Actual strict generated-client compilation,
+ 51/51 fixture tests, migration bootstrap,13/13 broker scenarios and the first
+ five combined SQL scenarios passed. The last scenario reported only
+ `broker_postgres_phase=concurrent-takeover` at15:09:15Z. Compose cleanup and
+ service-container shutdown succeeded. PR883 returned to draft; no merge or
+ retry was used to hide this finding.
+- Independent small-process reproduction found a real fixture transport bug:
+ the private channel destroys stdout on FAIL, while child cleanup can still
+ write REVOKE. Three of three probes ended in SIGPIPE; leaving the true child
+ stdout draining produced exit1/no signal in three of three corrected probes.
+ This proves the pipe defect, not yet the exact original CI assertion because
+ its old catch hid that location. Static takeover subphase labels now retain
+ precise safe failure location without payload/exception/credential logging.
+- Fix is fixture-only: a64KiB backpressured PassThrough forwards private frames;
+ after channel closure it discards remaining child stdout while awaiting the
+ existing actual child termination. Runtime bridge, deadlines, old exit1/no
+ signal, actual stale ACK write, unchanged cursor and all parity assertions
+ are preserved. No synthetic timeout/failure is accepted as fencing evidence.
+- Current local checks PASS:343/343 targeted tests in8files (including two
+ pipe-lifecycle regressions, one with a tiny real shell child),12/12 script
+ contracts, narrow strict ES2017 contract/broker compilation,71-workflow
+ runner policy and whitespace. No Docker/Java/real DB/full build ran here.
+- Required static39137630590 is still finishing its already-started baseline
+ suite; no cancellation or duplicate run. Next: preserve its receipt, finish
+ independent patch review, publish corrected source once, then require actual
+ current-source combined and mandatory gates before the ordinary release.

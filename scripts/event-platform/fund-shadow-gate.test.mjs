@@ -82,4 +82,12 @@ test('combined broker proof requires actual generated types and SQL before its s
   // Broker cleanup failure cannot prevent the independent SQL cleanup attempt.
   assert.match(drill, /await Promise\.allSettled\(\[db\.close\(\)\]\)/)
   assert.doesNotMatch(drill, /vi\.mock\(|mockResolvedValue|\bdb push\b/)
+  // Pipe cleanup must not replace real membership-fencing evidence with a
+  // generic failure, timeout or host-side signal. Keep precise safe phases.
+  assert.ok(drill.includes('phase = "takeover-assert-old-exit"'))
+  assert.ok(drill.includes('phase = "takeover-wait-replacement-commit"'))
+  assert.ok(drill.includes('assert.equal(old.child.exitCode, 1); assert.equal(old.child.signalCode, null)'))
+  assert.ok(drill.includes('assert.equal(oldAck, 1); assert.equal(oldAckWritten, 1)'))
+  assert.ok(drill.includes('Date.now() - old.recordReceivedAt < 60_000'))
+  assert.match(drill, /catch \{ throw new Error\(`broker_postgres_phase=\$\{phase\}`\) \}/)
 })

@@ -4,8 +4,29 @@ import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:chil
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { resolve } from "node:path"
+import { PassThrough, type Readable, type Writable } from "node:stream"
 import { createKafkaBridgeChannel } from "../../../src/lib/event-platform/kafka-bridge"
 import type { KafkaEventRecord } from "../../../src/lib/event-platform/consumer"
+
+/**
+ * A bridge closes its private reader as soon as FAIL is observed. Keep the
+ * subprocess's actual stdout open until it exits: Java's finally can emit
+ * REVOKE, and closing Docker's pipe first would turn exit 1 into SIGPIPE.
+ * Forwarding has bounded backpressure; after close, discard (never log) the
+ * remaining bytes while the existing terminate callback reaps its own child.
+ */
+export function createBrokerFixtureChannel(input: {
+  stdout: Readable; stdin: Writable; terminate: () => Promise<void>; timeoutMs?: number
+}) {
+  const privateOutput = new PassThrough({ highWaterMark: 64 * 1024 })
+  input.stdout.on("error", () => { privateOutput.destroy() })
+  privateOutput.once("close", () => {
+    input.stdout.unpipe(privateOutput)
+    input.stdout.resume()
+  })
+  input.stdout.pipe(privateOutput)
+  return createKafkaBridgeChannel({ ...input, stdout: privateOutput })
+}
 
 export function createBrokerFixtureHarness() {
   const root = resolve(process.cwd())
@@ -109,7 +130,7 @@ export function createBrokerFixtureHarness() {
     children.add(child)
     child.on("error", () => { child.stdout.destroy(); child.stdin.destroy() })
     child.stderr.resume()
-    return { child, channel: createKafkaBridgeChannel({ stdout: child.stdout, stdin: child.stdin, terminate: () => terminate(child), timeoutMs }) }
+    return { child, channel: createBrokerFixtureChannel({ stdout: child.stdout, stdin: child.stdin, terminate: () => terminate(child), timeoutMs }) }
   }
   return { create, fixture, admitGroup, produce, driver, configurations, close: () => Promise.all([...children].map(terminate)) }
 }

@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { PassThrough } from "node:stream"
 import type { KafkaEventRecord } from "../lib/event-platform/consumer"
-import { createBrokerFixtureHarness } from "../../scripts/event-platform/fixtures/kafka-broker-harness"
+import { createBrokerFixtureChannel, createBrokerFixtureHarness } from "../../scripts/event-platform/fixtures/kafka-broker-harness"
 
-// Mock-only command/encoding contract. No Docker/Java process, network, real
-// configuration file or broker behavior is exercised by this test suite.
+// Command/encoding tests mock subprocesses. The pipe-lifecycle regression
+// below uses one tiny local shell child only: no Docker/Java/network/DB or
+// actual broker behavior is exercised by this suite.
 const mocks = vi.hoisted(() => ({
   spawnSync: vi.fn(), spawn: vi.fn(), mkdtemp: vi.fn(), mkdir: vi.fn(), writeFile: vi.fn(),
   offsets: ["9007199254740993", "9007199254740995"],
@@ -140,6 +142,52 @@ describe("broker fixture admission without subprocesses", () => {
       expect(observed).toBeInstanceOf(Error)
       expect((observed as Error).message).toContain("synthetic broker command failed")
       expect((observed as Error).message).not.toContain(sensitive)
+    }
+  })
+})
+
+describe("fixture private output lifecycle", () => {
+  it("forwards exact frames, then drains late private output while awaiting the child's exit", async () => {
+    const stdout = new PassThrough(), stdin = new PassThrough()
+    let reaped!: () => void
+    const exit = new Promise<void>(resolve => { reaped = resolve })
+    const terminate = vi.fn(() => exit)
+    const channel = createBrokerFixtureChannel({ stdout, stdin, terminate, timeoutMs: 1000 })
+    stdout.write("FAIL\tBRIDGE_STOPPED\n")
+    expect(await channel.read()).toBe("FAIL\tBRIDGE_STOPPED")
+    let closed = false
+    const closing = channel.close().then(() => { closed = true })
+    await new Promise<void>(resolve => { setImmediate(resolve) })
+    expect(stdout.destroyed).toBe(false)
+    expect(stdout.readableFlowing).toBe(true)
+    expect(closed).toBe(false)
+    stdout.write("REVOKE\t1\n")
+    reaped(); await closing
+    expect(terminate).toHaveBeenCalledTimes(1)
+    await expect(channel.read()).rejects.toThrow("KAFKA_BRIDGE_STOPPED")
+    stdout.end()
+  })
+
+  it.skipIf(process.platform === "win32")("preserves actual exit 1 instead of SIGPIPE when cleanup writes after FAIL", async () => {
+    const { spawn } = await vi.importActual<typeof import("node:child_process")>("node:child_process")
+    const child = spawn("sh", ["-c", "printf 'FAIL\\tBRIDGE_STOPPED\\n'; sleep 0.05; printf 'REVOKE\\t1\\n'; exit 1"],
+      { stdio: ["pipe", "pipe", "pipe"] })
+    child.stderr.resume()
+    const exit = new Promise<void>((resolve, reject) => {
+      child.once("exit", () => { resolve() })
+      child.once("error", reject)
+    })
+    const deadline = setTimeout(() => { child.kill("SIGKILL") }, 2000)
+    const channel = createBrokerFixtureChannel({ stdout: child.stdout, stdin: child.stdin,
+      terminate: async () => { child.stdin.end(); await exit }, timeoutMs: 1000 })
+    try {
+      expect(await channel.read()).toBe("FAIL\tBRIDGE_STOPPED")
+      await channel.close()
+      expect(child.exitCode).toBe(1)
+      expect(child.signalCode).toBeNull()
+    } finally {
+      await channel.close()
+      clearTimeout(deadline)
     }
   })
 })

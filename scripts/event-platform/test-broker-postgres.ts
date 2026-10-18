@@ -226,35 +226,51 @@ async function main() {
       let replacement: ReturnType<typeof start> | undefined
       const replacementClient = db.connect(context)
       try {
+        phase = "takeover-wait-old-commit"
         await enteredBeforeExit(oldEntered, old.outcome)
+        phase = "takeover-assert-old-durable"
         assert.deepEqual(await db.counts(context), { shadows: 1, inbox: 1, checkpoints: 1 })
         replacement = start(test, 1, { timeoutMs: 60_000, assignment: a => members.set("new", a), ack: () => { newAck++ },
           databaseFor: () => fundShadowDatabase(replacementClient, { afterCommit: async () => {
             newEntered.release(); await bounded(releaseNew.promise, 40_000)
           } }) })
         // Hold only AFTER actual SQL COMMIT: the 15s SQL timeout is unchanged.
+        phase = "takeover-wait-replacement-commit"
         await enteredBeforeExit(newEntered, replacement.outcome, 40_000)
+        phase = "takeover-assert-membership"
         assert.notEqual(members.get("old")!.memberId, members.get("new")!.memberId)
         assert.ok(members.get("new")!.generationId > members.get("old")!.generationId)
+        phase = "takeover-assert-duplicate-durable"
         assert.deepEqual(await db.counts(context), { shadows: 1, inbox: 1, checkpoints: 1 })
+        phase = "takeover-assert-no-early-ack"
         assert.equal(oldAck, 0); assert.equal(newAck, 0)
+        phase = "takeover-assert-old-live-window"
         assert.ok(Date.now() - old.recordReceivedAt < 45_000, "takeover must leave a real stale-ACK observation window")
         assert.equal(old.child.exitCode, null); assert.equal(old.child.signalCode, null)
+        phase = "takeover-wait-stale-ack-rejection"
         releaseOld.release()
         assert.equal((await bounded(old.outcome)).ok, false)
+        phase = "takeover-assert-stale-ack-written"
         assert.equal(oldAck, 1); assert.equal(oldAckWritten, 1)
+        phase = "takeover-assert-old-exit"
         assert.equal(old.child.exitCode, 1); assert.equal(old.child.signalCode, null)
+        phase = "takeover-assert-not-command-timeout"
         assert.ok(Date.now() - old.recordReceivedAt < 60_000, "command timeout is not membership-fencing evidence")
+        phase = "takeover-assert-unadvanced-cursor"
         assert.equal(newAck, 0); assert.equal(cursor(test), test.start)
+        phase = "takeover-release-replacement"
         releaseNew.release()
         assert.deepEqual(await bounded(replacement.outcome), { ok: true, processed: 1 })
+        phase = "takeover-assert-replacement-cursor"
         assert.equal(cursor(test), (BigInt(test.start) + BigInt(1)).toString())
       } finally {
         releaseOld.release(); releaseNew.release()
         const cleanup = await Promise.allSettled([old.stop(), replacement?.stop(), replacementClient.$disconnect()])
         assert.ok(cleanup.every(result => result.status === "fulfilled"), "both members and restricted connection must close")
       }
+      phase = "takeover-resume-tail"
       assert.deepEqual(await start(test, 5).outcome, { ok: true, processed: 5 })
+      phase = "takeover-final-parity"
       await complete(test)
       console.log("broker_postgres_takeover_durable_inbox_stale_ack_fenced=PASS")
     }
