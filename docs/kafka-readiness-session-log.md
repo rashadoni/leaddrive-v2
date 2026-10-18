@@ -3086,3 +3086,23 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   Next: current-head full gates and own advisory diagnostic review, then normal
   release and exact artifact/postcondition verification. This is a local receipt
   checkpoint only; no additional source push while CI runs.
+
+### Corrected source passes actual type and failure proofs — 2026-10-18 18:52 UTC
+
+- Exact PR889 source ea6d16965fdafdf5f0245f6bd88ed3485311edbf:
+  full-project typecheck job117754386566 SUCCESS18:43Z. Downloaded the complete
+  job report before merge: zero diagnostics on the task-owned worker modules,
+  tests or combined broker scripts. Total advisory diagnostics decreased from
+ 1330 to1327;64 gated baseline pairs unchanged. The three actual TS2769 errors
+  are gone; the whole existing application is not claimed type-error-free.
+- Broker run39154321016/job117754275570 SUCCESS18:50:26Z: actual generated
+  Prisma client AND actual installed Next ambient types passed strict ES2017;
+ 113/113 fixture/lifecycle tests,13/13 broker cases,8/8 combined restricted-SQL
+  cases and scoped cleanup passed. Stop during COMMIT marker18:49:01Z, stop
+  after COMMIT18:49:10Z, stale-generation takeover18:50:20Z. Recorded final
+  scope remains cdc=separate-proof, production_activation=not-performed.
+- Only required static-checks remains running its full unit baseline comparison.
+  No premature merge/deploy. Fresh public ping200/ok=true and exact current
+  main artifact1c5d752c3116ead4f0d8c84158a836f992c18c34 independently observed.
+  Next: actual static success, verify live head/main/protection, normal PR merge
+  and monitor the automatic SHA-bound release, then public and read-only checks.
