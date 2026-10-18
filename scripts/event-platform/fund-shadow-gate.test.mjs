@@ -26,7 +26,7 @@ test('both required PR verification and production release run the real Fund sha
     const unitStep = source.slice(unitStart, start)
     assert.match(unitStep, /run: npx vitest run src\/__tests__\/event-platform-fund-balance-reducer\.test\.ts src\/__tests__\/event-platform-fund-shadow-consumer\.test\.ts/)
     for (const testFile of ['event-platform-partition-processor', 'event-platform-fund-shadow-worker', 'event-platform-kafka-bridge',
-      'event-platform-worker-process', 'event-platform-worker-session']) {
+      'event-platform-worker-process', 'event-platform-worker-session', 'event-platform-worker-admission', 'event-platform-worker-artifact']) {
       assert.ok(unitStep.includes(`src/__tests__/${testFile}.test.ts`), `${workflow}: ${testFile} must execute`)
     }
     assert.doesNotMatch(unitStep, /\b(?:if|continue-on-error):|secrets\./)
@@ -100,7 +100,31 @@ test('combined broker proof requires actual generated types and SQL before its s
   for (const marker of ['broker_postgres_stop_after_commit_restart=PASS', 'broker_postgres_stop_during_commit_restart=PASS',
     'assert.equal(ackAttempts, 0); assert.equal(cursor(test), test.start)', 'assert.equal(observed[0].offset, test.start)',
     'assert.equal(released, false', 'assert.equal(released, true']) assert.ok(drill.includes(marker), marker)
-  for (const name of ['worker-process', 'worker-session']) {
+  for (const name of ['worker-process', 'worker-session', 'worker-admission', 'worker-artifact']) {
     assert.ok(workflow.includes(`src/__tests__/event-platform-${name}.test.ts`))
   }
+  for (const marker of ['worker_jvm_ordered_restart_exact_parity=PASS', 'worker_jvm_stop_after_commit_restart=PASS',
+    'worker_jvm_stop_during_commit_restart=PASS', 'await first.exited', 'await second.exited',
+    'driver.kind === "direct"']) assert.ok(drill.includes(marker), marker)
+  const harness = readFileSync(new URL('scripts/event-platform/fixtures/kafka-broker-harness.ts', root), 'utf8')
+  for (const contract of ['verifyKafkaWorkerArtifact(', 'validateKafkaWorkerPlan(', 'createSupervisedKafkaChannel(',
+    'verified.classpath.join(":")', 'plan', '-Djdk.net.hosts.file=']) assert.ok(harness.includes(contract), contract)
+})
+
+test('full CDC Fund proof is an isolated required-SQL phase after existing CDC, never an activation route', () => {
+  const workflow = readFileSync(new URL('.github/workflows/event-platform-cdc.yml', root), 'utf8')
+  const stack = readFileSync(new URL('scripts/event-platform/test-stack.sh', root), 'utf8')
+  const proof = readFileSync(new URL('scripts/event-platform/test-cdc-fund-postgres.ts', root), 'utf8')
+  const full = workflow.slice(workflow.indexOf('  full-cdc-fund:'))
+  for (const required of ['needs: cdc-smoke', 'group: event-platform-disposable-integration', 'cancel-in-progress: false',
+    "LD_EVENT_STACK_FULL_CDC_FUND: '1'", 'FUND_SHADOW_DB_GATE: required', 'npx prisma generate --schema prisma/schema.prisma',
+    '--strict --target ES2017', 'node_modules/next/types/global.d.ts', 'test-cdc-fund-postgres.ts',
+    'test-cdc-fund-postgres.test.mjs', 'if: always()', 'down --volumes --remove-orphans --timeout 10']) {
+    assert.ok(full.includes(required), required)
+  }
+  assert.doesNotMatch(full, /continue-on-error:|secrets\.|leaddrive-prod|workflow_dispatch:/)
+  assert.ok(stack.includes('full CDC Fund requires its own isolated required-database phase'))
+  assert.ok(stack.includes('"$task_root/scripts/event-platform/test-cdc-fund-postgres.ts"'))
+  for (const required of ['sourceAppWrites: true', 'await db.newBuild(', 'corrected_new_build_recovery=PASS',
+    'old_bad_builds_and_group_preserved=PASS', 'production_activation=NOT_RUN']) assert.ok(proof.includes(required), required)
 })
