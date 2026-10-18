@@ -37,6 +37,11 @@ export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, h
   const finished = snapshot.state === "COMPLETED"
   const unseen = finished ? [] : moduleProgress(snapshot, manifest).filter((module) => !module.done)
   const onFinishStep = step?.id === "summary-finish"
+  // The source → won card belongs to the lead story. A prospect who only
+  // walked a module of its own (Contracts, Service Desk…) never saw that
+  // campaign or deal — the story was merely staged to its end on the way
+  // here — so the card would credit them with a win they never watched.
+  const storyWalked = sections.some((section) => !section.standalone && section.steps.some((candidate) => completed.has(candidate.id)))
   // Each module the prospect walked: what they did — the results its steps
   // wrote when they did them, already vetted against the product — and what
   // it gives a business. Modules not started are in the box above instead.
@@ -124,12 +129,14 @@ export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, h
         </div>
       </div>
 
-      <div data-tour-id="journey-attribution" className="rounded-xl border border-zinc-200 bg-card p-5 dark:border-zinc-700">
-        <p className="flex items-center gap-2 text-sm font-semibold"><Flag className="h-4 w-4 text-[#FF4D00]" /> {records.campaign.name}</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {wonAmount !== null ? S.summaryAttribution(records.campaign.name, demoMoney(wonAmount)) : S.syntheticNote}
-        </p>
-      </div>
+      {storyWalked && (
+        <div data-tour-id="journey-attribution" className="rounded-xl border border-zinc-200 bg-card p-5 dark:border-zinc-700">
+          <p className="flex items-center gap-2 text-sm font-semibold"><Flag className="h-4 w-4 text-[#FF4D00]" /> {records.campaign.name}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {wonAmount !== null ? S.summaryAttribution(records.campaign.name, demoMoney(wonAmount)) : S.syntheticNote}
+          </p>
+        </div>
+      )}
 
       <div data-tour-id="journey-finish" className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-card p-5 dark:border-zinc-700">
         {finished ? (

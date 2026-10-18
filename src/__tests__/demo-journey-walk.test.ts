@@ -957,6 +957,17 @@ describe("the Contracts module", () => {
     expect(textOf('[data-testid="ctr-envelope-status"]')).toBe(messages.contracts.esignStatusCompleted)
   }, 60_000)
 
+  it("ends on what was done in Contracts, without crediting a deal the prospect never saw", async () => {
+    await openContracts()
+    await walkToEnd(undefined, "summary-finish")
+    const cards = [...document.querySelectorAll('[data-testid="demo-summary-module"]')]
+    expect(cards.map((card) => card.getAttribute("data-module-route"))).toEqual(["/contracts"])
+    expect(cards[0].textContent).toContain("Sənəd imzalandı.")
+    expect(cards[0].textContent).toContain(S.moduleValue["/contracts"])
+    // The lead story was staged to its end on the way, not walked: no source → won card.
+    expect(document.querySelector('[data-tour-id="journey-attribution"]')).toBeNull()
+  }, 60_000)
+
   it("keeps the renewals by the product's schedule and writes the alert in the managers' language", async () => {
     const { contractsDemoLifecycle, contractsDemoBell } = await import("@/components/demo-center/journey/scenes/contracts-demo-data")
     await openContracts()
