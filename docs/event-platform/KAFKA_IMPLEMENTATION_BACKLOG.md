@@ -1107,3 +1107,24 @@ close final source verification or promotion: frozen source reads/reducer proof,
 authenticated pointer CAS and worker/broker/physical-observer evidence still need
 one restricted composition. Shared event tables are fenced per tenant, not
 claimed migrated for every domain. No runtime integration is active.
+
+
+### Current-main reconciliation and isolated final transition preparation
+
+Current upstream421260026 includes original-session A1/A2 PR891; exact2936f4c2
+CDC run39170670645 passed both cdc-smoke and full-cdc-fund. Earlier pending
+A1/A2 statements are historical. This branch preserves upstream admission tests
+unchanged and adds its own shadow/final-transition fixture steps.
+
+New fixture-only composition joins same-snapshot canonical material hash, fresh
+source barrier, authenticated admission, actual build/promotion-event/pointer CAS
+and deferred finalization. Full worker evidence and exact checkpoint→inbox
+positions are required; newer-offset duplicates need an independent position
+receipt before collector certification. No domain G evidence set closes.
+
+Next runtime slice is trusted verifier/evidence registration with independent
+provenance and bounded query design, followed by physical observer/broker/soak,
+application canary/rollback, lifecycle/correction and independent restore/alarm
+drills. The 27-domain writer/effect/rebuild map remains the acceptance queue;
+topic presence never establishes protection. Hosted results and NOT RUN gates
+are recorded in docs/kafka-operator-readiness-session-log.md.

@@ -282,3 +282,35 @@ cannot reuse the handle as evidence. No such pointer executor is wired here.
 Command receipts/inbox/checkpoints/builds/pointers/effects are not fenced by
 these six source guards; their lease/CAS/effect contracts remain mandatory.
 No broker end-position or physical worker-stop proof follows from a SQL lock.
+
+
+### Isolated atomic Fund transition composition (fixture only)
+
+`fund-transition-fixture.sql` is installed only by the hosted disposable proof.
+A trusted fixture owner registers canonical evidence and its raw-byte manifest
+hash; the operator has no evidence registration API. The read-only collector
+captures a full material hash inside its canonical Repeatable Read transaction.
+The authenticated executor separately acquires the tenant barrier, verifies the
+same material under that barrier, locks the build/pointer, writes a promotion
+event, applies pointer CAS and settles admission in one transaction. Three extra
+guarded tables (inbox, checkpoints, effect outbox) supplement the six-table source
+profile. Final deferred checks reject expired admission/evidence/rollback windows
+and roll back staged build, event, pointer and settlement together.
+
+PostgreSQL16 deferred invoker guards execute with the COMMIT role. The fixture
+therefore grants controller SELECT on builds/events plus UPDATE only on the
+immutable effectsFenced column for SELECT FOR SHARE. RLS exposes only the exact
+current Fund target/request in a fresh request/generation/backend/xid8 barrier;
+without that context no rows are visible. Original guards reject fence changes;
+status mutation, trigger changes, replica mode and direct pointer writes remain
+denied. No existing guard is altered or forced immediate. PostgreSQL's
+[master-only role change](https://www.postgresql.org/message-id/E1tb0y4-0037sb-1e@gemulon.postgresql.org)
+is not assumed present in the pinned16.13 server.
+
+This is a small synthetic composition proof, not a runtime controller or trusted
+verifier implementation. The material query is deliberately unbounded over the
+small fixture and needs a production query budget/design. Genuine observer,
+broker, soak, archive/restore and delivery evidence remain absent. First-pointer
+bootstrap, correction policy, continuous promoted processing and application
+cutover are not implemented. No API, migration or active business integration
+loads this fixture.

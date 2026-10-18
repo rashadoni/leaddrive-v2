@@ -1,22 +1,48 @@
 # A5 operator readiness и A7: карта незакрытых доказательств
 
-Срез: 19 октября 2026, `origin/main` 226dde0e7. Это подготовка, не разрешение
+Срез: 19 октября 2026: Kafka base421260026, проверенный `origin/main`
+4f00c4621 (последующие изменения Support/demo/CI не меняют Kafka contracts).
+Это подготовка, не разрешение
 активации. A5 соответствует K5 backlog; A7 — K7 recovery drills и проверке
 полноты K6 по всем доменам. Ни один новый бизнес-consumer не подключён.
+
+## Актуальное состояние (заменяет исторические оценки ниже)
+
+A1/A2 доставлены исходной сессией через PR891 в main421260026. На exact source
+2936f4c2 успешны оба задания `cdc-smoke` и `full-cdc-fund` в
+[отдельном upstream run39170670645](https://github.com/rashadoni/leaddrive-v2/actions/runs/39170670645).
+Это bounded CDC/worker evidence исходной сессии; оно не доказывает production
+TLS/ACL, весь Finance или операторскую готовность. Упоминания pending/NOT RUN
+A1/A2 ниже — исторические срезы, а не текущее состояние upstream.
+
+Эта ветка добавляет inactive authenticated admission/lease, stop challenge,
+canonical snapshot/canary collectors и tenant source barrier. Изолированная
+fixture-композиция связывает проверенный snapshot, точный material hash,
+свежий barrier, promotion event, pointer CAS и deferred COMMIT admission.
+Она не содержит runtime verifier/controller, genuine physical-stop/restore/
+alarm receipts и не устанавливается миграцией или приложением. Hosted [run39174440765](https://github.com/rashadoni/leaddrive-v2/actions/runs/39174440765)
+на exact1bf112fe7 прошёл249/249:174 unit +17 admission +8 shadow +9 stop +
+24 actual-schema reader/canary +8 barrier +9 atomic transition. Все fixtures
+синтетические; runtime/operational evidence этим не получено.
+
+Collector проверяет все поля provenance реального worker и точное соответствие
+checkpoint lastEventId → inbox topic/partition/offset. Более новый broker offset
+для duplicate event без отдельного durable byte/position receipt консервативно
+не сертифицируется. Семантика самого worker не изменена.
 
 ## A5: проверенные границы и очередь
 
 | Граница | Что действительно есть | Чего нет / приёмка следующего шага |
 |---|---|---|
-| Authenticated operator admission | `projection.ts` требует разные строки requester/approver; SQL проверяет согласованность promotion evidence/pointer | Это не authentication. Нужны две отдельные admissions из доверенных session/JIT identities, tenant permission, срок действия, revocation, request hash и одноразовое atomic consume; тело запроса не задаёт identity. Повтор/конкуренция/отзыв/чужой tenant должны отказать до mutation |
-| Tenant/build | Fund shadow worker проверяет tenant, build, version, code SHA, role; restricted SQL/RLS и inbox защищают транзакцию | Отдельный operator scope должен совпадать с неизменным планом, artifact digest, cluster/topic ID, group и диапазоном. A1/A2 `worker-admission.ts`/`worker-artifact.ts` подготовлены только в e298057; не продублированы здесь. Проверка формы плана не выдаёт authority |
-| Lease/fencing | Bridge assignment fence; worker-session прекращает intake/ACK и ждёт SQL settlement; effect ledger имеет собственные lease tokens | Нет durable operator/worker ownership lease с CAS generation, expiry/revoke и проверкой перед SQL/pointer switch. Kafka membership не заменяет SQL ownership. Уже начатая SQL может закончиться после revoke; нельзя объявлять stop раньше settlement/actual child close |
-| Stop/restart | В main есть finite session, owned child supervisor, без auto-restart; исторический PR889 receipt покрывает два bounded stop/restart сценария | Не доказан standalone direct-JVM production composition. A1/A2 новые реальные integration NOT RUN; их receipts должна получить исходная сессия. Stop при lost DB/child hang/lease expiry требует controller evidence |
-| Catch-up | Inbox/checkpoints, deterministic Fund reducer и versioned shadow | Нет end-to-end controller: pinned source/cluster/topic identity, полный диапазон без retention gaps, финальный watermark, lag/age soak, count/value/hash/aggregate parity, tenant isolation. Равные итоги не доказывают равенство истории |
-| Promotion | SDK + SQL atomic promotion event/read pointer, request dedupe и независимые identity strings | Authenticated admission, lease race, финальная parity в согласованном fence, реальный canary read path и domain read-pointer integration не доказаны. Общий pointer SDK не делает Fund read cutover готовым |
-| Rollback | Runbook определяет переключение pointer с сохранением source events | Нет доказанного controller/read path и нагрузки. Старый build должен быть сохранён и достаточно актуален; проверить совместимость, обратный CAS pointer, effect/write fence и rollback window. Старые таблицы без catch-up не гарантируют безопасный откат |
-| External effects | `effects.ts` запрещает shadow/replay effects, registry пуст; SQL ledger, token/attempt и UNKNOWN reconciliation contracts | Live legacy senders обходят общий outbox. Проверять каждый API/cron/provider tail. UNKNOWN никогда не означает automatic resend. Lease projection и lease external effect — разные границы |
-| Alarm delivery | Старый activation-preflight проверяет boolean monitoring gates | Новый `operator-alert-evidence.mjs`: отдельный inactive verifier десяти read-back receipts. Не подключён к activation и не отправляет тревоги. Реальная доставка, получатель и authentic provider adapter ещё НЕ ДОКАЗАНЫ |
+| Authenticated operator admission | Inactive SQL: разные authenticated session identities requester/approver, immutable scope/hash, atomic consume, expiry/revocation и final COMMIT checks | Runtime identity provisioning/JIT, tenant authorization integration и controller endpoint отсутствуют; fixture principals не production identity proof |
+| Tenant/build | Worker checks tenant/build/version/SHA/role; A1/A2 worker-admission/artifact contracts уже в main; operator plan дополнительно pins environment/artifact/cluster/topic/group/action/pointer/evidence | Genuine release/artifact/broker identity resolution и domain-specific authorization в controller; форма плана не выдаёт authority |
+| Lease/fencing | Inactive durable request generation/lease, fresh token checks, stop challenge и transaction-scoped source barrier | Runtime owner/observer delivery и deployment installation отсутствуют; уже начатую SQL/child нужно наблюдать до реального settlement |
+| Stop/restart | Finite owned session/child, upstream bounded CDC worker proof; private one-use observer challenge с deferred acceptance | Physical observer process/SQL/ACK instrumentation, direct-JVM deployed composition, hung child/lost DB и truthful receipt proof |
+| Catch-up | Actual-schema readonly canonical collector, full worker provenance, exact checkpoint/inbox positions, recovery manifest gate | Genuine frozen broker end/retention, archive/restore, soak и independent provenance; newer-offset duplicate без byte/position receipt отвергается |
+| Promotion | Actual event/pointer guards, restricted canary reader; fixture-only canonical material/barrier/build/event/CAS/settlement composition | Hosted final composition result см. session log; runtime trusted verifier/executor, first-pointer policy и application cutover не реализованы |
+| Rollback | Fixture retained build/window + reverse CAS; final expiry rollback и read adapter contract | Genuine retained/caught-up compatibility, workload drill, correction policy и promoted continuous lifecycle |
+| External effects | Shadow/replay effect denial, empty active registry, ledger UNKNOWN/lease/attempt contracts; fixture fences effect intents | Live legacy senders обходят общий outbox; all-path API/cron/provider audit и UNKNOWN reconciliation обязательны; projection lease не effect lease |
+| Alarm delivery | Inactive verifier десяти read-back/ack receipts с independently pinned authority; unit evidence | Authentic provider read-back adapter, actual rule triggers, delivery/recipient acknowledgement и durable challenge proof; реальных отправок здесь нет |
 
 ### Ограниченный компонент этого изменения
 
@@ -45,8 +71,8 @@ expected, ни clock. Staging drill должен реально вызвать �
 и ссылку на exact SHA. Здесь сеть и отправки не вызываются.
 
 Существующий activation preflight и его проверки не изменены: их green всё
-ещё не равно A5 readiness. Новый gate пока также не исполняется автоматически
-в CI; его explicit command указан в журнале.
+ещё не равно A5 readiness. Его unit cases теперь исполняются в isolated operator CI; genuine delivery
+этим не доказывается (ранние сведения о ручном запуске superseded).
 
 ## A7: правила чтения карты 27 доменов
 
@@ -81,7 +107,7 @@ Fund имеет bounded доказательства части G, не закр
 | social | IngestEnvelope, OutboundSocialReplyEvent, SocialLegalEvent, deletion ledger | Mentions/classification/cases/evidence | Crawl, publish, legal/takedown sends | Сохранить existing receipt/evidence/action IDs; all-writer coverage не установлена | Hashed/versioned evidence + recorded classifications, без crawl/publish | Approval/provider capability, immutable evidence, deleted-source/privacy policy |
 | voip | CallEvent и call request/callback paths; inventory | Call queue/timeline/usage/consent | Dial, recording retrieval, callbacks | Stable call/effect key + callback scope нужны на всех путях | Recorded lifecycle, encrypted recording refs, без dial | Provider ambiguous start, suppression/consent race и all-path receipts |
 | support | Ticket/comments, EntitlementAuditEvent; inspected email intake | SLA clocks, queues, entitlement state | Closure/survey/email/WhatsApp/escalation | Optional comment clientRequestId; missing keys не dedupe; intake tails раньше log check | Deterministic clock inputs/receipts → shadow, без ticket factory hooks | Intake re-delivery order, alternate callers, SLA/jobs/portal, entitlement consume |
-| finance | Пять canonical Fund v1 events: opened, transaction-recorded, metadata-updated, archived, reactivated; PaymentWebhookEvent отдельно | Fund balance; invoices/receivables/budgets не покрыты пилотом | Payments/refunds/accounting exports | Fund command receipts/inbox; payments имеют отдельный bounded inventory, не общий effect proof | Fund decimal reducer в isolated build; остальная Finance требует event coverage | Fund reversal/correction, full CDC A1/A2 receipts, history completeness; payment UNKNOWN/refund/dual writes |
+| finance | Пять canonical Fund v1 events: opened, transaction-recorded, metadata-updated, archived, reactivated; PaymentWebhookEvent отдельно | Fund balance; invoices/receivables/budgets не покрыты пилотом | Payments/refunds/accounting exports | Fund command receipts/inbox; payments имеют отдельный bounded inventory, не общий effect proof | Fund decimal reducer в isolated build; остальная Finance требует event coverage | Fund reversal/correction, full history и operational proof; upstream bounded CDC receipt выше не покрывает весь Finance; payment UNKNOWN/refund/dual writes |
 | analytics | Reports/metrics definitions и queries; canonical facts кроме Fund не установлены | Dashboards/KPI/forecast/report snapshots | Export/report delivery | Нужны build/source watermark и stable export key | Versioned deterministic queries по approved facts, без source writes | Late events, exact history, metric versions, scale/RTO и all-source coverage |
 | mtm | Mobile command receipts/sync; MtmAgentWorkdayEvent, workforce events, pharmacy event/points ledger | Route/visits/attendance/timesheet/points | Route notices, reward fulfilment | Сохранить operation/command IDs и policy versions; нет общей Kafka admission | Separate routes/workforce/pharmacy shadow scopes, short-retention location | Все mobile/offline/sync writers, sequence gaps, approvals/corrections, points effect fences |
 | health | HealthPatient/Encounter/CarePlan state; canonical events не установлены | Authorized care timeline/views | Clinical integrations/notifications | Unknown; нужны command/receipt keys, consent-bound identity | Reference-only clinical facts + encrypted storage; no provider calls | Writer audit, PHI classification/erasure/legal hold, schema and correction chain |
@@ -108,19 +134,25 @@ shared senders/legacy dispatch обязателен перед признани�
 
 ## Точный порядок следующей работы
 
-1. Исходная сессия получает exact-head реальные A1/A2 CDC/worker receipts
-   для e298057 lineage; эта ветка их не запускает и не меняет чужие gates.
-2. Следующий A5 software slice: durable operator request + две authenticated
-   admissions, immutable scope/hash и atomic consume/revoke. Сначала non-production
-   restricted-SQL tests: wrong tenant/build/artifact, self-approval, expired/revoked,
-   повторный consume и конкурентный lease generation; ни одного live operation.
-3. Затем scoped controller stop/settle/lease, catch-up manifest/final parity,
-   CAS promotion/read integration, rollback compatibility/window под нагрузкой.
-4. Отдельно создать trusted receipt read-back adapter и staging challenge drill
-   для десяти alarms; online delivery не выводится из unit fixtures.
-5. A7 для каждого домена: exhaustive writers/effects → concrete schema/atomic
-   append → inbox/effect keys → wrong reducer fixture → correction rebuild →
-   exact parity → crash/duplicate/UNKNOWN → archive restore → operator drill.
+1. Isolated actual-schema transition gate завершён: final-COMMIT expiry,
+   scoped PG16 privileges, stale material и pointer races PASS на1bf112fe7.
+   Это fixture proof, не runtime activation. Upstream A1/A2 проверены отдельно.
+2. Следующий runtime slice: trusted verifier/owner evidence registration с
+   независимым provenance, bounded query budget и immutable manifest bytes.
+   Controller не может сам создавать verified evidence. Провести negative
+   receipt-forgery и concurrent-source cases до любых подключений к приложению.
+3. Реальный authenticated observer: доставить одноразовый stop challenge,
+   наблюдать child/SQL/ACK settlement и независимо читать receipt. Подтвердить
+   broker cluster/topic/end positions, retention coverage и lag/age soak.
+4. Реальный restricted executor должен объединить эти доказательства с final
+   source barrier/CAS, canary application read path, retained rollback и явно
+   определённым promoted worker lifecycle. Нужны correction/reversal policy,
+   drift denial и first-pointer bootstrap policy, не произвольный SQL endpoint.
+5. Trusted provider read-back adapter и staging challenge drill для десяти
+   alarms; archive/independent restore/resource drills и activation authorization.
+6. A7 для каждого из 27 доменов: exhaustive writers/effects → concrete
+   schema/atomic append → inbox/effect keys → wrong reducer fixture → correction
+   rebuild → exact parity → crash/duplicate/UNKNOWN → restore → operator drill.
    Начинать с денежных/points/stock/entitlement/provisioning путей из backlog.
 
 HA/TLS/ACL, независимый restore, архив, ресурсный бюджет, реальные owners и

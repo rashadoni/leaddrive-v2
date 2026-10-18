@@ -944,3 +944,65 @@ Own final composition fixture also seeds full worker provenance. Syntax/diff,
 runner-policy72 and upstream admission-file exact comparison PASS. Resources
 15.5GB available/195GB disk/swap3770MB/pressure avg10=0; no heavy local check.
 Fresh hosted exact-source proof pending; prior failures remain failures.
+
+
+### Resumed checkpoint and current upstream evidence reconciliation
+
+Resumed clean dedicated worktree on1bf112fe71e8ab9d9a06bb2ce119433e21a1e50d;
+canonical dirty checkout preserved. codex-project-context and repository AGENTS
+reconfirmed root/branch/origin and13.140.132.245:/opt/leaddrive-v2 GitHub-main
+release route. No production access. Current origin/main advanced to4f00c4621;
+changes after Kafka merge421260026 concern Support/demo/CI, with no changes to
+ops/scripts/src event-platform, migrations, event-platform docs or AGENTS.
+No need to import unrelated product changes into this bounded preparation.
+
+Read-only upstream exact2936f4c2 CDC run39170670645 confirms BOTH cdc-smoke and
+full-cdc-fund SUCCESS. This supersedes historical A1/A2 pending assessments;
+those gates belong to the original delivery session. Updated current readiness
+rollup, Finance row and ordered runtime evidence queue, preserving historical
+entries and the full27-domain map. Added fixture composition/PG16 privilege
+boundary documentation; runtime verifier, physical observer/broker/soak,
+application lifecycle/correction and genuine restore/alarm evidence stay open.
+
+Own exact-source run39174440765 remains queued with no assigned GitHub runner
+at23:08UTC. Its success is NOT claimed. No local PostgreSQL or heavy fallback.
+Current local diff check PASS; no executable change after1bf112fe7.
+
+
+### Exact-source hosted final composition PASS and preparation closure
+
+Run39174440765 on exact1bf112fe71e8ab9d9a06bb2ce119433e21a1e50d completed
+SUCCESS at23:09UTC. Logs inspected:174 unit,17 original admission,8 own shadow,
+9 stop challenge,24 actual-schema reader/canary,8 source barrier and9 actual
+transition cases:249/249 PASS,0 failures. Includes actual promotion/replacement/
+retained rollback, one concurrent pointer winner, stale canonical material denial,
+wrong controller/missing guards/revoked admission denial, final evidence expiry
+AFTER staged transition with full rollback, and pinnedPG16 scoped deferred rights
+with immutable fence/status/DDL/replica denials. No trigger bypass or existing
+guard alteration. Historical failures are retained and superseded only by this
+exact-source proof. The preceding23:08 queue timestamp was an approximate note;
+API inspection at23:07:49 already showed in_progress, not a new failure.
+
+Current documentation incorporates all27 catalog domains with six evidence
+columns each (27/27 coverage check PASS), distinguishes actual records from
+canonical histories, and leaves every domain G evidence set open. Runner policy
+72 PASS, original admission and its guard tests byte-identical to currentmain,
+diff check PASS. Latest redacted pinned scanner again has exactly one historical
+prose false-positive fingerprint6ca3b5e2e428eb9f3642baae5dc17e9bf1b400af:
+ops/event-platform/operator/README.md:generic-api-key:82; no new finding.
+Required scan remains red; no ignore, policy weakening or history rewrite.
+
+NOT RUN: full application static/typecheck/build (draft gates and prohibited
+heavy Contabo workload); production operations, real consumers/offsets/replay,
+actual sends/money, physical observer/broker/soak/archive/restore/alarm drills,
+exhaustive per-domain writer execution audits and business activation. Upstream
+A1/A2 actualCDC proof is separately observed, not claimed as run by this branch.
+
+Authorized preparation is complete: inactive operator components and actual-schema
+proof plus exact27-domain A7 map, without application activation. Last action:
+verified hosted249/249 and reconciled currentmain contracts. Stopping point:
+checkpoint/publish documentation and draftPR evidence; overall release stays with
+original session «Проверить защиту Kafka-консюмера». Next technical slice there:
+trusted verifier/owner evidence registration with independent provenance and
+bounded material queries, then genuine physical/broker/delivery evidence and
+runtime cutover/lifecycle/correction/restore drills. No merge/deploy authorized.
