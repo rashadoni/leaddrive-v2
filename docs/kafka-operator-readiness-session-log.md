@@ -272,3 +272,16 @@ Next action within shared delivery: original session integrates the prepared
 contracts with its exact A1/A2 worker and restricted real Fund read path; an
 authorized delivery owner must resolve historical scan without silently
 weakening it. Live evidence requires permissions currently withheld here.
+
+## 2026-10-19 — proof-quality correction before stopping boundary
+
+Final review identified a false-positive possibility in the two deferred-COMMIT
+negative fixtures: a pre-COMMIT admission error could satisfy their generic
+expected-error assertion. Added explicit stdout markers after successful settle
+and shadow-pointer change, before the expiry wait/COMMIT. Both tests must see
+that intermediate success and then observe failure/rollback. Also constrain
+concurrent-consume/promotion loser reasons to the expected admission/CAS denial,
+so an unrelated connection error cannot count as a successful race test.
+This strengthens evidence, not runtime behavior. Current code-source proof
+must be refreshed; earlier64+24 result does not certify these revised tests.
+Continue to CI without ending at this checkpoint. Existing rules untouched.

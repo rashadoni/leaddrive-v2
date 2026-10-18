@@ -144,6 +144,7 @@ await test('concurrent actual consume has exactly one winner', async () => {
   const outcomes = await Promise.allSettled([consume(q), consume(q)])
   assert.equal(outcomes.filter(x => x.status === 'fulfilled').length, 1)
   assert.equal(outcomes.filter(x => x.status === 'rejected').length, 1)
+  assert.match(outcomes.find(x => x.status === 'rejected').reason.message, /KAFKA_OPERATOR_ADMISSION_DENIED/)
   assert.equal(await owned(`SELECT count(*) FROM ld_kafka_operator.audit WHERE request_id=${quote(q.id)} AND transition='consumed';`), '1')
 })
 await test('SQL rollback also rolls back consume and audit, then permits one retry', async () => {
@@ -186,7 +187,9 @@ await test('public/unmapped login cannot execute controller functions or consume
 await test('deferred COMMIT rejects expired lease and rolls back settle plus audit', async () => {
   const q = await request(); await approve(q); const generation = await consume(q)
   await owned(`UPDATE ld_kafka_operator.requests SET lease_until=clock_timestamp()+interval '3 seconds' WHERE id=${quote(q.id)};`)
-  await deny(execute('op_controller', `BEGIN; SELECT ld_kafka_operator.assert_current(${quote(q.id)},${quote(q.hash)},${generation}); SELECT ld_kafka_operator.settle(${quote(q.id)},${quote(q.hash)},${generation}); SELECT pg_sleep(4); COMMIT;`))
+  let staged = false
+  await deny(execute('op_controller', `BEGIN; SELECT ld_kafka_operator.assert_current(${quote(q.id)},${quote(q.hash)},${generation}); SELECT ld_kafka_operator.settle(${quote(q.id)},${quote(q.hash)},${generation}); SELECT 'SETTLE_STAGED'; SELECT pg_sleep(4); COMMIT;`, output => { if (output.includes('SETTLE_STAGED')) staged = true }))
+  assert.equal(staged, true, 'settle must succeed before lease expiry; failure must occur at COMMIT')
   assert.equal(await owned(`SELECT status FROM ld_kafka_operator.requests WHERE id=${quote(q.id)};`), 'consumed')
   assert.equal(await owned(`SELECT count(*) FROM ld_kafka_operator.audit WHERE request_id=${quote(q.id)} AND transition IN ('guarded','settled');`), '0')
 })
@@ -233,6 +236,7 @@ await test('racing admitted promotions against same pointer version have one win
   const results = await Promise.allSettled([transition(first), transition(second)])
   assert.equal(results.filter(r => r.status==='fulfilled').length,1)
   assert.equal(results.filter(r => r.status==='rejected').length,1)
+  assert.match(results.find(r => r.status==='rejected').reason.message,/SHADOW_TRANSITION_DENIED/)
 })
 await test('expired verified evidence, wrong target code and disabled effect fence refuse pointer change', async () => {
   for (const mutation of [
@@ -251,7 +255,9 @@ await test('revoked token cannot promote even with verified manifest', async () 
 await test('lease expiry at COMMIT rolls back pointer, transition event and settle', async () => {
   const f = await recovery(); const before = await shadowPointer()
   await owned(`UPDATE ld_kafka_operator.requests SET lease_until=clock_timestamp()+interval '3 seconds' WHERE id=${quote(f.q.id)};`)
-  await deny(execute('op_controller', `BEGIN; SELECT ld_operator_shadow_fixture.transition(${quote(f.q.id)},${quote(f.q.hash)},${f.generation}); SELECT pg_sleep(4); COMMIT;`))
+  let staged = false
+  await deny(execute('op_controller', `BEGIN; SELECT ld_operator_shadow_fixture.transition(${quote(f.q.id)},${quote(f.q.hash)},${f.generation}); SELECT 'POINTER_STAGED'; SELECT pg_sleep(4); COMMIT;`, output => { if (output.includes('POINTER_STAGED')) staged = true }))
+  assert.equal(staged, true, 'pointer must change inside the transaction before COMMIT rejection')
   assert.equal(await shadowPointer(),before)
   assert.equal(await owned(`SELECT count(*) FROM ld_operator_shadow_fixture.transitions WHERE request_id=${quote(f.q.id)};`),'0')
   assert.equal(await owned(`SELECT status FROM ld_kafka_operator.requests WHERE id=${quote(f.q.id)};`),'consumed')
