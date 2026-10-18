@@ -100,3 +100,54 @@ fixture TLS remains NOT PROVEN, business projection and production activation
 NOT RUN. [PR checks 39164115435](https://github.com/rashadoni/leaddrive-v2/actions/runs/39164115435)
 also completed its typecheck gate successfully. Static gate's final result is
 recorded in the append-only session journal and the linked run.
+
+## Existing-resource inventory — 2026-10-19 01:09 Baku
+
+This is the follow-up inventory requested after the preparation checkpoint,
+not a new resource allocation or permission to repurpose another application.
+
+| Resource | Actual observation | Allocation / independence verdict |
+|---|---|---|
+| remote-alt development host, read-only via contabo-admin loopback | 8 logical CPU; total/available RAM 24608564/14768148 KiB; swap 8388604 KiB entirely free; root and worktree filesystem total/available 622945865728/217913540608 bytes | Shared development/runtime host, not allocated to Kafka. Root, worktree, Docker/containerd and session mounts map to one 599-GiB partition on one 600-GiB disk. Paths/mounts are not independent disks or failure domains |
+| remote-alt runtime presence | 18 running Docker containers; zero running image matches for Kafka/Debezium/Schema Registry/Redpanda; zero matching systemd units; zero listeners on 9092/9093/8081/8083 | Scoped absence only: remote services, renamed images/units and nonstandard ports are not excluded. Do not infer that this host is empty or available for stress tests |
+| remote-alt networking | 8 bridges, 17 veth, 1 Ethernet and 1 loopback interface. All 8 RFC1918 IPv4 addresses belong to bridges. No tunnel interface kind observed. Route to registered production uses a global source and gateway | Docker/bridge networking is not evidence of private inter-host connectivity; no TLS/private route receipt obtained. No firewall/public-port scan performed |
+| LeadDrive registered production | Protected read-only Actions receipt39163966627 above; fresh direct alias inspection attempt failed public-key authentication before remote commands | Preserve Actions as the supported evidence source. No alternate key/account/retired host attempted; no repeated identical diagnostic dispatch. Capacity is shared with the app and not allocated to Kafka |
+| Registry's separate client fanum host | Registry entry only, no inspection or capacity allocation | Client resource excluded from Kafka capacity; ownership of an SSH alias or registry entry is not permission to repurpose it |
+| GitHub standard Linux worker | Existing isolated CDC passed in the prior section | Ephemeral test runner, not a durable production broker, archive or independently placed Kafka failure domain |
+| Mac / other unlisted resources | No live resource allocation, always-on capacity or failure-domain attestation supplied in this task | Unknown; no guessed destination or borrowed key |
+
+At most two relevant persistent host contexts have evidence here. Even if both
+were allocated and independently attested, a three-domain contract would still
+need at least one additional independent domain. In fact **zero Kafka
+production failure domains are currently allocated and attested**. Distinct IPs
+alone do not prove independent racks/power/network/storage/provider failures.
+Neither a directory under `/mnt` nor three brokers on remote-alt closes this gap.
+
+The catalog expands to 86 topics and **1416 logical partitions / 4248 replica
+copies at RF=3**, excluding Connect/Kafka internal topics: events588 + replay588
++ quarantine162 + control78. These are arithmetic template counts, not measured
+live partitions or a recommendation to create them. Disk capacity cannot be
+approved without per-family measured ingress, tenant skew, retention/compaction,
+replication/recovery headroom and index/segment overhead. Do not turn the free
+filesystem snapshot into an approved retention budget.
+
+### What can be tested now
+
+| Drill | Available representative environment | Result / next dependency |
+|---|---|---|
+| Offline admission checks and synthetic SQL/WAL guards | Repository tests and isolated GitHub Linux CI | Already PASS on814b80107; no executable/config changes in this resource follow-up, so no unchanged heavy rerun needed |
+| Snapshot/streaming, source-envelope integrity and cold Connect restart | Disposable single-broker CI fixture | Already PASS8/8; scope remains synthetic transport, not HA/TLS/DR |
+| Physical host/domain loss, controller quorum and replica placement | No three allocated independent domains | NOT RUN / BLOCKED; one-worker container failure can test process behavior but cannot certify physical failure independence |
+| Existing private network/TLS/ACL and alert-delivery tests | No existing Kafka service identities/endpoints/CA/monitoring target supplied | NOT RUN / BLOCKED; installing/configuring services or changing firewall is outside this task |
+| Finite source WAL/disk emergency and invalidated-slot recovery | No approved peak/outage budget or representative authorized drill target | NOT RUN / BLOCKED; production settings remain replica WAL/cap-1, and production WAL/slot/replay changes are prohibited |
+| Immutable event-archive retention/rehydration/off-provider loss | No allocated independent event archive with retention/key-custody receipt | NOT RUN / BLOCKED; application backup-file presence is insufficient |
+
+No representative additional infrastructure drill can currently certify A4
+without the missing allocation/evidence or actions explicitly forbidden by the
+request. This is a concrete dependency result, not a proposal to purchase or
+install anything. Keep the gate closed and retain the completed source/CI
+receipts. Closing it requires facts from the resource/provider owner: identified
+existing hosts plus allocated capacity, independently verifiable failure
+boundaries, private routing/service identity ownership, archive allocation and
+an authorized isolated drill target. No provider panel or account credentials
+were accessed or requested here.
