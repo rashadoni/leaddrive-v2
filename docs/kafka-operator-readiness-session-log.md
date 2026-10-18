@@ -105,3 +105,13 @@ PASS; actual SQL integration still NOT RUN pending CI. RAM~14GB available,
 204GB disk free, swap0 and memory pressure averages0 before checks.
 Proceeding to authorized draft PR, branch-only push, and isolated CI proof.
 No ready-for-review/merge/deploy is part of this task's delivery boundary.
+
+## 2026-10-19 — draft PR and workflow validation correction
+
+Created draft PR894 https://github.com/rashadoni/leaddrive-v2/pull/894 and
+attached it to this chat. First source6ca3b5e2e produced run39164415054 failure
+before any job/log: service-port expression was placed in job-level env, where
+job.services context is unavailable. Moved it to the integration step's env.
+This is a workflow-definition failure, NOT SQL test evidence. Existing CDC
+job skipped on draft, as required; no consumer was started. Required heavy
+app checks likewise remain skipped while this PR stays draft.

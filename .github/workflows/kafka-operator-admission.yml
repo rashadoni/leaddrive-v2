@@ -33,7 +33,6 @@ jobs:
     env:
       LD_OPERATOR_DISPOSABLE: '1'
       PGHOST: 127.0.0.1
-      PGPORT: ${{ job.services.postgres.ports[5432] }}
       PGUSER: control_test_admin
       PGDATABASE: kafka_operator_test
       PGPASSWORD: operator-fixture-only
@@ -49,4 +48,6 @@ jobs:
           node --check scripts/event-platform/operator-admission.integration.mjs
           node --test scripts/event-platform/operator-alert-evidence.test.mjs
       - name: Real named-login PostgreSQL admissions and races
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
         run: node --test scripts/event-platform/operator-admission.integration.mjs
