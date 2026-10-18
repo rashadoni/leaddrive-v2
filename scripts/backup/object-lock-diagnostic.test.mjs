@@ -158,13 +158,14 @@ test('bounds retained output and never leaks oversized stdout or stderr', () => 
 test('real GNU timeout terminates a slow CLI and force-kills one that ignores TERM', () => {
   for (const [ignoreTerm, expected] of [[false, 'request_timeout'], [true, 'process_killed']]) {
     assert.equal(execute({ stdout: privateText, stderr: privateText,
-      sleepSeconds: 5, ignoreTerm, deadlines: { cli: 0.2, parser: 2 } }), expected)
+      // Leave a full second for fixture startup even on a cold hosted runner.
+      sleepSeconds: 10, ignoreTerm, deadlines: { cli: 1, parser: 3 } }), expected)
   }
 })
 
 test('real classifier timeout is nonzero, quiet and leaves no synthetic CLI process', () => {
-  assert.equal(execute({ stdout: privateText, stderr: privateText, sleepSeconds: 5,
-    deadlines: { cli: 0.5, parser: 0.2 }, expectedFunctionStatus: 124 }), '')
+  assert.equal(execute({ stdout: privateText, stderr: privateText, sleepSeconds: 10,
+    deadlines: { cli: 2, parser: 1 }, expectedFunctionStatus: 124 }), '')
 })
 
 test('actual report handler fails closed on missing, failed or untrusted classifier output', () => {
