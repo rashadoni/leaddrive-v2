@@ -6,7 +6,6 @@ import dynamic from "next/dynamic"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertTriangle, Check, Clock3, Loader2, MapPin, X } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
@@ -146,7 +145,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
           <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
           {t("locationQueueTitle")}
         </h2>
-        {!loading && requests.length > 0 ? <Badge variant="warning">{t("pendingApprovalsCount", { count: requests.length })}</Badge> : null}
+        {!loading && requests.length > 0 ? <span className="text-sm font-medium text-muted-foreground">· {t("pendingApprovalsCount", { count: requests.length })}</span> : null}
       </header>
 
       {loading ? (
@@ -198,7 +197,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
 
                 <dl className="grid grid-cols-2 gap-2">
                   {facts.map(([label, value]) => (
-                    <div key={label} className="rounded-lg border border-zinc-200 bg-muted/40 px-3 py-2 dark:border-zinc-700">
+                    <div key={label} className="rounded-lg border border-zinc-200 bg-card px-3 py-2 dark:border-zinc-700">
                       <dt className="text-[11px] text-muted-foreground"><HintValue text={t("hint.locationFacts")}>{label}</HintValue></dt>
                       <dd className="text-sm font-semibold text-foreground">{value}</dd>
                     </div>
@@ -214,13 +213,13 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
 
                 {/* «Адрес на проверке»: he was let in from this place, and the visit waits for this answer too. */}
                 {request.visits && request.visits.length > 0 ? (
-                  <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200" data-testid="mtm-customer-location-visits">
+                  <p className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card px-3 py-2 text-sm text-foreground dark:border-zinc-700 dark:border-l-amber-500" data-testid="mtm-customer-location-visits">
                     {t("locationVisitsNote", { count: request.visits.length, time: clock.format(new Date(request.visits[0].checkInAt)) })}
                   </p>
                 ) : null}
 
                 {request.pinMovedSince ? (
-                  <p role="status" className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200" data-testid="mtm-customer-location-pin-moved">
+                  <p role="status" className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card px-3 py-2 text-sm text-foreground dark:border-zinc-700 dark:border-l-amber-500" data-testid="mtm-customer-location-pin-moved">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                     {t("locationPinMoved")}
                   </p>

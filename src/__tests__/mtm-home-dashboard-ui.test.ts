@@ -302,7 +302,8 @@ describe("Zeytun Pharma, Sunday 11 October", () => {
       },
     })
 
-    it("stands first, in red, with the hour it was sent and the one filled button", async () => {
+    // No row's button is filled since 2026-10-18: the screen keeps one orange fill.
+    it("stands first, in red, with the hour it was sent", async () => {
       // 18:04 in Baku, today.
       const scenario = waiting("2026-10-11T14:04:00.000Z", "2026-10-11")
       serve(scenario)

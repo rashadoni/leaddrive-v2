@@ -32,11 +32,14 @@ export function MtmModuleNavigation() {
   if (pathname === "/mtm/attendance" || pathname.startsWith("/mtm/attendance/")) return null
 
   return (
-    <div className="mb-6 border-b border-zinc-200/80 pb-3 dark:border-zinc-700/80">
+    // One menu, at the top, as tabs with an underline: the active one is dark
+    // text over an orange line, not an orange pill — the screen keeps its one
+    // orange fill for the main button (owner-approved colours, 2026-10-18).
+    <div className="mb-6 border-b border-zinc-200/80 dark:border-zinc-700/80">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
         <nav
           aria-label={t("primaryNavigationLabel")}
-          className="-mx-1 flex min-w-0 gap-1 overflow-x-auto px-1 pb-1 sm:flex-1 sm:pb-0"
+          className="-mx-1 flex min-w-0 gap-1 overflow-x-auto px-1 sm:flex-1"
         >
           {MTM_PRIMARY_NAVIGATION.map((item) => {
             const active = isMtmNavigationItemActive(item.href, pathname)
@@ -49,10 +52,10 @@ export function MtmModuleNavigation() {
                 prefetch={false}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-11 shrink-0 items-center gap-2 rounded-full px-3 text-sm font-medium outline-none transition-[background-color,color,transform] duration-150 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:scale-[0.98]",
+                  "-mb-px flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium outline-none transition-[border-color,color] duration-150 focus-visible:ring-2 focus-visible:ring-primary/35",
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                    ? "border-primary font-semibold text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
                 )}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />
@@ -67,10 +70,8 @@ export function MtmModuleNavigation() {
             <button
               type="button"
               className={cn(
-                "flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold outline-none transition-[background-color,border-color,color,transform] duration-150 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:scale-[0.98] sm:w-auto",
-                activeTool
-                  ? "border-primary/35 bg-primary/10 text-primary"
-                  : "border-zinc-200 bg-card text-foreground hover:bg-muted/60 dark:border-zinc-700",
+                "mb-2 flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border bg-card px-4 text-sm font-semibold text-foreground outline-none transition-[background-color,border-color,color,transform] duration-150 hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:scale-[0.98] sm:w-auto",
+                activeTool ? "border-primary" : "border-zinc-200 dark:border-zinc-700",
               )}
             >
               <Grid2X2 className="h-4 w-4" aria-hidden="true" />

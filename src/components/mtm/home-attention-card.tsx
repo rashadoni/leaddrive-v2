@@ -220,16 +220,19 @@ export function HomeAttentionCard({ state }: { state: HomeAttentionState }) {
         </p>
       ) : (
         <ul>
-          {rows.map((row, index) => (
+          {rows.map((row) => (
             <li key={row.key} data-testid={`mtm-home-attention-${row.key}`} className="flex items-center gap-3 border-b border-zinc-100 py-3 last:border-b-0 dark:border-zinc-800">
-              <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", HOME_ICON[row.tone])}>{row.icon}</span>
+              {/* The icon keeps its row's colour, with no square under it (2026-10-18). */}
+              <span className={cn("flex h-10 w-7 shrink-0 items-center justify-center", HOME_ICON[row.tone])}>{row.icon}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">{row.title}</p>
                 {row.sub ? <p className="text-xs text-muted-foreground">{row.sub}</p> : null}
               </div>
-              {/* The first row is the one to start with: it alone is filled. */}
+              {/* Every row's button is outlined: the list stands first by its
+                  place, and a filled orange button here was a second fill on
+                  the screen (owner-approved colours, 2026-10-18). */}
               <Hint text={row.hint}>
-                <Button asChild size="sm" variant={index === 0 ? "default" : "outline"} className="min-h-11 shrink-0 md:min-h-9">
+                <Button asChild size="sm" variant="outline" className="min-h-11 shrink-0 md:min-h-9">
                   <Link href={row.href} prefetch={false}>{row.cta}</Link>
                 </Button>
               </Hint>
