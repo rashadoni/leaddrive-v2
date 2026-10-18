@@ -158,3 +158,17 @@ Own CI reuses the unchanged legacy base.sql and all three actual migrations,
 compiles the existing canonical reducer with minimal pinned fixture dependencies,
 and runs restricted-reader tests. All seeded source/positions are disposable
 fixtures, not actual Kafka delivery, consumer execution or runtime cutover.
+
+### Inactive canary result contract
+
+`operator-fund-canary.mjs` validates a trusted single-snapshot read result against
+an independently authorized explicit opt-in scope: tenant, pointer version
+(bigint string), promoted fenced build, code/key/version and complete Fund
+inventory. It returns only immutable exact decimal balances and event versions;
+missing/duplicate/foreign rows and stale/rolled-back pointers fail closed.
+This pure validator does not read a database, authenticate scope, establish
+snapshot consistency or freshness, authorize correction, or wire any API.
+A later restricted read adapter must obtain all inputs in one transaction and
+prove actual pointer promotion/rollback visibility against real migrations.
+The existing worker's running-only admission remains unresolved; do not change
+it to accept promoted builds without its lease/lifecycle contract and proof.
