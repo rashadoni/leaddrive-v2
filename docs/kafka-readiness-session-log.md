@@ -2062,3 +2062,34 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   before any speculative storage correction or operational restore; next
   obtain the real independent operator/custody decision and separately scoped
   storage investigation while retaining the open P1/K4/module backlog.
+
+## 2026-10-18 — owner designates the second human reviewer
+
+- The owner answered the pending asynchronous question by naming a second
+  responsible person. This supersedes the earlier "unanswered" appointment
+  notes ONLY. The name is retained in the owner's chat, not repeated in this
+  public repository; no personal contact details are needed for this record.
+- This is an owner nomination, not the nominee's consent, authenticated
+  identity/public-key binding, approval, key custody, signed evidence or a
+  completed independent restore. No operator principal or allowed-signers
+  entry was invented from the name; no account/access/invitation/signature
+  was created and no other session was messaged on the person's behalf.
+- Read the existing runbook/operator boundaries: custody requires independent
+  canary decryption using both physically separate offline copies and a
+  personally controlled signing key; the later restore must bind the exact
+  reviewed candidate/version/SHA and prove actual isolated restoration. Private
+  keys/passwords never belong in chat, GitHub, production or evidence bundles.
+  The nominee's name alone cannot set those verification fields to true.
+- Next preparation: agree the nominee's actual participation and a supported
+  independent verification workstation, then use the existing custody/restore
+  procedure once its storage/candidate prerequisites are met. Do not assume
+  the Linux offline verifier can run unchanged in the owner's Mac shell, or
+  treat two mount devices as proof of physical separation.
+- Last operational observations remain the04:55UTC23/9 NO-GO and earlier
+  successful24ce app delivery, not fresh measurements in this turn. Naming
+  the person does not close storage, encryption, restore or Kafka gates. No
+  inspection retry, commissioning, backup/restore, production change, consumer
+  activation, offset/replay, paid service or workflow was started.
+- This turn changes task-owned documentation only; no publication of the
+  nominee's name or automatic access grant is authorized. Exact next stopping
+  point is preparation for the real person's participation, not certification.
