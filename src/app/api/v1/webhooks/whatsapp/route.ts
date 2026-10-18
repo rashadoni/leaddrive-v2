@@ -1277,6 +1277,22 @@ async function processMessages(
 
     console.log(`[WA Webhook] Inbound from ${sanitizeLog(waId)} (${sanitizeLog(senderName)}): ${sanitizeLog(text.slice(0, 50))}`)
 
+    // A prospect's live WhatsApp in the demo (src/lib/demo-center/demo-whatsapp-agent.ts):
+    // the demo's own agent answers it, so no ticket, no rule bot and no support
+    // AI for that message. It returns `handled: false` for every other message,
+    // and on any failure — the ordinary path below is never skipped by mistake.
+    if (msg.type === "text" && text.trim()) {
+      const { handleDemoWhatsAppInbound } = await import("@/lib/demo-center/demo-whatsapp-agent")
+      const demo = await handleDemoWhatsAppInbound({
+        organizationId: orgId,
+        channelConfigId: channelConfig.id,
+        waPhone: waId,
+        text,
+        conversationId: convId,
+      })
+      if (demo.handled) continue
+    }
+
     // Check if customer has a closed/resolved WhatsApp ticket — auto-reopen.
     // Uses the shared reopenTicketForCustomerReply helper (DV-0026 fix):
     //   • Old tryReopenTicket required tags:{has:"whatsapp"} AND ≤7 days — both dropped.

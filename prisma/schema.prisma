@@ -22098,6 +22098,9 @@ model DemoGrant {
   /// The admin allowed a real AI call to the prospect's verified phone for
   /// this grant. Off unless ticked at issue time.
   liveCallEnabled        Boolean     @default(false)
+  /// The live WhatsApp thread with the demo's AI agent (demo-whatsapp.ts);
+  /// offered to every prospect, unlike the call.
+  liveWhatsAppEnabled    Boolean     @default(false)
   locale                 String      @default("az")
   watermark              String
   linkExpiresAt          DateTime
@@ -22129,6 +22132,7 @@ model DemoGrant {
 
   events             DemoAccessEvent[]
   phoneVerifications DemoPhoneVerification[]
+  whatsappThread         DemoWhatsAppThread?
 
   @@index([requestId, createdAt], map: "demo_grants_request_created_idx")
   @@index([status, linkExpiresAt], map: "demo_grants_status_expiry_idx")
@@ -22139,6 +22143,30 @@ model DemoGrant {
 /// The journal of a prospect proving a phone and agreeing to one AI call.
 /// One row per phone per grant; the code hash, its limits, the moment the
 /// phone was proven and the exact consent wording the prospect agreed to.
+/// The demo's live WhatsApp thread for one grant (demo-whatsapp.ts,
+/// demo-whatsapp-agent.ts). Control plane: RLS bypass only.
+model DemoWhatsAppThread {
+  id                 String    @id @default(cuid())
+  grantId            String    @unique(map: "demo_whatsapp_threads_grant_key")
+  grant              DemoGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  phoneE164          String
+  /// The session's code (demoWhatsAppCode); proof is a message carrying it.
+  code               String    @unique(map: "demo_whatsapp_threads_code_key")
+  welcomeSentAt      DateTime?
+  welcomeWaMessageId String?
+  provenAt           DateTime?
+  expiresAt          DateTime?
+  aiReplies          Int       @default(0)
+  lastAiReplyAt      DateTime?
+  closedAt           DateTime?
+  closeReason        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([phoneE164, provenAt], map: "demo_whatsapp_threads_phone_idx")
+  @@map("demo_whatsapp_threads")
+}
+
 model DemoPhoneVerification {
   id             String    @id @default(cuid())
   grantId        String
