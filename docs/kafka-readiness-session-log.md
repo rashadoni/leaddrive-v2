@@ -1950,3 +1950,22 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   No application code, authentication policy, session, live data, configuration
   or paid service changed. These docs remain LOCAL; delivery remains only
   reviewed PR873 report code on24ce6e9c, not an auth feature rollout.
+
+### PR873 artifact built; runtime delivery still pending — 2026-10-18 04:41 UTC
+
+- Existing deploy39096745285 build117584684571 SUCCESS04:40:33Z on exact
+  main24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2. Root independently read
+  artifact metadata:12125357695, leaddrive-prod-24ce6e9c031fc465fe55b6c36f4d6d81306f3ce2,
+  471263674bytes, sha256:a0b3627ef65ace2061178f63ef16a5ed2c3ab700f1bd3e44622c16ac3b57cc87,
+  unexpired, expires2026-11-17T04:40:25Z. This30-day Actions retention is not
+  an independent immutable disaster-recovery archive or decrypt/restore proof.
+- Quality117584684792 is still running its blocking unit-baseline stage;
+  whole deploy, runtime installation, public exactSHA/ping and refined live
+  readiness remain PENDING. No duplicate build, retry or diagnostic dispatch.
+- Helper read-only OTP review confirmed the named source boundaries, including
+  explicit user binding under the dedicated2FA bypass; this does not prove
+  RLS there. No additional application code, auth/provider request or test ran.
+- Local-only documentation checkpoints remain preserved and unpushed; the
+  released source is still frozen reviewed a222b769f, merged normally as24ce.
+  Kafka activation, offsets, replay, backup/restore and policy/key/timer changes
+  were not performed or inferred from artifact-build success.
