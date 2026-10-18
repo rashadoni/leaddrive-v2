@@ -72,7 +72,7 @@ async function prepared(target,action='promote') {
  return {id,hash,generation,target,previous,materialHash}
 }
 const args=f=>`${q(f.id)},${q(f.hash)},${f.generation}`
-const apply=f=>fixtureSql('op_controller',`BEGIN;SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});SELECT ld_kafka_operator.apply_fund_transition(${args(f)});COMMIT;`)
+const apply=f=>fixtureSql('op_controller',`BEGIN;SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});SELECT ld_kafka_operator.apply_fund_transition(${args(f)});COMMIT;`,{sanitizedDiagnostics:true})
 await test('canonical proof + frozen material + authenticated actual pointer promotion and retained rollback',async()=>{
  const promoted=await prepared();await apply(promoted)
  assert.equal((await pointer()).id,promoted.target.id)
@@ -109,7 +109,7 @@ await test('same pointer version concurrent candidates have exactly one committe
  assert.ok([a.target.id,b.target.id].includes((await pointer()).id))
 })
 await test('held final barrier denies source/checkpoint/inbox writes and wrong controller cannot transition',async()=>{
- const f=await prepared(),connection=fixtureConnection('op_controller')
+ const f=await prepared(),connection=fixtureConnection('op_controller',{sanitizedDiagnostics:true})
  await denied(call('op_controller2','apply_fund_transition',args(f)))
  try{
   await connection.command(`BEGIN;SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
@@ -121,7 +121,7 @@ await test('held final barrier denies source/checkpoint/inbox writes and wrong c
  }finally{await connection.close()}
 })
 await test('actual final evidence expiry at COMMIT rolls back pointer/build/event/settlement',async()=>{
- const f=await prepared(),before=await pointer(),connection=fixtureConnection('op_controller')
+ const f=await prepared(),before=await pointer(),connection=fixtureConnection('op_controller',{sanitizedDiagnostics:true})
  await owned(`UPDATE ld_kafka_operator.fund_verified_evidence SET valid_until=clock_timestamp()+interval '3 seconds' WHERE request_id=${q(f.id)};`)
  let staged=false
  try{

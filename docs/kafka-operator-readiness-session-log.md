@@ -849,3 +849,16 @@ This corrects prior8/16 scope in this phase (history retained). Physical provide
 calls remain outside SQL and unproven. Added actual retained-window denial and
 effect-guard-profile negative. Syntax/diff pending final local check; fresh hosted
 proof required, prior failed run is not success.
+
+### Deferred-role investigation, prior grant diagnosis not sufficient
+
+Run39173264275 ona82804b17: prior158+24+9+22+8 PASS, new composition3/8 PASS,
+5 FAIL42501 at finalization. Earlier missing-owner-SELECT explanation was
+incomplete; adding owner SELECT did not resolve the failure. No passing claim.
+Investigating exact deferred-trigger permission context before granting any
+caller privilege or altering a guard. Added opt-in fixture-only diagnostics:
+SQLSTATE plus allowlisted denied object identifier, never SQL/receipt bodies.
+Default shared transport behavior unchanged; extra verbosity is privately parsed,
+not printed. Syntax/diff PASS. PostgreSQL upstream docs/commit consulted for
+version-specific deferred-trigger role behavior; runtime target stays pinned16.13.
+Next diagnostic hosted run; no guard timing/security changes made.
