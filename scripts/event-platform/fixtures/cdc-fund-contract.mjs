@@ -5,7 +5,38 @@ import { renderTestConnector } from '../cdc-fixture.mjs'
 export const FULL_CDC_CONNECTOR = 'leaddrive-event-outbox-test-fund'
 export const FULL_CDC_SLOT = 'leaddrive_event_outbox_test_fund'
 export const FULL_CDC_TOPIC = 'ld.testbroker.finance.events.v1'
+export const FULL_CDC_LOGICAL_NAME = 'ld.testbroker.cdc-source-fund'
 export const POSTGRES_IMAGE = 'postgres:16.13-alpine@sha256:4941ef97aaa2633ce9808f7766f8b8d746dd039ce8c51ca6da185c3dc63ab579'
+
+/** Exact pinned Debezium3.7 wire contract, not a permissive extra-header list.
+ * DebeziumHeaderProducer adds four context headers with extended headers on
+ * (the pinned image default). connectorName is the PLUGIN, not Connect name.
+ * https://github.com/debezium/debezium/blob/v3.7.0.Final/debezium-connector-common/src/main/java/io/debezium/connector/common/DebeziumHeaderProducer.java
+ * A run UUID identifies a task incarnation; callers also bind it across the
+ * snapshot/restart stream and replay. It is NOT an authentication receipt.
+ */
+export function assertFullCdcHeaders(actual, expectedBusiness) {
+  const business = ['id', 'eventtype', 'organizationid', 'payloadhash']
+  const fixed = {
+    '__debezium.context.connectorLogicalName': FULL_CDC_LOGICAL_NAME,
+    '__debezium.context.taskId': '0',
+    '__debezium.context.connectorName': 'postgresql',
+  }
+  const run = '__debezium.context.runId'
+  const deny = () => { throw new Error('FULL_CDC_HEADER_CONTRACT') }
+  const exactKeys = (value, keys) => value && typeof value === 'object' && !Array.isArray(value)
+    && JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort())
+  if (!exactKeys(expectedBusiness, business) || !exactKeys(actual, [...business, ...Object.keys(fixed), run])) deny()
+  for (const name of business) if (typeof expectedBusiness[name] !== 'string') deny()
+  for (const [name, value] of Object.entries({ ...expectedBusiness, ...fixed })) {
+    if (!Buffer.isBuffer(actual[name]) || !actual[name].equals(Buffer.from(value, 'utf8'))) deny()
+  }
+  if (!Buffer.isBuffer(actual[run])) deny()
+  const runId = actual[run].toString('utf8')
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(runId)
+      || !actual[run].equals(Buffer.from(runId, 'utf8'))) deny()
+  return runId
+}
 
 export function assertFullCdcEnvironment(env) {
   assert.equal(env.GITHUB_ACTIONS, 'true', 'disposable GitHub job required')
@@ -29,7 +60,7 @@ export function renderFullCdcConnector(template, database) {
   const connector = renderTestConnector(template, { mode: 'raw' })
   connector.name = FULL_CDC_CONNECTOR
   Object.assign(connector.config, {
-    'topic.prefix': 'ld.testbroker.cdc-source-fund',
+    'topic.prefix': FULL_CDC_LOGICAL_NAME,
     'database.dbname': database,
     'slot.name': FULL_CDC_SLOT,
     'transforms.outbox.route.topic.replacement': 'ld.testbroker.$1.events.v1',

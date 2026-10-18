@@ -3465,3 +3465,35 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  PR891 is intentionally not mergeable yet. Final ready-event protected and
  feature checks, ordinary release and actual production proof remain pending.
  No production, backup, timer, consumer, offset, replay or paid resource change.
+
+### Integrated operator proof and precise CDC header correction — 2026-10-19 Asia/Baku
+
+- Published root26dca4f2e30bfbf327e283cf6e93f3bd83ddd557. Actual operator
+ run39168888775/job117797606316 SUCCESS:17 real PostgreSQL named-login,
+ privilege, race and deferred-COMMIT cases;29 offline receipt/route tests PASS.
+ Unchanged secret scanner39168888761 SUCCESS on this root snapshot; original
+ PR894 history is preserved, not declared globally scanner-clean. Draft-only
+ static/type/broker/stack/CDC skips are NOT successful acceptance gates.
+- Existing diagnostic39167726762 completed: legacy CDC SUCCESS; new full job
+117794983098 FAIL at record-header-set-binding. Prior event ID, key and exact
+ PostgreSQL JSONB value byte comparisons passed for the first record only.
+ SQL/ACK loss was not reached. Services, owned slot and disposable volumes
+ cleaned. No new runtime defect in projection SQL is established by this failure.
+- Read exact Debezium v3.7.0.Final source: CommonConnectorConfig enables
+ extended headers by default; DebeziumHeaderProducer emits logicalName,
+ taskId, connectorName (plugin=postgresql), runId in addition to EventRouter's
+ four business headers. Previous test incorrectly required only four headers.
+ Primary reference:
+ https://github.com/debezium/debezium/blob/v3.7.0.Final/debezium-connector-common/src/main/java/io/debezium/connector/common/DebeziumHeaderProducer.java
+- Corrected the FULL test contract, not production serializers or consumer
+ validation: exact eight-header set; every source/static-context value exact
+ Buffer bytes, no duplicate/unknown/prefix ignored; canonical nonzero run UUID
+ stable within snapshot/stream, distinct after actual cold restart, unchanged
+ on worker redelivery/rebuild. A task UUID is not authenticated approval.
+ Added negative mutations for missing/duplicate/foreign/string/BOM headers and
+ unknown context keys. Fixed diagnostic protocol label HELLO to actual READY.
+- Small sequential guards24/24 PASS, helper syntax and whitespace PASS. Real
+ generated-client strict check and corrected actual full chain NOT RUN locally;
+ next: one existing disposable CDC workflow dispatch on this corrected source,
+ after confirming no active duplicate. PR891 remains draft until actual result.
+ No production mutation, consumer/offset/replay, backup commissioning or spend.

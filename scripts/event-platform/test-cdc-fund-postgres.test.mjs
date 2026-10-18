@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { assertFullCdcEnvironment, assertPrivatePostgresTarget, assertScratchDatabase, FULL_CDC_CONNECTOR,
-  FULL_CDC_SLOT, POSTGRES_IMAGE, renderFullCdcBoundary, renderFullCdcConnector } from './fixtures/cdc-fund-contract.mjs'
+import { assertFullCdcEnvironment, assertFullCdcHeaders, assertPrivatePostgresTarget, assertScratchDatabase, FULL_CDC_CONNECTOR,
+  FULL_CDC_LOGICAL_NAME, FULL_CDC_SLOT, POSTGRES_IMAGE, renderFullCdcBoundary, renderFullCdcConnector } from './fixtures/cdc-fund-contract.mjs'
 import { renderTestConnector } from './cdc-fixture.mjs'
 
 const env = { GITHUB_ACTIONS: 'true', LD_EVENT_STACK_DISPOSABLE: '1', LD_EVENT_STACK_FULL_CDC_FUND: '1',
@@ -135,6 +135,31 @@ test('expected ACK-loss requires its actual injection and preserves sanitized fa
   assert.ok(rejection > 0 && confirmed > rejection)
   assert.ok(confirmed < source.indexOf('phase = "ack-loss-cursor-evidence"', rejection))
   assert.doesNotMatch(source, /console\.(?:log|error)\([^\n]*(?:JSON\.stringify\(record|record\.value|record\.headers)/)
+})
+
+test('pinned Debezium context and source headers are all exact, unique byte scalars, without ignored extras', () => {
+  const business = { id: 'synthetic-event', eventtype: 'fund.created.v1', organizationid: 'synthetic-tenant', payloadhash: 'a'.repeat(64) }
+  const runId = 'd55a2a79-73ce-44cf-91d8-0cd25180a98b'
+  const expected = { ...business, '__debezium.context.connectorLogicalName': FULL_CDC_LOGICAL_NAME,
+    '__debezium.context.taskId': '0', '__debezium.context.connectorName': 'postgresql', '__debezium.context.runId': runId }
+  const headers = () => Object.fromEntries(Object.entries(expected).map(([key, value]) => [key, Buffer.from(value)]))
+  assert.equal(assertFullCdcHeaders(headers(), business), runId)
+  const denied = actual => assert.throws(() => assertFullCdcHeaders(actual, business), { message: 'FULL_CDC_HEADER_CONTRACT' })
+  for (const name of Object.keys(expected)) {
+    const missing = headers(); delete missing[name]; denied(missing)
+    denied({ ...headers(), [name]: [Buffer.from(expected[name]), Buffer.from(expected[name])] })
+    denied({ ...headers(), [name]: Buffer.from('invalid-or-foreign') })
+    denied({ ...headers(), [name]: expected[name] })
+    denied({ ...headers(), [name]: Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(expected[name])]) })
+  }
+  denied({ ...headers(), extra: Buffer.from('not-allowed') })
+  denied({ ...headers(), '__debezium.context.foreign': Buffer.from('not-allowed') })
+  denied({ ...headers(), '__debezium.context.runId': Buffer.from('00000000-0000-0000-0000-000000000000') })
+  assert.throws(() => assertFullCdcHeaders(headers(), { ...business, extra: 'not-allowed' }), { message: 'FULL_CDC_HEADER_CONTRACT' })
+  assert.match(source, /assertFullCdcHeaders\(record\.headers, source\.headers\)/)
+  assert.match(source, /assert\.equal\(runId, previousRun\)/)
+  assert.match(source, /assert\.notEqual\(sourceRuns\.get\("snapshot"\), sourceRuns\.get\("stream"\)/)
+  assert.match(source, /\["READY", "ASSIGN", "RECORD"/)
 })
 
 test('recovery injects only an old restricted shadow fault and replays unchanged Kafka history into new builds/group', () => {

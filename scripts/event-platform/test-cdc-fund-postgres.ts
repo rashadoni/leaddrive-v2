@@ -11,7 +11,7 @@ import { startKafkaWorkerSession } from "../../src/lib/event-platform/worker-ses
 import { createFundShadowPartitionWorker } from "../../src/lib/event-platform/fund-shadow-worker"
 import { createFundShadowPostgresFixture, fundShadowDatabase, type FundShadowContext } from "../../src/__tests__/fixtures/fund-shadow-postgres"
 import { createBrokerFixtureHarness } from "./fixtures/kafka-broker-harness"
-import { assertFullCdcEnvironment, assertPrivatePostgresTarget, FULL_CDC_CONNECTOR, FULL_CDC_SLOT,
+import { assertFullCdcEnvironment, assertFullCdcHeaders, assertPrivatePostgresTarget, FULL_CDC_CONNECTOR, FULL_CDC_SLOT,
   FULL_CDC_TOPIC, renderFullCdcBoundary, renderFullCdcConnector } from "./fixtures/cdc-fund-contract.mjs"
 
 const root = resolve(process.cwd())
@@ -165,6 +165,7 @@ async function main() {
     const before = await snapshot()
     const expected = new Map(contexts.flatMap(context => context.records).map(record => [String(record.headers!.id), record]))
     const observed: KafkaEventRecord[] = []
+    const sourceRuns = new Map<string, string>()
     let ackLossInjected = false
     function start(count: number, loseAck = false, options: {
       contexts?: FundShadowContext[]; groupName?: string; observed?: KafkaEventRecord[]
@@ -180,7 +181,7 @@ async function main() {
             phase = "bridge-frame-read"
             const frame = await channel.read()
             // Fixed protocol-stage labels only, never record/header contents.
-            for (const kind of ["HELLO", "ASSIGN", "RECORD", "REVOKE", "COMMITTED", "FAIL", "IDLE"]) {
+            for (const kind of ["READY", "ASSIGN", "RECORD", "REVOKE", "COMMITTED", "FAIL", "IDLE"]) {
               if (frame === kind || frame.startsWith(`${kind}\t`)) phase = `bridge-frame-${kind.toLowerCase()}`
             }
             return frame
@@ -207,12 +208,20 @@ async function main() {
                 phase = "record-value-byte-binding"
                 assert.equal(record.value.toString("utf8"), source.value, "raw JSONB bytes must survive actual EventRouter/StringConverter")
                 phase = "record-header-set-binding"
-                assert.deepEqual(Object.keys(record.headers ?? {}).sort(), Object.keys(source.headers!).sort())
+                // Keep all four source headers exact; also require all four
+                // context headers emitted by the pinned Debezium image. No
+                // unknown or duplicate header, ignored prefix or stripping.
+                const runId = assertFullCdcHeaders(record.headers, source.headers)
                 phase = "record-header-value-binding"
                 for (const name of ["id", "eventtype", "organizationid", "payloadhash"]) {
                   const bytes = record.headers?.[name]; assert.ok(Buffer.isBuffer(bytes))
                   assert.equal(bytes.toString("utf8"), source.headers![name])
                 }
+                phase = "record-header-context-binding"
+                const sourcePhase = BigInt(record.offset) < BigInt(6) ? "snapshot" : "stream"
+                const previousRun = sourceRuns.get(sourcePhase)
+                if (previousRun) assert.equal(runId, previousRun)
+                else sourceRuns.set(sourcePhase, runId)
                 phase = "record-partition-binding"
                 assert.equal(record.partition, 0); (options.observed ?? observed).push(record)
               }
@@ -272,6 +281,8 @@ async function main() {
       }
     }
     phase = "exact-parity"
+    assert.equal(sourceRuns.size, 2)
+    assert.notEqual(sourceRuns.get("snapshot"), sourceRuns.get("stream"), "actual cold restart must change the task incarnation")
     await assertExactBuilds(contexts, observed.slice(1))
     assert.deepEqual(await snapshot(), before)
 
