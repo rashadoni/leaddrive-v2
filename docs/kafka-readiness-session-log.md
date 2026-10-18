@@ -3020,3 +3020,25 @@ service, branch delivery or Kafka runtime was changed by this documentation.
 - Current boundary: no merge/deploy yet; wait for actual mandatory and feature
   checks on frozen source, then use the normal guarded release. This receipt
   is a local checkpoint, not another source push while CI is active.
+
+### Real lifecycle failure drill passed on frozen source — 2026-10-18 18:08 UTC
+
+- Broker run39151613583/job117746248594 SUCCESS18:08:00Z for exact
+  dbba7c0f16075c17b91a9b8d6685a3cf1e47eb2d. Actual generated-client strict
+  ES2017 typecheck,113 fixture/lifecycle tests, migration bootstrap, all13
+  broker scenarios and all8 real broker/restricted-SQL cases passed; scoped
+  cleanup succeeded. New stop-during-COMMIT marker18:06:51Z and stop-after-
+  COMMIT18:06:57Z confirm no ACK, unchanged broker cursor, SQL settlement
+  before owned disconnect, durable inbox and exact no-duplicate restart parity.
+- Existing takeover remains genuine stale-generation rejection after actual
+  SQL COMMIT, not timeout/signal: ACK written, exit1 with no signal, replacement
+  held until fencing observed, exact cursor and source/effect snapshots.
+- Separate synthetic CDC39151613585 also SUCCESS with SQL/WAL boundary and
+  cold-restart markers. Exact-byte combined publication still is not Debezium;
+  these separate successful proofs do not close full CDC-to-rebuild composition.
+- Required typecheck SUCCESS; static-checks still running. No merge/deploy
+  performed yet. Current main advanced independently to7c0d75f1b via unrelated
+  WhatsApp PR886; no path overlap with this slice, no conflict and no foreign
+  release was cancelled. App ping/build-info remained healthy on6ce9a1e at the
+  last independent public observation before that release. Next: finish actual
+  protected checks, normal exact-head merge and SHA-bound application release.

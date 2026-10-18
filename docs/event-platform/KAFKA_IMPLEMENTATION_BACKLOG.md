@@ -847,3 +847,15 @@ admission, direct-JVM lifecycle composition, full Debezium-to-SQL rebuild,
 independent recovery, HA/TLS/ACL, all-module adoption and authorized activation
 remain open. No production service, WAL/slot, offset/replay or backup action is
 performed by preparing these modules.
+
+### Lifecycle bounded proof verified; release still pending — 2026-10-18 18:08 UTC
+
+PR889 exact sourcedbba7c0f16075c17b91a9b8d6685a3cf1e47eb2d passed
+broker run39151613583/job117746248594: generated-client strict types,
+113 fixture/lifecycle tests,13 broker cases plus all8 real restricted-SQL
+combined scenarios. Both new stop/restart cases preserve durable inbox, fence
+ACKs and release owned connections only after SQL settlement. Prior NOT RUN
+is superseded for this scoped integration proof only. Separate synthetic CDC
+39151613585 passed, but full CDC-to-rebuild/direct-JVM runtime composition is
+still open. Mandatory static-checks and normal merge/release remain pending;
+no production consumer, replay or recovery commissioning occurred.
