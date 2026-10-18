@@ -1505,3 +1505,57 @@ service, branch delivery or Kafka runtime was changed by this documentation.
 - Next: monitor only the automatic merge-SHA deploy; prepare the independent
   bounded Object Lock report diagnostic while the remote build runs. Do not
   publish/activate recovery runtime changes or duplicate active workflows.
+
+## 2026-10-18 02:12 UTC — next bounded Object Lock diagnostic source phase
+
+- Automatic PR871 merge-SHA deploy39089075829 started02:09:29UTC on exact
+  287047e2e7fd63a6265b646851aa74384715d4ad; one helper watches that run only.
+  Quality/build are in progress. Root has not claimed public delivery.
+- Created a separate clean origin/main worktree at
+  /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-kafka-backup-lock-diagnostic-20261018,
+  branch codex/kafka-backup-lock-diagnostic-20261018. codex-project-context and
+  full current AGENTS read confirm origin rashadoni/leaddrive-v2, Contabo
+  development context, registered production target and Actions-main route.
+  Preserved prior worktree and carried ONLY its three unpushed journal/docs
+  checkpoints; canonical dirty checkout remains untouched.
+- Narrow safety plan: classify the existing read-only Object Lock API error
+  without raw stderr/config values; preserve the zero-exit COMPLIANCE>=14 gate;
+  exercise actual extracted probe against synthetic CLI fixtures; wire those
+  tests into both existing required PR/deploy safety steps; normal PR/release
+  only after preceding delivery and new exact-head gates. No new workflows or
+  runtime helper installation is required: the diagnostic report is streamed
+  by the existing protected main-only inspection workflow.
+- Source now retains at most16KiB in a private pipe, bounds CLI45+5sec and
+  classifier55+5sec, disables retries/prompt/profile discovery, preserves the
+  real CLI exit in a shell-appended frame, and emits only fixed categories.
+  Root output handling allowlists the category again; unknown/malformed/error
+  output cannot turn into success or expose endpoint/bucket/keys/request IDs.
+- Actual local tests, new-head CI and live diagnostic are NOT RUN at this
+  entry. No retention/key/policy/encryption/timer/service/source/Kafka change,
+  backup/restore/commissioning, offset or replay is part of this diagnostic.
+
+### Local diagnostic safety proof before publishing a draft
+
+- After RAM/disk/PSI inspection (about13GiB available,212GiB disk free, memory
+  pressure0), actual extracted-probe tests10/10 PASS in about4 seconds. No
+  operational script was sourced. Fixtures use one synthetic local CLI only;
+  no network, production config, secret, database or object was accessed.
+- Tests cover strict zero-exit policy, malformed/extra output, false success
+  with nonzero exit and forged trailer, allowlisted service/TLS/network errors,
+  private stdout/stderr canaries, oversized stream drain and clean environment.
+  Actual report handler rejects unknown, missing or failed classifier output.
+- Added actual GNU timeout TERM, ignored-TERM/SIGKILL and classifier-timeout
+  cases with explicitly TEST-ONLY shorter deadlines; production45+5/55+5 bounds
+  are asserted unchanged. Each exact fixture CLI PID is absent after the probe.
+  Both CLI and shell-owned termination diagnostics remain private via bounded
+  left-group pipe and outer stderr fence. No raw body is logged on these paths.
+- Existing pgpass/CA guards29/29 PASS in this tree; event asset27domains/
+  86topics/5schemas, runner-policy70, shell syntax and diff checks PASS.
+  Independent read-only helper review found no concrete false-PASS/secret/
+  status-loss issue; its initially unexecuted real-kill-path limitation is
+  superseded by the actual timeout tests above, not by a claim about production.
+- Local full TS/build/Vitest/real PostgreSQL and live S3 diagnostic NOT RUN:
+  heavy work belongs to Actions and this report-only change has no TS/schema
+  mutation. Publish only a draft; finish PR871 actual delivery before marking
+  the next frozen head ready. No timer or recovery commissioning is authorized
+  by a diagnostic result.

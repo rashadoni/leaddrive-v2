@@ -118,6 +118,38 @@ rebuild из неизменяемых событий по
 Go/No-Go: `get-object-lock-configuration` показывает `Enabled`,
 `COMPLIANCE`, `Days >= 14`; writer не может удалить тестовый locked object.
 
+#### Read-only диагностика отказа Object Lock
+
+Существующий `Inspect production safely` / `backup-readiness` проверяет
+конфигурацию одним read-only CLI-вызовом `GetObjectLockConfiguration` без
+авторетраев. Параметры, bucket, ключи, request IDs и исходный stderr не выводятся.
+Сохраняется максимум 16 KiB в памяти приватного pipe; лишние данные дренируются,
+но не сохраняются. CLI ограничен 45 секундами с принудительной остановкой через
+ещё 5 секунд; классификатор отдельно ограничен 55+5 секундами. Это не новая
+операция commissioning и не разрешение менять bucket policy, retention или key.
+
+При отказе отчёт даёт только фиксированную `diagnostic`-категорию:
+
+- `access_denied` — сервис сообщил отказ доступа; наличие/отсутствие Object
+  Lock этим **не установлено**. Не менять credentials по одной такой строке.
+- `credentials_rejected`, `bucket_not_found`, `lock_configuration_missing`,
+  `operation_unsupported` — распознана конкретная ошибка сервиса для именно
+  этой операции. Неизвестная ошибка остаётся `service_error`.
+- `tls_error`, `endpoint_unreachable` — распознан локальный формат ошибки
+  клиента; это не точная диагностика причины DNS/маршрута/сертификата.
+- `request_timeout`, `process_killed`, `cli_usage_error`,
+  `cli_configuration_error`, `unknown_failure` — выполненной проверки нет.
+- `invalid_response`, `oversized_response`, `unavailable` — надёжного
+  диагностического результата нет; readiness остаётся fail-closed.
+
+Только нулевой CLI exit и одна корректная строка `Enabled / COMPLIANCE / Days
+>= 14` дают положительный bucket-default check. Вывод, похожий на успех при
+ненулевом exit, не принимается. Это **не** proof exact-version retention,
+delete-deny, независимого restore, включённых timers или enterprise GA.
+Минимум 14 дней относится к backup bucket, не заменяет требование immutable
+event archive на 400 дней. Конкретную исправляющую операцию готовят отдельно
+после проверки действительного endpoint/provider и соответствующих полномочий.
+
 ### 2. Создать ключ шифрования
 
 1. На офлайн/административной машине сгенерировать age identity.

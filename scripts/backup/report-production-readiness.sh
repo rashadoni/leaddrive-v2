@@ -85,6 +85,109 @@ enterprise_gap() {
   printf '[backup-readiness] ENTERPRISE-GAP: %s\n' "$*"
 }
 
+# Keep untrusted AWS output inside a bounded private pipe, not a shell variable,
+# file or log. Only the Python classifier's fixed enum can leave this function.
+# The final NUL-framed exit status is supplied by this shell AFTER the real CLI;
+# success-looking output must never hide a nonzero CLI/timeout exit.
+read_object_lock_diagnostic() {
+  {
+  {
+    local cli_status
+    if env -i \
+      PATH=/usr/bin:/bin HOME=/nonexistent LC_ALL=C \
+      AWS_ACCESS_KEY_ID="${CONFIG[AWS_ACCESS_KEY_ID]}" \
+      AWS_SECRET_ACCESS_KEY="${CONFIG[AWS_SECRET_ACCESS_KEY]}" \
+      AWS_EC2_METADATA_DISABLED=true AWS_PAGER='' AWS_CLI_AUTO_PROMPT=off \
+      AWS_MAX_ATTEMPTS=1 AWS_RETRY_MODE=standard \
+      AWS_CONFIG_FILE=/dev/null AWS_SHARED_CREDENTIALS_FILE=/dev/null \
+      timeout --kill-after=5 45 "$AWS_BIN" s3api get-object-lock-configuration \
+        --endpoint-url "${CONFIG[BACKUP_S3_ENDPOINT]}" \
+        --region "${CONFIG[BACKUP_S3_REGION]}" \
+        --no-cli-pager --bucket "${CONFIG[BACKUP_S3_BUCKET]}" \
+        --query 'ObjectLockConfiguration.[ObjectLockEnabled,Rule.DefaultRetention.Mode,Rule.DefaultRetention.Days]' \
+        --output text 2>&1; then
+      cli_status=0
+    else
+      cli_status=$?
+    fi
+    printf '\0LEADDRIVE_CLI_EXIT=%d\0' "$cli_status"
+  } 2>&1 | env -i PATH=/usr/bin:/bin LC_ALL=C \
+    timeout --kill-after=5 55 python3 -I -c '
+import re
+import sys
+
+def classify():
+    limit = 16384
+    retained = bytearray()
+    oversized = False
+    while True:
+        chunk = sys.stdin.buffer.read(4096)
+        if not chunk:
+            break
+        if len(retained) + len(chunk) > limit:
+            oversized = True
+        if not oversized:
+            retained.extend(chunk)
+    if oversized:
+        return "oversized_response"
+    framed = bytes(retained)
+    trailer = re.search(rb"\x00LEADDRIVE_CLI_EXIT=([0-9]{1,3})\x00$", framed)
+    if trailer is None or int(trailer[1]) > 255:
+        return "invalid_response"
+    status = int(trailer[1])
+    body = framed[:trailer.start()]
+    if status == 0:
+        lines = body.splitlines()
+        if len(lines) != 1:
+            return "invalid_response"
+        parts = lines[0].split(b"\t")
+        if len(parts) != 3:
+            return "invalid_response"
+        if (parts[0] == b"Enabled" and parts[1] == b"COMPLIANCE"
+                and re.fullmatch(rb"[0-9]{1,10}", parts[2])
+                and int(parts[2]) >= 14):
+            return "verified"
+        return "policy_mismatch"
+    if status == 124:
+        return "request_timeout"
+    if status == 137:
+        return "process_killed"
+    if status in (2, 252):
+        return "cli_usage_error"
+    if status == 253:
+        return "cli_configuration_error"
+    if status == 254:
+        service = re.match(rb"\s*An error occurred \(([A-Za-z0-9]+)\) when calling the GetObjectLockConfiguration operation:", body)
+        if service:
+            return {
+                b"AccessDenied": "access_denied",
+                b"InvalidAccessKeyId": "credentials_rejected",
+                b"SignatureDoesNotMatch": "credentials_rejected",
+                b"ExpiredToken": "credentials_rejected",
+                b"NoSuchBucket": "bucket_not_found",
+                b"ObjectLockConfigurationNotFoundError": "lock_configuration_missing",
+                b"NotImplemented": "operation_unsupported",
+                b"UnsupportedOperation": "operation_unsupported",
+            }.get(service[1], "service_error")
+        return "service_error"
+    if status == 255:
+        if body.lstrip().startswith(b"SSL validation failed for "):
+            return "tls_error"
+        if body.lstrip().startswith((b"Could not connect to the endpoint URL:",
+                                     b"Connect timeout on endpoint URL:",
+                                     b"Read timeout on endpoint URL:")):
+            return "endpoint_unreachable"
+    return "unknown_failure"
+
+try:
+    result = classify()
+except Exception:
+    result = "invalid_response"
+print(result)
+' 2>/dev/null
+  } 2>/dev/null
+}
+
 trim_value() {
   local value="$1"
   value="${value#"${value%%[![:space:]]*}"}"
@@ -2217,31 +2320,23 @@ if [ "$AWS_TOOLCHAIN_READY" -eq 1 ] \
   && [ -n "${CONFIG[BACKUP_S3_BUCKET]:-}" ] \
   && [ -n "${CONFIG[AWS_ACCESS_KEY_ID]:-}" ] \
   && [ -n "${CONFIG[AWS_SECRET_ACCESS_KEY]:-}" ]; then
-  set +e
-  lock_state="$(env -i \
-    PATH=/usr/bin:/bin HOME=/nonexistent \
-    AWS_ACCESS_KEY_ID="${CONFIG[AWS_ACCESS_KEY_ID]}" \
-    AWS_SECRET_ACCESS_KEY="${CONFIG[AWS_SECRET_ACCESS_KEY]}" \
-    AWS_EC2_METADATA_DISABLED=true AWS_PAGER='' \
-    AWS_CONFIG_FILE=/dev/null AWS_SHARED_CREDENTIALS_FILE=/dev/null \
-    timeout 45 "$AWS_BIN" s3api get-object-lock-configuration \
-      --endpoint-url "${CONFIG[BACKUP_S3_ENDPOINT]}" \
-      --region "${CONFIG[BACKUP_S3_REGION]}" \
-      --no-cli-pager --bucket "${CONFIG[BACKUP_S3_BUCKET]}" \
-      --query 'ObjectLockConfiguration.[ObjectLockEnabled,Rule.DefaultRetention.Mode,Rule.DefaultRetention.Days]' \
-      --output text 2>/dev/null)"
-  lock_status=$?
-  set -e
-  if [ "$lock_status" -ne 0 ]; then
-    fail "writer credential cannot verify bucket Object Lock"
+  if lock_diagnostic="$(read_object_lock_diagnostic)"; then
+    case "$lock_diagnostic" in
+      verified)
+        pass "bucket default Object Lock is COMPLIANCE for at least 14 days"
+        ;;
+      policy_mismatch)
+        fail "bucket default Object Lock is not COMPLIANCE for at least 14 days"
+        ;;
+      access_denied|credentials_rejected|bucket_not_found|lock_configuration_missing|operation_unsupported|tls_error|endpoint_unreachable|request_timeout|process_killed|cli_usage_error|cli_configuration_error|service_error|unknown_failure|invalid_response|oversized_response)
+        fail "writer credential cannot verify bucket Object Lock (diagnostic=$lock_diagnostic; values redacted)"
+        ;;
+      *)
+        fail "writer credential cannot verify bucket Object Lock (diagnostic=unavailable; values redacted)"
+        ;;
+    esac
   else
-    read -r lock_enabled lock_mode lock_days <<<"$lock_state"
-    if [ "$lock_enabled" = "Enabled" ] && [ "$lock_mode" = "COMPLIANCE" ] \
-      && [[ "$lock_days" =~ ^[0-9]+$ ]] && [ "$lock_days" -ge 14 ]; then
-      pass "bucket default Object Lock is COMPLIANCE for at least 14 days"
-    else
-      fail "bucket default Object Lock is not COMPLIANCE for at least 14 days"
-    fi
+    fail "writer credential cannot verify bucket Object Lock (diagnostic=unavailable; values redacted)"
   fi
 fi
 
