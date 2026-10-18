@@ -2921,3 +2921,27 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   reachability returns: correlate reboot/OOM/service logs with16:11–16:34UTC,
   recheck live artifact/ping, and separate application fault from host/network
   fault without a speculative rollback.
+
+### Connectivity recovered; current public revision confirmed — 2026-10-18 17:33 UTC
+
+- Owner asks to check whether connection has returned. At17:32:27Z
+  (21:32 Asia/Baku), root independently observed CRM ping200/ok=true,
+  build-info200, login200 and marketing200. Registered production TCP22
+  connects again. Public artifact is now
+  6ce9a1ef1d5ddeb54f4534dd7b4e4d72b13b4938, not the earlier f41ba033.
+- Independent read-only helper verified normal release39146735082 for6ce9a1e
+  SUCCESS: production/smoke17:19:15Z, whole workflow17:19:36Z. Public DB ping,
+  exact revision and login/assets gates passed. GitHub comparison shows
+  f41ba033 is its exact merge base:2 commits ahead,0 behind. The earlier
+  delivered Kafka work has not been removed by an application rollback.
+- A single bounded strict-host-key production SSH attempt now reaches
+  authentication but rejects this task's configured public key. No remote
+  command executed. Network reachability is recovered; direct-shell access
+  for this task is not restored. No alternate key, credential extraction,
+  workflow dispatch, restart or production mutation was attempted.
+- Current result: public service recovered; outage root cause remains
+  unproven. Stop after the requested availability check without competing with
+  Claude's recovery. Next incident action, if pursued: obtain sanitized host/
+  kernel/service evidence through the established authorized production route,
+  distinguish the cause from the restored availability, then resume the saved
+  Kafka work without assuming runtime activation or successful restoration.
