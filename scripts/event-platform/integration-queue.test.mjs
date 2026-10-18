@@ -22,17 +22,21 @@ function concurrencyMapping(source, indentation) {
   return Object.fromEntries(entries)
 }
 
-test('stack and CDC share one non-cancelling queued slot while workflow updates keep latest-branch cancellation', () => {
-  for (const [workflow, job] of [['stack', 'smoke'], ['cdc', 'cdc-smoke']]) {
+test('stack and both CDC phases share one non-cancelling queued slot while workflow updates keep latest-branch cancellation', () => {
+  for (const [workflow, expectedJobs] of [['stack', ['smoke']], ['cdc', ['cdc-smoke', 'full-cdc-fund']]]) {
     const source = readFileSync(new URL(`../../.github/workflows/event-platform-${workflow}.yml`, import.meta.url), 'utf8')
     const jobs = source.match(/^jobs:\n([\s\S]*)$/m)?.[1]
     assert.ok(jobs, `${workflow}: jobs mapping is required`)
-    assert.deepEqual([...jobs.matchAll(/^  ([a-z][a-z0-9-]*):\s*$/gm)].map(match => match[1]), [job])
-    assert.deepEqual(concurrencyMapping(jobs, 4), {
-      group: 'event-platform-disposable-integration',
-      'cancel-in-progress': 'false',
-      queue: 'max',
-    }, `${workflow}: a fixed shared group permits only one running disposable stack; pending jobs must queue`)
+    const headings = [...jobs.matchAll(/^  ([a-z][a-z0-9-]*):\s*$/gm)]
+    assert.deepEqual(headings.map(match => match[1]), expectedJobs)
+    for (let index = 0; index < headings.length; index++) {
+      const job = jobs.slice(headings[index].index, headings[index + 1]?.index ?? jobs.length)
+      assert.deepEqual(concurrencyMapping(job, 4), {
+        group: 'event-platform-disposable-integration',
+        'cancel-in-progress': 'false',
+        queue: 'max',
+      }, `${workflow}/${headings[index][1]}: only one disposable stack may run; pending jobs must queue`)
+    }
     assert.deepEqual(concurrencyMapping(source, 0), {
       group: `event-platform-${workflow}-` + '${{ github.head_ref || github.ref }}',
       'cancel-in-progress': 'true',

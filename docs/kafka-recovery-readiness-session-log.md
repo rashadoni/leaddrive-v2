@@ -526,3 +526,21 @@
   pgpass39172571929 all SUCCESS. Protected static/type39172572032 pending.
   PR description updated so prior430c acceptance is not mistaken for current.
   Coordinator PR891 now awaits only active final full-cdc-fund; no merge yet.
+
+## 2026-10-19 (Asia/Baku): reconcile A3 with delivered common source
+
+- Common PR891 merged4212600260f5ed28b9c2b73e28c363a0fc7d39f3; its deploy
+ 39173487040 is in progress. A3 does not start a parallel merge/deploy.
+- Fetched current main and used merge-tree preview:only conflict is concurrent
+  append-only additions to KAFKA_IMPLEMENTATION_BACKLOG.md. Merged main into
+  this dedicated feature branch, retained BOTH A3 and common A1/A2/A5 entries,
+  removed only Git conflict markers. No discarded history or replaced sections.
+- Workflow auto-merges preserve both backup diagnostic/owner checks and current
+  common delivery guards. This is source reconciliation, not production action.
+- Resources before sequential targeted integration checks:14.3GB RAM available,
+  memory pressure0.00 current; swap2.5GB used. No heavy local checks.
+ 13diagnostic tests PASS; assets27domains/86topics/5schemas PASS; runner
+  policy74workflows PASS;12owner tests with real synthetic crypto PASS;
+  shell/diff checks PASS. Full exact merged-source verification goes to GitHub.
+- Prior follow-up checks0cc5e87ba are superseded for final acceptance because
+  the source now includes current main. No stale source acceptance substituted.

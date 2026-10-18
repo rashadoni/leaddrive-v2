@@ -13,7 +13,9 @@ public final class KafkaBridgeFixture {
     private static void require(boolean value) { if (!value) throw new IllegalStateException("FIXTURE_GUARD"); }
     public static void main(String[] args) throws Exception {
         require("true".equals(System.getenv("GITHUB_ACTIONS")) && "1".equals(System.getenv("LD_EVENT_STACK_DISPOSABLE")));
-        require(args.length >= 3 && args[1].matches("ld\\.testbroker\\.[a-z0-9-]+\\.events\\.v1") && args[2].matches("ld-testbroker-[a-z0-9-]+"));
+        require(args.length >= 3 && args[1].matches("ld\\.testbroker\\.[a-z0-9-]+\\.events\\.v1")
+            && (args[2].matches("ld-testbroker-[a-z0-9-]+")
+                || args[2].matches("ld\\.testbroker\\.finance\\.fund-shadow\\.v(?:[2-9]|[1-9][0-9]{1,9})\\.[a-z][a-z0-9-]{0,62}")));
         String topic = args[1], group = args[2];
         Properties p = new Properties();
         p.put("bootstrap.servers", "kafka:9092"); p.put("request.timeout.ms", "5000"); p.put("default.api.timeout.ms", "10000");

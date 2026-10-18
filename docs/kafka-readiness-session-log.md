@@ -3069,3 +3069,501 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   no duplicate retry or active/foreign cancellation. Next: one normal PR889
   source update, all new-head actual checks plus own-path advisory review,
   then normal merge/deploy. Kafka activation/offset/replay remain untouched.
+
+### Corrected revision in CI — 2026-10-18 18:36 UTC
+
+- PR889 now freezes source `ea6d16965fdafdf5f0245f6bd88ed3485311edbf`.
+  Required run39154320847 is active; pr-scope, runner policy39154321168,
+  scan39154320882 and tooling39154320893 have passed. Full typecheck/static
+  verification still running. Do not reuse old-source green checks for merge.
+- Synthetic CDC39154320972 SUCCESS: restricted SQL/WAL boundary, raw transport
+  and cold restart passed, scoped cleanup passed. Its explicit remaining scope
+  is business_projection=NOT_RUN, fixture_tls=NOT_PROVEN and no production
+  activation. Broker+restricted SQL run39154321016 is now executing after the
+  shared integration queue. No extra dispatch or retry was created.
+- Fresh public ping200/ok=true and artifact7c0d75f1b observed during an unrelated
+  main1c5d752c3 release. Production remains outside this PR until verified merge.
+  Next: current-head full gates and own advisory diagnostic review, then normal
+  release and exact artifact/postcondition verification. This is a local receipt
+  checkpoint only; no additional source push while CI runs.
+
+### Corrected source passes actual type and failure proofs — 2026-10-18 18:52 UTC
+
+- Exact PR889 source ea6d16965fdafdf5f0245f6bd88ed3485311edbf:
+  full-project typecheck job117754386566 SUCCESS18:43Z. Downloaded the complete
+  job report before merge: zero diagnostics on the task-owned worker modules,
+  tests or combined broker scripts. Total advisory diagnostics decreased from
+ 1330 to1327;64 gated baseline pairs unchanged. The three actual TS2769 errors
+  are gone; the whole existing application is not claimed type-error-free.
+- Broker run39154321016/job117754275570 SUCCESS18:50:26Z: actual generated
+  Prisma client AND actual installed Next ambient types passed strict ES2017;
+ 113/113 fixture/lifecycle tests,13/13 broker cases,8/8 combined restricted-SQL
+  cases and scoped cleanup passed. Stop during COMMIT marker18:49:01Z, stop
+  after COMMIT18:49:10Z, stale-generation takeover18:50:20Z. Recorded final
+  scope remains cdc=separate-proof, production_activation=not-performed.
+- Only required static-checks remains running its full unit baseline comparison.
+  No premature merge/deploy. Fresh public ping200/ok=true and exact current
+  main artifact1c5d752c3116ead4f0d8c84158a836f992c18c34 independently observed.
+  Next: actual static success, verify live head/main/protection, normal PR merge
+  and monitor the automatic SHA-bound release, then public and read-only checks.
+
+### PR889 normally merged after all actual gates — 2026-10-18 18:58 UTC
+
+- All five protected GitHub Actions checks passed on exact source ea6d16965.
+  Required static run39154320847 additionally confirmed340 focused unit tests,
+ 14 real restricted-PostgreSQL tests and18 failing files matching the18-file
+  existing full-suite baseline. Separate actual broker/CDC/tooling checks also
+  passed on that same source. No bypass, baseline edit or admin merge.
+- Immediately rechecked main1c5d752c3, clean mergeability, exact PR head and
+  all5 required contexts bound to Actions app15368/enforce_admins=true. Normal
+  merge at18:58:04Z created `4cbdece263fa78d67f763fc32f7c03b17035c9b4`.
+  Automatic production run39156579615 started for precisely that merge SHA;
+  no manual dispatch, duplicate job or direct-server fallback.
+- Delivery is still pending actual build, quality gates, production promotion
+  and post-deploy smoke. Unused lifecycle source is not a separately packaged
+  or installed JVM worker. Production Kafka consumers, offsets, replay, WAL,
+  slots, restore and recovery timers have not been activated by this task.
+
+### PR889 application release delivered and independently verified — 2026-10-18 19:29 UTC
+
+- Deploy39156579615 SUCCESS for exact merge/source artifact
+  `4cbdece263fa78d67f763fc32f7c03b17035c9b4`. Build job117760941184 completed
+ 19:19:31Z; actual Next standalone build, package verification and immutable
+  upload succeeded. Artifact leaddrive-prod-4cbdece263fa78d67f763fc32f7c03b17035c9b4
+  is471562548 bytes, digest
+  sha256:e40f5d07b1c2ca068dfdcde4be6045b5d50dbf1473f417d98f74fb3a8a7f6d94.
+- Release quality job117760941141 passed340 focused unit tests,14 actual
+  restricted-SQL tests and unchanged18-file failure baseline. Production
+  job117766465860 SUCCESS19:27:57Z. Existing Fund cutover receipt reused;
+  structural event-platform ledger/RLS/ownership/money-schema/projection
+  postconditions PASS19:27:05Z. Structural mode is not a fresh deep rebuild.
+- GitHub public revision smoke matched exact4cbdece263fa on its first attempt;
+  login/CSS/JS smoke passed. Independently repeated ping200/ok=true, exact public
+  artifact SHA, login200, hashed CSS200/text-css and JS200/javascript from this
+  task; independent_public_release_smoke=PASS. No production Kafka worker
+  installation/activation or replay is inferred from application release.
+- After confirming current main equals deployed SHA and no active inventory,
+  dispatched the existing read-only readiness workflow once on main. Its result
+  is pending; no retry or runtime/backup action. Next: record fresh aggregate
+  inventory, remaining readiness boundaries and the next inactive prerequisite.
+
+### Fresh post-release inventory and exact stopping point — 2026-10-18 19:31 UTC
+
+- Read-only run39158980732/job117768050954 SUCCESS19:29:42Z, observed19:29:40Z
+  on exact deployed4cbdece263fa78d67f763fc32f7c03b17035c9b4. One dispatch only;
+  protected pinned SSH route, aggregate READ ONLY transaction, no production
+  configuration/data changes. Current source PostgreSQL160015: wal_level=replica,
+  replication slots0/active0, outbox publication absent, max_slot_wal_keep_size=-1.
+  Source logical CDC is not commissioned. All8 inspected event/projection/effect
+  tables exist with RLS+FORCE RLS; estimatedRows0 is not an exact data count.
+- Four scoped timers (postgres-backup, secrets-snapshot, runtime-files-snapshot,
+  log-ship) remain inactive; backup configuration exists. Source/scratch passfile
+  and CA metadata indicate regular, canonical, service-readable files. This is
+  not credential validation, a successful backup/restore or evidence that no
+  other backup system exists. backup_restore_verification=not-performed.
+  About85% RAM and85% application filesystem were available; one-host spare
+  capacity is not independent Kafka failure domains or a tested load budget.
+- Completed scope: inactive worker lifecycle implementation, actual scoped
+  failure proof, all protected gates, ordinary PR889 merge, successful normal
+  application release and exact public/inventory SHA verification. No activation,
+  offset reset/replay, WAL/slot/publication change, timer enablement or restore.
+  No new paid resource or service was purchased. No autonomous background
+  monitor was created; these receipts describe checks actually performed.
+- Next smallest inactive implementation: governed worker launch/config plan
+  and immutable artifact binding, reusing existing Fund scope/build contracts
+  and activation evidence boundary. Read-only design review distinguishes
+  offline configured pins from actual live broker/DB metadata, and artifact
+  byte verification from equality of two supplied SHA strings. Kafka topic ID
+  must not be mistaken for a PostgreSQL build UUID. Existing secret-manager
+  reference policy must not be bypassed by arbitrary credential-file paths;
+  any runtime file resolution needs its own controlled provenance. JSON names
+  or booleans are not authenticated human approval. No such new implementation
+  or production configuration was started in this delivery turn.
+- Overall NOT COMPLETE: governed separate JVM packaging/launcher and actual
+  direct-JVM supervision composition, full Debezium-to-restricted-SQL rebuild,
+  production HA/TLS/ACL and finite retention/WAL budgets, independently proven
+  recovery/approval, operator lifecycle/promotion and all-module adoption.
+  Current stop: verified PR889 release, clean task worktree with local receipt
+  checkpoint commits preserved. Next source work starts from current main in a
+  dedicated worktree and carries these task-owned receipts, not unrelated work.
+
+### Owner requests all seven stages and parallel preparation — 2026-10-18
+
+- Owner explicitly requests recording all seven remaining stages and autonomous
+  sequential execution, then authorizes multiple sessions where faster. Added
+  A1–A7 with acceptance evidence, existing K-task mappings and current state to
+  KAFKA_IMPLEMENTATION_BACKLOG.md; no stage is declared complete by planning.
+- Resumed saved successful PR889/4cbdece263fa state, fetched current main4cbdece,
+  verified five protected contexts/enforce_admins and active deploy workflow.
+  Canonical checkout contains unrelated conflicts and obsolete docs, preserved.
+  Current origin/main instructions confirm rashadoni and registered Contabo
+ 13.140.132.245:/opt/leaddrive-v2; GitHub Actions is the sole release route.
+- New root worktree leaddrive-kafka-worker-admission-20261018 on
+  codex/kafka-worker-admission-20261018 from current main; carried five own
+  receipt checkpoints. No unrelated application edits copied. Separate helper
+  session owns launch-plan validation/tests in its own worktree. Root owns
+  artifact/direct-JVM integration and documentation. One local targeted-test
+  slot is allocated to helper; root performs editing/inspection meanwhile.
+- Current A1 work: strict offline plan pins, immutable artifact bytes and actual
+  direct-child JVM composition with existing broker/SQL fixtures. No runtime
+  service activation, data replay or recovery mutation follows from preparation.
+  Existing activation/recovery evidence gates remain authoritative; source
+  maintenance, actual independent confirmation and no-new-cost constraints
+  stay visible for later stages. Next: implement and verify A1 components.
+
+### A1 admission/artifact composition and parallel A2 preparation — 2026-10-18
+
+- Helper admission change checkpoint083f4719d adds the offline strict launch
+  plan validator and181 tests. It reuses the existing Fund scope validator and
+  stable group semantics; no runtime credentials or approval are fabricated.
+- Root adds bounded actual artifact-byte verification, explicit client-only
+  classpath, direct supervised JDK21 child composition and three real combined
+  broker/SQL lifecycle scenarios. A test-candidate export is reverified before
+  CI upload; it is not a production installation or trusted release authority.
+  Review caught FIFO blocking, unbounded growing-file reads, unbounded directory
+  enumeration and classpath-delimiter injection; all four are now rejected.
+- Small sequential verification actually run:313 tests across six focused
+  artifact/admission/process/session/fixture suites PASS; strictES2017 artifact
+  and admission checks including actual Next ambient types PASS; three focused
+  gate contracts PASS,71-workflow runner policy PASS,27-domain/86-topic/five-schema
+  assets PASS and diff whitespace PASS. Subsequent candidate export/docs and
+  five invalid fixture-SHA cases await the next focused rerun. Full generated
+  Prisma typecheck, Java compilation and real JVM/Kafka/SQL are NOT RUN locally:
+  they belong to GitHub, not this shared Contabo development host.
+- Owner requested parallel sessions from this root; active helper
+  kafka_full_cdc_fund_proof owns a separate worktree and the A2 full real
+  Debezium-to-Fund SQL scenario. It alone holds the next small local-test slot.
+  Heavy checks remain sequential in the shared GitHub integration queue.
+- Scope remains inactive preparation: no production change, connector, slot,
+  WAL setting, consumer activation, offset reset/replay, backup/restore or timer
+  enablement. Next: combine A2 proof, review/typecheck in CI and deliver only
+  after all applicable green gates; A3–A7 remain explicitly incomplete.
+
+### Combined A1/A2 checkpoint and owner correction about visible sessions — 2026-10-18
+
+- Root combined helper checkpoints as26a759095,5075fcc18 and8875c962c.
+  Full CDC candidate now includes actual app-role source writes, real Debezium
+  snapshot and clean cold restart, exact Kafka bytes/headers, restricted SQL,
+  lost-ACK durable redelivery and new-build recovery after a synthetic wrong
+  shadow-balance fault. The old bad shadow builds, inbox/checkpoints and group
+  cursor must remain unchanged while corrected new builds replay the history.
+  This is test fault injection, not a claim of reproducing historical buggy code.
+- Full-chain phase is wired after existing CDC in the same shared non-cancelling
+  integration queue; guard requires a separate disposable project and required
+  SQL admission. No production endpoint, credential or activation is included.
+  Updated queue contract now checks BOTH CDC jobs rather than assuming one.
+- Verification after combination:70 Node fixture/contract tests PASS;322 focused
+  Vitest tests across six files PASS; shell syntax,71-workflow runner policy,
+ 27-domain assets and diff whitespace PASS. Actual generated-Prisma strict
+  integration typing, Java compilation, real direct-JVM/broker/SQL and new
+  Debezium recovery drill NOT RUN: await GitHub CI. No push/PR/merge/deploy has
+  occurred for this new branch. The previously verified PR889 release remains
+  the production receipt, not evidence for these newer candidate changes.
+- Owner correctly observes there are no new visible sidebar sessions. Actual
+  internal helper kafka_full_cdc_fund_proof ran and completed, but was NOT a new
+  ordinary app chat. App thread-list inspection confirmed no new visible Kafka
+  sessions; available app tools expose no create_thread action. Do not claim
+  those sessions were created or tell the owner to search for them.
+- Owner now requests copyable prompts to launch the separate chats personally.
+  Pause new delivery execution while handing over bounded parallel preparation:
+  recovery evidence, no-new-cost infrastructure readiness, and operator/module
+  readiness. Root retains A1/A2 integration and sole release coordination;
+  helper sessions must not race production mutations or enable consumers/replay.
+  Current stop: checkpoint combined code/workflow candidate, no CI run started.
+  Next: owner starts the three visible chats; each reports its actual branch,
+  evidence and blocker, with root retaining the normal gated delivery route.
+
+### Three owner-started app sessions confirmed — 2026-10-19 Asia/Baku
+
+- Owner reports launching the chats. Read the app thread list and current turns:
+  all three are genuinely active, not internal helper threads. Exact titles:
+  «Подготовить проверку восстановления» (01a150b0-1f02-7790-857f-7fdb24eb9335),
+  «Подготовить готовность Kafka A4» (01a150b0-0162-79b2-a475-88949bd12936),
+  «Подготовить Kafka operator readiness» (01a150af-bdb2-7092-8e77-44557523d15e).
+  Each created a dedicated worktree/branch. A3 owns backup/recovery acceptance;
+  A4 owns finite infrastructure budget/security admission; A5 owns alert-delivery
+  evidence and the27-domain readiness map. Their task prompts forbid production
+  mutation and merge/deploy; root retains A1/A2 and normal release coordination.
+- Resumed root from clean e298057d9, fetched current main226dde0e77c0c36a4de991bb703ba8f8416c5a64.
+  Its five intervening commits belong to already-merged PR890 demo/AI screens,
+  not Kafka. Merged current main normally into the feature branch; no conflicts,
+  force push or changes to those application paths. Fresh protection still
+  requires pr-scope/static-checks/typecheck/runner-policy/scan with enforce_admins.
+  deploy.yml is active; registry/deployment still agree on registered Contabo
+ 13.140.132.245:/opt/leaddrive-v2 and the GitHub Actions release route.
+- Existing322 focused and70 contract successes belong to pre-main-merge source;
+  no claim of rerunning those or full integration in the merged tree. Heavy
+  generated-client, Java/Kafka/SQL/CDC and release checks remain GitHub-only.
+  Next: publish the prepared branch as a draft PR, then start one normal
+  exact-source review-ready verification after branch preparation is complete.
+
+### PR891 first exact-source verification and own type correction — 2026-10-19 Asia/Baku
+
+- Published root branch at d75cdb48290d6b4f5e62a754cb9b96876853e738 and opened
+  https://github.com/rashadoni/leaddrive-v2/pull/891 as draft, then marked ready.
+  Ready-event runs: PR checks39163401337, broker39163401298,
+  CDC39163401281, stack39163401353. Test-merge source was
+  e587ec989ccf5341943b02df787fccdbb61e6776 on main226dde0e7.
+  Earlier draft skips are NOT verification. Scan, runner-policy and tooling
+  checks succeeded; ready-event legacy CDC job117781259690 SUCCESS in4m11s.
+- Broker job117781260166 failed BEFORE Java/SQL scenarios at the generated
+  Prisma strict typecheck:9 diagnostics in test-broker-postgres.ts, caused by
+  structural union collapse of old container and new direct driver results.
+  A mere `"plan" in driver` narrowed the plan to{} rather than the admitted plan.
+  Full typecheck job117781356000 independently identified the same sole new
+  defect-shaped pair TS2339 in that file (8 occurrences; plus implicit-any).
+  Baseline64 pairs was not changed or weakened; old source had65 gated pairs.
+- Corrected fixture results to explicit literal `kind: container|direct` and
+  select the plan through that discriminant. Added regression contract guard.
+  After resource preflight (about14.9GiB available, zero memory pressure),
+  narrow strictES2017 compile of actual harness+fixture tests including Next
+  ambient declarations PASS,210 focused broker/admission tests PASS, four
+  workflow gate contracts PASS and diff whitespace PASS. No local Prisma
+  generation, Docker stack, Java run, full build or full typecheck attempted.
+- Other sessions: A3 draft PR892 at56abd74e6e1d2058d29428cba567f81b67c4ce1b
+  supplies evidence/acceptance documentation, NOT a commissioned restore.
+  Its fresh read-only backup report39163236284 is NO-GO: machine_ready=no,
+  enterprise_ga_ready=no,24 issues/9 gaps, scoped encryption off and drift;
+  independent restore and Farah decision NOT RUN. A4 PR893 prepared finite
+  budget/security gates; A5 is separately preparing authenticated operator
+  contracts. No other session's branch/job was cancelled or merged here.
+- Next: push this justified source correction once, let normal same-branch CI
+  supersede its old source, and diagnose actual results. No blind rerun of the
+  same failed SHA. No production Kafka activation, offsets/replay, database or
+  backup mutation and no release is claimed.
+
+### Second source verification and direct cross-session coordination — 2026-10-19 Asia/Baku
+
+- Published correction1d526a126fd540d86b38ed8bbea09b435fc4a408 on PR891.
+  New normal source-event runs: PR39164817257, broker39164817267,
+  CDC39164817265, stack39164817285. Scan39164817294,
+  runner-policy39164817423 and tooling39164817330 SUCCESS on this source.
+  Full generated-client and runtime proof are still in progress/queued;
+  do not reuse the old source's unit successes as complete current verification.
+  Standard workflow concurrency superseded old own-source work after the fix;
+  no manual rerun, unrelated job cancellation or gate change was performed.
+- Read actual owner-started sessions directly, not via owner-relayed messages.
+  A3 preparation PR892 is docs-only and NO-GO for recovery. A4 PR893 adds
+  finite WAL budget/topology/security gates; its checks continue independently.
+  A5 draft PR894 final source5bd0b2334a6204f6cf4a6fb45cf84c83474ad1d5 has
+  actual admission-postgres run39164956608 SUCCESS (17 real PostgreSQL cases,
+ 28 alert-receipt units); authenticated admission contract remains inactive and
+  its controller/business execution is not implemented or commissioned.
+- A5 scan job117785851542/run39164956501 reports one finding. Independently
+  reviewed the exact original README in checkpoint6ca3b5e2e: generic-api-key
+  matches ordinary test-description prose, not a credential. Current prose is
+  corrected but full branch-range scanning still includes that checkpoint.
+  No scanner exception, baseline change, force-push, checkpoint deletion or
+  false green is authorized or performed. PR894 remains draft/red; source
+  snapshot integration is a possible later normal delivery decision, not an
+  already performed merge or permission to bypass scanning.
+- Sent normal coordination comments directly in existing PRs:
+  https://github.com/rashadoni/leaddrive-v2/pull/893#issuecomment-6255018436
+  (preserve exact-SHA checks and local-only receipt checkpoints while running),
+  https://github.com/rashadoni/leaddrive-v2/pull/894#issuecomment-6255018598
+  (preserve branch/history and red scan; root owns later gated delivery).
+  Comments are delivered, not evidence that a session has read them or acted.
+- Current stop/checkpoint while monitoring: PR891 source1d526a126 under actual
+  verification; root has no production delivery/activation receipt for it.
+  Next: evaluate current full checks, broker/CDC runtime markers and fix only
+  demonstrated own defects. Overall A3/A4 runtime and Farah gates remain open.
+
+### Actual direct-JVM proof and corrected full type gate — 2026-10-19 Asia/Baku
+
+- Broker run39164817267/job117785430482 SUCCESS on PR source
+ 1d526a126fd540d86b38ed8bbea09b435fc4a408; exact checked-out test-merge SHA
+ 3b4fde212fdec8b4efa832812f9e670b20e9ffa8 matches current GitHub PR metadata.
+  Generated-client strict fixture compile passed. Read actual completed logs:
+  all13 existing broker-driver markers, all8 existing combined real-SQL markers
+  and all3 new actual direct-JVM markers PASS. In particular ordered restart
+  exact two-tenant parity, stop during real COMMIT and stop after real COMMIT
+  before acknowledgement passed, along with stale-member fencing regression.
+- worker_jvm_integration=PASS explicitly reports child=direct-java,
+  artifact=verified-client-only and sql=restricted-real-commit. This is not a
+  Docker CLI proxy or mocked COMMIT. The existing standalone broker-only
+ 13-case proof still honestly labels its database effects simulated; it is
+  distinct from the actual combined SQL and direct-JVM phases.
+- Candidate export reverified actual files and succeeded. Manifest digest
+  sha256:c476cd19a97939d6413e18a59909d1000f270557664ff16a15d79a958bf3bb86.
+  GitHub artifact fund-shadow-worker-candidate-3b4fde212fdec8b4efa832812f9e670b20e9ffa8
+  is22150118 bytes, wrapper digest
+  sha256:91dc2d6861d44d7748f5d8619ce28fa5ff66045ea661220e4b6fa179b198fb5d.
+  Wrapper and member-manifest hashes are different intentional bindings.
+  This PR merge-test candidate is NOT an approved main/production worker
+  installation, service unit, secret-resolution/controller or activation receipt.
+- Corrected full typecheck job117785796582 SUCCESS: exact log reports64 gated
+  pairs matching64 baseline and1327 existing advisory errors; no new defect,
+  syntax, missing-module or undefined-name errors. Do NOT claim the whole
+  repository has zero TypeScript diagnostics. Baseline unchanged.
+- Independently checked public ping ok=true and build-info artifactSha
+ 226dde0e77c0c36a4de991bb703ba8f8416c5a64. Root's new source is not deployed.
+  Remaining before PR merge: full static-checks, current stack/CDC and the NEW
+  full Debezium-to-Fund faulty-shadow/new-build recovery job. No replay or
+  infrastructure readiness is inferred from the successful direct-child phase.
+
+### Full CDC drill fails closed; narrow diagnostic iteration — 2026-10-19 Asia/Baku
+
+- All five protected checks on source1d526a126 succeeded. Static job117785796576
+  finished SUCCESS; actual log reports18 failing files matching18 baseline,
+  no new failures. This is unchanged accepted baseline, not an all-green
+  application test suite. Current-source infrastructure and legacy CDC passed.
+- NEW full-cdc-fund job117790297393/run39164817265 FAILED at safe phase
+  committed-ack-loss. Its actual generated-client strict compile, pure guards,
+  app-role source fixture, real six-event snapshot and clean restart delivering
+ 12 events completed far enough to enter the first consumer attempt. However
+  exact record/SQL/ACK boundary is NOT established: a generic expected-rejection
+  check hid whether the intended post-COMMIT ACK loss was reached. No complete
+  full-chain recovery verdict is claimed. No PostgreSQL/Connect ERROR message
+  was present in the filtered fixture service logs; this does not prove SQL was
+  attempted or succeeded. All owned disposable services/volumes were cleaned.
+- Converted PR891 back to draft before further source iteration, retaining
+  every required gate and the failed receipt. Added fixed safe record/frame,
+  SQL and evidence stage labels, plus an explicit ackLossInjected assertion so
+  an unrelated failure cannot satisfy the intended ACK-loss case. Raw values,
+  event IDs, headers, SQL or provider exception text are not logged. Existing
+  exact byte/header/parity/source/effect assertions are unchanged and not relaxed.
+- Small local guards13/13 PASS (full CDC contracts, workflow and queue), runner
+  TS transpile syntax PASS and diff whitespace PASS after resource preflight.
+  New actual strict client/runtime checks NOT RUN locally. Next publish this
+  diagnostic source while draft and dispatch the existing disposable CDC
+  workflow once on its exact branch; no full application rerun while iterating.
+  This manual debug run is NOT a substitute for final ready-event protected,
+  broker, stack and both CDC jobs on the eventual final source before merge.
+- No merge/deploy, production consumer/offset/replay, backup or infrastructure
+  mutation, scanner waiver or new expenditure. Root continues until the exact
+  own failure is diagnosed; independent recovery and infrastructure gates remain.
+
+### Frozen A5 preparation integrated without rewriting its branch — 2026-10-19 Asia/Baku
+
+- Three real app threads were verified by title/ID: recovery01a150b0-1f02,
+ infrastructure01a150b0-0162 and operator01a150af-bdb2. Their independent
+ preparation is not production activation. A3 is NO-GO (fresh independent
+ recovery and Farah's actual confirmation missing); A4 is an offline readiness
+ contract, not commissioned HA/TLS/ACL/WAL infrastructure.
+- Root integrates ONLY frozen A5 checkpoint5bd0b2334a6204f6cf4a6fb45cf84c83474ad1d5
+ as a final-source squash into PR891. Original PR894, its branch, checkpoints
+ and historical scanner failure remain intact. No force-push, scanner waiver,
+ policy relaxation or deletion of history. Final root source still must pass
+ unchanged scan and every relevant check. Later moving A5 work, including
+ recovery-evidence/controller composition, is NOT included in this snapshot.
+- Reviewed exact frozen SQL admission, alert verifier, isolated fixture and
+ workflow. SQL grants no business access and is outside production migrations;
+ no runtime controller, worker activation, promotion or external sends exists
+ from this integration. Existing runbook/history entries retained; overlapping
+ backlog append resolved by preserving both entries.
+- Root additionally restricts the disposable SQL fixture to GitHub Actions,
+ explicit loopback/db/admin/port, denies libpq service/hostaddr route overrides,
+ and bounds connection timeout. Thirteen negative route mutations prove denial
+ before psql. This strengthens fixture routing, not an authentication claim.
+- Resource preflight:13GiB available, swap0, memory pressure0, disk202GiB free.
+ Small sequential checks42/42 PASS, syntax PASS, runner policy72 workflows PASS,
+ whitespace PASS. SQL and alert source/test blobs match frozen5bd exactly.
+ Full real PG on ROOT-integrated SHA NOT RUN yet; original A5 run39164956608
+ proved17 PG cases and28 receipt tests only on5bd, not this new root SHA.
+- Manual CDC diagnostic39167726762 remains pinned to f47224e2b, one existing
+ run only: legacy CDC SUCCESS, new full-chain job117794983098 running. Draft
+ PR891 is intentionally not mergeable yet. Final ready-event protected and
+ feature checks, ordinary release and actual production proof remain pending.
+ No production, backup, timer, consumer, offset, replay or paid resource change.
+
+### Integrated operator proof and precise CDC header correction — 2026-10-19 Asia/Baku
+
+- Published root26dca4f2e30bfbf327e283cf6e93f3bd83ddd557. Actual operator
+ run39168888775/job117797606316 SUCCESS:17 real PostgreSQL named-login,
+ privilege, race and deferred-COMMIT cases;29 offline receipt/route tests PASS.
+ Unchanged secret scanner39168888761 SUCCESS on this root snapshot; original
+ PR894 history is preserved, not declared globally scanner-clean. Draft-only
+ static/type/broker/stack/CDC skips are NOT successful acceptance gates.
+- Existing diagnostic39167726762 completed: legacy CDC SUCCESS; new full job
+117794983098 FAIL at record-header-set-binding. Prior event ID, key and exact
+ PostgreSQL JSONB value byte comparisons passed for the first record only.
+ SQL/ACK loss was not reached. Services, owned slot and disposable volumes
+ cleaned. No new runtime defect in projection SQL is established by this failure.
+- Read exact Debezium v3.7.0.Final source: CommonConnectorConfig enables
+ extended headers by default; DebeziumHeaderProducer emits logicalName,
+ taskId, connectorName (plugin=postgresql), runId in addition to EventRouter's
+ four business headers. Previous test incorrectly required only four headers.
+ Primary reference:
+ https://github.com/debezium/debezium/blob/v3.7.0.Final/debezium-connector-common/src/main/java/io/debezium/connector/common/DebeziumHeaderProducer.java
+- Corrected the FULL test contract, not production serializers or consumer
+ validation: exact eight-header set; every source/static-context value exact
+ Buffer bytes, no duplicate/unknown/prefix ignored; canonical nonzero run UUID
+ stable within snapshot/stream, distinct after actual cold restart, unchanged
+ on worker redelivery/rebuild. A task UUID is not authenticated approval.
+ Added negative mutations for missing/duplicate/foreign/string/BOM headers and
+ unknown context keys. Fixed diagnostic protocol label HELLO to actual READY.
+- Small sequential guards24/24 PASS, helper syntax and whitespace PASS. Real
+ generated-client strict check and corrected actual full chain NOT RUN locally;
+ next: one existing disposable CDC workflow dispatch on this corrected source,
+ after confirming no active duplicate. PR891 remains draft until actual result.
+ No production mutation, consumer/offset/replay, backup commissioning or spend.
+
+### Final-source operator gate trigger retained — 2026-10-19 Asia/Baku
+
+- Corrected header source267507fcca5c59d5b19cb80652485a1b985b1fae published.
+ One manual disposable CDC run39169379400 started21:47:26Z on that exact SHA;
+ prior diagnostic completed, no active duplicate was created. PR remains draft.
+- Added ready_for_review to the inactive operator admission workflow trigger
+ so final ready-event verification includes actual PG admissions again, rather
+ than silently relying on the earlier snapshot. Added literal contract test;
+2/2 guard tests PASS, runner policy72 workflows PASS, whitespace PASS. This
+ trigger change is checkpointed locally while the existing CDC run is pinned;
+ no acceptance check or protected-context requirement is relaxed.
+- Confirmed current main protection still requires all5 named contexts with
+ enforce_admins=true; approving-review count0 does not replace independent
+ runtime recovery approval. No merge, release or Kafka activation yet.
+
+### Later A5 additions held for concrete review findings — 2026-10-19 Asia/Baku
+
+- Actual user-created operator thread completed later prepared source at
+10866dad5b3cd42e5412d20cb87a824be60a7044. Reviewed frozen5bd..108 diff separately;
+ these additions are NOT in current PR891. Current earlier admission SQL is
+ unchanged by the findings below. Original branch/worktree/checkpoints retained.
+- Read-only parallel review found three P2 gaps in later snapshot collector:
+ table-only privilege inspection misses effective column DML grants (READ ONLY
+ still protects the current transaction); checkpoint lastEventId is not bound
+ to its inbox topic/partition/position (small in-memory reproduction accepts a
+ cross-partition event); snapshot SQL omits actual worker evidence provenance
+ adapterVersion/buildId/codeSha/topic/partition/offset and its fixture seeds
+ only last-event ID/time. Root independently read pinned collector/SQL and
+ confirmed these missing checks. No production flaw is inferred from inactive
+ preparation, and green baseline tests do not cover these negative controls.
+- Separate fixture-only promotion receipt expiry is checked before locks, not
+ deferred at COMMIT; the lease has a deferred fence but receipts do not. This
+ is a future lifecycle-composition gap, not an active production endpoint.
+- Original later A5 run39169472133 SUCCESS on c745b5b67 was independently
+ checked; c745..108 changes only docs. No heavy tests or writes were performed
+ by review. Findings/ownership recorded directly on PR894 comment6255633608,
+ without asking the user to relay messages. Root will correct/re-prove this
+ later bounded A5 slice after the current A1/A2 software delivery; no import of
+ known-incomplete evidence collectors or unsupported 27-domain readiness.
+
+### Corrected actual full CDC-to-Fund recovery PASS — 2026-10-19 00:01 Europe/Berlin
+
+- Manual run39169379400 SUCCESS on exact source
+267507fcca5c59d5b19cb80652485a1b985b1fae, completed2026-10-18T22:01:49Z.
+ Legacy job117799064969 SUCCESS; NEW full-cdc-fund117799892184 SUCCESS.
+ Read actual completed logs, not only workflow status. Generated actual Prisma
+ client strict fixture types passed;9 source/isolation/header guards passed.
+- Actual final markers at22:01:23Z: non-bypass source-role writes PASS, six-event
+ snapshot PASS, stopped-Connect source writes and cold-restart WAL PASS, exact
+ Kafka key/value/business/context bytes/hash PASS. Full restricted SQL exact
+ two-tenant parity PASS; actual post-COMMIT ACK loss with durable inbox and
+ zero broker advancement, safe duplicate and restarted worker PASS.
+- Synthetic old restricted-shadow balance fault injection PASS, corrected NEW
+ builds/roles/group replaying unchanged original Kafka history PASS; exact
+10.0000 USD/aggregate versions/inboxes/checkpoints PASS. Both old bad builds and
+ old acknowledged group remain unchanged; source/active/effects/third tenant
+ remain unchanged. External sends NONE; historical buggy source NOT CLAIMED.
+- This corrects the prior four-header fixture expectation against pinned
+ Debezium behavior without ignoring extras or weakening business byte/hash
+ assertions. All8 headers and source incarnation continuity are now checked.
+ Actual cleanup succeeded. Fixture TLS/ACL NOT PROVEN; production activation
+ NOT RUN. Earlier direct-JVM proof and this full-CDC proof are different
+ composed drills; no claim that the CDC drill itself uses direct JVM rather
+ than its existing container bridge. No production service installation.
+- Final tree also contains workflow-only029c41231 and review-receipt33aa26e13,
+ not yet published when this source proof completed. Next publish one final
+ checkpoint and run ready-event all5 protected contexts plus broker, stack,
+ BOTH CDC jobs and actual operator PG again. No earlier SHA result substitutes
+ for that final verification, normal merge, release or actual deployed SHA.

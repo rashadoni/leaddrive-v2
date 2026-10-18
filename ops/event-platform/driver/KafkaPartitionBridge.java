@@ -69,7 +69,8 @@ public final class KafkaPartitionBridge {
             require(input.getProperty("test.profile").equals("disposable-ci"));
             require("true".equals(System.getenv("GITHUB_ACTIONS")) && "1".equals(System.getenv("LD_EVENT_STACK_DISPOSABLE")));
             require("kafka:9092".equals(props.getProperty("bootstrap.servers")) && protocol.equals("PLAINTEXT"));
-            require(topic.startsWith("ld.testbroker.") && group.startsWith("ld-testbroker-"));
+            require(topic.startsWith("ld.testbroker.") && (group.startsWith("ld-testbroker-")
+                || group.matches("ld\\.testbroker\\.finance\\.fund-shadow\\.v(?:[2-9]|[1-9][0-9]{1,9})\\.[a-z][a-z0-9-]{0,62}")));
         } else require(protocol.equals("SSL") || protocol.equals("SASL_SSL"));
         require(props.getProperty("bootstrap.servers", "").length() > 0);
         props.setProperty("ssl.endpoint.identification.algorithm", "https");
