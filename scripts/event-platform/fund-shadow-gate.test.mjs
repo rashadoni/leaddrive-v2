@@ -34,12 +34,17 @@ test('both required PR verification and production release run the real Fund sha
 
 test('real PG gate fails closed on missing admission and applies actual migrations, not mocks/db-push', () => {
   const source = readFileSync(new URL('src/__tests__/event-platform-fund-shadow-postgres.test.ts', root), 'utf8')
+  const fixture = readFileSync(new URL('scripts/event-platform/fixtures/fund-shadow-postgres.ts', root), 'utf8')
   assert.match(source, /!adminUrl && process\.env\.FUND_SHADOW_DB_GATE === "required"/)
+  assert.match(source, /from "\.\.\/\.\.\/scripts\/event-platform\/fixtures\/fund-shadow-postgres"/)
+  assert.match(source, /fundShadowDatabase as database/)
+  assert.match(source, /postgres = createFundShadowPostgresFixture\(/)
+  assert.match(source, /await postgres\.setup\(\)/)
   for (const migration of ['20260901090000_event_platform_foundation', '20260901100000_fund_event_source_pilot', '20260906120000_projection_replay_control_plane']) {
-    assert.ok(source.includes(`"${migration}"`))
+    assert.ok(fixture.includes(`"${migration}"`))
   }
-  assert.match(source, /client\.\$transaction\(async real/)
-  assert.doesNotMatch(source, /vi\.mock\(|\["db", "push"/)
-  assert.ok(source.includes('url.hostname !== "127.0.0.1"'))
-  assert.ok(source.includes('url.pathname !== "/event_platform_test"'))
+  assert.match(fixture, /await client\.\$transaction\(async real/)
+  assert.doesNotMatch(source + fixture, /vi\.mock\(|\["db", "push"/)
+  assert.ok(fixture.includes('url.hostname !== "127.0.0.1"'))
+  assert.ok(fixture.includes('url.pathname !== "/event_platform_test"'))
 })

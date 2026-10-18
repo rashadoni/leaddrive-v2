@@ -14,6 +14,12 @@ set -euo pipefail
 [[ "${LD_EVENT_STACK_DRIVER:-0}" =~ ^[01]$ ]] || {
   echo 'FATAL: broker driver fixture mode must be explicitly zero or one'; exit 1;
 }
+[[ "${LD_EVENT_STACK_COMBINED:-0}" =~ ^[01]$ ]] || {
+  echo 'FATAL: combined database fixture mode must be explicitly zero or one'; exit 1;
+}
+[ "${LD_EVENT_STACK_COMBINED:-0}" = 0 ] || { [ "${LD_EVENT_STACK_DRIVER:-0}" = 1 ] && [ "${FUND_SHADOW_DB_GATE:-}" = required ]; } || {
+  echo 'FATAL: combined drill requires the broker phase and required database gate'; exit 1;
+}
 [ "${LD_EVENT_STACK_CDC:-0}" = 0 ] || [ "${LD_EVENT_STACK_DRIVER:-0}" = 0 ] || {
   echo 'FATAL: CDC and broker driver drills run as separate bounded phases'; exit 1;
 }
@@ -98,4 +104,7 @@ if [ "${LD_EVENT_STACK_CDC:-0}" = 1 ]; then
 fi
 if [ "${LD_EVENT_STACK_DRIVER:-0}" = 1 ]; then
   "$task_root/ops/event-platform/driver/node_modules/.bin/tsx" "$task_root/scripts/event-platform/test-broker-driver.ts"
+fi
+if [ "${LD_EVENT_STACK_COMBINED:-0}" = 1 ]; then
+  "$task_root/ops/event-platform/driver/node_modules/.bin/tsx" "$task_root/scripts/event-platform/test-broker-postgres.ts"
 fi

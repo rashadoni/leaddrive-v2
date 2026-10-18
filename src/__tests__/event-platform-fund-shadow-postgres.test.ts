@@ -1,17 +1,16 @@
 import { randomUUID } from "node:crypto"
-import { readFileSync } from "node:fs"
-import { spawnSync } from "node:child_process"
-import { PrismaClient, type Prisma } from "@prisma/client"
+import type { PrismaClient } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import type { KafkaEventRecord } from "@/lib/event-platform/consumer"
-import {
-  consumeFundShadowRecord,
-  type FundShadowDatabase,
-  type FundShadowScope,
-  type FundShadowTransaction,
-} from "@/lib/event-platform/fund-shadow-consumer"
+import { consumeFundShadowRecord } from "@/lib/event-platform/fund-shadow-consumer"
 import { createFundShadowPartitionWorker } from "@/lib/event-platform/fund-shadow-worker"
 import type { PartitionBroker } from "@/lib/event-platform/partition-processor"
+import {
+  createFundShadowPostgresFixture,
+  fundShadowDatabase as database,
+  type FundShadowContext as Context,
+  type FundShadowExecuteFailure as ExecuteFailure,
+} from "../../scripts/event-platform/fixtures/fund-shadow-postgres"
 
 // No production access. The dedicated CI step must follow the existing real
 // migration gate (which creates the synthetic event_app/event_migrator roles).
@@ -22,78 +21,13 @@ if (!adminUrl && process.env.FUND_SHADOW_DB_GATE === "required") {
   throw new Error("FUND_SHADOW_TEST_DATABASE_URL is required by the Fund shadow database gate")
 }
 const pgDescribe = adminUrl ? describe : describe.skip
-const databaseName = `ld_fund_shadow_${process.pid}`
-const codeSha = "f".repeat(40)
 const topic = "ld.test.finance.events.v1"
-const password = "synthetic-shadow-fixture-only"
-type Client = PrismaClient
-type Context = { scope: FundShadowScope; client: Client; records: KafkaEventRecord[]; fundId: string }
-let admin: Client
-let scratch: Client
-let created = false
-let counter = 0
-const clients: Client[] = []
-const workerRoles: string[] = []
-
-function checkedAdmin(): URL {
-  const url = new URL(adminUrl!)
-  if (url.protocol !== "postgresql:" || url.hostname !== "127.0.0.1" || !/^[1-9][0-9]*$/.test(url.port)
-    || url.username !== "postgres" || url.password !== "postgres" || url.pathname !== "/event_platform_test"
-    || url.search !== "" || url.hash !== "") {
-    throw new Error("Fund shadow integration requires the exact disposable loopback CI service contract")
-  }
-  return url
-}
-
-function clientFor(url: URL): Client {
-  const client: Client = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url: url.toString() } } })
-  clients.push(client)
-  return client
-}
-
-function sql(url: URL, source: string): void {
-  const result = spawnSync("node_modules/.bin/prisma", ["db", "execute", "--url", url.toString(), "--stdin"], {
-    input: source, encoding: "utf8", timeout: 30_000,
-  })
-  if (result.status !== 0) throw new Error(`Disposable Fund fixture SQL failed: ${result.error ?? result.stderr}`)
-}
-
-// Optional instrumentation injects a failure AFTER real SQL or just before
-// the real COMMIT. The enclosing Prisma factory still owns COMMIT/ROLLBACK.
-function database(client: Client, input?: {
-  afterQuery?: (query: string, tx: FundShadowTransaction) => Promise<void>
-  afterExecute?: (query: string, tx: FundShadowTransaction) => Promise<void>
-  onExecuteError?: (receipt: ExecuteFailure) => void
-  beforeCommit?: (tx: FundShadowTransaction) => Promise<void>
-}): FundShadowDatabase {
-  return {
-    $transaction: (work, options) => client.$transaction(async real => {
-      const tx: FundShadowTransaction = {
-        $queryRawUnsafe: async <T>(query: string, ...values: unknown[]) => {
-          const result = await real.$queryRawUnsafe<T>(query, ...values)
-          await input?.afterQuery?.(query, tx)
-          return result
-        },
-        $executeRawUnsafe: async (query, ...values) => {
-          let count: number
-          try {
-            count = await real.$executeRawUnsafe(query, ...values)
-          } catch (error) {
-            // Observe only an actual SQL rejection, not afterExecute injection.
-            // Preserve the original error; Prisma still rolls the factory back.
-            input?.onExecuteError?.({ query, values, error })
-            throw error
-          }
-          await input?.afterExecute?.(query, tx)
-          return count
-        },
-      }
-      const result = await work(tx)
-      await input?.beforeCommit?.(tx)
-      return result
-    }, options),
-  }
-}
+let postgres: ReturnType<typeof createFundShadowPostgresFixture>
+let scratch: PrismaClient
+const fixture = () => postgres.fixture()
+const newBuild = (organizationId: string, fundId: string, records: KafkaEventRecord[]) => postgres.newBuild(organizationId, fundId, records)
+const snapshotSource = (organizationId: string) => postgres.snapshotSource(organizationId)
+const counts = (context: Context) => postgres.counts(context)
 
 function at(record: KafkaEventRecord, offset: number): KafkaEventRecord {
   return { ...record, offset: String(offset) }
@@ -110,31 +44,7 @@ function workerFor(contexts: Context[], broker: PartitionBroker, dbFor = (contex
   })
 }
 
-async function snapshotSource(organizationId: string) {
-  return scratch.$queryRawUnsafe(`SELECT jsonb_build_object(
-    'funds', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM funds x WHERE "organizationId" = $1),
-    'ledger', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM fund_transactions x WHERE "organizationId" = $1),
-    'events', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM domain_events x WHERE "organizationId" = $1),
-    'outbox', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM event_outbox x WHERE "organizationId" = $1),
-    'heads', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM event_aggregate_heads x WHERE "organizationId" = $1),
-    'active', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM fund_balance_projections x WHERE "organizationId" = $1 AND status = 'active'),
-    'pointers', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM projection_activations x WHERE "organizationId" = $1),
-    'promotions', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM projection_promotion_events x WHERE "organizationId" = $1),
-    'effects', (SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM effect_outbox x WHERE "organizationId" = $1)
-  ) AS source`, organizationId)
-}
-
-async function counts(context: Context) {
-  const [row] = await scratch.$queryRawUnsafe<Array<{ shadows: number; inbox: number; checkpoints: number }>>(`SELECT
-    (SELECT count(*)::int FROM fund_balance_projections WHERE "organizationId" = $1 AND "buildKey" = $2) AS shadows,
-    (SELECT count(*)::int FROM consumer_inbox WHERE "organizationId" = $1 AND "consumerName" = $3) AS inbox,
-    (SELECT count(*)::int FROM projection_checkpoints WHERE "organizationId" = $1 AND "buildId" = $4::uuid) AS checkpoints`,
-  context.scope.organizationId, context.scope.buildKey, `fund-shadow:${context.scope.buildId}`, context.scope.buildId)
-  return row
-}
-
 const permissionDenied = { code: "P2010", meta: { code: "42501" } }
-type ExecuteFailure = { readonly query: string; readonly values: readonly unknown[]; readonly error: unknown }
 type ShadowInsertKey = readonly [organizationId: string, fundId: string, projectionVersion: number, buildKey: string, eventId: string]
 
 function matchesShadowInsert(receipt: ExecuteFailure | undefined, key: ShadowInsertKey | undefined): boolean {
@@ -231,128 +141,14 @@ async function bounded<T>(promise: Promise<T>, label: string): Promise<T> {
   } finally { if (timer) clearTimeout(timer) }
 }
 
-async function newBuild(organizationId: string, fundId: string, records: KafkaEventRecord[]): Promise<Context> {
-  const number = ++counter
-  const buildId = randomUUID()
-  const buildKey = `shadow-${number}`
-  const role = `ld_fund_shadow_${process.pid}_${number}`
-  const scope: FundShadowScope = { organizationId, buildId, buildKey, projectionVersion: 2, codeSha,
-    environment: "test", expectedWorkerRole: role }
-  await scratch.$executeRawUnsafe(`INSERT INTO projection_builds
-    (id, "organizationId", "projectionName", "projectionVersion", "buildKey", "codeSha", mode)
-    VALUES ($1::uuid, $2, 'finance.fund-balance', 2, $3, $4, 'shadow')`, buildId, organizationId, buildKey, codeSha)
-  await scratch.$executeRawUnsafe(`UPDATE projection_builds SET status = 'running', "startedAt" = CURRENT_TIMESTAMP WHERE id = $1::uuid`, buildId)
-  // All interpolated names/literals below are generated solely in this fixture,
-  // never read from messages, user input or a production configuration file.
-  sql(new URL(scratchUrl()), `
-    CREATE ROLE "${role}" LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD '${password}';
-    GRANT CONNECT ON DATABASE "${databaseName}" TO "${role}";
-    GRANT USAGE ON SCHEMA public TO "${role}";
-    GRANT SELECT ON event_outbox, event_aggregate_heads, funds, domain_events,
-      fund_balance_projections, projection_builds, projection_checkpoints, consumer_inbox TO "${role}";
-    GRANT INSERT ON fund_balance_projections, projection_checkpoints, consumer_inbox TO "${role}";
-    GRANT UPDATE (balance, currency, "aggregateVersion", "lastEventId", evidence) ON fund_balance_projections TO "${role}";
-    GRANT UPDATE ("sourceOffset", "lastEventId", "updatedAt") ON projection_checkpoints TO "${role}";
-    GRANT UPDATE ("createdAt") ON projection_builds TO "${role}";
-  `)
-  workerRoles.push(role)
-  for (const table of ["event_outbox", "event_aggregate_heads", "funds", "domain_events"]) {
-    await scratch.$executeRawUnsafe(`CREATE POLICY "${role}" ON "${table}" AS RESTRICTIVE TO "${role}"
-      USING ("organizationId" = '${organizationId}') WITH CHECK ("organizationId" = '${organizationId}')`)
-  }
-  const boundaries: Record<string, string> = {
-    projection_builds: `"organizationId" = '${organizationId}' AND id = '${buildId}'::uuid`,
-    projection_checkpoints: `"organizationId" = '${organizationId}' AND "buildId" = '${buildId}'::uuid`,
-    consumer_inbox: `"organizationId" = '${organizationId}' AND "consumerName" = 'fund-shadow:${buildId}' AND "consumerVersion" = 1`,
-  }
-  for (const [table, boundary] of Object.entries(boundaries)) {
-    await scratch.$executeRawUnsafe(`CREATE POLICY "${role}" ON "${table}" AS RESTRICTIVE TO "${role}"
-      USING (${boundary}) WITH CHECK (${boundary})`)
-  }
-  const shadow = `"organizationId" = '${organizationId}' AND status = 'shadow' AND "projectionVersion" = 2 AND "buildKey" = '${buildKey}'`
-  await scratch.$executeRawUnsafe(`CREATE POLICY "${role}_read" ON fund_balance_projections AS RESTRICTIVE FOR SELECT TO "${role}"
-    USING ((${shadow}) OR ("organizationId" = '${organizationId}' AND status = 'active' AND "projectionVersion" = 1))`)
-  await scratch.$executeRawUnsafe(`CREATE POLICY "${role}_insert" ON fund_balance_projections AS RESTRICTIVE FOR INSERT TO "${role}" WITH CHECK (${shadow})`)
-  await scratch.$executeRawUnsafe(`CREATE POLICY "${role}_update" ON fund_balance_projections AS RESTRICTIVE FOR UPDATE TO "${role}"
-    USING (${shadow}) WITH CHECK (${shadow})`)
-  const url = new URL(scratchUrl())
-  url.username = role
-  url.password = password
-  return { scope, client: clientFor(url), records, fundId }
-}
-
-function scratchUrl(): string {
-  const url = checkedAdmin()
-  url.pathname = `/${databaseName}`
-  return url.toString()
-}
-
-async function fixture(): Promise<Context> {
-  const organizationId = `shadow-org-${randomUUID()}`
-  const fundId = `shadow-fund-${randomUUID()}`
-  await scratch.$executeRawUnsafe(`INSERT INTO organizations (id, name) VALUES ($1, 'synthetic Fund shadow tenant')`, organizationId)
-  await scratch.$executeRawUnsafe(`INSERT INTO funds (id, "organizationId", name, currency, "currentBalance") VALUES ($1, $2, 'Synthetic Fund', 'USD', 0.0000)`, fundId, organizationId)
-  for (const [type, amount] of [["deposit", "10.1234"], ["withdrawal", "0.1234"]]) {
-    // Match the real INSERT-first compatibility route. Its BEFORE INSERT
-    // trigger appends the fact/outbox and changes active v1, deliberately NOT
-    // funds: the second source update must observe the pre-withdrawal balance.
-    // Deferred coherence rejects an omitted second statement at COMMIT.
-    await scratch.$transaction(async tx => {
-      await tx.$executeRawUnsafe(`INSERT INTO fund_transactions (id, "organizationId", "fundId", type, amount) VALUES ($1, $2, $3, $4, $5::numeric)`,
-      randomUUID(), organizationId, fundId, type, amount)
-      const changed = await tx.$executeRawUnsafe(`UPDATE funds SET "currentBalance" = "currentBalance" + $3::numeric
-        WHERE id = $1 AND "organizationId" = $2 AND ($3::numeric >= 0 OR "currentBalance" >= -$3::numeric)`,
-      fundId, organizationId, type === "deposit" ? amount : `-${amount}`)
-      expect(changed).toBe(1)
-    })
-  }
-  await scratch.$executeRawUnsafe(`UPDATE funds SET name = 'Synthetic renamed' WHERE id = $1`, fundId)
-  await scratch.$executeRawUnsafe(`UPDATE funds SET "isActive" = false WHERE id = $1`, fundId)
-  await scratch.$executeRawUnsafe(`UPDATE funds SET "isActive" = true WHERE id = $1`, fundId)
-  const outbox = await scratch.$queryRawUnsafe<Array<{ value: string; hash: string; key: string; eventId: string; eventType: string }>>(`
-    SELECT o.envelope::text AS value, o."payloadHash" AS hash, o."partitionKey" AS key, o."eventId"::text AS "eventId", o."eventType"
-    FROM event_outbox o JOIN domain_events e ON e.id = o."eventId" AND e."organizationId" = o."organizationId"
-    WHERE o."organizationId" = $1 ORDER BY e."aggregateVersion"`, organizationId)
-  expect(outbox).toHaveLength(6)
-  const records = outbox.map((row, index): KafkaEventRecord => ({ topic, partition: 0, offset: String(index * 2 + 10), key: row.key,
-    value: row.value, headers: { id: row.eventId, eventtype: row.eventType, organizationid: organizationId, payloadhash: row.hash } }))
-  return newBuild(organizationId, fundId, records)
-}
-
 pgDescribe("Fund shadow on actual PostgreSQL: immutable source, restricted login and real COMMIT", () => {
   beforeAll(async () => {
-    const url = checkedAdmin()
-    admin = clientFor(url)
-    await admin.$executeRawUnsafe(`CREATE DATABASE "${databaseName}"`)
-    created = true
-    const target = new URL(scratchUrl())
-    scratch = clientFor(target)
-    sql(target, `GRANT CREATE ON DATABASE "${databaseName}" TO event_migrator;
-      GRANT USAGE, CREATE ON SCHEMA public TO event_app, event_migrator;`)
-    target.username = "event_app"
-    target.password = "event-app-password"
-    sql(target, readFileSync("scripts/ci/fixtures/fund-shadow/base.sql", "utf8"))
-    target.username = "event_migrator"
-    target.password = "event-migrator-password"
-    for (const migration of ["20260901090000_event_platform_foundation", "20260901100000_fund_event_source_pilot", "20260906120000_projection_replay_control_plane"]) {
-      sql(target, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
-    }
-    // The minimal legacy anchors do not install the application's funds RLS;
-    // explicitly add its tenant predicate, then independently restrict workers.
-    sql(new URL(scratchUrl()), `ALTER TABLE funds ENABLE ROW LEVEL SECURITY;
-      ALTER TABLE funds FORCE ROW LEVEL SECURITY;
-      CREATE POLICY shadow_fixture_tenant ON funds USING ("organizationId" = current_setting('app.org_id', true))
-        WITH CHECK ("organizationId" = current_setting('app.org_id', true));`)
+    postgres = createFundShadowPostgresFixture({ adminUrl: adminUrl!, environment: "test" })
+    await postgres.setup()
+    scratch = postgres.scratch
   }, 120_000)
 
-  afterAll(async () => {
-    await Promise.allSettled(clients.filter(client => client !== admin).map(client => client.$disconnect()))
-    if (created) {
-      await admin.$executeRawUnsafe(`DROP DATABASE "${databaseName}"`)
-      for (const role of workerRoles) await admin.$executeRawUnsafe(`DROP ROLE "${role}"`)
-    }
-    await admin?.$disconnect()
-  })
+  afterAll(async () => { await postgres?.close() })
 
   it("keeps the real source guard: an orphan ledger INSERT cannot commit or leave facts behind", async () => {
     const context = await fixture()
@@ -475,7 +271,7 @@ pgDescribe("Fund shadow on actual PostgreSQL: immutable source, restricted login
 
   it("withholds worker acknowledgement on a real deferred COMMIT rejection", async () => {
     const context = await fixture()
-    sql(new URL(scratchUrl()), `CREATE FUNCTION shadow_worker_commit_reject() RETURNS trigger LANGUAGE plpgsql AS $$
+    postgres.sql(`CREATE FUNCTION shadow_worker_commit_reject() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN RAISE EXCEPTION 'synthetic worker deferred failure' USING ERRCODE = '23514'; END $$;
       CREATE CONSTRAINT TRIGGER shadow_worker_commit_reject AFTER INSERT ON consumer_inbox
       DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION shadow_worker_commit_reject();`)
@@ -523,7 +319,7 @@ pgDescribe("Fund shadow on actual PostgreSQL: immutable source, restricted login
     expect(await counts(context)).toEqual({ shadows: 0, inbox: 0, checkpoints: 0 })
     // A real deferred constraint executes only at COMMIT, after the adapter's
     // callback returned. This distinguishes a transaction factory from a mock.
-    sql(new URL(scratchUrl()), `CREATE FUNCTION shadow_fixture_commit_reject() RETURNS trigger LANGUAGE plpgsql AS $$
+    postgres.sql(`CREATE FUNCTION shadow_fixture_commit_reject() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN RAISE EXCEPTION 'synthetic deferred failure' USING ERRCODE = '23514'; END $$;
       CREATE CONSTRAINT TRIGGER shadow_fixture_commit_reject AFTER INSERT ON consumer_inbox
       DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION shadow_fixture_commit_reject();`)
@@ -545,10 +341,7 @@ pgDescribe("Fund shadow on actual PostgreSQL: immutable source, restricted login
   it("serializes two real connections, rejects gaps/old unknown events, and retries aborted duplicate transactions safely", async () => {
     const context = await fixture()
     const before = await snapshotSource(context.scope.organizationId)
-    const url = new URL(scratchUrl())
-    url.username = context.scope.expectedWorkerRole
-    url.password = password
-    const second = clientFor(url)
+    const second = postgres.connect(context)
     const connections = [context.client, second]
     const bothSnapshotsStarted = signal<void>()
     const failures = new Map<number, ExecuteFailure>()
@@ -627,7 +420,7 @@ pgDescribe("Fund shadow on actual PostgreSQL: immutable source, restricted login
     const workerAtCommit = signal<number>()
     const releaseWorker = signal<void>()
     const controllerReady = signal<number>()
-    const controller = clientFor(new URL(scratchUrl()))
+    const controller = postgres.connect()
     const worker = consumeFundShadowRecord(database(context.client, { beforeCommit: async tx => {
       const [{ pid }] = await tx.$queryRawUnsafe<Array<{ pid: number }>>(`SELECT pg_backend_pid() AS pid`)
       workerAtCommit.resolve(pid)

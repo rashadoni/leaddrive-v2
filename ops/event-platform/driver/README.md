@@ -90,8 +90,34 @@ recreation (including during database work), expired group membership and
 concurrent takeover with the new owner held until the old ACK is rejected.
 The durable database effects are **simulated in this broker fixture**. The
 separate restricted-role PostgreSQL gate proves actual inbox/projection
-transactions. Neither independent proof is an end-to-end production restore
-or a combined real Kafka + production-equivalent database acceptance test.
+transactions. A subsequent **combined** phase in the same disposable broker
+job runs `scripts/event-platform/test-broker-postgres.ts`: actual outbox bytes,
+Kafka, private IPC, the Fund worker and restricted PostgreSQL COMMIT together.
+Its receipt is distinct from the simulated broker fixture's13 markers; require
+`broker_postgres_integration=PASS` on the exact reviewed source revision before
+claiming the combined consumer boundary. Neither phase is a production restore.
+
+The combined phase reuses the actual three database migrations and the same
+per-login tenant/build RLS and column grants as the existing SQL gate. A separate
+digest-pinned ephemeral PostgreSQL service exposes only the runner's synthetic
+test connection; it does not publish Kafka/Connect/Registry or change their
+private Compose topology. No production secret, source connection or live data
+is available. Connections are capped to one per client, closed per scenario,
+and only confirmed fixture-created databases/roles can be cleaned up.
+
+The six combined scenarios assert exact A/B/A reconstruction and unchanged
+source/active/pointers/effects; no ACK before real COMMIT; real deferred COMMIT
+rejection with full rollback; pre-send ACK loss with durable inbox replay;
+post-commit receipt loss with broker-cursor restart; and concurrent takeover
+with a real committed duplicate while the old member's ACK is fenced. The
+takeover hold is **after** the actual SQL transaction, never an extension of
+its15-second timeout. Fixture administration seeds only new synthetic groups
+at their scenario's first published offset and rejects reinitialization.
+
+Outbox publication in this combined test is an exact-byte fixture producer,
+not Debezium. The separate CDC smoke remains required. Full CDC-to-rebuild
+composition, production topology/TLS/ACLs, HA, durable lifecycle governance and
+the independent recovery ceremony are not certified by either CI phase.
 
 A timeout does not mean the broker certainly did not commit: a response may
 be lost after commit. Database COMMIT must precede ACK in every case; stop on

@@ -80,6 +80,22 @@ test('HTTP probes stay inside the isolated network without host port discovery',
     '--fail', '--silent', '--show-error', '--max-time', '3', 'http://registry:8080/apis/registry/v3/system/info'])
 })
 
+test('combined fixture cannot run without its explicit broker and database admission', () => {
+  for (const flags of [
+    { LD_EVENT_STACK_COMBINED: 'yes' },
+    { LD_EVENT_STACK_COMBINED: '1' },
+    { LD_EVENT_STACK_COMBINED: '1', LD_EVENT_STACK_DRIVER: '1' },
+    { LD_EVENT_STACK_COMBINED: '1', LD_EVENT_STACK_DRIVER: '0', FUND_SHADOW_DB_GATE: 'required' },
+  ]) {
+    const result = spawnSync('bash', [script], { encoding: 'utf8', env: {
+      PATH: process.env.PATH, GITHUB_ACTIONS: 'true', LD_EVENT_STACK_DISPOSABLE: '1',
+      LD_EVENT_STACK_PROJECT: 'ld-event-test-guard', ...flags,
+    } })
+    assert.notEqual(result.status, 0)
+    assert.match(result.stdout, /combined database fixture mode|combined drill requires/)
+  }
+})
+
 test('Kafka CLI uses current property flags so stdout contains only the canary record', () => {
   const source = readFileSync(script, 'utf8')
   assert.doesNotMatch(source, /--property\s|--producer-property\s|--consumer-property\s/)

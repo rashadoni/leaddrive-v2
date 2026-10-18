@@ -2450,3 +2450,71 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   SQL COMMIT, not inside an extended transaction. This is a plan, not executed
   proof. No production consumer, offset, replay, WAL/slot, recovery ceremony
   or human approval was created by this merge.
+
+### Combined broker/database drill started — 2026-10-18 13:22 UTC
+
+- New isolated worktree:
+  `/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-kafka-postgres-combined-20261018`,
+  branch `codex/kafka-postgres-combined-20261018`, based on merged e1e50cb50.
+  The previous worktree and all three local journal checkpoints are preserved;
+  those journal entries were cherry-picked here without erasing their history.
+- Scope: reusable disposable PostgreSQL fixture with unchanged restricted
+  grants/RLS and three real migrations, exact immutable outbox bytes published
+  to a disposable Kafka topic, existing bridge/Fund worker, real SQL COMMIT
+  and duplicate/restart/stale-member assertions. No production code/SQL grant
+  changes or new service provisioning follow from this test-only increment.
+- Split work by file ownership: helper extracts the existing SQL fixture and
+  preserves all existing tests; root owns broker fixture composition and CI.
+  Heavy verification remains GitHub-only, one shared disposable phase at a
+  time. No push/second integration run before the preceding release completes.
+- Preceding PR880 automatic deploy39131091042 is queued/building behind the
+  existing PR879 release. Its production receipt remains pending; the new
+  worktree is not evidence of a completed production deployment.
+
+### Combined drill implemented; local verification — 2026-10-18 13:41 UTC
+
+- Test-only composition now joins the actual Java broker bridge/private IPC,
+  existing Fund partition worker and actual restricted Prisma transactions.
+  Six scenarios check broker cursor vs real COMMIT, rollback, durable inbox,
+  exact final balance/version/event/offset checkpoints, tenant order and stale
+  member fencing. Source/active projections/read pointers/effects must remain
+  unchanged. Synthetic outbox publication preserves original key/value/hash
+  bytes; it is not represented as a Debezium-to-rebuild test.
+- Extracted the existing PostgreSQL fixture without relaxing its actual three
+  migrations, per-login grants/RLS or the15-second transaction timeout. New
+  afterCommit hooks run outside that transaction. Clients/pools are bounded;
+  cleanup targets only successfully created unique databases/roles. Existing
+ 14 real-PG cases retained. Fixture administration admits only brand-new
+  synthetic broker groups; resetting an existing group's cursor is rejected.
+- Existing bounded GitHub broker job now includes one separate pinned
+  PostgreSQL service and sequential combined phase, with strict generated-
+  Prisma typecheck and explicit fixture-unit gate. No new concurrent heavy
+  job, production dependency/secret or runtime entrypoint was introduced.
+- PASS locally: focused278/278, new fixture22/22, script/contract guards10/10,
+  strict targeted broker-only TypeScript, assets27 domains/86 topics/5 schemas,
+  runner policy71 workflows, shell syntax and diff whitespace. The extraction
+  initially tripped the source-location guard; it now verifies the imported
+  actual fixture and migrations rather than weakening the runtime requirement.
+- NOT RUN locally: actual Java compile/broker+SQL drill, existing14 SQL tests,
+  generated-client combined TypeScript, full typecheck/build. These require
+  the GitHub heavy executor; a temporary ungenerated Prisma test dependency
+  was used only for mocked local fixture units, never as real SQL evidence.
+- Preceding deploy39131091042 has started its production artifact build and
+  still runs the full baseline. No release/activation claim yet. This branch
+  remains unpublished while that release is in progress.
+
+### Pre-publication review corrections — 2026-10-18 13:43 UTC
+
+- Independent review identified three test-harness deadline weaknesses, not
+  observed production failures. Replacement's post-COMMIT hold now covers the
+  observation budget; takeover/old ACK have explicit deadlines below Java's
+ 60-second command timeout. The test requires a live old process, a completed
+  stale ACK pipe write and exit1 without a signal before that timeout, so a
+  timeout/dead process cannot masquerade as membership-fencing evidence.
+- All fixture admin/producer JVMs now also have an in-container timeout shorter
+  than the host Docker command deadline. Too-small or unbounded observation
+  budgets fail before spawning. This prevents a timed-out Docker shim from
+  leaving an unbounded synthetic producer alive. Existing own-stack EXIT
+  cleanup remains mandatory. Broker-only strict TypeScript and diff check PASS.
+- These are test-only corrections. Actual combined proof and final review
+  still require the generated client and disposable GitHub executor.
