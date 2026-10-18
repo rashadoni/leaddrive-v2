@@ -422,6 +422,17 @@ export const GET = withMobileRls(async (req, auth) => {
           select: { id: true, workDate: true, status: true, startedAt: true, pausedAt: true, completedAt: true },
       })
       : null
+    // An open day's latest mark. «Günü bağla» on a day left open from an
+    // earlier date asks for the finish; no finish can precede a mark the day
+    // already has (owner's phone, 2026-10-18: 18:30 for a day with a break at
+    // 22:18). The phone says so before anything is sent.
+    const workdayLastMark = workday && workday.status !== "COMPLETED"
+      ? await prisma.mtmAgentWorkdayEvent.findFirst({
+          where: { organizationId: auth.orgId, agentId: auth.agentId, workdayId: workday.id },
+          orderBy: { occurredAt: "desc" },
+          select: { occurredAt: true },
+        })
+      : null
     const qrEnabled = workforceEnabled && auth.tenantCapabilities.attendanceQr === true
     const deviceTrustEnabled = workforceEnabled && auth.tenantCapabilities.attendanceDeviceTrust === true
     const attendance = await mobileAttendanceManifest({
@@ -546,7 +557,7 @@ export const GET = withMobileRls(async (req, auth) => {
         // Additive v1 field. Older APKs ignore it; newer APKs use it to avoid
         // disabled endpoints before the corresponding mutation is attempted.
         manifest,
-        workday,
+        workday: workday ? { ...workday, ...(workdayLastMark ? { lastMarkAt: workdayLastMark.occurredAt } : {}) } : workday,
         // Field UX audit 2026-09-05, task B16: the app's GPS and live maps
         // render CARTO raster tiles in a WebView and showed "API KEY REQUIRED"
         // without a key. The key is the same browser-facing, referrer-bound

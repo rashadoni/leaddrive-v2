@@ -86,10 +86,7 @@ export async function applyAttendanceTimeCorrectionInTransaction(tx: Prisma.Tran
     : !current || current.id !== request.correctionWorkdayId || !sameFacts(workforceWorkdayCorrectionFacts(current), basis.facts)) conflict()
   const workdayId = current?.id ?? randomUUID()
   const before = current ? workforceWorkdayCorrectionFacts(current) : { kind: "MISSING" as const, workDate }
-  const after: WorkforceWorkdayCorrectionFacts = {
-    id: workdayId, workDate, status: "COMPLETED", startedAt: start.toISOString(), completedAt: end.toISOString(), pausedAt: null,
-    totalPausedSeconds: (current?.totalPausedSeconds ?? 0) + (current?.pausedAt ? Math.floor((end.getTime() - current.pausedAt.getTime()) / 1000) : 0),
-  }
+  const after = attendanceCorrectionAfterFacts({ workdayId, workDate, current, start, end })
   if (current && sameFacts(workforceWorkdayCorrectionFacts(current), after)) conflict("MTM_ATTENDANCE_CORRECTION_UNCHANGED")
   const [events, corrections] = current ? await Promise.all([
     tx.mtmAgentWorkdayEvent.findMany({ where: { organizationId, agentId: request.agentId, workdayId },
@@ -123,4 +120,46 @@ export async function applyAttendanceTimeCorrectionInTransaction(tx: Prisma.Tran
     entity: "workday", entityId: workdayId, metadataKind: "workforce_time_correction", oldData: { workday: before },
     newData: { workday: after, actorUserId: userId, requestId, correctionId, source: "REQUEST_APPROVAL" } } })
   return { requestId, correctionId, workdayId, workday: after, idempotent: false }
+}
+
+type CorrectionCurrent = { totalPausedSeconds: number; pausedAt: Date | null } | null
+
+/** The facts an approved correction leaves the day in: one rule for the approval and for the probe below. */
+export function attendanceCorrectionAfterFacts(input: { workdayId: string; workDate: string; current: CorrectionCurrent; start: Date; end: Date }): WorkforceWorkdayCorrectionFacts {
+  const { workdayId, workDate, current, start, end } = input
+  return {
+    id: workdayId, workDate, status: "COMPLETED", startedAt: start.toISOString(), completedAt: end.toISOString(), pausedAt: null,
+    totalPausedSeconds: (current?.totalPausedSeconds ?? 0) + (current?.pausedAt ? Math.floor((end.getTime() - current.pausedAt.getTime()) / 1000) : 0),
+  }
+}
+
+/**
+ * Would the day's journal take this correction? The same replay the approval
+ * runs, asked when the employee submits. Owner's phone, 2026-10-18: «Günü
+ * bağla» at 18:30 for a day whose journal had a return to work at 21:53 and a
+ * break at 22:18 — no finish can precede the marks after it, so the request sat
+ * PENDING where neither the manager nor the company's auto-approval could ever
+ * approve it (MTM_ATTENDANCE_CORRECTION_HISTORY_INVALID at approval). Refusing
+ * at submission tells the employee while they are still holding the phone.
+ */
+export async function attendanceCorrectionFitsJournal(
+  tx: Prisma.TransactionClient,
+  input: { organizationId: string; agentId: string; workday: { id: string; workDate: Date; status: string; startedAt: Date; pausedAt: Date | null; completedAt: Date | null; totalPausedSeconds: number }; start: Date; end: Date },
+): Promise<boolean> {
+  const { organizationId, agentId, workday, start, end } = input
+  const workDate = workday.workDate.toISOString().slice(0, 10)
+  const before = workforceWorkdayCorrectionFacts(workday)
+  const after = attendanceCorrectionAfterFacts({ workdayId: workday.id, workDate, current: workday, start, end })
+  const [events, corrections] = await Promise.all([
+    tx.mtmAgentWorkdayEvent.findMany({ where: { organizationId, agentId, workdayId: workday.id },
+      orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER], select: WORKFORCE_WORKDAY_JOURNAL_SELECT }),
+    tx.workforceTimeCorrection.findMany({ where: { organizationId, agentId, workdayId: workday.id }, select: { id: true, beforeFacts: true, afterFacts: true } }),
+  ])
+  try {
+    replayWorkforceWorkdayFacts({ workdayId: workday.id, events: events.map(workforceWorkdayEventFact), corrections: [...corrections, { id: "submission-probe", beforeFacts: before, afterFacts: after }] })
+    return true
+  } catch (error) {
+    if (error instanceof WorkforceWorkdayFactsReplayError) return false
+    throw error
+  }
 }

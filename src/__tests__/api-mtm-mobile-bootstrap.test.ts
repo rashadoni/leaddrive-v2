@@ -855,6 +855,28 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     }))
   })
 
+  it("tells the phone the latest mark of a still-open day, so «Günü bağla» cannot finish before it", async () => {
+    // Owner's phone, 2026-10-18: 18:30 asked for a day with a break at 22:18.
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
+      id: "workday-left-open",
+      workDate: new Date("2026-08-22T00:00:00.000Z"),
+      status: "STARTED",
+      startedAt: new Date("2026-08-22T05:00:00.000Z"),
+      pausedAt: null,
+      completedAt: null,
+    } as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findFirst).mockResolvedValue({ occurredAt: new Date("2026-08-22T18:18:57.116Z") } as never)
+
+    const json = await (await GET(request())).json()
+
+    expect(json.data.workday).toMatchObject({ id: "workday-left-open", lastMarkAt: "2026-08-22T18:18:57.116Z" })
+    expect(prisma.mtmAgentWorkdayEvent.findFirst).toHaveBeenCalledWith({
+      where: { organizationId: ORG, agentId: AGENT, workdayId: "workday-left-open" },
+      orderBy: { occurredAt: "desc" },
+      select: { occurredAt: true },
+    })
+  })
+
   it("looks up today's shift by the stored date, not the tenant-midnight instant", async () => {
     vi.useFakeTimers({ toFake: ["Date"] })
     // 18:30 in Asia/Baku (UTC+4) on 2026-09-15.

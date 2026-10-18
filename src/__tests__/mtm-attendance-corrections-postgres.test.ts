@@ -197,6 +197,20 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
       expect(await prisma.mtmHrmRequest.findUnique({ where: { id: request.id } })).toMatchObject({ status: "PENDING", correctionWorkdayId: null })
     })
   })
+  it("refuses at submission a finish before the day's own later marks — nobody could ever approve it", async () => {
+    // Owner's phone, 2026-10-18: «Günü bağla» at 18:30 for a day with a break at 22:18 sat PENDING for good.
+    await seedDay("2026-09-05", "PAUSED") // START 09:30, a break open since 12:00
+    await expect(submit(input("2026-09-05", "09:30", "11:00"))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_CORRECTION_OUTSIDE_MARKS" })
+    // A start after the first mark is refused the same way.
+    await expect(submit(input("2026-09-05", "12:30", "18:00"))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_CORRECTION_OUTSIDE_MARKS" })
+    await tenant(ORG, async () => {
+      expect(await prisma.mtmHrmRequest.count({ where: { agentId: AGENT, startDate: new Date("2026-09-05") } })).toBe(0)
+    })
+    // At or after the last mark it is an ordinary request.
+    const { request } = await submit(input("2026-09-05", "09:30", "12:00"))
+    expect(request.status).toBe("PENDING")
+    await approve(request)
+  })
   it("auto-approves «Закрыть день» where the company switched it on — only with the start untouched, so lateness stays", async () => {
     // Owner, 2026-10-18: «автоподтверждение, но чтоб были показаны опоздания» — only «Закрыть день».
     const setting = (key: string, value: Prisma.InputJsonValue) => tenant(ORG, () => prisma.mtmSetting.upsert({
