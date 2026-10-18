@@ -5,12 +5,14 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'scripts/backup/**'
+      - 'ops/backup/owner-workstation*'
       - '.github/workflows/owner-recovery-*.yml'
       - 'scripts/server-deploy.sh'
   push:
     branches: [main]
     paths:
       - 'scripts/backup/**'
+      - 'ops/backup/owner-workstation*'
       - '.github/workflows/owner-recovery-*.yml'
 permissions:
   contents: read
@@ -21,7 +23,7 @@ jobs:
   owner-proof:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
         with:
@@ -49,3 +51,12 @@ jobs:
         run: |
           node scripts/ci/test-event-platform-assets.mjs
           bash -n scripts/backup/commission-production-backup.sh scripts/backup/postgres-backup.sh scripts/backup/snapshot-secrets.sh scripts/backup/snapshot-runtime-files.sh scripts/backup/verify-offline-backup.sh
+      - name: Build isolated owner workbench (synthetic data only)
+        run: docker build -f ops/backup/owner-workstation.Dockerfile -t owner-workbench-test .
+      - name: Check network isolation and disposable PostgreSQL
+        run: |
+          docker run --rm --network none --read-only --memory 1g --cpus 1 \
+            --tmpfs /scratch:rw,noexec,nosuid,size=128m,mode=0700 \
+            --tmpfs /database:rw,noexec,nosuid,size=256m,mode=0700 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            owner-workbench-test --self-test

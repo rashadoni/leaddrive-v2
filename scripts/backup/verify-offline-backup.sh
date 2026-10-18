@@ -492,7 +492,7 @@ ssh-keygen -y -f "$SIGNING_KEY_FILE" 2>/dev/null | grep -Eq '^ssh-ed25519 AAAA[A
 
 for reviewed_file in "$SCRIPT_DIR/verify-offline-backup.sh" \
   "$SCRIPT_DIR/postgres-restore-canary.sh" "$SCRIPT_DIR/prove-restored-pii.mjs" \
-  "$SCRIPT_DIR/canary.sql"; do
+  "$SCRIPT_DIR/canary.sql" "$SCRIPT_DIR/migration-ledger.sql"; do
   [ -f "$reviewed_file" ] && [ ! -L "$reviewed_file" ] \
     || fatal "reviewed verifier component is missing or symlinked"
 done
@@ -500,6 +500,10 @@ archive_verifier_sha256="$(sha256sum "$SCRIPT_DIR/verify-offline-backup.sh" | aw
 restore_canary_sha256="$(sha256sum "$SCRIPT_DIR/postgres-restore-canary.sh" | awk '{print $1}')"
 pii_proof_sha256="$(sha256sum "$SCRIPT_DIR/prove-restored-pii.mjs" | awk '{print $1}')"
 canary_sql_sha256="$(sha256sum "$SCRIPT_DIR/canary.sql" | awk '{print $1}')"
+
+migration_ledger_sql_sha256="$(sha256sum "$SCRIPT_DIR/migration-ledger.sql" | awk '{print $1}')"
+[ "$migration_ledger_sql_sha256" = "a3585854bf942d0d6eb93c605296bec53084a6e824da171d2ac3aa07f576d7df" ] \
+  || fatal "migration ledger SQL differs from reviewed bytes"
 
 actual_database_sha256="$(sha256sum "$DATABASE_ARCHIVE" | awk '{print $1}')"
 actual_secrets_sha256="$(sha256sum "$SECRETS_ARCHIVE" | awk '{print $1}')"
@@ -589,11 +593,13 @@ install -m 0700 "$RUNNING_VERIFIER_FILE" "$WORK_DIR/helpers/verify-offline-backu
 install -m 0700 "$SCRIPT_DIR/postgres-restore-canary.sh" "$WORK_DIR/helpers/postgres-restore-canary.sh"
 install -m 0600 "$SCRIPT_DIR/prove-restored-pii.mjs" "$WORK_DIR/helpers/prove-restored-pii.mjs"
 install -m 0600 "$SCRIPT_DIR/canary.sql" "$WORK_DIR/helpers/canary.sql"
+install -m 0600 "$SCRIPT_DIR/migration-ledger.sql" "$WORK_DIR/helpers/migration-ledger.sql"
 sync -f -- "$WORK_DIR/inputs/database.tar.age" "$WORK_DIR/inputs/secrets.tar.age" \
   "$WORK_DIR/inputs/runtime-files.tar.age" "$WORK_DIR/inputs/candidate.env" \
   "$WORK_DIR/private/age-identity.txt" "$WORK_DIR/private/evidence-signing-key" \
   "$WORK_DIR/helpers/verify-offline-backup.sh" "$WORK_DIR/helpers/postgres-restore-canary.sh" \
   "$WORK_DIR/helpers/prove-restored-pii.mjs" "$WORK_DIR/helpers/canary.sql" \
+  "$WORK_DIR/helpers/migration-ledger.sql" \
   "$WORK_DIR/inputs" "$WORK_DIR/private" "$WORK_DIR/helpers" "$WORK_DIR"
 if [ "$CANDIDATE_FORMAT_VERSION" = 3 ]; then
   sync -f -- "$WORK_DIR/inputs/log-evidence.tar.gz.age" \
@@ -628,6 +634,7 @@ fi
   && [ "$(sha256sum "$SCRIPT_DIR/postgres-restore-canary.sh" | awk '{print $1}')" = "$restore_canary_sha256" ] \
   && [ "$(sha256sum "$SCRIPT_DIR/prove-restored-pii.mjs" | awk '{print $1}')" = "$pii_proof_sha256" ] \
   && [ "$(sha256sum "$SCRIPT_DIR/canary.sql" | awk '{print $1}')" = "$canary_sql_sha256" ] \
+  && [ "$(sha256sum "$SCRIPT_DIR/migration-ledger.sql" | awk '{print $1}')" = "$migration_ledger_sql_sha256" ] \
   || fatal "a private staged verifier helper differs from the reviewed bytes"
 staged_recipient="$(age-keygen -y "$AGE_IDENTITY_FILE" 2>/dev/null)" \
   || fatal "private staged identity could not derive its recipient"

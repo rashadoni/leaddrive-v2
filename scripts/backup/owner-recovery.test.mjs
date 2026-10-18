@@ -254,3 +254,46 @@ case "$WORK_DIR" in /var/tmp/leaddrive-backup-evidence.*) rm -rf -- "$WORK_DIR";
   result = admission('archive-restore')
   assert.equal(result.status, 0, 'existing independent archive verification still accepts its original scope/signature/claims: ' + result.stderr)
 }))
+
+test('actual interrupted-fence recovery recognizes owner backup journal and rejects unknown operations', () => fixture((dir) => {
+  const journal = join(dir, 'runner-fence.env')
+  const services = { BACKUP: 'synthetic-owner-db.service', SECRETS: 'synthetic-owner-secrets.service',
+    RUNTIME_FILES: 'synthetic-owner-runtime.service', LOG: 'synthetic-owner-log.service' }
+  const fields = { FORMAT_VERSION: '3', STATUS: 'fencing', ...Object.fromEntries(Object.entries(services).map(([k, v]) => [`${k}_SERVICE`, v])) }
+  for (const label of Object.keys(services)) {
+    fields[`${label}_TIMER_LOAD_STATE`] = 'loaded'
+    fields[`${label}_TIMER_ENABLED_STATE`] = 'disabled'
+    fields[`${label}_TIMER_ACTIVE_STATE`] = 'inactive'
+  }
+  fields.WORKFLOW_RUN_ID = '12345'
+  fields.OPERATION = 'run-owner-backup'
+  const recover = extract('recover_commission_runner_fence')
+  const program = `set -euo pipefail
+fatal() { exit 1; }
+log() { :; }
+assert_root_directory() { test -d "$2" && test ! -L "$2"; }
+assert_root_file() { test -f "$2" && test ! -L "$2"; }
+read_unique_value_from() { awk -F= -v key="$2" '$1==key {if(n++)exit 2; print substr($0,length(key)+2)}' "$1"; }
+systemctl() { case "$*" in *LoadState*) echo not-found;; is-enabled*) echo disabled;; *) exit 1;; esac; }
+clear_commission_runner_fence() { printf 'synthetic_cleanup_called\\n'; }
+COMMISSION_STATE_ROOT="$1" COMMISSION_FENCE_JOURNAL="$2"
+BACKUP_SERVICE=${services.BACKUP} SECRETS_SERVICE=${services.SECRETS}
+RUNTIME_FILES_SERVICE=${services.RUNTIME_FILES} LOG_SERVICE=${services.LOG}
+${recover}
+recover_commission_runner_fence`
+  for (const [operation, status] of [['run-owner-backup', 0], ['run-bootstrap-backup', 0], ['unrecognized-command', 1]]) {
+    writeFileSync(journal, Object.entries({ ...fields, OPERATION: operation }).map(([k, v]) => `${k}=${v}\n`).join(''), { mode: 0o600 })
+    const result = spawnSync('bash', ['-c', program, 'fixture', dir, journal], { env, encoding: 'utf8', timeout: 5000 })
+    assert.equal(result.status, status)
+    assert.equal(result.stdout.includes('synthetic_cleanup_called'), status === 0)
+  }
+}))
+
+// A real recovery invokes the staged helper, which requires this SQL dependency.
+test('private verifier staging includes the reviewed migration SQL dependency', () => {
+  const source = readFileSync(join(root, 'scripts/backup/verify-offline-backup.sh'), 'utf8')
+  const digest = sha(readFileSync(join(root, 'scripts/backup/migration-ledger.sql')))
+  assert.ok(source.includes(`install -m 0600 "$SCRIPT_DIR/migration-ledger.sql" "$WORK_DIR/helpers/migration-ledger.sql"`))
+  assert.ok(source.includes(digest))
+  assert.ok(source.includes(`"$migration_ledger_sql_sha256"`))
+})

@@ -339,3 +339,38 @@
 - Fresh existing Actions backup-readiness inspection dispatched on current main
   before production operation planning; await actual result, do not assume old
   Object Lock unknown_failure has resolved. No new diagnostic code/secret dump.
+
+## 2026-10-19: continue interrupted-run safety and isolated workstation preparation
+
+- Resumed exact dedicated worktree/branch; codex-project-context and fetched
+  origin/main still resolve reviewed main 226dde0e77c0c36a4de991bb703ba8f8416c5a64,
+  rashadoni/leaddrive-v2, registered 13.140.132.245:/opt/leaddrive-v2,
+  GitHub Actions release only. Dirty canonical checkout untouched.
+- Fresh read-only Actions run39168344222 completed: machine_ready=no,
+  enterprise_ga_ready=no,24issues/9gaps. Object Lock remains unconfirmed with
+  service_error_format_unrecognized. This is not evidence of unlocked storage,
+  invalid credentials or provider outage; production backup remains NOT RUN.
+- User screenshots show Mac owner signing public key created, age1.3.1,
+  PostgreSQL16.13, Docker installed but Colima daemon unavailable. Mac/USB age
+  key equality was previously observed; second external medium unavailable and
+  not required for the separately limited owner route. No independence claim.
+- Fixed interrupted owner producer fence journal operation admission. Added
+  executable synthetic recovery test covering accepted owner/original operation
+  and refusal of unknown operation. Existing asset assertion updated to match.
+- Found actual offline verifier staging omitted required migration-ledger.sql.
+  Added reviewed SQL digest validation, private copy/sync and staged byte check;
+  updated archive-verifier pins. This prevents a guaranteed missing-file failure
+  during an actual restore; it does not certify one has occurred.
+- Added disposable Linux owner workbench for Mac ARM64/amd64: pinned PG16.13
+  multi-platform image and age1.3.2 archives, networkless admission, tmpfs scratch
+  and PGDATA, NOSUPERUSER CREATEDB scratch role, local private-key staging and
+  evidence-only export. No application or production DB connection. CI builds
+  and runs synthetic isolation self-test on hosted Linux only.
+- Resources checked before narrow sequential tests: available RAM ~14GB,
+  swap0used, disk202GB, memory pressure negligible.11owner tests with real
+  synthetic age/SSH crypto PASS/no skips; assets27domains86topics5schemas PASS;
+  shell syntax, workflow YAML parse and runner policy73workflows PASS.
+- Container build/self-test NOT RUN on Contabo by workload policy; awaits CI.
+  Real production backup and scratch restore NOT RUN; Object Lock diagnostic,
+  reviewed main delivery, Mac VM capacity/custody and fresh signed local key
+  receipt remain prerequisites. Farah confirmation NOT PROVIDED.

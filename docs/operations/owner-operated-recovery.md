@@ -165,3 +165,52 @@ successful backup they remain disabled. Canonical recipient/env and independent
 certificates never change, so there is no production key/policy rollback.
 Retain owner objects and evidence; do not delete data or weaken Object Lock to
 “undo” a candidate. A failed backup/restore remains failed, not owner acceptance.
+
+## Disposable Mac Linux workbench
+
+`ops/backup/owner-workstation.Dockerfile` pins the multi-platform PostgreSQL
+16.13 base and official age1.3.2 release checksums. Distribution packages are
+resolved at build time. It supports native Apple ARM64; no production keys or
+archives are included in the image. The entrypoint refuses network interfaces
+other than loopback and requires separate tmpfs mounts for plaintext and PGDATA.
+The GitHub check builds it and runs **synthetic** PostgreSQL isolation only.
+This is not evidence of a customer-data restore.
+
+On the Mac, use a separate Colima profile so existing default workloads are
+unaffected. Check available memory/disk first; do not start if capacity is
+insufficient. The following prepares a 2 CPU/4 GiB VM, without new services:
+
+```bash
+colima start --profile leaddrive-recovery --cpu 2 --memory 4 --disk 20
+docker --context colima-leaddrive-recovery build \
+  -f ops/backup/owner-workstation.Dockerfile -t leaddrive-owner-workbench .
+docker --context colima-leaddrive-recovery run --rm --network none \
+  --read-only --memory 1g --cpus 1 \
+  --tmpfs /scratch:rw,noexec,nosuid,size=128m,mode=0700 \
+  --tmpfs /database:rw,noexec,nosuid,size=256m,mode=0700 \
+  --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+  leaddrive-owner-workbench --self-test
+```
+
+For `--key-proof MAIN_SHA OWNER RECIPIENT_SHA`, additionally mount the reviewed
+checkout read-only at `/workspace`, a dedicated private folder containing only
+`identity.agekey` and `owner-evidence` read-only at `/owner-keys`, and a new
+private evidence directory at `/output`. Private keys are copied into tmpfs to
+establish Linux ownership/modes, never into the image or output. The Mac signing
+private key remains on the Mac. Replace the unused administrative public signer
+with the Mac public signer before the first actual owner ceremony.
+
+`--restore CANDIDATE_SHA RECIPIENT_SHA EVIDENCE_REF OWNER MAIN_SHA` additionally
+requires a read-only `/ciphertext` mount containing `database.tar.age`,
+`secrets.tar.age`, `runtime-files.tar.age`, `candidate.env`. Use measured archive
+sizes to choose sufficient bounded scratch, PGDATA and container memory before
+running; the tiny self-test limits above are not production restore capacity.
+The entrypoint creates a disposable loopback PostgreSQL16 cluster and a
+NOSUPERUSER CREATEDB verifier, invokes the existing full data/PII checks, and
+exports only signed evidence on success. Private diagnostics stay in tmpfs.
+A failed run exports no recovery receipt. No host port, host Docker socket,
+production connection string, or application process is allowed inside it.
+
+Stop the separate Colima profile when done. Colima VM swap/disk encryption and
+owner workstation custody must be assessed before real plaintext processing;
+container tmpfs by itself does not prove that the host has no swap exposure.
