@@ -1559,3 +1559,15 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   mutation. Publish only a draft; finish PR871 actual delivery before marking
   the next frozen head ready. No timer or recovery commissioning is authorized
   by a diagnostic result.
+
+### Final local fixture timing review
+
+- Helper re-read the completed privacy/timeout delta and found no concrete
+  blocker. To avoid a cold-runner startup race, widened ONLY synthetic test
+  deadlines from fractions of a second to1–3 seconds; production45/55 limits
+  and policy remain unchanged. Actual10/10 PASS again in6.7sec on86a3ddf73,
+  including GNU timeout, forced kill, parser failure and absent fixture PIDs.
+- Freeze the next source only after all local checks; open a draft for cheap
+  checks, leaving its heavy gates off until prior287047e2 production delivery
+  has an actual receipt. No deployment/inspection is dispatched from this
+  feature branch and no old successful workflow is rerun.
