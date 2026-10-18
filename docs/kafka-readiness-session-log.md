@@ -1118,3 +1118,27 @@ service, branch delivery or Kafka runtime was changed by this documentation.
 - Next frozen draft checkpoint will be marked ready only after its exact head
   and cheap checks are observed; this starts the first real required CI/PG run.
   No premature merge, production role setup, Kafka subscription or replay.
+
+### First real PostgreSQL gate FAILURE — fixture transaction corrected
+
+- Marked exact ca07832962fab8993fae455733ff05c78b43ae8d ready only after all
+  cheap checks completed. Actual required run39081041370 started static and
+  typecheck; synthetic CDC39081041329 SUCCESS on that same head.
+- Static job117537933925 failed in the new real-PG gate: all seven cases
+  stopped while preparing source data, before calling the shadow adapter.
+  PostgreSQL23514 reported missing coherent active Fund state at COMMIT.
+  The opening had correctly created active v1; the test's later ledger INSERT
+  was wrongly autocommitted without the mandatory second source balance update.
+  This is a fixture bug, not an infrastructure outage or an adapter race result.
+- Compared the actual migration779–877 and existing migration harness259–270 /
+  314–326: the compatibility trigger intentionally appends event/outbox and
+  changes active v1, but does not change funds.currentBalance. Each movement
+  must be its own real INSERT-first + conditional source UPDATE transaction.
+  Grouping both movements into one commit would also violate each event's
+  resultingBalance contract; no migration/trigger/guard was weakened.
+- Converted PR871 back to draft. Corrected only fixture transaction preparation
+  and added a negative control: an orphan ledger INSERT must still fail23514
+  and leave source facts/projection unchanged. The corrected test is NOT RUN
+  yet. Old-run typecheck continues; no manual cancellation, rerun or duplicate
+  full CI was started. Root waits for its useful diagnostics before pushing
+  the next frozen draft checkpoint for ordinary new-SHA verification.

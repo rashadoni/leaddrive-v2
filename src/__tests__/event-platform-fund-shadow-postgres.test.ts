@@ -194,8 +194,18 @@ async function fixture(): Promise<Context> {
   await scratch.$executeRawUnsafe(`INSERT INTO organizations (id, name) VALUES ($1, 'synthetic Fund shadow tenant')`, organizationId)
   await scratch.$executeRawUnsafe(`INSERT INTO funds (id, "organizationId", name, currency, "currentBalance") VALUES ($1, $2, 'Synthetic Fund', 'USD', 0.0000)`, fundId, organizationId)
   for (const [type, amount] of [["deposit", "10.1234"], ["withdrawal", "0.1234"]]) {
-    await scratch.$executeRawUnsafe(`INSERT INTO fund_transactions (id, "organizationId", "fundId", type, amount) VALUES ($1, $2, $3, $4, $5::numeric)`,
-    randomUUID(), organizationId, fundId, type, amount)
+    // Match the real INSERT-first compatibility route. Its BEFORE INSERT
+    // trigger appends the fact/outbox and changes active v1, deliberately NOT
+    // funds: the second source update must observe the pre-withdrawal balance.
+    // Deferred coherence rejects an omitted second statement at COMMIT.
+    await scratch.$transaction(async tx => {
+      await tx.$executeRawUnsafe(`INSERT INTO fund_transactions (id, "organizationId", "fundId", type, amount) VALUES ($1, $2, $3, $4, $5::numeric)`,
+      randomUUID(), organizationId, fundId, type, amount)
+      const changed = await tx.$executeRawUnsafe(`UPDATE funds SET "currentBalance" = "currentBalance" + $3::numeric
+        WHERE id = $1 AND "organizationId" = $2 AND ($3::numeric >= 0 OR "currentBalance" >= -$3::numeric)`,
+      fundId, organizationId, type === "deposit" ? amount : `-${amount}`)
+      expect(changed).toBe(1)
+    })
   }
   await scratch.$executeRawUnsafe(`UPDATE funds SET name = 'Synthetic renamed' WHERE id = $1`, fundId)
   await scratch.$executeRawUnsafe(`UPDATE funds SET "isActive" = false WHERE id = $1`, fundId)
@@ -243,6 +253,16 @@ pgDescribe("Fund shadow on actual PostgreSQL: immutable source, restricted login
       for (const role of workerRoles) await admin.$executeRawUnsafe(`DROP ROLE "${role}"`)
     }
     await admin?.$disconnect()
+  })
+
+  it("keeps the real source guard: an orphan ledger INSERT cannot commit or leave facts behind", async () => {
+    const context = await fixture()
+    const before = await snapshotSource(context.scope.organizationId)
+    await expect(scratch.$executeRawUnsafe(`INSERT INTO fund_transactions (id, "organizationId", "fundId", type, amount)
+      VALUES ($1, $2, $3, 'deposit', 1.0000)`, randomUUID(), context.scope.organizationId, context.fundId))
+      .rejects.toMatchObject({ code: "P2010", meta: { code: "23514" } })
+    expect(await snapshotSource(context.scope.organizationId)).toEqual(before)
+    expect(await counts(context)).toEqual({ shadows: 0, inbox: 0, checkpoints: 0 })
   })
 
   it("rebuilds two independently authorized tenants exactly, leaving source/active/pointers/effects unchanged", async () => {
