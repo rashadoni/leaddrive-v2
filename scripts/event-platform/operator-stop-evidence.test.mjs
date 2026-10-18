@@ -73,3 +73,21 @@ test('independent expected values cannot change across asynchronous readback',as
   f.expected.plan.organizationId='org-b';f.receipt.organizationId='org-b';return f.receipt
  }))
 })
+test('complete partitions compare by identity, not provider ordering',async()=>{
+ const f=fixture();f.expected.partitionCount=2
+ f.manifest.partitions.push({...f.manifest.partitions[0],partition:1,checkpointNext:'7',frozenEndExclusive:'7',archiveNext:'7'})
+ f.receipt.partitions.unshift({partition:1,checkpointNext:'7'})
+ assert.equal((await verifyOperatorRecoveryStop(f.pin(),f.expected,async()=>f.receipt)).partitionCount,2)
+})
+test('rollback consistency and retained-build checks still apply before readback',async()=>{
+ const f=fixture();f.plan.action='rollback';f.manifest.action='rollback'
+ f.manifest.rollback={retainedBuildId:f.plan.buildId,compatibilityVerified:true,windowEndsAt:'2026-10-19T01:00:00.000Z',writeFenceApplied:true}
+ assert.equal((await verifyOperatorRecoveryStop(f.pin(),f.expected,async()=>f.receipt)).receiptId,'close-a')
+ f.manifest.rollback.writeFenceApplied=false;let reads=0
+ await deny(verifyOperatorRecoveryStop(f.pin(),f.expected,async()=>{reads++;return f.receipt}));assert.equal(reads,0)
+})
+test('tampered raw bytes and oversized observer record fail closed',async()=>{
+ const f=fixture(),raw=f.pin();let reads=0
+ await deny(verifyOperatorRecoveryStop(raw+'\n',f.expected,async()=>{reads++;return f.receipt}));assert.equal(reads,0)
+ await deny(verifyOperatorRecoveryStop(raw,f.expected,async()=>({...f.receipt,body:'x'.repeat(65536)})))
+})

@@ -693,3 +693,20 @@ Their passing receipts do not authorize the commands above. In particular,
 fixture stop/restore references and timestamps are synthetic: a real operator
 must supply independently verified worker-close, continuous soak, archive /
 restore and delivered-alert evidence before any runtime admission.
+
+### Inactive independent stop-receipt check
+
+`operator-stop-evidence.mjs` composes the recovery consistency gate with trusted
+read-only observer receipt retrieval. Its independently provisioned pins must
+identify the real stop request, lease generation, process, challenge and observer;
+final persisted next-offsets must match the recovery manifest. Ordered timestamps
+and zero outstanding counts in arbitrary JSON are not actual stop evidence.
+No observer/receipt producer, challenge-consumption store or runtime executor is
+installed. Historical closure cannot authorize a later pointer write without a
+fresh lease and source barrier checked in that mutation transaction.
+
+Current promoted builds are terminal for both worker and checkpoints. The only
+specified bounded canary lifecycle stops/settles before final verification and
+promotion; later source drift denies canary reads. Continuing promoted workers
+require a separate lifecycle design and proof. Do not loosen existing status
+guards, infer a write freeze, or execute any operational command from this note.

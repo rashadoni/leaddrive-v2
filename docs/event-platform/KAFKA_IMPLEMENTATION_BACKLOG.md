@@ -939,3 +939,13 @@ no API/runtime wiring is active. Actual-schema hosted proof covers pointer and
 source-head boundaries separately from authenticated control authority. Final
 lifecycle, real admission/pointer composition, source barrier, financial correction
 policy and authentic operational evidence remain open in the readiness map.
+
+### Independent stop read-back and lifecycle preparation
+
+A bounded inactive read-back composition now follows a recovery close-receipt
+reference to independently pinned observer data, including lease/process and
+final checkpoint equality. No actual stop producer or operational evidence
+exists in this preparation. The readiness map specifies the compatible terminal
+canary lifecycle; continuous promoted processing still needs its own writer/
+checkpoint design. Final barrier, authenticated pointer executor, real observers,
+challenge consumption, correction authority, restore/soak/alerts remain open.

@@ -193,3 +193,21 @@ trusted role/policy provisioning. MVCC consistency permits a concurrent rollback
 to become visible on the next read; this is not a linearizable pointer lock.
 The existing checkpoint guard rejects promoted builds as well as the existing
 worker: do not loosen either to activate ongoing promoted processing.
+
+### Inactive worker stop read-back composition
+
+`operator-stop-evidence.mjs` validates the recovery manifest before reading one
+independently pinned `WorkerStopReceipt` via a trusted read-only adapter. It
+checks stop request/generation/process/challenge/observer, full scope, fresh
+ordered stop/settlement/close stages, zero outstanding SQL/ACK/children, and exact
+complete persisted next-offsets (bigint strings). Scope is copied before await,
+records are capped at64KiB and errors reveal no adapter payload. The adapter must
+also bound response bytes before decoding and attest real observation; no such
+producer is implemented here. Tests using mock read-back do not establish that
+a real worker stopped. No challenge is consumed and no broker is contacted.
+
+The result is historical evidence about one process/generation. A new writer
+may start afterward; current lease/source barrier/pointer checks remain required
+in the actual mutation transaction. Existing running-only worker and running/
+verifying-only checkpoint guards remain unchanged. See the readiness lifecycle
+table for the terminal-snapshot canary contract and continuous-mode open work.

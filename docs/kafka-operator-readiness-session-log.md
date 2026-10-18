@@ -575,3 +575,16 @@ swap3MB,pressure avg10=0. Added tests to our own hosted workflow only. Next:
 review composition boundaries, hosted exact-source proof, update remaining map.
 Full app build/typecheck and all operational consumers/replay/sends/production
 NOT RUN per workload/authorization limits; A1/A2 and overall delivery untouched.
+
+### Stop gate review and explicit terminal-canary lifecycle
+
+Added64KiB record cap and required adapter response bound; tests now40/40 PASS,
+including complete unordered partitions, retained rollback delegation, tampered
+raw bytes and oversized read-back. Resources13.6GB available/201GB disk/swap3MB,
+pressure avg10=0. Documented exact compatible terminal-canary lifecycle rather
+than weakening worker/checkpoint guards: stop/settle/read-back → final barrier+
+verification → ready → terminal promoted → scoped reads denying future source
+drift. Continuous promoted processing remains a separate unimplemented contract.
+Historical close never proves no later writer; current lease/barrier must be
+checked with pointer mutation. Observer producer/challenge consumption absent.
+No operational stop occurred. Final source hosted proof pending.

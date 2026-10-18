@@ -9,6 +9,9 @@ const instant = value => typeof value==='string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d
  * The observer must attest actual process/SQL/ACK closure; claimed JSON or a
  * mock adapter is not operational proof. No observer, stop signal, controller,
  * challenge consumption, broker connection, status change or activation here.
+ * Historical closure does not exclude a later writer: recheck current lease and
+ * final source barrier in the pointer-mutation transaction. Adapter must bound
+ * response bytes before decoding; the gate also caps the JSON record at 64 KiB.
  */
 export async function verifyOperatorRecoveryStop(raw,input,readReceipt) {
   try {
@@ -20,7 +23,9 @@ export async function verifyOperatorRecoveryStop(raw,input,readReceipt) {
     for(const key of ['receiptId','requestId','workerInstanceId','challengeId','observerId']) check(token(stop[key]))
     check(uint(stop.generation) && stop.generation!=='0')
     check(manifest.stop.actualCloseReceiptId===stop.receiptId)
-    const receipt=structuredClone(await readReceipt(stop.receiptId))
+    const fetched=await readReceipt(stop.receiptId)
+    check(fetched && Buffer.byteLength(JSON.stringify(fetched))<=65536)
+    const receipt=structuredClone(fetched)
     check(receipt?.apiVersion==='event-platform.leaddrive.io/v1' && receipt.kind==='WorkerStopReceipt')
     for(const key of ['receiptId','requestId','workerInstanceId','challengeId','observerId','generation']) check(receipt[key]===stop[key])
     for(const key of ['organizationId','buildId','projectionName','releaseSha','artifactSha256','environment','clusterId','topicId','groupId','expectedPointerVersion']) check(receipt[key]===expected.plan[key])

@@ -347,3 +347,33 @@ Kafka consumer, broker offset, replay, provider send or production is involved.
 The real checkpoint migration also refuses writes for promoted builds: resolving
 worker admission alone cannot close lifecycle step2. Authenticated real pointer
 mutation composition, final barrier and operational evidence remain unimplemented.
+
+## Stop read-back and bounded lifecycle contract
+
+Inactive `operator-stop-evidence.mjs` adds the missing read-back step beyond a
+recovery manifest's bare close-receipt reference. The existing exact-byte
+recovery gate runs first; independently pinned stop request/generation/process/
+challenge/observer then bind one trusted read-only receipt. It checks exact
+scope and broker incarnation, fresh ordered intake/ACK/SQL/checkpoint/child-close
+stages, zero outstanding counts and all final next-offset checkpoints. Expected
+scope is copied before await; JSON is bounded and adapter errors sanitized.
+No observer/receipt producer is installed, and its tests prove validation only.
+The result does not certify restore/soak/alert references or consume a challenge.
+
+The compatible bounded lifecycle is a terminal canary snapshot, not a continuing
+promoted worker. This specifies future composition; no runtime is wired:
+
+| Phase | Existing state allowed | Required boundary before the next phase |
+| --- | --- | --- |
+| Shadow processing | running | Current authenticated admission/lease, exact build and effects fence; existing worker/checkpoint guards stay intact |
+| Stop and settlement | running, then verifying | Intake and ACK fenced; all SQL settled; final persisted checkpoints observed; actual child close independently read back and pinned to stop request/generation |
+| Final verification | verifying, then ready | Source/barrier and full parity rechecked under the actual mutation transaction; fresh independent approval; a historical close record alone does not exclude a later writer |
+| Pointer promotion | ready → promoted | Authenticated restricted pointer CAS, deferred final lease validation and exact approved evidence; no checkpoint or shadow-worker continuation after promoted |
+| Canary reads | promoted | Exact pinned pointer, complete visible inventory and per-row source head in one restricted snapshot; any subsequent source drift denies the read |
+| Retained rollback | promoted retained target | New independent authority and current evidence/barrier, version/retention compatibility and pointer CAS; old scope fails on the next reader snapshot |
+
+A continuous promoted projection requires a separately designed writer/build and
+checkpoint lifecycle. Changing either current status guard alone is unsafe and
+is not implemented. No source-write freeze is inferred from this table. Until
+real barrier/executor/observer composition is proven, neither terminal promotion
+nor continuous processing is operationally ready.
