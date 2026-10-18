@@ -16,8 +16,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
  * first is now indented, as the website chat's transcript has been since
  * 2026-10-17 (chat-transcript.ts).
  *
+ * The portal chat's «create ticket» button sent the chat it had built in the
+ * customer's browser as the ticket's description, which no reader can trust
+ * (since #898 it reads as plain text). The server now copies the chat from the
+ * customer's own Da Vinci session, as the escalation does.
+ *
  * The real routes run: the webhook and the portal chat write the ticket, the
- * agent's ticket API reads it back, and the agent's page decides with
+ * agent's ticket API (and the customer's portal API) reads it back, and the
+ * agent's page decides with
  * `parseChatDescription` (description) and `parseCommentSender` (comments) on
  * what that API returned. Prisma is an in-memory table set — a row is exactly
  * what a route wrote — and the model's reply is fixed; nothing else of the two
@@ -289,6 +295,8 @@ vi.mock("@/lib/entitlement-process/ticket-milestones", async (importOriginal) =>
 import { POST as whatsappWebhook } from "@/app/api/v1/webhooks/whatsapp/route"
 import { POST as portalChat } from "@/app/api/v1/public/portal-chat/route"
 import { GET as agentTicket } from "@/app/api/v1/tickets/[id]/route"
+import { POST as portalCreateTicket } from "@/app/api/v1/public/portal-tickets/route"
+import { GET as portalTicket } from "@/app/api/v1/public/portal-tickets/[id]/route"
 import { parseChatDescription, parseCommentSender } from "@/lib/ticketing/chat-transcript"
 
 const ORG = "org-1"
@@ -478,6 +486,104 @@ describe("a portal Da Vinci chat that escalates to a ticket", () => {
       { sender: "customer", label: "Клиент", text: "Не могу войти" },
       { sender: "bot", label: "Da Vinci", text: "Проверьте, пожалуйста:\n\n1. Интернет\n2. Пароль" },
     ])
+  })
+})
+
+describe("a ticket the customer opens with the portal chat's «create ticket» button", () => {
+  const CUSTOMER = { organizationId: ORG, contactId: "contact-portal", companyId: null, fullName: "Aysel Məmmədova", email: "aysel@example.az" }
+
+  async function customerWritesInPortalChat(message: string, sessionId?: string): Promise<string> {
+    const res = await portalChat(new NextRequest("http://localhost/api/v1/public/portal-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, sessionId }),
+    }))
+    expect(res.status).toBe(200)
+    const data = (await res.json()).data as { sessionId: string; escalationTicketId: string | null }
+    expect(data.escalationTicketId, "Da Vinci did not escalate on its own").toBeNull()
+    return data.sessionId
+  }
+
+  /** What the widget's button sends (portal-chat-widget.tsx `handleCreateTicket`). */
+  async function customerPressesCreateTicket(chatSessionId: string) {
+    return portalCreateTicket(new NextRequest("http://localhost/api/v1/public/portal-tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subject: "Где мой возврат?", category: "general", chatSessionId }),
+    }))
+  }
+
+  async function customerChatsThenPressesCreateTicket(): Promise<string> {
+    mocks.aiReply = "Понимаю. Уточните, пожалуйста, номер заказа."
+    const sessionId = await customerWritesInPortalChat("Здравствуйте")
+    mocks.aiReply = "Спасибо, проверю."
+    await customerWritesInPortalChat(CUSTOMER_TEXT, sessionId)
+    const res = await customerPressesCreateTicket(sessionId)
+    expect(res.status).toBe(201)
+    return (await res.json()).data.id
+  }
+
+  beforeEach(() => {
+    mocks.getPortalUser.mockResolvedValue(CUSTOMER)
+  })
+
+  it("shows the agent the chat as it went, every line of the customer's message the customer's", async () => {
+    const ticketId = await customerChatsThenPressesCreateTicket()
+
+    const seen = await agentSees(ticketId)
+    expect(seen.chatCard).toEqual([
+      { sender: "customer", label: "Клиент", text: "Здравствуйте" },
+      { sender: "bot", label: "Da Vinci", text: "Понимаю. Уточните, пожалуйста, номер заказа." },
+      { sender: "customer", label: "Клиент", text: CUSTOMER_TEXT },
+      { sender: "bot", label: "Da Vinci", text: "Спасибо, проверю." },
+    ])
+    expect(seen.commentBubbles).toEqual([
+      { sender: "customer", name: "Клиент", body: "Здравствуйте" },
+      { sender: "bot", name: "Da Vinci", body: "Понимаю. Уточните, пожалуйста, номер заказа." },
+      { sender: "customer", name: "Клиент", body: CUSTOMER_TEXT },
+      { sender: "bot", name: "Da Vinci", body: "Спасибо, проверю." },
+    ])
+    const ticket = db.table("ticket").find((row) => row.id === ticketId)
+    expect(parseChatDescription(String(ticket?.description))).toMatchObject({ platform: "Da Vinci", session: expect.any(String) })
+  })
+
+  it("gives the customer the chat as the ticket's conversation, with no message of it as an operator's reply", async () => {
+    const ticketId = await customerChatsThenPressesCreateTicket()
+
+    const res = await portalTicket(
+      new NextRequest(`http://localhost/api/v1/public/portal-tickets/${ticketId}`),
+      { params: Promise.resolve({ id: ticketId }) },
+    )
+    expect(res.status).toBe(200)
+    const data = (await res.json()).data as {
+      description: string | null
+      descriptionOrigin: string | null
+      comments: Array<{ comment: string; author: string }>
+    }
+    expect({ description: data.description, descriptionOrigin: data.descriptionOrigin }).toEqual({
+      description: null,
+      descriptionOrigin: "assistant_chat",
+    })
+    // The widget shows a comment as the operator's when its author is "agent" (portal-chat-widget.tsx).
+    expect(data.comments.map(({ comment, author }) => ({ comment, author }))).toEqual([
+      { comment: "Здравствуйте", author: "customer" },
+      { comment: "Понимаю. Уточните, пожалуйста, номер заказа.", author: "assistant" },
+      { comment: CUSTOMER_TEXT, author: "customer" },
+      { comment: "Спасибо, проверю.", author: "assistant" },
+    ])
+  })
+
+  it("copies no chat but the customer's own: another customer's session opens no ticket", async () => {
+    mocks.getPortalUser.mockResolvedValue({ ...CUSTOMER, contactId: "contact-other", fullName: "Other Customer" })
+    mocks.aiReply = "Понимаю."
+    const othersSession = await customerWritesInPortalChat("Мой личный вопрос")
+    mocks.getPortalUser.mockResolvedValue(CUSTOMER)
+
+    const res = await customerPressesCreateTicket(othersSession)
+
+    expect(res.status).toBe(404)
+    expect(db.table("ticket")).toEqual([])
+    expect(db.table("ticketComment")).toEqual([])
   })
 })
 

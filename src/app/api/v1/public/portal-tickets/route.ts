@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { getPortalUser } from "@/lib/portal-auth"
 import { customerDescriptionForStorage, portalTicketSubject } from "@/lib/ticketing/portal-ticket-view"
+import { ASSISTANT_CHAT_TICKET_DESCRIPTION_HEAD, chatTicketDescription, type ChatTicketMessage } from "@/lib/ticketing/chat-transcript"
+import { assistantChatMessages, copyAssistantChatToComments } from "@/lib/ticketing/assistant-chat-ticket"
 import { enrichComplaintInBackground } from "@/lib/complaint-ai"
 import { resolveTicketSla } from "@/lib/sla-resolver"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
@@ -27,6 +29,9 @@ type PortalComplaintMeta = {
 const createPortalTicketSchema = z.object({
   subject: z.string().trim().min(1).max(200),
   description: z.string().trim().max(10_000).optional().default(""),
+  // The portal chat widget's «create ticket» button: the customer's own Da Vinci chat session,
+  // which becomes the ticket's description in place of `description`.
+  chatSessionId: z.string().trim().min(1).max(100).optional(),
   category: z.string().trim().max(100).optional().default("general"),
   clientRequestId: z.string().uuid().optional(),
   isComplaint: z.boolean().optional().default(false),
@@ -82,15 +87,31 @@ export async function POST(req: NextRequest) {
 
   const parsed = createPortalTicketSchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
-  const { subject, category, clientRequestId, isComplaint } = parsed.data
+  const { subject, category, clientRequestId, isComplaint, chatSessionId } = parsed.data
   const meta: PortalComplaintMeta = parsed.data.complaintMeta
-  // Stored so that no reader takes it for a transcript a chat channel wrote (portal-ticket-view.ts).
-  const description = customerDescriptionForStorage(parsed.data.description)
 
   // RLS: org comes from the verified portal JWT — whole handler runs
   // tenant-scoped (the fire-and-forget AI enrichment starts inside the
   // scope and inherits it).
   return await runWithTenant(user.organizationId, async () => {
+  // A ticket from the chat widget's button carries the chat as the server holds it, read from the
+  // customer's own session — written like the escalation's, so the agent's page shows it as the chat
+  // and the portal as the ticket's conversation (assistant-chat-ticket.ts). Until 2026-10-19 the
+  // widget sent the chat it had built in the browser as the description, which no reader can trust.
+  let chat: ChatTicketMessage[] | null = null
+  if (chatSessionId) {
+    const session = await prisma.aiChatSession.findFirst({
+      where: { id: chatSessionId, organizationId: user.organizationId, portalUserId: user.contactId },
+      select: { id: true },
+    })
+    if (!session) return NextResponse.json({ error: "Chat session not found" }, { status: 404 })
+    chat = await assistantChatMessages(session.id)
+  }
+  // Stored so that no reader takes it for a transcript a chat channel wrote (portal-ticket-view.ts).
+  const description = chat
+    ? chatTicketDescription([ASSISTANT_CHAT_TICKET_DESCRIPTION_HEAD, "", `Сессия: ${chatSessionId}`], chat)
+    : customerDescriptionForStorage(parsed.data.description)
+
   if (clientRequestId) {
     const existing = await prisma.ticket.findFirst({
       where: {
@@ -155,6 +176,7 @@ export async function POST(req: NextRequest) {
       requesterMeta: { source: "portal" },
       sourceMeta: clientRequestId ? { clientRequestId } : undefined,
     })
+    if (chat) await copyAssistantChatToComments(ticket.id, chat)
 
     return NextResponse.json({ success: true, data: ticket }, { status: 201 })
   }
@@ -206,6 +228,7 @@ export async function POST(req: NextRequest) {
     return ticket
   })
 
+  if (chat) await copyAssistantChatToComments(result.id, chat)
   // AI enrichment (risk + department) runs in the background, never blocks the response.
   enrichComplaintInBackground(result.id, user.organizationId).catch(() => {})
 

@@ -1,4 +1,5 @@
 import {
+  ASSISTANT_CHAT_TICKET_DESCRIPTION_HEAD,
   ASSISTANT_ESCALATION_DESCRIPTION_HEAD,
   DESCRIPTION_CHAT_MARKERS,
   EMAIL_COMMENT_PREFIX,
@@ -64,6 +65,7 @@ const GENERATED_DESCRIPTION_ORIGIN: ReadonlyArray<[head: string, origin: PortalT
   [WHATSAPP_INBOUND_DESCRIPTION_HEAD, "whatsapp"],
   [WHATSAPP_CHAT_DESCRIPTION_HEAD, "whatsapp"],
   [ASSISTANT_ESCALATION_DESCRIPTION_HEAD, "assistant_chat"],
+  [ASSISTANT_CHAT_TICKET_DESCRIPTION_HEAD, "assistant_chat"],
   // The same writers before their headers were Russian.
   ["Created from WhatsApp chat.", "whatsapp"],
   ["Automatically created on AI chat escalation.", "assistant_chat"],

@@ -3,8 +3,9 @@
  * parsers that read it back. Pure — the agent's ticket page (a client
  * component) and the customer portal's API (a server route) both read it.
  *
- * STORAGE CONTRACT. The WhatsApp webhook and the portal Da Vinci escalation
- * write the description as a plain-text blob with Russian headers:
+ * STORAGE CONTRACT. The WhatsApp webhook, the portal Da Vinci escalation and
+ * the portal chat's «create ticket» button write the description as a
+ * plain-text blob with Russian headers:
  *
  *   Создан из WhatsApp чата.
  *   Клиент: rrr (+994773201000)
@@ -17,7 +18,7 @@
  *
  *   [Da Vinci] ...
  *
- * (`chatTicketDescription` below writes it for both), and every chat message as a comment
+ * (`chatTicketDescription` below writes it for all three), and every chat message as a comment
  * with a sender prefix ("[Клиент (WhatsApp)] …", "[Da Vinci Bot] …"). The headers are not
  * text for people: the agent page parses them into a card in the agent's own language,
  * `sendWhatsAppStatusNotification` finds the customer's phone in the "(+994…)" of the
@@ -29,7 +30,7 @@
  */
 
 export const CHAT_TRANSCRIPT_MARKER = "--- ИСТОРИЯ ЧАТА ---"
-/** The portal chat widget writes the transcript in the customer's language (messages/*.json `portal.chatHistoryTitle`). */
+/** The portal chat widget wrote the transcript in the customer's language, in its browser (until 2026-10-19). */
 const LOCALIZED_TRANSCRIPT_MARKERS = ["--- CHAT HISTORY ---", "--- ÇAT TARİXÇƏSİ ---"]
 const TRANSCRIPT_MARKERS = [CHAT_TRANSCRIPT_MARKER, ...LOCALIZED_TRANSCRIPT_MARKERS]
 export const INBOUND_MESSAGE_MARKER = "--- СООБЩЕНИЕ ---"
@@ -46,6 +47,8 @@ export const WHATSAPP_INBOUND_DESCRIPTION_HEAD = "Создан из входящ
 export const WHATSAPP_CHAT_DESCRIPTION_HEAD = "Создан из WhatsApp чата."
 /** First line of the description of a ticket Da Vinci opened from the portal chat (portal-chat route). */
 export const ASSISTANT_ESCALATION_DESCRIPTION_HEAD = "Автоматически создан при эскалации из Da Vinci чата."
+/** First line of the description of a ticket the customer opened from the portal chat with its «create ticket» button (portal-tickets route). */
+export const ASSISTANT_CHAT_TICKET_DESCRIPTION_HEAD = "Создан клиентом из Da Vinci чата."
 
 /** `at`: when the message was sent (ISO), where the format records it — only the website chat does. */
 type ChatMsg = { sender: "customer" | "bot"; label: string; text: string; at?: string }
@@ -100,7 +103,7 @@ export type ChatTicketMessage = { role: string; content: string }
  * lines (WHATSAPP_CHAT_DESCRIPTION_HEAD or ASSISTANT_ESCALATION_DESCRIPTION_HEAD
  * and its headers; "" for a blank line), then the chat — `user` messages as the
  * customer's, any other role as Da Vinci's. The one writer for the WhatsApp
- * webhook and the portal Da Vinci escalation.
+ * webhook and the portal Da Vinci chat (escalation and «create ticket»).
  *
  * A head line stays one line, whatever a value in it holds: a line break in,
  * say, the customer's WhatsApp name would otherwise add a header of its own or
@@ -142,7 +145,7 @@ export function parseChatDescription(raw?: string | null): ParsedChat | null {
     if ((m = line.match(/^Создано? из (.+?) чата/i))) { platform = m[1].trim(); continue }
     if ((m = line.match(/^Created from (.+?) chat/i))) { platform = m[1].trim(); continue }
     if ((m = line.match(/^(.+?) çatından yaradıldı/i))) { platform = m[1].trim(); continue }
-    if (/^Автоматически создан/i.test(line)) { if (!platform) platform = "Da Vinci"; continue }
+    if (/^Автоматически создан/i.test(line) || line === ASSISTANT_CHAT_TICKET_DESCRIPTION_HEAD) { if (!platform) platform = "Da Vinci"; continue }
     if ((m = line.match(/^Клиент:\s*(.+)$/i))) {
       const full = m[1].trim()
       const p = full.match(/\(\+?([0-9][0-9\s-]+)\)\s*$/)
