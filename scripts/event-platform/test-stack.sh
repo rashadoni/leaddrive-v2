@@ -11,6 +11,12 @@ set -euo pipefail
 [[ "${LD_EVENT_STACK_CDC:-0}" =~ ^[01]$ ]] || {
   echo 'FATAL: CDC fixture mode must be explicitly zero or one'; exit 1;
 }
+[[ "${LD_EVENT_STACK_DRIVER:-0}" =~ ^[01]$ ]] || {
+  echo 'FATAL: broker driver fixture mode must be explicitly zero or one'; exit 1;
+}
+[ "${LD_EVENT_STACK_CDC:-0}" = 0 ] || [ "${LD_EVENT_STACK_DRIVER:-0}" = 0 ] || {
+  echo 'FATAL: CDC and broker driver drills run as separate bounded phases'; exit 1;
+}
 task_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 task_compose="$task_root/ops/event-platform/test/compose.yml"
 compose() { docker compose -p "$LD_EVENT_STACK_PROJECT" -f "$task_compose" "$@"; }
@@ -89,4 +95,7 @@ printf 'event_stack_checks=logical-wal,explicit-topics,connect-postgres-plugin,r
 printf 'event_stack_cdc_connector=not-started\nevent_stack_production_readiness=not-proven\nevent_stack_smoke=PASS\n'
 if [ "${LD_EVENT_STACK_CDC:-0}" = 1 ]; then
   node "$task_root/scripts/event-platform/test-cdc.mjs"
+fi
+if [ "${LD_EVENT_STACK_DRIVER:-0}" = 1 ]; then
+  "$task_root/ops/event-platform/driver/node_modules/.bin/tsx" "$task_root/scripts/event-platform/test-broker-driver.ts"
 fi

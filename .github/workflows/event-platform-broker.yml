@@ -1,0 +1,54 @@
+name: Event platform broker driver
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'ops/event-platform/driver/**'
+      - 'ops/event-platform/test/**'
+      - 'scripts/event-platform/test-broker-driver.ts'
+      - 'scripts/event-platform/test-stack*'
+      - 'src/lib/event-platform/kafka-bridge.ts'
+      - 'src/lib/event-platform/partition-processor.ts'
+      - '.github/workflows/event-platform-broker.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: event-platform-broker-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  broker-driver:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: event-platform-disposable-integration
+      cancel-in-progress: false
+      queue: max
+    env:
+      LD_EVENT_STACK_DISPOSABLE: '1'
+      LD_EVENT_STACK_DRIVER: '1'
+      LD_EVENT_STACK_PROJECT: ld-event-test-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install only the locked disposable TS runner
+        run: npm ci --prefix ops/event-platform/driver --ignore-scripts
+      - name: Prove actual broker membership and offset boundaries
+        run: bash scripts/event-platform/test-stack.sh
+      - name: Cleanup this run only
+        if: always()
+        run: docker compose -p "$LD_EVENT_STACK_PROJECT" -f ops/event-platform/test/compose.yml down --volumes --remove-orphans --timeout 10

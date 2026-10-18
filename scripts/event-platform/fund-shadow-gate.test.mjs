@@ -25,7 +25,7 @@ test('both required PR verification and production release run the real Fund sha
     assert.ok(unitStart < start, `${workflow}: focused unit proof precedes real PG proof`)
     const unitStep = source.slice(unitStart, start)
     assert.match(unitStep, /run: npx vitest run src\/__tests__\/event-platform-fund-balance-reducer\.test\.ts src\/__tests__\/event-platform-fund-shadow-consumer\.test\.ts/)
-    for (const testFile of ['event-platform-partition-processor', 'event-platform-fund-shadow-worker']) {
+    for (const testFile of ['event-platform-partition-processor', 'event-platform-fund-shadow-worker', 'event-platform-kafka-bridge']) {
       assert.ok(unitStep.includes(`src/__tests__/${testFile}.test.ts`), `${workflow}: ${testFile} must execute`)
     }
     assert.doesNotMatch(unitStep, /\b(?:if|continue-on-error):|secrets\./)

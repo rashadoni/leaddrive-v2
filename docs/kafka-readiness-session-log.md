@@ -2292,3 +2292,66 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   release or performed. Next code unit is a broker driver admitted by actual
   failure-mode integration tests; recovery/activation prerequisites stay
   fail-closed. The nominated reviewer is not recorded as having approved.
+
+### Resume: connected-driver implementation — 2026-10-18
+
+- Owner said «продолжай». Resume from verified PR877 delivery, not from a
+  claim of active Kafka. Canonical dirty checkout and prior task worktree
+  remain untouched. New codex/kafka-broker-driver-20261018 worktree is based
+  on current main7868ec2fd9a208bc146198452ddfc8aebec5ce68; all six local
+  documentation checkpoints were preserved by scoped cherry-picks.
+- Fresh routing/protection: rashadoni, origin=rashadoni/leaddrive-v2;
+  production13.140.132.245:/opt/leaddrive-v2; active GitHub deploy.yml only.
+  Five required contexts bound to Actions15368, enforce_admins=true,
+  no force/deletion, no bypass. No Azure or direct production deployment.
+- Safety-lane plan: admit a concrete broker API preserving original group
+  membership and explicit acknowledgement, implement a bounded transport
+  adapter for the existing partition processor, prove failure scenarios in
+  disposable GitHub integration, then normal required checks/PR/release.
+  Apache Java classic-group client is under review as an alternative to the
+  two previously rejected public JS API paths; it is not yet selected or
+  proven. No new dependency, service purchase or runtime activation occurred.
+- Existing no-activation boundary remains: no production consumer, offset
+  reset, replay, source WAL/slot change, recovery commissioning or human
+  approval is inferred from this code-development instruction.
+
+### Connected-driver implementation and local proof — 2026-10-18
+
+- Selected the pinned Apache Kafka4.3.1 Java classic/EAGER public API after
+  primary-source review, superseding the tentative selection above. Added an
+  inactive bounded stdin/stdout bridge, explicit NEXT/ACK adapter, exact INT64
+  offsets, frozen partition assignments and terminal/sanitized failure paths.
+  No runtime launcher or production credentials/startup hook was installed.
+- Review caught and fixed raw cleanup-error escape, large-base64 regex stack
+  risk, Docker-shim-only termination and missing pre-commit topic/range
+  revalidation. Stable-generation guard after heartbeat reset was verified
+  against pinned source: no hidden generation=-1/manual-assignment fallback.
+  Name-based OffsetCommit still requires runtime ACLs against topic recreation;
+  current range alone is not proof of archival/full-history coverage.
+- Local targeted bridge88 + partition51 =139/139 PASS; gate-wiring2/2 and
+  disposable-stack guard/config6/6 PASS. Targeted strict ES2017 TypeScript for
+  adapter/tests/fixture PASS. Runner policy PASS across71 workflows; asset
+  contract PASS27 domains/86 topics/5 schemas; shell syntax/diff checks PASS.
+  Only small sequential checks were run after resource inspection; no JVM,
+  broker, full build, full app typecheck or full E2E ran on Contabo.
+- Added a locked, isolated TS fixture runner (tsx4.20.6; lock-only audit0
+  vulnerabilities), Java compilation from pinned broker jars and a Linux-only
+  shared-queue disposable workflow. Broker scenarios remain NOT RUN locally:
+  CI must prove compile/real broker behavior. Simulated DB callbacks in that
+  fixture do not replace the separately required actual PostgreSQL gate or a
+  future combined broker/database failure drill. New adapter units are wired
+  into both existing PR and production quality gates without weakening any.
+- Current stopping point: final fixture/review/documentation before checkpoint
+  and draft PR, then frozen-head required checks plus actual broker integration.
+  Production consumers, offsets/replay, recovery provisioning/commissioning,
+  timers and source WAL/slots remain unchanged. No claim of100% readiness.
+- Final focused unit suite277/277 PASS across five files (adapter88,
+  partition51, worker17, reducer43, consumer78); no skipped cases. Fresh
+  GitHub protection/user/origin recheck matches the current route and five
+  bound mandatory checks. No existing PR for this new branch was found.
+- Added a bounded two-real-consumer takeover scenario: hold replacement DB
+  work, assert old-generation ACK rejection with broker offset still0, then
+  release replacement and require offset1. It is pending actual GitHub proof,
+  not claimed as passed. Final guard/config+wiring suite9/9 PASS, targeted
+  strict ES2017 TypeScript rerun PASS after fixture additions; Java compilation
+  and broker integration remain NOT RUN on this development host by policy.

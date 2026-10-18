@@ -53,6 +53,20 @@ test('test stack refuses a broad or existing application project name', () => {
   }
 })
 
+test('broker fixture cannot share a phase with CDC or accept an implicit driver flag', () => {
+  for (const flags of [
+    { LD_EVENT_STACK_DRIVER: 'yes' },
+    { LD_EVENT_STACK_DRIVER: '1', LD_EVENT_STACK_CDC: '1' },
+  ]) {
+    const result = spawnSync('bash', [script], { encoding: 'utf8', env: {
+      PATH: process.env.PATH, GITHUB_ACTIONS: 'true', LD_EVENT_STACK_DISPOSABLE: '1',
+      LD_EVENT_STACK_PROJECT: 'ld-event-test-guard', ...flags,
+    } })
+    assert.notEqual(result.status, 0)
+    assert.match(result.stdout, /broker driver fixture mode|separate bounded phases/)
+  }
+})
+
 test('HTTP probes stay inside the isolated network without host port discovery', () => {
   const source = readFileSync(script, 'utf8')
   const helper = source.match(/^http_get\(\) \{\n[\s\S]*?^\}/m)?.[0]
