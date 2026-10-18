@@ -2169,3 +2169,16 @@ service, branch delivery or Kafka runtime was changed by this documentation.
 - This journal update is a LOCAL checkpoint after frozen source. Do not
   silently substitute it for the head tested by hosted checks. No production
   runtime/configuration, data restore, broker activation or replay occurred.
+
+### PR877 hosted integration progress — 2026-10-18 10:45 UTC
+
+- Synthetic CDC run39119897962 SUCCESS10:40:12Z on exact1cfdb3ed. Its actual
+  log reports stack smoke, SQL/WAL boundaries, raw8/8 full-envelope fidelity,
+  cold restart and final CDC smoke PASS. This is an isolated fixture stack,
+  not the new Fund worker's broker driver or production Kafka availability.
+- Ready run39119897984 reports Fund unit step SUCCESS10:44:45Z and real
+  restricted-login PostgreSQL step SUCCESS10:45:11Z. Final job logs/counts
+  and whole static/typecheck outcomes still pending at this checkpoint.
+- Independent public read before this release returned exact08407d944bb700e023b883f4484cd019dd6710bb
+  and /api/v1/ping={ok:true}. Foreign b62a87a deploy39119843829 is still
+  building; it remains untouched. PR877 has not yet merged or deployed.
