@@ -831,3 +831,21 @@ proof pending hosted CI. Resources13.2GB available/197GB disk/swap1003MB/avg10
 pressure0; no local database/install/build. Heavy app gates and all operational
 consumers/replay/sends/production NOT RUN. Next hosted proof, own fixes, trust/
 remaining-work map reconciliation; do not claim real operator readiness.
+
+### First actual composition run: deferred guard provisioning defect
+
+Run39173050085 ona689338ff: all earlier158+24+9+22+8 gates PASS; new composition
+3/7 PASS,4 FAIL with42501 at finalization. Successful stage/negative checks
+exposed missing SELECT on actual projection_promotion_events for the NOLOGIN
+function owner: the existing deferred activation guard reads matching events.
+Added that SELECT to fixture owner provisioning only, not controller or reader;
+no guard weakened. Final evidence-expiry case must fail by expiry, not privilege.
+
+Review additionally fences effect_outbox writes in this composition: base source
+kernel now optionally supports9 guarded tables; new fixture adds6 extra ALWAYS
+guards for inbox/checkpoints/effect intents, while original base profile stays
+six tables/12 guards. Non-live effect material is included in same-snapshot hash.
+This corrects prior8/16 scope in this phase (history retained). Physical provider
+calls remain outside SQL and unproven. Added actual retained-window denial and
+effect-guard-profile negative. Syntax/diff pending final local check; fresh hosted
+proof required, prior failed run is not success.

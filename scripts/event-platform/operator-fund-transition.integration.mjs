@@ -17,7 +17,7 @@ const call=(login,fn,args)=>fixtureSql(login,`SELECT ld_kafka_operator.${fn}(${a
 const denied=p=>assert.rejects(p,/P0001/)
 await owned(await readFile(new URL('../../ops/event-platform/operator/fund-transition-fixture.sql',import.meta.url),'utf8'))
 await admin(`GRANT USAGE ON SCHEMA public TO ld_kafka_control_owner;
- GRANT SELECT ON funds,fund_transactions,domain_events,event_outbox,event_aggregate_heads,fund_balance_projections,projection_builds,projection_checkpoints,consumer_inbox,projection_activations TO ld_kafka_control_owner;
+ GRANT SELECT ON funds,fund_transactions,domain_events,event_outbox,event_aggregate_heads,fund_balance_projections,projection_builds,projection_checkpoints,consumer_inbox,effect_outbox,projection_activations,projection_promotion_events TO ld_kafka_control_owner;
  GRANT UPDATE ON projection_builds,projection_activations TO ld_kafka_control_owner;
  GRANT INSERT ON projection_promotion_events TO ld_kafka_control_owner;
  CREATE ROLE op_final_reader LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD 'operator-fixture-only';
@@ -27,7 +27,7 @@ await admin(`GRANT USAGE ON SCHEMA public TO ld_kafka_control_owner;
  ALTER TABLE fund_transactions ENABLE ROW LEVEL SECURITY;ALTER TABLE fund_transactions FORCE ROW LEVEL SECURITY;
  CREATE POLICY operator_final_ledger_tenant ON fund_transactions USING("organizationId"=current_setting('app.org_id',true));`)
 for(const table of ['funds','fund_transactions','domain_events','event_outbox','event_aggregate_heads','effect_outbox']) await admin(`CREATE POLICY operator_final_tenant ON ${table} AS RESTRICTIVE TO op_final_reader USING("organizationId"='org-a');`)
-for(const table of ['consumer_inbox','projection_checkpoints']) await admin(`CREATE TRIGGER kafka_source_row_guard BEFORE INSERT OR UPDATE OR DELETE ON ${table} FOR EACH ROW EXECUTE FUNCTION ld_kafka_operator.source_write_guard();
+for(const table of ['consumer_inbox','projection_checkpoints','effect_outbox']) await admin(`CREATE TRIGGER kafka_source_row_guard BEFORE INSERT OR UPDATE OR DELETE ON ${table} FOR EACH ROW EXECUTE FUNCTION ld_kafka_operator.source_write_guard();
  CREATE TRIGGER kafka_source_truncate_guard BEFORE TRUNCATE ON ${table} FOR EACH STATEMENT EXECUTE FUNCTION ld_kafka_operator.source_write_guard();
  ALTER TABLE ${table} ENABLE ALWAYS TRIGGER kafka_source_row_guard;ALTER TABLE ${table} ENABLE ALWAYS TRIGGER kafka_source_truncate_guard;`)
 let version=20
@@ -86,8 +86,10 @@ await test('canonical proof + frozen material + authenticated actual pointer pro
 })
 await test('no barrier, missing control guard, stale material, expired evidence and revoked lease deny without pointer change',async()=>{
  const noBarrier=await prepared();await denied(call('op_controller','apply_fund_transition',args(noBarrier)))
- const guard=await prepared();await admin('ALTER TABLE consumer_inbox DISABLE TRIGGER kafka_source_row_guard;')
- try{await denied(apply(guard))}finally{await admin('ALTER TABLE consumer_inbox ENABLE ALWAYS TRIGGER kafka_source_row_guard;')}
+ for(const table of ['consumer_inbox','effect_outbox']) {
+  const guard=await prepared();await admin(`ALTER TABLE ${table} DISABLE TRIGGER kafka_source_row_guard;`)
+  try{await denied(apply(guard))}finally{await admin(`ALTER TABLE ${table} ENABLE ALWAYS TRIGGER kafka_source_row_guard;`)}
+ }
  const stale=await prepared(),before=await pointer()
  await admin(`UPDATE fund_balance_projections SET balance=balance+0.0001 WHERE "organizationId"='org-a' AND "projectionVersion"=${stale.target.version} AND "buildKey"=${q(stale.target.key)} AND "fundId"='fund-a';`)
  await denied(apply(stale));assert.deepEqual(await pointer(),before)
@@ -138,4 +140,12 @@ await test('controller cannot self-register verifier evidence or directly mutate
  await assert.rejects(fixtureSql('op_controller','SELECT * FROM ld_kafka_operator.fund_verified_evidence;'),/42501/)
  await assert.rejects(fixtureSql('op_controller','DELETE FROM ld_kafka_operator.fund_verified_evidence;'),/42501/)
  await assert.rejects(fixtureSql('op_controller','UPDATE projection_activations SET "activationVersion"="activationVersion"+1;'),/42501/)
+})
+
+await test('retained actual build with expired rollback window cannot replace current pointer',async()=>{
+ const first=await prepared();await apply(first)
+ const second=await prepared();await apply(second)
+ const rollback=await prepared(first.target,'rollback'),before=await pointer()
+ await owned(`UPDATE ld_kafka_operator.fund_verified_evidence SET retained_until=clock_timestamp()-interval '1 second' WHERE request_id=${q(rollback.id)};`)
+ await denied(apply(rollback));assert.deepEqual(await pointer(),before)
 })

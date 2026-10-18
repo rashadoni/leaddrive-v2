@@ -37,6 +37,7 @@ RETURNS text LANGUAGE sql STABLE SET search_path=pg_catalog,pg_temp SET timezone
  'projections',(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.id) FROM public.fund_balance_projections p
  WHERE p."organizationId"=p_org AND (p.status='active' AND p."projectionVersion"=1 OR EXISTS(SELECT 1 FROM public.projection_builds b WHERE b."organizationId"=p_org AND b.id=p_build AND p."projectionVersion"=b."projectionVersion" AND p."buildKey"=b."buildKey"))),
  'checkpoints',(SELECT jsonb_agg(to_jsonb(c) ORDER BY c.id) FROM public.projection_checkpoints c WHERE c."organizationId"=p_org AND c."buildId"=p_build),
+ 'effects',(SELECT jsonb_agg(to_jsonb(x) ORDER BY x.id) FROM public.effect_outbox x WHERE x."organizationId"=p_org AND x."executionMode" IN ('shadow','replay')),
  'inbox',(SELECT jsonb_agg(to_jsonb(i) ORDER BY i.id) FROM public.consumer_inbox i WHERE i."organizationId"=p_org AND i."consumerName"='fund-shadow:'||p_build::text AND i."consumerVersion"=1)
  )::text,'UTF8'),'sha256'),'hex')
 $$;
@@ -49,15 +50,15 @@ BEGIN
  SELECT * INTO q FROM ld_kafka_operator.requests WHERE id=p_request;
  PERFORM set_config('app.org_id',q.organization_id,true);
  IF q.plan->>'action' NOT IN ('promote','rollback') THEN RAISE EXCEPTION 'FUND_TRANSITION_DENIED'; END IF;
- -- Inbox/checkpoint writes additionally share the source lock in this proof.
+ -- Inbox/checkpoint/effect-intent writes additionally share the source lock in this proof.
  SELECT count(*) INTO guards FROM pg_catalog.pg_trigger t JOIN pg_catalog.pg_class c ON c.oid=t.tgrelid
  JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public'
- AND c.relname IN ('consumer_inbox','projection_checkpoints') AND c.relkind='r'
+ AND c.relname IN ('consumer_inbox','projection_checkpoints','effect_outbox') AND c.relkind='r'
  AND NOT EXISTS(SELECT 1 FROM pg_catalog.pg_inherits i WHERE i.inhrelid=c.oid OR i.inhparent=c.oid)
  AND NOT t.tgisinternal AND NOT t.tgdeferrable AND t.tgenabled='A' AND t.tgqual IS NULL AND t.tgattr::text='' AND t.tgnargs=0
  AND t.tgfoid='ld_kafka_operator.source_write_guard()'::regprocedure
  AND ((t.tgname='kafka_source_row_guard' AND t.tgtype=31) OR (t.tgname='kafka_source_truncate_guard' AND t.tgtype=34));
- IF guards<>4 THEN RAISE EXCEPTION 'FUND_TRANSITION_DENIED'; END IF;
+ IF guards<>6 THEN RAISE EXCEPTION 'FUND_TRANSITION_DENIED'; END IF;
  SELECT * INTO e FROM ld_kafka_operator.fund_verified_evidence WHERE request_id=q.id FOR SHARE;
  IF e.request_id IS NULL OR e.plan IS DISTINCT FROM q.plan OR e.valid_until<=clock_timestamp()
  THEN RAISE EXCEPTION 'FUND_TRANSITION_DENIED'; END IF;
