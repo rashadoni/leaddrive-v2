@@ -276,6 +276,9 @@ export const DEMO_JOURNEY_STRINGS = {
   // Service Desk.
   supportTabHint: "Bu demoda Service Desk bölmələrini bələdçi açır — onun addımını izləyin.",
   supportYou: (name: string) => `${name} (siz)`,
+  supportCustomerSide: "Müştərinin telefonunda",
+  supportCustomerSideFrom: "Dəstək xidməti · WhatsApp",
+  supportRejectHint: "Bu demoda müştəri bileti bağlayır. «Dəstəyə qaytar» bileti yenidən açardı.",
   supportEscalationOn: (ticket: string) => `${ticket} üzrə qaydalar nə vaxt işləyir`,
   supportEscalationFired: "işləyib",
   supportEscalationNext: "gözlənilir",

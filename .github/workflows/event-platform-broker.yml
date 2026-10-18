@@ -18,6 +18,8 @@ on:
       - 'src/__tests__/event-platform-broker-fixture.test.ts'
       - 'src/__tests__/event-platform-worker-process.test.ts'
       - 'src/__tests__/event-platform-worker-session.test.ts'
+      - 'src/__tests__/event-platform-worker-admission.test.ts'
+      - 'src/__tests__/event-platform-worker-artifact.test.ts'
       - 'scripts/ci/fixtures/fund-shadow/**'
       - 'scripts/ci/test-event-platform-migrations.mjs'
       - 'prisma/migrations/**'
@@ -37,7 +39,9 @@ jobs:
   broker-driver:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Existing broker/SQL proof measured18min; three extra direct-JVM drills
+    # retain a bounded sequential phase without racing the previous20min cap.
+    timeout-minutes: 25
     concurrency:
       group: event-platform-disposable-integration
       cancel-in-progress: false
@@ -90,8 +94,10 @@ jobs:
           scripts/event-platform/test-broker-postgres.ts
           src/__tests__/event-platform-worker-process.test.ts
           src/__tests__/event-platform-worker-session.test.ts
+          src/__tests__/event-platform-worker-admission.test.ts
+          src/__tests__/event-platform-worker-artifact.test.ts
       - name: Prove fixture isolation and actual transaction hook ordering
-        run: npx vitest run src/__tests__/event-platform-fund-shadow-fixture.test.ts src/__tests__/event-platform-broker-fixture.test.ts src/__tests__/event-platform-worker-process.test.ts src/__tests__/event-platform-worker-session.test.ts
+        run: npx vitest run src/__tests__/event-platform-fund-shadow-fixture.test.ts src/__tests__/event-platform-broker-fixture.test.ts src/__tests__/event-platform-worker-process.test.ts src/__tests__/event-platform-worker-session.test.ts src/__tests__/event-platform-worker-admission.test.ts src/__tests__/event-platform-worker-artifact.test.ts
       - name: Bootstrap and prove the existing disposable migration contract
         run: node scripts/ci/test-event-platform-migrations.mjs
         env:
@@ -104,3 +110,10 @@ jobs:
       - name: Cleanup this run only
         if: always()
         run: docker compose -p "$LD_EVENT_STACK_PROJECT" -f ops/event-platform/test/compose.yml down --volumes --remove-orphans --timeout 10
+      - name: Preserve the verified client-only candidate (not a production install)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fund-shadow-worker-candidate-${{ github.sha }}
+          path: ${{ runner.temp }}/leaddrive-worker-artifact
+          if-no-files-found: error
+          retention-days: 7

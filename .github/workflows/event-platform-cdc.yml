@@ -10,6 +10,12 @@ on:
       - 'ops/event-platform/postgres/prepare-cdc.sql'
       - 'scripts/event-platform/**'
       - 'prisma/migrations/20260901090000_event_platform_foundation/**'
+      - 'prisma/migrations/**'
+      - 'prisma/schema.prisma'
+      - 'src/lib/event-platform/**'
+      - 'src/__tests__/fixtures/fund-shadow-postgres.ts'
+      - 'src/__tests__/event-platform-fund-shadow-fixture.test.ts'
+      - 'package-lock.json'
       - '.github/workflows/event-platform-cdc.yml'
   workflow_dispatch: {}
 
@@ -51,3 +57,50 @@ jobs:
         if: always()
         run: |
           docker compose -p "$LD_EVENT_STACK_PROJECT" -f ops/event-platform/test/compose.yml -f ops/event-platform/test/cdc.compose.yml down --volumes --remove-orphans --timeout 10
+
+  full-cdc-fund:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    needs: cdc-smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    concurrency:
+      group: event-platform-disposable-integration
+      cancel-in-progress: false
+      queue: max
+    env:
+      LD_EVENT_STACK_DISPOSABLE: '1'
+      LD_EVENT_STACK_FULL_CDC_FUND: '1'
+      FUND_SHADOW_DB_GATE: required
+      LD_EVENT_STACK_PROJECT: ld-event-test-${{ github.run_id }}-${{ github.run_attempt }}-fund
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install only locked fixture and application test dependencies
+        run: |
+          npm ci --prefix ops/event-platform/driver --ignore-scripts
+          npm ci --include=dev
+      - name: Generate the actual Prisma client (no application build)
+        run: npx prisma generate --schema prisma/schema.prisma
+      - name: Strictly check the actual full-chain fixture
+        run: >-
+          npx tsc --noEmit --skipLibCheck --strict --target ES2017 --lib ESNext
+          --module commonjs --moduleResolution node --esModuleInterop --types node --allowJs
+          node_modules/next/types/global.d.ts
+          scripts/event-platform/test-cdc-fund-postgres.ts
+      - name: Validate full-chain isolation and source-login contracts
+        run: |
+          node --test scripts/event-platform/test-cdc-fund-postgres.test.mjs
+          npx vitest run src/__tests__/event-platform-fund-shadow-fixture.test.ts
+      - name: Real canonical source to Debezium to Kafka to restricted Fund SQL
+        run: bash scripts/event-platform/test-stack.sh
+      - name: Cleanup this full-chain run only
+        if: always()
+        run: docker compose -p "$LD_EVENT_STACK_PROJECT" -f ops/event-platform/test/compose.yml -f ops/event-platform/test/cdc.compose.yml down --volumes --remove-orphans --timeout 10

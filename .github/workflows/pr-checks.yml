@@ -241,7 +241,7 @@ jobs:
           EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
 
       - name: Fund exact reducer and shadow control-flow unit gate
-        run: npx vitest run src/__tests__/event-platform-fund-balance-reducer.test.ts src/__tests__/event-platform-fund-shadow-consumer.test.ts src/__tests__/event-platform-partition-processor.test.ts src/__tests__/event-platform-fund-shadow-worker.test.ts src/__tests__/event-platform-kafka-bridge.test.ts src/__tests__/event-platform-worker-process.test.ts src/__tests__/event-platform-worker-session.test.ts
+        run: npx vitest run src/__tests__/event-platform-fund-balance-reducer.test.ts src/__tests__/event-platform-fund-shadow-consumer.test.ts src/__tests__/event-platform-partition-processor.test.ts src/__tests__/event-platform-fund-shadow-worker.test.ts src/__tests__/event-platform-kafka-bridge.test.ts src/__tests__/event-platform-worker-process.test.ts src/__tests__/event-platform-worker-session.test.ts src/__tests__/event-platform-worker-admission.test.ts src/__tests__/event-platform-worker-artifact.test.ts
 
       - name: Fund shadow restricted-login PostgreSQL transaction gate
         run: npx vitest run src/__tests__/event-platform-fund-shadow-postgres.test.ts
