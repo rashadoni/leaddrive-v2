@@ -176,3 +176,29 @@
   separate offline media, proves their readability with existing verifier and
   supplies only public signer allowlist + signed PII-free evidence. Production
   rotation requires reviewed Actions route and retained old-recipient history.
+
+## 2026-10-19: owner keeps administrative copy, no second USB available
+
+- User screenshots show successful SCP to Mac and `cmp` output “Копии
+  совпадают” comparing Mac file with first external LeadDrive Recovery volume.
+  This is screenshot evidence of byte equality, not independent decrypt drill,
+  physical-media custody signature, filesystem permissions or Farah acceptance.
+- User has no second external medium and explicitly requests keeping second
+  copy here and continuing. Existing candidate retained on administrative
+  Contabo host, outside repository. lstat verifies regular identity0600 and
+  directory0700 owned by current account. No secret bytes output/transmitted.
+- Do not generate another unrelated key or duplicate same-host file merely
+  to count copies. Mac, first external medium and administrative host copies
+  exist by creation/screenshot evidence; TWO_PHYSICALLY_SEPARATE_OFFLINE_MEDIA
+  requirement remains unmet. User request to retain online copy is recorded
+  accurately, not converted to a false signed offline attestation.
+- Safe existing production SSH alias attempted for public-recipient comparison
+  and marker existence only; authentication rejected (publickey). No remote
+  script executed and no host state changed. Actions inspection route remains
+  the verified fallback; do not infer that all production access is unavailable.
+- Main unchanged226dde0e7, own PR892 OPEN. Existing production public recipient
+  has NOT been compared to new candidate; key rotation must not be guessed.
+- External signer/custody bundle absent; no second-person identity invented,
+  no gate weakening, no unreviewed production recipient edit. Offline storage
+  gap does not prevent retaining candidate or continuing documentation/checks,
+  but currently prevents encrypted commissioning through existing workflow.
