@@ -168,10 +168,12 @@ export function isOperatorSenderName(name: string): boolean {
 export const EMAIL_COMMENT_PREFIX = "📧 "
 
 /**
- * A public comment the product writes on its own — the AI auto-actions cron's
- * acknowledgement and knowledge-base suggestion. It has no `userId`, exactly
- * like the customer's own portal reply, so without a marker both the portal
- * and the agent's page took it for the customer's words (until 2026-10-18).
+ * A public comment the team's side writes with no person behind it — the AI
+ * auto-actions cron's acknowledgement and knowledge-base suggestion, and the
+ * company's response a complaint registry import carries over. It has no
+ * `userId`, exactly like the customer's own portal reply, so without a marker
+ * both the portal and the agent's page took it for the customer's words (until
+ * 2026-10-18, the import until 2026-10-19).
  * Not a chat sender: `parseCommentSender` does not read it.
  */
 export const SYSTEM_COMMENT_PREFIX = "[Система] "
@@ -197,6 +199,50 @@ const UNMARKED_SYSTEM_COMMENT_RES = [
 export function systemCommentText(comment: string): string | null {
   if (comment.startsWith(SYSTEM_COMMENT_PREFIX)) return comment.slice(SYSTEM_COMMENT_PREFIX.length).trimStart()
   return UNMARKED_SYSTEM_COMMENT_RES.some((re) => re.test(comment)) ? comment : null
+}
+
+/** The label the portal chat escalation already puts on the customer's messages. */
+const CUSTOMER_REPLY_PREFIX = "[Клиент] "
+
+/**
+ * The customer's portal reply as it is stored. It has no `userId` and, as
+ * typed, no sender prefix, so every reader above decides who wrote it by its
+ * first characters: a reply that began «[Оператор] …», «[Da Vinci Bot] …» or
+ * «[Система] …», or was exactly a text the cron writes, was shown as the
+ * team's — on the agent's page and in the customer's own portal (until
+ * 2026-10-19). Such a reply is stored under the customer's own label, and
+ * reads back as their words, exactly as typed. Any leading bracket counts, not
+ * only today's team labels, so a label added to SENDER_RE later cannot take
+ * over replies already stored. Every other reply is stored as typed, as before,
+ * so replies written on either side of this change read the same.
+ */
+export function customerReplyForStorage(text: string): string {
+  const head = text.trimStart()
+  const readsAsSomeoneElse = head.startsWith("[") || head.startsWith(EMAIL_COMMENT_PREFIX) || systemCommentText(text) !== null
+  return readsAsSomeoneElse ? `${CUSTOMER_REPLY_PREFIX}${text}` : text
+}
+
+/** A public comment as the agent's ticket page shows it. */
+export type AgentCommentView =
+  /** A chat channel's message, as a messenger bubble. */
+  | { kind: "chat"; role: "customer" | "operator" | "assistant"; channel: string | null; text: string }
+  /** Written by the product or the team's side with no person behind it: «System». */
+  | { kind: "system"; text: string }
+  /** The customer's reply by e-mail, under their name with a «via email» badge. */
+  | { kind: "email"; text: string }
+  /** Under its author's name: a person on the team, an internal note, the customer's portal reply. */
+  | { kind: "plain"; text: string }
+
+export function agentCommentView(comment: { comment: string; userId: string | null; isInternal: boolean }): AgentCommentView {
+  const raw = comment.comment
+  const system = comment.userId ? null : systemCommentText(raw)
+  if (system !== null) return { kind: "system", text: system }
+  // Inbound e-mail replies are stored as "📧 <text>" (public/email-inbound).
+  if (raw.startsWith(EMAIL_COMMENT_PREFIX)) return { kind: "email", text: raw.slice(EMAIL_COMMENT_PREFIX.length).trimStart() }
+  const sender = comment.isInternal ? null : parseCommentSender(raw)
+  if (!sender) return { kind: "plain", text: raw }
+  const role = sender.sender === "customer" ? "customer" : isOperatorSenderName(sender.name) ? "operator" : "assistant"
+  return { kind: "chat", role, channel: sender.channel, text: sender.body }
 }
 
 /**
