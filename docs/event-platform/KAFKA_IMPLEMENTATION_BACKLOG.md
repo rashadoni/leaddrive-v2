@@ -643,3 +643,37 @@ restore. Storage/candidate prerequisites проверяются до соотв�
 операции. Не генерировать подпись от имени человека и не передавать private
 keys/пароли в чат, GitHub или production. Последний23/9 NO-GO остаётся
 историческим operational verdict; в этом ходе runtime не перепроверялся.
+
+### K4.1/K4.5: partition coordinator — implementation in progress
+
+Added inactive `partition-processor.ts` and `fund-shadow-worker.ts`. One
+assignment owns the complete ordered partition stream across admitted tenants.
+Each actual SQL COMMIT precedes its broker acknowledgement. A tenant-local
+checkpoint is never a broker resume/commit position: an old duplicate can
+return a newer tenant checkpoint while other tenants still need processing.
+The worker holds a snapshot of the trusted tenant/build/database routing plan.
+Unknown tenants/types, poison records, uncertain acknowledgement, invalid
+delivery boundaries or revoked membership stop the assignment without skipping.
+There is one in-flight batch, with bounded record/byte counts and no hidden
+queue or automatic retry. Legitimate numeric holes in Kafka offsets are allowed;
+the driver must supply every record from the unfiltered ordered broker fetch.
+
+The broker port must bind cluster/group/member/generation/topic/partition to
+the original assignment, disable auto-commit and reject stale membership at
+the broker, including the race after a local liveness check. A local token is
+not a durable database lease. Already-running SQL can commit after revoke; the
+coordinator withholds acknowledgement and the inbox makes replay repeatable.
+Changing the routing/build plan requires a separately governed group/history
+plan; do not reuse a group's advanced offsets to initialize a new build.
+
+This increment does not create a Kafka connection, production entrypoint,
+worker deployment, runtime credentials, durable assignment fence or activation.
+Real group join/rebalance/retention-gap and integrated Kafka+restricted-PG
+tests remain open. New control-flow and real PostgreSQL coordinator tests are
+prepared; execution receipts must be appended before claiming verification.
+The existing recovery NO-GO and independent restore prerequisites are unchanged.
+
+Protocol references: [Apache Kafka consumer offsets](https://kafka.apache.org/41/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html)
+and [Kafka group/offset protocol](https://kafka.apache.org/41/design/protocol/).
+The commit position denotes the next record to consume; it is not the
+maximum checkpoint returned by any tenant callback.

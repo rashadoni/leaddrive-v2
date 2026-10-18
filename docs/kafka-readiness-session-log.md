@@ -2093,3 +2093,56 @@ service, branch delivery or Kafka runtime was changed by this documentation.
 - This turn changes task-owned documentation only; no publication of the
   nominee's name or automatic access grant is authorized. Exact next stopping
   point is preparation for the real person's participation, not certification.
+
+## 2026-10-18 — resume K4 partition coordination from current main
+
+- Owner said "begin" after the second-reviewer nomination. Continued the
+  already-authorized Kafka implementation/delivery scope. Nomination is still
+  not independent custody or restore evidence; no private identity was used.
+- Reconciled recorded cwd via codex-project-context, actual task branch,
+  origin rashadoni/leaddrive-v2, production13.140.132.245:/opt/leaddrive-v2,
+  registry/deployment/delivery docs, current GitHub identity rashadoni and
+  all5 protected required contexts. Main advanced to08407d944 (unrelated PR874).
+- Created a clean task-owned worktree from that main at
+  /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-kafka-partition-processing-20261018,
+  branch codex/kafka-partition-processing-20261018. Preserved prior worktree
+  and all11 local docs checkpoints; cherry-picked those docs onto this branch
+  (through81dafaa6f). Canonical dirty tree remains untouched.
+- Implementing an inactive partition processor and Fund routing wrapper:
+  ordered cross-tenant prefix, SQL COMMIT before broker ack, original immutable
+  membership, immediate revoke/post-await guards, byte/record bounds, no queue,
+  fail-closed poison/uncertain-ack behavior. Numeric Kafka holes are allowed,
+  but driver-side unfiltered fetch and actual broker generation fencing remain
+  required. Existing tenant checkpoints never seed the broker cursor.
+- Independent helper reviewed design and writes only the two new unit tests.
+  Root adds real restricted-PostgreSQL coordinator scenarios to the existing
+  mandatory gate: A/B/A failure barrier, ack-loss duplicate/older checkpoint,
+  real deferred-COMMIT failure, and revoke while SQL commits.
+- Verification is PENDING. Small isolated test tools installation first hit
+  npm resolver edgesOut before installing; retry uses an explicit temporary
+  package manifest outside the repo. No dependency changes to application.
+  Full build/typecheck/realPG run on GitHub; no heavy local phase, production
+  backup/restore, source WAL/CDC, Kafka activation, offsets or replay executed.
+
+### K4 coordinator local verification before PR
+
+- Four focused Vitest4.1.2 files executed on this tree with one worker and
+  768MiB Node heap:189/189 PASS (existing121 plus68 new), duration1.70s.
+  These cover processor/coordinator control flow; the broker port is fake.
+- Targeted TypeScript5.9.3 strict checks of both new source and both new unit
+  files PASS with ES2020. An initial ES2017 targeted run found only the
+  pre-existing fund-contracts.ts:32 TS2737 bigint literal; no own-file error.
+  This does not replace the actual repository baseline/typecheck GitHub gate.
+- Runner policy70workflows PASS; mandatory Fund unit/realPG wiring2/2 PASS;
+  git diff --check PASS. Real PostgreSQL14-case gate and full repo checks are
+  NOT RUN locally, reserved for GitHub. No source runtime was activated.
+- Temporary isolated test dependencies required npm's legacy peer resolver
+  after two bounded edgesOut resolver failures. Only48 test-tool packages
+  installed under /tmp/leaddrive-kafka-tests.RqjLlq; ignored node_modules
+  symlink belongs to this worktree. No application manifest/lockfile changed,
+  no install scripts ran; hosted CI still uses the full frozen application lock.
+- Helper found a synchronous revoke-inside-isCurrent race. Root fixed it by
+  checking state after that callback; regressions at before-DB/after-DB/after-ack
+  boundaries pass. Read-only helper review found no remaining concrete blocker
+  in this inactive scope. Actual membership/retention/generation integration,
+  worker entrypoint/deployment and independent recovery remain future work.

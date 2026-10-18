@@ -10,6 +10,8 @@ import {
   type FundShadowScope,
   type FundShadowTransaction,
 } from "@/lib/event-platform/fund-shadow-consumer"
+import { createFundShadowPartitionWorker } from "@/lib/event-platform/fund-shadow-worker"
+import type { PartitionBroker } from "@/lib/event-platform/partition-processor"
 
 // No production access. The dedicated CI step must follow the existing real
 // migration gate (which creates the synthetic event_app/event_migrator roles).
@@ -95,6 +97,17 @@ function database(client: Client, input?: {
 
 function at(record: KafkaEventRecord, offset: number): KafkaEventRecord {
   return { ...record, offset: String(offset) }
+}
+
+// Only the broker port is simulated here. SQL, login restrictions, COMMIT,
+// inbox and source facts are real. Actual Kafka membership remains a separate
+// integration gate, not established by these assertions.
+function workerFor(contexts: Context[], broker: PartitionBroker, dbFor = (context: Context) => database(context.client)) {
+  return createFundShadowPartitionWorker({
+    assignment: { clusterId: "disposable-ci", groupId: "fund-shadow-test", memberId: "worker-a", generationId: 1,
+      topic, partition: 0, nextOffset: "10" },
+    environment: "test", routes: contexts.map(context => ({ scope: context.scope, database: dbFor(context) })), broker,
+  })
 }
 
 async function snapshotSource(organizationId: string) {
@@ -424,6 +437,81 @@ pgDescribe("Fund shadow on actual PostgreSQL: immutable source, restricted login
     const [{ hash }] = await scratch.$queryRawUnsafe<Array<{ hash: string }>>(`SELECT "payloadHash" AS hash FROM domain_events WHERE id = $1::uuid`, fresh.records[0].headers!.id)
     await expect(consumeFundShadowRecord(database(fresh.client), fresh.scope, { ...fresh.records[0], headers: { ...fresh.records[0].headers, payloadhash: hash } })).rejects.toThrow()
     expect(await counts(fresh)).toEqual({ shadows: 0, inbox: 0, checkpoints: 0 })
+  })
+
+  it("coordinates A/B/A through real tenant transactions and stops at B without acknowledging later A", async () => {
+    const a = await fixture()
+    const b = await fixture()
+    const before = await Promise.all([snapshotSource(a.scope.organizationId), snapshotSource(b.scope.organizationId)])
+    const commits: string[] = []
+    const worker = workerFor([a, b], { isCurrent: () => true, commitNextOffset: async (_, next) => { commits.push(next) } })
+    // B's second fact precedes its opening fact: the real reducer must reject.
+    await expect(worker.processBatch({ fetchOffset: "10", records: [at(a.records[0], 10), at(b.records[1], 11), at(a.records[1], 12)] })).rejects.toThrow()
+    expect(commits).toEqual(["11"])
+    expect(worker.status()).toEqual({ state: "stopped", nextOffset: "11" })
+    expect(await counts(a)).toEqual({ shadows: 1, inbox: 1, checkpoints: 1 })
+    expect(await counts(b)).toEqual({ shadows: 0, inbox: 0, checkpoints: 0 })
+    expect(await Promise.all([snapshotSource(a.scope.organizationId), snapshotSource(b.scope.organizationId)])).toEqual(before)
+  })
+
+  it("replays a committed DB result after ack loss without letting a later tenant checkpoint skip B", async () => {
+    const a = await fixture()
+    const b = await fixture()
+    const lost = workerFor([a, b], { isCurrent: () => true, commitNextOffset: async () => { throw new Error("synthetic lost broker ack") } })
+    await expect(lost.processBatch({ fetchOffset: "10", records: [at(a.records[0], 10)] })).rejects.toThrow("synthetic lost broker ack")
+    expect(await counts(a)).toEqual({ shadows: 1, inbox: 1, checkpoints: 1 })
+    // An earlier worker processed this exact duplicate at a later position.
+    await consumeFundShadowRecord(database(a.client), a.scope, at(a.records[0], 40))
+    const commits: string[] = []
+    const resumed = workerFor([a, b], { isCurrent: () => true, commitNextOffset: async (_, next) => {
+      if (next === "11") expect(await counts(b)).toEqual({ shadows: 0, inbox: 0, checkpoints: 0 })
+      commits.push(next)
+    } })
+    await resumed.processBatch({ fetchOffset: "10", records: [at(a.records[0], 10), at(b.records[0], 11)] })
+    expect(commits).toEqual(["11", "12"])
+    expect(await counts(a)).toEqual({ shadows: 1, inbox: 1, checkpoints: 1 })
+    expect(await counts(b)).toEqual({ shadows: 1, inbox: 1, checkpoints: 1 })
+  })
+
+  it("withholds worker acknowledgement on a real deferred COMMIT rejection", async () => {
+    const context = await fixture()
+    sql(new URL(scratchUrl()), `CREATE FUNCTION shadow_worker_commit_reject() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'synthetic worker deferred failure' USING ERRCODE = '23514'; END $$;
+      CREATE CONSTRAINT TRIGGER shadow_worker_commit_reject AFTER INSERT ON consumer_inbox
+      DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION shadow_worker_commit_reject();`)
+    const commits: string[] = []
+    const worker = workerFor([context], { isCurrent: () => true, commitNextOffset: async (_, next) => { commits.push(next) } })
+    try {
+      await expect(worker.processBatch({ fetchOffset: "10", records: [at(context.records[0], 10)] })).rejects.toThrow("synthetic worker deferred failure")
+      expect(commits).toEqual([])
+      expect(await counts(context)).toEqual({ shadows: 0, inbox: 0, checkpoints: 0 })
+    } finally {
+      await scratch.$executeRawUnsafe("DROP TRIGGER shadow_worker_commit_reject ON consumer_inbox")
+      await scratch.$executeRawUnsafe("DROP FUNCTION shadow_worker_commit_reject()")
+    }
+  })
+
+  it("allows an in-flight SQL commit after revoke but sends no ack and replays it once", async () => {
+    const context = await fixture()
+    const ready = signal<void>()
+    const release = signal<void>()
+    const commits: string[] = []
+    const worker = workerFor([context], { isCurrent: () => true, commitNextOffset: async (_, next) => { commits.push(next) } },
+      value => database(value.client, { beforeCommit: async () => { ready.resolve(); await bounded(release.promise, "worker revoke") } }))
+    const running = worker.processBatch({ fetchOffset: "10", records: [at(context.records[0], 10), at(context.records[1], 12)] })
+    // Attach a rejection handler before releasing the transaction.
+    const rejected = expect(running).rejects.toMatchObject({ code: "ASSIGNMENT_REVOKED" })
+    try {
+      await bounded(ready.promise, "worker DB before COMMIT")
+      worker.revoke()
+    } finally { release.resolve() }
+    await rejected
+    expect(commits).toEqual([])
+    expect(await counts(context)).toEqual({ shadows: 1, inbox: 1, checkpoints: 1 })
+    const resumed = workerFor([context], { isCurrent: () => true, commitNextOffset: async (_, next) => { commits.push(next) } })
+    await resumed.processBatch({ fetchOffset: "10", records: [at(context.records[0], 10), at(context.records[1], 12)] })
+    expect(commits).toEqual(["11", "13"])
+    expect(await counts(context)).toEqual({ shadows: 1, inbox: 2, checkpoints: 1 })
   })
 
   it("rolls all three writes back after a real inbox write and after a deferred COMMIT failure; never calls ack", async () => {
