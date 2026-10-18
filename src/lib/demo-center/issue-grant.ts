@@ -107,6 +107,9 @@ export async function issueDemoGrant(params: {
         // The admin allowed one real AI call to the prospect's proven phone,
         // and is the one on whose behalf it is placed.
         liveCallEnabled: Boolean(scenario) && options.liveCallEnabled,
+        // The live WhatsApp thread with the demo's agent is offered to every
+        // guided demo (owner, 2026-10-18); the call stays the owner's switch.
+        liveWhatsAppEnabled: Boolean(scenario),
         locale: options.locale,
         watermark: `${params.request.company} • ${params.request.email}`,
         linkExpiresAt,

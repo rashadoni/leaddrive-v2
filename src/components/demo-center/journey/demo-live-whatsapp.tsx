@@ -2,44 +2,57 @@
 
 import Image from "next/image"
 import { useEffect, useState } from "react"
-import { Loader2, MessageCircle, Send } from "lucide-react"
+import { Bot, CheckCheck, Loader2, MessageCircle, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { DemoLimitNotice } from "./demo-limit-notice"
+import { DEMO_WHATSAPP_CONSENT_TEXT } from "@/lib/demo-center/demo-whatsapp-welcome"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 
-/** What the server says about the live WhatsApp thread. */
+/** What the server says about the live WhatsApp thread (src/lib/demo-center/demo-whatsapp.ts). */
 interface LiveWhatsApp {
   enabled: boolean
   displayNumber: string | null
   link: string | null
   /** This session's code, already in the link's opening line. */
   code?: string | null
+  phoneMasked?: string | null
+  /** Our number may write first (the owner switched this request on); otherwise the prospect writes first. */
+  canWelcome?: boolean
+  welcomeSentAt?: string | null
+  proven?: boolean
+  agentActive?: boolean
+  agentRepliesLeft?: number
+  agentEndsAt?: string | null
+  closed?: boolean
   qr?: string | null
-  windowOpen: boolean
-  sent: number
-  left: number
-  messages: { id: string; direction: "inbound" | "outbound"; text: string; at: string }[]
+  messages: { id: string; direction: "inbound" | "outbound"; by?: "prospect" | "welcome" | "ai" | "team"; text: string; at: string }[]
 }
 
 const POLL_MS = 5_000
 
+function bakuTime(iso: string): string {
+  return new Intl.DateTimeFormat("az-AZ", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Baku" }).format(new Date(iso))
+}
+
 /**
- * A real WhatsApp conversation inside the demo (owner, 2026-09-22: «пусть
- * будут посылаться с номера который у меня уже зарегистрирован»).
+ * A real WhatsApp conversation inside the demo: the prospect's own phone and
+ * the demo's AI agent (owner, 2026-10-18: «ему приходит сообщение… он
+ * отвечает… AI agent отвечает»).
  *
- * The prospect writes to LeadDrive's own number first — by link on a phone,
- * by QR on a laptop. That inbound is what WhatsApp requires before a business
- * may answer in free text, so until it arrives the panel only shows the way
- * to write; afterwards the thread appears and the prospect can answer from
- * the demo, five times (`DEMO_WHATSAPP_MAX_SENDS`), each one leaving our
- * number and landing on their phone. The limit says why it stops.
+ * Two ways to begin. The prospect writes first by link or QR — open to every
+ * session; or, on a request the owner switched on, «WhatsApp-a mesaj
+ * göndərin» has LeadDrive's number write first to the phone on the request
+ * (the consent line says exactly that). Either way the thread opens
+ * here only when a message from that phone carries this session's code — the
+ * code is in the link's text, and the panel asks to add it to a reply. Then
+ * the AI agent answers on WhatsApp until the end of the day, and the panel
+ * shows the conversation as it happens.
  *
  * Nothing here names a phone number: the server only ever writes to the one
  * on the prospect's own demo request.
  */
 export function DemoLiveWhatsApp({ token }: { token: string }) {
   const [state, setState] = useState<LiveWhatsApp | null>(null)
-  const [draft, setDraft] = useState("")
+  const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -54,7 +67,11 @@ export function DemoLiveWhatsApp({ token }: { token: string }) {
       const response = await fetch(base, { cache: "no-store", credentials: "same-origin" }).catch(() => null)
       const payload = (await response?.json().catch(() => null)) as (LiveWhatsApp & { success?: boolean }) | null
       if (cancelled) return
-      if (payload?.success) setState(payload)
+      if (payload?.success) {
+        setState(payload)
+        // A failed press is history once the thread moved on.
+        if (payload.proven || payload.welcomeSentAt) setError(null)
+      }
       // A session without a live thread says so once; there is nothing to
       // watch for, so the loop stops instead of polling an empty answer.
       if (payload?.success && !payload.enabled) return
@@ -67,16 +84,15 @@ export function DemoLiveWhatsApp({ token }: { token: string }) {
     }
   }, [base])
 
-  const send = async () => {
-    const text = draft.trim()
-    if (!text || busy) return
+  const sendWelcome = async () => {
+    if (!consent || busy) return
     setBusy(true)
     setError(null)
     const response = await fetch(base, {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ action: "welcome", consent: true }),
     }).catch(() => null)
     const payload = (await response?.json().catch(() => null)) as (LiveWhatsApp & { success?: boolean; error?: string }) | null
     setBusy(false)
@@ -85,12 +101,28 @@ export function DemoLiveWhatsApp({ token }: { token: string }) {
       return
     }
     setState(payload)
-    setDraft("")
   }
 
   if (!state?.enabled) return null
 
-  const canSend = state.windowOpen && state.left > 0
+  const writeYourself = (
+    <>
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{S.whatsappIntro(state.displayNumber ?? "", state.phoneMasked ?? "")}</p>
+      {state.link && (
+        <Button asChild size="sm" variant="outline" className="mt-2">
+          <a href={state.link} target="_blank" rel="noopener noreferrer">
+            <Send className="mr-1 h-3.5 w-3.5" /> {S.whatsappWrite}
+          </a>
+        </Button>
+      )}
+      {state.qr && (
+        <div className="mt-2">
+          <Image src={state.qr} alt={S.whatsappQr} width={110} height={110} className="rounded bg-white p-1" unoptimized />
+          <p className="mt-1 text-[10px] text-muted-foreground">{S.whatsappQr}</p>
+        </div>
+      )}
+    </>
+  )
 
   return (
     <div data-testid="demo-live-whatsapp" className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-500/40 dark:bg-emerald-500/10">
@@ -98,26 +130,54 @@ export function DemoLiveWhatsApp({ token }: { token: string }) {
         <MessageCircle className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> {S.whatsappTitle}
       </p>
 
-      {!state.windowOpen ? (
+      {!state.proven ? (
         <>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{S.whatsappIntro(state.displayNumber ?? "")}</p>
+          {state.canWelcome ? (
+            state.welcomeSentAt ? (
+              <p data-testid="demo-whatsapp-welcome-sent" className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed">
+                <CheckCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                <span>{S.whatsappWelcomeSent(state.phoneMasked ?? "")}</span>
+              </p>
+            ) : (
+              <div className="mt-2 space-y-2">
+                <p className="text-[11px] leading-relaxed text-muted-foreground">{S.whatsappWelcomeIntro(state.phoneMasked ?? "")}</p>
+                <label className="flex cursor-pointer items-start gap-2 text-[11px] leading-relaxed">
+                  <input
+                    type="checkbox"
+                    data-testid="demo-whatsapp-consent"
+                    checked={consent}
+                    onChange={(event) => setConsent(event.target.checked)}
+                    className="mt-0.5 h-3.5 w-3.5 accent-emerald-600"
+                  />
+                  <span>{DEMO_WHATSAPP_CONSENT_TEXT}</span>
+                </label>
+                <Button
+                  size="sm"
+                  data-testid="demo-whatsapp-welcome"
+                  onClick={sendWelcome}
+                  disabled={!consent || busy}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1 h-3.5 w-3.5" />} {S.whatsappWelcomeSend}
+                </Button>
+              </div>
+            )
+          ) : null}
+
           {state.code ? (
-            <p data-testid="demo-whatsapp-code" className="mt-2 text-[11px] leading-relaxed">
-              {S.whatsappCode(state.code)}
+            <p data-testid="demo-whatsapp-code" className="mt-2 rounded-md bg-background px-2 py-1.5 text-[11px] leading-relaxed">
+              {state.welcomeSentAt ? S.whatsappReplyWithCode(state.code) : S.whatsappCode(state.code)}
             </p>
           ) : null}
-          {state.link && (
-            <Button asChild size="sm" className="mt-2 bg-emerald-600 hover:bg-emerald-700">
-              <a href={state.link} target="_blank" rel="noopener noreferrer">
-                <Send className="mr-1 h-3.5 w-3.5" /> {S.whatsappWrite}
-              </a>
-            </Button>
-          )}
-          {state.qr && (
-            <div className="mt-2">
-              <Image src={state.qr} alt={S.whatsappQr} width={110} height={110} className="rounded bg-white p-1" unoptimized />
-              <p className="mt-1 text-[10px] text-muted-foreground">{S.whatsappQr}</p>
-            </div>
+
+          {/* Where our number writes first, writing first yourself is the fallback; elsewhere it is the way in. */}
+          {state.canWelcome ? (
+            <details className="mt-2" open={Boolean(error)}>
+              <summary className="cursor-pointer text-[11px] font-medium text-emerald-800 dark:text-emerald-300">{S.whatsappWriteYourself}</summary>
+              {writeYourself}
+            </details>
+          ) : (
+            <div data-testid="demo-whatsapp-write-first">{writeYourself}</div>
           )}
           <p className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> {S.whatsappWaiting}
@@ -125,7 +185,7 @@ export function DemoLiveWhatsApp({ token }: { token: string }) {
         </>
       ) : (
         <>
-          <div className="mt-2 max-h-52 space-y-1.5 overflow-y-auto" aria-live="polite">
+          <div className="mt-2 space-y-1.5" aria-live="polite">
             {state.messages.map((message) => (
               <div key={message.id} className={message.direction === "outbound" ? "flex justify-end" : "flex justify-start"}>
                 <span
@@ -135,28 +195,22 @@ export function DemoLiveWhatsApp({ token }: { token: string }) {
                       : "max-w-[85%] rounded-lg bg-background px-2 py-1 text-[11px] leading-relaxed"
                   }
                 >
+                  {message.by === "ai" ? (
+                    <span className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide opacity-80">
+                      <Bot className="h-3 w-3" aria-hidden="true" /> {S.whatsappAiBadge}
+                    </span>
+                  ) : null}
                   {message.text}
                 </span>
               </div>
             ))}
           </div>
-
-          <textarea
-            rows={2}
-            value={draft}
-            disabled={!canSend || busy}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder={S.whatsappPlaceholder}
-            className="mt-2 w-full resize-none rounded-lg border border-zinc-200 bg-background p-2 text-xs disabled:opacity-60 dark:border-zinc-700"
-          />
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <Button size="sm" onClick={send} disabled={!canSend || busy || draft.trim().length === 0} className="bg-emerald-600 hover:bg-emerald-700">
-              {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1 h-3.5 w-3.5" />} {S.replySend}
-            </Button>
-            {state.left > 0 && <span className="text-[10px] tabular-nums text-muted-foreground">{S.replyLeft(state.left, state.left + state.sent)}</span>}
-          </div>
-          {state.left === 0 && <DemoLimitNotice className="mt-2" body={S.whatsappLimitBody(state.sent)} />}
-          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">{S.whatsappRealNote(state.displayNumber ?? "")}</p>
+          <p data-testid="demo-whatsapp-agent" className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+            {state.agentActive && state.agentEndsAt
+              ? S.whatsappAgentActive(state.agentRepliesLeft ?? 0, bakuTime(state.agentEndsAt))
+              : S.whatsappAgentDone}
+          </p>
+          <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{S.whatsappRealNote(state.displayNumber ?? "")}</p>
         </>
       )}
 

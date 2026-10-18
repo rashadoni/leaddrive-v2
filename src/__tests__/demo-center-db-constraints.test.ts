@@ -61,7 +61,7 @@ vi.mock("@/lib/demo-center/sales-org", () => ({
 }))
 
 const ROOT = process.cwd()
-const DEMO_TABLES = ['"demo_requests"', '"demo_grants"', '"demo_access_events"', '"demo_phone_verifications"']
+const DEMO_TABLES = ['"demo_requests"', '"demo_grants"', '"demo_access_events"', '"demo_phone_verifications"', '"demo_whatsapp_threads"']
 
 // Resolved like any import, so it works from a git worktree without its own node_modules.
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
@@ -303,6 +303,53 @@ pgDescribe("demo tables on a real Postgres", () => {
     const after = await demoCenterCounters()
     expect(after.activeSessions - before.activeSessions).toBe(2)
     expect(after.completed - before.completed).toBe(2)
+  })
+
+  it("keeps one WhatsApp thread per grant, for an Azerbaijani mobile, with the code the demo page shows", async () => {
+    const { demoWhatsAppCode } = await import("@/lib/demo-center/demo-whatsapp")
+    const grant = await grantInState((await storedRequest("whatsapp-thread@example.az")).id, "6", session(1, "6"))
+    const thread = (data: Record<string, unknown>) =>
+      bypass(() => prisma.demoWhatsAppThread.create({ data: { grantId: grant.id, phoneE164: "+994501234567", code: demoWhatsAppCode(grant.id), ...data } }))
+
+    await expect(thread({ grantId: grant.id, phoneE164: "+79161234567" })).rejects.toThrow() // not an Azerbaijani mobile
+    await expect(thread({ code: "LD-zz" })).rejects.toThrow() // not a code the page could show
+    await expect(thread({ expiresAt: new Date() })).rejects.toThrow() // a day to answer in, without the proof
+    await expect(thread({ closedAt: new Date() })).rejects.toThrow() // closed, and no one knows why
+    await expect(thread({ aiReplies: 51 })).rejects.toThrow()
+
+    const stored = await thread({})
+    expect(stored.code).toMatch(/^LD-[0-9A-F]{6}$/)
+    await expect(thread({})).rejects.toThrow() // one thread per grant
+    // The agent's claim on a reply: counted in the row, never past the cap the code checks.
+    const claimed = await bypass(() =>
+      prisma.demoWhatsAppThread.updateMany({ where: { id: stored.id, aiReplies: { lt: 10 } }, data: { aiReplies: { increment: 1 }, lastAiReplyAt: new Date() } }),
+    )
+    expect(claimed.count).toBe(1)
+
+    // The thread goes with its grant.
+    await bypass(() => prisma.demoGrant.delete({ where: { id: grant.id } }))
+    expect(await bypass(() => prisma.demoWhatsAppThread.count({ where: { id: stored.id } }))).toBe(0)
+  })
+
+  it("decides a welcome under one lock: a phone's week holds across demos, and a failed send gives the claim back", async () => {
+    const { sendDemoWhatsAppWelcome } = await import("@/lib/demo-center/demo-whatsapp")
+    const phone = "+994551234567"
+    const welcome = async (tag: string, digit: string) => {
+      const grant = await grantInState((await storedRequest(`welcome-${tag}@example.az`)).id, digit, { ...session(1, digit), liveCallEnabled: true })
+      const result = await sendDemoWhatsAppWelcome({ grant, requestPhone: phone, requestName: "Nigar Əliyeva", consent: true })
+      const row = await bypass(() => prisma.demoWhatsAppThread.findUniqueOrThrow({ where: { grantId: grant.id } }))
+      return { result, row }
+    }
+    // No sales line in this database: the send fails, and the claim is given back.
+    const first = await welcome("a", "7")
+    expect(first.result).toEqual({ ok: false, code: "failed" })
+    expect(first.row.welcomeSentAt).toBeNull()
+
+    // A welcome that went to this phone yesterday holds its week for every other demo.
+    await bypass(() => prisma.demoWhatsAppThread.update({ where: { id: first.row.id }, data: { welcomeSentAt: new Date(Date.now() - 86_400_000) } }))
+    const second = await welcome("b", "8")
+    expect(second.result).toEqual({ ok: false, code: "cooldown" })
+    expect(second.row.welcomeSentAt).toBeNull()
   })
 
   it("records on a fresh request that no sales organisation is configured for its lead", async () => {

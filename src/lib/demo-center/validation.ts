@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { DEMO_WHATSAPP_MAX_CHARS } from "./demo-whatsapp"
 import { DEMO_MODULE_IDS, isDemoModuleId } from "@/lib/demo-center/catalog"
 import { DEMO_JOURNEY_MODULES, isDemoJourneyModuleId } from "@/lib/demo-center/journey/modules"
 import { DEMO_JOURNEY_STATES, JOURNEY_REPORT_NAMES, getDemoJourneyScenario } from "@/lib/demo-center/journey"
@@ -87,8 +86,10 @@ export const demoPhoneCodeSchema = z.object({ useRequestPhone: z.literal(true) }
 export const demoPhoneTelegramSchema = z.object({ consent: z.boolean() }).strict()
 
 /** One message the prospect types in the demo's live WhatsApp thread. */
-export const demoWhatsAppSendSchema = z.object({
-  text: z.string().trim().min(1).max(DEMO_WHATSAPP_MAX_CHARS),
+/** «WhatsApp-a mesaj göndərin»: the welcome to the request's own phone, with the consent line ticked. */
+export const demoWhatsAppWelcomeSchema = z.object({
+  action: z.literal("welcome"),
+  consent: z.literal(true),
 }).strict()
 
 export const demoPhoneVerifySchema = z.object({

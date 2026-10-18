@@ -159,17 +159,23 @@ export const DEMO_JOURNEY_STRINGS = {
   replySimulatedNote:
     "Mesaj yalnız bu demo ekranında görünür: real hesabda o, müştəriyə seçilmiş kanalla (WhatsApp, Telegram, e-poçt) gedir.",
   whatsappTitle: "WhatsApp — həqiqətən",
-  whatsappIntro: (number: string) =>
-    `Bu demoda WhatsApp real işləyir: ${number} nömrəsinə yazın — mesajınız LeadDrive-ın Gələnlər qutusuna düşəcək, cavab isə həmin nömrədən sizin telefonunuza gələcək. WhatsApp qaydası belədir: biznes birinci yalnız təsdiqlənmiş şablonla yaza bilər, ona görə söhbəti siz başlayırsınız.`,
+  whatsappIntro: (number: string, phone: string) =>
+    `Sorğuda göstərdiyiniz ${phone} nömrəsindən ${number} nömrəsinə yazın — mesajınız LeadDrive-ın Gələnlər qutusuna düşəcək, AI agent isə WhatsApp-da cavab verəcək. Başqa nömrədən gələn mesaj bu demoya bağlanmır.`,
+  whatsappWelcomeIntro: (phone: string) =>
+    `Bu demoda WhatsApp real işləyir: LeadDrive sorğudakı ${phone} nömrənizə mesaj göndərəcək, siz cavab yazanda AI agent cavab verəcək — yazışma burada da görünəcək.`,
+  whatsappWelcomeSend: "WhatsApp-a mesaj göndərin",
+  whatsappWelcomeSent: (phone: string) => `Mesaj ${phone} nömrəsinə göndərildi. Telefonunuzda WhatsApp-ı açın və ona cavab yazın.`,
+  whatsappReplyWithCode: (code: string) => `Cavabınıza bu kodu əlavə edin: ${code}. Yazışma yalnız bu kodla gələn mesajdan sonra burada görünür — nömrə başqasınındırsa, onun yazışması sizə açılmır.`,
+  whatsappWriteYourself: "Mesaj gəlmədi? Özünüz yazın",
+  whatsappAiBadge: "AI agent",
+  whatsappAgentActive: (left: number, until: string) => `AI agent cavab verir: daha ${left} cavab, bu gün saat ${until}-dək. Sonra söhbət satış komandasında qalır.`,
+  whatsappAgentDone: "Demo üçün AI agentin cavabları bitdi. Söhbət LeadDrive-ın satış komandasında görünür.",
   whatsappWrite: "WhatsApp-da yazın",
   whatsappCode: (code: string) =>
     `Mesajda bu demonun kodu var — ${code}. Onu silməyin: yazışma yalnız bu kodla gələn mesajdan sonra burada görünür.`,
   whatsappQr: "Kompüterdəsiniz? Telefonla skan edin",
   whatsappWaiting: "Mesajınız gözlənilir…",
-  whatsappPlaceholder: "Cavabınızı yazın — WhatsApp-a gedəcək",
   whatsappFailed: "Mesaj göndərilmədi. Bir az sonra yenidən cəhd edin.",
-  whatsappLimitBody: (sent: number) =>
-    `Bu demoda WhatsApp-a ${sent} mesaj göndərdiniz — limit budur. Real hesabda yazışma limitsizdir; demoda isə nömrəmizi qorumaq üçün say məhduddur. Söhbətin davamı üçün satış komandası elə WhatsApp-dan yazacaq.`,
   whatsappRealNote: (number: string) => `Bu mesajlar həqiqətən ${number} nömrəsindən gedir və telefonunuzda görünür.`,
   whatsappPendingNote:
     "Nömrə bilindiyi üçün eyni müştəri WhatsApp-da da bu kartda görünür. Şəxsi demoda bu yazışma həqiqətən işləyir — bələdçidəki paneldən.",

@@ -1,48 +1,62 @@
 import { prisma } from "@/lib/prisma"
+import { runWithRlsBypass } from "@/lib/rls-context"
 import { hmacToken } from "@/lib/secure-token"
-import { sendWhatsAppText } from "@/lib/whatsapp"
+import { resolveWhatsAppConfig } from "@/lib/whatsapp"
+import { DEMO_WHATSAPP_MAX_AI_REPLIES } from "./demo-whatsapp-agent"
+import {
+  DEMO_WHATSAPP_CONSENT_VERSION,
+  DEMO_WHATSAPP_WELCOME,
+  sendDemoWhatsAppWelcomeTemplate,
+} from "./demo-whatsapp-welcome"
+import { demoCallFirstName } from "./call-prompt"
 import { normalizeDemoPhone } from "./phone-verification"
 import { inDemoSalesOrganization } from "./sales-org"
 import { demoWhatsAppConversationId, demoWhatsAppSender } from "./whatsapp-number"
 
 /**
- * The demo's live WhatsApp thread.
+ * The demo's live WhatsApp thread: the prospect's own phone and the demo's AI
+ * agent (owner, 2026-09-22: «пусть будут посылаться с номера который у меня
+ * уже зарегистрирован»; 2026-10-18: «ему приходит сообщение… он отвечает…
+ * AI agent отвечает… в конце дня отвязка»).
  *
- * Owner, 2026-09-22: «пусть будут посылаться с номера который у меня уже
- * зарегистрирован». LeadDrive Inc.'s own Cloud API number is live and its
- * webhook works (checked on production the same day: messages in and out at
- * 15:47–15:53 UTC), so the demo does not have to pretend here.
+ * LeadDrive Inc.'s own Cloud API number does the talking. Two ways in:
+ *   - they write first: a wa.me link and QR with the opening line written —
+ *     open to every prospect, since their own message is the proof;
+ *   - we write first: «WhatsApp-a mesaj göndərin» sends the Meta-approved
+ *     welcome template (demo-whatsapp-welcome.ts) to the request's phone. A
+ *     template to a typed number reaches whoever holds it, and anyone can
+ *     fill the public form with a stranger's number, so this needs the
+ *     owner's switch on the request (`liveCallEnabled`: he has seen who
+ *     asked), the prospect's press with the consent line, and stays within
+ *     once per grant, once a week per phone and DEMO_WHATSAPP_WELCOMES_PER_DAY
+ *     for the whole line — blocks from strangers lower the quality rating of
+ *     the only sales number;
+ * Either way the thread opens only when a message comes from exactly that
+ * phone carrying the session's code — which only this demo page shows. The
+ * phone on a request is typed, not proved: until 2026-10-18 a prospect who
+ * typed somebody else's number could read that person's conversation with
+ * LeadDrive, and a phone that merely writes proves nothing about who is
+ * looking at the demo. After the proof the demo's agent answers on WhatsApp
+ * (demo-whatsapp-agent.ts, called from the webhook) until the end of the day
+ * in Baku.
  *
- * The prospect starts it, never us. WhatsApp only lets a business write
- * first with a template approved by Meta, and this account's token carries
- * `whatsapp_business_messaging` alone — it cannot even list templates. So the
- * demo shows a wa.me link and a QR to the sales number: the prospect writes
- * from their own phone, their message arrives in the real inbox, and that
- * inbound both proves the number and opens WhatsApp's 24-hour window in which
- * free text is allowed. Only then can the demo answer, from that same number.
- *
- * What is guarded:
- *   - the grant must be active and allowed live contact (the same admin
- *     switch as the AI call — there is no separate one, and a prospect the
- *     owner trusts with a call is trusted with a reply);
- *   - the only number ever written to is the one on the prospect's own demo
- *     request, so a session cannot make our number message a stranger;
- *   - at most DEMO_WHATSAPP_MAX_SENDS five answers per grant, counted from
- *     the messages themselves, so a reload hands out no more;
- *   - free text only inside WhatsApp's window, which `sendWhatsAppText`
- *     checks again on its own.
+ * The thread is offered to every prospect (`liveWhatsAppEnabled`, on for
+ * every grant the form issues); a grant the owner issued with the call
+ * switch has it too.
  */
 
-/** Owner, 2026-09-22: «и то с ограничением на 5 сообщений». */
-export const DEMO_WHATSAPP_MAX_SENDS = 5
-/** Nothing longer than this is worth sending from a demo. */
-export const DEMO_WHATSAPP_MAX_CHARS = 700
 /** How much of the thread the demo shows. */
 const THREAD_LIMIT = 12
+/** One welcome to a phone per week, whichever demo asked. */
+const WELCOME_COOLDOWN_MS = 7 * 24 * 60 * 60_000
+/** Welcomes the sales number sends in any 24 hours, whoever asks: a ceiling, not a target. */
+export const DEMO_WHATSAPP_WELCOMES_PER_DAY = 20
 
 export interface DemoWhatsAppMessage {
   readonly id: string
   readonly direction: "inbound" | "outbound"
+  /** Who wrote an outbound message: our welcome, the demo's AI agent, or a person in the team. */
+  readonly by: "prospect" | "welcome" | "ai" | "team"
   readonly text: string
   readonly at: string
 }
@@ -56,41 +70,63 @@ export interface DemoWhatsAppState {
   readonly link: string | null
   /** This session's code, already inside the link's opening line; shown so it can be typed by hand. */
   readonly code: string | null
-  /** The prospect has written, so free text is allowed back. */
-  readonly windowOpen: boolean
-  readonly sent: number
-  readonly left: number
+  /** The request's phone, masked, for «we send to …». */
+  readonly phoneMasked: string | null
+  /** Our number may write first to that phone: the owner's switch is on. Otherwise the prospect writes first. */
+  readonly canWelcome: boolean
+  /** When our welcome went to that phone, if it did. */
+  readonly welcomeSentAt: string | null
+  /** The code came from that phone: the thread is this session's. */
+  readonly proven: boolean
+  /** The demo's agent is answering now. */
+  readonly agentActive: boolean
+  readonly agentRepliesLeft: number
+  /** When the agent stops: the end of the day in Baku. */
+  readonly agentEndsAt: string | null
+  readonly closed: boolean
   readonly messages: readonly DemoWhatsAppMessage[]
 }
 
-export type SendDemoWhatsAppResult =
+export type SendDemoWelcomeResult =
   | { ok: true; state: DemoWhatsAppState }
-  | { ok: false; code: "not_enabled" | "empty" | "too_long" | "too_many" | "no_inbound" | "failed" }
+  | { ok: false; code: "not_enabled" | "consent_required" | "already_sent" | "cooldown" | "busy" | "unavailable" | "failed" }
 
 interface Grant {
   readonly id: string
-  /** The thread starts here: nothing older is ever shown (see readThread). */
+  /** The thread starts here: nothing older is ever shown. */
   readonly createdAt: Date
   readonly status: string
   readonly liveCallEnabled: boolean
+  readonly liveWhatsAppEnabled?: boolean
   readonly sessionExpiresAt: Date | null
 }
 
-const OFF: DemoWhatsAppState = { enabled: false, displayNumber: null, link: null, code: null, windowOpen: false, sent: 0, left: 0, messages: [] }
-
-/** WhatsApp's own window, in hours: the same 23 `sendWhatsAppText` uses. */
-const WINDOW_HOURS = 23
+const OFF: DemoWhatsAppState = {
+  enabled: false,
+  displayNumber: null,
+  link: null,
+  code: null,
+  phoneMasked: null,
+  canWelcome: false,
+  welcomeSentAt: null,
+  proven: false,
+  agentActive: false,
+  agentRepliesLeft: 0,
+  agentEndsAt: null,
+  closed: false,
+  messages: [],
+}
 
 function usable(grant: Grant, now: Date): boolean {
-  return grant.status === "ACTIVE" && grant.liveCallEnabled && (!grant.sessionExpiresAt || grant.sessionExpiresAt > now)
+  return grant.status === "ACTIVE"
+    && (Boolean(grant.liveWhatsAppEnabled) || grant.liveCallEnabled)
+    && (!grant.sessionExpiresAt || grant.sessionExpiresAt > now)
 }
 
 /**
  * This session's code: six characters derived from the grant, shown only on
- * its own demo page, inside the line the prospect's WhatsApp opens with.
- * A message carrying it from the request's phone is what proves that the
- * person looking at the demo holds that phone — a phone that merely wrote to
- * LeadDrive in the meantime proves nothing (review of 2026-10-18).
+ * its own demo page. A message carrying it from the request's phone is what
+ * proves that the person looking at the demo holds that phone.
  */
 export function demoWhatsAppCode(grantId: string): string {
   return `LD-${hmacToken(grantId, "demo-whatsapp-code").slice(0, 6).toUpperCase()}`
@@ -100,6 +136,22 @@ export function demoWhatsAppCode(grantId: string): string {
 export function demoWhatsAppOpener(company: string | null, code: string): string {
   const who = company?.trim() ? ` (${company.trim()})` : ""
   return `LeadDrive demo${who}: salam! Bu mesajı demo səhifəsindən yazıram. Kod: ${code}`
+}
+
+function maskPhone(e164: string): string {
+  return `${e164.slice(0, 4)} ** *** ${e164.slice(-4, -2)} ${e164.slice(-2)}`
+}
+
+/** The thread's row: created the first time the demo page asks, never changed but by its own steps. */
+async function ensureThread(grant: Grant, phoneE164: string) {
+  return await runWithRlsBypass(() =>
+    prisma.demoWhatsAppThread.upsert({
+      where: { grantId: grant.id },
+      create: { grantId: grant.id, phoneE164, code: demoWhatsAppCode(grant.id) },
+      update: {},
+      select: { id: true, phoneE164: true, welcomeSentAt: true, provenAt: true, expiresAt: true, aiReplies: true, closedAt: true },
+    }),
+  )
 }
 
 export async function demoWhatsAppState(params: {
@@ -114,136 +166,152 @@ export async function demoWhatsAppState(params: {
   if (!phone) return OFF
   const sender = await demoWhatsAppSender(now.getTime())
   if (!sender) return OFF
+  const thread = await ensureThread(params.grant, phone.e164)
+  // A thread is the phone it was made for; a request whose phone was edited since gets nothing.
+  if (thread.phoneE164 !== phone.e164) return OFF
+  const code = demoWhatsAppCode(params.grant.id)
 
   // The one door into the tenant (./sales-org.ts): demo code never picks an
   // organisation itself, and the boundary test holds that.
-  const entered = await inDemoSalesOrganization((organizationId) => readThread(organizationId, phone.e164, params.grant, now))
-  const thread = entered?.value ?? { messages: [], windowOpen: false, sent: 0 }
+  // From our welcome if it went first, and a minute before the proof either
+  // way: the message carrying the code is stored just before it is seen.
+  const since = thread.provenAt
+    ? new Date(Math.min(thread.welcomeSentAt?.getTime() ?? Infinity, thread.provenAt.getTime() - 60_000))
+    : null
+  const entered = since
+    ? await inDemoSalesOrganization((organizationId) => readThread(organizationId, phone.e164, since))
+    : null
+  const messages = entered?.value ?? []
+  const agentActive = Boolean(
+    thread.provenAt && !thread.closedAt && thread.expiresAt && thread.expiresAt > now && thread.aiReplies < DEMO_WHATSAPP_MAX_AI_REPLIES,
+  )
   return {
     enabled: true,
     displayNumber: sender.displayNumber,
-    link: `https://wa.me/${sender.waNumber}?text=${encodeURIComponent(demoWhatsAppOpener(params.company ?? null, demoWhatsAppCode(params.grant.id)))}`,
-    code: demoWhatsAppCode(params.grant.id),
-    windowOpen: thread.windowOpen,
-    sent: thread.sent,
-    left: Math.max(0, DEMO_WHATSAPP_MAX_SENDS - thread.sent),
-    messages: thread.messages,
-  }
-}
-
-export async function sendDemoWhatsApp(params: {
-  grant: Grant
-  requestPhone: string | null
-  text: string
-  company?: string | null
-  now?: Date
-}): Promise<SendDemoWhatsAppResult> {
-  const now = params.now ?? new Date()
-  const text = params.text.trim()
-  if (!usable(params.grant, now)) return { ok: false, code: "not_enabled" }
-  if (!text) return { ok: false, code: "empty" }
-  if (text.length > DEMO_WHATSAPP_MAX_CHARS) return { ok: false, code: "too_long" }
-  const phone = normalizeDemoPhone(params.requestPhone ?? "")
-  if (!phone) return { ok: false, code: "not_enabled" }
-  const sender = await demoWhatsAppSender(now.getTime())
-  if (!sender) return { ok: false, code: "not_enabled" }
-
-  const entered = await inDemoSalesOrganization(async (organizationId) => {
-    const before = await readThread(organizationId, phone.e164, params.grant, now)
-    if (before.sent >= DEMO_WHATSAPP_MAX_SENDS) return { refused: "too_many" as const }
-    // Business-initiated messages need a template this account cannot even
-    // list, so without the prospect's own inbound there is nothing to send.
-    if (!before.windowOpen) return { refused: "no_inbound" as const }
-
-    const sentResult = await sendWhatsAppText({ to: phone.e164, body: text, organizationId, skipLog: true })
-    if (!sentResult.success) return { refused: "failed" as const }
-
-    await prisma.channelMessage.create({
-      data: {
-        organizationId,
-        channelConfigId: sender.channelConfigId,
-        conversationId: await demoWhatsAppConversationId(organizationId, phone.e164),
-        direction: "outbound",
-        channelType: "whatsapp",
-        from: sender.phoneNumberId,
-        to: phone.e164.replace(/^\+/, ""),
-        body: text,
-        status: "delivered",
-        externalId: sentResult.messageId,
-        // `demoGrantId` is what counts the five: it is written here and
-        // nowhere else, so an operator's own reply in the inbox never eats
-        // the prospect's allowance, and a reload cannot hand out more.
-        metadata: { channel: "whatsapp", sentVia: "demo", demoGrantId: params.grant.id, waMessageId: sentResult.messageId },
-      },
-    })
-    return { refused: null }
-  })
-  if (!entered) return { ok: false, code: "not_enabled" }
-  if (entered.value.refused) return { ok: false, code: entered.value.refused }
-
-  return {
-    ok: true,
-    state: await demoWhatsAppState({ grant: params.grant, requestPhone: params.requestPhone, company: params.company, now }),
+    link: `https://wa.me/${sender.waNumber}?text=${encodeURIComponent(demoWhatsAppOpener(params.company ?? null, code))}`,
+    code,
+    phoneMasked: maskPhone(phone.e164),
+    canWelcome: params.grant.liveCallEnabled,
+    welcomeSentAt: thread.welcomeSentAt?.toISOString() ?? null,
+    proven: Boolean(thread.provenAt),
+    agentActive,
+    agentRepliesLeft: Math.max(0, DEMO_WHATSAPP_MAX_AI_REPLIES - thread.aiReplies),
+    agentEndsAt: thread.expiresAt?.toISOString() ?? null,
+    closed: Boolean(thread.closedAt),
+    messages,
   }
 }
 
 /**
- * Inside the tenant already: the door above put us there.
- *
- * The phone is the one typed on the request, and nobody proved it. Until
- * 2026-10-18 this returned the last twelve messages of any age whose `to`,
- * `from` or `waPhone` CONTAINED its last nine digits — and an inbound row's
- * `from` is the sender's own WhatsApp profile name, which anybody can set to
- * those digits. So a prospect who typed somebody else's number could read
- * that person's real conversation with LeadDrive.
- *
- * Now a row belongs to the phone only by the exact number: an inbound row by
- * its `waPhone`, an outbound row by its `to`. And the thread starts at this
- * session's own proof — the first message from that number carrying the
- * session's code (demoWhatsAppCode), which only this demo page shows. Before
- * it there is nothing to show and nothing may be sent.
+ * «WhatsApp-a mesaj göndərin»: our first message to the request's phone.
+ * Only on a request the owner switched on, on the prospect's own press with
+ * the consent line, once per grant, once a week per phone and within the
+ * line's daily ceiling — a template to a typed number reaches whoever holds
+ * it, and blocks there lower the quality rating of the only sales number.
  */
-async function readThread(
-  organizationId: string,
-  phoneE164: string,
-  grant: Pick<Grant, "id" | "createdAt">,
-  now: Date,
-): Promise<{ messages: DemoWhatsAppMessage[]; windowOpen: boolean; sent: number }> {
-  const digits = phoneE164.replace(/\D/g, "")
-  const code = demoWhatsAppCode(grant.id)
-  const [proof, sent] = await Promise.all([
-    prisma.channelMessage.findFirst({
-      where: {
-        organizationId,
-        channelType: "whatsapp",
-        direction: "inbound",
-        createdAt: { gte: grant.createdAt },
-        metadata: { path: ["waPhone"], equals: digits },
-        body: { contains: code },
-      },
-      orderBy: { createdAt: "asc" },
-      select: { createdAt: true },
+export async function sendDemoWhatsAppWelcome(params: {
+  grant: Grant
+  requestPhone: string | null
+  requestName: string | null
+  company?: string | null
+  consent: boolean
+  now?: Date
+}): Promise<SendDemoWelcomeResult> {
+  const now = params.now ?? new Date()
+  // We write first only where the owner has seen the request; anyone else writes first.
+  if (!usable(params.grant, now) || !params.grant.liveCallEnabled) return { ok: false, code: "not_enabled" }
+  if (!params.consent) return { ok: false, code: "consent_required" }
+  const phone = normalizeDemoPhone(params.requestPhone ?? "")
+  if (!phone) return { ok: false, code: "not_enabled" }
+  const thread = await ensureThread(params.grant, phone.e164)
+  if (thread.phoneE164 !== phone.e164) return { ok: false, code: "not_enabled" }
+  if (thread.welcomeSentAt) return { ok: false, code: "already_sent" }
+
+  // Claimed before sending — two presses send one message — and decided one
+  // at a time for the whole line, so neither the phone's week nor the day's
+  // ceiling can be raced by parallel demos.
+  const outcome = await runWithRlsBypass(() =>
+    prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"demo-whatsapp-welcome"}))`
+      const recent = await tx.demoWhatsAppThread.findFirst({
+        where: { phoneE164: phone.e164, id: { not: thread.id }, welcomeSentAt: { gt: new Date(now.getTime() - WELCOME_COOLDOWN_MS) } },
+        select: { id: true },
+      })
+      if (recent) return "cooldown" as const
+      const today = await tx.demoWhatsAppThread.count({ where: { welcomeSentAt: { gt: new Date(now.getTime() - 24 * 60 * 60_000) } } })
+      if (today >= DEMO_WHATSAPP_WELCOMES_PER_DAY) return "busy" as const
+      const claimed = await tx.demoWhatsAppThread.updateMany({ where: { id: thread.id, welcomeSentAt: null }, data: { welcomeSentAt: now } })
+      return claimed.count ? ("claimed" as const) : ("already_sent" as const)
     }),
-    // The prospect's own five, counted on their own — not within a page of
-    // the thread, which enough inbound messages would push them off.
-    prisma.channelMessage.count({
-      where: {
+  )
+  if (outcome !== "claimed") return { ok: false, code: outcome }
+  const release = () => runWithRlsBypass(() =>
+    prisma.demoWhatsAppThread.updateMany({ where: { id: thread.id, welcomeSentAt: now, welcomeWaMessageId: null }, data: { welcomeSentAt: null } }),
+  )
+
+  const firstName = demoCallFirstName(params.requestName) ?? DEMO_WHATSAPP_WELCOME.fallbackName
+  const entered = await inDemoSalesOrganization(async (organizationId) => {
+    const config = await resolveWhatsAppConfig(organizationId)
+    if (!config) return { status: "failed" as const }
+    const delivery = await sendDemoWhatsAppWelcomeTemplate(config, { to: phone.e164, firstName })
+    if (delivery.status !== "sent") return delivery
+    await prisma.channelMessage.create({
+      data: {
         organizationId,
-        channelType: "whatsapp",
+        channelConfigId: config.id,
+        conversationId: await demoWhatsAppConversationId(organizationId, phone.e164),
         direction: "outbound",
-        AND: [
-          { metadata: { path: ["demoGrantId"], equals: grant.id } },
-          { metadata: { path: ["sentVia"], equals: "demo" } },
-        ],
+        channelType: "whatsapp",
+        from: config.phoneNumberId,
+        to: phone.e164.replace(/^\+/, ""),
+        body: DEMO_WHATSAPP_WELCOME.body(firstName),
+        status: "sent",
+        externalId: delivery.messageId,
+        metadata: {
+          channel: "whatsapp",
+          sentVia: "demo_welcome",
+          template: DEMO_WHATSAPP_WELCOME.name,
+          consentVersion: DEMO_WHATSAPP_CONSENT_VERSION,
+          demoGrantId: params.grant.id,
+          waMessageId: delivery.messageId,
+        },
       },
-    }),
-  ])
-  if (!proof) return { messages: [], windowOpen: false, sent }
-  const ours = await prisma.channelMessage.findMany({
+    })
+    return delivery
+  })
+  const delivery = entered?.value ?? { status: "failed" as const }
+  if (delivery.status === "unknown") {
+    // The request may have reached Meta (we stopped waiting): it may be on the
+    // phone already, so the claim stays and the page says to look.
+    await runWithRlsBypass(() =>
+      prisma.demoAccessEvent.create({ data: { grantId: params.grant.id, eventType: "WHATSAPP_WELCOME_SENT", metadata: { consentVersion: DEMO_WHATSAPP_CONSENT_VERSION, confirmed: false } } }),
+    ).catch(() => {})
+    return { ok: true, state: await demoWhatsAppState({ grant: params.grant, requestPhone: params.requestPhone, company: params.company, now }) }
+  }
+  if (delivery.status !== "sent") {
+    await release()
+    return { ok: false, code: delivery.status === "unavailable" ? "unavailable" : "failed" }
+  }
+  await runWithRlsBypass(async () => {
+    await prisma.demoWhatsAppThread.updateMany({ where: { id: thread.id }, data: { welcomeWaMessageId: delivery.messageId ?? "unknown" } })
+    await prisma.demoAccessEvent.create({ data: { grantId: params.grant.id, eventType: "WHATSAPP_WELCOME_SENT", metadata: { consentVersion: DEMO_WHATSAPP_CONSENT_VERSION } } })
+  })
+  return { ok: true, state: await demoWhatsAppState({ grant: params.grant, requestPhone: params.requestPhone, company: params.company, now }) }
+}
+
+/**
+ * Inside the tenant already: the door above put us there. Only messages since
+ * the proof, matched by the exact number — an inbound row by its `waPhone`, an
+ * outbound row by its `to` — never by a part of a number or by `from`, which
+ * on an inbound row is the sender's own profile name.
+ */
+async function readThread(organizationId: string, phoneE164: string, since: Date): Promise<DemoWhatsAppMessage[]> {
+  const digits = phoneE164.replace(/\D/g, "")
+  const rows = await prisma.channelMessage.findMany({
     where: {
       organizationId,
       channelType: "whatsapp",
-      createdAt: { gte: proof.createdAt },
+      createdAt: { gte: since },
       OR: [
         { direction: "inbound", metadata: { path: ["waPhone"], equals: digits } },
         { direction: "outbound", to: { in: [digits, `+${digits}`] } },
@@ -251,17 +319,17 @@ async function readThread(
     },
     orderBy: { createdAt: "desc" },
     take: THREAD_LIMIT,
-    select: { id: true, direction: true, body: true, createdAt: true },
+    select: { id: true, direction: true, body: true, createdAt: true, metadata: true },
   })
-  const lastInbound = ours.find((row) => row.direction === "inbound")
-  const windowOpen = Boolean(lastInbound && now.getTime() - lastInbound.createdAt.getTime() < WINDOW_HOURS * 60 * 60_000)
-  const messages = ours
-    .reverse()
-    .map((row) => ({
+  return rows.reverse().map((row) => {
+    const sentVia = (row.metadata as { sentVia?: unknown } | null)?.sentVia
+    const by = row.direction === "inbound" ? "prospect" : sentVia === "demo_ai" ? "ai" : sentVia === "demo_welcome" ? "welcome" : "team"
+    return {
       id: row.id,
       direction: row.direction === "inbound" ? ("inbound" as const) : ("outbound" as const),
+      by,
       text: row.body,
       at: row.createdAt.toISOString(),
-    }))
-  return { messages, windowOpen, sent }
+    }
+  })
 }
