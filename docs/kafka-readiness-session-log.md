@@ -1584,3 +1584,54 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   exact previous merge's deploy, public marker/ping and feature postconditions
   are confirmed. New actual required checks will run after the final draft
   receipt update and one ready transition, not from these skipped checks.
+
+## 2026-10-18 02:45 UTC — PR871 production delivery independently confirmed
+
+- Automatic deploy39089075829 COMPLETED SUCCESS on merge
+  287047e2e7fd63a6265b646851aa74384715d4ad. Quality117561716344 SUCCESS:
+  focused121/121 at02:14:36Z, actual PG10/10 at02:15:00Z, unit baseline18=18
+  at02:34:08Z. Build117561716495 SUCCESS02:30:51Z; artifact12122357906 is
+  leaddrive-prod-287047e2e7fd63a6265b646851aa74384715d4ad, unexpired,
+  expires2026-11-17T02:30:43Z. This is the existing30-day Actions retention,
+  not long-term independent immutable recovery storage.
+- Runtime117566196383 SUCCESS02:42:32Z; retention117567697248 SUCCESS02:42:54Z.
+  Actual runtime log02:40:52 says existing Fund cutover was already durably
+  verified;02:41:28 structural ledger/RLS/ownership/exact-money/Fund projection
+  postconditions passed. No new deep rebuild/backup/replay/worker was run.
+  Public ping, revision, login and hashed-assets workflow smokes all SUCCESS.
+- Root independently requested public build-info: exact artifactSha287047e2,
+  builtAt2026-10-18T02:18:33Z; /api/v1/ping returned ok=true. Fresh GitHub
+  main matched the same full merge SHA. Thus normal source/app delivery is
+  confirmed; an inactive unreferenced adapter is not an activated/bundled worker.
+- After verifying no active inventory, dispatched exactly one existing
+  protected main-only read-only inventory39091217812 at02:45:26Z on the same
+  reviewed/delivered SHA. Its source was fully re-read: canonical file/static
+  config guards, PGOPTIONS read-only before parsing, explicit READ ONLY SQL,
+  bounded aggregate queries and no payload/tenant/slot-name output. Terminal
+  result is PENDING; do not infer fresh Kafka activation state from a queue.
+- Next: record that inventory, update/freeze PR872 documentation once, wait
+  its cheap exact-head checks and mark ready once for actual required gates.
+  No production diagnostic on the feature branch; no commissioning, replay,
+  offset, slot/publication, source/role or paid-service mutation.
+
+### Fresh post-delivery inventory and next frozen head
+
+- Read-only inventory39091217812/job117568192834 SUCCESS02:45:53Z on exact
+  287047e2; observed02:45:50Z. PG160015, transaction readOnly=on,
+  walLevel=replica, replication slots0/active0/retained WAL0, outbox publication
+  absent, max slots/senders10 and slot WAL cap-1. The source CDC path is not
+  configured/streaming. This does not inspect arbitrary external Kafka broker,
+  Connect or consumer processes and is not proof that none exist anywhere.
+- All8 expected event tables present with RLS+FORCE. estimatedRows0 is planner
+  metadata, NOT exact history counts. Four recovery timers inactive; restore
+  verification explicitly NOT PERFORMED. Both pgpass private0600, backup-service
+  owned/grouped, canonical/regular/one-link/readable. CA0640/group backup-service,
+  canonical/regular/one-link/readable; masked CA owner is NOT inferred.
+- Production RAM12247548kB total/9977356available, swap0; disk206900281344/
+  175270199296bytes total/available. Cumulative WAL17891881657, unchanged
+  September4 reset. Repeated snapshots are not an approved daily/peak load,
+  outage/slot budget, independent failure domains or restore/PITR proof.
+- PR871 delivery and its source-CDC postflight are now complete within their
+  bounded scope. No activation/replay was performed. Finalize these receipts
+  in PR872 while still draft, publish once, wait its new-head cheap checks and
+  transition ready once; no product/diagnostic code changed since local10/10.

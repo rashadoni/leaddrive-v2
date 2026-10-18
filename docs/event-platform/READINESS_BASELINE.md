@@ -1,5 +1,9 @@
 # Kafka implementation baseline — 2026-10-17
 
+Continuity: the initial table is historical. Later dated sections supersede
+earlier pending/PLANNED observations without deleting them; read the latest
+receipt for current delivery and distinguish it from runtime activation.
+
 This is an evidence snapshot, not activation authorization or all-module readiness.
 
 | Boundary | Evidence | Result |
@@ -280,3 +284,42 @@ It does not supersede the separate recovery or runtime activation prerequisites.
   production role provisioning, source/active-v1/pointer/effect mutation,
   activation, replay, HA/archive/DR or all-module adoption in this increment.
   Next is the narrow read-only Object Lock cause diagnostic, not commissioning.
+
+## Limited Fund SQL source delivery confirmed — 2026-10-18
+
+This supersedes the pending PR871 production delivery immediately above.
+
+- [Deploy39089075829](https://github.com/rashadoni/leaddrive-v2/actions/runs/39089075829)
+  completed SUCCESS, runtime job117566196383 at02:42:32Z and final maintenance
+  at02:42:54Z, exact merge `287047e2e7fd63a6265b646851aa74384715d4ad`.
+  Its own release gate repeated121/121 focused Fund units,10/10 real PostgreSQL
+  and unchanged18-file general baseline. Build used the normal immutable
+  SHA-bound artifact; no manual server deployment.
+- Root independently verified that exact public artifactSha and ok=true ping;
+  workflow revision/login/assets smokes passed. Actual production structural
+  event/Fund/RLS/ownership/exact-money checks passed at02:41:28Z. Existing
+  cutover was already verified, so this was NOT a new deep rebuild/replay.
+- Source/CI proof for the inactive DB adapter is delivered; no broker caller,
+  role provisioning, global partition/assignment fence or live worker follows
+  from this application artifact. K4.2/K4.3 remain bounded partial increments.
+- One fresh protected read-only inventory39091217812 on the same main/artifact
+  is pending. Next [draft PR872](https://github.com/rashadoni/leaddrive-v2/pull/872)
+  contains report-only Object Lock cause classification,10/10 local synthetic
+  safety groups and no runtime changes. Its actual full code gates are NOT RUN
+  while draft; prior Fund release checks do not substitute for them.
+
+### Fresh delivered-SHA postflight — 2026-10-18 02:45 UTC
+
+[Inventory39091217812](https://github.com/rashadoni/leaddrive-v2/actions/runs/39091217812)
+SUCCESS on287047e2, observed02:45:50Z: PG16.15/readOnly=on,
+wal_level=replica, slots0/active0/retainedWAL0, no outbox publication,
+slot cap-1; all8 expected tables present with RLS+FORCE. The PostgreSQL source
+CDC path is not configured/streaming; arbitrary external broker/Connect/consumer
+processes were not inspected. Planner estimatedRows0 is not an exact count.
+
+Production RAM12247548/9977356kB total/available, swap0; filesystem206900281344/
+175270199296bytes. WAL cumulative17891881657 with unchanged September4 reset.
+These snapshots are not peak/day/outage budgets. Four recovery timers inactive;
+restore not performed. Private0600 service-owned pgpass and0640 service-group
+CA files canonical/readable; masked CA ownership is not inferred. Recovery,
+operator custody, immutable archive and all-module readiness remain unproven.
