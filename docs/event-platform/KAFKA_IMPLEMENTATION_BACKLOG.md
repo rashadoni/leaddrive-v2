@@ -539,3 +539,38 @@ root независимо продолжает final deploy и existing recovery
 - Следующий PR872 остаётся report-only: закончить final-head required gates,
   обычную поставку и диагностировать existing Object Lock failure; не менять
   policy/ключи, timers или source ради зелёного readiness.
+
+### Диагностика прошла gates и merged — 2026-10-18 03:17 UTC
+
+Это заменяет прежний draft/pending CI для PR872, не runtime-статус Kafka.
+На frozen3a6be7bf7 full39091474520 SUCCESS: пять actual required SUCCESS,
+диагностика10/10, Fund121/121, real PostgreSQL10/10, общий baseline18=18.
+Typecheck64 gated пары=64 baseline, свои Fund TS без ошибок; глобально
+остаются1326 advisory diagnostics. Отдельный pgpass39091475113 SUCCESS30/30
+с реальной libpq-аутентификацией.
+
+PR872 normally merged03:17:20Z как ce71dacf9a413facda602fb433963e1cbe79412b.
+Automatic deploy39093089774 ещё PENDING. K2.1/K3.2/K3.6 получают безопасный
+инструмент выяснения причины, но не подтверждение восстановления/retention.
+До whole-deploy SUCCESS и exact publicSHA/ping новая live-диагностика не
+запускается. Ключи/policy/timers/source/consumers/offset/replay не изменялись;
+K8 и all-module readiness по-прежнему NOT ACTIVATED / NOT VERIFIED.
+
+### PR872 доставлен; recovery verdict остаётся красным — 2026-10-18 03:48 UTC
+
+Deploy39093089774 whole SUCCESS03:46:02Z на ce71dacf9a413facda602fb433963e1cbe79412b.
+Root сверил exact public artifactSha/ping, quality diagnostic10/Fund121/realPG10,
+baseline18=18 и фактические structural/revision/login/assets postconditions.
+Это заменяет предыдущий pending delivery, но не закрывает K2.1/K3.2/K3.6.
+
+Единственный protected read-only readiness39094842540 FAILURE03:48:00Z:
+machine_ready=no, issues22, enterprise_gaps9, operator_attestation_required=yes.
+ObjectLock=service_error; конкретная причина/отсутствие lock/неверные ключи
+этим НЕ доказаны. Tools/program-set PASS, encryption OFF; DB/secrets/log
+timers disabled/inactive, runtime-files timer absent; unit/evidence/genesis/
+MemorySwapMax/fresh-run gaps открыты. Никакого backup/restore/replay не было.
+
+Следующий ограниченный исходный change — различить документированные service
+error classes и неизвестный формат без raw code/body/секретов. Не повторять
+старый report вслепую и не менять доступы/retention/таймеры ради зелёного gate.
+K8 activation, независимое восстановление, HA и all-module coverage не готовы.

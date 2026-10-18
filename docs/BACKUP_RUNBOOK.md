@@ -134,7 +134,17 @@ Go/No-Go: `get-object-lock-configuration` показывает `Enabled`,
   Lock этим **не установлено**. Не менять credentials по одной такой строке.
 - `credentials_rejected`, `bucket_not_found`, `lock_configuration_missing`,
   `operation_unsupported` — распознана конкретная ошибка сервиса для именно
-  этой операции. Неизвестная ошибка остаётся `service_error`.
+  этой операции.
+- `auth_request_rejected`, `request_time_rejected`, `routing_rejected`,
+  `request_rejected`, `bucket_state_rejected`, `provider_failure`, `throttled`
+  — распознан документированный публичный S3 code в точном CLI-envelope
+  `GetObjectLockConfiguration`. Это описание ответа, не подтверждение
+  фактического HTTP status или корневой причины. Нельзя автоматически менять
+  region, часы, ключи или policy по одной такой категории.
+- `service_code_unrecognized` — формат и операция распознаны, code неизвестен;
+  `service_error_format_unrecognized` — CLI254, но ожидаемый формат не распознан.
+  Сам code, его hash и тело никогда не выводятся. Прежний общий `service_error`
+  в историческом receipt не устанавливает ни один из этих новых диагнозов.
 - `tls_error`, `endpoint_unreachable` — распознан локальный формат ошибки
   клиента; это не точная диагностика причины DNS/маршрута/сертификата.
 - `request_timeout`, `process_killed`, `cli_usage_error`,
@@ -149,6 +159,23 @@ delete-deny, независимого restore, включённых timers ил�
 Минимум 14 дней относится к backup bucket, не заменяет требование immutable
 event archive на 400 дней. Конкретную исправляющую операцию готовят отдельно
 после проверки действительного endpoint/provider и соответствующих полномочий.
+
+Публичные коды и семантика CLI сверены с
+[S3 error responses](https://docs.aws.amazon.com/AmazonS3/latest/developerguide/ErrorResponses.html)
+и [AWS CLI return codes](https://docs.aws.amazon.com/cli/latest/topic/return-codes.html).
+Неизвестный ответ не расширяет allowlist автоматически и не запускает retry.
+
+#### Свежесть результата службы — не доказательство восстановления
+
+`last successful run is fresh` требует `LoadState=loaded`, `Result=success`,
+`ExecMainStatus=0` и непустой, успешно разобранный положительный timestamp.
+Пустая/пробельная дата не передаётся в GNU date: его значение по умолчанию
+может означать сегодняшнюю полночь, а не реальный запуск. Частичный stdout
+неуспешного `systemctl`/`date` отбрасывается. Существующие пределы давности и
+допуск будущего времени 300 секунд не расширяются; `MemorySwapMax=0`
+проверяется независимо. Отсутствующий unit не является успешным запуском;
+disabled timer не равен отсутствующему service. Даже положительная метадата
+службы не заменяет exact-version backup, decrypt/restore или custody receipt.
 
 ### 2. Создать ключ шифрования
 

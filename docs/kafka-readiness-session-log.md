@@ -1635,3 +1635,199 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   bounded scope. No activation/replay was performed. Finalize these receipts
   in PR872 while still draft, publish once, wait its new-head cheap checks and
   transition ready once; no product/diagnostic code changed since local10/10.
+
+## 2026-10-18 02:50 UTC — diagnostic frozen head enters actual required CI
+
+- Published final3a6be7bf7b01d87ff474889a7c77ace993dff53d while still draft.
+  Three cheap checks actual SUCCESS: scope39091385929, runner39091385896,
+  scan39091385863. Static/TS/pgpass draft SKIPPED are NOT verification.
+  After live PR head propagation and completed cheap checks, marked ready once.
+- Automatic actual full39091474520 created02:50:01Z on that exact frozen head;
+  static117569053686 and typecheck117569053682 are running. No source push,
+  rerun or extra optional build into this active phase. All later journal
+  updates remain LOCAL checkpoints until the run/release concludes.
+- Separate pgpass39091475113/job117568975909 SUCCESS: actual30/30, no skips,
+  including real libpq authentication and group/world-readable rejection.
+  This is current CI authentication proof, distinct from local29 guard tests.
+  New diagnostic10/10 actual hosted execution and all five required checks
+  remain pending; no merge or live Object Lock diagnosis yet.
+- Rechecked primary AWS CLI documentation: text output is tab-separated and
+  explicit list query fixes column order; return-code categories retain the
+  fail-closed policy. This validates the parser contract, not live S3 policy:
+  https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-output-format.html
+  https://docs.aws.amazon.com/cli/latest/topic/return-codes.html
+- Next: one helper monitors only these new exact-head gates. On actual green,
+  re-read main/protection/head and merge normally, verify Actions release/
+  public marker/ping, then one existing main-only read-only backup-readiness
+  dispatch. No credential/policy/timer/slot/source/replay mutation follows.
+
+## 2026-10-18 03:17 UTC — Object Lock diagnostic verified and merged
+
+- Frozen remote3a6be7bf7b01d87ff474889a7c77ace993dff53d completed full
+  run39091474520 SUCCESS03:13:15Z. Actual hosted diagnostic10/10, zero skips,
+  including GNU TERM/KILL, parser timeout, private output bounds, no residual
+  fixture process and fail-closed report handler. Fund reducer43+shadow78=121,
+  real restricted-LOGIN PostgreSQL10/10, general unit baseline18=18 PASS.
+  Typecheck64 gated pairs=64 baseline,1326 advisory diagnostics overall;
+  five task-owned Fund TS paths have zero diagnostics. Separate current-head
+  pgpass39091475113 SUCCESS30/30 includes real libpq authentication.
+- Root independently read all five actual required SUCCESS checks from Actions
+  app15368 (not older draft SKIPPED), current PR head/base and main protection.
+  enforce_admins=true, force/delete=false, current origin/main287047e2 and
+  registered13.140.132.245:/opt/leaddrive-v2 match the documented Actions route.
+  No bypass, source push into active CI, retry or weakened timeout was used.
+- Normal --match-head-commit merge of PR872 completed03:17:20Z as
+  ce71dacf9a413facda602fb433963e1cbe79412b. Fresh main API matches. Preserved
+  local journal-only checkpoint2f7a4128d was NOT pushed into the frozen gates.
+  Automatic deploy is pending discovery/completion; previous public artifact
+  remains287047e2 until independently rechecked after a successful release.
+- One helper monitors only that merge-SHA automatic deploy. After its actual
+  quality/build/runtime/whole-workflow success, root will verify public exact
+  SHA/ping and run one existing protected main-only backup-readiness diagnostic.
+  An expected fail-closed readiness report is not a failed app delivery and
+  must not be made green by enabling timers or changing keys/retention.
+- No backup, restore, commissioning, source logical WAL/restart/slot,
+  publication, consumer, offset/replay or paid-service change was performed.
+
+### Delivery watch and independent-operator prerequisite
+
+- Automatic deploy39093089774 was discovered on exactce71dacf9. Current
+  quality117573779697 passed preliminary safety/Fund/real-PG steps and entered
+  its final baseline03:28:55Z; build117573779411 entered standalone compile
+  03:26:41Z. These are step-status receipts, not final release success.
+- The saved local backup task was read only for routing/continuity. Its old
+  media-file transfer receipts do not attest to this production PostgreSQL
+  recovery program; no old screenshot/local report was promoted to current
+  custody, decrypt, restore or Kafka activation evidence. No other task was
+  messaged/restarted and no browser or Mac setting was changed.
+- Asked the owner asynchronously whether a real second responsible human is
+  available for the existing future activation/recovery confirmation contract.
+  No name/role has been supplied or invented. This question does not pause
+  the current normal release/read-only diagnostic and is not a new request
+  for a paid subscription, credentials, offset reset or activation approval.
+
+### PR872 release quality/build completed; runtime still pending
+
+- Exactce71dacf9 deploy39093089774 quality117573779697 SUCCESS03:37:32Z:
+  diagnostic10/10, Fund43+78=121/121, real PostgreSQL10/10; baseline18=18
+  PASS03:37:29Z (03:28:55→03:37:29). No rerun or gate relaxation.
+- Build117573779411 SUCCESS03:37:26Z. Standalone compile03:26:41→03:36:29;
+  SHA artifact upload03:37:12→03:37:21. Root independently read metadata:
+  artifact12123643657, leaddrive-prod-ce71dacf9a413facda602fb433963e1cbe79412b,
+  471263574bytes, digest
+  sha256:ffd62b9cf68dca093bf3355e7c4637ebf1c7b2faffdc0dad3c9ec72ff7e3ff70,
+  unexpired, expires2026-11-17T03:37:12Z. Metadata only: no large download to
+  the development host; existing30-day Actions retention is not DR/archive proof.
+- Runtime117577352388 started after both gates; whole deploy/public marker,
+  ping and feature structural receipt remain PENDING at this entry. Existing
+  read-only inspection workflow has no active run; its next dispatch remains
+  deferred until verified normal delivery, not inferred from artifact upload.
+
+## 2026-10-18 03:47 UTC — diagnostic delivered; one read-only live report queued
+
+- Whole deploy39093089774 SUCCESS on ce71dacf9a413facda602fb433963e1cbe79412b;
+  runtime117577352388 SUCCESS03:45:43Z, final retention117578751735
+  SUCCESS03:46:02Z. Atomic deployment03:41:03→03:45:27. Actual log03:44:14.972
+  confirms Fund cutover was already durably verified;03:44:34.335 structural
+  ledger/RLS/ownership/exact-money/Fund postconditions verified. Public ping,
+  revision and login/hashed-assets smokes passed03:45:38–40. This release did
+  NOT run a new deep Fund replay, worker or database restore ceremony.
+- Root independently received public artifactSha ce71dacf9a413facda602fb433963e1cbe79412b,
+  builtAt03:26:41Z and /api/v1/ping ok=true; then re-read whole workflow
+  SUCCESS, exact current main and absence of active inspection runs. Normal
+  app/source delivery is confirmed, not Kafka runtime or recovery readiness.
+- Dispatched exactly one existing protected main-only tail-app-logs.yml,
+  view=backup-readiness, expected_main_sha=ce71dacf9a413facda602fb433963e1cbe79412b.
+  Run39094842540 queued03:47:17Z. No raw config, credential or private key is
+  requested. One helper monitors its already-sanitized report; expected overall
+  gate failure must be distinguished from diagnostic/code/infrastructure error.
+- PR872 body now records actual CI/merge/deploy/public receipt and pending
+  read-only diagnosis. Source changes, backup commissioning, external-provider
+  policy/key writes, timers, source WAL/restart/slot/publication, consumer,
+  offset/replay and paid-service changes remain outside this report execution.
+
+## 2026-10-18 03:48 UTC — actual fail-closed recovery report received
+
+- Read-only readiness39094842540/job117579027703 completed FAILURE03:48:00Z
+  on exact delivered ce71dacf9. Root independently read the sanitized report:
+  machine_ready=no enterprise_ga_ready=no issues=22 enterprise_gaps=9
+  operator_attestation_required=yes. This is an expected commissioned-program
+  gate failure, not a failed app release, job setup issue or compiler failure.
+- Actual Object Lock result is diagnostic=service_error from CLI status254.
+  It does NOT identify AccessDenied, absent Object Lock, rejected credentials,
+  permission deficit, TLS outage or a safe correcting operation. Raw error/body
+  was not printed or retrieved. Current classification cannot distinguish an
+  unknown service code from a nonmatching CLI error envelope; narrow that gap
+  in source/tests before any meaningful new live observation, not by re-running
+  the identical report, enabling debug logs or changing credentials/policy.
+- Pinned age/AWS and immutable helper/program-set guards PASS. The reviewed
+  program explicitly has encryption OFF; DB/secrets/log timers are loaded:
+  disabled:inactive, runtime-files timer not-found:not-found:inactive. Live
+  recovery-unit/override drift, MemorySwapMax=0 absence, missing/unsafe evidence
+  and committed log-genesis anchor, stale/missing runner receipts remain.
+  These findings concern this reviewed program; no blanket assertion that all
+  other backups are absent is made. No backup/restore was run by the report.
+- Nine wider gaps remain PITR/watermark, independent storage failure domain,
+  full DB authority recovery, consistent media generations, Kafka/archive,
+  clean-host recovery capsule/custody identity, signed log cursor continuity,
+  journald capacity/retention SLO, and physical schema/catalog parity.
+- Safe next source phase: documented fixed allowlisted S3 error categories
+  plus separate unknown-envelope rejection, synthetic privacy/fail-closed
+  tests, ordinary verified PR/release. No raw unknown error code or its hash,
+  body, endpoint, bucket, key or request ID may be exposed. No new runtime
+  permission/key/retention/timer/source/consumer/offset/replay authority follows.
+
+## 2026-10-18 — next bounded source phase: service errors and false-fresh guard
+
+- Created clean ce71dacf9 origin/main worktree at
+  /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-kafka-object-lock-service-errors-20261018,
+  branch codex/kafka-object-lock-service-errors-20261018. codex-project-context,
+  full AGENTS and current route agree; carried ONLY seven unpushed docs/journal
+  checkpoints from completed PR872 worktree. Both older worktrees/canonical
+  dirty checkout are preserved. Origin rashadoni/leaddrive-v2, production
+  13.140.132.245:/opt/leaddrive-v2, normal GitHub Actions main release unchanged.
+- Narrow safety plan: refine documented fixed S3 response categories; reject
+  unknown-format separately without emitting code/hash/body; fix empty-date
+  false-fresh decision in the existing read-only metadata helper; synthetic
+  tests and independent source review; draft/frozen actual CI/normal release.
+  No policy, permission, key, timer, backup/restore, source or Kafka operation.
+- Fresh report's22 FAIL lines include duplicate/aggregate findings, not22
+  independent defects. Its runtime-files freshness PASS alone does not prove
+  a backup or restore. Source inspection found that GNU date accepts empty
+  text as today's midnight; root reproduced that actual GNU behavior locally.
+  Today's production timestamp was never retrieved, so a LIVE false-positive
+  is not asserted. New helper requires loaded service/nonblank exit timestamp,
+  positive parsed epoch and unchanged age/skew bounds; failed metadata/date
+  commands discard plausible partial stdout. Swap policy remains separate.
+- Extended fixed S3 code categories according to primary AWS ErrorResponses
+  (current path is /latest/developerguide/ErrorResponses.html) and API_Error.
+  CLI254 only establishes a service error. New unknown-code/unknown-envelope
+  categories remain FAIL; categories neither identify actual HTTP status nor
+  authorize route/credential changes. No raw unrecognized code or hash escapes.
+- RAM/disk/PSI checked before small sequential local tests: about12GiB
+  available,211GiB disk free, memory pressure0, swap2.2GiB unchanged. Actual
+  extracted-probe/handler/freshness tests12/12 PASS in8.0sec, zero skips; real
+  GNU TERM/KILL/parser-timeout/no residual PID and output bounds retained.
+  Freshness fixtures use synthetic systemctl and frozen clock; one actual
+  GNU date parse included. Empty/unloaded/partial-error cases, status/age/skew
+  boundaries and independent swap fence verified. No real systemctl, provider,
+  DB, production configuration or secret was accessed by those fixtures.
+- Shell syntax/diff PASS. Full local TS/build/Vitest/realPG NOT RUN (host
+  workload policy/no TS/schema changes); new hosted exact-head proof and
+  production report remain NOT RUN. Prior ce71 production stays delivered.
+  Independent helper review of actual delta is pending; no PR pushed yet.
+- The asynchronous independent-human question is still unanswered; no operator
+  identity, signature, private-key custody or restore evidence has been invented.
+
+### Local regression control and unchanged file/asset guards
+
+- After another RAM/disk/PSI check, private pgpass/CA guards29/29 PASS in
+  this new tree; event assets27domains/86topics/5schemas PASS, shell syntax
+  and diff PASS. No install/full build/database/provider command was run.
+- Executed both real extracted metadata functions with the SAME synthetic
+  default-success/0/empty timestamp and frozen midnight: old ce71 function
+  incorrectly reports fresh; new function rejects. Negative control PASS.
+  No operational top-level script was sourced; no real service/production
+  timestamp was queried. This demonstrates the code defect, not its actual
+  occurrence in today's production report. No existing age/skew/swap gate
+  was weakened and arbitrary failures remain failures.

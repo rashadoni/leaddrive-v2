@@ -323,3 +323,43 @@ These snapshots are not peak/day/outage budgets. Four recovery timers inactive;
 restore not performed. Private0600 service-owned pgpass and0640 service-group
 CA files canonical/readable; masked CA ownership is not inferred. Recovery,
 operator custody, immutable archive and all-module readiness remain unproven.
+
+### Object Lock report diagnostic merged — 2026-10-18 03:17 UTC
+
+This supersedes the PR872 draft/unrun gates above, not the runtime inventory.
+[PR872](https://github.com/rashadoni/leaddrive-v2/pull/872) exact3a6be7bf7
+completed [full39091474520](https://github.com/rashadoni/leaddrive-v2/actions/runs/39091474520)
+SUCCESS with all five actual required checks: diagnostic10/10, Fund121/121,
+real PostgreSQL10/10, baseline18=18; typecheck64 gated pairs=baseline64,
+zero own Fund TS diagnostics (1326 advisory diagnostics overall). Separate
+pgpass39091475113 SUCCESS30/30 includes real libpq authentication.
+
+Normal match-head merge03:17:20Z produced
+ce71dacf9a413facda602fb433963e1cbe79412b. Automatic
+[deploy39093089774](https://github.com/rashadoni/leaddrive-v2/actions/runs/39093089774)
+is PENDING; public delivery of this SHA and actual Object Lock classification
+are NOT YET verified. No config/key/policy/timer/source/consumer/offset/replay
+or paid-service change is part of this read-only report increment.
+
+### Diagnostic delivery and live verdict — 2026-10-18 03:48 UTC
+
+This supersedes pending PR872 deployment/diagnosis above. Deploy39093089774
+whole SUCCESS03:46:02Z on ce71dacf9a413facda602fb433963e1cbe79412b; quality
+repeated diagnostic10/Fund121/realPG10/baseline18=18, immutable artifact12123643657,
+runtime117577352388 SUCCESS03:45:43Z with actual structural Fund/event/RLS/
+ownership/exact-money postconditions and public ping/revision/login/assets smoke.
+Root independently verified exact public artifactSha and ok=true ping.
+
+One protected read-only readiness39094842540 then failed closed03:48:00Z:
+machine_ready=no enterprise_ga_ready=no issues=22 enterprise_gaps=9,
+operator_attestation_required=yes. Actual Object Lock category=service_error;
+exact service cause, lock absence or credential/permission defect are NOT
+established. No raw error was printed. Pinned tools/program-set PASS; encryption
+OFF, three timers loaded:disabled:inactive, runtime-files timer not-found.
+Recovery-unit drift, MemorySwapMax/evidence/genesis/fresh-run receipts remain
+open. No backup/restore, Kafka activation, slot/publication, offset or replay
+ran; this report does not inventory every other backup mechanism on the host.
+
+Next is bounded source-only error classification/privacy proof, not a retry of
+the unchanged report or runtime corrective operation. Recovery/HA/archive and
+independent operator/custody confirmations are still prerequisites, not waived.
