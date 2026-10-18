@@ -114,8 +114,17 @@ else
 fi
 
 expect_denied() {
-  local label="$1"; shift
-  if "$@" >/dev/null; then failed "$label was allowed"; else pass "$label denied ($(error_code))"; fi
+  local label="$1" code; shift
+  if "$@" >/dev/null; then
+    failed "$label was allowed"
+  else
+    code="$(error_code)"
+    if [ "$code" = AccessDenied ]; then
+      pass "$label denied (AccessDenied)"
+    else
+      failed "$label did not prove policy denial (${code:-unknown})"
+    fi
+  fi
 }
 expect_denied "writer delete of the exact version" writer s3api delete-object --bucket "$BUCKET" --key "$KEY" ${version_id:+--version-id="$version_id"}
 expect_denied "writer listing" writer s3api list-objects-v2 --bucket "$BUCKET" --max-items 1
