@@ -193,3 +193,44 @@ Next action: originating «Проверить защиту Kafka-консюме�
 A1/A2 receipts, resolves historical scan under its delivery authority, then
 prepares restricted shadow-controller composition in isolated CI. Production,
 consumers, replay, effects and merge/deploy remain outside this session.
+
+## 2026-10-19 — correction: continue allowed A5 work autonomously
+
+User correctly challenges repeated stopping between steps. Prior declaration
+that all allowed preparation was complete is superseded: additional inactive
+catch-up/parity and isolated promotion/rollback preparation is possible without
+production, consumers or sends. No further autonomy prompt is needed.
+
+Resume from clean5bd0b2334 on the same worktree/branch. Finite remaining
+preparation checklist: (1) pinned full-history/catch-up/stop/effect/parity
+manifest gate with negative tests; (2) isolated admission-to-shadow-pointer
+promotion/rollback composition and races, no real app pointer; (3) actual
+hosted-PG proof of the new source; (4) reconcile A5/A7 evidence/remaining gates,
+checkpoint and update existing draft. Scanner policy/history, A1/A2 checks and
+production remain outside authorization. Continue through this checklist
+without returning to user merely because one component/checkpoint is finished.
+
+## 2026-10-19 — recovery manifest gate and shadow composition prepared
+
+Added operator-recovery-evidence.mjs: exact-byte digest pinned to approved plan,
+trusted scope/pointer match, fresh observation/soak interval, complete partition
+set/history-start and next-offset parity, zero effects/quarantine, stop/settlement
+receipt references, per-aggregate history/state/count/version/decimal/currency
+parity and rollback retention/compatibility/write-fence checks. Local36/36 PASS.
+These are consistency checks of trusted manifest bytes, NOT proof that a real
+worker stopped, real archive restored or soak telemetry was sampled. Actual
+producers/read-back of such evidence stay separate. Synthetic fixture receipts
+must never be promoted into operational evidence.
+
+Added private shadow-fixture.sql and7 real-PG composition cases on top of prior17:
+admit+verify+atomic shadow pointer promotion/retained rollback; concurrent
+promotions; stale evidence/target code/effect fence; revoke; deferred expiry
+rolling back pointer/event/settle; expired rollback retention; direct-access
+refusal. Fixture contains only synthetic builds/pointers and no app tables.
+Controller cannot register its own trusted evidence. No runtime connection.
+
+Updated only own dedicated workflow to run recovery gate units too. Node syntax,
+runner policy72 workflows and diff checks PASS. Actual new PG24 cases NOT RUN
+until the next exact-source CI. Resources~14GB available, swap0, disk204GB,
+pressure averages0 before local tests. Continue directly to CI and reconcile
+results; do not stop at this checkpoint.

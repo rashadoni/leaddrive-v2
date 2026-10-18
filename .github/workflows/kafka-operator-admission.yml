@@ -46,7 +46,7 @@ jobs:
       - name: Validate scripts and offline alert receipts
         run: |
           node --check scripts/event-platform/operator-admission.integration.mjs
-          node --test scripts/event-platform/operator-alert-evidence.test.mjs
+          node --test scripts/event-platform/operator-alert-evidence.test.mjs scripts/event-platform/operator-recovery-evidence.test.mjs
       - name: Real named-login PostgreSQL admissions and races
         env:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
