@@ -97,3 +97,12 @@
 - Object Lock не настроен (`ObjectLockConfigurationNotFoundError`) — как задумано.
 - Синтетический объект `leaddrive-b2-synthetic-check/20261018T224905Z-1423031217.bin`
   уберёт lifecycle-правило.
+
+## 2026-10-19 — Codex launch review (separate branch)
+- Owner asked to begin review/launch prerequisites after Claude report. Read PR899 exact59ca827200365ec1dccda354e4311fe8aa371f36. Original no-merge/deploy/production-mutation limits remain; no financial authorization inferred.
+- Current origin/main4212600260f5ed28b9c2b73e28c363a0fc7d39f3 fetched. Registered production13.140.132.245:/opt/leaddrive-v2, release GitHub Actions main. Existing Kafka branch and Claude worktree preserved. Review branch codex/b2-backup-launch-review in separate managed worktree.
+- PR899 draft: pr-scope/runner-policy/scan/postgres-integration PASS; static-checks/typecheck/build/pgpass-contract SKIPPED, not passed. PR body key-creation TODO is stale relative to final docs and owner receipts.
+- Before targeted checks: available RAM13.8GiB, disk195GiB free, memory pressure avg10/60=0. No install/build planned.
+- Reproduced four false-positive ACL receipts in expect_denied: network error, ExpiredToken, SignatureDoesNotMatch, timeout. Baseline regression2/6 pass, four fail as expected. Fixed to require explicit AccessDenied; no raw stderr/credentials printed. Added six-case behavioral regression.
+- Browser/account/secret access absent in this remote session. No live B2 call, production mutation, Object Lock activation, billing change, merge/deploy or recovery performed. Cost cap remains zero per Claude historical receipt; free10GB is bounded by estimated3–4weeks, not sustainable recovery acceptance.
+- PASS after fix: denial regression6/6 (including no raw stderr leakage); endpoint/Object Lock tests16/16; bash syntax; diff-check. Added regression to existing required static-checks step. Full typecheck/build NOT RUN locally: no TS/application changes and Contabo workload rule; full GitHub code gates still required before merge. Real key negative permission retest, account budget decision, offline age custody/signed evidence, Object Lock and default retention, production config/timers and isolated restore remain NOT RUN/BLOCKED by missing access/authorization/evidence.
