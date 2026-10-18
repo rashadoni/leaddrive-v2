@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button"
 import { ChatBubble } from "@/components/tickets/chat-history-view"
 import { compareAgentQueueRows } from "@/lib/ticketing/agent-desktop"
 import { SLA_POLICY_PRIORITIES, splitSlaDuration, summarizeSlaPolicyCoverage } from "@/lib/ticketing/sla-policy"
-import { createDateFormatter } from "@/lib/format-date"
+import { createDateFormatter, formatDateTime } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
-import type { DemoSceneProps } from "../scene-props"
+import type { DemoSceneLive, DemoSceneProps } from "../scene-props"
 import { demoLabel, demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 import { addDays, mtmDemoAt, mtmDemoToday } from "./mtm-demo-data"
@@ -210,7 +210,7 @@ function initials(name: string): string {
 
 /* ── Dəstək Mərkəzi: the queue ───────────────────────────────────────── */
 
-function QueueScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
+function QueueScreen({ snapshot, step, reviewMode, dispatch, hint, live }: DemoSceneProps) {
   const t = useTranslations("tickets")
   const labels = useLabels()
   const format = useFormat()
@@ -247,6 +247,8 @@ function QueueScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
         </div>
         <Button onClick={() => hint(S.demoButtonHint)}>+ {t("newTicket")}</Button>
       </header>
+
+      {live?.whatsappTicket ? <LiveTicketCard ticket={live.whatsappTicket} /> : null}
 
       <Panel data-tour-id="sd-queue-kpis" className="p-2">
         <div className="grid grid-cols-3 gap-1">
@@ -331,6 +333,61 @@ function QueueScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
         </ul>
       </Panel>
     </div>
+  )
+}
+
+/**
+ * The real ticket the prospect's own WhatsApp opened in LeadDrive's Service
+ * Desk (owner, 2026-10-18), above the sample company's queue — drawn from the
+ * page's live read (`live`), in its customer's view: the portal's status and
+ * service-target words, the last messages, nobody's name but «Siz».
+ */
+function LiveTicketCard({ ticket }: { ticket: NonNullable<DemoSceneLive["whatsappTicket"]> }) {
+  const tp = useTranslations("portal")
+  const labels = useLabels()
+  const locale = useLocale()
+  const shown = ticket.messages.slice(-4)
+  const more = ticket.messageCount - shown.length
+  const when = (iso: string) => formatDateTime(iso, locale, { dateStyle: "medium", timeStyle: "short", timeZone: SUPPORT_DEMO_TIMEZONE })
+  return (
+    <Panel data-testid="sd-live-ticket" className="border-emerald-300 p-4 dark:border-emerald-500/50">
+      <h2 className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">{S.supportLiveTitle}</h2>
+      <p className="mt-0.5 text-xs text-muted-foreground">{S.supportLiveNote}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-mono text-xs text-muted-foreground">{ticket.number}</span>
+        <span className="min-w-0 flex-1 font-medium">{ticket.subject}</span>
+        {ticket.status === "unknown" ? (
+          <span className="text-xs text-muted-foreground">{tp("statusUnknown")}</span>
+        ) : (
+          <Pill className={STATUS_PILL[ticket.status]} dot={STATUS_DOT[ticket.status]}>{labels.status(ticket.status)}</Pill>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {when(ticket.createdAt)}
+        {ticket.sla.kind !== "none" ? (
+          <> · {tp("serviceTarget")}: {ticket.sla.kind === "complete" ? tp("slaComplete") : tp(ticket.sla.kind === "firstResponse" ? "firstResponseTarget" : "resolutionTarget", { date: when(ticket.sla.dueAt) })}</>
+        ) : null}
+      </p>
+      <div className="mt-3 space-y-2">
+        {shown.map((message, index) =>
+          message.author === "agent" ? (
+            <div key={`${message.at}-${index}`} className="rounded-lg bg-muted/50 px-3 py-2">
+              <p className="text-xs font-medium">{S.supportLiveTeam}</p>
+              <p className="mt-0.5 whitespace-pre-wrap text-sm text-muted-foreground">{message.text}</p>
+            </div>
+          ) : (
+            <ChatBubble
+              key={`${message.at}-${index}`}
+              sender={message.author === "customer" ? "customer" : "bot"}
+              label={message.author === "customer" ? S.supportLiveYou : S.supportLiveAi}
+              channel={message.author === "customer" ? "WhatsApp" : null}
+              text={message.text}
+            />
+          ),
+        )}
+      </div>
+      {more > 0 ? <p className="mt-2 text-xs text-muted-foreground">{S.supportLiveMore(more)}</p> : null}
+    </Panel>
   )
 }
 

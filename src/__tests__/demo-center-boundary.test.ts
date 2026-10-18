@@ -105,6 +105,18 @@ describe("Demo Center trust boundary", () => {
     }
   })
 
+  it("client demo code takes only types from the server's WhatsApp module — its code and Prisma stay on the server", () => {
+    for (const dir of CLIENT_DIRS) {
+      for (const file of sourceFiles(dir)) {
+        const source = readFileSync(file, "utf8")
+        for (const line of source.split("\n")) {
+          if (!/from\s+["']@\/lib\/demo-center\/demo-whatsapp["']/.test(line)) continue
+          expect(line.trimStart().startsWith("import type "), `${path.relative(ROOT, file)}: ${line.trim()}`).toBe(true)
+        }
+      }
+    }
+  })
+
   it("client demo code only talks to the public demo routes", () => {
     for (const dir of CLIENT_DIRS) {
       for (const file of sourceFiles(dir)) {

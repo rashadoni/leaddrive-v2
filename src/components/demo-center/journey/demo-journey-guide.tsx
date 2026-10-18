@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 import { DemoLiveCall, type DemoLiveCallState } from "./demo-live-call"
 import { DemoLiveWhatsApp } from "./demo-live-whatsapp"
+import { LIVE_WHATSAPP_TICKET_SECTIONS, type DemoLiveWhatsAppHandle } from "./use-demo-live-whatsapp"
 import { demoTarget } from "./demo-target"
 import { useGuideVoice, type GuideVoice } from "./demo-guide-voice"
 import { GuideVoiceSwitch } from "./guide-voice-switch"
@@ -71,12 +72,11 @@ export interface DemoJourneyGuideProps {
   onGuideAction?: () => void
   /** Opens a chapter: behind the story read-only, ahead of it by jumping. */
   onOpenChapter?: (sectionId: string) => void
+  /** The live WhatsApp thread, when this chapter shows it (the player reads it once for the page). */
+  liveWhatsApp?: DemoLiveWhatsAppHandle
 }
 
 export type DemoClipEvent = "video.started" | "video.completed" | "video.error"
-
-/** Chapters that show the live WhatsApp panel: the prospect's own conversation. */
-const WHATSAPP_SECTIONS = new Set(["conversation", "ai-reply", "ai-agent-setup"])
 
 export function DemoJourneyGuide({
   manifest,
@@ -103,6 +103,7 @@ export function DemoJourneyGuide({
   onShowCoach,
   onGuideAction,
   onOpenChapter,
+  liveWhatsApp,
 }: DemoJourneyGuideProps) {
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((candidate) => candidate.id === section.id)
@@ -257,7 +258,7 @@ export function DemoJourneyGuide({
       {/* The inbox chapters are where a real WhatsApp thread belongs: the
           panel asks the server whether this session has one and renders
           nothing when it has not. */}
-      {!reviewMode && variant === "granted" && WHATSAPP_SECTIONS.has(section.id) ? <DemoLiveWhatsApp token={token} /> : null}
+      {liveWhatsApp ? <DemoLiveWhatsApp live={liveWhatsApp} mode={LIVE_WHATSAPP_TICKET_SECTIONS.has(section.id) ? "ticket" : "chat"} /> : null}
 
       <DemoAssistant
         enabled={manifest.capabilities.assistant}
