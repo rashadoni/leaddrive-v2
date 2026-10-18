@@ -2409,3 +2409,17 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   entrypoint. This is intentional for the inactive source increment. A later
   successful application artifact receipt must not be described as installation
   of a runnable Java worker; its governed packaging/release remains a next task.
+
+### Corrected-head broker proof complete — 2026-10-18 13:09 UTC
+
+- Broker39129612814 SUCCESS13:09:10Z on exact7ec815288af3465428ec6694d60d7b47b7bbaecf.
+  Root rechecked exact head and all13 PASS markers; concurrent takeover PASS
+ 13:09:03Z, cleanup/poststeps SUCCESS. Single-broker disposable fixture, DB
+  effects simulated; not an HA/TLS/combined production recovery certificate.
+- Corrected-head synthetic CDC39129612815 and stack39129612771 SUCCESS.
+  Full required PR39129612882 still running (typecheck and baseline/security
+  work). No merge/deploy claim until actual protected contexts finish green.
+- Pre-release public observation: artifactSha7868ec2fd9a208bc146198452ddfc8aebec5ce68
+  matches unchanged origin/main, builtAt11:50:47Z; ping ok=true. This proves
+  only the predecessor app is healthy. Source branch remains frozen at7ec815;
+  local documentation checkpoints are not additional published code revisions.
