@@ -1,4 +1,5 @@
 import { notifyAttendanceRequestReviewers } from "@/lib/mtm/attendance-request-notify"
+import { pushAttendanceRequestToReviewers } from "@/lib/mtm/attendance-request-push"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -123,7 +124,14 @@ export async function submitAttendanceRequestInTransaction(db: Prisma.Transactio
   return { request: attendanceRequestDto(created), idempotent: false }
 }
 export async function submitAttendanceRequest(self: AttendanceSelf, raw: unknown) {
-  return prisma.$transaction((db: Prisma.TransactionClient) => submitAttendanceRequestInTransaction(db, self, raw), { timeout: 15_000 })
+  const result = await prisma.$transaction((db: Prisma.TransactionClient) => submitAttendanceRequestInTransaction(db, self, raw), { timeout: 15_000 })
+  // After the commit: the manager's phone hears of it (attendance-request-push.ts).
+  // A replayed submission was announced the first time.
+  if (!result.idempotent) {
+    void pushAttendanceRequestToReviewers({ organizationId: self.organizationId, agentId: self.agentId, request: result.request })
+      .catch((error) => console.warn("[mtm/attendance] request push failed", error instanceof Error ? error.message : error))
+  }
+  return result
 }
 export async function listOwnAttendanceRequests(self: AttendanceSelf, cursor?: string) {
   return prisma.$transaction(async (db: Prisma.TransactionClient) => {
