@@ -287,3 +287,13 @@ await test('signed-key revocation after staging is checked at final COMMIT and r
  assert.equal(await admin(`SELECT count(*) FROM projection_promotion_events WHERE "requestKey"=${q(f.id)};`),'0')
  assert.equal(await owned(`SELECT status FROM ld_kafka_operator.requests WHERE id=${q(f.id)};`),'consumed')
 })
+
+
+await test('material fingerprint separately requires ledger FORCE RLS and denies column-only write rights',async()=>{
+ const f=await prepared(),hash=()=>fixtureSql('op_final_reader',`BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;SELECT set_config('app.org_id','org-a',true);SELECT coalesce(ld_kafka_operator.fund_material_hash('org-a',${q(f.target.id)}),'DENIED');COMMIT;`)
+ await admin('ALTER TABLE fund_transactions NO FORCE ROW LEVEL SECURITY;')
+ try{assert.equal(await hash(),'org-a\nDENIED');await denied(apply(f))}finally{await admin('ALTER TABLE fund_transactions FORCE ROW LEVEL SECURITY;')}
+ await admin('GRANT UPDATE (amount) ON fund_transactions TO op_final_reader;')
+ try{assert.equal(await hash(),'org-a\nDENIED')}finally{await admin('REVOKE UPDATE (amount) ON fund_transactions FROM op_final_reader;')}
+ assert.equal(await hash(),'org-a\n'+f.materialHash);await apply(f)
+})

@@ -1105,3 +1105,23 @@ probe under one uncommitted admin transaction, switch to restricted reader for
 hash, normal ROLLBACK in finally. No DELETE, guard disabling, source cleanup,
 foreign test changes or weakening. Also strict UUID and explicit boolean handling.
 Fresh actual-schema proof pending; failures remain historical FAIL.
+
+
+### Signed verifier/registry actual-schema proof PASS; ledger privilege final closure
+
+Run39177286915 on exact8777f25e28d1ce04e6d08fc91bdb674f05920cc0 SUCCESS:
+214 units+17 original admission+8 shadow+9 stop+24 snapshot/canary+8 barrier+
+17 final transition=297 PASS. Confirms remap read-context fix and uncommitted
+cap probes restore exact material without deleting immutable sources. Named
+registration, final verifier expiry and signed-key revocation rollbacks pass.
+Pinned local scanner again exactly one historical6ca prose fingerprint, no new
+finding. Runner-policy72 and27/27 catalog map PASS.15GB RAM available/195GB disk,
+pressure0; no heavy local check or real operational access.
+
+Final review: add fail-closed guard inside material function for the extra legacy
+ledger dependency: ordinary table, ENABLE+FORCE RLS, no inherited owner and no
+DML even at column level. Fixture already provisions that boundary; production
+has not been changed. Added own actual-role negative test for missing FORCE RLS
+and column-only write grants, followed by restored valid hash/transition. This
+makes future missing ledger provisioning deny automatically, rather than merely
+relying on documentation. Fresh hosted result pending for this final code delta.

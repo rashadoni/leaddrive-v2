@@ -1,7 +1,7 @@
 # A5 operator readiness и A7: карта незакрытых доказательств
 
 Срез: 19 октября 2026: Kafka base421260026, проверенный `origin/main`
-4f00c4621 (последующие изменения Support/demo/CI не меняют Kafka contracts).
+6912a0ac3 (последующие изменения Support/demo/CI не меняют Kafka contracts).
 Это подготовка, не разрешение
 активации. A5 соответствует K5 backlog; A7 — K7 recovery drills и проверке
 полноты K6 по всем доменам. Ни один новый бизнес-consumer не подключён.
@@ -19,8 +19,13 @@ A1/A2 ниже — исторические срезы, а не текущее �
 canonical snapshot/canary collectors и tenant source barrier. Изолированная
 fixture-композиция связывает проверенный snapshot, точный material hash,
 свежий barrier, promotion event, pointer CAS и deferred COMMIT admission.
-Она не содержит runtime verifier/controller, genuine physical-stop/restore/
-alarm receipts и не устанавливается миграцией или приложением. Hosted [run39174440765](https://github.com/rashadoni/leaddrive-v2/actions/runs/39174440765)
+Она не содержит установленного controller или genuine physical-stop/restore/
+alarm receipts и не устанавливается миграцией или приложением. Отдельный
+inactive verifier теперь проверяет семь signed-purpose attestations, canonical
+source/shadow/checkpoints и регистрирует evidence отдельным именованным логином.
+Tenant/key-policy, lease и verifier recheck действуют до final COMMIT; реальных
+producer/adapter/key provisioning в этом изменении нет. Material capped по
+строкам/1MiB, превышение отвергается, производительность больших tenants не доказана. Hosted [run39174440765](https://github.com/rashadoni/leaddrive-v2/actions/runs/39174440765)
 на exact1bf112fe7 прошёл249/249:174 unit +17 admission +8 shadow +9 stop +
 24 actual-schema reader/canary +8 barrier +9 atomic transition. Все fixtures
 синтетические; runtime/operational evidence этим не получено.
@@ -39,7 +44,7 @@ checkpoint lastEventId → inbox topic/partition/offset. Более новый b
 | Lease/fencing | Inactive durable request generation/lease, fresh token checks, stop challenge и transaction-scoped source barrier | Runtime owner/observer delivery и deployment installation отсутствуют; уже начатую SQL/child нужно наблюдать до реального settlement |
 | Stop/restart | Finite owned session/child, upstream bounded CDC worker proof; private one-use observer challenge с deferred acceptance | Physical observer process/SQL/ACK instrumentation, direct-JVM deployed composition, hung child/lost DB и truthful receipt proof |
 | Catch-up | Actual-schema readonly canonical collector, full worker provenance, exact checkpoint/inbox positions, recovery manifest gate | Genuine frozen broker end/retention, archive/restore, soak и independent provenance; newer-offset duplicate без byte/position receipt отвергается |
-| Promotion | Actual event/pointer guards, restricted canary reader; fixture-only canonical material/barrier/build/event/CAS/settlement composition | Hosted final composition result см. session log; runtime trusted verifier/executor, first-pointer policy и application cutover не реализованы |
+| Promotion | Actual event/pointer guards, restricted canary reader; fixture-only canonical material/barrier/build/event/CAS/settlement composition | Hosted final composition result см. session log; trusted adapter/key provisioning и runtime executor, first-pointer policy и application cutover не реализованы |
 | Rollback | Fixture retained build/window + reverse CAS; final expiry rollback и read adapter contract | Genuine retained/caught-up compatibility, workload drill, correction policy и promoted continuous lifecycle |
 | External effects | Shadow/replay effect denial, empty active registry, ledger UNKNOWN/lease/attempt contracts; fixture fences effect intents | Live legacy senders обходят общий outbox; all-path API/cron/provider audit и UNKNOWN reconciliation обязательны; projection lease не effect lease |
 | Alarm delivery | Inactive verifier десяти read-back/ack receipts с independently pinned authority; unit evidence | Authentic provider read-back adapter, actual rule triggers, delivery/recipient acknowledgement и durable challenge proof; реальных отправок здесь нет |
@@ -137,10 +142,10 @@ shared senders/legacy dispatch обязателен перед признани�
 1. Isolated actual-schema transition gate завершён: final-COMMIT expiry,
    scoped PG16 privileges, stale material и pointer races PASS на1bf112fe7.
    Это fixture proof, не runtime activation. Upstream A1/A2 проверены отдельно.
-2. Следующий runtime slice: trusted verifier/owner evidence registration с
-   независимым provenance, bounded query budget и immutable manifest bytes.
-   Controller не может сам создавать verified evidence. Провести negative
-   receipt-forgery и concurrent-source cases до любых подключений к приложению.
+2. Inactive verifier/registration и fixed material budget реализованы; exact
+   hosted result этой новой фазы см. session log. Runtime требует независимого
+   provisioning tenant signers/key policy, named service login и настоящих
+   readonly adapters. Controller не может сам регистрировать verified evidence.
 3. Реальный authenticated observer: доставить одноразовый stop challenge,
    наблюдать child/SQL/ACK settlement и независимо читать receipt. Подтвердить
    broker cluster/topic/end positions, retention coverage и lag/age soak.
@@ -452,3 +457,17 @@ build/lease verification and actual pointer CAS have not been composed in one
 restricted executor. Read-only snapshots from a prior transaction cannot serve
 as that final verification. Physical observer and broker receipts remain absent;
 none of the27 domain G evidence sets is closed by this primitive.
+
+
+### Verifier/material provisioning boundary
+
+The new registry and signed verifier remain inactive. The canonical collector's
+nine-table RLS check does not by itself provision ledger access for the separate
+material hash: the hosted fixture explicitly adds FORCE RLS/tenant policy on
+legacy fund_transactions and a separate SELECT grant to its restricted reader.
+The material function separately refuses missing ledger FORCE RLS, inherited
+ownership or even column-only DML grants. No production RLS migration or ledger
+permission change was made. A future
+runtime installation must independently prove this extra boundary and all scoped
+source/read-only grants before enabling material certification. Generic app.org_id
+context is not tenant authorization. Fixed caps do not prove index/scan/RTO cost.

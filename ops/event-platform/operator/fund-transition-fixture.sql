@@ -51,6 +51,11 @@ RETURNS text LANGUAGE sql STABLE SET search_path=pg_catalog,pg_temp SET timezone
  'effects',(SELECT jsonb_agg(to_jsonb(r) ORDER BY r.id) FROM effects_rows r),
  'inbox',(SELECT jsonb_agg(to_jsonb(r) ORDER BY r.id) FROM inbox_rows r))::text AS body WHERE (SELECT count(*) FROM build_rows)<=1 AND (SELECT count(*) FROM funds_rows)<=200 AND (SELECT count(*) FROM ledger_rows)<=1000 AND (SELECT count(*) FROM events_rows)<=1000 AND (SELECT count(*) FROM outbox_rows)<=1000 AND (SELECT count(*) FROM heads_rows)<=200 AND (SELECT count(*) FROM projections_rows)<=400 AND (SELECT count(*) FROM checkpoints_rows)<=128 AND (SELECT count(*) FROM effects_rows)<=0 AND (SELECT count(*) FROM inbox_rows)<=1000)
  SELECT CASE WHEN octet_length(body)<=1048576 THEN encode(public.digest(convert_to(body,'UTF8'),'sha256'),'hex') ELSE NULL END FROM material
+ WHERE EXISTS(SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+ WHERE n.nspname='public' AND c.relname='fund_transactions' AND c.relkind='r' AND c.relrowsecurity AND c.relforcerowsecurity
+ AND NOT pg_has_role(current_user,c.relowner,'MEMBER')
+ AND NOT has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+ AND NOT has_any_column_privilege(current_user,c.oid,'INSERT,UPDATE,REFERENCES'))
 $$;
 -- PostgreSQL 16 deferred invoker guards use the COMMIT role. This policy
 -- helper permits only the exact approved target/event in a live barrier tx,
