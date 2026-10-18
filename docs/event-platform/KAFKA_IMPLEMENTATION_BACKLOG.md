@@ -875,3 +875,22 @@ e298057d94804417d38fb105d960721bae6fc1cc; здесь не дублируются
 integration checks ещё NOT RUN. Общая доставка остаётся исходной сессии
 «Проверить защиту Kafka-консюмера». Никаких production mutations, consumer
 startup, offset/replay, sends, merge или deploy эта подготовка не выполняет.
+
+### A5 inactive authenticated DB admission prepared — 2026-10-19
+
+Draft PR894 extends the bounded operator preparation with a private SQL schema
+outside production migrations: trusted named-login mapping, immutable Fund
+plan/hash, independent approval, one-time consume, controller-bound generation,
+revoke and deferred transaction-end lease check. There is no HTTP/runtime
+executor, business-table grant, read-pointer switch or Kafka operation.
+
+Actual isolated PG16 run39164468500 on ab0aff696 passed13/13 admissions/races
+and28/28 receipt units. Later role/expiry/deferred-fence hardening needs its
+own exact-source receipt; see the append-only operator journal for updates.
+A passing control-schema fixture does not close K5 catch-up/promotion/rollback,
+K7 full-domain recovery, actual delivered monitoring or K8 activation.
+
+The existing scanner flags historical ordinary README prose as generic-api-key;
+no scanner policy/check/history was altered to bypass it. PR remains draft,
+without merge/deploy. Original A1/A2 PR891 and integration scheduling remain
+owned by the originating session; this branch neither starts nor reruns them.

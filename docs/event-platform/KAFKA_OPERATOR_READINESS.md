@@ -152,3 +152,33 @@ transaction rollback, TCP identities и revoke serialization. Это доказ�
 catch-up/final parity, actual read-pointer promotion/rollback и доставленные
 alarms. Возврат токена не разрешает автоматический запуск. Общая доставка
 остаётся исходной сессии; draft PR894 не предназначен для merge этой сессией.
+
+### Проверенный итог подготовки
+
+Run39164804703/job117785392405 на code source
+52c57a3974a5da74842023c553c824316a6a87b3 — whole SUCCESS:
+17/17 реальных PostgreSQL сценариев и28/28 receipt units, cleanup PASS.
+Проверены live role revoke, principal remap, expiry, конкуренция consume и
+actual deferred-COMMIT rejection с rollback settle/audit. Это supersedes
+ожидание нового receipt выше для данного code source. После него изменяются
+только документы; исполняемые файлы остаются теми же.
+
+Добавлена deferred lease validation; прежнее замечание о её отсутствии
+superseded для isolated contract. Будущий executor всё равно обязан сохранять
+deferred-mode и same-transaction guard; raw controller SQL не даёт такой
+гарантии. Actual business/read-pointer composition и runtime остаются открыты.
+
+Scan остаётся FAIL из-за exact historical prose fingerprint README82 в
+6ca3b5e2e; текущая формулировка исправлена, исключения/history rewrite не делались.
+Полные static-checks/typecheck/build — NOT RUN (draft). Реальные alerts,
+worker/CDC A1/A2 и бизнес-rebuild/promotion/rollback — NOT RUN этой веткой.
+A1/A2 PR891 отдельно наблюдался OPEN на1d526a126f с pending интеграциями;
+это не успешный receipt и не основание запускать их из этой сессии.
+
+Разрешённая подготовка данной сессии завершена: два inactive компонента,
+их доступные доказательства, runbook/backlog и полная карта27 доменов.
+Активация и внедрение всех бизнес-интеграций в исходный scope не входят.
+Следующий интеграционный шаг принадлежит исходной сессии: получить A1/A2
+receipts и затем соединять эти контракты с restricted shadow controller в
+изолированном CI, сохраняя запрет на production/consumers/offsets/sends до
+отдельного разрешения. Merge/deploy этой ветки не выполняются.

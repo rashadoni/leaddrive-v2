@@ -155,3 +155,41 @@ against arbitrary controller SQL. No HTTP/raw-SQL executor or business write is
 exposed. Previous README statement of no deferred fence is superseded only
 for the new isolated source; runtime deadline/deferral composition stays open.
 Node syntax and diff check PASS; revised exact-source integration pending CI.
+
+## 2026-10-19 — preparation frozen, real final-code proof recorded
+
+Run https://github.com/rashadoni/leaddrive-v2/actions/runs/39164804703,
+job117785392405, code source52c57a3974a5da74842023c553c824316a6a87b3:
+whole SUCCESS,17/17 actual PG cases +28/28 offline receipt cases; cleanup PASS.
+Actual deferred-COMMIT case passed and proved settle/audit rollback after
+lease expiry. This supersedes pending integration for this isolated code.
+Post-proof changes are documentation-only; executable SQL/scripts/workflow
+stay byte-identical to tested source. Runner-policy/validate/pr-scope PASS.
+Full static/typecheck/build are SKIPPED/NOT RUN (draft, no heavy Contabo work).
+Schema is not a Prisma migration; no schema/client generation or deploy occurs.
+
+Local pinned-gitleaks branch-range check reproduces exactly one historical
+prose false positive (README82 in6ca3b5e2e). Scan remains FAIL; current prose
+changed, no global exception/check weakening or checkpoint rewrite. PR894
+remains draft, no mergeable/delivery-ready claim. No full suites rerun locally.
+
+Read-only continuity check: original A1/A2 PR891 OPEN on1d526a126fd540d86b38ed8bbea09b435fc4a408,
+its latest own CDC/stack runs pending. Did not dispatch/cancel/edit/merge those
+checks. Prepared checkpoint e298057 remains historical starting reference,
+not a fresh exact-head passing receipt. Overall delivery ownership unchanged.
+
+Updated runbook, backlog and27-domain map with tested scope and limitations.
+No production access/mutation, Kafka consumer, offsets/replay, sends, purchase,
+merge or deploy performed. Actual alerts and A7 business recovery drills stay
+NOT RUN; initiating them would cross explicit task prohibitions. All allowed
+preparation in this session is complete; operational readiness is NOT claimed.
+
+Current result/status: inactive A5 admissions+alarm verifier verified within
+scope; A7 map27/27 complete; draft PR894, scanner false-positive blocker remains.
+Last completed action: hosted PG final-code proof and documentation reconciliation.
+Precise stopping point: reviewed preparation branch only; no runtime executor
+or production migration installed, no activation/read cutover attempted.
+Next action: originating «Проверить защиту Kafka-консюмера» obtains exact-head
+A1/A2 receipts, resolves historical scan under its delivery authority, then
+prepares restricted shadow-controller composition in isolated CI. Production,
+consumers, replay, effects and merge/deploy remain outside this session.
