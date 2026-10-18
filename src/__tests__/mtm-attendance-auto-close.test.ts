@@ -101,7 +101,8 @@ describe("wiring", () => {
     expect(route).toContain("await storeSetting(ATTENDANCE_AUTO_CLOSE_BY_KEY, auth.userId)")
     // The "who" key is not a setting a client can send.
     expect(Object.keys(MTM_SETTING_DEFAULTS)).not.toContain(ATTENDANCE_AUTO_CLOSE_BY_KEY)
-    const page = read("src/app/(dashboard)/mtm/settings/page.tsx")
-    expect(page).toContain('{ key: "attendanceAutoCloseForgottenDay", labelKey: "lblAttendanceAutoCloseForgottenDay", hintKey: "hintAttendanceAutoCloseForgottenDay", type: "boolean", adminOnly: true }')
+    // Personnel → Settings → «Подтверждение заявок» (moved from MTM settings, owner 2026-10-18).
+    const editor = read("src/components/mtm/attendance-policy-settings.tsx")
+    expect(editor).toContain('{ key: "attendanceAutoCloseForgottenDay", labelKey: "lblAttendanceAutoCloseForgottenDay", hintKey: "hintAttendanceAutoCloseForgottenDay", type: "boolean" }')
   })
 })
