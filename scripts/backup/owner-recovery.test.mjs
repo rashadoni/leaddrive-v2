@@ -307,3 +307,20 @@ test('actual restore dispatch interprets a staged helper without execute permiss
   assert.equal(result.status, 0, result.stderr)
   assert.equal(result.stdout, 'interpreted-helper')
 }))
+
+test('workbench rejects absent, linked, unlimited or nonzero swap limits before private input', () => fixture((dir) => {
+  const source = readFileSync(join(root, 'ops/backup/owner-workstation.sh'), 'utf8')
+  const guard = source.match(/^assert_swap_disabled\(\) \{[\s\S]*?^\}/m)?.[0]
+  assert.ok(guard)
+  assert.ok(source.indexOf('assert_swap_disabled /sys/fs/cgroup/memory.swap.max') < source.indexOf('install -m 0600'))
+  const limit = join(dir, 'swap.max')
+  const execute = (path) => spawnSync('bash', ['-c', `fatal() { exit 1; }\n${guard}\nassert_swap_disabled "$1"`, 'fixture', path], { env, encoding: 'utf8', timeout: 5000 })
+  for (const value of ['0\n', '1\n', '1073741824\n', 'max\n', '', '0\n1\n']) {
+    writeFileSync(limit, value)
+    assert.equal(execute(limit).status, value === '0\n' ? 0 : 1)
+  }
+  assert.equal(execute(join(dir, 'missing')).status, 1)
+  writeFileSync(limit, '0\n')
+  const linked = join(dir, 'linked'); symlinkSync(limit, linked)
+  assert.equal(execute(linked).status, 1)
+}))

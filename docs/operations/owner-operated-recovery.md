@@ -185,7 +185,7 @@ colima start --profile leaddrive-recovery --cpu 2 --memory 4 --disk 20
 docker --context colima-leaddrive-recovery build \
   -f ops/backup/owner-workstation.Dockerfile -t leaddrive-owner-workbench .
 docker --context colima-leaddrive-recovery run --rm --network none \
-  --read-only --memory 1g --cpus 1 \
+  --read-only --memory 1g --memory-swap 1g --cpus 1 \
   --tmpfs /scratch:rw,noexec,nosuid,size=128m,mode=0700 \
   --tmpfs /database:rw,noexec,nosuid,size=256m,mode=0700 \
   --tmpfs /tmp:rw,noexec,nosuid,size=64m \
@@ -214,3 +214,10 @@ production connection string, or application process is allowed inside it.
 Stop the separate Colima profile when done. Colima VM swap/disk encryption and
 owner workstation custody must be assessed before real plaintext processing;
 container tmpfs by itself does not prove that the host has no swap exposure.
+
+The workbench also refuses to process keys/plaintext unless the actual cgroup-v2
+`memory.swap.max` is exactly zero. Always set `--memory-swap` equal to the
+positive `--memory` limit (setting it to zero does not disable swap). This checks
+container/guest swap only; Mac host disk encryption/VM custody must still be
+verified before real plaintext processing. Earlier synthetic tmpfs/key-canary
+results do not certify this added guard or host FileVault status.

@@ -55,8 +55,17 @@ jobs:
         run: docker build -f ops/backup/owner-workstation.Dockerfile -t owner-workbench-test .
       - name: Check network isolation and disposable PostgreSQL
         run: |
-          docker run --rm --network none --read-only --memory 1g --cpus 1 \
+          docker run --rm --network none --read-only --memory 1g --memory-swap 1g --cpus 1 \
             --tmpfs /scratch:rw,noexec,nosuid,size=128m,mode=0700 \
             --tmpfs /database:rw,noexec,nosuid,size=256m,mode=0700 \
             --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             owner-workbench-test --self-test
+      - name: Reject swap-enabled plaintext runtime
+        run: |
+          set -euo pipefail
+          set +e
+          RESULT="$(docker run --rm --network none --read-only --memory 1g --memory-swap 2g owner-workbench-test --self-test 2>&1)"
+          STATUS=$?
+          set -e
+          [ "$STATUS" -eq 1 ]
+          [ "$RESULT" = 'owner workbench: requires cgroup-v2 memory.swap.max=0; set --memory-swap equal to --memory' ]

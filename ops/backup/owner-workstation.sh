@@ -3,6 +3,14 @@
 set -Eeuo pipefail
 umask 077
 fatal() { printf 'owner workbench: %s\n' "$1" >&2; exit 1; }
+assert_swap_disabled() {
+  local limit_file="$1"
+  [ -f "$limit_file" ] && [ ! -L "$limit_file" ] \
+    && [ "$(cat "$limit_file" 2>/dev/null)" = 0 ] \
+    || fatal 'requires cgroup-v2 memory.swap.max=0; set --memory-swap equal to --memory'
+}
+# Docker tmpfs can swap to VM disk unless the container swap limit forbids it.
+assert_swap_disabled /sys/fs/cgroup/memory.swap.max
 [ "$(id -u)" = 0 ] || fatal 'container root required for private mount ownership'
 [ "$(find /sys/class/net -mindepth 1 -maxdepth 1 -printf '%f\n')" = lo ] \
   || fatal 'requires Docker --network none'

@@ -639,3 +639,28 @@
   checkout; their exact log/acceptance will be verified when completed.
 - No new source change, unnecessary CI duplicate or main mutation. Current
   cb8 source remains frozen; root release/readiness hold and B2 dependency apply.
+
+## 2026-10-19 (Asia/Baku): close tmpfs swap gap before any real restore
+
+- Independent scratch review found Docker tmpfs may be written to swap. Existing
+  memory-only self-test/key canary does NOT prove swap prevention. Official refs:
+  https://docs.docker.com/engine/storage/tmpfs/
+  https://docs.docker.com/engine/containers/resource_constraints/#--memory-swap-details
+- Workbench now refuses all private-key/plaintext operations unless actual
+  cgroup-v2 memory.swap.max is exactly0, checked before private input. Requires
+  --memory-swap equal to positive --memory; flag0 means unset and is not accepted
+  as a substitute. Missing/symlink/nonzero/unlimited metadata fails closed.
+- Updated bounded CI/workstation examples to equal memory/swap limits and added
+  real Docker negative check with explicit swap allowance. Container build,
+  positive/no-swap and negative/swap-enabled checks run only on hosted Linux,
+  NOT on editing Contabo. This is necessary new isolation verification, not
+  repetitive retesting of unchanged code.
+-13owner tests including actual guard fixtures PASS with real synthetic crypto;
+  assets,74workflow runner policy,shell/diff PASS. Resources checked first:
+ 14.7GB available RAM, pressure0.00,swap3.6GBused. No host swap/service change.
+- Container/guest swap guard does not certify Mac hypervisor/host disk custody.
+  Requested only non-secret fdesetup status before future real-data processing;
+  no private key/password requested. FileVault and new ARM64 guard validation
+  NOT RUN/pending; prior Mac canary remains readability proof only.
+- This security correction supersedes prior frozen cb8 code acceptance; exact
+  source CI must rerun. Main/production/B2 branch unchanged; root hold applies.
