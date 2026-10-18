@@ -98,7 +98,7 @@ export function MtmAttendanceEmployees() {
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{t("employeesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("employeesIntro")}</p></div>{!denied && <div className="flex flex-wrap items-start gap-2">
       <MtmAttendanceAddEmployee disabled={loading || !directory} teams={directory?.teams ?? []} onAdded={(name, phone) => { void load().then(() => setAdded({ name, phone })) }} />
       <Button variant="outline" className="min-h-11 rounded-full" disabled={loading} onClick={() => void load()}>{t("employeesRefresh")}</Button></div>}</div>
-    {added && <p role="status" className="max-w-prose rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" data-testid="attendance-employee-added">{p("addEmployeeDone", added)}</p>}
+    {added && <p role="status" className="max-w-prose rounded-xl border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-4 text-sm" data-testid="attendance-employee-added">{p("addEmployeeDone", added)}</p>}
     {loading && !directory && <p role="status" className="text-sm text-muted-foreground">{t("employeesLoading")}</p>}
     {error && <p role="alert" className="max-w-prose text-sm text-destructive">{t(error)}</p>}
     {directory && !denied && <section className="space-y-4 rounded-2xl border bg-card p-5" data-testid="employees-roster" aria-label={t("employeesRoster")}>
@@ -121,7 +121,7 @@ export function MtmAttendanceEmployees() {
           const initials = employee.name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]!.toUpperCase()).join("")
           return <tr key={employee.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b py-3 last:border-0 md:table-row" data-testid="employee-row">
             <td className="md:px-3 md:py-3"><Link href={href} prefetch={false} className="group flex min-w-0 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-semibold text-orange-800 dark:bg-orange-950 dark:text-orange-200" aria-hidden="true">{initials}</span>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary" aria-hidden="true">{initials}</span>
               <span className="min-w-0"><strong className="block truncate group-hover:underline">{employee.name}</strong><span className="block truncate text-xs text-muted-foreground">{detailLine(employee)}</span></span></Link></td>
             <td className="col-span-2 text-muted-foreground md:px-3 md:py-3">{employee.teamName ?? t("employeesNoTeam")}</td>
             <td className="md:px-3 md:py-3"><HomePill tone={tone}>{todayText}</HomePill></td>

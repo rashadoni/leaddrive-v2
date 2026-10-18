@@ -33,7 +33,7 @@ export function ContactTransferReceiptPanel({
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-sm font-semibold">{t("transferReceipt.title")}</h2>
             {!storedOnDevice ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-medium text-amber-900 dark:bg-amber-900/30 dark:text-amber-100">
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="h-3 w-3" />
                 {t("transferReceipt.notStored")}
               </span>
@@ -43,12 +43,12 @@ export function ContactTransferReceiptPanel({
                 {t("transferReceipt.savedOffline")}
               </span>
             ) : mismatched ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-medium text-amber-900 dark:bg-amber-900/30 dark:text-amber-100">
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="h-3 w-3" />
                 {t("transferReceipt.needsAttention")}
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100">
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
                 <CheckCircle2 className="h-3 w-3" />
                 {t("transferReceipt.verified")}
               </span>

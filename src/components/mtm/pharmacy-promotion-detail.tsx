@@ -21,7 +21,7 @@ import {
   UserRound,
   XCircle,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Hint, HintValue } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -298,7 +298,7 @@ function DetailStatusBadge({ status, label, hint }: { status: string; label: str
 }
 
 function Metric({ label, value, note, accent, hint }: { label: string; value: string; note?: string; accent?: boolean; hint?: string }) {
-  return <div className={cn("min-w-0 border p-3 sm:p-4", accent ? "border-primary/30 bg-primary/5" : "border-zinc-200/70 bg-card dark:border-zinc-800")}><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p><p className="mt-1 break-words text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>{note ? <p className="mt-1 text-xs text-muted-foreground">{note}</p> : null}</div>
+  return <div className={cn("min-w-0 border p-3 sm:p-4", accent ? "border-l-4 border-zinc-200/70 border-l-primary bg-card dark:border-zinc-800" : "border-zinc-200/70 bg-card dark:border-zinc-800")}><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p><p className="mt-1 break-words text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>{note ? <p className="mt-1 text-xs text-muted-foreground">{note}</p> : null}</div>
 }
 
 export function PharmacyPromotionDetail({ executionId }: { executionId: string }) {
@@ -630,13 +630,13 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
         </div>
       </header>
 
-      {error ? <div className="flex flex-col gap-3 border border-red-200 bg-red-50 p-3 text-sm text-red-950 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-100 sm:flex-row sm:items-center sm:justify-between" role="alert"><span>{t("detailLoadFailed")}: {error}</span><Button className="min-h-11 shrink-0" variant="outline" onClick={() => setRefresh((value) => value + 1)}>{t("retry")}</Button></div> : null}
+      {error ? <div className="flex flex-col gap-3 border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="alert"><span>{t("detailLoadFailed")}: {error}</span><Button className="min-h-11 shrink-0" variant="outline" onClick={() => setRefresh((value) => value + 1)}>{t("retry")}</Button></div> : null}
 
       <section
         className={cn(
           "border p-4 sm:p-5",
           guidance.canSubmit && !guidance.ready
-            ? "border-amber-200 bg-amber-50/70 dark:border-amber-900/70 dark:bg-amber-950/20"
+            ? "border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500"
             : "border-primary/25 bg-primary/[0.035]",
         )}
         aria-labelledby="mtm-pharmacy-promotion-next-step-title"
@@ -755,7 +755,7 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
               <div><dt className="text-xs text-muted-foreground"><HintValue text={t("hint.detailEligibility")}>{t("eligibilityLabel")}</HintValue></dt><dd className="mt-1 flex flex-wrap items-center gap-2 font-medium"><span>{t.has(`eligibilityStatus.${detail.eligibility.status}`) ? t(`eligibilityStatus.${detail.eligibility.status}`) : t("unknownStatus")}</span>{detail.eligibility.overridden ? <HintValue text={detail.eligibility.overrideReason ? t("hint.overrideReason", { reason: detail.eligibility.overrideReason }) : t("hint.override")}><Badge variant="warning">{t("eligibilityOverrideActive")}</Badge></HintValue> : null}</dd>{detail.eligibility.overrideReason ? <dd className="mt-1 break-words text-xs text-muted-foreground">{t("eligibilityOverrideReason", { reason: detail.eligibility.overrideReason })}</dd> : null}</div>
               <div><dt className="text-xs text-muted-foreground">{t("source")}</dt><dd className="mt-1 flex flex-wrap items-center gap-2 font-medium"><span>{t.has(`sourceSystem.${detail.source.system}`) ? t(`sourceSystem.${detail.source.system}`) : t("unknownSource")}</span>{detail.source.freshness ? <DetailStatusBadge status={detail.source.freshness.state} label={t.has(`freshness.${detail.source.freshness.state}`) ? t(`freshness.${detail.source.freshness.state}`) : t("freshness.UNKNOWN")} hint={freshnessHint(detail.source.freshness.state)} /> : null}</dd><dd className="text-xs text-muted-foreground">{detail.source.reference || "—"}<br />{t("sourceObservedAt", { date: date(detail.source.observedAt, locale) })}<br />{t("sourceReceivedAt", { date: date(detail.source.receivedAt, locale) })}{detail.source.freshness?.ageMinutes !== null && detail.source.freshness?.ageMinutes !== undefined ? <><br /><HintValue text={t("hint.detailFreshnessAge")}>{t("freshnessAge", { minutes: detail.source.freshness.ageMinutes })}</HintValue></> : null}</dd></div>
             </dl>
-            {detail.policy && !detail.policy.ready ? <div className="m-4 mt-0 flex gap-2 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><XCircle className="h-4 w-4 shrink-0" /><span>{detail.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
+            {detail.policy && !detail.policy.ready ? <div className="m-4 mt-0 flex gap-2 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-xs"><XCircle className="h-4 w-4 shrink-0" /><span>{detail.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
           </section>
 
           <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">

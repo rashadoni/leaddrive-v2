@@ -26,6 +26,7 @@ import { COMMON_TIMEZONES } from "@/lib/timezone"
 import type { MtmRouteTargetType } from "@/lib/mtm/route-target-types"
 import { CoveragePolicyAdmin } from "@/components/mtm/coverage-policy-admin"
 import { KpiPolicyAdmin } from "@/components/mtm/kpi-policy-admin"
+import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
 import {
   MTM_SETTING_ERROR_CODES,
   MTM_SETTING_NUMBER_RANGES,
@@ -641,7 +642,7 @@ export default function MtmSettingsPage() {
           )}
         </div>
         {item.key === "maxPhotosPerVisit" && typeof settings.maxPhotosPerVisit === "number" && policyPhotoMinimum > settings.maxPhotosPerVisit ? (
-          <div data-testid="max-photos-policy-warning" role="status" className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+          <div data-testid="max-photos-policy-warning" role="status" className="flex items-start gap-2 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-xs">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>{ts("maxPhotosBelowPolicyMinimum")}</span>
           </div>
@@ -710,7 +711,7 @@ export default function MtmSettingsPage() {
           компактнее… сама структура какая-то непонятная»). Every panel stays
           mounted and is only hidden, so an unsaved change in one tab is still
           there after a look at another. */}
-      <div role="tablist" aria-label={ts("tabsLabel")} className="flex flex-wrap gap-2" data-testid="mtm-settings-tabs">
+      <div role="tablist" aria-label={ts("tabsLabel")} className={MTM_TAB_ROW} data-testid="mtm-settings-tabs">
         {SETTINGS_TABS.map((name) => (
           <button
             key={name}
@@ -720,9 +721,7 @@ export default function MtmSettingsPage() {
             aria-selected={tab === name}
             aria-controls={`mtm-settings-panel-${name}`}
             onClick={() => setTab(name)}
-            className={`min-h-11 rounded-full border px-4 text-sm font-medium transition-colors ${tab === name
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}
+            className={`text-sm font-medium transition-colors ${mtmTabClass(tab === name)}`}
           >
             {ts(SETTINGS_TAB_LABEL[name])}
             {tabsWithErrors.has(name) || tabsWithChanges.has(name) ? (

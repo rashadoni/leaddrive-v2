@@ -4,7 +4,7 @@ import { type ComponentProps, useCallback, useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { CheckCircle2, FileJson2, KeyRound, Loader2, Plus, RefreshCw, ShieldCheck } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Hint, HintValue } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -265,7 +265,7 @@ export function PharmacyPromotionDefinitionAdmin({ onChanged }: { onChanged?: ()
         </Button>
       </header>
 
-      {loadError ? <div role="alert" className="border-b border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{loadError}</div> : null}
+      {loadError ? <div role="alert" className="border-b border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">{loadError}</div> : null}
       {loading && catalog === emptyCatalog ? <div className="grid min-h-40 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" /></div> : null}
 
       <div className="grid divide-y xl:grid-cols-3 xl:divide-x xl:divide-y-0">
@@ -351,7 +351,7 @@ export function PharmacyPromotionDefinitionAdmin({ onChanged }: { onChanged?: ()
       </div>
 
       {activation ? (
-        <div className="border-t border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
+        <div className="border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4">
           <div className="flex items-start gap-3"><KeyRound className="mt-0.5 h-5 w-5 shrink-0" /><div className="min-w-0 flex-1"><h3 className="font-semibold">{t("activationTitle", { label: activation.label })}</h3><p className="mt-1 text-sm">{t("activationWarning")}</p><p className="mt-2 break-all font-mono text-[10px]"><HintValue text={hintT("hint.definitionHash")}>{activation.definitionHash}</HintValue></p><div className="mt-3 grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto_auto]"><FormField label={t("approvalReference")} value={approvalReference} maxLength={500} onChange={(event) => setApprovalReference(event.target.value)} /><Button variant="ghost" className="min-h-11 self-end lg:min-h-10" disabled={Boolean(busy)} onClick={() => { setActivation(null); setApprovalReference("") }}>{t("cancel")}</Button><Hint wrap text={busy ? null : approvalReference.trim().length < 3 ? hintT("hint.definitionReferenceRequired") : activation.kind === "formula" ? hintT("hint.definitionConfirmFormula") : hintT("hint.definitionConfirmPolicy")}><Button className="min-h-11 self-end lg:min-h-10" disabled={Boolean(busy) || approvalReference.trim().length < 3} onClick={() => void activateSignedDefinition()}>{busy.startsWith("activate:") ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}{t("confirmActivation")}</Button></Hint></div></div></div>
         </div>
       ) : null}

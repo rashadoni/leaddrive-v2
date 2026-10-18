@@ -27,7 +27,7 @@ import {
   XCircle,
 } from "lucide-react"
 import { Hint, HintValue } from "@/components/hint"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { MtmFilterBar, MtmFilterMore, MtmFilterReset, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { Button } from "@/components/ui/button"
 import {
@@ -572,13 +572,13 @@ function ReviewDialog({ rows, open, onOpenChange, onApplied }: {
           />
         </div>
         {error ? (
-          <div role="alert" className="flex gap-2 border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
+          <div role="alert" className="flex gap-2 border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
             <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
         ) : null}
         {preview ? (
-          <section className="border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+          <section className="border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-4">
             <div className="flex items-start gap-2">
               <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" />
               <div>
@@ -1134,11 +1134,11 @@ export function PharmacyPromotionWorkspace() {
         </div>
       </header>
 
-      <nav aria-label={t("viewsLabel")} className={cn("grid border border-zinc-200/70 bg-card p-1 dark:border-zinc-800 sm:inline-grid", availableViews.length === 1 && "grid-cols-1 sm:min-w-[220px]", availableViews.length === 2 && "grid-cols-2 sm:min-w-[340px]", availableViews.length === 3 && "grid-cols-3 sm:min-w-[430px]") }>
+      <nav aria-label={t("viewsLabel")} className={cn("grid border-b border-zinc-200 dark:border-zinc-800 sm:inline-grid", availableViews.length === 1 && "grid-cols-1 sm:min-w-[220px]", availableViews.length === 2 && "grid-cols-2 sm:min-w-[340px]", availableViews.length === 3 && "grid-cols-3 sm:min-w-[430px]") }>
         {availableViews.map((candidate) => (
           <Hint key={candidate} text={t(VIEW_HINT[candidate])}>
-            <button type="button" onClick={() => { setSelectedSavedViewId(""); replaceParams({ view: candidate, page: null, ready: candidate === "review" ? draft.ready || null : null }) }} className={cn("min-h-11 px-3 text-sm font-medium transition-colors lg:min-h-10", view === candidate ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
-              {t(`view.${candidate}`)}{candidate === "review" && data ? <span className="ml-2 rounded-full bg-background/15 px-1.5 py-0.5 text-[10px]">{data.summary.readyL1 + data.summary.readyL2}</span> : null}
+            <button type="button" onClick={() => { setSelectedSavedViewId(""); replaceParams({ view: candidate, page: null, ready: candidate === "review" ? draft.ready || null : null }) }} className={cn("-mb-px min-h-11 border-b-2 px-3 text-sm font-medium transition-colors lg:min-h-10", view === candidate ? "border-primary font-semibold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
+              {t(`view.${candidate}`)}{candidate === "review" && data ? <span className="ml-2 text-[10px] tabular-nums text-muted-foreground">{data.summary.readyL1 + data.summary.readyL2}</span> : null}
             </button>
           </Hint>
         ))}
@@ -1148,7 +1148,7 @@ export function PharmacyPromotionWorkspace() {
           filters; the view tabs and the row say what to do. */}
 
       {data && !data.capabilities.postingEnabled && view !== "campaigns" ? (
-        <div className="flex gap-3 border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
+        <div className="flex gap-3 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="min-w-0 flex-1">
             <span className="font-semibold">{t("postingBlockedTitle")}</span>{" "}
@@ -1241,7 +1241,7 @@ export function PharmacyPromotionWorkspace() {
             </SheetContent>
           </Sheet>
 
-          {loadError ? <div role="alert" className="flex items-start justify-between gap-3 border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"><span className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{loadError}</span><Button className="min-h-11 lg:min-h-8" variant="outline" size="sm" onClick={() => setRefreshKey((value) => value + 1)}>{t("retry")}</Button></div> : null}
+          {loadError ? <div role="alert" className="flex items-start justify-between gap-3 border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-4 text-sm"><span className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{loadError}</span><Button className="min-h-11 lg:min-h-8" variant="outline" size="sm" onClick={() => setRefreshKey((value) => value + 1)}>{t("retry")}</Button></div> : null}
 
           {data?.capabilities.canBulkReview && selected.size > 0 ? (
             <div className="sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 border border-primary/30 bg-background/95 p-3 shadow-lg backdrop-blur">
@@ -1320,7 +1320,7 @@ export function PharmacyPromotionWorkspace() {
                       {rows.map((row) => {
                         const points = row.ledger.posted ? row.ledger : row.preview
                         return (
-                          <tr data-testid={`mtm-pharmacy-promotion-${row.id}`} key={row.id} className={cn("group align-top transition-colors hover:bg-muted/30", selected.has(row.id) && "bg-primary/5", row.source.freshness.state === "STALE" && "opacity-75")}>
+                          <tr data-testid={`mtm-pharmacy-promotion-${row.id}`} key={row.id} className={cn("group align-top transition-colors hover:bg-muted/30", selected.has(row.id) && "bg-muted/60", row.source.freshness.state === "STALE" && "opacity-75")}>
                             {data?.capabilities.canBulkReview ? <td className={cn("sticky left-0 z-10 px-3 group-hover:bg-muted", cellPadding, selected.has(row.id) ? "bg-primary/5" : "bg-card")}><Hint wrap text={row.currentStep ? t("hint.selectRow") : t("hint.selectRowLocked")}><input type="checkbox" aria-label={t("selectRow", { name: row.target.customerName })} disabled={!row.currentStep} checked={selected.has(row.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(row.id)) next.delete(row.id); else next.add(row.id); return next })} /></Hint></td> : null}
                             <td className={cn("sticky z-10 max-w-[240px] px-3 shadow-[8px_0_12px_-12px_rgba(0,0,0,.45)] group-hover:bg-muted", cellPadding, data?.capabilities.canBulkReview ? "left-10" : "left-0", selected.has(row.id) ? "bg-primary/5" : "bg-card")}><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`} className="font-semibold hover:text-primary hover:underline">{row.target.customerName}</Link><p className="mt-0.5 truncate text-muted-foreground">{registrationLabel(row)}</p><p className="truncate text-muted-foreground">{row.target.address || row.target.locality || "—"}</p></td>
                             {visibleColumns.has("promotion") ? <td className={cn("max-w-[230px] px-3", cellPadding)}><p className="font-medium">{localizedName(row.promotion, locale)}</p><p className="text-muted-foreground">{row.promotion.code} · {row.promotion.type.code} · v{row.promotion.revision}</p></td> : null}
@@ -1331,7 +1331,7 @@ export function PharmacyPromotionWorkspace() {
                             {visibleColumns.has("difference") ? <td className={cn("px-3 text-right font-semibold tabular-nums", cellPadding)}>{formatPoints(points.difference, locale)}</td> : null}
                             {visibleColumns.has("review") ? <td className={cn("px-3", cellPadding)}><div className="flex gap-1"><PromotionStatusBadge status={row.l1State} label={`L1 ${stateLabel(row.l1State)}`} hint={levelHint(row.l1State)} /><PromotionStatusBadge status={row.l2State} label={`L2 ${stateLabel(row.l2State)}`} hint={levelHint(row.l2State)} /></div>{row.eligibility.overridden ? <HintValue text={overrideHint(row)}><Badge className="mt-1" variant="warning">{t("eligibilityOverrideActive")}</Badge></HintValue> : null}<p className="mt-1 text-[10px] text-muted-foreground">{nextResponsibleLabel(row.nextResponsible)}</p>{!row.policy.ready ? <p className="mt-1 max-w-[210px] truncate text-[10px] text-amber-700 dark:text-amber-300" title={row.policy.blockers.map(blockerLabel).join(", ")}>{row.policy.blockers.map(blockerLabel).join(" · ")}</p> : null}</td> : null}
                             {visibleColumns.has("source") ? <td className={cn("px-3", cellPadding)}><PromotionStatusBadge status={row.source.freshness.state} label={freshnessLabel(row.source.freshness.state)} hint={freshnessHint(row.source.freshness.state)} /><p className="mt-1 text-[10px] text-muted-foreground">{formatDate(row.source.observedAt, locale, true)}</p>{row.source.freshness.ageMinutes !== null ? <p className="text-[10px] text-muted-foreground">{t("freshnessAge", { minutes: row.source.freshness.ageMinutes })}</p> : null}</td> : null}
-                            <td className={cn("sticky right-0 z-10 px-3 shadow-[-8px_0_12px_-12px_rgba(0,0,0,.45)] group-hover:bg-muted", cellPadding, selected.has(row.id) ? "bg-primary/5" : "bg-card")}><div className="flex gap-1"><Button asChild variant="ghost" size="sm"><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("open")}</Link></Button>{data?.capabilities.canReview && row.currentStep ? <Hint text={t("hint.reviewOne")}><Button data-testid={`mtm-pharmacy-review-${row.id}`} size="sm" onClick={() => setReviewRows([row])}>{t("review")}</Button></Hint> : null}</div></td>
+                            <td className={cn("sticky right-0 z-10 px-3 shadow-[-8px_0_12px_-12px_rgba(0,0,0,.45)] group-hover:bg-muted", cellPadding, selected.has(row.id) ? "bg-primary/5" : "bg-card")}><div className="flex gap-1"><Button asChild variant="ghost" size="sm"><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("open")}</Link></Button>{data?.capabilities.canReview && row.currentStep ? <Hint text={t("hint.reviewOne")}><Button data-testid={`mtm-pharmacy-review-${row.id}`} size="sm" variant="outline" onClick={() => setReviewRows([row])}>{t("review")}</Button></Hint> : null}</div></td>
                           </tr>
                         )
                       })}
@@ -1390,7 +1390,7 @@ export function PharmacyPromotionWorkspace() {
 
                     <aside data-testid="mtm-pharmacy-tablet-inspector" data-execution-id={focusedRow.id} aria-label={t("tabletDetailLabel")} className="sticky top-3 self-start p-4">
                       <div className="flex items-start gap-3 border-b pb-4">
-                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><PanelRight className="h-5 w-5" /></span>
+                        <span className="grid h-11 w-11 shrink-0 place-items-center text-muted-foreground"><PanelRight className="h-5 w-5" /></span>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">{t("tabletDetailLabel")}</p>
                           <h2 className="mt-0.5 truncate text-xl font-semibold">{focusedRow.target.customerName}</h2>
@@ -1420,7 +1420,7 @@ export function PharmacyPromotionWorkspace() {
                         {visibleColumns.has("source") ? <><dt className="text-muted-foreground">{t("evidence")}</dt><dd className="text-right">{t("evidenceCount", { count: focusedRow.evidenceCount })}</dd><dt className="text-muted-foreground">{t("sourceObservedAt")}</dt><dd className="text-right">{formatDate(focusedRow.source.observedAt, locale, true)}</dd></> : null}
                       </dl>
 
-                      {!focusedRow.policy.ready ? <div className="mt-4 flex gap-2 border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{focusedRow.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
+                      {!focusedRow.policy.ready ? <div className="mt-4 flex gap-2 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-xs"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{focusedRow.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
 
                       <div className={cn("mt-4 grid gap-2", data?.capabilities.canReview && focusedRow.currentStep ? "grid-cols-2" : "grid-cols-1")}>
                         <Button className="min-h-11" asChild variant="outline"><Link href={`/mtm/promotions/${focusedRow.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("details")}</Link></Button>
@@ -1439,8 +1439,8 @@ export function PharmacyPromotionWorkspace() {
                         <div className="mt-3 flex flex-wrap gap-1"><PromotionStatusBadge status={row.status} label={stateLabel(row.status)} hint={statusHint(row.status)} /><PromotionStatusBadge status={row.source.freshness.state} label={freshnessLabel(row.source.freshness.state)} hint={freshnessHint(row.source.freshness.state)} /><Badge variant="outline">{row.promotion.code}</Badge>{row.eligibility.overridden ? <HintValue text={overrideHint(row)}><Badge variant="warning">{t("eligibilityOverrideActive")}</Badge></HintValue> : null}</div>
                         <div className="mt-3 grid grid-cols-3 gap-2 border-y py-3 text-center"><div><p className="text-[10px] uppercase text-muted-foreground">{t("summary.fact")}</p><p className="font-semibold tabular-nums">{formatPoints(points.factPoints, locale)}</p></div><div><p className="text-[10px] uppercase text-muted-foreground">{t("summary.reward")}</p><p className="font-semibold tabular-nums">{formatPoints(points.rewardPoints, locale)}</p></div><div><p className="text-[10px] uppercase text-muted-foreground">{t("summary.difference")}</p><p className="font-semibold tabular-nums">{formatPoints(points.difference, locale)}</p></div></div>
                         <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs"><dt className="text-muted-foreground">{t("promotion")}</dt><dd className="truncate text-right">{localizedName(row.promotion, locale)} · v{row.promotion.revision}</dd><dt className="text-muted-foreground">{t("employee")}</dt><dd className="truncate text-right">{row.employee.name}</dd><dt className="text-muted-foreground">{t("userGroup")}</dt><dd className="truncate text-right">{row.employee.userGroups?.map((group) => group.name).join(", ") || row.employee.team?.name || "—"}</dd><dt className="text-muted-foreground">{t("manager")}</dt><dd className="truncate text-right">{row.employee.manager?.name || "—"}</dd><dt className="text-muted-foreground">{t("planFact")}</dt><dd className="text-right tabular-nums">{formatPoints(row.target.planQuantity, locale)} / <strong>{formatPoints(row.factQuantity, locale)}</strong> {row.target.unit}</dd><dt className="text-muted-foreground">{t("evidence")}</dt><dd className="text-right">{t("evidenceCount", { count: row.evidenceCount })} · {formatDate(row.source.observedAt, locale, true)}</dd><dt className="text-muted-foreground">L1 / L2</dt><dd className="text-right">{stateLabel(row.l1State)} / {stateLabel(row.l2State)}</dd><dt className="text-muted-foreground">{t("nextResponsibleLabel")}</dt><dd className="text-right">{nextResponsibleLabel(row.nextResponsible)}</dd></dl>
-                        {!row.policy.ready ? <div className="mt-3 flex gap-2 bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><AlertTriangle className="h-4 w-4 shrink-0" /><span>{row.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
-                        <div className={cn("mt-3 grid gap-2", data?.capabilities.canReview && row.currentStep ? "grid-cols-2" : "grid-cols-1")}><Button className="min-h-11" asChild variant="outline"><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("details")}</Link></Button>{data?.capabilities.canReview && row.currentStep ? <Hint text={t("hint.reviewOne")}><Button data-testid={`mtm-pharmacy-review-${row.id}`} className="min-h-11" onClick={() => setReviewRows([row])}>{t("reviewStep", { step: row.currentStep })}</Button></Hint> : null}</div>
+                        {!row.policy.ready ? <div className="mt-3 flex gap-2 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-2 text-xs"><AlertTriangle className="h-4 w-4 shrink-0" /><span>{row.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
+                        <div className={cn("mt-3 grid gap-2", data?.capabilities.canReview && row.currentStep ? "grid-cols-2" : "grid-cols-1")}><Button className="min-h-11" asChild variant="outline"><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("details")}</Link></Button>{data?.capabilities.canReview && row.currentStep ? <Hint text={t("hint.reviewOne")}><Button data-testid={`mtm-pharmacy-review-${row.id}`} className="min-h-11" variant="outline" onClick={() => setReviewRows([row])}>{t("reviewStep", { step: row.currentStep })}</Button></Hint> : null}</div>
                       </article>
                     )
                   })}

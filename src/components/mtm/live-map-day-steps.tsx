@@ -7,12 +7,13 @@ import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import type { LiveMapDayStep, LiveMapDayStepState } from "@/lib/mtm/live-map-day-steps"
 
+// The step's state is the colour of its number, with no filled circle (owner-approved colours, 2026-10-18).
 const BADGE: Record<LiveMapDayStepState, string> = {
-  VISITED: "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300",
-  IN_VISIT: "bg-amber-400 text-amber-950",
-  NEXT: "bg-indigo-500 text-white",
-  PLANNED: "bg-muted text-muted-foreground",
-  SKIPPED: "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300",
+  VISITED: "text-emerald-700 dark:text-emerald-300",
+  IN_VISIT: "text-amber-700 ring-1 ring-inset ring-amber-500 dark:text-amber-300",
+  NEXT: "text-primary ring-1 ring-inset ring-primary",
+  PLANNED: "text-muted-foreground",
+  SKIPPED: "text-red-700 dark:text-red-300",
 }
 const STATE_KEY: Record<LiveMapDayStepState, string> = {
   VISITED: "visited", IN_VISIT: "inVisit", NEXT: "next", PLANNED: "pending", SKIPPED: "skipped",
@@ -53,7 +54,7 @@ export function LiveMapDaySteps({ steps, selectedOrder, onSelect, formatTime }: 
                 className={cn(
                   "flex min-h-11 min-w-0 flex-1 items-start gap-2 rounded-md px-1.5 py-1 text-left transition-colors",
                   step.onMap ? "hover:bg-muted/60" : "cursor-default",
-                  selected && "bg-indigo-50 ring-1 ring-indigo-300 dark:bg-indigo-950/40 dark:ring-indigo-800",
+                  selected && "bg-muted/60 shadow-[inset_3px_0_0_hsl(var(--primary))]",
                 )}
               >
                 <span className={cn("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold", BADGE[step.state])}>

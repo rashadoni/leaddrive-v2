@@ -42,7 +42,7 @@ import {
   WifiOff,
   XCircle,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { MtmFilterBar, MtmFilterDate, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { MtmHomeDashboard } from "@/components/mtm/home-dashboard"
 import { HelpButton } from "@/components/help/help-button"
@@ -72,6 +72,7 @@ import {
   type OperationalWeekTaskAttention,
 } from "@/lib/mtm/operational-week-client"
 import { cn } from "@/lib/utils"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
 import { useMtmFieldContacts } from "@/hooks/use-mtm-org-settings"
 import { createDateFormatter } from "@/lib/format-date"
 import type { MtmManagerWorkdayState } from "@/lib/mtm/workday-open-anomaly"
@@ -2280,7 +2281,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
               </div>
             ) : null}
             {pendingCancellation ? (
-              <p className="mt-2 inline-flex min-h-8 items-center gap-1.5 bg-amber-50 px-2.5 text-xs font-medium text-amber-950 dark:bg-amber-950/25 dark:text-amber-100">
+              <p className="mt-2 inline-flex min-h-8 items-center gap-1.5 px-2.5 text-xs font-medium text-amber-700 dark:text-amber-300">
                 <Clock3 className="h-3.5 w-3.5" />{t("cancellationPending")}
               </p>
             ) : canRequestCancellation ? (
@@ -2329,7 +2330,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           <div className="flex items-start justify-between gap-2">
             <button
               type="button"
-              className={cn("min-h-11 rounded-md px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", query.day === day.date && "bg-primary/10")}
+              className={cn("min-h-11 border-b-2 px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", query.day === day.date ? "border-primary" : "border-transparent")}
               aria-pressed={query.day === day.date}
               onClick={() => chooseDay(day.date)}
             >
@@ -2650,9 +2651,9 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             ) : cachedSnapshot || phase === "offline" || phase === "snapshot" ? (
               <div className="mt-4 bg-muted/50 px-3 py-3 text-xs leading-5 text-muted-foreground"><CloudOff className="mr-1.5 inline h-4 w-4" />{t("baseCoverageOffline")}</div>
             ) : baseCoveragePhase === "error" ? (
-              <div className="mt-4 bg-red-50 px-3 py-3 text-xs leading-5 text-red-900 dark:bg-red-950/25 dark:text-red-100" role="status"><WifiOff className="mr-1.5 inline h-4 w-4" />{t("baseCoverageLoadFailed")}</div>
+              <div className="mt-4 border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-3 py-3 text-xs leading-5" role="status"><WifiOff className="mr-1.5 inline h-4 w-4" />{t("baseCoverageLoadFailed")}</div>
             ) : baseCoveragePhase === "unavailable" && baseCoverage ? (
-              <div className="mt-4 bg-amber-50 px-3 py-3 text-xs leading-5 text-amber-950 dark:bg-amber-950/25 dark:text-amber-100" role="status">
+              <div className="mt-4 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-3 text-xs leading-5" role="status">
                 <AlertTriangle className="mr-1.5 inline h-4 w-4" />
                 {t(baseCoverage.state === "UNSIGNED_COVERAGE_POLICY"
                   ? "baseCoverageUnsigned"
@@ -2700,7 +2701,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                             <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground" role="status"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{t("baseCoverageRowsLoading")}</div>
                           ) : null}
                           {baseCoverageRowsPhase === "error" ? (
-                            <div className="bg-red-50 px-3 py-2 text-xs text-red-900 dark:bg-red-950/25 dark:text-red-100" role="status">
+                            <div className="border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-3 py-2 text-xs" role="status">
                               <p>{t("baseCoverageRowsFailed")}</p>
                               <Button type="button" size="sm" variant="outline" className="mt-2 min-h-9" onClick={() => void loadBaseCoverageRows(group.key, baseCoverageRows ? baseCoverageRows.page + 1 : 1, Boolean(baseCoverageRows))}>{t("baseCoverageRowsRetry")}</Button>
                             </div>
@@ -2792,7 +2793,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
               )
               return (
                 <section data-testid={`mtm-week-alerts-${railId}`}>
-                  <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-800 dark:text-amber-300"><BellRing className="h-4 w-4" />{t(todayInPeriod ? "alertsToday" : "alertsInPeriod")}</h4><Badge variant={total ? "warning" : "outline"}>{total}{facts.alertsTruncated ? "+" : ""}</Badge></div>
+                  <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold"><BellRing className="h-4 w-4 text-amber-600 dark:text-amber-400" />{t(todayInPeriod ? "alertsToday" : "alertsInPeriod")}</h4><Badge variant={total ? "warning" : "outline"}>{total}{facts.alertsTruncated ? "+" : ""}</Badge></div>
                   <ul className="mt-1 divide-y divide-zinc-200 dark:divide-zinc-700">{groups.slice(0, 6).map((group) => renderAlertGroup(group, false))}</ul>
                   <Link href={alertsHref} className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary hover:underline">
                     {groups.length > 6 ? t("moreAlertGroups", { count: groups.length - 6 }) : t("openAlerts")}<ArrowUpRight className="h-3 w-3 shrink-0" />
@@ -2889,7 +2890,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                               {task.dueAt ? <div><dt className="text-muted-foreground">{t("taskDue")}</dt><dd className="mt-0.5 tabular-nums">{formatTenantTimestamp(task.dueAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</dd></div> : null}
                             </dl>
                           ) : null}
-                          {task.returnReason ? <p className="mt-2 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-950 dark:bg-amber-950/25 dark:text-amber-100">{t("taskReturnedReason", { reason: task.returnReason })}</p> : null}
+                          {task.returnReason ? <p className="mt-2 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-2.5 py-2 text-xs leading-5">{t("taskReturnedReason", { reason: task.returnReason })}</p> : null}
                         </li>
                       )
                     })}
@@ -3020,14 +3021,14 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             {regionField}
             {teamField}
             {employeeField}
-            <div className="flex h-10 items-center rounded-full border border-zinc-200 p-0.5 dark:border-zinc-700" role="group" aria-label={t("period") }>
+            <div className="flex items-center gap-1" role="group" aria-label={t("period") }>
               {([1, 5, 7] as WeekDays[]).map((days) => (
                 <Hint key={days} wrap text={t("hint.periodDays")}>
                   <button
                     type="button"
                     aria-pressed={query?.days === days}
                     disabled={Boolean(mutatingAction)}
-                    className={cn("h-9 min-w-11 rounded-full px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", query?.days === days ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                    className={cn("h-10 min-w-11 rounded-full border border-zinc-200 px-3 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700", mtmChipClass(query?.days === days))}
                     onClick={() => query && updateQuery({ ...query, days, day: query.date })}
                   >
                     {t("days", { count: days })}
@@ -3089,7 +3090,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
       {homeLayout ? null : renderScopeControls(teamLayout)}
 
       {(phase === "offline" || phase === "snapshot") && cachedSnapshot ? (
-        <div className={cn("flex flex-col gap-2 border-t border-zinc-200 px-4 py-3 text-sm dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between", snapshotExpired ? "bg-red-50 text-red-900 dark:bg-red-950/25 dark:text-red-100" : "bg-amber-50 text-amber-900 dark:bg-amber-950/25 dark:text-amber-100")} role="status">
+        <div className={cn("flex flex-col gap-2 border-l-4 border-t border-zinc-200 bg-card px-4 py-3 text-sm text-foreground dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between", snapshotExpired ? "border-l-red-500 dark:border-l-red-500" : "border-l-amber-500 dark:border-l-amber-500")} role="status">
           <span className="inline-flex items-center gap-2 font-medium">{phase === "snapshot" ? <AlertTriangle className="h-4 w-4" /> : <CloudOff className="h-4 w-4" />}{snapshotExpired ? t("expiredSnapshot") : phase === "snapshot" ? t("savedSnapshot") : t("offlineSnapshot")}</span>
           <span className="grid gap-0.5 text-xs sm:text-right">
             <span>{t("savedAt", { date: formatTenantTimestamp(cachedSnapshot.cachedAt, locale, facts?.timezone || "UTC", { dateStyle: "medium", timeStyle: "short" }) })}</span>
@@ -3104,25 +3105,25 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
         </div>
       ) : null}
       {facts && facts.contract.completeness !== "COMPLETE" ? (
-        <div className="border-t border-zinc-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-zinc-700 dark:bg-amber-950/25 dark:text-amber-100" role="status">
+        <div className="border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm" role="status">
           <span className="inline-flex items-center gap-2 font-medium"><AlertTriangle className="h-4 w-4" />{t("partialData")}</span>
           <p className="mt-1 text-xs">{t("partialDataHint")}</p>
         </div>
       ) : null}
       {facts && phase === "rateLimited" ? (
-        <div className="flex flex-col gap-2 border-t border-zinc-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-zinc-700 dark:bg-amber-950/25 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between" role="status">
+        <div className="flex flex-col gap-2 border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
           <span className="inline-flex items-center gap-2 font-medium"><Clock3 className="h-4 w-4" />{t("rateLimitedTitle")}</span>
           <span className="text-xs">{t("rateLimitedHint")}</span>
         </div>
       ) : null}
       {facts && phase === "error" ? (
-        <div className="flex flex-col gap-2 border-t border-zinc-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-zinc-700 dark:bg-red-950/25 dark:text-red-100 sm:flex-row sm:items-center sm:justify-between" role="status">
+        <div className="flex flex-col gap-2 border-t border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
           <span className="inline-flex items-center gap-2 font-medium"><WifiOff className="h-4 w-4" />{t("refreshFailedSnapshot")}</span>
           <Button type="button" variant="outline" className="min-h-11" onClick={() => setRefreshToken((value) => value + 1)}>{t("retry")}</Button>
         </div>
       ) : null}
       {!facts && bootstrapPartial ? (
-        <div className="border-t border-zinc-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-zinc-700 dark:bg-amber-950/25 dark:text-amber-100" role="status">
+        <div className="border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm" role="status">
           <span className="inline-flex items-center gap-2 font-medium"><AlertTriangle className="h-4 w-4" />{t("scopeListLimited")}</span>
         </div>
       ) : null}
@@ -3147,7 +3148,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                 )) : renderManagerWorkdayControls() ?? <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><ShieldAlert className="h-4 w-4" />{facts.workdayCapability.canMutateSelf ? t("workdayNoActions") : t("workdayReadOnly")}</span>}
               </div>
               {confirmingFinish ? (
-                <div className="mt-3 border border-red-200 bg-red-50 p-3 text-sm text-red-950 dark:border-red-900 dark:bg-red-950/25 dark:text-red-100" role="alert">
+                <div className="mt-3 border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm" role="alert">
                   <p className="font-semibold">{t("finishConfirmTitle")}</p>
                   <p className="mt-1 text-xs leading-5">{t("finishConfirmHint")}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -3162,13 +3163,13 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           </div>
 
           {facts.workdayCapability.enabled && leftOpenWorkday && !facts.workdayCapability.canMutateSelf ? (
-            <div className="border-t border-zinc-200 bg-red-50 px-4 py-3 text-sm text-red-950 dark:border-zinc-700 dark:bg-red-950/25 dark:text-red-100" role="status" data-testid="mtm-week-workday-left-open">
+            <div className="border-t border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-4 py-3 text-sm" role="status" data-testid="mtm-week-workday-left-open">
               <p className="inline-flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{leftOpenLabel(leftOpenWorkday, facts.timezone)}</p>
             </div>
           ) : null}
           {/* The close/continue instruction is for the agent who can act on it. */}
           {facts.workdayCapability.enabled && facts.workdayCapability.canMutateSelf && facts.workdayCapability.requiresPriorDayClosure ? (
-            <div className="border-t border-zinc-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-zinc-700 dark:bg-amber-950/25 dark:text-amber-100" role="status">
+            <div className="border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm" role="status">
               <p className="inline-flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{t("priorWorkdayTitle")}</p>
               <p className="mt-1 text-xs leading-5">{t("priorWorkdayHint", {
                 date: facts.workdayCapability.date ? formatCalendarDay(facts.workdayCapability.date, locale, { dateStyle: "medium" }) : "—",
@@ -3202,7 +3203,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
 
           {gpsNeedsRecovery && facts ? (
             <section
-              className="flex flex-col gap-3 border-t border-amber-200 bg-amber-50 px-4 py-4 text-amber-950 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between lg:px-5"
+              className="flex flex-col gap-3 border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-5"
               role="status"
               data-testid="mtm-operational-week-gps-recovery"
             >
@@ -3241,9 +3242,9 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
 
             <div className="min-w-0 border-t border-zinc-200 dark:border-zinc-700 min-[100rem]:border-t-0">
               {compactWeekProjection ? <div>
-                <div className="flex gap-1 overflow-x-auto px-3 py-2" role="group" aria-label={t("chooseDay") }>
+                <div className="flex gap-1 overflow-x-auto border-b border-zinc-200 px-3 pt-2 dark:border-zinc-700" role="group" aria-label={t("chooseDay") }>
                   {facts.days.map((day) => (
-                    <button key={day.date} type="button" aria-pressed={selectedDay?.date === day.date} onClick={() => chooseDay(day.date)} className={cn("min-h-11 min-w-[4.5rem] shrink-0 rounded-full px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", selectedDay?.date === day.date ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                    <button key={day.date} type="button" aria-pressed={selectedDay?.date === day.date} onClick={() => chooseDay(day.date)} className={cn("-mb-px min-h-11 min-w-[4.5rem] shrink-0 border-b-2 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", selectedDay?.date === day.date ? "border-primary font-semibold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
                       <span className="block text-[11px] uppercase">{formatCalendarDay(day.date, locale, { weekday: "short" })}</span>
                       <span className="block tabular-nums">{formatCalendarDay(day.date, locale, { day: "numeric", month: "short" })}</span>
                     </button>

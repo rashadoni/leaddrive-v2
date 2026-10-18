@@ -46,7 +46,7 @@ function useVisitWords(timezone: string) {
 
 function Cell({ label, hint, tone, children, testId }: { label: string; hint: string; tone?: "amber"; children: ReactNode; testId: string }) {
   return (
-    <div data-testid={testId} className={cn("grid content-start gap-1 px-5 py-4", tone === "amber" && "bg-amber-50/70 dark:bg-amber-950/20")}>
+    <div data-testid={testId} className={cn("grid content-start gap-1 px-5 py-4", tone === "amber" && "")}>
       <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><HintValue text={hint}>{label}</HintValue></span>
       {children}
     </div>
@@ -194,9 +194,9 @@ export function MtmClientVisitList({ kind, visits, total, longOpenMinutes, timez
                 <span className="min-w-0 flex-1 truncate text-muted-foreground" title={detail(visit, kind)}>{detail(visit, kind) || "—"}</span>
                 <span className={cn(
                   "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                  leftOpen ? "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-800"
-                    : visit.status === "CHECKED_IN" ? "bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200 dark:bg-sky-950/40 dark:text-sky-200 dark:ring-sky-800"
-                      : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800",
+                  leftOpen ? "text-amber-700 dark:text-amber-300"
+                    : visit.status === "CHECKED_IN" ? "text-sky-700 dark:text-sky-300"
+                      : "text-emerald-700 dark:text-emerald-300",
                 )}>
                   {leftOpen ? t("statusLeftOpen", { openFor: openFor(visit.checkInAt, now) }) : visit.status === "CHECKED_IN" ? t("statusInProgress") : t("statusClosed")}
                 </span>

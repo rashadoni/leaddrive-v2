@@ -257,7 +257,7 @@ export function ContactAssignmentDialog({
       <DialogContent className="space-y-4">
         {step === "PARAMETERS" ? (
           <>
-            <div className="rounded-lg border border-sky-200 bg-sky-50/70 p-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-100">
+            <div className="rounded-lg border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
               <div className="flex items-start gap-2">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>
@@ -355,7 +355,7 @@ export function ContactAssignmentDialog({
                         {row.issues.map((issue) => {
                           const hintKey = issueHintKey(issue)
                           return (
-                            <HintValue key={issue} text={hintKey ? th(hintKey) : null} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
+                            <HintValue key={issue} text={hintKey ? th(hintKey) : null} className="rounded-full px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-300">
                               {t(`issues.${issue}`)}
                             </HintValue>
                           )
@@ -366,7 +366,7 @@ export function ContactAssignmentDialog({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">
+              <div className="flex items-center gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm">
                 <CheckCircle2 className="h-4 w-4" />
                 {t("noConflicts")}
               </div>
@@ -375,7 +375,7 @@ export function ContactAssignmentDialog({
         ) : null}
 
         {step === "RESULT" && result ? (
-          <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">
+          <div className="flex items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-4">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
             <div>
               <p className="font-semibold">{t("completedTitle")}</p>
@@ -388,7 +388,7 @@ export function ContactAssignmentDialog({
         ) : null}
 
         {error ? (
-          <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+          <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -450,9 +450,9 @@ function Summary({
   return (
     <div className={`rounded-lg border p-3 ${
       tone === "positive"
-        ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20"
+        ? "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500"
         : tone === "warning"
-          ? "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20"
+          ? "border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500"
           : "border-zinc-200 bg-muted/30 dark:border-zinc-700"
     }`}>
       <p className="text-xs text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p>

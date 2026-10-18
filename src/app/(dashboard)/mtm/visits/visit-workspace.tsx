@@ -492,7 +492,7 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
         <div className="text-right text-xs text-muted-foreground"><div className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" /> <HintValue text={t("hint.checkIn")}>{formatDateTime(new Date(data.visit.checkInAt), locale)}</HintValue></div>{data.visit.requirementSnapshot?.sourcePolicy?.name && <div className="mt-1"><HintValue text={t("hint.policy")}>{data.visit.requirementSnapshot.sourcePolicy.name}</HintValue></div>}</div>
       </div>
 
-      {!online && <div className="mt-4 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"><AlertCircle className="h-4 w-4" /> {t("offlineDraft")}</div>}
+      {!online && <div className="mt-4 flex items-center gap-2 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-sm"><AlertCircle className="h-4 w-4" /> {t("offlineDraft")}</div>}
 
       <div className="mt-6 grid gap-7 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-7">
@@ -507,7 +507,7 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
                 : t("resultNotSaved")}
             </p>
             {draftRestored && (
-              <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              <p role="status" className="rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-xs">
                 {t("localDraftNotice")}
               </p>
             )}
@@ -555,12 +555,12 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
       </div>
 
       <div className="sticky bottom-0 z-10 mt-6 border-t border-zinc-200 bg-card/95 py-3 backdrop-blur-sm dark:border-zinc-800">
-        {missing.length > 0 && <div className="mb-2 flex flex-wrap gap-2">{missing.map((item) => <HintValue key={item.actionKey} text={t("hint.missing")} className="rounded-md bg-rose-50 px-2 py-1 text-xs text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">{t(`actions.${item.actionKey}`)} {item.completedCount}/{item.requiredCount}</HintValue>)}</div>}
+        {missing.length > 0 && <div className="mb-2 flex flex-wrap gap-2">{missing.map((item) => <HintValue key={item.actionKey} text={t("hint.missing")} className="rounded-md px-2 py-1 text-xs text-rose-700 dark:text-rose-300">{t(`actions.${item.actionKey}`)} {item.completedCount}/{item.requiredCount}</HintValue>)}</div>}
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {online ? t("manualCompletionHint") : t("offlineQueueHint")}
-            {pendingSync > 0 && <HintValue text={t("hint.pendingSync")} className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{t("pendingSync", { count: pendingSync })}</HintValue>}
-            {pendingPhotos > 0 && <HintValue text={t("hint.pendingPhotos")} className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{t("pendingPhotos", { count: pendingPhotos })}</HintValue>}
+            {pendingSync > 0 && <HintValue text={t("hint.pendingSync")} className="ml-2 rounded-full px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">{t("pendingSync", { count: pendingSync })}</HintValue>}
+            {pendingPhotos > 0 && <HintValue text={t("hint.pendingPhotos")} className="ml-2 rounded-full px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">{t("pendingPhotos", { count: pendingPhotos })}</HintValue>}
           </p>
           <Hint wrap side="top" text={busy ? null : online ? t("hint.completeVisit") : t("hint.queueCheckout")}><Button size="sm" disabled={busy} onClick={() => void completeVisit()}><CheckCircle2 className="mr-1 h-4 w-4" /> {busy ? t("completing") : online ? t("completeVisit") : t("queueCheckout")}</Button></Hint>
         </div>

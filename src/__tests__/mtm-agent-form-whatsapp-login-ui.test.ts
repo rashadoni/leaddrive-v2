@@ -68,7 +68,8 @@ async function click(button: HTMLElement | null) {
   await act(async () => { button?.dispatchEvent(new MouseEvent("click", { bubbles: true })) })
 }
 const note = () => container.querySelector('[data-testid="agent-code-login-note"]')?.textContent ?? ""
-const alert = () => container.querySelector(".text-red-500")?.textContent ?? ""
+// The form's error box: white with a red edge since 2026-10-18 (owner-approved colours), so it is found by its test id, not by a red text class.
+const alert = () => container.querySelector('[data-testid="mtm-form-error"]')?.textContent ?? ""
 
 async function type(input: HTMLInputElement, value: string) {
   const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set

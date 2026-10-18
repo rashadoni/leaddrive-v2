@@ -368,7 +368,7 @@ export function MtmRoutePlanner() {
     return (
       <div className="space-y-3">
         <Link href="/mtm/routes" className="inline-flex h-9 items-center gap-1 rounded-full border border-zinc-200 bg-card px-3 text-sm font-medium dark:border-zinc-700"><ArrowLeft className="h-4 w-4" aria-hidden="true" />{t("back")}</Link>
-        <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{t("cannotPlan")}</p>
+        <p role="alert" className="rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm">{t("cannotPlan")}</p>
       </div>
     )
   }
@@ -417,7 +417,7 @@ export function MtmRoutePlanner() {
       </header>
 
       {error ? (
-        <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+        <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
           {error}
           {duplicate ? <Link className="font-semibold underline" href={`/mtm/routes?routeId=${encodeURIComponent(duplicate.id)}`}>{t("openDuplicate")}</Link> : null}
         </div>
@@ -470,15 +470,15 @@ export function MtmRoutePlanner() {
               ) : null}
             </div>
             <Hint text={t("hint.onlyDue", { month: monthLabel })}>
-              <button type="button" data-testid="mtm-route-planner-only-due" aria-pressed={onlyDue} onClick={() => setOnlyDue(true)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", onlyDue ? "bg-orange-500 text-white" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+              <button type="button" data-testid="mtm-route-planner-only-due" aria-pressed={onlyDue} onClick={() => setOnlyDue(true)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", onlyDue ? "border border-foreground bg-white text-foreground ring-1 ring-inset ring-foreground dark:bg-zinc-900" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
                 {t("onlyDue", { month: monthLabel, count: duePlaces })}
               </button>
             </Hint>
-            <button type="button" data-testid="mtm-route-planner-all" aria-pressed={!onlyDue} onClick={() => setOnlyDue(false)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", !onlyDue ? "bg-orange-500 text-white" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+            <button type="button" data-testid="mtm-route-planner-all" aria-pressed={!onlyDue} onClick={() => setOnlyDue(false)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", !onlyDue ? "border border-foreground bg-white text-foreground ring-1 ring-inset ring-foreground dark:bg-zinc-900" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
               {t("all", { count: allPlaces.length })}
             </button>
             {categories.map((value) => (
-              <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory((current) => (current === value ? "" : value))} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-medium shadow-sm", category === value ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+              <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory((current) => (current === value ? "" : value))} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-medium shadow-sm", category === value ? "border border-foreground bg-white text-foreground ring-1 ring-inset ring-foreground dark:bg-zinc-900" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
                 {t("category", { category: value })}
               </button>
             ))}
@@ -491,7 +491,7 @@ export function MtmRoutePlanner() {
           {candidatesLoading ? (
             <div className="absolute inset-0 z-[400] flex items-center justify-center bg-white/40"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" aria-label={t("loading")} /></div>
           ) : candidatesFailed ? (
-            <p role="alert" className="absolute inset-x-3 bottom-14 z-[500] rounded-xl bg-red-50 p-3 text-sm text-red-800">{t("candidatesFailed")}</p>
+            <p role="alert" className="border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 absolute inset-x-3 bottom-14 z-[500] rounded-xl p-3 text-sm">{t("candidatesFailed")}</p>
           ) : allPlaces.length === 0 && agentId && date ? (
             <p className="absolute inset-x-3 bottom-14 z-[500] rounded-xl bg-white/95 p-3 text-sm text-muted-foreground shadow-sm">{t("noClients")}</p>
           ) : null}
@@ -509,7 +509,7 @@ export function MtmRoutePlanner() {
             </div>
           </div>
           {prefillMissing ? (
-            <p role="status" data-testid="mtm-route-planner-prefill-missing" className="mx-3 mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            <p role="status" data-testid="mtm-route-planner-prefill-missing" className="mx-3 mt-3 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
               {t("prefillMissing")}
             </p>
           ) : null}
@@ -548,7 +548,7 @@ export function MtmRoutePlanner() {
           )}
           <div className="space-y-2 border-t border-zinc-100 p-3 dark:border-zinc-800">
             <Hint text={t("hint.suggest", { month: monthLabel })}>
-              <Button variant="outline" className="w-full border-primary/50 bg-primary/5 font-semibold text-primary" onClick={suggest} disabled={candidatesLoading || candidates.length === 0} data-testid="mtm-route-planner-suggest">
+              <Button variant="outline" className="w-full border-primary/50 font-semibold text-primary" onClick={suggest} disabled={candidatesLoading || candidates.length === 0} data-testid="mtm-route-planner-suggest">
                 <Sparkles aria-hidden="true" />{t("suggest")}
               </Button>
             </Hint>

@@ -54,6 +54,7 @@ import {
 import type { MtmRoutePlannerContext, MtmRoutePlannerFilters } from "@/lib/mtm/route-planner-context"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { latestRouteDraft, routeDraftStorageKey, routeDraftStorageKeys } from "@/lib/mtm/route-draft-storage"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
 
 type Agent = { id: string; name: string; role?: string }
 type Customer = MtmRouteCustomer
@@ -1569,7 +1570,7 @@ export function MtmRouteBuilder({
               {isEditing ? t("builderEditTitle") : t("builderNewTitle")}
             </h2>
             <HintValue
-              className="border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300"
+              className="px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300"
               text={isPublishedEdit ? t("hint.builderPublishedBadge") : t("hint.builderDraftBadge")}
             >
               {isPublishedEdit ? mtmStatusLabel(statusT, "route", initialData?.status ?? "DRAFT") : t("draft")}
@@ -1591,8 +1592,8 @@ export function MtmRouteBuilder({
             initialData?.version != null
             && recoverableDraft.routeVersion != null
             && recoverableDraft.routeVersion !== initialData.version
-              ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-100"
-              : "border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900 dark:bg-sky-950/25 dark:text-sky-100"
+              ? "border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500"
+              : "border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500"
           }`}
           role="status"
         >
@@ -1625,7 +1626,7 @@ export function MtmRouteBuilder({
       ) : null}
 
       {recoveredAt ? (
-        <div data-testid="mtm-route-draft-recovered" className="flex shrink-0 flex-col gap-2 border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/25 dark:text-emerald-100 sm:flex-row sm:items-center sm:justify-between" role="status">
+        <div data-testid="mtm-route-draft-recovered" className="flex border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 shrink-0 flex-col gap-2 border-b px-4 py-2 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
           <div className="flex min-w-0 items-start gap-2">
             <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <div className="min-w-0">
@@ -1638,14 +1639,14 @@ export function MtmRouteBuilder({
       ) : null}
 
       {draftStorageFailed ? (
-        <div data-testid="mtm-route-draft-storage-error" className="flex shrink-0 items-start gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+        <div data-testid="mtm-route-draft-storage-error" className="flex border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 shrink-0 items-start gap-2 border-b px-4 py-2 text-sm" role="alert">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <p>{t("routeDraftStorageFailed")}</p>
         </div>
       ) : null}
 
       {error ? (
-        <div ref={errorRef} role="alert" tabIndex={-1} className="flex items-start gap-2 border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 outline-none dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+        <div ref={errorRef} role="alert" tabIndex={-1} className="flex items-start gap-2 border-b border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-4 py-3 text-sm outline-none">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="min-w-0 flex-1">
             <p>{error}</p>
@@ -1661,7 +1662,7 @@ export function MtmRouteBuilder({
       ) : null}
 
       {conflicts.length > 0 ? (
-        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300">
+        <div className="border-b border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm">
           <div className="flex items-center gap-2 font-medium">
             <AlertTriangle className="h-4 w-4" /> {t("conflictsFound", { count: conflicts.length })}
           </div>
@@ -1670,7 +1671,7 @@ export function MtmRouteBuilder({
       ) : null}
 
       {isPublishedEdit ? (
-        <div className="flex items-start gap-2 border-b border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-300">
+        <div className="flex items-start gap-2 border-b border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 px-4 py-3 text-sm">
           <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
           <p>{t("publishedEditNotice")}</p>
         </div>
@@ -1680,8 +1681,8 @@ export function MtmRouteBuilder({
         <div
           className={`border-b px-4 py-3 ${
             prefillState === "error"
-              ? "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20"
-              : "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20"
+              ? "border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500"
+              : "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500"
           }`}
           role={prefillState === "error" ? "alert" : "status"}
           aria-live="polite"
@@ -1690,8 +1691,8 @@ export function MtmRouteBuilder({
           <div className="flex items-start gap-3">
             <span className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full ${
               prefillState === "error"
-                ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-200"
-                : "bg-emerald-600 text-white"
+                ? "text-red-700 dark:text-red-300"
+                : "text-emerald-600 dark:text-emerald-400"
             }`}>
               {prefillState === "loading" ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : prefillState === "error" ? <AlertTriangle className="h-4 w-4" /> : <Check className="h-4 w-4" />}
             </span>
@@ -1737,18 +1738,18 @@ export function MtmRouteBuilder({
                   aria-label={`${item.label}. ${item.detail}`}
                   className={`flex min-h-10 w-full items-center justify-center gap-2 rounded-full px-2 py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 ${
                     current
-                      ? "bg-primary/10 text-foreground"
+                      ? "text-foreground ring-1 ring-inset ring-foreground"
                       : item.complete
-                        ? "bg-emerald-50 text-emerald-950 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-100"
+                        ? "text-emerald-700 hover:bg-muted/60 dark:text-emerald-300"
                         : "text-muted-foreground hover:bg-muted/60"
                   }`}
                 >
                   <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold ${
                     item.complete
-                      ? "bg-emerald-600 text-white"
+                      ? "text-emerald-600 dark:text-emerald-400"
                       : current
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
+                        ? "text-primary ring-1 ring-inset ring-primary"
+                        : "text-muted-foreground ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600"
                   }`}>
                     {item.complete ? <Check className="h-4 w-4" /> : item.step}
                   </span>
@@ -1810,7 +1811,7 @@ export function MtmRouteBuilder({
             {dateWasChosenFromCalendar ? (
               <div data-testid="mtm-route-calendar-date-confirmation" className="space-y-1">
                 <span className="text-sm font-medium">{t("selectedCalendarDate")}</span>
-                <div className="flex min-h-11 items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 dark:border-emerald-900 dark:bg-emerald-950/20">
+                <div className="flex min-h-11 items-center gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 px-3 py-2">
                   <CalendarDays className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-300" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{planningDateLabel(date, locale)}</p>
@@ -1888,9 +1889,9 @@ export function MtmRouteBuilder({
               <span className="text-xs tabular-nums text-muted-foreground">{t("stopCount", { count: stops.length })}</span>
             </div>
             {stops.length > 0 ? (
-              <div className="mb-2 flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 dark:border-emerald-900 dark:bg-emerald-950/20 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mb-2 flex flex-col gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-start gap-2">
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-600 text-white"><Check className="h-4 w-4" /></span>
+                  <span className="grid h-7 w-7 shrink-0 place-items-center text-emerald-600 dark:text-emerald-400"><Check className="h-4 w-4" /></span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{t("customersSelected", { count: stops.length })}</p>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -1991,10 +1992,10 @@ export function MtmRouteBuilder({
                 <Button
                   type="button"
                   size="sm"
-                  variant={selectedRouteTargetType?.id === target.id ? "default" : "outline"}
+                  variant="outline"
                   data-testid={`mtm-route-candidate-type-${target.id}`}
                   data-route-target-direction={target.direction}
-                  className="min-h-10 px-4 text-xs sm:text-sm"
+                  className={`min-h-10 px-4 text-xs sm:text-sm ${mtmChipClass(selectedRouteTargetType?.id === target.id)}`}
                   aria-pressed={selectedRouteTargetType?.id === target.id}
                   onClick={() => changeRouteTargetType(target)}
                 >
@@ -2036,7 +2037,7 @@ export function MtmRouteBuilder({
                 ) : null}
               </div>
             </div>
-            <details data-testid="mtm-route-candidate-scope-explanation" className="group mb-2 rounded-lg border border-sky-200 bg-sky-50/60 dark:border-sky-900 dark:bg-sky-950/20">
+            <details data-testid="mtm-route-candidate-scope-explanation" className="border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 group mb-2 rounded-lg">
               <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs font-semibold text-sky-950 marker:hidden dark:text-sky-100">
                 <span className="flex min-w-0 items-center gap-2">
                   <Users className="h-4 w-4 shrink-0" />
@@ -2091,7 +2092,7 @@ export function MtmRouteBuilder({
                   <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">{t("planningTools")}</span>
                   {activeCandidateFilters.length > 0 ? (
-                    <HintValue className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary" text={t("hint.builderActiveFilterCount")}>
+                    <HintValue className="rounded-full border border-zinc-300 px-1.5 py-0.5 text-[11px] font-semibold text-foreground dark:border-zinc-600" text={t("hint.builderActiveFilterCount")}>
                       {activeCandidateFilters.length}
                     </HintValue>
                   ) : null}
@@ -2134,7 +2135,7 @@ export function MtmRouteBuilder({
                     <button
                       type="button"
                       onClick={() => removeCandidateFilter(filter.key)}
-                      className="inline-flex min-h-11 max-w-full items-center gap-1 border border-primary/25 bg-primary/5 px-2 text-xs text-foreground hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-9"
+                      className="inline-flex min-h-11 max-w-full items-center gap-1 border border-foreground px-2 text-xs text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-9"
                       aria-label={t("removeCandidateFilter", { filter: filter.label, value: filter.value })}
                     >
                       <span className="max-w-56 truncate"><span className="font-medium">{filter.label}:</span> {filter.value}</span>
@@ -2212,7 +2213,7 @@ export function MtmRouteBuilder({
                 </div>
               </fieldset>
             {coveragePreview?.available && coveragePreview.groups?.length ? (
-              <div className="mt-3 border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/25 dark:text-emerald-100" data-testid="mtm-planner-coverage-preview">
+              <div className="mt-3 border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 px-3 py-2 text-xs" data-testid="mtm-planner-coverage-preview">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <HintValue className="font-semibold" text={t("hint.builderCoverage")} align="start">{t("candidateCoverageVerified", { version: coveragePreview.policy?.version ?? 0 })}</HintValue>
                   <span className="tabular-nums">{t("candidateCoveragePeriod", { start: coveragePreview.period?.start ?? "—", end: coveragePreview.period?.end ?? "—" })}</span>
@@ -2296,13 +2297,13 @@ export function MtmRouteBuilder({
                         ? { id: candidate.contactId, displayName: candidate.name, specialtyName: candidate.specialtyName }
                         : null,
                     }])}
-                    className={`group flex min-h-16 items-center gap-3 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-default disabled:border-emerald-200 disabled:bg-emerald-50 disabled:opacity-100 dark:border-zinc-700 dark:disabled:border-emerald-900 dark:disabled:bg-emerald-950/20 ${
+                    className={`group flex min-h-16 items-center gap-3 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-default disabled:border-emerald-200 disabled:opacity-100 dark:border-zinc-700 dark:disabled:border-emerald-900 ${
                       candidateIndex === visibleCandidates.length - 1 && visibleCandidates.length % 2 === 1
                         ? "sm:col-span-2"
                         : ""
                     }`}
                   >
-                    <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${selectedPosition ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground"}`}>
+                    <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${selectedPosition ? "text-emerald-600 dark:text-emerald-400" : "text-primary ring-1 ring-inset ring-primary/40 group-hover:ring-primary"}`}>
                       {selectedPosition ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -2337,7 +2338,7 @@ export function MtmRouteBuilder({
                       </span>
                     </span>
                     {!selectedPosition ? (
-                      <span className="hidden shrink-0 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-semibold text-primary sm:inline-flex">
+                      <span className="hidden shrink-0 rounded-full border border-primary/40 px-2.5 py-1 text-xs font-semibold text-primary sm:inline-flex">
                         {t("addCandidateShort")}
                       </span>
                     ) : null}
@@ -2536,7 +2537,7 @@ export function MtmRouteBuilder({
             </div>
             <div data-testid="mtm-route-meeting-assistant">
               {meetingAvailabilityLoading ? (
-                <div data-testid="mtm-route-meeting-assistant-loading" role="status" className="mb-2 flex items-center gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-200">
+                <div data-testid="mtm-route-meeting-assistant-loading" role="status" className="mb-2 flex items-center gap-2 rounded-md border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 px-3 py-2 text-xs">
                   <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
                   {t("meetingAssistantLoading")}
                 </div>
@@ -2570,8 +2571,8 @@ export function MtmRouteBuilder({
                             data-testid={notice.kind === "same-agent" ? "mtm-route-meeting-conflict" : "mtm-route-meeting-coordination"}
                             className={`mt-2 flex max-w-xl items-start gap-1.5 rounded-md px-2 py-1.5 text-xs leading-5 ${
                               notice.kind === "same-agent"
-                                ? "bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
-                                : "bg-emerald-50 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100"
+                                ? "text-amber-700 dark:text-amber-300"
+                                : "text-emerald-700 dark:text-emerald-300"
                             }`}
                           >
                             {notice.kind === "same-agent" ? <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <Users className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
@@ -2693,7 +2694,7 @@ export function MtmRouteBuilder({
       />
       <div data-testid="mtm-route-builder-actions" className="sticky bottom-0 z-20 flex shrink-0 items-center justify-end gap-2 border-t border-zinc-200 bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(15,23,42,0.06)] dark:border-zinc-700 sm:px-4">
         <div id="route-builder-next-action" className="hidden min-w-0 items-start gap-2 text-sm sm:flex sm:flex-1" role="status" aria-live="polite">
-          <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+          <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center text-muted-foreground">
             <span className="text-[10px] font-bold">{activeStep}</span>
           </span>
           <span className="min-w-0">

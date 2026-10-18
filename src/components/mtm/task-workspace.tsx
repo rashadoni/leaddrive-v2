@@ -34,7 +34,7 @@ import { MtmTaskActionsPanel } from "@/components/mtm/task-actions-panel"
 import { MtmTaskEditForm } from "@/components/mtm/task-edit-form"
 import { MtmTaskFilesPanel } from "@/components/mtm/task-files-panel"
 import { MtmTaskTimelinePanel } from "@/components/mtm/task-timeline-panel"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -692,7 +692,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             </div>
             <Definition label={t("result")}>{task.result || t("noResult")}</Definition>
             {task.returnReason ? (
-              <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/25 dark:text-amber-100">
+              <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm">
                 <p className="font-semibold">{t("returnedForRework")}</p>
                 <p className="mt-1 leading-5">{task.returnReason}</p>
               </div>
@@ -787,7 +787,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
                   {t("deleteConfirmDescription", { title: task.title })}
                 </DialogDescription>
                 {deleteMessage ? (
-                  <p className="rounded-lg border border-red-300 bg-red-50/70 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/25 dark:text-red-200" role="alert">
+                  <p className="rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm" role="alert">
                     {deleteMessage}
                   </p>
                 ) : null}

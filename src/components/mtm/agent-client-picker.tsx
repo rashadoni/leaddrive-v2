@@ -107,7 +107,7 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
               data-testid={testId}
               className={cn(
                 "flex h-10 w-full items-center justify-between gap-2 rounded-xl border px-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                selected.length > 0 ? "border-primary bg-primary/5 font-semibold" : "border-input bg-background",
+                selected.length > 0 ? "border-foreground font-semibold" : "border-input bg-background",
               )}
             >
               <span className="truncate">{summary}</span>
@@ -121,12 +121,12 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
           <button
             type="button"
             onClick={() => onChange([])}
-            className={cn("flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm hover:bg-muted", selected.length === 0 && "bg-primary/10 font-semibold")}
+            className={cn("flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm hover:bg-muted", selected.length === 0 && "bg-muted font-semibold")}
           >
             <span>{t("clientsAll")}</span><span className="tabular-nums text-muted-foreground">{total}</span>
           </button>
           {options.map(option => (
-            <label key={option.value} className={cn("flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm hover:bg-muted", selected.includes(option.value) && "bg-primary/10 font-semibold")}>
+            <label key={option.value} className={cn("flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm hover:bg-muted", selected.includes(option.value) && "bg-muted font-semibold")}>
               <Checkbox checked={selected.includes(option.value)} onCheckedChange={() => toggle(option.value)} />
               <span className={cn("min-w-0 flex-1 truncate", option.label === null && "italic text-muted-foreground")}>{option.label ?? t("clientsNotStated")}</span>
               <span className="tabular-nums text-muted-foreground">{option.count}</span>
@@ -321,12 +321,12 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
                               {contact.specialty ? <span className="ml-1.5 text-xs text-muted-foreground">{contact.specialty}</span> : null}
                             </span>
                             {contact.assignedHere && off ? (
-                              <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-950 dark:text-red-200" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
+                              <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
                             ) : contact.assignedHere ? (
                               <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
                             ) : contact.agents.length > 0 ? (
                               <Hint text={t("clientsAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") })}>
-                                <span tabIndex={0} className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-200">
+                                <span tabIndex={0} className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
                                   {t("clientsAlsoWith", { name: contact.agents[0].name, more: contact.agents.length - 1 })}
                                 </span>
                               </Hint>
@@ -346,7 +346,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
             })}
           </div>
 
-          <p className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100" data-testid="agent-clients-note">
+          <p className="flex items-start gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
               {t("clientsNote", { count: chosen.length })}

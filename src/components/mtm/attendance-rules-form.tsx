@@ -247,7 +247,7 @@ export function MtmAttendanceRulesForm() {
             <fieldset className="space-y-2">
               <legend className="text-sm font-medium">{t("rulesWeekends")}</legend>
               <div className="flex flex-wrap gap-2">
-                {WEEKDAYS.map((day) => <label key={day} className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 px-3 text-sm has-[:checked]:border-primary/40 has-[:checked]:bg-primary/5 has-[:disabled]:cursor-default dark:border-zinc-700">
+                {WEEKDAYS.map((day) => <label key={day} className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 px-3 text-sm has-[:checked]:border-foreground has-[:checked]:font-semibold has-[:disabled]:cursor-default dark:border-zinc-700">
                   <input type="checkbox" value={day} checked={draft.weekendDays.includes(day)} className="h-4 w-4 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     onChange={(event) => change({ weekendDays: event.target.checked ? [...draft.weekendDays, day].sort((a, b) => a - b) : draft.weekendDays.filter((value) => value !== day) })} />
                   {t(DAY_KEYS[day])}

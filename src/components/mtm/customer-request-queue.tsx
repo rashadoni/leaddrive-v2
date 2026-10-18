@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -147,7 +147,7 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
 
       {!loading && requests.length === 0 ? (
         <div className="flex min-h-48 flex-col items-center justify-center px-6 py-10 text-center">
-          <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full text-emerald-700 dark:text-emerald-300">
             <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
           </span>
           <h3 className="text-sm font-semibold">{t("noCustomerApprovalsTitle")}</h3>
@@ -191,9 +191,9 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
                 </div>
 
                 {candidates.length > 0 ? (
-                  <section className={`rounded-lg border p-3.5 ${blocked ? "border-red-200 bg-red-50/70 dark:border-red-900 dark:bg-red-950/20" : "border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20"}`} aria-label={t("duplicateCheckTitle")}>
+                  <section className={`rounded-lg border p-3.5 ${blocked ? "border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500" : "border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500"}`} aria-label={t("duplicateCheckTitle")}>
                     <div className="flex items-start gap-3">
-                      <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${blocked ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"}`}>
+                      <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${blocked ? "text-red-700 dark:text-red-300" : "text-amber-700 dark:text-amber-300"}`}>
                         {blocked ? <ShieldAlert className="h-4 w-4" aria-hidden="true" /> : <AlertTriangle className="h-4 w-4" aria-hidden="true" />}
                       </span>
                       <div>

@@ -108,7 +108,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
         </button>
       </Hint>
       {open ? null : alerts.map((item, index) => (
-        <div key={item.testId ?? `alert-${index}`} role="status" className="pointer-events-auto flex max-w-[min(18rem,calc(100vw-3rem))] shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 shadow-md dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200" data-testid={item.testId ?? "live-map-layers-alert"}>
+        <div key={item.testId ?? `alert-${index}`} role="status" className="border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 pointer-events-auto flex max-w-[min(18rem,calc(100vw-3rem))] shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-2.5 py-1.5 text-xs shadow-md" data-testid={item.testId ?? "live-map-layers-alert"}>
           <span>{item.text}</span>
           {item.actionLabel && item.onAction ? (
             <button type="button" onClick={item.onAction} data-testid={item.testId ? `${item.testId}-action` : "live-map-layers-alert-action"} className="inline-flex min-h-8 items-center font-semibold underline underline-offset-2 [@media(pointer:coarse)]:min-h-11">
@@ -135,7 +135,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
                         data-testid={`live-map-base-map-${option.id}`}
                         className={cn(
                           "inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                          chosen ? "border-primary bg-primary/10 font-semibold" : "border-zinc-300 hover:bg-muted dark:border-zinc-600",
+                          chosen ? "border-foreground font-semibold" : "border-zinc-300 hover:bg-muted dark:border-zinc-600",
                         )}
                       >
                         {option.label}
@@ -171,7 +171,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
             ))}
           </ul>
           {hiddenAgentCount > 0 ? (
-            <div className="mt-1 flex items-center justify-between gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200" data-testid="live-map-hidden-agents">
+            <div className="mt-1 flex items-center justify-between gap-2 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-2 py-1.5 text-xs" data-testid="live-map-hidden-agents">
               <span>{tMap("layers.hiddenAgents", { count: hiddenAgentCount })}</span>
               <Hint text={tMap("hint.showAll")}>
                 <button type="button" onClick={onShowAllAgents} className="inline-flex min-h-9 items-center gap-1 font-semibold underline underline-offset-2">

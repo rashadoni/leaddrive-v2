@@ -143,9 +143,9 @@ function ToneBadge({
   return (
     <span className={cn(
       "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
-      tone === "positive" && "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200",
-      tone === "warning" && "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200",
-      tone === "negative" && "bg-red-100 text-red-900 dark:bg-red-900/30 dark:text-red-200",
+      tone === "positive" && "text-emerald-700 dark:text-emerald-300",
+      tone === "warning" && "text-amber-700 dark:text-amber-300",
+      tone === "negative" && "text-red-700 dark:text-red-300",
       tone === "neutral" && "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
     )}>
       <HintValue text={hint}>{children}</HintValue>
@@ -196,7 +196,7 @@ function PanelSection({
   return (
     <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
       <div className="flex items-start gap-3">
-        <div className="rounded-xl bg-primary/10 p-2 text-primary">
+        <div className="p-2 text-muted-foreground">
           <Icon className="h-5 w-5" />
         </div>
         <h2 className="self-center text-base font-semibold"><HintValue text={hint}>{title}</HintValue></h2>
@@ -634,7 +634,7 @@ function AssessmentCard({
       </div>
 
       {glossarySnapshot ? (
-        <details className="rounded-xl border border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/10">
+        <details className="rounded-xl border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500">
           <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-emerald-900 dark:text-emerald-200">
             <ShieldCheck className="mr-1.5 inline h-4 w-4" />
             {t("governedGlossaryTitle")}
@@ -698,7 +698,7 @@ function PotentialCard({
   return (
     <article className={cn(
       "grid gap-4 rounded-2xl border p-4",
-      current ? "border-emerald-300/70 bg-emerald-50/40 dark:border-emerald-800 dark:bg-emerald-950/10" : "border-zinc-200 dark:border-zinc-700",
+      current ? "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500" : "border-zinc-200 dark:border-zinc-700",
     )}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">

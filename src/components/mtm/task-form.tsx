@@ -7,7 +7,7 @@ import { CalendarClock, MapPin, Repeat2, UserRound } from "lucide-react"
 
 import { Hint, HintValue } from "@/components/hint"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -457,7 +457,7 @@ export function MtmTaskForm({
       </DialogHeader>
       <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DialogContent className="space-y-8">
-          {error ? <div className="rounded-lg border border-red-300 bg-red-50/70 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/25 dark:text-red-200" role="alert">{error}</div> : null}
+          {error ? <div className="rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm" role="alert">{error}</div> : null}
 
           <section className="space-y-4">
             <SectionLabel icon={UserRound} title={t("overview")} />

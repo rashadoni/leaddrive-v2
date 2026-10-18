@@ -606,7 +606,7 @@ export default function MtmVisitsPage() {
     // The same visit says the same thing in the history as in its card (2026-10-15).
     if (visit.checkInAt && isMtmVisitLeftOpen({ status: visit.status, checkInAt: visit.checkInAt, checkOutAt: visit.checkOutAt ?? null }, now, longOpenMinutes)) {
       return (
-        <span data-testid="mtm-visit-row-left-open" className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+        <span data-testid="mtm-visit-row-left-open" className="inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
           <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
           {t("statusLeftOpen")}
         </span>
@@ -642,7 +642,7 @@ export default function MtmVisitsPage() {
             tabIndex={0}
             data-testid="mtm-visit-location-request"
             className={request.waiting
-              ? "inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-950/50 dark:text-amber-200"
+              ? "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300"
               : "inline-flex rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"}
           >
             {t(request.key)}
@@ -734,7 +734,7 @@ export default function MtmVisitsPage() {
       </div>
 
       {focusedVisitUnavailable && focusedVisitId ? (
-        <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+        <div role="status" className="rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm">
           {t("focusedUnavailable")}
         </div>
       ) : null}
@@ -810,7 +810,7 @@ export default function MtmVisitsPage() {
                 <Link
                   href={visitHref(visit.id)}
                   aria-current={visit.id === focusedVisitId ? "true" : undefined}
-                  className={`flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-muted/40 sm:px-5 ${visit.id === focusedVisitId ? "bg-primary/5" : ""}`}
+                  className={`flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-muted/40 sm:px-5 ${visit.id === focusedVisitId ? "bg-muted/60 shadow-[inset_3px_0_0_hsl(var(--primary))]" : ""}`}
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-foreground">{visit.customer?.name || t("unknownCustomer")}</span>
@@ -944,7 +944,7 @@ export default function MtmVisitsPage() {
                         key={visit.id}
                         onClick={() => openVisit(visit.id)}
                         aria-selected={isFocused}
-                        className={`cursor-pointer border-b last:border-0 hover:bg-muted/30 ${isFocused ? "bg-primary/5 outline outline-1 -outline-offset-1 outline-primary/40" : ""}`}
+                        className={`cursor-pointer border-b last:border-0 hover:bg-muted/30 ${isFocused ? "bg-muted/60 shadow-[inset_3px_0_0_hsl(var(--primary))]" : ""}`}
                       >
                         <td className="px-4 py-3">
                           <Link href={visitHref(visit.id)} onClick={(event) => event.stopPropagation()} className="font-semibold text-foreground hover:underline">
@@ -1061,7 +1061,7 @@ function LeftOpenVisits({ visits, now, timezone, orgId, focusedVisitId, visitHre
   const t = useTranslations("mtmVisitsPage")
   const since = useLeftOpenSince(timezone)
   return (
-    <section data-testid="mtm-visits-left-open" className="rounded-2xl border border-amber-200 bg-amber-50/60 shadow-sm dark:border-amber-900 dark:bg-amber-950/20" aria-labelledby="left-open-visits-title">
+    <section data-testid="mtm-visits-left-open" className="rounded-2xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 shadow-sm" aria-labelledby="left-open-visits-title">
       <div className="border-b border-amber-200 p-4 dark:border-amber-900 sm:p-5">
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />
@@ -1071,7 +1071,7 @@ function LeftOpenVisits({ visits, now, timezone, orgId, focusedVisitId, visitHre
       </div>
       <ul className="divide-y divide-amber-200 dark:divide-amber-900">
         {visits.map((visit) => (
-          <li key={visit.id} className={`flex min-h-14 flex-wrap items-center gap-3 px-4 py-3 sm:px-5 ${visit.id === focusedVisitId ? "bg-amber-100/60 dark:bg-amber-900/30" : ""}`}>
+          <li key={visit.id} className={`flex min-h-14 flex-wrap items-center gap-3 px-4 py-3 sm:px-5 ${visit.id === focusedVisitId ? "bg-muted/60 shadow-[inset_3px_0_0_hsl(var(--primary))]" : ""}`}>
             <Link href={visitHref(visit.id)} aria-current={visit.id === focusedVisitId ? "true" : undefined} className="min-w-0 flex-1 hover:underline">
               <span className="block truncate font-medium text-foreground">{visit.customer?.name || t("unknownCustomer")}</span>
               <span className="block truncate text-sm text-muted-foreground">

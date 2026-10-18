@@ -13,7 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Hint, HintValue } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import {
@@ -316,7 +316,7 @@ export function ScoringFormulaSettings() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50/70 p-3 text-sm text-sky-950 dark:border-sky-900/70 dark:bg-sky-950/20 dark:text-sky-100">
+      <div className="mt-4 rounded-lg border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
         <div className="flex items-start gap-2">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
@@ -331,7 +331,7 @@ export function ScoringFormulaSettings() {
           {[1, 2].map((item) => <div key={item} className="h-44 animate-pulse rounded-lg bg-muted" />)}
         </div>
       ) : loadError && formulas.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+        <div className="mt-5 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-4 text-sm">
           <p>{loadError}</p>
           <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void load()}>
             {t("retry")}
@@ -350,7 +350,7 @@ export function ScoringFormulaSettings() {
               key={formula.id}
               className={`rounded-lg border p-4 ${
                 formula.status === "ACTIVE"
-                  ? "border-emerald-300 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/15"
+                  ? "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500"
                   : "border-zinc-200 bg-card dark:border-zinc-700"
               }`}
             >
@@ -478,7 +478,7 @@ export function ScoringFormulaSettings() {
               />
             </div>
             {formError ? (
-              <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+              <p role="alert" className="rounded-md border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
                 {formError}
               </p>
             ) : null}
@@ -511,7 +511,7 @@ export function ScoringFormulaSettings() {
           </DialogDescription>
         </DialogHeader>
         <DialogContent>
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-100">
+          <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm">
             <p className="font-medium">{t("activationEffectTitle")}</p>
             <p className="mt-1 text-xs leading-relaxed opacity-80">{t("activationEffectDescription")}</p>
           </div>

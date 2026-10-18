@@ -36,7 +36,7 @@ export default async function PersonnelReportsPage({ searchParams }: { searchPar
         return <Link key={key} href={href} prefetch={false} data-testid={`attendance-report-card-${key}`}
           className={`${alone ? "md:col-span-2 " : ""}group flex min-h-20 items-start gap-4 rounded-2xl border bg-card p-4 outline-none transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring`}>
           <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2 font-semibold">{t(`reports.${key}.title`)}
-            {NEW_ATTENDANCE_REPORTS.includes(key) ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{t("reportsNew")}</span> : null}</span>
+            {NEW_ATTENDANCE_REPORTS.includes(key) ? <span className="text-xs font-semibold text-primary">{t("reportsNew")}</span> : null}</span>
             <span className="mt-0.5 block text-sm text-muted-foreground">{t(`reports.${key}.hint`)}</span>
             <ReportExample label={t("reportExample")} text={t(`reports.${key}.example`)} className="mt-2" /></span>
           <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary">{t("open")}<ArrowRight className="h-4 w-4" aria-hidden="true" /></span>

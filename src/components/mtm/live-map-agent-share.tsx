@@ -544,7 +544,7 @@ export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, no
                     <div className="break-words text-muted-foreground" data-testid="live-map-share-link-facts"><HintValue text={t("hint.shareStats")}>{factsOf(link)}</HintValue></div>
                   </div>
                   {fresh ? (
-                    <div role="status" className="col-span-2 row-start-2 mt-1.5 rounded-md border border-emerald-300 bg-emerald-50 p-2 dark:border-emerald-800 dark:bg-emerald-950/40" data-testid={`live-map-share-fresh-${link.id}`}>
+                    <div role="status" className="col-span-2 row-start-2 mt-1.5 rounded-md border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-2" data-testid={`live-map-share-fresh-${link.id}`}>
                       <div className="font-semibold text-foreground">{t("share.ready")}</div>
                       <input
                         ref={(node) => {

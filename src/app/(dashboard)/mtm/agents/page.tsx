@@ -21,17 +21,18 @@ import { ConfirmDialog, DeleteConfirmDialog } from "@/components/delete-confirm-
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { UserCog, Plus, Pencil, Trash2, MoreHorizontal, Users, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle, LayoutGrid, List, UsersRound, ChevronRight } from "lucide-react"
+import { mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
 
 const roleColors: Record<string, string> = {
-  ADMIN: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-  MANAGER: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  SUPERVISOR: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
-  AGENT: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+  ADMIN: "text-violet-700 dark:text-violet-300",
+  MANAGER: "text-sky-700 dark:text-sky-300",
+  SUPERVISOR: "text-violet-700 dark:text-violet-300",
+  AGENT: "text-sky-700 dark:text-sky-300",
 }
 const statusColors: Record<string, string> = {
-  ACTIVE: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  ACTIVE: "text-emerald-700 dark:text-emerald-300",
   INACTIVE: "bg-muted text-muted-foreground",
-  SUSPENDED: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300",
+  SUSPENDED: "text-red-700 dark:text-red-300",
 }
 // One freshness window for the "online" dot/counter and the app badge
 // (review of #209: 10 min here and 15 min on the badge disagreed).
@@ -299,11 +300,11 @@ export default function MtmAgentsPage() {
     const box = size === "md" ? "h-10 w-10" : "h-8 w-8"
     return agent.avatar
       ? <img src={agent.avatar} alt="" className={`${box} rounded-full object-cover`} />
-      : <div className={`${box} rounded-full bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center text-cyan-700 dark:text-cyan-400 font-semibold`}>{agent.name?.charAt(0)?.toUpperCase()}</div>
+      : <div className={`${box} rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold`}>{agent.name?.charAt(0)?.toUpperCase()}</div>
   }
   const appBadge = (app: { state: "active" | "quiet" | "never"; lastSignalAt: string | null } | undefined) => app ? (
     <Hint text={app.lastSignalAt ? `${t("appLastSignal", { time: formatDateTime(app.lastSignalAt, locale) })}. ${t("hint.appState")}` : t("hint.appState")}><span
-      className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap ${app.state === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-muted text-muted-foreground"}`}
+      className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap ${app.state === "active" ? "text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}
       tabIndex={0}
       data-testid="mtm-agent-app-state"
     >
@@ -363,7 +364,7 @@ export default function MtmAgentsPage() {
         {/* Badges: role · status · app — one wrapping row with a reserved height */}
         <div className="flex flex-1 flex-wrap content-start items-start gap-1.5 min-h-[2.75rem]">
           <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${leads ? "font-semibold " : ""}${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
-          {leads && team ? <span className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" data-testid="mtm-agent-team-size">{t("teamSize", { count: team.size - 1 })}</span> : null}
+          {leads && team ? <span className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap text-sky-700 dark:text-sky-300" data-testid="mtm-agent-team-size">{t("teamSize", { count: team.size - 1 })}</span> : null}
           <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[agent.status] || ""}`}>{statusLabel(agent.status)}</span>
           {appBadge(app)}
           {app && !app.notificationsConnected ? (
@@ -439,7 +440,7 @@ export default function MtmAgentsPage() {
     const activity = agent.activity as { visits: number; planFulfillment: number | null } | null | undefined
     const app = agent.app as { state: "active" | "quiet" | "never"; lastSignalAt: string | null } | undefined
     return (
-      <tr key={agent.id} data-testid="mtm-agent-row" className={`border-t border-zinc-100 dark:border-zinc-800 ${leads ? "bg-blue-50/40 dark:bg-blue-950/10" : ""}`}>
+      <tr key={agent.id} data-testid="mtm-agent-row" className={`border-t border-zinc-100 dark:border-zinc-800 ${leads ? "font-medium" : ""}`}>
         <td className="py-2 pr-2" style={{ paddingLeft: `${0.75 + Math.min(depth, 4) * 1.25}rem` }}>
           <div className="flex items-center gap-2 min-w-0">
             <div className="relative h-8 w-8 shrink-0">{avatar(agent, "sm")}{presenceDot(agent, presence)}</div>
@@ -534,7 +535,7 @@ export default function MtmAgentsPage() {
       </div>
 
       {loadError ? (
-        <div role="alert" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{loadError}</span>
         </div>
       ) : null}
@@ -545,16 +546,16 @@ export default function MtmAgentsPage() {
       <MtmFilterBar testId="mtm-agents-filters">
         <MtmFilterSearch value={search} onChange={setSearch} delayMs={150} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tf("clearSearch")} />
         {focusAgentId ? (
-          <span className="inline-flex h-10 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 pl-3 pr-1.5 text-sm text-primary" data-testid="mtm-agent-focus-chip">
+          <span className="inline-flex h-10 items-center gap-1 rounded-full border border-foreground pl-3 pr-1.5 text-sm font-semibold text-foreground" data-testid="mtm-agent-focus-chip">
             {t("focusChip", { name: focusAgent?.name ?? t("focusUnknown") })}
-            <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-primary/15" onClick={() => setFocusAgent("")} aria-label={t("focusClear")}><X className="h-3.5 w-3.5" /></button>
+            <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-muted" onClick={() => setFocusAgent("")} aria-label={t("focusClear")}><X className="h-3.5 w-3.5" /></button>
           </span>
         ) : null}
         <div role="group" aria-label={tf("status")} className="flex flex-wrap gap-1">
-          <Hint text={t("hint.filterAll")}><Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{t("all")} ({agents.length})</Button></Hint>
-          <Hint text={t("hint.filterOnline")}><Button variant={activeFilter === "online" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("online")}>{t("filterOnline")} ({totalOnline})</Button></Hint>
+          <Hint text={t("hint.filterAll")}><Button variant="outline" size="sm" className={`h-10 rounded-full ${mtmChipClass(activeFilter === "all")}`} onClick={() => setActiveFilter("all")}>{t("all")} ({agents.length})</Button></Hint>
+          <Hint text={t("hint.filterOnline")}><Button variant="outline" size="sm" className={`h-10 rounded-full ${mtmChipClass(activeFilter === "online")}`} onClick={() => setActiveFilter("online")}>{t("filterOnline")} ({totalOnline})</Button></Hint>
           {(["ACTIVE", "INACTIVE", "SUSPENDED"] as const).map(s => (
-            <Hint key={s} text={t("hint.filterStatus", { status: statusLabel(s) })}><Button variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>{t(`filter${s.charAt(0) + s.slice(1).toLowerCase()}` as never)} ({statusCounts[s] || 0})</Button></Hint>
+            <Hint key={s} text={t("hint.filterStatus", { status: statusLabel(s) })}><Button variant="outline" size="sm" className={`h-10 rounded-full ${mtmChipClass(activeFilter === s)}`} onClick={() => setActiveFilter(s)}>{t(`filter${s.charAt(0) + s.slice(1).toLowerCase()}` as never)} ({statusCounts[s] || 0})</Button></Hint>
           ))}
           {/* The managers filter: click shows managers and supervisors, click again shows everyone. */}
           <Hint text={t("filterManagersHint")}>
@@ -564,7 +565,7 @@ export default function MtmAgentsPage() {
               aria-describedby="mtm-agents-managers-tile-hint"
               data-testid="mtm-agents-managers-tile"
               onClick={toggleManagers}
-              className={`inline-flex h-10 items-center rounded-full border px-3 text-sm font-medium transition-colors ${activeFilter === "managers" ? "border-primary bg-primary text-primary-foreground" : "border-zinc-200 bg-card hover:bg-muted dark:border-zinc-700"}`}
+              className={`inline-flex h-10 items-center rounded-full border px-3 text-sm font-medium transition-colors ${activeFilter === "managers" ? "border-foreground font-semibold text-foreground" : "border-zinc-200 bg-card text-muted-foreground hover:bg-muted dark:border-zinc-700"}`}
             >
               <span id="mtm-agents-managers-tile-hint" className="sr-only">{t("filterManagersHint")}</span>
               {t("statManagers")} ({totalManagers})
@@ -584,9 +585,9 @@ export default function MtmAgentsPage() {
               ]}
               onChange={setSortBy} />
           </Hint>
-          <span className="inline-flex rounded-full border border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("viewToggle")} data-testid="mtm-agents-view-toggle">
-            <Hint text={t("hint.viewCards")}><Button variant={view === "cards" ? "default" : "ghost"} size="sm" className="h-10 rounded-l-full rounded-r-none" aria-pressed={view === "cards"} onClick={() => changeView("cards")}><LayoutGrid className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewCards")}</span><span className="sr-only sm:hidden">{t("viewCards")}</span></Button></Hint>
-            <Hint text={t("hint.viewList")}><Button variant={view === "list" ? "default" : "ghost"} size="sm" className="h-10 rounded-l-none rounded-r-full" aria-pressed={view === "list"} onClick={() => changeView("list")}><List className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewList")}</span><span className="sr-only sm:hidden">{t("viewList")}</span></Button></Hint>
+          <span className="inline-flex border-b border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("viewToggle")} data-testid="mtm-agents-view-toggle">
+            <Hint text={t("hint.viewCards")}><Button variant="ghost" size="sm" className={mtmTabClass(view === "cards")} aria-pressed={view === "cards"} onClick={() => changeView("cards")}><LayoutGrid className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewCards")}</span><span className="sr-only sm:hidden">{t("viewCards")}</span></Button></Hint>
+            <Hint text={t("hint.viewList")}><Button variant="ghost" size="sm" className={mtmTabClass(view === "list")} aria-pressed={view === "list"} onClick={() => changeView("list")}><List className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewList")}</span><span className="sr-only sm:hidden">{t("viewList")}</span></Button></Hint>
           </span>
         </span>
       </MtmFilterBar>

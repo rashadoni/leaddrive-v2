@@ -30,7 +30,7 @@ const nextKind = (history: Employee["history"]): Change["kind"] => !history.leng
 
 function Section({ title, icon, children, testId }: { title: string; icon: ReactNode; children: ReactNode; testId: string }) {
   return <section className="flex flex-col gap-4 rounded-2xl border bg-card p-5" data-testid={testId}>
-    <h2 className="flex items-center gap-2 text-base font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300" aria-hidden="true">{icon}</span>{title}</h2>
+    <h2 className="flex items-center gap-2 text-base font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg text-orange-700 dark:text-orange-300" aria-hidden="true">{icon}</span>{title}</h2>
     {children}
   </section>
 }
@@ -125,7 +125,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
     {backLink}
     <form onSubmit={save} className="space-y-5" aria-label={p("employeeTitle", { name: employee.name })}>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4"><span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-orange-100 text-lg font-semibold text-orange-800 dark:bg-orange-950 dark:text-orange-200" aria-hidden="true">{initials}</span>
+        <div className="flex min-w-0 items-center gap-4"><span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary" aria-hidden="true">{initials}</span>
           <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{p("employeeCardHeading")}</p><h1 className="break-words text-2xl font-semibold tracking-tight">{employee.name}</h1>
             <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">{[employee.position, employee.teamName].filter(Boolean).join(" · ") || mtmStatusLabel(statusText, "role", employee.role)}
               <HomePill tone={todayTone}>{today}</HomePill></p></div></div>

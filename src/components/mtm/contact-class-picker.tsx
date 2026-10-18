@@ -97,8 +97,8 @@ export function MtmContactClassPicker({
               className={cn(
                 "inline-flex min-h-11 min-w-14 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors",
                 selected
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-zinc-200 bg-background text-foreground dark:border-zinc-700",
+                  ? "border-foreground bg-background text-foreground ring-1 ring-inset ring-foreground"
+                  : "border-zinc-200 bg-background text-muted-foreground dark:border-zinc-700",
                 canManage && !selected && "hover:border-zinc-400",
                 !canManage && !selected && "opacity-60",
               )}

@@ -269,8 +269,8 @@ function StateBadge({
   return (
     <span className={cn(
       "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
-      tone === "positive" && "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200",
-      tone === "warning" && "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200",
+      tone === "positive" && "text-emerald-700 dark:text-emerald-300",
+      tone === "warning" && "text-amber-700 dark:text-amber-300",
       tone === "neutral" && "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
     )}>
       <HintValue text={hint}>{children}</HintValue>
@@ -920,7 +920,7 @@ function EmptySection({
   return (
     <div className="grid min-h-44 place-items-center text-center">
       <div className="grid max-w-lg gap-3">
-        <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-muted">
+        <span className="mx-auto grid h-11 w-11 place-items-center">
           {honest ? <Clock3 className="h-5 w-5 text-muted-foreground" /> : <Icon className="h-5 w-5 text-muted-foreground" />}
         </span>
         <div className="grid gap-1">

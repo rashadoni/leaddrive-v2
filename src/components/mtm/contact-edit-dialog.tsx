@@ -636,7 +636,7 @@ export function MtmContactEditDialog({
           </FormSection>
 
           {requestMode ? (
-            <div className="grid gap-1.5 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+            <div className="grid gap-1.5 rounded-2xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4">
               <Label htmlFor="contact-change-reason">
                 {t("reason")}
                 <span className="ml-1 text-destructive" aria-hidden="true">*</span>

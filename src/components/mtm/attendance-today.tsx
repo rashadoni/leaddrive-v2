@@ -46,7 +46,7 @@ function MtmAttendanceNow({ data }: { data: Loaded }) {
     : `/mtm/attendance/timesheet?${new URLSearchParams({ date: data.today, employeeId: person.employeeId })}`
   return <section className="rounded-2xl border bg-card p-4" aria-labelledby="attendance-today-now-title" data-testid="attendance-today-now">
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <h2 id="attendance-today-now-title" className="flex items-center gap-2 text-[15px] font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" aria-hidden="true"><Users className="h-4 w-4" /></span>{t("nowTitle", { time: time(data.loadedAt) })}</h2>
+      <h2 id="attendance-today-now-title" className="flex items-center gap-2 text-[15px] font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-700 dark:text-emerald-300" aria-hidden="true"><Users className="h-4 w-4" /></span>{t("nowTitle", { time: time(data.loadedAt) })}</h2>
       <Link href="/mtm/attendance/reports?report=day" prefetch={false} className="text-sm font-semibold text-primary hover:underline">{t("nowOpenDay")} →</Link>
     </div>
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{NOW_COLUMNS.map(column => {
@@ -247,7 +247,7 @@ export function MtmAttendanceToday() {
                     {item.details.attachmentIds.length ? <a href={`/api/v1/mtm/attendance/attachments/${encodeURIComponent(item.details.attachmentIds[0])}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" aria-hidden="true" />{t("document")}</a> : null}</p>
                   {item.reason ? <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.reason}</p> : null}</div>
                 {rejecting !== item.id ? <div className="flex shrink-0 gap-2">
-                  <Button size="sm" className="min-h-9 bg-emerald-600 text-white hover:bg-emerald-700" disabled={busyId !== null} onClick={() => void decide(item, "APPROVED")}>{t("approve")}</Button>
+                  <Button size="sm" variant="outline" className="min-h-9 border-emerald-600 text-emerald-700 dark:border-emerald-500 dark:text-emerald-300" disabled={busyId !== null} onClick={() => void decide(item, "APPROVED")}>{t("approve")}</Button>
                   <Button size="sm" variant="outline" className="min-h-9 text-rose-700 dark:text-rose-300" disabled={busyId !== null} onClick={() => { setRejecting(item.id); setReason("") }}>{t("reject")}</Button>
                 </div> : null}
               </div>
@@ -290,7 +290,7 @@ export function MtmAttendanceToday() {
               </div>
               {explanation && reading === explanation.id ? <div className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-sm" data-testid="attendance-explain-answer">
                 <span className="text-muted-foreground">{t("explainAnswerOf", { name: item.employeeName })}</span> «{explanation.answer}»
-                <span className="mt-2 flex flex-wrap gap-2"><Button size="sm" className="min-h-9 bg-emerald-600 text-white hover:bg-emerald-700" disabled={busyId !== null} onClick={() => void decideExplanation(explanation, "ACCEPTED")}>{t("explainAccept")}</Button>
+                <span className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" className="min-h-9 border-emerald-600 text-emerald-700 dark:border-emerald-500 dark:text-emerald-300" disabled={busyId !== null} onClick={() => void decideExplanation(explanation, "ACCEPTED")}>{t("explainAccept")}</Button>
                   <Button size="sm" variant="outline" className="min-h-9 text-rose-700 dark:text-rose-300" disabled={busyId !== null} onClick={() => void decideExplanation(explanation, "REJECTED")}>{t("explainReject")}</Button></span>
               </div> : null}
             </li> })}
@@ -311,7 +311,7 @@ export function MtmAttendanceToday() {
         {summary.week.map(day => {
           const isToday = day.date === data?.today
           return <Link key={day.date} prefetch={false} href={`/mtm/attendance/timesheet?date=${day.date}`} data-testid="attendance-today-day"
-            className={`rounded-xl p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${isToday ? "bg-primary/10 ring-1 ring-primary/40" : day.future ? "border border-dashed" : "bg-muted/50 hover:bg-muted"}`}>
+            className={`rounded-xl p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${isToday ? "border border-primary" : day.future ? "border border-dashed" : "border hover:bg-muted/50"}`}>
             <p className={`text-xs font-semibold first-letter:uppercase ${isToday ? "text-primary" : "text-muted-foreground"}`}>{dateLabel(day.date, { weekday: "short", day: "numeric" })}{isToday ? ` · ${t("weekToday")}` : ""}</p>
             <p className="mt-1 text-sm"><span className="text-base font-bold tabular-nums">{day.future ? "—" : day.present}</span> <span className="text-xs text-muted-foreground">{day.future ? t("weekPlan", { total: day.expected }) : t("kpiOf", { total: day.expected })}</span></p>
             <div className="mt-1.5 flex flex-wrap gap-1">

@@ -6,6 +6,7 @@ import { Building2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomeCard, HomePill } from "@/components/mtm/home-parts"
+import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
 import { AttendanceBranchInputSchema, AttendanceBranchAssignmentInputSchema,
   type AttendanceBranch, type AttendanceBranchEmployee, type AttendanceBranchDirectory, type AttendanceBranchAssignments } from "@/lib/mtm/attendance-branches-contract"
 
@@ -99,7 +100,7 @@ export function MtmAttendanceBranches() {
   function edit(branch:AttendanceBranch){setError(null);setSaved(false);setDraft({branchId:branch.id,expectedRevisionId:branch.revisionId,name:branch.name,address:branch.address,latitude:String(branch.latitude),longitude:String(branch.longitude),radiusMeters:String(branch.radiusMeters),active:branch.active})}
   return <div className="space-y-5" data-testid="attendance-branches">
     <div><h1 className="text-2xl font-semibold tracking-tight">{t("branchesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("branchesIntro")}</p></div>
-    {!denied?<div className="flex flex-wrap gap-2" role="group" aria-label={t("branchesNavigation")}><Button variant={tab==="branches"?"default":"outline"} className="min-h-11" disabled={saving||Boolean(pending)} onClick={()=>setTab("branches")}>{t("branchesTitle")}</Button><Button variant={tab==="assignments"?"default":"outline"} className="min-h-11" disabled={saving||Boolean(pending)} onClick={()=>setTab("assignments")}>{t("branchesAssignments")}</Button><Button variant="outline" className="min-h-11" disabled={loading||saving||Boolean(pending)} onClick={()=>void load(query)}>{t("branchesRefresh")}</Button></div>:null}
+    {!denied?<div className={MTM_TAB_ROW} role="group" aria-label={t("branchesNavigation")}><Button variant="ghost" className={mtmTabClass(tab==="branches")} disabled={saving||Boolean(pending)} onClick={()=>setTab("branches")}>{t("branchesTitle")}</Button><Button variant="ghost" className={mtmTabClass(tab==="assignments")} disabled={saving||Boolean(pending)} onClick={()=>setTab("assignments")}>{t("branchesAssignments")}</Button><Button variant="outline" className="min-h-11" disabled={loading||saving||Boolean(pending)} onClick={()=>void load(query)}>{t("branchesRefresh")}</Button></div>:null}
     {loading?<p role="status" className="text-sm text-muted-foreground">{t("branchesLoading")}</p>:null}
     {error?<p role="alert" className="max-w-prose text-sm text-destructive">{t(error)}</p>:null}
     {saved?<p role="status" className="text-sm text-emerald-700">{t("branchesSaved")}</p>:null}

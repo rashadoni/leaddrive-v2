@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl"
 import { AgentDetailCard } from "@/components/leaderboard/agent-detail-card"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import type { NormalizedAgent, LeaderboardPeriod } from "@/lib/leaderboard/types"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
 
 /**
  * Field UX audit 2026-09-05, W-12 / task C13 (backlog T15).
@@ -153,7 +154,7 @@ export default function MtmLeaderboardPage() {
         </div>
         <div className="flex gap-1 flex-wrap">
           {(["weekly", "monthly", "all"] as const).map(p => (
-            <Hint key={p} text={t("hint.period")}><Button variant={period === p ? "default" : "outline"} size="sm" onClick={() => setPeriod(p)}>
+            <Hint key={p} text={t("hint.period")}><Button variant="outline" size="sm" onClick={() => setPeriod(p)} className={mtmChipClass(period === p)}>
               {p === "weekly" ? t("weekly") : p === "monthly" ? t("monthly") : t("allTime")}
             </Button></Hint>
           ))}
@@ -197,7 +198,7 @@ export default function MtmLeaderboardPage() {
                         <td className="px-2 py-2">
                           <div className="flex items-center gap-2">
                             <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                              agent.rank === 1 ? "bg-amber-100 text-amber-700" : agent.rank === 2 ? "bg-slate-100 text-slate-600" : agent.rank === 3 ? "bg-orange-100 text-orange-700" : "bg-muted text-muted-foreground"}`}>
+                              agent.rank === 1 ? "text-amber-700" : agent.rank === 2 ? "text-zinc-600" : agent.rank === 3 ? "text-orange-700" : "bg-muted text-muted-foreground"}`}>
                               {agent.rank}
                             </span>
                             <div className="min-w-0">
@@ -235,7 +236,7 @@ export default function MtmLeaderboardPage() {
                     const Icon = meta.icon; const completed = ach.progress >= ach.total
                     return (
                       <div key={ach.id} className="flex items-center gap-3">
-                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ${completed ? "bg-primary/10" : "bg-muted"}`}><Icon className={`h-4 w-4 ${completed ? meta.color : "text-muted-foreground"}`} /></div>
+                        <div className="h-8 w-8 rounded-full flex items-center justify-center"><Icon className={`h-4 w-4 ${completed ? meta.color : "text-muted-foreground"}`} /></div>
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-medium">{t(`ach_${ach.id}_label`)}</div>
                           <div className="text-[10px] text-muted-foreground">{t(`ach_${ach.id}_desc`)}</div>

@@ -88,7 +88,7 @@ import {
 import { contactFieldVisibility, type MtmContactSwitchableField } from "@/lib/mtm/contact-field-visibility"
 import { mtmApiErrorKey } from "@/lib/mtm/api-error-message"
 import { contactClassOptions } from "@/lib/mtm/contact-classes"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -955,7 +955,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       {/* What this list is, in a sentence, before anything else on the tab —
           and how to change it only for someone who may. */}
       {agentScope ? (
-        <section data-testid="mtm-agent-scope-explainer" className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
+        <section data-testid="mtm-agent-scope-explainer" className="flex items-start gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4">
           {agentScope.view === "assigned"
             ? <UsersRound className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
             : <UserPlus className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />}
@@ -969,7 +969,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       ) : null}
 
       {isRouteDoctorFlow && routeAssignmentHandoff ? (
-        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">{t("routeFlowTitle")}</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -1206,7 +1206,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       ) : null}
 
       {error ? (
-        <section className="rounded-xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-900 dark:bg-red-950/20">
+        <section className="rounded-xl border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-6 text-center">
           <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
           <Button type="button" variant="outline" size="sm" className="mt-3" onClick={refresh}>{t("retry")}</Button>
         </section>

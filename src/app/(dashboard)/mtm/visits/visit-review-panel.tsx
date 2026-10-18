@@ -90,8 +90,8 @@ export interface VisitReviewData {
 }
 
 export function visitStatusClasses(status: string): string {
-  if (status === "CHECKED_IN") return "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200"
-  if (status === "CHECKED_OUT") return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+  if (status === "CHECKED_IN") return "border-zinc-200 text-sky-700 dark:border-zinc-700 dark:text-sky-300"
+  if (status === "CHECKED_OUT") return "border-zinc-200 text-emerald-700 dark:border-zinc-700 dark:text-emerald-300"
   if (status === "CANCELLED") return "border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
   return "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
 }
@@ -128,9 +128,9 @@ function RoadmapTrack({ steps, t }: { steps: VisitRoadmapStep[]; t: Translator }
       {steps.map((step, index) => {
         const Icon = ROADMAP_ICON[step.key] ?? Circle
         const tone = step.state === "done"
-          ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+          ? "border-emerald-500 text-emerald-700 dark:text-emerald-300"
           : step.state === "missing"
-            ? "border-red-500 bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300"
+            ? "border-red-500 text-red-700 dark:text-red-300"
             : "border-zinc-300 bg-muted text-muted-foreground dark:border-zinc-700"
         const detail = step.detailKey === "openedCount"
           ? t("review.stepOpened", { count: step.count ?? 0 })
@@ -451,7 +451,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             {leftOpen ? (
-              <span data-testid="mtm-visit-left-open-status" className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+              <span data-testid="mtm-visit-left-open-status" className="inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
                 {t("statusLeftOpen")}
               </span>
             ) : (
@@ -476,7 +476,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
             </Link>
           </p>
           {leftOpen && visit.agent?.id && !data.viewer.canExecute ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200" data-testid="mtm-visit-left-open-note">
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-sm" data-testid="mtm-visit-left-open-note">
               <span className="min-w-0 flex-1">{t("leftOpenHint")}</span>
               <RemindAgentButton
                 agentId={visit.agent.id}
@@ -539,7 +539,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
               <p
                 data-testid="mtm-visit-review-location-request"
                 className={visit.locationRequest.status === "SUBMITTED"
-                  ? "mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                  ? "mt-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-xs"
                   : "mt-2 rounded-lg border border-zinc-200 bg-muted/40 px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700"}
               >
                 {t(`review.locationRequest.${visit.locationRequest.status}`)}
