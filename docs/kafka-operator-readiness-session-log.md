@@ -502,3 +502,17 @@ keeps the reader test honest; no consumer/checkpoint/source mutation used for
 catch-up. Renamed the injected pre-COMMIT failure case to finalization failure:
 it does not claim a PostgreSQL deferred-COMMIT rejection. Added actual column
 permission and head-lag tests. Syntax/diff PASS; final CI proof pending.
+
+### Full visible inventory and admission/business permission separation
+
+Reader now compares bounded complete visible Fund source-head IDs to independent
+inventory as well as each row's head. A newly visible canonical aggregate denies
+old opt-in; a new known-Fund event denies a lagging shadow. Added genuine schema
+cases for both, and denial of real business pointer/effect table access for
+admission-only requester/approver/controller roles (no runtime bridge granted).
+Applied discovered column-grant profile fix also to our earlier read-only
+recovery snapshot, with a real column-only grant negative case. No app-owned or
+other session check changed. Local all115 unit cases PASS; syntax/diff PASS,
+RAM13.7GB,disk202GB,swap0,pressure0. Prior c02431867 hosted run39169864714 whole
+SUCCESS (115+24+18); those receipts do not certify this later hardening.
+Next: final hardened source hosted real-schema proof and documentation update.

@@ -172,3 +172,24 @@ A later restricted read adapter must obtain all inputs in one transaction and
 prove actual pointer promotion/rollback visibility against real migrations.
 The existing worker's running-only admission remains unresolved; do not change
 it to accept promoted builds without its lease/lifecycle contract and proof.
+
+### Inactive real canary read adapter (supersedes pure-contract-only boundary)
+
+`operator-fund-canary-reader.mjs` now composes the pure contract with an actual
+read-only RepeatableRead transaction factory supplied by trusted server code.
+It requires a separately provisioned exact nonprivileged session login and
+FORCE RLS on activation/build/Fund projection/source-head tables, refuses table
+or column write grants, and reads the bounded pointer/build/rows in one query.
+The complete visible source-head inventory must match the independent authorized
+Fund inventory, and each projected event/version must match its source head.
+A stale pointer, missing row/head, or new visible aggregate fails closed.
+
+No API imports, credential provisioning, default opt-in or consumer continuation
+are installed. The transaction factory must resolve after real COMMIT; it is a
+trusted dependency, not an operator-supplied driver. This reader does not prove
+reducer correctness, broker identity, restore/soak/alert delivery, source-write
+settlement, or independent human approval. FORCE RLS and inventory rely on
+trusted role/policy provisioning. MVCC consistency permits a concurrent rollback
+to become visible on the next read; this is not a linearizable pointer lock.
+The existing checkpoint guard rejects promoted builds as well as the existing
+worker: do not loosen either to activate ongoing promoted processing.

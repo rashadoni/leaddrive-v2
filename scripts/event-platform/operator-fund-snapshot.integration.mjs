@@ -126,6 +126,8 @@ await test('actual transaction is READ ONLY even for a permitted sequence operat
 await test('write-capable reader or missing FORCE RLS is rejected before evidence collection',async()=>{
  await admin('GRANT UPDATE ON fund_balance_projections TO op_fund_reader;')
  try{await rejected(read())}finally{await admin('REVOKE UPDATE ON fund_balance_projections FROM op_fund_reader;')}
+ await admin('GRANT UPDATE (balance) ON fund_balance_projections TO op_fund_reader;')
+ try{await rejected(read())}finally{await admin('REVOKE UPDATE (balance) ON fund_balance_projections FROM op_fund_reader;')}
  await admin('ALTER TABLE domain_events NO FORCE ROW LEVEL SECURITY;')
  try{await rejected(read())}finally{await admin('ALTER TABLE domain_events FORCE ROW LEVEL SECURITY;')}
 })
@@ -241,4 +243,26 @@ await test('canary rejects lagging row or hidden source head inside actual snaps
  try{await canaryRejected(canary(scope))}finally{await admin(`UPDATE fund_balance_projections SET "aggregateVersion"="aggregateVersion"+1 WHERE "organizationId"='org-a' AND "fundId"='fund-a' AND "projectionVersion"=2;`)}
  await admin(`CREATE POLICY operator_canary_hidden_head ON event_aggregate_heads AS RESTRICTIVE TO op_canary_reader USING("aggregateId"<>'fund-a');`)
  try{await canaryRejected(canary(scope))}finally{await admin('DROP POLICY operator_canary_hidden_head ON event_aggregate_heads;')}
+})
+
+await test('admission-only principals cannot read or change real business pointers or emit effects',async()=>{
+ for(const login of ['op_requester','op_approver','op_controller']) {
+  for(const sql of ['SELECT * FROM projection_activations;',`UPDATE projection_activations SET "activationVersion"="activationVersion"+1;`,'SELECT * FROM effect_outbox;']) {
+   await assert.rejects(fixtureSql(login,sql),/42501/)
+  }
+ }
+})
+await test('canary rejects a subsequent canonical source write until shadow is caught up',async()=>{
+ const scope={...canaryScope,pointerVersion:'3'}
+ assert.equal((await canary(scope)).funds.length,2)
+ await admin("UPDATE funds SET name='Synthetic after promotion' WHERE id='fund-a';")
+ await canaryRejected(canary(scope))
+ // Test-only projection seed restores parity; no consumer or offset advances.
+ await admin(`UPDATE fund_balance_projections s SET "aggregateVersion"=a."aggregateVersion","lastEventId"=a."lastEventId" FROM fund_balance_projections a WHERE s."organizationId"=a."organizationId" AND s."fundId"=a."fundId" AND s."projectionVersion"=2 AND a.status='active';`)
+ assert.equal((await canary(scope)).funds.length,2)
+})
+await test('canary new canonical aggregate invalidates the old authorized inventory',async()=>{
+ const scope={...canaryScope,pointerVersion:'3'}
+ await admin(`INSERT INTO funds(id,"organizationId",name,currency,"currentBalance") VALUES('fund-a3','org-a','Synthetic new aggregate','AZN',0.0000);`)
+ await canaryRejected(canary(scope))
 })

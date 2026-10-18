@@ -35,7 +35,8 @@ export async function collectFundRecoveryDatabaseSnapshot(database, input, reduc
       const access = await tx.$queryRawUnsafe(`SELECT count(*)::int AS count,
         bool_and(c.relkind='r' AND c.relrowsecurity AND c.relforcerowsecurity
           AND NOT pg_has_role(current_user,c.relowner,'MEMBER')
-          AND NOT has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')) AS safe
+          AND NOT has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+          AND NOT has_any_column_privilege(current_user,c.oid,'INSERT,UPDATE,REFERENCES')) AS safe
         FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
         WHERE n.nspname='public' AND c.relname IN ('funds','domain_events','event_outbox','event_aggregate_heads',
           'fund_balance_projections','projection_builds','projection_checkpoints','consumer_inbox','effect_outbox')`)

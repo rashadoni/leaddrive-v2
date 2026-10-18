@@ -931,3 +931,11 @@ Inactive pure Fund canary result validation is prepared (23 focused cases).
 This is not a read adapter or activation. See KAFKA_OPERATOR_READINESS.md's
 ordered lifecycle table for the seven remaining integration/evidence steps;
 A1/A2 ownership and every domain's missing evidence remain unchanged.
+
+### Inactive canary read adapter continuation
+
+A transactional restricted Fund reader now follows the pure canary contract;
+no API/runtime wiring is active. Actual-schema hosted proof covers pointer and
+source-head boundaries separately from authenticated control authority. Final
+lifecycle, real admission/pointer composition, source barrier, financial correction
+policy and authentic operational evidence remain open in the readiness map.

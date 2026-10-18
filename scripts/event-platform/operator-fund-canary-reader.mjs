@@ -28,6 +28,7 @@ export async function readFundCanary(database,input) {
       check(profile.length===1 && profile[0].count===4 && profile[0].safe===true)
       await tx.$queryRawUnsafe("SELECT set_config('app.org_id',$1,true),set_config('statement_timeout','5s',true),set_config('lock_timeout','2s',true)",scope.organizationId)
       const result=await tx.$queryRawUnsafe(`SELECT jsonb_build_object(
+        'sourceFundIds',coalesce((SELECT jsonb_agg(ids.id) FROM (SELECT h."aggregateId" AS id FROM public.event_aggregate_heads h WHERE h."organizationId"=a."organizationId" AND h."aggregateType"='fund' ORDER BY h."aggregateId" LIMIT 201) ids),'[]'::jsonb),
         'pointer',jsonb_build_object('organizationId',a."organizationId",'projectionName',a."projectionName",'activeBuildId',a."activeBuildId",'activationVersion',a."activationVersion"::text),
         'build',jsonb_build_object('organizationId',b."organizationId",'id',b.id,'projectionName',b."projectionName",'buildKey',b."buildKey",'projectionVersion',b."projectionVersion",'codeSha',b."codeSha",'mode',b.mode,'status',b.status,'effectsFenced',b."effectsFenced",'replayFrom',b."replayFrom",'replayTo',b."replayTo"),
         'rows',coalesce((SELECT jsonb_agg(to_jsonb(r)) FROM (
@@ -41,6 +42,8 @@ export async function readFundCanary(database,input) {
         FROM public.projection_activations a JOIN public.projection_builds b ON b."organizationId"=a."organizationId" AND b.id=a."activeBuildId"
         WHERE a."organizationId"=$1 AND a."projectionName"='finance.fund-balance'`,scope.organizationId)
       check(result.length===1 && Buffer.byteLength(JSON.stringify(result[0]))<=262144)
+      const sourceIds=result[0].snapshot?.sourceFundIds
+      check(Array.isArray(sourceIds) && sourceIds.length===scope.fundIds.length && new Set(sourceIds).size===sourceIds.length && scope.fundIds.every(id=>sourceIds.includes(id)))
       return validateFundCanaryRead(scope,result[0].snapshot)
     },{isolationLevel:'RepeatableRead',maxWait:2000,timeout:10000})
   } catch { throw new Error('FUND_CANARY_READ_INVALID') }

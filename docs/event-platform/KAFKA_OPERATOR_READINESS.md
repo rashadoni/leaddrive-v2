@@ -326,3 +326,24 @@ source. Consumers, offsets/replay, provider sends and production mutations are
 outside this session's authorization. All 27 domain rows above retain their
 individual missing-evidence requirements; this Fund-only contract upgrades none
 of the other domains to protected or recoverable status.
+
+## Inactive transactional canary reader continuation
+
+A restricted reader adapter is now prepared in
+`scripts/event-platform/operator-fund-canary-reader.mjs`; this supersedes the
+prior statement that only a pure validator exists. It is not wired to Fund API.
+In one read-only RepeatableRead snapshot it checks exact login, four FORCE-RLS
+read-only table profiles (including column grants), the pointer/build contract,
+complete visible source-head inventory and per-Fund event/version parity.
+A new aggregate or subsequent source write denies stale data rather than using
+legacy balances. Monetary correctness still depends on independently verified
+reducer/history evidence; matching event IDs alone does not establish it.
+
+The same disposable actual-schema fixture exercises genuine promotion/rollback
+constraints, concurrent rollback visibility, stale opt-in rejection, RLS/grants,
+read-only enforcement, source lag and new aggregates. Test seed approvals remain
+synthetic and are not authentic operational approval evidence. No running worker,
+Kafka consumer, broker offset, replay, provider send or production is involved.
+The real checkpoint migration also refuses writes for promoted builds: resolving
+worker admission alone cannot close lifecycle step2. Authenticated real pointer
+mutation composition, final barrier and operational evidence remain unimplemented.
