@@ -555,3 +555,22 @@ Automatic deploy39093089774 ещё PENDING. K2.1/K3.2/K3.6 получают бе
 До whole-deploy SUCCESS и exact publicSHA/ping новая live-диагностика не
 запускается. Ключи/policy/timers/source/consumers/offset/replay не изменялись;
 K8 и all-module readiness по-прежнему NOT ACTIVATED / NOT VERIFIED.
+
+### PR872 доставлен; recovery verdict остаётся красным — 2026-10-18 03:48 UTC
+
+Deploy39093089774 whole SUCCESS03:46:02Z на ce71dacf9a413facda602fb433963e1cbe79412b.
+Root сверил exact public artifactSha/ping, quality diagnostic10/Fund121/realPG10,
+baseline18=18 и фактические structural/revision/login/assets postconditions.
+Это заменяет предыдущий pending delivery, но не закрывает K2.1/K3.2/K3.6.
+
+Единственный protected read-only readiness39094842540 FAILURE03:48:00Z:
+machine_ready=no, issues22, enterprise_gaps9, operator_attestation_required=yes.
+ObjectLock=service_error; конкретная причина/отсутствие lock/неверные ключи
+этим НЕ доказаны. Tools/program-set PASS, encryption OFF; DB/secrets/log
+timers disabled/inactive, runtime-files timer absent; unit/evidence/genesis/
+MemorySwapMax/fresh-run gaps открыты. Никакого backup/restore/replay не было.
+
+Следующий ограниченный исходный change — различить документированные service
+error classes и неизвестный формат без raw code/body/секретов. Не повторять
+старый report вслепую и не менять доступы/retention/таймеры ради зелёного gate.
+K8 activation, независимое восстановление, HA и all-module coverage не готовы.

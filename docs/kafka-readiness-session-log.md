@@ -1745,3 +1745,34 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   read-only diagnosis. Source changes, backup commissioning, external-provider
   policy/key writes, timers, source WAL/restart/slot/publication, consumer,
   offset/replay and paid-service changes remain outside this report execution.
+
+## 2026-10-18 03:48 UTC — actual fail-closed recovery report received
+
+- Read-only readiness39094842540/job117579027703 completed FAILURE03:48:00Z
+  on exact delivered ce71dacf9. Root independently read the sanitized report:
+  machine_ready=no enterprise_ga_ready=no issues=22 enterprise_gaps=9
+  operator_attestation_required=yes. This is an expected commissioned-program
+  gate failure, not a failed app release, job setup issue or compiler failure.
+- Actual Object Lock result is diagnostic=service_error from CLI status254.
+  It does NOT identify AccessDenied, absent Object Lock, rejected credentials,
+  permission deficit, TLS outage or a safe correcting operation. Raw error/body
+  was not printed or retrieved. Current classification cannot distinguish an
+  unknown service code from a nonmatching CLI error envelope; narrow that gap
+  in source/tests before any meaningful new live observation, not by re-running
+  the identical report, enabling debug logs or changing credentials/policy.
+- Pinned age/AWS and immutable helper/program-set guards PASS. The reviewed
+  program explicitly has encryption OFF; DB/secrets/log timers are loaded:
+  disabled:inactive, runtime-files timer not-found:not-found:inactive. Live
+  recovery-unit/override drift, MemorySwapMax=0 absence, missing/unsafe evidence
+  and committed log-genesis anchor, stale/missing runner receipts remain.
+  These findings concern this reviewed program; no blanket assertion that all
+  other backups are absent is made. No backup/restore was run by the report.
+- Nine wider gaps remain PITR/watermark, independent storage failure domain,
+  full DB authority recovery, consistent media generations, Kafka/archive,
+  clean-host recovery capsule/custody identity, signed log cursor continuity,
+  journald capacity/retention SLO, and physical schema/catalog parity.
+- Safe next source phase: documented fixed allowlisted S3 error categories
+  plus separate unknown-envelope rejection, synthetic privacy/fail-closed
+  tests, ordinary verified PR/release. No raw unknown error code or its hash,
+  body, endpoint, bucket, key or request ID may be exposed. No new runtime
+  permission/key/retention/timer/source/consumer/offset/replay authority follows.
