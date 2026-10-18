@@ -38,7 +38,10 @@ await test('incomplete, disabled or conditional trigger profile refuses barrier 
  for(const [change,restore] of [
  ['ALTER TABLE funds DISABLE TRIGGER kafka_source_row_guard;','ALTER TABLE funds ENABLE ALWAYS TRIGGER kafka_source_row_guard;'],
  ['ALTER TABLE event_outbox ENABLE TRIGGER kafka_source_row_guard;','ALTER TABLE event_outbox ENABLE ALWAYS TRIGGER kafka_source_row_guard;'],
- ['ALTER TABLE fund_balance_projections DISABLE TRIGGER kafka_source_truncate_guard;','ALTER TABLE fund_balance_projections ENABLE ALWAYS TRIGGER kafka_source_truncate_guard;']]) {
+ ['ALTER TABLE fund_balance_projections DISABLE TRIGGER kafka_source_truncate_guard;','ALTER TABLE fund_balance_projections ENABLE ALWAYS TRIGGER kafka_source_truncate_guard;'],
+ ['DROP TRIGGER kafka_source_row_guard ON funds;CREATE TRIGGER kafka_source_row_guard BEFORE INSERT OR UPDATE OR DELETE ON funds FOR EACH ROW WHEN (pg_trigger_depth()>=0) EXECUTE FUNCTION ld_kafka_operator.source_write_guard();ALTER TABLE funds ENABLE ALWAYS TRIGGER kafka_source_row_guard;',
+ 'DROP TRIGGER kafka_source_row_guard ON funds;CREATE TRIGGER kafka_source_row_guard BEFORE INSERT OR UPDATE OR DELETE ON funds FOR EACH ROW EXECUTE FUNCTION ld_kafka_operator.source_write_guard();ALTER TABLE funds ENABLE ALWAYS TRIGGER kafka_source_row_guard;'],
+ ['CREATE TABLE public.operator_barrier_child () INHERITS (public.funds);','DROP TABLE public.operator_barrier_child;']]) {
   const f=await admitted();await admin(change);try{await denied(acquire(f))}finally{await admin(restore)}
  }
 })

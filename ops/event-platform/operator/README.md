@@ -246,3 +246,39 @@ provisioning, actual child/SQL/ACK instrumentation, broker identity verification
 source-write barrier and restricted pointer executor remain unimplemented.
 Actual hosted DB tests with synthetic claims prove scoped provenance and
 single-use transaction behavior only. Existing domain readiness gaps remain.
+
+### Inactive transaction-scoped tenant source-write barrier
+
+`source-barrier.sql` is an inactive kernel; the separate
+`source-barrier-fixture-attach.sql` attaches guards only in the disposable proof
+(or a separately authorized future installation). Neither is a Prisma migration,
+startup hook or production command. Six actual tables participate: funds,
+fund_transactions,domain_events,event_outbox,event_aggregate_heads and
+fund_balance_projections. Row guards take a nonwaiting shared transaction lock
+for old/new tenant IDs; a current authenticated promote/rollback controller can
+acquire the matching exclusive lock only with no existing participating writer.
+Future writes then fail immediately until the transaction ends. Same-tenant
+non-Fund rows in shared event tables also participate; other tenants remain
+independent except possible hash-collision serialization/denial.
+
+Acquisition requires READ COMMITTED, all twelve exact unfiltered ALWAYS guards
+and ordinary non-inherited source tables. Conditional/disabled/replica-only or
+incomplete installation fails closed. Schema-owner DDL must stay frozen/trusted;
+a source-table administrator can alter its own schema and is not an untrusted
+operator. ALWAYS guards also run when replication mode would skip normal
+triggers. TRUNCATE is rejected, not treated as a tenant-scoped operation.
+
+The handle is backed by a private request/generation/backend/xid8 record and
+cannot cross transaction or savepoint rollback. The controller receives no
+source write or business read grants. Existing deferred admission checks reject
+expired leases at final COMMIT and roll back the record/audit; transaction end
+releases the lock. This is not a durable freeze or activation authority.
+
+A trusted future executor MUST acquire the barrier in its own statement, then
+read/fold/verify current sources in later statements of that same transaction
+and compose lease/build/evidence checks with pointer CAS before COMMIT. A
+pre-barrier MVCC receipt, a CTE reading before acquisition, or a later transaction
+cannot reuse the handle as evidence. No such pointer executor is wired here.
+Command receipts/inbox/checkpoints/builds/pointers/effects are not fenced by
+these six source guards; their lease/CAS/effect contracts remain mandatory.
+No broker end-position or physical worker-stop proof follows from a SQL lock.

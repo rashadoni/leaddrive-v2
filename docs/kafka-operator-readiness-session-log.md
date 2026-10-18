@@ -743,3 +743,14 @@ before local syntax check12.8GB available/199GB disk/swap3MB/pressure0.
 NOT RUN: heavy local build/typecheck, actual source barrier installation/runtime,
 consumers/offset/replay/provider sends/production. Next hosted source proof and
 own fixes, then ordered map with exact remaining executor/observer boundaries.
+
+### Barrier review and installation-profile proof expansion
+
+Added actual conditional-trigger and inheritance negatives to existing profile
+case; no weakened checks. Documented exact same-tenant shared-table scope,
+non-durable transaction/savepoint handle, trusted/frozen schema-owner DDL, and
+mandatory separate acquisition statement before final source reads. Command
+receipts/inbox/checkpoints/build/pointer/effects remain outside the six source
+guards and retain their independent contracts. Current reader snapshots cannot
+be silently promoted into final transaction evidence. Syntax/diff PASS; final
+source hosted proof pending. Real observer/source+pointer executor still absent.

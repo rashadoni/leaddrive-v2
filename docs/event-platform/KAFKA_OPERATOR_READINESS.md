@@ -397,3 +397,26 @@ historical evidence retrieval remain absent. The store authenticates a login's
 claim; it cannot establish physical process truth or exclude a later writer.
 Mock closed-process data in a real PostgreSQL test is not a completed stop drill.
 None of the27 domain rows or G evidence sets is upgraded by this addon.
+
+## Transactional source-write barrier preparation
+
+The inactive source-barrier kernel plus separate fixture attachment now prepare
+the missing source-freeze primitive for the Fund control transaction. Shared
+transaction advisory locks on six actual source/projection tables prevent a
+current controller from acquiring the tenant's exclusive lock while a writer
+is active; later participating writes fail while it is held. No business grants,
+app wiring, migration or production trigger installation is included.
+
+The private request/generation/backend/xid8 handle is valid only in the acquiring
+transaction, and acquisition fails on wrong isolation or incomplete/modified
+ALWAYS trigger coverage, including inheritance. Old/new tenant scopes are both
+checked. A shared-table guard also affects non-Fund rows for that same tenant;
+this is a conservative tenant source boundary, not general adoption of their
+domains. Other tenant writers can proceed. Schema-owner DDL stays trusted/frozen.
+
+This supersedes only “source-barrier primitive absent” as a preparation gap.
+Final parity/broker/worker evidence, source reads after acquisition, current
+build/lease verification and actual pointer CAS have not been composed in one
+restricted executor. Read-only snapshots from a prior transaction cannot serve
+as that final verification. Physical observer and broker receipts remain absent;
+none of the27 domain G evidence sets is closed by this primitive.

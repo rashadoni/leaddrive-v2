@@ -722,3 +722,15 @@ process closure and acceptance grants no pointer, Kafka or provider permissions.
 The issued challenge and observer identity must be independently provisioned and
 transported by a future trusted controller; no such runtime is enabled here.
 Do not execute any operational recovery command on the strength of these tests.
+
+### Inactive source-write barrier preparation
+
+A separate source-barrier kernel/fixture attachment now prepares a tenant-scoped
+transaction lock on the six Fund source/projection tables. It is installed only
+in hosted disposable tests. The handle is valid only in that transaction and
+releases at COMMIT/ROLLBACK; no durable freeze, pointer grant or Kafka action is
+implied. A future trusted executor must acquire it first, read/verify sources in
+later statements, then perform final lease/build/evidence checks and pointer CAS
+before commit. No such runtime composition exists here. Keep schema-owner DDL
+frozen and preserve all worker/checkpoint/effect guards. Do not execute production
+recovery procedures from these preparation receipts.

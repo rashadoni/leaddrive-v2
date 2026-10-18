@@ -958,3 +958,12 @@ COMMIT checks. This prepares the persistence gap only. Physical stop observation
 trusted challenge delivery, historical evidence reader, final source barrier,
 real pointer executor and genuine operational receipts remain open. No domain
 protection or business integration is activated by this contract.
+
+### Tenant source-barrier primitive
+
+Inactive kernel and disposable guard attachment prepare a transaction-scoped
+source lock, with exact installation-profile and lease checks. This does not
+close final source verification or promotion: frozen source reads/reducer proof,
+authenticated pointer CAS and worker/broker/physical-observer evidence still need
+one restricted composition. Shared event tables are fenced per tenant, not
+claimed migrated for every domain. No runtime integration is active.
