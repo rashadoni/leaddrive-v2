@@ -7,6 +7,7 @@ import {
   parseCommentSender,
   parseWebChatDescription,
   stripAssistantRoutingMarkers,
+  systemCommentText,
   type WebChatRole,
 } from "@/lib/ticketing/chat-transcript"
 import { customerFacingTicketSubject } from "@/lib/ticketing/customer-ticket-text"
@@ -39,6 +40,10 @@ export function portalCommentView(comment: { comment: string; userId: string | n
   if (comment.userId) return { text: comment.comment, author: "agent", channel: null }
 
   const raw = comment.comment
+  // Written by the product itself (the AI auto-actions cron): support's side, under the
+  // support name. Until 2026-10-18 it fell through to the customer's portal reply below.
+  const system = systemCommentText(raw)
+  if (system !== null) return { text: system, author: "agent", channel: null }
   if (raw.startsWith(EMAIL_COMMENT_PREFIX)) {
     return { text: raw.slice(EMAIL_COMMENT_PREFIX.length).trimStart(), author: "customer", channel: "Email" }
   }

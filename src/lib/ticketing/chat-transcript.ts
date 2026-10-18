@@ -168,6 +168,38 @@ export function isOperatorSenderName(name: string): boolean {
 export const EMAIL_COMMENT_PREFIX = "📧 "
 
 /**
+ * A public comment the product writes on its own — the AI auto-actions cron's
+ * acknowledgement and knowledge-base suggestion. It has no `userId`, exactly
+ * like the customer's own portal reply, so without a marker both the portal
+ * and the agent's page took it for the customer's words (until 2026-10-18).
+ * Not a chat sender: `parseCommentSender` does not read it.
+ */
+export const SYSTEM_COMMENT_PREFIX = "[Система] "
+
+export function systemTicketComment(text: string): string {
+  return `${SYSTEM_COMMENT_PREFIX}${text}`
+}
+
+/**
+ * What the cron wrote before it marked its comments. Only these exact texts:
+ * anything looser would hand a customer's own reply to the support side.
+ */
+const UNMARKED_SYSTEM_COMMENT_RES = [
+  /^We have received your request \S+\. A specialist will respond within \d+h\. Thank you for your patience\.$/,
+  /^📖 Knowledge-base article that answers this: \*\*[\s\S]*\*\*\n\nArticle ID: \S+\n\nIf this solved your issue, great! If not, reply and we'll dig deeper\.$/,
+]
+
+/**
+ * The text of a comment the product wrote itself, without its marker; null for
+ * any other comment. Only meaningful for a comment with no `userId` — a person
+ * on the team is the author of whatever they write.
+ */
+export function systemCommentText(comment: string): string | null {
+  if (comment.startsWith(SYSTEM_COMMENT_PREFIX)) return comment.slice(SYSTEM_COMMENT_PREFIX.length).trimStart()
+  return UNMARKED_SYSTEM_COMMENT_RES.some((re) => re.test(comment)) ? comment : null
+}
+
+/**
  * The routing markers Da Vinci appends to a reply. The writers strip them before the
  * customer sees the reply in the chat, but the portal escalation copied the chat into the
  * ticket before stripping, so older tickets still carry them in the bot's comment.
