@@ -41,7 +41,7 @@ await admin(`UPDATE funds SET name='Synthetic renamed' WHERE id='fund-a';UPDATE 
  SELECT e."organizationId",${q(`fund-shadow:${buildId}`)},1,e.id,e."eventType",o."payloadHash",'ld.staging.finance.events.v1',0,row_number() OVER(ORDER BY e."aggregateId",e."aggregateVersion")-1
  FROM domain_events e JOIN event_outbox o ON o."eventId"=e.id AND o."organizationId"=e."organizationId" WHERE e."organizationId"='org-a';
  INSERT INTO projection_checkpoints("organizationId","buildId","sourceTopic","sourcePartition","sourceOffset","lastEventId")
- SELECT 'org-a',${q(buildId)},"sourceTopic",0,"sourceOffset","eventId" FROM consumer_inbox WHERE "consumerName"=${q(`fund-shadow:${buildId}`)} ORDER BY "sourceOffset" DESC LIMIT 1;
+ SELECT 'org-a',${q(buildId)},"sourceTopic",0,"sourceOffset","eventId" FROM consumer_inbox WHERE "consumerName"=${q(`fund-shadow:${buildId}`)} ORDER BY "sourceOffset" DESC OFFSET 1 LIMIT 1;
  ALTER TABLE funds ENABLE ROW LEVEL SECURITY;ALTER TABLE funds FORCE ROW LEVEL SECURITY;
  CREATE POLICY operator_snapshot_tenant ON funds USING("organizationId"=current_setting('app.org_id',true));
  GRANT USAGE ON SCHEMA public TO op_fund_reader;
@@ -67,6 +67,11 @@ const fingerprint=()=>admin(`SELECT public.event_platform_jsonb_sha256(jsonb_bui
  'inbox',(SELECT jsonb_agg(to_jsonb(i) ORDER BY id) FROM consumer_inbox i),
  'checkpoints',(SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM projection_checkpoints c),
  'effects',(SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM effect_outbox x)));`)
+await test('initial lagging checkpoint refuses evidence; real guard rejects rewind and permits advance',async()=>{
+ const before=await fingerprint();await rejected(read());assert.equal(await fingerprint(),before)
+ await assert.rejects(admin(`UPDATE projection_checkpoints SET "sourceOffset"=4 WHERE "buildId"=${q(buildId)};`),/23514/)
+ await admin(`UPDATE projection_checkpoints SET "sourceOffset"=6,"lastEventId"=(SELECT "eventId" FROM consumer_inbox WHERE "consumerName"=${q(`fund-shadow:${buildId}`)} ORDER BY "sourceOffset" DESC LIMIT 1) WHERE "buildId"=${q(buildId)};`)
+})
 await test('real migration tables + canonical reducer produce exact scoped snapshot, changing no rows',async()=>{
  const before=await fingerprint(),result=await read()
  assert.equal(result.source.length,2)
@@ -101,10 +106,6 @@ await test('stale shadow balance or event version is rejected without a pointer 
   try{await rejected(read())}finally{await admin(`UPDATE fund_balance_projections s SET balance=a.balance,"aggregateVersion"=a."aggregateVersion" FROM fund_balance_projections a WHERE s."fundId"=a."fundId" AND s.status='shadow' AND a.status='active';`)}
  }
 })
-await test('checkpoint offset is last-processed, not next; trailing checkpoint rejects',async()=>{
- await admin(`UPDATE projection_checkpoints SET "sourceOffset"=5 WHERE "buildId"=${q(buildId)};`)
- try{await rejected(read())}finally{await admin(`UPDATE projection_checkpoints SET "sourceOffset"=6 WHERE "buildId"=${q(buildId)};`)}
-})
 await test('actual transaction is READ ONLY even for a permitted sequence operation',async()=>{
  let readonly=false
  await rejected(read(expected,{afterQuery:async(sql,tx)=>{
@@ -114,6 +115,12 @@ await test('actual transaction is READ ONLY even for a permitted sequence operat
  }}))
  assert.equal(readonly,true)
  assert.equal(await admin('SELECT is_called FROM public.operator_snapshot_probe;'),'f')
+})
+await test('write-capable reader or missing FORCE RLS is rejected before evidence collection',async()=>{
+ await admin('GRANT UPDATE ON fund_balance_projections TO op_fund_reader;')
+ try{await rejected(read())}finally{await admin('REVOKE UPDATE ON fund_balance_projections FROM op_fund_reader;')}
+ await admin('ALTER TABLE domain_events NO FORCE ROW LEVEL SECURITY;')
+ try{await rejected(read())}finally{await admin('ALTER TABLE domain_events FORCE ROW LEVEL SECURITY;')}
 })
 await test('REPEATABLE READ keeps one snapshot across concurrent canonical writer; next collection sees stale shadow',async()=>{
  let changed=false

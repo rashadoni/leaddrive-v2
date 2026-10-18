@@ -353,3 +353,19 @@ No consumer or Kafka is used; seeded inbox/checkpoint positions are synthetic.
 Real PG proof pending next exact-source run. No full build/install on Contabo;
 only small lock generation and focused Node tests, RAM~14GB/disk203GB/swap0.
 Continue through actual CI, fixes and documentation without a user prompt.
+
+## 2026-10-19 — actual schema exposed fixture rewind error; guard preserved
+
+Run39167415764 on4f6e03036 failed real-schema slice7/8. The existing migration
+checkpoint guard rejected the fixture's attempt to lower6→5 with SQLSTATE23514;
+this was fixture setup error, not a reader failure. No migration/guard was
+changed or disabled. Revised setup seeds checkpoint5 first, tests reader refusal
+and real4 rewind rejection, then legally advances6 before positive scenarios.
+The passing seven old scenarios do not certify the revised source.
+
+Self-review also adds a nine-table access-profile gate: real tables, ENABLE+
+FORCE RLS, no inherited table ownership and no business INSERT/UPDATE/DELETE/
+TRUNCATE/REFERENCES/TRIGGER privilege. Added actual write-grant and FORCE-RLS
+negative cases, plus unit doubles. Local collector25/25 PASS after correction
+of one Node CLI option-order typo; revised actual PG9 cases pending CI.
+Continue to next exact-source run; no consumer or production action.

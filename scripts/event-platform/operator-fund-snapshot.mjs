@@ -32,6 +32,14 @@ export async function collectFundRecoveryDatabaseSnapshot(database, input, reduc
         NOT (rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication) AS restricted
         FROM pg_catalog.pg_roles WHERE rolname=current_user`)
       check(roles.length===1 && roles[0].restricted===true && roles[0].current_role===scope.expectedReaderRole && roles[0].session_role===scope.expectedReaderRole)
+      const access = await tx.$queryRawUnsafe(`SELECT count(*)::int AS count,
+        bool_and(c.relkind='r' AND c.relrowsecurity AND c.relforcerowsecurity
+          AND NOT pg_has_role(current_user,c.relowner,'MEMBER')
+          AND NOT has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')) AS safe
+        FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname='public' AND c.relname IN ('funds','domain_events','event_outbox','event_aggregate_heads',
+          'fund_balance_projections','projection_builds','projection_checkpoints','consumer_inbox','effect_outbox')`)
+      check(access.length===1 && access[0].count===9 && access[0].safe===true)
       await tx.$queryRawUnsafe("SELECT set_config('app.org_id',$1,true),set_config('statement_timeout','5s',true),set_config('lock_timeout','2s',true)", scope.organizationId)
       const result = await tx.$queryRawUnsafe(query, scope.organizationId, scope.buildId, limits.funds+1, limits.events+1, limits.checkpoints+1)
       check(result.length===1)

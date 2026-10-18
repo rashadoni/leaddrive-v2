@@ -11,15 +11,16 @@ function fixture(){
   shadow:[{fund:'fund-a',balance:'10.0000',currency:'AZN',version:'1',last_event:eventId,status:'shadow'}],
   checkpoints:[{topic:'ld.staging.finance.events.v1',partition:0,last_offset:'0',last_event:eventId}],
   inbox:[{event:eventId,type:'finance.fund-opened.v1',hash:'c'.repeat(64),topic:'ld.staging.finance.events.v1',partition:0,offset:'0'}],nonLiveEffectPresent:false}
- const roles=[{current_role:'reader_a',session_role:'reader_a',restricted:true}],calls=[]
+ const roles=[{current_role:'reader_a',session_role:'reader_a',restricted:true}],access=[{count:9,safe:true}],calls=[]
  const tx={$executeRawUnsafe:async sql=>{calls.push(sql);return 0},$queryRawUnsafe:async sql=>{
   calls.push(sql);if(sql.includes('FROM pg_catalog.pg_roles'))return roles
+  if(sql.includes('FROM pg_catalog.pg_class'))return access
   if(sql.includes('set_config'))return[]
   return[{snapshot:raw}]
  }}
  const db={$transaction:async(work,options)=>{assert.equal(options.isolationLevel,'RepeatableRead');return work(tx)}}
  // Control-flow double only. Real canonical reducer executes in isolated PG CI.
- return{scope,raw,roles,calls,db,reduce:()=>({...state})}
+ return{scope,raw,roles,access,calls,db,reduce:()=>({...state})}
 }
 const collect=f=>collectFundRecoveryDatabaseSnapshot(f.db,f.scope,f.reduce)
 test('control flow sets READ ONLY before first read and returns only aggregate evidence',async()=>{
@@ -29,6 +30,7 @@ test('control flow sets READ ONLY before first read and returns only aggregate e
  assert.equal(JSON.stringify(result).includes('envelope'),false)
 })
 const cases={
+ 'unsafe table access':f=>f.access[0].safe=false,'missing forced RLS table':f=>f.access[0].count=8,
  'wrong role':f=>f.roles[0].session_role='other', 'unsafe role':f=>f.roles[0].restricted=false,
  'missing build':f=>f.raw.builds=[], 'wrong code':f=>f.raw.builds[0].sha='d'.repeat(40),
  'ranged build':f=>f.raw.builds[0].replay_from='2026-01-01', 'unfenced build':f=>f.raw.builds[0].fenced=false,
@@ -45,7 +47,7 @@ for(const[name,mutation]of Object.entries(cases))test(`reject ${name}`,async()=>
  const f=fixture();mutation(f);await assert.rejects(collect(f),{message:'FUND_RECOVERY_SNAPSHOT_INVALID'})
 })
 test('callback success cannot hide actual transaction COMMIT rejection; error is sanitized',async()=>{
- const f=fixture();f.db.$transaction=async work=>{await work({$executeRawUnsafe:async()=>0,$queryRawUnsafe:async sql=>sql.includes('FROM pg_catalog.pg_roles')?f.roles:sql.includes('set_config')?[]:[{snapshot:f.raw}]});throw new Error('secret database detail')}
+ const f=fixture();f.db.$transaction=async work=>{await work({$executeRawUnsafe:async()=>0,$queryRawUnsafe:async sql=>sql.includes('FROM pg_catalog.pg_roles')?f.roles:sql.includes('FROM pg_catalog.pg_class')?f.access:sql.includes('set_config')?[]:[{snapshot:f.raw}]});throw new Error('secret database detail')}
  await assert.rejects(collect(f),{message:'FUND_RECOVERY_SNAPSHOT_INVALID'})
 })
 test('input changes while awaiting cannot expand pinned Fund inventory',async()=>{
