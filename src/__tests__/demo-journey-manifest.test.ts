@@ -311,7 +311,7 @@ describe("Guided journey coverage", () => {
     deals: { included: 13, total: 16, percent: 81 },
     quotes: { included: 9, total: 11, percent: 82 },
     // 2026-10-17: Service Desk, a module of its own.
-    support: { included: 14, total: 17, percent: 82 },
+    support: { included: 16, total: 19, percent: 84 },
     // 2026-10-17: Call Center, a module of its own (own PBX, what every seller has).
     voip: { included: 12, total: 15, percent: 80 },
     // 2026-10-17: Route & Field, a module of its own.
