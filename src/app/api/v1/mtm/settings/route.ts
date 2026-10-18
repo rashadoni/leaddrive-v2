@@ -22,6 +22,7 @@ import { locationShareLinkAliveWhere } from "@/lib/mtm/location-share-link"
 import { ATTENDANCE_OUTSIDE_RULE_KEY, saveAttendanceOutsideRule } from "@/lib/mtm/attendance-outside-rule"
 import { ATTENDANCE_RISK_SETTING_KEYS, saveAttendanceRiskPolicy } from "@/lib/mtm/attendance-risk-policy"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
+import { ATTENDANCE_AUTO_CLOSE_BY_KEY, ATTENDANCE_AUTO_CLOSE_SETTING_KEY } from "@/lib/mtm/attendance-auto-close"
 
 const MODULE_TOGGLE_ROLES = ["admin", "superadmin"]
 // Whole-feature visibility switches. Only an administrator changes them.
@@ -70,7 +71,7 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     )
     // Unlike legacy menu switches, attendance enables new personal-data access.
     // Refuse the entire unauthorized request before any setting can be written.
-    if ((body.attendanceEnabled !== undefined || ATTENDANCE_REMINDER_KEYS.some(key => body[key] !== undefined) || body[ATTENDANCE_QR_RULE_KEY] !== undefined || body[ATTENDANCE_INSTALLATION_RULE_KEY] !== undefined || body[ATTENDANCE_OUTSIDE_RULE_KEY] !== undefined || ATTENDANCE_RISK_SETTING_KEYS.some(key => body[key] !== undefined)) && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
+    if ((body.attendanceEnabled !== undefined || ATTENDANCE_REMINDER_KEYS.some(key => body[key] !== undefined) || body[ATTENDANCE_QR_RULE_KEY] !== undefined || body[ATTENDANCE_INSTALLATION_RULE_KEY] !== undefined || body[ATTENDANCE_OUTSIDE_RULE_KEY] !== undefined || ATTENDANCE_RISK_SETTING_KEYS.some(key => body[key] !== undefined) || body[ATTENDANCE_AUTO_CLOSE_SETTING_KEY] !== undefined) && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
       return NextResponse.json({ error: "Forbidden", code: "MTM_ATTENDANCE_ADMIN_REQUIRED" }, { status: 403 })
     }
     // Hiding a whole module surface for every manager and field agent is an
@@ -98,6 +99,11 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     // unchanged keys in validation and audit.
     const previous = await getMtmSettings(orgId) as unknown as Record<string, unknown>
     const differs = (key: string) => !mtmSettingValuesEqual(body[key], previous[key])
+    // Auto-approval is a person's standing decision: the approvals it makes are
+    // recorded in that person's name (attendance-auto-close.ts). A key has no person.
+    if (body[ATTENDANCE_AUTO_CLOSE_SETTING_KEY] === true && differs(ATTENDANCE_AUTO_CLOSE_SETTING_KEY) && auth.principalType !== "session") {
+      return NextResponse.json({ error: "Forbidden", code: "MTM_ATTENDANCE_ADMIN_REQUIRED" }, { status: 403 })
+    }
 
     // Ranges and types are checked for incoming keys that CHANGE the stored
     // value. Nothing is clamped. A page opened before this deploy still sends
@@ -264,6 +270,11 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
         .filter(([key]) => key !== ATTENDANCE_OUTSIDE_RULE_KEY && key !== ATTENDANCE_INSTALLATION_RULE_KEY && !ATTENDANCE_REMINDER_KEYS.includes(key as typeof ATTENDANCE_REMINDER_KEYS[number]) && key !== ATTENDANCE_QR_RULE_KEY && !(ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key) && !(endsLocationShareLinks && key === "locationShareLinksEnabled"))
         .map(([key, value]) => storeSetting(key, value)),
     )
+
+    // Who switched auto-approval on is who its approvals are recorded for.
+    if (body[ATTENDANCE_AUTO_CLOSE_SETTING_KEY] === true && differs(ATTENDANCE_AUTO_CLOSE_SETTING_KEY)) {
+      await storeSetting(ATTENDANCE_AUTO_CLOSE_BY_KEY, auth.userId)
+    }
 
     // Audit only real changes: an old page's whole-object save would otherwise
     // log dozens of untouched keys. Values are compared after normalization.

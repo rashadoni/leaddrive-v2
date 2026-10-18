@@ -1,4 +1,6 @@
 import { notifyAttendanceRequestReviewers } from "@/lib/mtm/attendance-request-notify"
+import { pushAttendanceRequestToReviewers } from "@/lib/mtm/attendance-request-push"
+import { autoApproveForgottenDayClose, isForgottenDayClose } from "@/lib/mtm/attendance-auto-close"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -119,11 +121,25 @@ export async function submitAttendanceRequestInTransaction(db: Prisma.Transactio
     action: "MTM_ATTENDANCE_REQUEST_SUBMITTED", entity: "hrm_request", entityId: created.id, metadataKind: "mtm_attendance_request",
     newData: { kind: input.kind, startDate: input.startDate, endDate: input.endDate, unit: input.unit, attachmentCount: input.attachmentIds.length },
   } })
+  // A forgotten day closed with its start untouched, where the company lets
+  // that through without the manager (attendance-auto-close.ts).
+  if (isForgottenDayClose({ basis: correctionBasis, requestedStartAt, timezone, now })) {
+    const approved = await autoApproveForgottenDayClose(db, { organizationId: self.organizationId, agentId: self.agentId, request: attendanceRequestDto(created) })
+    if (approved) return { request: approved, idempotent: false }
+  }
   await notifyAttendanceRequestReviewers(db, { organizationId: self.organizationId, agentId: self.agentId, requestId: created.id })
   return { request: attendanceRequestDto(created), idempotent: false }
 }
 export async function submitAttendanceRequest(self: AttendanceSelf, raw: unknown) {
-  return prisma.$transaction((db: Prisma.TransactionClient) => submitAttendanceRequestInTransaction(db, self, raw), { timeout: 15_000 })
+  const result = await prisma.$transaction((db: Prisma.TransactionClient) => submitAttendanceRequestInTransaction(db, self, raw), { timeout: 15_000 })
+  // After the commit: the manager's phone hears of it (attendance-request-push.ts).
+  // A replayed submission was announced the first time; one approved by the
+  // company's own rule has nothing left to decide.
+  if (!result.idempotent && result.request.status === "PENDING") {
+    void pushAttendanceRequestToReviewers({ organizationId: self.organizationId, agentId: self.agentId, request: result.request })
+      .catch((error) => console.warn("[mtm/attendance] request push failed", error instanceof Error ? error.message : error))
+  }
+  return result
 }
 export async function listOwnAttendanceRequests(self: AttendanceSelf, cursor?: string) {
   return prisma.$transaction(async (db: Prisma.TransactionClient) => {

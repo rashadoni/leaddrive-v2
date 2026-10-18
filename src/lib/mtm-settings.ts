@@ -36,6 +36,9 @@ export const MTM_SETTING_DEFAULTS = {
   attendanceBranchQrEnabled: false,
   attendanceEmployeeRemindersEnabled: false,
   attendanceManagerAlertsEnabled: false,
+  // «Закрыть день» approved without the manager (owner, 2026-10-18); only a
+  // forgotten day's close with its start untouched — see attendance-auto-close.ts.
+  attendanceAutoCloseForgottenDay: false,
   // Reliable outside fixes remain accepted and flagged unless the admin opts in.
   attendanceRejectOutsideBranch: false,
   attendanceAllowSharedInstallations: false,

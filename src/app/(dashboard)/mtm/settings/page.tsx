@@ -11,7 +11,7 @@ import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import {
   Settings, Save, Satellite, Lock, Wrench, MapPin, Camera, BellRing, Route, Clock3, LifeBuoy, LayoutGrid, Radar, UserCog,
-  AlertTriangle, RotateCcw, ChevronDown,
+  AlertTriangle, RotateCcw, ChevronDown, CheckCircle2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -59,7 +59,7 @@ type SettingItem = {
  */
 const SETTINGS_TABS = ["visit", "routes", "alerts", "clients", "company", "admin"] as const
 const ATTENDANCE_TOUCH_SETTING_KEYS = new Set([
-  "attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled",
+  "attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled", "attendanceAutoCloseForgottenDay",
   "attendanceRejectOutsideBranch", "attendanceAllowSharedInstallations",
   "attendanceRejectMockLocations", "attendanceClockDifferenceSeconds",
 ])
@@ -497,6 +497,16 @@ export default function MtmSettingsPage() {
       ],
     },
     {
+      // Owner, 2026-10-18: «автоподтверждение, но чтоб были показаны опоздания» —
+      // only «Закрыть день», only with the start untouched (attendance-auto-close.ts).
+      titleKey: "groupAttendanceAutoApproval",
+      tab: "company",
+      icon: CheckCircle2,
+      items: [
+        { key: "attendanceAutoCloseForgottenDay", labelKey: "lblAttendanceAutoCloseForgottenDay", hintKey: "hintAttendanceAutoCloseForgottenDay", type: "boolean", adminOnly: true },
+      ],
+    },
+    {
       titleKey: "groupAttendanceRisk",
       tab: "company",
       icon: AlertTriangle,
@@ -696,7 +706,7 @@ export default function MtmSettingsPage() {
   // блоки»). A card is either half of a pair — the pair shares one height —
   // or, when it would stand alone, the whole row with its settings laid out
   // in columns of its own. There is no third kind.
-  const groupsOf = (name: SettingsTab) => settingGroups.filter((group) => group.tab === name && (!["groupAttendanceRisk", "groupAttendanceReminders"].includes(group.titleKey) || settings.attendanceEnabled === true))
+  const groupsOf = (name: SettingsTab) => settingGroups.filter((group) => group.tab === name && (!["groupAttendanceRisk", "groupAttendanceReminders", "groupAttendanceAutoApproval"].includes(group.titleKey) || settings.attendanceEnabled === true))
   const renderGroup = (group: SettingGroup, span: "half" | "full", extraClass = "") => {
     const GroupIcon = group.icon
     const columns = span === "half" ? "space-y-4" : `grid gap-x-8 gap-y-4 ${group.items.length % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-2"}`

@@ -81,7 +81,7 @@ describe("the attendance outside-branch rule on Company settings", () => {
     // The attendance switch itself moved to Personnel → Settings (2026-10-15).
     expect(row().previousElementSibling?.getAttribute("data-setting-row")).toBe("pharmacyPromotionsEnabled")
     expect(row("attendanceEnabled")).toBeNull()
-    expect(Array.from(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).map(element => element.getAttribute("data-settings-group"))).toEqual(["groupScheduling", "groupSupport", "groupModules", "groupAgentCapabilities", "groupAttendanceReminders", "groupAttendanceRisk"])
+    expect(Array.from(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).map(element => element.getAttribute("data-settings-group"))).toEqual(["groupScheduling", "groupSupport", "groupModules", "groupAgentCapabilities", "groupAttendanceReminders", "groupAttendanceAutoApproval", "groupAttendanceRisk"])
     expect(container.querySelectorAll('[role="tab"]')).toHaveLength(6)
     expect(row().textContent).not.toContain("mtmSettingsPage.")
     expect(writes).toHaveLength(0); capture()
@@ -133,7 +133,7 @@ describe("attendance risk policy settings", () => {
     expect(row(SHARED).textContent).toContain(t("hintAttendanceAllowSharedInstallations"))
     expect(row(MOCK).textContent).toContain(t("hintAttendanceRejectMockLocations"))
     expect(row(CLOCK).textContent).toContain(t("hintAttendanceClockDifferenceSeconds"))
-    expect(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).toHaveLength(6)
+    expect(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).toHaveLength(7)
     expect(container.querySelector('[data-setting-row="attendanceRequireInstallationApproval"]')).toBeNull()
     expect(writes).toHaveLength(0); capture("attendance-risk-settings")
   })
