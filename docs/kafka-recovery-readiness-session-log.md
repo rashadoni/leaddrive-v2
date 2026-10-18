@@ -391,3 +391,13 @@
 - Asked only for non-secret Mac RAM/disk/Colima-version results while independent
   CI continues. No request for private keys/passwords, no direct production
   mutation, no weakening Object Lock or independent Farah gates.
+
+## 2026-10-19: Mac resource response
+
+- Owner supplied non-secret physical Mac resources:17179869184bytes RAM(16GiB),
+  data volume42GiB free. Colima version was not included. These support bounded
+  VM preparation, not yet proof of sufficient actual archive/PGDATA capacity.
+- Requested owner execute only separate leaddrive-recovery Colima profile
+  preparation(2CPU/4GiB/20GiB) and Docker OS/architecture observation, because
+  no callable Mac execution route exists. Existing default profile untouched.
+  No real keys, archives, production data or signing receipt involved yet.
