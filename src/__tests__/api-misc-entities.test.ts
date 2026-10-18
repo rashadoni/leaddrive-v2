@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest } from "next/server"
 
@@ -72,6 +73,7 @@ import { GET as channelsGET, POST as channelsPOST } from "@/app/api/v1/channels/
 import { PUT as channelsPUT, DELETE as channelsDELETE } from "@/app/api/v1/channels/[id]/route"
 import { GET as searchGET } from "@/app/api/v1/search/route"
 import { POST as demoRequestPOST } from "@/app/api/v1/demo-request/route"
+import { issueDemoFormChallenge } from "@/lib/demo-center/form-challenge"
 import { GET as orgPlanGET } from "@/app/api/v1/organization/plan/route"
 
 import { prisma } from "@/lib/prisma"
@@ -538,6 +540,15 @@ describe("Search", () => {
 /* ── Demo Request ────────────────────────────────────────── */
 
 describe("Demo Request", () => {
+  /** The form's bot check, solved the way its script does (form-challenge.ts). */
+  function solvedChallenge() {
+    const challenge = issueDemoFormChallenge(Date.now() - 30_000)
+    for (let number = 0; number <= challenge.maxNumber; number += 1) {
+      if (createHash("sha256").update(`${challenge.salt}${number}`).digest("hex") === challenge.challenge) return { ...challenge, number }
+    }
+    throw new Error("unsolvable challenge")
+  }
+
   it("POST succeeds with valid fields", async () => {
     vi.mocked(prisma.demoRequest.create).mockResolvedValue({
       id: "demo-request-1",
@@ -553,12 +564,24 @@ describe("Demo Request", () => {
     const res = await demoRequestPOST(
       new Request("http://localhost:3000/api/v1/demo-request", {
         method: "POST",
-        body: JSON.stringify({ name: "John", company: "Acme", email: "j@acme.com", consent: true }),
+        body: JSON.stringify({ name: "John", company: "Acme", email: "j@acme.com", consent: true, challenge: solvedChallenge() }),
         headers: { "Content-Type": "application/json" },
       })
     )
     const json = await res.json()
     expect(json.success).toBe(true)
+  })
+
+  it("POST asks a form without the solved bot check to send again", async () => {
+    const res = await demoRequestPOST(
+      new Request("http://localhost:3000/api/v1/demo-request", {
+        method: "POST",
+        body: JSON.stringify({ name: "John", company: "Acme", email: "j@acme.com", consent: true }),
+        headers: { "Content-Type": "application/json" },
+      })
+    )
+    expect(res.status).toBe(400)
+    expect(prisma.demoRequest.create).not.toHaveBeenCalled()
   })
 
   it("POST rejects missing required fields", async () => {
