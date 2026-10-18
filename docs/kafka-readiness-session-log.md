@@ -2945,3 +2945,63 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   kernel/service evidence through the established authorized production route,
   distinguish the cause from the restored availability, then resume the saved
   Kafka work without assuming runtime activation or successful restoration.
+
+### Resume lifecycle prerequisite after service recovery — 2026-10-18
+
+- Owner requests continuation and reports that Claude attributed the outage to
+  a Contabo technical reboot. This is an owner-reported explanation, not an
+  independently verified kernel/provider incident finding. No competing host
+  recovery, restart, rollback or Kafka runtime action is authorized by inference.
+- Fresh routing check: dedicated worktree
+  `leaddrive-kafka-worker-lifecycle-20261018`, branch
+  `codex/kafka-worker-lifecycle-20261018`, origin
+  `https://github.com/rashadoni/leaddrive-v2.git`, base
+  `6ce9a1ef1d5ddeb54f4534dd7b4e4d72b13b4938`. Production remains registered
+  `13.140.132.245:/opt/leaddrive-v2`; release only through normal GitHub PR,
+  actual required checks and SHA-bound deploy workflow. Eight unpublished
+  task-owned receipt/journal checkpoints were carried forward without erasing
+  prior evidence. Old and dirty unrelated worktrees are preserved.
+- Next scoped prerequisite: private child-process supervision and explicit
+  bounded-session stop/restart behavior. Stop must revoke acknowledgements
+  immediately, wait for an in-flight SQL transaction to settle before releasing
+  its database connection, and never present a forced exit as graceful success.
+  Prove controlled stop/restart with real disposable Kafka and restricted SQL
+  in CI, preserving the existing fencing, parity and isolation gates.
+- This slice does not itself deliver governed production worker provisioning,
+  immutable runtime packaging, an unlimited background service, CDC activation,
+  offsets/replay, recovery commissioning or human approval. No startup hook.
+  Full builds/Java/Docker/database integration remain CI-only; small sequential
+  tests locally after resource checks. Current stop point: implementation and
+  targeted checks; no new PR, push, merge or deployment for this branch yet.
+
+### Lifecycle implementation and local verification — 2026-10-18 17:54 UTC
+
+- Added inactive owned-child supervisor and finite worker-session primitive.
+  Supervisor preserves actual stdin/stdout through EOF/late output, discards
+  stderr, confirms child close and rejects forced/abnormal/unconfirmed exits.
+  Session revokes ACKs immediately on stop/deadline, drains actual processing
+  before client release and never retries or resets offsets. Intake deadline
+  is not falsely presented as cancellation of an arbitrary SQL callback.
+- Combined disposable drill now uses per-session restricted connections and
+  adds stop during SQL/after COMMIT, unchanged broker cursor, durable inbox and
+  exact no-duplicate restart parity. Independent review found an old takeover
+  connection bypassing new session ownership; corrected it to use the owned
+  replacement connection, removing concurrent disconnect beneath pending SQL.
+  Existing explicit stale-generation exit1/no-signal/ACK-written assertions
+  and source/active/effect snapshots remain intact.
+- Local verification on this tree:393/393 tests across9 focused suites PASS
+  (340 lifecycle/Fund/bridge +53 fixture tests); strict ES2017 typecheck of new
+  modules/tests PASS;3 required-gate contract tests PASS; runner policy71
+  workflows PASS; event assets27 domains/86 topics/5 schemas PASS; whitespace
+  check PASS. Supervisor tests include3 tiny direct Node children, including
+  actual private-bridge/session composition; no Java/Docker/network required.
+- Prior temporary dependencies had disappeared. A fresh isolated minimal
+  test install initially failed with npm edgesOut; one local-temp-only retry
+  with legacy peer resolution installed49 packages. No repository lockfile
+  change, application install, Prisma generation or baseline relaxation.
+- NOT RUN locally: actual generated-client combined typecheck, real Kafka/
+  PostgreSQL8-case drill, full suite/typecheck/build (GitHub-only). Existing
+  Docker fixture remains its own container reaper: direct JVM supervision,
+  governed entrypoint/package/config admission and production activation are
+  not claimed. Next: freeze this scoped revision, ordinary GitHub PR and actual
+  required/feature gates. No runtime mutation was performed.

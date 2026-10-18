@@ -829,3 +829,21 @@ No production startup/automatic replay follows from those preparations.
 Production CDC/source maintenance, recovery commissioning, independently
 verified restore/approval, HA/TLS/ACL, lifecycle/promotion and all-module
 adoption remain open. No subscriptions/resources were purchased.
+
+### K4.1/K4.8 lifecycle prerequisite in progress — 2026-10-18
+
+Next dedicated branch prepares owned-child supervision (private bounded pipes,
+EOF/TERM/KILL, actual-close evidence, sanitized failures) and a finite bridge
+session (intake deadline, immediate stop/ACK fence, SQL settlement before client
+release, no automatic restart). The combined CI drill is extended from6 to8
+scenarios: stop during SQL and after actual COMMIT, then resume from unchanged
+broker offset without duplicate shadow effects. At this entry the new actual
+integration is NOT RUN, pending the frozen-source GitHub gate.
+
+These are prerequisites, not a complete standalone production entrypoint.
+Direct-child tests use tiny Node children; existing CI Java uses its established
+container-specific reaping harness. Immutable worker packaging, governed config
+admission, direct-JVM lifecycle composition, full Debezium-to-SQL rebuild,
+independent recovery, HA/TLS/ACL, all-module adoption and authorized activation
+remain open. No production service, WAL/slot, offset/replay or backup action is
+performed by preparing these modules.
