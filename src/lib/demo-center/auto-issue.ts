@@ -15,8 +15,12 @@ import { inDemoSalesOrganization } from "./sales-org"
  * owner's own numbers — the real AI call and the WhatsApp thread — stay off
  * and remain his to switch on for a particular request in Demo Center.
  *
- * The link is not a secret by itself: opening it asks for a code sent to the
- * same address, so a forwarded link opens nothing (`demo-access/[token]`).
+ * The link is the address confirmation (owner, 2026-10-18): it goes only to
+ * the address on the request, and the demo opens once the prospect follows it
+ * and presses the button there (`demo-access/[token]/confirm`). The owner is
+ * told about the request at that moment, not when the form is sent — anyone
+ * can type any address into the form. The session is still bound to the one
+ * browser that pressed it.
  *
  * Three refusals, all quiet — the request is stored either way and the owner
  * sees it in Demo Center:

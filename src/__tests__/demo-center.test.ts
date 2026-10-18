@@ -115,7 +115,7 @@ describe("Demo Center request and credential security", () => {
     expect(maskPhone("   ")).toBeNull()
   })
 
-  it("uses six-digit OTPs and constant-time-verifiable browser credentials", () => {
+  it("uses six-digit phone codes and constant-time-verifiable browser credentials", () => {
     expect(generateDemoOtp()).toMatch(/^\d{6}$/u)
     const credential = issueBrowserCredential()
     expect(secureHashMatches(credential.credential, credential.credentialHash)).toBe(true)
@@ -134,7 +134,9 @@ describe("Demo Center request and credential security", () => {
 describe("Demo Center one-session lifecycle", () => {
   it("does not consume access when the invitation link is merely opened", () => {
     const grant = grantTimeState({ status: "SENT" })
-    expect(publicAccessState(grant, { verified: false, session: false }, NOW)).toBe("ready_for_otp")
+    expect(publicAccessState(grant, { verified: false, session: false }, NOW)).toBe("ready")
+    // A code requested before the button replaced it is confirmed the same way.
+    expect(publicAccessState(grantTimeState({ status: "OTP_SENT" }), { verified: false, session: false }, NOW)).toBe("ready")
   })
 
   it("recognizes only the bound browser credential as the active session", () => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ModuleScenes } from "@/components/marketing/module-scenes"
 import Link from "next/link"
 import { Particles } from "@/components/ui/particles"
@@ -8,12 +8,18 @@ import {
   ArrowRight, Send, Building2, User, Mail, Phone, MessageSquare, Sparkles,
 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
+import { prepareDemoFormSolution, type DemoFormSolutionPayload } from "@/lib/demo-center/form-challenge-client"
+
+const CHALLENGE_ENDPOINT = "/api/v1/public/demo-requests/challenge"
 
 /* ── Demo request form ── */
 function DemoRequestForm({ t, locale }: { t: (key: string) => string; locale: string }) {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // The bot check is solved while the visitor types (form-challenge.ts).
+  const solution = useRef<Promise<DemoFormSolutionPayload | null> | null>(null)
+  useEffect(() => { solution.current = prepareDemoFormSolution(CHALLENGE_ENDPOINT) }, [])
 
   if (submitted) {
     return (
@@ -36,6 +42,9 @@ function DemoRequestForm({ t, locale }: { t: (key: string) => string; locale: st
         const form = e.currentTarget
         const data = new FormData(form)
         try {
+          const challenge = await (solution.current ?? prepareDemoFormSolution(CHALLENGE_ENDPOINT))
+          // Spent by this attempt either way; a retry needs a fresh one.
+          solution.current = prepareDemoFormSolution(CHALLENGE_ENDPOINT)
           const response = await fetch("/api/v1/public/demo-requests", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -50,6 +59,7 @@ function DemoRequestForm({ t, locale }: { t: (key: string) => string; locale: st
               locale: ["az", "ru", "en"].includes(locale) ? locale : "az",
               consent: data.has("consent"),
               website: data.get("website"),
+              challenge,
             }),
           })
           const result = await response.json().catch(() => ({})) as { error?: string }
@@ -181,66 +191,6 @@ function DemoRequestForm({ t, locale }: { t: (key: string) => string; locale: st
   )
 }
 
-/**
- * Open the demo right here.
- *
- * The reference product did not put its guided tour behind a request form —
- * "Getting Started" sat next to Home and opened on click. This is that: one
- * button into the story. The corporate request form stays on the page for
- * prospects who want a private, watermarked session, but it no longer blocks
- * anyone from simply looking at the product.
- *
- * The two fields are optional and never leave the browser: they only decide
- * whose name the lead in the story carries.
- */
-function OpenDemoLauncher({ t }: { t: (key: string) => string }) {
-  const [name, setName] = useState("")
-  const [company, setCompany] = useState("")
-  const params = new URLSearchParams()
-  if (name.trim()) params.set("name", name.trim())
-  if (company.trim()) params.set("company", company.trim())
-  // `/demo-open`, not `/demo/start`: the demo is a full-screen product
-  // surface and must not inherit the marketing layout. Anything under
-  // `/demo/` does — navbar, footer, floating buttons and the live-chat
-  // widget would sit on top of it. Its real siblings are `/demo-access`
-  // and `/demo-preview`, which live at the app root for the same reason.
-  const href = params.toString() ? `/demo-open?${params.toString()}` : "/demo-open"
-
-  return (
-    <div className="rounded-2xl border border-[#EA580C]/25 bg-white p-6 shadow-lg lg:p-8">
-      <h2 className="text-lg font-semibold text-[#001E3C]">{t("openTitle")}</h2>
-      <p className="mt-1 text-sm text-[#001E3C]/60">{t("openSubtitle")}</p>
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="text-xs text-[#001E3C]/60">{t("openNameLabel")}</span>
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value.slice(0, 80))}
-            className="mt-1 w-full rounded-lg border border-[#001E3C]/15 px-3 py-2 text-sm focus:border-[#EA580C] focus:outline-none"
-          />
-        </label>
-        <label className="block">
-          <span className="text-xs text-[#001E3C]/60">{t("openCompanyLabel")}</span>
-          <input
-            value={company}
-            onChange={(event) => setCompany(event.target.value.slice(0, 120))}
-            className="mt-1 w-full rounded-lg border border-[#001E3C]/15 px-3 py-2 text-sm focus:border-[#EA580C] focus:outline-none"
-          />
-        </label>
-      </div>
-
-      <Link
-        href={href}
-        className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#EA580C] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#c2410c]"
-      >
-        {t("openStart")} <ArrowRight className="h-4 w-4" />
-      </Link>
-      <p className="mt-3 text-xs leading-relaxed text-[#001E3C]/50">{t("openHint")}</p>
-    </div>
-  )
-}
-
 export default function DemoPage() {
   const t = useTranslations("demo")
   const locale = useLocale()
@@ -287,18 +237,15 @@ export default function DemoPage() {
               </div>
             </div>
 
-            {/* Right: open the demo now, or ask for a private one */}
-            <div className="space-y-4">
-              <OpenDemoLauncher t={t} />
-              <details className="rounded-2xl border border-[#001E3C]/10 bg-white shadow-lg">
-                <summary className="cursor-pointer list-none p-6 lg:p-8">
-                  <span className="text-lg font-semibold text-[#001E3C]">{t("requestDemo")}</span>
-                  <span className="mt-1 block text-sm text-[#001E3C]/60">{t("formDescription")}</span>
-                </summary>
-                <div className="px-6 pb-6 lg:px-8 lg:pb-8">
-                  <DemoRequestForm t={t} locale={locale} />
-                </div>
-              </details>
+            {/* Right: the request. The demo opens from the link the form
+                mails, once the address is confirmed (owner, 2026-10-18) —
+                there is no way into it from this page without one. */}
+            <div className="rounded-2xl border border-[#001E3C]/10 bg-white p-6 shadow-lg lg:p-8">
+              <h2 className="text-lg font-semibold text-[#001E3C]">{t("requestDemo")}</h2>
+              <p className="mt-1 text-sm text-[#001E3C]/60">{t("formDescription")}</p>
+              <div className="mt-5">
+                <DemoRequestForm t={t} locale={locale} />
+              </div>
             </div>
           </div>
         </div>

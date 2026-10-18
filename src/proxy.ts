@@ -154,11 +154,12 @@ const VOICE_AGENT_INTERNAL_PATHS = new Set([
   VOICE_AGENT_CALL_CONTINUATION_PATH,
 ])
 
-// `/demo-open` is public and deliberately NOT a marketing path: the open demo
-// is a full-screen product surface, so it must not inherit the marketing
-// layout (navbar, footer, floating buttons, live-chat widget) the way
-// anything under `/demo/` does. It sits beside `/demo-access` and
-// `/demo-preview` at the app root for that reason.
+// `/demo-open` skips the login redirect and is deliberately NOT a marketing
+// path: it is a full-screen product surface, so it must not inherit the
+// marketing layout (navbar, footer, floating buttons, live-chat widget) the
+// way anything under `/demo/` does. It sits beside `/demo-access` and
+// `/demo-preview` at the app root for that reason. Since 2026-10-18 the page
+// itself admits only the signed-in superadmin and sends anyone else to /demo.
 
 // Marketing-only paths served on leaddrivecrm.org
 const marketingPaths = ["/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing"]

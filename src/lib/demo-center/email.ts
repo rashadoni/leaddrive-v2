@@ -27,6 +27,11 @@ function emailFrame(content: string): string {
     </div>`
 }
 
+/**
+ * The one email a prospect gets: confirm the address and the demo opens.
+ * Pressing the button on the page the link opens is the confirmation
+ * (`demo-access/[token]/confirm`) — no second email with a code.
+ */
 export async function sendDemoAccessEmail(input: {
   to: string
   name: string
@@ -45,45 +50,36 @@ export async function sendDemoAccessEmail(input: {
 
   return sendEmail({
     to: input.to,
-    subject: `LeadDrive — ${singleLine(input.company)} üçün şəxsi demo`,
+    subject: `LeadDrive demo — e-poçtunuzu təsdiqləyin`,
     transactional: true,
     html: emailFrame(`
       <p style="margin:0 0 8px;font-size:14px;color:#667069">${safeCompany} üçün hazırlanıb</p>
-      <h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:#17221d">Şəxsi LeadDrive demonuz hazırdır</h1>
-      <p style="margin:0 0 20px;font-size:15px;line-height:1.7">Salam, ${safeName}. Sizin üçün aşağıdakı modulları əhatə edən qorunan demo hazırladıq:</p>
+      <h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:#17221d">E-poçtunuzu təsdiqləyin — demo açılacaq</h1>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.7">Salam, ${safeName}. LeadDrive demosunu istədiyiniz üçün təşəkkür edirik. Demoda sizi gözləyir:</p>
       <ul style="margin:0 0 24px;padding-left:22px;font-size:14px;line-height:1.5">${modules}</ul>
-      <a href="${safeUrl}" style="display:inline-block;background:#d45420;color:#fff7ef;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:999px">Demonu aç</a>
-      <p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#667069">Giriş e-poçt kodu ilə qorunur və yalnız bir brauzerdə bir sessiya üçün işləyir. Səhifəni yeniləmək həmin sessiyanı dayandırmır. Link ${escapeHtml(expiry)} tarixinədək aktivləşdirilə bilər.</p>
+      <a href="${safeUrl}" style="display:inline-block;background:#d45420;color:#fff7ef;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:999px">E-poçtu təsdiqlə və demonu aç</a>
+      <p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#667069">Linkə keçin və səhifədəki düyməni basın — e-poçtunuz təsdiqlənəcək və demo həmin brauzerdə açılacaq. Link ${escapeHtml(expiry)} tarixinədək işləyir. Bu sorğunu siz göndərməmisinizsə, məktubu nəzərə almayın: təsdiq olmadan demo açılmır.</p>
     `),
     text: [
       `Salam, ${input.name}.`,
-      "Şəxsi LeadDrive demonuz hazırdır.",
-      `Modullar: ${input.moduleNames.join(", ")}`,
-      `Demonu açın: ${demoUrl}`,
-      "Giriş yalnız bir brauzerdə bir sessiya üçün işləyir.",
-      `Linkin aktivləşdirmə müddəti: ${expiry}`,
+      "LeadDrive demosunu açmaq üçün e-poçtunuzu təsdiqləyin.",
+      `Demoda: ${input.moduleNames.join(", ")}`,
+      `Linkə keçin və səhifədəki düyməni basın: ${demoUrl}`,
+      `Link ${expiry} tarixinədək işləyir.`,
+      "Bu sorğunu siz göndərməmisinizsə, məktubu nəzərə almayın: təsdiq olmadan demo açılmır.",
     ].join("\n\n"),
   })
 }
 
-export async function sendDemoOtpEmail(input: { to: string; name: string; code: string }) {
-  return sendEmail({
-    to: input.to,
-    subject: `${input.code} — LeadDrive demo giriş kodu`,
-    transactional: true,
-    html: emailFrame(`
-      <p style="margin:0 0 8px;font-size:14px;color:#667069">Şəxsi demo girişi</p>
-      <h1 style="margin:0 0 16px;font-size:26px;color:#17221d">Təsdiq kodunuz</h1>
-      <p style="margin:0 0 22px;font-size:15px;line-height:1.7">Salam, ${escapeHtml(input.name)}. Demonun sizə aid olduğunu təsdiqləmək üçün bu kodu daxil edin:</p>
-      <div style="display:inline-block;padding:14px 20px;background:#f1ede3;border:1px solid #d8d3c7;border-radius:12px;font-size:30px;font-weight:800;letter-spacing:8px;color:#17221d">${escapeHtml(input.code)}</div>
-      <p style="margin:22px 0 0;font-size:13px;color:#667069">Kod 10 dəqiqə ərzində etibarlıdır. Siz bu sorğunu etməmisinizsə, məktubu nəzərə almayın.</p>
-    `),
-    text: `Salam, ${input.name}. LeadDrive demo giriş kodunuz: ${input.code}. Kod 10 dəqiqə etibarlıdır.`,
-  })
-}
-
+/**
+ * The owner's «Yeni demo sorğusu». `confirmed`: the prospect opened the link
+ * and confirmed the address (src/lib/demo-center/email-confirmation.ts).
+ * `link_not_sent`: the link could not go out, so nobody can confirm, and the
+ * request would otherwise wait unseen.
+ */
 export async function sendDemoRequestNotification(input: {
   to: string
+  confirmation: "confirmed" | "link_not_sent"
   requestId: string
   name: string
   company: string
@@ -101,7 +97,10 @@ export async function sendDemoRequestNotification(input: {
     transactional: true,
     replyTo: input.email,
     html: emailFrame(`
-      <h1 style="margin:0 0 18px;font-size:24px">Yeni demo sorğusu</h1>
+      <h1 style="margin:0 0 12px;font-size:24px">Yeni demo sorğusu</h1>
+      ${input.confirmation === "confirmed"
+        ? `<p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#1f6b45;font-weight:700">E-poçt təsdiqləndi: müştəri məktubdakı linkə keçib demonu açdı.</p>`
+        : `<p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#a33a1a;font-weight:700">Demo linkini göndərə bilmədik, e-poçt təsdiqlənməyib. Müştəri ilə özünüz əlaqə saxlayın.</p>`}
       <table style="border-collapse:collapse;font-size:14px">
         ${row("Ad", input.name)}
         ${row("Şirkət", input.company)}

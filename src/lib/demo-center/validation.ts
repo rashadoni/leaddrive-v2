@@ -27,6 +27,9 @@ export const demoRequestSchema = z.object({
   // Honeypot input is intentionally accepted here so bots receive the same
   // generic success response instead of learning which anti-spam check fired.
   website: z.string().max(500).optional(),
+  // The bot check's solution; checked by the route, which answers a script
+  // the way it answers the honeypot (src/lib/demo-center/form-challenge.ts).
+  challenge: z.unknown().optional(),
   // Owner, 2026-09-23: «убери привязку к почте корпоративному». A gmail
   // address is how most buyers here write, and the demo is granted by hand
   // anyway — the address was never the thing that decided it.
@@ -71,10 +74,6 @@ export const demoGrantIssueSchema = z.object({
   if (hasScenario && !isApprovedDemoScenario(value.scenarioId!)) {
     context.addIssue({ code: "custom", path: ["scenarioId"], message: `Unknown demo scenario: ${value.scenarioId}` })
   }
-})
-
-export const demoOtpSchema = z.object({
-  code: z.string().trim().regex(/^\d{6}$/),
 })
 
 /** The AI calls only the phone the prospect gave on the request form (owner

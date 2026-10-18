@@ -23,6 +23,7 @@ import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import path from "node:path"
+import { NextRequest } from "next/server"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
 const adminUrl = process.env.DEMO_CENTER_TEST_DATABASE_URL
@@ -42,10 +43,15 @@ const scratch = vi.hoisted(() => {
   return { name, url: url.toString() }
 })
 
-vi.mock("@/lib/demo-center/email", () => ({
-  sendDemoAccessEmail: vi.fn(async () => ({ success: true, messageId: "ci-message" })),
-  sendDemoRequestNotification: vi.fn(async () => undefined),
+const mail = vi.hoisted(() => ({
+  sendDemoAccessEmail: vi.fn<(input: { to: string; token: string }) => Promise<{ success: boolean; messageId: string }>>(
+    async () => ({ success: true, messageId: "ci-message" }),
+  ),
+  sendDemoRequestNotification: vi.fn<(input: { requestId: string }) => Promise<{ success: boolean; messageId: string }>>(
+    async () => ({ success: true, messageId: "ci-owner" }),
+  ),
 }))
+vi.mock("@/lib/demo-center/email", () => mail)
 // The issuer lives in the sales organisation's users table, which is not a
 // demo table; the grant only records the id.
 vi.mock("@/lib/demo-center/sales-org", () => ({
@@ -152,6 +158,67 @@ pgDescribe("demo tables on a real Postgres", () => {
     const status = async (id: string) => (await bypass(() => prisma.demoGrant.findUniqueOrThrow({ where: { id } }))).status
     expect(await status(first.grantId)).toBe("REVOKED")
     expect(await status(second.grantId)).toBe("SENT")
+  })
+
+  it("confirms an address once: the button marks the request and the owner hears about it a single time", async () => {
+    // Owner, 2026-10-18: the demo opens after the prospect follows the link
+    // mailed to the request's address, and only then is he told about it.
+    const { autoIssueDemoGrant } = await import("@/lib/demo-center/auto-issue")
+    const { POST: confirm } = await import("@/app/api/v1/public/demo-access/[token]/confirm/route")
+    const request = await storedRequest("confirm@example.az")
+    expect(await autoIssueDemoGrant({ request })).toBe("issued")
+    const mailed = mail.sendDemoAccessEmail.mock.calls.find(([input]) => input.to === "confirm@example.az")
+    if (!mailed) throw new Error("no link was mailed")
+    const token = mailed[0].token
+
+    const press = () => confirm(
+      new NextRequest(`http://localhost:3000/api/v1/public/demo-access/${token}/confirm`, { method: "POST" }),
+      { params: Promise.resolve({ token }) },
+    )
+    const toldOwner = () => mail.sendDemoRequestNotification.mock.calls.filter(([input]) => input.requestId === request.id).length
+
+    expect(toldOwner()).toBe(0)
+    expect((await press()).status).toBe(200)
+    // Pressed again before the session starts — a second tab, a double click.
+    expect((await press()).status).toBe(200)
+
+    expect(toldOwner()).toBe(1)
+    const stored = await bypass(() => prisma.demoRequest.findUniqueOrThrow({ where: { id: request.id } }))
+    expect(stored.emailConfirmedAt).not.toBeNull()
+    const grant = await bypass(() => prisma.demoGrant.findFirstOrThrow({ where: { requestId: request.id } }))
+    expect(grant).toMatchObject({ status: "OTP_VERIFIED", sessionStartedAt: null })
+    expect(grant.verifiedAt).not.toBeNull()
+    const events = await bypass(() => prisma.demoAccessEvent.findMany({ where: { grantId: grant.id, eventType: "EMAIL_CONFIRMED" } }))
+    expect(events).toHaveLength(2)
+  })
+
+  it("lets one solved bot check in once: the same solution sent again stores nothing", async () => {
+    const { createHash } = await import("node:crypto")
+    const { POST } = await import("@/app/api/v1/public/demo-requests/route")
+    const { issueDemoFormChallenge } = await import("@/lib/demo-center/form-challenge")
+    const challenge = issueDemoFormChallenge(Date.now() - 30_000)
+    let number = 0
+    while (createHash("sha256").update(`${challenge.salt}${number}`).digest("hex") !== challenge.challenge) number += 1
+    const body = JSON.stringify({
+      name: "Nigar Əliyeva",
+      company: "Xəzər Logistika MMC",
+      email: "replay@example.az",
+      locale: "az",
+      consent: true,
+      challenge: { ...challenge, number },
+    })
+    const send = () => POST(new Request("http://localhost:3000/api/v1/public/demo-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    }))
+
+    expect((await send()).status).toBe(201)
+    expect((await send()).status).toBe(201) // the same answer, so a script learns nothing
+
+    const rows = await bypass(() => prisma.demoRequest.findMany({ where: { emailNormalized: "replay@example.az" } }))
+    expect(rows).toHaveLength(1)
+    expect(rows[0].formChallengeSalt).toBe(challenge.salt)
   })
 
   it("still refuses a grant that is both a scenario and a playlist, or neither", async () => {

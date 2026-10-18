@@ -490,7 +490,11 @@ describe("The open demo", () => {
     expect(player).toContain('className="grid min-w-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px]"')
   })
 
-  it("opens the story with no gate: nothing is fetched, nothing is verified", () => {
+  it("admits only the signed-in owner, and the story itself fetches nothing", () => {
+    // Owner, 2026-10-18: a prospect's demo opens only from the link mailed to
+    // the address on their request, once it is confirmed. The open demo stays
+    // the owner's own walk-through; anyone else is sent to the request form.
+    expect(code(route)).toMatch(/if \(!\(await isSuperAdminSession\(\)\)\) redirect\("\/demo"\)/)
     const body = code(shell) + code(route)
     for (const forbidden of ["fetch(", "/api/", "otpHash", "sessionHash", "demoGrant"]) {
       expect(body, forbidden).not.toContain(forbidden)
@@ -522,7 +526,7 @@ describe("The open demo", () => {
     }
   })
 
-  it("lives outside the marketing layout, and is reachable without a session", () => {
+  it("lives outside the marketing layout, and answers a visitor without a login form", () => {
     // This shipped wrong once. The page sat in `src/app/(marketing)/demo/start`,
     // so the marketing layout wrapped a full-screen product surface: navbar in
     // the visitor's own language above an Azerbaijani demo, plus a footer,
@@ -532,8 +536,9 @@ describe("The open demo", () => {
     expect(existsSync(path.join(ROOT, "src/app/(marketing)/demo/start/page.tsx"))).toBe(false)
     expect(existsSync(path.join(ROOT, "src/app/demo-open/page.tsx"))).toBe(true)
 
-    // Public, or the visitor meets a login form instead of the demo. The
-    // matcher compares whole segments, so "/demo" does not cover "/demo-open".
+    // Public to the proxy, so a visitor is sent to the request form by the
+    // page rather than meeting a login form. The matcher compares whole
+    // segments, so "/demo" does not cover "/demo-open".
     const proxy = read("src/proxy.ts")
     const publicLine = proxy.split("\n").find((line) => line.startsWith("const publicPaths"))
     expect(publicLine).toBeDefined()
@@ -545,8 +550,8 @@ describe("The open demo", () => {
     expect(marketingLine).toBeDefined()
     expect(marketingLine).not.toContain("demo-open")
 
-    // The only way in is the button on /demo; a stale href is a dead end.
-    expect(read("src/app/(marketing)/demo/page.tsx")).toContain('"/demo-open"')
+    // And /demo no longer offers it: the request form is the only way in.
+    expect(read("src/app/(marketing)/demo/page.tsx")).not.toContain("demo-open")
   })
 
   it("is pinned to the scenario language by the proxy, not by a second bundle", () => {

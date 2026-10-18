@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
-const sendDemoOtpEmail = vi.hoisted(() => vi.fn())
+const confirmDemoRequestEmail = vi.hoisted(() => vi.fn())
 const ensureDemoProspectLead = vi.hoisted(() => vi.fn())
 
-vi.mock("@/lib/demo-center/email", () => ({ sendDemoOtpEmail }))
+vi.mock("@/lib/demo-center/email-confirmation", () => ({ confirmDemoRequestEmail }))
 vi.mock("@/lib/demo-center/prospect-lead", () => ({ ensureDemoProspectLead }))
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -22,7 +22,7 @@ vi.mock("@/lib/prisma", () => ({
 import { POST as startDemo } from "@/app/api/v1/public/demo-access/[token]/start/route"
 import { POST as recordDemoEvent } from "@/app/api/v1/public/demo-access/[token]/events/route"
 import { GET as getDemoAccess } from "@/app/api/v1/public/demo-access/[token]/route"
-import { POST as sendDemoOtp } from "@/app/api/v1/public/demo-access/[token]/otp/route"
+import { POST as confirmDemoEmail } from "@/app/api/v1/public/demo-access/[token]/confirm/route"
 import { prisma } from "@/lib/prisma"
 import { expireDemoGrantIfNeeded } from "@/lib/demo-center/access"
 import {
@@ -69,7 +69,7 @@ function grant(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  sendDemoOtpEmail.mockResolvedValue({ success: true, messageId: "otp-message-1" })
+  confirmDemoRequestEmail.mockResolvedValue("confirmed")
   ensureDemoProspectLead.mockResolvedValue({ status: "LINKED", leadId: "lead-1", mode: "already" })
   vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
     const run = callback as unknown as (client: typeof prisma) => Promise<unknown>
@@ -77,84 +77,121 @@ beforeEach(() => {
   })
 })
 
-describe("Demo Center OTP lifetime limit", () => {
-  it("does not renew guessing attempts by sending another code", async () => {
-    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(grant({
-      status: "SENT",
-      otpAttempts: 3,
-      otpSentAt: new Date(0),
-      request: { email: "buyer@example.az", name: "Prospect" },
-    }) as never)
-    vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 1 })
-    vi.mocked(prisma.demoAccessEvent.create).mockResolvedValue({ id: "event-otp" } as never)
-
-    const response = await sendDemoOtp(
-      new NextRequest(`http://localhost:3000/api/v1/public/demo-access/${TOKEN}/otp`, { method: "POST" }),
+describe("Demo Center email confirmation", () => {
+  // Owner, 2026-10-18: one email, the prospect opens its link and presses the
+  // button, and the demo opens. The press is what proves the address.
+  function confirm(cookie = "") {
+    return confirmDemoEmail(
+      new NextRequest(`http://localhost:3000/api/v1/public/demo-access/${TOKEN}/confirm`, {
+        method: "POST",
+        headers: cookie ? { Cookie: cookie } : {},
+      }),
       { params: Promise.resolve({ token: TOKEN }) },
     )
+  }
+
+  it("confirms the address from the emailed link and gives this browser the verification cookie", async () => {
+    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(grant({ status: "SENT", verifiedAt: null, verificationExpiresAt: null }) as never)
+    vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 1 })
+    vi.mocked(prisma.demoAccessEvent.create).mockResolvedValue({ id: "event-confirmed" } as never)
+
+    const response = await confirm()
 
     expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ success: true, state: "verified" })
     const update = vi.mocked(prisma.demoGrant.updateMany).mock.calls[0]?.[0]
-    expect(update?.data).not.toHaveProperty("otpAttempts")
-    expect(update?.where).toMatchObject({ otpAttempts: { lt: 5 } })
-    expect(update?.where).toMatchObject({ otpSendCount: { lt: 5 } })
-    expect(update?.data).toMatchObject({ otpSendCount: { increment: 1 } })
+    expect(update?.where).toMatchObject({ id: "grant-1", sessionStartedAt: null, status: { in: ["SENT", "OTP_SENT", "OTP_VERIFIED"] } })
+    expect(update?.data).toMatchObject({ status: "OTP_VERIFIED", otpHash: null, verifiedAt: expect.any(Date), verificationHash: expect.stringMatching(/^[a-f0-9]{64}$/) })
+    const cookie = response.cookies.get(demoVerificationCookieName(TOKEN))?.value
+    expect(cookie).toBeTruthy()
+    expect(vi.mocked(prisma.demoAccessEvent.create).mock.calls[0]?.[0]).toMatchObject({ data: { grantId: "grant-1", eventType: "EMAIL_CONFIRMED" } })
+    // The owner hears about the request now, and the prospect becomes a lead.
+    expect(confirmDemoRequestEmail).toHaveBeenCalledWith("request-1", expect.any(Date))
+    expect(ensureDemoProspectLead).toHaveBeenCalledWith("request-1", expect.any(Date))
   })
 
-  it("locks the invitation after five total failed codes even after cooldown", async () => {
+  it("confirms a grant that was waiting for a code from before the code was dropped", async () => {
+    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(grant({ status: "OTP_SENT", otpHash: "x", verifiedAt: null, verificationExpiresAt: null }) as never)
+    vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 1 })
+    vi.mocked(prisma.demoAccessEvent.create).mockResolvedValue({ id: "event-confirmed" } as never)
+
+    expect((await confirm()).status).toBe(200)
+  })
+
+  it("keeps the moment the address was first proven when the button is pressed again", async () => {
+    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(grant({ status: "OTP_VERIFIED", verifiedAt: PAST }) as never)
+    vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 1 })
+    vi.mocked(prisma.demoAccessEvent.create).mockResolvedValue({ id: "event-confirmed" } as never)
+
+    expect((await confirm()).status).toBe(200)
+    expect(vi.mocked(prisma.demoGrant.updateMany).mock.calls[0]?.[0]?.data).toMatchObject({ verifiedAt: PAST })
+  })
+
+  it("refuses once the session has started, and tells nobody", async () => {
     vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(grant({
-      status: "OTP_SENT",
-      otpAttempts: 5,
-      otpSentAt: new Date(0),
-      request: { email: "buyer@example.az", name: "Prospect" },
+      status: "ACTIVE",
+      sessionHash: "f".repeat(64),
+      sessionStartedAt: new Date(),
+      sessionLastSeenAt: new Date(),
+      sessionExpiresAt: FUTURE,
     }) as never)
 
-    const response = await sendDemoOtp(
-      new NextRequest(`http://localhost:3000/api/v1/public/demo-access/${TOKEN}/otp`, { method: "POST" }),
-      { params: Promise.resolve({ token: TOKEN }) },
-    )
+    const response = await confirm()
 
-    expect(response.status).toBe(429)
+    expect(response.status).toBe(409)
     expect(prisma.demoGrant.updateMany).not.toHaveBeenCalled()
-    expect(sendDemoOtpEmail).not.toHaveBeenCalled()
+    expect(confirmDemoRequestEmail).not.toHaveBeenCalled()
+    expect(ensureDemoProspectLead).not.toHaveBeenCalled()
   })
 
-  it("stops sending after five OTP emails even when no code was guessed", async () => {
-    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(grant({
-      status: "SENT",
-      otpSendCount: 5,
-      otpSentAt: new Date(0),
-      request: { email: "buyer@example.az", name: "Prospect" },
-    }) as never)
+  it("does not confirm when the button lost a race to a session start", async () => {
+    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(grant({ status: "SENT", verifiedAt: null }) as never)
+    vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 0 })
 
-    const response = await sendDemoOtp(
-      new NextRequest(`http://localhost:3000/api/v1/public/demo-access/${TOKEN}/otp`, { method: "POST" }),
-      { params: Promise.resolve({ token: TOKEN }) },
-    )
+    const response = await confirm()
 
-    expect(response.status).toBe(429)
-    expect(prisma.demoGrant.updateMany).not.toHaveBeenCalled()
-    expect(sendDemoOtpEmail).not.toHaveBeenCalled()
+    expect(response.status).toBe(409)
+    expect(response.cookies.get(demoVerificationCookieName(TOKEN))).toBeUndefined()
+    expect(confirmDemoRequestEmail).not.toHaveBeenCalled()
   })
 
-  it("keeps the resend cooldown and send count after provider failure", async () => {
+  it("opening the link confirms nothing: only the button does", async () => {
+    // Mail scanners open links to inspect them. A GET that confirmed would
+    // tell the owner about a request nobody read, and bind the one session
+    // to the scanner.
     vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(grant({
       status: "SENT",
-      otpSentAt: new Date(0),
-      request: { email: "buyer@example.az", name: "Prospect" },
+      verifiedAt: null,
+      verificationExpiresAt: null,
+      openedAt: null,
+      scenarioId: null,
+      request: { company: "Xəzər Logistika MMC", email: "buyer@example.az", name: "Prospect", jobTitle: null, phone: null, source: "website" },
     }) as never)
     vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 1 })
-    sendDemoOtpEmail.mockResolvedValue({ success: false, error: "provider unavailable" })
+    vi.mocked(prisma.demoAccessEvent.create).mockResolvedValue({ id: "event-opened" } as never)
 
-    const response = await sendDemoOtp(
-      new NextRequest(`http://localhost:3000/api/v1/public/demo-access/${TOKEN}/otp`, { method: "POST" }),
+    const response = await getDemoAccess(
+      new NextRequest(`http://localhost:3000/api/v1/public/demo-access/${TOKEN}`),
       { params: Promise.resolve({ token: TOKEN }) },
     )
 
-    expect(response.status).toBe(502)
-    const failureUpdate = vi.mocked(prisma.demoGrant.updateMany).mock.calls[1]?.[0]
-    expect(failureUpdate?.data).not.toHaveProperty("otpSentAt")
-    expect(failureUpdate?.data).not.toHaveProperty("otpSendCount")
+    await expect(response.json()).resolves.toMatchObject({ state: "ready" })
+    for (const [call] of vi.mocked(prisma.demoGrant.updateMany).mock.calls) {
+      expect(Object.keys(call.data ?? {})).toEqual(["openedAt"])
+    }
+    expect(confirmDemoRequestEmail).not.toHaveBeenCalled()
+  })
+
+  it("will not start a session for a browser that never pressed the button", async () => {
+    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(grant({ status: "SENT", verificationHash: null }) as never)
+
+    const response = await startDemo(
+      new NextRequest(`http://localhost:3000/api/v1/public/demo-access/${TOKEN}/start`, { method: "POST" }),
+      { params: Promise.resolve({ token: TOKEN }) },
+    )
+
+    expect(response.status).toBe(401)
+    expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 })
 
