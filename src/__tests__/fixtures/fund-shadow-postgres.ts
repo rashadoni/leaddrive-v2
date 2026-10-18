@@ -4,8 +4,8 @@ import { randomUUID } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { PrismaClient, type Prisma } from "@prisma/client"
-import type { KafkaEventRecord } from "../../../src/lib/event-platform/consumer"
-import type { FundShadowDatabase, FundShadowScope, FundShadowTransaction } from "../../../src/lib/event-platform/fund-shadow-consumer"
+import type { KafkaEventRecord } from "../../lib/event-platform/consumer"
+import type { FundShadowDatabase, FundShadowScope, FundShadowTransaction } from "../../lib/event-platform/fund-shadow-consumer"
 
 export type FundShadowContext = {
   scope: FundShadowScope

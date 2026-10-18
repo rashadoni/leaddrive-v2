@@ -34,9 +34,9 @@ test('both required PR verification and production release run the real Fund sha
 
 test('real PG gate fails closed on missing admission and applies actual migrations, not mocks/db-push', () => {
   const source = readFileSync(new URL('src/__tests__/event-platform-fund-shadow-postgres.test.ts', root), 'utf8')
-  const fixture = readFileSync(new URL('scripts/event-platform/fixtures/fund-shadow-postgres.ts', root), 'utf8')
+  const fixture = readFileSync(new URL('src/__tests__/fixtures/fund-shadow-postgres.ts', root), 'utf8')
   assert.match(source, /!adminUrl && process\.env\.FUND_SHADOW_DB_GATE === "required"/)
-  assert.match(source, /from "\.\.\/\.\.\/scripts\/event-platform\/fixtures\/fund-shadow-postgres"/)
+  assert.match(source, /from "\.\/fixtures\/fund-shadow-postgres"/)
   assert.match(source, /fundShadowDatabase as database/)
   assert.match(source, /postgres = createFundShadowPostgresFixture\(/)
   assert.match(source, /await postgres\.setup\(\)/)
@@ -63,6 +63,7 @@ test('combined broker proof requires actual generated types and SQL before its s
   assert.deepEqual(ordered, [...ordered].sort((a, b) => a - b))
   assert.match(workflow, /LD_EVENT_STACK_COMBINED: '1'/)
   assert.match(workflow, /FUND_SHADOW_DB_GATE: required/)
+  assert.match(workflow, /src\/__tests__\/fixtures\/fund-shadow-postgres\.ts/)
   assert.match(workflow, /image: postgres:16\.13-alpine@sha256:[a-f0-9]{64}/)
   assert.match(workflow, /--memory 512m --memory-swap 512m --cpus 1/)
   assert.match(workflow, /group: event-platform-disposable-integration/)
@@ -72,6 +73,11 @@ test('combined broker proof requires actual generated types and SQL before its s
   for (const contract of ['createFundShadowPostgresFixture(', 'await db.setup()', 'runKafkaBridge(',
     'createFundShadowPartitionWorker(', 'fundShadowDatabase(context.client)']) {
     assert.ok(drill.includes(contract), contract)
+  }
+  assert.match(drill, /from "\.\.\/\.\.\/src\/__tests__\/fixtures\/fund-shadow-postgres"/)
+  for (const [name, value] of [['GITHUB_ACTIONS', 'true'], ['LD_EVENT_STACK_DISPOSABLE', '1'],
+    ['LD_EVENT_STACK_COMBINED', '1'], ['FUND_SHADOW_DB_GATE', 'required']]) {
+    assert.ok(drill.includes(`assert.equal(process.env.${name}, "${value}")`), `combined admission: ${name}`)
   }
   // Broker cleanup failure cannot prevent the independent SQL cleanup attempt.
   assert.match(drill, /await Promise\.allSettled\(\[db\.close\(\)\]\)/)

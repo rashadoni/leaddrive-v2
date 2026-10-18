@@ -10,7 +10,7 @@ import {
   fundShadowDatabase as database,
   type FundShadowContext as Context,
   type FundShadowExecuteFailure as ExecuteFailure,
-} from "../../scripts/event-platform/fixtures/fund-shadow-postgres"
+} from "./fixtures/fund-shadow-postgres"
 
 // No production access. The dedicated CI step must follow the existing real
 // migration gate (which creates the synthetic event_app/event_migrator roles).

@@ -1,6 +1,9 @@
 import type { PrismaClient } from "@prisma/client"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
+import { dirname, relative, resolve } from "node:path"
+import ts from "typescript"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { createFundShadowPostgresFixture, fundShadowDatabase } from "../../scripts/event-platform/fixtures/fund-shadow-postgres"
+import { createFundShadowPostgresFixture, fundShadowDatabase } from "./fixtures/fund-shadow-postgres"
 
 // Control-flow proof only: these mocks do not establish PostgreSQL/RLS/COMMIT
 // or Kafka semantics. The unchanged 14-test real-PG suite and combined gate do.
@@ -16,6 +19,28 @@ vi.mock("node:child_process", () => ({ spawnSync: mocks.spawn }))
 
 const adminUrl = "postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test"
 const options = { isolationLevel: "Serializable" as const, maxWait: 5000, timeout: 15000 }
+
+const testFixtureModule = "src/__tests__/fixtures/fund-shadow-postgres"
+function fixtureImports(file: string, source: string): string[] {
+  // TypeScript's scanner includes static/dynamic imports, re-exports and
+  // CommonJS requires; comments containing the path are not importers.
+  return ts.preProcessFile(source, true, true).importedFiles.flatMap(({ fileName }) => {
+    const specifier = fileName.replace(/\.[cm]?[jt]sx?$/, "")
+    const target = specifier.startsWith("@/") ? resolve("src", specifier.slice(2))
+      : specifier.startsWith(".") ? resolve(dirname(file), specifier) : resolve(specifier)
+    return target === resolve(testFixtureModule) ? [file] : []
+  })
+}
+
+function sourceFiles(directory: string): string[] {
+  if (!existsSync(directory)) return []
+  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    if (["node_modules", ".next", ".git"].includes(entry.name)) return []
+    const path = resolve(directory, entry.name)
+    if (entry.isDirectory()) return sourceFiles(path)
+    return entry.isFile() && /\.[cm]?[jt]sx?$/.test(entry.name) ? [path] : []
+  })
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -33,6 +58,33 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs() })
 
 describe("shared disposable Fund fixture boundary", () => {
+  it("keeps the unscoped test fixture reachable only by its two tests and the admitted combined drill", () => {
+    const roots = ["src", "scripts", "apps", "services", "workers", "telegram-bridge", "ops", "deploy", "tests", ".github"]
+    const files = [...roots.flatMap(sourceFiles), ...readdirSync(".", { withFileTypes: true })
+      .filter(entry => entry.isFile() && /\.[cm]?[jt]sx?$/.test(entry.name)).map(entry => resolve(entry.name))]
+    const importers = files.flatMap(file => {
+      const source = readFileSync(file, "utf8")
+      // Only parse source with this module's basename, never dependencies.
+      return source.includes("fund-shadow-postgres") ? fixtureImports(file, source) : []
+    }).map(file => relative(process.cwd(), file))
+    expect([...new Set(importers)].sort()).toEqual([
+      "scripts/event-platform/test-broker-postgres.ts",
+      "src/__tests__/event-platform-fund-shadow-fixture.test.ts",
+      "src/__tests__/event-platform-fund-shadow-postgres.test.ts",
+    ])
+  })
+
+  it("recognizes alias, relative, re-export, dynamic and CommonJS fixture imports", () => {
+    const file = resolve("src/lib/forbidden-fixture-import.ts")
+    for (const source of [
+      'import { createFundShadowPostgresFixture } from "@/__tests__/fixtures/fund-shadow-postgres"',
+      'export * from "../__tests__/fixtures/fund-shadow-postgres"',
+      'const fixture = import("../__tests__/fixtures/fund-shadow-postgres.ts")',
+      'const fixture = require("../__tests__/fixtures/fund-shadow-postgres")',
+    ]) expect(fixtureImports(file, source)).toEqual([file])
+    expect(fixtureImports(file, '// import "../__tests__/fixtures/fund-shadow-postgres"')).toEqual([])
+  })
+
   it.each([
     "", "postgresql://postgres:postgres@localhost:5432/event_platform_test",
     "postgresql://postgres:postgres@192.0.2.1:5432/event_platform_test",

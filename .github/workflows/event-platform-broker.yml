@@ -14,6 +14,7 @@ on:
       - 'src/lib/event-platform/**'
       - 'src/__tests__/event-platform-fund-shadow-postgres.test.ts'
       - 'src/__tests__/event-platform-fund-shadow-fixture.test.ts'
+      - 'src/__tests__/fixtures/fund-shadow-postgres.ts'
       - 'src/__tests__/event-platform-broker-fixture.test.ts'
       - 'scripts/ci/fixtures/fund-shadow/**'
       - 'scripts/ci/test-event-platform-migrations.mjs'
@@ -80,7 +81,7 @@ jobs:
         run: >-
           npx tsc --noEmit --skipLibCheck --strict --target ES2017 --lib ESNext
           --module commonjs --moduleResolution node --esModuleInterop --types node
-          scripts/event-platform/fixtures/fund-shadow-postgres.ts
+          src/__tests__/fixtures/fund-shadow-postgres.ts
           scripts/event-platform/fixtures/kafka-broker-harness.ts
           scripts/event-platform/test-broker-driver.ts
           scripts/event-platform/test-broker-postgres.ts

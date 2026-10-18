@@ -2619,3 +2619,45 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   strict-check before failure, leaving about9m35s of the unchanged20-minute
   job budget for the actual combined phase on the correction. This is a
   budget to observe, not evidence of a timeout or permission to skip tests.
+
+### Second exact-source CI finding: test fixture classification — 2026-10-18 14:43 UTC
+
+- PR39134939135 completed FAILURE on old source ae2c2a6b9. Its full test
+ baseline reported19 failing files against18; the sole newly failing file
+ was `rls-bypass-classifier.test.ts`. The extracted synthetic PostgreSQL
+ fixture constructed its own client under `scripts/`, where operator scripts
+ must use the application's classified RLS factory. All actual14 Fund SQL
+ cases and278 focused units passed; typecheck64 gated pairs matched64, with
+1326 advisory diagnostics. This is not a globally clean TypeScript result.
+- The fixture intentionally exercises raw restricted logins and actual RLS;
+ giving it the normal operator factory's session-wide bypass would invalidate
+ its purpose. Correct classification is test support under `src/__tests__/`
+ (the original SQL test's area), not an operator script or a new allowlist
+ exception. A narrowly scoped move/import update is being prepared, with an
+ additional check against production callers. Classifier, baseline, URL
+ fence, roles/grants and production code paths are not being weakened.
+- All earlier-source runs are now completed; none was manually cancelled.
+ Preserve both diagnosed failures. Publish only after the combined correction
+  passes focused local checks, then require new exact-source actual CI.
+
+### Both CI findings corrected and checked locally — 2026-10-18 14:47 UTC
+
+- Shared PostgreSQL support now resides at
+ `src/__tests__/fixtures/fund-shadow-postgres.ts`; its only internal changes
+ are relative type-import paths. Root compared the entire moved file against
+ its predecessor. Exact disposable URL, independent logins/RLS/grants, real
+ migrations, real COMMIT ordering and owned-resource cleanup are unchanged.
+- All callers and strict workflow input/path trigger were updated. New
+ structural tests resolve static/alias/relative/dynamic/CommonJS/re-export
+ imports and admit exactly the two test files and gated combined CI script.
+ The RLS classifier and generic script factory remain unchanged. Caller
+ disposable/required admissions also have explicit structural assertions.
+- PASS sequentially on the corrected tree:341/341 tests across8 files,
+ including the previously failing RLS classifier and the new importer checks
+ (8.30s);11/11 script/contract guards;71-workflow runner policy; whitespace.
+ Fixture mock suite now24 plus broker fixture27 =51. Earlier49 counts describe
+ the older source only. Real combined/generated-client proof remains NOT RUN
+ locally by host policy; no full build or actual service was launched here.
+- Main remains d3a1281d6bf8769302c3fa8431ce39c47dca08ec. Old runs have all
+ completed. Next publication keeps the same PR883 and unchanged gates; only
+ a current-source actual successful integration will satisfy this increment.

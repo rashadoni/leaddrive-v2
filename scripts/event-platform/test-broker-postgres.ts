@@ -6,7 +6,7 @@ import { createFundShadowPartitionWorker } from "../../src/lib/event-platform/fu
 import type { FundShadowDatabase } from "../../src/lib/event-platform/fund-shadow-consumer"
 import type { PartitionAssignment } from "../../src/lib/event-platform/partition-processor"
 import { createBrokerFixtureHarness } from "./fixtures/kafka-broker-harness"
-import { createFundShadowPostgresFixture, fundShadowDatabase, type FundShadowContext } from "./fixtures/fund-shadow-postgres"
+import { createFundShadowPostgresFixture, fundShadowDatabase, type FundShadowContext } from "../../src/__tests__/fixtures/fund-shadow-postgres"
 
 function gate() {
   let release!: () => void
