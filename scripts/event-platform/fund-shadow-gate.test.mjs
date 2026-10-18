@@ -48,3 +48,32 @@ test('real PG gate fails closed on missing admission and applies actual migratio
   assert.ok(fixture.includes('url.hostname !== "127.0.0.1"'))
   assert.ok(fixture.includes('url.pathname !== "/event_platform_test"'))
 })
+
+test('combined broker proof requires actual generated types and SQL before its sequential drill', () => {
+  const workflow = readFileSync(new URL('.github/workflows/event-platform-broker.yml', root), 'utf8')
+  const stack = readFileSync(new URL('scripts/event-platform/test-stack.sh', root), 'utf8')
+  const drill = readFileSync(new URL('scripts/event-platform/test-broker-postgres.ts', root), 'utf8')
+  const ordered = [
+    'run: npx prisma generate --schema prisma/schema.prisma',
+    'npx tsc --noEmit --skipLibCheck --strict',
+    'run: npx vitest run src/__tests__/event-platform-fund-shadow-fixture.test.ts',
+    'run: node scripts/ci/test-event-platform-migrations.mjs',
+    'run: bash scripts/event-platform/test-stack.sh',
+  ].map(required => { const index = workflow.indexOf(required); assert.ok(index >= 0, required); return index })
+  assert.deepEqual(ordered, [...ordered].sort((a, b) => a - b))
+  assert.match(workflow, /LD_EVENT_STACK_COMBINED: '1'/)
+  assert.match(workflow, /FUND_SHADOW_DB_GATE: required/)
+  assert.match(workflow, /image: postgres:16\.13-alpine@sha256:[a-f0-9]{64}/)
+  assert.match(workflow, /--memory 512m --memory-swap 512m --cpus 1/)
+  assert.match(workflow, /group: event-platform-disposable-integration/)
+  assert.doesNotMatch(workflow, /continue-on-error:|secrets\./)
+  assert.ok(stack.indexOf('"$task_root/scripts/event-platform/test-broker-driver.ts"')
+    < stack.indexOf('"$task_root/scripts/event-platform/test-broker-postgres.ts"'))
+  for (const contract of ['createFundShadowPostgresFixture(', 'await db.setup()', 'runKafkaBridge(',
+    'createFundShadowPartitionWorker(', 'fundShadowDatabase(context.client)']) {
+    assert.ok(drill.includes(contract), contract)
+  }
+  // Broker cleanup failure cannot prevent the independent SQL cleanup attempt.
+  assert.match(drill, /await Promise\.allSettled\(\[db\.close\(\)\]\)/)
+  assert.doesNotMatch(drill, /vi\.mock\(|mockResolvedValue|\bdb push\b/)
+})

@@ -2518,3 +2518,22 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   cleanup remains mandatory. Broker-only strict TypeScript and diff check PASS.
 - These are test-only corrections. Actual combined proof and final review
   still require the generated client and disposable GitHub executor.
+
+### Test harness review complete — 2026-10-18 13:51 UTC
+
+- Independent re-review accepted the bounded stale-ACK observation and JVM
+  timeout fixes; no further concrete blocker found. A reference to the old
+  running member inside its later ACK callback is not a synchronous TDZ read;
+  actual generated-client strict TypeScript remains a required CI gate.
+- Root reran all six focused suites together:300/300 PASS in5.14s. Helper
+  added27 mock-only broker fixture tests and ran27/27 PASS in361ms with one
+  worker after resource checks. Root read the entire test: no actual Docker,
+  Java, database, network or config writes. These tests verify exact base64
+  transport, decimal offsets beyond Number precision, command deadlines,
+  synthetic-only guards and sanitized failures, not broker semantics.
+- Added a structural contract gate for generated types, actual SQL bootstrap
+  and sequential combined execution. Its three contract tests PASS. All
+  real combined/delivery claims still require exact-SHA GitHub receipts.
+- Preceding deploy39131091042 quality gate is SUCCESS, including full
+  baseline18=18 (no new failures). Production artifact build now runs Next.js.
+  No runtime activation, consumer replay or extra heavy dispatch occurred.
