@@ -259,3 +259,29 @@ Warehouse and Accounting remain outside this pass and their existing process.
    `api-payment-webhooks` and `api-payment-providers` test files were located
    but NOT RUN/re-certified in this read-only inventory. Provider/currency and
    full source-writer coverage remain open before any production adoption.
+
+## 11. Bounded SMS-OTP consumption/cleanup extension — 2026-10-18
+
+Reviewed maince71 source, unchanged by frozen PR873; extends section6 only for
+the following named functions/callers. No auth request, SMS, credential/code,
+session, provider, production record or runtime test was accessed/executed.
+
+| Boundary | Observed state/authority | Replay constraint |
+|---|---|---|
+| [sendOtp / verifyOtp](../../src/lib/sms.ts) | Generator uses cryptographic randomInt and stores bcrypt hash with expiry/user/purpose. Send invalidates prior unused matching codes, INSERTs a new challenge, then sends SMS. Verification queries latest unused/unexpired matching code, checks bcrypt and consumes with conditional updateMany requiring usedAt=null, valid expiry and remaining attempts; exactly1 updated row is required. | Preserve this actual one-use compare-and-set and expiry/attempt guards. Replay must never generate/deliver OTP, clear usedAt, extend expiry or reset attempts. The sender is an external/auth operation, not a reducer. |
+| [Generic SMS OTP verify](../../src/app/api/v1/auth/sms-otp/verify/route.ts) | Resolves request org when present; whole verification runs tenant-scoped or explicit pre-auth bypass. Passes phone/purpose, not userId, to the shared helper. | Do not assume it is the same principal boundary as authenticated2FA. Keep pre-auth and tenant/user-scoped histories distinct; authority and alternate-call completeness still require review. |
+| [Authenticated SMS2FA verify](../../src/app/api/v1/auth/verify-sms-2fa/route.ts) | Requires session/user/verified phone/enabled SMS2FA, passes user.id to verifyOtp; only after consumption creates and writes a two-factor nonce for session update. | A nonce or cleared2FA flag is not a rebuild output. OTP consumption and user-nonce update are separate; no claim that they form one canonical event/command transaction. |
+| [Cleanup helper](../../src/lib/queue/jobs/otp-cleanup.ts) / [HTTP cron](../../src/app/api/cron/otp-cleanup/route.ts) | Deletes expired unused challenges and used challenges older than audit window (default7days). HTTP caller requires cron auth under explicit bypass; helper accepts a supplied clock. | Mutable/deletable otp_codes is not a complete immutable historical source. Preserve expiry/deletion and security policy; recovery must not revive challenge/session authority from old rows. Queue/HTTP exclusivity and every caller are NOT certified here. |
+
+Any future sms-otp history must contain only minimized, governed challenge
+references and lifecycle facts, not plaintext OTP, bcrypt codeHash, full phone,
+two-factor nonce, session/JWT token or provider secret. A generic event envelope
+or an encrypted archive does not authorize putting authentication material in
+Kafka. Identity/retention and security-state recovery require their own domain
+contract; a history projection must never grant access or resend messages.
+
+Existing lib-sms-otp, api-sms-2fa and lib-queue-otp-cleanup tests were located,
+NOT RUN or re-certified for this read-only scope. All auth/OTP callsites,
+pre-auth isolation, concurrency/drill evidence, TOTP, demo access, device
+attestation and provider delivery/UNKNOWN reconciliation remain open. The
+existing one-use guard is a source finding, not proof of all-module recovery.

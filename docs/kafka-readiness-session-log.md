@@ -1932,3 +1932,21 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   NOT pushed into its active CI or merged by accident. No payment application
   code, runtime Kafka, replay, provider policy/key, timer or backup/restore
   change was authorized/performed through this ordinary report-code delivery.
+
+### K0.2 SMS-OTP source boundaries, while PR873 deploy runs
+
+- Root read named send/verify helper, generic SMS-OTP verify, authenticated
+  SMS2FA verify, cleanup helper/HTTP caller and located their existing tests.
+  NON_FUND inventory section11 records actual cryptographic generation/hash,
+  expiry/attempt guards and conditional one-use consumption (count=1). These
+  safeguards are preserved, not described as absent or replaced by Kafka.
+- Generic pre-auth/org verification and dedicated session/user-bound2FA have
+  different authority; nonce creation follows consumption separately. Cleanup
+  deletes expired/old challenge rows, so that table is not full immutable
+  history. Future events must exclude code/hash/phone/nonce/session secrets;
+  replay must not regenerate/send or revive access, expiry or used state.
+- No auth/OTP/provider/cleanup request or runtime test ran; actual live use,
+  every alternate caller and full isolation/retention protocol are NOT VERIFIED.
+  No application code, authentication policy, session, live data, configuration
+  or paid service changed. These docs remain LOCAL; delivery remains only
+  reviewed PR873 report code on24ce6e9c, not an auth feature rollout.
