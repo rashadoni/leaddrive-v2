@@ -59,3 +59,13 @@
   скрипты, — 100/100; `test-event-platform-assets.mjs` — OK;
   `check-github-runner-policy.mjs` — OK; `bash -n` всех трёх скриптов — OK.
 - `BACKUP_RUNBOOK.md` и `backup.env.example` переведены с Hetzner на B2.
+
+## 2026-10-19 00:40 — первый заход владельца
+
+- Владелец выполнил на Маке `ssh prod "chmod 700 /var/backups/leaddrive && chmod 600 /var/backups/leaddrive/*"`.
+  Проверено по SSH (только чтение): каталог `700`, 42 файла `600`.
+- Запуск скриптов ключей из `~` на Маке упал «No such file or directory»: на Маке
+  нет клона репозитория, а команды в отчёте были с относительными путями. Ключи не
+  созданы. Инструкция в `docs/B2_OFFSITE_BACKUP.md` переписана: скрипты
+  скачиваются с GitHub по коммиту `0920de2c7` (sha256 сверены с файлами в ветке),
+  все пути абсолютные.

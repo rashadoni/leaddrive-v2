@@ -104,18 +104,29 @@ bucket. Скрипт спрашивает master key без эха, печата
 ли B2 контрольные суммы AWS CLI ≥ 2.23 по умолчанию (на проде стоит 2.36.40); если
 нет — скрипт скажет, что нужен `AWS_REQUEST_CHECKSUM_CALCULATION=when_required`.
 
-Действие владельца (5 минут, на Маке с `aws` CLI v2 или на dev-боксе):
+Действие владельца (5 минут, на Маке; команды работают из `~`, клон репозитория
+не нужен — скрипты берутся с GitHub по точному коммиту):
 
 1. Консоль B2 → Application Keys → «Generate New Master Application Key».
    Старый master key при этом перестанет работать; им ничего не пользуется
    (до 2026-10-19 в аккаунте не было ни bucket, ни других ключей).
-2. ```bash
-   python3 scripts/backup/b2-create-backup-keys.py --bucket leaddrive-prod-backups --out ~/leaddrive-b2-keys
+2. Скачать оба скрипта; `shasum` должен показать `42ab21b4…78b7` и `f46faced…cff6`:
+   ```bash
+   mkdir -p ~/leaddrive-b2-tools && cd ~/leaddrive-b2-tools && for f in b2-create-backup-keys.py b2-verify-backup-keys.sh; do curl -fsSLO "https://raw.githubusercontent.com/rashadoni/leaddrive-v2/0920de2c778f0604afe926b1ad8a9aa68d47feff/scripts/backup/$f"; done && shasum -a 256 b2-*
    ```
-3. ```bash
-   bash scripts/backup/b2-verify-backup-keys.sh ~/leaddrive-b2-keys/writer.env ~/leaddrive-b2-keys/restore.env
+3. Создать ключи (спросит key ID и ключ из шага 1, ключ не показывается):
+   ```bash
+   python3 ~/leaddrive-b2-tools/b2-create-backup-keys.py --bucket leaddrive-prod-backups --out ~/leaddrive-b2-keys
    ```
-4. `restore.env` перенести в менеджер паролей и удалить файл; `writer.env`
+4. Нужен AWS CLI v2:
+   ```bash
+   command -v aws || brew install awscli
+   ```
+5. Проверить ключи:
+   ```bash
+   bash ~/leaddrive-b2-tools/b2-verify-backup-keys.sh ~/leaddrive-b2-keys/writer.env ~/leaddrive-b2-keys/restore.env
+   ```
+6. `restore.env` перенести в менеджер паролей и удалить файл; `writer.env`
    держать до commissioning.
 
 ## Совместимость пайплайна
@@ -141,9 +152,12 @@ bucket. Скрипт спрашивает master key без эха, печата
 - **Рабочий суточный бэкап лежит открытым для всех локальных пользователей прода.**
   `/var/backups/leaddrive` — `0755`, дампы и `etc-leaddrive-*.tgz` — `0644`. В tgz
   лежит весь `/etc/leaddrive`, включая `app.env` (на месте он `0600`). Любая
-  учётная запись на хосте читает полный дамп в обход RLS и все секреты. Починка
-  (действие владельца): `chmod 700 /var/backups/leaddrive && chmod 600 /var/backups/leaddrive/*`
-  и `umask 077` в начале `/usr/local/sbin/leaddrive-backup.sh`.
+  учётная запись на хосте читала полный дамп в обход RLS и все секреты.
+  **Исправлено владельцем 2026-10-19 ~00:39 UTC**
+  (`chmod 700 /var/backups/leaddrive && chmod 600 /var/backups/leaddrive/*`),
+  проверено: каталог `700`, все 42 файла `600`. Новые ночные файлы по-прежнему
+  создаются `0644`, но внутри закрытого каталога; `umask 077` в начале
+  `/usr/local/sbin/leaddrive-backup.sh` ещё не добавлен.
 - **Загруженные файлы тенантов (`uploads`, 75 МБ) и `help-videos` не бэкапит
   ничто.** Суточный скрипт берёт только БД и `/etc/leaddrive`; runtime-снимок есть
   лишь в некоммиссионированном пайплайне.
