@@ -793,3 +793,21 @@ Separate combined39139978362 (13+6), CDC39139978367 and stack39139978571 all
 SUCCESS. Normal exact-head merge producedf41ba03328b5aeda9c06f5e5baf27437683d255b
 at15:38:55Z. Automatic application release remains pending at this entry; no
 Java-worker installation, Kafka consumer activation or data replay occurred.
+
+### PR883 delivered and independently verified — 2026-10-18 16:13 UTC
+
+Automatic release39141430405 whole SUCCESS on
+f41ba03328b5aeda9c06f5e5baf27437683d255b. Quality repeated280 focused and14
+real restricted-PG tests with unchanged18-file baseline; actual full build
+and immutable artifact12141838839 succeeded. Production structural/RLS/Fund
+postconditions and public exact SHA/ping/login/assets passed; root repeated
+public checks16:12:32Z. This supersedes the preceding release-pending entry.
+
+The completed bounded proof is13 actual broker scenarios plus6 combined
+broker/restricted-SQL scenarios, not all K4/K8. Production recovery remains
+plain/uncommissioned, its four timers stopped and off-box log shipping
+inactive according to the actual release log. Java-worker packaging/service,
+full CDC-to-rebuild, governed lifecycle/promotion, HA/TLS/ACL, independent
+recovery, all-module adoption and specifically authorized activation remain
+open. One current-SHA read-only aggregate inventory39143994149 is pending;
+it cannot certify restoration or activate consumers/replay.

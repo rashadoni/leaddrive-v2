@@ -2821,3 +2821,31 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   receipt; only if current main and public artifact match and the production
   queue is free, run the existing aggregate-only readiness inventory. That
   inventory must not be described as backup restoration or Kafka activation.
+
+### PR883 production delivery and independent public receipt — 2026-10-18 16:13 UTC
+
+- Release39141430405 is whole SUCCESS on exact merge
+  f41ba03328b5aeda9c06f5e5baf27437683d255b: quality, build, deployment/smoke
+  and the workflow's normal retention stage all completed successfully.
+  This supersedes the preceding release-pending entries for this increment.
+- Quality completed16:03:44Z; actual280/280 Fund units and14/14 restricted
+  PostgreSQL cases passed again. Full baseline18=18, no new failures.
+  Build117716501200 completed16:05:36Z. Independent helper and root verified
+  artifact12141838839, leaddrive-prod-f41ba03328b5aeda9c06f5e5baf27437683d255b,
+  471505963bytes, SHA-256
+  bafac5ad79219bdbab6ef5844fbe1779403e71988c1cedc2961ee48baf3257de.
+- Deployment117722329471 verified structural ledger, RLS, ownership,
+  exact-money and Fund projection postconditions16:10:53Z. Public workflow
+  probes16:11:51–53Z returned ping200, exact artifact SHA, login/CSS/JS200.
+  Root independently repeated all five public checks16:12:32Z with the same
+  full artifact SHA; no cached-marker-only evidence was used.
+- Deployment also explicitly reports plain recovery mode, encrypted recovery
+  commissioning inactive, four recovery timers stopped and off-box log
+  shipping inactive. Application health does not supersede those gaps. This
+  application release did not install/start the Java worker, activate Kafka,
+  change offsets, replay source data, commission recovery or buy resources.
+- Rechecked current main=public artifact=f41ba033, production policy exactmain,
+  all recent deployment runs completed and no active inventory duplicate.
+  Reviewed inventory script's Git blob matches current main. Started exactly
+  one existing aggregate-only inspection39143994149 at16:13:04Z; receipt
+  pending. No direct production SSH fallback or secret output was used.
