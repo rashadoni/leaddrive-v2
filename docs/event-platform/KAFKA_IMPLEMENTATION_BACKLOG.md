@@ -438,3 +438,40 @@ K4.1–K4.3 и реальные DB/role/race tests ещё впереди. Produc
 restart, TLS/HA/archive, operator replay, consumer activation и all-module
 adoption остаются открытыми. Следующая ограниченная реализация — DB adapter;
 root независимо продолжает final deploy и existing recovery prerequisites.
+
+### Подтверждённая поставка и текущий узкий blocker — 2026-10-18 00:52 UTC
+
+Это обновление заменяет pending-deploy / PLANNED-adapter выше, сохраняя историю.
+
+- K0.1: поставка предыдущих трёх PR подтверждена deploy39079668201 SUCCESS,
+  точным publicSHA `7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd`, ping и
+  structural postconditions. Последующий текущий main
+  `fa738db91d5e9a7621f86f113a305db4cafba582` также выложен через
+  deploy39080638658 SUCCESS и сверён с publicSHA/ping. Это поставка кода,
+  не активация Kafka/worker и не новый deep replay Fund.
+- K0.3/K2.1: свежий read-only inventory39083640492 SUCCESS на том же main,
+  наблюдение00:41:05UTC. PG16.15, wal_level=replica, slot cap-1, slots0,
+  outbox publication absent; все8 таблиц RLS+FORCE. Четыре recovery timers
+  inactive; pgpass0600/CA0640 service-readable. Точные числа и пределы
+  интерпретации — в [baseline](READINESS_BASELINE.md). Logical restart,
+  restore, ключи/подписи и независимое хранилище не подтверждены.
+- K4.2/K4.3: IN-PROGRESS, не PLANNED — PR871 содержит неактивный SQL adapter
+  с настоящим COMMIT factory, tenant/build/fence lock, PG full-envelope hash,
+  атомарными shadow/inbox/checkpoint. Нет вызывающего broker worker/ack и
+  production установки ролей. Приложение/source/active v1/pointer/effects
+  этим адаптером не изменяются.
+- Реальный PG gate39083337348 на0917e6227: **8/9 PASS**. Уже подтверждены
+  исходный source guard, два tenant/независимый RLS, точные суммы/parity,
+  дубли/монотонные checkpoints, tampering, SQL/deferred-COMMIT rollback,
+  запреты прав и настоящий controller race. Конкурентный INSERT принудительно
+  даёт1commit/1reject; точная Prisma wrapper shape неизвестна. До доказанного
+  целого transaction retry эта часть K4.2 НЕ закрыта и merge заблокирован.
+- Typecheck того же run SUCCESS по существующим gates: наши5 Fund TS-файлов
+  без диагностик; общие1326 advisory /64 gated пары=baseline64, не глобальный
+  чистый TypeScript. Synthetic CDC39083337253 SUCCESS на том же SHA.
+- Диагностический draft3da0223f5 даёт только обезличенные structural facts,
+  не разрешает произвольные SQL/unique errors и не меняет runtime isolation.
+  Новый PG/TS proof ещё NOT RUN. Очередь: завершить этот gate и обычную
+  поставку; затем отдельный ограниченный read-only Object Lock diagnostic
+  для K2.1/K3.2/K3.6. Не повторять commissioning и не включать timers ради
+  зелёного отчёта. K4 broker/rebalance/replay и K8 остаются NOT ACTIVATED.

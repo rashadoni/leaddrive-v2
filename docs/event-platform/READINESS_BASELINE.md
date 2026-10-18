@@ -204,3 +204,48 @@ remains PLANNED / NOT IMPLEMENTED; role/race/transaction tests, production
 logical WAL/restart, TLS/HA/archive/recovery, replay and all-module adoption
 remain open. The next source phase is that bounded adapter, while root separately
 monitors final delivery and investigates the existing recovery prerequisites.
+
+## Delivered source increment and restricted-shadow gate — 2026-10-18 00:52 UTC
+
+This supersedes the preceding pending deploy and unimplemented-adapter snapshot
+without removing it. It is not Kafka activation or all-module readiness.
+
+- [Deploy39079668201](https://github.com/rashadoni/leaddrive-v2/actions/runs/39079668201)
+  SUCCESS on `7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd`, exact public
+  artifact/ping and structural event-platform postconditions verified. Current
+  main descendant `fa738db91d5e9a7621f86f113a305db4cafba582` subsequently
+  completed [deploy39080638658](https://github.com/rashadoni/leaddrive-v2/actions/runs/39080638658)
+  SUCCESS with another exact public marker/ping check. Neither deploy activates
+  an unreferenced worker or proves a new per-Fund deep rebuild.
+- Fresh read-only [inventory39083640492](https://github.com/rashadoni/leaddrive-v2/actions/runs/39083640492)
+  SUCCESS on that matching current artifact at `00:41:05 UTC`: PG160015,
+  readOnly=on, wal_level=replica, slot-WAL cap-1, slots0 and outbox publication
+  absent; all eight tables have RLS+FORCE. Four recovery timers inactive,
+  canonical private service-readable pgpass files and readable CA files.
+  No authentication/restore/custody proof follows from those file observations.
+- Production RAM12247548/10038012kB total/available, swap0, filesystem
+  206900281344/175297921024bytes total/available; WAL cumulative17864896685
+  with unchanged September4 reset. These are observations, not a peak/outage
+  sizing budget or independent failure domains. No logical-WAL/restart action.
+- [PR871](https://github.com/rashadoni/leaddrive-v2/pull/871) now contains an
+  INACTIVE real interactive Fund shadow SQL adapter: exact tenant/build/code/
+  fence lock, immutable full-envelope PG hash, exact reducer and atomic
+  shadow/inbox/checkpoint. No caller, broker acknowledgement, role installation,
+  source/active/pointer/effect writes, activation or replay exists in this scope.
+- Actual restricted-LOGIN PG gate on `0917e6227` reached **8/9 PASS** in
+  [39083337348](https://github.com/rashadoni/leaddrive-v2/actions/runs/39083337348):
+  actual migrations, tenant/build RLS, independent exact parity, duplicates,
+  tampering, SQL/deferred-COMMIT rollback, privilege denial and controller race.
+  The deterministic competing INSERT rejects one transaction; its actual
+  Prisma error shape remains UNKNOWN, so whole-transaction retry acceptance
+  has not been reached. This partial result does not close K4.2.
+- That run's typecheck SUCCESS under existing blocking gates: zero diagnostics
+  in all five task-owned Fund TS paths,1326 advisory diagnostics repository-wide,
+  64 gated pairs equal baseline64. Not a clean-TypeScript repository claim.
+  Exact-head synthetic CDC39083337253 SUCCESS.
+- Draft diagnostic head `3da0223f5c7b0ce9b461e5373f77013d4e341f59` prints
+  only safe structural error facts and does NOT broaden accepted failures.
+  Actual new-head PG/typecheck proof still pending; no merge or production
+  adapter delivery claimed. Next: finish this gate/release, then sanitized
+  read-only Object Lock cause diagnostics. Recovery prerequisites, broker
+  runtime, production topology/archive/DR and all-module adoption remain open.

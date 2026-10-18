@@ -1285,3 +1285,20 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   for the existing typecheck to finish, then use one ordinary new frozen-head
   CI to obtain actual wrapper facts before changing acceptance. Unknown errors
   must still fail closed; no merge, production adapter activation or replay.
+
+### Diagnostic checkpoint and status reconciliation — 00:52 UTC
+
+- Prior0917 typecheck117544746619 completed SUCCESS at00:49:38UTC: zero own
+  Fund diagnostics,1326 repository advisory diagnostics/64 gated pairs equal
+  baseline64, syntax/missing-module/undefined-name gates PASS. Its overall run
+  remains FAILURE because the competing PG error wrapper is still unknown.
+- After that old run became terminal, pushed diagnostic3da0223f5c7b0ce9b461e5373f77013d4e341f59
+  once as draft. No rerun, manual cancellation, classifier widening or runtime
+  change. Independent read-only diff review found no diagnostic data leak;
+  completed old logs contain no actual Prisma code/meta, so inference is not
+  substituted for the next real probe.
+- Appended current production/inventory and partial8/9 adapter state to baseline
+  and backlog, explicitly superseding stale pending/PLANNED snapshots rather
+  than erasing them. These are LOCAL docs checkpoints while the remote head
+  remains frozen3da for actual CI. Next required proof is its safe structural
+  error result, then a justified narrow fix and full green release.
