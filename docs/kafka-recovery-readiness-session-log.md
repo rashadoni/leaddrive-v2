@@ -224,3 +224,20 @@
   common release. Next operational step requires truthful independent custody
   evidence or an explicitly reviewed change to recovery policy; current user
   request to retain online copy is not itself such a policy change.
+
+## 2026-10-19: alternative requested, Farah participation declined
+
+- User explicitly declines involving Farah and requests alternative. Do not
+  keep asking to recruit her; original Farah-participation plan superseded.
+- Inspected existing independent operator checks and private/plaintext boundary.
+  No permitted owner-mode admission currently exists; different owner account
+  or Codex-generated signer is not independent evidence.
+- Prepared inactive A3_OWNER_OPERATED_RECOVERY_PROPOSAL.md: one-owner technical
+  encrypted/scratch drill on Mac, honest separate evidence/status, no assertion
+  of two offline copies, and no false independent readiness. Requires a reviewed
+  policy/schema/verifier/admission implementation before production use. Existing
+  independent and Kafka/enterprise gates stay unchanged. No services purchased.
+- Scope here is a concrete alternative proposal, not authorization to silently
+  weaken existing live gates. Production remains unchanged. Proposed outcome
+  distinguishes actual technical restoration from independent certification.
+- Local checkpoint only, avoiding CI churn pending common coordinator delivery.
