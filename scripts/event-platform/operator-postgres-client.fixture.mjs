@@ -3,16 +3,20 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 function guard() {
+  assert.equal(process.env.GITHUB_ACTIONS,'true')
   assert.equal(process.env.LD_OPERATOR_DISPOSABLE,'1')
   assert.equal(process.env.PGDATABASE,'kafka_operator_test')
   assert.equal(process.env.PGUSER,'control_test_admin')
   assert.ok(['localhost','127.0.0.1'].includes(process.env.PGHOST))
+  assert.match(process.env.PGPORT ?? '',/^[1-9][0-9]{0,4}$/)
+  assert.ok(Number(process.env.PGPORT)<=65535)
+  for(const key of ['PGHOSTADDR','PGSERVICE','PGSERVICEFILE']) assert.ok(!process.env[key])
 }
 export const quoteFixture = value => `'${String(value).replaceAll("'","''")}'`
 function open(login,options={}) {
   guard()
   const child=spawn('psql',['-X','-qAt','-v','ON_ERROR_STOP=1','-v',options.sanitizedDiagnostics===true?'VERBOSITY=verbose':'VERBOSITY=sqlstate'],{
-    env:{...process.env,PGUSER:login,PGPASSWORD:'operator-fixture-only',PGOPTIONS:'-c statement_timeout=10000 -c lock_timeout=2000'},
+    env:{...process.env,PGUSER:login,PGCONNECT_TIMEOUT:'5',PGPASSWORD:'operator-fixture-only',PGOPTIONS:'-c statement_timeout=10000 -c lock_timeout=2000'},
     stdio:['pipe','pipe','pipe'],
   })
   let pending, buffer='', errors='', closed=false

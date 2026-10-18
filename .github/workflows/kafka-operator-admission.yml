@@ -2,7 +2,7 @@ name: Kafka operator admission isolated proof
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'ops/event-platform/operator/**'
       - 'scripts/event-platform/operator-*.mjs'
@@ -47,11 +47,16 @@ jobs:
       - name: Validate scripts and offline alert receipts
         run: |
           node --check scripts/event-platform/operator-admission.integration.mjs
-          node --test scripts/event-platform/operator-alert-evidence.test.mjs scripts/event-platform/operator-recovery-evidence.test.mjs scripts/event-platform/operator-fund-snapshot.test.mjs scripts/event-platform/operator-fund-canary.test.mjs scripts/event-platform/operator-stop-evidence.test.mjs
+          node --test scripts/event-platform/operator-alert-evidence.test.mjs scripts/event-platform/operator-recovery-evidence.test.mjs scripts/event-platform/operator-fund-snapshot.test.mjs scripts/event-platform/operator-fund-canary.test.mjs scripts/event-platform/operator-stop-evidence.test.mjs scripts/event-platform/operator-admission-guard.test.mjs
       - name: Real named-login PostgreSQL admissions and races
         env:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
         run: node --test scripts/event-platform/operator-admission.integration.mjs
+
+      - name: Own staged COMMIT and shadow-pointer follow-on proof
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+        run: node --test scripts/event-platform/operator-shadow-composition.integration.mjs
 
       - name: Single-use observer stop challenges in actual PostgreSQL
         env:

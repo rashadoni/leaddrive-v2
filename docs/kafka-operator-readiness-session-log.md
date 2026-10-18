@@ -882,3 +882,21 @@ claimed proven. Upstream PostgreSQL commit01463e1cccd33fb11b33a4dd6dbebcad3c5341
 (https://www.postgresql.org/message-id/E1tb0y4-0037sb-1e@gemulon.postgresql.org)
 describes the deferred-role change as master-only, not back-patched. Diagnosis
 and any least-privilege closure still require actual pinned16.13 evidence.
+
+### Current-main conflict resolution, preserving original checks
+
+Resolved feature merge with origin/main421260026. Original admission integration
+file and its new negative route-guard test remain byte-identical to main; our
+stronger staged-COMMIT and seven shadow cases moved to a new addon file. Workflow
+retains upstream ready_for_review event and admission-guard units plus our later
+steps. Own shared disposable transport now mirrors upstream CI/port/hostaddr/
+service-denial and connect-timeout routing requirements. No foreign gate weakened.
+Our journal retains its entire previous prefix; upstream journal/map/README and
+runbook were already contained in ours. Backlog takes current upstream base
+updates plus our appended preparation sections, retaining both histories.
+
+Runner-policy72, syntax, diff and exact original admission-file comparison PASS.
+No diagnostic PG run exists yet for conflicted776a51e13. After this feature-only
+merge commit, rerun its pending exact-object diagnosis; target remains PG16.13,
+no existing trigger altered or made immediate. Main's deployed delivery activity
+belongs to the original session, not this preparation branch.

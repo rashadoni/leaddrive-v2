@@ -12,6 +12,7 @@ type MockClient = {
   $queryRawUnsafe: ReturnType<typeof vi.fn>
   $executeRawUnsafe: ReturnType<typeof vi.fn>
   $disconnect: ReturnType<typeof vi.fn>
+  $transaction: ReturnType<typeof vi.fn>
 }
 const mocks = vi.hoisted(() => ({ clients: [] as MockClient[], construct: vi.fn(), spawn: vi.fn() }))
 vi.mock("@prisma/client", () => ({ PrismaClient: vi.fn(function(options: unknown) { return mocks.construct(options) }) }))
@@ -49,6 +50,7 @@ beforeEach(() => {
     const client: MockClient = { options: configuration,
       $queryRawUnsafe: vi.fn(async () => [{ rolname: "event_app" }, { rolname: "event_migrator" }]),
       $executeRawUnsafe: vi.fn(async () => 1), $disconnect: vi.fn(async () => {}),
+      $transaction: vi.fn(async (work: (tx: MockClient) => Promise<unknown>) => work(client)),
     }
     mocks.clients.push(client)
     return client
@@ -58,7 +60,7 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs() })
 
 describe("shared disposable Fund fixture boundary", () => {
-  it("keeps the unscoped test fixture reachable only by its two tests and the admitted combined drill", () => {
+  it("keeps the unscoped test fixture reachable only by its tests and admitted combined/full-CDC drills", () => {
     const roots = ["src", "scripts", "apps", "services", "workers", "telegram-bridge", "ops", "deploy", "tests", ".github"]
     const files = [...roots.flatMap(sourceFiles), ...readdirSync(".", { withFileTypes: true })
       .filter(entry => entry.isFile() && /\.[cm]?[jt]sx?$/.test(entry.name)).map(entry => resolve(entry.name))]
@@ -69,6 +71,7 @@ describe("shared disposable Fund fixture boundary", () => {
     }).map(file => relative(process.cwd(), file))
     expect([...new Set(importers)].sort()).toEqual([
       "scripts/event-platform/test-broker-postgres.ts",
+      "scripts/event-platform/test-cdc-fund-postgres.ts",
       "src/__tests__/event-platform-fund-shadow-fixture.test.ts",
       "src/__tests__/event-platform-fund-shadow-postgres.test.ts",
     ])
@@ -109,11 +112,77 @@ describe("shared disposable Fund fixture boundary", () => {
       const fixture = createFundShadowPostgresFixture({ adminUrl, environment })
       expect(fixture.topic).toBe(`ld.${environment}.finance.events.v1`)
       expect(() => fixture.scratch).toThrow("not ready")
+      expect(() => fixture.databaseName).toThrow("not ready")
       expect(() => fixture.sql("SELECT 1")).toThrow("not ready")
       await fixture.close()
     }
     expect(mocks.construct).not.toHaveBeenCalled()
     expect(mocks.spawn).not.toHaveBeenCalled()
+  })
+
+  it.each(["", "f".repeat(39), "F".repeat(40), "f".repeat(41), "main"])("rejects an invalid fixture release pin before client creation: %s", codeSha => {
+    expect(() => createFundShadowPostgresFixture({ adminUrl, environment: "testbroker", codeSha })).toThrow()
+    expect(mocks.construct).not.toHaveBeenCalled()
+    expect(mocks.spawn).not.toHaveBeenCalled()
+  })
+
+  it("exposes only its confirmed generated scratch identity, never a caller-selected DB", async () => {
+    const fixture = createFundShadowPostgresFixture({ adminUrl, environment: "testbroker" })
+    expect(() => fixture.databaseName).toThrow("not ready")
+    await fixture.setup()
+    expect(fixture.databaseName).toMatch(/^ld_fund_shadow_[1-9][0-9]*_[a-f0-9]{12}$/)
+    expect(mocks.clients[0].$executeRawUnsafe).toHaveBeenCalledExactlyOnceWith(`CREATE DATABASE "${fixture.databaseName}"`)
+    await fixture.close()
+    expect(() => fixture.databaseName).toThrow("not ready")
+  })
+
+  it.each([false, true])("uses explicit authenticated app source writes only when opted in: %s", async sourceAppWrites => {
+    const fixture = createFundShadowPostgresFixture({ adminUrl, environment: "testbroker", sourceAppWrites })
+    await fixture.setup()
+    const scratch = mocks.clients[1]
+    scratch.$queryRawUnsafe.mockResolvedValue(Array.from({ length: 6 }, (_, index) => ({ value: '{}', key: 'synthetic-key',
+      hash: 'a'.repeat(64), eventId: `10000000-0000-4000-8000-${String(index).padStart(12, '0')}`, eventType: 'synthetic' })))
+    const original = mocks.construct.getMockImplementation()!
+    mocks.construct.mockImplementation(configuration => {
+      const client = original(configuration) as MockClient
+      client.$queryRawUnsafe.mockResolvedValue([{ safe: true }])
+      return client
+    })
+    try {
+      const context = await fixture.fixture()
+      const sourceClients = mocks.clients.filter(client => new URL((client.options as { datasources: { db: { url: string } } }).datasources.db.url).username === 'event_app')
+      expect(sourceClients).toHaveLength(sourceAppWrites ? 1 : 0)
+      const writer = sourceAppWrites ? sourceClients[0] : scratch
+      expect(writer.$transaction).toHaveBeenCalledTimes(6)
+      const queries = writer.$queryRawUnsafe.mock.calls
+      const tenantQueries = queries.filter(([query]) => query === "SELECT set_config('app.org_id', $1, true)")
+      expect(tenantQueries).toHaveLength(6)
+      expect(tenantQueries.every(([, org]) => org === context.scope.organizationId)).toBe(true)
+      const identities = queries.filter(([query]) => query.includes("current_user = 'event_app'"))
+      expect(identities).toHaveLength(sourceAppWrites ? 6 : 0)
+      if (sourceAppWrites) {
+        expect(writer.$disconnect).toHaveBeenCalledOnce()
+        expect(identities.every(([query]) => query.includes('NOT rolsuper AND NOT rolbypassrls AND NOT rolreplication'))).toBe(true)
+        expect(scratch.$executeRawUnsafe.mock.calls.some(([query]) => /INSERT INTO (organizations|funds|fund_transactions)|UPDATE funds SET/.test(query))).toBe(false)
+      }
+      expect(writer.$executeRawUnsafe.mock.calls.filter(([query]) => query.includes('INSERT INTO fund_transactions'))).toHaveLength(2)
+    } finally { await fixture.close() }
+  })
+
+  it("refuses canonical writes when the authenticated source login assertion fails", async () => {
+    const fixture = createFundShadowPostgresFixture({ adminUrl, environment: "testbroker", sourceAppWrites: true })
+    await fixture.setup()
+    const original = mocks.construct.getMockImplementation()!
+    mocks.construct.mockImplementation(configuration => {
+      const client = original(configuration) as MockClient
+      client.$queryRawUnsafe.mockResolvedValue([{ safe: false }])
+      return client
+    })
+    await expect(fixture.fixture()).rejects.toThrow("real non-bypass app login")
+    const writer = mocks.clients[2]
+    expect(writer.$executeRawUnsafe).not.toHaveBeenCalled()
+    await fixture.close()
+    expect(writer.$disconnect).toHaveBeenCalledOnce()
   })
 
   it("requires existing bootstrap roles and never creates or drops shared roles", async () => {

@@ -860,6 +860,146 @@ is superseded for this scoped integration proof only. Separate synthetic CDC
 still open. Mandatory static-checks and normal merge/release remain pending;
 no production consumer, replay or recovery commissioning occurred.
 
+### Corrected lifecycle source verified and merged — 2026-10-18 18:58 UTC
+
+Superseding the preceding pending-source receipt: PR889 final source
+`ea6d16965fdafdf5f0245f6bd88ed3485311edbf` passes all5 mandatory checks,
+actual Next/generated-client strict types,113 fixture/lifecycle tests,
+13 broker cases and8 combined restricted-SQL cases (run39154321016).
+Full typecheck report contains zero diagnostics in the task-owned files;
+three previously advisory NODE_ENV test errors were corrected before merge,
+and strict CI now includes the real Next ambient declaration to prevent return.
+No full-suite/type diagnostic baselines were weakened.
+
+Ordinary merge SHA `4cbdece263fa78d67f763fc32f7c03b17035c9b4` at18:58:04Z;
+automatic application release39156579615 is pending build/quality/smoke.
+This does not package/install/activate the separate worker. Next smallest
+inactive prerequisite is governed launch/config admission and immutable worker
+manifest, followed by actual direct-JVM lifecycle composition. Full Debezium
+to restricted-SQL rebuild, infrastructure HA/TLS/ACL, recovery evidence and
+independent confirmation, operator lifecycle/promotion and other domain
+adoption remain open. No production consumers, offset/reset/replay or backup
+commissioning was performed by this delivery.
+
+### PR889 application release verified — 2026-10-18 19:29 UTC
+
+Release39156579615 SUCCESS; production job117766465860 completed19:27:57Z.
+Actual standalone artifact and independent public build-info both identify
+`4cbdece263fa78d67f763fc32f7c03b17035c9b4`. Public ping, login, hashed CSS/JS
+and structural event-platform/RLS postconditions passed. Existing Fund
+cutover receipt was reused; no fresh deep rebuild is claimed.
+
+The inactive lifecycle prerequisite is delivered as source/application release,
+not a separately packaged or active Kafka/JVM service. K4.1/K4.8 overall,
+full CDC-to-SQL composition, independent recovery and governed activation
+remain open. A single fresh aggregate read-only inventory is pending; no
+consumer/offset/replay, WAL/slot, timer or recovery mutation was performed.
+
+### Fresh inventory after delivered lifecycle slice — 2026-10-18 19:31 UTC
+
+Read-only39158980732 SUCCESS on exact deployed4cbdece263fa, observed19:29:40Z:
+source wal_level=replica, slots0/active0, outbox publication absent, WAL slot
+cap=-1. All8 inspected tables retain RLS+FORCE RLS; estimated rows are not
+exact counts. Four scoped recovery timers remain inactive; restore verification
+was not performed. About85% host memory/filesystem available is not HA proof.
+No source/runtime/backup mutation followed this successful inventory.
+
+The delivered prerequisite does not complete K4.1/K4.8 or production readiness.
+Next source slice is offline governed launch/config admission and immutable
+worker binding, reusing current Fund scope/build and activation contracts.
+Offline validation must not claim actual broker metadata, artifact bytes,
+authenticated independent approval or real recovery. Existing secret-manager
+references remain authoritative; arbitrary local credential files are not a
+replacement. Actual direct JVM composition, full CDC-to-SQL proof and the
+previously listed activation/all-domain gaps remain open.
+
+## Семь этапов автономного выполнения — поручение владельца 2026-10-18
+
+Владелец поручил записать все семь этапов, выполнять их автономно по порядку
+и разделять подготовку на несколько сессий, когда это ускоряет работу.
+Разрешённый обычный маршрут изменений: отдельная ветка → GitHub PR → все
+обязательные и относящиеся к изменению проверки → merge → GitHub production
+workflow → фактический artifact SHA, ping и проверка поведения. Готовность
+этапа отмечается только по его результату и сохранённым доказательствам.
+Подготовка независимых частей может идти параллельно; тяжёлые интеграционные
+испытания и production-операции координируются последовательно. Платные
+ресурсы не приобретаются. Фактическое независимое подтверждение восстановления
+и существующие эксплуатационные ограничения сохраняются.
+
+| Этап | Работы по порядку | Условие завершения | Текущий статус |
+|---|---|---|---|
+| A1. Проверяемый отдельный обработчик | A1.1 Проверка плана запуска, tenant/build/role/group/version и secret references; A1.2 SHA-привязанный пакет, проверка его файлов и ограниченный прямой запуск JVM; A1.3 Сборка и реальные stop/restart испытания | Проверенный пакет и конфигурация запуска; настоящий управляемый JVM вместе с Kafka и restricted SQL; корректная остановка до/после COMMIT, отсутствие двойного применения | В РАБОТЕ; lifecycle prerequisite PR889 уже доставлен, A1 целиком ещё не завершён |
+| A2. Полная цепочка событий | A2.1 Реальный Debezium из разрешённого outbox; A2.2 Kafka → Fund shadow SQL; A2.3 Полная история, повреждённый расчёт, дубли, остановка и повторный запуск для двух synthetic tenants | Один сквозной результат на реальных CDC/Kafka/SQL, точные суммы и watermarks; source/другой tenant/внешние эффекты не изменены | ОЖИДАЕТ; отдельные transport и consumer proofs не засчитываются как A2 |
+| A3. Резервирование и доказанное восстановление | A3.1 Сверка существующего recovery-контракта и пригодности scratch; A3.2 Проверенные зашифрованные копии БД, секретов и runtime; A3.3 Восстановление в изолированную среду и независимое подтверждение; A3.4 Включение расписаний после выполнения их условий | Свежая восстанавливаемая копия, измеренные RPO/RTO, подписи/receipts, доставленные alerts; исходная база не заменена | ОЖИДАЕТ; четыре scoped timers неактивны по inventory39158980732 |
+| A4. Production-инфраструктура | A4.1 Инвентарь уже доступных независимых ресурсов и бюджет; A4.2 Broker/Connect/Registry deployment; A4.3 TLS, ACL, private routes, RF/minISR; A4.4 Retention/archive/WAL budgets и согласованное CDC-обслуживание | Подтверждённая topology и отказоустойчивость по действующему контракту; отсутствие неподтверждённых расходов; ограниченная нагрузка и сохранность истории | ОЖИДАЕТ; source logical CDC не commissioned |
+| A5. Управление и аварийные действия | A5.1 Authenticated operator admission и жизненный цикл build/lease; A5.2 Мониторинг и фактически доставленные тревоги; A5.3 Promotion/catch-up/rollback и выполнение runbook | Воспроизводимые drills, сохранённые evidence, рабочие alerts и возврат версии без потери новых данных | ОЖИДАЕТ |
+| A6. Production-пилот Fund | A6.1 Проверка A1–A5 и фактических approval/recovery evidence; A6.2 Разрешённый ограниченный canary; A6.3 Parity под новыми событиями и проверка остановки/возврата | Фактически работающий ограниченный поток Fund, сверка по организациям, ноль повторных внешних действий и подтверждённый rollback | ОЖИДАЕТ; consumers/replay не включены предыдущей выкладкой |
+| A7. Все остальные модули | Для каждого домена выполнить K6.D.1–K6.D.8 из существующей матрицы 27 domainId; разделить историческую миграцию, source facts, projections и effects; пройти canary/rollback каждой волны | Отдельная приёмка всех write paths, tenant isolation, корректировок, rebuild и effects по каждому домену | ОЖИДАЕТ; Fund не означает готовность всей Finance или остальных модулей |
+
+В каждом этапе: реализация → узкие проверки → реальные относящиеся к нему
+интеграционные проверки → обычная доставка → проверка результата → запись
+receipt и следующей точки. Не объявлять A1 завершённым по одному parser-тесту,
+A2 по двум раздельным smoke, A3 по наличию файла или A6 по успешному merge.
+Промышленная активация допускается только после фактического выполнения её
+условий; отсутствующие доказательства нельзя заменять именами или true в JSON.
+
+### A5/A7 operator preparation — 2026-10-19
+
+На main226dde0e7 отдельная operator-readiness ветка добавляет inactive
+read-back verifier доставки десяти monitoring alarms и
+[KAFKA_OPERATOR_READINESS.md](./KAFKA_OPERATOR_READINESS.md): A5 boundary audit,
+27-domain source/projection/effect/idempotency/rebuild/evidence map и точную
+очередь следующей работы. Это не authenticated operator API и не activation.
+Boolean monitoring flags остаются недостаточным доказательством доставки;
+provider adapter/real challenge/ack receipts ещё NOT RUN.
+
+A1/A2 подготовлены отдельно в codex/kafka-worker-admission-20261018,
+e298057d94804417d38fb105d960721bae6fc1cc; здесь не дублируются. Новые реальные
+integration checks ещё NOT RUN. Общая доставка остаётся исходной сессии
+«Проверить защиту Kafka-консюмера». Никаких production mutations, consumer
+startup, offset/replay, sends, merge или deploy эта подготовка не выполняет.
+
+### A5 inactive authenticated DB admission prepared — 2026-10-19
+
+Draft PR894 extends the bounded operator preparation with a private SQL schema
+outside production migrations: trusted named-login mapping, immutable Fund
+plan/hash, independent approval, one-time consume, controller-bound generation,
+revoke and deferred transaction-end lease check. There is no HTTP/runtime
+executor, business-table grant, read-pointer switch or Kafka operation.
+
+Actual isolated PG16 run39164468500 on ab0aff696 passed13/13 admissions/races
+and28/28 receipt units. Later role/expiry/deferred-fence hardening needs its
+own exact-source receipt; see the append-only operator journal for updates.
+A passing control-schema fixture does not close K5 catch-up/promotion/rollback,
+K7 full-domain recovery, actual delivered monitoring or K8 activation.
+
+The existing scanner flags historical ordinary README prose as generic-api-key;
+no scanner policy/check/history was altered to bypass it. PR remains draft,
+without merge/deploy. Original A1/A2 PR891 and integration scheduling remain
+ owned by the originating session; this branch neither starts nor reruns them.
+
+### A1/A2 exact synthetic software proofs obtained — 2026-10-19
+
+Superseding the earlier pending integration receipts only, NOT runtime gates:
+actual direct-JVM/Kafka/restricted-SQL lifecycle passed in39164817267 on
+source1d526a126, with verified client-only candidate bound to checked-out merge
+SHA3b4fde212f. Corrected full canonical app-role SQL → Debezium snapshot/WAL
+cold restart → Kafka → restricted Fund SQL passed BOTH jobs of39169379400 on
+267507fcca5c59d5b19cb80652485a1b985b1fae. Exact two-tenant decimal parity,
+post-COMMIT ACK loss/redelivery, synthetic bad old shadow and corrected NEW
+build/group full-history rebuild passed; source/active/effects/third tenant,
+old bad builds and old group unchanged. External sends NONE. Historical buggy
+binary NOT CLAIMED. Full-CDC drill uses its existing container bridge; the
+separate direct-JVM lifecycle proof is not relabeled as that same drill.
+
+PR891 remains draft pending FINAL-source protected and feature checks, normal
+merge and release. Earlier frozen A5 admission snapshot passed17 actual PG
+cases; later A5 evidence collectors are held separately for concrete negative
+controls. These proofs do not commission a production worker, logical CDC,
+HA/TLS/ACL, independent recovery/Farah confirmation, real alerts/controller,
+Fund canary or27-domain adoption. A3/A4 and activation remain NO-GO.
+
+
 ### A5/A7 operator preparation — 2026-10-19
 
 На main226dde0e7 отдельная operator-readiness ветка добавляет inactive
