@@ -1128,3 +1128,20 @@ application canary/rollback, lifecycle/correction and independent restore/alarm
 drills. The 27-domain writer/effect/rebuild map remains the acceptance queue;
 topic presence never establishes protection. Hosted results and NOT RUN gates
 are recorded in docs/kafka-operator-readiness-session-log.md.
+
+
+### Signed verifier registration and bounded material continuation
+
+The inactive verifier now checks seven independently signed operational purposes
+against canonical source/shadow/checkpoint evidence and trusted key/clock/adapters.
+A separate named DB login can register one exact manifest/material/provenance per
+consumed request generation; operator self-registration remains denied. Tenant
+key fingerprints, verifier identity and admission are rechecked through final
+COMMIT. Material returns no hash beyond fixed row caps/1MiB. Hosted results remain
+in the append-only journal; synthetic signatures are not real operational proof.
+
+Remaining external prerequisites are independently managed tenant signers/key
+policy, authentic observer/provider/archive adapters and agreed staging scope.
+Actual consumers/replay/sends/production remain prohibited in this task. Original
+session owns operational/lifecycle/correction/restore drills and rollout; no
+27-domain G evidence set is closed by this software continuation.

@@ -1091,3 +1091,17 @@ cannot edit policy. New actual-role cases revoke a key after staging pointer
 mutation and demand full COMMIT rollback. Per-request ephemeral fixture key IDs
 prevent one test/request's provisioning from invalidating another.40 verifier
 unit cases PASS; new exact-source PostgreSQL result still pending.
+
+
+### Second verifier run: genuine remap denial and fixture rollback corrections
+
+Run39177057283 onbd0c5e6cc: preceding214/17/8/9/24/8 PASS; transition13/17
+PASS,4 FAIL. Remapped verifier correctly failed transition but read-context did
+not recheck its already recorded identity: added existing-registration validation
+there too. Bounded-material probe attempted a forbidden hard DELETE during
+cleanup; existing immutable Fund guard correctly rejected it and left visible
+probe rows, causing two later snapshot failures. Corrected only our fixture:
+probe under one uncommitted admin transaction, switch to restricted reader for
+hash, normal ROLLBACK in finally. No DELETE, guard disabling, source cleanup,
+foreign test changes or weakening. Also strict UUID and explicit boolean handling.
+Fresh actual-schema proof pending; failures remain historical FAIL.

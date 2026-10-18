@@ -314,3 +314,46 @@ broker, soak, archive/restore and delivery evidence remain absent. First-pointer
 bootstrap, correction policy, continuous promoted processing and application
 cutover are not implemented. No API, migration or active business integration
 loads this fixture.
+
+
+### Named verifier and signed provenance continuation
+
+The earlier owner-seeded/unbounded-material description above is superseded by
+`fund-evidence-registry.sql` and `operator-fund-verifier.mjs`. They remain inactive
+addons to the hosted composition, not a runtime installer or HTTP interface.
+Only a request UUID enters the verifier closure; DB context, manifest archive,
+canonical snapshot/reducer, key policy, receipt readers and clock are trusted
+service configuration. Response bytes must be bounded in transport before parse.
+The canonical source/shadow and exact checkpoint positions must match the pinned
+manifest. Material hash and canonical fold must share the same RR snapshot.
+
+Each of seven purposes (stop, broker, soak, archive, restore, approval, alerts)
+needs an Ed25519 signed raw UTF8 `FundOperationalAttestation`: fixed API version,
+purpose, signer principal, result=verified, unique receipt ID, request/plan hash/
+generation/manifest SHA/material hash, observedAt and validUntil. No URL/key is
+trusted from that document. An independent tenant/purpose/key policy pins public
+key bytes, signer and validity. Operator principals cannot be signers. The JS
+gate rereads prior policies after asynchronous reads. Private SQL policy rows
+recheck current key identity/fingerprint/validity/revocation during registration,
+transition and final deferred COMMIT. Signatures alone do not make observations
+true; keys/producers and durable signed-byte retention must be independently
+provisioned and audited.
+
+A named verifier login must be restricted, independently mapped to the tenant,
+separate from requester/approver/controller and without their or observer groups
+and capabilities. It gets only authenticated control-context read and one-use
+registration functions, no private table/source/pointer privileges. Registration
+pins exact raw manifest and provenance hashes and lease generation, bounds expiry
+and audits session_user. Final admission/verifier/key expiry or revocation rolls
+back staged control mutations. Schema owner remains trusted; the SQL endpoint
+trusts verifier service signature/reducer validation and cannot itself verify
+Ed25519 or physical truth. Never expose verifier DB credentials to an operator
+or a generic SQL/HTTP endpoint.
+
+Material queries use cap+1 row sentinels: build1/funds200/ledger1000/events1000/
+outbox1000/heads200/projections400/checkpoints128/inbox1000, no shadow/replay
+effect intent, and1MiB encoded material. Oversized input returns no hash. Executor
+sets5s statement/2s lock limits, collector10s transaction limit. These cap returned
+rows and certified bytes; they do not prove indexed scan cost or production RTO.
+Bigger tenants need a separately reviewed streaming/chunk design, not higher
+limits or truncated evidence. All proof signing keys/claims here are synthetic.

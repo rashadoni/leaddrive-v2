@@ -734,3 +734,35 @@ later statements, then perform final lease/build/evidence checks and pointer CAS
 before commit. No such runtime composition exists here. Keep schema-owner DDL
 frozen and preserve all worker/checkpoint/effect guards. Do not execute production
 recovery procedures from these preparation receipts.
+
+
+### Inactive verifier registration: operational acceptance requirements
+
+PR894 now includes named verifier registration and seven signed-purpose gates;
+owner-only fixture evidence seeding is superseded. The actual-schema composition
+still does not enable any operational command in this runbook. Trusted services
+must retain exact signed bytes and resolve keys independently per tenant/purpose.
+They must apply these checks BEFORE attesting the exact manifest/material hash:
+
+| Purpose | Required real observation before signing |
+|---|---|
+| stop | Independently issued single-use challenge; actual child close and SQL/ACK settlement; exact final checkpoints, using the existing stop read-back gate |
+| broker | Authenticated cluster ID/topic incarnation/group and every frozen end position; replay start/history and retention coverage with no gap |
+| soak | Trusted ordered observations for the complete minimum soak interval, lag/age thresholds, quarantine/effect counters and parity; no single boolean substitutes for interval evidence |
+| archive | Authenticated byte hashes and per-partition archive watermark covering every frozen source position |
+| restore | Independent isolated restore/reducer with exact history/state/invariant parity, retaining its receipt bytes |
+| approval | Independent release/artifact/change approval by a non-operator signer with current authority |
+| alerts | All ten rules actually triggered; authoritative delivered read-back and responsible recipient acknowledgement through the existing alert verifier |
+
+Missing key policy, disabled/remapped/expired signer, unsigned/partial receipts,
+stale source material or any unmatched scope/generation denies registration or
+final COMMIT. Named verifier credentials belong only to this trusted service.
+Owner provisioning is separate from operator authority. Revocation must update
+the durable SQL key policy (or revoke the admitted request), not merely delete a
+PEM file from one process. No ordinary operator can edit that policy.
+
+Material row/byte caps are hard fail-closed limits, not pagination. Exceeding them
+requires a new reviewed bounded rebuild design; do not raise limits to certify a
+partial history. No activation, first-pointer bootstrap, correction policy,
+continuous promoted-worker lifecycle or provider integration follows from these
+preparation tests. Those remain coordinated by the original delivery session.

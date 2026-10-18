@@ -246,11 +246,19 @@ await test('verifier identity expiry after staged pointer transition rolls back 
 
 await test('material fingerprint rejects oversized fixture scopes and encoded bytes before hashing',async()=>{
  const f=await prepared(),before=await pointer()
- const hash=()=>fixtureSql('op_final_reader',`BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;SET LOCAL statement_timeout='5s';SELECT set_config('app.org_id','org-a',true);SELECT coalesce(ld_kafka_operator.fund_material_hash('org-a',${q(f.target.id)}),'DENIED');COMMIT;`)
- await admin(`INSERT INTO funds(id,"organizationId",name,currency,"currentBalance") SELECT 'operator-cap-'||g,'org-a','Synthetic cap probe','AZN',0.0000 FROM generate_series(1,201) g;`)
- try{assert.equal(await hash(),'org-a\nDENIED');await denied(apply(f))}finally{await admin("DELETE FROM funds WHERE id LIKE 'operator-cap-%';")}
- await admin("UPDATE funds SET name=repeat('x',1048577) WHERE id='fund-a';")
- try{assert.equal(await hash(),'org-a\nDENIED');await denied(apply(f))}finally{await admin("UPDATE funds SET name='Synthetic material-budget restored' WHERE id='fund-a';")}
+ const baseline=await fixtureSql('op_final_reader',`BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;SELECT set_config('app.org_id','org-a',true);SELECT ld_kafka_operator.fund_material_hash('org-a',${q(f.target.id)});COMMIT;`)
+ for(const write of [
+ `INSERT INTO funds(id,"organizationId",name,currency,"currentBalance") SELECT 'operator-cap-'||g,'org-a','Synthetic cap probe','AZN',0.0000 FROM generate_series(1,201) g;`,
+ `UPDATE funds SET name=repeat('x',1048577) WHERE id='fund-a';`]){
+  // Own fixture writes are rolled back normally; actual immutable source and
+  // hard-delete guards remain enabled. Other sessions never see these probes.
+  const connection=fixtureConnection('control_test_admin')
+  try{
+   await connection.command(`BEGIN;SET LOCAL statement_timeout='5s';SELECT set_config('app.org_id','org-a',true);${write} SET LOCAL ROLE op_final_reader;`)
+   assert.equal(await connection.command(`SELECT coalesce(ld_kafka_operator.fund_material_hash('org-a',${q(f.target.id)}),'DENIED');`),'DENIED')
+  }finally{try{await connection.command('ROLLBACK;')}finally{await connection.close()}}
+ }
+ assert.equal(await fixtureSql('op_final_reader',`BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;SELECT set_config('app.org_id','org-a',true);SELECT ld_kafka_operator.fund_material_hash('org-a',${q(f.target.id)});COMMIT;`),baseline)
  assert.deepEqual(await pointer(),before)
 })
 

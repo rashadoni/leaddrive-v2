@@ -26,7 +26,7 @@ export function createFundEvidenceVerifier(config) {
   for(const fn of [readContext,readManifest,readSnapshot,readAttestation,readKey,register,clock]) check(typeof fn==='function')
   return async requestId=>{
     try {
-      check(typeof requestId==='string' && /^[0-9a-f-]{36}$/.test(requestId))
+      check(typeof requestId==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(requestId))
       const context=structuredClone(await readContext(requestId)),plan=context.plan
       check(context.requestId===requestId && hex(context.planHash) && typeof context.generation==='string' && /^[1-9][0-9]{0,18}$/.test(context.generation) && BigInt(context.generation)<=9223372036854775807n)
       check(Array.isArray(context.operatorPrincipals) && context.operatorPrincipals.length===3 && context.operatorPrincipals.every(token))

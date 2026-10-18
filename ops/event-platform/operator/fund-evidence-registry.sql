@@ -50,7 +50,7 @@ DECLARE q ld_kafka_operator.requests; v ld_kafka_operator.identities; a ld_kafka
 BEGIN
  SELECT * INTO q FROM ld_kafka_operator.requests WHERE id=p_id FOR SHARE;
  IF q.id IS NULL OR q.plan_hash IS DISTINCT FROM p_hash OR q.generation IS DISTINCT FROM p_generation OR p_generation<=0
- OR (q.status<>'consumed' AND NOT(p_settled AND q.status='settled'))
+ OR (q.status<>'consumed' AND NOT(p_settled IS TRUE AND q.status='settled'))
  OR q.expires_at<=clock_timestamp() OR q.lease_until<=clock_timestamp()
  OR q.plan->>'action' NOT IN ('promote','rollback') THEN RAISE EXCEPTION 'FUND_VERIFICATION_DENIED'; END IF;
  v:=ld_kafka_operator.fund_verifier(p_login,q.organization_id);
@@ -70,6 +70,9 @@ DECLARE q ld_kafka_operator.requests; previous uuid;
 BEGIN
  SELECT * INTO q FROM ld_kafka_operator.requests WHERE id=p_id;
  q:=ld_kafka_operator.fund_registration_current(q.id,q.plan_hash,q.generation,session_user);
+ IF EXISTS(SELECT 1 FROM ld_kafka_operator.fund_evidence_registrations WHERE request_id=q.id) THEN
+ PERFORM ld_kafka_operator.assert_fund_registration(q.id,q.plan_hash,q.generation);
+ END IF;
  PERFORM set_config('app.org_id',q.organization_id,true);
  SELECT "activeBuildId" INTO previous FROM public.projection_activations WHERE "organizationId"=q.organization_id AND "projectionName"=q.plan->>'projectionName';
  RETURN jsonb_build_object('requestId',q.id,'plan',q.plan,'planHash',q.plan_hash,'generation',q.generation::text,
