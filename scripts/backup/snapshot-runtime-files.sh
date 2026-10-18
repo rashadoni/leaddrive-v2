@@ -11,12 +11,19 @@ set -Eeuo pipefail
 umask 077
 
 FORCE_RETENTION_TIER=""
+OWNER_RECIPIENT=""
 if [ "${1:-}" = "--commission-monthly" ] && [ "$#" -eq 1 ]; then
   FORCE_RETENTION_TIER=monthly
+elif [ "${1:-}" = "--owner-operated" ] && [ "$#" -eq 2 ]; then
+  [[ "$2" =~ ^age1[0-9a-z]{58}$ ]] || exit 2
+  OWNER_RECIPIENT="$2"
+  FORCE_RETENTION_TIER=monthly
 elif [ "$#" -ne 0 ]; then
-  printf 'Usage: %s [--commission-monthly]\n' "$0" >&2
+  printf 'Usage: %s [--commission-monthly|--owner-operated PUBLIC_RECIPIENT]\n' "$0" >&2
   exit 2
 fi
+
+readonly OWNER_RECIPIENT
 
 BACKUP_ENV_FILE="${BACKUP_ENV_FILE:-/etc/leaddrive/backup.env}"
 SOURCE_ROOT="${RUNTIME_FILES_SOURCE_ROOT:-/var/lib/leaddrive-v2}"
@@ -90,6 +97,11 @@ set +a
   || fatal "RUNTIME_FILES_PATHS override is forbidden; the authoritative set is code-reviewed"
 [ "${RUNTIME_FILES_S3_PREFIX:-runtime-files}" = runtime-files ] \
   || fatal "RUNTIME_FILES_S3_PREFIX must remain runtime-files"
+
+if [ -n "$OWNER_RECIPIENT" ]; then
+  BACKUP_ENCRYPTION=age
+  BACKUP_AGE_RECIPIENT="$OWNER_RECIPIENT"
+fi
 
 require_env BACKUP_AGE_RECIPIENT
 require_env BACKUP_S3_ENDPOINT

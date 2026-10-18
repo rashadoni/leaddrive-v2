@@ -807,3 +807,14 @@ authority/PITR/second-failure-domain/runtime gates; его нельзя инте
 - operational state и все host-loss credentials/CA не имеют утверждённого
   backup либо детерминированного rebootstrap authority;
 - Kafka, archive и consumer recovery остаются passive для заявленного модуля.
+
+## Отдельный owner-operated technical proof — 2026-10-19
+
+Владелец отдельно разрешил режим без независимого проверяющего:
+[owner-operated recovery](operations/owner-operated-recovery.md).
+Его отдельный Actions workflow создаёт одноразовый encrypted data candidate и
+проверяет подписанный результат настоящего isolated restore владельцем.
+Это не fallback текущей ceremony: другой scope, signature namespace, signer
+allowlist и каталог evidence. Канонический recipient/env и schedules не меняются;
+independent/enterprise/Kafka readiness этим не закрываются. Для обеих схем
+шифрование, целостность и изоляция scratch обязательны.

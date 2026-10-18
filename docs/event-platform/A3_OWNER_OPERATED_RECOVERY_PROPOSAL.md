@@ -65,3 +65,12 @@ choose a weaker operational model explicitly; its limitations must be visible.
 Alternative preserving the full independent assurance is another real qualified
 operator instead of Farah; another account controlled by owner or Codex is not
 an independent person.
+
+## Implementation authorization — 2026-10-19
+
+Owner explicitly approved starting this alternative. The concrete bounded
+implementation is the one-shot route in
+[owner-operated recovery](../operations/owner-operated-recovery.md). Existing
+independent policy stays unchanged. This replaces the proposal's pending-policy
+status for the owner technical route only; it is not a production execution or
+successful real-data restore receipt.

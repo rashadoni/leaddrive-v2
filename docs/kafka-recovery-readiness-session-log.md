@@ -241,3 +241,56 @@
   weaken existing live gates. Production remains unchanged. Proposed outcome
   distinguishes actual technical restoration from independent certification.
 - Local checkpoint only, avoiding CI churn pending common coordinator delivery.
+
+## 2026-10-19: owner-mode implementation authorized
+
+- User says “начинай” in response to concrete owner-operated proposal; treat
+  separate owner-mode policy/implementation as approved. Farah participation
+  no longer required for this separate technical mode; independent readiness
+  and Kafka/enterprise admission are NOT granted by owner mode.
+- Plan: distinct signed key-readability receipt; explicit one-shot owner backup
+  candidate with unchanged canonical production recipient/env and no schedules;
+  shared data/scratch verifier with separate receipt scope/signature namespace;
+  exact-main Actions route and negative cross-mode tests. Existing independent
+  commissioning remains intact; owner receipts cannot activate its timers.
+- Do not enable canonical age policy before owner evidence/candidate readiness;
+  use explicit per-invocation recipient only for owner candidate, always age
+  encryption/Object Lock. No plaintext upload, no old-key overwrite, no log
+  cursor bootstrap/reseed. Actual owner technical recovery remains unproved
+  until real encrypted snapshots are restored and receipts checked.
+
+## 2026-10-19: owner technical route implementation checkpoint
+
+- Added explicit owner-key-readability proof with real fresh age canary,
+  separate owner SSH namespace/trust allowlist, exact actor/main/helper/recipient
+  bindings, strict bounded schema/freshness and no-clobber output. It makes
+  no offline/independence claims. Private keys remain outside repo/production.
+- Added dispatch-only exact-main owner Actions route for one-shot encrypted
+  DB/secrets/runtime candidate and owner restore receipt. Separate scope/root,
+  same-actor owner admission, preserved signer/key proof, immutable remote
+  version/COMPLIANCE checks; source env/recipient/schedules never changed.
+  Existing commissioned hosts or enabled/active timers are refused. No log
+  genesis, cursor, independent marker or enterprise/Kafka admission.
+- Shared backup helpers accept explicit owner-recipient argument only after CLI
+  validation; readonly selector cannot be inherited from env. Monthly retention
+  forced for DB/media; helpers still encrypt and verify uploads/canary normally.
+- Shared offline verifier adds explicit owner data-only invocation and distinct
+  signed receipt. All decrypt/checksum/scratch/tenant/migration/RLS/PII/runtime
+  proofs preserved. Standard/full invocation cannot accept owner candidates.
+- Updated actual helper hash pins in commission/readiness/server-deploy/TLS
+  helper; existing event-platform assets confirms consistency. Independent
+  verification remains default and retains separate signature/receipt rules.
+- Added bounded Linux CI owner crypto checks and included boundary tests in
+  protected PR/deploy tests. PR892 made draft while scope changes from docs to
+  code. No heavy checks run on Contabo.
+- Resource preflight14654MiB available/swap0/disk203G/pressure0. Sequential PASS:
+  9 owner tests including REAL age1.3.2/SSH crypto plus real archive-signature
+  admission/cross-mode failures; 29 pgpass contract tests; 28 TLS helper unit
+  tests; event-platform assets; runner-policy73 workflows; all changed helper
+  and embedded workflow Bash syntax; YAML parse and git diff --check.
+- NOT RUN locally: full typecheck/build/DB integration (Contabo workload rule);
+  actual production owner backup/decrypt/restore (new route not yet reviewed on
+  main, current Object Lock unknown_failure remains an unresolved live gate).
+- Runbook documents source operation, Linux scratch requirements, proof
+  packaging/certification, rollback/no-schedule boundary and honest statuses.
+  Public GitHub actor resolved as rashadoni; no impersonation needed.

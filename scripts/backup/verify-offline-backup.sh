@@ -7,6 +7,18 @@ set -Eeuo pipefail
 
 umask 077
 
+# A distinct owner-only technical proof; never an independent certificate.
+OWNER_OPERATED=0
+EVIDENCE_TYPE=archive-restore
+SIGNATURE_NAMESPACE=leaddrive-backup-evidence
+if [ "${1:-}" = --owner-operated ]; then
+  shift
+  OWNER_OPERATED=1
+  EVIDENCE_TYPE=owner-archive-restore
+  SIGNATURE_NAMESPACE=leaddrive-owner-backup-evidence
+  [ "$#" -eq 12 ] || { printf '%s\n' 'owner mode requires the data-only 12-argument interface' >&2; exit 1; }
+fi
+
 DATABASE_ARCHIVE="${1:-}"
 SECRETS_ARCHIVE="${2:-}"
 RUNTIME_FILES_ARCHIVE="${3:-}"
@@ -189,6 +201,10 @@ case "$CANDIDATE_FORMAT_VERSION:$#" in
   3:12) fatal "genesis candidate requires the exact first log archive" ;;
   *) fatal "candidate recovery catalog uses an unsupported format" ;;
 esac
+if [ "$OWNER_OPERATED" = 1 ]; then
+  [ "$CANDIDATE_FORMAT_VERSION" = 2 ] || fatal "owner mode cannot certify full log recovery"
+  EXPECTED_RECOVERY_SCOPE=owner-operated-data-only
+fi
 # Candidate records are an externally transferred authorization surface.  Do
 # not accept unknown, missing, reordered, or format-inappropriate fields even
 # when a caller supplies a matching digest: the two schemas have different
@@ -1166,12 +1182,12 @@ if [ "$CANDIDATE_FORMAT_VERSION" = 3 ]; then
   recovery_scope=full-recovery
 else
   evidence_format_version=1
-  recovery_scope=log-genesis-bootstrap-only
+  recovery_scope="$EXPECTED_RECOVERY_SCOPE"
 fi
 {
 printf '%s\n' \
   "FORMAT_VERSION=$evidence_format_version" \
-  'EVIDENCE_TYPE=archive-restore' \
+  "EVIDENCE_TYPE=$EVIDENCE_TYPE" \
   'STATUS=verified' \
   "RECOVERY_SCOPE=$recovery_scope" \
   "CANDIDATE_SHA256=$EXPECTED_CANDIDATE_SHA256" \
@@ -1271,11 +1287,15 @@ printf '%s\n' \
   "EVIDENCE_REF=$EVIDENCE_REF" \
   "OFFLINE_OPERATOR=$OFFLINE_OPERATOR" \
   "VERIFIED_AT_UTC=$verified_at"
+if [ "$OWNER_OPERATED" = 1 ]; then
+  printf '%s\n' 'OPERATOR_MODEL=owner_operated' \
+    'INDEPENDENT_HUMAN_REVIEW=not_performed' 'TWO_OFFLINE_MEDIA=not_met'
+fi
 } >"$evidence_file"
 chmod 0600 "$evidence_file"
 
 ssh-keygen -Y sign -f "$SIGNING_KEY_FILE" \
-  -n leaddrive-backup-evidence "$evidence_file" >/dev/null \
+  -n "$SIGNATURE_NAMESPACE" "$evidence_file" >/dev/null \
   || fatal "offline evidence signing failed"
 [ -s "$evidence_file.sig" ] || fatal "offline evidence signature is missing"
 install -d -m 0700 "$WORK_DIR/bundle"
