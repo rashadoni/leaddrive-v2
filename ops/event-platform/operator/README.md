@@ -1,0 +1,93 @@
+# Inactive A5 named-login admission contract
+
+`admission.sql` is **not installed** by Prisma, app startup or deployment. It
+creates only an isolated control schema; it cannot start a worker, read a
+business table, change a pointer, commit offsets or send anything. Do not apply
+it to production. Its integration fixture creates its own disposable database
+roles; those credentials are synthetic and never runtime credentials.
+
+The dedicated `kafka-operator-admission.yml` workflow needs no secret or Kafka
+service. It runs on hosted Linux with an ephemeral PostgreSQL16 service even
+for draft PRs. It leaves existing A1/A2 workflows and receipts untouched.
+
+## Trust boundary
+
+A trusted provisioner must create the NOLOGIN owner `ld_kafka_control_owner`
+and NOLOGIN capability roles `ld_kafka_operator_admitter` and
+`ld_kafka_operator_controller` without PUBLIC membership. The owner is a
+trusted administrative authority, never an app/worker/operator role. Only that
+authority can provision/disable identities or write control tables. Distinct
+named/JIT LOGINs map to unique independently verified human principal IDs and
+one explicit tenant. No operator role may be a superuser, BYPASSRLS role or
+member of the owner role. A second login for the same person is not independent
+approval; the provisioner must prevent that aliasing. Authentication by itself
+cannot establish human independence.
+
+`session_user` supplies identity. `SET ROLE` and request fields cannot supply a
+requester/approver. Every operation checks current role membership, LOGIN,
+account validity and mapping enabled/expiry/tenant/capability. Approval pins the
+requester's principal; consume/assert-current recheck both principals so login
+remapping cannot inherit an old approval. The consumed lease is bound to one
+controller login and principal. DB connection sharing under one service login
+cannot represent two human admissions; a future web API needs a separately
+reviewed authentication/delegation adapter. There is no HTTP endpoint here.
+
+Control tables use a private schema with zero direct privileges for admitters
+and controllers, fixed-search-path SECURITY DEFINER functions and fully
+qualified relations. Tenant isolation is enforced inside every entrypoint by
+the trusted identity mapping; this does **not** install or replace the business
+schema's RLS. PUBLIC cannot execute any function. SQL owner/superuser retains
+administrative power; this contract cannot protect against its own provisioner.
+
+## Lifecycle
+
+1. `request(uuid, jsonb, expires_at)` derives requester and tenant. Only the
+   Fund balance projection and four explicit actions are representable. Exact
+   plan keys pin tenant/build/projection, SHA/artifact, environment, cluster/topic
+   identity/group, evidence digest and expected pointer version. No offsets,
+   credentials or arbitrary operation arguments. The DB hashes jsonb text via
+   pgcrypto; this digest format differs from the JS canonical JSON hash.
+2. A separately authenticated approver calls `inspect(uuid)`, reviews the full
+   immutable plan and expiry, then `approve(uuid, hash)`. Self approval and
+   stale/mismatching hashes fail. Approving a plan does not prove its evidence.
+3. A tenant-scoped controller calls `consume(uuid, hash, exact_plan)` once.
+   Row locking gives one winner and appends audit in the same transaction.
+   Generation comes from a DB sequence (rollback gaps are expected), and lease
+   expires at min(request expiry, DB time +5min). Request life is at most15min.
+4. The future controller must call `assert_current` **in the same transaction**
+   as its guarded SQL. It locks the request through commit and checks expiry,
+   generation, controller and both fresh admissions. Calling it in an earlier
+   transaction provides no protection for subsequent work. `revoke` serializes
+   on that lock, increments generation, fences future work. It cannot cancel
+   work that already holds the lock; that transaction may settle first.
+5. `settle` marks the one-time control token complete. `revoke` can invalidate
+   requested/approved/consumed requests, including after operator disable via
+   the separately authorized controller. Neither operation retries or restarts
+   anything. A fresh attempt needs a new reviewed request.
+
+Expiry is checked at function execution, **not a deferred COMMIT-time fence**.
+Long-running transactions must have a bounded deadline and settlement/revoke
+handling before this can become runtime authority. A lease is not proof of
+child termination, SQL settlement, provider absence or delivered alerts.
+`settle` records completion of this token only, not runtime success evidence.
+No controller execution path, build-table parity, final watermark, artifact
+verification, alert read-back adapter, promotion/read-pointer integration or
+rollback execution is connected here. The plan's evidence digest is a pin,
+not validation of evidence content. Runtime admission remains fail-closed by
+absence of an executor.
+
+## Proof and remaining gates
+
+The fixture uses actual separate TCP logins and PostgreSQL transactions. It
+covers identity/tenant/plan denial, self-approval/SET ROLE, direct-access denial,
+expiry/revocation/principal remapping, controller binding, concurrent consume,
+transaction rollback, audit, and revoke serialization against a held lock.
+See the append-only session journal for exact source/run and actual results;
+preparing this fixture alone is not a passing receipt.
+
+Before activation: trusted role/JIT provisioning and revocation operational
+contract; web/session adapter if needed; restricted business-SQL composition;
+COMMIT/deadline handling; worker stop/actual-close; catch-up/full-history parity;
+real alarm challenge/read-back; promotion/rollback under load; independent
+restore, HA/TLS/ACL and separate authorization. No permission to execute those
+production operations is implied by this SQL file.

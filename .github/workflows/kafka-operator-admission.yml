@@ -1,0 +1,52 @@
+name: Kafka operator admission isolated proof
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'ops/event-platform/operator/**'
+      - 'scripts/event-platform/operator-*.mjs'
+      - '.github/workflows/kafka-operator-admission.yml'
+permissions:
+  contents: read
+concurrency:
+  group: kafka-operator-admission-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  admission-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16.13-alpine@sha256:4941ef97aaa2633ce9808f7766f8b8d746dd039ce8c51ca6da185c3dc63ab579
+        env:
+          POSTGRES_USER: control_test_admin
+          POSTGRES_PASSWORD: operator-fixture-only
+          POSTGRES_DB: kafka_operator_test
+          POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U control_test_admin -d kafka_operator_test"
+          --health-interval 5s --health-timeout 3s --health-retries 15
+          --memory 384m --memory-swap 384m --pids-limit 128
+    env:
+      LD_OPERATOR_DISPOSABLE: '1'
+      PGHOST: 127.0.0.1
+      PGPORT: ${{ job.services.postgres.ports[5432] }}
+      PGUSER: control_test_admin
+      PGDATABASE: kafka_operator_test
+      PGPASSWORD: operator-fixture-only
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate scripts and offline alert receipts
+        run: |
+          node --check scripts/event-platform/operator-admission.integration.mjs
+          node --test scripts/event-platform/operator-alert-evidence.test.mjs
+      - name: Real named-login PostgreSQL admissions and races
+        run: node --test scripts/event-platform/operator-admission.integration.mjs

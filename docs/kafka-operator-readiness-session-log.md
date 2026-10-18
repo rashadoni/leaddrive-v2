@@ -68,3 +68,40 @@ Next action: originating session obtains exact-head A1/A2 integration receipts;
 next A5 code slice is durable immutable operator request + two authenticated,
 tenant-scoped admissions and atomic consume/revoke with restricted-SQL race
 and isolation tests. Overall delivery remains «Проверить защиту Kafka-консюмера».
+
+## 2026-10-19 — autonomous continuation authorized
+
+User asks to proceed between remaining steps without additional prompts.
+Preserved all original prohibitions (no merge/deploy, production, consumers,
+offsets/replay or sends), and original-session delivery ownership. Re-ran
+codex-project-context in recorded worktree, fetched main (still226dde0e7),
+read current worktree AGENTS and delivery architecture. Earlier journal mention
+of stale Hetzner AGENTS wording referred to canonical snapshot; this current
+worktree AGENTS explicitly documents the correct Contabo route.
+
+Next slice implements an inactive SQL control schema outside Prisma migrations:
+separate named DB-login admissions (session_user), protected identity mapping,
+immutable plan/hash, approval, one-time consume, generation/expiry/revoke and
+same-transaction assert-current/settle. No live operation executor. Prepare a
+new isolated PostgreSQL CI workflow without touching A1/A2 or existing gates.
+No PostgreSQL client/server exists in this worktree host environment; actual
+SQL concurrency proof belongs on a disposable hosted Linux CI service.
+
+## 2026-10-19 — inactive named-login admission prepared
+
+Added ops/event-platform/operator/admission.sql outside Prisma migrations:
+private control schema, named session_user identity mapping, immutable exact
+Fund plan + DB jsonb hash, independent approval, single-use consume and audited
+generation, controller-bound assert-current/settle and revoke. No runtime
+executor or business DB privileges. Companion README documents limits including
+human independence, trusted provisioner, no pooled-login impersonation and no
+deferred COMMIT-time expiry fence. Holding request lock serializes revocation;
+it does not cancel work already admitted inside that transaction.
+
+Added own operator-admission.integration.mjs and dedicated hosted-Linux PG16
+workflow (no Kafka/consumer, credentials or production environments). Existing
+A1/A2 and required checks untouched. Local Node syntax and runner-policy72/72
+PASS; actual SQL integration still NOT RUN pending CI. RAM~14GB available,
+204GB disk free, swap0 and memory pressure averages0 before checks.
+Proceeding to authorized draft PR, branch-only push, and isolated CI proof.
+No ready-for-review/merge/deploy is part of this task's delivery boundary.
