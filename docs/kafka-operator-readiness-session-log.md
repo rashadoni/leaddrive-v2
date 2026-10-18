@@ -793,3 +793,41 @@ prepare isolated same-transaction executor composition using this guard before
 source reads, exact final verification and pointer CAS, with concurrent source/
 lease/revoke/rollback denial. Actual overall delivery stays with original session
 «Проверить защиту Kafka-консюмера»; no new business activation is authorized.
+
+## 2026-10-19 — isolated actual Fund atomic transition composition
+
+User requested continue. Resumed clean worktree onf3a90d62b; project-context,
+AGENTS/routing and fresh origin/main reconciled at226dde0e77c0c36a4de991bb703ba8f8416c5a64.
+PR891 observed read-only unchanged2936f4c2f4dc7cd682429cd5d87fa9ec4dfbf9d6.
+No canonical checkout, foreign branch/check or production mutation.
+
+Prepared fund-transition-fixture.sql: explicitly isolated composition proof,
+not a production verifier/executor installation. Private owner-seeded verified
+material binds exact approved plan/raw manifest digest, canonical folded snapshot
+fingerprint, previous pointer and validity/retention. A scoped readonly reader
+captures material hash in the SAME RepeatableRead transaction as the existing
+actual canonical reducer/snapshot gate. Later current controller must acquire
+barrier first; transition then checks token/transaction, full guard coverage,
+locks real target/pointer rows, compares frozen material, applies actual promoted
+build+promotion event+pointer CAS, settles admission and defers lease/evidence/
+retention validity to final COMMIT. Initial pointer absence denied. Evidence
+registration remains fixture-owner trust, not a real authenticated verifier.
+
+Source-write guard now optionally supports inbox/checkpoints in addition to the
+original six tables. Only the new composition fixture attaches those four extra
+ALWAYS guards; base barrier still requires its original12 guards and transition
+requires the extra4. This freezes final inbox/checkpoint material as well as
+source/projection bytes. No source-level app/worker or migration changed.
+Own hosted proof step adds canonical actual promotion/retained rollback, stale
+material/source drift, wrong actor/guard/evidence/revoke, concurrent one-winner
+CAS, held source/control write denial and genuine staged-COMMIT expiry rollback.
+Fixture-owned SELECT/UPDATE grants only to NOLOGIN function owner, never caller;
+physical stop/soak/archive/approval claims remain synthetic. No activation.
+
+Caught and fixed local syntax error (await in async default parameter); syntax,
+runner-policy72 and diff now PASS. Moved wrong-controller check before the held
+request lock so identity denial cannot be mistaken for lock timeout. Actual PG
+proof pending hosted CI. Resources13.2GB available/197GB disk/swap1003MB/avg10
+pressure0; no local database/install/build. Heavy app gates and all operational
+consumers/replay/sends/production NOT RUN. Next hosted proof, own fixes, trust/
+remaining-work map reconciliation; do not claim real operator readiness.

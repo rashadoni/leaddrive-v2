@@ -17,7 +17,7 @@ CREATE FUNCTION ld_kafka_operator.source_write_guard()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
 DECLARE old_org text; new_org text; org text;
 BEGIN
- IF TG_TABLE_SCHEMA<>'public' OR TG_TABLE_NAME NOT IN ('funds','fund_transactions','domain_events','event_outbox','event_aggregate_heads','fund_balance_projections')
+ IF TG_TABLE_SCHEMA<>'public' OR TG_TABLE_NAME NOT IN ('funds','fund_transactions','domain_events','event_outbox','event_aggregate_heads','fund_balance_projections','consumer_inbox','projection_checkpoints')
  OR TG_OP='TRUNCATE' THEN RAISE EXCEPTION 'KAFKA_SOURCE_WRITE_DENIED'; END IF;
  IF TG_OP IN ('UPDATE','DELETE') THEN old_org:=to_jsonb(OLD)->>'organizationId'; END IF;
  IF TG_OP IN ('INSERT','UPDATE') THEN new_org:=to_jsonb(NEW)->>'organizationId'; END IF;

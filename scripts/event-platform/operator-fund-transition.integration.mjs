@@ -1,0 +1,141 @@
+// ISOLATED COMPOSITION PROOF. Actual schema/reducer; physical receipts and
+// verifier registration are synthetic owner-seeded claims, not runtime wiring.
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {randomUUID,createHash} from 'node:crypto'
+import {readFile} from 'node:fs/promises'
+import {fixtureSql,fixtureConnection,fixtureDatabase,quoteFixture as q} from './operator-postgres-client.fixture.mjs'
+import {collectFundRecoveryDatabaseSnapshot} from './operator-fund-snapshot.mjs'
+import {validateOperatorRecoveryEvidence} from './operator-recovery-evidence.mjs'
+const modulePath=process.env.LD_OPERATOR_REDUCER_MODULE
+assert.ok(modulePath?.startsWith(process.env.RUNNER_TEMP+'/'))
+const {reduceFundBalance}=await import(modulePath)
+const admin=sql=>fixtureSql('control_test_admin',sql)
+const owned=sql=>admin(`SET ROLE ld_kafka_control_owner;${sql}`)
+const json=x=>`${q(JSON.stringify(x))}::jsonb`
+const call=(login,fn,args)=>fixtureSql(login,`SELECT ld_kafka_operator.${fn}(${args});`)
+const denied=p=>assert.rejects(p,/P0001/)
+await owned(await readFile(new URL('../../ops/event-platform/operator/fund-transition-fixture.sql',import.meta.url),'utf8'))
+await admin(`GRANT USAGE ON SCHEMA public TO ld_kafka_control_owner;
+ GRANT SELECT ON funds,fund_transactions,domain_events,event_outbox,event_aggregate_heads,fund_balance_projections,projection_builds,projection_checkpoints,consumer_inbox,projection_activations TO ld_kafka_control_owner;
+ GRANT UPDATE ON projection_builds,projection_activations TO ld_kafka_control_owner;
+ GRANT INSERT ON projection_promotion_events TO ld_kafka_control_owner;
+ CREATE ROLE op_final_reader LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD 'operator-fixture-only';
+ GRANT USAGE ON SCHEMA public,ld_kafka_operator TO op_final_reader;
+ GRANT SELECT ON funds,fund_transactions,domain_events,event_outbox,event_aggregate_heads,fund_balance_projections,projection_builds,projection_checkpoints,consumer_inbox,effect_outbox TO op_final_reader;
+ GRANT EXECUTE ON FUNCTION ld_kafka_operator.fund_material_hash(text,uuid) TO op_final_reader;
+ ALTER TABLE fund_transactions ENABLE ROW LEVEL SECURITY;ALTER TABLE fund_transactions FORCE ROW LEVEL SECURITY;
+ CREATE POLICY operator_final_ledger_tenant ON fund_transactions USING("organizationId"=current_setting('app.org_id',true));`)
+for(const table of ['funds','fund_transactions','domain_events','event_outbox','event_aggregate_heads','effect_outbox']) await admin(`CREATE POLICY operator_final_tenant ON ${table} AS RESTRICTIVE TO op_final_reader USING("organizationId"='org-a');`)
+for(const table of ['consumer_inbox','projection_checkpoints']) await admin(`CREATE TRIGGER kafka_source_row_guard BEFORE INSERT OR UPDATE OR DELETE ON ${table} FOR EACH ROW EXECUTE FUNCTION ld_kafka_operator.source_write_guard();
+ CREATE TRIGGER kafka_source_truncate_guard BEFORE TRUNCATE ON ${table} FOR EACH STATEMENT EXECUTE FUNCTION ld_kafka_operator.source_write_guard();
+ ALTER TABLE ${table} ENABLE ALWAYS TRIGGER kafka_source_row_guard;ALTER TABLE ${table} ENABLE ALWAYS TRIGGER kafka_source_truncate_guard;`)
+let version=20
+async function seed() {
+ const id=randomUUID(),key=`final-${id}`,v=++version
+ await admin(`INSERT INTO projection_builds(id,"organizationId","projectionName","projectionVersion","buildKey","codeSha",mode) VALUES(${q(id)},'org-a','finance.fund-balance',${v},${q(key)},repeat('a',40),'shadow');
+ UPDATE projection_builds SET status='running',"startedAt"=clock_timestamp() WHERE id=${q(id)};
+ INSERT INTO fund_balance_projections("organizationId","fundId","projectionVersion","buildKey",status,balance,currency,"aggregateVersion","lastEventId",evidence)
+ SELECT a."organizationId",a."fundId",${v},${q(key)},'shadow',a.balance,a.currency,a."aggregateVersion",a."lastEventId",jsonb_build_object('lastEventId',a."lastEventId"::text,'lastEventAt',(SELECT envelope->>'time' FROM event_outbox WHERE "eventId"=a."lastEventId")) FROM fund_balance_projections a WHERE a."organizationId"='org-a' AND a.status='active' AND a."projectionVersion"=1;
+ INSERT INTO consumer_inbox("organizationId","consumerName","consumerVersion","eventId","eventType","payloadHash","sourceTopic","sourcePartition","sourceOffset")
+ SELECT e."organizationId",${q(`fund-shadow:${id}`)},1,e.id,e."eventType",o."payloadHash",'ld.staging.finance.events.v1',0,row_number() OVER(ORDER BY e."aggregateId",e."aggregateVersion")-1
+ FROM domain_events e JOIN event_outbox o ON o."eventId"=e.id AND o."organizationId"=e."organizationId" WHERE e."organizationId"='org-a' AND e."aggregateType"='fund';
+ INSERT INTO projection_checkpoints("organizationId","buildId","sourceTopic","sourcePartition","sourceOffset","lastEventId") SELECT 'org-a',${q(id)},"sourceTopic",0,"sourceOffset","eventId" FROM consumer_inbox WHERE "consumerName"=${q(`fund-shadow:${id}`)} ORDER BY "sourceOffset" DESC LIMIT 1;
+ UPDATE projection_builds SET status='verifying' WHERE id=${q(id)};
+ UPDATE projection_builds SET status='ready',"completedAt"=clock_timestamp() WHERE id=${q(id)};`)
+ return {id,key,version:v}
+}
+async function readerScope(target) {
+ const conditions={projection_builds:`id=${q(target.id)}::uuid`,projection_checkpoints:`"buildId"=${q(target.id)}::uuid`,consumer_inbox:`"consumerName"=${q(`fund-shadow:${target.id}`)}`,fund_balance_projections:`(status='active' AND "projectionVersion"=1 OR "projectionVersion"=${target.version} AND "buildKey"=${q(target.key)})`}
+ for(const [table,condition] of Object.entries(conditions)) await admin(`DROP POLICY IF EXISTS operator_final_scope ON ${table};CREATE POLICY operator_final_scope ON ${table} AS RESTRICTIVE TO op_final_reader USING("organizationId"='org-a' AND ${condition});`)
+}
+const pointer=async()=>JSON.parse(await admin(`SELECT json_build_object('id',"activeBuildId",'version',"activationVersion"::text) FROM projection_activations WHERE "organizationId"='org-a' AND "projectionName"='finance.fund-balance';`))
+async function prepared(target,action='promote') {
+ target ??= await seed()
+ await readerScope(target)
+ const inventory=JSON.parse(await admin(`SELECT json_agg(id ORDER BY id) FROM funds WHERE "organizationId"='org-a';`))
+ let materialHash
+ const snapshot=await collectFundRecoveryDatabaseSnapshot(fixtureDatabase('op_final_reader',{afterQuery:async(sql,tx)=>{
+  if(sql.includes('AS snapshot')) materialHash=(await tx.$queryRawUnsafe('SELECT ld_kafka_operator.fund_material_hash($1,$2::uuid) AS hash','org-a',target.id))[0].hash
+ }}),{organizationId:'org-a',buildId:target.id,buildKey:target.key,projectionVersion:target.version,codeSha:'a'.repeat(40),expectedReaderRole:'op_final_reader',environment:'staging',fundIds:inventory},reduceFundBalance)
+ const previous=await pointer(),id=randomUUID()
+ const plan={organizationId:'org-a',buildId:target.id,projectionName:'finance.fund-balance',releaseSha:'a'.repeat(40),artifactSha256:`sha256:${'b'.repeat(64)}`,environment:'staging',clusterId:'cluster-1',topicId:'BBBBBBBBBBBBBBBBBBBBBA',groupId:'ld.staging.finance.fund-shadow.v2.drill',action,expectedPointerVersion:previous.version}
+ const manifest={apiVersion:'event-platform.leaddrive.io/v1',kind:'OperatorRecoveryEvidence',...plan,previousBuildId:previous.id,receiptId:`synthetic-${id}`,observedAt:new Date().toISOString(),soakStartedAt:new Date(Date.now()-120000).toISOString(),targetEffectsFenced:true,externalEffectAttempts:'0',unresolvedQuarantine:'0',stop:{intakeStopped:true,acksFenced:true,sqlSettled:true,childClosed:true,actualCloseReceiptId:'synthetic-close'},sourceHistoryComplete:true,archiveVerified:true,restoreReceiptId:'synthetic-restore',independentApprovalReceiptId:'synthetic-approval',source:snapshot.source,shadow:snapshot.shadow,partitions:snapshot.checkpoints.map(c=>({partition:c.partition,historyStart:'0',replayStart:'0',frozenEndExclusive:c.nextOffset,checkpointNext:c.nextOffset,archiveNext:c.nextOffset})),rollback:{retainedBuildId:target.id,compatibilityVerified:true,windowEndsAt:new Date(Date.now()+3600000).toISOString(),writeFenceApplied:true}}
+ const raw=JSON.stringify(manifest);plan.evidenceSha256=`sha256:${createHash('sha256').update(raw).digest('hex')}`
+ validateOperatorRecoveryEvidence(raw,{plan,now:new Date().toISOString(),maxAgeMs:60000,minSoakMs:60000,partitionCount:snapshot.checkpoints.length,previousBuildId:previous.id})
+ const hash=await call('op_requester','request',`${q(id)},${json(plan)},clock_timestamp()+interval '10 minutes'`)
+ await call('op_approver','approve',`${q(id)},${q(hash)}`)
+ // Owner registration is deliberately a fixture trust boundary, not a real
+ // verifier implementation. Captured hash and canonical fold share one RR tx.
+ await owned(`INSERT INTO ld_kafka_operator.fund_verified_evidence VALUES(${q(id)},${json(plan)},${q(raw)},${q(materialHash)},${q(previous.id)},clock_timestamp()+interval '1 minute',clock_timestamp()+interval '1 hour');`)
+ const generation=await call('op_controller','consume',`${q(id)},${q(hash)},${json(plan)}`)
+ return {id,hash,generation,target,previous,materialHash}
+}
+const args=f=>`${q(f.id)},${q(f.hash)},${f.generation}`
+const apply=f=>fixtureSql('op_controller',`BEGIN;SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});SELECT ld_kafka_operator.apply_fund_transition(${args(f)});COMMIT;`)
+await test('canonical proof + frozen material + authenticated actual pointer promotion and retained rollback',async()=>{
+ const promoted=await prepared();await apply(promoted)
+ assert.equal((await pointer()).id,promoted.target.id)
+ assert.equal((await pointer()).version,String(BigInt(promoted.previous.version)+1n))
+ assert.equal(await owned(`SELECT status FROM ld_kafka_operator.requests WHERE id=${q(promoted.id)};`),'settled')
+ assert.equal(await admin(`SELECT "requestedBy"||':'||"approvedBy" FROM projection_promotion_events WHERE "requestKey"=${q(promoted.id)};`),'person-1:person-2')
+ const replacement=await prepared();await apply(replacement)
+ const rollback=await prepared(promoted.target,'rollback');await apply(rollback)
+ assert.equal((await pointer()).id,promoted.target.id)
+ await denied(apply(rollback))
+})
+await test('no barrier, missing control guard, stale material, expired evidence and revoked lease deny without pointer change',async()=>{
+ const noBarrier=await prepared();await denied(call('op_controller','apply_fund_transition',args(noBarrier)))
+ const guard=await prepared();await admin('ALTER TABLE consumer_inbox DISABLE TRIGGER kafka_source_row_guard;')
+ try{await denied(apply(guard))}finally{await admin('ALTER TABLE consumer_inbox ENABLE ALWAYS TRIGGER kafka_source_row_guard;')}
+ const stale=await prepared(),before=await pointer()
+ await admin(`UPDATE fund_balance_projections SET balance=balance+0.0001 WHERE "organizationId"='org-a' AND "projectionVersion"=${stale.target.version} AND "buildKey"=${q(stale.target.key)} AND "fundId"='fund-a';`)
+ await denied(apply(stale));assert.deepEqual(await pointer(),before)
+ const expired=await prepared();await owned(`UPDATE ld_kafka_operator.fund_verified_evidence SET valid_until=clock_timestamp()-interval '1 second' WHERE request_id=${q(expired.id)};`);await denied(apply(expired))
+ const revoked=await prepared();await call('op_controller','revoke',`${q(revoked.id)},${q(revoked.hash)}`);await denied(apply(revoked))
+})
+await test('subsequent canonical source write invalidates verified material',async()=>{
+ const f=await prepared(),before=await pointer()
+ await admin("UPDATE funds SET name='Synthetic transition drift' WHERE id='fund-a';")
+ await denied(apply(f));assert.deepEqual(await pointer(),before)
+})
+await test('same pointer version concurrent candidates have exactly one committed winner',async()=>{
+ const a=await prepared(),b=await prepared()
+ const results=await Promise.allSettled([apply(a),apply(b)])
+ assert.equal(results.filter(r=>r.status==='fulfilled').length,1)
+ assert.match(results.find(r=>r.status==='rejected').reason.message,/P0001|55P03/)
+ assert.ok([a.target.id,b.target.id].includes((await pointer()).id))
+})
+await test('held final barrier denies source/checkpoint/inbox writes and wrong controller cannot transition',async()=>{
+ const f=await prepared(),connection=fixtureConnection('op_controller')
+ await denied(call('op_controller2','apply_fund_transition',args(f)))
+ try{
+  await connection.command(`BEGIN;SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
+  await denied(admin("UPDATE funds SET name='Synthetic blocked transition writer' WHERE id='fund-a';"))
+  // Target is ready, so the original checkpoint guard also denies mutations.
+  await assert.rejects(admin(`UPDATE projection_checkpoints SET "sourceOffset"="sourceOffset"+1 WHERE "buildId"=${q(f.target.id)};`),/P0001|23514/)
+  await denied(admin(`INSERT INTO consumer_inbox("organizationId","consumerName","consumerVersion","eventId","eventType","payloadHash","sourceTopic","sourcePartition","sourceOffset") SELECT "organizationId",'unrelated-fixture',1,id,"eventType",repeat('a',64),'ld.staging.finance.events.v1',0,0 FROM domain_events WHERE "organizationId"='org-a' LIMIT 1;`))
+  await connection.command(`SELECT ld_kafka_operator.apply_fund_transition(${args(f)});COMMIT;`)
+ }finally{await connection.close()}
+})
+await test('actual final evidence expiry at COMMIT rolls back pointer/build/event/settlement',async()=>{
+ const f=await prepared(),before=await pointer(),connection=fixtureConnection('op_controller')
+ await owned(`UPDATE ld_kafka_operator.fund_verified_evidence SET valid_until=clock_timestamp()+interval '3 seconds' WHERE request_id=${q(f.id)};`)
+ let staged=false
+ try{
+  await connection.command(`BEGIN;SELECT ld_kafka_operator.acquire_source_barrier(${args(f)});`)
+  const version=await connection.command(`SELECT ld_kafka_operator.apply_fund_transition(${args(f)});`)
+  staged=version===String(BigInt(before.version)+1n)
+  await connection.command('SELECT pg_sleep(4);');await denied(connection.command('COMMIT;'))
+ }finally{await connection.close()}
+ assert.equal(staged,true);assert.deepEqual(await pointer(),before)
+ assert.equal(await admin(`SELECT status FROM projection_builds WHERE id=${q(f.target.id)};`),'ready')
+ assert.equal(await admin(`SELECT count(*) FROM projection_promotion_events WHERE "requestKey"=${q(f.id)};`),'0')
+ assert.equal(await owned(`SELECT status FROM ld_kafka_operator.requests WHERE id=${q(f.id)};`),'consumed')
+ assert.equal(await owned(`SELECT count(*) FROM ld_kafka_operator.fund_transition_commits WHERE request_id=${q(f.id)};`),'0')
+})
+await test('controller cannot self-register verifier evidence or directly mutate business pointers',async()=>{
+ await assert.rejects(fixtureSql('op_controller','SELECT * FROM ld_kafka_operator.fund_verified_evidence;'),/42501/)
+ await assert.rejects(fixtureSql('op_controller','DELETE FROM ld_kafka_operator.fund_verified_evidence;'),/42501/)
+ await assert.rejects(fixtureSql('op_controller','UPDATE projection_activations SET "activationVersion"="activationVersion"+1;'),/42501/)
+})
