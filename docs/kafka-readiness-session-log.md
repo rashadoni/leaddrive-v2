@@ -1302,3 +1302,36 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   than erasing them. These are LOCAL docs checkpoints while the remote head
   remains frozen3da for actual CI. Next required proof is its safe structural
   error result, then a justified narrow fix and full green release.
+
+## 2026-10-18 01:08 UTC — actual error shape and statement-scoped race proof
+
+- Diagnostic run39084430902 on3da0223f5 completed FAILURE; actual PG9/10 PASS
+  including the no-leak control. Observed structural error: PrismaP2010,
+  SQLSTATE23505, a metadata message present, but NO constraint name in top/meta,
+  NO recognized unique/detail/key-fields text and NO exact target metadata.
+  Do not claim that the client preserved the named constraint or that its
+  raw message is a guessed sentinel. The server separately confirms the
+  expected build-key index conflict. This disproves message-based classification.
+- Same run typecheck117548045827 SUCCESS at01:05:29UTC:1326 advisory
+  diagnostics/64 gated pairs=baseline64, zero diagnostics in all five own Fund
+  TS files. Exact3da CDC39084430965 SUCCESS. No old run remains active.
+- Replaced the test's unsupported client-message assumption with stronger
+  statement-scoped observations. The disposable factory observes rejection
+  ONLY around awaited real execute SQL, stores per-connection original error,
+  query and parameters privately, and immediately rethrows the SAME object.
+  It does not catch an injected afterExecute failure or convert failure to
+  success. P2010/23505 requires error identity, anchored actual shadow INSERT,
+  exactly9 parameters, trusted tenant/Fund/version/build tuple and event ID.
+- Added negative controls: no receipt, cloned error, other SQL/table/marker,
+  wrong tuple/event/parameter count, foreign SQLSTATE and unrelated errors
+  fail. Before retry, assert the one committed winner's exact opening state,
+  one shadow/inbox/checkpoint and unchanged source. Then retry the actual
+  rejected connection in a NEW factory and require a coherent duplicate,
+  exact checkpoint/state and still-one counts. Original constraint metadata
+  is NOT asserted; it is unavailable. The proof is scoped SQL failure plus
+  actual commit/rollback/deduplication, not a generic23505 exception.
+- Original runtime adapter, Serializable isolation, source/migrations, SQL
+  guards and grants are unchanged. PR871 is draft; new actual PostgreSQL,
+  retry error-identity and TypeScript proof are NOT RUN yet. Next: review this
+  exact test patch and publish one normal frozen draft head; merge remains
+  blocked until actual required tests succeed. No activation/replay performed.

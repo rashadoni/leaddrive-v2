@@ -61,6 +61,7 @@ function sql(url: URL, source: string): void {
 function database(client: Client, input?: {
   afterQuery?: (query: string, tx: FundShadowTransaction) => Promise<void>
   afterExecute?: (query: string, tx: FundShadowTransaction) => Promise<void>
+  onExecuteError?: (receipt: ExecuteFailure) => void
   beforeCommit?: (tx: FundShadowTransaction) => Promise<void>
 }): FundShadowDatabase {
   return {
@@ -72,7 +73,15 @@ function database(client: Client, input?: {
           return result
         },
         $executeRawUnsafe: async (query, ...values) => {
-          const count = await real.$executeRawUnsafe(query, ...values)
+          let count: number
+          try {
+            count = await real.$executeRawUnsafe(query, ...values)
+          } catch (error) {
+            // Observe only an actual SQL rejection, not afterExecute injection.
+            // Preserve the original error; Prisma still rolls the factory back.
+            input?.onExecuteError?.({ query, values, error })
+            throw error
+          }
           await input?.afterExecute?.(query, tx)
           return count
         },
@@ -112,6 +121,15 @@ async function counts(context: Context) {
 }
 
 const permissionDenied = { code: "P2010", meta: { code: "42501" } }
+type ExecuteFailure = { readonly query: string; readonly values: readonly unknown[]; readonly error: unknown }
+type ShadowInsertKey = readonly [organizationId: string, fundId: string, projectionVersion: number, buildKey: string, eventId: string]
+
+function matchesShadowInsert(receipt: ExecuteFailure | undefined, key: ShadowInsertKey | undefined): boolean {
+  return !!receipt && !!key && receipt.values.length === 9
+    && /^\/\* fund-shadow:insert-shadow \*\/\s+INSERT INTO public\.fund_balance_projections \("organizationId", "fundId", "projectionVersion", "buildKey", status,/.test(receipt.query)
+    && key.slice(0, 4).every((value, i) => receipt.values[i] === value)
+    && receipt.values[7] === key[4]
+}
 
 // Print only allowlisted structural facts, never raw SQL, key values, unknown
 // metadata, connection strings or error messages, even for a failed assertion.
@@ -138,17 +156,17 @@ function concurrentAbortShape(error: unknown) {
   }
 }
 
-function isExpectedConcurrentAbort(error: unknown): boolean {
+function isExpectedConcurrentAbort(error: unknown, receipt?: ExecuteFailure, key?: ShadowInsertKey): boolean {
   if (!error || typeof error !== "object") return false
-  const typed = error as { code?: string; meta?: { code?: string; message?: string } }
+  const typed = error as { code?: string; meta?: { code?: string } }
   // Prisma may surface serialization failures directly as P2034 or wrap the
   // PostgreSQL SQLSTATE from a raw query. Only the adapter's bounded lock wait
-  // (55P03) or the exact competing shadow INSERT constraint is an alternative.
-  // PostgreSQL can report 23505 when a Serializable snapshot predates that
-  // INSERT. This is NOT a generic unique-error exception: the failed factory
-  // must still reject, then the entire transaction must be retried and checked.
-  const shadowInsertConflict = typed.meta?.code === "23505" && typeof typed.meta.message === "string"
-    && typed.meta.message.includes('duplicate key value violates unique constraint "fund_balance_projections_build_key"')
+  // (55P03) or a real, exactly scoped competing shadow INSERT is an alternative.
+  // Actual Prisma6.19.2 preserves23505 but loses constraint/detail metadata.
+  // Do not guess it from a message: require the original error captured at
+  // the real INSERT, its exact key/event parameters, a coherent committed
+  // winner, and then a successful whole-factory duplicate retry below.
+  const shadowInsertConflict = typed.meta?.code === "23505" && receipt?.error === error && matchesShadowInsert(receipt, key)
   return typed.code === "P2034" || (typed.code === "P2010"
     && (["40001", "55P03"].includes(typed.meta?.code ?? "") || shadowInsertConflict))
 }
@@ -161,14 +179,27 @@ describe("Fund concurrency test's narrow abort classification", () => {
     expect(result).toMatchObject({ prismaCode: "unknown", sqlState: "unknown", exactConstraintInMeta: false, targetIsExactKeyFields: false })
   })
 
-  it("never treats arbitrary SQL/permission/unique violations as an expected competing shadow INSERT", () => {
-    const message = 'duplicate key value violates unique constraint "fund_balance_projections_build_key"'
-    expect(isExpectedConcurrentAbort({ code: "P2010", meta: { code: "23505", message } })).toBe(true)
-    for (const error of [null, new Error(message), { code: "P2002", meta: { code: "23505", message } },
-      { code: "P2010", meta: { code: "42501", message } }, { code: "P2010", meta: { code: "23505" } },
-      { code: "P2010", meta: { code: "23505", message: message.replace("fund_balance_projections_build_key", "consumer_inbox_pkey") } },
-      { code: "P2010", meta: { code: "23505", message: message.replace('build_key"', 'build_key_other"') } },
-    ]) expect(isExpectedConcurrentAbort(error)).toBe(false)
+  it("never treats an unobserved, unrelated or differently scoped SQL/unique error as a competing shadow INSERT", () => {
+    const error = { code: "P2010", meta: { code: "23505" } }
+    const key: ShadowInsertKey = ["tenant", "fund", 2, "build", "event"]
+    const receipt: ExecuteFailure = {
+      error,
+      query: '/* fund-shadow:insert-shadow */\n INSERT INTO public.fund_balance_projections ("organizationId", "fundId", "projectionVersion", "buildKey", status, balance)',
+      values: ["tenant", "fund", 2, "build", "0.0000", "USD", "1", "event", "{}"],
+    }
+    expect(isExpectedConcurrentAbort(error, receipt, key)).toBe(true)
+    expect(isExpectedConcurrentAbort(error)).toBe(false)
+    expect(isExpectedConcurrentAbort({ ...error }, receipt, key)).toBe(false)
+    for (const changed of [
+      { ...receipt, query: receipt.query.replace("insert-shadow", "insert-inbox") },
+      { ...receipt, query: receipt.query.replace("public.fund_balance_projections", "public.consumer_inbox") },
+      { ...receipt, values: receipt.values.slice(0, 8) },
+      ...[0, 1, 2, 3, 7].map(index => ({ ...receipt, values: receipt.values.map((value, i) => i === index ? "different" : value) })),
+    ]) expect(isExpectedConcurrentAbort(error, changed, key)).toBe(false)
+    for (const wrong of [null, new Error("unrelated"), { code: "P2002", meta: { code: "23505" } },
+      { code: "P2010", meta: { code: "42501" } }, { code: "P2010", meta: { code: "23514" } },
+      { code: "P2010", meta: { message: 'duplicate key value violates unique constraint "fund_balance_projections_build_key"' } },
+    ]) expect(isExpectedConcurrentAbort(wrong, { ...receipt, error: wrong }, key)).toBe(false)
   })
 })
 
@@ -432,25 +463,36 @@ pgDescribe("Fund shadow on actual PostgreSQL: immutable source, restricted login
     const second = clientFor(url)
     const connections = [context.client, second]
     const bothSnapshotsStarted = signal<void>()
+    const failures = new Map<number, ExecuteFailure>()
+    const insertKey: ShadowInsertKey = [context.scope.organizationId, context.fundId, context.scope.projectionVersion, context.scope.buildKey, String(context.records[0].headers!.id)]
     let snapshots = 0
     const afterQuery = async (query: string) => {
       if (!query.includes("fund-shadow:role")) return
       if (++snapshots === 2) bothSnapshotsStarted.resolve()
       await bounded(bothSnapshotsStarted.promise, "two real Serializable snapshots before either INSERT")
     }
-    const outcomes = await Promise.allSettled(connections.map(client => consumeFundShadowRecord(database(client, { afterQuery }), context.scope, context.records[0])))
+    const outcomes = await Promise.allSettled(connections.map((client, index) => consumeFundShadowRecord(database(client, {
+      afterQuery, onExecuteError: receipt => { failures.set(index, receipt) },
+    }), context.scope, context.records[0])))
     expect(outcomes.filter(value => value.status === "fulfilled")).toHaveLength(1)
     expect(outcomes.filter(value => value.status === "rejected")).toHaveLength(1)
+    const winner = outcomes.find(value => value.status === "fulfilled")
+    if (!winner || winner.status !== "fulfilled") throw new Error("The real concurrent winner must have committed")
+    const expected = {
+      checkpointAdvanced: false,
+      state: { organizationId: context.scope.organizationId, fundId: context.fundId, balance: "0.0000", currency: "USD", aggregateVersion: 1, lastEventId: context.records[0].headers!.id },
+      checkpoint: { sourceOffset: BigInt(context.records[0].offset), lastEventId: context.records[0].headers!.id },
+    }
+    expect(winner.value).toMatchObject({ ...expected, duplicate: false, checkpointAdvanced: true })
+    expect(await counts(context)).toEqual({ shadows: 1, inbox: 1, checkpoints: 1 })
+    expect(await snapshotSource(context.scope.organizationId)).toEqual(before)
     for (const [index, outcome] of outcomes.entries()) {
       if (outcome.status !== "rejected") continue
-      expect(isExpectedConcurrentAbort(outcome.reason), `Unexpected concurrent SQL/ACL failure: ${JSON.stringify(concurrentAbortShape(outcome.reason))}`).toBe(true)
+      const receipt = failures.get(index)
+      expect(isExpectedConcurrentAbort(outcome.reason, receipt, insertKey), `Unexpected concurrent SQL/ACL failure: ${JSON.stringify({ ...concurrentAbortShape(outcome.reason), sameErrorObserved: receipt?.error === outcome.reason, exactShadowInsertObserved: matchesShadowInsert(receipt, insertKey) })}`).toBe(true)
       // Retry the actual rejected connection in a NEW factory, not inside the
       // failed transaction, and prove the committed duplicate's current state.
-      expect(await consumeFundShadowRecord(database(connections[index]), context.scope, context.records[0])).toMatchObject({
-        duplicate: true, checkpointAdvanced: false,
-        state: { organizationId: context.scope.organizationId, fundId: context.fundId, balance: "0.0000", currency: "USD", aggregateVersion: 1, lastEventId: context.records[0].headers!.id },
-        checkpoint: { sourceOffset: BigInt(context.records[0].offset), lastEventId: context.records[0].headers!.id },
-      })
+      expect(await consumeFundShadowRecord(database(connections[index]), context.scope, context.records[0])).toMatchObject({ ...expected, duplicate: true })
     }
     expect(await counts(context)).toEqual({ shadows: 1, inbox: 1, checkpoints: 1 })
     await expect(consumeFundShadowRecord(database(context.client), context.scope, context.records[2])).rejects.toThrow()
