@@ -1722,3 +1722,26 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   ping and feature structural receipt remain PENDING at this entry. Existing
   read-only inspection workflow has no active run; its next dispatch remains
   deferred until verified normal delivery, not inferred from artifact upload.
+
+## 2026-10-18 03:47 UTC — diagnostic delivered; one read-only live report queued
+
+- Whole deploy39093089774 SUCCESS on ce71dacf9a413facda602fb433963e1cbe79412b;
+  runtime117577352388 SUCCESS03:45:43Z, final retention117578751735
+  SUCCESS03:46:02Z. Atomic deployment03:41:03→03:45:27. Actual log03:44:14.972
+  confirms Fund cutover was already durably verified;03:44:34.335 structural
+  ledger/RLS/ownership/exact-money/Fund postconditions verified. Public ping,
+  revision and login/hashed-assets smokes passed03:45:38–40. This release did
+  NOT run a new deep Fund replay, worker or database restore ceremony.
+- Root independently received public artifactSha ce71dacf9a413facda602fb433963e1cbe79412b,
+  builtAt03:26:41Z and /api/v1/ping ok=true; then re-read whole workflow
+  SUCCESS, exact current main and absence of active inspection runs. Normal
+  app/source delivery is confirmed, not Kafka runtime or recovery readiness.
+- Dispatched exactly one existing protected main-only tail-app-logs.yml,
+  view=backup-readiness, expected_main_sha=ce71dacf9a413facda602fb433963e1cbe79412b.
+  Run39094842540 queued03:47:17Z. No raw config, credential or private key is
+  requested. One helper monitors its already-sanitized report; expected overall
+  gate failure must be distinguished from diagnostic/code/infrastructure error.
+- PR872 body now records actual CI/merge/deploy/public receipt and pending
+  read-only diagnosis. Source changes, backup commissioning, external-provider
+  policy/key writes, timers, source WAL/restart/slot/publication, consumer,
+  offset/replay and paid-service changes remain outside this report execution.
