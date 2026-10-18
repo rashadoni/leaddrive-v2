@@ -1,5 +1,9 @@
 # Kafka: задачи до запуска и защиты всех модулей
 
+Актуальное состояние — в последних датированных дополнениях. Начальные
+таблицы и прежние pending/PLANNED сохраняются как история, а не как текущий
+вердикт; успешную поставку кода нельзя приравнивать к активации Kafka.
+
 Дата: 2026-10-17. Статус: план работ; создание этого документа не означает запуск Kafka.
 Основание: проверенный `origin/main` `1800e514b757c7bb14dde4ec3caf680941cd4a12`.
 
@@ -475,3 +479,63 @@ root независимо продолжает final deploy и existing recovery
   поставку; затем отдельный ограниченный read-only Object Lock diagnostic
   для K2.1/K3.2/K3.6. Не повторять commissioning и не включать timers ради
   зелёного отчёта. K4 broker/rebalance/replay и K8 остаются NOT ACTIVATED.
+
+### Fund SQL: реальный gate закрыт в узком scope — 2026-10-18 02:09 UTC
+
+Заменяет прежние partial8/9, unknown-error и unmerged-PR871, сохраняя историю.
+
+- На final `f504f1353df3902d72d021e00cf515ca1e74e1d0`
+  [full39087214329](https://github.com/rashadoni/leaddrive-v2/actions/runs/39087214329)
+  SUCCESS; пять required checks фактически SUCCESS. Reducer43/43, shadow
+  control-flow78/78; реальные PostgreSQL10/10 с независимыми restricted LOGIN,
+  RLS, full-envelope hash, SQL/COMMIT rollback и controller race. Конкурентный
+  losing connection повторяется через НОВЫЙ factory после проверки winner и
+  source/counts; arbitrary23505 не принимается за успех.
+- Наши Fund TS-файлы без диагностик, общие1326 advisory/64 gated пары=64;
+  общий unit baseline18=18. AutomaticCDC39087214341/stack39087214349 SUCCESS
+  на том же head. Обновлённый immutable Connect image реально проверен,
+  но owned long-term image retention/signature этим не доказаны.
+- PR871 нормально merged02:09:27UTC, main merge
+  `287047e2e7fd63a6265b646851aa74384715d4ad`. Его deploy и public exact SHA/
+  ping/structural smoke ещё PENDING: один merge не является K8 delivery receipt.
+- K4.2/K4.3 — verified bounded DB increment, не закрытые целиком K-ID.
+  Нет broker caller/ack, assignment/generation/global-partition fence, live
+  role provisioning, source/active/effect writes или production activation.
+  K4.5–K4.8, replay, HA/archive/DR и остальные модули остаются открытыми.
+- Следующая отдельная задача K2.1/K3.2/K3.6: безопасно классифицировать причину
+  existing Object Lock read failure без raw stderr, секретов и runtime writes.
+  Не включать timers, не менять credentials/retention и не запускать повторный
+  commissioning ради диагностического результата.
+
+### Подтверждённая поставка Fund SQL — 2026-10-18
+
+- [Deploy39089075829](https://github.com/rashadoni/leaddrive-v2/actions/runs/39089075829)
+  полностью SUCCESS на merge287047e2e7fd63a6265b646851aa74384715d4ad,
+  runtime02:42:32Z, финальный этап02:42:54Z. Root отдельно сверил exact public
+  artifactSha и ok=true ping; revision/login/assets smoke и structural
+  event/Fund/RLS/ownership/exact-money postconditions прошли. Это заменяет
+  предыдущий PENDING delivery, но не является новым deep replay или worker.
+- Release gate повторил121/121 unit и10/10 real PostgreSQL; общий baseline18=18.
+  K4.2/K4.3 имеют проверенную и слитую неактивную DB-часть. Broker caller/ack,
+  generation/high-water и production role provisioning остаются отдельными
+  открытыми задачами. K8 activation и защита всех27 доменов НЕ объявляются.
+- После поставки один read-only inventory39091217812 запущен на текущем
+  main/artifact; его свежий runtime verdict ещё pending. Следующий draftPR872
+  — ограниченная классификация Object Lock failure без изменения runtime.
+  Его local10/10 safety tests не заменяют будущие full required gates.
+
+### Свежий postflight на поставленном SHA — 2026-10-18 02:45 UTC
+
+- Inventory39091217812 SUCCESS на287047e2, observed02:45:50Z. PG16.15,
+  readOnly=on, wal_level=replica, slots0/active0/retainedWAL0, publication
+  отсутствует; source CDC не настроен/не стримит. Наличие произвольных внешних
+  broker/Connect/consumer процессов этот aggregate inventory не проверяет.
+- Все8 event-таблиц RLS+FORCE; estimatedRows0 не exact count. Четыре recovery
+  timers inactive; restore NOT PERFORMED. Файлы pgpass/CA private/canonical и
+  service-readable; masked owner CA не выводится из предположений.
+- Числа RAM/disk и новый cumulative WAL sample записаны в baseline. Это всё
+  ещё не утверждённые peak/day/slot/outage budgets. K2.2/K2.3, независимый
+  recovery/immutable archive, broker runtime и K8 activation остаются открытыми.
+- Следующий PR872 остаётся report-only: закончить final-head required gates,
+  обычную поставку и диагностировать existing Object Lock failure; не менять
+  policy/ключи, timers или source ради зелёного readiness.

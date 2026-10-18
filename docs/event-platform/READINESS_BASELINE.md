@@ -1,5 +1,9 @@
 # Kafka implementation baseline — 2026-10-17
 
+Continuity: the initial table is historical. Later dated sections supersede
+earlier pending/PLANNED observations without deleting them; read the latest
+receipt for current delivery and distinguish it from runtime activation.
+
 This is an evidence snapshot, not activation authorization or all-module readiness.
 
 | Boundary | Evidence | Result |
@@ -249,3 +253,73 @@ without removing it. It is not Kafka activation or all-module readiness.
   adapter delivery claimed. Next: finish this gate/release, then sanitized
   read-only Object Lock cause diagnostics. Recovery prerequisites, broker
   runtime, production topology/archive/DR and all-module adoption remain open.
+
+## Fund SQL gate completed and source merged — 2026-10-18 02:09 UTC
+
+This supersedes the partial/unknown retry and unmerged PR871 snapshots above.
+It does not supersede the separate recovery or runtime activation prerequisites.
+
+- Final head `f504f1353df3902d72d021e00cf515ca1e74e1d0`:
+  [full39087214329](https://github.com/rashadoni/leaddrive-v2/actions/runs/39087214329)
+  SUCCESS, all five required checks actual SUCCESS. Dedicated exact-reducer
+  43/43 and shadow-control-flow78/78; actual restricted-LOGIN PostgreSQL10/10.
+  The deterministic losing connection is retried in a NEW transaction factory
+  after winner/source/count verification, safely returning the duplicate state.
+  No arbitrary unique-error acceptance or weaker transaction/ACL was introduced.
+- Zero task-owned Fund TS diagnostics; repository1326 advisory/64 gated pairs
+  equal baseline64. Unit baseline18=18, not a wholly green test/TS repository.
+  Automatic [CDC39087214341](https://github.com/rashadoni/leaddrive-v2/actions/runs/39087214341)
+  and [stack39087214349](https://github.com/rashadoni/leaddrive-v2/actions/runs/39087214349)
+  SUCCESS, with raw8-envelope transport, cold restart and container cleanup.
+- The vanished upstream Connect manifest was repinned to the same official
+  version's exact Linux/amd64 digest; real source-plugin version admission and
+  the actual refreshed-image CDC passed. This is not publisher signature or
+  durable owned-image retention proof; production K1.2 remains partial.
+- [PR871](https://github.com/rashadoni/leaddrive-v2/pull/871) merged normally
+  at02:09:27UTC to `287047e2e7fd63a6265b646851aa74384715d4ad` after root
+  re-read protection and exact-head checks. Its automatic production deploy,
+  public exact marker/ping and structural smoke are PENDING at this entry.
+- K4.2/K4.3 now have actual bounded DB-adapter proof, not merely a plan/mock.
+  Still no caller, broker acknowledgment, generation/global partition fencing,
+  production role provisioning, source/active-v1/pointer/effect mutation,
+  activation, replay, HA/archive/DR or all-module adoption in this increment.
+  Next is the narrow read-only Object Lock cause diagnostic, not commissioning.
+
+## Limited Fund SQL source delivery confirmed — 2026-10-18
+
+This supersedes the pending PR871 production delivery immediately above.
+
+- [Deploy39089075829](https://github.com/rashadoni/leaddrive-v2/actions/runs/39089075829)
+  completed SUCCESS, runtime job117566196383 at02:42:32Z and final maintenance
+  at02:42:54Z, exact merge `287047e2e7fd63a6265b646851aa74384715d4ad`.
+  Its own release gate repeated121/121 focused Fund units,10/10 real PostgreSQL
+  and unchanged18-file general baseline. Build used the normal immutable
+  SHA-bound artifact; no manual server deployment.
+- Root independently verified that exact public artifactSha and ok=true ping;
+  workflow revision/login/assets smokes passed. Actual production structural
+  event/Fund/RLS/ownership/exact-money checks passed at02:41:28Z. Existing
+  cutover was already verified, so this was NOT a new deep rebuild/replay.
+- Source/CI proof for the inactive DB adapter is delivered; no broker caller,
+  role provisioning, global partition/assignment fence or live worker follows
+  from this application artifact. K4.2/K4.3 remain bounded partial increments.
+- One fresh protected read-only inventory39091217812 on the same main/artifact
+  is pending. Next [draft PR872](https://github.com/rashadoni/leaddrive-v2/pull/872)
+  contains report-only Object Lock cause classification,10/10 local synthetic
+  safety groups and no runtime changes. Its actual full code gates are NOT RUN
+  while draft; prior Fund release checks do not substitute for them.
+
+### Fresh delivered-SHA postflight — 2026-10-18 02:45 UTC
+
+[Inventory39091217812](https://github.com/rashadoni/leaddrive-v2/actions/runs/39091217812)
+SUCCESS on287047e2, observed02:45:50Z: PG16.15/readOnly=on,
+wal_level=replica, slots0/active0/retainedWAL0, no outbox publication,
+slot cap-1; all8 expected tables present with RLS+FORCE. The PostgreSQL source
+CDC path is not configured/streaming; arbitrary external broker/Connect/consumer
+processes were not inspected. Planner estimatedRows0 is not an exact count.
+
+Production RAM12247548/9977356kB total/available, swap0; filesystem206900281344/
+175270199296bytes. WAL cumulative17891881657 with unchanged September4 reset.
+These snapshots are not peak/day/outage budgets. Four recovery timers inactive;
+restore not performed. Private0600 service-owned pgpass and0640 service-group
+CA files canonical/readable; masked CA ownership is not inferred. Recovery,
+operator custody, immutable archive and all-module readiness remain unproven.

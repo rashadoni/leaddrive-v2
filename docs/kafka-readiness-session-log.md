@@ -1428,3 +1428,210 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   This bounds image risk before another full typecheck; it does not deploy or
   use production credentials. Wait its terminal result before ready, so the
   ordinary ready-event CDC never overlaps that manual image validation.
+
+## 2026-10-18 01:38 UTC — refreshed image actual CDC passed; final full gates started
+
+- Published frozen draftf504f1353df3902d72d021e00cf515ca1e74e1d0 after all
+  old974 jobs completed. Four cheap checks SUCCESS; automatic draft CDC/stack
+  completed SKIPPED (not treated as runtime evidence). New local tooling59/59,
+  runner-policy70, shell/asset/diff checks PASS in this exact tree.
+- Dispatched exactly one existing synthetic CDC workflow39086876592 on that
+  branch after verifying no active same-branch CDC. Run/job117555183790
+  SUCCESS: new pinned Connect image pulled/started; exact single PostgreSQL
+  source plugin version3.7.0.Final admission executed; infrastructure smoke,
+  restricted source/WAL boundary, raw8-event original-envelope fidelity for
+  two keys, cold restart and cleanup PASS. The observed records used one
+  partition, not a cross-partition/rebalance proof. Legacy expanded experiment
+  still diagnoses4 payload mismatches separately from metadata/order.
+- This closes the missing-image behavior blocker for the disposable fixture,
+  not publisher-signature/long-term-image-retention or production Kafka HA.
+  All four test containers and the run network were removed; no production
+  credentials, database, connector, worker, offset or replay were involved.
+- After manual CDC became terminalSUCCESS, marked the same exactf504 PR ready
+  once. Final full39087214329 started01:38:19UTC; its ordinary automatic
+  CDC39087214341 and stack39087214349 use the existing serialized queue, with
+  no overlap or duplicate retry of the completed manual run. New explicit Fund
+  unit/PG/full typecheck proof remains pending before normal merge/deploy.
+- This receipt is a LOCAL journal checkpoint only: remote PR head stays
+  frozenf504 during actual CI. Do not push it into that run or mistake the local
+  docs HEAD for its tested source SHA. Next: read explicit Fund unit counts,
+  actual PG10/10 and all required gates onf504, then normal release/ping/SHA.
+
+### Automatic final-head transport and stack receipts
+
+- On the same frozen remote f504f1353, automatic CDC39087214341 is SUCCESS:
+  runtime plugin admission, stack smoke, source/WAL boundary, exact raw8-event
+  transport, cold restart and cleanup passed. The separate serialized stack
+  run39087214349 is also SUCCESS and removed its four containers/network.
+  The manual image-validation run had already completed before these started;
+  no duplicate retry or concurrent synthetic stack was introduced.
+- Required full39087214329 is still running. No merge, deploy, broker worker,
+  source logical-WAL change, offset reset or replay follows from these two
+  disposable-stack successes. Preserve remote f504 until its required checks,
+  explicit reducer/control-flow units and actual PG transaction tests finish.
+- Read-only preparation for the next sequential task confirms that the current
+  backup-readiness report discards AWS stderr and reports only a generic Object
+  Lock failure. The actual cause is UNKNOWN, not proof of absent immutability
+  or bad credentials. After this Fund release, a narrow report-only diagnostic
+  may emit fixed allowlisted categories while preserving policy, one read-only
+  request, bounded output/time and secret redaction. Do not commission recovery
+  services, change retention/credentials or enable timers as part of diagnosis.
+
+## 2026-10-18 02:09 UTC — Fund SQL increment verified and normally merged
+
+- Final frozen f504f1353df3902d72d021e00cf515ca1e74e1d0 full39087214329
+  completed SUCCESS02:06:30UTC. Completed logs: exact reducer43/43 and shadow
+  control-flow78/78 (total121/121); actual restricted-LOGIN PG10/10, including
+  deterministic one-winner/one-rejection and new-factory duplicate retry1532ms.
+  SQL/deferred-COMMIT rollback, RLS, source coherence and controller race PASS.
+- Typecheck117556264988 SUCCESS: zero diagnostics in task-owned Fund TS files;
+  repository1326 advisory diagnostics/64 gated pairs equal baseline64, not a
+  globally clean TypeScript claim. General unit baseline18=18, no regression.
+  Static117556264977 completed02:06:30; baseline step ran10m09, within the
+  unchanged30-minute job cap. No timeout, rerun or weakened gate was needed.
+- Root freshly read exact-head checks and protection: five required contexts
+  all actual SUCCESS from Actions app15368, enforce_admins=true, PR-only,
+  approvals0, force/delete=false. Current main remained fa738db9; remote/head,
+  registered13.140.132.245:/opt/leaddrive-v2 and immutable Actions route match.
+  Old CLI lacks checks --json; switched to read-only check-runs API, no bypass.
+- Root merged PR871 normally with --match-head-commit f504f1353 at02:09:27UTC.
+  Merge SHA287047e2e7fd63a6265b646851aa74384715d4ad. Automatic deploy is
+  pending discovery/completion: do not label the adapter delivered before its
+  deploy and public exact artifact SHA/ping/feature structural smoke succeed.
+- Adapter remains unreferenced/inactive. No production SQL role, caller,
+  logical WAL/restart/publication/slot, broker/ack, offset/reset, replay,
+  promotion, timer, secret/retention change or paid subscription was introduced.
+  Current source/CI scope is a bounded K4.2/K4.3 increment, not all-module GA.
+- Next: monitor only the automatic merge-SHA deploy; prepare the independent
+  bounded Object Lock report diagnostic while the remote build runs. Do not
+  publish/activate recovery runtime changes or duplicate active workflows.
+
+## 2026-10-18 02:12 UTC — next bounded Object Lock diagnostic source phase
+
+- Automatic PR871 merge-SHA deploy39089075829 started02:09:29UTC on exact
+  287047e2e7fd63a6265b646851aa74384715d4ad; one helper watches that run only.
+  Quality/build are in progress. Root has not claimed public delivery.
+- Created a separate clean origin/main worktree at
+  /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-kafka-backup-lock-diagnostic-20261018,
+  branch codex/kafka-backup-lock-diagnostic-20261018. codex-project-context and
+  full current AGENTS read confirm origin rashadoni/leaddrive-v2, Contabo
+  development context, registered production target and Actions-main route.
+  Preserved prior worktree and carried ONLY its three unpushed journal/docs
+  checkpoints; canonical dirty checkout remains untouched.
+- Narrow safety plan: classify the existing read-only Object Lock API error
+  without raw stderr/config values; preserve the zero-exit COMPLIANCE>=14 gate;
+  exercise actual extracted probe against synthetic CLI fixtures; wire those
+  tests into both existing required PR/deploy safety steps; normal PR/release
+  only after preceding delivery and new exact-head gates. No new workflows or
+  runtime helper installation is required: the diagnostic report is streamed
+  by the existing protected main-only inspection workflow.
+- Source now retains at most16KiB in a private pipe, bounds CLI45+5sec and
+  classifier55+5sec, disables retries/prompt/profile discovery, preserves the
+  real CLI exit in a shell-appended frame, and emits only fixed categories.
+  Root output handling allowlists the category again; unknown/malformed/error
+  output cannot turn into success or expose endpoint/bucket/keys/request IDs.
+- Actual local tests, new-head CI and live diagnostic are NOT RUN at this
+  entry. No retention/key/policy/encryption/timer/service/source/Kafka change,
+  backup/restore/commissioning, offset or replay is part of this diagnostic.
+
+### Local diagnostic safety proof before publishing a draft
+
+- After RAM/disk/PSI inspection (about13GiB available,212GiB disk free, memory
+  pressure0), actual extracted-probe tests10/10 PASS in about4 seconds. No
+  operational script was sourced. Fixtures use one synthetic local CLI only;
+  no network, production config, secret, database or object was accessed.
+- Tests cover strict zero-exit policy, malformed/extra output, false success
+  with nonzero exit and forged trailer, allowlisted service/TLS/network errors,
+  private stdout/stderr canaries, oversized stream drain and clean environment.
+  Actual report handler rejects unknown, missing or failed classifier output.
+- Added actual GNU timeout TERM, ignored-TERM/SIGKILL and classifier-timeout
+  cases with explicitly TEST-ONLY shorter deadlines; production45+5/55+5 bounds
+  are asserted unchanged. Each exact fixture CLI PID is absent after the probe.
+  Both CLI and shell-owned termination diagnostics remain private via bounded
+  left-group pipe and outer stderr fence. No raw body is logged on these paths.
+- Existing pgpass/CA guards29/29 PASS in this tree; event asset27domains/
+  86topics/5schemas, runner-policy70, shell syntax and diff checks PASS.
+  Independent read-only helper review found no concrete false-PASS/secret/
+  status-loss issue; its initially unexecuted real-kill-path limitation is
+  superseded by the actual timeout tests above, not by a claim about production.
+- Local full TS/build/Vitest/real PostgreSQL and live S3 diagnostic NOT RUN:
+  heavy work belongs to Actions and this report-only change has no TS/schema
+  mutation. Publish only a draft; finish PR871 actual delivery before marking
+  the next frozen head ready. No timer or recovery commissioning is authorized
+  by a diagnostic result.
+
+### Final local fixture timing review
+
+- Helper re-read the completed privacy/timeout delta and found no concrete
+  blocker. To avoid a cold-runner startup race, widened ONLY synthetic test
+  deadlines from fractions of a second to1–3 seconds; production45/55 limits
+  and policy remain unchanged. Actual10/10 PASS again in6.7sec on86a3ddf73,
+  including GNU timeout, forced kill, parser failure and absent fixture PIDs.
+- Freeze the next source only after all local checks; open a draft for cheap
+  checks, leaving its heavy gates off until prior287047e2 production delivery
+  has an actual receipt. No deployment/inspection is dispatched from this
+  feature branch and no old successful workflow is rerun.
+
+### Diagnostic draft published; no second heavy phase started
+
+- Draft PR872 published at remote dca465cf967441df1eedf5e22517f9543ffd60a5,
+  base287047e2. Cheap pr-scope39089695934, runner-policy39089695945 and
+  scan39089695852 actual SUCCESS. Static/typecheck and separate pgpass-contract
+  are draft SKIPPED, explicitly NOT code/authentication proof. No new optional
+  production build or manual diagnostic/commissioning was dispatched.
+- PR871's automatic deploy39089075829 is still the only active delivery phase;
+  helper watches its quality/build/runtime result. Keep PR872 draft until the
+  exact previous merge's deploy, public marker/ping and feature postconditions
+  are confirmed. New actual required checks will run after the final draft
+  receipt update and one ready transition, not from these skipped checks.
+
+## 2026-10-18 02:45 UTC — PR871 production delivery independently confirmed
+
+- Automatic deploy39089075829 COMPLETED SUCCESS on merge
+  287047e2e7fd63a6265b646851aa74384715d4ad. Quality117561716344 SUCCESS:
+  focused121/121 at02:14:36Z, actual PG10/10 at02:15:00Z, unit baseline18=18
+  at02:34:08Z. Build117561716495 SUCCESS02:30:51Z; artifact12122357906 is
+  leaddrive-prod-287047e2e7fd63a6265b646851aa74384715d4ad, unexpired,
+  expires2026-11-17T02:30:43Z. This is the existing30-day Actions retention,
+  not long-term independent immutable recovery storage.
+- Runtime117566196383 SUCCESS02:42:32Z; retention117567697248 SUCCESS02:42:54Z.
+  Actual runtime log02:40:52 says existing Fund cutover was already durably
+  verified;02:41:28 structural ledger/RLS/ownership/exact-money/Fund projection
+  postconditions passed. No new deep rebuild/backup/replay/worker was run.
+  Public ping, revision, login and hashed-assets workflow smokes all SUCCESS.
+- Root independently requested public build-info: exact artifactSha287047e2,
+  builtAt2026-10-18T02:18:33Z; /api/v1/ping returned ok=true. Fresh GitHub
+  main matched the same full merge SHA. Thus normal source/app delivery is
+  confirmed; an inactive unreferenced adapter is not an activated/bundled worker.
+- After verifying no active inventory, dispatched exactly one existing
+  protected main-only read-only inventory39091217812 at02:45:26Z on the same
+  reviewed/delivered SHA. Its source was fully re-read: canonical file/static
+  config guards, PGOPTIONS read-only before parsing, explicit READ ONLY SQL,
+  bounded aggregate queries and no payload/tenant/slot-name output. Terminal
+  result is PENDING; do not infer fresh Kafka activation state from a queue.
+- Next: record that inventory, update/freeze PR872 documentation once, wait
+  its cheap exact-head checks and mark ready once for actual required gates.
+  No production diagnostic on the feature branch; no commissioning, replay,
+  offset, slot/publication, source/role or paid-service mutation.
+
+### Fresh post-delivery inventory and next frozen head
+
+- Read-only inventory39091217812/job117568192834 SUCCESS02:45:53Z on exact
+  287047e2; observed02:45:50Z. PG160015, transaction readOnly=on,
+  walLevel=replica, replication slots0/active0/retained WAL0, outbox publication
+  absent, max slots/senders10 and slot WAL cap-1. The source CDC path is not
+  configured/streaming. This does not inspect arbitrary external Kafka broker,
+  Connect or consumer processes and is not proof that none exist anywhere.
+- All8 expected event tables present with RLS+FORCE. estimatedRows0 is planner
+  metadata, NOT exact history counts. Four recovery timers inactive; restore
+  verification explicitly NOT PERFORMED. Both pgpass private0600, backup-service
+  owned/grouped, canonical/regular/one-link/readable. CA0640/group backup-service,
+  canonical/regular/one-link/readable; masked CA owner is NOT inferred.
+- Production RAM12247548kB total/9977356available, swap0; disk206900281344/
+  175270199296bytes total/available. Cumulative WAL17891881657, unchanged
+  September4 reset. Repeated snapshots are not an approved daily/peak load,
+  outage/slot budget, independent failure domains or restore/PITR proof.
+- PR871 delivery and its source-CDC postflight are now complete within their
+  bounded scope. No activation/replay was performed. Finalize these receipts
+  in PR872 while still draft, publish once, wait its new-head cheap checks and
+  transition ready once; no product/diagnostic code changed since local10/10.
