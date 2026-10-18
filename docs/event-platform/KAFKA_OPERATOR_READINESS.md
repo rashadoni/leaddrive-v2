@@ -182,3 +182,60 @@ A1/A2 PR891 отдельно наблюдался OPEN на1d526a126f с pending
 receipts и затем соединять эти контракты с restricted shadow controller в
 изолированном CI, сохраняя запрет на production/consumers/offsets/sends до
 отдельного разрешения. Merge/deploy этой ветки не выполняются.
+
+## Autonomous continuation: catch-up gate and isolated transitions
+
+The prior stopping point was premature: more inactive preparation was possible.
+`operator-recovery-evidence.mjs` now validates the approved exact-byte receipt
+hash against trusted scope/pointer pins; partition completeness/full-history
+start/catch-up/archive positions; stop/SQL-settlement/actual-close references;
+zero effects/quarantine; per-aggregate count/version/history/state/decimal and
+currency parity; and rollback retention/compatibility/write-fence fields.
+36 focused local tests pass, including equal aggregate totals with offsetting
+wrong balances. This is manifest consistency, not execution of a real rebuild.
+The supplied stop/restore/soak references still need authentic evidence producers.
+A start timestamp alone does not prove continuous healthy soak telemetry.
+
+`shadow-fixture.sql` is test-only. Its private synthetic builds/pointers/evidence
+register is not the application schema. Seven additional PostgreSQL cases compose
+actual named-login admission and trusted-manifest registration with atomic
+synthetic promotion/rollback, concurrent pointer CAS, metadata/receipt expiry,
+revocation and deferred-COMMIT rollback. Only the fixture owner can register
+verified evidence; the controller cannot write the pointer/evidence directly.
+It grants no actual business privileges and invokes no Kafka, consumer or send.
+Actual results for this new source must be recorded after the dedicated CI run.
+
+A source search of non-test `src` at this baseline found `appendDomainEvent`
+callers only in the three Finance Fund REST routes (four call sites), and no
+non-test caller of the generic enqueueEffect/promotion helpers outside their
+SDK definitions. This corroborates the27-domain map's restricted scope; it is
+not proof that every indirect/SQL/legacy writer has been exhaustively inspected.
+The shared effect SDK's presence therefore cannot protect legacy sender paths.
+
+### Continuation proof and exact remaining boundary
+
+Actual run39165969550/job117788865931, source
+5ad987e953d28c36eedb9bc022eb194abb9973ab: whole SUCCESS,64/64 gate tests
+and24/24 real PostgreSQL cases; cleanup PASS. This supersedes the pending
+fixture result above. The synthetic pointer composition passed; it does not
+establish that real Fund readers support this pointer or that production
+rebuilds can run. No actual alert/restore/stop evidence was manufactured.
+
+Remaining **software integration**: connect governed identities and evidence
+producers to a restricted real Fund shadow controller/read path, verify actual
+build/lease/reader contracts, then full CDC/SQL failure/rebuild drills on the
+original session's exact worker source. Current task explicitly limits scope
+to preparation and leaves shared delivery with that session; it must not be
+silently converted into activation or27 new business integrations.
+
+Remaining **external/authorization gates**: trusted human/JIT provisioning,
+actual independently read-back stop/soak/restore/alert receipts, production
+HA/TLS/ACL and separate activation authorization. Live consumers/replay and
+alert sends remain prohibited here, so their receipts cannot be obtained by
+continuing fixture work or substituting booleans. No such task is marked done.
+
+Remaining **delivery blocker**: the scan flags one historical README prose
+fingerprint. Current wording is corrected. Passing the historical gate would
+require an authorized narrow scanner exception or branch history change;
+both are outside the present instructions to preserve checkpoints and not
+change others' checks. The failing gate remains intact and PR894 stays draft.

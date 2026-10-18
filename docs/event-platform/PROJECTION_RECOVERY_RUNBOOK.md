@@ -686,3 +686,10 @@ without authentic provider read-back and a fresh independently acknowledged
 challenge. Boolean activation evidence, a control token and topic registration
 must never substitute for full-history parity, actual worker settlement,
 restricted transaction composition, independent restore or authorization.
+
+The later inactive recovery manifest gate and synthetic pointer drill in PR894
+verify consistency and transaction behavior without running this procedure.
+Their passing receipts do not authorize the commands above. In particular,
+fixture stop/restore references and timestamps are synthetic: a real operator
+must supply independently verified worker-close, continuous soak, archive /
+restore and delivered-alert evidence before any runtime admission.

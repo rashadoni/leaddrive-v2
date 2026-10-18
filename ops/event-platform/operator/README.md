@@ -97,3 +97,27 @@ trusted executor deferral/deadline handling; worker stop/actual-close; catch-up/
 real alarm challenge/read-back; promotion/rollback under load; independent
 restore, HA/TLS/ACL and separate authorization. No permission to execute those
 production operations is implied by this SQL file.
+
+## Inactive recovery receipt and test-only shadow composition
+
+The recovery manifest gate additionally checks exact approved bytes, tenant /
+build / code / broker / pointer pins, full partition coverage and checkpoint /
+archive next-position parity, stop and restore references, no effects, and
+per-aggregate source versus shadow counts, versions, history/state hashes,
+fixed-scale decimal balance and currency. Offset totals alone cannot pass an
+incorrect reducer with offsetting aggregate errors. Rollback additionally pins
+the retained target, compatibility, write fence and unexpired rollback window.
+
+This checker does not create its own authority: receipt producers/read-back,
+continuous soak telemetry, actual worker close and independent restore evidence
+are still missing runtime integrations. Synthetic fixture references do not
+certify them. The manifest byte digest differs from the plan's DB jsonb digest.
+
+`shadow-fixture.sql` belongs ONLY to the disposable test harness. It creates no
+application build/pointer/projection table and is not deployable runtime code.
+It demonstrates same-transaction admission/evidence/target checks, pointer CAS,
+immutable transition evidence and settle, with deferred lease expiry rolling
+back the whole switch. The fixture's trusted owner registers evidence after
+calling the manifest checker; controller privileges cannot mint verification.
+This does not close integration with the real Fund pointer/read path or any
+other domain, which remains subject to independent restricted-SQL proof.

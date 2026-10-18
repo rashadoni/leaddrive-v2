@@ -894,3 +894,15 @@ The existing scanner flags historical ordinary README prose as generic-api-key;
 no scanner policy/check/history was altered to bypass it. PR remains draft,
 without merge/deploy. Original A1/A2 PR891 and integration scheduling remain
 owned by the originating session; this branch neither starts nor reruns them.
+
+### A5 recovery manifest and synthetic pointer composition verified — 2026-10-19
+
+Operator PR894 source5ad987e953d28c36eedb9bc022eb194abb9973ab passed dedicated
+run39165969550/job117788865931:64/64 offline gates and24/24 actual isolated PG
+cases, cleanup PASS. Added exact-byte recovery manifest/parity checks and
+private synthetic pointer promotion/retained rollback/race/expiry composition.
+This advances inactive A5 preparation only: no real Fund read-pointer wiring,
+worker/consumer startup, actual delivered alerts, restore or27-domain adoption.
+K5 real controller integration and K7 runtime/domain proof remain open.
+Historical README scan false positive still blocks delivery; existing scanner
+policy/history and A1/A2 checks have not been altered. Merge/deploy not performed.

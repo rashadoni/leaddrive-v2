@@ -234,3 +234,41 @@ runner policy72 workflows and diff checks PASS. Actual new PG24 cases NOT RUN
 until the next exact-source CI. Resources~14GB available, swap0, disk204GB,
 pressure averages0 before local tests. Continue directly to CI and reconcile
 results; do not stop at this checkpoint.
+
+## 2026-10-19 — autonomous checklist completed through reconciliation
+
+Continued directly through all four recorded preparation steps. Actual hosted
+run https://github.com/rashadoni/leaddrive-v2/actions/runs/39165969550,
+job117788865931 on5ad987e953d28c36eedb9bc022eb194abb9973ab: whole SUCCESS,
+64/64 receipt/recovery unit gates and24/24 real PG cases; cleanup PASS.
+Seven new cases verify admitted synthetic pointer promotion/retained rollback,
+competing CAS, stale evidence/target code/effect fence, revoke, deferred expiry
+rolling back pointer+transition+settle, expired retention and denied direct
+pointer/evidence access. These use synthetic control data, no real business
+projection or Kafka. The earlier17-case source proof remains historical.
+
+Source search found only four non-test appendDomainEvent call sites in three
+Fund REST routes, no live generic effect/promotion SDK caller beyond definitions.
+Updated A5 status,27-domain map, runbook/backlog and operator README. Compared
+catalog IDs27/27 again: PASS. Local syntax/runner-policy/diff checks PASS.
+Resource check~14GB available, disk204GB, swap0, pressure averages0.
+Pinned branch-range gitleaks reproduces exactly one old prose finding; no new
+finding introduced. Scanner remains FAIL; no exceptions/policy/history edits.
+Full app static/typecheck/build stay NOT RUN while draft; no heavy host checks.
+
+No new A1/A2 scheduling, real consumers, offsets/replay, external sends,
+production mutation, merge/deploy occurred. Actual stop/soak/restore/alert
+read-back is NOT RUN: fixture references are explicitly synthetic and cannot
+replace authentic evidence. Obtaining delivery/consumer/replay receipts would
+cross the user's retained prohibitions. A7 business adoption is a remaining
+work map, not authorized activation of new integrations.
+
+Current result/status: all four allowed continuation-preparation items are
+implemented, tested and reconciled; operational readiness remains unproven.
+Last completed action: actual64+24 CI proof and roadmap/runbook reconciliation.
+Precise stopping boundary: draft PR894 plus failing historical scanner; no
+real runtime authority, business pointer or activation installed.
+Next action within shared delivery: original session integrates the prepared
+contracts with its exact A1/A2 worker and restricted real Fund read path; an
+authorized delivery owner must resolve historical scan without silently
+weakening it. Live evidence requires permissions currently withheld here.
