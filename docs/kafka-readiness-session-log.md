@@ -3367,3 +3367,36 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   verification; root has no production delivery/activation receipt for it.
   Next: evaluate current full checks, broker/CDC runtime markers and fix only
   demonstrated own defects. Overall A3/A4 runtime and Farah gates remain open.
+
+### Actual direct-JVM proof and corrected full type gate — 2026-10-19 Asia/Baku
+
+- Broker run39164817267/job117785430482 SUCCESS on PR source
+ 1d526a126fd540d86b38ed8bbea09b435fc4a408; exact checked-out test-merge SHA
+ 3b4fde212fdec8b4efa832812f9e670b20e9ffa8 matches current GitHub PR metadata.
+  Generated-client strict fixture compile passed. Read actual completed logs:
+  all13 existing broker-driver markers, all8 existing combined real-SQL markers
+  and all3 new actual direct-JVM markers PASS. In particular ordered restart
+  exact two-tenant parity, stop during real COMMIT and stop after real COMMIT
+  before acknowledgement passed, along with stale-member fencing regression.
+- worker_jvm_integration=PASS explicitly reports child=direct-java,
+  artifact=verified-client-only and sql=restricted-real-commit. This is not a
+  Docker CLI proxy or mocked COMMIT. The existing standalone broker-only
+ 13-case proof still honestly labels its database effects simulated; it is
+  distinct from the actual combined SQL and direct-JVM phases.
+- Candidate export reverified actual files and succeeded. Manifest digest
+  sha256:c476cd19a97939d6413e18a59909d1000f270557664ff16a15d79a958bf3bb86.
+  GitHub artifact fund-shadow-worker-candidate-3b4fde212fdec8b4efa832812f9e670b20e9ffa8
+  is22150118 bytes, wrapper digest
+  sha256:91dc2d6861d44d7748f5d8619ce28fa5ff66045ea661220e4b6fa179b198fb5d.
+  Wrapper and member-manifest hashes are different intentional bindings.
+  This PR merge-test candidate is NOT an approved main/production worker
+  installation, service unit, secret-resolution/controller or activation receipt.
+- Corrected full typecheck job117785796582 SUCCESS: exact log reports64 gated
+  pairs matching64 baseline and1327 existing advisory errors; no new defect,
+  syntax, missing-module or undefined-name errors. Do NOT claim the whole
+  repository has zero TypeScript diagnostics. Baseline unchanged.
+- Independently checked public ping ok=true and build-info artifactSha
+ 226dde0e77c0c36a4de991bb703ba8f8416c5a64. Root's new source is not deployed.
+  Remaining before PR merge: full static-checks, current stack/CDC and the NEW
+  full Debezium-to-Fund faulty-shadow/new-build recovery job. No replay or
+  infrastructure readiness is inferred from the successful direct-child phase.
