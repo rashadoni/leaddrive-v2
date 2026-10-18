@@ -172,6 +172,41 @@ Schema Registry, and Kafka brokers do not perform that record validation;
 silently registering a generic database-row schema in place of the event-type
 schema without pretending the transport is an enforcement layer.
 
+## A4 readiness and bounded WAL admission
+
+Current evidence and remaining no-cost gaps are recorded in
+[A4 infrastructure readiness](../../docs/event-platform/INFRASTRUCTURE_READINESS.md).
+The JSON preflight checks consistency of reviewed claims; it cannot authenticate
+receipts, discover hosts or prove that three endpoints occupy independent hosts.
+Do not fill its fields from this template or synthetic test fixtures.
+
+The additional evidence fields require measured capacity/placement, effective
+RF/minISR, negative ACL tests and Connect placement outside the web host.
+`infrastructureEvidenceId` must locate the reviewed broker/controller/host/disk
+map, private routing and TLS/ACL receipts. Archive policy remains >=400 days
+with an immutable off-provider copy; a paid provider is not implicitly required,
+but equivalent verified guarantees cannot be waived to meet a zero-cost target.
+
+The PostgreSQL budget uses positive safe integer bytes/seconds:
+`peakWalBytesPerSecond * maxOutageSeconds <= walStopBytes`, and
+`walWarningBytes < walStopBytes < maxSlotWalKeepSizeBytes`.
+`maxSlotWalKeepSizeBytes + checkpointOvershootBytes <= walDiskBudgetBytes`.
+The disk budget must be an allocated residual after baseline WAL, other slots,
+application/backup use and the primary free-space reserve. Overshoot is a
+measured conservative allowance, not a fixed PostgreSQL guarantee. Record all
+slot positions and shared WAL overlap in `walBudgetEvidenceId`; do not multiply
+slot caps blindly or infer a peak from cumulative cluster means.
+
+`cdcStopDrillVerified` means a non-production drill of the reviewed emergency
+procedure with alert delivery, operator acknowledgement, detection/response time,
+continued writes, slot invalidation and recovery-range reconciliation. At the
+stop threshold, stop new CDC activation/restarts and escalate to the DBA; pausing
+an existing connector alone does **not** release retained WAL and may increase
+it. Keep observing slot bytes and free space. Any slot sacrifice or source
+write intervention requires a separately authorized incident procedure; never
+automate a slot drop, offset reset or replay from this validator. If response
+headroom or a tested procedure is absent, activation stays blocked.
+
 ## Stop and recovery rules
 
 - To stop delivery, pause/stop the connector first. The application continues

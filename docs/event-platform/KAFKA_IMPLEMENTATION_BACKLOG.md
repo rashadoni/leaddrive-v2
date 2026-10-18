@@ -859,3 +859,11 @@ is superseded for this scoped integration proof only. Separate synthetic CDC
 39151613585 passed, but full CDC-to-rebuild/direct-JVM runtime composition is
 still open. Mandatory static-checks and normal merge/release remain pending;
 no production consumer, replay or recovery commissioning occurred.
+
+### A4 infrastructure preparation — 2026-10-19
+
+[Evidence/gap matrix](INFRASTRUCTURE_READINESS.md) separates templates and
+historical synthetic receipts from unverified production guarantees. A4 remains
+BLOCKED: no allocated three-domain topology, private TLS/ACL receipts,
+immutable off-provider event archive, approved peak/WAL budget or exercised
+WAL/disk/lag response. No gate relaxed and no infrastructure activated.

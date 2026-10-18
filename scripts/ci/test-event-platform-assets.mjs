@@ -19,6 +19,9 @@ const activationEvidence = {
   requestedBy: "operator-a",
   approvedBy: "operator-b",
   kafka: {
+    capacityVerified: true, placementVerified: true, aclNegativeTestsVerified: true,
+    effectiveTopicConfigsVerified: true, infrastructureEvidenceId: "synthetic-topology",
+    replicationFactor: 3, minInSyncReplicas: 2,
     failureDomains: 3, autoTopicCreationDisabled: true, tlsVerified: true,
     encryptionAtRest: true, privateEndpoints: true, backupDrTested: true,
     bootstrapServers: ["broker-a:9093", "broker-b:9093", "broker-c:9093"],
@@ -26,7 +29,7 @@ const activationEvidence = {
   connect: {
     imageDigest: `sha256:${"b".repeat(64)}`, postgresConnectorVerified: true,
     outboxRouterVerified: true, acksAllVerified: true, idempotenceVerified: true,
-    internalTopicReplicationFactor: 3,
+    internalTopicReplicationFactor: 3, outsideWebHostVerified: true,
   },
   registry: {
     privateEndpoint: true, tlsVerified: true, jsonSchemaReferencesVerified: true,
@@ -35,9 +38,14 @@ const activationEvidence = {
   postgres: {
     backupEvidenceId: "restore-1001", restoreVerified: true, walLevel: "logical",
     maxSlotWalKeepSizeBytes: 4_294_967_296, capacityApproved: true,
+    peakWalBytesPerSecond: 1024, maxOutageSeconds: 3600,
+    walWarningBytes: 1_073_741_824, walStopBytes: 2_147_483_648,
+    walDiskBudgetBytes: 8_589_934_592, checkpointOvershootBytes: 1_073_741_824,
+    cdcStopDrillVerified: true, walBudgetEvidenceId: "synthetic-budget",
   },
   archive: { immutable: true, offProviderCopy: true, retentionDays: 400, watermarkAlertLive: true },
   monitoring: {
+    brokerFreeSpace: true, minIsr: true, alertDeliveryVerified: true,
     connectorFailure: true, slotWalBytes: true, postgresFreeSpace: true,
     underReplicatedPartitions: true, consumerLag: true, schemaRejections: true,
     quarantineRate: true, tenantProjectionParity: true,
@@ -65,6 +73,48 @@ assert.throws(
   () => validateActivationEvidence({ ...activationEvidence, postgres: { ...activationEvidence.postgres, walLevel: "replica" } }),
   /wal_level must be logical/,
 )
+
+for (const field of ["maxSlotWalKeepSizeBytes", "peakWalBytesPerSecond", "maxOutageSeconds",
+  "walWarningBytes", "walStopBytes", "walDiskBudgetBytes", "checkpointOvershootBytes"]) {
+  for (const value of [undefined, 0, -1, Infinity, NaN, 1.5, "1024", Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => validateActivationEvidence({ ...activationEvidence, postgres: {
+      ...activationEvidence.postgres, [field]: value,
+    } }), `${field} must reject invalid numeric budgets`)
+  }
+}
+// Synthetic admission controls only: these values are not production evidence.
+for (const [section, field, value] of [
+  ["postgres", "maxSlotWalKeepSizeBytes", Infinity],
+  ["postgres", "maxSlotWalKeepSizeBytes", "4294967296"],
+  ["postgres", "maxSlotWalKeepSizeBytes", -1],
+  ["postgres", "walStopBytes", 4_294_967_296],
+  ["postgres", "maxOutageSeconds", 9_000_000],
+  ["postgres", "walDiskBudgetBytes", 4_294_967_296],
+  ["postgres", "cdcStopDrillVerified", false],
+  ["kafka", "failureDomains", 1],
+  ["kafka", "failureDomains", Infinity],
+  ["kafka", "replicationFactor", 1],
+  ["kafka", "minInSyncReplicas", 1],
+  ["kafka", "minInSyncReplicas", 3],
+  ["kafka", "tlsVerified", false],
+  ["kafka", "privateEndpoints", false],
+  ["archive", "retentionDays", 399],
+  ["archive", "offProviderCopy", false],
+  ["monitoring", "consumerLag", false],
+  ["postgres", "peakWalBytesPerSecond", Number.MAX_SAFE_INTEGER],
+  ["kafka", "aclNegativeTestsVerified", false],
+  ["kafka", "placementVerified", false],
+  ["connect", "outsideWebHostVerified", false],
+  ["monitoring", "brokerFreeSpace", false],
+  ["monitoring", "alertDeliveryVerified", false],
+]) {
+  const invalid = structuredClone(activationEvidence)
+  invalid[section][field] = value
+  assert.throws(() => validateActivationEvidence(invalid), `${section}.${field} must block activation`)
+}
+assert.throws(() => validateActivationEvidence({ ...activationEvidence, postgres: {
+  ...activationEvidence.postgres, walStopBytes: undefined,
+} }))
 
 async function readText(relativePath) {
   return readFile(path.join(repoRoot, relativePath), "utf8")

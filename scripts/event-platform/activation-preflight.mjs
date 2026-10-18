@@ -21,6 +21,10 @@ function distinctStrings(values, label) {
   assert.equal(new Set(values).size, values.length, `${label} must be distinct`)
 }
 
+function positiveInteger(value, label) {
+  assert.ok(Number.isSafeInteger(value) && value > 0, `${label} must be a finite positive safe integer`)
+}
+
 export function validateActivationEvidence(evidence, expected = {}) {
   assert.equal(evidence?.apiVersion, "event-platform.leaddrive.io/v1")
   assert.equal(evidence?.kind, "KafkaActivationEvidence")
@@ -34,6 +38,15 @@ export function validateActivationEvidence(evidence, expected = {}) {
   requiredString(evidence.approvedBy, "approvedBy")
   assert.notEqual(evidence.requestedBy, evidence.approvedBy, "activation requires a different approver")
 
+  positiveInteger(evidence.kafka.failureDomains, "kafka.failureDomains")
+  for (const gate of ["capacityVerified", "placementVerified", "aclNegativeTestsVerified", "effectiveTopicConfigsVerified"]) {
+    requiredTrue(evidence.kafka[gate], `kafka.${gate}`)
+  }
+  requiredString(evidence.kafka.infrastructureEvidenceId, "kafka.infrastructureEvidenceId")
+  positiveInteger(evidence.kafka.replicationFactor, "kafka.replicationFactor")
+  positiveInteger(evidence.kafka.minInSyncReplicas, "kafka.minInSyncReplicas")
+  assert.ok(evidence.kafka.replicationFactor >= 3 && evidence.kafka.minInSyncReplicas >= 2
+    && evidence.kafka.minInSyncReplicas < evidence.kafka.replicationFactor, "Kafka requires RF >= 3 and 2 <= minISR < RF")
   assert.ok(evidence.kafka.failureDomains >= 3, "Kafka must span at least three failure domains")
   requiredTrue(evidence.kafka.autoTopicCreationDisabled, "kafka.autoTopicCreationDisabled")
   requiredTrue(evidence.kafka.tlsVerified, "kafka.tlsVerified")
@@ -48,6 +61,8 @@ export function validateActivationEvidence(evidence, expected = {}) {
   requiredTrue(evidence.connect.outboxRouterVerified, "connect.outboxRouterVerified")
   requiredTrue(evidence.connect.acksAllVerified, "connect.acksAllVerified")
   requiredTrue(evidence.connect.idempotenceVerified, "connect.idempotenceVerified")
+  requiredTrue(evidence.connect.outsideWebHostVerified, "connect.outsideWebHostVerified")
+  positiveInteger(evidence.connect.internalTopicReplicationFactor, "connect.internalTopicReplicationFactor")
   assert.ok(evidence.connect.internalTopicReplicationFactor >= 3, "Connect internal topics require replication factor >= 3")
 
   requiredTrue(evidence.registry.privateEndpoint, "registry.privateEndpoint")
@@ -58,17 +73,32 @@ export function validateActivationEvidence(evidence, expected = {}) {
   requiredString(evidence.postgres.backupEvidenceId, "postgres.backupEvidenceId")
   requiredTrue(evidence.postgres.restoreVerified, "postgres.restoreVerified")
   assert.equal(evidence.postgres.walLevel, "logical", "PostgreSQL wal_level must be logical")
-  assert.ok(evidence.postgres.maxSlotWalKeepSizeBytes > 0, "PostgreSQL slot WAL cap must be finite")
+  for (const field of ["maxSlotWalKeepSizeBytes", "peakWalBytesPerSecond", "maxOutageSeconds",
+    "walWarningBytes", "walStopBytes", "walDiskBudgetBytes", "checkpointOvershootBytes"]) {
+    positiveInteger(evidence.postgres[field], `postgres.${field}`)
+  }
+  const pg = evidence.postgres
+  const outageBytes = pg.peakWalBytesPerSecond * pg.maxOutageSeconds
+  const diskBytes = pg.maxSlotWalKeepSizeBytes + pg.checkpointOvershootBytes
+  assert.ok(Number.isSafeInteger(outageBytes) && outageBytes <= pg.walStopBytes,
+    "WAL outage budget must fit below the stop threshold")
+  assert.ok(pg.walWarningBytes < pg.walStopBytes && pg.walStopBytes < pg.maxSlotWalKeepSizeBytes,
+    "WAL thresholds must satisfy warning < stop < finite slot cap")
+  assert.ok(Number.isSafeInteger(diskBytes) && diskBytes <= pg.walDiskBudgetBytes,
+    "WAL disk budget must include checkpoint overshoot and all existing slots")
+  requiredTrue(pg.cdcStopDrillVerified, "postgres.cdcStopDrillVerified")
+  requiredString(pg.walBudgetEvidenceId, "postgres.walBudgetEvidenceId")
   requiredTrue(evidence.postgres.capacityApproved, "postgres.capacityApproved")
 
   requiredTrue(evidence.archive.immutable, "archive.immutable")
   requiredTrue(evidence.archive.offProviderCopy, "archive.offProviderCopy")
+  positiveInteger(evidence.archive.retentionDays, "archive.retentionDays")
   assert.ok(evidence.archive.retentionDays >= 400, "immutable archive retention must be at least 400 days")
   requiredTrue(evidence.archive.watermarkAlertLive, "archive.watermarkAlertLive")
 
   for (const gate of [
     "connectorFailure", "slotWalBytes", "postgresFreeSpace", "underReplicatedPartitions",
-    "consumerLag", "schemaRejections", "quarantineRate", "tenantProjectionParity",
+    "brokerFreeSpace", "minIsr", "alertDeliveryVerified", "consumerLag", "schemaRejections", "quarantineRate", "tenantProjectionParity",
   ]) requiredTrue(evidence.monitoring[gate], `monitoring.${gate}`)
 
   for (const gate of ["ordering", "duplicateHandling", "tenantIsolation", "effectFence", "archiveReconciliation"]) {
