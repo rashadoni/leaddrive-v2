@@ -448,3 +448,21 @@ historical on6d51d90e, not a receipt for the new source. Next: hosted exact-sour
 proof, then reconcile lifecycle/source-barrier prerequisites without touching
 A1/A2 branch or activating a business integration. Scan historical prose block
 still applies; no scanner weakening or history rewrite authorized.
+
+### Exact-source completion of canary contract checkpoint
+
+Source c745b5b670a1766ee5036e546f88932ac5f8256a passed hosted run
+https://github.com/rashadoni/leaddrive-v2/actions/runs/39169472133:
+114/114 unit,24/24 real operator PostgreSQL,10/10 actual-schema reader, cleanup
+PASS. This upgrades only pure canary validation, not real canary integration.
+Runner-policy72 and diff checks PASS. Scan run39169472152 still exactly1 finding
+in branch history; required gate stays red. Heavy app checks skipped on draft,
+NOT RUN. No consumers/offset changes/replay/sends/production actions.
+Appended ordered seven-step lifecycle acceptance table and backlog reference;
+27-domain map preserved. Final docs checkpoint contains no executable change.
+Status: requested bounded preparation and remaining-work map reviewable in
+PR894, A5 operational readiness not claimed. Last action: hosted exact-source
+114+24+10 verification. Stop: inactive validator only; actual adapter/lifecycle/
+barrier and authentic evidence absent, scan unresolved. Next: original delivery
+session integrates real restricted pointer reader with its frozen A1/A2 source,
+then follows ordered acceptance table; no automatic activation authorized here.

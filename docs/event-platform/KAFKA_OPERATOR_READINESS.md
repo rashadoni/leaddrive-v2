@@ -302,3 +302,27 @@ f47224e2b250274278e88e72a08b0c7fe5424ae6 with latest heavy jobs skipped.
 Older head1d526a126f successes cannot certify it. This session neither modifies
 nor schedules those checks; original-session runtime/delivery ownership remains.
 These are exact remaining integration tasks, not reasons to mark A5/K7 ready.
+
+## Canary result contract and exact remaining lifecycle sequence
+
+The inactive `operator-fund-canary.mjs` is only a pure result validator. Its
+23 tests prove fail-closed scope/shape behavior, not real pointer reads or
+operational freshness. No production API imports it. A rollback changing the
+pointer requires a newly independently authorized scope; stale opt-in cannot
+silently follow a different build or fall back to the legacy balance.
+
+| Order | Required implementation/evidence | Acceptance boundary |
+| --- | --- | --- |
+| 1 | Restricted reader adapter reads activation/build/Fund rows in one read-only snapshot | Actual migrations, real restricted login/RLS, exact pointer string, missing/foreign rows and concurrent rollback tests; validator alone insufficient |
+| 2 | A1/A2 owner reconciles running → verifying → promoted worker lifecycle and lease generation | Authenticated controller, expired/revoked lease and stop races deny writes; promoted worker continuation explicitly specified and tested |
+| 3 | Final source barrier and complete aggregate inventory | Writers/new aggregates settled; authenticated broker partition/end evidence and SQL checkpoint settlement bound to the same approved promotion; old MVCC receipt insufficient |
+| 4 | Real admission + final verification + generic pointer CAS composition | One transaction and deferred final lease check, stale approval/build/evidence/CAS denial; no arbitrary controller SQL or effects permissions |
+| 5 | Canary API opt-in with preserved response contract | Separate authorized activation; Fund list/detail and transaction commands reconciled, no default routing change in this preparation |
+| 6 | Retained rollback and correction authority | Explicit money invariants for intentional drift, version-compatible ongoing writes, independent approval and actual restore proof; no synthetic balance corrections |
+| 7 | Authentic operational evidence | Actual stop/catch-up/soak, external effects denied, delivered-and-acknowledged alerts independently read back; simulated receipts insufficient |
+
+Steps 2–7 stay with the original delivery session and require its frozen A1/A2
+source. Consumers, offsets/replay, provider sends and production mutations are
+outside this session's authorization. All 27 domain rows above retain their
+individual missing-evidence requirements; this Fund-only contract upgrades none
+of the other domains to protected or recoverable status.

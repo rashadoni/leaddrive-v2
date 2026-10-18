@@ -924,3 +924,10 @@ stop/soak/restore/alert receipts are unproved. Exact source references and next
 steps are appended to KAFKA_OPERATOR_READINESS.md. A7 map remains27/27 with
 Fund-only implementation and no whole-domain safety claim. PR891 latest draft
 headf47224e2b is not certified by older passing runs; its checks are untouched.
+
+### Operator preparation: canary result boundary
+
+Inactive pure Fund canary result validation is prepared (23 focused cases).
+This is not a read adapter or activation. See KAFKA_OPERATOR_READINESS.md's
+ordered lifecycle table for the seven remaining integration/evidence steps;
+A1/A2 ownership and every domain's missing evidence remain unchanged.
