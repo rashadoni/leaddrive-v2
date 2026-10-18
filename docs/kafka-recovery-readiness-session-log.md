@@ -317,3 +317,25 @@
 - Owner restore evidence now records start time and elapsed seconds for the
   actual verifier invocation; this is restore duration, not full incident RTO
   or measured source RPO. Updated exact archive-verifier pins accordingly.
+
+## 2026-10-19: owner public trust preparation (private material excluded)
+
+- Created/retained a separate owner Ed25519 signing key in private administrative
+  storage outside repo, mode0600, parent0700. It is explicitly owner-operated,
+  NOT Farah/independent identity. No private signing/age key transferred to
+  GitHub or production and no private content printed.
+- Confirmed authenticated GitHub actor rashadoni. Registered only the strict
+  public owner signer line in new production environment setting
+  BACKUP_OWNER_ALLOWED_SIGNERS; checked it did not already exist before writing.
+  BACKUP_OFFLINE_ALLOWED_SIGNERS unchanged. Public signer fingerprint SHA256:
+  e643a16551a89c6457787acd65d3e369c85ea45a60696b0b9ce26c36eaca2807.
+- No actual commissioning key receipt signed with a feature SHA masquerading as
+  reviewed main. Generate fresh actual proof only once owner route is reviewed
+  on exact main. The real production recipient is still unchanged.
+- No configured Mac/restore-worker SSH route exists in this host's alias list.
+  Private real-data restore cannot run on Actions/production and heavy restore
+  is forbidden on editing Contabo. Isolated owner workstation remains an actual
+  execution prerequisite, not a certificate obtained by changing a field.
+- Fresh existing Actions backup-readiness inspection dispatched on current main
+  before production operation planning; await actual result, do not assume old
+  Object Lock unknown_failure has resolved. No new diagnostic code/secret dump.
