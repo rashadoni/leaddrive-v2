@@ -417,3 +417,16 @@
   source2936f4c2f checks run. Acknowledged in PR892 comment6255711594. This
   correctness fix supersedes frozen A3 source6bec17958 before reconciliation;
   repeat exact-head gates required, old green results cannot certify new SHA.
+
+## 2026-10-19: actual Mac isolated VM started
+
+- Owner screenshot confirms separate leaddrive-recovery Colima profile reached
+  done and explicit Docker context reports linux/aarch64. This supersedes VM
+  unavailable state; production restore and workbench ARM64 test still NOT RUN.
+- Prepared minimal exact430c7b9f9 source archive outside Git from explicit public
+  code paths only; supplied SCP+SHA256 verification+bounded image build/self-test
+  block for owner Mac. No keys, backups or production settings in bundle.
+- New exact-head hosted run39170797003 PASS, including12synthetic owner tests,
+  rebuilt workbench and actual noexec scratch interpretation probe. Exact-head
+  scan39170797015, runner39170796972, pgpass39170797011 and tenant integration
+  39170796990 PASS. Protected main checks39170796977 remain in progress.
