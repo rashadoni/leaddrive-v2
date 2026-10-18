@@ -2182,3 +2182,22 @@ service, branch delivery or Kafka runtime was changed by this documentation.
 - Independent public read before this release returned exact08407d944bb700e023b883f4484cd019dd6710bb
   and /api/v1/ping={ok:true}. Foreign b62a87a deploy39119843829 is still
   building; it remains untouched. PR877 has not yet merged or deployed.
+
+### PR877 all gates verified and normally merged — 2026-10-18 10:59 UTC
+
+- Ready run39119897984 whole SUCCESS10:58:25Z on exact1cfdb3ed. Completed
+  logs: partition51 + worker17 + reducer43 + consumer78 =189/189 PASS;
+  actual restricted PostgreSQL14/14 PASS. Full baseline18 failing files=18
+  known PASS10:58:22Z. Typecheck SUCCESS10:50:29Z: no diagnostics in the9
+  own Fund/partition source/test paths;64 gated pairs=64 accepted baseline,
+  1326 total advisory diagnostics. Do not call the whole repository TS-clean.
+- Root freshly verified exact PR head/base, clean mergeability and all5
+  protected contexts actually SUCCESS, plus tooling/CDC success. The main
+  delta from the branch base touches MTM only, with no own-path overlap.
+- Normal gh match-head merge877 completed10:59:12Z, without admin bypass,
+  changing protection or deleting either branch/worktree. Merge SHA:
+  133654f4a064adcbb81b6458d05f80b8b7423dec. Normal Actions release and public
+  artifact/SHA/health verification are now pending; merge is not deployment.
+- Prior b62a87a deploy39119843829 passed build/checks and is staging its
+  own immutable artifact. It was not interrupted. The new release must use
+  the existing queues, not a duplicate manual build or direct server copy.

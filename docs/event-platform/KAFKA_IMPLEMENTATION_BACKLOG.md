@@ -677,3 +677,16 @@ Protocol references: [Apache Kafka consumer offsets](https://kafka.apache.org/41
 and [Kafka group/offset protocol](https://kafka.apache.org/41/design/protocol/).
 The commit position denotes the next record to consume; it is not the
 maximum checkpoint returned by any tenant callback.
+
+### K4 coordinator verified and merged; release pending — 2026-10-18 10:59 UTC
+
+PR877 source1cfdb3ed passed actual189/189 focused units,14/14 restricted-PG
+tests and all5 protected checks in39119897984. Synthetic CDC39119897962
+also passed raw8/8 and cold restart, independently of the new worker port.
+Normal merge produced133654f4a064adcbb81b6458d05f80b8b7423dec. Production
+release is still pending at this entry. The above implementation-in-progress
+label is superseded for this inactive coordinator only, not for all K4.
+
+Real broker membership/retention integration, connected worker entrypoint,
+runtime provisioning/release, recovery and activation remain open. No actual
+consumer group, production offsets or data replay was started by this change.
