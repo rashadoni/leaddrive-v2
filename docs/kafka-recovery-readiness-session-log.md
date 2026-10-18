@@ -682,3 +682,8 @@
   Static/type exact checkout/results will be checked on completion.
 - B2 PR899 remains OPEN/unmerged. No storage credentials, billing, Object Lock,
   production config, timers, source PostgreSQL or Kafka mutation by A3.
+
+- Current9cf typecheck117823353416 completed SUCCESS. Retrieved its actual
+  checkout log, confirming same10b3e6c0 tested merge (current9cd + source9cf),
+  not only trusting stale API base metadata. Final static gate remains running;
+  no all-required acceptance claimed yet. No code changes after swap guard.
