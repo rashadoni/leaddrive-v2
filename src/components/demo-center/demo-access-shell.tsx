@@ -1,18 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { FormEvent } from "react"
 import Image from "next/image"
-import { ArrowRight, BarChart3, CheckCircle2, Clock3, KeyRound, Layers3, LoaderCircle, LockKeyhole, Mail, Play, ShieldCheck, ShieldX, Sparkles, TrendingUp, Users } from "lucide-react"
+import { ArrowRight, BarChart3, CheckCircle2, Clock3, Layers3, LoaderCircle, LockKeyhole, Mail, Play, ShieldCheck, ShieldX, Sparkles, TrendingUp, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import type { DemoModuleManifest } from "@/lib/demo-center/catalog"
 import { getDemoJourneyScenario, withLiveCall, type DemoProspectIdentity } from "@/lib/demo-center/journey"
 import { DemoJourneyPlayer } from "@/components/demo-center/journey/demo-journey-player"
 import type { DemoLiveCallState } from "@/components/demo-center/journey/demo-live-call"
 import { DemoPlayer } from "@/components/demo-center/demo-player"
 
-type AccessState = "ready_for_otp" | "otp_sent" | "verified" | "active" | "active_elsewhere" | "completed" | "expired" | "revoked" | "connection_lost" | "unavailable"
+type AccessState = "ready" | "verified" | "active" | "active_elsewhere" | "completed" | "expired" | "revoked" | "connection_lost" | "unavailable"
 
 interface ModulePreview { id: string; title: string; summary: string }
 /** Present only on grants issued for a guided scenario. */
@@ -46,10 +44,8 @@ interface AccessPayload {
 export function DemoAccessShell({ token }: { token: string }) {
   const [payload, setPayload] = useState<AccessPayload | null>(null)
   const [loading, setLoading] = useState(true)
-  const [action, setAction] = useState<"otp" | "verify" | "start" | null>(null)
+  const [opening, setOpening] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [code, setCode] = useState("")
-  const [codeSent, setCodeSent] = useState(false)
   const statePanelRef = useRef<HTMLDivElement>(null)
   const previousStateRef = useRef<AccessState | null>(null)
   const state = payload?.state || "unavailable"
@@ -150,62 +146,35 @@ export function DemoAccessShell({ token }: { token: string }) {
     window.requestAnimationFrame(() => statePanelRef.current?.focus())
   }, [payload, state])
 
-  async function sendOtp() {
-    setAction("otp")
+  /**
+   * One press: confirm the address (the link came to that mailbox), then start
+   * the session in this browser. A confirmed browser whose start was cut off
+   * comes back as `verified` and only starts.
+   */
+  async function openDemo() {
+    setOpening(true)
     setError(null)
     try {
-      const response = await fetch(`/api/v1/public/demo-access/${encodeURIComponent(token)}/otp`, {
+      if (state !== "verified") {
+        const confirmed = await fetch(`/api/v1/public/demo-access/${encodeURIComponent(token)}/confirm`, {
+          method: "POST",
+          credentials: "same-origin",
+        })
+        const result = await confirmed.json().catch(() => ({})) as { error?: string }
+        if (!confirmed.ok) throw new Error(result.error || "E-poçtu təsdiqləyə bilmədik")
+        setPayload((current) => current ? { ...current, state: "verified" } : current)
+      }
+      const started = await fetch(`/api/v1/public/demo-access/${encodeURIComponent(token)}/start`, {
         method: "POST",
         credentials: "same-origin",
       })
-      const result = await response.json().catch(() => ({})) as { error?: string }
-      if (!response.ok) throw new Error(result.error || "Kodu göndərə bilmədik")
-      setCodeSent(true)
-      setPayload((current) => current ? { ...current, state: "otp_sent" } : current)
-    } catch (otpError) {
-      setError(otpError instanceof Error ? otpError.message : "Kodu göndərə bilmədik")
-    } finally {
-      setAction(null)
-    }
-  }
-
-  async function verifyOtp(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setAction("verify")
-    setError(null)
-    try {
-      const response = await fetch(`/api/v1/public/demo-access/${encodeURIComponent(token)}/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ code }),
-      })
-      const result = await response.json().catch(() => ({})) as { error?: string }
-      if (!response.ok) throw new Error(result.error || "Kodu təsdiqləyə bilmədik")
-      setCode("")
-      setPayload((current) => current ? { ...current, state: "verified" } : current)
-    } catch (verifyError) {
-      setError(verifyError instanceof Error ? verifyError.message : "Kodu təsdiqləyə bilmədik")
-    } finally {
-      setAction(null)
-    }
-  }
-
-  async function startDemo() {
-    setAction("start")
-    setError(null)
-    try {
-      const response = await fetch(`/api/v1/public/demo-access/${encodeURIComponent(token)}/start`, {
-        method: "POST",
-        credentials: "same-origin",
-      })
-      const result = await response.json().catch(() => ({})) as { error?: string }
-      if (!response.ok) throw new Error(result.error || "Demonu başlada bilmədik")
+      const result = await started.json().catch(() => ({})) as { error?: string }
+      if (!started.ok) throw new Error(result.error || "Demonu başlada bilmədik")
       await loadState()
-    } catch (startError) {
-      setError(startError instanceof Error ? startError.message : "Demonu başlada bilmədik")
+    } catch (openError) {
+      setError(openError instanceof Error ? openError.message : "Demonu aça bilmədik")
     } finally {
-      setAction(null)
+      setOpening(false)
     }
   }
 
@@ -285,46 +254,12 @@ export function DemoAccessShell({ token }: { token: string }) {
 
             <div ref={statePanelRef} tabIndex={-1} className="order-2 mt-7 max-w-md outline-none lg:order-3 lg:mt-8">
             <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{accessStateAnnouncement(state)}</p>
-            {state === "ready_for_otp" || state === "otp_sent" ? (
+            {state === "ready" || state === "verified" ? (
               <>
-                <div className="flex items-center gap-3 text-sm font-semibold text-[#17384a]"><StateIcon icon={Mail} /><span>Dəvəti e-poçtla təsdiqləyin</span></div>
-                <p className="mt-3 text-sm leading-6 text-[#5b7280]">6 rəqəmli kod <strong className="font-semibold text-[#17384a]">{payload?.recipient || "e-poçtunuza"}</strong> göndəriləcək. Linki açmaq sessiyanı hələ başlatmır.</p>
-                {state === "ready_for_otp" && !codeSent ? (
-                  <Button onClick={sendOtp} disabled={action !== null} className="mt-6 min-h-14 rounded-full bg-[#172f3f] px-6 text-base text-white shadow-[inset_0_-2px_3px_rgba(0,0,0,0.28)] hover:bg-[#0a2540]">
-                    {action === "otp" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}Giriş kodunu göndər<ArrowRight className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <form onSubmit={verifyOtp} className="mt-6 space-y-4">
-                    <label htmlFor="demo-otp" className="block text-sm font-semibold text-[#17384a]">E-poçtdakı kod</label>
-                    <Input
-                      id="demo-otp"
-                      autoFocus
-                      required
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      pattern="[0-9]{6}"
-                      maxLength={6}
-                      value={code}
-                      onChange={(event) => setCode(event.target.value.replace(/\D/gu, "").slice(0, 6))}
-                      className="h-14 rounded-full border-[#cbd7dd] bg-white px-6 text-center text-xl font-bold tracking-[0.35em] text-[#0a2540] shadow-sm"
-                      placeholder="000000"
-                    />
-                    <div className="flex flex-wrap gap-3">
-                      <Button type="submit" disabled={action !== null || code.length !== 6} className="min-h-12 rounded-full bg-[#172f3f] px-6 text-white hover:bg-[#0a2540]">
-                        {action === "verify" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}Təsdiqlə və davam et
-                      </Button>
-                      <Button type="button" variant="ghost" className="rounded-full text-[#486477]" disabled={action !== null} onClick={sendOtp}>Kodu yenidən göndər</Button>
-                    </div>
-                  </form>
-                )}
-              </>
-            ) : state === "verified" ? (
-              <>
-                <div className="flex items-center gap-3 text-sm font-semibold text-[#17384a]"><StateIcon icon={LockKeyhole} /><span>Demo hazırdır</span></div>
-                <p className="mt-3 text-sm leading-6 text-[#5b7280]">Başladıqdan sonra sessiya bu brauzerə bağlanacaq. Səhifəni yeniləyə və qısa internet kəsilməsindən sonra davam edə bilərsiniz.</p>
-                <GrantContents scenario={payload?.scenario} modules={modules} />
-                <Button onClick={startDemo} disabled={action !== null} className="mt-6 min-h-14 rounded-full bg-[#172f3f] px-7 text-base text-white shadow-[inset_0_-2px_3px_rgba(0,0,0,0.28)] hover:bg-[#0a2540]">
-                  {action === "start" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-current" />}Demonu başlat<ArrowRight className="h-4 w-4" />
+                <div className="flex items-center gap-3 text-sm font-semibold text-[#17384a]"><StateIcon icon={Mail} /><span>Demonu açmağa bir addım qalıb</span></div>
+                <p className="mt-3 text-sm leading-6 text-[#5b7280]">Düyməni basmaqla <strong className="font-semibold text-[#17384a]">{payload?.recipient || "e-poçt"}</strong> ünvanının sizə aid olduğunu təsdiqləyirsiniz. Demo bu brauzerdə açılacaq və ona bağlanacaq.</p>
+                <Button onClick={openDemo} disabled={opening} className="mt-6 min-h-14 rounded-full bg-[#172f3f] px-7 text-base text-white shadow-[inset_0_-2px_3px_rgba(0,0,0,0.28)] hover:bg-[#0a2540]">
+                  {opening ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-current" />}Təsdiqlə və demonu aç<ArrowRight className="h-4 w-4" />
                 </Button>
               </>
             ) : (
@@ -339,7 +274,7 @@ export function DemoAccessShell({ token }: { token: string }) {
             )}
 
             {error ? <p role="alert" className="mt-5 rounded-2xl border border-[#e9b8aa] bg-[#fff4ef] px-4 py-3 text-sm text-[#8f2f21]">{error}</p> : null}
-            {state === "ready_for_otp" || state === "otp_sent" ? <GrantContents scenario={payload?.scenario} modules={modules} /> : null}
+            {state === "ready" || state === "verified" ? <GrantContents scenario={payload?.scenario} modules={modules} /> : null}
             </div>
 
             <p className="order-4 mt-6 flex items-start gap-2 text-xs leading-5 text-[#516d7c]">
@@ -403,7 +338,7 @@ function ModuleList({ modules }: { modules: readonly ModulePreview[] }) {
 }
 
 function TerminalState({ state }: { state: AccessState }) {
-  const copy: Record<Exclude<AccessState, "ready_for_otp" | "otp_sent" | "verified" | "active">, { title: string; body: string; icon: typeof ShieldX }> = {
+  const copy: Record<Exclude<AccessState, "ready" | "verified" | "active">, { title: string; body: string; icon: typeof ShieldX }> = {
     active_elsewhere: { title: "Sessiya başqa brauzerdə aktivdir", body: "Bu demo başladıldığı brauzerdə davam etdirilə bilər. Yeni giriş üçün demo sahibindən yeni link istəyin.", icon: LockKeyhole },
     completed: { title: "Demo sessiyası tamamlandı", body: "Bu birdəfəlik link yenidən istifadə edilə bilməz. Növbəti addım üçün LeadDrive nümayəndəsi ilə əlaqə saxlayın.", icon: CheckCircle2 },
     expired: { title: "Demo müddəti bitib", body: "Təhlükəsizlik səbəbilə bu link və ya aktiv sessiya artıq işləmir. Yeni link üçün demo sahibinə müraciət edin.", icon: Clock3 },
@@ -417,9 +352,8 @@ function TerminalState({ state }: { state: AccessState }) {
 
 function accessStateAnnouncement(state: AccessState): string {
   const announcements: Record<AccessState, string> = {
-    ready_for_otp: "Demo dəvəti hazırdır. E-poçt təsdiq kodunu göndərin.",
-    otp_sent: "Təsdiq kodu göndərildi. E-poçtdakı altı rəqəmli kodu daxil edin.",
-    verified: "E-poçt təsdiqləndi. Demo başlamağa hazırdır.",
+    ready: "Demo hazırdır. E-poçtu təsdiqləyib demonu açın.",
+    verified: "E-poçt təsdiqləndi. Demo açılmağa hazırdır.",
     active: "Demo sessiyası başladı.",
     active_elsewhere: "Sessiya başqa brauzerdə aktivdir.",
     completed: "Demo sessiyası tamamlandı.",

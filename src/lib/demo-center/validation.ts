@@ -73,10 +73,6 @@ export const demoGrantIssueSchema = z.object({
   }
 })
 
-export const demoOtpSchema = z.object({
-  code: z.string().trim().regex(/^\d{6}$/),
-})
-
 /** The AI calls only the phone the prospect gave on the request form (owner
  *  decision 2026-09-22): the browser cannot name any other number, so a demo
  *  cannot be used to point the agent at somebody else's phone. */

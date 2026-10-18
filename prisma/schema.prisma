@@ -22052,6 +22052,9 @@ model DemoRequest {
   reviewedBy       String?
   reviewedAt       DateTime?
   rejectionReason  String?
+  /// When the prospect opened the emailed link and confirmed the address —
+  /// the moment the owner is told about the request. Null: never proven.
+  emailConfirmedAt DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

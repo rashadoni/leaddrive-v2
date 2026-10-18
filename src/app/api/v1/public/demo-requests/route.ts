@@ -100,29 +100,34 @@ export async function POST(request: Request) {
     )
   }
 
-  const requestedModuleNames = getDemoModules(created.requestedModules).map((module) => module.title)
-  // Persistence is the source of truth. A notification outage must not discard
-  // a valid request or make the prospect resubmit their personal information.
-  await sendDemoRequestNotification({
-    to: COMPANY_EMAIL,
-    requestId: created.id,
-    name: created.name,
-    company: created.company,
-    email: created.email,
-    phone: created.phone,
-    jobTitle: created.jobTitle,
-    message: created.message,
-    requestedModuleNames,
-  }).catch(() => undefined)
-
-  // The invitation goes out by itself (src/lib/demo-center/auto-issue.ts), so
-  // the form's «check your email» is true by the time it is read. A refusal
-  // there is not the prospect's problem: the request is stored, the owner has
-  // it in Demo Center, and the answer stays the same.
+  // The owner is not told yet: anyone can type any address into the form.
+  // The link goes to that address (src/lib/demo-center/auto-issue.ts), and
+  // his «Yeni demo sorğusu» leaves only when the prospect opens it and
+  // confirms (src/lib/demo-center/email-confirmation.ts). A refusal here is
+  // not the prospect's problem: the request is stored, it is in Demo Center,
+  // and the answer stays the same.
   const invitation = await autoIssueDemoGrant({ request: created }).catch((error) => {
     console.error("[demo-request] auto-issue threw", { requestId: created.id }, error)
     return "failed" as const
   })
+
+  // No link went out, so nobody can confirm: without this the request would
+  // wait in Demo Center unseen. The owner hears about it now, marked as not
+  // confirmed. A notification outage still must not cost a stored request.
+  if (invitation === "failed" || invitation === "unavailable") {
+    await sendDemoRequestNotification({
+      to: COMPANY_EMAIL,
+      confirmation: "link_not_sent",
+      requestId: created.id,
+      name: created.name,
+      company: created.company,
+      email: created.email,
+      phone: created.phone,
+      jobTitle: created.jobTitle,
+      message: created.message,
+      requestedModuleNames: getDemoModules(created.requestedModules).map((module) => module.title),
+    }).catch(() => undefined)
+  }
 
   return jsonResponse(
     request,
