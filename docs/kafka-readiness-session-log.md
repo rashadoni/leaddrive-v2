@@ -2146,3 +2146,26 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   boundaries pass. Read-only helper review found no remaining concrete blocker
   in this inactive scope. Actual membership/retention/generation integration,
   worker entrypoint/deployment and independent recovery remain future work.
+
+### PR877 frozen source and actual hosted verification started
+
+- Committed/pushed source1cfdb3edbb3e322cd5218be9b22fe19085ad0058 and opened
+  PR877 as draft, then marked ready after confirming the exact remote HEAD.
+  https://github.com/rashadoni/leaddrive-v2/pull/877
+- Authoritative ready-for-review run39119897984 uses exact1cfdb3ed. pr-scope
+  SUCCESS10:36:40Z; static117653291841 and typecheck117653291848 actually
+  started10:36:43Z. Earlier draft39119865162 was superseded/cancelled and is
+  not test evidence. Required runner-policy/scan and tooling validate already
+  SUCCESS; final static/typecheck/realPG results remain PENDING.
+- Existing path-filtered synthetic CDC39119897962 started normally through
+  the PR event, with its existing disposable integration concurrency control.
+  No manual duplicate workflow was dispatched. One helper monitor owns CI
+  observation; root owns any later permitted merge/deploy.
+- While coding, main advanced to b62a87a2142ce852f0c070e3a2d688d836405c52
+  (MTM attendance files/translations only, no Kafka-path overlap). Its foreign
+  deploy39119843829 was active; it was not cancelled or duplicated. Earlier
+  main08407d944 deploy39113010398 is SUCCESS. These are routing observations,
+  not the current PR's release or a new recovery/activation proof.
+- This journal update is a LOCAL checkpoint after frozen source. Do not
+  silently substitute it for the head tested by hosted checks. No production
+  runtime/configuration, data restore, broker activation or replay occurred.
