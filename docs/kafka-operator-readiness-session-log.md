@@ -601,3 +601,34 @@ All158 focused unit cases PASS locally (31 alert+36 recovery+27 snapshot+24
 canary+40 stop); runner-policy72 and diff PASS. Resources13.7GB available,
 201GB disk,swap3MB,pressure averages0. Prior b05d8f00e run39170401611 whole SUCCESS,
 not a receipt for this later code. Next final hosted source verification.
+
+## 2026-10-19 — stop-readback and alert authority final proof
+
+Executable source3f3a8ad9ea9d07d85e12a81360702a94a6307b14 passed hosted run
+https://github.com/rashadoni/leaddrive-v2/actions/runs/39170540849,
+job117802578087:158/158 unit,24/24 actual PostgreSQL admission,22/22 actual-schema
+Fund recovery/canary, cleanup PASS. All source checks in this phase succeeded;
+superseded intermediate receipts are not used to certify later source. Local158,
+syntax/diff, runner-policy72 and domain map27/27 PASS. Pinned branch scanner
+still exactly1 historical prose fingerprint6ca3b5e2e:README:82; no new findings,
+no bypass/exclusions/history rewrite. Required scan remains red, PR894 draft.
+
+NOT RUN: full application build/static/typecheck (draft; heavy host checks
+prohibited); actual observer production/read-back, real stop/catch-up/soak/
+restore/alerts, continuous promoted worker, consumers/offsets/replay/external
+sends and production (no active composition, authentic receipts or authorization).
+No business runtime, migration, worker/checkpoint status guard or foreign branch/
+workflow was changed. Documentation final checkpoint changes no executable code.
+
+Result: requested bounded stop-readback component with40 cases and alert
+shared-authority race correction with3 regressions prepared; terminal-canary
+lifecycle specified and full remaining27-domain map retained. This is not proof
+of actual worker stop or completed A5 operation. Last action: exact-source
+158+24+22 hosted proof. Stop: trusted actual observer/challenge store, final
+source/lease barrier and restricted real pointer-mutation executor are absent;
+continuous promoted processing still incompatible with current guarded schema.
+Next precise integration step in original delivery session: establish actual
+stop observer provenance and single-use challenge for the frozen A1/A2 process,
+then bind current lease, settled source watermarks and pointer CAS in one
+restricted transaction and test concurrent writer/revoke/rollback denial. No
+consumer, replay, send, production, merge or deploy implied by this preparation.
