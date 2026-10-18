@@ -31,6 +31,7 @@ import { persistAdvisorSignalSnapshot } from "@/lib/ai/advisor/snapshots"
 import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 import { isSupportAiEnabled } from "@/lib/ai/support-feature"
 import { enrollContactInJourney } from "@/lib/journey-enroll"
+import { systemTicketComment } from "@/lib/ticketing/chat-transcript"
 
 const SUPPORT_AUTOMATION_FEATURES = new Set([
   "ai_auto_acknowledge",
@@ -301,11 +302,12 @@ async function runAutoAcknowledge(orgId: string, now: Date, shadow: boolean): Pr
       })
       if (!inserted) continue
     } else {
-      // Create a comment on the ticket (public, no userId = system)
+      // Create a comment on the ticket (public, no userId = system). Marked as the
+      // product's own: a public comment with no userId is otherwise the customer's.
       await prisma.ticketComment.create({
         data: {
           ticketId: ticket.id,
-          comment: templateMessage,
+          comment: systemTicketComment(templateMessage),
           isInternal: false,
           userId: null,
         },
@@ -1121,7 +1123,7 @@ async function executeApprovedShadowActions(now: Date): Promise<number> {
           await prisma.ticketComment.create({
             data: {
               ticketId: action.entityId,
-              comment: payload.message,
+              comment: systemTicketComment(payload.message),
               isInternal: false,
               userId: null,
             },
@@ -1178,7 +1180,7 @@ async function executeApprovedShadowActions(now: Date): Promise<number> {
           await prisma.ticketComment.create({
             data: {
               ticketId: action.entityId,
-              comment: `📖 Knowledge-base article that answers this: **${payload.articleTitle}**\n\nArticle ID: ${payload.articleId}\n\nIf this solved your issue, great! If not, reply and we'll dig deeper.`,
+              comment: systemTicketComment(`📖 Knowledge-base article that answers this: **${payload.articleTitle}**\n\nArticle ID: ${payload.articleId}\n\nIf this solved your issue, great! If not, reply and we'll dig deeper.`),
               isInternal: false,
               userId: null,
             },

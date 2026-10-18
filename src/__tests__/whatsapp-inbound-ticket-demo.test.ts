@@ -1,9 +1,10 @@
 /**
  * The product's inbound WhatsApp ticket path with the guided demo's mark
  * (src/lib/inbox/whatsapp-inbound-ticket.ts, `demo`): the demo's own ticket
- * is found by the id its thread keeps — never by the phone — reopened when it
- * was resolved (its closure link cancelled), and created marked «demo».
- * Without the mark nothing changes.
+ * is found by the id its thread keeps — never by the phone — reopened through
+ * the product's reopen when it was resolved, and created marked «demo», inside
+ * the same per-phone lock as every other message. Without the mark nothing
+ * changes.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -11,19 +12,22 @@ const mocks = vi.hoisted(() => ({
   findTicket: vi.fn(),
   createComment: vi.fn(),
   createTicket: vi.fn(),
+  updateTicket: vi.fn(),
   reopen: vi.fn(),
-  cancelClosure: vi.fn(),
+  lock: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
+  logAudit: vi.fn(),
   prisma: {
-    ticket: { findFirst: mocks.findTicket },
+    // The per-phone lock: its transaction holds only the advisory lock.
+    $transaction: (work: (tx: unknown) => Promise<unknown>) => work({ $executeRaw: mocks.lock }),
+    ticket: { findFirst: mocks.findTicket, updateMany: mocks.updateTicket },
     ticketComment: { create: mocks.createComment },
   },
 }))
 vi.mock("@/lib/ticket-factory", () => ({ createTicketWithAssignment: mocks.createTicket }))
 vi.mock("@/lib/ticket-reopen", () => ({ reopenTicketForCustomerReply: mocks.reopen }))
-vi.mock("@/lib/ticketing/closure-requests", () => ({ cancelPendingTicketClosureRequests: mocks.cancelClosure }))
 vi.mock("@/lib/ticketing/customer-locale", () => ({ loadOrganizationLocale: async () => "az" }))
 
 import { DEMO_WHATSAPP_TICKET_TAGS, ensureInboundWhatsAppTicket } from "@/lib/inbox/whatsapp-inbound-ticket"
@@ -46,13 +50,16 @@ beforeEach(() => {
   mocks.createComment.mockResolvedValue({})
   mocks.createTicket.mockResolvedValue({ id: "ticket-new", ticketNumber: "WA-0031" })
   mocks.reopen.mockResolvedValue({ reopened: true, ticketId: "ticket-1", ticketNumber: "WA-0030" })
-  mocks.cancelClosure.mockResolvedValue(1)
+  mocks.updateTicket.mockResolvedValue({ count: 1 })
+  mocks.lock.mockResolvedValue(0)
 })
 
 describe("the demo's ticket", () => {
   it("opens with the product's prefix and path, marked as the demo's — not appended to the phone's other open ticket", async () => {
     const result = await ensureInboundWhatsAppTicket({ ...BASE, demo: { grantId: "grant-1", ticketId: null } })
-    expect(result).toMatchObject({ ticketId: "ticket-new", ticketNumber: "WA-0031", created: true })
+    expect(result).toMatchObject({ ticketId: "ticket-new", ticketNumber: "WA-0031", created: true, reopened: false })
+    // The same per-phone lock as the product's own messages.
+    expect(mocks.lock).toHaveBeenCalledTimes(1)
     // No lookup by the phone: an older ticket of that phone is not the demo's.
     expect(mocks.findTicket).not.toHaveBeenCalled()
     const created = mocks.createTicket.mock.calls[0][0]
@@ -70,11 +77,16 @@ describe("the demo's ticket", () => {
     expect(mocks.createTicket).not.toHaveBeenCalled()
   })
 
-  it("reopens its resolved ticket through the product's reopen, and cancels the closure link sent with «resolved»", async () => {
+  it("moves its waiting ticket back to open when the customer answers", async () => {
+    mocks.findTicket.mockResolvedValue({ id: "ticket-1", ticketNumber: "WA-0030", subject: "Kassa", status: "waiting" })
+    await ensureInboundWhatsAppTicket({ ...BASE, demo: { grantId: "grant-1", ticketId: "ticket-1" } })
+    expect(mocks.updateTicket.mock.calls[0][0]).toEqual({ where: { id: "ticket-1", organizationId: "org-sales", status: "waiting" }, data: { status: "open" } })
+  })
+
+  it("reopens its resolved ticket through the product's reopen, which also cancels its closure link", async () => {
     mocks.findTicket.mockResolvedValue({ id: "ticket-1", ticketNumber: "WA-0030", status: "resolved" })
     const result = await ensureInboundWhatsAppTicket({ ...BASE, demo: { grantId: "grant-1", ticketId: "ticket-1" } })
     expect(mocks.reopen.mock.calls[0][0]).toMatchObject({ organizationId: "org-sales", channel: "whatsapp", ticketId: "ticket-1" })
-    expect(mocks.cancelClosure).toHaveBeenCalledWith("org-sales", "ticket-1")
     expect(result).toMatchObject({ ticketId: "ticket-1", reopened: true })
     // The reopen wrote the customer's comment itself.
     expect(mocks.createComment).not.toHaveBeenCalled()
@@ -83,7 +95,7 @@ describe("the demo's ticket", () => {
   it("reports a held ticket that was deleted, and opens none itself — the demo lets one message open the next", async () => {
     mocks.findTicket.mockResolvedValue(null)
     const result = await ensureInboundWhatsAppTicket({ ...BASE, demo: { grantId: "grant-1", ticketId: "ticket-gone" } })
-    expect(result).toEqual({ ticketId: null, ticketNumber: null, created: false, commentAdded: false, missing: true })
+    expect(result).toEqual({ ticketId: null, ticketNumber: null, created: false, commentAdded: false, reopened: false, missing: true })
     expect(mocks.createTicket).not.toHaveBeenCalled()
   })
 
@@ -92,7 +104,7 @@ describe("the demo's ticket", () => {
     mocks.reopen.mockResolvedValue({ reopened: false, reason: "ticket_already_open", commentAdded: true })
     const result = await ensureInboundWhatsAppTicket({ ...BASE, demo: { grantId: "grant-1", ticketId: "ticket-1" } })
     expect(result).toMatchObject({ ticketId: "ticket-1", commentAdded: true })
-    expect(result.reopened).toBeUndefined()
+    expect(result.reopened).toBe(false)
     expect(mocks.createComment).not.toHaveBeenCalled()
   })
 
@@ -109,11 +121,10 @@ describe("any other WhatsApp message", () => {
   it("is filed exactly as before: on the phone's open ticket, unmarked", async () => {
     mocks.findTicket.mockResolvedValue({ id: "ticket-9", ticketNumber: "WA-0009" })
     const result = await ensureInboundWhatsAppTicket(BASE)
-    expect(mocks.findTicket.mock.calls[0][0].where).toEqual({
+    expect(mocks.findTicket.mock.calls[0][0].where).toMatchObject({
       organizationId: "org-sales",
       tags: { has: "whatsapp" },
       sourceMeta: { path: ["phone"], equals: "994501234567" },
-      status: { in: ["new", "open", "in_progress"] },
     })
     expect(result).toMatchObject({ ticketId: "ticket-9", created: false })
     mocks.findTicket.mockResolvedValue(null)

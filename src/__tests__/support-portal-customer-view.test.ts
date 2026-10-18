@@ -13,6 +13,8 @@ import { NextRequest } from "next/server"
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    // The intake holds a per-phone advisory lock in a transaction of its own.
+    $transaction: vi.fn(async (work: (tx: unknown) => unknown) => work({ $executeRaw: vi.fn() })),
     ticket: { findFirst: vi.fn(), findMany: vi.fn() },
     ticketComment: { create: vi.fn() },
     organization: { findUnique: vi.fn() },
