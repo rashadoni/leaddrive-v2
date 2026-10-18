@@ -1361,3 +1361,25 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   a production prerequisite. New image behavior/CDC are NOT RUN until its new
   head passes integration. Preserve current974 PG/typecheck results; no rerun
   of a demonstrably unavailable old image and no cancellation of active jobs.
+
+### Actual transaction step passed; full release remains blocked
+
+- On exact97437cac7, full39085527339 static117551232155 now reports the
+  explicit restricted-LOGIN Fund PostgreSQL transaction step SUCCESS. This is
+  actual real-database execution of the statement-scoped conflict/whole-factory
+  retry path, not a local mock or permission to merge. Exact test totals await
+  the completed job log; remaining static gates and typecheck117551232121 are
+  still running. Do not label the entire run green prematurely.
+- CDC39085527336 remains FAILURE on the demonstrably unavailable old image;
+  a prior-head CDC success does not replace the required new image behavior.
+  Prepared repin checkpoint7467ef949 remains LOCAL while remote974 is frozen;
+  PR871 is draft during this correction. No stale-SHA rerun or job cancellation.
+- Independently read-checked the other three public manifest pins without
+  pulling image layers: PostgreSQL, Kafka and Apicurio each HTTP200 and exact
+  SHA-256 match. New same-version Debezium manifest/config metadata also match.
+  These checks are not runtime/plugin/CDC or publisher-signature attestations.
+- Local refreshed-pin shell syntax, actual plugin admission positive/negative
+  unit cases6/6, asset gate27domains/86topics/5schemas and diff checks PASS.
+  No full build/TS/Vitest/containers on development: NOT RUN by workload policy.
+  Next: preserve finished974 gate receipts, then one ordinary repinned draft
+  head and actual full tests/CDC before normal merge/deploy.
