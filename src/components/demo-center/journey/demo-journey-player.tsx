@@ -468,12 +468,14 @@ export function DemoJourneyPlayer({
                   token={token}
                   variant={variant}
                   compact={reviewMode || stepIndex > 0}
+                  stepKey={step?.id}
                   onClipEvent={(name) => {
                     // A clip carries its own voiceover: the guide falls silent for
                     // it, and picks the step up again when it ends — before, the
-                    // rest of the chapter's first step went unsaid.
+                    // rest of the chapter's first step went unsaid. A clip that
+                    // will not play gives the step back to the guide at once.
                     if (name === "video.started") voice.stop()
-                    if (name === "video.completed" && step) voice.play(stepVoiceUrl(step))
+                    if ((name === "video.completed" || name === "video.error") && step) voice.play(stepVoiceUrl(step))
                     reporterRef.current?.report({ eventType: "JOURNEY", name, sectionId: viewSection.id })
                   }}
                 />

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleDot, Play, PlayCircle, SkipForward, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -498,6 +498,7 @@ export function IntroClip({
   token,
   variant,
   compact = false,
+  stepKey,
   onClipEvent,
 }: {
   slug: string
@@ -507,9 +508,22 @@ export function IntroClip({
   variant: DemoJourneyVariant
   /** Past the chapter's first step: one line instead of the poster. */
   compact?: boolean
+  /**
+   * The step on screen. When it changes the clip pauses: the guide reads the
+   * new step aloud, and the clip talking over it is what made prospects switch
+   * the guide off for good (the switch is remembered).
+   */
+  stepKey?: string
   onClipEvent?: (name: DemoClipEvent) => void
 }) {
   const [playing, setPlaying] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const shownStep = useRef(stepKey)
+  useEffect(() => {
+    if (shownStep.current === stepKey) return
+    shownStep.current = stepKey
+    videoRef.current?.pause()
+  }, [stepKey])
   const assets = introClipAssets(slug, status, token, variant)
   if (!assets) return null
   const start = () => {
@@ -525,6 +539,7 @@ export function IntroClip({
         </p>
         {/* Sound only after the prospect asked for it; captions travel with the file. */}
         <video
+          ref={videoRef}
           className="mt-3 w-full max-w-3xl rounded-lg"
           controls
           autoPlay
