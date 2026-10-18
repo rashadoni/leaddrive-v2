@@ -475,3 +475,30 @@ root независимо продолжает final deploy и existing recovery
   поставку; затем отдельный ограниченный read-only Object Lock diagnostic
   для K2.1/K3.2/K3.6. Не повторять commissioning и не включать timers ради
   зелёного отчёта. K4 broker/rebalance/replay и K8 остаются NOT ACTIVATED.
+
+### Fund SQL: реальный gate закрыт в узком scope — 2026-10-18 02:09 UTC
+
+Заменяет прежние partial8/9, unknown-error и unmerged-PR871, сохраняя историю.
+
+- На final `f504f1353df3902d72d021e00cf515ca1e74e1d0`
+  [full39087214329](https://github.com/rashadoni/leaddrive-v2/actions/runs/39087214329)
+  SUCCESS; пять required checks фактически SUCCESS. Reducer43/43, shadow
+  control-flow78/78; реальные PostgreSQL10/10 с независимыми restricted LOGIN,
+  RLS, full-envelope hash, SQL/COMMIT rollback и controller race. Конкурентный
+  losing connection повторяется через НОВЫЙ factory после проверки winner и
+  source/counts; arbitrary23505 не принимается за успех.
+- Наши Fund TS-файлы без диагностик, общие1326 advisory/64 gated пары=64;
+  общий unit baseline18=18. AutomaticCDC39087214341/stack39087214349 SUCCESS
+  на том же head. Обновлённый immutable Connect image реально проверен,
+  но owned long-term image retention/signature этим не доказаны.
+- PR871 нормально merged02:09:27UTC, main merge
+  `287047e2e7fd63a6265b646851aa74384715d4ad`. Его deploy и public exact SHA/
+  ping/structural smoke ещё PENDING: один merge не является K8 delivery receipt.
+- K4.2/K4.3 — verified bounded DB increment, не закрытые целиком K-ID.
+  Нет broker caller/ack, assignment/generation/global-partition fence, live
+  role provisioning, source/active/effect writes или production activation.
+  K4.5–K4.8, replay, HA/archive/DR и остальные модули остаются открытыми.
+- Следующая отдельная задача K2.1/K3.2/K3.6: безопасно классифицировать причину
+  existing Object Lock read failure без raw stderr, секретов и runtime writes.
+  Не включать timers, не менять credentials/retention и не запускать повторный
+  commissioning ради диагностического результата.

@@ -1476,3 +1476,32 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   may emit fixed allowlisted categories while preserving policy, one read-only
   request, bounded output/time and secret redaction. Do not commission recovery
   services, change retention/credentials or enable timers as part of diagnosis.
+
+## 2026-10-18 02:09 UTC — Fund SQL increment verified and normally merged
+
+- Final frozen f504f1353df3902d72d021e00cf515ca1e74e1d0 full39087214329
+  completed SUCCESS02:06:30UTC. Completed logs: exact reducer43/43 and shadow
+  control-flow78/78 (total121/121); actual restricted-LOGIN PG10/10, including
+  deterministic one-winner/one-rejection and new-factory duplicate retry1532ms.
+  SQL/deferred-COMMIT rollback, RLS, source coherence and controller race PASS.
+- Typecheck117556264988 SUCCESS: zero diagnostics in task-owned Fund TS files;
+  repository1326 advisory diagnostics/64 gated pairs equal baseline64, not a
+  globally clean TypeScript claim. General unit baseline18=18, no regression.
+  Static117556264977 completed02:06:30; baseline step ran10m09, within the
+  unchanged30-minute job cap. No timeout, rerun or weakened gate was needed.
+- Root freshly read exact-head checks and protection: five required contexts
+  all actual SUCCESS from Actions app15368, enforce_admins=true, PR-only,
+  approvals0, force/delete=false. Current main remained fa738db9; remote/head,
+  registered13.140.132.245:/opt/leaddrive-v2 and immutable Actions route match.
+  Old CLI lacks checks --json; switched to read-only check-runs API, no bypass.
+- Root merged PR871 normally with --match-head-commit f504f1353 at02:09:27UTC.
+  Merge SHA287047e2e7fd63a6265b646851aa74384715d4ad. Automatic deploy is
+  pending discovery/completion: do not label the adapter delivered before its
+  deploy and public exact artifact SHA/ping/feature structural smoke succeed.
+- Adapter remains unreferenced/inactive. No production SQL role, caller,
+  logical WAL/restart/publication/slot, broker/ack, offset/reset, replay,
+  promotion, timer, secret/retention change or paid subscription was introduced.
+  Current source/CI scope is a bounded K4.2/K4.3 increment, not all-module GA.
+- Next: monitor only the automatic merge-SHA deploy; prepare the independent
+  bounded Object Lock report diagnostic while the remote build runs. Do not
+  publish/activate recovery runtime changes or duplicate active workflows.

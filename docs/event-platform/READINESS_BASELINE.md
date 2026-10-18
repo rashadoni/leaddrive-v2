@@ -249,3 +249,34 @@ without removing it. It is not Kafka activation or all-module readiness.
   adapter delivery claimed. Next: finish this gate/release, then sanitized
   read-only Object Lock cause diagnostics. Recovery prerequisites, broker
   runtime, production topology/archive/DR and all-module adoption remain open.
+
+## Fund SQL gate completed and source merged — 2026-10-18 02:09 UTC
+
+This supersedes the partial/unknown retry and unmerged PR871 snapshots above.
+It does not supersede the separate recovery or runtime activation prerequisites.
+
+- Final head `f504f1353df3902d72d021e00cf515ca1e74e1d0`:
+  [full39087214329](https://github.com/rashadoni/leaddrive-v2/actions/runs/39087214329)
+  SUCCESS, all five required checks actual SUCCESS. Dedicated exact-reducer
+  43/43 and shadow-control-flow78/78; actual restricted-LOGIN PostgreSQL10/10.
+  The deterministic losing connection is retried in a NEW transaction factory
+  after winner/source/count verification, safely returning the duplicate state.
+  No arbitrary unique-error acceptance or weaker transaction/ACL was introduced.
+- Zero task-owned Fund TS diagnostics; repository1326 advisory/64 gated pairs
+  equal baseline64. Unit baseline18=18, not a wholly green test/TS repository.
+  Automatic [CDC39087214341](https://github.com/rashadoni/leaddrive-v2/actions/runs/39087214341)
+  and [stack39087214349](https://github.com/rashadoni/leaddrive-v2/actions/runs/39087214349)
+  SUCCESS, with raw8-envelope transport, cold restart and container cleanup.
+- The vanished upstream Connect manifest was repinned to the same official
+  version's exact Linux/amd64 digest; real source-plugin version admission and
+  the actual refreshed-image CDC passed. This is not publisher signature or
+  durable owned-image retention proof; production K1.2 remains partial.
+- [PR871](https://github.com/rashadoni/leaddrive-v2/pull/871) merged normally
+  at02:09:27UTC to `287047e2e7fd63a6265b646851aa74384715d4ad` after root
+  re-read protection and exact-head checks. Its automatic production deploy,
+  public exact marker/ping and structural smoke are PENDING at this entry.
+- K4.2/K4.3 now have actual bounded DB-adapter proof, not merely a plan/mock.
+  Still no caller, broker acknowledgment, generation/global partition fencing,
+  production role provisioning, source/active-v1/pointer/effect mutation,
+  activation, replay, HA/archive/DR or all-module adoption in this increment.
+  Next is the narrow read-only Object Lock cause diagnostic, not commissioning.
