@@ -942,3 +942,38 @@ receipt и следующей точки. Не объявлять A1 завер�
 A2 по двум раздельным smoke, A3 по наличию файла или A6 по успешному merge.
 Промышленная активация допускается только после фактического выполнения её
 условий; отсутствующие доказательства нельзя заменять именами или true в JSON.
+
+### A5/A7 operator preparation — 2026-10-19
+
+На main226dde0e7 отдельная operator-readiness ветка добавляет inactive
+read-back verifier доставки десяти monitoring alarms и
+[KAFKA_OPERATOR_READINESS.md](./KAFKA_OPERATOR_READINESS.md): A5 boundary audit,
+27-domain source/projection/effect/idempotency/rebuild/evidence map и точную
+очередь следующей работы. Это не authenticated operator API и не activation.
+Boolean monitoring flags остаются недостаточным доказательством доставки;
+provider adapter/real challenge/ack receipts ещё NOT RUN.
+
+A1/A2 подготовлены отдельно в codex/kafka-worker-admission-20261018,
+e298057d94804417d38fb105d960721bae6fc1cc; здесь не дублируются. Новые реальные
+integration checks ещё NOT RUN. Общая доставка остаётся исходной сессии
+«Проверить защиту Kafka-консюмера». Никаких production mutations, consumer
+startup, offset/replay, sends, merge или deploy эта подготовка не выполняет.
+
+### A5 inactive authenticated DB admission prepared — 2026-10-19
+
+Draft PR894 extends the bounded operator preparation with a private SQL schema
+outside production migrations: trusted named-login mapping, immutable Fund
+plan/hash, independent approval, one-time consume, controller-bound generation,
+revoke and deferred transaction-end lease check. There is no HTTP/runtime
+executor, business-table grant, read-pointer switch or Kafka operation.
+
+Actual isolated PG16 run39164468500 on ab0aff696 passed13/13 admissions/races
+and28/28 receipt units. Later role/expiry/deferred-fence hardening needs its
+own exact-source receipt; see the append-only operator journal for updates.
+A passing control-schema fixture does not close K5 catch-up/promotion/rollback,
+K7 full-domain recovery, actual delivered monitoring or K8 activation.
+
+The existing scanner flags historical ordinary README prose as generic-api-key;
+no scanner policy/check/history was altered to bypass it. PR remains draft,
+without merge/deploy. Original A1/A2 PR891 and integration scheduling remain
+owned by the originating session; this branch neither starts nor reruns them.

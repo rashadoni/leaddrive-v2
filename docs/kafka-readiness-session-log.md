@@ -3432,3 +3432,36 @@ service, branch delivery or Kafka runtime was changed by this documentation.
 - No merge/deploy, production consumer/offset/replay, backup or infrastructure
   mutation, scanner waiver or new expenditure. Root continues until the exact
   own failure is diagnosed; independent recovery and infrastructure gates remain.
+
+### Frozen A5 preparation integrated without rewriting its branch — 2026-10-19 Asia/Baku
+
+- Three real app threads were verified by title/ID: recovery01a150b0-1f02,
+ infrastructure01a150b0-0162 and operator01a150af-bdb2. Their independent
+ preparation is not production activation. A3 is NO-GO (fresh independent
+ recovery and Farah's actual confirmation missing); A4 is an offline readiness
+ contract, not commissioned HA/TLS/ACL/WAL infrastructure.
+- Root integrates ONLY frozen A5 checkpoint5bd0b2334a6204f6cf4a6fb45cf84c83474ad1d5
+ as a final-source squash into PR891. Original PR894, its branch, checkpoints
+ and historical scanner failure remain intact. No force-push, scanner waiver,
+ policy relaxation or deletion of history. Final root source still must pass
+ unchanged scan and every relevant check. Later moving A5 work, including
+ recovery-evidence/controller composition, is NOT included in this snapshot.
+- Reviewed exact frozen SQL admission, alert verifier, isolated fixture and
+ workflow. SQL grants no business access and is outside production migrations;
+ no runtime controller, worker activation, promotion or external sends exists
+ from this integration. Existing runbook/history entries retained; overlapping
+ backlog append resolved by preserving both entries.
+- Root additionally restricts the disposable SQL fixture to GitHub Actions,
+ explicit loopback/db/admin/port, denies libpq service/hostaddr route overrides,
+ and bounds connection timeout. Thirteen negative route mutations prove denial
+ before psql. This strengthens fixture routing, not an authentication claim.
+- Resource preflight:13GiB available, swap0, memory pressure0, disk202GiB free.
+ Small sequential checks42/42 PASS, syntax PASS, runner policy72 workflows PASS,
+ whitespace PASS. SQL and alert source/test blobs match frozen5bd exactly.
+ Full real PG on ROOT-integrated SHA NOT RUN yet; original A5 run39164956608
+ proved17 PG cases and28 receipt tests only on5bd, not this new root SHA.
+- Manual CDC diagnostic39167726762 remains pinned to f47224e2b, one existing
+ run only: legacy CDC SUCCESS, new full-chain job117794983098 running. Draft
+ PR891 is intentionally not mergeable yet. Final ready-event protected and
+ feature checks, ordinary release and actual production proof remain pending.
+ No production, backup, timer, consumer, offset, replay or paid resource change.
