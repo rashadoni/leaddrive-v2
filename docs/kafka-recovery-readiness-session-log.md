@@ -93,3 +93,8 @@
   unrelated integration run; real libpq remains explicitly NOT RUN here.
 - Actual production prerequisites and independent Farah acceptance remain open;
   no production mutation, restore, merge or deploy performed.
+
+- Follow-through checkpoint421c603bc published; A3 checklist updated to mark
+  the identified runbook contradictions as corrected in this PR. Remaining
+  stopping boundary is operational authorization/independent human evidence,
+  not another unimplemented documentation step.

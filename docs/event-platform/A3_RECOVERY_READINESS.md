@@ -99,9 +99,8 @@ issues=24 enterprise_gaps=9 operator_attestation_required=yes`.
 Эти 24/9 заменяют старые 23/9 только для текущего readiness snapshot. Отчёт не
 доказывает отсутствия всех возможных backup и не выполняет restore.
 
-Исторические инструкции ISMS-04 про три timers и включение при certification
-устарели: текущий runbook требует четыре timers и отдельную normal-deploy
-activation ceremony. Его последняя stop-condition про обязательный GitHub
-independent review также расходится с актуальным `docs/DEPLOYMENT.md`: там
-required reviewers сняты. Не возвращать GitHub reviewer gate в рамках A3;
+При проверке обнаружены устаревшие инструкции ISMS-04 про три timers и
+включение при certification; в этом PR они исправлены: текущий runbook требует четыре timers и отдельную normal-deploy
+activation ceremony. Обязательный GitHub independent review в setup/stop conditions runbook также
+исправлен согласно актуальному `docs/DEPLOYMENT.md`: required reviewers сняты. Не возвращать GitHub reviewer gate в рамках A3;
 независимый recovery signer и решение Farah остаются отдельными требованиями.
