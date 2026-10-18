@@ -13,6 +13,7 @@ const { default: PersonnelSettingsPage } = await import("@/app/(dashboard)/mtm/a
 const { MtmAttendanceSettingsHub } = await import("@/components/mtm/attendance-settings-hub")
 const { MtmAttendanceRulesForm } = await import("@/components/mtm/attendance-rules-form")
 const { MtmAttendanceCalendar } = await import("@/components/mtm/attendance-calendar")
+const { MtmAttendancePolicySettings } = await import("@/components/mtm/attendance-policy-settings")
 const { attendanceWorkWeek } = await import("@/lib/mtm/attendance-settings-cards")
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -41,12 +42,22 @@ describe("Personnel → Settings page", () => {
     }
   })
 
+  it("opens the attendance switches moved here from MTM settings (owner, 2026-10-18)", async () => {
+    for (const card of ["reminders", "approval", "checks"] as const) {
+      const children = (await open({ tab: card })).props.children as (Child | null)[]
+      const editor = children.find(child => child?.type === MtmAttendancePolicySettings) as ReactElement<{ card: string; canChange: boolean }> | undefined
+      expect(editor?.props).toEqual({ card, canChange: true })
+    }
+  })
+
   it("sends a manager asking for an administrator card, or anyone with an unknown one, to the cards", async () => {
     expect((await open({ tab: "nothing" })).type).toBe(MtmAttendanceSettingsHub)
     session.role = "manager"
-    const page = await open({ tab: "location" })
-    expect(page.type).toBe(MtmAttendanceSettingsHub)
-    expect(page.props.isAdmin).toBe(false)
+    for (const tab of ["location", "reminders", "approval", "checks"]) {
+      const page = await open({ tab })
+      expect(page.type).toBe(MtmAttendanceSettingsHub)
+      expect(page.props.isAdmin).toBe(false)
+    }
   })
 })
 
@@ -80,13 +91,15 @@ describe("Settings cards", () => {
   }
   const card = (key: string) => container.querySelector<HTMLAnchorElement>(`[data-testid="attendance-settings-card-${key}"]`)
 
-  it("groups nine cards for an administrator, each opening its editor", async () => {
+  it("groups twelve cards for an administrator, each opening its editor", async () => {
     await render(true)
     const cards = Array.from(container.querySelectorAll<HTMLAnchorElement>('[data-testid^="attendance-settings-card-"]'))
-    expect(cards.map(link => link.getAttribute("href"))).toEqual(["hours", "holidays", "shifts", "day-kinds", "leave", "requests", "qr", "location", "access"].map(key => `/mtm/attendance/settings?tab=${key}`))
+    // Reminders, request approval and the checks of marks came from MTM → Settings (owner, 2026-10-18).
+    expect(cards.map(link => link.getAttribute("href"))).toEqual(["hours", "holidays", "shifts", "day-kinds", "reminders", "leave", "requests", "approval", "qr", "location", "checks", "access"].map(key => `/mtm/attendance/settings?tab=${key}`))
     expect(Array.from(container.querySelectorAll("h2")).map(heading => heading.textContent)).toEqual(Object.values(ru.personnel.settingsGroups))
     // A card alone in its row takes the whole row (owner: no half-empty rows).
-    expect(cards.filter(link => link.className.includes("md:col-span-2")).map(link => link.dataset.testid)).toEqual(["attendance-settings-card-access"])
+    expect(cards.filter(link => link.className.includes("md:col-span-2")).map(link => link.dataset.testid))
+      .toEqual(["reminders", "approval", "checks", "access"].map(card => `attendance-settings-card-${card}`))
     // Suspicious marks are a daily queue on Today, not a setting (owner, 2026-10-15).
     expect(card("review")).toBeNull()
   })
@@ -96,11 +109,12 @@ describe("Settings cards", () => {
     expect(card("hours")!.textContent).toContain("пн–пт, 09:00–18:00 · опоздание после 10 мин")
     expect(card("holidays")!.textContent).toContain(ru.personnel.settingsHolidaysValue.replace("{count}", "2"))
     expect(card("qr")!.textContent).toContain(ru.personnel.settingsCards.qr.hint)
+    expect(card("checks")!.textContent).toContain(ru.personnel.settingsCards.checks.hint)
   })
 
-  it("hides the administrator card from a manager", async () => {
+  it("hides the administrator cards from a manager", async () => {
     await render(false)
-    expect(card("location")).toBeNull()
+    for (const key of ["location", "reminders", "approval", "checks"]) expect(card(key)).toBeNull()
     expect(container.querySelectorAll('[data-testid^="attendance-settings-card-"]')).toHaveLength(8)
     // Rows stay full: without the administrator card the QR card takes its row alone.
     expect(card("qr")!.className).toContain("md:col-span-2")

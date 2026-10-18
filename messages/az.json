@@ -29879,6 +29879,18 @@
       "access": {
         "title": "Tabeli kim görür",
         "hint": "Tabeli görən və müraciətləri həll edən HR əməkdaşları"
+      },
+      "reminders": {
+        "title": "Davamiyyət xatırlatmaları",
+        "hint": "Əməkdaşa gəliş və gedişi qeyd etməyi xatırlat, gecikmə barədə rəhbərə bildir"
+      },
+      "approval": {
+        "title": "Müraciətlərin təsdiqi",
+        "hint": "«Günü bağla» — avtomatik və ya rəhbər tərəfindən"
+      },
+      "checks": {
+        "title": "Qeydlərin yoxlanması",
+        "hint": "Filialdan kənar qeydlər, ortaq telefon, saxta məkan, vaxt fərqi"
       }
     },
     "settingsHoursValue": "{days}, {from}–{to} · {grace} dəq sonra gecikmə",

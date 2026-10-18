@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { hmacToken } from "@/lib/secure-token"
 import { sendWhatsAppText } from "@/lib/whatsapp"
 import { normalizeDemoPhone } from "./phone-verification"
 import { inDemoSalesOrganization } from "./sales-org"
@@ -53,6 +54,8 @@ export interface DemoWhatsAppState {
   readonly displayNumber: string | null
   /** wa.me link with the opening line already written. */
   readonly link: string | null
+  /** This session's code, already inside the link's opening line; shown so it can be typed by hand. */
+  readonly code: string | null
   /** The prospect has written, so free text is allowed back. */
   readonly windowOpen: boolean
   readonly sent: number
@@ -66,12 +69,14 @@ export type SendDemoWhatsAppResult =
 
 interface Grant {
   readonly id: string
+  /** The thread starts here: nothing older is ever shown (see readThread). */
+  readonly createdAt: Date
   readonly status: string
   readonly liveCallEnabled: boolean
   readonly sessionExpiresAt: Date | null
 }
 
-const OFF: DemoWhatsAppState = { enabled: false, displayNumber: null, link: null, windowOpen: false, sent: 0, left: 0, messages: [] }
+const OFF: DemoWhatsAppState = { enabled: false, displayNumber: null, link: null, code: null, windowOpen: false, sent: 0, left: 0, messages: [] }
 
 /** WhatsApp's own window, in hours: the same 23 `sendWhatsAppText` uses. */
 const WINDOW_HOURS = 23
@@ -80,10 +85,21 @@ function usable(grant: Grant, now: Date): boolean {
   return grant.status === "ACTIVE" && grant.liveCallEnabled && (!grant.sessionExpiresAt || grant.sessionExpiresAt > now)
 }
 
-/** The line the prospect's WhatsApp opens with, so we can recognise a demo thread at a glance. */
-export function demoWhatsAppOpener(company: string | null): string {
+/**
+ * This session's code: six characters derived from the grant, shown only on
+ * its own demo page, inside the line the prospect's WhatsApp opens with.
+ * A message carrying it from the request's phone is what proves that the
+ * person looking at the demo holds that phone — a phone that merely wrote to
+ * LeadDrive in the meantime proves nothing (review of 2026-10-18).
+ */
+export function demoWhatsAppCode(grantId: string): string {
+  return `LD-${hmacToken(grantId, "demo-whatsapp-code").slice(0, 6).toUpperCase()}`
+}
+
+/** The line the prospect's WhatsApp opens with: recognisable at a glance, and carrying the session's code. */
+export function demoWhatsAppOpener(company: string | null, code: string): string {
   const who = company?.trim() ? ` (${company.trim()})` : ""
-  return `LeadDrive demo${who}: salam! Bu mesajı demo səhifəsindən yazıram.`
+  return `LeadDrive demo${who}: salam! Bu mesajı demo səhifəsindən yazıram. Kod: ${code}`
 }
 
 export async function demoWhatsAppState(params: {
@@ -101,12 +117,13 @@ export async function demoWhatsAppState(params: {
 
   // The one door into the tenant (./sales-org.ts): demo code never picks an
   // organisation itself, and the boundary test holds that.
-  const entered = await inDemoSalesOrganization((organizationId) => readThread(organizationId, phone.e164, params.grant.id, now))
+  const entered = await inDemoSalesOrganization((organizationId) => readThread(organizationId, phone.e164, params.grant, now))
   const thread = entered?.value ?? { messages: [], windowOpen: false, sent: 0 }
   return {
     enabled: true,
     displayNumber: sender.displayNumber,
-    link: `https://wa.me/${sender.waNumber}?text=${encodeURIComponent(demoWhatsAppOpener(params.company ?? null))}`,
+    link: `https://wa.me/${sender.waNumber}?text=${encodeURIComponent(demoWhatsAppOpener(params.company ?? null, demoWhatsAppCode(params.grant.id)))}`,
+    code: demoWhatsAppCode(params.grant.id),
     windowOpen: thread.windowOpen,
     sent: thread.sent,
     left: Math.max(0, DEMO_WHATSAPP_MAX_SENDS - thread.sent),
@@ -132,7 +149,7 @@ export async function sendDemoWhatsApp(params: {
   if (!sender) return { ok: false, code: "not_enabled" }
 
   const entered = await inDemoSalesOrganization(async (organizationId) => {
-    const before = await readThread(organizationId, phone.e164, params.grant.id, now)
+    const before = await readThread(organizationId, phone.e164, params.grant, now)
     if (before.sent >= DEMO_WHATSAPP_MAX_SENDS) return { refused: "too_many" as const }
     // Business-initiated messages need a template this account cannot even
     // list, so without the prospect's own inbound there is nothing to send.
@@ -170,29 +187,75 @@ export async function sendDemoWhatsApp(params: {
   }
 }
 
-/** Inside the tenant already: the door above put us there. */
+/**
+ * Inside the tenant already: the door above put us there.
+ *
+ * The phone is the one typed on the request, and nobody proved it. Until
+ * 2026-10-18 this returned the last twelve messages of any age whose `to`,
+ * `from` or `waPhone` CONTAINED its last nine digits — and an inbound row's
+ * `from` is the sender's own WhatsApp profile name, which anybody can set to
+ * those digits. So a prospect who typed somebody else's number could read
+ * that person's real conversation with LeadDrive.
+ *
+ * Now a row belongs to the phone only by the exact number: an inbound row by
+ * its `waPhone`, an outbound row by its `to`. And the thread starts at this
+ * session's own proof — the first message from that number carrying the
+ * session's code (demoWhatsAppCode), which only this demo page shows. Before
+ * it there is nothing to show and nothing may be sent.
+ */
 async function readThread(
   organizationId: string,
   phoneE164: string,
-  grantId: string,
+  grant: Pick<Grant, "id" | "createdAt">,
   now: Date,
 ): Promise<{ messages: DemoWhatsAppMessage[]; windowOpen: boolean; sent: number }> {
-  const tail = phoneE164.replace(/\D/g, "").slice(-9)
-  const rows = await prisma.channelMessage.findMany({
+  const digits = phoneE164.replace(/\D/g, "")
+  const code = demoWhatsAppCode(grant.id)
+  const [proof, sent] = await Promise.all([
+    prisma.channelMessage.findFirst({
       where: {
         organizationId,
         channelType: "whatsapp",
-        OR: [{ to: { contains: tail } }, { from: { contains: tail } }, { metadata: { path: ["waPhone"], string_contains: tail } }],
+        direction: "inbound",
+        createdAt: { gte: grant.createdAt },
+        metadata: { path: ["waPhone"], equals: digits },
+        body: { contains: code },
       },
-      orderBy: { createdAt: "desc" },
-    take: 40,
-    select: { id: true, direction: true, body: true, createdAt: true, metadata: true },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true },
+    }),
+    // The prospect's own five, counted on their own — not within a page of
+    // the thread, which enough inbound messages would push them off.
+    prisma.channelMessage.count({
+      where: {
+        organizationId,
+        channelType: "whatsapp",
+        direction: "outbound",
+        AND: [
+          { metadata: { path: ["demoGrantId"], equals: grant.id } },
+          { metadata: { path: ["sentVia"], equals: "demo" } },
+        ],
+      },
+    }),
+  ])
+  if (!proof) return { messages: [], windowOpen: false, sent }
+  const ours = await prisma.channelMessage.findMany({
+    where: {
+      organizationId,
+      channelType: "whatsapp",
+      createdAt: { gte: proof.createdAt },
+      OR: [
+        { direction: "inbound", metadata: { path: ["waPhone"], equals: digits } },
+        { direction: "outbound", to: { in: [digits, `+${digits}`] } },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    take: THREAD_LIMIT,
+    select: { id: true, direction: true, body: true, createdAt: true },
   })
-  const lastInbound = rows.find((row) => row.direction === "inbound")
+  const lastInbound = ours.find((row) => row.direction === "inbound")
   const windowOpen = Boolean(lastInbound && now.getTime() - lastInbound.createdAt.getTime() < WINDOW_HOURS * 60 * 60_000)
-  const sent = rows.filter((row) => (row.metadata as { demoGrantId?: unknown } | null)?.demoGrantId === grantId).length
-  const messages = rows
-    .slice(0, THREAD_LIMIT)
+  const messages = ours
     .reverse()
     .map((row) => ({
       id: row.id,

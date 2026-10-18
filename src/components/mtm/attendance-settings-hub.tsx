@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowRight, CalendarDays, Clock, CaseSensitive, FileText, MapPin, Palmtree, QrCode, Shuffle, UserCog } from "lucide-react"
+import { ArrowRight, BellRing, CalendarDays, CheckCircle2, Clock, CaseSensitive, FileText, MapPin, Palmtree, QrCode, ShieldAlert, Shuffle, UserCog } from "lucide-react"
 import { formatDate } from "@/lib/format-date"
 import { ATTENDANCE_ADMIN_SETTINGS, ATTENDANCE_SETTINGS_GROUPS, attendanceWorkWeek, type AttendanceSettingsCard } from "@/lib/mtm/attendance-settings-cards"
 import type { MtmAttendanceRule } from "@/lib/mtm/attendance-rules"
@@ -13,6 +13,7 @@ const ICONS: Record<AttendanceSettingsCard, ReactNode> = {
   hours: <Clock className="h-5 w-5" />, holidays: <CalendarDays className="h-5 w-5" />, shifts: <Shuffle className="h-5 w-5" />, "day-kinds": <CaseSensitive className="h-5 w-5" />,
   leave: <Palmtree className="h-5 w-5" />, requests: <FileText className="h-5 w-5" />, qr: <QrCode className="h-5 w-5" />,
   location: <MapPin className="h-5 w-5" />, access: <UserCog className="h-5 w-5" />,
+  reminders: <BellRing className="h-5 w-5" />, approval: <CheckCircle2 className="h-5 w-5" />, checks: <ShieldAlert className="h-5 w-5" />,
 }
 const HOLIDAY_KINDS = new Set(["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY"])
 type Live = { rule?: MtmAttendanceRule; holidays?: number }

@@ -29883,6 +29883,18 @@
       "access": {
         "title": "Who sees the timesheet",
         "hint": "HR staff who see the timesheet and decide requests"
+      },
+      "reminders": {
+        "title": "Attendance reminders",
+        "hint": "Remind employees to mark arrival and leaving; tell the manager about lateness"
+      },
+      "approval": {
+        "title": "Request approval",
+        "hint": "«Close the day» — automatically or by the manager"
+      },
+      "checks": {
+        "title": "Mark checks",
+        "hint": "Marks outside a branch, a shared phone, a faked location, clock difference"
       }
     },
     "settingsHoursValue": "{days}, {from}–{to} · late after {grace} min",
