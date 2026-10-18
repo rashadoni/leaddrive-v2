@@ -616,3 +616,10 @@
  74-workflow runner policy, shell syntax and diff checks PASS in merged tree.
   Updated exact-source heavy gates belong only to GitHub; older e7 checks are
   historical and cannot substitute for this newly integrated source acceptance.
+
+- Read-only git merge-tree preview of current A3 with B2 feature headb86e26dd:
+  the three shared backup executable scripts auto-merge. Only pr-checks.yml and
+  BACKUP_RUNBOOK.md conflict. Future authorized integration must retain both
+  owner/diagnostic and B2 endpoint/explicit-denial tests and both runbook entries.
+  No working-tree/branch mutation, no actual B2 merge, no tests claimed on the
+  preview tree. Reported bounded reconciliation plan to coordinator in PR892.
