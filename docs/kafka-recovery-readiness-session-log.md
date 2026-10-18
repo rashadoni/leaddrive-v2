@@ -155,3 +155,24 @@
   prerequisite cannot be met. Actual private key custody/decrypt must remain
   with independent operator; request only public allowlist and PII-free signed
   evidence, never private material.
+
+## 2026-10-19: user-authorized new age key candidate
+
+- User explicitly requests creation of a new key because prior custody is not
+  remembered. Created one NEW candidate on administrative development host,
+  outside repository/production/Actions; existing recipient not replaced.
+- Used age/age-keygen1.3.2 from release archive with pinned SHA256 verified.
+  Candidate directory0700/private identity0600; private bytes never printed,
+  committed, sent to GitHub or production. Local random encrypt/decrypt PASS.
+- Public recipient SHA256(no newline):
+  b6a074dd5a7a7ea0c0b71e7c120fe07e85603444d2e598cd0949dd8ae5926241.
+- Existing old archives NOT TESTED; new candidate cannot decrypt ciphertext
+  for a different old key. Forgetting custody does not prove old key lost.
+- This is a single online administrative candidate, NOT two offline copies,
+  independent custody/signature or Farah evidence. No synthetic evidence made.
+  Signing key for another person not generated; production encryption/timers
+  unchanged. Precise private recovery paths intentionally omitted from Git.
+- Next: owner/independent custodian securely places candidate on two physically
+  separate offline media, proves their readability with existing verifier and
+  supplies only public signer allowlist + signed PII-free evidence. Production
+  rotation requires reviewed Actions route and retained old-recipient history.
