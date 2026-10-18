@@ -1165,3 +1165,37 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   frozen draft checkpoint, observe cheap checks/head propagation, then mark
   ready for the normal full required gates. No failed-old-SHA rerun is useful
   for this corrected-code/fixture problem.
+
+## 2026-10-18 00:18 UTC — actual production receipt for the previous Kafka increment
+
+- Deploy39079668201 completed SUCCESS for merge
+  7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd. Quality, immutable build, exact
+  artifact validation/staging, atomic deployment, post-deploy public DB-path
+  ping, revision comparison and login/hashed-asset smoke all SUCCESS. This
+  supersedes the earlier pending/in-progress deployment snapshots.
+- Fresh public build-info after completion reports exact artifactSha
+  7a1cf49e15a10fb1fa03523f9d6dedd07b3574fd; /api/v1/ping returns ok=true.
+  Production job117539969992 completed00:18:12UTC. Its actual log confirms the
+  existing Fund cutover gate was already durably verified and STRUCTURAL
+  event-platform ledger/RLS/ownership/exact-money/Fund-projection postconditions
+  passed. This was not a new deep per-Fund data rebuild/parity exercise.
+- Exact-main synthetic CDC39079754380 on7a had already passed full actual
+  foundation/restricted source/A-B fidelity/cold restart/cleanup. The corrected
+  serializer and pure balance source component are merged; the app artifact
+  is delivered. No active Kafka cluster/connector/worker, SQL adapter execution
+  or real replay follows from this app delivery. Unreferenced source modules
+  and passive ops templates are not claimed as an active deployed worker.
+- Concurrent mainfa738db91d5e9a7621f86f113a305db4cafba582 still builds in
+ 39080638658. It contains7a unchanged. The current-main-only read-only inventory
+  is intentionally not dispatched against a mismatched older live marker;
+  refresh it when current main and actual public artifact match.
+- Corrected PR871 head628d7092698d9222264398aa5b026ef640914671 passed all four
+  cheap draft checks, then was marked ready once. New required full run
+ 39082180225 and synthetic CDC39082180252 are in progress. The first failed
+  old-head run is retained; no duplicate old-SHA retry or cancelled foreign job.
+- This receipt is a LOCAL journal-only checkpoint while the remote PR head
+  stays frozen628d for actual CI. It is not pushed into that active run. Root
+  will compare/merge the remote exact head, not mistake this local docs commit
+  for the tested source SHA. Next material action is reading actual corrected
+  PostgreSQL/typecheck results, then normal merge only if all required checks
+  and real-PG proof succeed. Kafka and recovery timers remain OFF.
