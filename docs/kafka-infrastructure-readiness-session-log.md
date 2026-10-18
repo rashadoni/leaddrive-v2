@@ -128,3 +128,9 @@
 - Read-only TinyFish wallet/profile inspection: no confirmed Backblaze login; automation is metered separately. No metered automation, top-up, profile mutation or account registration run. Wallet capability URLs and credentials deliberately omitted.
 - Requested only intended account email via async input. Never request password/OTP in chat. Account/bucket/keys, encryption, cost limits, backup upload and isolated restore are NOT RUN: no account access yet. No protection-complete claim.
 - Current stop: registration open request queued; missing account email and authenticated browser access. Next: establish account access with necessary owner-only email/login verification, then prepare scoped B2 configuration and verification under original production restrictions. Docs-only checkpoint; diff-check required, heavy tests NOT RUN because source unchanged from previously verified e55bbd2b4.
+
+## 2026-10-19 — dedicated B2 browser sign-in handoff
+- Owner supplied intended registration email through async input; personal email omitted from repository journal.
+- Created separate non-default browser context named LeadDrive Backblaze backup, targeting official B2 cloud-storage signup. Tool returned setup_started=false and a setup handoff URL. Requested native panel opening of that handoff; do not infer page render, account registration or login completion from queued status.
+- Handoff requires owner to register/sign in within browser and click Save profile. No passwords, email codes or capability URL recorded here. No metered automation run, wallet top-up, bucket creation, customer upload or production mutation.
+- Stop: dedicated profile exists, authenticated state not yet saved. Next: verify saved Backblaze login, then scoped storage configuration subject to cost and original production restrictions. Account registration and backup/restore checks NOT RUN pending authentication.
