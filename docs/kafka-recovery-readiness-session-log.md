@@ -664,3 +664,21 @@
   NOT RUN/pending; prior Mac canary remains readability proof only.
 - This security correction supersedes prior frozen cb8 code acceptance; exact
   source CI must rerun. Main/production/B2 branch unchanged; root hold applies.
+
+## 2026-10-19 (Asia/Baku): actual no-swap workbench CI evidence
+
+- Published security follow-up9cfccedaf48ac238ff8be24edc2a1ef20def6602.
+  Hosted owner39177466420 SUCCESS:13owner crypto/boundary/guard tests,
+  rebuilt image, actual no-swap PostgreSQL self-test and explicit swap-enabled
+  Docker refusal. Current scan39177466417,runner39177466464,
+  tenant39177466407,pgpass39177466448 PASS. Static/type39177466404 pending.
+- New minimal public code bundle prepared outside Git for eventual owner Mac
+  replay; no keys/backups/settings included. Mac guard/FileVault still pending;
+  no actual data or signed commissioning proof produced.
+- Main advanced via unrelated demo PR905 to9cd84838dc83a5349f06d3bb86fa480b459029fe.
+  Actual pr-scope checkout117823251967 logs prove this run tests merge
+  10b3e6c0cd69875753ffc7fe275f7cf4ca8bf00e. Fetched pull merge and verified
+  parents=current9cd84838d + source9cfccedaf. No needless source main-chasing.
+  Static/type exact checkout/results will be checked on completion.
+- B2 PR899 remains OPEN/unmerged. No storage credentials, billing, Object Lock,
+  production config, timers, source PostgreSQL or Kafka mutation by A3.
