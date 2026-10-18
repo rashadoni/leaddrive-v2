@@ -10,6 +10,9 @@ const DIGEST = /^sha256:[0-9a-f]{64}$/
 function requiredString(value, label) {
   assert.equal(typeof value, "string", `${label} must be a string`)
   assert.ok(value.trim(), `${label} is required`)
+  assert.ok(value === value.trim(), `${label} must not contain surrounding whitespace`)
+  assert.ok(!/[\x00-\x1f\x7f]/u.test(value), `${label} must not contain control characters`)
+  assert.ok(!/__[^\s]*__|<[^>]+>/u.test(value), `${label} must not contain template placeholders`)
 }
 
 function requiredTrue(value, label) {
@@ -17,6 +20,7 @@ function requiredTrue(value, label) {
 }
 
 function distinctStrings(values, label) {
+  assert.ok(Array.isArray(values), `${label} must be an array`)
   values.forEach((value, index) => requiredString(value, `${label}[${index}]`))
   assert.equal(new Set(values).size, values.length, `${label} must be distinct`)
 }
@@ -106,11 +110,18 @@ export function validateActivationEvidence(evidence, expected = {}) {
   }
   requiredString(evidence.drill.evidenceId, "drill.evidenceId")
 
-  const secretRefs = Object.values(evidence.secretReferences ?? {})
-  assert.ok(secretRefs.length >= 4, "separate Kafka, Connect, Registry, and CDC secret references are required")
+  const references = evidence.secretReferences
+  assert.ok(references && typeof references === "object" && !Array.isArray(references),
+    "secretReferences must be a role-keyed object")
+  const roles = ["kafkaConsumer", "connectProducer", "schemaRegistry", "postgresCdc"]
+  for (const role of roles) {
+    assert.ok(Object.hasOwn(references, role), `secretReferences.${role} is required`)
+    requiredString(references[role], `secretReferences.${role}`)
+  }
+  const secretRefs = Object.values(references)
   distinctStrings(secretRefs, "secretReferences")
   for (const reference of secretRefs) {
-    assert.match(reference, /^(vault|aws-secretsmanager|gcp-secretmanager|azure-keyvault):\/\//, "credentials must be secret-manager references")
+    assert.match(reference, /^(vault|aws-secretsmanager|gcp-secretmanager|azure-keyvault):\/\/[^\s/?#]+[^\s]*$/u, "credentials must be nonempty secret-manager references")
   }
 
   return {

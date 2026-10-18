@@ -234,3 +234,21 @@ space, outbox-to-Kafka watermark age, consumer lag, offline/under-replicated
 partitions, min-ISR violations, rejected schemas, quarantine rate, archive
 watermark lag, and per-tenant projection parity. Logs and metric labels must not
 contain event payloads or customer PII.
+
+## Evidence identifiers and credential-reference shape
+
+Evidence/change/operator IDs and endpoints must be canonical nonempty strings:
+no surrounding whitespace, control characters or unresolved `__TOKEN__` /
+`<placeholder>` markers. A requester padded with spaces is still the same
+requester and must not satisfy the distinct-approver guard. The validator rejects
+that formatting rather than guessing identity aliases or authenticating humans.
+The real independent-operator check remains a reviewed operational requirement.
+
+`secretReferences` must be an object with the four explicit service-role keys
+`kafkaConsumer`, `connectProducer`, `schemaRegistry` and `postgresCdc`.
+Four arbitrary keys or an array do not establish service separation. Each value
+must be a distinct nonempty secret-manager location; a bare `vault://` or other
+provider prefix is not a location. Invalid reference formatting is reported by
+field label, without echoing the supplied reference. Additional references do
+not replace a missing required role. Shape validation does not verify secret
+existence, permissions, ownership, rotation or any external provider API.
