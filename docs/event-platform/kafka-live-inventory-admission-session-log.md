@@ -27,3 +27,27 @@
 - Exact resource snapshot before the targeted checks: MemAvailable 14,753 MiB; filesystem available 195 GiB; memory pressure avg10/60/300 all 0.00; existing host swap used 3,561 MiB. No installs, heavy checks or services were launched.
 - Inspector remains unchanged at tracked blob `931e21e3795979fdea7785f22e16e46f94cf5b8b`, mode `100644`, 10,037 bytes; the inspected current/live GitHub tree entries matched that identity. Production SQL, server inspector, SSH action, deploy workflow and other branches remain untouched.
 - Result: optional verified-deployed-release read-only admission and non-displacing inventory queue prepared; default current-main behavior retained. Last completed action: 108 targeted tests plus syntax/runner-policy/diff checks. Precise stopping point: seven explicitly owned paths checkpointed on this isolated feature branch, before push/PR/CI or diagnostic dispatch. Next action: root reviews the checkpoint/threat model, carries normal required PR gates, and only after approved main delivery considers a fresh main-only inventory dispatch. No operational readiness/activation/replay/rollback authority is implied.
+
+## 2026-10-19 — Root review and normal PR admission
+
+- Root independently read all seven owned paths and current repository operating,
+  delivery, deployment and registry contracts. Resolved this isolated root/branch,
+  rashadoni origin, registered13.140.132.245:/opt/leaddrive-v2 and GitHub-only
+  protected-main route before Git work. This root phase resumes the owner's
+  existing autonomous verified delivery and read-only diagnosis authorization;
+  source-preparation-only restriction above applied to the internal preparer.
+- Actual main remains9cd84838dc83a5349f06d3bb86fa480b459029fe. Five Actions-bound
+  required contexts/enforce_admins remain intact. No user-facing UI feature or
+  runtime activation is included, and no other session's PR is being merged.
+- Independent sequential rerun on checkpoint20864806062e1de11615050c041941a6ddef7723:
+ 108/108 tests PASS,0failed/skipped;72-workflow runner policy and whitespace PASS.
+  Preflight MemAvailable14785MiB,disk195GiB,pressure0.00;existingSwapUsed3560MiB.
+  Full build/TS/PG/Java/Docker NOT RUN locally; required broader checks belong
+  to GitHub. actionlint is unavailable, not represented as run or passing.
+- Exact base-to-source comparison confirms unchanged server inspector, SQL,
+  pinned SSH action and deploy.yml. Root reviewed canonical newline/run-ID
+  refusal, full latest normal-release proof, ancestry/blob checks, sanitized
+  bounded GET acquisition, protected current-main guard and shared job queue.
+- Next: publish a draft PR, freeze this reviewed source, mark ready and require
+  all five real protected SUCCESS checks plus tooling before normal merge.
+  New live diagnosis and this source's app deployment remain NOT RUN/pending.
