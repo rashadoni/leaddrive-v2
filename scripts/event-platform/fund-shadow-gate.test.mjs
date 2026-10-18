@@ -62,6 +62,10 @@ test('combined broker proof requires actual generated types and SQL before its s
     'run: bash scripts/event-platform/test-stack.sh',
   ].map(required => { const index = workflow.indexOf(required); assert.ok(index >= 0, required); return index })
   assert.deepEqual(ordered, [...ordered].sort((a, b) => a - b))
+  // The actual Next ambient ProcessEnv contract requires NODE_ENV. Checking
+  // only Node types would miss subprocess-environment errors in these tests.
+  const strictStep = workflow.slice(ordered[1], workflow.indexOf('\n      - name:', ordered[1]))
+  assert.match(strictStep, /node_modules\/next\/types\/global\.d\.ts/)
   assert.match(workflow, /LD_EVENT_STACK_COMBINED: '1'/)
   assert.match(workflow, /FUND_SHADOW_DB_GATE: required/)
   assert.match(workflow, /src\/__tests__\/fixtures\/fund-shadow-postgres\.ts/)

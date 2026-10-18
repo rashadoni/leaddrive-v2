@@ -83,6 +83,7 @@ jobs:
         run: >-
           npx tsc --noEmit --skipLibCheck --strict --target ES2017 --lib ESNext
           --module commonjs --moduleResolution node --esModuleInterop --types node
+          node_modules/next/types/global.d.ts
           src/__tests__/fixtures/fund-shadow-postgres.ts
           scripts/event-platform/fixtures/kafka-broker-harness.ts
           scripts/event-platform/test-broker-driver.ts

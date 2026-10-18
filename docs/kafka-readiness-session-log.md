@@ -3042,3 +3042,30 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   release was cancelled. App ping/build-info remained healthy on6ce9a1e at the
   last independent public observation before that release. Next: finish actual
   protected checks, normal exact-head merge and SHA-bound application release.
+
+### Pre-merge advisory finding corrected, no gate bypass — 2026-10-18 18:28 UTC
+
+- All five protected checks passed on PR889/dbba7c0f1, but reading the full
+  advisory type report found three task-owned TS2769 errors: the tiny process
+  tests supplied an empty child environment whereas Next's actual global
+  ProcessEnv requires NODE_ENV. Held merge despite green protected status.
+  The global report retained64 gated baseline pairs and18 known failing test
+  files; green baseline checks are not an error-free whole-codebase claim.
+- Fixed only the three child environments to NODE_ENV=test, without inheriting
+  host secrets. The strict broker CI now explicitly includes the installed
+  next/types/global.d.ts, and its existing contract guard asserts this within
+  that strict step. No diagnostic baseline, production guard or test weakened.
+- Local narrow recheck:60/60 lifecycle tests, strict ES2017 typecheck with
+  exact upstream Next16.2.11 ambient declaration,3 gate contracts,71-workflow
+  runner policy and whitespace PASS. A separate temporary negative control
+  with the original empty environment failed specifically with TS2769 and
+  missing NODE_ENV, proving the additional declaration catches this regression.
+  Independent read-only review found no issue in the three changed code/gate
+  files. Full application typecheck/build remain GitHub-only, NOT RUN locally.
+- Current main advanced to1c5d752c3116ead4f0d8c84158a836f992c18c34 via
+  unrelated attendance test PR888, no own overlap or routing change. Current
+  registry/DEPLOYMENT still specify13.140.132.245:/opt/leaddrive-v2 and GitHub
+  SHA-bound release. All previous own CI runs completed before this next push;
+  no duplicate retry or active/foreign cancellation. Next: one normal PR889
+  source update, all new-head actual checks plus own-path advisory review,
+  then normal merge/deploy. Kafka activation/offset/replay remain untouched.

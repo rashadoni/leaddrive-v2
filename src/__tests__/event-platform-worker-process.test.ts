@@ -198,7 +198,7 @@ describe("tiny real process proof (no JVM, Docker, database or network)", () => 
         });
         lines.on('close', () => process.stdout.write('REVOKE\\t1\\n', () => process.exit(0)));
         process.stdout.write('READY\\tfixture\\tshadow\\tld.test.finance.events.v1\\n');
-      `], { stdio: ["pipe", "pipe", "pipe"], env: {} }),
+      `], { stdio: ["pipe", "pipe", "pipe"], env: { NODE_ENV: "test" } }),
       stopGraceMs: 1000, killGraceMs: 500, timeoutMs: 2000,
     })
     const order: string[] = []
@@ -225,7 +225,7 @@ describe("tiny real process proof (no JVM, Docker, database or network)", () => 
         process.stdin.resume();
         process.stdin.on('end', () => process.stdout.write('REVOKE\\tfinal\\n', () => process.exit(0)));
         process.stdout.write('READY\\tprivate\\n');
-      `], { stdio: ["pipe", "pipe", "pipe"], env: {} }),
+      `], { stdio: ["pipe", "pipe", "pipe"], env: { NODE_ENV: "test" } }),
       stopGraceMs: 1000, killGraceMs: 500, timeoutMs: 2000,
     })
     try {
@@ -241,7 +241,7 @@ describe("tiny real process proof (no JVM, Docker, database or network)", () => 
         process.stdin.resume();
         setInterval(() => {}, 1000);
         process.stdout.write('READY\\tprivate\\n');
-      `], { stdio: ["pipe", "pipe", "pipe"], env: {} }),
+      `], { stdio: ["pipe", "pipe", "pipe"], env: { NODE_ENV: "test" } }),
       stopGraceMs: 25, killGraceMs: 100, timeoutMs: 2000,
     })
     try {
