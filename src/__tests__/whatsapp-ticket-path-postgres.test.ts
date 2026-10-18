@@ -9,7 +9,9 @@
  *    open one, so with both, the message reopened the old one — and each next
  *    message the next older one;
  *  - two deliveries from one phone at the same moment both found nothing and
- *    opened two tickets;
+ *    opened two tickets (the first fix, a lock alone, then ran the CI pool dry:
+ *    each delivery waiting for the lock kept a connection the one holding it
+ *    needed — hence the small pool below);
  *  - a reopened ticket kept its pending closure request, and the customer's
  *    old «confirm» link then closed the ticket their reply had just reopened.
  *
@@ -36,6 +38,7 @@ import { createRequire } from "node:module"
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { PrismaClient, type Prisma } from "@prisma/client"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -56,6 +59,10 @@ const scratch = vi.hoisted(() => {
   const app = new URL(adminDb.toString())
   app.username = role
   app.password = password
+  // A pool smaller than any runner's default: an intake that holds a connection
+  // while it needs another stalls here on every machine, not only on a 2-core
+  // CI runner (whose default pool is 5) — and fails fast.
+  app.search = "?connection_limit=3&pool_timeout=5"
   // `@/lib/prisma` builds its client from DATABASE_URL on first import, which
   // happens after the database and the role exist (dynamic imports below).
   process.env.DATABASE_URL = app.toString()
@@ -110,11 +117,12 @@ const PHONE = "994501234567"
 const pgDescribe = scratch ? describe : describe.skip
 
 pgDescribe("WhatsApp messages and their tickets on a real Postgres with RLS", () => {
-  type Prisma = typeof import("@/lib/prisma").prisma
-  let prisma!: Prisma
+  type AppPrisma = typeof import("@/lib/prisma").prisma
+  let prisma!: AppPrisma
   let tenant!: typeof import("@/lib/rls-context").runWithTenant
   let bypass!: typeof import("@/lib/rls-context").runWithRlsBypass
   let ensureInboundWhatsAppTicket!: typeof import("@/lib/inbox/whatsapp-inbound-ticket").ensureInboundWhatsAppTicket
+  let lockKey!: typeof import("@/lib/inbox/whatsapp-inbound-ticket").whatsappIntakeLockKey
   let createClosureRequest!: typeof import("@/lib/ticketing/closure-requests").createTicketClosureRequestForTicket
   let answerClosureLink!: typeof import("@/app/api/v1/public/ticket-closure/[token]/route").POST
   let sequence = 0
@@ -154,7 +162,7 @@ pgDescribe("WhatsApp messages and their tickets on a real Postgres with RLS", ()
     })
     prisma = (await import("@/lib/prisma")).prisma
     ;({ runWithTenant: tenant, runWithRlsBypass: bypass } = await import("@/lib/rls-context"))
-    ensureInboundWhatsAppTicket = (await import("@/lib/inbox/whatsapp-inbound-ticket")).ensureInboundWhatsAppTicket
+    ;({ ensureInboundWhatsAppTicket, whatsappIntakeLockKey: lockKey } = await import("@/lib/inbox/whatsapp-inbound-ticket"))
     createClosureRequest = (await import("@/lib/ticketing/closure-requests")).createTicketClosureRequestForTicket
     answerClosureLink = (await import("@/app/api/v1/public/ticket-closure/[token]/route")).POST
 
@@ -316,18 +324,76 @@ pgDescribe("WhatsApp messages and their tickets on a real Postgres with RLS", ()
     expect(await allTickets()).toHaveLength(2)
   })
 
+  const ticketsOf = async (phone: string) =>
+    (await allTickets()).filter((t: { sourceMeta: unknown }) => (t.sourceMeta as { phone?: string }).phone === phone)
+
   it("opens one ticket, not several, for messages that arrive at the same moment", async () => {
     const phone = "994551112233"
     const texts = Array.from({ length: 8 }, (_, i) => `Message ${i + 1}`)
 
     const results = await Promise.all(texts.map((text) => customerWrites(text, phone)))
 
-    const tickets = (await allTickets()).filter((t: { sourceMeta: unknown }) => (t.sourceMeta as { phone?: string }).phone === phone)
+    const tickets = await ticketsOf(phone)
     expect(tickets).toHaveLength(1)
     expect(results.filter((r) => r.created)).toHaveLength(1)
     expect(new Set(results.map((r) => r.ticketId))).toEqual(new Set([tickets[0].id]))
     expect(tickets[0].comments.map((c: { comment: string }) => c.comment).sort()).toEqual(texts.map((t) => `[Клиент (WhatsApp)] ${t}`).sort())
-  })
+  }, 30_000)
+
+  it("files every customer of a burst, without running the connection pool dry", async () => {
+    // A campaign reply storm: many customers at once, each with a first message.
+    const phones = Array.from({ length: 10 }, (_, i) => `99470000${String(i).padStart(4, "0")}`)
+
+    const results = await Promise.all(phones.map((phone) => customerWrites(`Reply from ${phone}`, phone)))
+
+    expect(results.every((r) => r.created && r.ticketId)).toBe(true)
+    for (const phone of phones) {
+      const tickets = await ticketsOf(phone)
+      expect(tickets).toHaveLength(1)
+      expect(tickets[0].comments.map((c: { comment: string }) => c.comment)).toEqual([`[Клиент (WhatsApp)] Reply from ${phone}`])
+    }
+  }, 30_000)
+
+  it("waits for another process that is filing the same sender's message, and joins its ticket", async () => {
+    const phone = "994559998877"
+    const otherProcess = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: scratch!.adminDbUrl })
+    let release!: () => void
+    const released = new Promise<void>((resolve) => { release = resolve })
+    let holding!: () => void
+    const held = new Promise<void>((resolve) => { holding = resolve })
+    try {
+      // The other process holds the sender's lock and has created its ticket, not yet committed.
+      const other = otherProcess.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey(ORG, phone)}, 0))`
+        await tx.ticket.create({
+          data: {
+            id: "tk-other-process", organizationId: ORG, ticketNumber: "WA-OTHER-1", subject: "From the other process",
+            status: "open", source: "whatsapp", tags: ["whatsapp", "inbound_whatsapp", "auto_created"], sourceMeta: { phone },
+          },
+        })
+        holding()
+        await released
+      }, { timeout: 30_000 })
+      await held
+
+      let finished = false
+      const ours = customerWrites("Second message", phone).finally(() => { finished = true })
+      await new Promise((resolve) => setTimeout(resolve, 700))
+      expect(finished).toBe(false)
+
+      release()
+      await other
+      const result = await ours
+
+      expect(result).toMatchObject({ ticketId: "tk-other-process", created: false })
+      const tickets = await ticketsOf(phone)
+      expect(tickets.map((t: { id: string }) => t.id)).toEqual(["tk-other-process"])
+      expect(tickets[0].comments.map((c: { comment: string }) => c.comment)).toEqual(["[Клиент (WhatsApp)] Second message"])
+    } finally {
+      release()
+      await otherProcess.$disconnect()
+    }
+  }, 30_000)
 
   it("cancels the closure request when the customer's reply reopens the ticket, so the old link closes nothing", async () => {
     const resolved = await seedTicket("resolved")
