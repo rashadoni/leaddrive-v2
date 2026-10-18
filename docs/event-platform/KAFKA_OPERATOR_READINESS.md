@@ -239,3 +239,11 @@ fingerprint. Current wording is corrected. Passing the historical gate would
 require an authorized narrow scanner exception or branch history change;
 both are outside the present instructions to preserve checkpoints and not
 change others' checks. The failing gate remains intact and PR894 stays draft.
+
+Final test-quality correction: run39166310431/job117789862494 on
+40a9b05e90ae3182b3fedf58d14f473473cf304f passed64/64 gates and24/24 real PG
+cases. Deferred-COMMIT negative tests now first require successful staged SQL,
+so an earlier admission error cannot falsely satisfy them. Concurrent loser
+reasons are also constrained. Executable contracts are unchanged by subsequent
+documentation; authentic operational evidence and shared runtime delivery
+remain open as described above.

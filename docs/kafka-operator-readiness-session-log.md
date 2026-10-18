@@ -285,3 +285,24 @@ so an unrelated connection error cannot count as a successful race test.
 This strengthens evidence, not runtime behavior. Current code-source proof
 must be refreshed; earlier64+24 result does not certify these revised tests.
 Continue to CI without ending at this checkpoint. Existing rules untouched.
+
+## 2026-10-19 — strengthened final-code evidence
+
+Actual run39166310431/job117789862494 whole SUCCESS on
+40a9b05e90ae3182b3fedf58d14f473473cf304f:64/64 unit gates +24/24 actual PG
+cases, cleanup PASS. The two deferred-COMMIT cases now require positive markers
+of staged settle/pointer change BEFORE waiting for expiry, and still verify
+complete rollback after rejection. Concurrent losers must have exact expected
+denial reasons. This supersedes earlier source proof for the revised tests.
+
+All four autonomous continuation items are complete. No additional prompt was
+requested between components, fixes, CI and reconciliation. Final documentation
+checkpoint leaves executable source unchanged from40a9b05e9. Remaining limits
+are specific: actual receipt producers/runtime integration and operations
+prohibited by the initial task, plus historical scan policy/history resolution
+outside this branch's authority. Preparation is not activation readiness.
+Last completed action: strengthened real-PG proof, followed by PR/journal update.
+Stopping boundary: clean draft branch, scanner remains FAIL, no activation.
+Next action: shared delivery owner composes real A1/A2 worker/read-path with
+these inactive contracts and obtains authorized authentic evidence; forbidden
+production/consumer/replay/send operations are not attempted by this session.
