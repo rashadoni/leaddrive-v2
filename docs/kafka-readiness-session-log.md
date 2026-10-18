@@ -2678,3 +2678,25 @@ service, branch delivery or Kafka runtime was changed by this documentation.
  Next: read actual results, fix any concrete remaining failure, then normal
  green merge and GitHub production receipt. Runtime activation remains out
  of this increment and is not inferred from eventual application delivery.
+
+### Corrected generated-client gates passed; live drill running — 2026-10-18 15:07 UTC
+
+- Source remains frozen at97aa83b12ffc7123818b1fb6600c4e1251e5d054 in PR883.
+ Combined39137630643 has passed actual Prisma generation, strict ES2017
+ generated-client compilation, fixture isolation/hooks and migration bootstrap;
+ the sequential actual broker then combined SQL drill is now running. These
+ prerequisites alone are not a successful combined-test receipt.
+- Required PR39137630590 typecheck117705473699 SUCCESS15:02:38Z:64 gated
+ pairs match64, with1325 advisory diagnostics. Static checks continue their
+ existing database gates. No baseline, compiler target or policy was weakened.
+- Re-read main protection: the same five Actions-bound checks, enforce_admins,
+ no force push/deletion; production branch policy permits only main. Main
+ advanced normally to e81353f058939910b254edd2a491b80edbb2ee1a via foreign
+ PR882 (attendance-settings UI/messages/tests), with no overlap in this task's
+ Kafka/SQL fixture/workflow paths. Its deploy39138480109 remains untouched;
+ no second release or duplicate integration was dispatched.
+- PR883 description now records both diagnosed first-run failures and the
+ corrected341 local tests. Normal gh PR metadata update encountered a Classic
+ Projects API error; the supported REST pull-request update succeeded. No
+ source commit changed. Next: actual complete drill and required gates, then
+ normal exact-head merge, automatic release and verified production receipt.
