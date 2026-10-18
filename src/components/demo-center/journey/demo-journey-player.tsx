@@ -54,6 +54,7 @@ import { OrientationScene } from "./scenes/orientation-scene"
 import { QuoteScene } from "./scenes/quote-scene"
 import { ScenePending } from "./scenes/scene-pending"
 import { SummaryScene } from "./scenes/summary-scene"
+import { NextModuleScene } from "./scenes/next-module-scene"
 import { SupportScene } from "./scenes/support-scene"
 import type { DemoJourneyVariant, DemoSceneProps } from "./scene-props"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
@@ -107,6 +108,7 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   "ctr-approve": ContractsScene,
   "ctr-sign": ContractsScene,
   "ctr-control": ContractsScene,
+  "next-module": NextModuleScene,
   summary: SummaryScene,
 }
 

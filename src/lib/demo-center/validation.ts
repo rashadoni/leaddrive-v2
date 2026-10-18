@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { DEMO_WHATSAPP_MAX_CHARS } from "./demo-whatsapp"
 import { DEMO_MODULE_IDS, isDemoModuleId } from "@/lib/demo-center/catalog"
+import { DEMO_JOURNEY_MODULES, isDemoJourneyModuleId } from "@/lib/demo-center/journey/modules"
 import { DEMO_JOURNEY_STATES, JOURNEY_REPORT_NAMES, getDemoJourneyScenario } from "@/lib/demo-center/journey"
 import { normalizeEmail } from "@/lib/demo-center/security"
 
@@ -20,8 +21,10 @@ export const demoRequestSchema = z.object({
   email: z.string().trim().email().max(254).transform(normalizeEmail),
   phone: optionalText(40),
   message: optionalText(4_000),
-  requestedModules: z.array(z.string()).max(DEMO_MODULE_IDS.length).default([])
-    .transform((values) => [...new Set(values.filter(isDemoModuleId))]),
+  // The guided demo's modules the prospect ticked (journey/modules.ts), or a
+  // catalog module from an older form; anything else is dropped.
+  requestedModules: z.array(z.string()).max(DEMO_MODULE_IDS.length + DEMO_JOURNEY_MODULES.length).default([])
+    .transform((values) => [...new Set(values.filter((value) => isDemoJourneyModuleId(value) || isDemoModuleId(value)))]),
   locale: z.enum(["az", "ru", "en"]).default("az"),
   consent: z.literal(true),
   // Honeypot input is intentionally accepted here so bots receive the same

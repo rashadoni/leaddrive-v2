@@ -4,6 +4,7 @@ import { getDemoModules } from "@/lib/demo-center/catalog"
 import {
   demoSourceChannelOf,
   getDemoJourneyScenario,
+  isDemoJourneyModuleId,
   type DemoProspectIdentity,
 } from "@/lib/demo-center/journey"
 import { expireDemoGrantIfNeeded, noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       where: { tokenHash: hashOneTimeToken(token) },
       include: {
         request: {
-          select: { company: true, email: true, name: true, jobTitle: true, phone: true, source: true },
+          select: { company: true, email: true, name: true, jobTitle: true, phone: true, source: true, requestedModules: true },
         },
       },
     })
@@ -81,6 +82,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           emailMasked: maskEmail(grant.request.email),
           phoneMasked: grant.request.phone ? maskPhone(grant.request.phone) : null,
           sourceChannel: demoSourceChannelOf(grant.request.source),
+          // What they ticked on the form comes first in the demo.
+          interests: grant.request.requestedModules.filter(isDemoJourneyModuleId),
         }
       : null
     if (state !== "active") {

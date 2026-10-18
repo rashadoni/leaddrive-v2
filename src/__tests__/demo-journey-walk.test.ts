@@ -40,6 +40,7 @@ import { findDemoTarget } from "@/components/demo-center/journey/demo-target"
 import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { DEMO_JOURNEY_STRINGS as S } from "@/components/demo-center/journey/strings"
 import { DEMO_LIVE_CALL_STEP_ID, PROSPECT_TO_CLOSED_WON, withLiveCall, type DemoJourneyStep } from "@/lib/demo-center/journey"
+import { DEMO_JOURNEY_MODULES, DEMO_NEXT_MODULE_STEP_ID, getDemoJourneyModule } from "@/lib/demo-center/journey"
 
 const messages = JSON.parse(readFileSync(path.join(process.cwd(), "messages/az.json"), "utf8"))
 const TOKEN = "walk-test-token-0001"
@@ -127,6 +128,8 @@ async function renderPlayer() {
             emailMasked: "ni•••@xezerlogistika.az",
             phoneMasked: "+994 ••••• 67",
             sourceChannel: "instagram",
+            // Every module asked for, so «what next» suggests them in the story's own order.
+            interests: DEMO_JOURNEY_MODULES.map((module) => module.id),
           },
           company: "Xəzər Logistika MMC",
           watermark: "Xəzər Logistika MMC · Açıq demo",
@@ -188,12 +191,70 @@ const stepIdsFrom = (sectionId: string) => {
   return sections.slice(sections.findIndex((section) => section.id === sectionId)).flatMap((section) => section.steps.map((step) => step.id))
 }
 
+const stepsOf = (sectionId: string) => PROSPECT_TO_CLOSED_WON.sections.find((section) => section.id === sectionId)!.steps.map((step) => step.id)
+
+/**
+ * What following the arrow walks from the welcome screen: every module in
+ * the story's order (all were asked for), each opened from «what next», then
+ * «Demonu bitir» there and the last screen (owner, 2026-10-18: the guide asks
+ * where to go next instead of crossing a module's edge by itself).
+ */
+const WALK_BY_MODULES = [
+  ...stepsOf("orientation"),
+  ...DEMO_JOURNEY_MODULES.flatMap((module) => [DEMO_NEXT_MODULE_STEP_ID, ...module.sections.flatMap(stepsOf)]),
+  DEMO_NEXT_MODULE_STEP_ID,
+  ...stepsOf("summary"),
+]
+
 describe("the guided story, walked through the real screens", () => {
   it("reaches the end pressing only what the arrow points at", async () => {
     await renderPlayer()
     const walked = await walkToEnd()
     // Every step, required or not, was taken in order — none skipped.
-    expect(walked).toEqual(stepIdsFrom("orientation"))
+    expect(walked).toEqual(WALK_BY_MODULES)
+  }, 60_000)
+
+  it("stops at the end of a module and asks where to go next, instead of opening the next one", async () => {
+    // Owner, 2026-10-18: «гид сам переходит резко с одного модуля, когда
+    // заканчивается, на другой модуль».
+    await renderPlayer()
+    await walkTo(DEMO_NEXT_MODULE_STEP_ID)
+    // The welcome screen ends here first: the prospect picks where to begin.
+    expect(textOf('[data-testid="demo-scene-next-module"]')).toContain(S.nextStartTitle)
+    // Following the arrow: the campaigns, to their end.
+    await walkTo("source-stats")
+    await walkTo(DEMO_NEXT_MODULE_STEP_ID)
+    const screen = textOf('[data-testid="demo-scene-next-module"]')
+    expect(screen).toContain(S.nextAfterTitle(getDemoJourneyModule("marketing")!.title))
+    // The arrow is on the module suggested next — the omni-channel — and every other module is offered too.
+    const suggested = findDemoTarget(DEMO_NEXT_MODULE_STEP_ID)
+    expect(suggested?.getAttribute("data-module")).toBe("omnichannel")
+    expect(document.querySelector('[data-testid="demo-coach-arrow"], [data-testid="demo-coach-ring"]')).not.toBeNull()
+    for (const { id } of DEMO_JOURNEY_MODULES) expect(document.querySelector(`[data-module="${id}"]`), id).not.toBeNull()
+    expect(document.querySelector('[data-module="marketing"]')?.textContent).toContain(S.nextDone)
+    // The prospect may choose another one than the suggestion…
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-module="contracts"]')!.click())
+    await settle()
+    expect(frontier()).toMatchObject({ sectionId: "ctr-list", stepId: "ctr-list-figures" })
+  }, 60_000)
+
+  it("offers the modules asked for on the request first, and finishes only on «Demonu bitir»", async () => {
+    const { demoModuleChoices: choices } = await import("@/lib/demo-center/journey")
+    const asked = choices(PROSPECT_TO_CLOSED_WON, {
+      completedSteps: [],
+      identity: { name: "", company: "", jobTitle: null, emailMasked: "", phoneMasked: null, sourceChannel: "website", interests: ["contracts", "ai-calls"] },
+    })
+    expect(asked.slice(0, 2).map((choice) => [choice.module.id, choice.chosen])).toEqual([["ai-calls", true], ["contracts", true]])
+    expect(asked.slice(2).every((choice) => !choice.chosen)).toBe(true)
+    // Nothing asked for: the form's defaults.
+    const none = choices(PROSPECT_TO_CLOSED_WON, { completedSteps: [], identity: { name: "", company: "", jobTitle: null, emailMasked: "", phoneMasked: null, sourceChannel: "website" } })
+    expect(none.filter((choice) => choice.chosen).map((choice) => choice.module.id)).toEqual(["omnichannel", "ai-calls", "deals"])
+
+    await renderPlayer()
+    await walkTo(DEMO_NEXT_MODULE_STEP_ID)
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="demo-next-finish"]')!.click())
+    await settle()
+    expect(frontier().sectionId).toBe("summary")
   }, 60_000)
 
   it("survives a prospect who wanders off: back from the board, the wrong stage on the won step", async () => {
@@ -224,7 +285,7 @@ describe("the guided story, walked through the real screens", () => {
         toasts.length = before
       }
     })
-    expect(walked).toEqual(stepIdsFrom("orientation"))
+    expect(walked).toEqual(WALK_BY_MODULES)
   }, 60_000)
 
   it("clears a hint once its step is done: it used to stay up over the next step's counter", async () => {
@@ -251,23 +312,18 @@ describe("the guided story, walked through the real screens", () => {
     // The scene the prospect lands on is the real inbox with their conversation, not an empty shell.
     expect(document.querySelector('[data-demo-target~="conversation-open"]')).not.toBeNull()
 
-    // The story runs to its last screen — and that screen does not say «done»:
-    // the campaigns were jumped over, so it offers them, and the guide's arrow
-    // is on that offer, not on «Bitir» (owner, 2026-10-13: led straight to
-    // «Bitir» at 15 of 27 steps).
-    const first = await walkToEnd(undefined, "summary-finish")
-    expect(first).toEqual(stepIdsFrom("conversation").filter((id) => id !== "summary-finish"))
-    const unseen = document.querySelector('[data-testid="demo-unseen-modules"]')
-    expect(unseen?.textContent).toContain(PROSPECT_TO_CLOSED_WON.sections.find((section) => section.id === "source")!.title)
-    expect(textOf('[data-testid="demo-scene-summary"]')).not.toContain(S.completedTitle)
-    expect(findDemoTarget("summary-finish")?.closest('[data-testid="demo-unseen-modules"]')).not.toBeNull()
+    // The module runs to its end and stops on «what next» — it does not walk
+    // on into the AI call by itself (owner, 2026-10-18).
+    const first = await walkToEnd(undefined, DEMO_NEXT_MODULE_STEP_ID)
+    expect(first).toEqual(getDemoJourneyModule("omnichannel")!.sections.flatMap(stepsOf))
+    expect(textOf('[data-testid="demo-scene-next-module"]')).toContain(S.nextAfterTitle(getDemoJourneyModule("omnichannel")!.title))
+    // The campaigns were jumped over, so they are what the arrow offers next.
+    expect(findDemoTarget(DEMO_NEXT_MODULE_STEP_ID)?.getAttribute("data-module")).toBe("marketing")
 
-    // Following the arrow opens the campaigns with their guide; after them the
-    // guide does not walk the seen modules again — it returns to the last
-    // screen, which now offers to finish.
+    // Following the arrow walks every module not seen yet, and the last
+    // screen comes only after «Demonu bitir».
     const rest = await walkToEnd()
-    const sourceSteps = PROSPECT_TO_CLOSED_WON.sections.find((section) => section.id === "source")!.steps.map((step) => step.id)
-    expect(rest).toEqual(["summary-finish", ...sourceSteps, "summary-review", "summary-finish"])
+    expect(rest.at(-stepsOf("summary").length - 1)).toBe(DEMO_NEXT_MODULE_STEP_ID)
     expect(new Set([...first, ...rest])).toEqual(new Set(stepIdsFrom("source")))
   }, 60_000)
 
@@ -278,10 +334,11 @@ describe("the guided story, walked through the real screens", () => {
     await act(async () => deals!.click())
     await settle()
     expect(frontier().sectionId).toBe("deal")
-    // Carried on to the end, then through every module that was jumped over:
-    // nothing is left unseen by the time the story can be finished.
+    // Carried on to the end of the sales module, then «what next», then
+    // through every module that was jumped over.
     const walked = await walkToEnd()
-    expect(walked.slice(0, stepIdsFrom("deal").length - 1)).toEqual(stepIdsFrom("deal").filter((id) => id !== "summary-finish"))
+    const restOfSales = ["deal", "quote", "closed-won"].flatMap(stepsOf)
+    expect(walked.slice(0, restOfSales.length + 1)).toEqual([...restOfSales, DEMO_NEXT_MODULE_STEP_ID])
     expect(new Set(walked)).toEqual(new Set(stepIdsFrom("source")))
   }, 60_000)
 
@@ -400,7 +457,7 @@ describe("the arrow's controls", () => {
     const sources = [
       "src/components/demo-center/journey/demo-journey-guide.tsx",
       "src/components/demo-center/journey/demo-live-call.tsx",
-      ...["campaign", "inbox", "lead", "board", "deal", "quote", "support", "calls", "mtm", "personnel", "contracts", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
+      ...["campaign", "inbox", "lead", "board", "deal", "quote", "support", "calls", "mtm", "personnel", "contracts", "next-module", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
     ].map((file) => readFileSync(path.join(process.cwd(), file), "utf8")).join("\n")
     const withCall = withLiveCall(PROSPECT_TO_CLOSED_WON).sections.flatMap((section) => section.steps)
     for (const step of new Map([...steps, ...withCall.map((candidate) => [candidate.id, candidate] as const)]).values()) {
@@ -635,7 +692,7 @@ describe("the Route & Field module", () => {
     await renderPlayer()
     const choice = document.querySelector<HTMLButtonElement>('[data-start-section="mtm-today"]')
     expect(choice, "the first screen offers Route & Field").not.toBeNull()
-    expect(choice!.textContent).toContain(messages.nav.groups["Route & Field"])
+    expect(choice!.textContent).toContain(getDemoJourneyModule("route-field")!.title)
     await act(async () => choice!.click())
     await settle()
     expect(frontier()).toMatchObject({ sectionId: "mtm-today", stepId: "mtm-today-figures", state: "STARTED" })
@@ -693,7 +750,7 @@ describe("the Personnel module", () => {
     await renderPlayer()
     const choice = document.querySelector<HTMLButtonElement>('[data-start-section="prs-today"]')
     expect(choice, "the first screen offers Personnel").not.toBeNull()
-    expect(choice!.textContent).toContain(messages.nav.groups.Personnel)
+    expect(choice!.textContent).toContain(getDemoJourneyModule("personnel")!.title)
     await act(async () => choice!.click())
     await settle()
   }
@@ -758,7 +815,7 @@ describe("the Service Desk module", () => {
     await renderPlayer()
     const choice = document.querySelector<HTMLButtonElement>('[data-start-section="sd-queue"]')
     expect(choice, "the first screen offers Service Desk").not.toBeNull()
-    expect(choice!.textContent).toContain(messages.nav.tickets)
+    expect(choice!.textContent).toContain(getDemoJourneyModule("service-desk")!.title)
     await act(async () => choice!.click())
     await settle()
   }
@@ -839,7 +896,7 @@ describe("the Call Center module", () => {
     await renderPlayer()
     const choice = document.querySelector<HTMLButtonElement>('[data-start-section="cc-log"]')
     expect(choice, "the first screen offers Call Center").not.toBeNull()
-    expect(choice!.textContent).toContain(messages.nav.voipCalls)
+    expect(choice!.textContent).toContain(getDemoJourneyModule("call-center")!.title)
     await act(async () => choice!.click())
     await settle()
   }
@@ -935,7 +992,7 @@ describe("the Contracts module", () => {
     await renderPlayer()
     const choice = document.querySelector<HTMLButtonElement>('[data-start-section="ctr-list"]')
     expect(choice, "the first screen offers Contracts").not.toBeNull()
-    expect(choice!.textContent).toContain(messages.nav.contracts)
+    expect(choice!.textContent).toContain(getDemoJourneyModule("contracts")!.title)
     await act(async () => choice!.click())
     await settle()
   }
@@ -998,7 +1055,11 @@ describe("the Contracts module", () => {
 
   it("ends on what was done in Contracts, without crediting a deal the prospect never saw", async () => {
     await openContracts()
-    await walkToEnd(undefined, "summary-finish")
+    // Contracts to their end, then «Demonu bitir» on «what next».
+    await walkToEnd(undefined, DEMO_NEXT_MODULE_STEP_ID)
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="demo-next-finish"]')!.click())
+    await settle()
+    expect(frontier().sectionId).toBe("summary")
     const cards = [...document.querySelectorAll('[data-testid="demo-summary-module"]')]
     expect(cards.map((card) => card.getAttribute("data-module-route"))).toEqual(["/contracts"])
     expect(cards[0].textContent).toContain("Sənəd imzalandı.")

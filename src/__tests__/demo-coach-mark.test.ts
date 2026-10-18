@@ -272,7 +272,7 @@ describe("demo coach card height", () => {
         canBack: false,
         canSkip: false,
         onNext: vi.fn(), onBack: vi.fn(), onSkip: vi.fn(), onClose: vi.fn(), onMissing: vi.fn(),
-        voice: { on: false, onToggle },
+        voice: { on: false, blocked: false, onToggle, onUnblock: vi.fn() },
       }))
     })
     await act(async () => {

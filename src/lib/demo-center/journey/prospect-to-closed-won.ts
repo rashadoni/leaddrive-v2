@@ -45,7 +45,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     // refused by policy rather than improvised (assistant/policy.ts).
     assistant: true,
   },
-  estimatedMinutes: 72,
+  estimatedMinutes: 73,
   sections: [
     {
       id: "orientation",
@@ -1762,6 +1762,37 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
           completion: { kind: "viewed" },
           covers: ["contracts.renewal-alert"],
           analyticsEvent: "journey.step_viewed",
+        },
+      ],
+    },
+    {
+      // Every module ends here (modules.ts): the guide asks where to go next
+      // instead of walking over the module's edge by itself (owner,
+      // 2026-10-18). Reached by the story, never opened from the menu.
+      id: "next-module",
+      title: "Növbəti modul",
+      summary: "Modulu seçin — bələdçi onu əvvəldən aparacaq. Sorğuda seçdiyiniz modullar yuxarıdadır.",
+      area: "shell",
+      route: "demo:next-module",
+      navGroup: "demo",
+      estimatedMinutes: 1,
+      requires: [],
+      entryStates: ["CLOSED_WON"],
+      exitStates: ["CLOSED_WON"],
+      standalone: true,
+      steps: [
+        {
+          id: "next-module-pick",
+          title: "Hansı modula keçək?",
+          instruction: "Sualınız varsa, sağda Da Vinci-yə yazın. Yoxdursa, növbəti modulu seçin: sorğuda seçdikləriniz yuxarıdadır, baxdıqlarınız işarələnib.",
+          anchor: "demo-next-modules",
+          placement: "auto",
+          action: "choose",
+          targetLabel: "Növbəti modulu seçin",
+          required: true,
+          completion: { kind: "snapshot", path: "next.finish", equals: true },
+          covers: [],
+          analyticsEvent: "journey.step_completed",
         },
       ],
     },

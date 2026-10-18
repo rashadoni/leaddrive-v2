@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { COMPANY_EMAIL } from "@/lib/constants"
 import { autoIssueDemoGrant } from "@/lib/demo-center/auto-issue"
-import { getDemoModules } from "@/lib/demo-center/catalog"
+import { requestedModuleNames } from "@/lib/demo-center/requested-modules"
 import {
   DEMO_REQUEST_ALLOWED_HEADERS,
   DEMO_REQUEST_ALLOWED_METHODS,
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
       phone: created.phone,
       jobTitle: created.jobTitle,
       message: created.message,
-      requestedModuleNames: getDemoModules(created.requestedModules).map((module) => module.title),
+      requestedModuleNames: requestedModuleNames(created.requestedModules),
     }).catch(() => undefined)
   }
 

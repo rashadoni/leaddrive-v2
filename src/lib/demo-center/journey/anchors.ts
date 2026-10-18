@@ -38,6 +38,7 @@ const BOARD_SCENE = "src/components/demo-center/journey/scenes/board-scene.tsx"
 const DEAL_SCENE = "src/components/demo-center/journey/scenes/deal-scene.tsx"
 const QUOTE_SCENE = "src/components/demo-center/journey/scenes/quote-scene.tsx"
 const SUMMARY_SCENE = "src/components/demo-center/journey/scenes/summary-scene.tsx"
+const NEXT_MODULE_SCENE = "src/components/demo-center/journey/scenes/next-module-scene.tsx"
 const SUPPORT_SCENE = "src/components/demo-center/journey/scenes/support-scene.tsx"
 const CALLS_SCENE = "src/components/demo-center/journey/scenes/calls-scene.tsx"
 const MTM_SCENE = "src/components/demo-center/journey/scenes/mtm-scene.tsx"
@@ -57,6 +58,7 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "demo-guide-panel": { area: "shell", scene: GUIDE, productFiles: [], label: "Guide panel with progress and checklist" },
   "demo-watermark": { area: "shell", scene: SHELL, productFiles: [], label: "Prospect watermark" },
   "demo-assistant": { area: "shell", scene: GUIDE, productFiles: [], label: "Da Vinci assistant prompts" },
+  "demo-next-modules": { area: "shell", scene: NEXT_MODULE_SCENE, productFiles: [], label: "What next: the modules to choose from" },
 
   /* ── Summary ── */
   "journey-summary": { area: "summary", scene: SUMMARY_SCENE, productFiles: [], label: "Completed-steps summary" },

@@ -1,5 +1,6 @@
 import { activeSections, type DemoJourneySnapshot } from "./snapshot"
 import type { DemoJourneyManifest, DemoJourneySection, DemoJourneyState } from "./types"
+import { DEMO_NEXT_MODULE_SECTION_ID } from "./modules"
 
 /**
  * What a granted session tells the server about its progress.
@@ -188,7 +189,9 @@ export function summarizeJourney(manifest: DemoJourneyManifest, rows: readonly J
   for (const row of sorted) {
     const sectionIndex = order.get(metadataField(row.metadata, "sectionId") ?? "")
     if (sectionIndex !== undefined && row.eventType.startsWith("journey.")) {
-      furthest = Math.max(furthest, sectionIndex)
+      // «What next» sits last but one and is passed after every module: it
+      // says where the prospect paused, not how far they got.
+      if (sections[sectionIndex].id !== DEMO_NEXT_MODULE_SECTION_ID) furthest = Math.max(furthest, sectionIndex)
       opened.add(sections[sectionIndex].id)
     }
     if (row.eventType === "journey.step_completed" && row.stepId && required.has(row.stepId)) done.add(row.stepId)

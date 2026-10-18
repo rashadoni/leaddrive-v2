@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { prepareDemoFormSolution, type DemoFormSolutionPayload } from "@/lib/demo-center/form-challenge-client"
+import { DEMO_DEFAULT_MODULE_IDS, DEMO_JOURNEY_MODULES } from "@/lib/demo-center/journey/modules"
 
 const CHALLENGE_ENDPOINT = "/api/v1/public/demo-requests/challenge"
 
@@ -55,7 +56,7 @@ function DemoRequestForm({ t, locale }: { t: (key: string) => string; locale: st
               email: data.get("email"),
               phone: data.get("phone"),
               message: data.get("message"),
-              requestedModules: [],
+              requestedModules: data.getAll("modules").map(String),
               locale: ["az", "ru", "en"].includes(locale) ? locale : "az",
               consent: data.has("consent"),
               website: data.get("website"),
@@ -151,6 +152,26 @@ function DemoRequestForm({ t, locale }: { t: (key: string) => string; locale: st
           </div>
         </div>
       </div>
+      {/* The demo opens with these modules first (owner, 2026-10-18: «клиент
+          заранее смог выбрать, какие модули ему интересны, по умолчанию —
+          ИИ-звонки, омни-канал и сделки»). */}
+      <fieldset>
+        <legend className="mb-1.5 block text-xs font-medium text-[#001E3C]/60">{t("modulesLabel")}</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {DEMO_JOURNEY_MODULES.map((module) => (
+            <label key={module.id} className="flex cursor-pointer items-center gap-2 rounded-lg border border-[#001E3C]/10 bg-white px-3 py-2 text-sm text-[#001E3C]">
+              <input
+                type="checkbox"
+                name="modules"
+                value={module.id}
+                defaultChecked={DEMO_DEFAULT_MODULE_IDS.includes(module.id)}
+                className="h-4 w-4 rounded border-[#001E3C]/20 accent-[#EA580C]"
+              />
+              <span>{t(`modules.${module.id}`)}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <label className="flex cursor-pointer items-start gap-3 text-xs leading-5 text-[#001E3C]/65">
         <input
           required

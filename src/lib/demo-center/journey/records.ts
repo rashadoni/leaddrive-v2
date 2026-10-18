@@ -33,6 +33,11 @@ export interface DemoProspectIdentity {
   /** Already masked by the server (`+994 ** *** 12 34`) or null. */
   readonly phoneMasked: string | null
   readonly sourceChannel: DemoSourceChannel
+  /**
+   * The modules the prospect asked for on the request form (`modules.ts`
+   * ids), offered first in the demo. Absent: the form's defaults.
+   */
+  readonly interests?: readonly string[]
 }
 
 /** The synthetic manager who «works» the prospect's record. */

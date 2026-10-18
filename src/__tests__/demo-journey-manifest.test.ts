@@ -156,6 +156,8 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
       "ctr-approve",
       "ctr-sign",
       "ctr-control",
+      // Every module ends here: «what next» (modules.ts).
+      "next-module",
       "summary",
     ])
   })

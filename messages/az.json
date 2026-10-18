@@ -20619,6 +20619,18 @@
     }
   },
   "demo": {
+    "modulesLabel": "Hansı modullar maraqlıdır? Demo onlarla başlayacaq",
+    "modules": {
+      "marketing": "Marketinq kampaniyaları",
+      "omnichannel": "Omni-kanal və AI agent",
+      "ai-calls": "AI zənglər",
+      "deals": "Satış: sövdələşmə və təklif",
+      "service-desk": "Service Desk",
+      "call-center": "Call Center",
+      "route-field": "Marşrut & Sahə",
+      "personnel": "Kadr uçotu",
+      "contracts": "Müqavilələr"
+    },
     "badge": "Şəxsi demo",
     "heroTitle1": "LeadDrive CRM-i",
     "heroTitle2": "kəşf edin",

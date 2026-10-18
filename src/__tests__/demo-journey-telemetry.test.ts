@@ -38,6 +38,7 @@ import {
   type DemoProspectIdentity,
   type JourneyEventRow,
 } from "@/lib/demo-center/journey"
+import { DEMO_JOURNEY_MODULES, DEMO_NEXT_MODULE_FINISH_PATH, DEMO_NEXT_MODULE_STEP_ID, suggestedDemoModule } from "@/lib/demo-center/journey"
 
 const manifest = PROSPECT_TO_CLOSED_WON
 const NOW = new Date("2026-09-21T09:00:00.000Z")
@@ -48,9 +49,17 @@ const identity: DemoProspectIdentity = {
   emailMasked: "n***@xezerlog.az",
   phoneMasked: "+994 ** *** 45 67",
   sourceChannel: "instagram",
+  // Every module asked for: «what next» suggests them in the story's own order.
+  interests: DEMO_JOURNEY_MODULES.map((module) => module.id),
 }
 
 function actionFor(snapshot: DemoJourneySnapshot, story: DemoJourneyManifest): DemoJourneyAction {
+  // «What next» (modules.ts): go on to the module the guide suggests, and
+  // finish once every module was walked.
+  if (snapshot.stepId === DEMO_NEXT_MODULE_STEP_ID) {
+    const next = suggestedDemoModule(story, snapshot)
+    return next ? { type: "open-section", sectionId: next.firstSectionId } : { type: "ui", path: DEMO_NEXT_MODULE_FINISH_PATH, value: true }
+  }
   const located = findStep(story, snapshot.stepId)
   if (!located) throw new Error(`unknown step ${snapshot.stepId}`)
   const { step } = located
@@ -101,7 +110,11 @@ describe("journey reports", () => {
 
   it("reports each section opening, the state it reached and the end of the story", () => {
     const opened = reports.filter((report) => report.name === "journey.section_opened").map((report) => report.sectionId)
-    expect(opened).toEqual(activeSections(manifest).slice(1).map((section) => section.id))
+    const story = activeSections(manifest).slice(1).map((section) => section.id)
+    // Every module in the story's order (all were asked for), with «what
+    // next» between them — the guide no longer crosses a module's edge itself.
+    expect(opened.filter((id) => id !== "next-module")).toEqual(story.filter((id) => id !== "next-module"))
+    expect(opened.filter((id) => id === "next-module").length).toBeGreaterThan(5)
     expect(reports.filter((report) => report.name === "journey.transition").map((report) => report.to)).toContain("CLOSED_WON")
     expect(reports.filter((report) => report.name === "journey.completed")).toHaveLength(1)
   })

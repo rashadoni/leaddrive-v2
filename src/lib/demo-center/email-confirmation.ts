@@ -1,7 +1,7 @@
 import { COMPANY_EMAIL } from "@/lib/constants"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
-import { getDemoModules } from "./catalog"
+import { requestedModuleNames } from "./requested-modules"
 import { sendDemoRequestNotification } from "./email"
 
 export type DemoEmailConfirmation = "confirmed" | "already_confirmed" | "failed"
@@ -48,7 +48,7 @@ export async function confirmDemoRequestEmail(requestId: string, now: Date = new
       phone: request.phone,
       jobTitle: request.jobTitle,
       message: request.message,
-      requestedModuleNames: getDemoModules(request.requestedModules).map((module) => module.title),
+      requestedModuleNames: requestedModuleNames(request.requestedModules),
     })
     if (!delivery.success) {
       console.error("[demo-email-confirmation] owner notification not delivered", { requestId, error: delivery.error })
