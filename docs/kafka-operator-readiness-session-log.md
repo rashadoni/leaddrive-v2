@@ -632,3 +632,34 @@ stop observer provenance and single-use challenge for the frozen A1/A2 process,
 then bind current lease, settled source watermarks and pointer CAS in one
 restricted transaction and test concurrent writer/revoke/rollback denial. No
 consumer, replay, send, production, merge or deploy implied by this preparation.
+
+## 2026-10-19 — durable single-use stop-challenge preparation
+
+User requested start/continue. Resumed clean dedicated worktree ona6017557f;
+project-context, full AGENTS and fresh origin/main reconciled (still226dde0e7).
+Root/branch/origin/registered production route unchanged; no canonical/production
+mutation. Read-only A1/A2 PR891 now non-draft on2936f4c2f4dc7cd682429cd5d87fa9ec4dfbf9d6;
+no edits, dispatches or certification of its current head by old receipts.
+
+Prepared inactive SQL addon stop-challenges.sql after admission.sql: separately
+provisioned NOLOGIN observer capability, observer mappings reuse existing private
+identities with no request/approve/consume capabilities or operator memberships.
+Only current consumed stop request's controller issues a short challenge bound
+to immutable plan/hash/generation/process/observer principal. Named observer can
+record one scoped bounded claim; separate controller retrieves it inside genuine
+READ ONLY transaction. One-time acceptance locks challenge and rechecks lease;
+deferred check can roll back acceptance+settlement at final COMMIT on expiry.
+No business privileges, process observation, stop signal, source freeze, broker,
+consumer/replay/send or runtime activation. Authenticated observer claims do not
+establish physical process truth; producer/provenance remains unimplemented.
+
+New isolated PostgreSQL proof composes prior read-back gate with authenticated
+DB records and tests scope/identity/partition/time denial, direct access, role
+revocation/remap/elevation, capability mixing, concurrent one-winner acceptance,
+revoke/expiry and staged final-COMMIT rollback. Fixture worker-close/soak/restore
+claims are synthetic, explicitly not operational evidence. Own CI step added;
+syntax, diff and runner-policy72 PASS, actual PG proof pending hosted CI only.
+Resources~13.9GB available/201GB disk/swap3MB/pressure0. Heavy build/typecheck,
+operational observer/consumer/replay/sends and production NOT RUN under existing
+scope. Next: hosted exact-source proof and any own-contract/fixture fixes, then
+remaining-task map updates without weakening worker/checkpoint or foreign gates.

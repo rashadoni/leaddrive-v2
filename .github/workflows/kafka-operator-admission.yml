@@ -53,6 +53,11 @@ jobs:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
         run: node --test scripts/event-platform/operator-admission.integration.mjs
 
+      - name: Single-use observer stop challenges in actual PostgreSQL
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+        run: node --test scripts/event-platform/operator-stop-challenges.integration.mjs
+
       - name: Install bounded reducer proof dependencies
         run: npm ci --prefix ops/event-platform/operator/fixtures --no-audit --no-fund
       - name: Compile the existing canonical Fund reducer for this proof
