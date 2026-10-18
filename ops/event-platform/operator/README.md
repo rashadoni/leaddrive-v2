@@ -211,3 +211,38 @@ may start afterward; current lease/source barrier/pointer checks remain required
 in the actual mutation transaction. Existing running-only worker and running/
 verifying-only checkpoint guards remain unchanged. See the readiness lifecycle
 table for the terminal-snapshot canary contract and continuous-mode open work.
+
+### Inactive durable stop-challenge registry
+
+`stop-challenges.sql` is a separate inactive addon to `admission.sql`, not a
+migration or runtime bootstrap. It requires an independently provisioned
+`ld_kafka_operator_observer` NOLOGIN group and named observer mappings in the
+existing private identity table. Observer mappings must have no operator
+capabilities or operator group memberships; elevated/expired/remapped/revoked
+identities fail closed. No business-table privileges are granted.
+
+Only the current named controller of a consumed `stop` request may issue one
+challenge per request/generation, bounded by its lease and at most one minute.
+The challenge pins worker instance and observer principal. That exact observer
+login may record one bounded scope/time/count/checkpoint claim; direct table
+access, replacement and operator self-registration are denied. The DB records
+its own registration time and audit actors separately from observer timestamps.
+The receipt hash is SHA-256 of PostgreSQL jsonb text, not the recovery manifest's
+raw-byte hash. Receipt registration is an authenticated claim, not proof that
+physical process/SQL/ACK observations are truthful.
+
+The assigned controller can read the record in a genuine READ ONLY transaction
+and feed it to `verifyOperatorRecoveryStop`. One-time acceptance locks the
+challenge, pins its DB receipt hash and rechecks current admission. Acceptance
+and stop-request settlement can share a transaction; deferred checks roll both
+back if the challenge/lease/observer ceases to be valid at finalization. The
+same trusted-executor requirement about `SET CONSTRAINTS IMMEDIATE` applies.
+Live read-back requires the current consumed stop lease; a historical audit read
+adapter for later operations is not exposed here. No pointer privileges or
+activation authority follow from an accepted challenge.
+
+A real observer process, authenticated delivery of the issued challenge, secret
+provisioning, actual child/SQL/ACK instrumentation, broker identity verification,
+source-write barrier and restricted pointer executor remain unimplemented.
+Actual hosted DB tests with synthetic claims prove scoped provenance and
+single-use transaction behavior only. Existing domain readiness gaps remain.

@@ -949,3 +949,12 @@ exists in this preparation. The readiness map specifies the compatible terminal
 canary lifecycle; continuous promoted processing still needs its own writer/
 checkpoint design. Final barrier, authenticated pointer executor, real observers,
 challenge consumption, correction authority, restore/soak/alerts remain open.
+
+### Durable observer challenge preparation
+
+Inactive stop-challenge storage now binds authenticated observer claims to one
+stop request/lease/process and supports exact one-time acceptance with deferred
+COMMIT checks. This prepares the persistence gap only. Physical stop observation,
+trusted challenge delivery, historical evidence reader, final source barrier,
+real pointer executor and genuine operational receipts remain open. No domain
+protection or business integration is activated by this contract.

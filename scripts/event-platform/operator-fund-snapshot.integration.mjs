@@ -246,7 +246,7 @@ await test('canary rejects lagging row or hidden source head inside actual snaps
 })
 
 await test('admission-only principals cannot read or change real business pointers or emit effects',async()=>{
- for(const login of ['op_requester','op_approver','op_controller']) {
+ for(const login of ['op_requester','op_approver','op_controller','op_stop_observer']) {
   for(const sql of ['SELECT * FROM projection_activations;',`UPDATE projection_activations SET "activationVersion"="activationVersion"+1;`,'SELECT * FROM effect_outbox;']) {
    await assert.rejects(fixtureSql(login,sql),/42501/)
   }

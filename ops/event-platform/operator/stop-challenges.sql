@@ -22,9 +22,11 @@ CREATE TABLE ld_kafka_operator.stop_challenges (
  expires_at timestamptz NOT NULL,
  receipt jsonb,
  receipt_hash text,
+ recorded_at timestamptz,
  consumed_at timestamptz,
  UNIQUE(request_id,generation),
  CHECK((receipt IS NULL)=(receipt_hash IS NULL)),
+ CHECK((receipt IS NULL)=(recorded_at IS NULL)),
  CHECK(consumed_at IS NULL OR receipt IS NOT NULL)
 );
 REVOKE ALL ON ld_kafka_operator.stop_challenges FROM PUBLIC,ld_kafka_operator_admitter,ld_kafka_operator_controller,ld_kafka_operator_observer;
@@ -77,6 +79,7 @@ BEGIN
  OR p_expires>q.lease_until THEN RAISE EXCEPTION 'KAFKA_STOP_CHALLENGE_DENIED'; END IF;
  INSERT INTO ld_kafka_operator.stop_challenges(id,request_id,plan_hash,generation,worker_instance,observer,observer_principal,controller,controller_principal,expires_at)
  VALUES(p_id,q.id,q.plan_hash,q.generation,p_worker,p_observer,o.principal_id,session_user,q.controller_principal,p_expires) RETURNING * INTO c;
+ INSERT INTO ld_kafka_operator.audit(request_id,actor,transition,generation) VALUES(q.id,session_user,'stop-challenge-issued',q.generation);
  RETURN jsonb_build_object('challengeId',c.id,'receiptId',c.id,'requestId',q.id,'generation',c.generation::text,
  'workerInstanceId',c.worker_instance,'observerId',c.observer_principal,'issuedAt',c.created_at,'expiresAt',c.expires_at,'plan',q.plan);
 END $$;
@@ -91,6 +94,9 @@ BEGIN
  SELECT * INTO q FROM ld_kafka_operator.requests WHERE id=c.request_id;
  FOREACH k IN ARRAY ARRAY['organizationId','buildId','projectionName','releaseSha','artifactSha256','environment','clusterId','topicId','groupId','expectedPointerVersion'] LOOP
  IF jsonb_typeof(p_receipt->k) IS DISTINCT FROM 'string' OR p_receipt->>k IS DISTINCT FROM q.plan->>k THEN RAISE EXCEPTION 'KAFKA_STOP_CHALLENGE_DENIED'; END IF;
+ END LOOP;
+ FOREACH k IN ARRAY ARRAY['apiVersion','kind','receiptId','challengeId','requestId','generation','workerInstanceId','observerId','termination'] LOOP
+ IF jsonb_typeof(p_receipt->k) IS DISTINCT FROM 'string' THEN RAISE EXCEPTION 'KAFKA_STOP_CHALLENGE_DENIED'; END IF;
  END LOOP;
  IF p_receipt->>'apiVersion' IS DISTINCT FROM 'event-platform.leaddrive.io/v1' OR p_receipt->>'kind' IS DISTINCT FROM 'WorkerStopReceipt'
  OR p_receipt->>'receiptId' IS DISTINCT FROM c.id::text OR p_receipt->>'challengeId' IS DISTINCT FROM c.id::text
@@ -114,7 +120,8 @@ BEGIN
  OR jsonb_typeof(p->'checkpointNext') IS DISTINCT FROM 'string' OR COALESCE(p->>'checkpointNext','') !~ '^(0|[1-9][0-9]{0,18})$' OR (p->>'checkpointNext')::numeric>9223372036854775807
  THEN RAISE EXCEPTION 'KAFKA_STOP_CHALLENGE_DENIED'; END IF;
  END LOOP;
- UPDATE ld_kafka_operator.stop_challenges SET receipt=p_receipt,receipt_hash=encode(public.digest(convert_to(p_receipt::text,'UTF8'),'sha256'),'hex') WHERE id=p_id;
+ UPDATE ld_kafka_operator.stop_challenges SET receipt=p_receipt,recorded_at=clock_timestamp(),receipt_hash=encode(public.digest(convert_to(p_receipt::text,'UTF8'),'sha256'),'hex') WHERE id=p_id;
+ INSERT INTO ld_kafka_operator.audit(request_id,actor,transition,generation) VALUES(c.request_id,session_user,'stop-receipt-recorded',c.generation);
  RETURN (SELECT receipt_hash FROM ld_kafka_operator.stop_challenges WHERE id=p_id);
 EXCEPTION WHEN OTHERS THEN RAISE EXCEPTION 'KAFKA_STOP_CHALLENGE_DENIED';
 END $$;
@@ -136,6 +143,7 @@ BEGIN
  PERFORM ld_kafka_operator.assert_current(c.request_id,c.plan_hash,c.generation);
  PERFORM 1 FROM ld_kafka_operator.identities WHERE login_name=c.observer FOR SHARE;
  UPDATE ld_kafka_operator.stop_challenges SET consumed_at=clock_timestamp() WHERE id=p_id;
+ INSERT INTO ld_kafka_operator.audit(request_id,actor,transition,generation) VALUES(c.request_id,session_user,'stop-challenge-consumed',c.generation);
 END $$;
 CREATE FUNCTION ld_kafka_operator.stop_challenge_commit_guard()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$

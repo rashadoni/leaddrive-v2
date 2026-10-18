@@ -710,3 +710,15 @@ specified bounded canary lifecycle stops/settles before final verification and
 promotion; later source drift denies canary reads. Continuing promoted workers
 require a separate lifecycle design and proof. Do not loosen existing status
 guards, infer a write freeze, or execute any operational command from this note.
+
+### Inactive one-time stop-challenge persistence
+
+The separate `stop-challenges.sql` contract now prepares durable issuance,
+authenticated observer registration, read-only retrieval and one-time acceptance
+with final deferred expiry checks. This supersedes the earlier “no challenge
+store” preparation statement, not the missing real observer/executor. Receipt
+claims in its hosted DB test are synthetic. Registration does not prove actual
+process closure and acceptance grants no pointer, Kafka or provider permissions.
+The issued challenge and observer identity must be independently provisioned and
+transported by a future trusted controller; no such runtime is enabled here.
+Do not execute any operational recovery command on the strength of these tests.

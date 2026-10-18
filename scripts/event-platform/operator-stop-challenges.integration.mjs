@@ -54,6 +54,8 @@ await test('authenticated observer, actual read-only readback, gate, single cons
  assert.equal(result.receiptId,f.challengeId)
  await fixtureSql('op_controller',`BEGIN;SELECT ld_kafka_operator.consume_stop_challenge(${q(f.challengeId)},${q(hash)});SELECT ld_kafka_operator.settle(${q(f.id)},${q(f.hash)},${f.generation});COMMIT;`)
  assert.equal(await used(f),'t');await denied(consume(f,hash))
+ assert.equal(await owned(`SELECT recorded_at>=created_at AND consumed_at>=recorded_at FROM ld_kafka_operator.stop_challenges WHERE id=${q(f.challengeId)};`),'t')
+ assert.equal(await owned(`SELECT string_agg(transition||':'||actor,',' ORDER BY sequence) FROM ld_kafka_operator.audit WHERE request_id=${q(f.id)} AND transition LIKE 'stop-%';`),'stop-challenge-issued:op_controller,stop-receipt-recorded:op_stop_observer,stop-challenge-consumed:op_controller')
 })
 await test('only exact stop action, controller, observer tenant and bounded expiry can issue',async()=>{
  const f={...await admitted('promote'),challengeId:randomUUID()};await denied(issue(f))
@@ -99,7 +101,9 @@ await test('observer role revoke, principal remap, elevation and operator-capabi
  ['REVOKE ld_kafka_operator_observer FROM op_stop_observer;','GRANT ld_kafka_operator_observer TO op_stop_observer;'],
  ["SET ROLE ld_kafka_control_owner;UPDATE ld_kafka_operator.identities SET principal_id='replacement-observer' WHERE login_name='op_stop_observer';","SET ROLE ld_kafka_control_owner;UPDATE ld_kafka_operator.identities SET principal_id='observer-1' WHERE login_name='op_stop_observer';"],
  ['ALTER ROLE op_stop_observer CREATEROLE;','ALTER ROLE op_stop_observer NOCREATEROLE;'],
- ['GRANT ld_kafka_operator_admitter TO op_stop_observer;','REVOKE ld_kafka_operator_admitter FROM op_stop_observer;']]) {
+ ['GRANT ld_kafka_operator_admitter TO op_stop_observer;','REVOKE ld_kafka_operator_admitter FROM op_stop_observer;'],
+ ["SET ROLE ld_kafka_control_owner;UPDATE ld_kafka_operator.identities SET enabled=false WHERE login_name='op_stop_observer';","SET ROLE ld_kafka_control_owner;UPDATE ld_kafka_operator.identities SET enabled=true WHERE login_name='op_stop_observer';"],
+ ["SET ROLE ld_kafka_control_owner;UPDATE ld_kafka_operator.identities SET valid_until=clock_timestamp()-interval '1 second' WHERE login_name='op_stop_observer';","SET ROLE ld_kafka_control_owner;UPDATE ld_kafka_operator.identities SET valid_until=clock_timestamp()+interval '1 hour' WHERE login_name='op_stop_observer';"]]) {
   await admin(change);try{await denied(read(f));await denied(consume(f,hash))}finally{await admin(restore)}
  }
  assert.equal(await used(f),'f')

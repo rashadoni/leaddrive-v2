@@ -377,3 +377,23 @@ checkpoint lifecycle. Changing either current status guard alone is unsafe and
 is not implemented. No source-write freeze is inferred from this table. Until
 real barrier/executor/observer composition is proven, neither terminal promotion
 nor continuous processing is operationally ready.
+
+## Durable stop challenge continuation
+
+The inactive `stop-challenges.sql` addon now prepares the previously missing
+durable one-time challenge store. Separate observer DB logins cannot request,
+approve or consume operator admissions, self-register as controllers, replace
+receipts or access business tables. One challenge binds one current stop lease,
+process and observer principal. Scoped JSON claims are registered once with
+server registration time and audit actors; the assigned controller reads them
+in a genuine read-only transaction, verifies the prior stop gate, then accepts
+the exact stored hash once. Row locks and deferred final lease/challenge/observer
+checks protect acceptance and settlement. No runtime installs this contract.
+
+This supersedes only “challenge store absent” as a software-preparation gap.
+Real process observation/provenance, challenge delivery, current broker/SQL/ACK
+instrumentation, final source barrier, actual pointer executor and later scoped
+historical evidence retrieval remain absent. The store authenticates a login's
+claim; it cannot establish physical process truth or exclude a later writer.
+Mock closed-process data in a real PostgreSQL test is not a completed stop drill.
+None of the27 domain rows or G evidence sets is upgraded by this addon.

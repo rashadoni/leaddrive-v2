@@ -663,3 +663,15 @@ Resources~13.9GB available/201GB disk/swap3MB/pressure0. Heavy build/typecheck,
 operational observer/consumer/replay/sends and production NOT RUN under existing
 scope. Next: hosted exact-source proof and any own-contract/fixture fixes, then
 remaining-task map updates without weakening worker/checkpoint or foreign gates.
+
+### Registry review: immutable claims, audit and final-source hardening
+
+Added exact JSON string type checks, server recorded_at independent of observer
+claims, and audit entries for issue/record/accept with actual session actors.
+Tests now also deny disabled/expired observer identity and prove that the new
+observer has no real business pointer/effect access after actual app migrations.
+Documented jsonb hash versus raw manifest hash, true versus claimed physical
+observations, live-only read-back and absent historical adapter/real producer/
+challenge delivery/final source barrier. No new readiness claims for27 domains.
+Syntax/diff PASS. Initial hosted proof on d3ba98aa5 passed new registry step;
+final hardening is unverified until its own exact-source hosted run.
