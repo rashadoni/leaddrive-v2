@@ -271,3 +271,47 @@ also PASS62/62safety, raw8/8envelopes and cold restart. The automatic draft-even
 CDC check was skipped; it is not relabelled as passing. No live activation,
 resource allocation, operator identity or secret/receipt existence is proven
 by these offline guards. Hosting remains a proposal only.
+
+## Owner excludes Hetzner; lower-cost candidate — 2026-10-19
+
+Owner explicitly rejected Hetzner and requested cheaper hosting. This supersedes
+the preferred-provider recommendation above; old research remains as history,
+not an active procurement option. No budget or purchase was authorized.
+
+**Current candidate: OVHcloud VPS**, subject to target-specific stock/placement,
+capacity and networking verification. The [official Ireland/euro page](https://www.ovhcloud.com/en-ie/vps/)
+currently lists VPS-1 from EUR3.81/month excluding VAT (2vCore/4GB/40GBNVMe) and
+VPS-2 from EUR7.21 (4vCore/8GB/75GBNVMe). Three VPS-2 broker VMs plus three
+VPS-1 controller VMs give an arithmetic **EUR33.06/month compute floor**.
+This candidate has less broker RAM/disk than the preceding CX43 example; the
+price reduction is not a like-for-like performance guarantee or an approved
+86-topic/90-day retention budget. Consider only a measured small-pilot candidate
+until CPU/RAM/IOPS/retention/failover headroom are proven. Shared Connect/Registry
+workers still need measured reserve and location spread outside app/source host.
+
+The public Configure link selects `pricing=upfront12`; therefore the advertised
+monthly-equivalent floor must not be presented as confirmed month-to-month
+billing. Verify commitment, upfront payment, renewal price, account/billing
+country, selected site and stock in an actual quote. No checkout/order/account
+was created. The aggregate floor excludes VAT, archive, extra storage,
+private-network/overlay setup, operations and second-cluster DR.
+
+Require three explicitly selected independent sites with provider evidence,
+not three copies in one default location. OVH's product FAQ distinguishes VPS
+from Public Cloud with native private vRack; the menu's vRack link does not prove
+that these cheap VPS plans include it. A permitted encrypted private overlay is
+a candidate design, not configured evidence or a waiver of the private-endpoint
+rule. No public broker listeners or source firewall changes are approved.
+
+netcup's [current regular VPS catalogue](https://www.netcup.com/en/server/vps)
+shows higher regular pricing and term/site selection conditions for this
+comparison, so it is not preferred here. Contabo's current pages and cached
+legacy Cloud VPS10 listings disagree; current main VPS fetch was403, while
+new Core materials advertise term-dependent starting prices. Do not reuse the
+old EUR4.50 price as a verified new-order quote. Contabo can be compared later
+using the owner's exact billing/region quotation, not guessed checkout totals.
+
+The independent archive remains a separate requirement/cost. Existing B2
+research above is a candidate, not an enabled archive. Overall A4 stays NO-GO
+until all original evidence gates are satisfied. No hosting purchase, provider
+migration, registry change or production installation follows from this note.
