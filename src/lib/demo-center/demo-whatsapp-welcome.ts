@@ -44,6 +44,8 @@ export type DemoWelcomeDelivery =
   | { status: "sent"; messageId: string | null }
   | { status: "unavailable"; reason: string }
   | { status: "failed"; reason: string }
+  /** We stopped waiting or lost the connection after sending: Meta may have delivered it. */
+  | { status: "unknown"; reason: string }
 
 type Fetch = typeof fetch
 
@@ -71,7 +73,7 @@ export async function sendDemoWhatsAppWelcomeTemplate(
       signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
     })
   } catch (error) {
-    return { status: "failed", reason: error instanceof Error && error.name === "TimeoutError" ? "timeout" : "network" }
+    return { status: "unknown", reason: error instanceof Error && error.name === "TimeoutError" ? "timeout" : "network" }
   }
   const body = await response.json().catch(() => null) as { messages?: Array<{ id?: string }>; error?: { code?: number } } | null
   if (response.ok) return { status: "sent", messageId: body?.messages?.[0]?.id ?? null }

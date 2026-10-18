@@ -331,6 +331,27 @@ pgDescribe("demo tables on a real Postgres", () => {
     expect(await bypass(() => prisma.demoWhatsAppThread.count({ where: { id: stored.id } }))).toBe(0)
   })
 
+  it("decides a welcome under one lock: a phone's week holds across demos, and a failed send gives the claim back", async () => {
+    const { sendDemoWhatsAppWelcome } = await import("@/lib/demo-center/demo-whatsapp")
+    const phone = "+994551234567"
+    const welcome = async (tag: string, digit: string) => {
+      const grant = await grantInState((await storedRequest(`welcome-${tag}@example.az`)).id, digit, { ...session(1, digit), liveCallEnabled: true })
+      const result = await sendDemoWhatsAppWelcome({ grant, requestPhone: phone, requestName: "Nigar Əliyeva", consent: true })
+      const row = await bypass(() => prisma.demoWhatsAppThread.findUniqueOrThrow({ where: { grantId: grant.id } }))
+      return { result, row }
+    }
+    // No sales line in this database: the send fails, and the claim is given back.
+    const first = await welcome("a", "7")
+    expect(first.result).toEqual({ ok: false, code: "failed" })
+    expect(first.row.welcomeSentAt).toBeNull()
+
+    // A welcome that went to this phone yesterday holds its week for every other demo.
+    await bypass(() => prisma.demoWhatsAppThread.update({ where: { id: first.row.id }, data: { welcomeSentAt: new Date(Date.now() - 86_400_000) } }))
+    const second = await welcome("b", "8")
+    expect(second.result).toEqual({ ok: false, code: "cooldown" })
+    expect(second.row.welcomeSentAt).toBeNull()
+  })
+
   it("records on a fresh request that no sales organisation is configured for its lead", async () => {
     const { ensureDemoProspectLead } = await import("@/lib/demo-center/prospect-lead")
     const request = await storedRequest("lead-link@example.az")

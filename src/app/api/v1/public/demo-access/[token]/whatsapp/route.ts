@@ -77,6 +77,7 @@ const FAILURES: Record<Extract<SendDemoWelcomeResult, { ok: false }>["code"], { 
   consent_required: { status: 400, error: "Mesaj göndərmək üçün razılığınızı qeyd edin." },
   already_sent: { status: 409, error: "Mesaj artıq göndərilib — telefonunuzda WhatsApp-a baxın." },
   cooldown: { status: 429, error: "Bu nömrəyə bu həftə artıq demo mesajı göndərilib. Aşağıdakı düymə ilə özünüz yazın." },
+  busy: { status: 429, error: "Bu gün demo mesajlarının sayı dolub. Aşağıdakı düymə ilə özünüz yazın." },
   unavailable: { status: 503, error: "Mesaj hazırda göndərilə bilmir. Aşağıdakı düymə ilə özünüz yazın." },
   failed: { status: 502, error: "Mesaj göndərilmədi. Aşağıdakı düymə ilə özünüz yazın." },
 }

@@ -20,11 +20,17 @@ import { demoWhatsAppConversationId, demoWhatsAppSender } from "./whatsapp-numbe
  * AI agent отвечает… в конце дня отвязка»).
  *
  * LeadDrive Inc.'s own Cloud API number does the talking. Two ways in:
+ *   - they write first: a wa.me link and QR with the opening line written —
+ *     open to every prospect, since their own message is the proof;
  *   - we write first: «WhatsApp-a mesaj göndərin» sends the Meta-approved
- *     welcome template (demo-whatsapp-welcome.ts) to the request's phone, once
- *     per grant and once a week per phone, only on the prospect's press with
- *     the consent line;
- *   - they write first: a wa.me link and QR with the opening line written.
+ *     welcome template (demo-whatsapp-welcome.ts) to the request's phone. A
+ *     template to a typed number reaches whoever holds it, and anyone can
+ *     fill the public form with a stranger's number, so this needs the
+ *     owner's switch on the request (`liveCallEnabled`: he has seen who
+ *     asked), the prospect's press with the consent line, and stays within
+ *     once per grant, once a week per phone and DEMO_WHATSAPP_WELCOMES_PER_DAY
+ *     for the whole line — blocks from strangers lower the quality rating of
+ *     the only sales number;
  * Either way the thread opens only when a message comes from exactly that
  * phone carrying the session's code — which only this demo page shows. The
  * phone on a request is typed, not proved: until 2026-10-18 a prospect who
@@ -43,6 +49,8 @@ import { demoWhatsAppConversationId, demoWhatsAppSender } from "./whatsapp-numbe
 const THREAD_LIMIT = 12
 /** One welcome to a phone per week, whichever demo asked. */
 const WELCOME_COOLDOWN_MS = 7 * 24 * 60 * 60_000
+/** Welcomes the sales number sends in any 24 hours, whoever asks: a ceiling, not a target. */
+export const DEMO_WHATSAPP_WELCOMES_PER_DAY = 20
 
 export interface DemoWhatsAppMessage {
   readonly id: string
@@ -64,6 +72,8 @@ export interface DemoWhatsAppState {
   readonly code: string | null
   /** The request's phone, masked, for «we send to …». */
   readonly phoneMasked: string | null
+  /** Our number may write first to that phone: the owner's switch is on. Otherwise the prospect writes first. */
+  readonly canWelcome: boolean
   /** When our welcome went to that phone, if it did. */
   readonly welcomeSentAt: string | null
   /** The code came from that phone: the thread is this session's. */
@@ -79,7 +89,7 @@ export interface DemoWhatsAppState {
 
 export type SendDemoWelcomeResult =
   | { ok: true; state: DemoWhatsAppState }
-  | { ok: false; code: "not_enabled" | "consent_required" | "already_sent" | "cooldown" | "unavailable" | "failed" }
+  | { ok: false; code: "not_enabled" | "consent_required" | "already_sent" | "cooldown" | "busy" | "unavailable" | "failed" }
 
 interface Grant {
   readonly id: string
@@ -97,6 +107,7 @@ const OFF: DemoWhatsAppState = {
   link: null,
   code: null,
   phoneMasked: null,
+  canWelcome: false,
   welcomeSentAt: null,
   proven: false,
   agentActive: false,
@@ -180,6 +191,7 @@ export async function demoWhatsAppState(params: {
     link: `https://wa.me/${sender.waNumber}?text=${encodeURIComponent(demoWhatsAppOpener(params.company ?? null, code))}`,
     code,
     phoneMasked: maskPhone(phone.e164),
+    canWelcome: params.grant.liveCallEnabled,
     welcomeSentAt: thread.welcomeSentAt?.toISOString() ?? null,
     proven: Boolean(thread.provenAt),
     agentActive,
@@ -192,8 +204,9 @@ export async function demoWhatsAppState(params: {
 
 /**
  * «WhatsApp-a mesaj göndərin»: our first message to the request's phone.
- * Only on the prospect's own press with the consent line, once per grant and
- * once a week per phone — a template to a typed number reaches whoever holds
+ * Only on a request the owner switched on, on the prospect's own press with
+ * the consent line, once per grant, once a week per phone and within the
+ * line's daily ceiling — a template to a typed number reaches whoever holds
  * it, and blocks there lower the quality rating of the only sales number.
  */
 export async function sendDemoWhatsAppWelcome(params: {
@@ -205,7 +218,8 @@ export async function sendDemoWhatsAppWelcome(params: {
   now?: Date
 }): Promise<SendDemoWelcomeResult> {
   const now = params.now ?? new Date()
-  if (!usable(params.grant, now)) return { ok: false, code: "not_enabled" }
+  // We write first only where the owner has seen the request; anyone else writes first.
+  if (!usable(params.grant, now) || !params.grant.liveCallEnabled) return { ok: false, code: "not_enabled" }
   if (!params.consent) return { ok: false, code: "consent_required" }
   const phone = normalizeDemoPhone(params.requestPhone ?? "")
   if (!phone) return { ok: false, code: "not_enabled" }
@@ -213,19 +227,24 @@ export async function sendDemoWhatsAppWelcome(params: {
   if (thread.phoneE164 !== phone.e164) return { ok: false, code: "not_enabled" }
   if (thread.welcomeSentAt) return { ok: false, code: "already_sent" }
 
-  const recent = await runWithRlsBypass(() =>
-    prisma.demoWhatsAppThread.findFirst({
-      where: { phoneE164: phone.e164, id: { not: thread.id }, welcomeSentAt: { gt: new Date(now.getTime() - WELCOME_COOLDOWN_MS) } },
-      select: { id: true },
+  // Claimed before sending — two presses send one message — and decided one
+  // at a time for the whole line, so neither the phone's week nor the day's
+  // ceiling can be raced by parallel demos.
+  const outcome = await runWithRlsBypass(() =>
+    prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"demo-whatsapp-welcome"}))`
+      const recent = await tx.demoWhatsAppThread.findFirst({
+        where: { phoneE164: phone.e164, id: { not: thread.id }, welcomeSentAt: { gt: new Date(now.getTime() - WELCOME_COOLDOWN_MS) } },
+        select: { id: true },
+      })
+      if (recent) return "cooldown" as const
+      const today = await tx.demoWhatsAppThread.count({ where: { welcomeSentAt: { gt: new Date(now.getTime() - 24 * 60 * 60_000) } } })
+      if (today >= DEMO_WHATSAPP_WELCOMES_PER_DAY) return "busy" as const
+      const claimed = await tx.demoWhatsAppThread.updateMany({ where: { id: thread.id, welcomeSentAt: null }, data: { welcomeSentAt: now } })
+      return claimed.count ? ("claimed" as const) : ("already_sent" as const)
     }),
   )
-  if (recent) return { ok: false, code: "cooldown" }
-
-  // Claimed before sending: two presses send one message.
-  const claimed = await runWithRlsBypass(() =>
-    prisma.demoWhatsAppThread.updateMany({ where: { id: thread.id, welcomeSentAt: null }, data: { welcomeSentAt: now } }),
-  )
-  if (!claimed.count) return { ok: false, code: "already_sent" }
+  if (outcome !== "claimed") return { ok: false, code: outcome }
   const release = () => runWithRlsBypass(() =>
     prisma.demoWhatsAppThread.updateMany({ where: { id: thread.id, welcomeSentAt: now, welcomeWaMessageId: null }, data: { welcomeSentAt: null } }),
   )
@@ -261,6 +280,14 @@ export async function sendDemoWhatsAppWelcome(params: {
     return delivery
   })
   const delivery = entered?.value ?? { status: "failed" as const }
+  if (delivery.status === "unknown") {
+    // The request may have reached Meta (we stopped waiting): it may be on the
+    // phone already, so the claim stays and the page says to look.
+    await runWithRlsBypass(() =>
+      prisma.demoAccessEvent.create({ data: { grantId: params.grant.id, eventType: "WHATSAPP_WELCOME_SENT", metadata: { consentVersion: DEMO_WHATSAPP_CONSENT_VERSION, confirmed: false } } }),
+    ).catch(() => {})
+    return { ok: true, state: await demoWhatsAppState({ grant: params.grant, requestPhone: params.requestPhone, company: params.company, now }) }
+  }
   if (delivery.status !== "sent") {
     await release()
     return { ok: false, code: delivery.status === "unavailable" ? "unavailable" : "failed" }

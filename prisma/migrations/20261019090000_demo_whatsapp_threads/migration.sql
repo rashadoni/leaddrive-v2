@@ -35,7 +35,6 @@ CREATE TABLE "demo_whatsapp_threads" (
 );
 
 CREATE UNIQUE INDEX "demo_whatsapp_threads_grant_key" ON "demo_whatsapp_threads"("grantId");
-CREATE UNIQUE INDEX "demo_whatsapp_threads_code_key" ON "demo_whatsapp_threads"("code");
 CREATE INDEX "demo_whatsapp_threads_phone_idx" ON "demo_whatsapp_threads"("phoneE164", "provenAt");
 
 ALTER TABLE "demo_whatsapp_threads"

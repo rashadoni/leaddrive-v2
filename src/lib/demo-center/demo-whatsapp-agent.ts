@@ -1,6 +1,6 @@
 import { getAnthropicClient } from "@/lib/ai/anthropic-client"
 import { calculateAiCost } from "@/lib/ai/budget"
-import { guardOmnichannelCommitments, OMNICHANNEL_COMMITMENT_RULES } from "@/lib/inbox/omnichannel-commitment-rules"
+import { detectOmnichannelReplyLocale, guardOmnichannelCommitments, OMNICHANNEL_COMMITMENT_RULES } from "@/lib/inbox/omnichannel-commitment-rules"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { sendWhatsAppText } from "@/lib/whatsapp"
@@ -24,8 +24,11 @@ import { demoSalesOrganizationId } from "./sales-org"
  *     demo shows (journey/leaddrive-agent-profile.ts), never the line's own
  *     support persona — at most DEMO_WHATSAPP_MAX_AI_REPLIES times, until the
  *     end of that day in Baku;
- *   - then one closing line, and the thread is closed: later messages take the
- *     organisation's ordinary path, as any customer's.
+ *   - then one closing line to the message that follows, and the thread is
+ *     closed: later messages take the organisation's ordinary path, as any
+ *     customer's. A thread nobody wrote to since its day ended closes without
+ *     a word when the phone next writes — that message is an ordinary
+ *     customer's, a day or a month later.
  * Everything else returns `handled: false` and the webhook goes on as before.
  * Any failure here returns `handled: false` too, so the line never goes
  * silent because of the demo.
@@ -40,6 +43,8 @@ const MIN_GAP_MS = 3_000
 export const DEMO_WHATSAPP_AGENT_MODEL = "claude-haiku-4-5-20251001"
 const MAX_TOKENS = 300
 const HISTORY_MESSAGES = 12
+/** How long after its day the thread still answers with the closing line; later, the message is an ordinary customer's. */
+const CLOSING_GRACE_MS = 60 * 60_000
 
 /** Sent once when the day or the answers run out; then the thread is ordinary. */
 export const DEMO_WHATSAPP_CLOSING =
@@ -84,10 +89,13 @@ async function handle(inbound: DemoWhatsAppInbound, generate: Generate): Promise
   if (!/^\+994[0-9]{9}$/.test(phoneE164)) return { handled: false }
   const now = inbound.now ?? new Date()
 
-  const thread = await runWithRlsBypass(() =>
-    prisma.demoWhatsAppThread.findFirst({
+  // Every open thread of this phone: a later demo request for the same phone
+  // makes a new one, and must neither take over nor hide the one in progress.
+  const open = await runWithRlsBypass(() =>
+    prisma.demoWhatsAppThread.findMany({
       where: { phoneE164, closedAt: null },
       orderBy: { createdAt: "desc" },
+      take: 20,
       select: {
         id: true,
         grantId: true,
@@ -100,12 +108,17 @@ async function handle(inbound: DemoWhatsAppInbound, generate: Generate): Promise
       },
     }),
   )
+  // A message carrying a session's code belongs to that session; any other
+  // message, to the phone's proven thread.
+  const thread = open.find((candidate) => !candidate.provenAt && carriesDemoCode(inbound.text, candidate.code))
+    ?? open.find((candidate) => candidate.provenAt !== null)
+    ?? null
   if (!thread) return { handled: false }
   const allowed = thread.grant.liveWhatsAppEnabled || thread.grant.liveCallEnabled
 
   if (!thread.provenAt) {
     // Only this session's code, from exactly this phone, during a live demo.
-    if (!allowed || thread.grant.status !== "ACTIVE" || !inbound.text.includes(thread.code)) return { handled: false }
+    if (!allowed || thread.grant.status !== "ACTIVE") return { handled: false }
     const proved = await runWithRlsBypass(async () => {
       const updated = await prisma.demoWhatsAppThread.updateMany({
         where: { id: thread.id, provenAt: null, closedAt: null },
@@ -113,6 +126,11 @@ async function handle(inbound: DemoWhatsAppInbound, generate: Generate): Promise
       })
       if (updated.count) {
         await prisma.demoAccessEvent.create({ data: { grantId: thread.grantId, eventType: "WHATSAPP_PROVEN", metadata: {} } })
+        // The phone's earlier demo, if any, ends here: one conversation answers at a time.
+        await prisma.demoWhatsAppThread.updateMany({
+          where: { phoneE164, id: { not: thread.id }, closedAt: null, provenAt: { not: null } },
+          data: { closedAt: now, closeReason: "superseded" },
+        })
       }
       return updated.count > 0
     })
@@ -121,15 +139,18 @@ async function handle(inbound: DemoWhatsAppInbound, generate: Generate): Promise
     return { handled: true, action: answered ? "proved" : "held" }
   }
 
-  const over = !allowed
-    || thread.grant.status === "REVOKED"
-    || (thread.expiresAt !== null && thread.expiresAt <= now)
-    || thread.aiReplies >= DEMO_WHATSAPP_MAX_AI_REPLIES
-  if (over) {
-    const reason = !allowed || thread.grant.status === "REVOKED" ? "revoked" : thread.aiReplies >= DEMO_WHATSAPP_MAX_AI_REPLIES ? "replies_used" : "day_over"
-    await close({ inbound, threadId: thread.id, grantId: thread.grantId, phoneE164, now, reason })
-    // A demo the owner revoked says nothing: the message is an ordinary customer's.
-    return reason === "revoked" ? { handled: false } : { handled: true, action: "closed" }
+  const revoked = !allowed || thread.grant.status === "REVOKED"
+  const expired = thread.expiresAt !== null && thread.expiresAt <= now
+  const used = thread.aiReplies >= DEMO_WHATSAPP_MAX_AI_REPLIES
+  if (revoked || expired || used) {
+    const reason = revoked ? "revoked" : used && !expired ? "replies_used" : "day_over"
+    // The closing line answers the message that follows the demo. A revoked
+    // demo, or a message the next morning or weeks later, is an ordinary
+    // customer's: the thread closes without a word and the line takes it.
+    const say = reason === "replies_used"
+      || (reason === "day_over" && thread.expiresAt !== null && now.getTime() - thread.expiresAt.getTime() <= CLOSING_GRACE_MS)
+    await close({ inbound, threadId: thread.id, grantId: thread.grantId, phoneE164, now, reason, say })
+    return say ? { handled: true, action: "closed" } : { handled: false }
   }
 
   const answered = await answer({ inbound, thread, phoneE164, now, generate })
@@ -143,7 +164,7 @@ async function answer(params: {
   now: Date
   generate: Generate
 }): Promise<boolean> {
-  const { inbound, thread, phoneE164, now } = params
+  const { thread, now } = params
   // One answer per message, never more than the allowance, never two at once.
   const claimed = await runWithRlsBypass(() =>
     prisma.demoWhatsAppThread.updateMany({
@@ -157,9 +178,35 @@ async function answer(params: {
     }),
   )
   if (!claimed.count) return false
+  // A claim that delivered nothing gives its answer back (the gap stays).
+  const release = () =>
+    runWithRlsBypass(() =>
+      prisma.demoWhatsAppThread.updateMany({
+        where: { id: thread.id, lastAiReplyAt: now, aiReplies: { gt: 0 } },
+        data: { aiReplies: { decrement: 1 } },
+      }),
+    ).catch(() => {})
 
+  try {
+    return await deliverAnswer({ ...params, release })
+  } catch (error) {
+    await release()
+    throw error
+  }
+}
+
+async function deliverAnswer(params: {
+  inbound: DemoWhatsAppInbound
+  thread: { id: string; grantId: string; provenAt: Date | null }
+  phoneE164: string
+  now: Date
+  generate: Generate
+  release: () => Promise<unknown>
+}): Promise<boolean> {
+  const { inbound, thread, phoneE164, now, release } = params
   const digits = phoneE164.replace(/^\+/, "")
-  const since = thread.provenAt ?? now
+  // From a minute before the proof: the message carrying the code is stored just before it is seen.
+  const since = new Date((thread.provenAt ?? now).getTime() - 60_000)
   const rows = await prisma.channelMessage.findMany({
     where: {
       organizationId: inbound.organizationId,
@@ -174,12 +221,10 @@ async function answer(params: {
     take: HISTORY_MESSAGES,
     select: { direction: true, body: true },
   })
-  const history = rows
-    .reverse()
-    .map((row) => ({ role: row.direction === "inbound" ? ("user" as const) : ("assistant" as const), content: row.body.slice(0, 1_000) }))
-    .filter((turn) => turn.content.trim())
-  // The model's conversation must end with the prospect's turn.
-  if (!history.length || history[history.length - 1].role !== "user") history.push({ role: "user", content: inbound.text.slice(0, 1_000) })
+  const history = demoAgentHistory(
+    rows.reverse().map((row) => ({ role: row.direction === "inbound" ? ("user" as const) : ("assistant" as const), content: row.body })),
+    inbound.text,
+  )
 
   const started = Date.now()
   let generated: Awaited<ReturnType<Generate>>
@@ -188,10 +233,18 @@ async function answer(params: {
   } catch (error) {
     // The message stays the demo's: the support AI does not step in mid-demo.
     console.error("[demo-whatsapp-agent] no answer generated", { errorType: error instanceof Error ? error.name : "unknown" })
+    await release()
     return false
   }
-  const guarded = guardOmnichannelCommitments(generated.text.trim(), { locale: "az", customerText: inbound.text }).text.trim()
-  if (!guarded) return false
+  // The reply's language: the prospect's, or — when their words carry none
+  // (a code, a number, unmarked Latin) — the language the agent answered in.
+  const fromProspect = detectOmnichannelReplyLocale(inbound.text)
+  const locale = fromProspect === "en" ? detectOmnichannelReplyLocale(generated.text) : fromProspect
+  const guarded = guardOmnichannelCommitments(generated.text.trim(), { locale, customerText: inbound.text }).text.trim()
+  if (!guarded) {
+    await release()
+    return false
+  }
 
   const sent = await sendWhatsAppText({
     to: phoneE164,
@@ -200,7 +253,11 @@ async function answer(params: {
     skipLog: true,
     channelConfigId: inbound.channelConfigId,
   })
-  if (!sent.success) return false
+  if (!sent.success) {
+    await release()
+    return false
+  }
+  // Sent: from here nothing may hand the message back — the ordinary path would answer it a second time.
   await prisma.channelMessage.create({
     data: {
       organizationId: inbound.organizationId,
@@ -215,6 +272,8 @@ async function answer(params: {
       externalId: sent.messageId,
       metadata: { channel: "whatsapp", sentVia: "demo_ai", demoGrantId: thread.grantId, aiAutoReply: true, waMessageId: sent.messageId },
     },
+  }).catch((error: unknown) => {
+    console.error("[demo-whatsapp-agent] answer sent, not stored", { errorType: error instanceof Error ? error.name : "unknown" })
   })
   await prisma.aiInteractionLog.create({
     data: {
@@ -241,6 +300,8 @@ async function close(params: {
   phoneE164: string
   now: Date
   reason: "day_over" | "replies_used" | "revoked"
+  /** Whether the closing line goes out: only to the message that follows the demo. */
+  say: boolean
 }): Promise<void> {
   const closed = await runWithRlsBypass(() =>
     prisma.demoWhatsAppThread.updateMany({
@@ -252,8 +313,8 @@ async function close(params: {
   await runWithRlsBypass(() =>
     prisma.demoAccessEvent.create({ data: { grantId: params.grantId, eventType: "WHATSAPP_CLOSED", metadata: { reason: params.reason } } }),
   ).catch(() => {})
-  // The prospect just wrote, so the window is open; a revoked demo says nothing.
-  if (params.reason === "revoked") return
+  // The prospect just wrote, so the window is open.
+  if (!params.say) return
   const sent = await sendWhatsAppText({
     to: params.phoneE164,
     body: DEMO_WHATSAPP_CLOSING,
@@ -276,7 +337,45 @@ async function close(params: {
       externalId: sent.messageId,
       metadata: { channel: "whatsapp", sentVia: "demo_ai", demoGrantId: params.grantId, waMessageId: sent.messageId },
     },
+  }).catch((error: unknown) => {
+    console.error("[demo-whatsapp-agent] closing line sent, not stored", { errorType: error instanceof Error ? error.name : "unknown" })
   })
+}
+
+/**
+ * The session's code as a person types it on a phone: any case, a dash, a
+ * space or nothing between «LD» and its six characters.
+ */
+export function carriesDemoCode(text: string, code: string): boolean {
+  const want = code.toUpperCase().replace(/^LD-/, "")
+  for (const match of text.toUpperCase().matchAll(/LD[\s\-\u2010-\u2015_.:]{0,3}([0-9A-F]{6})(?![0-9A-F])/g)) {
+    if (match[1] === want) return true
+  }
+  return false
+}
+
+/**
+ * The conversation as the Messages API takes it: it opens with the
+ * prospect's turn (our welcome or an earlier answer may lead), one role
+ * never follows itself, and it ends with what the prospect just wrote.
+ */
+export function demoAgentHistory(
+  turns: readonly { role: "user" | "assistant"; content: string }[],
+  latest: string,
+): { role: "user" | "assistant"; content: string }[] {
+  const history: { role: "user" | "assistant"; content: string }[] = []
+  for (const turn of turns) {
+    const content = turn.content.slice(0, 1_000).trim()
+    if (!content) continue
+    if (!history.length && turn.role === "assistant") continue
+    const last = history[history.length - 1]
+    if (last?.role === turn.role) last.content = `${last.content}\n${content}`
+    else history.push({ role: turn.role, content })
+  }
+  const text = latest.slice(0, 1_000).trim()
+  const last = history[history.length - 1]
+  if (!last || last.role !== "user") history.push({ role: "user", content: text || "…" })
+  return history
 }
 
 /**

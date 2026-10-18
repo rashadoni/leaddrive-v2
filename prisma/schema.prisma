@@ -22151,7 +22151,7 @@ model DemoWhatsAppThread {
   grant              DemoGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
   phoneE164          String
   /// The session's code (demoWhatsAppCode); proof is a message carrying it.
-  code               String    @unique(map: "demo_whatsapp_threads_code_key")
+  code               String
   welcomeSentAt      DateTime?
   welcomeWaMessageId String?
   provenAt           DateTime?

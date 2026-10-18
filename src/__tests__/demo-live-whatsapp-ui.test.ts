@@ -36,6 +36,7 @@ beforeEach(() => {
     link: "https://wa.me/994105313065?text=LeadDrive%20demo%20Kod%3A%20LD-1A2B3C",
     code: "LD-1A2B3C",
     phoneMasked: "+994 ** *** 45 67",
+    canWelcome: true,
     welcomeSentAt: null,
     proven: false,
     agentActive: false,
@@ -99,6 +100,18 @@ it("offers our message to the request's phone only after the consent line is tic
   expect(container.querySelector('[data-testid="demo-whatsapp-code"]')!.textContent).toContain(S.whatsappReplyWithCode("LD-1A2B3C"))
 })
 
+it("where the owner has not switched the request on, the way in is writing first — from the request's phone, with the code", async () => {
+  state = { ...state, canWelcome: false }
+  await render()
+  expect(welcomeButton()).toBeNull()
+  expect(consentBox()).toBeNull()
+  const writeFirst = container.querySelector('[data-testid="demo-whatsapp-write-first"]')!
+  expect(writeFirst.closest("details")).toBeNull()
+  expect(writeFirst.textContent).toContain("+994 ** *** 45 67")
+  expect(writeFirst.querySelector<HTMLAnchorElement>("a")!.href).toContain("wa.me/994105313065")
+  expect(container.querySelector('[data-testid="demo-whatsapp-code"]')!.textContent).toContain("LD-1A2B3C")
+})
+
 it("keeps the way to write first: the number, a link with the code and a QR", async () => {
   await render()
   expect(panel()!.textContent).toContain(NUMBER)
@@ -116,6 +129,18 @@ it("says what the server refused rather than swallowing it", async () => {
   await act(async () => welcomeButton()!.click())
   await act(async () => { await vi.advanceTimersByTimeAsync(10) })
   expect(panel()!.textContent).toContain("Aşağıdakı düymə ilə özünüz yazın")
+})
+
+it("forgets a failed press once the thread moved on", async () => {
+  postAnswer = { success: false, error: "Mesaj göndərilmədi. Aşağıdakı düymə ilə özünüz yazın." }
+  await render()
+  await act(async () => consentBox()!.click())
+  await act(async () => welcomeButton()!.click())
+  await act(async () => { await vi.advanceTimersByTimeAsync(10) })
+  expect(panel()!.textContent).toContain("Mesaj göndərilmədi")
+  state = { ...state, proven: true, agentActive: true, agentEndsAt: "2026-10-18T19:59:59.999Z", messages: [] }
+  await act(async () => { await vi.advanceTimersByTimeAsync(5_100) })
+  expect(panel()!.textContent).not.toContain("Mesaj göndərilmədi")
 })
 
 it("once the code came from that phone, shows the conversation with the AI agent as it happens", async () => {

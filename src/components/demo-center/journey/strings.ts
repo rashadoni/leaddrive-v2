@@ -159,8 +159,8 @@ export const DEMO_JOURNEY_STRINGS = {
   replySimulatedNote:
     "Mesaj yalnız bu demo ekranında görünür: real hesabda o, müştəriyə seçilmiş kanalla (WhatsApp, Telegram, e-poçt) gedir.",
   whatsappTitle: "WhatsApp — həqiqətən",
-  whatsappIntro: (number: string) =>
-    `${number} nömrəsinə özünüz yazın — mesajınız LeadDrive-ın Gələnlər qutusuna düşəcək, AI agent isə həmin nömrədən telefonunuza cavab verəcək.`,
+  whatsappIntro: (number: string, phone: string) =>
+    `Sorğuda göstərdiyiniz ${phone} nömrəsindən ${number} nömrəsinə yazın — mesajınız LeadDrive-ın Gələnlər qutusuna düşəcək, AI agent isə WhatsApp-da cavab verəcək. Başqa nömrədən gələn mesaj bu demoya bağlanmır.`,
   whatsappWelcomeIntro: (phone: string) =>
     `Bu demoda WhatsApp real işləyir: LeadDrive sorğudakı ${phone} nömrənizə mesaj göndərəcək, siz cavab yazanda AI agent cavab verəcək — yazışma burada da görünəcək.`,
   whatsappWelcomeSend: "WhatsApp-a mesaj göndərin",

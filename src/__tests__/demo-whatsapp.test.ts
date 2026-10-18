@@ -14,7 +14,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   upsertThread: vi.fn(),
   findThread: vi.fn(),
+  countThreads: vi.fn(),
   updateThread: vi.fn(),
+  lock: vi.fn(),
   createEvent: vi.fn(),
   findMessages: vi.fn(),
   createMessage: vi.fn(),
@@ -23,13 +25,17 @@ const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
 }))
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    demoWhatsAppThread: { upsert: mocks.upsertThread, findFirst: mocks.findThread, updateMany: mocks.updateThread },
-    demoAccessEvent: { create: mocks.createEvent },
-    channelMessage: { findMany: mocks.findMessages, create: mocks.createMessage },
-  },
-}))
+vi.mock("@/lib/prisma", () => {
+  const demoWhatsAppThread = { upsert: mocks.upsertThread, findFirst: mocks.findThread, count: mocks.countThreads, updateMany: mocks.updateThread }
+  return {
+    prisma: {
+      demoWhatsAppThread,
+      demoAccessEvent: { create: mocks.createEvent },
+      channelMessage: { findMany: mocks.findMessages, create: mocks.createMessage },
+      $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ $executeRaw: mocks.lock, demoWhatsAppThread }),
+    },
+  }
+})
 vi.mock("@/lib/rls-context", () => ({
   runWithRlsBypass: (fn: () => unknown) => Promise.resolve().then(fn),
   runWithTenant: (_org: string, fn: () => unknown) => Promise.resolve().then(fn),
@@ -48,13 +54,15 @@ vi.mock("@/lib/demo-center/whatsapp-number", () => ({
   demoWhatsAppConversationId: vi.fn(async () => "conv-1"),
 }))
 
-import { demoWhatsAppCode, demoWhatsAppState, sendDemoWhatsAppWelcome } from "@/lib/demo-center/demo-whatsapp"
+import { DEMO_WHATSAPP_WELCOMES_PER_DAY, demoWhatsAppCode, demoWhatsAppState, sendDemoWhatsAppWelcome } from "@/lib/demo-center/demo-whatsapp"
 import { DEMO_WHATSAPP_MAX_AI_REPLIES } from "@/lib/demo-center/demo-whatsapp-agent"
 import { DEMO_WHATSAPP_WELCOME } from "@/lib/demo-center/demo-whatsapp-welcome"
 
 const NOW = new Date("2026-10-18T11:00:00.000Z")
 const PHONE = "+994501234567"
 const grant = { id: "grant-1", createdAt: new Date(NOW.getTime() - 60 * 60_000), status: "ACTIVE", liveCallEnabled: false, liveWhatsAppEnabled: true, sessionExpiresAt: null }
+/** A request the owner switched on in Demo Center: he has seen who asked. */
+const switched = { ...grant, liveCallEnabled: true }
 
 function threadRow(overrides: Record<string, unknown> = {}) {
   return { id: "thread-1", phoneE164: PHONE, welcomeSentAt: null, provenAt: null, expiresAt: null, aiReplies: 0, closedAt: null, ...overrides }
@@ -73,6 +81,8 @@ beforeEach(() => {
   mocks.config.mockResolvedValue({ id: "cc-1", organizationId: "org-leaddrive-inc", phoneNumberId: "984538588084578", accessToken: "token" })
   mocks.upsertThread.mockResolvedValue(threadRow())
   mocks.findThread.mockResolvedValue(null)
+  mocks.countThreads.mockResolvedValue(0)
+  mocks.lock.mockResolvedValue(1)
   mocks.updateThread.mockResolvedValue({ count: 1 })
   mocks.createEvent.mockResolvedValue({})
   mocks.findMessages.mockResolvedValue([])
@@ -81,9 +91,10 @@ beforeEach(() => {
 })
 
 describe("what the demo page is told", () => {
-  it("offers our welcome to the request's phone, the sales number and a link with this session's code", async () => {
+  it("offers the sales number and a link with this session's code — and our welcome only where the owner switched the request on", async () => {
     const state = await demoWhatsAppState({ grant, requestPhone: PHONE, company: "Xəzər Logistika MMC", now: NOW })
-    expect(state).toMatchObject({ enabled: true, displayNumber: "+994 10 531 30 65", code: demoWhatsAppCode("grant-1"), proven: false, welcomeSentAt: null })
+    expect(state).toMatchObject({ enabled: true, displayNumber: "+994 10 531 30 65", code: demoWhatsAppCode("grant-1"), proven: false, welcomeSentAt: null, canWelcome: false })
+    expect((await demoWhatsAppState({ grant: switched, requestPhone: PHONE, now: NOW })).canWelcome).toBe(true)
     expect(state.phoneMasked).toBe("+994 ** *** 45 67")
     expect(decodeURIComponent(state.link!)).toContain(demoWhatsAppCode("grant-1"))
     expect(decodeURIComponent(state.link!)).toContain("Xəzər Logistika MMC")
@@ -148,13 +159,19 @@ describe("whose messages the demo may show", () => {
 })
 
 describe("our first message to the prospect's own phone", () => {
+  it("is never sent on a request the owner has not switched on: anyone can type a stranger's number into the form", async () => {
+    expect(await sendDemoWhatsAppWelcome({ grant, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })).toEqual({ ok: false, code: "not_enabled" })
+    expect(mocks.fetch).not.toHaveBeenCalled()
+    expect(mocks.updateThread).not.toHaveBeenCalled()
+  })
+
   it("is sent only with the consent ticked", async () => {
-    expect(await sendDemoWhatsAppWelcome({ grant, requestPhone: PHONE, requestName: "Nigar Əliyeva", consent: false, now: NOW })).toEqual({ ok: false, code: "consent_required" })
+    expect(await sendDemoWhatsAppWelcome({ grant: switched, requestPhone: PHONE, requestName: "Nigar Əliyeva", consent: false, now: NOW })).toEqual({ ok: false, code: "consent_required" })
     expect(mocks.fetch).not.toHaveBeenCalled()
   })
 
   it("sends Meta's approved template to the request's phone with the first name, and keeps its exact text", async () => {
-    const result = await sendDemoWhatsAppWelcome({ grant, requestPhone: PHONE, requestName: "Nigar Əliyeva", consent: true, now: NOW })
+    const result = await sendDemoWhatsAppWelcome({ grant: switched, requestPhone: PHONE, requestName: "Nigar Əliyeva", consent: true, now: NOW })
     expect(result.ok).toBe(true)
     const [url, init] = mocks.fetch.mock.calls[0]
     expect(url).toBe("https://graph.facebook.com/v21.0/984538588084578/messages")
@@ -175,29 +192,49 @@ describe("our first message to the prospect's own phone", () => {
 
   it("sends once per demo: claimed before sending", async () => {
     mocks.upsertThread.mockResolvedValue(threadRow({ welcomeSentAt: NOW }))
-    expect(await sendDemoWhatsAppWelcome({ grant, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })).toEqual({ ok: false, code: "already_sent" })
+    expect(await sendDemoWhatsAppWelcome({ grant: switched, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })).toEqual({ ok: false, code: "already_sent" })
     mocks.upsertThread.mockResolvedValue(threadRow())
     mocks.updateThread.mockResolvedValueOnce({ count: 0 })
-    expect(await sendDemoWhatsAppWelcome({ grant, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })).toEqual({ ok: false, code: "already_sent" })
+    expect(await sendDemoWhatsAppWelcome({ grant: switched, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })).toEqual({ ok: false, code: "already_sent" })
     expect(mocks.fetch).not.toHaveBeenCalled()
   })
 
   it("sends a phone one welcome a week, whichever demo asked", async () => {
     mocks.findThread.mockResolvedValue({ id: "thread-other" })
-    expect(await sendDemoWhatsAppWelcome({ grant, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })).toEqual({ ok: false, code: "cooldown" })
+    expect(await sendDemoWhatsAppWelcome({ grant: switched, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })).toEqual({ ok: false, code: "cooldown" })
     expect(mocks.findThread.mock.calls[0][0].where).toMatchObject({ phoneE164: PHONE, id: { not: "thread-1" } })
     expect(mocks.fetch).not.toHaveBeenCalled()
   })
 
+  it("decides the phone's week and the line's day one at a time, under one lock", async () => {
+    await sendDemoWhatsAppWelcome({ grant: switched, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })
+    expect(mocks.lock.mock.calls[0][0].join("?")).toContain("pg_advisory_xact_lock")
+    expect(mocks.lock.mock.invocationCallOrder[0]).toBeLessThan(mocks.updateThread.mock.invocationCallOrder[0])
+  })
+
+  it("sends no more than the line's daily ceiling, whoever asks", async () => {
+    mocks.countThreads.mockResolvedValue(DEMO_WHATSAPP_WELCOMES_PER_DAY)
+    expect(await sendDemoWhatsAppWelcome({ grant: switched, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })).toEqual({ ok: false, code: "busy" })
+    expect(mocks.fetch).not.toHaveBeenCalled()
+  })
+
+  it("keeps the claim when Meta did not answer in time: the message may be on the phone already, and is not sent twice", async () => {
+    mocks.fetch.mockRejectedValue(Object.assign(new Error("timed out"), { name: "TimeoutError" }))
+    const result = await sendDemoWhatsAppWelcome({ grant: switched, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })
+    expect(result.ok).toBe(true)
+    expect(mocks.updateThread.mock.calls.some(([call]) => call.data?.welcomeSentAt === null)).toBe(false)
+    expect(mocks.createMessage).not.toHaveBeenCalled()
+  })
+
   it("gives the claim back when Meta has not approved the template yet, so the prospect can write first instead", async () => {
     mocks.fetch.mockResolvedValue({ ok: false, status: 404, json: async () => ({ error: { code: 132001 } }) })
-    expect(await sendDemoWhatsAppWelcome({ grant, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })).toEqual({ ok: false, code: "unavailable" })
+    expect(await sendDemoWhatsAppWelcome({ grant: switched, requestPhone: PHONE, requestName: "Nigar", consent: true, now: NOW })).toEqual({ ok: false, code: "unavailable" })
     expect(mocks.updateThread.mock.calls.at(-1)![0]).toMatchObject({ data: { welcomeSentAt: null } })
     expect(mocks.createMessage).not.toHaveBeenCalled()
   })
 
   it("greets a prospect without a usable name neutrally", async () => {
-    await sendDemoWhatsAppWelcome({ grant, requestPhone: PHONE, requestName: "1 <x>", consent: true, now: NOW })
+    await sendDemoWhatsAppWelcome({ grant: switched, requestPhone: PHONE, requestName: "1 <x>", consent: true, now: NOW })
     expect(JSON.parse(mocks.fetch.mock.calls[0][1].body).template.components[0].parameters[0].text).toBe("dost")
   })
 })
