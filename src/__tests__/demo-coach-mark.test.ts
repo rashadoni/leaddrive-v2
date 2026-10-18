@@ -173,6 +173,24 @@ describe("demo coach card", () => {
     expect(handlers.onClose).not.toHaveBeenCalled()
   })
 
+  it("brings a region taller than the screen in by its top, a shorter one by its middle", async () => {
+    // The AI agent's prompt grows to its full text: centred, it hid the field's
+    // label and «# Rol», which the step names.
+    const scrolled: ScrollIntoViewOptions[] = []
+    const anchor = document.querySelector<HTMLElement>('[data-tour-id="campaigns-list"]')!
+    anchor.scrollIntoView = (options?: boolean | ScrollIntoViewOptions) => { scrolled.push(options as ScrollIntoViewOptions) }
+    layout({ top: 500, left: 20, width: 600, height: 2400 }, { width: 1280, height: 800 })
+    await renderAction({ mode: "observe" })
+    expect(scrolled.at(-1)?.block).toBe("start")
+
+    act(() => root.unmount())
+    root = createRoot(container)
+    scrolled.length = 0
+    layout({ top: 900, left: 20, width: 600, height: 200 }, { width: 1280, height: 800 })
+    await renderAction({ mode: "observe", stepKey: "source:another-step" })
+    expect(scrolled.at(-1)?.block).toBe("center")
+  })
+
   it("points at the region too, with the step's name, on a step that just shows something", async () => {
     // Owner, 2026-09-22: «везде нужны стрелки для понимания».
     await renderAction({ mode: "observe", collapsed: true })

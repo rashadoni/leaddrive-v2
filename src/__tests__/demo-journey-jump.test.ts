@@ -111,7 +111,7 @@ describe("opening a section ahead of the story", () => {
   })
 
   it("lets the story carry on from there to the end with the ordinary rules", () => {
-    for (const sectionId of ["conversation", "lead-created", "task", "deal", "quote", "closed-won"]) {
+    for (const sectionId of ["conversation", "ai-agent-setup", "lead-created", "task", "deal", "quote", "closed-won"]) {
       const { snapshot } = jump(start(), sectionId)
       expect(driveToEnd(snapshot).state, sectionId).toBe("COMPLETED")
     }

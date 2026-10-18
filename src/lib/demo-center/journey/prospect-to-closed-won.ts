@@ -12,6 +12,7 @@
  * when the journey state or the session snapshot actually changes.
  */
 import type { DemoJourneyManifest } from "./types"
+import { LEADDRIVE_AGENT_PROFILE } from "./leaddrive-agent-profile"
 
 export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
   scenarioId: "prospect-to-closed-won",
@@ -24,6 +25,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
   visibleRoutes: [
     "/campaigns",
     "/inbox",
+    "/inbox/ai-agent",
     "/leads",
     "/boards",
     "/deals",
@@ -45,7 +47,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     // refused by policy rather than improvised (assistant/policy.ts).
     assistant: true,
   },
-  estimatedMinutes: 73,
+  estimatedMinutes: 75,
   sections: [
     {
       id: "orientation",
@@ -329,6 +331,90 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
           required: false,
           completion: { kind: "viewed" },
           covers: ["inbox.composer"],
+          analyticsEvent: "journey.step_viewed",
+        },
+      ],
+    },
+    {
+      // Owner, 2026-10-18: «гид направлял на готовый промт, стиль общения и
+      // база знаний, а там уже стояло для LeadDrive CRM». LeadDrive's own
+      // agent (./leaddrive-agent-profile.ts) on the product's AI agent screen.
+      id: "ai-agent-setup",
+      title: "AI agent necə qurulub",
+      // In the product this card drives the inbox agent (Telegram and the
+      // like); WhatsApp's AI answer is Da Vinci's. Only the demo's own
+      // WhatsApp line was given this agent — the summary feeds the guide's
+      // assistant, so it says exactly that.
+      summary: "LeadDrive-ın öz AI agentinin hazır ayarları məhsulun «AI agent» ekranında: hər kanalda kim cavab verir, sistem promptu, ünsiyyət tərzi və bilik bazası. Məhsulda bu ekran Telegram kimi kanallarda cavab verən AI agenti qurur. Demonun WhatsApp hissəsində Sizə cavab verən agentə də LeadDrive eyni prompt, ünsiyyət tərzi və bilik bazasını verib.",
+      area: "inbox",
+      route: "/inbox/ai-agent",
+      navGroup: "omnichannel",
+      estimatedMinutes: 2,
+      requires: [],
+      entryStates: ["AI_REPLIED"],
+      exitStates: ["AI_REPLIED"],
+      assistantPrompts: ["Prompt ilə bilik bazasının fərqi nədir?", "Qaralama rejimi nə deməkdir?"],
+      steps: [
+        {
+          id: "ai-agent-reply-mode",
+          title: "Hər kanalda kim cavab verir",
+          instruction: "Burada hər kanal üçün ayrıca seçirsiniz: cavabı insan yazır, AI qaralama hazırlayır və ya AI agent özü cavab verir. Bunun üçün aşağıdakı «AI avtomatik cavab verir» açarı da açıq olmalıdır. Telegram üçün «Qaralama» seçin: bu rejimdə AI-ın adi cavabı operator yoxlayana qədər göndərilmir.",
+          anchor: "inbox-reply-matrix",
+          placement: "bottom",
+          action: "choose",
+          targetLabel: "«Qaralama» seçin",
+          required: true,
+          completion: { kind: "snapshot", path: "agent.replyMode", equals: "ai_draft" },
+          covers: ["inbox.ai-agent.reply-matrix", "inbox.ai-agent.master-switch"],
+          result: "Telegram «Qaralama» rejimindədir: AI cavabı hazırlayır, operator yoxlayıb göndərir. Demoda bu seçim real hesaba yazılmır.",
+          analyticsEvent: "journey.step_completed",
+        },
+        {
+          id: "ai-agent-prompt",
+          title: "Hazır sistem promptu",
+          instruction: "Bu, LeadDrive-ın öz satış köməkçisinin promptudur: «Rol» bölməsi onun kim olduğunu, «Məqsəd» nəyə çalışdığını, «Qaydalar» isə sərhədlərini yazır. Məsələn, qiymət söyləmək, zəng və ya vaxt vəd etmək qadağandır; zəng və ya vaxt vədi olan cümləni isə məhsulun ayrıca yoxlaması da cavabdan silir.",
+          anchor: "inbox-agent-prompt",
+          placement: "auto",
+          action: "observe",
+          required: true,
+          completion: { kind: "viewed" },
+          covers: ["inbox.ai-agent.prompt"],
+          analyticsEvent: "journey.step_viewed",
+        },
+        {
+          id: "ai-agent-knowledge",
+          title: "Bilik bazası",
+          instruction: "Bu sahədə yalnız faktlar var: modullar, kanallar, işə başlama və şərtlər haqqında təsdiqlənmiş məlumat. Faktlar qaydalardan ayrı saxlanılır: faktı dəyişmək qaydalara toxunmur, mətnin özü isə hər cavabda agentə tam verilir.",
+          anchor: "inbox-agent-knowledge",
+          placement: "auto",
+          action: "observe",
+          required: true,
+          completion: { kind: "viewed" },
+          covers: ["inbox.ai-agent.knowledge"],
+          analyticsEvent: "journey.step_viewed",
+        },
+        {
+          id: "ai-agent-style",
+          title: "Ünsiyyət tərzi və cavab dili",
+          instruction: "Ünsiyyət tərzi promptun sonunda, «Ünsiyyət tərzi» bölməsində yazılıb: «Siz» müraciəti, iki-üç qısa cümlə, emoji və təzyiq olmadan. Orada müştərinin dilində cavab vermək tələb olunur, ona görə burada «Cavab dili» sahəsində «Müştəriyə görə» seçilib. Yanındakı sahədə agentin modeli — Haiku.",
+          anchor: "inbox-agent-settings",
+          placement: "top",
+          action: "observe",
+          required: true,
+          completion: { kind: "viewed" },
+          covers: ["inbox.ai-agent.prompt", "inbox.ai-agent.settings"],
+          analyticsEvent: "journey.step_viewed",
+        },
+        {
+          id: "ai-agent-sources",
+          title: "Bilik mənbələri",
+          instruction: `Bu kart Bilik bazası modulundan gəlir: LeadDrive üçün yazılmış ${LEADDRIVE_AGENT_PROFILE.articles.length} məqalədən ilk beşi görünür. Canlı hesabda AI agent hər mesaja cavab hazırlayanda dərc edilmiş məqalələrdən ən uyğun üçə qədərini də istifadə edir.`,
+          anchor: "inbox-agent-sources",
+          placement: "top",
+          action: "observe",
+          required: true,
+          completion: { kind: "viewed" },
+          covers: ["inbox.ai-agent.sources"],
           analyticsEvent: "journey.step_viewed",
         },
       ],

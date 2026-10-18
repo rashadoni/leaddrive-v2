@@ -14,6 +14,7 @@ import { guardOmnichannelCommitments } from "@/lib/inbox/omnichannel-commitment-
 import { QUALIFICATION_CHECKLIST } from "@/lib/inbox/lead-qualification"
 import { QUOTE_TRANSITIONS } from "@/lib/cpq/types"
 import { DEFAULT_PIPELINE_STAGES } from "@/lib/constants"
+import { DEMO_JOURNEY_STRINGS } from "@/components/demo-center/journey/strings"
 import {
   DEMO_DEAL_STAGES,
   DEMO_INBOX_THREADS,
@@ -122,5 +123,9 @@ describe("the guide's words", () => {
       /Instagram/, // not offered to customers while Meta has not approved it
     ]
     for (const text of texts) for (const pattern of untrue) expect(text, `«${text}»`).not.toMatch(pattern)
+  })
+
+  it("does not tell the last screen that every AI answer waits for approval — the mode is chosen per channel", () => {
+    for (const value of Object.values(DEMO_JOURNEY_STRINGS.moduleValue)) expect(value).not.toMatch(/təsdiqinizlə gedir/)
   })
 })

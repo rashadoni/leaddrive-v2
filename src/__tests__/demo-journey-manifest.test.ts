@@ -13,6 +13,7 @@ import path from "node:path"
 import {
   DEMO_ANCHORS,
   DEMO_BUILT_AREAS,
+  DEMO_JOURNEY_MODULES,
   DEMO_COVERAGE_TARGET_PERCENT,
   DEMO_JOURNEY_SCENARIOS,
   DEMO_JOURNEY_STATES,
@@ -125,6 +126,7 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
       "source",
       "conversation",
       "ai-reply",
+      "ai-agent-setup",
       "lead-created",
       "lead-qualified",
       "ai-call",
@@ -160,6 +162,27 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
       "next-module",
       "summary",
     ])
+  })
+
+  it("keeps every module's sections together and in story order, each product section in exactly one module", () => {
+    // The hub cuts in wherever the next section belongs to another module
+    // (snapshot.ts advance): a section left out of its module, or listed out of
+    // order, would end that module in its middle.
+    const order = manifest.sections.map((section) => section.id)
+    const owner = new Map<string, string>()
+    for (const entry of DEMO_JOURNEY_MODULES) {
+      for (const id of entry.sections) {
+        expect(owner.get(id), `${id} is in two modules`).toBeUndefined()
+        owner.set(id, entry.id)
+      }
+      const at = entry.sections.map((id) => order.indexOf(id))
+      expect(at.every((index) => index >= 0), entry.id).toBe(true)
+      expect(at, entry.id).toEqual(at.map((_, offset) => at[0] + offset))
+    }
+    for (const section of manifest.sections) {
+      if (section.route.startsWith("demo:")) continue
+      expect(owner.has(section.id), `${section.id} is in no module`).toBe(true)
+    }
   })
 
   it("calls from the card and says, where it matters, that this one is a simulation", () => {
@@ -282,7 +305,7 @@ describe("Guided journey coverage", () => {
   const EXPECTED: Record<string, { included: number; total: number; percent: number }> = {
     campaigns: { included: 7, total: 8, percent: 88 },
     // +2 on 2026-10-13: the channel rail and assigning to a colleague are now demonstrated.
-    inbox: { included: 10, total: 12, percent: 83 },
+    inbox: { included: 16, total: 20, percent: 80 },
     leads: { included: 21, total: 23, percent: 91 },
     tasks: { included: 12, total: 14, percent: 86 },
     deals: { included: 13, total: 16, percent: 81 },

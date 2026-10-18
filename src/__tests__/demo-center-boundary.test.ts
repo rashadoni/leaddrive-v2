@@ -90,6 +90,21 @@ describe("Demo Center trust boundary", () => {
     }
   })
 
+  it("shows product screens only through their pure views: nothing a scene draws reaches a session or a tenant API", () => {
+    // The demo's AI agent screen is the product's own (src/components/settings
+    // *-view.tsx); the containers beside them load and save for a tenant.
+    for (const file of sourceFiles("src/components/demo-center")) {
+      for (const specifier of importSpecifiers(readFileSync(file, "utf8"))) {
+        if (!specifier.startsWith("@/components/settings/")) continue
+        const target = path.join(ROOT, "src", `${specifier.slice(2)}.tsx`)
+        const viewSource = readFileSync(target, "utf8")
+        for (const forbidden of ["next-auth", "useSession", "fetch(", "/api/v1/", "organization-features", "chatbot-engine"]) {
+          expect(viewSource.includes(forbidden), `${path.relative(ROOT, file)} draws ${specifier}, which uses ${forbidden}`).toBe(false)
+        }
+      }
+    }
+  })
+
   it("client demo code only talks to the public demo routes", () => {
     for (const dir of CLIENT_DIRS) {
       for (const file of sourceFiles(dir)) {
