@@ -811,3 +811,21 @@ full CDC-to-rebuild, governed lifecycle/promotion, HA/TLS/ACL, independent
 recovery, all-module adoption and specifically authorized activation remain
 open. One current-SHA read-only aggregate inventory39143994149 is pending;
 it cannot certify restoration or activate consumers/replay.
+
+### Fresh runtime inventory after PR883 — 2026-10-18 16:14 UTC
+
+Inventory39143994149 SUCCESS16:13:30Z on exactf41ba033; pending above is
+superseded for inspection only. PostgreSQL160015 is still wal_level=replica,
+max_slot_wal_keep_size=-1, slots0/active0, intended outbox publication absent.
+All8 expected event/projection tables exist with forced RLS. Planner row
+estimates are not exact history counts. The4 scoped recovery timers are
+inactive; restore verification NOT PERFORMED. Present passfiles/CAs do not
+prove recovery. Earlier23/9 readiness totals were not rerun; do not relabel
+them as fresh evidence or this successful inventory as activation readiness.
+
+Next bounded software work is K4.1/K4.8 worker entrypoint/artifact and graceful
+stop/restart admission, plus separate full Debezium-to-restricted-SQL proof.
+No production startup/automatic replay follows from those preparations.
+Production CDC/source maintenance, recovery commissioning, independently
+verified restore/approval, HA/TLS/ACL, lifecycle/promotion and all-module
+adoption remain open. No subscriptions/resources were purchased.

@@ -2849,3 +2849,41 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   Reviewed inventory script's Git blob matches current main. Started exactly
   one existing aggregate-only inspection39143994149 at16:13:04Z; receipt
   pending. No direct production SSH fallback or secret output was used.
+
+### Current production inventory and exact stopping point — 2026-10-18 16:14 UTC
+
+- Read-only inventory39143994149/job117723997019 SUCCESS, observed16:13:30Z,
+  exact production artifactf41ba033. This supersedes the pending inventory
+  entry. SQL was transaction_read_only=on; no SQL mutation, backup/restore,
+  consumer activation, offset change or replay was performed.
+- Fresh source evidence: PostgreSQL160015, wal_level=replica,
+  max_slot_wal_keep_size=-1, zero replication slots/active slots/retained-slot
+  WAL, outbox publication absent. Therefore the intended source CDC path is
+  not activated; this does not enumerate every external Kafka process.
+  All eight expected event/projection tables exist with RLS and FORCE RLS.
+  Planner estimatedRows=0 is not an exact count or evidence of empty history.
+- All four scoped recovery timers are inactive. Configuration and both
+  passfiles/CAs are present/readable with bounded file permissions; presence
+  does not prove TLS login, decryptability or successful recovery. The runner
+  masked CA owner classification, so it is not reinterpreted from the log.
+  backup_restore_verification=not-performed remains explicit. Earlier recovery
+  23-issue/9-gap assessment was not rerun and is historical, not a fresh count.
+- Capacity snapshot: available memory10173380kB of12247548kB, swap0;
+  available app filesystem175247155200bytes of206900281344bytes;
+  database502848535bytes. Cumulative WAL18026680838bytes since the reported
+  reset is not a peak/events-per-second or production sizing measurement.
+  This single web/DB host does not establish independent Kafka failure domains.
+- Completed boundary: PR883 merged and delivered through the normal workflow,
+  real13+6 broker/SQL proof retained, whole release SUCCESS16:12:16Z
+  (deploy job SUCCESS16:11:55Z), exact public artifact/smoke and fresh read-only
+  inventory confirmed. The journal/backlog receipts are local checkpoint
+  commits after the frozen published source; no second documentation-only
+  production release was triggered from the already-merged branch.
+- Next software slice: create a clean dedicated branch from then-current
+  origin/main for a bounded worker entrypoint/artifact and graceful stop/restart
+  contract, with no production startup hook or automatic replay; separately
+  compose actual Debezium delivery with the restricted-SQL rebuild proof.
+  Production activation still requires governed provisioning/topology/TLS/ACL,
+  full-history/lifecycle and resource evidence, commissioned independently
+  verified recovery and actual second-operator approval. The nominated person
+  is not presumed to have signed or performed that drill. No100% claim.
