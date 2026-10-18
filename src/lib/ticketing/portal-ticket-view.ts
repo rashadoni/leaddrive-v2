@@ -122,7 +122,9 @@ function withWordJoiner(token: string): string {
 }
 
 /**
- * The description the customer typed in the portal, as it is stored.
+ * The description the customer typed in the portal, as it is stored. The body
+ * of an e-mail to a support intake address (`public/email-inbound`) is stored
+ * the same way: anyone can send one, with no login.
  *
  * Nothing on a ticket says its description is the customer's: the agent's page
  * (`parseChatDescription`) and the portal (`portalDescriptionView`) decide from
