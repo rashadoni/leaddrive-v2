@@ -374,3 +374,20 @@
   Real production backup and scratch restore NOT RUN; Object Lock diagnostic,
   reviewed main delivery, Mac VM capacity/custody and fresh signed local key
   receipt remain prerequisites. Farah confirmation NOT PROVIDED.
+
+## 2026-10-19: final-head workstation CI evidence
+
+- Published code checkpoint6bec17958a3ec703e9d371545f079478fd25d5fa to dedicated
+  branch; no main merge/deploy. Coordinator update recorded on PR892 comment
+  6255606119; original source session remains active with PR891 in draft.
+- Exact-head hosted Linux owner run39169761572 PASS:11synthetic owner tests,
+  pinned image build and actual networkless tmpfs PostgreSQL/role+age self-test.
+  Secret scan39169761552 PASS; runner-policy39169761600 PASS;
+  pgpass-contract39169761603 PASS; tenant integration39169761588 PASS.
+- Main required pr-scope/static-checks/typecheck run39169761577 still pending
+  at observation; no skipped heavy job is claimed as passed. ARM64 runtime
+  NOT RUN (hosted test amd64); real restore NOT RUN (no successful production
+  candidate, Object Lock blocker and unavailable Mac VM execution route).
+- Asked only for non-secret Mac RAM/disk/Colima-version results while independent
+  CI continues. No request for private keys/passwords, no direct production
+  mutation, no weakening Object Lock or independent Farah gates.
