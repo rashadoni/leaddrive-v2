@@ -323,3 +323,20 @@ These snapshots are not peak/day/outage budgets. Four recovery timers inactive;
 restore not performed. Private0600 service-owned pgpass and0640 service-group
 CA files canonical/readable; masked CA ownership is not inferred. Recovery,
 operator custody, immutable archive and all-module readiness remain unproven.
+
+### Object Lock report diagnostic merged — 2026-10-18 03:17 UTC
+
+This supersedes the PR872 draft/unrun gates above, not the runtime inventory.
+[PR872](https://github.com/rashadoni/leaddrive-v2/pull/872) exact3a6be7bf7
+completed [full39091474520](https://github.com/rashadoni/leaddrive-v2/actions/runs/39091474520)
+SUCCESS with all five actual required checks: diagnostic10/10, Fund121/121,
+real PostgreSQL10/10, baseline18=18; typecheck64 gated pairs=baseline64,
+zero own Fund TS diagnostics (1326 advisory diagnostics overall). Separate
+pgpass39091475113 SUCCESS30/30 includes real libpq authentication.
+
+Normal match-head merge03:17:20Z produced
+ce71dacf9a413facda602fb433963e1cbe79412b. Automatic
+[deploy39093089774](https://github.com/rashadoni/leaddrive-v2/actions/runs/39093089774)
+is PENDING; public delivery of this SHA and actual Object Lock classification
+are NOT YET verified. No config/key/policy/timer/source/consumer/offset/replay
+or paid-service change is part of this read-only report increment.

@@ -539,3 +539,19 @@ root независимо продолжает final deploy и existing recovery
 - Следующий PR872 остаётся report-only: закончить final-head required gates,
   обычную поставку и диагностировать existing Object Lock failure; не менять
   policy/ключи, timers или source ради зелёного readiness.
+
+### Диагностика прошла gates и merged — 2026-10-18 03:17 UTC
+
+Это заменяет прежний draft/pending CI для PR872, не runtime-статус Kafka.
+На frozen3a6be7bf7 full39091474520 SUCCESS: пять actual required SUCCESS,
+диагностика10/10, Fund121/121, real PostgreSQL10/10, общий baseline18=18.
+Typecheck64 gated пары=64 baseline, свои Fund TS без ошибок; глобально
+остаются1326 advisory diagnostics. Отдельный pgpass39091475113 SUCCESS30/30
+с реальной libpq-аутентификацией.
+
+PR872 normally merged03:17:20Z как ce71dacf9a413facda602fb433963e1cbe79412b.
+Automatic deploy39093089774 ещё PENDING. K2.1/K3.2/K3.6 получают безопасный
+инструмент выяснения причины, но не подтверждение восстановления/retention.
+До whole-deploy SUCCESS и exact publicSHA/ping новая live-диагностика не
+запускается. Ключи/policy/timers/source/consumers/offset/replay не изменялись;
+K8 и all-module readiness по-прежнему NOT ACTIVATED / NOT VERIFIED.
