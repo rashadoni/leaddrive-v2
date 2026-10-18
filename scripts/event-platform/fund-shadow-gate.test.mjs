@@ -109,3 +109,21 @@ test('combined broker proof requires actual generated types and SQL before its s
   for (const contract of ['verifyKafkaWorkerArtifact(', 'validateKafkaWorkerPlan(', 'createSupervisedKafkaChannel(',
     'verified.classpath.join(":")', 'plan', '-Djdk.net.hosts.file=']) assert.ok(harness.includes(contract), contract)
 })
+
+test('full CDC Fund proof is an isolated required-SQL phase after existing CDC, never an activation route', () => {
+  const workflow = readFileSync(new URL('.github/workflows/event-platform-cdc.yml', root), 'utf8')
+  const stack = readFileSync(new URL('scripts/event-platform/test-stack.sh', root), 'utf8')
+  const proof = readFileSync(new URL('scripts/event-platform/test-cdc-fund-postgres.ts', root), 'utf8')
+  const full = workflow.slice(workflow.indexOf('  full-cdc-fund:'))
+  for (const required of ['needs: cdc-smoke', 'group: event-platform-disposable-integration', 'cancel-in-progress: false',
+    "LD_EVENT_STACK_FULL_CDC_FUND: '1'", 'FUND_SHADOW_DB_GATE: required', 'npx prisma generate --schema prisma/schema.prisma',
+    '--strict --target ES2017', 'node_modules/next/types/global.d.ts', 'test-cdc-fund-postgres.ts',
+    'test-cdc-fund-postgres.test.mjs', 'if: always()', 'down --volumes --remove-orphans --timeout 10']) {
+    assert.ok(full.includes(required), required)
+  }
+  assert.doesNotMatch(full, /continue-on-error:|secrets\.|leaddrive-prod|workflow_dispatch:/)
+  assert.ok(stack.includes('full CDC Fund requires its own isolated required-database phase'))
+  assert.ok(stack.includes('"$task_root/scripts/event-platform/test-cdc-fund-postgres.ts"'))
+  for (const required of ['sourceAppWrites: true', 'await db.newBuild(', 'corrected_new_build_recovery=PASS',
+    'old_bad_builds_and_group_preserved=PASS', 'production_activation=NOT_RUN']) assert.ok(proof.includes(required), required)
+})

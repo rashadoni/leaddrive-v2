@@ -3238,3 +3238,37 @@ service, branch delivery or Kafka runtime was changed by this documentation.
   WAL setting, consumer activation, offset reset/replay, backup/restore or timer
   enablement. Next: combine A2 proof, review/typecheck in CI and deliver only
   after all applicable green gates; A3–A7 remain explicitly incomplete.
+
+### Combined A1/A2 checkpoint and owner correction about visible sessions — 2026-10-18
+
+- Root combined helper checkpoints as26a759095,5075fcc18 and8875c962c.
+  Full CDC candidate now includes actual app-role source writes, real Debezium
+  snapshot and clean cold restart, exact Kafka bytes/headers, restricted SQL,
+  lost-ACK durable redelivery and new-build recovery after a synthetic wrong
+  shadow-balance fault. The old bad shadow builds, inbox/checkpoints and group
+  cursor must remain unchanged while corrected new builds replay the history.
+  This is test fault injection, not a claim of reproducing historical buggy code.
+- Full-chain phase is wired after existing CDC in the same shared non-cancelling
+  integration queue; guard requires a separate disposable project and required
+  SQL admission. No production endpoint, credential or activation is included.
+  Updated queue contract now checks BOTH CDC jobs rather than assuming one.
+- Verification after combination:70 Node fixture/contract tests PASS;322 focused
+  Vitest tests across six files PASS; shell syntax,71-workflow runner policy,
+ 27-domain assets and diff whitespace PASS. Actual generated-Prisma strict
+  integration typing, Java compilation, real direct-JVM/broker/SQL and new
+  Debezium recovery drill NOT RUN: await GitHub CI. No push/PR/merge/deploy has
+  occurred for this new branch. The previously verified PR889 release remains
+  the production receipt, not evidence for these newer candidate changes.
+- Owner correctly observes there are no new visible sidebar sessions. Actual
+  internal helper kafka_full_cdc_fund_proof ran and completed, but was NOT a new
+  ordinary app chat. App thread-list inspection confirmed no new visible Kafka
+  sessions; available app tools expose no create_thread action. Do not claim
+  those sessions were created or tell the owner to search for them.
+- Owner now requests copyable prompts to launch the separate chats personally.
+  Pause new delivery execution while handing over bounded parallel preparation:
+  recovery evidence, no-new-cost infrastructure readiness, and operator/module
+  readiness. Root retains A1/A2 integration and sole release coordination;
+  helper sessions must not race production mutations or enable consumers/replay.
+  Current stop: checkpoint combined code/workflow candidate, no CI run started.
+  Next: owner starts the three visible chats; each reports its actual branch,
+  evidence and blocker, with root retaining the normal gated delivery route.
