@@ -180,8 +180,10 @@ jobs:
     # went over while the suite was still running: GitHub cancelled the job,
     # the deploy was skipped, and a merge that was green everywhere did not
     # reach production. A cap is there to stop a hung job, not a healthy one
-    # two minutes from its end.
-    timeout-minutes: 30
+    # two minutes from its end. 2026-10-18/19: 25 runs, median 24.6 min,
+    # slowest 28.6 against the former 30 — every new database gate ate the
+    # rest, so the cap follows static-checks to 45.
+    timeout-minutes: 45
     services:
       event-platform-postgres:
         # The official `postgres:16`, from Google's mirror of Docker Hub — the
@@ -341,7 +343,19 @@ jobs:
       - name: Support UX read-only readiness diagnostic tests
         run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs
 
+      - name: Cache generated Prisma client
+        # ~4 min saved per run with an unchanged schema. Saved here from main,
+        # so pull requests (static-checks, same key) restore it too. Only these
+        # gates use it: the `build` job below generates its own client, and
+        # nothing from this cache reaches the production artifact.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
       - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
         run: npx prisma generate
 
       - name: Resolve the per-job Postgres port
