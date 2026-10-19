@@ -21,8 +21,12 @@ import { runWithTenant } from "@/lib/rls-context"
  * its lock transactions at a time, each keeping one connection, which leaves
  * the pool a connection for the work. Each caller has its own turns and slots,
  * so a slow one (a TikTok delivery waiting for its organization's monitoring
- * fence) holds up only its own kind; the two callers together keep at most
- * four connections, below the pool of a 2-core server (5).
+ * fence) holds up only its own kind. The price is that the slots add up: the
+ * four callers (WhatsApp intake, TikTok Lead Ads, Meta and TikTok comment
+ * webhooks) can keep eight connections, more than the pool of a 2-core server
+ * (5). What the caps rule out is one kind's burst running the pool dry; five
+ * lock transactions at once still take bursts of three kinds together, two of
+ * them each for two organizations (or senders).
  */
 export type LockTurns = {
   /** `work` in its key's turn and in one of the caller's slots. */
