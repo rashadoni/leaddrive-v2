@@ -11,6 +11,7 @@ import {
 import { demoCallFirstName } from "./call-prompt"
 import { normalizeDemoPhone } from "./phone-verification"
 import { inDemoSalesOrganization } from "./sales-org"
+import { DEMO_WHATSAPP_TICKET_MESSAGES, demoWhatsAppTicketView, type DemoWhatsAppTicketView } from "./demo-whatsapp-ticket-view"
 import { demoWhatsAppConversationId, demoWhatsAppSender } from "./whatsapp-number"
 
 /**
@@ -85,6 +86,12 @@ export interface DemoWhatsAppState {
   readonly agentEndsAt: string | null
   readonly closed: boolean
   readonly messages: readonly DemoWhatsAppMessage[]
+  /** The prospect pressed «Mesajımdan bilet açılsın»: their next message opens a real ticket. */
+  readonly ticketMode: boolean
+  /** Ticket mode, but the agent's day ended before any ticket opened: there will be none. */
+  readonly ticketModeEnded: boolean
+  /** The real ticket this demo opened, as its customer sees it. */
+  readonly ticket: DemoWhatsAppTicketView | null
 }
 
 export type SendDemoWelcomeResult =
@@ -115,6 +122,9 @@ const OFF: DemoWhatsAppState = {
   agentEndsAt: null,
   closed: false,
   messages: [],
+  ticketMode: false,
+  ticketModeEnded: false,
+  ticket: null,
 }
 
 function usable(grant: Grant, now: Date): boolean {
@@ -149,7 +159,7 @@ async function ensureThread(grant: Grant, phoneE164: string) {
       where: { grantId: grant.id },
       create: { grantId: grant.id, phoneE164, code: demoWhatsAppCode(grant.id) },
       update: {},
-      select: { id: true, phoneE164: true, welcomeSentAt: true, provenAt: true, expiresAt: true, aiReplies: true, closedAt: true },
+      select: { id: true, phoneE164: true, welcomeSentAt: true, provenAt: true, expiresAt: true, aiReplies: true, closedAt: true, ticketModeAt: true, ticketId: true },
     }),
   )
 }
@@ -178,13 +188,20 @@ export async function demoWhatsAppState(params: {
   const since = thread.provenAt
     ? new Date(Math.min(thread.welcomeSentAt?.getTime() ?? Infinity, thread.provenAt.getTime() - 60_000))
     : null
+  // The ticket is the one the thread holds — by its id, never found by the phone.
+  const ticketId = thread.provenAt && thread.ticketModeAt ? thread.ticketId : null
   const entered = since
-    ? await inDemoSalesOrganization((organizationId) => readThread(organizationId, phone.e164, since))
+    ? await inDemoSalesOrganization(async (organizationId) => ({
+      messages: await readThread(organizationId, phone.e164, since),
+      ticket: ticketId ? await readTicket(organizationId, ticketId) : null,
+    }))
     : null
-  const messages = entered?.value ?? []
+  const messages = entered?.value.messages ?? []
+  const ticket = entered?.value.ticket ?? null
   const agentActive = Boolean(
     thread.provenAt && !thread.closedAt && thread.expiresAt && thread.expiresAt > now && thread.aiReplies < DEMO_WHATSAPP_MAX_AI_REPLIES,
   )
+  const ticketMode = Boolean(thread.provenAt && thread.ticketModeAt)
   return {
     enabled: true,
     displayNumber: sender.displayNumber,
@@ -199,7 +216,69 @@ export async function demoWhatsAppState(params: {
     agentEndsAt: thread.expiresAt?.toISOString() ?? null,
     closed: Boolean(thread.closedAt),
     messages,
+    ticketMode,
+    ticketModeEnded: ticketMode && !agentActive && !ticket,
+    ticket,
   }
+}
+
+export type StartDemoTicketModeResult =
+  | { ok: true; state: DemoWhatsAppState }
+  | { ok: false; code: "not_enabled" | "not_proven" | "agent_done" }
+
+/**
+ * «Mesajımdan bilet açılsın»: from the prospect's next message on, what they
+ * write on WhatsApp goes into a real ticket in LeadDrive's Service Desk (owner,
+ * 2026-10-18: only on the prospect's own press). Only on a proven thread whose
+ * agent still answers; once.
+ */
+export async function startDemoWhatsAppTicketMode(params: {
+  grant: Grant
+  requestPhone: string | null
+  company?: string | null
+  now?: Date
+}): Promise<StartDemoTicketModeResult> {
+  const now = params.now ?? new Date()
+  if (!usable(params.grant, now)) return { ok: false, code: "not_enabled" }
+  const phone = normalizeDemoPhone(params.requestPhone ?? "")
+  if (!phone) return { ok: false, code: "not_enabled" }
+  const thread = await ensureThread(params.grant, phone.e164)
+  if (thread.phoneE164 !== phone.e164) return { ok: false, code: "not_enabled" }
+  if (!thread.provenAt) return { ok: false, code: "not_proven" }
+  const answering = !thread.closedAt && thread.expiresAt !== null && thread.expiresAt > now && thread.aiReplies < DEMO_WHATSAPP_MAX_AI_REPLIES
+  if (!answering) return { ok: false, code: "agent_done" }
+  await runWithRlsBypass(() =>
+    prisma.demoWhatsAppThread.updateMany({
+      where: { id: thread.id, ticketModeAt: null, provenAt: { not: null }, closedAt: null },
+      data: { ticketModeAt: now },
+    }),
+  )
+  return { ok: true, state: await demoWhatsAppState({ grant: params.grant, requestPhone: params.requestPhone, company: params.company, now }) }
+}
+
+/** Inside the tenant already: the demo's own ticket by its id, in its customer's view. */
+async function readTicket(organizationId: string, ticketId: string): Promise<DemoWhatsAppTicketView | null> {
+  const row = await prisma.ticket.findFirst({
+    where: { id: ticketId, organizationId },
+    select: {
+      ticketNumber: true,
+      subject: true,
+      status: true,
+      createdAt: true,
+      slaFirstResponseDueAt: true,
+      firstResponseAt: true,
+      slaDueAt: true,
+      comments: {
+        where: { isInternal: false },
+        orderBy: { createdAt: "desc" },
+        take: DEMO_WHATSAPP_TICKET_MESSAGES,
+        select: { comment: true, userId: true, createdAt: true },
+      },
+      _count: { select: { comments: { where: { isInternal: false } } } },
+    },
+  })
+  if (!row) return null
+  return demoWhatsAppTicketView({ ...row, publicCommentCount: row._count.comments })
 }
 
 /**
@@ -322,13 +401,16 @@ async function readThread(organizationId: string, phoneE164: string, since: Date
     select: { id: true, direction: true, body: true, createdAt: true, metadata: true },
   })
   return rows.reverse().map((row) => {
-    const sentVia = (row.metadata as { sentVia?: unknown } | null)?.sentVia
-    const by = row.direction === "inbound" ? "prospect" : sentVia === "demo_ai" ? "ai" : sentVia === "demo_welcome" ? "welcome" : "team"
+    const metadata = row.metadata as { sentVia?: unknown; aiAutoReply?: unknown } | null
+    // The product's own AI (after the demo's day) marks its replies too.
+    const ai = metadata?.sentVia === "demo_ai" || metadata?.aiAutoReply === true
+    const by = row.direction === "inbound" ? "prospect" : ai ? "ai" : metadata?.sentVia === "demo_welcome" ? "welcome" : "team"
     return {
       id: row.id,
       direction: row.direction === "inbound" ? ("inbound" as const) : ("outbound" as const),
       by,
-      text: row.body,
+      // A template is logged as its name, not its words: say what it is instead.
+      text: /^\[template:[^\]]+\]$/.test(row.body.trim()) ? "WhatsApp şablon mesajı" : row.body,
       at: row.createdAt.toISOString(),
     }
   })

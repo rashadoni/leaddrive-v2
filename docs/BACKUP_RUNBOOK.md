@@ -6,7 +6,8 @@
 версии и recovery catalog действительно защищены Object Lock.
 
 Это ещё не enterprise 3-2-1/PITR: все object copies пока находятся в одном
-object-storage bucket/регионе/account failure domain, PostgreSQL WAL archive не
+B2 bucket/регионе/account failure domain (хранилище — Backblaze B2,
+см. [B2_OFFSITE_BACKUP.md](B2_OFFSITE_BACKUP.md)), PostgreSQL WAL archive не
 commissioned, а полный суперпользовательский restore ролей/owners/ACL ещё не
 прошёл независимый drill. `backup-readiness` поэтому может показать
 `machine_ready=yes`, но всегда сообщает `enterprise_ga_ready=no` до закрытия
@@ -53,11 +54,11 @@ rebuild из неизменяемых событий по
   членства в других ролях и есть только `CONNECT`, `USAGE` схемы и `SELECT`.
 - Backup runner получает только публичный age recipient. Ключ расшифровки не
   хранится на production-сервере, в CI, репозитории или object-storage account.
-- S3 writer создаётся в отдельном Hetzner project и не должен иметь
-  `DeleteObject` или право обхода retention. Отдельный restore credential
-  хранится вне production и используется только на drill. Same-project key
-  остаётся offline policy-admin: у ключей внутри bucket project по умолчанию уже
-  есть полный доступ, который одним Allow statement не сузить.
+- S3 writer — bucket-restricted application key B2 без `deleteFiles` и
+  `bypassGovernance` (точный список прав — в
+  [B2_OFFSITE_BACKUP.md](B2_OFFSITE_BACKUP.md)). Отдельный read-only restore key
+  хранится вне production и используется только на drill. Master application
+  key B2 остаётся offline admin и на production не попадает.
 - Незашифрованный dump существует только на production tmpfs с `umask 077` и
   удаляется trap-обработчиком при любом исходе. Offline decrypt выполняется на
   отдельном encrypted/ephemeral mount; входы и helper programs сначала
@@ -97,23 +98,29 @@ rebuild из неизменяемых событий по
 
 ### 1. Подготовить Object Storage
 
-1. Bucket `leaddrive-prod-backups` должен быть private и создан с Object Lock.
+Хранилище — Backblaze B2, bucket `leaddrive-prod-backups` в `eu-central-003`
+(создан 2026-10-19, private, SSE-B2). Что уже сделано и что осталось — в
+[B2_OFFSITE_BACKUP.md](B2_OFFSITE_BACKUP.md); пункты ниже — требования, которые
+этот bucket должен выполнить до первого upload.
+
+1. Bucket `leaddrive-prod-backups` должен быть private и иметь Object Lock
+   (в B2 включается и на существующем bucket, но выключить его нельзя).
 2. До первого production upload задать default retention `COMPLIANCE`, 14 дней.
    Это закрывает короткое окно между multipart upload и индивидуальным
    продлением weekly/monthly объекта.
-3. Сохранённый same-project key считать offline policy-admin и не размещать на
-   production. Создать отдельный Hetzner project для production writer key.
-4. Bucket policy allowlist-ит principal вида
-   `p<writer_project_id>:<writer_access_key>` и только нужный bucket/multipart
-   upload, `Head/GetObject`, чтение lock config и get/put retention; явно не
-   выдаёт delete и bypass-governance. После policy проверить реальные allow и
-   deny операции. Ограничение по ключу отключит listing объектов в Hetzner
-   Console — это ожидаемое следствие, не причина возвращать широкие права.
-5. Создать ещё один cross-project offline restore key с read-only доступом. Не
-   размещать его на production runner.
+3. Master application key B2 считать offline admin и не размещать на
+   production.
+4. Writer и restore key создаёт `scripts/backup/b2-create-backup-keys.py`
+   (веб-консоль B2 даёт только пресеты rw/ro/wo, нужного набора среди них нет).
+   Writer: upload/multipart, `Head/GetObject`, чтение lock config и get/put
+   retention; без delete и bypass-governance. После создания —
+   `scripts/backup/b2-verify-backup-keys.sh`: реальные allow и deny операции.
+5. Restore key — read-only, хранится офлайн. Не размещать его на production
+   runner.
 6. Настроить lifecycle cleanup после окончания retention для daily/weekly/monthly
-   prefixes. Сначала проверить политику на тестовом prefix: Object Lock должен
-   блокировать раннее удаление.
+   prefixes (B2: `daysFromUploadingToHiding` = retention + 1,
+   `daysFromHidingToDeleting` = 1). Сначала проверить на тестовом prefix: Object
+   Lock должен блокировать раннее удаление.
 
 Go/No-Go: `get-object-lock-configuration` показывает `Enabled`,
 `COMPLIANCE`, `Days >= 14`; writer не может удалить тестовый locked object.
@@ -236,7 +243,7 @@ membership count `0`; app-role остаётся `rolbypassrls=f`.
    endpoint. Не подменять `verify-full` режимом без проверки имени.
 4. Создать внешний monitor с окном 26 часов и реальным каналом оповещения.
 5. Убедиться, что firewall разрешает runner только private DB/scratch endpoints,
-   DNS, Hetzner S3 и monitor endpoint.
+   DNS, B2 S3 endpoint (`s3.eu-central-003.backblazeb2.com`) и monitor endpoint.
 
 Scratch cluster должен совпадать с source не только по major PostgreSQL, но и
 по extensions и системной collation. До первого canary:
@@ -283,7 +290,7 @@ Production upload поддерживает только `BACKUP_ENCRYPTION=age`.
 является допустимым recovery point.
 
 Снимки БД, recovery-set secrets, runtime media и логов шифруются до записи в
-Object Storage. Private identity остаётся вне production/GitHub/Hetzner; на
+Object Storage. Private identity остаётся вне production/GitHub/B2; на
 сервере есть только публичный recipient.
 
 ## Commissioning после переноса production

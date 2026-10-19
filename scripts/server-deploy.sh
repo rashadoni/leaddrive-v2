@@ -297,6 +297,13 @@ load_dotenv_file() {
   done < "$file"
 }
 
+# Object Storage is Backblaze B2 (S3-compatible API). Hetzner Object Storage
+# went away with the Hetzner account in September 2026; its endpoint form is no
+# longer accepted. The region is B2's cluster name, e.g. eu-central-003.
+object_storage_endpoint_matches_region() {
+  [[ "$2" =~ ^[a-z]{2}-[a-z]+-[0-9]{3}$ ]] && [ "$1" = "https://s3.$2.backblazeb2.com" ]
+}
+
 # Read one literal KEY=VALUE from a root-owned environment file without
 # sourcing it. Deployment safety checks must never execute backup credentials
 # as shell code merely to confirm that encryption is enabled.
@@ -1579,7 +1586,7 @@ validate_event_platform_recovery_evidence() {
     fatal_after_standalone_replacement "cannot hash the current PostgreSQL backup environment"
   [ "$format:$status:$retention_tier" = "2:verified:monthly" ] \
     && [ -n "$configured_bucket" ] && [ "$object_bucket" = "$configured_bucket" ] \
-    && [ "$endpoint" = "https://${region}.your-objectstorage.com" ] \
+    && object_storage_endpoint_matches_region "$endpoint" "$region" \
     && [[ "$object_key" =~ ^postgres/monthly/[0-9]{4}/[0-9]{2}/leaddrive-postgres-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.tar\.age$ ]] \
     && [[ "$object_version" =~ ^[^[:space:]]{1,1024}$ ]] \
     && [[ "$retention_days" =~ ^[0-9]+$ ]] && [[ "$monthly_policy" =~ ^[0-9]+$ ]] \

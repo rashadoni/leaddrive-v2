@@ -739,3 +739,47 @@
 - Dirty canonical checkout and unrelated branches/worktrees preserved. Journal
   remains append-only in local checkpoint commits; journal-only pushes avoided
   so completed acceptance is not churned. User can continue from this exact cwd.
+
+## 2026-10-19T06:48Z — resume, B2 main reconciliation and Mac guidance
+
+- Resumed recorded worktree/branch; codex-project-context confirms Contabo dev,
+  rashadoni/leaddrive-v2 and GitHub Actions main route. Canonical dirty checkout
+  preserved. Production remains13.140.132.245:/opt/leaddrive-v2.
+- User did not know how to run the requested read-only FileVault status command.
+  Explained opening the same Mac Terminal, pasting `fdesetup status`, pressing
+  Enter and returning only the status text. No password/private key requested.
+  FileVault and current ARM64 no-swap replay remain NOT RUN/pending.
+- Supersedes earlier unmerged-B2 dependency: PR899 merged2026-10-19T06:42:26Z;
+  current fetched main2a410941dfe6acbb4513d275c2a44bab117d7831. This is source
+  delivery, not successful runtime commissioning, key ACL acceptance or restore.
+  Its normal deployment39211464440 was still in progress when inspected.
+- Merged current main into A3 source without rewriting checkpoints. Resolved
+  exactly two conflicts: keep both owner and B2/explicit AccessDenied tests in
+  pr-checks.yml; retain B2 runbook introduction and all owner recovery sections.
+  Main application/demo/schema changes are inherited unchanged from main.
+  B2 endpoint predicates in commission/readiness/server-deploy auto-merge with
+  A3 verifier pins and owner boundary. No B2 secret/config/provider action.
+- Before narrow checks: RAM available11GiB, disk194GiB free, memory pressure
+  avg10/60/300=0; swap3.3GiB occupied. No install/build/container restore on dev.
+  PASS in reconciled tree:23 Object Lock/endpoint/explicit-denial tests;
+  13 owner tests including real pinned-age crypto and actual boundary fixtures;
+  Bash syntax of shared scripts/B2 verifier; event-platform assets; runner
+  policy74 workflows; git diff --check. Full required gates will run on GitHub;
+  previous9cf acceptance is historical, not acceptance of this reconciliation.
+- Read existing shared inspection39211544570 (not dispatched by A3): exact
+  main2a410941d, created06:43:19Z, FAILED; machine_ready=no,
+  enterprise_ga_ready=no,issues25,enterprise_gaps9. Object Lock diagnostic still
+  service_error_format_unrecognized; no inference of underlying failure cause.
+  Timers/readiness incomplete, successful backup/restore not evidenced.
+- Coordinator PR909 remains OPEN; last explicit coordinator hold still applies:
+  no A3 main merge/delivery or runtime commissioning until shared audit slot
+  release. Read latest original-chat updates; it is verifying its own gates.
+  A3 continues authorized source reconciliation/CI without duplicate live probe.
+- NOT RUN: production encrypted candidate, real Mac archive restore, signed
+  main-bound key/restore receipts, A3 main merge/deploy, activation of timers,
+  source PostgreSQL or Kafka/offset/replay mutation. No costs, private-key
+  transfer or substitution for Farah; owner-operated proof stays limited.
+- Full merge-index diff-check against the old A3 parent reports six trailing
+  blank lines in inherited main demo tests; these files equal origin/main and
+  are outside A3 scope. They are preserved, not silently cleaned. Task-owned
+  comparison against current origin/main is the relevant whitespace check.

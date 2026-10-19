@@ -457,6 +457,17 @@ jobs:
           FINANCE_BILL_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           FINANCE_BILL_PAYMENT_DB_GATE: required
 
+      - name: Demo WhatsApp ticket database gate
+        # The demo's real Service Desk ticket (opened on the prospect's own
+        # press) is read back for the demo page only through the sales
+        # organisation's door, by the id the demo keeps, under the product's
+        # FORCE RLS on tickets with a role that cannot bypass it (see the
+        # test's header).
+        run: npx vitest run src/__tests__/demo-whatsapp-ticket-postgres.test.ts
+        env:
+          DEMO_WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEMO_WHATSAPP_TICKET_DB_GATE: required
+
       - name: Finance Telegram recipient database gate
         # Same gate as in pr-checks: each organization's finance notices go to
         # its own Telegram chat through its own bot, and never to a chat named

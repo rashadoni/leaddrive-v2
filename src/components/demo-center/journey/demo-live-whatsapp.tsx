@@ -1,33 +1,12 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useState } from "react"
-import { Bot, CheckCheck, Loader2, MessageCircle, Send } from "lucide-react"
+import { useState } from "react"
+import { Bot, CheckCheck, LifeBuoy, Loader2, MessageCircle, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DEMO_WHATSAPP_CONSENT_TEXT } from "@/lib/demo-center/demo-whatsapp-welcome"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
-
-/** What the server says about the live WhatsApp thread (src/lib/demo-center/demo-whatsapp.ts). */
-interface LiveWhatsApp {
-  enabled: boolean
-  displayNumber: string | null
-  link: string | null
-  /** This session's code, already in the link's opening line. */
-  code?: string | null
-  phoneMasked?: string | null
-  /** Our number may write first (the owner switched this request on); otherwise the prospect writes first. */
-  canWelcome?: boolean
-  welcomeSentAt?: string | null
-  proven?: boolean
-  agentActive?: boolean
-  agentRepliesLeft?: number
-  agentEndsAt?: string | null
-  closed?: boolean
-  qr?: string | null
-  messages: { id: string; direction: "inbound" | "outbound"; by?: "prospect" | "welcome" | "ai" | "team"; text: string; at: string }[]
-}
-
-const POLL_MS = 5_000
+import type { DemoLiveWhatsAppHandle } from "./use-demo-live-whatsapp"
 
 function bakuTime(iso: string): string {
   return new Intl.DateTimeFormat("az-AZ", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Baku" }).format(new Date(iso))
@@ -47,60 +26,21 @@ function bakuTime(iso: string): string {
  * the AI agent answers on WhatsApp until the end of the day, and the panel
  * shows the conversation as it happens.
  *
+ * In the Service Desk chapters («ticket») the same thread can open a real
+ * ticket in LeadDrive's own Service Desk, on the prospect's own press (owner,
+ * 2026-10-18): «Mesajımdan bilet açılsın», and their next message becomes it.
+ *
  * Nothing here names a phone number: the server only ever writes to the one
- * on the prospect's own demo request.
+ * on the prospect's own demo request. The thread is read once for the page
+ * (./use-demo-live-whatsapp.ts) and shown here.
  */
-export function DemoLiveWhatsApp({ token }: { token: string }) {
-  const [state, setState] = useState<LiveWhatsApp | null>(null)
+export function DemoLiveWhatsApp({ live, mode = "chat" }: { live: DemoLiveWhatsAppHandle; mode?: "chat" | "ticket" }) {
+  const { state, busy, error } = live
   const [consent, setConsent] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const base = `/api/v1/public/demo-access/${encodeURIComponent(token)}/whatsapp`
-
-  // One loop: the first read straight away, then a poll — the prospect writes
-  // from their own phone, and nothing else tells us when they have.
-  useEffect(() => {
-    let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | null = null
-    const tick = async () => {
-      const response = await fetch(base, { cache: "no-store", credentials: "same-origin" }).catch(() => null)
-      const payload = (await response?.json().catch(() => null)) as (LiveWhatsApp & { success?: boolean }) | null
-      if (cancelled) return
-      if (payload?.success) {
-        setState(payload)
-        // A failed press is history once the thread moved on.
-        if (payload.proven || payload.welcomeSentAt) setError(null)
-      }
-      // A session without a live thread says so once; there is nothing to
-      // watch for, so the loop stops instead of polling an empty answer.
-      if (payload?.success && !payload.enabled) return
-      timer = setTimeout(tick, POLL_MS)
-    }
-    timer = setTimeout(tick, 0)
-    return () => {
-      cancelled = true
-      if (timer) clearTimeout(timer)
-    }
-  }, [base])
-
-  const sendWelcome = async () => {
+  const sendWelcome = () => {
     if (!consent || busy) return
-    setBusy(true)
-    setError(null)
-    const response = await fetch(base, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "welcome", consent: true }),
-    }).catch(() => null)
-    const payload = (await response?.json().catch(() => null)) as (LiveWhatsApp & { success?: boolean; error?: string }) | null
-    setBusy(false)
-    if (!payload?.success) {
-      setError(payload?.error ?? S.whatsappFailed)
-      return
-    }
-    setState(payload)
+    void live.welcome()
   }
 
   if (!state?.enabled) return null
@@ -127,8 +67,11 @@ export function DemoLiveWhatsApp({ token }: { token: string }) {
   return (
     <div data-testid="demo-live-whatsapp" className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-500/40 dark:bg-emerald-500/10">
       <p className="flex items-center gap-1.5 text-xs font-semibold">
-        <MessageCircle className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> {S.whatsappTitle}
+        <MessageCircle className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> {mode === "ticket" ? S.whatsappTicketTitle : S.whatsappTitle}
       </p>
+      {mode === "ticket" && !state.proven ? (
+        <p className="mt-2 text-[11px] leading-relaxed">{S.whatsappTicketBeforeProof}</p>
+      ) : null}
 
       {!state.proven ? (
         <>
@@ -211,6 +154,7 @@ export function DemoLiveWhatsApp({ token }: { token: string }) {
               : S.whatsappAgentDone}
           </p>
           <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{S.whatsappRealNote(state.displayNumber ?? "")}</p>
+          {mode === "ticket" ? <TicketBlock live={live} /> : null}
         </>
       )}
 
@@ -218,6 +162,42 @@ export function DemoLiveWhatsApp({ token }: { token: string }) {
         <p role="status" className="mt-2 text-[11px] leading-relaxed text-amber-700 dark:text-amber-300">
           {error}
         </p>
+      )}
+    </div>
+  )
+}
+
+/** The Service Desk part: offer the ticket, wait for its first message, then name it. */
+function TicketBlock({ live }: { live: DemoLiveWhatsAppHandle }) {
+  const state = live.state
+  if (!state) return null
+  const ticket = state.ticket
+  return (
+    <div data-testid="demo-whatsapp-ticket" className="mt-3 rounded-md border border-emerald-200 bg-background p-2 text-[11px] leading-relaxed dark:border-emerald-500/40">
+      <p className="mb-1 flex items-center gap-1 font-semibold"><LifeBuoy className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> Service Desk</p>
+      {ticket ? (
+        <p data-testid="demo-whatsapp-ticket-opened">{S.whatsappTicketOpened(ticket.number)}</p>
+      ) : state.ticketModeEnded ? (
+        <p>{S.whatsappTicketEnded}</p>
+      ) : state.ticketMode ? (
+        <p data-testid="demo-whatsapp-ticket-waiting" className="flex items-start gap-1">
+          <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin" aria-hidden="true" />{S.whatsappTicketWaiting}
+        </p>
+      ) : state.agentActive ? (
+        <>
+          <p>{S.whatsappTicketOffer}</p>
+          <Button
+            size="sm"
+            data-testid="demo-whatsapp-ticket-start"
+            onClick={() => void live.startTicket()}
+            disabled={live.busy}
+            className="mt-2 bg-emerald-600 hover:bg-emerald-700"
+          >
+            {live.busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <LifeBuoy className="mr-1 h-3.5 w-3.5" />} {S.whatsappTicketStart}
+          </Button>
+        </>
+      ) : (
+        <p>{S.whatsappTicketEnded}</p>
       )}
     </div>
   )

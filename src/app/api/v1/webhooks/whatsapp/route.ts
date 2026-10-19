@@ -24,9 +24,9 @@ import {
   detectOmnichannelReplyLocale,
   guardOmnichannelCommitments,
 } from "@/lib/inbox/omnichannel-commitment-rules"
-import { syncWhatsAppExchangeToTicket } from "@/lib/inbox/ticket-sync"
+import { appendWhatsAppBotReplyToTicket, syncWhatsAppExchangeToTicket } from "@/lib/inbox/ticket-sync"
 import { ensureInboundWhatsAppTicket } from "@/lib/inbox/whatsapp-inbound-ticket"
-import { CHAT_TRANSCRIPT_MARKER, WHATSAPP_CHAT_DESCRIPTION_HEAD } from "@/lib/ticketing/chat-transcript"
+import { WHATSAPP_CHAT_DESCRIPTION_HEAD, chatTicketDescription } from "@/lib/ticketing/chat-transcript"
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { whatsappTicketSubject } from "@/lib/ticketing/customer-ticket-text"
 import { ensureComplaintRegistered, notifyComplaintRegistered } from "@/lib/inbox/complaint-register"
@@ -1280,6 +1280,42 @@ async function processMessages(
     // the demo's own agent answers it, so no ticket, no rule bot and no support
     // AI for that message. It returns `handled: false` for every other message,
     // and on any failure — the ordinary path below is never skipped by mistake.
+    // After the prospect pressed «Mesajımdan bilet açılsın» in the demo's
+    // Service Desk, their messages go into the demo's own ticket through the
+    // product's path below, with the demo's mark — handed in here, so demo
+    // code never writes a ticket itself.
+    const fileDemoTicket = async (target: { grantId: string; ticketId: string | null }) => {
+      const result = await ensureInboundWhatsAppTicket({
+        organizationId: orgId,
+        waPhone: waId,
+        senderName,
+        messageText: text,
+        contactId: contactId ?? null,
+        leadId: leadId ?? null,
+        companyId: ticketCompanyId,
+        channelMessageId: savedMsg.id,
+        waMessageId: messageId,
+        demo: target,
+      })
+      return {
+        ticketId: result.ticketId,
+        ticketNumber: result.ticketNumber,
+        created: result.created,
+        reopened: result.reopened,
+        missing: result.missing === true,
+        appendReply: (reply: string) => (result.ticketId ? appendWhatsAppBotReplyToTicket(result.ticketId, reply) : Promise.resolve(false)),
+        notifyReopen: () => {
+          if (!result.ticketNumber) return
+          void sendGuardedWhatsAppReopenNotification({
+            to: waId,
+            organizationId: orgId,
+            ticketNumber: result.ticketNumber,
+            customerText: text,
+            contactId: contactId ?? undefined,
+          }).catch(err => console.error("[WA Reopen] notification error:", err))
+        },
+      }
+    }
     if (msg.type === "text" && text.trim()) {
       const { handleDemoWhatsAppInbound } = await import("@/lib/demo-center/demo-whatsapp-agent")
       const demo = await handleDemoWhatsAppInbound({
@@ -1288,8 +1324,11 @@ async function processMessages(
         waPhone: waId,
         text,
         conversationId: convId,
-      })
+      }, { fileTicket: fileDemoTicket })
       if (demo.handled) continue
+    } else if (text.trim()) {
+      const { fileDemoWhatsAppMedia } = await import("@/lib/demo-center/demo-whatsapp-agent")
+      if (await fileDemoWhatsAppMedia({ organizationId: orgId, waPhone: waId }, { fileTicket: fileDemoTicket })) continue
     }
 
     // The message lands on the sender's ticket that is still being worked; failing that, a typed
@@ -1840,10 +1879,6 @@ async function handleAiAutoReply(
           select: { role: true, content: true, createdAt: true },
         })
 
-        const chatHistory = chatMessages
-          .map((m) => `[${m.role === "user" ? "Клиент" : "Da Vinci"}] ${m.content}`)
-          .join("\n\n")
-
         // Subject prefix follows resolved category — so when a ticket lands
         // in /tickets the department can tell at a glance what it's about
         // without opening the description. In the organization's language;
@@ -1883,7 +1918,12 @@ async function handleAiAutoReply(
           organizationId,
           ticketNumberPrefix: "DV",
           subject,
-          description: `${WHATSAPP_CHAT_DESCRIPTION_HEAD}\nКлиент: ${senderName} (+${waPhone})\nКатегория: ${ticketCategoryResolved} · Срочность: ${ticketUrgency}\nТриггеры: ${reasons.join(", ") || "—"}\n\n${CHAT_TRANSCRIPT_MARKER}\n${chatHistory}`,
+          description: chatTicketDescription([
+            WHATSAPP_CHAT_DESCRIPTION_HEAD,
+            `Клиент: ${senderName} (+${waPhone})`,
+            `Категория: ${ticketCategoryResolved} · Срочность: ${ticketUrgency}`,
+            `Триггеры: ${reasons.join(", ") || "—"}`,
+          ], chatMessages),
           priority: normalizedPriority,
           initialStatus: "open",
           category: ticketCategoryResolved,
