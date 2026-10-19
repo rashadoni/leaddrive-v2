@@ -29,8 +29,9 @@ import { TECHNICAL_VOICE_POLICY_VERSION } from "@/lib/voice-agent/default-prompt
 const originalToken = process.env.FANUM_VOICE_RUNTIME_TOKEN
 const originalOrg = process.env.VOICE_AGENT_ORGANIZATION_ID
 
-function request(token = "runtime-token", callId?: string) {
-  const query = callId === undefined ? "" : `?callId=${encodeURIComponent(callId)}`
+function request(token = "runtime-token", callId?: string, extra = "") {
+  const params = [callId === undefined ? "" : `callId=${encodeURIComponent(callId)}`, extra].filter(Boolean).join("&")
+  const query = params ? `?${params}` : ""
   return new NextRequest(`http://localhost/api/internal/voice-agent/runtime-config${query}`, {
     headers: { authorization: `Bearer ${token}` },
   })
@@ -313,6 +314,17 @@ describe("GET runtime-config inside a demo call's connect burst", () => {
     mocks.callEventFindMany.mockResolvedValue([{ callLogId: "log-demo" }])
     const body = await (await GET(request())).json()
     expect(body.prompt).toContain("Gobustone")
+    expect(mocks.callEventCreateMany).not.toHaveBeenCalled()
+  })
+
+  it("never guesses a demo call for a core that reads each call's script by its id", async () => {
+    // The guess is for whichever call asked; a demo call ringing at that
+    // moment is not proof the request is its own (voice-core-demo-max-seconds.patch).
+    const body = await (await GET(request("runtime-token", undefined, "caps=demo-v1"))).json()
+    expect(body.prompt).toContain("Gobustone")
+    expect(body).not.toHaveProperty("variant")
+    expect(body.prompt).not.toContain("Nigar")
+    expect(mocks.callLogFindMany).not.toHaveBeenCalled()
     expect(mocks.callEventCreateMany).not.toHaveBeenCalled()
   })
 

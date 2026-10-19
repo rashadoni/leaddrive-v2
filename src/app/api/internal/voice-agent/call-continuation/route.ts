@@ -5,6 +5,9 @@ import { runWithTenant } from "@/lib/rls-context"
 import { noteDemoCallConnecting } from "@/lib/demo-center/call-prompt-match"
 import {
   buildDemoCallContext,
+  buildDemoCallPrompt,
+  DEMO_CALL_CLOSING_KEY,
+  DEMO_CALL_CLOSING_KEYS,
   demoCallFirstName,
   demoCallOpening,
   DEMO_CALL_MAX_SECONDS,
@@ -61,6 +64,16 @@ export const dynamic = "force-dynamic"
  * two-minute ceiling as `maxSeconds`. The station speaks `opening` word for
  * word and appends `context` to that call only — read per call, with no
  * cache — so this is the one place that reliably reaches a demo call today.
+ * Since 2026-10-19 it also says what kind of call this is, `variant: "demo"`,
+ * and hands over the demo's whole script as `prompt`: the station's core from
+ * voice-core-demo-max-seconds.patch then drops the line's own sales rules
+ * (construction, measurements) for this call and ends it at `maxSeconds`, or
+ * as soon as the agent's own closing has played (`closingKeys`, one per
+ * language the script allows; `closingKey` is the first, for a core that read
+ * only one). The core before that patch reads none of these fields. A core
+ * that does says so on its call-less prompt request (`caps=demo-v1`), and
+ * runtime-config then never guesses a demo call from the connect burst: the
+ * script reaches the call only here, by its own id.
  * Without it the agent greeted the prospect with the line's own greeting,
  * another business's. The prospect's first name is the only thing about them
  * in it, reduced to letters, as in the demo's call prompt.
@@ -165,19 +178,25 @@ export async function GET(request: NextRequest) {
       },
     })
     // Part of the PBX's connect burst: lets runtime-config give a demo call
-    // the demo's script (src/lib/demo-center/call-prompt-match.ts).
+    // the demo's script on a core that does not read it per call
+    // (src/lib/demo-center/call-prompt-match.ts).
     await noteDemoCallConnecting(organizationId, callId, call)
     if (!call) return { continuation: null, conversation: null }
     if (call.callMode === "ai" && call.direction !== "inbound" && isDemoPlacedCall(call.consentAudit)) {
       const lead = call.leadId
         ? await prisma.lead.findFirst({ where: { id: call.leadId, organizationId }, select: { contactName: true } })
         : null
+      const firstName = demoCallFirstName(lead?.contactName)
       return {
         continuation: null,
         conversation: null,
-        opening: demoCallOpening(demoCallFirstName(lead?.contactName)),
+        opening: demoCallOpening(firstName),
         context: buildDemoCallContext(),
         maxSeconds: DEMO_CALL_MAX_SECONDS,
+        variant: "demo" as const,
+        prompt: buildDemoCallPrompt({ firstName }),
+        closingKey: DEMO_CALL_CLOSING_KEY,
+        closingKeys: DEMO_CALL_CLOSING_KEYS,
       }
     }
     const inboundAi = call.callMode === "ai" && call.direction === "inbound" && !call.continuesCallId

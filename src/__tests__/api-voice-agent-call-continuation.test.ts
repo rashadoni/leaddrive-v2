@@ -44,9 +44,9 @@ const TRANSCRIPT = [
   "AI operator: Üç yüz manatdır.",
 ].join("\n")
 
-function request(id: string = callId, token = "runtime-token") {
+function request(id: string = callId, token = "runtime-token", query = "") {
   return new NextRequest(
-    `http://localhost/api/internal/voice-agent/call-continuation?callId=${id}`,
+    `http://localhost/api/internal/voice-agent/call-continuation?callId=${id}${query}`,
     { headers: { authorization: `Bearer ${token}` } },
   )
 }
@@ -389,8 +389,8 @@ describe("a call the demo placed", () => {
     mocks.createEvents.mockResolvedValue({ count: 1 })
   })
 
-  it("opens as LeadDrive with the approved first sentence, frames the call and caps it at two minutes", async () => {
-    const { buildDemoCallContext, demoCallOpening, DEMO_CALL_MAX_SECONDS } = await import("@/lib/demo-center/call-prompt")
+  it("opens as LeadDrive with the approved first sentence, frames the call, caps it at two minutes and names it a demo", async () => {
+    const { buildDemoCallContext, buildDemoCallPrompt, demoCallOpening, DEMO_CALL_CLOSING_KEY, DEMO_CALL_CLOSING_KEYS, DEMO_CALL_MAX_SECONDS } = await import("@/lib/demo-center/call-prompt")
     mocks.findFirst.mockResolvedValueOnce(demoRow())
     const body = await (await GET(request())).json()
     expect(body).toEqual({
@@ -399,19 +399,27 @@ describe("a call the demo placed", () => {
       opening: demoCallOpening("Nigar"),
       context: buildDemoCallContext(),
       maxSeconds: DEMO_CALL_MAX_SECONDS,
+      // The station's core drops the line's own sales rules only on this flag,
+      // and speaks the demo's script instead of the line's prompt.
+      variant: "demo",
+      prompt: buildDemoCallPrompt({ firstName: "Nigar" }),
+      closingKey: DEMO_CALL_CLOSING_KEY,
+      closingKeys: [...DEMO_CALL_CLOSING_KEYS],
     })
+    expect(body.prompt).not.toMatch(/Gobustone/i)
     expect(body.opening).toMatch(/^Salam, Nigar! Mən LeadDrive-ın AI köməkçisiyəm/)
     expect(body.opening).not.toMatch(/Gobustone/i)
     expect(DEMO_CALL_MAX_SECONDS).toBe(120)
   })
 
-  it("fits what the station reads: 500 characters of opening, 2,000 of context, 8,192 bytes in all", async () => {
+  it("fits what the station reads: 500 characters of opening, 2,000 of context, 4,000 of script, 8,192 bytes in all", async () => {
     mocks.findFirst.mockResolvedValueOnce(demoRow())
     const response = await GET(request())
     const text = await response.text()
     const body = JSON.parse(text)
     expect(body.opening.length).toBeLessThanOrEqual(500)
     expect(body.context.length).toBeLessThanOrEqual(2_000)
+    expect(body.prompt.length).toBeLessThanOrEqual(4_000)
     expect(Buffer.byteLength(text, "utf8")).toBeLessThan(8_192)
     // It tells the agent the line's own rules are not for this call.
     expect(body.context).toContain("kvadratmetr")
@@ -425,6 +433,45 @@ describe("a call the demo placed", () => {
     expect(body.opening).toMatch(/^Salam! Mən LeadDrive-ın/)
     expect(body.conversation).toBeNull()
     expect(mocks.findMessages).not.toHaveBeenCalled()
+  })
+
+  it("writes only the connecting signal, whichever core asks", async () => {
+    const { DEMO_CALL_CONNECTING_EVENT } = await import("@/lib/demo-center/call-prompt-match")
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    await GET(request(callId, "runtime-token", "&caps=demo-v1"))
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    await GET(request())
+    const written = mocks.createEvents.mock.calls.map((call) => call[0].data[0].eventType)
+    expect(written).toEqual([DEMO_CALL_CONNECTING_EVENT, DEMO_CALL_CONNECTING_EVENT])
+  })
+
+  it("names the closing the station listens for to end the call, in every language the script allows", async () => {
+    const { DEMO_CALL_CLOSING, DEMO_CALL_CLOSING_EN, DEMO_CALL_CLOSING_KEY, DEMO_CALL_CLOSING_KEYS, DEMO_CALL_CLOSING_RU } = await import("@/lib/demo-center/call-prompt")
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    const body = await (await GET(request())).json()
+    expect(body.closingKey).toBe(DEMO_CALL_CLOSING_KEY)
+    expect(body.closingKeys).toEqual([...DEMO_CALL_CLOSING_KEYS])
+    // The script the agent speaks carries each closing word for word, so the station can hear it.
+    for (const [closing, key] of [[DEMO_CALL_CLOSING, DEMO_CALL_CLOSING_KEYS[0]], [DEMO_CALL_CLOSING_RU, DEMO_CALL_CLOSING_KEYS[1]], [DEMO_CALL_CLOSING_EN, DEMO_CALL_CLOSING_KEYS[2]]]) {
+      expect(closing.toLowerCase()).toContain(key)
+      expect(body.prompt).toContain(closing)
+    }
+  })
+
+  it("ends every way the script ends a call with words the station listens for", async () => {
+    // The model cannot hang up: the station ends the call once it has heard a
+    // closing key. An ending without one — a refusal, «do not call me again»,
+    // the time running out — left the line silent until the cap.
+    const { buildDemoCallContext, buildDemoCallPrompt, DEMO_CALL_CLOSING_KEYS } = await import("@/lib/demo-center/call-prompt")
+    const sentences = [buildDemoCallPrompt({ firstName: "Nigar" }), buildDemoCallContext()]
+      .flatMap((text) => text.split("\n"))
+      .filter((line) => /zəngi bitir|sağollaş|bitir\b/i.test(line))
+    expect(sentences.length).toBeGreaterThanOrEqual(4)
+    for (const line of sentences) {
+      expect(line, line).not.toMatch(/sağollaş/i)
+      const quoted = [...line.matchAll(/"([^"]+)"/g)].map((match) => match[1].toLowerCase())
+      expect(quoted.some((text) => DEMO_CALL_CLOSING_KEYS.some((key) => text.includes(key))), line).toBe(true)
+    }
   })
 
   it("leaves every other call exactly as it was", async () => {

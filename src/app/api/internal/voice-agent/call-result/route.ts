@@ -16,6 +16,8 @@ import {
 } from "@/lib/voice-agent/post-call"
 import { recordCallCommitment } from "@/lib/commitments/record-call-commitment"
 import { maybePlaceCallback } from "@/lib/voice-agent/callback-trigger"
+import { isDemoPlacedCall } from "@/lib/demo-center/call-prompt"
+import { recordDemoPromptApplied } from "@/lib/demo-center/call-prompt-match"
 import { recordUnansweredCallback } from "@/lib/voice-agent/callback-fallback-task"
 import type { ConversationInsight } from "@/lib/conversation-intel/types"
 
@@ -857,6 +859,7 @@ export async function POST(request: NextRequest) {
           transcription: true,
           duration: true,
           conversationOutcome: true,
+          consentAudit: true,
         },
       },
     },
@@ -897,6 +900,12 @@ export async function POST(request: NextRequest) {
         ? "provider_connected_pending_result"
         : PROVIDER_UNKNOWN_NO_REDIAL,
     })
+  }
+
+  // The station's own word that this demo call ran on the demo's script: the
+  // evidence the demo's readiness gate reads (src/lib/demo-center/demo-call.ts).
+  if (parsed.data.demoPromptApplied === true && isDemoPlacedCall(call.consentAudit)) {
+    await runWithTenant(organizationId, () => recordDemoPromptApplied(organizationId, call.id, parsed.data.callId))
   }
 
   const providerOutcome: VoiceAgentProviderOutcome = parsed.data.providerOutcome ?? "connected"

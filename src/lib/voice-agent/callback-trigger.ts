@@ -6,6 +6,7 @@ import {
   type CallbackDecision,
 } from "@/lib/voice-agent/callback-decision"
 import { placeCallback, type CallbackPlacement } from "@/lib/voice-agent/place-callback"
+import { isDemoPlacedCall } from "@/lib/demo-center/call-prompt"
 
 /**
  * The point where a finished call becomes a callback, or does not.
@@ -51,6 +52,7 @@ export async function maybePlaceCallback(params: {
         recoveryAttempts: true,
         continuesCallId: true,
         endedAt: true,
+        consentAudit: true,
       },
     }))
     if (!call) return NOT_CONSIDERED
@@ -63,6 +65,7 @@ export async function maybePlaceCallback(params: {
       agentSaidGoodbye: agentSaidGoodbye(params.turns),
       continuesCallId: call.continuesCallId,
       callMode: call.callMode,
+      demoCall: isDemoPlacedCall(call.consentAudit),
       durationSeconds: call.duration ?? 0,
       endedAt: call.endedAt ?? now,
       now,
