@@ -13,9 +13,10 @@ export function createOperatorAlertReadBack({origin,bearerToken,disposableLoopba
     check(Number.isSafeInteger(timeoutMs) && timeoutMs>=50 && timeoutMs<=5000)
     const pinnedOrigin=base.origin,authorization=`Bearer ${bearerToken}`
     return async receiptId=>{
+      let response
       try {
         check(typeof receiptId==='string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(receiptId))
-        const response=await fetch(`${pinnedOrigin}/receipts/${encodeURIComponent(receiptId)}`,{
+        response=await fetch(`${pinnedOrigin}/receipts/${encodeURIComponent(receiptId)}`,{
           method:'GET',headers:{authorization,accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(timeoutMs),
         })
         check(response.status===200 && response.headers.get('content-type')?.split(';')[0]==='application/json')
@@ -29,7 +30,7 @@ export function createOperatorAlertReadBack({origin,bearerToken,disposableLoopba
         const value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks)))
         check(value && value.receiptId===receiptId)
         return value
-      }catch{throw new Error('OPERATOR_ALERT_READBACK_DENIED')}
+      }catch{await response?.body?.cancel().catch(()=>{});throw new Error('OPERATOR_ALERT_READBACK_DENIED')}
     }
   }catch{throw new Error('OPERATOR_ALERT_READBACK_DENIED')}
 }
