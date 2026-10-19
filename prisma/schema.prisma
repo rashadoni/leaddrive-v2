@@ -22133,6 +22133,7 @@ model DemoGrant {
   events             DemoAccessEvent[]
   phoneVerifications DemoPhoneVerification[]
   whatsappThread         DemoWhatsAppThread?
+  socialConnections      DemoSocialConnection[]
 
   @@index([requestId, createdAt], map: "demo_grants_request_created_idx")
   @@index([status, linkExpiresAt], map: "demo_grants_status_expiry_idx")
@@ -22170,6 +22171,80 @@ model DemoWhatsAppThread {
 
   @@index([phoneE164, provenAt], map: "demo_whatsapp_threads_phone_idx")
   @@map("demo_whatsapp_threads")
+}
+
+/// A prospect's own Facebook Page, connected to the demo for one day; one row
+/// per connection attempt (demo-social-connection.ts). Released and wiped by
+/// demo-social-release.ts: at release every secret and identifier goes and
+/// `scrubbedAt` is set. Control plane: RLS bypass only, no organisation.
+///
+/// Three indexes live in SQL only, because Prisma cannot declare a partial
+/// index (prisma/migrations/20261021090000_demo_social_connections): one live
+/// row per (grantId, platform), one live row per (platform, pageId), and the
+/// open rows by expiresAt — each `WHERE "scrubbedAt" IS NULL`. The CHECKs there
+/// hold the rest: tokens only as `v1:` ciphertext, a wiped row empty.
+model DemoSocialConnection {
+  id                 String     @id @default(cuid())
+  /// SET NULL, not cascade: deleting a grant never strands a Meta binding — the
+  /// row stays and is released as `grant_gone`.
+  grantId            String?
+  grant              DemoGrant? @relation(fields: [grantId], references: [id], onDelete: SetNull)
+  platform           String     @default("facebook")
+  /// The sales organisation's Meta app row it was created under (channel_configs.id; no FK — tenant table).
+  appConfigId        String
+  /// demoSocialCode(grantId); the first message carrying it proves one sender.
+  code               String
+  oauthStateHash     String?
+  metaUserId         String?
+  /// encryptToken(token, demoSocialTokenPurpose(id, "user" | "page")) — never plaintext.
+  userTokenCipher    String?
+  pageTokenCipher    String?
+  /// Page ids and names for the choice step; never a token.
+  pendingPages       Json?
+  pageId             String?
+  pageName           String?
+  provenSenderId     String?
+  subscribedAt       DateTime?
+  connectedAt        DateTime?
+  provenAt           DateTime?
+  aiReplies          Int        @default(0)
+  lastAiReplyAt      DateTime?
+  aiInputTokens      Int        @default(0)
+  aiOutputTokens     Int        @default(0)
+  /// The end of the Baku day it was created on (demoWhatsAppThreadEnds).
+  expiresAt          DateTime
+  releaseRequestedAt DateTime?
+  releaseReason      String?
+  releaseLeaseUntil  DateTime?
+  releaseAttempts    Int        @default(0)
+  /// A short code such as http_500 or meta_190 — never Meta's text.
+  releaseError       String?
+  unsubscribeOutcome String?
+  grantRevokeOutcome String?
+  scrubbedAt         DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  messages DemoSocialMessage[]
+
+  @@map("demo_social_connections")
+}
+
+/// Only the proven sender's messages and the demo's replies to them; all of
+/// them are deleted when the connection is released.
+model DemoSocialMessage {
+  id           String               @id @default(cuid())
+  connectionId String
+  connection   DemoSocialConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  direction    String // inbound | outbound
+  text         String
+  /// Meta's message id: a webhook delivered twice is stored once.
+  externalId   String?
+  createdAt    DateTime             @default(now())
+
+  @@unique([connectionId, externalId], map: "demo_social_messages_connection_external_key")
+  @@index([connectionId, createdAt], map: "demo_social_messages_connection_time_idx")
+  @@map("demo_social_messages")
 }
 
 model DemoPhoneVerification {

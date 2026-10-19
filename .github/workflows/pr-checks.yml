@@ -363,6 +363,19 @@ jobs:
           DEMO_WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           DEMO_WHATSAPP_TICKET_DB_GATE: required
 
+      - name: Demo social release database gate
+        # A prospect's Facebook Page connected to the demo is unbound at Meta
+        # and wiped by the real release engine on a real Postgres, with only
+        # graph.facebook.com stubbed and a role that cannot bypass RLS. What a
+        # mocked Prisma cannot show: that the check «does an organisation rely
+        # on this Page» really sees other tenants' rows under FORCE RLS, that
+        # the CHECKs refuse a plaintext token, and that two runs at once send
+        # each Meta call once.
+        run: npx vitest run src/__tests__/demo-social-release-postgres.test.ts
+        env:
+          DEMO_SOCIAL_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEMO_SOCIAL_RELEASE_DB_GATE: required
+
       - name: Finance Telegram recipient database gate
         # Who receives a tenant's payment notices, read off the requests that
         # leave for api.telegram.org. Until 2026-10-07 every tenant's

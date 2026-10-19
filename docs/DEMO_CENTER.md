@@ -78,6 +78,62 @@ screens. The contract, coverage inventory and trust-boundary tests live in
 still serves the catalog; the access, confirmation and one-session lifecycle in this
 document stay unchanged.
 
+## Live social connections
+
+A prospect may connect his own Facebook Page to the demo for one day, write
+to it with the session's code and watch the AI answer. Unlike the WhatsApp
+thread, which runs on our own number, this means holding a token to somebody
+else's Page and a webhook subscription on it. So it is built release first:
+the code that unbinds a Page (`src/lib/demo-center/demo-social-release.ts`,
+cron `/api/cron/demo-social-release` every five minutes) shipped and ran on
+production's empty table before any code that connects one.
+
+Rules that hold for every later change:
+
+- **Release before connect.** Nothing may create a row in
+  `demo_social_connections` unless the release engine in production can undo it.
+- **One function decides whether a connection is live:**
+  `demoSocialReleaseReason` (`src/lib/demo-center/demo-social-connection.ts`).
+  The webhook, the send path, the demo page and the cron all ask it. It reads
+  timestamps and the grant's state, never the grant's status alone — a closed
+  tab stays ACTIVE in the database (`access.ts` expires grants lazily). With
+  the cron down, use still stops on time; only the unbinding waits.
+- **Record before acting at Meta.** Store the user-token cipher right after the
+  code exchange, together with the Meta user id, and the Page-token cipher
+  before `POST subscribed_apps`. A crash in between then leaves a row the
+  engine can undo. A user token without its Meta user id is never revoked
+  (`kept_unverified`): the engine could not tell whether another live
+  connection rests on the same grant.
+- **Tokens only through `encryptToken`**, with the purpose
+  `demoSocialTokenPurpose(rowId, "user" | "page")`; a CHECK refuses anything
+  that is not `v1:` ciphertext. Every Graph call sends its token as a Bearer
+  header, never in a URL or a log, and stops after 10 seconds
+  (`src/lib/social/meta-unbind.ts`). Meta's `paging.next` links carry the token,
+  so they are never followed.
+- **Never write to a tenant.** The rows have no organisation; they are control
+  plane, behind the system-bypass policy. Nothing goes into `channel_configs`,
+  `social_accounts`, `channel_messages`, `social_conversations`, contacts,
+  notifications or the AI log.
+- **Never unsubscribe a claimed Page; never revoke a shared grant.** A Page's
+  subscription to our app is shared by every organisation that uses the Page
+  through it, and one grant covers every Page the person granted. Before each
+  step the engine asks `claimedMetaPageIds` (`src/lib/social/meta-page-claims.ts`,
+  by Page id across every organisation, under bypass) and keeps what anyone
+  relies on: `kept_claimed`, `kept_shared`. If the owner tests with his own
+  Facebook account, an unconditional revoke would kill LeadDrive Inc.'s Page
+  tokens. Known gap: an organisation's Instagram channel rides its linked
+  Page's subscription but is stored under the Instagram account's id, so a
+  Page claimed only through Instagram is not seen; the connect step has to
+  refuse such a Page.
+
+What the release leaves behind: the wiped row (timestamps, reason, Meta's
+answers as short codes, counts) and the `SOCIAL_*` events, whose metadata
+carries no Page id, sender id, name or text. A Meta step that never answers is
+retried every tick; 24 hours after the release was asked for, the row is wiped
+anyway and recorded as `SOCIAL_RELEASE_INCOMPLETE`. The deploy step «Verify the
+demo social release scheduler» fails when a connection is more than 30 minutes
+past its end without a single attempt.
+
 ## Voice phase
 
 The current release is intentionally silent. Narration must use the approved
