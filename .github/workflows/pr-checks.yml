@@ -366,6 +366,18 @@ jobs:
           TIKTOK_LEAD_AD_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           TIKTOK_LEAD_AD_DB_GATE: required
 
+      - name: Social webhook fence pool database gate
+        # Bursts of Facebook/Instagram and TikTok comments, read off the table
+        # after the real webhooks ran on a real Postgres under the production
+        # RLS policies, with a three-connection pool. Until 2026-10-19 each
+        # delivery waited for its organization's monitoring fence holding a
+        # pooled connection: a burst as large as the pool left the delivery
+        # inside no connection for its work, and comments were lost.
+        run: npx vitest run src/__tests__/social-webhook-fence-pool-postgres.test.ts
+        env:
+          SOCIAL_WEBHOOK_FENCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          SOCIAL_WEBHOOK_FENCE_DB_GATE: required
+
       - name: MTM break coordinates database gate
         # Where an employee spent a break is not stored, read off the table
         # after the real GPS ingestion handlers ran on a real Postgres. Until
