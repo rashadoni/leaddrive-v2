@@ -203,3 +203,39 @@ SignatureDoesNotMatch и timeout. Исправленная проверка тр
 `AccessDenied`; неизвестная причина теперь FAIL. Поэтому отказ записи restore
 с пустым кодом нужно повторить исправленным скриптом, а не считать доказанным.
 Реальные ключи и production в этой проверке не использовались.
+
+## Уточнение живой проверки 2026-10-19 — A3
+
+Повторный запуск исправленного verifier на Mac владельца подтвердил загрузку,
+metadata/version id, побайтное скачивание и три явных AccessDenied. Отказ
+restore key upload остался unknown; итог **1 failure**, а не доказанный ACL.
+Object Lock вернул ObjectLockConfigurationNotFoundError. Новый скриншот
+подтвердил FileVault On; прежний Off сохраняется как история в журнале A3.
+
+Узкая диагностика из [PR #913](https://github.com/rashadoni/leaddrive-v2/pull/913)
+дала CLI255/connection_closed в обоих checksum режимах. Это транспортный сбой,
+его причина не установлена. Положительная загрузка writer и чтение restore не
+делают обрыв соединения доказательством запрета записи.
+
+Владелец дальнейшей транспортной диагностики — отдельный PR913: там подготовлен
+curl SigV4 control с положительными writer PUT/byte-identical restore GET и
+строгим HTTP403 + S3 AccessDenied для restore PUT. Этот control ещё не выполнен
+в рамках A3; код отдельного PR не считается поставленным в main.
+A3 не дублирует следующие сетевые попытки и не меняет ключи/права/bucket settings.
+Приватные credentials остаются на Mac. Неизвестный ответ, signature/network
+ошибка и numeric403 без явного S3 AccessDenied сохраняют FAIL. Object Lock,
+production config и реальный scratch restore остаются отдельными prerequisites.
+
+### Дополнение A3: получен peer control receipt и owner UI
+
+PR913/source1e3ccaf70, documented00024b9c4: владелец получил writer PUT200,
+restore byte-identical GET200 и restore PUT403/AccessDenied. Это supersedes
+неопределённость конкретной ACL проверки; AWS CLI connection_closed остаётся
+неуспехом с неустановленной причиной. Вe4e007878/2082ac6e4 peer зафиксировал
+Object Lock Enabled/default14Days по UI. API COMPLIANCE/default retention и
+individual-version locks ещё не проверены, реальные backup/restore не выполнены.
+
+Владелец в обоих чатах сохранил actual delivery за исходной Kafka-сессией.
+A3 не дублирует дальнейшие API/панельные операции и не сливает PR913.
+Единственное merge-tree пересечение A3 с PR913/2082 — этот документ; обе группы
+доказательств нужно сохранить при будущей согласованной интеграции.

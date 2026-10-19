@@ -6,14 +6,21 @@ umask 077
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 MODE="upload"
 FORCE_RETENTION_TIER=""
+OWNER_RECIPIENT=""
 if [ "${1:-}" = "--local-canary" ] && [ "$#" -eq 1 ]; then
   MODE="local-canary"
 elif [ "${1:-}" = "--commission-monthly" ] && [ "$#" -eq 1 ]; then
   FORCE_RETENTION_TIER="monthly"
+elif [ "${1:-}" = "--owner-operated" ] && [ "$#" -eq 2 ]; then
+  [[ "$2" =~ ^age1[0-9a-z]{58}$ ]] || exit 2
+  OWNER_RECIPIENT="$2"
+  FORCE_RETENTION_TIER="monthly"
 elif [ "$#" -gt 0 ]; then
-  printf 'Usage: %s [--local-canary|--commission-monthly]\n' "$0" >&2
+  printf 'Usage: %s [--local-canary|--commission-monthly|--owner-operated PUBLIC_RECIPIENT]\n' "$0" >&2
   exit 2
 fi
+
+readonly OWNER_RECIPIENT
 
 BACKUP_ENV_FILE="${BACKUP_ENV_FILE:-/etc/leaddrive/backup.env}"
 if [ -f "$BACKUP_ENV_FILE" ]; then
@@ -23,6 +30,13 @@ if [ -f "$BACKUP_ENV_FILE" ]; then
   set -a
   source "$BACKUP_ENV_FILE"
   set +a
+fi
+
+# Explicit owner invocation only: encrypted candidate under a separate public
+# recipient, with no change to canonical policy, private keys, or schedules.
+if [ -n "$OWNER_RECIPIENT" ]; then
+  BACKUP_ENCRYPTION=age
+  BACKUP_AGE_RECIPIENT="$OWNER_RECIPIENT"
 fi
 
 WORK_ROOT="${BACKUP_WORK_ROOT:-/run/leaddrive-postgres-backup}"

@@ -169,10 +169,10 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-    # Run 34198177856 spent ~15 min in cold setup on Sep 8, then hit the old
-    # 20 min cap while running tests. Tests themselves take ~9 min. Preserve a
-    # finite bound with room for one cold start; warm setup should be shorter.
-    timeout-minutes: 30
+    # Run39218257966 reached the 30 min cap during the final unit-baseline
+    # gate after setup/database checks. Allow bounded cold-start/teardown
+    # headroom; every blocking test and baseline assertion still runs.
+    timeout-minutes: 45
     env:
       # Hosted runners had 4 vCPU; the shared box has 8 and up to three general
       # jobs at once. Left to its default (one worker per core) each vitest
@@ -228,7 +228,9 @@ jobs:
         run: |
           python3 .github/scripts/test_remediate_postgres_source_tls.py
           python3 .github/scripts/test_provision_postgres_restore_scratch.py
-          node --test scripts/backup/object-lock-diagnostic.test.mjs scripts/backup/object-storage-endpoint.test.mjs scripts/backup/b2-key-denial.test.mjs
+          node --test scripts/backup/object-lock-diagnostic.test.mjs
+          node --test scripts/backup/owner-recovery.test.mjs
+          node --test scripts/backup/object-storage-endpoint.test.mjs scripts/backup/b2-key-denial.test.mjs
 
       - name: Event-platform migration and database invariant gate
         run: node scripts/ci/test-event-platform-migrations.mjs

@@ -1,41 +1,70 @@
 name: Event platform read-only readiness
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      admission_mode:
+        description: Read-only inventory admission; default still requires the current-main live marker.
+        type: choice
+        options: [current-main, deployed-release]
+        default: current-main
+      deployed_sha:
+        description: Optional canonical live SHA; requires deployed-release mode and its successful normal deploy run.
+        type: string
+        default: ''
+      deploy_run_id:
+        description: Optional successful push/main deploy.yml run ID for exactly deployed_sha.
+        type: string
+        default: ''
 
 permissions:
   contents: read
   actions: read
-
-concurrency:
-  group: production-deploy
-  cancel-in-progress: false
 
 jobs:
   inventory:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: production
+    # Keep the shared lock through SSH/inventory, without replacing another
+    # pending deploy when this observability-only job enters the queue.
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+      queue: max
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+
+      - name: Validate inputs before any network or production access
+        env:
+          INSPECTION_ADMISSION_MODE: ${{ inputs.admission_mode }}
+          INSPECTION_DEPLOYED_SHA: ${{ inputs.deployed_sha }}
+          INSPECTION_DEPLOY_RUN_ID: ${{ inputs.deploy_run_id }}
+        run: |
+          set -euo pipefail
+          node --input-type=module -e 'import { validateInventoryInputs } from "./scripts/event-platform/inventory-admission.mjs"; try { validateInventoryInputs(process.env) } catch { process.stderr.write("INVENTORY_ADMISSION_INPUT_INVALID\n"); process.exitCode = 1 }'
 
       - name: Require protected production route
         uses: ./.github/actions/assert-production-environment-protection
         with:
           github-token: ${{ github.token }}
 
-      - name: Require current main
+      - name: Admit current main and verified live release
+        id: admission
         env:
           GH_TOKEN: ${{ github.token }}
+          INSPECTION_ADMISSION_MODE: ${{ inputs.admission_mode }}
+          INSPECTION_DEPLOYED_SHA: ${{ inputs.deployed_sha }}
+          INSPECTION_DEPLOY_RUN_ID: ${{ inputs.deploy_run_id }}
         run: |
           set -euo pipefail
-          [ "$GITHUB_REF" = refs/heads/main ]
-          CURRENT_MAIN_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
-          [ "$GITHUB_SHA" = "$CURRENT_MAIN_SHA" ]
+          EXPECTED_DEPLOY_SHA="$(node scripts/event-platform/admit-production-inventory.mjs)"
+          [[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          printf 'expected_deploy_sha=%s\n' "$EXPECTED_DEPLOY_SHA" >> "$GITHUB_OUTPUT"
           bash -n scripts/event-platform/inspect-production.sh
-          node --test scripts/event-platform/inspect-production.test.mjs
+          node --test --test-concurrency=1 scripts/event-platform/inspect-production.test.mjs scripts/event-platform/inventory-admission.test.mjs scripts/event-platform/inventory-admission-policy.test.mjs
 
       - name: Setup pinned production SSH
         uses: ./.github/actions/setup-production-ssh
@@ -46,7 +75,7 @@ jobs:
 
       - name: Inspect aggregate readiness without changing production
         env:
-          EXPECTED_DEPLOY_SHA: ${{ github.sha }}
+          EXPECTED_DEPLOY_SHA: ${{ steps.admission.outputs.expected_deploy_sha }}
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |

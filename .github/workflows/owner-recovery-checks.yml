@@ -1,0 +1,71 @@
+name: Owner recovery technical checks
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'scripts/backup/**'
+      - 'ops/backup/owner-workstation*'
+      - '.github/workflows/owner-recovery-*.yml'
+      - 'scripts/server-deploy.sh'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/backup/**'
+      - 'ops/backup/owner-workstation*'
+      - '.github/workflows/owner-recovery-*.yml'
+permissions:
+  contents: read
+concurrency:
+  group: owner-recovery-checks-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  owner-proof:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prepare pinned age for synthetic key test
+        run: |
+          set -euo pipefail
+          STAGE="$RUNNER_TEMP/owner-age-test-tools"
+          install -d -m 0700 "$STAGE"
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --connect-timeout 15 --max-time 120 \
+            https://github.com/FiloSottile/age/releases/download/v1.3.2/age-v1.3.2-linux-amd64.tar.gz \
+            --output "$STAGE/age.tar.gz"
+          printf '%s  %s\n' cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10 "$STAGE/age.tar.gz" | sha256sum -c -
+          tar -xzf "$STAGE/age.tar.gz" -C "$STAGE" age/age age/age-keygen
+          printf '%s\n' "$STAGE/age" >>"$GITHUB_PATH"
+      - name: Real synthetic crypto and owner/independent boundary tests
+        env:
+          LEADDRIVE_OWNER_AGE_INTEGRATION: '1'
+        run: node --test scripts/backup/owner-recovery.test.mjs
+      - name: Existing pinned helper consistency and shell syntax
+        run: |
+          node scripts/ci/test-event-platform-assets.mjs
+          bash -n scripts/backup/commission-production-backup.sh scripts/backup/postgres-backup.sh scripts/backup/snapshot-secrets.sh scripts/backup/snapshot-runtime-files.sh scripts/backup/verify-offline-backup.sh
+      - name: Build isolated owner workbench (synthetic data only)
+        run: docker build -f ops/backup/owner-workstation.Dockerfile -t owner-workbench-test .
+      - name: Check network isolation and disposable PostgreSQL
+        run: |
+          docker run --rm --network none --read-only --memory 1g --memory-swap 1g --cpus 1 \
+            --tmpfs /scratch:rw,noexec,nosuid,size=128m,mode=0700 \
+            --tmpfs /database:rw,noexec,nosuid,size=256m,mode=0700 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            owner-workbench-test --self-test
+      - name: Reject swap-enabled plaintext runtime
+        run: |
+          set -euo pipefail
+          set +e
+          RESULT="$(docker run --rm --network none --read-only --memory 1g --memory-swap 2g owner-workbench-test --self-test 2>&1)"
+          STATUS=$?
+          set -e
+          [ "$STATUS" -eq 1 ]
+          [ "$RESULT" = 'owner workbench: requires cgroup-v2 memory.swap.max=0; set --memory-swap equal to --memory' ]

@@ -7,6 +7,22 @@ set -Eeuo pipefail
 
 umask 077
 
+# A distinct owner-only technical proof; never an independent certificate.
+OWNER_OPERATED=0
+OWNER_RESTORE_STARTED_AT_UTC=""
+OWNER_RESTORE_STARTED_EPOCH=0
+EVIDENCE_TYPE=archive-restore
+SIGNATURE_NAMESPACE=leaddrive-backup-evidence
+if [ "${1:-}" = --owner-operated ]; then
+  shift
+  OWNER_OPERATED=1
+  OWNER_RESTORE_STARTED_AT_UTC="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  OWNER_RESTORE_STARTED_EPOCH="$(date -u '+%s')"
+  EVIDENCE_TYPE=owner-archive-restore
+  SIGNATURE_NAMESPACE=leaddrive-owner-backup-evidence
+  [ "$#" -eq 12 ] || { printf '%s\n' 'owner mode requires the data-only 12-argument interface' >&2; exit 1; }
+fi
+
 DATABASE_ARCHIVE="${1:-}"
 SECRETS_ARCHIVE="${2:-}"
 RUNTIME_FILES_ARCHIVE="${3:-}"
@@ -189,6 +205,10 @@ case "$CANDIDATE_FORMAT_VERSION:$#" in
   3:12) fatal "genesis candidate requires the exact first log archive" ;;
   *) fatal "candidate recovery catalog uses an unsupported format" ;;
 esac
+if [ "$OWNER_OPERATED" = 1 ]; then
+  [ "$CANDIDATE_FORMAT_VERSION" = 2 ] || fatal "owner mode cannot certify full log recovery"
+  EXPECTED_RECOVERY_SCOPE=owner-operated-data-only
+fi
 # Candidate records are an externally transferred authorization surface.  Do
 # not accept unknown, missing, reordered, or format-inappropriate fields even
 # when a caller supplies a matching digest: the two schemas have different
@@ -472,7 +492,7 @@ ssh-keygen -y -f "$SIGNING_KEY_FILE" 2>/dev/null | grep -Eq '^ssh-ed25519 AAAA[A
 
 for reviewed_file in "$SCRIPT_DIR/verify-offline-backup.sh" \
   "$SCRIPT_DIR/postgres-restore-canary.sh" "$SCRIPT_DIR/prove-restored-pii.mjs" \
-  "$SCRIPT_DIR/canary.sql"; do
+  "$SCRIPT_DIR/canary.sql" "$SCRIPT_DIR/migration-ledger.sql"; do
   [ -f "$reviewed_file" ] && [ ! -L "$reviewed_file" ] \
     || fatal "reviewed verifier component is missing or symlinked"
 done
@@ -480,6 +500,10 @@ archive_verifier_sha256="$(sha256sum "$SCRIPT_DIR/verify-offline-backup.sh" | aw
 restore_canary_sha256="$(sha256sum "$SCRIPT_DIR/postgres-restore-canary.sh" | awk '{print $1}')"
 pii_proof_sha256="$(sha256sum "$SCRIPT_DIR/prove-restored-pii.mjs" | awk '{print $1}')"
 canary_sql_sha256="$(sha256sum "$SCRIPT_DIR/canary.sql" | awk '{print $1}')"
+
+migration_ledger_sql_sha256="$(sha256sum "$SCRIPT_DIR/migration-ledger.sql" | awk '{print $1}')"
+[ "$migration_ledger_sql_sha256" = "a3585854bf942d0d6eb93c605296bec53084a6e824da171d2ac3aa07f576d7df" ] \
+  || fatal "migration ledger SQL differs from reviewed bytes"
 
 actual_database_sha256="$(sha256sum "$DATABASE_ARCHIVE" | awk '{print $1}')"
 actual_secrets_sha256="$(sha256sum "$SECRETS_ARCHIVE" | awk '{print $1}')"
@@ -569,11 +593,13 @@ install -m 0700 "$RUNNING_VERIFIER_FILE" "$WORK_DIR/helpers/verify-offline-backu
 install -m 0700 "$SCRIPT_DIR/postgres-restore-canary.sh" "$WORK_DIR/helpers/postgres-restore-canary.sh"
 install -m 0600 "$SCRIPT_DIR/prove-restored-pii.mjs" "$WORK_DIR/helpers/prove-restored-pii.mjs"
 install -m 0600 "$SCRIPT_DIR/canary.sql" "$WORK_DIR/helpers/canary.sql"
+install -m 0600 "$SCRIPT_DIR/migration-ledger.sql" "$WORK_DIR/helpers/migration-ledger.sql"
 sync -f -- "$WORK_DIR/inputs/database.tar.age" "$WORK_DIR/inputs/secrets.tar.age" \
   "$WORK_DIR/inputs/runtime-files.tar.age" "$WORK_DIR/inputs/candidate.env" \
   "$WORK_DIR/private/age-identity.txt" "$WORK_DIR/private/evidence-signing-key" \
   "$WORK_DIR/helpers/verify-offline-backup.sh" "$WORK_DIR/helpers/postgres-restore-canary.sh" \
   "$WORK_DIR/helpers/prove-restored-pii.mjs" "$WORK_DIR/helpers/canary.sql" \
+  "$WORK_DIR/helpers/migration-ledger.sql" \
   "$WORK_DIR/inputs" "$WORK_DIR/private" "$WORK_DIR/helpers" "$WORK_DIR"
 if [ "$CANDIDATE_FORMAT_VERSION" = 3 ]; then
   sync -f -- "$WORK_DIR/inputs/log-evidence.tar.gz.age" \
@@ -608,6 +634,7 @@ fi
   && [ "$(sha256sum "$SCRIPT_DIR/postgres-restore-canary.sh" | awk '{print $1}')" = "$restore_canary_sha256" ] \
   && [ "$(sha256sum "$SCRIPT_DIR/prove-restored-pii.mjs" | awk '{print $1}')" = "$pii_proof_sha256" ] \
   && [ "$(sha256sum "$SCRIPT_DIR/canary.sql" | awk '{print $1}')" = "$canary_sql_sha256" ] \
+  && [ "$(sha256sum "$SCRIPT_DIR/migration-ledger.sql" | awk '{print $1}')" = "$migration_ledger_sql_sha256" ] \
   || fatal "a private staged verifier helper differs from the reviewed bytes"
 staged_recipient="$(age-keygen -y "$AGE_IDENTITY_FILE" 2>/dev/null)" \
   || fatal "private staged identity could not derive its recipient"
@@ -1133,7 +1160,7 @@ case "${VERIFY_PGSSLMODE:-verify-full}" in
   *) fatal "offline scratch VERIFY_PGSSLMODE must be verify-full or explicit loopback disable" ;;
 esac
 restore_log="$WORK_DIR/restore-proof.log"
-if ! TMPDIR="$WORK_DIR" "$SCRIPT_DIR/postgres-restore-canary.sh" \
+if ! TMPDIR="$WORK_DIR" bash "$SCRIPT_DIR/postgres-restore-canary.sh" \
   "$WORK_DIR/database/database.dump" "$WORK_DIR/database/source-canary.tsv" \
   "$source_system_identifier" "$WORK_DIR/database/authority.tsv" \
   "$WORK_DIR/database/migration-ledger.tsv" "$WORK_DIR/database/recovery-db-contract.tsv" \
@@ -1166,12 +1193,12 @@ if [ "$CANDIDATE_FORMAT_VERSION" = 3 ]; then
   recovery_scope=full-recovery
 else
   evidence_format_version=1
-  recovery_scope=log-genesis-bootstrap-only
+  recovery_scope="$EXPECTED_RECOVERY_SCOPE"
 fi
 {
 printf '%s\n' \
   "FORMAT_VERSION=$evidence_format_version" \
-  'EVIDENCE_TYPE=archive-restore' \
+  "EVIDENCE_TYPE=$EVIDENCE_TYPE" \
   'STATUS=verified' \
   "RECOVERY_SCOPE=$recovery_scope" \
   "CANDIDATE_SHA256=$EXPECTED_CANDIDATE_SHA256" \
@@ -1271,11 +1298,17 @@ printf '%s\n' \
   "EVIDENCE_REF=$EVIDENCE_REF" \
   "OFFLINE_OPERATOR=$OFFLINE_OPERATOR" \
   "VERIFIED_AT_UTC=$verified_at"
+if [ "$OWNER_OPERATED" = 1 ]; then
+  printf '%s\n' 'OPERATOR_MODEL=owner_operated' \
+    'INDEPENDENT_HUMAN_REVIEW=not_performed' 'TWO_OFFLINE_MEDIA=not_met' \
+    "RESTORE_STARTED_AT_UTC=$OWNER_RESTORE_STARTED_AT_UTC" \
+    "RESTORE_DURATION_SECONDS=$(($(date -u '+%s') - OWNER_RESTORE_STARTED_EPOCH))"
+fi
 } >"$evidence_file"
 chmod 0600 "$evidence_file"
 
 ssh-keygen -Y sign -f "$SIGNING_KEY_FILE" \
-  -n leaddrive-backup-evidence "$evidence_file" >/dev/null \
+  -n "$SIGNATURE_NAMESPACE" "$evidence_file" >/dev/null \
   || fatal "offline evidence signing failed"
 [ -s "$evidence_file.sig" ] || fatal "offline evidence signature is missing"
 install -d -m 0700 "$WORK_DIR/bundle"
