@@ -801,6 +801,39 @@ describe("the Route & Field module", () => {
     expect(textOf('[data-testid="live-map-agent-status-agent-rauf"]')).toContain(messages.mtmMap.fieldStatus.offline)
     expect(textOf('[data-testid="mtm-live-last-known"]')).toContain(messages.mtmMap.lastKnownShown.split("{count}")[0].trim())
   }, 60_000)
+
+  it("finds who is nearest, shows the evening's road with the break as its length only, and ends on last week", async () => {
+    await renderPlayer()
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-start-section="mtm-today"]')!.click())
+    await settle()
+    await walkTo("mtm-live-nearest")
+    await act(async () => findDemoTarget("mtm-live-nearest")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("mtm-live-nearest-list")
+    // The product's own distance column, the nearest first; nobody on a break is measured.
+    expect(document.querySelector('[data-testid="live-map-agent-distance-agent-aysu"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="live-map-agent-distance-agent-rauf"]')).toBeNull()
+    const order = Array.from(document.querySelectorAll('[data-tour-id="mtm-live-roster"] [data-testid^="live-map-agent-card-"]')).map((row) => row.getAttribute("data-testid"))
+    // By distance, not by name (by name Elvin would come before Tural); Rauf, unmeasured, last.
+    expect(order).toEqual(["aysu", "nermin", "tural", "elvin", "rauf"].map((id) => `live-map-agent-card-agent-${id}`))
+
+    await walkTo("mtm-history-show")
+    expect(document.querySelector('[data-tour-id="mtm-history-trip"]')).toBeNull()
+    await act(async () => findDemoTarget("mtm-history-show")!.click())
+    await settle()
+    const trip = textOf('[data-tour-id="mtm-history-trip"]')
+    // Along the roads, and the break a line of its own with nothing but its length.
+    expect(trip).toContain(messages.mtmMap.history.trip.roadsNote)
+    const pause = Array.from(document.querySelectorAll('[data-tour-id="mtm-history-trip"] li')).find((row) => row.textContent?.includes(messages.mtmMap.history.trip.pause))
+    expect(pause, "a break line").toBeDefined()
+    expect(pause!.textContent).not.toMatch(/km|\d+ m\b|Klinika|Aptek|Mərkəz/)
+
+    await walkTo("mtm-results-team")
+    await act(async () => findDemoTarget("mtm-results-team")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("mtm-results-read")
+    expect(document.querySelector('[data-tour-id="mtm-results-team"] button[aria-pressed="true"]')?.textContent).toBe(messages.mtmTeamResults.preset.lastWeek)
+  }, 90_000)
 })
 
 /**
@@ -827,16 +860,43 @@ describe("the Personnel module", () => {
     expect(kpis).toContain(S.personnelPrivacy)
   }, 60_000)
 
-  it("approves a leave in one click, then asks the late ones for an explanation", async () => {
+  it("approves a leave in one click, asks the late and the absent to explain, reads an answer and accepts it", async () => {
+    const { PERSONNEL_DEMO_EXPLANATION } = await import("@/components/demo-center/journey/scenes/personnel-demo-data")
     await openPersonnel()
     await walkTo("prs-today-approve")
     await act(async () => findDemoTarget("prs-today-approve")!.click())
     await settle()
     expect(textOf('[data-tour-id="prs-today-requests"]')).toContain(S.personnelApproved)
-    expect(frontier().stepId).toBe("prs-today-explain")
-    await act(async () => findDemoTarget("prs-today-explain")!.click())
+    expect(frontier().stepId).toBe("prs-explain-ask")
+    // The product asks the late and the absent alike: two late and one absent today, all ticked.
+    const attention = () => textOf('[data-tour-id="prs-today-attention"]')
+    expect(findDemoTarget("prs-explain-ask")!.textContent).toContain(messages.personnel.explainAsk.replace("{count}", "3"))
+    await act(async () => findDemoTarget("prs-explain-ask")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("prs-explain-read")
+    expect(attention()).toContain(messages.personnel.explainWaiting.split(" ·")[0])
+    expect(attention()).not.toContain(PERSONNEL_DEMO_EXPLANATION.answer)
+    await act(async () => findDemoTarget("prs-explain-read")!.click())
+    await settle()
+    expect(attention()).toContain(PERSONNEL_DEMO_EXPLANATION.answer)
+    await act(async () => findDemoTarget("prs-explain-accept")!.click())
     await settle()
     expect(frontier().sectionId).toBe("prs-timesheet")
+  }, 60_000)
+
+  it("closes a suspicious record with a reason, and the time itself does not change", async () => {
+    const { PERSONNEL_DEMO_RISK_REASON, personnelDemoRisks } = await import("@/components/demo-center/journey/scenes/personnel-demo-data")
+    await openPersonnel()
+    await walkTo("prs-risk-review")
+    // The product's own table: «Yoxlama gözləyir» on every record.
+    expect(document.querySelectorAll('[data-tour-id="prs-risk"] [data-testid="risk-row"]')).toHaveLength(personnelDemoRisks("2026-10-15").length)
+    await act(async () => findDemoTarget("prs-risk-review")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("prs-risk-close")
+    expect((document.getElementById("prs-risk-reason") as HTMLTextAreaElement).value).toBe(PERSONNEL_DEMO_RISK_REASON)
+    await act(async () => findDemoTarget("prs-risk-close")!.click())
+    await settle()
+    expect(frontier().sectionId).toBe("prs-month")
   }, 60_000)
 
   it("shows a corrected day as before → after, with who approved it", async () => {
@@ -844,8 +904,9 @@ describe("the Personnel module", () => {
     await walkTo("prs-timesheet-day")
     await act(async () => findDemoTarget("prs-timesheet-day")!.click())
     await settle()
-    // The step is done and the guide moves on.
-    expect(frontier().sectionId).toBe("prs-risk")
+    // The step is done, and the card stays on screen for the step that reads it.
+    expect(frontier().stepId).toBe("prs-timesheet-card")
+    expect(textOf('[data-tour-id="prs-timesheet"]')).toContain("Orxan Musayev")
     // What the card printed: the product's own correction line over the product's own timesheet.
     const { personnelDemoPlan, personnelDemoReport } = await import("@/components/demo-center/journey/scenes/personnel-demo-data")
     const { defaultAttendanceDayKinds } = await import("@/lib/mtm/attendance-day-kinds")
@@ -932,6 +993,43 @@ describe("the Service Desk module", () => {
     // closure-requests.ts: seven days from the moment it was resolved.
     expect(closure).toContain(`${messages.tickets.closureRequestAutoClose}:`)
     expect(closure).toContain(SUPPORT_DEMO_TIMES.resolved)
+  }, 60_000)
+
+  it("shows the customer's side — the product's two WhatsApp messages and its closure page — and closes when the customer confirms", async () => {
+    const { closureRequestWhatsAppText, ticketStatusWhatsAppText } = await import("@/lib/ticketing/customer-ticket-text")
+    const { SUPPORT_DEMO_CLOSURE_LINK } = await import("@/components/demo-center/journey/scenes/support-demo-data")
+    await openServiceDesk()
+    await walkTo("sd-resolve-close")
+    // Nothing reached the customer before the ticket is resolved.
+    expect(document.querySelector('[data-tour-id="sd-resolve-customer"]')).toBeNull()
+    await act(async () => findDemoTarget("sd-resolve-close")!.click())
+    await settle()
+    const side = textOf('[data-tour-id="sd-resolve-customer"]')
+    expect(side).toContain(ticketStatusWhatsAppText("az", "resolved", "WA-0417")!)
+    expect(side).toContain(closureRequestWhatsAppText("az", { ticketNumber: "WA-0417", confirmationUrl: SUPPORT_DEMO_CLOSURE_LINK }))
+    expect(side).toContain(messages.portal.closureTitle)
+    expect(side).toContain(messages.portal.closureStatus.pending)
+    // The customer's messages come from the support line, never with the AI's marker.
+    expect(document.querySelector('[data-tour-id="sd-resolve-customer"] svg.lucide-sparkles')).toBeNull()
+
+    // «Dəstəyə qaytar» would reopen it; the demo explains instead of acting.
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-tour-id="sd-resolve-customer"] [data-testid="ticket-closure-reject"]')!.click())
+    await settle()
+    expect(toasts).toContain(S.supportRejectHint)
+    expect(frontier().stepId).toBe("sd-resolve-wait")
+
+    await act(async () => findDemoTarget("sd-resolve-wait")!.click())
+    await settle()
+    // Confirmed, and shown: the ticket reads closed, the request confirmed, the customer thanked.
+    expect(frontier().stepId).toBe("sd-resolve-closed")
+    expect(textOf('[data-tour-id="sd-ticket-status"]')).toContain(messages.tickets.statusClosed)
+    expect(textOf('[data-tour-id="sd-resolve-closure"]')).toContain(messages.tickets.closureRequestConfirmed)
+    expect(textOf('[data-tour-id="sd-resolve-customer"]')).toContain(messages.portal.closureConfirmedMessage)
+    // The agent's card and the customer's page give one auto-close time, on Baku's clock.
+    const { SUPPORT_DEMO_TIMES } = await import("@/components/demo-center/journey/scenes/support-demo-data")
+    expect(textOf('[data-tour-id="sd-resolve-customer"]')).toContain(SUPPORT_DEMO_TIMES.resolved)
+    await walkTo("sd-rules-sla")
+    expect(frontier().sectionId).toBe("sd-rules")
   }, 60_000)
 
   it("shows the agent's month as the product's own arithmetic", async () => {

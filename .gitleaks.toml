@@ -29,7 +29,10 @@ paths = [
   '''^scripts/server-deploy\.sh$''',
 ]
 regexTarget = "secret"
-regexes = ['''^16d4bf083ad2549cd34e1bd89a53ee958f1625605235fe5370c8acecc401de99$''']
+regexes = [
+  '''^16d4bf083ad2549cd34e1bd89a53ee958f1625605235fe5370c8acecc401de99$''',
+  '''^c43f3d14fcd68c95b56585ae3844fb8db21db4aefac06b5f210861fd3e2b3907$''',
+]
 
 [[allowlists]]
 description = "Synthetic PII encryption key used only by the restored-secret proof test"
@@ -97,3 +100,10 @@ condition = "AND"
 paths = ['''^ops/event-platform/operator/README\.md$''']
 regexTarget = "secret"
 regexes = ['''^expiry/revocation/principal$''']
+
+[[allowlists]]
+description = "Exact public checksum of reviewed owner key-readability verifier; not an authentication key"
+condition = "AND"
+paths = ['''^scripts/backup/commission-production-backup\.sh$''']
+regexTarget = "line"
+regexes = ['''^OWNER_KEY_VERIFIER_SHA256="d72e3bcd19b0838e3d47ff45d3f5580eac3c668fde8aef07dea900971b33a7ca"$''']

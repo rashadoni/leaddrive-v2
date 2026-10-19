@@ -26,12 +26,18 @@
 set -euo pipefail
 
 MODE="upload"
+OWNER_RECIPIENT=""
 if [ "${1:-}" = "--dry-run" ] && [ "$#" -eq 1 ]; then
   MODE="dry-run"
+elif [ "${1:-}" = "--owner-operated" ] && [ "$#" -eq 2 ]; then
+  [[ "$2" =~ ^age1[0-9a-z]{58}$ ]] || exit 2
+  OWNER_RECIPIENT="$2"
 elif [ "$#" -ne 0 ]; then
-  printf 'Usage: %s [--dry-run]\n' "$0" >&2
+  printf 'Usage: %s [--dry-run|--owner-operated PUBLIC_RECIPIENT]\n' "$0" >&2
   exit 2
 fi
+
+readonly OWNER_RECIPIENT
 
 BACKUP_ENV_FILE="${BACKUP_ENV_FILE:-/etc/leaddrive/backup.env}"
 APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
@@ -154,7 +160,7 @@ flock -n 9 || fatal "another snapshot run holds the lock"
   "$(stat -Lc '%d:%i' "/proc/$$/fd/9" 2>/dev/null || true)" ] \
   || fatal "secrets lock inode changed while it was acquired"
 
-RECIPIENT="${SECRETS_AGE_RECIPIENT:-${BACKUP_AGE_RECIPIENT:-}}"
+RECIPIENT="${OWNER_RECIPIENT:-${SECRETS_AGE_RECIPIENT:-${BACKUP_AGE_RECIPIENT:-}}}"
 [ -n "$RECIPIENT" ] || fatal "no age recipient (SECRETS_AGE_RECIPIENT or BACKUP_AGE_RECIPIENT)"
 require_env BACKUP_S3_ENDPOINT
 require_env BACKUP_S3_BUCKET

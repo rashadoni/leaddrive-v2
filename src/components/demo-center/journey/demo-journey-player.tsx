@@ -37,6 +37,7 @@ import {
 import { cn } from "@/lib/utils"
 import { DemoCoachMark } from "./demo-coach-mark"
 import { DemoJourneyGuide, IntroClip } from "./demo-journey-guide"
+import { LIVE_WHATSAPP_CHAT_SECTIONS, LIVE_WHATSAPP_TICKET_SECTIONS, useDemoLiveWhatsApp } from "./use-demo-live-whatsapp"
 import { createJourneyReporter, type JourneyReporter } from "./journey-reporter"
 import { DemoJourneySidebar } from "./demo-journey-sidebar"
 import { useGuideVoice } from "./demo-guide-voice"
@@ -69,9 +70,12 @@ import type { DemoLiveCallState } from "./demo-live-call"
  * current section, and the guide panel. The coach mark points at the real
  * control inside the scene.
  *
- * It never fetches: everything it shows comes from the snapshot. Session
- * lifecycle (start, OTP, expiry, revoke) stays with the access shell; this
- * component only counts the deadlines it is given and calls `onAccessLost`.
+ * The story comes from the snapshot. The one thing it reads besides is the
+ * prospect's live WhatsApp thread (./use-demo-live-whatsapp.ts), once for the
+ * page: the guide's panel shows it, and the Service Desk scene the real ticket
+ * it opened — scenes themselves never fetch. Session lifecycle (start, OTP,
+ * expiry, revoke) stays with the access shell; this component only counts the
+ * deadlines it is given and calls `onAccessLost`.
  */
 
 const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
@@ -97,12 +101,14 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   "cc-call": CallsScene,
   "cc-promise": CallsScene,
   "mtm-today": MtmScene,
+  "mtm-place": MtmScene,
   "mtm-plan": MtmScene,
   "mtm-live": MtmScene,
   "mtm-visit": MtmScene,
-  "mtm-place": MtmScene,
+  "mtm-history": MtmScene,
   "mtm-results": MtmScene,
   "prs-today": PersonnelScene,
+  "prs-explain": PersonnelScene,
   "prs-timesheet": PersonnelScene,
   "prs-risk": PersonnelScene,
   "prs-month": PersonnelScene,
@@ -304,6 +310,12 @@ export function DemoJourneyPlayer({
 
   const reachable = useReachableRoutes(snapshot, manifest)
 
+  // The prospect's live WhatsApp: read in the chapters that show it, on a granted session.
+  const shownSectionId = viewSectionId ?? snapshot?.sectionId ?? null
+  const liveWhatsAppActive = variant === "granted" && !!shownSectionId
+    && (LIVE_WHATSAPP_CHAT_SECTIONS.has(shownSectionId) || LIVE_WHATSAPP_TICKET_SECTIONS.has(shownSectionId))
+  const liveWhatsApp = useDemoLiveWhatsApp(token, liveWhatsAppActive)
+
   if (!snapshot) return null
 
   const sections = activeSections(manifest)
@@ -358,6 +370,7 @@ export function DemoJourneyPlayer({
     dispatch,
     hint,
     openSection,
+    live: liveWhatsAppActive ? { whatsappTicket: liveWhatsApp.state?.ticket ?? null } : undefined,
   }
 
   const activeRoute = viewSection.navGroup === "demo" ? null : viewSection.route.replace(/\/\[[a-zA-Z]+\]$/, "")
@@ -468,12 +481,14 @@ export function DemoJourneyPlayer({
                   token={token}
                   variant={variant}
                   compact={reviewMode || stepIndex > 0}
+                  stepKey={step?.id}
                   onClipEvent={(name) => {
                     // A clip carries its own voiceover: the guide falls silent for
                     // it, and picks the step up again when it ends — before, the
-                    // rest of the chapter's first step went unsaid.
+                    // rest of the chapter's first step went unsaid. A clip that
+                    // will not play gives the step back to the guide at once.
                     if (name === "video.started") voice.stop()
-                    if (name === "video.completed" && step) voice.play(stepVoiceUrl(step))
+                    if ((name === "video.completed" || name === "video.error") && step) voice.play(stepVoiceUrl(step))
                     reporterRef.current?.report({ eventType: "JOURNEY", name, sectionId: viewSection.id })
                   }}
                 />
@@ -511,6 +526,7 @@ export function DemoJourneyPlayer({
               }}
               liveCall={liveCall}
               onOutcome={(to) => step && dispatch({ type: "outcome", stepId: step.id, to })}
+              liveWhatsApp={liveWhatsAppActive && !reviewMode ? liveWhatsApp : undefined}
             />
           </div>
         </div>

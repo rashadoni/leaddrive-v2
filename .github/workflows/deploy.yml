@@ -373,6 +373,7 @@ jobs:
           python3 .github/scripts/test_remediate_postgres_source_tls.py
           python3 .github/scripts/test_provision_postgres_restore_scratch.py
           node --test scripts/backup/object-lock-diagnostic.test.mjs
+          node --test scripts/backup/owner-recovery.test.mjs
 
       - name: Event-platform migration and database invariant gate
         run: node scripts/ci/test-event-platform-migrations.mjs
@@ -456,6 +457,17 @@ jobs:
           FINANCE_BILL_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           FINANCE_BILL_PAYMENT_DB_GATE: required
 
+      - name: Demo WhatsApp ticket database gate
+        # The demo's real Service Desk ticket (opened on the prospect's own
+        # press) is read back for the demo page only through the sales
+        # organisation's door, by the id the demo keeps, under the product's
+        # FORCE RLS on tickets with a role that cannot bypass it (see the
+        # test's header).
+        run: npx vitest run src/__tests__/demo-whatsapp-ticket-postgres.test.ts
+        env:
+          DEMO_WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEMO_WHATSAPP_TICKET_DB_GATE: required
+
       - name: Finance Telegram recipient database gate
         # Same gate as in pr-checks: each organization's finance notices go to
         # its own Telegram chat through its own bot, and never to a chat named
@@ -464,6 +476,33 @@ jobs:
         env:
           FINANCE_TELEGRAM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           FINANCE_TELEGRAM_DB_GATE: required
+
+      - name: WhatsApp ticket path database gate
+        # Same gate as in pr-checks: each WhatsApp message lands on exactly one
+        # right ticket of its sender's, and an old closure link does not close a
+        # reopened ticket (see the test's header).
+        run: npx vitest run src/__tests__/whatsapp-ticket-path-postgres.test.ts
+        env:
+          WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          WHATSAPP_TICKET_DB_GATE: required
+
+      - name: TikTok lead ad lock database gate
+        # Same gate as in pr-checks: a burst of TikTok Lead Ads deliveries creates
+        # each lead once without running the connection pool dry (see the test's
+        # header).
+        run: npx vitest run src/__tests__/tiktok-lead-ad-lock-postgres.test.ts
+        env:
+          TIKTOK_LEAD_AD_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          TIKTOK_LEAD_AD_DB_GATE: required
+
+      - name: Social webhook fence pool database gate
+        # Same gate as in pr-checks: bursts of Facebook/Instagram and TikTok
+        # comments are each stored once without running the connection pool
+        # dry (see the test's header).
+        run: npx vitest run src/__tests__/social-webhook-fence-pool-postgres.test.ts
+        env:
+          SOCIAL_WEBHOOK_FENCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          SOCIAL_WEBHOOK_FENCE_DB_GATE: required
 
       - name: MTM break coordinates database gate
         # Same gate as in pr-checks: no GPS entry — the phone's two routes, the

@@ -860,6 +860,19 @@ is superseded for this scoped integration proof only. Separate synthetic CDC
 still open. Mandatory static-checks and normal merge/release remain pending;
 no production consumer, replay or recovery commissioning occurred.
 
+### A3 recovery preparation: fresh read-only NO-GO — 2026-10-19 (Asia/Baku)
+
+Dedicated preparation starts from main226dde0e77c0c36a4de991bb703ba8f8416c5a64.
+See [A3 evidence/acceptance checklist](A3_RECOVERY_READINESS.md).
+[Read-only run39163236284](https://github.com/rashadoni/leaddrive-v2/actions/runs/39163236284)
+failed: machine_ready=no, enterprise_ga_ready=no, issues24, enterprise_gaps9.
+This supersedes old23/9 totals for this snapshot only. Encryption explicitly
+off; live units drift; runtime timer absent, other3 disabled/inactive; fresh
+runs/MemorySwapMax not proved; Object Lock query unknown_failure. Pinned tools
+and passfile readability passed, but neither backup nor restore is certified.
+A3/K2.1/K3.2/K3.6 remain OPEN. Independent Farah Rahimova acceptance PENDING;
+Codex cannot substitute her decision. No backup/restore, production mutation,
+Kafka/offset/replay, purchase, merge or deployment performed by this task.
 ### Corrected lifecycle source verified and merged — 2026-10-18 18:58 UTC
 
 Superseding the preceding pending-source receipt: PR889 final source
@@ -1173,3 +1186,21 @@ policy; compose authenticated executor and explicit application cutover; execute
 each domain's writer/effect/history/correction/rebuild/restore queue. No new business
 integration or production operation is authorized by these test results. PR894 is
 draft, auto-merge OFF; final documentation does not change tested executable source.
+
+### A3 operational preparation — 2026-10-19 12:25 Asia/Baku
+
+A3 остаётся OPEN/NO-GO. Подготовлен отдельный owner-operated one-shot
+backup/restore route; он не выдаёт Farah/independent/enterprise acceptance и не
+включает schedules. Mac ARM64 PostgreSQL/age/no-swap tests PASS; latest FileVault
+On. PR913 peer receipt подтверждает authenticated curl writer PUT200,
+byte-identical restore GET200, restore PUT403/AccessDenied. Object Lock
+Enabled/default14Days подтверждён только peer UI; API COMPLIANCE/точные version
+retentions, production writer config, настоящий backup/restore и main-bound
+signed receipts NOT RUN.
+
+Наff9 source type/scope/runner/scan и профильные hosted checks PASS. Последняя
+required static job39218257966 отменена по30min cap; это не полный green.
+Подготовлен finite45min budget, все blocking assertions сохранены, новый
+exact-source CI обязателен. Delivery остаётся у исходной Kafka-сессии по
+повторному решению владельца11:56; её hold не снят. Сводка evidence:
+[A3_RECOVERY_READINESS.md](A3_RECOVERY_READINESS.md), append-only журнал A3.
