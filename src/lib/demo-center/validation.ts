@@ -92,6 +92,12 @@ export const demoWhatsAppWelcomeSchema = z.object({
   consent: z.literal(true),
 }).strict()
 
+/** What the demo page may ask of its WhatsApp thread: our welcome, or a ticket from the next message. */
+export const demoWhatsAppActionSchema = z.discriminatedUnion("action", [
+  demoWhatsAppWelcomeSchema,
+  z.object({ action: z.literal("ticket") }).strict(),
+])
+
 export const demoPhoneVerifySchema = z.object({
   code: z.string().trim().regex(/^\d{6}$/),
   consent: z.boolean(),
