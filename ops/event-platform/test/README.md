@@ -64,6 +64,25 @@ still identifies Debezium3.7.0.Final and Kafka4.3.1. Coordinator PR909 CDC smoke
 neither that peer smoke nor the old October18 receipt proves its final source.
 This only repairs the disposable fixture, not production images or readiness.
 
+### Same-version disposable pin refresh — 2026-10-19
+
+The preceding `d76ab3d1…` pin is now historical: a fresh official Quay GET
+returned HTTP404/`MANIFEST_UNKNOWN` before any container execution. Preserve
+that receipt; do not retry a missing digest or remove the content pin.
+
+Reuse the already prepared and tested A5 `aa2e0f49e` same-version replacement:
+Linux/amd64 manifest
+`ace1609f4f67a6e7ef8b058cc9f2b2fff01c755e4ead74f756132ea74dc19648`.
+Root independently fetched its 4,658 manifest bytes and matched SHA-256. The
+official tag's index selects this Linux/amd64 digest; config
+`07b0cee93f66d2cf14c8771f6ed6aaee6059026c6908412cac4f366d53c8ce0c`
+still identifies `DEBEZIUM_VERSION=3.7.0.Final`, `KAFKA_VERSION=4.3.1` and the
+same entrypoint. This updates one disposable Compose line only; all runtime
+plugin/SQL/isolation assertions remain. A new exact-source hosted CDC run is
+required for this delivery; A5's earlier successful run is not substituted.
+No Docker/build work runs on the editing host, and no production image or
+service is changed by this refresh.
+
 The Compose network is internal. No service mounts host paths, production
 configuration, Docker sockets or credentials. PostgreSQL and Kafka have no host
 port. Connect and Registry also publish **no host ports**. HTTP probes execute
