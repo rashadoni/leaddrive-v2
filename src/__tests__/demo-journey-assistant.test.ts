@@ -31,6 +31,12 @@ import {
 
 const ROOT = process.cwd()
 const ROUTE = "src/app/api/v1/public/demo-access/[token]/assistant/route.ts"
+/** The session check every assistant route makes, in one place (the voice routes too). */
+const ACTIVE_GRANT = "src/lib/demo-center/active-grant.ts"
+const VOICE_ROUTES = [
+  "src/app/api/v1/public/demo-access/[token]/assistant/voice/route.ts",
+  "src/app/api/v1/public/demo-access/[token]/assistant/transcribe/route.ts",
+]
 const NOW = new Date("2026-09-21T09:00:00.000Z")
 
 const identity: DemoProspectIdentity = {
@@ -206,6 +212,7 @@ describe("Access-trail event types", () => {
 
 describe("Assistant route contract", () => {
   const source = readFileSync(path.join(ROOT, ROUTE), "utf8")
+  const sessionCheck = readFileSync(path.join(ROOT, ACTIVE_GRANT), "utf8")
 
   it("rebuilds the story from the request's own channel, as the page does", () => {
     // A fixed «website» here made Da Vinci describe a campaign the prospect
@@ -216,9 +223,22 @@ describe("Assistant route contract", () => {
 
   it("requires an active grant bound to this browser", () => {
     expect(source).toContain("validRawDemoToken")
-    expect(source).toContain("expireDemoGrantIfNeeded")
-    expect(source).toContain('grant.status !== "ACTIVE"')
-    expect(source).toContain("secureHashMatches")
+    expect(source).toContain("loadActiveDemoGrant(request, token, now)")
+    expect(sessionCheck).toContain("expireDemoGrantIfNeeded")
+    expect(sessionCheck).toContain('grant.status !== "ACTIVE"')
+    expect(sessionCheck).toContain("secureHashMatches")
+    expect(sessionCheck).toContain("manifest.capabilities.assistant")
+  })
+
+  it("checks the voice routes' callers exactly as the assistant's, before anything is read or spent", () => {
+    for (const route of VOICE_ROUTES) {
+      const voice = readFileSync(path.join(ROOT, route), "utf8")
+      expect(voice, route).toContain("validRawDemoToken")
+      expect(voice, route).toContain("loadActiveDemoGrant(request, token, now)")
+      expect(voice, route).toContain("demoAssistantVoiceEnabled()")
+      // The session is checked before the budget is touched.
+      expect(voice.indexOf("loadActiveDemoGrant("), route).toBeLessThan(voice.indexOf("claimDemoVoiceSeconds("))
+    }
   })
 
   it("counts the quota from append-only rows, not a process-local limiter", () => {
@@ -233,7 +253,7 @@ describe("Assistant route contract", () => {
     expect(source).toContain("grant.request")
     // Only the position is taken from the client, and it is validated first.
     // …against the grant's own story (with the live call when it has one).
-    expect(source).toContain("demoGrantManifest(grant)")
+    expect(sessionCheck).toContain("demoGrantManifest(grant)")
     expect(source).toContain("findSection(manifest")
     expect(source).toContain("findStep(manifest")
     expect(source).not.toMatch(/body\.(records|identity|grounding|snapshot)\b/)

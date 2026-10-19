@@ -8,6 +8,7 @@ import {
   type DemoProspectIdentity,
 } from "@/lib/demo-center/journey"
 import { expireDemoGrantIfNeeded, noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
+import { demoAssistantVoiceEnabled } from "@/lib/demo-center/assistant-voice-switch"
 import { demoCallStatus } from "@/lib/demo-center/demo-call"
 import { demoLiveCallState } from "@/lib/demo-center/phone-verification"
 import {
@@ -143,7 +144,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       company: grant.request.company,
       recipient: maskEmail(grant.request.email),
       watermark: grant.watermark,
-      ...(scenario ? { scenario: scenarioPayload, identity, liveCall } : { modules: selectedModules }),
+      // Whether the guide speaks Da Vinci's answers and offers «Səslə soruşun»
+      // (assistant-voice-switch.ts): the page shows no button without it.
+      ...(scenario ? { scenario: scenarioPayload, identity, liveCall, assistantVoice: demoAssistantVoiceEnabled() } : { modules: selectedModules }),
       sessionStartedAt: grant.sessionStartedAt,
       sessionExpiresAt: grant.sessionExpiresAt,
       idleExpiresAt: idleExpiry(responseLastSeenAt, grant.inactivityMinutes),

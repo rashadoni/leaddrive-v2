@@ -35,6 +35,9 @@ let remembered = true
 // The browser refused to start the last recording without a click.
 let blocked = false
 let lastUrl: string | null = null
+// A spoken Da Vinci answer arrives as a file, not a path (assistant/voice):
+// its address lives until the next recording replaces it.
+let blobUrl: string | null = null
 const listeners = new Set<() => void>()
 
 // One element for the page, whichever switch started it; paused when the
@@ -93,6 +96,8 @@ export interface GuideVoice {
   readonly toggle: (startWith?: string | null) => void
   /** Plays a recording when the voice is on; a no-op otherwise. */
   readonly play: (url: string) => void
+  /** Plays audio the server just made (a spoken answer) through the same element, when the voice is on. */
+  readonly playBlob: (audio: Blob) => void
   readonly stop: () => void
 }
 
@@ -105,6 +110,10 @@ export function useGuideVoice(): GuideVoice {
     if (!sharedAudio) sharedAudio = new Audio()
     const audio = sharedAudio
     audio.pause()
+    if (blobUrl && blobUrl !== url) {
+      URL.revokeObjectURL(blobUrl)
+      blobUrl = null
+    }
     lastUrl = url
     audio.src = url
     // Loading a source resets the rate to the default one, so both are set.
@@ -133,6 +142,13 @@ export function useGuideVoice(): GuideVoice {
     if (readPref()) start(url)
   }, [start])
 
+  const playBlob = useCallback((audio: Blob) => {
+    if (!readPref()) return
+    const url = URL.createObjectURL(audio)
+    start(url)
+    blobUrl = url
+  }, [start])
+
   const toggle = useCallback((startWith?: string | null) => {
     const next = !readPref()
     writePref(next)
@@ -149,9 +165,11 @@ export function useGuideVoice(): GuideVoice {
         sharedAudio?.pause()
         sharedAudio = null
         blocked = false
+        if (blobUrl) URL.revokeObjectURL(blobUrl)
+        blobUrl = null
       }
     }
   }, [])
 
-  return { on, blocked: on && isBlocked, unblock, toggle, play, stop }
+  return { on, blocked: on && isBlocked, unblock, toggle, play, playBlob, stop }
 }

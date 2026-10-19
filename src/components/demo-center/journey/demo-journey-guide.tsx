@@ -32,6 +32,7 @@ import { useGuideVoice, type GuideVoice } from "./demo-guide-voice"
 import { GuideVoiceSwitch } from "./guide-voice-switch"
 import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { parseDemoAssistantAction, type DemoAssistantAction } from "@/lib/demo-center/assistant/actions"
+import { DemoAssistantVoice } from "./demo-assistant-voice"
 
 /**
  * The guide panel: where the prospect is in the story, what to do now, and
@@ -87,6 +88,11 @@ export interface DemoJourneyGuideProps {
    * story moved meanwhile, a jump becomes an offer and nothing else happens.
    */
   onAssistantAction?: (action: DemoAssistantAction, askedKey: string) => DemoAssistantActionResult
+  /**
+   * The server's voice switch (owner, 2026-10-20): Da Vinci's answers are
+   * spoken in the guide's voice and «Səslə soruşun» is offered. Granted only.
+   */
+  assistantVoice?: boolean
 }
 
 /**
@@ -126,6 +132,7 @@ export function DemoJourneyGuide({
   liveWhatsApp,
   liveSocial,
   onAssistantAction,
+  assistantVoice = false,
 }: DemoJourneyGuideProps) {
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((candidate) => candidate.id === section.id)
@@ -295,6 +302,7 @@ export function DemoJourneyGuide({
         prompts={section.assistantPrompts ?? []}
         voice={voice}
         onAction={onAssistantAction}
+        voiceEnabled={assistantVoice}
       />
 
       <ol className="space-y-1.5" aria-label={S.guide}>
@@ -374,15 +382,18 @@ function DemoAssistant({
   prompts,
   voice,
   onAction,
+  voiceEnabled = false,
 }: {
   enabled: boolean
   token: string
   variant: DemoJourneyVariant
   snapshot: DemoJourneySnapshot
   prompts: readonly string[]
-  /** A prepared answer comes with its recording; Da Vinci's own words stay text. */
+  /** A prepared answer comes with its recording; with the voice switch on, Da Vinci's is spoken too. */
   voice?: GuideVoice
   onAction?: (action: DemoAssistantAction, askedKey: string) => DemoAssistantActionResult
+  /** The server's voice switch: spoken Da Vinci answers and «Səslə soruşun». */
+  voiceEnabled?: boolean
 }) {
   const [question, setQuestion] = useState("")
   // The conversation so far, newest last: the last few questions and answers,
@@ -391,6 +402,16 @@ function DemoAssistant({
   const [error, setError] = useState<string | null>(null)
   const [remaining, setRemaining] = useState<number | null>(null)
   const [asking, setAsking] = useState(false)
+  // Voice minutes ran out for this demo or for today: answers stay text and the button goes.
+  const [voiceExhausted, setVoiceExhausted] = useState(false)
+  const [voiceNote, setVoiceNote] = useState<string | null>(null)
+  // Where the prospect is now and which answer is newest: a spoken answer
+  // that comes back after either moved would talk over the wrong screen.
+  const positionRef = useRef(`${snapshot.sectionId}:${snapshot.stepId}`)
+  const newestAnswerRef = useRef<string | null>(null)
+  useEffect(() => {
+    positionRef.current = `${snapshot.sectionId}:${snapshot.stepId}`
+  }, [snapshot.sectionId, snapshot.stepId])
 
   // The reference product kept its assistant behind an explicit activation
   // too. In the open demo the switch stays off: nobody has verified who is
@@ -407,11 +428,39 @@ function DemoAssistant({
     )
   }
 
+  const refusedVoice = (code: string | undefined) => {
+    if (code === "demo_budget" || code === "day_budget") setVoiceExhausted(true)
+  }
+
+  // One voicing per answer, and only an answer the server vouched for: the
+  // id and hash it issued go back with the text, unchanged.
+  const speak = async (answerId: string, answer: string, answerHash: string, askedKey: string) => {
+    try {
+      const response = await fetch(`/api/v1/public/demo-access/${encodeURIComponent(token)}/assistant/voice`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answerId, answer, answerHash, stepId: snapshot.stepId }),
+      })
+      if (response.ok && (response.headers.get("content-type") ?? "").startsWith("audio/")) {
+        const audio = await response.blob()
+        if (newestAnswerRef.current === answerId && positionRef.current === askedKey) voice?.playBlob(audio)
+        return
+      }
+      const payload = await response.json().catch(() => null) as { code?: string; error?: string } | null
+      refusedVoice(payload?.code)
+      setVoiceNote(payload?.code === "demo_budget" || payload?.code === "day_budget" ? S.voiceExhausted : S.voiceAnswerFailed)
+    } catch {
+      setVoiceNote(S.voiceAnswerFailed)
+    }
+  }
+
   const ask = async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || asking) return
     setAsking(true)
     setError(null)
+    setVoiceNote(null)
     // A new question retires the previous answer's offer.
     setTurns((current) => current.map((turn) => (turn.offer ? { ...turn, offer: undefined } : turn)))
     const askedKey = `${snapshot.sectionId}:${snapshot.stepId}`
@@ -428,7 +477,7 @@ function DemoAssistant({
         }),
       })
       const payload = await response.json().catch(() => null) as
-        { success?: boolean; answer?: string; error?: string; remaining?: number; audio?: string; action?: unknown } | null
+        { success?: boolean; answer?: string; error?: string; remaining?: number; audio?: string; action?: unknown; answerId?: unknown; answerHash?: unknown } | null
       if (typeof payload?.remaining === "number") setRemaining(payload.remaining)
       if (!response.ok || !payload?.success || !payload.answer) {
         setError(payload?.error ?? S.assistantFailed)
@@ -445,6 +494,14 @@ function DemoAssistant({
       const moved = result === "moved"
       // Only our own recordings: a path under the guide's sound folder.
       if (!moved && payload.audio?.startsWith("/sounds/demo-guide/")) voice?.play(payload.audio)
+      // A Da Vinci answer has no recording; with the switch on it is spoken
+      // once, in the same voice, through the same element — unless the guide's
+      // voice is off, when nothing is sent to be spoken at all.
+      const answerId = typeof payload.answerId === "string" ? payload.answerId : null
+      newestAnswerRef.current = answerId
+      if (voiceEnabled && !moved && !payload.audio && answerId && typeof payload.answerHash === "string" && voice?.on && !voiceExhausted) {
+        void speak(answerId, payload.answer, payload.answerHash, askedKey)
+      }
       const asked: AssistantTurn = { id: `you-${Date.now()}`, who: "you", text: trimmed }
       const said: AssistantTurn = { id: `guide-${Date.now()}`, who: "guide", text: moved ? S.assistantMoved : payload.answer, offer }
       setTurns((current) => [...current, asked, said].slice(-ASSISTANT_TURNS_SHOWN))
@@ -501,6 +558,18 @@ function DemoAssistant({
         </Button>
       </form>
 
+      {voiceEnabled ? (
+        <DemoAssistantVoice
+          token={token}
+          stepId={snapshot.stepId}
+          busy={asking}
+          exhausted={voiceExhausted}
+          onBeforeRecord={() => voice?.stop()}
+          onHeard={(heard) => { setQuestion(heard); void ask(heard) }}
+          onRefused={refusedVoice}
+        />
+      ) : null}
+
       {turns.length > 0 && (
         <ol data-testid="demo-assistant-turns" className="mt-2 space-y-1.5">
           {turns.map((turn, index) => {
@@ -542,6 +611,12 @@ function DemoAssistant({
       {error && (
         <p role="alert" className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs leading-relaxed text-amber-900">{error}</p>
       )}
+      {voiceNote && !voiceExhausted ? (
+        <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground" data-testid="demo-assistant-voice-note">{voiceNote}</p>
+      ) : null}
+      {voiceEnabled && voice?.on ? (
+        <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">{S.voiceAnswersNote}</p>
+      ) : null}
     </div>
   )
 }

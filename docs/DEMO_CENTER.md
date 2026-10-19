@@ -320,11 +320,46 @@ demo still reads no tenant's data, and a Page's other customers' messages are
 never kept — but it does not mention that the prospect's own Page can be
 connected.
 
-## Voice phase
+## Voice
 
-The current release is intentionally silent. Narration must use the approved
-external Google AI Studio workflow with credentials supplied through the
-deployment environment. Do not add local TTS or commit provider credentials.
+**Recorded narration.** Every step and every prepared answer is recorded in
+advance with Gemini TTS, voice Kore (`src/lib/demo-center/guide-voice.ts`,
+`scripts/demo-guide/generate-voice.ts`), and shipped under
+`public/sounds/demo-guide/`. Do not add local TTS or commit provider
+credentials.
+
+**Spoken answers and «Səslə soruşun»** (owner, 2026-10-20). Behind the kill
+switch `DEMO_ASSISTANT_VOICE` (off unless `on`; off means no button, both
+routes 404, no hash handed out, and the private page keeps `microphone=()`):
+
+- A Da Vinci answer comes back from `/assistant` with its id (the
+  `ASSISTANT_ASKED` event's) and a keyed hash of exactly its text.
+  `POST …/assistant/voice` speaks only a text that hash vouches for, once,
+  with the recordings' model and voice, and plays as a blob through the
+  guide's one audio element. Prepared answers keep their recordings. Nothing
+  is sent to be spoken while the guide's voice is switched off.
+- The prospect presses and holds «Səslə soruşun» (or taps to start and stop)
+  after a one-time consent line, speaks up to 15 s; the page sends a mono
+  16 kHz WAV to `POST …/assistant/transcribe`; Google's `gemini-3.5-transcribe`
+  (az-AZ, ru-RU, en-US) returns the text, the route returns only the text and
+  keeps nothing; the page shows «Eşitdim: …» and asks it through `/assistant`,
+  which masks it before Claude like a typed question. The microphone is
+  released after every clip.
+- Every Google call sends the key in `x-goog-api-key`, never in the address,
+  and every Interactions API call says `store: false` (Google's default keeps
+  an interaction, input included, for 55 days).
+- Budget: 10 minutes of voice per demo (spoken answers plus heard clips) and
+  300 minutes a day across demos, claimed in `demo_access_events`
+  (`ASSISTANT_VOICED`, `ASSISTANT_HEARD`; metadata is seconds and an outcome,
+  never text or audio) under one advisory lock before Google is called
+  (`src/lib/demo-center/assistant-voice.ts`). A spoken answer's claim is an
+  upper bound lowered to the audio's length afterwards; a failed call keeps
+  its claim. Proven on a real Postgres in
+  `demo-assistant-voice-postgres.test.ts` («Demo assistant voice budget
+  database gate» in `static-checks` and in the deploy).
+- Granted sessions only, through the assistant's own session check
+  (`src/lib/demo-center/active-grant.ts`); the open demo and the admin preview
+  never show the button.
 
 ## Rollout checklist
 

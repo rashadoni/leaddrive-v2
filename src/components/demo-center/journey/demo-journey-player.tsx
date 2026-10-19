@@ -155,6 +155,12 @@ export interface DemoJourneyPlayerProps {
   onAccessLost?: () => void
   /** A grant with a real AI call: pass `withLiveCall(manifest)` as `manifest` too. */
   liveCall?: DemoLiveCallState
+  /**
+   * The server's voice switch is on: Da Vinci's answers are spoken and the
+   * prospect may ask by voice. Granted sessions only — the routes behind it
+   * refuse anything else.
+   */
+  assistantVoice?: boolean
 }
 
 function storageKey(token: string): string {
@@ -172,6 +178,7 @@ export function DemoJourneyPlayer({
   idleExpiresAt,
   onAccessLost,
   liveCall,
+  assistantVoice = false,
   variant = "granted",
 }: DemoJourneyPlayerProps) {
   const persistProgress = variant !== "preview"
@@ -591,6 +598,7 @@ export function DemoJourneyPlayer({
               liveWhatsApp={liveWhatsAppActive && !reviewMode ? liveWhatsApp : undefined}
               liveSocial={liveSocialActive && !reviewMode ? liveSocial : undefined}
               onAssistantAction={variant === "granted" ? runAssistantAction : undefined}
+              assistantVoice={variant === "granted" && assistantVoice}
             />
           </div>
         </div>
