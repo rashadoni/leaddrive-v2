@@ -1,0 +1,55 @@
+# Direct TikTok Business Messaging integration
+
+## 2026-10-19 — scope and starting point
+
+The owner requested a direct TikTok to LeadDrive CRM integration with OAuth and explicitly excluded Chatwoot. TikTok developer registration and the LeadDrive CRM app have been submitted; the portal currently reports Pending and does not yet display an App ID. This work must not claim live messaging or approval before provider access and a real-account test.
+
+Repository: rashadoni/leaddrive-v2. Dedicated branch: codex/tiktok-native-messaging-20261019, based on origin/main 6d2e521ce. Authoritative worktree: /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-tiktok-native-messaging-20261019 on remote-alt. The dirty canonical checkout and other branches are untouched. Files are edited in a scoped local source mirror and copied only to this task's worktree.
+
+Plan: separate account-holder OAuth with tenant/admin/state checks and encrypted rotating tokens; authenticated DIRECT_MESSAGE webhook ingestion with deduplication and tenant binding; native reply transport with persistent idempotency and honest unknown-delivery handling; a direct connection option/status in the existing channel UI; targeted security and regression tests, then required CI. Existing legacy conversations must retain their original transport; new native conversations must never fall back to Chatwoot.
+
+Initial audit: the existing TikTok Business OAuth is for comments, its webhook is for Lead Ads, and DM routing is currently Chatwoot. Reusing these as if they were a native DM integration would be incorrect. No existing credentials or provider settings have been changed. No external messages have been sent.
+
+Release follows docs/DELIVERY-ARCHITECTURE.md: feature PR, required checks, owner-visible release scope, then main/deploy. Live activation additionally requires TikTok approval, app credentials and account-holder consent. Production configuration will not be fabricated.
+
+## 2026-10-19 — implementation and first review
+
+Added a distinct native provider, dedicated account-holder OAuth, signed one-use tenant/user state, encrypted account credentials and token rotation, account Advanced Access verification, signed webhook parsing and account-qualified inbox persistence. Native text replies use a durable operation ledger; unknown delivery blocks blind retries. Added explicit operator reconciliation in TikTok and protected the native configuration from generic edits. Existing Chatwoot conversations keep their provider. New settings page uses existing styles and EN/RU/AZ copy; the implementation applied the React best-practices skill.
+
+Independent read-only review identified a disconnect/reconciliation versus queued-send race, generic configuration mutation exposure, definitive-rejection retry behavior and a trailing-slash webhook redirect risk. Fixed these: dispatch now holds the account lock and rechecks the durable pending row, finalizes accepted sends within that transaction, generic API rejects native config mutation, UI resets keys only after authoritative non-delivery, canonical webhook has no trailing slash. Token refresh commits rotation even if later verification fails; unverified tokens cannot send.
+
+Verification so far: remote-alt npm ci completed, Prisma client generated, first targeted run 41/41 passed. Expanded run 84/85 passed; one old test asserted the exact Prisma select shape and now needs the provider metadata field. This expectation was updated without changing the tenant predicate. Subsequent tests, lint and required CI are pending. Full build/typecheck are NOT RUN on the shared host by workload policy. No live TikTok messages, production credentials, provider changes, push or deploy at this phase.
+
+## 2026-10-19 — verified checkpoint
+
+Targeted lint of the new backend/routes/settings UI passed. The expanded suite passed 95/95 tests in 13 files, including 10 credential lifecycle/dispatch tests and existing Chatwoot ledger/catalog/reply-policy regressions. Tests model provider calls and transactions; they are not proof of real PostgreSQL races or live TikTok delivery. First failure was corrected solely by updating the old assertion to include the newly selected provider metadata.
+
+Ready for a path-scoped checkpoint and draft PR. Mandatory GitHub checks will run after readiness; full build and live browser/provider acceptance remain NOT RUN (shared-host policy and pending TikTok access). Current scope: OAuth connection/status, native inbound inbox messages, manual text replies, safe retry/reconciliation and local disconnect. No production changes or test messages.
+
+## 2026-10-19 — PR and final local verification
+
+Created and attached PR https://github.com/rashadoni/leaddrive-v2/pull/917 after checkpoint 5929f447f. During final review, explicitly typed new Prisma transaction callbacks/JSON writes and reconciliation results. Added canonical-host checks for OAuth, safe status serialization tests, manual-only native dispatch and linked-contact retention. No settings or messages changed in provider/production accounts.
+
+Latest targeted verification: 98/98 tests passed in 14 files; targeted ESLint passed. PR will run the five required checks plus the existing production-build job on GitHub-hosted Linux. Build/CI results are pending; no merge/deploy has occurred. Next: resolve any CI regressions, then present the concrete owner release scope before merging under DELIVERY-ARCHITECTURE.md.
+
+## 2026-10-19 — full compiler diagnostics review
+
+On head 453e1e34f, the required typecheck gate passed, but inspection of its full advisory compiler log found six TS18047 diagnostics in the native send handler. The repository's historical baseline gate does not cover that family. Replaced the nullable post-claim reference with a typed, guarded local before dispatch. The nullable outer variable remains solely for failure persistence. PR returned to draft for this repair. Repeat targeted verification and CI on the corrected head; prior green gate alone is not a clean native typecheck. No merge, deployment or live messages.
+
+Repair verification: targeted ESLint and diff check passed; all 25 native-send/shared-reply regression tests passed. The earlier 98-test set remains the broader pre-repair baseline. Pushing the guarded-claim repair and rerunning CI; inspect the new full compiler diagnostics, not only the gate conclusion.
+
+## 2026-10-19 — exact base comparison and Inbox contact guard
+
+Comparing the earlier compiler diagnostics against the successful exact base 6d2e521ce log identified one additional introduced diagnostic on an unchanged line: Inbox contact lookup could receive a nullable id after the new native contact-link branch. The other 15 shared-file diagnostics were present in the base. Added an explicit guard before indexing the contact map and a route regression covering two native conversations linked to the same contact, a legacy conversation with that contact, and an unlinked native conversation. This verifies distinct thread routing while retaining contact details. Rechecking the corrected head before any release; no provider or production mutation.
+
+Contact-guard verification: all 15 GET Inbox tests passed (36 unrelated tests filtered out); diff check passed. Full-file ESLint for these older files is not clean: Inbox route has 21 errors, API Inbox test file 57 errors and 2 warnings. Running the same lint against exact base 6d2e521ce produced identical counts and diagnostic source signatures, with zero introduced signatures. The new native files' focused lint remains passed. Do not describe this as a globally lint-clean project.
+
+Expanded the Inbox check to its complete file: 51/51 tests passed. CI on c39a88a16 confirmed a successful production bundle and typecheck gate; the full compiler log confirmed all six native send diagnostics disappeared, with only the now locally fixed contact-index diagnostic remaining beyond the 15 exact-base diagnostics in owned paths. Push the contact guard plus regression and rerun required CI/production bundle on that final head. No merge or deployment.
+
+## 2026-10-19 — full CI regression repair
+
+Exact head ce7c91139301be6a279d386bdd3afc7b31b90663 passed the production build and typecheck gate. Full compiler inspection found no introduced diagnostics in owned paths (15 shared-file diagnostics all matched exact base). Static checks failed on three new test files: a Chatwoot-only UI source assertion, webhook verifier marker recognition, and missing recognized RLS context before the OAuth channel gate. PR returned to draft; no merge/deployment.
+
+Updated the UI contract to require provider-bound TikTok/Chatwoot confirmation, registered the real HMAC verifier in the webhook gate, and added public webhook route tests using real signature verification. All native channel handlers now establish session RLS before the fresh channel access gate, with actor/org consistency checks. Expanded route tests use the actual wrapper, access gate and AsyncLocalStorage. No central RLS scanner, auth gate or provider verification was weakened. Targeted verification and complete CI rerun pending.
+
+Repair verification: 140/140 targeted tests passed in 18 files, including all three failing CI gates, seven OAuth callback tests, seven channel/start route tests and five public webhook boundary tests. Focused ESLint and git diff check passed. Read-only tracing confirmed the fresh second session resolution uses self-restoring bypass wrappers inside the outer tenant scope; no live Auth.js/PostgreSQL claim is made. Ready for exact-head full CI and production bundle rerun.

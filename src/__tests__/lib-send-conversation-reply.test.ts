@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   updateConversation: vi.fn(),
   findConversation: vi.fn(),
   sendChatwoot: vi.fn(),
+  sendNative: vi.fn(),
 }))
 
 const tx = {
@@ -37,6 +38,7 @@ vi.mock("@/lib/prisma", () => ({
     channelConfig: { findFirst: vi.fn() },
   },
 }))
+vi.mock("@/lib/tiktok-messaging/send", () => ({ sendNativeMessagingReply: mocks.sendNative }))
 vi.mock("@/lib/chatwoot", () => ({ sendChatwootMessage: mocks.sendChatwoot }))
 vi.mock("@/lib/channels/platform-connections", () => ({
   resolveChannelConnection: vi.fn(async () => ({ available: true })),
@@ -191,7 +193,7 @@ describe("sendConversationReply Chatwoot delivery ledger", () => {
         platform: "tiktok",
         deletedAt: null,
       },
-      select: { externalId: true },
+      select: { externalId: true, metadata: true },
     })
     expect(mocks.transaction).not.toHaveBeenCalled()
     expect(mocks.createMessage).not.toHaveBeenCalled()
@@ -480,5 +482,22 @@ describe("sendConversationReply Chatwoot delivery ledger", () => {
     expect(result).toMatchObject({ success: false, statusCode: 400 })
     expect(mocks.transaction).not.toHaveBeenCalled()
     expect(mocks.sendChatwoot).not.toHaveBeenCalled()
+  })
+})
+
+
+describe("native TikTok transport boundary", () => {
+  it("uses the native adapter without touching Chatwoot", async () => {
+    mocks.findConversation.mockResolvedValue({ externalId: "tiktok-messaging:b:c", metadata: { provider: "tiktok_messaging" } })
+    mocks.sendNative.mockResolvedValue({ success: true, statusCode: 201, data: { id: "native1", status: "sent" } })
+    expect(await send({ to: "tiktok-messaging:b:c" })).toMatchObject({ success: true, data: { id: "native1" } })
+    expect(mocks.sendNative).toHaveBeenCalledTimes(1)
+    expect(mocks.sendChatwoot).not.toHaveBeenCalled()
+  })
+  it("fails closed if native metadata is damaged instead of treating its ID as legacy", async () => {
+    mocks.findConversation.mockResolvedValue({ externalId: "tiktok-messaging:b:c", metadata: {} })
+    expect(await send({ to: "tiktok-messaging:b:c" })).toMatchObject({ success: false, statusCode: 400 })
+    expect(mocks.sendChatwoot).not.toHaveBeenCalled()
+    expect(mocks.sendNative).not.toHaveBeenCalled()
   })
 })

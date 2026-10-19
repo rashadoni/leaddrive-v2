@@ -2,7 +2,8 @@
  * Channel types whose ChannelConfig rows belong to their own screen and endpoint, never to the channel form. The
  * generic channels API (`POST /api/v1/channels`, `PUT`/`DELETE /api/v1/channels/[id]`) refuses to create, change or
  * delete such a row, or to turn another row into one, and the channel catalog lists one only where a card shows it
- * (VoIP's). None of them is a conversation channel, so the reply-policy matrix (`/api/v1/settings/channel-reply`)
+ * (VoIP's). The native TikTok row also owns an OAuth grant; its initial manual-only connection
+ * is protected by its dedicated status endpoint. These rows do not enter the generic reply-policy matrix (`/api/v1/settings/channel-reply`)
  * neither lists nor writes one — that route's header gives the reason per type.
  *
  * Found 2026-09-21: the catalog listed every row the API returns under "Other connected channels", with the form's Edit
@@ -15,6 +16,7 @@
  * and the row itself were still open.
  */
 const DEDICATED_CHANNEL_TYPE_ERRORS = {
+  tiktok_messaging: "TikTok Messaging must be managed through its dedicated OAuth settings",
   // api/v1/voip/config: the PBX credentials and the voice-agent switches. The first type refused here.
   voip: "VoIP configuration must be managed through the dedicated VoIP endpoint",
   // api/v1/social/monitoring-settings and api/v1/social/monitoring-scenarios.

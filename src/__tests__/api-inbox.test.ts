@@ -184,6 +184,38 @@ describe("GET /api/v1/inbox", () => {
     expect(body.error).toBe("Internal server error")
   })
 
+  it("keeps native TikTok threads separate after contact linking and preserves contact details", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG_ID)
+    const base = {
+      organizationId: ORG_ID, direction: "inbound", channelType: "tiktok",
+      from: "customer", to: "business", body: "Hello", status: "new",
+      contactId: "contact-1", createdAt: new Date("2026-10-19T06:00:00Z"),
+    }
+    vi.mocked(prisma.channelMessage.findMany).mockResolvedValue([
+      { ...base, id: "n1", conversationId: "native-1", metadata: { provider: "tiktok_messaging", senderName: "TikTok customer" } },
+      { ...base, id: "n2", conversationId: "native-2", metadata: { provider: "tiktok_messaging", senderName: "TikTok customer" } },
+      { ...base, id: "legacy", conversationId: "legacy-1", metadata: { chatwootConversationId: 42 } },
+      { ...base, id: "unlinked", conversationId: "native-3", contactId: null, metadata: { provider: "tiktok_messaging", senderName: "New customer" } },
+    ] as never)
+    vi.mocked(prisma.contact.findMany).mockResolvedValue([
+      { id: "contact-1", fullName: "CRM contact", email: "customer@example.test", phone: "+994000000000", lifecycleStage: "lead" },
+    ] as never)
+    vi.mocked(prisma.socialConversation.findMany).mockResolvedValue([])
+    vi.mocked(prisma.callLog.findMany).mockResolvedValue([])
+
+    const res = await GET_INBOX(makeRequest("http://localhost:3000/api/v1/inbox"))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.conversations).toHaveLength(4)
+    for (const id of ["native-1", "native-2"]) {
+      const thread = body.data.conversations.find((item: { socialConversationId: string }) => item.socialConversationId === id)
+      expect(thread).toMatchObject({ contactId: "contact-1", contactEmail: "customer@example.test", messageCount: 1 })
+      expect(thread.messages[0].metadata.provider).toBe("tiktok_messaging")
+    }
+    expect(body.data.conversations.find((item: { socialConversationId: string }) => item.socialConversationId === "native-3"))
+      .toMatchObject({ contactId: null, contactName: "New customer", messageCount: 1 })
+  })
+
   // Option-D slice-1: threads backed by a SocialConversation row surface its
   // status / assignment / snooze, fetched org-scoped.
   it("surfaces SocialConversation status/assignee/snooze for a thread with a conversationId", async () => {

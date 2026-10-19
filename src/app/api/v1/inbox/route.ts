@@ -85,6 +85,11 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       const meta = msg.metadata as any
       const tgChatId = meta?.chatId as string | undefined
 
+      // Native TikTok threads retain their account/conversation binding even after contact linking.
+      if (msg.channelType === "tiktok" && meta?.provider === "tiktok_messaging" && msg.conversationId) {
+        return `tiktok_native_${msg.conversationId}`
+      }
+
       // If message already has contactId, use it
       if (msg.contactId) return `contact_${msg.contactId}`
 
@@ -187,9 +192,9 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
         let contactPhone: string | null = null
         let contactLifecycleStage: string | null = null
 
-        if (key.startsWith("contact_")) {
-          contactId = key.replace("contact_", "")
-          const c = contactById[contactId]
+        if (key.startsWith("contact_") || (msg.channelType === "tiktok" && meta?.provider === "tiktok_messaging" && msg.contactId)) {
+          contactId = key.startsWith("contact_") ? key.replace("contact_", "") : msg.contactId
+          const c = contactId ? contactById[contactId] : undefined
           if (c) {
             contactName = c.fullName || contactName
             contactEmail = c.email
@@ -231,6 +236,9 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       // Update contact name from inbound (real name, not chatId)
       if (msg.direction === "inbound" && msg.from && !/^-?\d+$/.test(msg.from)) {
         threads[key].contactName = msg.from
+      }
+      if (msg.direction === "inbound" && meta?.provider === "tiktok_messaging" && typeof meta.senderName === "string") {
+        threads[key].contactName = meta.senderName
       }
       // Update last message if this is newer
       if (new Date(msg.createdAt) > new Date(threads[key].lastMessageAt)) {
@@ -1000,7 +1008,7 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
       )
     }
     return NextResponse.json(
-      result.internal || result.statusCode === 400 ? { error: result.error } : { success: false, error: result.error },
+      result.internal || result.statusCode === 400 ? { error: result.error } : { success: false, error: result.error, ...(result.deliveryUnknown === false ? { deliveryUnknown: false } : {}) },
       { status: result.statusCode },
     )
   }

@@ -7,7 +7,7 @@ const pages = [
 ]
 const route = readFileSync("src/app/api/v1/inbox/route.ts", "utf8")
 
-describe("manual inbox Chatwoot idempotency contract", () => {
+describe("manual inbox provider-bound idempotency contract", () => {
   it.each(pages)("retains one UUID for retry and rotates it only when the payload changes", (source) => {
     expect(source).toContain('useRef<{ key: string; payload: string } | null>(null)')
     expect(source).toContain("sendOperationRef.current?.payload === deliveryPayload")
@@ -17,7 +17,8 @@ describe("manual inbox Chatwoot idempotency contract", () => {
     expect(source).toContain("sendOperationRef.current = null")
     expect(source).toContain("sendUnknownAttemptId")
     expect(source).toContain("delivery-reconciliation")
-    expect(source).toContain('confirmation: "verified_in_chatwoot"')
+    expect(source).toContain("const provider = nativeTikTokReplyTarget(")
+    expect(source).toContain('confirmation: provider === "TikTok" ? "verified_in_tiktok" : "verified_in_chatwoot"')
     expect(source).toContain("window.confirm(prompt)")
   })
 
