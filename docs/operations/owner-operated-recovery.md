@@ -232,6 +232,19 @@ than changing the SHA field in an old signed receipt.
 
 ## Stop and rollback
 
+For a failed one-shot database process, use the existing **Inspect production
+safely** workflow, view `backup-run-failure`, with its failed `backup_run_id`
+and the exact current `expected_main_sha`. Wait for current main to be live.
+This read-only view admits only a completed failed first-attempt owner recovery
+workflow from this repository/main. It reads at most100 process-journal entries
+from that exact transient database unit within the run's recorded time window,
+only while the expected immutable release is live. Raw journal text stays on
+production: output contains only fixed cause classifications, source line
+numbers and public run metadata; the runner independently validates its shape.
+No match, expired/missing logs, truncated sampling or `UNKNOWN` is not a proved
+cause and never means backup success. Do not enable timers, relax checks or
+dispatch another backup merely because this diagnostic completes.
+
 Before dispatch, all existing timers must be disabled/inactive or absent. The
 existing durable commissioning fence restores recorded states on failure; on
 successful backup they remain disabled. Canonical recipient/env and independent

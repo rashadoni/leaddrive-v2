@@ -341,7 +341,7 @@ jobs:
         run: npm ci
 
       - name: Support UX read-only readiness diagnostic tests
-        run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs
+        run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs .github/scripts/test-inspect-backup-run-failure.mjs
 
       - name: Cache generated Prisma client
         # ~4 min saved per run with an unchanged schema. Saved here from main,

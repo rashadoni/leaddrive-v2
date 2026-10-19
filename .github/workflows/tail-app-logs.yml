@@ -21,12 +21,18 @@ on:
         options:
           - logs
           - backup-readiness
+          - backup-run-failure
           - backup-log-inventory
           - postgres-tls-metadata
           - postgres-san-scratch-audit
           - support-ux-rollout
           - support-ux-readiness
           - support-ux-observation
+      backup_run_id:
+        description: "Completed failed owner backup run ID; only for backup-run-failure"
+        required: false
+        default: ""
+        type: string
       support_tenant:
         description: "Optional exact tenant slug for Support rollout metadata; empty returns anonymous aggregate counts"
         required: false
@@ -111,12 +117,49 @@ jobs:
       - name: Verify Support readiness diagnostic before production access
         if: ${{ inputs.view == 'support-ux-readiness' }}
         run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs
+      - name: Admit one failed owner backup run before production access
+        if: ${{ inputs.view == 'backup-run-failure' }}
+        id: backup_failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BACKUP_RUN_ID: ${{ inputs.backup_run_id }}
+        run: |
+          set -euo pipefail
+          node --test .github/scripts/test-inspect-backup-run-failure.mjs
+          node .github/scripts/inspect-backup-run-failure.mjs --admit >> "$GITHUB_OUTPUT"
       - name: Setup pinned production SSH
         uses: ./.github/actions/setup-production-ssh
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
           server-host: ${{ secrets.SERVER_HOST }}
           known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Classify one failed backup without exporting raw journal content
+        if: ${{ inputs.view == 'backup-run-failure' }}
+        env:
+          BACKUP_RUN_ID: ${{ steps.backup_failure.outputs.runId }}
+          BACKUP_RUN_SHA: ${{ steps.backup_failure.outputs.runSha }}
+          BACKUP_SINCE: ${{ steps.backup_failure.outputs.since }}
+          BACKUP_UNTIL: ${{ steps.backup_failure.outputs.until }}
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          # Only validated IDs/SHA/UTC values enter the remote command. No
+          # arbitrary log selector, shell argument, path or credential input.
+          set +e
+          DIAGNOSTIC_OUTPUT="$(
+            ssh -T -o ConnectTimeout=15 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              "node --input-type=module - '$BACKUP_RUN_ID' '$BACKUP_RUN_SHA' '$BACKUP_SINCE' '$BACKUP_UNTIL' '$EXPECTED_MAIN_SHA'" \
+              < .github/scripts/inspect-backup-run-failure.mjs 2>/dev/null
+          )"
+          DIAGNOSTIC_STATUS=$?
+          set -e
+          [ "$DIAGNOSTIC_STATUS" -eq 0 ] || {
+            echo "::error::Bounded backup failure inspection did not complete"
+            exit 1
+          }
+          printf '%s' "$DIAGNOSTIC_OUTPUT" \
+            | node .github/scripts/inspect-backup-run-failure.mjs --validate-output
       - name: Inspect bounded Support logging readiness without selecting a tenant
         if: ${{ inputs.view == 'support-ux-readiness' }}
         run: |
