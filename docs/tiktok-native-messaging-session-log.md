@@ -31,3 +31,9 @@ Ready for a path-scoped checkpoint and draft PR. Mandatory GitHub checks will ru
 Created and attached PR https://github.com/rashadoni/leaddrive-v2/pull/917 after checkpoint 5929f447f. During final review, explicitly typed new Prisma transaction callbacks/JSON writes and reconciliation results. Added canonical-host checks for OAuth, safe status serialization tests, manual-only native dispatch and linked-contact retention. No settings or messages changed in provider/production accounts.
 
 Latest targeted verification: 98/98 tests passed in 14 files; targeted ESLint passed. PR will run the five required checks plus the existing production-build job on GitHub-hosted Linux. Build/CI results are pending; no merge/deploy has occurred. Next: resolve any CI regressions, then present the concrete owner release scope before merging under DELIVERY-ARCHITECTURE.md.
+
+## 2026-10-19 — full compiler diagnostics review
+
+On head 453e1e34f, the required typecheck gate passed, but inspection of its full advisory compiler log found six TS18047 diagnostics in the native send handler. The repository's historical baseline gate does not cover that family. Replaced the nullable post-claim reference with a typed, guarded local before dispatch. The nullable outer variable remains solely for failure persistence. PR returned to draft for this repair. Repeat targeted verification and CI on the corrected head; prior green gate alone is not a clean native typecheck. No merge, deployment or live messages.
+
+Repair verification: targeted ESLint and diff check passed; all 25 native-send/shared-reply regression tests passed. The earlier 98-test set remains the broader pre-repair baseline. Pushing the guarded-claim repair and rerunning CI; inspect the new full compiler diagnostics, not only the gate conclusion.

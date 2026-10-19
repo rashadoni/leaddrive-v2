@@ -14,6 +14,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const HASH = /^[a-f0-9]{64}$/
 const completed = new Set(["sent", "delivered", "read"])
 const fail = (error: string, statusCode: 400 | 409 | 500 = 409, unknown = false, attemptId?: string): SendConversationReplyResult => ({ success: false, statusCode, error, deliveryUnknown: unknown, ...(attemptId ? { attemptId } : {}) })
+type MessagingAttempt = { id: string; metadata: Record<string, string>; connectionId: string; businessId: string; recipient: string; channelConfigId: string }
 
 export function messagingDeliveryKey(value: SendConversationReplyOptions["deliveryIdempotency"]): string | null {
   if (!value) return null
@@ -31,7 +32,7 @@ export async function sendNativeMessagingReply(opts: SendConversationReplyOption
   if (!opts.body.trim() || opts.body.length > 6000) return fail("TikTok replies must contain 1–6000 characters.", 400)
   if (opts.chatwootAutoReplyClaim) return fail("This automation belongs to the legacy TikTok connection.", 400)
   const digest = createHash("sha256").update(JSON.stringify({ conversationId: opts.conversationId, body: opts.body })).digest("hex")
-  let attempt: { id: string; metadata: Record<string, string>; connectionId: string; businessId: string; recipient: string; channelConfigId: string } | null = null
+  let attempt: MessagingAttempt | null = null
   let networkStarted = false
   try {
     const claim = await turns.run(opts.organizationId, () => runWithTenant(opts.organizationId, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -83,10 +84,12 @@ export async function sendNativeMessagingReply(opts: SendConversationReplyOption
       return { attempt: { id: message.id, metadata, connectionId: connection.id, businessId: binding.businessId, recipient: binding.providerConversationId, channelConfigId: connection.channelConfigId } }
     })))
     if (claim.result) return claim.result
-    attempt = claim.attempt!
+    const claimedAttempt: MessagingAttempt | undefined = claim.attempt
+    if (!claimedAttempt) return fail("tiktok_delivery_claim_failed", 500)
+    attempt = claimedAttempt
     networkStarted = true
-    await dispatchMessagingText(opts.organizationId, attempt.connectionId, attempt.businessId, attempt.channelConfigId, attempt.recipient, opts.body, attempt.id)
-    return { success: true, statusCode: 201, data: { id: attempt.id, status: "sent" } }
+    await dispatchMessagingText(opts.organizationId, claimedAttempt.connectionId, claimedAttempt.businessId, claimedAttempt.channelConfigId, claimedAttempt.recipient, opts.body, claimedAttempt.id)
+    return { success: true, statusCode: 201, data: { id: claimedAttempt.id, status: "sent" } }
   } catch (error) {
     const unknown = error instanceof TikTokMessagingError ? error.deliveryUnknown : networkStarted
     const reason = error instanceof TikTokMessagingError ? error.reason : "tiktok_delivery_failed"
