@@ -104,3 +104,39 @@ issues=24 enterprise_gaps=9 operator_attestation_required=yes`.
 activation ceremony. Обязательный GitHub independent review в setup/stop conditions runbook также
 исправлен согласно актуальному `docs/DEPLOYMENT.md`: required reviewers сняты. Не возвращать GitHub reviewer gate в рамках A3;
 независимый recovery signer и решение Farah остаются отдельными требованиями.
+
+## Обновление A3 — 2026-10-19 12:25 Asia/Baku
+
+Ранний запрет на commissioning в этой задаче superseded последующим явным
+разрешением владельца и одобрением отдельного ограниченного
+[owner-operated режима](A3_OWNER_OPERATED_RECOVERY_PROPOSAL.md).
+Это подготовка разовой зашифрованной копии и технического scratch drill;
+независимый Farah/two-offline/enterprise gate не заменён. Владелец отдельно
+выбрал оставить доставку исходной сессии «Проверить защиту Kafka-консюмера»;
+её удержание main/runtime остаётся в силе.
+
+| Уровень доказательства | Фактическое состояние |
+|---|---|
+| Код backup/restore | Отдельный owner namespace, exact-main/signature/hash/version binding, source/scratch identity и полный data verifier; наличие кода не означает backup |
+| Проверка ключа | Mac random canary PASS, private identity не передавалась в production/Actions; fresh main-bound commissioning receipt ещё NOT RUN |
+| Scratch-инструменты | Mac ARM64 networkless PostgreSQL/pinned age/no-swap positive+negative PASS; FileVault latest On |
+| B2 передача тестовых байтов | Multipart writer/HEAD/byte-identical restore GET PASS, это синтетика |
+| Restore write ACL | Peer PR913 сообщает curl controls PASS на1e3ccaf70: PUT200/GET200 и restore PUT403/AccessDenied; AWS CLI255/connection_closed остаётся отдельным неуспехом |
+| Bucket retention | Peer UI сообщает Object Lock Enabled/default14Days; API COMPLIANCE и retention точных версий не подтверждены |
+| Production readiness | Последний shared report39214985498 наfbfae3961: machine_ready=no,25issues/9gaps; canonical encryption off, endpoint/units/workspace gaps |
+| Реальная зашифрованная копия | NOT RUN этой сессией |
+| Реальный isolated restore | NOT RUN; нет archive restore receipt, измеренного RPO/RTO или PITR proof |
+| Farah Rahimova | Согласие/полномочия/независимый signer/её решение не получены; не подменять owner proof |
+| Две offline media | Не выполнено; Mac/один USB/online administrative copy не переименованы в две независимые offline copies |
+
+Наff9cc4188 прошли type/runner/scan/scope,13 реальных synthetic owner tests,
+профильные maintenance tests, hosted PG password-file и tenant проверки.
+Static job39218257966 завершилась CANCELLED по подтверждённому лимиту30min;
+даже сообщение baseline о PASS не делает отменённый required check успешным.
+Подготовлен ограниченный бюджет45min без изменения тестов/условий baseline;
+полная проверка нового SHA ещё обязательна. Build A3 scope-SKIPPED/NOT RUN.
+
+Статус A3: **OPEN/NO-GO**. Следующий шаг исходного координатора: принять
+финальные source checks, снять согласованный hold, подтвердить private writer
+configuration/API COMPLIANCE, затем выполнить fresh owner proof, одну
+зашифрованную копию и реальный scratch restore. Kafka/offsets/replay не менять.

@@ -1051,3 +1051,36 @@
 - Current sourceff9 extra owner/pgpass/tenant/runner/scan PASS; required static/
   type still running. Real production candidate/restore/receipts, A3 main
   delivery and timer changes remain NOT RUN; no private keys/costs requested.
+
+## 2026-10-19 12:25 Asia/Baku — diagnose required-job timeout, bounded correction
+
+- Currentff9 scope/type/runner/scan and hosted owner/pgpass/tenant PASS. Required
+  static117947533542/run39218257966 CANCELLED at08:18:34UTC after starting
+ 07:48:31UTC. Exact GitHub check annotation: "The job has exceeded the maximum
+  execution time of 30m0s". No replacement run/new source existed; not random
+  concurrency cancellation. Last unit-baseline log says gate passed at08:18:31,
+  but required job remains CANCELLED; never report all-required PASS.
+- Diagnosed existing30min static budget plus cold setup/database gates leaving
+  about11min for final baseline. Prepare finite45min cap for this job only;
+  no assertion/test/baseline/required-context/runner/production policy changed.
+  No retry on Contabo or unbounded retry. All source gates must run anew.
+- Before narrow correction checks: available RAM17GiB,disk211GiB,pressure0,
+  swap2.1GiB used. Draft while making bounded change; ready only on completion.
+- Added current factual A3/readiness/backlog/B2 documentation, preserving old
+  dated statements and all journal history. Owner limited route authorization
+  supersedes original read-only-only task scope, but independent gates remain.
+- Consumed peer2082ac6e4: owner independently selected original delivery there
+  too. Object Lock Enabled/default14Days is UI evidence only, COMPLIANCE/API
+  still NOT RUN. A3 direct owner11:56 decision remains binding. Posted peer
+  routing confirmationPR913#6262545405; no more permission/routing request.
+- Verified real main protection: five contexts bound to GitHub Actions app15368,
+  strict=false, no bypass. Production environment custom branch policy exactly
+  main, no added agent-review/reviewer loop. Read-only metadata only.
+- Read-only integration preview A3ff9 + peer2082 producedbb08d6c0, conflict only
+  docs/B2_OFFSITE_BACKUP.md. Neither branch merged/mutated by preview.
+- Static producer review confirms systemd-run transient owner invocations enforce
+  MemorySwapMax=0/private state/sandbox and signed-key/Object Lock preflights;
+  no assumption that old inactive scheduled units are safe. No live invocation.
+- Next: narrow source checks, checkpoint/publish finished timeout/doc correction,
+  run all required exact-source hosted gates, report accepted evidence to
+  original coordinator. A3 main/runtime/real backup/restore/timers remain held.

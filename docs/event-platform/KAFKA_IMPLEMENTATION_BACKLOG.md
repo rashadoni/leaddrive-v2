@@ -1011,3 +1011,21 @@ cases; later A5 evidence collectors are held separately for concrete negative
 controls. These proofs do not commission a production worker, logical CDC,
 HA/TLS/ACL, independent recovery/Farah confirmation, real alerts/controller,
 Fund canary or27-domain adoption. A3/A4 and activation remain NO-GO.
+
+### A3 operational preparation — 2026-10-19 12:25 Asia/Baku
+
+A3 остаётся OPEN/NO-GO. Подготовлен отдельный owner-operated one-shot
+backup/restore route; он не выдаёт Farah/independent/enterprise acceptance и не
+включает schedules. Mac ARM64 PostgreSQL/age/no-swap tests PASS; latest FileVault
+On. PR913 peer receipt подтверждает authenticated curl writer PUT200,
+byte-identical restore GET200, restore PUT403/AccessDenied. Object Lock
+Enabled/default14Days подтверждён только peer UI; API COMPLIANCE/точные version
+retentions, production writer config, настоящий backup/restore и main-bound
+signed receipts NOT RUN.
+
+Наff9 source type/scope/runner/scan и профильные hosted checks PASS. Последняя
+required static job39218257966 отменена по30min cap; это не полный green.
+Подготовлен finite45min budget, все blocking assertions сохранены, новый
+exact-source CI обязателен. Delivery остаётся у исходной Kafka-сессии по
+повторному решению владельца11:56; её hold не снят. Сводка evidence:
+[A3_RECOVERY_READINESS.md](A3_RECOVERY_READINESS.md), append-only журнал A3.
