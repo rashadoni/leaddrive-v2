@@ -921,3 +921,49 @@
   admission and any real producer/restore. Next: coordinated slot/config/Lock
   admission, then fresh reviewed-main owner proof, encrypted candidate and
   isolated actual restore with measured result; no new generic permission.
+
+## 2026-10-19 — owner FileVault/B2 live evidence and bounded failure diagnosis
+
+- New owner Terminal screenshot supersedes prior FileVault OFF observation:
+  latest fdesetup status reports FileVault ON. Owner changed host setting;
+  this agent did not enable FileVault or request its recovery key.
+- Owner ran exact main2a410941d repaired b2-verify-backup-keys.sh with local
+  writer/restore.env. Actual output: multipart upload PASS, HEAD metadata/size/
+  version PASS, restore download byte-identical PASS; writer delete/list and
+  restore delete explicitly AccessDenied PASS; restore upload unknown FAIL;
+  result1 failure. ObjectLockConfigurationNotFoundError establishes bucket
+  Object Lock not configured at that observation. No successful ACL/Lock/
+  production archive/restore acceptance is inferred.
+- Resumed context: same dedicated branch/worktree, GitHub rashadoni, production
+  registered13.140.132.245 and Actions-only. Before small sequential checks:
+  RAM available13GiB,disk193GiB free,pressure0,swap3.3GiB used. No heavy checks.
+  Fresh mainb7253fbba adds only personnel demo files, no A3/B2 overlap.
+- Existing Bash error_code accepts letters-only parenthesized codes. Numeric403
+  or checksum codes with digits would be hidden as unknown; neither is proven
+  to be the actual cause. No relax-to-green fix or permission inference made.
+- Prepared scoped Mac-only b2-restore-write-probe.py and6 meaningful safety
+  tests. Reads only owned0600/0400 no-symlink/no-hardlink restore.env, static
+  B2 target/bucket, isolated child environment. Exactly2 new UUID synthetic
+  PutObjects of32bytes compare when_supported/when_required. No S3 deletion,
+  writer credential, bucket/config/retention change, production archive or
+  receipt. Unexpected allowed writes remain failures and are not deleted.
+  Each child group45s maximum/private stderr16KiB actual OS file-size cap.
+  Output is fixed allowlisted category; only exact PutObject AccessDenied with
+  exit254 proves that response. Numeric403/unknown/checksum/network stay failed.
+- PASS:6 tests including actual fake-CLI execution, secret/stdout suppression,
+  credential file authority/literal endpoint, real child output cap and real
+  process-group timeout; assets; runner74workflows; task diff-check.
+  Added tests to existing required static step and narrow owner technical CI.
+  One initial oversized-output fixture exited0 after a short write and correctly
+  classified unexpected_write_allowed; fixed fixture to exit254 for its intended
+  failed-CLI limit case, then full6/6 PASS. No weakened runtime classifier.
+- PR892 returned to draft while diagnosing the real inconclusive live result.
+  Oldb80 five-green remains historical code acceptance. Current narrow probe is
+  NOT RUN on real Mac/keys; full current-source hosted gates will run after this
+  bounded iteration. No A3 main/production delivery under coordinator hold.
+- Public copy /tmp/leaddrive-b2-restore-write-probe.py SHA256
+  95917ead5a87494715cc30445ce94406c36bc13fef8a71d7bdf2a4c9cfc83ef0;
+  public launcher /tmp/leaddrive-b2-restore-probe-launch.sh verifies this hash.
+  Launcher syntax PASS; not executed on Contabo. Owner Mac is the only existing
+  credential route; no key contents asked for. Next: receive its fixed-category
+  result, diagnose rather than treat unknown as ACL, complete source checks.
