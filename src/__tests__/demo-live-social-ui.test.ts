@@ -6,7 +6,8 @@
  * between several Pages by name, the connected Page with its code, the
  * Messenger link and «Ayır», the conversation of the one proven sender — and
  * after «Ayır», «ayrılır…» / «ayrıldı» with Meta's own place to remove
- * LeadDrive. Then the real Facebook row on top of the demo inbox.
+ * LeadDrive. Then the real Facebook row on top of the demo inbox. A poll
+ * that was on its way when a button was pressed never puts the panel back.
  */
 import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
@@ -24,6 +25,9 @@ let state: Record<string, unknown>
 let postAnswer: Record<string, unknown> | null
 const posts: unknown[] = []
 let opened: { location: { replace: ReturnType<typeof vi.fn> }; opener: unknown; close: ReturnType<typeof vi.fn> } | null
+/** While set, a GET answers only when released — with the state it read when it was asked. */
+let holdPolls = false
+let heldPolls: Array<() => void> = []
 
 const OFFER = {
   success: true,
@@ -55,6 +59,8 @@ beforeEach(() => {
   vi.useFakeTimers()
   posts.length = 0
   postAnswer = null
+  holdPolls = false
+  heldPolls = []
   state = { ...OFFER }
   opened = { location: { replace: vi.fn() }, opener: {}, close: vi.fn() }
   vi.stubGlobal("open", vi.fn(() => opened))
@@ -68,7 +74,9 @@ beforeEach(() => {
       if (body.action === "disconnect") state = { ...OFFER, phase: "releasing" }
       return new Response(JSON.stringify({ ...state, ...(body.action === "start" ? { url: DIALOG } : {}) }))
     }
-    return new Response(JSON.stringify(state))
+    const read = JSON.stringify(state)
+    if (holdPolls) return await new Promise<Response>((resolve) => { heldPolls.push(() => resolve(new Response(read))) })
+    return new Response(read)
   }))
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -166,6 +174,17 @@ it("says a Page could not be connected and offers the connect again", async () =
   expect(byTest("demo-social-connect")!.textContent).toContain(S.socialReconnect)
 })
 
+it("says only what is true of every way an attempt lands on «refused»: a cancelled dialog, a Meta answer that never came, a Page LeadDrive already serves", () => {
+  // It did not connect, and trying again is the way on — true of all three.
+  expect(S.socialRefused).toMatch(/^Səhifə qoşulmadı\. Yenidən qoşun/)
+  // The dialog: choose the Page and allow it.
+  expect(S.socialRefused).toContain("səhifəni seçib icazə verdiyinizə əmin olun")
+  // A Page LeadDrive already serves: then another one.
+  expect(S.socialRefused).toContain("artıq LeadDrive-a qoşulubsa, başqa səhifə seçin")
+  // Never that this Page cannot be connected: after a Meta timeout the same Page works on the next try.
+  expect(S.socialRefused).not.toContain("qoşmaq olmur")
+})
+
 it("once connected: the Page, the end of the day, the code, a Messenger link of ours and «Ayır»", async () => {
   state = { ...CONNECTED }
   await render()
@@ -209,6 +228,63 @@ it("«Ayır» asks for the release, then says it is being released and where in 
   expect(byTest("demo-social-released")!.textContent).toContain(S.socialReleased)
   expect(byTest<HTMLAnchorElement>("demo-social-business-integrations")!.href).toBe(META_BUSINESS_INTEGRATIONS_URL)
   expect(byTest("demo-social-connect")).not.toBeNull()
+})
+
+it("a poll that was on its way when «Ayır» was pressed does not bring «connected» back, and polling goes on", async () => {
+  state = { ...CONNECTED }
+  await render()
+  // The next poll sets out and reads the connected row…
+  holdPolls = true
+  await act(async () => { await vi.advanceTimersByTimeAsync(5_000) })
+  expect(heldPolls).toHaveLength(1)
+  // …«Ayır» is pressed and answered while it is still on its way…
+  await press(byTest("demo-social-disconnect"))
+  expect(panel()!.dataset.phase).toBe("releasing")
+  // …and its stale answer lands last.
+  holdPolls = false
+  await act(async () => { heldPolls.splice(0).forEach((answer) => answer()) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(10) })
+  expect(panel()!.dataset.phase).toBe("releasing")
+  expect(byTest("demo-social-disconnect")).toBeNull()
+
+  const asked = vi.mocked(fetch).mock.calls.length
+  state = { ...OFFER, released: true }
+  await act(async () => { await vi.advanceTimersByTimeAsync(5_100) })
+  expect(vi.mocked(fetch).mock.calls.length).toBeGreaterThan(asked)
+  expect(byTest("demo-social-released")).not.toBeNull()
+})
+
+it("a poll that was on its way when the connect was pressed does not take away the dialog link the browser would not open", async () => {
+  opened = null
+  await render()
+  await press(byTest("demo-social-consent"))
+  holdPolls = true
+  await act(async () => { await vi.advanceTimersByTimeAsync(5_000) })
+  expect(heldPolls).toHaveLength(1)
+  await press(byTest("demo-social-connect"))
+  expect(byTest<HTMLAnchorElement>("demo-social-open-facebook")!.href).toBe(DIALOG)
+
+  // The stale «offer» lands after the start's «waiting».
+  holdPolls = false
+  await act(async () => { heldPolls.splice(0).forEach((answer) => answer()) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(10) })
+  expect(panel()!.dataset.phase).toBe("waiting")
+  expect(byTest<HTMLAnchorElement>("demo-social-open-facebook")!.href).toBe(DIALOG)
+  // The next poll reads «waiting» and keeps it.
+  await act(async () => { await vi.advanceTimersByTimeAsync(5_100) })
+  expect(byTest<HTMLAnchorElement>("demo-social-open-facebook")!.href).toBe(DIALOG)
+})
+
+it("a button's error goes once a poll shows the phase has moved on", async () => {
+  state = { ...CONNECTED }
+  await render()
+  postAnswer = { success: false, error: "Qoşulmuş səhifə yoxdur." }
+  await press(byTest("demo-social-disconnect"))
+  expect(panel()!.textContent).toContain("Qoşulmuş səhifə yoxdur.")
+  state = { ...OFFER, phase: "releasing" }
+  await act(async () => { await vi.advanceTimersByTimeAsync(5_100) })
+  expect(panel()!.dataset.phase).toBe("releasing")
+  expect(panel()!.textContent).not.toContain("Qoşulmuş səhifə yoxdur.")
 })
 
 it("a connect Meta did not confirm says so while it is undone", async () => {

@@ -207,7 +207,10 @@ export const DEMO_JOURNEY_STRINGS = {
   socialRestart: "Yenidən başlayın",
   socialChoose: "Facebook bir neçə səhifəyə icazə verdi. Hansını qoşaq? Yalnız biri qoşulur.",
   socialChoosePage: (name: string) => `«${name}» səhifəsini qoşun`,
-  socialRefused: "Bu səhifəni demoya qoşmaq olmur — başqa səhifə seçin. Belə olur, əgər səhifə artıq LeadDrive-a qoşulubsa və ya Facebook-da səhifə seçilməyib, icazə verilməyibsə.",
+  // Every way an attempt ends without a Page lands here — a cancelled dialog, a
+  // Meta answer that never came, a Page LeadDrive already serves — so it names
+  // each and promises nothing about the Page itself.
+  socialRefused: "Səhifə qoşulmadı. Yenidən qoşun: Facebook-da səhifəni seçib icazə verdiyinizə əmin olun; səhifə artıq LeadDrive-a qoşulubsa, başqa səhifə seçin.",
   socialConnected: (page: string, until: string) => `«${page}» qoşuldu — ən gec saat ${until}-dək (Bakı vaxtı).`,
   socialCode: (code: string) => `Şəxsi Facebook hesabınızdan və ya həmkarınızın hesabından səhifənizə Messenger-də yazın və mesaja bu kodu əlavə edin: ${code}`,
   socialWriteMessenger: "Messenger-də yazın",

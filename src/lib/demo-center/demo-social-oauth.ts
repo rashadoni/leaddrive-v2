@@ -6,6 +6,7 @@ import { decryptToken, encryptToken, hmacToken } from "@/lib/secure-token"
 import { grantedPageIds } from "@/lib/social/meta-granted-assets"
 import { claimedMetaPageIds } from "@/lib/social/meta-page-claims"
 import { subscribePageToMessages } from "@/lib/social/meta-subscribe"
+import { unsubscribePageFromApp } from "@/lib/social/meta-unbind"
 import { getPinnedMetaApp, type PinnedMetaApp } from "@/lib/social/tenant-meta-app"
 import { DEMO_SOCIAL_CONSENT_VERSION } from "./demo-social-consent"
 import {
@@ -14,6 +15,7 @@ import {
   demoSocialTokenPurpose,
   type DemoSocialReleaseReason,
 } from "./demo-social-connection"
+import { DEMO_SOCIAL_RELEASE_LEASE_MS } from "./demo-social-release"
 import { demoWhatsAppThreadEnds } from "./demo-whatsapp-welcome"
 import { inDemoSalesOrganization } from "./sales-org"
 import { isSessionExpired, type DemoGrantTimeState } from "./session"
@@ -45,6 +47,8 @@ import { isSessionExpired, type DemoGrantTimeState } from "./session"
  *
  * Record before acting at Meta: the user token is stored (encrypted) right
  * after the code exchange, and the Page token before the Page is subscribed.
+ * While the subscribe is on its way the bind holds the release's lease, so
+ * the release's unsubscribe can only come after it.
  * Only ever one Page per connection; a Page some organisation relies on — by
  * its own id or its linked Instagram account's — is refused, as is a Page
  * another live demo holds.
@@ -279,9 +283,20 @@ export async function startDemoSocialConnect(grant: DemoSocialGrant, now: Date =
         if (existing.connectedAt) return { code: "already_connected" as const }
         // A Page is being bound right now, or its binding failed: the release undoes it first.
         if (existing.pageId) return { code: "in_progress" as const }
+        // A new attempt on the same row: its thirty minutes and its day start
+        // now, and nothing of the attempt before it is kept — no Page list, no
+        // user token, no Meta user.
         await tx.demoSocialConnection.update({
           where: { id: existing.id },
-          data: { oauthStateHash: stateHash, pendingPages: Prisma.DbNull, appConfigId: target.app.configId },
+          data: {
+            oauthStateHash: stateHash,
+            pendingPages: Prisma.DbNull,
+            appConfigId: target.app.configId,
+            userTokenCipher: null,
+            metaUserId: null,
+            createdAt: now,
+            expiresAt: demoWhatsAppThreadEnds(now),
+          },
         })
         return { id: existing.id }
       }
@@ -464,19 +479,37 @@ type BindResult = "connected" | "refused" | "failed"
  * The Page token is stored before the subscription is asked for, so a crash
  * between the two leaves a row the release can undo. A subscription Meta did
  * not confirm asks for the release at once: we may be subscribed after all.
+ *
+ * The same write takes the release's lease (DEMO_SOCIAL_RELEASE_LEASE_MS, far
+ * longer than the subscribe's ten seconds), and every way out gives it back:
+ * a release that comes due while the subscribe is on its way finds the lease
+ * taken and tries again on its next run, so its unsubscribe always comes
+ * after our subscribe. Should the connection end anyway before the bind
+ * finishes — a lease that ran out — the bind unsubscribes the Page itself,
+ * with the token it still holds, unless someone else relies on that Page.
  */
 async function bindPage(row: { id: string; grantId: string | null }, page: MetaPage, now: Date): Promise<BindResult> {
+  const leasedAt = new Date()
+  const lease = new Date(leasedAt.getTime() + DEMO_SOCIAL_RELEASE_LEASE_MS)
   let recorded: number
   try {
     const updated = await runWithRlsBypass(() =>
       prisma.demoSocialConnection.updateMany({
-        where: { id: row.id, scrubbedAt: null, releaseRequestedAt: null, connectedAt: null, pageId: null },
+        where: {
+          id: row.id,
+          scrubbedAt: null,
+          releaseRequestedAt: null,
+          connectedAt: null,
+          pageId: null,
+          OR: [{ releaseLeaseUntil: null }, { releaseLeaseUntil: { lte: leasedAt } }],
+        },
         data: {
           pageId: page.id,
           pageName: page.name,
           linkedInstagramId: page.instagramId,
           pageTokenCipher: encryptToken(page.token, demoSocialTokenPurpose(row.id, "page")),
           pendingPages: Prisma.DbNull,
+          releaseLeaseUntil: lease,
         },
       }),
     )
@@ -491,27 +524,65 @@ async function bindPage(row: { id: string; grantId: string | null }, page: MetaP
   }
   if (!recorded) return "failed"
 
-  const subscribed = await subscribePageToMessages(page.id, page.token, { fields: "messages" })
-  if (!subscribed.success) {
-    await requestDemoSocialRelease({ connectionId: row.id }, "connect_abandoned", now)
-    return "failed"
-  }
-  const connected = await runWithRlsBypass(() =>
-    prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const done = await tx.demoSocialConnection.updateMany({
-        where: { id: row.id, scrubbedAt: null, releaseRequestedAt: null, connectedAt: null, pageId: page.id },
-        data: { subscribedAt: now, connectedAt: now },
-      })
-      if (!done.count) return false
-      if (row.grantId) {
-        await tx.demoAccessEvent.create({
-          data: { grantId: row.grantId, eventType: "SOCIAL_CONNECTED", metadata: { platform: "facebook", consentVersion: DEMO_SOCIAL_CONSENT_VERSION } },
+  // Our lease back, and only ours: a release that took over a lease which ran out keeps its own.
+  const giveLeaseBack = () =>
+    runWithRlsBypass(() =>
+      prisma.demoSocialConnection.updateMany({ where: { id: row.id, releaseLeaseUntil: lease }, data: { releaseLeaseUntil: null } }),
+    )
+
+  let connected = false
+  try {
+    const subscribed = await subscribePageToMessages(page.id, page.token, { fields: "messages" })
+    if (!subscribed.success) {
+      await requestDemoSocialRelease({ connectionId: row.id }, "connect_abandoned", now)
+      return "failed"
+    }
+    connected = await runWithRlsBypass(() =>
+      prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const done = await tx.demoSocialConnection.updateMany({
+          where: { id: row.id, scrubbedAt: null, releaseRequestedAt: null, connectedAt: null, pageId: page.id },
+          data: { subscribedAt: now, connectedAt: now, releaseLeaseUntil: null },
         })
-      }
-      return true
+        if (!done.count) return false
+        if (row.grantId) {
+          await tx.demoAccessEvent.create({
+            data: { grantId: row.grantId, eventType: "SOCIAL_CONNECTED", metadata: { platform: "facebook", consentVersion: DEMO_SOCIAL_CONSENT_VERSION } },
+          })
+        }
+        return true
+      }),
+    )
+    if (!connected) await unsubscribeOrphan(row.id, page)
+    return connected ? "connected" : "failed"
+  } finally {
+    if (!connected) await giveLeaseBack().catch(() => {})
+  }
+}
+
+/**
+ * Meta confirmed our subscribe, but the connection ended while it was on its
+ * way. If the release has already wiped the row, nothing left in the database
+ * could undo that subscription — so it is undone here, at once, with the Page
+ * token still in hand, after Meta's answer to the subscribe and so after it.
+ * Unless an organisation relies on the Page (or its Instagram account), or
+ * another live demo holds it: then the subscription is theirs too.
+ * A row that is not wiped yet is unsubscribed by the release as well; asking
+ * Meta twice is harmless.
+ */
+async function unsubscribeOrphan(connectionId: string, page: MetaPage): Promise<void> {
+  const ids = page.instagramId ? [page.id, page.instagramId] : [page.id]
+  if ((await claimedMetaPageIds(ids)).length > 0) return
+  const heldByAnotherDemo = await runWithRlsBypass(() =>
+    prisma.demoSocialConnection.count({
+      where: { platform: "facebook", scrubbedAt: null, pageId: page.id, id: { not: connectionId } },
     }),
   )
-  return connected ? "connected" : "failed"
+  if (heldByAnotherDemo) return
+  const outcome = await unsubscribePageFromApp(page.id, page.token)
+  if (outcome.verdict !== "removed" && outcome.verdict !== "gone") {
+    // A code of ours only, never Meta's text or an id.
+    console.warn(`[demo-social-oauth] a Page subscribed after its connection ended was not unsubscribed: ${outcome.code ?? outcome.verdict}`)
+  }
 }
 
 // --- The way back from Meta ------------------------------------------------

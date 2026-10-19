@@ -8,9 +8,9 @@ import { demoSocialReleaseReason, demoSocialTokenPurpose } from "./demo-social-c
 import { demoSocialConfiguredId } from "./demo-social-oauth"
 import {
   carriesDemoCode,
+  demoAgentGenerator,
   demoAgentHistory,
   demoAgentSystemPrompt,
-  generateWithClaude,
   type DemoAgentGenerate,
 } from "./demo-whatsapp-agent"
 import { demoSalesOrganizationId } from "./sales-org"
@@ -38,15 +38,32 @@ import { demoSalesOrganizationId } from "./sales-org"
  *     one sender per connection, for good;
  *   - the proven sender's text is stored once per Meta message id, and the
  *     demo's agent answers it: as LeadDrive's demo agent, never as the
- *     prospect's business, at most DEMO_SOCIAL_MAX_AI_REPLIES times and three
- *     seconds apart, only while `demoSocialReleaseReason` says the connection
- *     is live — asked again just before sending.
+ *     prospect's business, at most DEMO_SOCIAL_MAX_AI_REPLIES times, one at a
+ *     time and three seconds after the last one was sent, only while
+ *     `demoSocialReleaseReason` says the connection is live — asked again just
+ *     before sending.
  * Echoes, attachments, postbacks and standby events are not handled at all.
+ *
+ * Every message row — the prospect's and the agent's — is written in one
+ * transaction with a lock on its connection row, and only while that row is
+ * unscrubbed. The release's wipe needs the same row's lock: it either waits
+ * for the write and then deletes the message with the rest, or has wiped the
+ * row already and the message is never written. The release also sweeps, on
+ * every run, any message of a wiped connection.
  */
 
 export const DEMO_SOCIAL_MAX_AI_REPLIES = 10
 /** Two messages a second apart get one answer, not two. */
 const MIN_GAP_MS = 3_000
+/**
+ * While an answer is being written and sent, its slot is held: the claim marks
+ * `lastAiReplyAt` this far ahead, so no second answer starts before the first
+ * is out (or given back), and none starts sooner than MIN_GAP_MS after it.
+ * Longer than the model's bound plus the send's ten seconds.
+ */
+const IN_FLIGHT_MS = 30_000
+/** The model's own bound for one answer here: one try, fifteen seconds. */
+const GENERATE_BOUNDS = { timeout: 15_000, maxRetries: 0 } as const
 const HISTORY_MESSAGES = 12
 const MAX_EVENTS_PER_ENTRY = 50
 const META_ID = /^[0-9]{1,32}$/
@@ -62,6 +79,8 @@ type Send = (recipientId: string, text: string, pageToken: string) => Promise<bo
 
 /** The product's own Messenger send, with the Page token as a Bearer header and ten seconds at most. */
 const sendWithPageToken: Send = (recipientId, text, pageToken) => sendFacebookMessage(recipientId, text, pageToken, "", { timeoutMs: 10_000 })
+
+const generateBounded: DemoAgentGenerate = demoAgentGenerator(GENERATE_BOUNDS)
 
 export interface DemoSocialInboundDeps {
   generate?: DemoAgentGenerate
@@ -99,6 +118,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value)
 }
 
+/**
+ * The prospect's message, stored in one transaction with a share lock on its
+ * connection row, and only while the row is unscrubbed; null when it was
+ * wiped. The wipe's UPDATE waits for this lock, and its DELETE of the messages
+ * is a later statement, so it sees what was stored here — and a message that
+ * comes after the wipe finds the row scrubbed and is not stored at all.
+ */
+async function storeInboundWhileLive(connectionId: string, data: Prisma.DemoSocialMessageUncheckedCreateInput): Promise<{ id: string } | null> {
+  return runWithRlsBypass(() =>
+    prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const live = await tx.$queryRaw<Array<{ one: number }>>`SELECT 1 AS one FROM "demo_social_connections" WHERE "id" = ${connectionId} AND "scrubbedAt" IS NULL FOR SHARE`
+      if (!live.length) return null
+      return await tx.demoSocialMessage.create({ data, select: { id: true } })
+    }),
+  )
+}
+
 /** A live, connected demo connection for this Page, or null. */
 async function liveConnection(pageId: string, now: Date): Promise<InboundRow | null> {
   const row = await runWithRlsBypass(() =>
@@ -128,11 +164,14 @@ export async function handleDemoSocialEntry(
     const events = Array.isArray(input.entry.messaging) ? input.entry.messaging.slice(0, MAX_EVENTS_PER_ENTRY) : []
     if (!pageId || !events.length) return 0
     const now = deps.now ?? new Date()
+    // The entry's clock: `now`, moved on by the time that has passed since.
+    const started = Date.now()
+    const clock = () => new Date(now.getTime() + (Date.now() - started))
     const row = await liveConnection(pageId, now)
     if (!row) return 0
     let taken = 0
     for (const event of events) {
-      if (await handleEvent(row, event, now, deps)) taken += 1
+      if (await handleEvent(row, event, now, clock, deps)) taken += 1
     }
     return taken
   } catch (error) {
@@ -142,7 +181,9 @@ export async function handleDemoSocialEntry(
   }
 }
 
-async function handleEvent(row: InboundRow, event: unknown, now: Date, deps: DemoSocialInboundDeps): Promise<boolean> {
+type Clock = () => Date
+
+async function handleEvent(row: InboundRow, event: unknown, now: Date, clock: Clock, deps: DemoSocialInboundDeps): Promise<boolean> {
   if (!isRecord(event) || !isRecord(event.sender)) return false
   const senderId = typeof event.sender.id === "string" && META_ID.test(event.sender.id) ? event.sender.id : null
   if (!senderId || senderId === row.pageId) return false
@@ -182,23 +223,23 @@ async function handleEvent(row: InboundRow, event: unknown, now: Date, deps: Dem
     }
   }
 
-  // Stored once per Meta message id: a redelivery is neither stored nor answered again.
-  const stored = await runWithRlsBypass(() =>
-    prisma.demoSocialMessage.create({
-      data: { connectionId: row.id, direction: "inbound", text: text.slice(0, 1_000), externalId: mid, createdAt: now },
-      select: { id: true },
-    }),
-  ).catch((error: unknown) => {
+  // Stored once per Meta message id: a redelivery is neither stored nor answered
+  // again. Nothing is stored for a connection wiped meanwhile.
+  const stored = await storeInboundWhileLive(row.id, {
+    connectionId: row.id, direction: "inbound", text: text.slice(0, 1_000), externalId: mid, createdAt: now,
+  }).catch((error: unknown) => {
     if (isRecord(error) && error.code === "P2002") return null
     throw error
   })
   if (!stored) return false
-  await answer(row, senderId, text, now, deps)
+  await answer(row, senderId, text, now, clock, deps)
   return true
 }
 
-async function answer(row: InboundRow, senderId: string, text: string, now: Date, deps: DemoSocialInboundDeps): Promise<boolean> {
-  // One answer per message, never more than the allowance, never two at once.
+async function answer(row: InboundRow, senderId: string, text: string, now: Date, clock: Clock, deps: DemoSocialInboundDeps): Promise<boolean> {
+  // One answer per message, never more than the allowance, never two at once:
+  // the slot is held (`mark`, ahead of now) until this answer is sent or given back.
+  const mark = new Date(now.getTime() + IN_FLIGHT_MS)
   const claimed = await runWithRlsBypass(() =>
     prisma.demoSocialConnection.updateMany({
       where: {
@@ -209,16 +250,16 @@ async function answer(row: InboundRow, senderId: string, text: string, now: Date
         aiReplies: { lt: DEMO_SOCIAL_MAX_AI_REPLIES },
         OR: [{ lastAiReplyAt: null }, { lastAiReplyAt: { lte: new Date(now.getTime() - MIN_GAP_MS) } }],
       },
-      data: { aiReplies: { increment: 1 }, lastAiReplyAt: now },
+      data: { aiReplies: { increment: 1 }, lastAiReplyAt: mark },
     }),
   )
   if (!claimed.count) return false
-  // A claim that delivered nothing gives its answer back (the gap stays).
+  // A claim that delivered nothing gives its answer back; the gap counts from the claim.
   const giveBack = () =>
     runWithRlsBypass(() =>
       prisma.demoSocialConnection.updateMany({
-        where: { id: row.id, lastAiReplyAt: now, aiReplies: { gt: 0 } },
-        data: { aiReplies: { decrement: 1 } },
+        where: { id: row.id, lastAiReplyAt: mark, aiReplies: { gt: 0 } },
+        data: { aiReplies: { decrement: 1 }, lastAiReplyAt: now },
       }),
     ).catch(() => {})
 
@@ -235,7 +276,7 @@ async function answer(row: InboundRow, senderId: string, text: string, now: Date
       rows.reverse().map((message: { direction: string; text: string }) => ({ role: message.direction === "inbound" ? ("user" as const) : ("assistant" as const), content: message.text })),
       text,
     )
-    const generated = await (deps.generate ?? generateWithClaude)({ system: demoAgentSystemPrompt(DEMO_MESSENGER_FRAME), history })
+    const generated = await (deps.generate ?? generateBounded)({ system: demoAgentSystemPrompt(DEMO_MESSENGER_FRAME), history })
     const fromProspect = detectOmnichannelReplyLocale(text)
     const locale = fromProspect === "en" ? detectOmnichannelReplyLocale(generated.text) : fromProspect
     const guarded = guardOmnichannelCommitments(generated.text.trim(), { locale, customerText: text }).text.trim()
@@ -245,7 +286,7 @@ async function answer(row: InboundRow, senderId: string, text: string, now: Date
     }
 
     // Still live, still this sender — asked again: «Ayır» may have been pressed meanwhile.
-    const fresh = await liveConnection(row.pageId ?? "", deps.now ?? new Date())
+    const fresh = await liveConnection(row.pageId ?? "", clock())
     if (!fresh || fresh.id !== row.id || fresh.provenSenderId !== senderId || !fresh.pageTokenCipher) {
       await giveBack()
       return false
@@ -265,23 +306,36 @@ async function answer(row: InboundRow, senderId: string, text: string, now: Date
       await giveBack()
       return false
     }
-    // Sent: counted on the connection itself, never in the tenant's AI log.
-    await runWithRlsBypass(async () => {
-      await prisma.demoSocialMessage.create({
-        // Just after the message it answers, on the same clock.
-        data: { connectionId: row.id, direction: "outbound", text: guarded.slice(0, 1_000), createdAt: deps.now ? new Date(now.getTime() + 1) : new Date() },
-      })
-      await prisma.demoSocialConnection.updateMany({
-        where: { id: row.id, scrubbedAt: null },
-        data: {
-          aiInputTokens: { increment: Math.max(0, Math.floor(generated.inputTokens)) },
-          aiOutputTokens: { increment: Math.max(0, Math.floor(generated.outputTokens)) },
-        },
-      })
-      if (row.grantId) {
-        await prisma.demoAccessEvent.create({ data: { grantId: row.grantId, eventType: "SOCIAL_AI_REPLIED", metadata: { platform: "facebook" } } })
-      }
-    }).catch((error: unknown) => {
+    // Sent: the slot is free again, and the gap to the next answer counts from now.
+    const sentAt = clock()
+    await runWithRlsBypass(() =>
+      prisma.demoSocialConnection.updateMany({ where: { id: row.id, lastAiReplyAt: mark }, data: { lastAiReplyAt: sentAt } }),
+    ).catch(() => {})
+    // Counted on the connection itself, never in the tenant's AI log — and
+    // recorded only while the row is unscrubbed. The count is the row's lock
+    // and its liveness check in one statement: a wipe that won the race leaves
+    // nothing to count, so nothing is recorded; one that comes later waits,
+    // then deletes this reply with the rest.
+    const grantId = row.grantId
+    await runWithRlsBypass(() =>
+      prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const live = await tx.demoSocialConnection.updateMany({
+          where: { id: row.id, scrubbedAt: null },
+          data: {
+            aiInputTokens: { increment: Math.max(0, Math.floor(generated.inputTokens)) },
+            aiOutputTokens: { increment: Math.max(0, Math.floor(generated.outputTokens)) },
+          },
+        })
+        if (!live.count) return
+        await tx.demoSocialMessage.create({
+          // Just after the message it answers, on the same clock.
+          data: { connectionId: row.id, direction: "outbound", text: guarded.slice(0, 1_000), createdAt: new Date(Math.max(sentAt.getTime(), now.getTime() + 1)) },
+        })
+        if (grantId) {
+          await tx.demoAccessEvent.create({ data: { grantId, eventType: "SOCIAL_AI_REPLIED", metadata: { platform: "facebook" } } })
+        }
+      }),
+    ).catch((error: unknown) => {
       console.warn(`[demo-social-inbound] an answer was sent and not recorded: ${error instanceof Error ? error.name : "error"}`)
     })
     return true

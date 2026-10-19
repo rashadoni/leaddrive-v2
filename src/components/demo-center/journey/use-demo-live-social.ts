@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { DemoSocialInboxView, DemoSocialState } from "@/lib/demo-center/demo-social"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 
@@ -11,7 +11,11 @@ import { DEMO_JOURNEY_STRINGS as S } from "./strings"
  * only from the server module — its code stays on the server.
  *
  * Polls while `active` (a chapter that shows the Page); a session without the
- * feature says so once and the loop stops.
+ * feature says so once and the loop stops. A button's answer is newer than
+ * any poll that was on its way when the button was pressed: such a poll's
+ * answer is dropped (the loop goes on), so it cannot put back the state the
+ * button just left — «connected» after «Ayır», or the offer over a dialog
+ * link the browser would not open.
  */
 
 /** The chapters of the prospect's own conversation: the same as the live WhatsApp thread's. */
@@ -42,6 +46,10 @@ export function useDemoLiveSocial(token: string, active: boolean): DemoLiveSocia
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [openUrl, setOpenUrl] = useState<string | null>(null)
+  /** Moved on by every button press, before it asks and again once it has its answer. */
+  const sequence = useRef(0)
+  /** The phase on screen: a button's error is cleared once a poll shows the phase has moved on. */
+  const shownPhase = useRef<string | null>(null)
   const base = `/api/v1/public/demo-access/${encodeURIComponent(token)}/social`
 
   useEffect(() => {
@@ -49,13 +57,22 @@ export function useDemoLiveSocial(token: string, active: boolean): DemoLiveSocia
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
     const tick = async () => {
+      const asked = sequence.current
       const response = await fetch(base, { cache: "no-store", credentials: "same-origin" }).catch(() => null)
       const payload = (await response?.json().catch(() => null)) as Answer
       if (cancelled) return
+      // A button was pressed while this was on its way: its answer is the newer one.
+      if (asked !== sequence.current) {
+        timer = setTimeout(tick, POLL_MS)
+        return
+      }
       if (payload?.success) {
         setState(payload)
         // The dialog's link is history once Meta has answered.
         if (payload.phase !== "waiting") setOpenUrl(null)
+        // A button's complaint was about the phase it was pressed in.
+        if (shownPhase.current !== null && payload.phase !== shownPhase.current) setError(null)
+        shownPhase.current = payload.phase
       }
       if (payload?.success && !payload.enabled) return
       timer = setTimeout(tick, POLL_MS)
@@ -70,6 +87,7 @@ export function useDemoLiveSocial(token: string, active: boolean): DemoLiveSocia
   const post = useCallback(async (body: Record<string, unknown>): Promise<Answer> => {
     setBusy(true)
     setError(null)
+    sequence.current += 1
     const response = await fetch(base, {
       method: "POST",
       credentials: "same-origin",
@@ -77,12 +95,15 @@ export function useDemoLiveSocial(token: string, active: boolean): DemoLiveSocia
       body: JSON.stringify(body),
     }).catch(() => null)
     const payload = (await response?.json().catch(() => null)) as Answer
+    // And again: a poll that set out while this was on its way may have read the row before it changed.
+    sequence.current += 1
     setBusy(false)
     if (!payload?.success) {
       setError(payload?.error ?? S.socialFailed)
       return null
     }
     setState(payload)
+    shownPhase.current = payload.phase
     return payload
   }, [base])
 

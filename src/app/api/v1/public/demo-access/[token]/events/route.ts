@@ -65,8 +65,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           data: { status: "COMPLETED", completedAt: now, sessionLastSeenAt: now, sessionHash: null },
         })
         if (!updated.count) return false
-        // «Bitir» releases the prospect's own Facebook Page too: asked for now,
-        // unbound by the cron within five minutes (docs/DEMO_CENTER.md).
+        // The module player's «Bitir»: no Facebook Page can be connected in it
+        // (a CHECK holds that to guided stories, which report their end as
+        // `journey.completed` below), but a row that exists is let go of too.
         await tx.demoSocialConnection.updateMany({
           where: { grantId: grant.id, scrubbedAt: null, releaseRequestedAt: null },
           data: { releaseRequestedAt: now, releaseReason: "finished" },
@@ -158,6 +159,16 @@ async function recordJourneyReport(request: NextRequest, token: string, body: un
         data: { sessionLastSeenAt: now },
       })
       if (!updated.count) return false
+      if (report.name === "journey.completed") {
+        // «Bitir» in the guided story — the only player a Facebook Page can be
+        // connected in — releases the prospect's own Page: asked for now,
+        // unbound by the cron within five minutes (docs/DEMO_CENTER.md). Before
+        // the cap below, so a story past it still lets go of the Page.
+        await tx.demoSocialConnection.updateMany({
+          where: { grantId: grant.id, scrubbedAt: null, releaseRequestedAt: null },
+          data: { releaseRequestedAt: now, releaseReason: "finished" },
+        })
+      }
       if (report.name === JOURNEY_ACTIVITY_EVENT) return true
       const stored = await tx.demoAccessEvent.count({
         where: { grantId: grant.id, eventType: { in: [...REPORTED_JOURNEY_EVENTS] } },

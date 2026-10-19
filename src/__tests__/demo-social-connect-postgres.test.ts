@@ -16,8 +16,13 @@
  *     branch, nor a demo state the product path;
  *   - tokens land only as ciphertext; the public read carries no id and no
  *     token; with either switch off nothing is reachable;
- *   - the agent answers at most ten times, and «Ayır» / «Bitir» ask for the
- *     release that the real release engine then carries out.
+ *   - the agent answers at most ten times, one answer at a time, and «Ayır» /
+ *     «Bitir» (the request the guided player really sends) ask for the
+ *     release that the real release engine then carries out;
+ *   - a message that races the wipe is never kept, and a Page bound while the
+ *     release comes due is never left subscribed: the bind holds the
+ *     release's lease, and unsubscribes the Page itself if the connection
+ *     ended while its subscribe was on its way.
  * Only outbound requests are stubbed: graph.facebook.com (each request's
  * method, path and Bearer header asserted) and the model.
  *
@@ -66,9 +71,14 @@ const scratch = vi.hoisted(() => {
 
 // The model: the demo agent's answer. Everything else of the product runs.
 const anthropicCreate = vi.hoisted(() => vi.fn())
+/** The bounds each model client was built with. */
+const anthropicClientOptions = vi.hoisted(() => [] as unknown[])
 vi.mock("@/lib/ai/anthropic-client", async (original) => ({
   ...(await original<typeof import("@/lib/ai/anthropic-client")>()),
-  getAnthropicClient: () => ({ messages: { create: anthropicCreate } }),
+  getAnthropicClient: (options?: unknown) => {
+    anthropicClientOptions.push(options)
+    return { messages: { create: anthropicCreate } }
+  },
 }))
 // The product callback's session lookup (a prospect has none) and the tenant
 // path's side effects that need services this database has not got.
@@ -145,6 +155,8 @@ let accountsRefuseInstagram = false
 let debugPageIds: string[] = []
 let pagesById: Record<string, FakePage> = {}
 let subscribeOk = true
+/** Runs while a `POST subscribed_apps` is on its way, before Meta answers it. */
+let duringSubscribe: (() => Promise<void>) | null = null
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } })
@@ -211,6 +223,11 @@ const fakeFetch = vi.fn(async (input: string | URL | Request, init?: RequestInit
     body: init?.body === undefined || init.body === null ? "" : String(init.body),
   }
   metaCalls.push(call)
+  if (duringSubscribe && call.method === "POST" && /\/subscribed_apps$/.test(url.pathname)) {
+    const hook = duringSubscribe
+    duringSubscribe = null
+    await hook()
+  }
   return meta(call)
 })
 
@@ -241,6 +258,8 @@ describe.skipIf(!scratch)("connecting a prospect's own Facebook Page to the demo
   let eventsRoute!: typeof import("@/app/api/v1/public/demo-access/[token]/events/route")
   let inbound!: typeof import("@/lib/demo-center/demo-social-inbound")
   let release!: typeof import("@/lib/demo-center/demo-social-release")
+  let oauth!: typeof import("@/lib/demo-center/demo-social-oauth")
+  let journey!: typeof import("@/lib/demo-center/journey")
   let requestId = ""
 
   beforeAll(async () => {
@@ -280,6 +299,8 @@ describe.skipIf(!scratch)("connecting a prospect's own Facebook Page to the demo
     eventsRoute = await import("@/app/api/v1/public/demo-access/[token]/events/route")
     inbound = await import("@/lib/demo-center/demo-social-inbound")
     release = await import("@/lib/demo-center/demo-social-release")
+    oauth = await import("@/lib/demo-center/demo-social-oauth")
+    journey = await import("@/lib/demo-center/journey")
   }, 300_000)
 
   afterAll(async () => {
@@ -314,6 +335,8 @@ describe.skipIf(!scratch)("connecting a prospect's own Facebook Page to the demo
     debugPageIds = []
     pagesById = {}
     subscribeOk = true
+    duringSubscribe = null
+    anthropicClientOptions.length = 0
     anthropicCreate.mockReset()
     anthropicCreate.mockResolvedValue({ content: [{ type: "text", text: REPLY }], usage: { input_tokens: 120, output_tokens: 30 } })
     tenantSideEffects.notify.mockClear()
@@ -612,6 +635,19 @@ describe.skipIf(!scratch)("connecting a prospect's own Facebook Page to the demo
     expect(callback.location.searchParams.get("r")).toBe("denied")
     expect(metaCalls).toEqual([])
     expect(await rowOf(g)).toMatchObject({ userTokenCipher: null, pageId: null, pendingPages: [] })
+    expect((await readState(g)).body).toMatchObject({ phase: "refused" })
+  })
+
+  it("a Meta answer that never came lands on the same panel — whose copy therefore promises nothing about the Page (strings.ts)", async () => {
+    const g = await grant()
+    accounts = [fakePage("Səhifə")]
+    // The code exchange fails, as on a timeout or a 5xx.
+    const { callback } = await connectThroughMeta(g, { code: "a-code-meta-refuses" })
+    expect(callback.location.searchParams.get("r")).toBe("failed")
+    expect(await rowOf(g)).toMatchObject({ userTokenCipher: null, pageId: null, pendingPages: [] })
+    expect((await readState(g)).body).toMatchObject({ phase: "refused" })
+    // And the connect is offered again on the same row.
+    expect((await act(g, { action: "start", consent: true })).status).toBe(200)
   })
 
   it("a subscription Meta did not confirm asks for the release at once — the Page token is already recorded for it", async () => {
@@ -624,9 +660,143 @@ describe.skipIf(!scratch)("connecting a prospect's own Facebook Page to the demo
 
     expect(callback.location.searchParams.get("r")).toBe("failed")
     const row = await rowOf(g)
-    expect(row).toMatchObject({ pageId: page.id, connectedAt: null, releaseReason: "connect_abandoned" })
+    expect(row).toMatchObject({ pageId: page.id, connectedAt: null, releaseReason: "connect_abandoned", releaseLeaseUntil: null })
     expect(row.pageTokenCipher).toMatch(/^v1:/)
     expect((await readState(g)).body).toMatchObject({ phase: "releasing", connectFailed: true })
+    // The bind gave its lease back: the release runs at once, not two minutes later.
+    expect(await release.releaseDueDemoSocialConnections({ now: new Date() })).toMatchObject({ released: 1 })
+    expect(sent().at(-1)).toBe(`DELETE /v21.0/${page.id}/subscribed_apps`)
+  })
+
+  // --- binding while the release comes due -------------------------------------
+
+  it("a release that comes due while the subscribe is on its way waits for it: nothing is sent before Meta answers, and the Page is unsubscribed after", async () => {
+    const g = await grant()
+    const page = fakePage("Gec Bağlanan Səhifə")
+    accounts = [page]
+    let duringRun: unknown = null
+    let duringCalls: string[] = []
+    const during: { lease: Date | null } = { lease: null }
+    duringSubscribe = async () => {
+      during.lease = (await rowOf(g)).releaseLeaseUntil
+      // «Ayır» from the demo tab, and the cron's tick, while Meta has not answered yet.
+      expect((await act(g, { action: "disconnect" })).status).toBe(200)
+      const before = metaCalls.length
+      duringRun = await release.releaseDueDemoSocialConnections({ now: new Date() })
+      duringCalls = sent().slice(before)
+    }
+
+    const { callback } = await connectThroughMeta(g)
+
+    // The bind held the release's lease while it talked to Meta…
+    expect(during.lease?.getTime() ?? 0).toBeGreaterThan(Date.now() + 60_000)
+    // …so the release run sent nothing until Meta had answered.
+    expect(duringRun).toMatchObject({ due: 1, released: 0, retrying: 1 })
+    expect(duringCalls).toEqual([])
+    expect(callback.location.searchParams.get("r")).toBe("failed")
+    // Meta confirmed the subscribe after the connection had ended: the bind undid it itself, after Meta's answer.
+    expect(sent().slice(-2)).toEqual([`POST /v21.0/${page.id}/subscribed_apps`, `DELETE /v21.0/${page.id}/subscribed_apps`])
+    expect(metaCalls.at(-1)!.authorization).toBe(`Bearer ${page.access_token}`)
+    const row = await rowOf(g)
+    expect(row).toMatchObject({ connectedAt: null, releaseReason: "disconnected", releaseLeaseUntil: null, scrubbedAt: null, pageId: page.id })
+
+    // The next tick: the lease is free, the row is unsubscribed again (harmless) and wiped.
+    expect(await release.releaseDueDemoSocialConnections({ now: new Date() })).toMatchObject({ released: 1 })
+    expect(sent().filter((line) => line.startsWith("DELETE"))).toHaveLength(2)
+    expect((await rowOf(g)).scrubbedAt).not.toBeNull()
+  })
+
+  it("a connection wiped while the subscribe was on its way (a lease that ran out) does not leave the Page subscribed: the bind unsubscribes it after Meta's answer", async () => {
+    const g = await grant()
+    const page = fakePage("Unudulmuş Səhifə")
+    accounts = [page]
+    let duringCalls: string[] = []
+    duringSubscribe = async () => {
+      // A bind that stalled past its two minutes: the release takes the lease over, unsubscribes and wipes.
+      await admin.demoSocialConnection.updateMany({ where: { grantId: g.row.id }, data: { releaseLeaseUntil: at(-1) } })
+      expect((await act(g, { action: "disconnect" })).status).toBe(200)
+      const before = metaCalls.length
+      expect(await release.releaseDueDemoSocialConnections({ now: new Date() })).toMatchObject({ released: 1 })
+      duringCalls = sent().slice(before)
+    }
+
+    const { callback } = await connectThroughMeta(g)
+
+    expect(callback.location.searchParams.get("r")).toBe("failed")
+    // The release's DELETE reached Meta before our POST was answered; the bind's own comes after the answer.
+    expect(duringCalls).toEqual([`DELETE /v21.0/${page.id}/subscribed_apps`])
+    expect(sent().slice(-3)).toEqual([
+      `POST /v21.0/${page.id}/subscribed_apps`, `DELETE /v21.0/${page.id}/subscribed_apps`, `DELETE /v21.0/${page.id}/subscribed_apps`,
+    ])
+    expect(metaCalls.at(-1)!.authorization).toBe(`Bearer ${page.access_token}`)
+    expect((await rowOf(g)).scrubbedAt).not.toBeNull()
+  })
+
+  it("…but never unsubscribes a Page someone relies on by then: an organisation's channel, or another live demo", async () => {
+    // An organisation connected the Page while ours was being wiped.
+    const claimedGrant = await grant()
+    const claimed = fakePage("İndi Başqasının Səhifəsi")
+    accounts = [claimed]
+    let answered = 0
+    duringSubscribe = async () => {
+      await admin.demoSocialConnection.updateMany({ where: { grantId: claimedGrant.row.id }, data: { releaseLeaseUntil: at(-1) } })
+      await act(claimedGrant, { action: "disconnect" })
+      expect(await release.releaseDueDemoSocialConnections({ now: new Date() })).toMatchObject({ released: 1 })
+      await admin.channelConfig.create({ data: { organizationId: OTHER, channelType: "facebook", configName: "Their Page", pageId: claimed.id, isActive: true } })
+      answered = metaCalls.length
+    }
+    expect((await connectThroughMeta(claimedGrant)).callback.location.searchParams.get("r")).toBe("failed")
+    // Nothing after Meta's answer to our subscribe: the organisation's Page keeps its subscription.
+    expect(answered).toBeGreaterThan(0)
+    expect(sent().slice(answered)).toEqual([])
+
+    // Another prospect's live demo bound the same Page once ours was wiped.
+    metaCalls.length = 0
+    const heldGrant = await grant()
+    const held = fakePage("Növbəti Demonun Səhifəsi")
+    accounts = [held]
+    answered = 0
+    duringSubscribe = async () => {
+      await admin.demoSocialConnection.updateMany({ where: { grantId: heldGrant.row.id }, data: { releaseLeaseUntil: at(-1) } })
+      await act(heldGrant, { action: "disconnect" })
+      expect(await release.releaseDueDemoSocialConnections({ now: new Date() })).toMatchObject({ released: 1 })
+      await connected(await grant(), { pageId: held.id, pageTokenCipher: null })
+      answered = metaCalls.length
+    }
+    expect((await connectThroughMeta(heldGrant)).callback.location.searchParams.get("r")).toBe("failed")
+    expect(answered).toBeGreaterThan(0)
+    expect(sent().slice(answered)).toEqual([])
+  })
+
+  it("starting again restarts the attempt's thirty minutes and drops what the attempt before it left", async () => {
+    // 10:00 in Baku today, so that thirty-one minutes later is still the same Baku day.
+    const bakuMidnight = Math.floor((Date.now() + 4 * 3_600_000) / 86_400_000) * 86_400_000 - 4 * 3_600_000
+    const t0 = new Date(bakuMidnight + 10 * 3_600_000)
+    const t = (minutes: number) => new Date(t0.getTime() + minutes * 60_000)
+    const g = await grant({ sessionStartedAt: t(-30), sessionLastSeenAt: t(30), sessionExpiresAt: t(90) })
+    const first = fakePage("Birinci")
+    const second = fakePage("İkinci")
+    accounts = [first, second]
+
+    // 10:00: the first attempt gets as far as the choice — a user token and two Pages kept.
+    const start1 = await oauth.startDemoSocialConnect(g.row, t(0))
+    if (!start1.ok) throw new Error(start1.code)
+    const state1 = new URL(start1.url).searchParams.get("state")!
+    expect(await oauth.completeDemoSocialConnect({ state: state1, code: CODE, nonce: start1.nonce, now: t(1) })).toBe("choose")
+    expect((await rowOf(g)).userTokenCipher).toMatch(/^v1:/)
+
+    // 10:25: «Yenidən başlayın».
+    const start2 = await oauth.startDemoSocialConnect(g.row, t(25))
+    if (!start2.ok) throw new Error(start2.code)
+    const restarted = await rowOf(g)
+    expect(restarted).toMatchObject({ createdAt: t(25), userTokenCipher: null, metaUserId: null, pendingPages: null, pageId: null })
+    expect(restarted.expiresAt.getTime()).toBeGreaterThan(t(31).getTime())
+
+    // 10:31: Meta's dialog finished — past the first click's thirty minutes, inside the second's.
+    accounts = [first]
+    const state2 = new URL(start2.url).searchParams.get("state")!
+    expect(await oauth.completeDemoSocialConnect({ state: state2, code: CODE, nonce: start2.nonce, now: t(31) })).toBe("connected")
+    expect(await rowOf(g)).toMatchObject({ pageId: first.id, connectedAt: t(31), metaUserId: META_USER })
   })
 
   it("holds at most twenty open connections across every demo", async () => {
@@ -706,6 +876,8 @@ describe.skipIf(!scratch)("connecting a prospect's own Facebook Page to the demo
     expect(sends()).toHaveLength(1)
     expect(sends()[0].authorization).toBe(`Bearer ${page.access_token}`)
     expect(JSON.parse(sends()[0].body)).toEqual({ recipient: { id: sender }, message: { text: REPLY } })
+    // One bounded try: the answer's slot is held while it is written (demo-social-inbound.ts).
+    expect(anthropicClientOptions).toEqual([{ timeout: 15_000, maxRetries: 0 }])
     // The agent speaks for LeadDrive, on somebody else's Page.
     const system = anthropicCreate.mock.calls[0][0].system as string
     expect(system).toContain("Facebook Messenger")
@@ -782,6 +954,124 @@ describe.skipIf(!scratch)("connecting a prospect's own Facebook Page to the demo
     expect(stored).toMatchObject({ aiReplies: 10, aiInputTokens: 1_200, aiOutputTokens: 300 })
     expect(await admin.demoSocialMessage.count({ where: { connectionId: row.id, direction: "outbound" } })).toBe(10)
     expect(await admin.aiInteractionLog.count()).toBe(0)
+  })
+
+  it("one answer at a time: a message that arrives while the answer before it is being written is stored and not answered", async () => {
+    const g = await grant()
+    const sender = "551100000012"
+    const { row, page } = await connected(g, { provenSenderId: sender, provenAt: at(-5) })
+    let finishFirst!: () => void
+    const firstHeld = new Promise<void>((resolve) => { finishFirst = resolve })
+    const generate = vi.fn(async () => {
+      if (generate.mock.calls.length === 1) await firstHeld
+      return { text: REPLY, inputTokens: 1, outputTokens: 1 }
+    })
+    const send = vi.fn(async () => true)
+    const write = (text: string, now: Date) =>
+      inbound.handleDemoSocialEntry({ organizationId: SALES, entry: { id: page.id, messaging: [messengerEvent(page.id, sender, text)] } }, { generate, send, now })
+
+    const first = write("Birinci sual", NOW)
+    await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(1))
+    // Four seconds later, while the first answer is still being written.
+    await write("İkinci sual", new Date(NOW.getTime() + 4_000))
+    expect(generate).toHaveBeenCalledTimes(1)
+    expect(send).not.toHaveBeenCalled()
+
+    finishFirst()
+    await first
+    expect(send).toHaveBeenCalledTimes(1)
+    const settled = await admin.demoSocialConnection.findUniqueOrThrow({ where: { id: row.id } })
+    expect(settled.aiReplies).toBe(1)
+    const messages = await admin.demoSocialMessage.findMany({ where: { connectionId: row.id }, orderBy: { createdAt: "asc" } })
+    expect(messages.map((message) => message.direction).sort()).toEqual(["inbound", "inbound", "outbound"])
+
+    // The three seconds count from the moment the answer went out.
+    const sentAt = settled.lastAiReplyAt!.getTime()
+    await write("Tez", new Date(sentAt + 1_000))
+    expect(send).toHaveBeenCalledTimes(1)
+    await write("Üçüncü sual", new Date(sentAt + 3_100))
+    expect(send).toHaveBeenCalledTimes(2)
+  })
+
+  it("an answer that could not be sent gives its slot back at once", async () => {
+    const g = await grant()
+    const sender = "551100000013"
+    const { row, page } = await connected(g, { provenSenderId: sender, provenAt: at(-5) })
+    const generate = vi.fn(async () => ({ text: REPLY, inputTokens: 1, outputTokens: 1 }))
+    const send = vi.fn(async () => send.mock.calls.length > 1)
+    const write = (text: string, now: Date) =>
+      inbound.handleDemoSocialEntry({ organizationId: SALES, entry: { id: page.id, messaging: [messengerEvent(page.id, sender, text)] } }, { generate, send, now })
+
+    await write("Birinci", NOW)
+    expect(await admin.demoSocialConnection.findUniqueOrThrow({ where: { id: row.id } })).toMatchObject({ aiReplies: 0, lastAiReplyAt: NOW })
+    await write("İkinci", new Date(NOW.getTime() + 3_100))
+    expect(send).toHaveBeenCalledTimes(2)
+    expect(await admin.demoSocialMessage.count({ where: { connectionId: row.id, direction: "outbound" } })).toBe(1)
+  })
+
+  it("the agent's answer to a connection wiped while it was being sent is not kept: nothing of the connection outlives the wipe", async () => {
+    const g = await grant()
+    const sender = "551100000014"
+    const { row, page } = await connected(g, { provenSenderId: sender, provenAt: at(-5) })
+    const generate = vi.fn(async () => ({ text: REPLY, inputTokens: 1, outputTokens: 1 }))
+    // «Ayır» and the cron's tick while Messenger is still taking the answer.
+    const send = vi.fn(async () => {
+      expect((await act(g, { action: "disconnect" })).status).toBe(200)
+      expect(await release.releaseDueDemoSocialConnections({ now: new Date() })).toMatchObject({ released: 1 })
+      return true
+    })
+
+    await inbound.handleDemoSocialEntry({ organizationId: SALES, entry: { id: page.id, messaging: [messengerEvent(page.id, sender, "Sual")] } }, { generate, send })
+
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(await admin.demoSocialMessage.count({ where: { connectionId: row.id } })).toBe(0)
+    const wiped = await rowOf(g)
+    expect(wiped.scrubbedAt).not.toBeNull()
+    expect(wiped).toMatchObject({ aiInputTokens: 0, aiOutputTokens: 0 })
+    expect((await eventsOf(g)).map((event) => event.eventType)).toEqual(["SOCIAL_RELEASED"])
+  })
+
+  it("the prospect's message, arriving while the wipe is being written, waits for it and is then not stored", async () => {
+    const g = await grant()
+    const sender = "551100000015"
+    const { row, page } = await connected(g, { provenSenderId: sender, provenAt: at(-5) })
+    const generate = vi.fn(async () => ({ text: REPLY, inputTokens: 1, outputTokens: 1 }))
+    const send = vi.fn(async () => true)
+    let commitWipe!: () => void
+    const wipeHeld = new Promise<void>((resolve) => { commitWipe = resolve })
+    let wipeStarted!: () => void
+    const wipeWritten = new Promise<void>((resolve) => { wipeStarted = resolve })
+    // The release's wipe, as releaseOne writes it, held open before its commit.
+    const wipe = admin.$transaction(async (tx) => {
+      await tx.demoSocialConnection.update({
+        where: { id: row.id },
+        data: {
+          scrubbedAt: new Date(), releaseRequestedAt: new Date(), releaseReason: "disconnected", unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_by_design",
+          oauthStateHash: null, metaUserId: null, userTokenCipher: null, pageTokenCipher: null, pageId: null, pageName: null, linkedInstagramId: null, provenSenderId: null,
+        },
+      })
+      await tx.demoSocialMessage.deleteMany({ where: { connectionId: row.id } })
+      wipeStarted()
+      await wipeHeld
+    }, { timeout: 30_000 })
+    await wipeWritten
+
+    // The webhook still reads the row as it was committed: live, this sender proven.
+    const delivered = inbound.handleDemoSocialEntry({ organizationId: SALES, entry: { id: page.id, messaging: [messengerEvent(page.id, sender, "Bu mesaj qalmamalıdır")] } }, { generate, send })
+    // Until the store is waiting for the wipe's row lock — or has finished, on code that does not wait.
+    let finished = false
+    void delivered.then(() => { finished = true })
+    for (let tries = 0; tries < 100 && !finished; tries += 1) {
+      const waiting = await admin.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()`
+      if (waiting[0].n > 0) break
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+    commitWipe()
+    await wipe
+    await delivered
+
+    expect(await admin.demoSocialMessage.count({ where: { connectionId: row.id } })).toBe(0)
+    expect(send).not.toHaveBeenCalled()
   })
 
   it("after the day is over nothing is stored and nothing is sent, cron or no cron", async () => {
@@ -907,18 +1197,51 @@ describe.skipIf(!scratch)("connecting a prospect's own Facebook Page to the demo
     expect((await readState(g)).body).toMatchObject({ enabled: true, phase: "offer", released: true })
   })
 
-  it("«Bitir» asks for the release too", async () => {
+  it("«Bitir» in the guided story asks for the release too — the request its player really sends", async () => {
     const g = await grant()
-    await connected(g)
-    const response = await eventsRoute.POST(
-      new NextRequest(`https://app.leaddrivecrm.org/api/v1/public/demo-access/${g.token}/events`, {
-        method: "POST",
-        headers: { cookie: `${demoSessionCookieName(g.token)}=${g.credential}`, "content-type": "application/json" },
-        body: JSON.stringify({ eventType: "COMPLETED" }),
-      }),
-      params(g),
-    )
-    expect(response.status).toBe(200)
-    expect(await rowOf(g)).toMatchObject({ releaseReason: "finished" })
+    const sender = "551100000010"
+    const { page } = await connected(g, { provenSenderId: sender, provenAt: at(-5) })
+    // What the summary's «Bitir» sends, made the way the player makes it: the
+    // story stands at the summary's last step, the reducer takes the
+    // transition summary-scene.tsx dispatches, and journeyReportsBetween turns
+    // the move into the reports journey-reporter.ts posts
+    // (demo-journey-player.tsx). None of them is `eventType: "COMPLETED"` —
+    // that is the module player's.
+    const scenario = journey.getDemoJourneyScenario(g.row.scenarioId!)!
+    const identity = { name: "Nigar Əliyeva", company: "Xəzər Logistika MMC", jobTitle: null, emailMasked: "n***@example.az", phoneMasked: null, sourceChannel: "website" as const }
+    const summary = journey.activeSections(scenario).at(-1)!
+    const story = {
+      ...journey.createJourneySnapshot(scenario, identity, NOW),
+      state: "CLOSED_WON" as const, sectionId: summary.id, stepId: "summary-finish", completedSteps: ["summary-review"], visitedSections: [summary.id],
+    }
+    const bitir = journey.reduceJourney(story, { type: "transition", stepId: "summary-finish", to: "COMPLETED" }, scenario, NOW)
+    expect(bitir.ok).toBe(true)
+    const reports = journey.journeyReportsBetween(story, bitir.snapshot, { moved: bitir.transitioned ?? null })
+    expect(reports.some((report) => (report.eventType as string) === "COMPLETED")).toBe(false)
+    const finished = reports.find((report) => report.name === "journey.completed")!
+    expect(finished).toEqual({ eventType: "JOURNEY", name: "journey.completed", sectionId: summary.id })
+
+    // Every report of that move, in the player's order.
+    for (const report of reports) {
+      const response = await eventsRoute.POST(
+        new NextRequest(`https://app.leaddrivecrm.org/api/v1/public/demo-access/${g.token}/events`, {
+          method: "POST",
+          headers: { cookie: `${demoSessionCookieName(g.token)}=${g.credential}`, "content-type": "application/json" },
+          body: JSON.stringify(report),
+        }),
+        params(g),
+      )
+      expect(response.status, report.name).toBe(200)
+    }
+    const asked = await rowOf(g)
+    expect(asked).toMatchObject({ releaseReason: "finished" })
+    expect(asked.releaseRequestedAt).not.toBeNull()
+
+    // Dead for every use from that moment: nothing stored, nothing sent.
+    const tables = await everyTable()
+    await deliver(page.id, [messengerEvent(page.id, sender, "Hələ də?")])
+    expect(await everyTable()).toEqual(tables)
+    expect(sends()).toEqual([])
+    expect((await readState(g)).body).toMatchObject({ phase: "releasing" })
   })
 })

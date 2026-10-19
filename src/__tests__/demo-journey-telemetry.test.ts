@@ -14,6 +14,7 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: vi.fn(),
     demoGrant: { findUnique: vi.fn(), updateMany: vi.fn() },
     demoAccessEvent: { create: vi.fn(), count: vi.fn() },
+    demoSocialConnection: { updateMany: vi.fn() },
   },
 }))
 
@@ -257,6 +258,24 @@ describe("the events route takes journey reports", () => {
     expect(response.status).toBe(200)
     expect(prisma.demoGrant.updateMany).toHaveBeenCalled()
     expect(prisma.demoAccessEvent.create).not.toHaveBeenCalled()
+  })
+
+  it("«Bitir» — the story's end — asks for the release of the prospect's own Facebook Page, even past the cap", async () => {
+    vi.mocked(prisma.demoAccessEvent.count).mockResolvedValue(JOURNEY_EVENTS_PER_GRANT)
+    vi.mocked(prisma.demoSocialConnection.updateMany).mockResolvedValue({ count: 1 })
+    const last = activeSections(manifest).at(-1)!.id
+    const response = await post({ eventType: "JOURNEY", name: "journey.completed", sectionId: last })
+    expect(response.status).toBe(200)
+    expect(prisma.demoSocialConnection.updateMany).toHaveBeenCalledWith({
+      where: { grantId: "grant-j", scrubbedAt: null, releaseRequestedAt: null },
+      data: { releaseRequestedAt: expect.any(Date), releaseReason: "finished" },
+    })
+  })
+
+  it("no other report touches the Page", async () => {
+    await post({ eventType: "JOURNEY", name: "journey.section_opened", sectionId: "source" })
+    await post({ eventType: "JOURNEY", name: "journey.step_viewed", sectionId: "source" })
+    expect(prisma.demoSocialConnection.updateMany).not.toHaveBeenCalled()
   })
 
   it("rejects unknown fields instead of storing them", async () => {

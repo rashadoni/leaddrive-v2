@@ -202,6 +202,16 @@ the open demo, not the admin preview), in the inbox chapters:
   ids and names are kept in `pendingPages` and the panel asks by name; the
   choice is re-read from Meta and re-checked. A subscription Meta did not
   confirm asks for the release at once.
+- The bind holds the release's two-minute lease from the moment it stores the
+  Page token until the subscribe has settled, and gives it back on every way
+  out: a release run that comes due meanwhile retries on its next tick, so its
+  `DELETE subscribed_apps` always comes after our `POST`. If the connection
+  ended while the `POST` was on its way and Meta confirmed it anyway, the bind
+  unsubscribes the Page itself, at once — unless an organisation claims it or
+  another live demo holds it.
+- Starting again on a row that has bound no Page (a cancelled or failed
+  attempt, «Yenidən başlayın») restarts its thirty-minute window and its day,
+  and drops the previous attempt's Page list, user token and Meta user id.
 - **One exception to the Bearer rule above:** `debug_token` takes the token it
   inspects as `input_token` and the app token as `access_token` in its query —
   Graph has no other place for them. It goes through the product's own helper
@@ -224,11 +234,24 @@ seconds apart, counted on the row (tokens too, not in the tenant's AI log),
 sent with the stored Page token through `sendFacebookMessage`, to the proven
 sender only, and only after `demoSocialReleaseReason` is asked once more.
 
+Both message rows — the prospect's and the agent's — are written in one
+transaction that first locks the connection row, and only while it is
+unscrubbed; the wipe needs the same lock, so it either deletes the new message
+with the rest or comes first and nothing is written. Every release run also
+deletes any message of an already wiped connection. An answer holds its slot
+while it is generated and sent (`lastAiReplyAt` marked 30 seconds ahead; the
+model call is bounded to one 15-second try): a message that arrives meanwhile
+is stored and not answered, and the three seconds count from the moment the
+last answer was sent.
+
 The public read gives the Page's name, the code, the end of the day and the
 proven sender's conversation — no id, no token; the Messenger link is a
 redirect of ours (`…/social/messenger` → `m.me/<page>`). «Ayır» and «Bitir»
-set the release request (`disconnected`, `finished`); the panel then says
-«ayrılır…», later «ayrıldı», with the Business Integrations link.
+set the release request (`disconnected`, `finished`) — «Bitir» in the guided
+story, the only player a Page can be connected in, arrives as the
+`journey.completed` report; the panel then says «ayrılır…», later «ayrıldı»,
+with the Business Integrations link. A poll that was on its way when a button
+was pressed is dropped, so it cannot put the panel back where it was.
 
 ### Draft for the owner: privacy policy addition (not yet in `messages/*.json`)
 
@@ -238,13 +261,17 @@ would go after §8 (`privacy.p8_deletion`). English first, then Russian.
 > **Demo: connecting your own Facebook Page.** In a personal LeadDrive demo you
 > may connect one Facebook Page you manage, for the day of the demo. LeadDrive
 > then receives Messenger messages sent to that Page through our Meta app. Only
-> the person who first writes to the Page with the demo's code is processed:
-> his messages and the demo AI agent's replies (at most ten) are kept in the
-> demo's own records — not in any customer's CRM workspace —, shown on that
-> demo page, and sent to Anthropic to write the replies. Messages from anyone
-> else are discarded on receipt without being stored, shown or answered. We
-> keep the Page's id and name, the linked Instagram account's id when Meta
-> provides it, the Meta user id of the person who connected the Page, and
+> the person who first writes to the Page with the demo's code is answered and
+> kept: his messages and the demo AI agent's replies (at most ten) are kept in
+> the demo's own records — not in any customer's CRM workspace —, shown on that
+> demo page, and sent to Anthropic to write the replies. Until someone has
+> written with the code, each incoming message is checked only for the code.
+> Messages from anyone else are discarded at once, without being stored, shown
+> or answered. We keep the Page's id and name; the linked Instagram account's
+> id when Meta provides it; the Meta user id of the person who connected the
+> Page; the Messenger (Page-scoped) id of the person who wrote with the code;
+> while you choose among several Pages, the ids and names of the Pages you
+> granted (cleared once you choose one, or when the connection ends); and
 > encrypted access tokens. The connection ends at 23:59 Baku time at the
 > latest, or earlier when you press «Ayır», finish the demo or the demo
 > session ends. Normally within five minutes the Page is unsubscribed from our
@@ -261,14 +288,18 @@ would go after §8 (`privacy.p8_deletion`). English first, then Russian.
 > **Демо: подключение своей Facebook-страницы.** В персональном демо LeadDrive
 > можно подключить одну свою Facebook-страницу на день демо. Тогда LeadDrive
 > получает через наше Meta-приложение сообщения Messenger, написанные этой
-> странице. Обрабатывается только тот, кто первым написал странице с кодом
-> демо: его сообщения и ответы демо-ИИ-агента (не больше десяти) хранятся в
-> собственных записях демо — не в CRM какого-либо клиента, — показываются на
-> его странице демо и отправляются в Anthropic, чтобы составить ответы.
-> Сообщения всех остальных отбрасываются при получении: не сохраняются, не
-> показываются, ответа не получают. Мы храним id и название страницы, id
-> связанного Instagram-аккаунта, если Meta его отдаёт, Meta-id человека,
-> подключившего страницу, и токены доступа в зашифрованном виде. Подключение
+> странице. Отвечаем и сохраняем только того, кто первым написал странице с
+> кодом демо: его сообщения и ответы демо-ИИ-агента (не больше десяти) хранятся
+> в собственных записях демо — не в CRM какого-либо клиента, — показываются на
+> его странице демо и отправляются в Anthropic, чтобы составить ответы. Пока
+> никто не написал с кодом, каждое входящее сообщение лишь проверяется на код и
+> сразу отбрасывается. Сообщения всех остальных отбрасываются сразу: не
+> сохраняются, не показываются, ответа не получают. Мы храним id и название
+> страницы; id связанного Instagram-аккаунта, если Meta его отдаёт; Meta-id
+> человека, подключившего страницу; Messenger-id того, кто написал с кодом;
+> пока вы выбираете страницу — id и названия выданных вами страниц (стираются
+> после выбора или по окончании подключения); и токены доступа в
+> зашифрованном виде. Подключение
 > заканчивается не позже 23:59 по Баку или раньше — по «Ayır», по завершении
 > демо или по окончании сессии. Обычно в течение пяти минут страница
 > отписывается от нашего приложения — если на неё не опирается другой клиент

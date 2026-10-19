@@ -35,7 +35,11 @@ export type DemoSocialPhase =
   | "waiting"
   /** Several Pages were granted: which one? */
   | "choose"
-  /** Nothing usable came back: no Page, no permission, or only Pages LeadDrive already serves. */
+  /**
+   * The attempt ended without a Page: the dialog was cancelled, Meta did not
+   * answer, or only Pages LeadDrive already serves came back. The panel's copy
+   * (`socialRefused`) is true for each.
+   */
   | "refused"
   | "connected"
   /** «Ayır», the day's end or the session's: the Page is being unsubscribed. */
