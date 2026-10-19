@@ -203,3 +203,25 @@ SignatureDoesNotMatch и timeout. Исправленная проверка тр
 `AccessDenied`; неизвестная причина теперь FAIL. Поэтому отказ записи restore
 с пустым кодом нужно повторить исправленным скриптом, а не считать доказанным.
 Реальные ключи и production в этой проверке не использовались.
+
+## Диагностика непонятного отказа PutObject — 2026-10-19
+
+На Mac владельца FileVault теперь сообщает On; исправленный тест ключей
+подтвердил multipart upload, HEAD, побайтное скачивание и три AccessDenied.
+Но restore PutObject всё ещё завершается с неизвестной причиной: RESULT1failure.
+Это не доказательство лишних прав и не доказательство их отсутствия. Object Lock
+сообщает ObjectLockConfigurationNotFoundError; активация остаётся заблокированной.
+
+`scripts/backup/b2-put-diagnostic.py restore.env` — отдельная диагностика,
+не receipt активации. Она делает две попытки PutObject со случайным синтетическим
+файлом1КиБ под lifecycle-префиксом, отдельно when_supported/when_required.
+Это проверяет гипотезу клиентского checksum-format отказа, не утверждая её заранее.
+Каждая попытка ограничена45секундами; AWS auto-retries отключены. Никаких
+production-вызовов, установки пакетов, правки policy/ключей, Object Lock или
+финансовых настроек. При неожиданном успехе объект остаётся до lifecycle.
+
+Вывод — только JSON с фиксированными категориями, exit code и checksum mode.
+Исходный stderr/ключи/endpoint/bucket не печатаются. Числовые service codes,
+сеть, credentials и unknown НЕ становятся успешным запретом доступа. Параметры
+читаются из принадлежащего оператору обычного0400/0600файла, не исполняются как shell.
+Статус FileVault не заменяет реальный restore, signed custody или исходный Kafka gate.
