@@ -504,6 +504,15 @@ jobs:
           SOCIAL_WEBHOOK_FENCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           SOCIAL_WEBHOOK_FENCE_DB_GATE: required
 
+      - name: Social route provider cursor database gate
+        # Same gate as in pr-checks: a route/provider cursor without a target
+        # scenario or an archive start is stored, and an untargeted Apify
+        # discovery run ends IMPORTED (see the test's header).
+        run: npx vitest run src/__tests__/social-route-provider-cursor-postgres.test.ts
+        env:
+          SOCIAL_ROUTE_CURSOR_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          SOCIAL_ROUTE_CURSOR_DB_GATE: required
+
       - name: MTM break coordinates database gate
         # Same gate as in pr-checks: no GPS entry — the phone's two routes, the
         # web/API-key one — stores a point taken during the employee's break

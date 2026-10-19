@@ -380,6 +380,18 @@ jobs:
           SOCIAL_WEBHOOK_FENCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           SOCIAL_WEBHOOK_FENCE_DB_GATE: required
 
+      - name: Social route provider cursor database gate
+        # A source's route/provider cursor, written on a real Postgres under the
+        # production RLS policies, directly and through the real Apify result
+        # webhook. Until 2026-10-19 a cursor without a target scenario or an
+        # archive start failed with 42P18 (an untyped NULL inside
+        # jsonb_build_object): scheduled Google Alerts runs lost their
+        # checkpoint, and an untargeted Apify discovery run stayed IMPORTING.
+        run: npx vitest run src/__tests__/social-route-provider-cursor-postgres.test.ts
+        env:
+          SOCIAL_ROUTE_CURSOR_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          SOCIAL_ROUTE_CURSOR_DB_GATE: required
+
       - name: MTM break coordinates database gate
         # Where an employee spent a break is not stored, read off the table
         # after the real GPS ingestion handlers ran on a real Postgres. Until
