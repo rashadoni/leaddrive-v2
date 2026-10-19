@@ -23,6 +23,35 @@ of this date, so no Mac runner is registered.
 The billing history below is why the macOS ban is absolute: it is what the old
 arrangement actually cost.
 
+### Dependency and Prisma caches on hosted runners (owner, 2026-10-19)
+
+The rule further down — "do not put `actions/cache` on these jobs" — was about
+the retired self-hosted pool, whose disk persisted between jobs and whose
+restores from the GitHub cache service took 106 s. On hosted runners every job
+starts empty, and a restore takes about 9 s.
+
+Measured 2026-10-18/19, most runs on the slower class of hosted runner:
+`static-checks` took 28.5–29.4 min (30 runs), deploy `checks` a median of 24.6
+and at worst 28.6 min (25 runs), both against a 30-minute cap. Before the first
+test, `npm ci` took 4.7 min and `prisma generate` 4.0. On 2026-10-19 PR #915
+was cancelled at the cap twice, its re-run included. The owner chose caching
+over a separate database job, which would have added a sixth required context.
+
+- `static-checks` (pr-checks.yml) and `checks` (deploy.yml) restore
+  `node_modules` under one key, `deps-<os>-<hash of package-lock.json>`, and
+  the generated client, `node_modules/.prisma/client`, under
+  `prisma-client-<os>-<arch>-<hash of schema and lockfile>`. Main's deploy
+  saves both; pull requests read main's caches, and main never reads a pull
+  request's.
+- A package.json edited without its lockfile would slip past a lockfile-keyed
+  cache. It is still caught: `typecheck` and both production builds run a
+  fresh `npm ci`, which refuses a lockfile out of sync. Keep them that way.
+- The production build (`build` in deploy.yml, `production-build` in
+  pr-checks.yml) never restores either cache. What ships is installed and
+  generated from scratch.
+- Both caps are 45 minutes. A cap stops a hung job. Do not raise it to make
+  room for slow gates: measure first.
+
 ## Why this document exists
 
 The authenticated account billing page was checked on 2026-09-08 for September
@@ -285,10 +314,11 @@ Rules for workflows:
 - Never put a production credential on the runner host, in a runner
   environment file, or in a workflow that targets these labels.
 
-`static-checks` has a 30-minute bound because run 34198177856 spent about 15
+`static-checks` got a 30-minute bound because run 34198177856 spent about 15
 minutes on cold setup before beginning its tests, then hit the former 20-minute
-limit. This allows one cold start; it is not a throughput guarantee or a reason
-to retry a timeout repeatedly. Already queued runs retain their workflow
+limit. On hosted runners it is 45 minutes since 2026-10-19 (see "Dependency and
+Prisma caches on hosted runners" above). Neither bound is a throughput
+guarantee or a reason to retry a timeout repeatedly. Already queued runs retain their workflow
 snapshot; a rerun does not automatically acquire the new main workflow.
 
 Paid GitHub-hosted jobs still include `deploy.yml`, the label-gated production

@@ -172,6 +172,9 @@ jobs:
     # Run39218257966 reached the 30 min cap during the final unit-baseline
     # gate after setup/database checks. Allow bounded cold-start/teardown
     # headroom; every blocking test and baseline assertion still runs.
+    # Measured 2026-10-18/19 on the slower hosted runners (most runs): 28.5–
+    # 29.4 min, of which `npm ci` 4.7 and `prisma generate` 4.0 — both now
+    # restored from cache below when the lockfile and schema are unchanged.
     timeout-minutes: 45
     env:
       # Hosted runners had 4 vCPU; the shared box has 8 and up to three general
@@ -188,13 +191,41 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Cache node_modules
+        # The same key as deploy.yml's `checks`, so a pull request restores the
+        # node_modules that main's deploy already saved for this lockfile (a
+        # pull request can read main's caches; main never reads a pull
+        # request's). Restore took 9 s there against 4.7 min of `npm ci`.
+        # A package.json edited without its lockfile is still caught: the
+        # `typecheck` job and the production build always run a fresh `npm ci`.
+        uses: actions/cache@v5
+        id: cache-deps
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            deps-${{ runner.os }}-
+
       - name: Install dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: npm ci --include=dev
 
       - name: Support UX read-only readiness diagnostic tests
         run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs
 
+      - name: Cache generated Prisma client
+        # Generating the client for this schema takes ~4 min. The output is
+        # fully determined by the schema and the Prisma version pinned in the
+        # lockfile, so both are the key; any change to either regenerates.
+        # deploy.yml's `checks` saves the same key from main.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
       - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
         run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Resolve the per-job Postgres port
