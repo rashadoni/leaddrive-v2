@@ -83,13 +83,15 @@ export function validateActivationEvidence(evidence, expected = {}) {
   }
   const pg = evidence.postgres
   const outageBytes = pg.peakWalBytesPerSecond * pg.maxOutageSeconds
+  // This checks the declared slot cap only. walBudgetEvidenceId must cover
+  // measured aggregate disk demand, including other slots and checkpoint lag.
   const diskBytes = pg.maxSlotWalKeepSizeBytes + pg.checkpointOvershootBytes
   assert.ok(Number.isSafeInteger(outageBytes) && outageBytes <= pg.walStopBytes,
     "WAL outage budget must fit below the stop threshold")
   assert.ok(pg.walWarningBytes < pg.walStopBytes && pg.walStopBytes < pg.maxSlotWalKeepSizeBytes,
     "WAL thresholds must satisfy warning < stop < finite slot cap")
   assert.ok(Number.isSafeInteger(diskBytes) && diskBytes <= pg.walDiskBudgetBytes,
-    "WAL disk budget must include checkpoint overshoot and all existing slots")
+    "WAL disk budget must fit the declared slot cap plus checkpoint overshoot")
   requiredTrue(pg.cdcStopDrillVerified, "postgres.cdcStopDrillVerified")
   requiredString(pg.walBudgetEvidenceId, "postgres.walBudgetEvidenceId")
   requiredTrue(evidence.postgres.capacityApproved, "postgres.capacityApproved")
