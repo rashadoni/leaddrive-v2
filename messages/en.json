@@ -30132,5 +30132,24 @@
         "done": "Marking in the app: {count} of {total}"
       }
     }
+  },
+  "fieldAppDownload": {
+    "pageTitle": "LeadDrive Route Field for Android",
+    "eyebrow": "Mobile app for field teams",
+    "title": "LeadDrive Route Field",
+    "lead": "Routes, visits and tasks for field employees of companies that use LeadDrive CRM.",
+    "download": "Download for Android",
+    "version": "Version {version} · {date}",
+    "unavailable": "The download is temporarily unavailable. Please try again in a few minutes.",
+    "stepsTitle": "How to install",
+    "step1": "Tap «Download for Android» and open the downloaded file.",
+    "step2": "If the phone asks, allow installing apps from this source.",
+    "step3": "Tap «Install». If the app is already installed, the new version installs over it — unsent visits and drafts are kept.",
+    "step4": "Open the app and enter your company code and the sign-in details your administrator gave you.",
+    "updatesTitle": "Updates",
+    "updates": "When a new version is released, the app offers it as soon as you open it: tap «Update».",
+    "playNote": "Coming soon to Google Play.",
+    "privacy": "App privacy policy",
+    "languageLabel": "Language"
   }
 }
