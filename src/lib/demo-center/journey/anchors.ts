@@ -204,6 +204,7 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "prs-today-attention": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Today: who needs attention, explanations" },
   "prs-timesheet": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Timesheet grid and the day card" },
   "prs-risk": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Suspicious records" },
+  "prs-risk-decision": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Risk review: the two times, the reason, close" },
   "prs-n1t": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "N-1t timesheet for accounting" },
   "prs-month-close": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Close the month" },
   /* ── Contracts ── */

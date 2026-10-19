@@ -108,6 +108,7 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   "mtm-history": MtmScene,
   "mtm-results": MtmScene,
   "prs-today": PersonnelScene,
+  "prs-explain": PersonnelScene,
   "prs-timesheet": PersonnelScene,
   "prs-risk": PersonnelScene,
   "prs-month": PersonnelScene,

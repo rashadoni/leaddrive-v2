@@ -860,16 +860,43 @@ describe("the Personnel module", () => {
     expect(kpis).toContain(S.personnelPrivacy)
   }, 60_000)
 
-  it("approves a leave in one click, then asks the late ones for an explanation", async () => {
+  it("approves a leave in one click, asks the late and the absent to explain, reads an answer and accepts it", async () => {
+    const { PERSONNEL_DEMO_EXPLANATION } = await import("@/components/demo-center/journey/scenes/personnel-demo-data")
     await openPersonnel()
     await walkTo("prs-today-approve")
     await act(async () => findDemoTarget("prs-today-approve")!.click())
     await settle()
     expect(textOf('[data-tour-id="prs-today-requests"]')).toContain(S.personnelApproved)
-    expect(frontier().stepId).toBe("prs-today-explain")
-    await act(async () => findDemoTarget("prs-today-explain")!.click())
+    expect(frontier().stepId).toBe("prs-explain-ask")
+    // The product asks the late and the absent alike: two late and one absent today, all ticked.
+    const attention = () => textOf('[data-tour-id="prs-today-attention"]')
+    expect(findDemoTarget("prs-explain-ask")!.textContent).toContain(messages.personnel.explainAsk.replace("{count}", "3"))
+    await act(async () => findDemoTarget("prs-explain-ask")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("prs-explain-read")
+    expect(attention()).toContain(messages.personnel.explainWaiting.split(" ·")[0])
+    expect(attention()).not.toContain(PERSONNEL_DEMO_EXPLANATION.answer)
+    await act(async () => findDemoTarget("prs-explain-read")!.click())
+    await settle()
+    expect(attention()).toContain(PERSONNEL_DEMO_EXPLANATION.answer)
+    await act(async () => findDemoTarget("prs-explain-accept")!.click())
     await settle()
     expect(frontier().sectionId).toBe("prs-timesheet")
+  }, 60_000)
+
+  it("closes a suspicious record with a reason, and the time itself does not change", async () => {
+    const { PERSONNEL_DEMO_RISK_REASON, personnelDemoRisks } = await import("@/components/demo-center/journey/scenes/personnel-demo-data")
+    await openPersonnel()
+    await walkTo("prs-risk-review")
+    // The product's own table: «Yoxlama gözləyir» on every record.
+    expect(document.querySelectorAll('[data-tour-id="prs-risk"] [data-testid="risk-row"]')).toHaveLength(personnelDemoRisks("2026-10-15").length)
+    await act(async () => findDemoTarget("prs-risk-review")!.click())
+    await settle()
+    expect(frontier().stepId).toBe("prs-risk-close")
+    expect((document.getElementById("prs-risk-reason") as HTMLTextAreaElement).value).toBe(PERSONNEL_DEMO_RISK_REASON)
+    await act(async () => findDemoTarget("prs-risk-close")!.click())
+    await settle()
+    expect(frontier().sectionId).toBe("prs-month")
   }, 60_000)
 
   it("shows a corrected day as before → after, with who approved it", async () => {
@@ -877,8 +904,9 @@ describe("the Personnel module", () => {
     await walkTo("prs-timesheet-day")
     await act(async () => findDemoTarget("prs-timesheet-day")!.click())
     await settle()
-    // The step is done and the guide moves on.
-    expect(frontier().sectionId).toBe("prs-risk")
+    // The step is done, and the card stays on screen for the step that reads it.
+    expect(frontier().stepId).toBe("prs-timesheet-card")
+    expect(textOf('[data-tour-id="prs-timesheet"]')).toContain("Orxan Musayev")
     // What the card printed: the product's own correction line over the product's own timesheet.
     const { personnelDemoPlan, personnelDemoReport } = await import("@/components/demo-center/journey/scenes/personnel-demo-data")
     const { defaultAttendanceDayKinds } = await import("@/lib/mtm/attendance-day-kinds")

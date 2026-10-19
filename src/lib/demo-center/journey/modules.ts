@@ -65,7 +65,7 @@ export const DEMO_JOURNEY_MODULES = [
     id: "personnel",
     title: "Kadr uçotu",
     pitch: "Gəliş-çıxış telefondan, müraciətlər, tabel və ay sonu mühasibat üçün.",
-    sections: ["prs-today", "prs-timesheet", "prs-risk", "prs-month"],
+    sections: ["prs-today", "prs-explain", "prs-timesheet", "prs-risk", "prs-month"],
   },
   {
     id: "contracts",
