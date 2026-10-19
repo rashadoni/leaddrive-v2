@@ -230,7 +230,6 @@ jobs:
           python3 .github/scripts/test_provision_postgres_restore_scratch.py
           node --test scripts/backup/object-lock-diagnostic.test.mjs
           node --test scripts/backup/owner-recovery.test.mjs
-          python3 scripts/backup/test_b2_restore_write_probe.py
           node --test scripts/backup/object-storage-endpoint.test.mjs scripts/backup/b2-key-denial.test.mjs
 
       - name: Event-platform migration and database invariant gate

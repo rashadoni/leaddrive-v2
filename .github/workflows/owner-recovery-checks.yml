@@ -47,8 +47,6 @@ jobs:
         env:
           LEADDRIVE_OWNER_AGE_INTEGRATION: '1'
         run: node --test scripts/backup/owner-recovery.test.mjs
-      - name: Bounded restore-key diagnostic safety tests
-        run: python3 scripts/backup/test_b2_restore_write_probe.py
       - name: Existing pinned helper consistency and shell syntax
         run: |
           node scripts/ci/test-event-platform-assets.mjs

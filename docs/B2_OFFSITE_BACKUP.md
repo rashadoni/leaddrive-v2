@@ -207,30 +207,21 @@ SignatureDoesNotMatch и timeout. Исправленная проверка тр
 ## Уточнение живой проверки 2026-10-19 — A3
 
 Повторный запуск исправленного verifier на Mac владельца подтвердил загрузку,
-metadata/version id, побайтное скачивание и три явных `AccessDenied`. Отказ
-`restore key upload` остался `unknown`; итог **1 failure**, а не доказанный ACL.
-Object Lock вернул `ObjectLockConfigurationNotFoundError`. FileVault на новом
-скриншоте уже On; прежний Off остаётся историческим наблюдением в журнале A3.
+metadata/version id, побайтное скачивание и три явных AccessDenied. Отказ
+restore key upload остался unknown; итог **1 failure**, а не доказанный ACL.
+Object Lock вернул ObjectLockConfigurationNotFoundError. Новый скриншот
+подтвердил FileVault On; прежний Off сохраняется как история в журнале A3.
 
-Для этого конкретного неизвестного отказа подготовлен отдельный
-`scripts/backup/b2-restore-write-probe.py`: на Mac он читает только локальный
-`restore.env` (owned, 0400/0600, без symlink/hardlink), принимает только B2 endpoint
-согласованного региона и bucket `leaddrive-prod-backups`, делает два PutObject
-со случайным телом 32 байта в новом synthetic prefix. Сравниваются AWS checksum
-режимы `when_supported`/`when_required`. Объекты не удаляются; production archive,
-writer credentials, bucket settings, retention и timers не затрагиваются.
+Узкая диагностика из [PR #913](https://github.com/rashadoni/leaddrive-v2/pull/913)
+дала CLI255/connection_closed в обоих checksum режимах. Это транспортный сбой,
+его причина не установлена. Положительная загрузка writer и чтение restore не
+делают обрыв соединения доказательством запрета записи.
 
-Каждый вызов ограничен 45 секундами и 16 КиБ приватного stderr; при timeout
-уничтожается группа процессов. Наружу выходит только фиксированная категория,
-без raw ответа/ключей. Только exact `AccessDenied` от PutObject с exit254
-считается таким отказом. Numeric403, checksum/сетевая ошибка, неизвестный формат
-и неожиданно разрешённая запись остаются неуспехом. Это диагностический тест,
-он не выдаёт commissioning/restore receipt и не снимает Object Lock gate.
-
-```bash
-python3 /path/to/reviewed/b2-restore-write-probe.py \
-  "$HOME/leaddrive-b2-keys/restore.env"
-```
-
-Реальный результат этой узкой диагностики пока **NOT RUN**; гипотеза о различии
-checksum режимов не является установленной причиной неизвестного отказа.
+Владелец дальнейшей транспортной диагностики — отдельный PR913: там подготовлен
+curl SigV4 control с положительными writer PUT/byte-identical restore GET и
+строгим HTTP403 + S3 AccessDenied для restore PUT. Этот control ещё не выполнен
+в рамках A3; код отдельного PR не считается поставленным в main.
+A3 не дублирует следующие сетевые попытки и не меняет ключи/права/bucket settings.
+Приватные credentials остаются на Mac. Неизвестный ответ, signature/network
+ошибка и numeric403 без явного S3 AccessDenied сохраняют FAIL. Object Lock,
+production config и реальный scratch restore остаются отдельными prerequisites.

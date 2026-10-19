@@ -967,3 +967,33 @@
   Launcher syntax PASS; not executed on Contabo. Owner Mac is the only existing
   credential route; no key contents asked for. Next: receive its fixed-category
   result, diagnose rather than treat unknown as ACL, complete source checks.
+
+### 2026-10-19 — actual transport result; consolidate duplicate diagnostic ownership
+
+- Owner supplied both diagnostic outputs: existing PR913 source85f14c684
+  reports CLI255/connection_closed in when_supported and when_required.
+  A3 public6bb diagnostic ran with correct checksum and returned
+  unrecognized_failure for both. Neither proves AccessDenied/permission failure;
+  no successful write or excessive privilege inferred. Hypothesis that switching
+  only checksum mode resolves the problem is unsupported by this observation.
+- Discovered existing in-flight PR913,codex/b2-put-diagnostic, current1e3ccaf70.
+  Fetched only this authorized repository/branch and inspected its public code/
+  description. Earlier copied screenshot SHA transcription was wrong; direct
+  fetch of that string failed, then canonical PR913 branch resolved actual85f14.
+  Its classifier explicitly recognizes the observed connection-closed string;
+  newer source prepares curl SigV4 positive authenticated controls and explicit
+  HTTP403/S3 AccessDenied denial. Real curl control still NOT RUN by A3.
+- A3's newly added6bb diagnostic duplicated a separate session's work discovered
+  after owner screenshot. Remove only task-owned duplicate probe/test/gate
+  additions from final source and replace its docs with factual peer reference.
+  Preserve6bb checkpoint and all append-only observations; no revert/reset or
+  journal/history deletion. No peer branch/PR modified or merged.
+- Source6bb's6 tests genuinely passed but are historical experiment proof, not
+  retained A3 acceptance. Public /tmp copies and owner Mac copies are retained;
+  no additional rerun requested. Actual current synthetic owner workbench/age/
+  swap component source remains as previously reviewed.
+- Coordinate one diagnostic owner through PR913/892 rather than another pair of
+  live requests. No raw stderr/private keys requested; no provider/production/
+  billing/permissions/retention/timer changes. Current A3 source will complete
+  required hosted gates after this bounded consolidation. Root delivery hold
+  and real backup/restore NOT RUN remain unchanged.
