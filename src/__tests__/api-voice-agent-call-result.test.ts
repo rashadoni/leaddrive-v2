@@ -238,6 +238,7 @@ describe("POST /api/internal/voice-agent/call-result", () => {
             transcription: true,
             duration: true,
             conversationOutcome: true,
+            consentAudit: true,
           },
         },
       },
@@ -307,6 +308,36 @@ describe("POST /api/internal/voice-agent/call-result", () => {
         eventHash: "voice-post-call-analysis-v1",
       }),
     }))
+  })
+
+  it("records the station's word that a demo call ran on the demo's script, and nothing for any other call", async () => {
+    const promptServed = () => mocks.callEventCreateMany.mock.calls
+      .map((call) => call[0].data[0])
+      .filter((row: { eventType: string }) => row.eventType === "voice_runtime_prompt_served")
+    const demoSession = matchingSession()
+    ;(demoSession.callLog as Record<string, unknown>).consentAudit = { via: "demo_center" }
+    mocks.findSession.mockResolvedValueOnce(demoSession)
+    expect((await POST(request({ ...connectedPayload(), demoPromptApplied: true }))).status).toBe(200)
+    expect(promptServed()).toEqual([expect.objectContaining({
+      callLogId: "call-log-1",
+      providerCallId: callId,
+      payload: { variant: "demo", matchedBy: "station" },
+    })])
+
+    // The flag on a call the demo did not place, or a demo call without it: no evidence.
+    mocks.callEventCreateMany.mockClear()
+    mocks.findSession.mockResolvedValueOnce(matchingSession())
+    await POST(request({ ...connectedPayload(), demoPromptApplied: true }))
+    const demoAgain = matchingSession()
+    ;(demoAgain.callLog as Record<string, unknown>).consentAudit = { via: "demo_center" }
+    mocks.findSession.mockResolvedValueOnce(demoAgain)
+    await POST(request(connectedPayload()))
+    expect(promptServed()).toEqual([])
+  })
+
+  it("accepts the demo flag only as true", async () => {
+    const response = await POST(request({ ...connectedPayload(), demoPromptApplied: false }))
+    expect(response.status).toBe(400)
   })
 
   it("is idempotent after a call already has insights", async () => {

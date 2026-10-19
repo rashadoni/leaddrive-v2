@@ -79,6 +79,19 @@ describe("maybePlaceCallback", () => {
     expect(mocks.placeCallback).not.toHaveBeenCalled()
   })
 
+  it("never dials a prospect back after a demo call the station ended at its cap", async () => {
+    mocks.findFirst.mockResolvedValue(brokenCall({ consentAudit: { via: "demo_center" } }))
+
+    const result = await maybePlaceCallback({
+      organizationId: ORG, callLogId: "call-1", turns: TURNS, now,
+    })
+
+    expect(result.decision).toEqual({ callback: false, reason: "demo_call" })
+    expect(mocks.placeCallback).not.toHaveBeenCalled()
+    // The mark is read from the call itself.
+    expect(mocks.findFirst.mock.calls[0][0].select).toMatchObject({ consentAudit: true })
+  })
+
   it("does not dial when nothing says the call broke", async () => {
     mocks.findFirst.mockResolvedValue(brokenCall({ agentMidUtterance: false }))
 

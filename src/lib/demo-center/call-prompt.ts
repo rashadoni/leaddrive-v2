@@ -57,6 +57,22 @@ export function demoCallOpening(firstName: string | null): string {
 
 /** The closing line of the approved script. */
 export const DEMO_CALL_CLOSING = "Təşəkkür edirəm! Demoya qayıdın — növbəti addım artıq ekranda sizi gözləyir."
+/**
+ * The same closing for a prospect who switched language: given word for word,
+ * so the model does not translate it freely and the station still hears it.
+ */
+export const DEMO_CALL_CLOSING_RU = "Спасибо! Вернитесь в демо — следующий шаг уже ждёт вас на экране."
+export const DEMO_CALL_CLOSING_EN = "Thank you! Please go back to the demo — the next step is waiting on your screen."
+/**
+ * The words of the closing the station listens for in the agent's own speech
+ * (voice-core-demo-max-seconds.patch): once they have played and the caller
+ * says nothing more, the station ends the call — the model has no way to hang
+ * up. Short on purpose: the transcript of synthesized speech is not word-exact.
+ * One per language the script allows; every way the script ends a call says
+ * one of them (the prompt test checks it).
+ */
+export const DEMO_CALL_CLOSING_KEY = "demoya qayıdın"
+export const DEMO_CALL_CLOSING_KEYS = [DEMO_CALL_CLOSING_KEY, "вернитесь в демо", "back to the demo"] as const
 
 /**
  * A demo call lasts at most this long (owner, 2026-09-22, again 2026-10-18:
@@ -84,7 +100,7 @@ Qiymət, endirim, müqavilə, inteqrasiya və ya müddət barədə heç nə vəd
 }
 
 export function buildDemoCallPrompt(params: { firstName: string | null }): string {
-  return `Sən LeadDrive CRM-in AI səsli köməkçisisən. Söhbətə Azərbaycan dilində başla; müştəri başqa dilə keçərsə, onun dilinə keç.
+  return `Sən LeadDrive CRM-in AI səsli köməkçisisən. Söhbətə Azərbaycan dilində başla; müştəri başqa dilə keçərsə, onun dilinə keç. Son cümləni həmin dildə dəqiq belə de — rusca: "${DEMO_CALL_CLOSING_RU}", ingiliscə: "${DEMO_CALL_CLOSING_EN}"
 Özünü virtual köməkçi kimi təqdim et, insan olduğunu iddia etmə. Başqa heç bir şirkətin adından danışma.
 
 Bu zəngi müştəri özü LeadDrive demosunda sifariş edib və buna razılıq verib: o, AI zənginin necə işlədiyini öz telefonunda görmək istəyir. Eyni zamanda bu, LeadDrive üçün real müraciətdir.
@@ -92,7 +108,7 @@ Bu zəngi müştəri özü LeadDrive demosunda sifariş edib və buna razılıq 
 İlk cümlən dəqiq belə olsun:
 "${demoCallOpening(params.firstName)}"
 
-Müştəri razı deyilsə, üzr istə, təşəkkür et və zəngi bitir.
+Müştəri razı deyilsə, üzr istə və de: "Təşəkkür edirəm, demoya qayıdın." — və zəngi bitir.
 
 Sonra bir-bir, hər cavabdan sonra soruş:
 1. Şirkətinizdə satışla neçə nəfər məşğul olur?
@@ -103,8 +119,8 @@ Qaydalar:
 - Bir anda yalnız bir qısa sual ver; cavabların iki qısa cümlədən uzun olmasın.
 - Qiymət, endirim, müqavilə, inteqrasiya və ya müddət barədə heç nə vəd etmə və uydurma.
 - Müştəri insanla danışmaq, qiymət, müqavilə və ya ödəniş barədə soruşarsa, de: "Menecerimiz qısa zamanda sizə zəng edəcək." — və bunu növbəti addım kimi qeyd et.
-- Müştəri bir daha zəng edilməməsini istəsə, hörmətlə təsdiqlə və zəngi bitir.
-- Zəng ən çoxu iki dəqiqə çəkir (sahibkarın qərarı, 2026-09-22). Üçüncü cavabdan sonra dərhal xülasəyə keç; söhbət uzanarsa, sualı qısalt və iki dəqiqə dolmadan xülasə et, sağollaş və zəngi bitir.
+- Müştəri bir daha zəng edilməməsini istəsə, hörmətlə təsdiqlə və de: "Bir daha zəng etməyəcəyik. Təşəkkür edirəm, demoya qayıdın." — və zəngi bitir.
+- Zəng ən çoxu iki dəqiqə çəkir (sahibkarın qərarı, 2026-09-22). Üçüncü cavabdan sonra dərhal xülasəyə keç; söhbət uzanarsa, sualı qısalt və iki dəqiqə dolmadan xülasə et, de: "${DEMO_CALL_CLOSING}" — və zəngi bitir.
 
 Sonda eşitdiklərini bir cümlə ilə xülasə et və de: "${DEMO_CALL_CLOSING}"`
 }
