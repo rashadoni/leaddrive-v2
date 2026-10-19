@@ -1292,3 +1292,17 @@ Old broker39215381893 at4b was cancelled by dispatching its own replacement
 39216416557; no other branch/session touched. New CDC39216412781 and broker
 39216416557 use exactde4 digest refresh; results pending. Existing foreign
 workflow/test definitions unchanged. No business module activation.
+
+
+### Artifact-bearing proof PASS; full PR CI now permitted
+
+Run39216879218 on exact622e4f32e SUCCESS:226+5+17+8+9+24+8+18+3=318 PASS,
+all fail counters0; success-only synthetic notification/restore artifact uploaded.
+Full app/static/typecheck/build and existing Kafka workflows were previously
+draft-skipped. Owner now allows isolated consumers/replay/notifications, so ready
+for review can trigger those unchanged gates; PR will return to draft when done.
+Auto-merge is null, no merge/deploy is authorized. To avoid duplicate heavy runs,
+only our de4 manual CDC39216412781 (cdc-smoke PASS/full-chain pending) and broker
+39216416557 are cancelled in favor of final exact-head PR-triggered runs. Their
+partial/cancelled status is not converted to full PASS. Shared other branches'
+checks/runs are not changed. All heavy work remains on GitHub-hosted Linux.

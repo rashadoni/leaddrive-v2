@@ -484,14 +484,41 @@ Original session «Проверить защиту Kafka-консюмера» ow
 | Owner | Concrete action, once prerequisites/authorization exist |
 |---|---|
 | Resolved by owner approval | Exact README prose exception authorized and applied in the existing PR; no clean-history republication or checkpoint rewrite needed. Local history/negative canaries PASS; hosted result retained in PR |
-| Owner personally | Approve a named isolated staging tenant/build, independent signers, receipt archive and alert destination, plus explicit permission for real consumers/replay/drill sends; these operations remain forbidden here |
+| Test permission resolved; provider decisions remain | Owner authorized test consumers/replay/notifications. Selected run-isolated GitHub Kafka/PG synthetic scope and loopback receiver. Real external provider/human destination and persistent signer provisioning still require named service configuration |
 | Original delivery session | Provision the chosen service identities/key policy and configure real readonly DB/receipt/key/archive adapters for createFundEvidenceVerifier; no fixture module may be used |
 | Original delivery session | Execute the seven-purpose real acceptance procedure in PROJECTION_RECOVERY_RUNBOOK.md, retaining authentic signed bytes and exact release/manifest/material hashes |
 | Owner personally | Choose first-pointer bootstrap, Fund correction/reversal and promoted-worker lifecycle policy; terminal stopped canary is the only currently specified bounded design |
 | Original delivery session | After those decisions, implement/verify application cutover and lifecycle/correction drill using the existing guards; keep all27 domains gated by their A7 writer/effect/history evidence |
 | Production workflow | Only after separately authorized reviewed merge, release the immutable main artifact through .github/workflows/deploy.yml and verify SHA-bound post-deploy smoke; no feature deployment |
 
-Whole-app static/typecheck/build remain draft-skipped; making PR ready also
-triggers separate Kafka/consumer gates and is outside the present no-consumer
-boundary. This task does not weaken draft gates, rewrite history, merge red or
-activate business integrations to produce a green badge.
+Test consumers/replay/notifications are now explicitly allowed in isolated
+nonproduction scope. Full GitHub checks may run via ready_for_review; the PR
+will return to draft after verification. No auto-merge, production mutation or
+new active business integration follows. No foreign gate is weakened.
+
+
+### Real disposable drills after test authorization
+
+Owner permission supersedes historical no-test-consumer/replay/notification
+statements for the selected GitHub disposable profile only. Source4b manual
+CDC failed before connector startup because the official old Connect digest
+returned404. Same-release manifest/config bytes were independently hash-checked
+and the disposable pin refreshed; strict existing plugin/version tests unchanged.
+New de4 CDC-smoke passed actual transport/plugin/snapshot/cold-restart assertions;
+full-chain Fund and broker jobs remain pending until exact receipts are recorded.
+
+Operator de4 run39216417379 passed318/318, adding five real HTTP delivery/read-back/
+restart cases and three actual pg_dump/pg_restore cases. Notification stimuli are
+controlled and ACK actor is a separate machine identity, not a human; all ten
+receipt gates reached an actual independently authenticated receiver. Restore
+uses a new isolated database and reader with exact canonical/material parity,
+partial visibility denial and unchanged source. This is snapshot restore, not
+production PITR, encryption, immutable offsite archive or independent recovery RTO.
+Receipts/dump are synthetic-data-only hosted artifacts with7-day retention.
+
+These bounded observations do not compose genuine stop/broker/soak/archive/restore/
+approval/alerts into one authenticated runtime transition. The operator SQL/JIT
+and key policies remain inactive, same as business read cutover. Real exporter/
+rule firing, human paging, Kafka TLS/ACL/HA, persistent provider/identity/secret
+provisioning and full27-domain G evidence remain open. Do not turn these tests
+or topic presence into production activation authority.

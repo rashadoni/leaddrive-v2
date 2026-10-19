@@ -357,3 +357,26 @@ sets5s statement/2s lock limits, collector10s transaction limit. These cap retur
 rows and certified bytes; they do not prove indexed scan cost or production RTO.
 Bigger tenants need a separately reviewed streaming/chunk design, not higher
 limits or truncated evidence. All proof signing keys/claims here are synthetic.
+
+
+### Authorized disposable physical drills
+
+`operator-alert-http.mjs` provides a bounded read-only HTTPS receipt adapter;
+HTTP loopback requires explicit hosted disposable flags. Its independent-process
+test sends ten controlled alerts, fsyncs receiver delivery/ACK receipts, denies
+sender/reader impersonation of the responder and verifies actual receiver restart.
+It proves test transport with machine ACK, not production rule/exporter firing
+or a person's paging response. No email address/provider was guessed.
+
+`operator-fund-restore.integration.mjs` creates a real bounded custom-format
+pg_dump, restores to a fresh UUID database, provisions a separate reader and
+compares canonical source/shadow/checkpoints/material. Source stays unchanged;
+missing restored visibility denies. Clone/role cleanup is run-owned. This does
+not prove production PITR, encrypted/WORM storage or recovery-time objectives.
+The restore factory keeps all base CI/host/service guards and accepts only the
+fixed reader and generated clone namespace. No general connection override.
+
+Successful hosted runs retain synthetic-only receipt journals, restore metadata
+and dump in GitHub artifacts for7days; no bearer/private key or real tenant data
+is archived. One failed test prevents PASS/receipt artifact issuance. These test
+adapters are not application startup or operational rollout wiring.
