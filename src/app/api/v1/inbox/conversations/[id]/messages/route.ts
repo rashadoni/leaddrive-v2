@@ -4,10 +4,10 @@ import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
 
 export const POST = withInboxSessionWrite(async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
-  const { text } = await req.json()
+  const { text, deliveryIdempotencyKey } = await req.json()
 
   const conv = await prisma.socialConversation.findFirst({
-    where: { id, organizationId: orgId },
+    where: { id, organizationId: orgId, deletedAt: null },
   })
   if (!conv) return NextResponse.json({ error: "Not found" }, { status: 404 })
   // platform="inbox" rows are ensure-created collaborator anchors for email/sms threads ([P3]), NOT a
@@ -15,6 +15,18 @@ export const POST = withInboxSessionWrite(async (req, { orgId }, { params }: { p
   // persist a channelType:"inbox" outbound row. Replies for those go through /api/v1/inbox. Guard the край.
   if (conv.platform === "inbox") {
     return NextResponse.json({ error: "Use the inbox send endpoint for this conversation" }, { status: 400 })
+  }
+
+  if (conv.platform === "tiktok") {
+    if (typeof text !== "string" || typeof deliveryIdempotencyKey !== "string") {
+      return NextResponse.json({ error: "Text and an idempotency key are required" }, { status: 400 })
+    }
+    const { sendConversationReply } = await import("@/lib/inbox/send-conversation-reply")
+    const result = await sendConversationReply({ organizationId: orgId, channel: "tiktok", to: conv.externalId,
+      body: text, conversationId: conv.id, channelConfigId: conv.channelConfigId,
+      deliveryIdempotency: { source: "manual", key: deliveryIdempotencyKey } })
+    return NextResponse.json(result.success ? { success: true, data: result.data }
+      : { error: result.error, deliveryUnknown: result.deliveryUnknown, attemptId: result.attemptId }, { status: result.statusCode })
   }
 
   const channel = conv.channelConfigId

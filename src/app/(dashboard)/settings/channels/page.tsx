@@ -204,7 +204,7 @@ const copy = {
     metaQuickTitle: "WhatsApp, Facebook and Instagram — connect in one click",
     metaQuickHint: "Sign in with Meta and pick your number, Page or account. LeadDrive sets up the keys and webhooks — nothing to copy.",
     manualSetupLink: "Manual setup",
-    tilesHint: "Click a platform to connect it. WhatsApp, Facebook and Instagram open Meta's window; the others ask only for their key.",
+    tilesHint: "Click a platform to connect it. WhatsApp, Facebook and Instagram open Meta's window; TikTok opens its OAuth settings.",
     tileConnect: "Connect",
     tileNotConnected: "Not connected",
     oauthErrorTitle: "Connection did not finish",
@@ -248,7 +248,7 @@ const copy = {
     ],
     tabGuides: {
       all: "Choose a channel card. Connected channels can be edited; new providers open a guided setup.",
-      business: "WhatsApp Business, Facebook, Instagram and TikTok use provider-specific guides. TikTok is connected through Chatwoot.",
+      business: "WhatsApp Business, Facebook, Instagram and TikTok use their own connection settings. TikTok offers direct OAuth sign-in.",
       calls: "Use VoIP settings for PBX/SIP providers. WhatsApp Business Calling has its own readiness checklist.",
       sms: "ATL is the default SMS route for Azerbaijan. Twilio and Vonage stay available for tenants that already use them.",
       email: "Email cards open SMTP/IMAP setup. Use provider app passwords where required.",
@@ -347,7 +347,7 @@ const copy = {
     },
     cards: {
       whatsappBusiness: "Meta WhatsApp Business API with WABA, templates, webhooks and inbox replies.",
-      tiktok: "One TikTok hub for DM Inbox, Comments & Mentions, and Lead Ads. Chatwoot stays the DM transport.",
+      tiktok: "Direct TikTok messages · OAuth setup",
       facebook: "Connect Facebook Messenger from your tenant's own Meta app.",
       instagram: "Connect Instagram Direct via Facebook Page or Instagram Login.",
       telegram: "Connect a Telegram Bot for real-time customer support.",
@@ -392,7 +392,7 @@ const copy = {
     metaQuickTitle: "WhatsApp, Facebook и Instagram — подключение в один клик",
     metaQuickHint: "Войдите через Meta и выберите номер, страницу или аккаунт. Ключи и вебхуки LeadDrive настроит сам — ничего копировать не нужно.",
     manualSetupLink: "Ручная настройка",
-    tilesHint: "Нажмите на платформу, чтобы подключить. WhatsApp, Facebook и Instagram открывают окно Meta, остальным нужен только их ключ.",
+    tilesHint: "Нажмите на платформу, чтобы подключить. WhatsApp, Facebook и Instagram открывают окно Meta, TikTok — настройки входа через OAuth.",
     tileConnect: "Подключить",
     tileNotConnected: "Не подключено",
     oauthErrorTitle: "Подключение не завершилось",
@@ -434,7 +434,7 @@ const copy = {
     ],
     tabGuides: {
       all: "Выберите карточку канала. Подключённые каналы редактируются здесь, новые открывают пошаговую настройку.",
-      business: "WhatsApp Business, Facebook, Instagram и TikTok подключаются по отдельным инструкциям. TikTok идёт через Chatwoot.",
+      business: "WhatsApp Business, Facebook, Instagram и TikTok подключаются в отдельных настройках. Для TikTok доступен прямой вход через OAuth.",
       calls: "PBX/SIP провайдеры настраиваются в VoIP. WhatsApp Business Calling имеет отдельный чеклист готовности.",
       sms: "ATL — основной SMS-маршрут для Азербайджана. Twilio и Vonage оставлены для tenant-ов, которые уже ими пользуются.",
       email: "Email-каналы открывают SMTP/IMAP настройку. Где нужно, используйте app password провайдера.",
@@ -533,7 +533,7 @@ const copy = {
     },
     cards: {
       whatsappBusiness: "Meta WhatsApp Business API: WABA, шаблоны, webhook-и и ответы из инбокса.",
-      tiktok: "Один TikTok Hub для DM Inbox, Comments & Mentions и Lead Ads. Chatwoot остаётся транспортом DM.",
+      tiktok: "Сообщения TikTok напрямую · Настройка OAuth",
       facebook: "Facebook Messenger через собственное Meta-приложение tenant-а.",
       instagram: "Instagram Direct через Facebook Page или Instagram Login.",
       telegram: "Telegram Bot для realtime-поддержки клиентов.",
@@ -578,7 +578,7 @@ const copy = {
     metaQuickTitle: "WhatsApp, Facebook və Instagram — bir kliklə qoşulma",
     metaQuickHint: "Meta ilə daxil olun və nömrəni, səhifəni və ya hesabı seçin. Açarları və webhook-ları LeadDrive özü qurur — heç nə köçürmək lazım deyil.",
     manualSetupLink: "Əl ilə quraşdırma",
-    tilesHint: "Qoşmaq üçün platformaya klikləyin. WhatsApp, Facebook və Instagram Meta pəncərəsini açır, digərlərinə yalnız öz açarı lazımdır.",
+    tilesHint: "Qoşmaq üçün platformaya klikləyin. WhatsApp, Facebook və Instagram Meta pəncərəsini, TikTok isə OAuth giriş parametrlərini açır.",
     tileConnect: "Qoş",
     tileNotConnected: "Qoşulmayıb",
     oauthErrorTitle: "Qoşulma tamamlanmadı",
@@ -620,7 +620,7 @@ const copy = {
     ],
     tabGuides: {
       all: "Kanal kartını seçin. Qoşulmuş kanallar burada redaktə olunur, yeni provayderlər addım-addım qurulmaya açılır.",
-      business: "WhatsApp Business, Facebook, Instagram və TikTok ayrıca təlimatla qoşulur. TikTok Chatwoot vasitəsilə işləyir.",
+      business: "WhatsApp Business, Facebook, Instagram və TikTok ayrıca parametrlərlə qoşulur. TikTok üçün birbaşa OAuth girişi mövcuddur.",
       calls: "PBX/SIP provayderləri VoIP-də qurulur. WhatsApp Business Calling üçün ayrıca hazırlıq checklist-i var.",
       sms: "ATL Azərbaycan üçün əsas SMS marşrutudur. Twilio və Vonage artıq istifadə edən tenant-lar üçün qalır.",
       email: "Email kartları SMTP/IMAP qurulmasını açır. Lazım olduqda provayder app password istifadə edin.",
@@ -719,7 +719,7 @@ const copy = {
     },
     cards: {
       whatsappBusiness: "Meta WhatsApp Business API: WABA, şablonlar, webhook-lar və inbox cavabları.",
-      tiktok: "DM Inbox, Comments & Mentions və Lead Ads üçün bir TikTok Hub. Chatwoot DM transportu olaraq qalır.",
+      tiktok: "Birbaşa TikTok mesajları · OAuth quraşdırması",
       facebook: "Facebook Messenger tenant-ın öz Meta tətbiqi ilə qoşulur.",
       instagram: "Instagram Direct — Facebook Page və ya Instagram Login ilə.",
       telegram: "Realtime müştəri dəstəyi üçün Telegram Bot qoşun.",
@@ -758,15 +758,13 @@ const catalogCards = (c: (typeof copy)[LocaleKey]): CatalogCard[] => [
   {
     id: "tiktok",
     tab: "business",
-    channelType: "chatwoot",
-    provider: "tiktok",
     title: "TikTok",
     description: c.cards.tiktok,
     icon: Sparkles,
     logo: "♪",
-    badge: "Channel hub",
+    badge: "OAuth",
     accent: "from-orange-500/16 via-amber-500/8 to-transparent border-orange-400/20",
-    action: { type: "form", channelType: "chatwoot", presetName: "TikTok via Chatwoot", settings: { provider: "tiktok" } },
+    action: { type: "link", href: "/settings/channels/tiktok" },
   },
   {
     id: "facebook",
@@ -1847,7 +1845,9 @@ function ChannelsPageInner() {
   // VoIP calls, Social Monitoring's settings rows and the Slack/Teams notification hooks on their own screens. The list
   // used to offer them the channel form's Edit and a Delete — which the channels API refuses — and the "active" count
   // counted them.
-  const listedChannels = channels.filter((channel) => !isDedicatedChannelType(channel.channelType))
+  // Native TikTok credentials/status are managed only on its dedicated OAuth screen.
+  // A generic active ChannelConfig cannot prove its webhook subscription is ready.
+  const listedChannels = channels.filter((channel) => !isDedicatedChannelType(channel.channelType) && channel.channelType !== "tiktok_messaging")
 
   // "N active" sits next to a green check, so it has to mean "N channels that actually work". An
   // empty Meta row is created with isActive=true, so counting isActive alone counted drafts as wins.
@@ -1941,9 +1941,11 @@ function ChannelsPageInner() {
         : card.action.type === "guide"
           ? c.notConnected
           : c.tileConnect
-    const subtitle = whatsappWorking
-      ? c.esWorking
-      : connectionLive
+    const subtitle = card.id === "tiktok"
+      ? card.description
+      : whatsappWorking
+        ? c.esWorking
+        : connectionLive
         ? liveCount > 1 ? c.tileConnectedCount.replace("{count}", String(liveCount)) : connected?.configName
         : connectionBroken
           ? brokenStatus || brokenBadge

@@ -1,3 +1,4 @@
+import { reconcileNativeMessaging } from "@/lib/tiktok-messaging/reconcile"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -7,7 +8,7 @@ import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
 const bodySchema = z.object({
   attemptId: z.string().min(1).max(128),
   outcome: z.enum(["delivered", "not_delivered"]),
-  confirmation: z.literal("verified_in_chatwoot"),
+  confirmation: z.enum(["verified_in_chatwoot", "verified_in_tiktok"]),
 })
 const MIN_RECONCILIATION_AGE_MS = 60_000
 const MAX_RECONCILIATION_BODY_SIZE = 8 * 1024
@@ -43,6 +44,14 @@ export const POST = withInboxSessionWrite(async (req, auth, { params }: {
   const { id: conversationId } = await params
   const { attemptId, outcome } = parsed.data
 
+  if (parsed.data.confirmation === "verified_in_tiktok") {
+    const result = await reconcileNativeMessaging(auth.orgId, auth.userId, conversationId, attemptId, outcome)
+    if (result.kind === "missing") return NextResponse.json({ error: "Native TikTok attempt not found" }, { status: 404 })
+    if (result.kind === "conflict") return NextResponse.json({ error: "TikTok attempt is no longer unresolved" }, { status: 409 })
+    if (result.kind === "too_recent") return NextResponse.json({ error: "Wait two minutes before checking the outcome in TikTok" }, { status: 409 })
+    return NextResponse.json({ success: true, data: { messageId: result.messageId, outcome: result.outcome, replayed: result.kind === "replayed" } })
+  }
+
   const result = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`chatwoot-delivery:${auth.orgId}:${conversationId}`}, 0))`
 
@@ -72,6 +81,7 @@ export const POST = withInboxSessionWrite(async (req, auth, { params }: {
     if (!attempt) return { kind: "missing" as const }
 
     const metadata = metadataRecord(attempt.metadata)
+    if (metadata.provider === "tiktok_messaging") return { kind: "conflict" as const }
     const prior = metadata.deliveryReconciliation
     if (prior && typeof prior === "object" && !Array.isArray(prior)) {
       const priorOutcome = (prior as Record<string, unknown>).outcome

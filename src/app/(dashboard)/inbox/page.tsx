@@ -14,6 +14,7 @@
  * The legacy `/inbox` screen is intentionally left untouched until this reaches
  * parity and is verified.
  */
+import { nativeTikTokReplyTarget } from "@/lib/tiktok-messaging/identity"
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
@@ -1529,8 +1530,8 @@ export default function InboxV2Page() {
     }
     // TikTok-via-Chatwoot: the reply target is the Chatwoot conversation id, carried
     // on inbound messages' metadata (set by the chatwoot webhook).
-    let cwConvId = ""
-    if (replyChannel === "tiktok") {
+    let cwConvId = nativeTikTokReplyTarget(convo.messages) || ""
+    if (replyChannel === "tiktok" && !cwConvId) {
       for (const m of convo.messages) {
         const meta = (m as { metadata?: { chatwootConversationId?: string } }).metadata
         if (meta?.chatwootConversationId) { cwConvId = meta.chatwootConversationId; break }
@@ -1580,6 +1581,9 @@ export default function InboxV2Page() {
         // returns "outside_window_no_template"; tokens/config errors come through too.
         const code = json.error || `HTTP ${res.status}`
         setSendError(code === "outside_window_no_template" ? t("sendWindowClosed") : t("sendFailed", { error: code }))
+        if (json.deliveryUnknown === false && nativeTikTokReplyTarget(convo.messages)) {
+          sendOperationRef.current = null
+        }
         if (json.deliveryUnknown === true) {
           setSendDeliveryUnknown(true)
           setSendUnknownAttemptId(typeof json.attemptId === "string" ? json.attemptId : null)
@@ -1602,11 +1606,12 @@ export default function InboxV2Page() {
   const reconcileChatwootDelivery = async (outcome: "delivered" | "not_delivered") => {
     const conversationId = selectedConvo?.socialConversationId
     if (!conversationId || !sendUnknownAttemptId || sending) return
+    const provider = nativeTikTokReplyTarget(selectedConvo?.messages ?? []) ? "TikTok" : "Chatwoot"
     const prompt = locale === "ru"
-      ? `Подтвердите: вы открыли диалог в Chatwoot и проверили, что сообщение ${outcome === "delivered" ? "отправлено" : "НЕ отправлено"}.`
+      ? `Подтвердите: вы открыли диалог в ${provider} и проверили, что сообщение ${outcome === "delivered" ? "отправлено" : "НЕ отправлено"}.`
       : locale === "az"
-        ? `Təsdiqləyin: Chatwoot dialoqunu açıb mesajın ${outcome === "delivered" ? "göndərildiyini" : "göndərilmədiyini"} yoxladınız.`
-        : `Confirm that you opened the Chatwoot conversation and verified the message was ${outcome === "delivered" ? "delivered" : "NOT delivered"}.`
+        ? `Təsdiqləyin: ${provider} dialoqunu açıb mesajın ${outcome === "delivered" ? "göndərildiyini" : "göndərilmədiyini"} yoxladınız.`
+        : `Confirm that you opened the ${provider} conversation and verified the message was ${outcome === "delivered" ? "delivered" : "NOT delivered"}.`
     if (!window.confirm(prompt)) return
 
     setSending(true)
@@ -1617,7 +1622,7 @@ export default function InboxV2Page() {
         body: JSON.stringify({
           attemptId: sendUnknownAttemptId,
           outcome,
-          confirmation: "verified_in_chatwoot",
+          confirmation: provider === "TikTok" ? "verified_in_tiktok" : "verified_in_chatwoot",
         }),
       })
       const json = await res.json().catch(() => ({} as { error?: string }))
@@ -2664,10 +2669,10 @@ export default function InboxV2Page() {
                         <span>{new Date(m.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
                         {out && (
                           <span
-                            title={deliveryUnknown ? t("statusDeliveryUnknown") : m.status === "delivered" ? t("statusDelivered") : m.status === "failed" ? t("statusFailed") : t("statusSending")}
+                            title={deliveryUnknown ? t("statusDeliveryUnknown") : m.status === "delivered" ? t("statusDelivered") : m.status === "failed" ? t("statusFailed") : m.status === "sent" ? (locale === "ru" ? "Отправлено" : locale === "az" ? "Göndərilib" : "Sent") : t("statusSending")}
                             className={cn(deliveryUnknown ? "text-amber-500" : m.status === "delivered" ? "text-emerald-500" : m.status === "failed" ? "text-red-500" : "")}
                           >
-                            {deliveryUnknown ? "⚠" : m.status === "delivered" ? "✓✓" : m.status === "failed" ? "✕" : "⏳"}
+                            {deliveryUnknown ? "⚠" : m.status === "delivered" ? "✓✓" : m.status === "failed" ? "✕" : m.status === "sent" ? "✓" : "⏳"}
                           </span>
                         )}
                       </div>

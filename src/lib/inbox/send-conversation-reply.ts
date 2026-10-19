@@ -13,6 +13,8 @@ import { isIgLogin } from "@/lib/social/tenant-meta-app"
 import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import { isImageMime } from "@/lib/inbox-attachment"
 import { resolveChannelConnection } from "@/lib/channels/platform-connections"
+import { sendNativeMessagingReply } from "@/lib/tiktok-messaging/send"
+import { TIKTOK_MESSAGING_PROVIDER } from "@/lib/tiktok-messaging/config"
 import { resolveReplyRoute } from "@/lib/channels/reply-routing"
 
 export type ConversationReplyChannel =
@@ -115,7 +117,7 @@ async function claimChatwootDelivery(
 ): Promise<ChatwootDeliveryClaim> {
   const conversationId = opts.conversationId
   if (!conversationId) {
-    return { kind: "blocked", statusCode: 409, error: "A Chatwoot conversation is required for safe delivery.", deliveryUnknown: true }
+    return { kind: "blocked", statusCode: 409, error: "A TikTok conversation is required for safe delivery.", deliveryUnknown: true }
   }
 
   return prisma.$transaction(async (tx) => {
@@ -409,7 +411,7 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
         // tenant-local SocialConversation. Otherwise the durable ledger could
         // claim conversation A while the network POST targets conversation B.
         if (!conversationId) {
-          return { success: false, statusCode: 400, error: "A Chatwoot conversation is required for safe delivery." }
+          return { success: false, statusCode: 400, error: "A TikTok conversation is required for safe delivery." }
         }
         const boundConversation = await prisma.socialConversation.findFirst({
           where: {
@@ -418,8 +420,15 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
             platform: "tiktok",
             deletedAt: null,
           },
-          select: { externalId: true },
+          select: { externalId: true, metadata: true },
         })
+        if (objectMetadata(boundConversation?.metadata).provider === TIKTOK_MESSAGING_PROVIDER) {
+          return await sendNativeMessagingReply(opts)
+        }
+        // A damaged native binding must fail closed, never become a Chatwoot recipient.
+        if (boundConversation?.externalId.startsWith("tiktok-messaging:")) {
+          return { success: false, statusCode: 400, error: "Invalid native TikTok conversation binding." }
+        }
         if (!boundConversation || boundConversation.externalId !== to) {
           return { success: false, statusCode: 400, error: "Chatwoot conversation binding mismatch." }
         }

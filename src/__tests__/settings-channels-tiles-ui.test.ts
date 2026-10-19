@@ -214,6 +214,14 @@ describe("Channel catalog — one tile per platform", () => {
     expect(action("instagram").getAttribute("href")).toBe("/api/v1/social/oauth/instagram/start?from=channels-instagram")
   })
 
+  it("opens native TikTok OAuth settings without inferring readiness from a saved channel row", async () => {
+    await renderCatalog([{ id: "tt-1", channelType: "tiktok_messaging", configName: "TikTok Business Messaging", isActive: true }], true)
+    expect(action("tiktok").getAttribute("href")).toBe("/settings/channels/tiktok")
+    expect(tile("tiktok")?.querySelector('[data-testid="channel-card-connected-badge"]')).toBeNull()
+    expect(container.querySelector('[data-testid="channel-row-tt-1"]')).toBeNull()
+    expect(formOpen()).toBe(false)
+  })
+
   it("opens the form in a window for a platform that needs a key, without leaving the catalog", async () => {
     await renderCatalog([], true)
     expect(formOpen()).toBe(false)
