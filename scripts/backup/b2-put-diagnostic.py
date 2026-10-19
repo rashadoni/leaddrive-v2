@@ -5,6 +5,7 @@ No production access. Never treats numeric HTTP/auth/transport failures as ACL p
 If writing unexpectedly succeeds, the tiny synthetic object remains for lifecycle.
 """
 import json
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -15,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
+import xml.etree.ElementTree as ET
 
 
 def classify(data, status):
@@ -81,9 +83,98 @@ def read_config(path):
     return config
 
 
+def service_code(data):
+    if len(data) > 16384 or b"<!DOCTYPE" in data or b"<!ENTITY" in data:
+        return "unrecognized"
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        return "unrecognized"
+    if root.tag.split("}")[-1] != "Error":
+        return "unrecognized"
+    codes = [node.text for node in root if node.tag.split("}")[-1] == "Code"]
+    allowed = {"AccessDenied", "UnauthorizedAccess", "InvalidAccessKeyId", "SignatureDoesNotMatch",
+               "AuthorizationHeaderMalformed", "InvalidRequest", "ExpiredToken", "NoSuchKey"}
+    return codes[0] if len(codes) == 1 and codes[0] in allowed else "unrecognized"
+
+
+def curl_request(curl, config, method, key, body, scratch):
+    output = Path(scratch) / (uuid.uuid4().hex + ".response")
+    payload = body.read_bytes() if method == "PUT" else b""
+    args = [curl, "--disable", "--silent", "--http1.1", "--proto", "=https", "--config", "-",
+            "--aws-sigv4", "aws:amz:" + config["BACKUP_S3_REGION"] + ":s3",
+            "--connect-timeout", "10", "--max-time", "30", "--retry", "0", "--max-filesize", "16384",
+            "--header", "Expect:", "--header", "Content-Type: application/octet-stream",
+            "--header", "x-amz-content-sha256: " + hashlib.sha256(payload).hexdigest(),
+            "--request", method, "--output", str(output), "--write-out", "%{http_code}"]
+    if method == "PUT":
+        args += ["--data-binary", "@" + str(body)]
+    args += ["--url", config["BACKUP_S3_ENDPOINT"] + "/" + config["BACKUP_S3_BUCKET"] + "/" + key]
+    # curl config comes over stdin; secret never appears in argv or shell source.
+    credential = config["AWS_ACCESS_KEY_ID"] + ":" + config["AWS_SECRET_ACCESS_KEY"]
+    private_config = 'user = "' + credential.replace('\\', '\\\\').replace('"', '\\"') + '"\n'
+    try:
+        result = subprocess.run(args, input=private_config.encode(), stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL, timeout=40,
+                                env={"PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin", "LC_ALL": "C"})
+    except subprocess.TimeoutExpired:
+        return 124, 0, "transport_failure", b""
+    except OSError:
+        return 126, 0, "client_launch_failed", b""
+    http = int(result.stdout) if re.fullmatch(rb"[0-9]{3}", result.stdout) else 0
+    if result.returncode:
+        return result.returncode, http, "transport_or_client_failure", b""
+    try:
+        with output.open("rb") as stream:
+            data = stream.read(16385)
+    except OSError:
+        return 126, http, "response_missing", b""
+    return 0, http, service_code(data) if http >= 400 else "none", data
+
+
+def curl_controls(writer_path, restore_path):
+    try:
+        writer, restore = read_config(writer_path), read_config(restore_path)
+        for field in ("BACKUP_S3_ENDPOINT", "BACKUP_S3_REGION", "BACKUP_S3_BUCKET"):
+            if writer[field] != restore[field]:
+                raise ValueError("different_targets")
+        if writer["AWS_ACCESS_KEY_ID"] == restore["AWS_ACCESS_KEY_ID"]:
+            raise ValueError("same_key")
+        curl = shutil.which("curl")
+        if not curl:
+            raise ValueError("curl_missing")
+    except (OSError, ValueError):
+        print(json.dumps({"result": "local_configuration_invalid"}))
+        return 2
+    os.umask(0o077)
+    with tempfile.TemporaryDirectory(prefix="leaddrive-b2-curl-") as scratch:
+        body = Path(scratch) / "synthetic.bin"
+        payload = os.urandom(1024)
+        body.write_bytes(payload)
+        key = "leaddrive-b2-synthetic-check/curl-control-" + uuid.uuid4().hex
+        for step, config, method, object_key in (
+            ("writer_put", writer, "PUT", key), ("restore_get", restore, "GET", key),
+            ("restore_put", restore, "PUT", key + "-restore-write"),
+        ):
+            status, http, code, data = curl_request(curl, config, method, object_key, body, scratch)
+            if step == "restore_put":
+                passed = status == 0 and http == 403 and code == "AccessDenied"
+            else:
+                passed = status == 0 and 200 <= http < 300 and (method != "GET" or data == payload)
+            print(json.dumps({"step": step, "client_exit": status, "http_status": http,
+                              "service_code": code, "passed": passed}), flush=True)
+            if not passed:
+                print(json.dumps({"result": "curl_controls_unproven_not_activation_evidence"}))
+                return 1
+    print(json.dumps({"result": "curl_controls_passed_not_activation_evidence"}))
+    return 0
+
+
 def main():
+    if len(sys.argv) == 3:
+        return curl_controls(sys.argv[1], sys.argv[2])
     if len(sys.argv) != 2:
-        print("usage: b2-put-diagnostic.py restore.env", file=sys.stderr)
+        print("usage: b2-put-diagnostic.py [writer.env] restore.env", file=sys.stderr)
         return 2
     try:
         config = read_config(sys.argv[1])

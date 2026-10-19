@@ -225,3 +225,26 @@ production-вызовов, установки пакетов, правки polic
 сеть, credentials и unknown НЕ становятся успешным запретом доступа. Параметры
 читаются из принадлежащего оператору обычного0400/0600файла, не исполняются как shell.
 Статус FileVault не заменяет реальный restore, signed custody или исходный Kafka gate.
+
+### Повторный Mac результат: connection_closed в обоих режимах
+
+Скриншот владельца для85f14c684: AWS CLI255/connection_closed и для
+when_supported, и дляwhen_required. Это опровергает достаточность переключения
+checksum режима для данного случая, но не устанавливает корневую причину
+и не доказывает ACL. FileVault On по предшествующему выводу.
+
+Дополнительный режим: `b2-put-diagnostic.py writer.env restore.env`. Использует
+встроенный curl SigV4 (не собственную реализацию подписи), HTTPS/HTTP1.1, фиксированное
+тело1КиБ, пустой Expect header, без inherited curl config/редиректов/TLS bypass.
+Credentials передаются только в stdin curl config. Каждый запрос ограничен30с
+и40с локальным timeout, retries0, ответ≤16КиБ, stdout содержит только fixed JSON.
+Требует успешный writer PUT, побайтный restore GET и затем HTTP403 с XML-кодом
+AccessDenied на restore PUT. Сеть, подпись, другие HTTP/коды и неожиданный успех
+остаются FAIL; частичный успех не является readiness receipt. Синтетические
+объекты остаются под существующим lifecycle-префиксом. Object Lock/gates не меняются.
+
+Выбор альтернативного клиента — проверка гипотезы формата запроса: botocore
+[добавляет Expect100-continue для file-like body](https://github.com/boto/botocore/blob/develop/botocore/handlers.py).
+Причина реального обрыва этим не доказана. curl документирует
+[SigV4 и stdin config](https://curl.se/docs/manpage.html); B2 поддерживает
+[SigV4](https://postman.backblaze.com/). Живой результат этого режима ещё NOT RUN.
