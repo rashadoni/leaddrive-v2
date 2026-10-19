@@ -39,6 +39,7 @@ import { DemoCoachMark } from "./demo-coach-mark"
 import { DemoJourneyGuide, IntroClip, type DemoAssistantActionResult } from "./demo-journey-guide"
 import { planAssistantAction, type DemoAssistantAction } from "@/lib/demo-center/assistant/actions"
 import { LIVE_WHATSAPP_CHAT_SECTIONS, LIVE_WHATSAPP_TICKET_SECTIONS, useDemoLiveWhatsApp } from "./use-demo-live-whatsapp"
+import { LIVE_SOCIAL_SECTIONS, demoSocialInboxView, useDemoLiveSocial } from "./use-demo-live-social"
 import { createJourneyReporter, type JourneyReporter } from "./journey-reporter"
 import { DemoJourneySidebar } from "./demo-journey-sidebar"
 import { useGuideVoice } from "./demo-guide-voice"
@@ -350,6 +351,9 @@ export function DemoJourneyPlayer({
   const liveWhatsAppActive = variant === "granted" && !!shownSectionId
     && (LIVE_WHATSAPP_CHAT_SECTIONS.has(shownSectionId) || LIVE_WHATSAPP_TICKET_SECTIONS.has(shownSectionId))
   const liveWhatsApp = useDemoLiveWhatsApp(token, liveWhatsAppActive)
+  // The prospect's own Facebook Page: the same chapters, a granted session only.
+  const liveSocialActive = variant === "granted" && !!shownSectionId && LIVE_SOCIAL_SECTIONS.has(shownSectionId)
+  const liveSocial = useDemoLiveSocial(token, liveSocialActive)
 
   if (!snapshot) return null
 
@@ -423,7 +427,12 @@ export function DemoJourneyPlayer({
     dispatch,
     hint,
     openSection,
-    live: liveWhatsAppActive ? { whatsappTicket: liveWhatsApp.state?.ticket ?? null } : undefined,
+    live: liveWhatsAppActive || liveSocialActive
+      ? {
+        whatsappTicket: liveWhatsAppActive ? liveWhatsApp.state?.ticket ?? null : null,
+        social: liveSocialActive ? demoSocialInboxView(liveSocial.state) : null,
+      }
+      : undefined,
   }
 
   const activeRoute = viewSection.navGroup === "demo" ? null : viewSection.route.replace(/\/\[[a-zA-Z]+\]$/, "")
@@ -580,6 +589,7 @@ export function DemoJourneyPlayer({
               liveCall={liveCall}
               onOutcome={(to) => step && dispatch({ type: "outcome", stepId: step.id, to })}
               liveWhatsApp={liveWhatsAppActive && !reviewMode ? liveWhatsApp : undefined}
+              liveSocial={liveSocialActive && !reviewMode ? liveSocial : undefined}
               onAssistantAction={variant === "granted" ? runAssistantAction : undefined}
             />
           </div>

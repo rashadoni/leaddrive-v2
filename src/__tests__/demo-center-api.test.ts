@@ -16,6 +16,9 @@ vi.mock("@/lib/prisma", () => ({
     demoAccessEvent: {
       create: vi.fn(),
     },
+    demoSocialConnection: {
+      updateMany: vi.fn(),
+    },
   },
 }))
 
@@ -423,5 +426,10 @@ describe("Demo Center one-session API", () => {
       where: expect.objectContaining({ status: "ACTIVE" }),
       data: expect.objectContaining({ status: "COMPLETED", sessionHash: null }),
     }))
+    // «Bitir» asks for the release of the prospect's own Facebook Page in the same transaction.
+    expect(prisma.demoSocialConnection.updateMany).toHaveBeenCalledWith({
+      where: { grantId: "grant-1", scrubbedAt: null, releaseRequestedAt: null },
+      data: { releaseRequestedAt: expect.any(Date), releaseReason: "finished" },
+    })
   })
 })

@@ -7,6 +7,7 @@ import type {
   DemoJourneyStep,
 } from "@/lib/demo-center/journey"
 import type { DemoWhatsAppTicketView } from "@/lib/demo-center/demo-whatsapp-ticket-view"
+import type { DemoSocialInboxView } from "@/lib/demo-center/demo-social"
 
 /**
  * Who is looking at the demo.
@@ -41,7 +42,10 @@ export interface DemoSceneProps {
   live?: DemoSceneLive
 }
 
-/** The real ticket the prospect's own WhatsApp opened in LeadDrive's Service Desk, in its customer's view. */
+/** What the page reads live for the scenes. */
 export interface DemoSceneLive {
+  /** The real ticket the prospect's own WhatsApp opened in LeadDrive's Service Desk, in its customer's view. */
   whatsappTicket: DemoWhatsAppTicketView | null
+  /** The prospect's own Facebook Page, once connected: the real Facebook row of the inbox. */
+  social?: DemoSocialInboxView | null
 }

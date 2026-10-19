@@ -505,6 +505,23 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
     expect(row).toMatchObject({ unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_by_design", releaseAttempts: 2, releaseRequestedAt: at(-6) })
   })
 
+  it("deletes, on every run, any message of a connection already wiped: one that raced the wipe does not stay", async () => {
+    const live = await connection((await grant()).id)
+    const wiped = await connection((await grant()).id, { expiresAt: at(-1) })
+    expect(await engine.releaseDueDemoSocialConnections({ now: NOW })).toMatchObject({ released: 1 })
+    expect(await messagesOf(wiped.id)).toBe(0)
+    // Written after the wipe had committed — whatever path wrote it.
+    await admin.demoSocialMessage.create({ data: { connectionId: wiped.id, direction: "outbound", text: "Gecikmiş cavab" } })
+    metaCalls.length = 0
+
+    expect(await engine.releaseDueDemoSocialConnections({ now: NOW })).toEqual({ checked: 1, due: 0, released: 0, retrying: 0, incomplete: 0 })
+
+    expect(await messagesOf(wiped.id)).toBe(0)
+    // A live connection's conversation is left alone.
+    expect(await messagesOf(live.id)).toBe(2)
+    expect(metaCalls).toEqual([])
+  })
+
   it("treats a dead Page token (Meta #190) as gone and wipes the row", async () => {
     const g = await grant()
     const c = await connection(g.id, { expiresAt: at(-1) })

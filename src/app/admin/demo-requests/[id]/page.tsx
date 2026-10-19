@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { isSuperAdminSession } from "@/lib/superadmin-guard"
 import { demoCallAgentReady } from "@/lib/demo-center/demo-call"
+import { demoSocialMetaApp } from "@/lib/demo-center/demo-social-oauth"
 import { normalizeDemoPhone } from "@/lib/demo-center/phone-verification"
 import {
   REPORTED_JOURNEY_EVENTS,
@@ -62,6 +63,8 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
     : t("leadLinkNone")
 
   const liveCallAvailable = await demoCallAgentReady()
+  // The prospect's own Facebook Page: only where this server names the demo's Meta app.
+  const liveSocialAvailable = (await demoSocialMetaApp().catch(() => null)) !== null
   // The live call rings only the request's own phone; say so before issuing.
   const requestPhoneCallable = Boolean(normalizeDemoPhone(request.phone ?? ""))
 
@@ -154,6 +157,7 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
           requestId={request.id}
           requestStatus={request.status}
           liveCallAvailable={liveCallAvailable}
+          liveSocialAvailable={liveSocialAvailable}
           requestPhoneCallable={requestPhoneCallable}
           requestedModuleIds={request.requestedModules}
           modules={moduleOptions}
@@ -163,6 +167,7 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
             moduleIds: grant.moduleIds,
             journey: Boolean(grant.scenarioId),
             liveCallEnabled: grant.liveCallEnabled,
+            liveSocialEnabled: grant.liveSocialEnabled,
             sentAt: grant.sentAt?.toISOString() || null,
             openedAt: grant.openedAt?.toISOString() || null,
             sessionStartedAt: grant.sessionStartedAt?.toISOString() || null,

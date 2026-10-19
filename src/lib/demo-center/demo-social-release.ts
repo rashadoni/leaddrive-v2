@@ -23,6 +23,12 @@ import {
  *   3. record that the person's grant stays with him (nothing is sent);
  *   4. wipe our copy in one transaction: the messages, every secret and
  *      identifier; `scrubbedAt` set and the outcome written to the access trail.
+ * Every run also deletes any message of a connection already wiped — the
+ * backstop for a message that raced the wipe.
+ *
+ * A Page being bound right now holds the same lease (demo-social-oauth.ts,
+ * `bindPage`), so the unsubscribe never goes out while our subscribe is still
+ * on its way to Meta.
  *
  * Unbinding means: the Page no longer delivers to our app, and every token and
  * identifier of ours is gone. It deliberately does not take back the person's
@@ -277,6 +283,11 @@ export async function releaseDueDemoSocialConnections(
   const deps: Deps = { graph: options.graph ?? META_GRAPH, claims: options.claims ?? claimedMetaPageIds }
   const limit = options.limit ?? DEFAULT_LIMIT
   return runWithRlsBypass(async () => {
+    // The backstop behind the inbound path's row lock (demo-social-inbound.ts):
+    // a message of a connection that is already wiped is deleted on every run,
+    // whatever wrote it and whenever.
+    const strays = await prisma.demoSocialMessage.deleteMany({ where: { connection: { scrubbedAt: { not: null } } } })
+    if (strays.count) console.warn(`[demo-social-release] deleted ${strays.count} message(s) of connections already wiped`)
     const open: LivenessRow[] = await prisma.demoSocialConnection.findMany({
       where: { scrubbedAt: null },
       select: LIVENESS_SELECT,

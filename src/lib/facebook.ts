@@ -5,7 +5,9 @@ export async function sendFacebookMessage(
   psid: string,
   text: string,
   pageAccessToken: string,
-  orgId: string
+  orgId: string,
+  /** `timeoutMs`: give up after this long (the demo's Page connection sends with 10 s). Absent: as before. */
+  options: { timeoutMs?: number } = {},
 ): Promise<boolean> {
   void orgId
   try {
@@ -13,6 +15,7 @@ export async function sendFacebookMessage(
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${pageAccessToken}` },
       body: JSON.stringify({ recipient: { id: psid }, message: { text } }),
+      ...(options.timeoutMs ? { signal: AbortSignal.timeout(options.timeoutMs) } : {}),
     })
     if (!res.ok) {
       console.error("Facebook send error:", redactOAuthProviderText(await res.text()))

@@ -75,6 +75,7 @@ export async function autoIssueDemoGrant(params: {
       locale: params.request.locale,
       // Not from a form: the owner turns these on per request in Demo Center.
       liveCallEnabled: false,
+      liveSocialEnabled: false,
     },
     now,
   }).catch((error) => {

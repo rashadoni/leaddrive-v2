@@ -16,6 +16,7 @@ import {
   pickOAuthReturnChannelId,
 } from "@/lib/social/oauth-return"
 import { resolveOAuthReturnChannel } from "@/lib/social/oauth-return-channel"
+import { demoSocialOAuthCallback, isDemoSocialOAuthState } from "@/lib/demo-center/demo-social-callback"
 
 const GRAPH = "https://graph.facebook.com/v21.0"
 
@@ -62,6 +63,9 @@ async function redactedProviderText(res: Response): Promise<string> {
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
+  // A demo state (`ldd.…`) is a prospect connecting his own Page to the demo (src/lib/demo-center/demo-social-oauth.ts);
+  // the product's own state is base64url and never holds a dot, so neither can take the other's path.
+  if (isDemoSocialOAuthState(searchParams.get("state"))) return demoSocialOAuthCallback(req)
   const code = searchParams.get("code")
   const state = searchParams.get("state")
   // Facebook redirects back WITHOUT a `code` when it rejects the request (user

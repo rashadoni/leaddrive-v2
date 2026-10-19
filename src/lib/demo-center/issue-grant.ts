@@ -30,6 +30,8 @@ export interface DemoGrantOptions {
   readonly inactivityMinutes: number
   readonly locale: string
   readonly liveCallEnabled: boolean
+  /** The prospect may connect his own Facebook Page for the day (demo-social.ts). Off when absent. */
+  readonly liveSocialEnabled?: boolean
 }
 
 export type IssueDemoGrantResult =
@@ -110,6 +112,9 @@ export async function issueDemoGrant(params: {
         // The live WhatsApp thread with the demo's agent is offered to every
         // guided demo (owner, 2026-10-18); the call stays the owner's switch.
         liveWhatsAppEnabled: Boolean(scenario),
+        // The admin allowed the prospect's own Facebook Page for the day; the
+        // server's Meta app must exist as well before anything is offered.
+        liveSocialEnabled: Boolean(scenario) && Boolean(options.liveSocialEnabled),
         locale: options.locale,
         watermark: `${params.request.company} • ${params.request.email}`,
         linkExpiresAt,
@@ -124,6 +129,7 @@ export async function issueDemoGrant(params: {
               scenarioVersion: scenario?.version ?? null,
               moduleCount: moduleIds.length,
               liveCallEnabled: Boolean(scenario) && options.liveCallEnabled,
+              liveSocialEnabled: Boolean(scenario) && Boolean(options.liveSocialEnabled),
               linkValidDays: options.linkValidDays,
               sessionDurationMinutes: options.sessionDurationMinutes,
               inactivityMinutes: options.inactivityMinutes,
