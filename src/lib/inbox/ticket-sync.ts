@@ -15,6 +15,22 @@ import { prisma } from "@/lib/prisma"
  * Matches the duplicate-guard's lookup (tags has "whatsapp" + sourceMeta.phone + open status).
  * Best-effort: a sync failure must never break the webhook 200 or the reply.
  */
+/**
+ * One AI reply written into a known ticket, in the stored format the agent's
+ * page and the customer portal read («[Da Vinci Bot] …»). The guided demo's
+ * agent answers its own ticket with it. Never throws.
+ */
+export async function appendWhatsAppBotReplyToTicket(ticketId: string, reply: string): Promise<boolean> {
+  try {
+    if (!reply.trim()) return false
+    await prisma.ticketComment.create({ data: { ticketId, comment: `[Da Vinci Bot] ${reply.trim()}`, isInternal: false } })
+    return true
+  } catch (e) {
+    console.error("[ticket-sync] bot reply to ticket failed", e)
+    return false
+  }
+}
+
 export async function syncWhatsAppExchangeToTicket(opts: {
   orgId: string
   phone: string

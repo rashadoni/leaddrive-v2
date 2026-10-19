@@ -1,14 +1,14 @@
 "use client"
 
-import { useMemo, useState, type MouseEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { CheckCircle2, ClipboardCheck, Clock3, FileSpreadsheet, Lock, LogIn, LogOut, MessageCircleQuestionMark, ShieldAlert, ShieldCheck, UserRoundX, Users } from "lucide-react"
+import { CheckCircle2, ClipboardCheck, ClipboardList, Clock3, Download, FileSpreadsheet, Lock, LogIn, LogOut, MessageCircleQuestionMark, ShieldAlert, ShieldCheck, UserRoundX, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { HomeCard, HomeKpi, HomePill } from "@/components/mtm/home-parts"
 import { createDateFormatter } from "@/lib/format-date"
 import { attendanceDayKindLabel, defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
 import { attendanceCorrectionText, attendanceMonthCell, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
-import { ATTENDANCE_RISK_MESSAGES } from "@/lib/mtm/attendance-risk-contract"
+import { buildAttendanceRiskTable } from "@/lib/mtm/attendance-risk-table"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { attendanceNow, attendanceTodayRange, summarizeAttendanceToday } from "@/lib/mtm/attendance-today"
 import { ATTENDANCE_N1T_COLUMNS } from "@/lib/mtm/attendance-view-contract"
@@ -25,7 +25,17 @@ import type { DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 import { mtmDemoToday } from "./mtm-demo-data"
-import { PERSONNEL_DEMO_CLOCK, PERSONNEL_DEMO_EMPLOYEES, personnelDemoPlan, personnelDemoReport, personnelDemoRequests, personnelDemoRisks } from "./personnel-demo-data"
+import {
+  PERSONNEL_DEMO_CLOCK,
+  PERSONNEL_DEMO_EMPLOYEES,
+  PERSONNEL_DEMO_EXPLANATION,
+  PERSONNEL_DEMO_REVIEWER,
+  PERSONNEL_DEMO_RISK_REASON,
+  personnelDemoPlan,
+  personnelDemoReport,
+  personnelDemoRequests,
+  personnelDemoRiskReport,
+} from "./personnel-demo-data"
 
 /**
  * Personnel («Kadr uçotu»): the workday module, a module of its own beside the
@@ -50,6 +60,7 @@ type PersonnelScreen = "today" | "timesheet" | "risk" | "month"
 
 const SCREEN_OF: Record<string, PersonnelScreen> = {
   "prs-today": "today",
+  "prs-explain": "today",
   "prs-timesheet": "timesheet",
   "prs-risk": "risk",
   "prs-month": "month",
@@ -146,7 +157,14 @@ function TodayScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
   const requests = useMemo(() => personnelDemoRequests(today), [today])
   const approved = snapshot.ui["prs.approved"] === true
   const explained = snapshot.ui["prs.explained"] === true
-  const late = summary.attention.filter((item) => item.type === "late")
+  const answerRead = snapshot.ui["prs.answerRead"] === true
+  const accepted = snapshot.ui["prs.explanationAccepted"] === true
+  // The product asks the late and the absent to explain (attendance-today.tsx): a tick per row, all of them to begin with.
+  const keyOf = (item: (typeof summary.attention)[number]) => `${item.employeeId}|${item.date}|${item.type}`
+  const askable = summary.attention.filter((item) => item.type === "late" || item.type === "absent")
+  const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(askable.map(keyOf)))
+  const [reading, setReading] = useState(answerRead && !accepted)
+  const answered = (item: (typeof summary.attention)[number]) => explained && item.employeeId === PERSONNEL_DEMO_EXPLANATION.employeeId && item.type === "late"
 
   const press = (stepId: string, path: string) => {
     if (reviewMode) {
@@ -158,6 +176,10 @@ function TodayScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
       return
     }
     dispatch({ type: "ui", path, value: true })
+  }
+  // Reading an answer is no wrong move at any step: it only records the step when the guide asks for it.
+  const pressOptional = (stepId: string, path: string) => {
+    if (!reviewMode && step?.id === stepId) dispatch({ type: "ui", path, value: true })
   }
   const kindLabel = (kind: string) => {
     if (kind === "TIME_CORRECTION") return tA("requestsTimeCorrection")
@@ -261,32 +283,66 @@ function TodayScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
 
         <div data-tour-id="prs-today-attention">
           <HomeCard testId="prs-today-attention-card" titleId="prs-today-attention-title" icon={<ShieldAlert className="h-4 w-4" aria-hidden="true" />} tone="amber" title={t("attentionTitle")} badge={String(summary.attention.length)}>
-            {late.length ? (
+            {askable.length && !explained ? (
               <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5">
-                <span className="text-sm text-muted-foreground">{t("explainSelectAll", { count: late.length })}</span>
-                <Button size="sm" variant="outline" className="min-h-9" disabled={explained} onClick={() => press("prs-today-explain", "prs.explained")} {...(explained ? {} : demoTarget("prs-today-explain"))}>
-                  <MessageCircleQuestionMark className="mr-1.5 h-4 w-4" aria-hidden="true" />{t("explainAsk", { count: late.length })}
+                <label className="inline-flex min-h-9 items-center gap-2 text-sm">
+                  <input type="checkbox" className="h-4 w-4" checked={picked.size === askable.length} onChange={(event) => setPicked(event.target.checked ? new Set(askable.map(keyOf)) : new Set())} />
+                  {t("explainSelectAll", { count: askable.length })}
+                </label>
+                <Button size="sm" variant="outline" className="min-h-9" disabled={picked.size === 0} onClick={() => press("prs-explain-ask", "prs.explained")} {...demoTarget("prs-explain-ask")}>
+                  <MessageCircleQuestionMark className="mr-1.5 h-4 w-4" aria-hidden="true" />{t("explainAsk", { count: picked.size })}
                 </Button>
                 <p className="w-full text-xs text-muted-foreground">{t("explainHint")}</p>
               </div>
             ) : null}
             <ul className="divide-y divide-border">
-              {summary.attention.map((item) => (
-                <li key={`${item.type}:${item.employeeId}:${item.date}`} className="flex flex-wrap items-center gap-3 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{item.employeeName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.type === "absent" ? t("absentNoReason")
-                        : item.type === "late" ? t("lateBy", { duration: t("minutes", { count: Math.round(item.lateSeconds / 60) }), time: format.time(item.startedAt) })
-                          : t("missingFinishOn", { date: format.day(item.date) })}
-                    </p>
-                  </div>
-                  {item.type === "late" ? (
-                    <span className="shrink-0 text-xs">{explained ? <span className="text-amber-700 dark:text-amber-400">{t("explainWaiting", { time: PERSONNEL_DEMO_CLOCK })}</span> : <span className="text-muted-foreground">{t("explainNotAsked")}</span>}</span>
-                  ) : null}
-                  <Button size="sm" variant="outline" className="min-h-9 shrink-0" onClick={() => hint(S.demoButtonHint)}>{item.type === "absent" ? t("addReason") : t("openDay")}</Button>
-                </li>
-              ))}
+              {summary.attention.map((item) => {
+                const askableRow = item.type === "late" || item.type === "absent"
+                const asked = explained && picked.has(keyOf(item))
+                const answer = asked && answered(item)
+                return (
+                  <li key={`${item.type}:${item.employeeId}:${item.date}`} className="py-2.5">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {askableRow ? (
+                        <input type="checkbox" className="h-4 w-4 shrink-0" aria-label={t("explainSelect", { name: item.employeeName })} disabled={explained}
+                          checked={!explained && picked.has(keyOf(item))}
+                          onChange={(event) => setPicked((current) => { const next = new Set(current); if (event.target.checked) next.add(keyOf(item)); else next.delete(keyOf(item)); return next })} />
+                      ) : null}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{item.employeeName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.type === "absent" ? t("absentNoReason")
+                            : item.type === "late" ? t("lateBy", { duration: t("minutes", { count: Math.round(item.lateSeconds / 60) }), time: format.time(item.startedAt) })
+                              : t("missingFinishOn", { date: format.day(item.date) })}
+                        </p>
+                      </div>
+                      {askableRow ? (
+                        <span className="shrink-0 text-xs">
+                          {!asked ? <span className="text-muted-foreground">{t("explainNotAsked")}</span>
+                            : !answer ? <span className="text-amber-700 dark:text-amber-400">{t("explainWaiting", { time: PERSONNEL_DEMO_CLOCK })}</span>
+                              : accepted ? <span className="text-emerald-700 dark:text-emerald-400">{t("explainAccepted")}</span>
+                                : (
+                                  <button type="button" className="font-semibold text-primary hover:underline" aria-expanded={reading} onClick={() => { setReading((value) => !value); pressOptional("prs-explain-read", "prs.answerRead") }} {...(answerRead ? {} : demoTarget("prs-explain-read"))}>
+                                    {t("explainAnswered")}
+                                  </button>
+                                )}
+                        </span>
+                      ) : null}
+                      <Button size="sm" variant="outline" className="min-h-9 shrink-0" onClick={() => hint(S.demoButtonHint)}>{item.type === "absent" ? t("addReason") : t("openDay")}</Button>
+                    </div>
+                    {answer && reading && !accepted ? (
+                      <div className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-sm" data-testid="prs-explain-answer">
+                        <span className="text-muted-foreground">{t("explainAnswerOf", { name: item.employeeName })}</span> «{PERSONNEL_DEMO_EXPLANATION.answer}»
+                        <span className="mt-1 block text-xs text-muted-foreground">{S.personnelAnswerAt(PERSONNEL_DEMO_EXPLANATION.answeredAt)}</span>
+                        <span className="mt-2 flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline" className="min-h-9 border-emerald-600 text-emerald-700 dark:border-emerald-500 dark:text-emerald-300" onClick={() => press("prs-explain-accept", "prs.explanationAccepted")} {...demoTarget("prs-explain-accept")}>{t("explainAccept")}</Button>
+                          <Button size="sm" variant="outline" className="min-h-9 text-rose-700 dark:text-rose-300" onClick={() => hint(S.demoButtonHint)}>{t("explainReject")}</Button>
+                        </span>
+                      </div>
+                    ) : null}
+                  </li>
+                )
+              })}
             </ul>
             <p className="mb-3 text-xs text-muted-foreground">{t("quiet", { count: summary.quiet })}</p>
           </HomeCard>
@@ -431,47 +487,106 @@ function DayFact({ label, value }: { label: string; value: string }) {
 
 /* ── Şübhəli qeydlər ──────────────────────────────────────────────────── */
 
-function RiskScreen({ snapshot }: DemoSceneProps) {
+/**
+ * «Şübhəli qeydlər» as `MtmAttendanceRiskReview` lays it out: its filters,
+ * the counts and the export, the product's own table
+ * (`buildAttendanceRiskTable`) with «Yoxlamaq» on every row, and its decision
+ * card — the two times, a reason of at least three letters, «Qeydi bağlamaq».
+ * The screen fetches and writes through the API, so its frame is drawn here
+ * with its words; the reason is a sample the prospect may change. Closing
+ * keeps the record with who closed it, when and why — the time itself does
+ * not change.
+ */
+function RiskScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const tA = useTranslations("mtmAttendance")
-  const format = useFormat()
+  const rawLocale = useLocale()
+  const locale = rawLocale === "az" || rawLocale === "ru" ? rawLocale : "en"
   const today = mtmDemoToday(snapshot.startedAt)
-  const risks = useMemo(() => personnelDemoRisks(today), [today])
+  const opened = snapshot.ui["prs.riskOpened"] === true
+  const closed = snapshot.ui["prs.riskClosed"] === true
+  const [reason, setReason] = useState(PERSONNEL_DEMO_RISK_REASON)
+  const [selected, setSelected] = useState<string | null>(opened && !closed ? "risk-1" : null)
+  const report = useMemo(() => personnelDemoRiskReport(today, closed ? { reason: PERSONNEL_DEMO_RISK_REASON } : null), [today, closed])
+  const table = useMemo(() => buildAttendanceRiskTable(report, locale, (key, values) => tA(key, values)), [report, locale, tA])
+  const selectedItem = report.items.find((item) => item.id === selected) ?? null
+  const reasonRef = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => { if (selected) reasonRef.current?.focus() }, [selected])
+
+  const review = (id: string) => {
+    if (id !== "risk-1") return hint(S.personnelRiskOther)
+    setSelected(id)
+    if (!reviewMode && step?.id === "prs-risk-review") dispatch({ type: "ui", path: "prs.riskOpened", value: true })
+  }
+  const dismiss = () => {
+    if (reviewMode) return hint(S.reviewOnly)
+    if (step?.id !== "prs-risk-close") return hint(S.hintFollow(step?.title ?? ""))
+    if (reason.trim().length < 3) return
+    setSelected(null)
+    dispatch({ type: "ui", path: "prs.riskClosed", value: true })
+  }
+
   return (
-    <div className="space-y-3">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">{tA("riskTitle")}</h1>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{tA("riskDescription")}</p>
+    <section className="space-y-5" aria-label={tA("riskTitle")}>
+      <header className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">{tA("riskTitle")}</h1>
+        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{tA("riskDescription")}</p>
       </header>
-      <div data-tour-id="prs-risk" className="overflow-x-auto rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 font-medium">{tA("riskSelectEmployee")}</th>
-              <th className="px-3 py-2 font-medium">{tA("riskFinding")}</th>
-              <th className="px-3 py-2 font-medium">{tA("riskClaimed")}</th>
-              <th className="px-3 py-2 font-medium">{tA("riskReceived")}</th>
-              <th className="px-3 py-2 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {risks.map((risk) => (
-              <tr key={risk.id} className="border-t border-zinc-100 align-top dark:border-zinc-800">
-                <td className="px-3 py-2"><span className="font-medium">{risk.employeeName}</span><span className="block text-xs text-muted-foreground">{risk.teamName} · {format.day(risk.workDate)}</span></td>
-                <td className="px-3 py-2">
-                  <span className="font-medium">{tA(ATTENDANCE_RISK_MESSAGES[risk.kind])}</span>
-                  {risk.relatedNames.length ? <span className="block text-xs text-muted-foreground">{tA("riskRelated", { names: risk.relatedNames.join(", ") })}</span> : null}
-                  {risk.deltaSeconds !== null ? <span className="block text-xs text-muted-foreground">{tA("riskDelta", { seconds: Math.abs(risk.deltaSeconds) })}</span> : null}
-                </td>
-                <td className="px-3 py-2 tabular-nums">{format.time(risk.claimedAt)}</td>
-                <td className="px-3 py-2 tabular-nums">{format.time(risk.serverReceivedAt)}</td>
-                <td className="px-3 py-2 text-right"><HomePill tone="amber">{tA("riskOpen")}</HomePill></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="rounded-2xl border border-zinc-200 bg-card px-5 py-4 dark:border-zinc-700">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-semibold">{table.totals[0]}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" className="min-h-11" onClick={() => hint(S.demoButtonHint)}><Download className="mr-2 h-4 w-4" aria-hidden="true" />{tA("exportExcel")}</Button>
+              <Button type="button" variant="outline" className="min-h-11" onClick={() => hint(S.demoButtonHint)}><Download className="mr-2 h-4 w-4" aria-hidden="true" />{tA("exportPdf")}</Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">{tA("riskEvidenceHint")}</p>
+          {closed ? <p role="status" className="text-sm">{tA("riskSaved")}</p> : null}
+          <div data-tour-id="prs-risk">
+            <table className="block w-full text-sm lg:table">
+              <caption className="sr-only">{tA("riskTitle")}</caption>
+              <thead className="hidden lg:table-header-group">
+                <tr>
+                  {table.columns.map((column) => <th key={column.key} scope="col" className="border-b px-3 py-3 text-left text-xs font-semibold text-muted-foreground">{column.label}</th>)}
+                  <th scope="col" className="sr-only">{tA("riskReview")}</th>
+                </tr>
+              </thead>
+              <tbody className="block lg:table-row-group">
+                {table.rows.map((row) => (
+                  <tr key={row.key} data-testid="risk-row" className="block border-b py-4 lg:table-row lg:py-0">
+                    {row.cells.map((cell, index) => (
+                      <td key={index} className="grid grid-cols-[6rem_1fr] gap-3 px-1 py-2 align-top lg:table-cell lg:px-3 lg:py-4">
+                        <span className="text-xs text-muted-foreground lg:hidden">{table.columns[index].label}</span>
+                        <span className="min-w-0 whitespace-pre-line break-words">{cell}</span>
+                      </td>
+                    ))}
+                    <td className="block px-1 py-2 lg:table-cell lg:px-3 lg:py-4">
+                      <Button type="button" variant="outline" className="min-h-11" onClick={() => review(row.key)} {...(row.key === "risk-1" && !opened && !closed ? demoTarget("prs-risk-review") : {})}>{tA("riskReview")}</Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-      <p className="text-xs text-muted-foreground">{tA("riskEvidenceHint")}</p>
-    </div>
+      {selectedItem ? (
+        <div data-tour-id="prs-risk-decision">
+          <HomeCard testId="attendance-risk-decision-card" titleId="attendance-risk-decision-title" icon={<ClipboardList className="h-5 w-5" aria-hidden="true" />} title={`${tA("riskReview")}: ${selectedItem.employeeName}`} tone="amber">
+            <div className="space-y-4 py-4" data-testid="risk-decision">
+              <HomePill tone="amber">{tA("riskOpen")}</HomePill>
+              <p className="whitespace-pre-line text-sm">{table.rows.find((row) => row.key === selectedItem.id)?.cells[3]}</p>
+              <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); dismiss() }}>
+                <label htmlFor="prs-risk-reason" className="block text-sm font-medium">{tA("riskReason")}</label>
+                <textarea id="prs-risk-reason" ref={reasonRef} className="min-h-28 w-full rounded-lg border bg-background p-3 text-sm" required minLength={3} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />
+                <p className="text-sm text-muted-foreground">{tA("riskReasonHint")} {S.personnelRiskReasonSample(PERSONNEL_DEMO_REVIEWER)}</p>
+                <Button type="submit" className="min-h-11" disabled={reason.trim().length < 3} {...demoTarget("prs-risk-close")}>{tA("riskDismiss")}</Button>
+              </form>
+            </div>
+          </HomeCard>
+        </div>
+      ) : null}
+    </section>
   )
 }
 
@@ -530,6 +645,7 @@ function MonthScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
         {closed ? (
           <div className="space-y-2">
             <p className="flex items-center gap-2 font-semibold"><Lock className="h-4 w-4" aria-hidden="true" />{format.month(plan.monthStart)} · {tA("monthCloseClosed")}</p>
+            <p className="text-sm text-muted-foreground">{S.personnelClosedBy(PERSONNEL_DEMO_REVIEWER, PERSONNEL_DEMO_CLOCK)}</p>
             <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">{tA("monthCloseFrozen")}</p>
             <div className="flex gap-2">
               <Button onClick={() => hint(S.demoButtonHint)}>{tA("monthCloseExcel")}</Button>

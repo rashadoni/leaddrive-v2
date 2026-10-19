@@ -670,3 +670,19 @@ The incident is not closed until:
 - [Apache Kafka delivery semantics and transactions](https://kafka.apache.org/43/design/design/)
 - [Apache Kafka multi-datacenter guidance](https://kafka.apache.org/43/operations/datacenters/)
 - [Debezium outbox event router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html)
+
+## Inactive A5 control-plane preparation — 2026-10-19
+
+The [operator readiness map](./KAFKA_OPERATOR_READINESS.md) records the current
+27-domain gaps. The [named-login contract](../../ops/event-platform/operator/README.md)
+is an isolated staging/CI schema, not a production migration or an executable
+recovery procedure. It prepares authenticated DB admissions, immutable scope,
+separate approval, single-use consume, generation/revoke and deferred lease
+validation. It grants no business-table or Kafka privileges and is not wired
+to this runbook's promotion commands.
+
+An offline alarm receipt verifier likewise cannot prove actual alarm delivery
+without authentic provider read-back and a fresh independently acknowledged
+challenge. Boolean activation evidence, a control token and topic registration
+must never substitute for full-history parity, actual worker settlement,
+restricted transaction composition, independent restore or authorization.

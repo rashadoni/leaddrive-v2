@@ -145,12 +145,14 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
       "cc-call",
       "cc-promise",
       "mtm-today",
+      "mtm-place",
       "mtm-plan",
       "mtm-live",
       "mtm-visit",
-      "mtm-place",
+      "mtm-history",
       "mtm-results",
       "prs-today",
+      "prs-explain",
       "prs-timesheet",
       "prs-risk",
       "prs-month",
@@ -311,11 +313,11 @@ describe("Guided journey coverage", () => {
     deals: { included: 13, total: 16, percent: 81 },
     quotes: { included: 9, total: 11, percent: 82 },
     // 2026-10-17: Service Desk, a module of its own.
-    support: { included: 14, total: 17, percent: 82 },
+    support: { included: 16, total: 19, percent: 84 },
     // 2026-10-17: Call Center, a module of its own (own PBX, what every seller has).
     voip: { included: 12, total: 15, percent: 80 },
     // 2026-10-17: Route & Field, a module of its own.
-    mtm: { included: 16, total: 20, percent: 80 },
+    mtm: { included: 19, total: 23, percent: 83 },
     personnel: { included: 12, total: 15, percent: 80 },
     // 2026-10-17: Contracts, a module of its own.
     contracts: { included: 16, total: 20, percent: 80 },

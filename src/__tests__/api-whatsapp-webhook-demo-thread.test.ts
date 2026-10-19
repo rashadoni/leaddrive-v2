@@ -140,14 +140,16 @@ vi.mock("@/lib/sla-resolver", () => ({ resolveTicketSla: vi.fn(), normalizeTicke
 vi.mock("@/lib/inbound-lead-match", () => ({ matchInboundLeadId: vi.fn() }))
 vi.mock("@/lib/inbox/reply-mode", () => ({ aiReplyEnabled: vi.fn(() => false) }))
 vi.mock("@/lib/ai/support-agent", () => ({ getSupportAgentConfig: vi.fn() }))
-vi.mock("@/lib/inbox/ticket-sync", () => ({ syncWhatsAppExchangeToTicket: vi.fn() }))
+const botReplyHook = vi.hoisted(() => vi.fn(async () => true))
+vi.mock("@/lib/inbox/ticket-sync", () => ({ syncWhatsAppExchangeToTicket: vi.fn(), appendWhatsAppBotReplyToTicket: botReplyHook }))
 vi.mock("@/lib/inbox/complaint-register", () => ({ ensureComplaintRegistered: vi.fn(), notifyComplaintRegistered: vi.fn() }))
 vi.mock("@/lib/auto-assign", () => ({ autoAssignTicket: vi.fn() }))
 vi.mock("@/lib/social/notify-recipients", () => ({ notifyConversationRecipients: vi.fn() }))
 // What this file is about: the demo's agent takes its own threads' messages
 // before tickets, the rule bot and the support AI ever see them.
 const demoHook = vi.hoisted(() => vi.fn())
-vi.mock("@/lib/demo-center/demo-whatsapp-agent", () => ({ handleDemoWhatsAppInbound: demoHook }))
+const demoMediaHook = vi.hoisted(() => vi.fn(async () => false))
+vi.mock("@/lib/demo-center/demo-whatsapp-agent", () => ({ handleDemoWhatsAppInbound: demoHook, fileDemoWhatsAppMedia: demoMediaHook }))
 vi.mock("@/lib/facebook", () => ({ upsertSocialConversation: vi.fn(async () => ({ id: "sc_wa", assignedTo: null, wasCreated: false })) }))
 vi.mock("@/lib/inbox/conversation-events", () => ({ emitConversationIngestEvents: vi.fn() }))
 const ticketHook = vi.hoisted(() => vi.fn())
@@ -159,7 +161,6 @@ vi.mock("@/lib/rls-context", () => ({
 }))
 
 import { POST } from "@/app/api/v1/webhooks/whatsapp/route"
-import { reopenTicketForCustomerReply } from "@/lib/ticket-reopen"
 
 const BASE = "https://app.leaddrivecrm.org/api/v1/webhooks/whatsapp?t=acme"
 const sign = (body: string, secret: string) => "sha256=" + createHmac("sha256", secret).update(body).digest("hex")
@@ -215,8 +216,7 @@ describe("a message of the demo's live thread", () => {
   })
 
   beforeEach(() => {
-    vi.mocked(reopenTicketForCustomerReply).mockResolvedValue({ reopened: false } as never)
-    ticketHook.mockResolvedValue(null)
+    ticketHook.mockResolvedValue({ ticketId: null, ticketNumber: null, created: false, commentAdded: false, reopened: false })
   })
 
   it("is stored, handed to the demo's agent, and goes no further", async () => {
@@ -225,7 +225,6 @@ describe("a message of the demo's live thread", () => {
     expect(res.status).toBe(200)
     expect(demoHook).toHaveBeenCalledTimes(1)
     expect(demoHook.mock.calls[0][0]).toMatchObject({ organizationId: "org_1", channelConfigId: "cfg_wa", waPhone: "994501234567", text: "Salam! Kod: LD-1A2B3C", conversationId: "sc_wa" })
-    expect(reopenTicketForCustomerReply).not.toHaveBeenCalled()
     expect(ticketHook).not.toHaveBeenCalled()
   })
 
@@ -234,6 +233,37 @@ describe("a message of the demo's live thread", () => {
     const res = await POST(req(textMessage("Sifarişim haqqında")))
     expect(res.status).toBe(200)
     expect(demoHook).toHaveBeenCalledTimes(1)
-    expect(reopenTicketForCustomerReply).toHaveBeenCalledTimes(1)
+    expect(ticketHook).toHaveBeenCalledTimes(1)
+    expect(ticketHook.mock.calls[0][0]).toMatchObject({ waPhone: "994501234567", messageText: "Sifarişim haqqında", reopenResolved: true })
+  })
+
+  it("hands the demo the product's own ticket path for this message, which marks the ticket as the demo's", async () => {
+    demoHook.mockResolvedValue({ handled: true, action: "answered" })
+    ticketHook.mockResolvedValue({ ticketId: "ticket-1", ticketNumber: "WA-0031", created: true, commentAdded: true, reopened: false })
+    await POST(req(textMessage("Kassa çeki çap etmir")))
+    const fileTicket = demoHook.mock.calls[0][1].fileTicket
+    const handle = await fileTicket({ grantId: "grant-1", ticketId: null })
+    expect(ticketHook.mock.calls[0][0]).toMatchObject({
+      organizationId: "org_1",
+      waPhone: "994501234567",
+      messageText: "Kassa çeki çap etmir",
+      demo: { grantId: "grant-1", ticketId: null },
+    })
+    expect(handle).toMatchObject({ ticketId: "ticket-1", ticketNumber: "WA-0031", created: true, reopened: false })
+    await handle.appendReply("Printer siyahıda görünürmü?")
+    expect(botReplyHook).toHaveBeenCalledWith("ticket-1", "Printer siyahıda görünürmü?")
+  })
+
+  it("lets the demo file a photo from a phone in ticket mode, and opens no ordinary ticket for it", async () => {
+    demoMediaHook.mockResolvedValue(true)
+    const photo = messagesPayload({
+      ...baseValue,
+      messages: [{ id: "wamid.img1", from: "994501234567", timestamp: "1760785200", type: "image", image: { id: "media-1", mime_type: "image/jpeg" } }],
+    })
+    const res = await POST(req(photo))
+    expect(res.status).toBe(200)
+    expect(demoMediaHook).toHaveBeenCalledTimes(1)
+    expect(demoHook).not.toHaveBeenCalled()
+    expect(ticketHook).not.toHaveBeenCalled()
   })
 })

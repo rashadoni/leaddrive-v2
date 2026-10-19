@@ -1077,6 +1077,7 @@ jobs:
             src/app/portal/chat,
             src/app/portal/layout.tsx,
             src/app/ticket-closure,
+            src/components/tickets/ticket-closure-request-view.tsx,
             src/components/portal-chat-widget.tsx
         run: |
           node --check scripts/support-ux-browser-evidence.mjs
@@ -1102,6 +1103,7 @@ jobs:
             src/app/portal/knowledge-base/page.tsx \
             src/app/portal/chat/page.tsx \
             src/app/ticket-closure/\[token\]/page.tsx \
+            src/components/tickets/ticket-closure-request-view.tsx \
             src/app/api/v1/public/portal-chat/route.ts \
             src/app/api/v1/public/portal-kb/route.ts \
             src/app/api/v1/public/portal-tickets/route.ts \

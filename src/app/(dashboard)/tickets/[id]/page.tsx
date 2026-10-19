@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Select } from "@/components/ui/select"
 import { ArrowLeft, Clock, Send, Lock, Star, Loader2, Bot, FileText, Zap, UserCheck, RefreshCw, AlertTriangle, UserPlus, BookOpen, ChevronLeft, ChevronRight, Keyboard, Timer, Play, MessageSquareWarning, Pencil, CheckCircle2, Copy, ShieldCheck, Paperclip, X } from "lucide-react"
-import { parseChatDescription, ChatHistoryView, parseCommentSender, ChatBubble } from "@/components/tickets/chat-history-view"
+import { parseChatDescription, ChatHistoryView, ChatBubble } from "@/components/tickets/chat-history-view"
+import { agentCommentView } from "@/lib/ticketing/chat-transcript"
 import { InfoHint } from "@/components/info-hint"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
@@ -1453,26 +1454,26 @@ export default function TicketDetailPage() {
                 <p className="text-sm text-muted-foreground text-center py-4">{t("noComments")}</p>
               )}
               {filteredComments.map(comment => {
-                // Inbound email replies get a 📧 prefix from /api/v1/public/email-inbound.
-                // Strip it from the visible text and render a "via email" badge instead.
-                const viaEmail = typeof comment.comment === "string" && comment.comment.startsWith("📧 ")
-                const visibleText = viaEmail ? comment.comment.slice(2).trimStart() : comment.comment
-                // Synced WhatsApp/web chat comments ("[Клиент (WhatsApp)] …" / "[Da Vinci Bot] …")
-                // render as messenger bubbles to match the description chat view; agent replies,
-                // internal notes and email replies keep the avatar layout.
-                const chat = !comment.isInternal && !viaEmail ? parseCommentSender(visibleText) : null
-                if (chat) {
+                // Who wrote it (chat-transcript.ts): synced WhatsApp/web chat comments
+                // ("[Клиент (WhatsApp)] …" / "[Da Vinci Bot] …") render as messenger bubbles to
+                // match the description chat view; agent replies, internal notes, email replies
+                // (a "via email" badge instead of their 📧 prefix) and what the product wrote
+                // itself (under «System», without its storage marker) keep the avatar layout.
+                const view = agentCommentView(comment)
+                const viaEmail = view.kind === "email"
+                const visibleText = view.text
+                if (view.kind === "chat") {
                   return (
                     <div key={comment.id} className="space-y-1.5">
                       <ChatBubble
-                        sender={chat.sender}
-                        label={chat.sender === "customer"
+                        sender={view.role === "customer" ? "customer" : "bot"}
+                        label={view.role === "customer"
                           ? t("chatHistoryCustomer")
-                          : /^(?:operator|agent|оператор|агент|менеджер)$/i.test(chat.name)
+                          : view.role === "operator"
                             ? t("chatHistoryOperator")
                             : t("chatHistoryAssistant")}
-                        channel={chat.channel}
-                        text={chat.body}
+                        channel={view.channel}
+                        text={view.text}
                         footer={formatDate(comment.createdAt, locale)}
                       />
                       {comment.attachments?.map(attachment => (

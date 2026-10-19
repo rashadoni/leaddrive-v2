@@ -931,7 +931,7 @@ const runnerFenceRecoveryEnd = backupCommission.indexOf("\n}\n\n", runnerFenceRe
 const runnerFenceRecovery = backupCommission.slice(runnerFenceRecoveryStart, runnerFenceRecoveryEnd)
 assert.ok(
   runnerFenceRecovery.includes(
-    "^(install-backup-tools|activate-backup-encryption|run-bootstrap-backup|certify-bootstrap-restore|run-verified-backup|certify-offline-restore)$",
+    "^(install-backup-tools|activate-backup-encryption|run-bootstrap-backup|certify-bootstrap-restore|run-verified-backup|certify-offline-restore|run-owner-backup)$",
   ),
   "runner-fence recovery must accept every bounded commissioning operation, including both bootstrap stages",
 )

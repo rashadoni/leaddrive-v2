@@ -19,6 +19,7 @@ EVIDENCE_AT_UTC="${9:-}"
 OFFLINE_OPERATOR="${10:-}"
 EXPECTED_CANDIDATE_SHA256="${11:-}"
 REMOTE_INPUT_STAGE="${12:-}"
+OWNER_RECIPIENT="${13:-}"
 
 BACKUP_ENV_FILE="/etc/leaddrive/backup.env"
 BACKUP_SERVICE="leaddrive-postgres-backup.service"
@@ -37,6 +38,10 @@ COMMISSION_LOCK="/run/lock/leaddrive-backup-commission.lock"
 COMMISSION_STATE_ROOT="/var/lib/leaddrive-backup-commission"
 COMMISSION_FENCE_JOURNAL="$COMMISSION_STATE_ROOT/runner-fence.env"
 EVIDENCE_ROOT="/etc/leaddrive/backup-evidence"
+case "$OPERATION" in
+  run-owner-backup|certify-owner-restore) EVIDENCE_ROOT="$EVIDENCE_ROOT/owner-operated" ;;
+  *) [ -z "$OWNER_RECIPIENT" ] || { printf '%s\n' 'owner recipient is forbidden for independent operations' >&2; exit 1; } ;;
+esac
 CUSTODY_MARKER="$EVIDENCE_ROOT/key-custody.env"
 CANDIDATE_DIR="$EVIDENCE_ROOT/candidates"
 RESTORE_DIR="$EVIDENCE_ROOT/restores"
@@ -77,11 +82,12 @@ AWS_LINK="/usr/local/bin/aws"
 # Filled from the reviewed offline helper files before this branch is merged.
 # The signed evidence must prove that the independent operator ran these exact
 # bytes from the exact main revision, not an arbitrary look-alike verifier.
+OWNER_KEY_VERIFIER_SHA256="d72e3bcd19b0838e3d47ff45d3f5580eac3c668fde8aef07dea900971b33a7ca"
 CUSTODY_VERIFIER_SHA256="a02101a2e9ae313c7486d31337b9efe771ea2127d565b059d6e2427df86eca91"
-ARCHIVE_VERIFIER_SHA256="c6d4caabb1f44db3036c79d59b63253f961fa8ce29780724c9d15667dac644a6"
-POSTGRES_BACKUP_SHA256="7a49edc70a9f9ba0711006b7aa986ca3c60f84c92bbcf2a1a7e3349e52cc8b42"
-SECRETS_SNAPSHOT_SHA256="16d4bf083ad2549cd34e1bd89a53ee958f1625605235fe5370c8acecc401de99"
-RUNTIME_FILES_SNAPSHOT_SHA256="d5fe33b4b0b0e581194b3aff770eca45a14a493774ec314340146bd69475e53e"
+ARCHIVE_VERIFIER_SHA256="c4d1ff55bc61fcac7f8aee171e42d3d73d1a93e426253d32cc9e218e9ac54cb7"
+POSTGRES_BACKUP_SHA256="88ce748f168a67a88442143864e2652d4b347918cf234cab2341f90ef0bfa681"
+SECRETS_SNAPSHOT_SHA256="c43f3d14fcd68c95b56585ae3844fb8db21db4aefac06b5f210861fd3e2b3907"
+RUNTIME_FILES_SNAPSHOT_SHA256="e32fa4fdab76e4ad162d7c1463916a3847824c3d438a972051b095da4b4e8330"
 RESTORE_CANARY_SHA256="c4f2aadacf8618f643667aa305a6f2197badc0d23a1acf16f43f765f72304e36"
 PII_PROOF_SHA256="e83f3fc65c56e0dc8db7eb26e47780c0901917908c05d7aa6552792a37f99e18"
 CANARY_SQL_SHA256="5c3a9bf2b14c84c4deafa31525ac23518ba2290ab32a7cf5f66e2d05d4b249c9"
@@ -1026,7 +1032,7 @@ recover_commission_runner_fence() {
   old_run_id="$(read_unique_value_from "$COMMISSION_FENCE_JOURNAL" WORKFLOW_RUN_ID)"
   old_operation="$(read_unique_value_from "$COMMISSION_FENCE_JOURNAL" OPERATION)"
   [[ "$old_run_id" =~ ^[0-9]{1,20}$ ]] \
-    && [[ "$old_operation" =~ ^(install-backup-tools|activate-backup-encryption|run-bootstrap-backup|certify-bootstrap-restore|run-verified-backup|certify-offline-restore)$ ]] \
+    && [[ "$old_operation" =~ ^(install-backup-tools|activate-backup-encryption|run-bootstrap-backup|certify-bootstrap-restore|run-verified-backup|certify-offline-restore|run-owner-backup)$ ]] \
     || fatal "commissioning runner-fence journal identity is invalid"
   for label in database secrets runtime-files; do
     unit="leaddrive-backup-commission-${label}-${old_run_id}.service"
@@ -1548,6 +1554,13 @@ run_aws() {
     timeout "$timeout_seconds" "$AWS_BIN" "$@"
 }
 
+# Object Storage is Backblaze B2 (S3-compatible API). Hetzner Object Storage
+# went away with the Hetzner account in September 2026; its endpoint form is no
+# longer accepted. The region is B2's cluster name, e.g. eu-central-003.
+object_storage_endpoint_matches_region() {
+  [[ "$2" =~ ^[a-z]{2}-[a-z]+-[0-9]{3}$ ]] && [ "$1" = "https://s3.$2.backblazeb2.com" ]
+}
+
 prove_object_lock() {
   local endpoint region bucket access_key secret_key lock_state
   local lock_enabled lock_mode lock_days
@@ -1556,8 +1569,8 @@ prove_object_lock() {
   bucket="$(require_static_value BACKUP_S3_BUCKET)"
   access_key="$(require_static_value AWS_ACCESS_KEY_ID)"
   secret_key="$(require_static_value AWS_SECRET_ACCESS_KEY)"
-  [ "$endpoint" = "https://${region}.your-objectstorage.com" ] \
-    || fatal "Object Storage endpoint does not match its configured Hetzner region"
+  object_storage_endpoint_matches_region "$endpoint" "$region" \
+    || fatal "Object Storage endpoint does not match its configured B2 region"
   lock_state="$(run_aws 45 "$access_key" "$secret_key" \
     s3api get-object-lock-configuration \
       --endpoint-url "$endpoint" --region "$region" --no-cli-pager \
@@ -1574,6 +1587,10 @@ prove_object_lock() {
 
 ensure_evidence_directories() {
   assert_root_directory "/etc/leaddrive" /etc/leaddrive
+  if [ "$EVIDENCE_ROOT" = /etc/leaddrive/backup-evidence/owner-operated ]; then
+    ensure_root_directory /etc/leaddrive/backup-evidence
+    chmod 0700 /etc/leaddrive/backup-evidence
+  fi
   ensure_root_directory "$EVIDENCE_ROOT"
   chmod 0700 "$EVIDENCE_ROOT"
   ensure_root_directory "$CANDIDATE_DIR"
@@ -1627,7 +1644,9 @@ verify_signed_evidence() {
   local expected_recipient="$2"
   local candidate_file="${3:-}"
   local entries evidence_file signature_file verified_epoch now_epoch maximum_age_seconds
-  local candidate_format evidence_format recovery_scope candidate_sha key
+  local candidate_format evidence_format recovery_scope candidate_sha key signature_namespace
+  signature_namespace=leaddrive-backup-evidence
+  [ "$expected_type" != owner-archive-restore ] || signature_namespace=leaddrive-owner-backup-evidence
 
   command -v ssh-keygen >/dev/null 2>&1 || fatal "ssh-keygen is required for offline evidence verification"
   [ -f "$INCOMING_EVIDENCE_BUNDLE" ] && [ ! -L "$INCOMING_EVIDENCE_BUNDLE" ] \
@@ -1655,13 +1674,13 @@ verify_signed_evidence() {
     || fatal "signed offline evidence files are unexpectedly large"
 
   ssh-keygen -Y verify -f "$OFFLINE_ALLOWED_SIGNERS" \
-    -I "$OFFLINE_OPERATOR" -n leaddrive-backup-evidence \
+    -I "$OFFLINE_OPERATOR" -n "$signature_namespace" \
     -s "$signature_file" <"$evidence_file" >/dev/null 2>&1 \
     || fatal "offline evidence signature is not valid for the trusted operator"
 
   evidence_format=1
   recovery_scope=""
-  if [ "$expected_type" = archive-restore ]; then
+  if [ "$expected_type" = archive-restore ] || [ "$expected_type" = owner-archive-restore ]; then
     assert_root_file "archive evidence candidate" "$candidate_file"
     candidate_sha="$(sha256sum "$candidate_file" | awk '{print $1}')"
     [ "$candidate_sha" = "$EXPECTED_CANDIDATE_SHA256" ] \
@@ -1680,6 +1699,22 @@ verify_signed_evidence() {
     esac
   fi
 
+  if [ "$expected_type" = archive-restore ] && grep -Eq '^(OPERATOR_MODEL|INDEPENDENT_HUMAN_REVIEW|TWO_OFFLINE_MEDIA)=' "$evidence_file"; then
+    fatal "independent archive evidence must not carry owner-mode claims"
+  fi
+  if [ "$expected_type" = owner-archive-restore ]; then
+    [ "$OPERATION" = certify-owner-restore ] && [ "$candidate_format" = 2 ] \
+      && [ "$(read_unique_value_from "$candidate_file" RECOVERY_SCOPE)" = owner-operated-data-only ] \
+      && [ "$(read_unique_value_from "$evidence_file" OPERATOR_MODEL)" = owner_operated ] \
+      && [ "$(read_unique_value_from "$evidence_file" INDEPENDENT_HUMAN_REVIEW)" = not_performed ] \
+      && [ "$(read_unique_value_from "$evidence_file" TWO_OFFLINE_MEDIA)" = not_met ] \
+      || fatal "owner proof may not claim independent/full/offline-media certification"
+    recovery_scope=owner-operated-data-only
+  fi
+  if [ "$expected_type" = archive-restore ] || [ "$expected_type" = owner-archive-restore ]; then
+    [ "$(read_unique_value_from "$candidate_file" RECOVERY_SCOPE)" = "$recovery_scope" ] \
+      || fatal "candidate scope cannot cross owner/independent admission boundaries"
+  fi
   [ "$(read_unique_value_from "$evidence_file" FORMAT_VERSION)" = "$evidence_format" ] \
     && [ "$(read_unique_value_from "$evidence_file" EVIDENCE_TYPE)" = "$expected_type" ] \
     && [ "$(read_unique_value_from "$evidence_file" STATUS)" = "verified" ] \
@@ -1693,7 +1728,7 @@ verify_signed_evidence() {
     || fatal "signed evidence timestamp is invalid"
   now_epoch="$(date -u '+%s')"
   case "$expected_type" in
-    archive-restore) maximum_age_seconds=3024000 ;;
+    archive-restore|owner-archive-restore) maximum_age_seconds=3024000 ;;
     age-key-custody) maximum_age_seconds=7776000 ;;
     *) fatal "unsupported signed evidence type" ;;
   esac
@@ -1712,7 +1747,7 @@ verify_signed_evidence() {
         && [ "$(read_unique_value_from "$evidence_file" CUSTODY_VERIFIER_SHA256)" = "$CUSTODY_VERIFIER_SHA256" ] \
         || fatal "signed key-custody evidence does not prove both offline copies"
       ;;
-    archive-restore)
+    archive-restore|owner-archive-restore)
       [ "$(read_unique_value_from "$evidence_file" RECOVERY_SCOPE)" = "$recovery_scope" ] \
         && [ "$(read_unique_value_from "$evidence_file" CANDIDATE_SHA256)" = "$candidate_sha" ] \
         && [ "$(read_unique_value_from "$evidence_file" DATABASE_CIPHERTEXT_SHA256)" = "$(read_unique_value_from "$candidate_file" DATABASE_CIPHERTEXT_SHA256)" ] \
@@ -2605,6 +2640,9 @@ run_transient_backup_unit() {
       ;;
     *) fatal "unsupported transient backup label" ;;
   esac
+  if [ "$OPERATION" = run-owner-backup ]; then
+    executable_args=(--owner-operated "$OWNER_RECIPIENT")
+  fi
   ACTIVE_TRANSIENT_UNIT="$unit"
   set +e
   systemd-run --quiet \
@@ -2692,6 +2730,18 @@ run_verified_backup() {
   local candidate_file candidate_sha created_at code_bundle_sha candidate_format_version recovery_scope
 
   case "$OPERATION" in
+    run-owner-backup)
+      assert_confirmation "CREATE_OWNER_BACKUP_ON_13_140_132_245"
+      candidate_format_version=2
+      recovery_scope=owner-operated-data-only
+      assert_owner_evidence_inputs
+      [ -z "$EXPECTED_CANDIDATE_SHA256" ] || fatal "owner backup cannot claim prior restore"
+      [[ "$OWNER_RECIPIENT" =~ ^age1[0-9a-z]{58}$ ]] \
+        && [ "$(recipient_sha256 "$OWNER_RECIPIENT")" = "$EXPECTED_RECIPIENT_SHA256" ] \
+        || fatal "owner recipient does not bind the key-readability proof"
+      verify_owner_key_proof
+      assert_owner_source_boundary
+      ;;
     run-bootstrap-backup)
       assert_confirmation "CREATE_BOOTSTRAP_BACKUP_ON_13_140_132_245"
       candidate_format_version=2
@@ -2704,24 +2754,41 @@ run_verified_backup() {
       ;;
     *) fatal "backup creation was invoked through an unsupported operation" ;;
   esac
-  [ -z "$KEY_CUSTODY_ATTESTATION$EVIDENCE_REF$EVIDENCE_AT_UTC$OFFLINE_OPERATOR$EXPECTED_CANDIDATE_SHA256" ] \
-    || fatal "backup creation accepts only the reviewed recipient digest"
+  if [ "$OPERATION" != run-owner-backup ]; then
+    [ -z "$KEY_CUSTODY_ATTESTATION$EVIDENCE_REF$EVIDENCE_AT_UTC$OFFLINE_OPERATOR$EXPECTED_CANDIDATE_SHA256" ] \
+      || fatal "backup creation accepts only the reviewed recipient digest"
+  fi
   fence_backup_runner
   assert_backup_env
   assert_toolchain
-  recipient="$(assert_expected_recipient)"
-  recipient_sha="$(recipient_sha256 "$recipient")"
-  assert_custody_marker "$recipient_sha"
-  encryption="$(read_unique_value BACKUP_ENCRYPTION)"
-  [ "${encryption:-age}" = "age" ] || fatal "refusing to run an unencrypted backup"
+  if [ "$OPERATION" = run-owner-backup ]; then
+    recipient="$OWNER_RECIPIENT"
+    recipient_sha="$EXPECTED_RECIPIENT_SHA256"
+  else
+    recipient="$(assert_expected_recipient)"
+    recipient_sha="$(recipient_sha256 "$recipient")"
+    assert_custody_marker "$recipient_sha"
+    encryption="$(read_unique_value BACKUP_ENCRYPTION)"
+    [ "${encryption:-age}" = "age" ] || fatal "refusing to run an unencrypted backup"
+  fi
   prove_object_lock
+  if [ "$OPERATION" = run-owner-backup ]; then
+    install_or_validate_allowed_signers
+    SIGNED_EVIDENCE_FILE="$REMOTE_INPUT_STAGE/owner-key.env"
+    SIGNED_SIGNATURE_FILE="$REMOTE_INPUT_STAGE/owner-key.env.sig"
+    SIGNED_EVIDENCE_SHA256="$(sha256sum "$SIGNED_EVIDENCE_FILE" | awk '{print $1}')"
+    SIGNED_SIGNATURE_SHA256="$(sha256sum "$SIGNED_SIGNATURE_FILE" | awk '{print $1}')"
+    preserve_signed_evidence
+  fi
   ensure_evidence_directories
   candidate_file="$CANDIDATE_DIR/${WORKFLOW_RUN_ID}.env"
   [ ! -e "$candidate_file" ] && [ ! -L "$candidate_file" ] \
     || fatal "this workflow run already has a candidate record"
   prepare_commission_code
   code_bundle_sha="$(sha256sum "$INCOMING_CODE_BUNDLE" | awk '{print $1}')"
-  if [ "$candidate_format_version" = 2 ]; then
+  if [ "$OPERATION" = run-owner-backup ]; then
+    : # Data-only owner proof never reads/writes log cursor/genesis authority.
+  elif [ "$candidate_format_version" = 2 ]; then
     [ ! -e "$LOG_GENESIS_ANCHOR" ] && [ ! -L "$LOG_GENESIS_ANCHOR" ] \
       || fatal "bootstrap-only backup is forbidden after a log-genesis anchor exists"
     for path in "$LOG_BOOTSTRAP_TRANSACTION" "$LOG_BOOTSTRAP_PREPARING" "$LOG_BOOTSTRAP_TOMBSTONE"; do
@@ -3434,7 +3501,108 @@ certify_offline_restore() {
 
 recover_commission_runner_fence
 
+# Owner-only technical route: no independent marker, env mutation, log genesis,
+# schedule activation or implicit fallback from the independent ceremony.
+assert_owner_evidence_inputs() {
+  local epoch now
+  [ "$KEY_CUSTODY_ATTESTATION" = OWNER_OPERATED_ONLINE_CUSTODY_ACCEPTED ] \
+    || fatal "owner-operated custody policy was not explicitly accepted"
+  [ "$OFFLINE_OPERATOR" = "$WORKFLOW_ACTOR" ] \
+    || fatal "owner proof principal must be the authenticated workflow actor"
+  [[ "$EXPECTED_RECIPIENT_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    && [[ "$EVIDENCE_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$ ]] \
+    && [[ "$EVIDENCE_AT_UTC" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] \
+    || fatal "invalid owner evidence binding"
+  epoch="$(date -u -d "$EVIDENCE_AT_UTC" '+%s')" || fatal "invalid owner evidence time"
+  now="$(date -u '+%s')"
+  [ "$epoch" -le $((now + 300)) ] && [ "$epoch" -ge $((now - 86400)) ] \
+    || fatal "owner operation requires evidence within24h and at most5min future"
+}
+
+assert_owner_source_boundary() {
+  local timer load
+  [ "$(read_unique_value BACKUP_ENCRYPTION)" != age ] \
+    || fatal "owner one-shot route cannot operate on an independently commissioned host"
+  for timer in "$BACKUP_TIMER" "$SECRETS_TIMER" "$RUNTIME_FILES_TIMER" "$LOG_TIMER"; do
+    load="$(systemctl show --property=LoadState --value "$timer" 2>/dev/null || true)"
+    if [ "$load" != not-found ]; then
+      [ "$load" = loaded ] \
+        && [ "$(systemctl is-enabled "$timer" 2>/dev/null || true)" = disabled ] \
+        && [ "$(systemctl is-active "$timer" 2>/dev/null || true)" = inactive ] \
+        || fatal "owner one-shot route requires all existing recovery timers disabled/inactive"
+    fi
+  done
+}
+
+verify_owner_key_proof() {
+  local verifier="$REMOTE_INPUT_STAGE/owner-key-proof.mjs" file
+  for file in "$verifier" "$REMOTE_INPUT_STAGE/owner-key.env" \
+    "$REMOTE_INPUT_STAGE/owner-key.env.sig" "$INCOMING_ALLOWED_SIGNERS"; do
+    assert_root_file "owner proof input" "$file"
+    [ "$(stat -c '%a' "$file")" = 600 ] || fatal "unsafe owner proof input mode"
+  done
+  [ "$(sha256sum "$verifier" | awk '{print $1}')" = "$OWNER_KEY_VERIFIER_SHA256" ] \
+    || fatal "owner key verifier differs from reviewed code"
+  node "$verifier" verify "$REMOTE_INPUT_STAGE/owner-key.env" \
+    "$REMOTE_INPUT_STAGE/owner-key.env.sig" "$INCOMING_ALLOWED_SIGNERS" \
+    "$EXPECTED_RECIPIENT_SHA256" "$WORKFLOW_SHA" "$WORKFLOW_ACTOR" >/dev/null \
+    || fatal "owner key-readability signature/proof did not verify"
+  [ "$(read_unique_value_from "$REMOTE_INPUT_STAGE/owner-key.env" VERIFIED_AT_UTC)" = "$EVIDENCE_AT_UTC" ] \
+    || fatal "owner key proof time differs from workflow input"
+}
+
+certify_owner_restore() {
+  local candidate_file candidate_epoch evidence_epoch recorded_at target
+  assert_confirmation "CERTIFY_OWNER_RESTORE_ON_13_140_132_245"
+  assert_owner_evidence_inputs
+  [ -z "$OWNER_RECIPIENT" ] || fatal "owner restore certification does not accept a recipient override"
+  [[ "$EXPECTED_CANDIDATE_SHA256" =~ ^[0-9a-f]{64}$ ]] || fatal "owner candidate digest required"
+  assert_backup_env
+  assert_toolchain
+  assert_owner_source_boundary
+  candidate_file="$(find_candidate_by_digest "$EXPECTED_CANDIDATE_SHA256")"
+  [ "$(read_unique_value_from "$candidate_file" FORMAT_VERSION)" = 2 ] \
+    && [ "$(read_unique_value_from "$candidate_file" RECOVERY_SCOPE)" = owner-operated-data-only ] \
+    && [ "$(read_unique_value_from "$candidate_file" WORKFLOW_SHA)" = "$WORKFLOW_SHA" ] \
+    && [ "$(read_unique_value_from "$candidate_file" CREATED_BY)" = "$WORKFLOW_ACTOR" ] \
+    && [ "$(read_unique_value_from "$candidate_file" RECIPIENT_SHA256)" = "$EXPECTED_RECIPIENT_SHA256" ] \
+    || fatal "owner candidate does not bind this actor/main/recipient"
+  candidate_epoch="$(date -u -d "$(read_unique_value_from "$candidate_file" CREATED_AT_UTC)" '+%s')" \
+    || fatal "owner candidate time invalid"
+  evidence_epoch="$(date -u -d "$EVIDENCE_AT_UTC" '+%s')"
+  [ "$evidence_epoch" -ge "$candidate_epoch" ] || fatal "owner restore evidence predates candidate"
+  prove_object_lock
+  install_or_validate_allowed_signers
+  verify_signed_evidence owner-archive-restore "$EXPECTED_RECIPIENT_SHA256" "$candidate_file"
+  assert_candidate_remote_objects "$candidate_file"
+  preserve_signed_evidence
+  recorded_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  target="$RESTORE_DIR/owner-${WORKFLOW_RUN_ID}.env"
+  [ ! -e "$target" ] && [ ! -L "$target" ] || fatal "owner receipt already exists"
+  MARKER_STAGE="$(mktemp "$RESTORE_DIR/.owner-restore-stage.XXXXXX")"
+  printf '%s\n' 'FORMAT_VERSION=1' 'EVIDENCE_TYPE=owner-archive-restore' \
+    'STATUS=technical_restore_verified' 'OPERATOR_MODEL=owner_operated' \
+    'INDEPENDENT_HUMAN_REVIEW=not_performed' 'TWO_OFFLINE_MEDIA=not_met' \
+    'INDEPENDENT_READY=no' 'ENTERPRISE_GA_READY=no' \
+    "CANDIDATE_SHA256=$EXPECTED_CANDIDATE_SHA256" \
+    "RECIPIENT_SHA256=$EXPECTED_RECIPIENT_SHA256" \
+    "SIGNED_EVIDENCE_SHA256=$SIGNED_EVIDENCE_SHA256" \
+    "SIGNED_SIGNATURE_SHA256=$SIGNED_SIGNATURE_SHA256" \
+    "ALLOWED_SIGNERS_SHA256=$ALLOWED_SIGNERS_SHA256" \
+    "REVIEWED_MAIN_SHA=$WORKFLOW_SHA" "OWNER_OPERATOR=$WORKFLOW_ACTOR" \
+    "RECORDED_AT_UTC=$recorded_at" "WORKFLOW_RUN_ID=$WORKFLOW_RUN_ID" >"$MARKER_STAGE"
+  chmod 0600 "$MARKER_STAGE"
+  sync -f -- "$MARKER_STAGE" "$RESTORE_DIR"
+  ln -- "$MARKER_STAGE" "$target" || fatal "owner receipt publication raced; nothing overwritten"
+  unlink -- "$MARKER_STAGE"
+  MARKER_STAGE=""
+  sync -f -- "$target" "$RESTORE_DIR"
+  log "owner technical restore recorded; independent_ready=no enterprise_ga_ready=no; schedules unchanged"
+}
+
 case "$OPERATION" in
+  run-owner-backup) run_verified_backup ;;
+  certify-owner-restore) certify_owner_restore ;;
   configure-monitoring-urls) configure_monitoring_urls ;;
   install-backup-tools) install_tools ;;
   activate-backup-encryption) activate_encryption ;;

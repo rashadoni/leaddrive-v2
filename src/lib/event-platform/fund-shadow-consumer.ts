@@ -87,7 +87,7 @@ function utf8(value: unknown, label: string): string {
   return value
 }
 
-function snapshotScope(input: FundShadowScope): Readonly<FundShadowScope> {
+export function validateFundShadowScope(input: FundShadowScope): Readonly<FundShadowScope> {
   const scope = Object.freeze({ ...input })
   requireCondition(typeof scope.organizationId === "string" && IDENTIFIER.test(scope.organizationId), "Invalid configured tenant")
   requireCondition(typeof scope.buildId === "string" && UUID.test(scope.buildId), "Invalid configured build ID")
@@ -182,7 +182,7 @@ function shadowState(row: ShadowRow, scope: FundShadowScope, event: IncomingEven
 export async function consumeFundShadowRecord(
   database: FundShadowDatabase, configuredScope: FundShadowScope, record: KafkaEventRecord,
 ): Promise<FundShadowResult> {
-  const scope = snapshotScope(configuredScope)
+  const scope = validateFundShadowScope(configuredScope)
   const validated = validatedRecord(record, scope)
   const envelope: DomainEventEnvelope = validated.envelope
   const position: IncomingEventPosition = { ...validated.position,

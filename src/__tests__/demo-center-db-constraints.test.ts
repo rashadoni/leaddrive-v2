@@ -331,6 +331,23 @@ pgDescribe("demo tables on a real Postgres", () => {
     expect(await bypass(() => prisma.demoWhatsAppThread.count({ where: { id: stored.id } }))).toBe(0)
   })
 
+  it("keeps the demo's ticket on a proven thread in ticket mode, and one ticket to one thread", async () => {
+    const { demoWhatsAppCode } = await import("@/lib/demo-center/demo-whatsapp")
+    const make = async (tag: string, digit: string) => {
+      const grant = await grantInState((await storedRequest(`ticket-${tag}@example.az`)).id, digit, session(1, digit))
+      return bypass(() => prisma.demoWhatsAppThread.create({ data: { grantId: grant.id, phoneE164: "+994701234567", code: demoWhatsAppCode(grant.id) } }))
+    }
+    const thread = await make("a", "9")
+    const set = (data: Record<string, unknown>) => bypass(() => prisma.demoWhatsAppThread.update({ where: { id: thread.id }, data }))
+    await expect(set({ ticketModeAt: new Date() })).rejects.toThrow() // not proven yet
+    await set({ provenAt: new Date() })
+    await expect(set({ ticketId: "ticket-1" })).rejects.toThrow() // a ticket without the press
+    await set({ ticketModeAt: new Date(), ticketId: "ticket-1" })
+    const other = await make("b", "c")
+    await bypass(() => prisma.demoWhatsAppThread.update({ where: { id: other.id }, data: { provenAt: new Date(), ticketModeAt: new Date() } }))
+    await expect(bypass(() => prisma.demoWhatsAppThread.update({ where: { id: other.id }, data: { ticketId: "ticket-1" } }))).rejects.toThrow()
+  })
+
   it("decides a welcome under one lock: a phone's week holds across demos, and a failed send gives the claim back", async () => {
     const { sendDemoWhatsAppWelcome } = await import("@/lib/demo-center/demo-whatsapp")
     const phone = "+994551234567"
