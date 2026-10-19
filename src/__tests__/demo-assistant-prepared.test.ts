@@ -36,7 +36,8 @@ vi.mock("@/lib/demo-center/security", async (importOriginal) => ({
 vi.mock("@/lib/ai/anthropic-client", () => ({ getAnthropicClient: () => ({ messages: { create: mocks.claude } }) }))
 
 import { POST } from "@/app/api/v1/public/demo-access/[token]/assistant/route"
-import { DEMO_PREPARED_INTENTS } from "@/lib/demo-center/assistant/prepared-answers"
+import { DEMO_NAVIGATION_INTENTS, DEMO_PREPARED_INTENTS, DEMO_ROUTER_INTENT_IDS, stepNarration } from "@/lib/demo-center/assistant/prepared-answers"
+import { getDemoJourneyModule, withLiveCall } from "@/lib/demo-center/journey"
 import { demoVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { DEMO_ASSISTANT_MAX_PREPARED, DEMO_ASSISTANT_MAX_QUESTIONS, DEMO_ASSISTANT_REFUSAL_TEXT } from "@/lib/demo-center/assistant/policy"
 import { PROSPECT_TO_CLOSED_WON } from "@/lib/demo-center/journey"
@@ -46,11 +47,12 @@ const PRICE_ANSWER = DEMO_PREPARED_INTENTS.price.answer()
 const DEAL_STEP = PROSPECT_TO_CLOSED_WON.sections.flatMap((section) => section.steps).find((step) => step.id === "deal-advance")!
 
 function ask(question: string, stepId = "deal-advance") {
+  const sectionId = PROSPECT_TO_CLOSED_WON.sections.find((section) => section.steps.some((step) => step.id === stepId))?.id
   return POST(
     new NextRequest(`https://app.leaddrivecrm.org/api/v1/public/demo-access/${TOKEN}/assistant`, {
       method: "POST",
       headers: { "content-type": "application/json", cookie: `ld_demo_session=x` },
-      body: JSON.stringify({ question, state: "DEAL_CREATED", sectionId: "deals", stepId }),
+      body: JSON.stringify({ question, state: "DEAL_CREATED", sectionId, stepId }),
     }),
     { params: Promise.resolve({ token: TOKEN }) },
   )
@@ -90,6 +92,83 @@ beforeEach(() => {
 })
 
 const recorded = () => mocks.createEvent.mock.calls.map(([arg]) => arg.data.eventType)
+
+describe("a request to be taken somewhere (owner, 2026-10-18: «открыть для него»)", () => {
+  it("opens the module itself: an action from the closed list, the module named, Claude not asked", async () => {
+    jevAnswers({ choice: "open_contracts", confidence: 0.97 })
+    const body = await (await ask("Müqavilələri göstərin")).json()
+    const module = getDemoJourneyModule("contracts")!
+    expect(body).toMatchObject({ success: true, source: "navigation", intent: "open_contracts", action: { kind: "open_module", moduleId: "contracts" } })
+    expect(body.answer).toBe(`${module.title}. ${module.pitch}`)
+    // The module's first step reads itself once it opens; nothing is played twice.
+    expect(body.audio).toBeUndefined()
+    expect(mocks.claude).not.toHaveBeenCalled()
+    expect(mocks.createEvent.mock.calls[0][0].data).toMatchObject({ eventType: "ASSISTANT_PREPARED", metadata: { intent: "open_contracts", action: "open_module", moduleId: "contracts" } })
+  })
+
+  it("needs more certainty than a prepared answer: at 0.92 Da Vinci answers, and nothing moves", async () => {
+    jevAnswers({ choice: "open_contracts", confidence: 0.92 })
+    const body = await (await ask("Müqavilələr necə işləyir?")).json()
+    expect(body.answer).toBe("Da Vinci cavabı")
+    expect(body.action).toBeUndefined()
+    expect(mocks.claude).toHaveBeenCalledTimes(1)
+  })
+
+  it("asked for the module the prospect is already in, restarts nothing and reads the current step", async () => {
+    jevAnswers({ choice: "open_deals", confidence: 0.98 })
+    const body = await (await ask("Sövdələşmələri göstərin")).json()
+    expect(body.action).toEqual({ kind: "point_step" })
+    expect(body.answer).toBe(stepNarration(DEAL_STEP))
+    expect(body.audio).toBe(demoVoiceUrl(stepNarration(DEAL_STEP)))
+  })
+
+  it("«where do I click» brings the step's card back", async () => {
+    jevAnswers({ choice: "screen_help", confidence: 0.95 })
+    expect((await (await ask("Nə etməliyəm?")).json()).action).toEqual({ kind: "point_step" })
+  })
+
+  it("Da Vinci's own answers carry no action", async () => {
+    jevAnswers({ choice: "other", confidence: 0.99 })
+    expect((await (await ask("Bu lidin balı niyə belədir?")).json()).action).toBeUndefined()
+  })
+
+  it("every navigation intent names a real module", () => {
+    for (const [intent, entry] of Object.entries(DEMO_NAVIGATION_INTENTS)) {
+      expect(getDemoJourneyModule(entry.moduleId), intent).not.toBeNull()
+    }
+  })
+})
+
+describe("the grant's own story", () => {
+  it("answers a question asked on the live call step about the call step, not the first screen", async () => {
+    mocks.findGrant.mockResolvedValue({
+      ...(await mocks.findGrant()),
+      scenarioId: PROSPECT_TO_CLOSED_WON.scenarioId,
+      liveCallEnabled: true,
+    })
+    const live = withLiveCall(PROSPECT_TO_CLOSED_WON)
+    const callStep = live.sections.flatMap((section) => section.steps).find((step) => step.completion.kind === "outcome")!
+    const callSection = live.sections.find((section) => section.steps.includes(callStep))!
+    jevAnswers({ choice: "screen_help", confidence: 0.96 })
+    const response = await POST(
+      new NextRequest(`https://app.leaddrivecrm.org/api/v1/public/demo-access/${TOKEN}/assistant`, {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: `ld_demo_session=x` },
+        body: JSON.stringify({ question: "İndi nə edim?", state: "LEAD_SCORED", sectionId: callSection.id, stepId: callStep.id }),
+      }),
+      { params: Promise.resolve({ token: TOKEN }) },
+    )
+    expect((await response.json()).answer).toBe(stepNarration(callStep))
+  })
+
+  it("never hands Claude a phone number or an e-mail address the prospect typed", async () => {
+    jevAnswers({ choice: "other", confidence: 0.99 })
+    await ask("Mənə +994 50 123 45 67 nömrəsinə yazın, nigar@example.az")
+    const sent = JSON.stringify(mocks.claude.mock.calls[0][0].messages)
+    expect(sent).not.toContain("123 45 67")
+    expect(sent).not.toContain("nigar@example.az")
+  })
+})
 
 describe("a question Jev is sure about", () => {
   it("gets the approved answer at once, without Da Vinci, recorded apart from the Da Vinci allowance", async () => {
@@ -184,6 +263,6 @@ describe("what Jev is shown", () => {
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string)
     expect(sent.state.prospect_question).not.toContain("123 45 67")
     expect(sent.state.prospect_question).not.toContain("nigar@example.az")
-    expect(Object.keys(sent.questions.intent.criteria)).toEqual(Object.keys(DEMO_PREPARED_INTENTS))
+    expect(Object.keys(sent.questions.intent.criteria)).toEqual([...DEMO_ROUTER_INTENT_IDS])
   })
 })

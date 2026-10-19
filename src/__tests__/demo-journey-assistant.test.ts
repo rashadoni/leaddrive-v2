@@ -232,8 +232,10 @@ describe("Assistant route contract", () => {
     expect(source).toContain("rebuildRecordsAtState")
     expect(source).toContain("grant.request")
     // Only the position is taken from the client, and it is validated first.
-    expect(source).toContain("findSection(SCENARIO")
-    expect(source).toContain("findStep(SCENARIO")
+    // …against the grant's own story (with the live call when it has one).
+    expect(source).toContain("demoGrantManifest(grant)")
+    expect(source).toContain("findSection(manifest")
+    expect(source).toContain("findStep(manifest")
     expect(source).not.toMatch(/body\.(records|identity|grounding|snapshot)\b/)
   })
 

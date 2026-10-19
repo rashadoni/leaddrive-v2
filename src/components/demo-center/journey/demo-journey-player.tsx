@@ -36,7 +36,8 @@ import {
 } from "@/lib/demo-center/session-clock"
 import { cn } from "@/lib/utils"
 import { DemoCoachMark } from "./demo-coach-mark"
-import { DemoJourneyGuide, IntroClip } from "./demo-journey-guide"
+import { DemoJourneyGuide, IntroClip, type DemoAssistantActionResult } from "./demo-journey-guide"
+import { planAssistantAction, type DemoAssistantAction } from "@/lib/demo-center/assistant/actions"
 import { LIVE_WHATSAPP_CHAT_SECTIONS, LIVE_WHATSAPP_TICKET_SECTIONS, useDemoLiveWhatsApp } from "./use-demo-live-whatsapp"
 import { createJourneyReporter, type JourneyReporter } from "./journey-reporter"
 import { DemoJourneySidebar } from "./demo-journey-sidebar"
@@ -192,6 +193,36 @@ export function DemoJourneyPlayer({
   useEffect(() => {
     accessLostRef.current = onAccessLost
   }, [onAccessLost])
+  // The guide's hands (assistant/actions.ts) act on the position of the
+  // latest render, not on the one the question was asked from: an answer
+  // arrives after its fetch, and the story may have moved meanwhile.
+  const assistantRef = useRef<{
+    snapshot: DemoJourneySnapshot
+    manifest: DemoJourneyManifest
+    openSection: (sectionId: string) => void
+    pointStep: () => void
+    hint: (message: string) => void
+  } | null>(null)
+  const runAssistantAction = useCallback((action: DemoAssistantAction, askedKey: string): DemoAssistantActionResult => {
+    const current = assistantRef.current
+    if (!current) return "dropped"
+    const { snapshot: latest, manifest: story } = current
+    // The screen changed while the answer was on its way: a jump is offered
+    // as a worded button instead, and «show the step» has nothing to show.
+    if (`${latest.sectionId}:${latest.stepId}` !== askedKey) return action.kind === "open_module" ? "offer" : "dropped"
+    const plan = planAssistantAction(action, latest, story)
+    if (!plan) return "dropped"
+    if (plan.kind === "point") {
+      current.pointStep()
+      return "done"
+    }
+    if (plan.kind === "refused") {
+      current.hint(plan.reason === "waits_for_call" ? S.jumpWaitsForCall : S.jumpRefused)
+      return "dropped"
+    }
+    current.openSection(plan.sectionId)
+    return "done"
+  }, [])
   const reporterRef = useRef<JourneyReporter | null>(null)
   useEffect(() => {
     reporterRef.current = variant === "granted"
@@ -357,6 +388,19 @@ export function DemoJourneyPlayer({
         setViewSectionId(null)
       }
     } else openSection(sectionId)
+  }
+
+  assistantRef.current = {
+    snapshot,
+    manifest,
+    openSection,
+    // Back to the frontier, its step's card and arrow out again.
+    pointStep: () => {
+      setViewSectionId(null)
+      setHiddenCoachKey(null)
+      setAnchorMissing(false)
+    },
+    hint,
   }
 
   const Scene = SCENES[viewSection.id]
@@ -527,6 +571,7 @@ export function DemoJourneyPlayer({
               liveCall={liveCall}
               onOutcome={(to) => step && dispatch({ type: "outcome", stepId: step.id, to })}
               liveWhatsApp={liveWhatsAppActive && !reviewMode ? liveWhatsApp : undefined}
+              onAssistantAction={variant === "granted" ? runAssistantAction : undefined}
             />
           </div>
         </div>
