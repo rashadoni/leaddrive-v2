@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -58,19 +58,32 @@ test('strict writer schema accepts generated literals without shell evaluation',
 
 function configure(dir, { input = writer, old = predecessor, lock = 'Enabled\tCOMPLIANCE\t14', awsStatus = 0,
   encryption = 'off', enabled = 'disabled', active = 'inactive', service = 'inactive', live = 'a'.repeat(40),
-  inputMode = 0o600, symlink = false, evidence = false, syncFailure = false, conflict = false, extraEvidence = false } = {}) {
-  const config = join(dir, 'backup.env'), incoming = join(dir, 'writer.env'), marker = join(dir, 'live-sha')
+  inputMode = 0o600, symlink = false, evidence = false, syncFailure = false, conflict = false, extraEvidence = false,
+  markerKind = 'regular', compatibilitySha } = {}) {
+  const app = join(dir, 'app'), standalone = join(app, '.next/standalone')
+  const config = join(dir, 'backup.env'), incoming = join(dir, 'writer.env'), marker = join(standalone, '.deploy-sha')
+  mkdirSync(standalone, { recursive: true })
   writeFileSync(config, old.replace('BACKUP_ENCRYPTION=off', `BACKUP_ENCRYPTION=${encryption}`), { mode: 0o600 })
   writeFileSync(incoming, input, { mode: inputMode })
   chmodSync(incoming, inputMode)
-  writeFileSync(marker, live + '\n', { mode: 0o600 })
+  if (markerKind === 'symlink') {
+    const target = join(dir, 'untrusted-marker')
+    writeFileSync(target, live + '\n', { mode: 0o600 })
+    symlinkSync(target, marker)
+  } else if (markerKind !== 'missing') {
+    writeFileSync(marker, live + '\n', { mode: 0o600 })
+  }
+  // Preserve the deployed layout instead of rewriting the marker to a generic
+  // regular file: the app-root compatibility alias is not release authority.
+  if (compatibilitySha === undefined) symlinkSync(marker, join(app, '.deploy-sha'))
+  else writeFileSync(join(app, '.deploy-sha'), compatibilitySha + '\n', { mode: 0o600 })
   if (evidence) writeFileSync(join(dir, 'genesis'), 'old-evidence', { mode: 0o600 })
   if (symlink) { symlinkSync(incoming, join(dir, 'input-link')); }
   // Run the ACTUAL operation against an explicit test-directory path rewrite.
   // Only root identity, systemd state, installed-tool admission and provider
   // response are synthetic; file transforms/atomic rename/durability/rollback
   // execute for real, as a non-root user, with no production/network access.
-  const operation = extract('configure_b2_writer').replaceAll('/etc/leaddrive', dir).replaceAll('/opt/leaddrive-v2/.deploy-sha', marker)
+  const operation = extract('configure_b2_writer').replaceAll('/etc/leaddrive', dir).replaceAll('/opt/leaddrive-v2', app)
   const restore = extract('restore_b2_writer_predecessor').replaceAll('/etc/leaddrive', dir)
   const result = spawnSync('bash', ['-c', `set -Eeuo pipefail
 umask 077
@@ -127,6 +140,23 @@ test('actual operation changes only five settings and preserves a protected pred
   assert.match(observed.awsArgs, /--endpoint-url https:\/\/s3.eu-central-003.backblazeb2.com --region eu-central-003/)
   assert.doesNotMatch(observed.awsArgs, /put-object|upload|delete-object/)
 }))
+
+test('live authority is the standalone artifact, not a stale app-root marker', () => fixture(dir => {
+  const observed = configure(dir, { compatibilitySha: 'b'.repeat(40) })
+  assert.equal(observed.result.status, 0, observed.result.stderr)
+  assert.equal(observed.config, inherited + writer)
+  assert.equal(observed.rollbacks.length, 1)
+}))
+
+test('missing, redirected or stale standalone marker fails before provider access or configuration changes', () => {
+  for (const options of [{ markerKind: 'missing' }, { markerKind: 'symlink' }, { live: 'b'.repeat(40) }]) fixture(dir => {
+    const observed = configure(dir, options)
+    assert.equal(observed.result.status, 1)
+    assert.equal(observed.config, predecessor)
+    assert.equal(observed.rollbacks.length, 0)
+    assert.equal(observed.awsArgs, '', 'never contact the provider without the exact regular artifact marker')
+  })
+})
 
 test('actual operation fails closed before any write for unsafe source, input or provider state', () => {
   for (const options of [

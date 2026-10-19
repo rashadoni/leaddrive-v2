@@ -54,7 +54,10 @@ online writer custody, not offline custody of a restore/decryption key.
 After ordinary source delivery, wait until reviewed current `main` is actually
 live. Dispatch on that exact main SHA, `expected_main_sha` the same SHA,
 confirmation `CONFIGURE_B2_WRITER_ON_13_140_132_245`, and all evidence/recipient
-inputs empty. The route refuses a commissioned host, independent recovery
+inputs empty. The live revision authority is the regular root-owned standalone
+artifact marker `/opt/leaddrive-v2/.next/standalone/.deploy-sha`, not an app-root
+compatibility alias. A missing, symlinked or mismatched artifact marker is a hard
+failure. The route refuses a commissioned host, independent recovery
 markers or pending commissioning fence. All four schedules must already be
 disabled/inactive and runners inactive. It neither changes their state nor
 recovers a pending fence as an incidental step.

@@ -573,8 +573,10 @@ configure_b2_writer() {
   for marker in "$LOG_GENESIS_ANCHOR" "$CURRENT_RESTORE_MARKER" "$BOOTSTRAP_RESTORE_MARKER"; do
     [ ! -e "$marker" ] && [ ! -L "$marker" ] || fatal "storage replacement refuses existing independent recovery evidence"
   done
-  assert_root_file "live deployment marker" /opt/leaddrive-v2/.deploy-sha
-  [ "$(cat /opt/leaddrive-v2/.deploy-sha)" = "$WORKFLOW_SHA" ] \
+  # Match the immutable standalone artifact authority used by server-deploy
+  # and production inventory, never the app-root compatibility alias.
+  assert_root_file "live deployment marker" /opt/leaddrive-v2/.next/standalone/.deploy-sha
+  [ "$(cat /opt/leaddrive-v2/.next/standalone/.deploy-sha)" = "$WORKFLOW_SHA" ] \
     || fatal "storage setup requires the exact reviewed main to be live"
   for service in "$BACKUP_SERVICE" "$SECRETS_SERVICE" "$RUNTIME_FILES_SERVICE" "$LOG_SERVICE"; do
     state="$(systemctl is-active "$service" 2>/dev/null || true)"
