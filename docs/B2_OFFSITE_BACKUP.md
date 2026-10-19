@@ -273,3 +273,19 @@ leaddrive-prod-backups → Object Lock: Disabled → Enable Object Lock on this 
 без изменений; расписание, не укладывающееся в10GB, этим не признаётся устойчивым.
 Источник UI-порядка: https://www.backblaze.com/docs/cloud-storage-enable-object-lock-or-a-legal-hold-on-an-existing-bucket .
 Операторское подтверждение этих настроек/новый machine receipt пока NOT RUN.
+
+### Object Lock flag и default14days — owner UI receipt
+
+Новые скриншоты владельца2026-10-19 показывают Object Lock Enabled, затем
+Object Lock: Default14Days на private bucket с включённым шифрованием.
+Это supersedes прежнее Disabled для UI-состояния. Режим COMPLIANCE в самой
+карточке не показан; API/readiness admission должен отдельно подтвердить
+Enabled/COMPLIANCE/Days>=14 после защищённой настройки writer. Не считать
+UI receipt фактическим backup, individual-version retention или restore.
+
+Текущий delivery blocker: A3PR892 остаётся OPEN/held за общим audit909;
+исходная сессия-координатор сообщает ошибку доступности модели.
+Владелец уже разрешил commissioning, но передача координации B2/restore
+ещё запрошена отдельно от Kafka/финансов/независимой готовности.
+Без нового решения не сливать удерживаемый A3 или подделывать независимые
+доказательства; credential/custody transfer и реальный backup/restore NOT RUN.
