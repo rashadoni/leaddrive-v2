@@ -865,3 +865,59 @@
   consume shared fresh report after current release, resolve one coordinated
   commissioning slot/configuration owner, obtain physical Mac guard evidence,
   then reviewed-main-bound owner proof and one encrypted candidate/scratch drill.
+
+## 2026-10-19T07:33Z — actual Mac guard evidence and fresh released-host report
+
+- User answered "готово" and supplied actual Mac Terminal screenshot. Observed:
+  FileVault is Off; public source.tar.gz checksum OK; native recovery-context
+  pinned workbench build completed; networkless ephemeral PostgreSQL,
+  interpreted helper and pinned age PASS; "Mac swap guard positive+negative:
+  passed"; "No real backup, restore or key operation performed". These close
+  pending synthetic ARM64/no-swap checks, not a real archive restore receipt.
+  No extra Mac keys/VMs or signed evidence were manufactured from a screenshot.
+- FileVault OFF is recorded as a custody limitation. Assessed official Apple
+  documentation rather than inferring plaintext storage from that status:
+  Apple-silicon internal volumes remain hardware encrypted without FileVault,
+  but lack its user-password-bound volume-key protection; APFS VM volume stores
+  encrypted swap files. This is platform documentation, not a live host forensic
+  audit or a claim that FileVault is on. The actual container's tmpfs/network/
+  cgroup no-swap checks passed; real plaintext must remain within bounded
+  ephemeral mounts, with no host plaintext export/suspend/snapshot claim.
+  No new blanket FileVault-enablement approval requirement is invented.
+  Sources checked:
+  https://support.apple.com/guide/security/volume-encryption-with-filevault-sec4c6dc1b6e/web
+  https://support.apple.com/guide/security/role-of-apple-file-system-seca6147599e/web
+- Supersedes earlier pending release/report snapshots: mainfbfae3961 normal
+  release39212226626 whole-workflow SUCCESS at07:25:10Z. Existing shared safe
+  inspection39214985498 completed FAILURE at07:25:46Z on exactfbfae3961.
+  Independently curl fetched HTTP-success ping/build-info and asserted
+  ping ok=true/artifactSha exactfbfae39618a0b29c24c8255fe6d7538003f5f50a.
+- Fresh report remains machine_ready=no,enterprise_ga_ready=no,issues25,gaps9:
+  canonical S3 endpoint does not match B2 region; encryption explicitly off;
+  live units mismatch, disabled/inactive timers, runtime unit/tmpfs absent;
+  Object Lock service_error_format_unrecognized. Source/production release
+  success is not backup commissioning or a successful backup/restore.
+  Underlying service error still unknown; A3 classifier fix not deployed.
+- PR892 description refreshed with actual Mac/safe-inspection evidence.
+  Coordinator update:
+  https://github.com/rashadoni/leaddrive-v2/pull/892#issuecomment-6262053326
+  No new hold release or storage commissioning owner found; original coordinator
+  idle/model-capacity failure and PR909 OPEN are unchanged.
+- Current published code b80d14dc1 all five required gates PASS;36 narrow current
+  tests PASS as above. No duplicate production probe, merge, deployment or
+  producer attempted by A3. Local journal-only checkpoint retained without CI
+  churn. Canonical dirty checkout and other tasks preserved.
+- Remaining concrete external blockers: shared audit/delivery slot must clear;
+  live B2 writer/config/COMPLIANCE/explicit ACL evidence must be commissioned by
+  one owner (actual B2 credentials are only on owner Mac, not available here).
+  Physical Mac synthetic isolation prerequisite now has evidence. No key
+  contents requested as a workaround. Farah/independent/two-offline/GA unmet.
+- NOT RUN: A3 main merge/deploy, real encrypted production backup, exact-version
+  real-data scratch restore, fresh main-bound key/restore signed receipt,
+  timer activation, PITR, production PostgreSQL/Kafka/offset/replay changes.
+  Status: independent preparation verified; overall A3 OPEN/NO-GO. Last completed:
+  accepted Mac synthetic proof, inspected fresh shared report and sent coordinator
+  actual evidence. Precise stop: before reviewed-main A3 delivery/storage
+  admission and any real producer/restore. Next: coordinated slot/config/Lock
+  admission, then fresh reviewed-main owner proof, encrypted candidate and
+  isolated actual restore with measured result; no new generic permission.
