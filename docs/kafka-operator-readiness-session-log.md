@@ -1205,3 +1205,22 @@ retained in GitHub/PR description; no further journal-only rerun cycle required.
 No new application/executor code changed; source298-case proof remains intact.
 NOT RUN boundaries remain full-app draft gates and actual operational/production
 work. No merge/deploy or active integration follows from clearing this scan.
+
+
+### Owner authorizes real test consumers, replay and notifications
+
+Owner explicitly authorized test consumers, replay and notifications. This
+supersedes earlier no-test-consumer/replay/send restrictions ONLY for isolated
+nonproduction drills. Production mutations, merge/deploy, real money and new
+active business integrations remain forbidden. Resumed b72914221 clean dedicated
+worktree; context/route reconfirmed, latest origin/mainfbfae3961 inspected.
+No production or canonical checkout access/mutation.13GB RAM/193GB disk/pressure0;
+all heavy Kafka/DB/drill workloads stay on hosted CI, not Contabo.
+
+Selected existing run-unique GitHub disposable Kafka/PostgreSQL stack and
+synthetic tenants as the available staging scope. Plan: dispatch existing broker
+and fullCDC workflows at the task branch without modifying their checks; add
+bounded own notification/read-back drill and any needed operational evidence
+adapters. Test notifications must use an isolated receiver, no guessed external
+recipient/provider. Physical test evidence will be clearly distinguished from
+production readiness and synthetic JSON claims. No new business activation.
