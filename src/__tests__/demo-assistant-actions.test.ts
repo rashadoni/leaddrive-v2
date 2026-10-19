@@ -8,6 +8,7 @@
  */
 import { describe, expect, it } from "vitest"
 import { parseDemoAssistantAction, planAssistantAction } from "@/lib/demo-center/assistant/actions"
+import { DEMO_NAVIGATION_INTENTS } from "@/lib/demo-center/assistant/prepared-answers"
 import {
   DEMO_JOURNEY_MODULES,
   PROSPECT_TO_CLOSED_WON,
@@ -78,6 +79,20 @@ describe("parseDemoAssistantAction", () => {
     ]) {
       expect(parseDemoAssistantAction(junk), JSON.stringify(junk) ?? String(junk)).toBeNull()
     }
+  })
+})
+
+describe("what a request to go somewhere promises", () => {
+  // «Lidləri göstərin» once went to Sales, which opens on the task board: the
+  // leads are in the omnichannel part. A request may only name what the
+  // module it opens actually shows.
+  it("only the module that holds the lead card is promised for leads", () => {
+    for (const [id, intent] of Object.entries(DEMO_NAVIGATION_INTENTS)) {
+      const promised = intent.criteria.split("NOT")[0]
+      const sections: readonly string[] = DEMO_JOURNEY_MODULES.find((module) => module.id === intent.moduleId)!.sections
+      if (/\blead/i.test(promised)) expect(sections, id).toContain("lead-created")
+    }
+    expect(DEMO_NAVIGATION_INTENTS.open_deals.criteria).toMatch(/NOT leads/)
   })
 })
 

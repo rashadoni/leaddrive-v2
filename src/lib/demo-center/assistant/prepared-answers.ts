@@ -113,7 +113,7 @@ export const DEMO_NAVIGATION_INTENTS = {
   open_marketing: { moduleId: "marketing", criteria: NAVIGATION_CRITERIA("marketing campaigns", "\"kampaniyaları göstərin\", \"покажите рассылки\", \"open campaigns\"") },
   open_omnichannel: { moduleId: "omnichannel", criteria: NAVIGATION_CRITERIA("the inbox, omnichannel or the AI agent for chats", "\"inboxu açın\", \"покажите омниканал\", \"show the WhatsApp inbox\"") },
   open_ai_calls: { moduleId: "ai-calls", criteria: NAVIGATION_CRITERIA("AI phone calls", "\"AI zəngi göstərin\", \"покажите ИИ-звонки\", \"show the AI call\"") },
-  open_deals: { moduleId: "deals", criteria: NAVIGATION_CRITERIA("sales: leads, deals, the board, tasks or quotes", "\"sövdələşmələri göstərin\", \"покажите сделки\", \"open the pipeline\"") },
+  open_deals: { moduleId: "deals", criteria: NAVIGATION_CRITERIA("sales: deals, the pipeline, the task board or quotes — NOT leads or the lead card, which are in the omnichannel part", "\"sövdələşmələri göstərin\", \"покажите сделки\", \"open the pipeline\"") },
   open_service_desk: { moduleId: "service-desk", criteria: NAVIGATION_CRITERIA("the Service Desk, tickets or customer support", "\"Service Desk-i açın\", \"покажите тикеты\", \"open support\"") },
   open_call_center: { moduleId: "call-center", criteria: NAVIGATION_CRITERIA("the Call Center, telephony or the call log", "\"zəng jurnalını göstərin\", \"покажите колл-центр\", \"open telephony\"") },
   open_route_field: { moduleId: "route-field", criteria: NAVIGATION_CRITERIA("Route & Field: field agents, routes, the live map or visits", "\"marşrutları göstərin\", \"покажите полевых агентов\", \"open the live map\"") },

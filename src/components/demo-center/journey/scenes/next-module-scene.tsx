@@ -11,7 +11,7 @@ import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 /**
  * «What next?» — where every module ends (modules.ts). The guide stops here
  * and asks, instead of opening the next module by itself. The prospect asks
- * Da Vinci a question, opens a module, or finishes the demo.
+ * the guide a question, opens a module, or finishes the demo.
  */
 export function NextModuleScene({ manifest, snapshot, step, reviewMode, dispatch, openSection }: DemoSceneProps) {
   const from = getDemoJourneyModule(String(snapshot.ui["next.from"] ?? ""))

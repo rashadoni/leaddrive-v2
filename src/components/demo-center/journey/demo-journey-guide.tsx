@@ -10,6 +10,7 @@ import {
   activeSections,
   demoPublicClipUrl,
   getDemoJourneyModule,
+  moduleOfSection,
   sectionStatus,
   type DemoJourneyManifest,
   type DemoJourneyProgress,
@@ -84,7 +85,12 @@ export interface DemoJourneyGuideProps {
   onAssistantAction?: (action: DemoAssistantAction, askedKey: string) => DemoAssistantActionResult
 }
 
-export type DemoAssistantActionResult = "done" | "offer" | "dropped"
+/**
+ * What became of an answer's action: done, offered as a button (the screen
+ * moved and a jump would still open something), moved (it pointed at a step
+ * the prospect has left — the answer is about the wrong step), or dropped.
+ */
+export type DemoAssistantActionResult = "done" | "offer" | "moved" | "dropped"
 
 export type DemoClipEvent = "video.started" | "video.completed" | "video.error"
 
@@ -418,15 +424,19 @@ function DemoAssistant({
         setError(payload?.error ?? S.assistantFailed)
         return
       }
-      // Only our own recordings: a path under the guide's sound folder.
-      if (payload.audio?.startsWith("/sounds/demo-guide/")) voice?.play(payload.audio)
-      // Then the hands: only an action from the closed list, planned by the
+      // The hands first: only an action from the closed list, planned by the
       // player against where the prospect is now.
       const action = parseDemoAssistantAction(payload.action)
       const result = action && onAction ? onAction(action, askedKey) : null
       const offer = result === "offer" && action?.kind === "open_module" ? action : undefined
+      // An answer that points at a step the prospect has already left would
+      // read out that old step over the new one's narration: neither its words
+      // nor its recording are true any more.
+      const moved = result === "moved"
+      // Only our own recordings: a path under the guide's sound folder.
+      if (!moved && payload.audio?.startsWith("/sounds/demo-guide/")) voice?.play(payload.audio)
       const asked: AssistantTurn = { id: `you-${Date.now()}`, who: "you", text: trimmed }
-      const said: AssistantTurn = { id: `guide-${Date.now()}`, who: "guide", text: payload.answer, offer }
+      const said: AssistantTurn = { id: `guide-${Date.now()}`, who: "guide", text: moved ? S.assistantMoved : payload.answer, offer }
       setTurns((current) => [...current, asked, said].slice(-ASSISTANT_TURNS_SHOWN))
       setQuestion("")
     } catch {
@@ -485,12 +495,16 @@ function DemoAssistant({
         <ol data-testid="demo-assistant-turns" className="mt-2 space-y-1.5">
           {turns.map((turn, index) => {
             const newest = index === turns.length - 1
-            const offered = turn.offer ? getDemoJourneyModule(turn.offer.moduleId) : null
+            // The offer outlives navigation: once the prospect is in that
+            // module, pressing it would open nothing, so it is not shown.
+            const offered = turn.offer && moduleOfSection(snapshot.sectionId)?.id !== turn.offer.moduleId
+              ? getDemoJourneyModule(turn.offer.moduleId)
+              : null
             return (
               <li
                 key={turn.id}
                 {...(newest ? { role: "status", "aria-live": "polite" as const } : {})}
-                className={cn("rounded-md p-2.5 text-xs leading-relaxed", turn.who === "you" ? "ml-6 border border-zinc-200 dark:border-zinc-700" : "bg-muted/60")}
+                className={cn("min-w-0 break-words rounded-md p-2.5 text-xs leading-relaxed [overflow-wrap:anywhere]", turn.who === "you" ? "ml-6 border border-zinc-200 dark:border-zinc-700" : "bg-muted/60")}
               >
                 <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{turn.who === "you" ? S.assistantYou : S.assistantGuide}</span>
                 {turn.text}
@@ -499,7 +513,7 @@ function DemoAssistant({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="mt-2 h-7 w-full text-xs"
+                    className="mt-2 h-auto min-h-7 w-full whitespace-normal py-1 text-xs"
                     onClick={() => {
                       const offer = turn.offer
                       if (!offer || !onAction) return

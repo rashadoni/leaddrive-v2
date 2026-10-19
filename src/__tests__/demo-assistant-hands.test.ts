@@ -23,7 +23,8 @@ vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => crea
 import { DemoJourneyPlayer } from "@/components/demo-center/journey/demo-journey-player"
 import { DEMO_JOURNEY_STRINGS as S } from "@/components/demo-center/journey/strings"
 import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
-import { DEMO_JOURNEY_MODULES, PROSPECT_TO_CLOSED_WON, findSection, getDemoJourneyModule, moduleFirstSectionId } from "@/lib/demo-center/journey"
+import { stepNarration } from "@/lib/demo-center/assistant/prepared-answers"
+import { DEMO_JOURNEY_MODULES, PROSPECT_TO_CLOSED_WON, findSection, getDemoJourneyModule, moduleFirstSectionId, moduleOfSection } from "@/lib/demo-center/journey"
 
 const messages = JSON.parse(readFileSync(path.join(process.cwd(), "messages/az.json"), "utf8"))
 const TOKEN = "hands-test-token-0001"
@@ -69,6 +70,7 @@ beforeEach(() => {
 
 afterEach(() => {
   act(() => root.unmount())
+  delete (Element.prototype as { checkVisibility?: unknown }).checkVisibility
   document.body.innerHTML = ""
   vi.unstubAllGlobals()
 })
@@ -127,6 +129,38 @@ async function askGuide(question: string, hold = false) {
     await act(async () => { release?.() })
     await settle(60)
   }
+}
+
+function pressNext() {
+  const next = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find((button) => !button.disabled && button.textContent?.includes(S.next))
+  expect(next, "a step that only shows something").toBeDefined()
+  return act(async () => next!.click())
+}
+
+function offerButton(moduleId: Parameters<typeof getDemoJourneyModule>[0]) {
+  return Array.from(container.querySelectorAll<HTMLButtonElement>('[data-testid="demo-assistant-turns"] button'))
+    .find((button) => button.textContent === S.assistantOpenModule(getDemoJourneyModule(moduleId)!.title))
+}
+
+/** Through the welcome chapter to «Hansı modula keçək?», where the prospect picks a module. */
+async function walkToTheChooser() {
+  for (let guard = 0; guard < 10 && !container.querySelector("[data-module]"); guard += 1) {
+    await pressNext()
+    await settle()
+  }
+  expect(container.querySelector("[data-module]"), "the module chooser").not.toBeNull()
+}
+
+async function openFromChooser(moduleId: string) {
+  const card = container.querySelector<HTMLButtonElement>(`button[data-module="${moduleId}"]`)
+  expect(card, `the «${moduleId}» card`).not.toBeNull()
+  await act(async () => card!.click())
+  await settle()
+}
+
+function currentStep() {
+  const { sectionId, stepId } = frontier()
+  return findSection(PROSPECT_TO_CLOSED_WON, sectionId)!.steps.find((step) => step.id === stepId)!
 }
 
 describe("the guide's hands", () => {
@@ -191,5 +225,63 @@ describe("the guide's hands", () => {
     }
     expect(container.querySelectorAll('[data-testid="demo-assistant-turns"] li')).toHaveLength(6)
     expect(container.querySelector('[data-testid="demo-assistant-turns"]')!.textContent).toContain("Cavab 4")
+  }, 60_000)
+  it("«where do I click» on a step whose control is not on screen keeps the panel's way forward", async () => {
+    // How a real browser reports a region with display:none at phone width.
+    Object.defineProperty(Element.prototype, "checkVisibility", { configurable: true, writable: true, value: () => false })
+    await renderPlayer()
+    await settle(3_600)
+    const alert = () => container.querySelector('[role="alert"]')?.textContent ?? ""
+    expect(alert()).toContain(S.continueFromGuide)
+    const step = currentStep()
+    reply = { success: true, answer: stepNarration(step), audio: stepVoiceUrl(step), remaining: 50, action: { kind: "point_step" } }
+    await askGuide("Harada basmalıyam?")
+    expect(alert()).toContain(S.continueFromGuide)
+    expect(Array.from(container.querySelectorAll("button")).some((button) => button.textContent?.includes(S.next))).toBe(true)
+  }, 60_000)
+
+  it("an answer about a step the prospect has already left is neither shown nor read out", async () => {
+    await renderPlayer()
+    const left = currentStep()
+    reply = { success: true, answer: stepNarration(left), audio: stepVoiceUrl(left), remaining: 50, action: { kind: "point_step" } }
+    await askGuide("Harada basmalıyam?", true)
+    await pressNext()
+    await settle()
+    const now = currentStep()
+    expect(now.id).not.toBe(left.id)
+    played.length = 0
+    await act(async () => { release?.() })
+    await settle(60)
+    expect(played).not.toContain(stepVoiceUrl(left))
+    const turns = container.querySelector('[data-testid="demo-assistant-turns"]')!.textContent!
+    expect(turns).toContain(S.assistantMoved)
+    expect(turns).not.toContain(left.instruction)
+  }, 60_000)
+
+  it("offers no jump into the module the prospect opened themselves while the answer was on its way", async () => {
+    await renderPlayer()
+    await walkToTheChooser()
+    reply = { success: true, answer: "…", remaining: 50, source: "navigation", action: { kind: "open_module", moduleId: "contracts" } }
+    await askGuide("Müqavilələri göstərin", true)
+    await openFromChooser("contracts")
+    expect(moduleOfSection(frontier().sectionId)?.id).toBe("contracts")
+    await act(async () => { release?.() })
+    await settle(60)
+    expect(offerButton("contracts"), "already there: nothing to offer").toBeUndefined()
+  }, 60_000)
+
+  it("takes a standing offer away once the prospect opens that module themselves", async () => {
+    await renderPlayer()
+    reply = { success: true, answer: "…", remaining: 50, source: "navigation", action: { kind: "open_module", moduleId: "contracts" } }
+    await askGuide("Müqavilələri göstərin", true)
+    await pressNext()
+    await settle()
+    await act(async () => { release?.() })
+    await settle(60)
+    expect(offerButton("contracts"), "offered after the move").toBeDefined()
+    await walkToTheChooser()
+    await openFromChooser("contracts")
+    expect(moduleOfSection(frontier().sectionId)?.id).toBe("contracts")
+    expect(offerButton("contracts"), "in that module now").toBeUndefined()
   }, 60_000)
 })

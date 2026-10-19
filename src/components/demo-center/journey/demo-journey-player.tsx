@@ -207,10 +207,14 @@ export function DemoJourneyPlayer({
     const current = assistantRef.current
     if (!current) return "dropped"
     const { snapshot: latest, manifest: story } = current
-    // The screen changed while the answer was on its way: a jump is offered
-    // as a worded button instead, and «show the step» has nothing to show.
-    if (`${latest.sectionId}:${latest.stepId}` !== askedKey) return action.kind === "open_module" ? "offer" : "dropped"
     const plan = planAssistantAction(action, latest, story)
+    // The screen changed while the answer was on its way: a jump that would
+    // still open something is offered as a worded button instead, and «show
+    // the step» answered a step the prospect has already left.
+    if (`${latest.sectionId}:${latest.stepId}` !== askedKey) {
+      if (action.kind === "point_step") return "moved"
+      return plan?.kind === "open" ? "offer" : "dropped"
+    }
     if (!plan) return "dropped"
     if (plan.kind === "point") {
       current.pointStep()
@@ -394,11 +398,16 @@ export function DemoJourneyPlayer({
     snapshot,
     manifest,
     openSection,
-    // Back to the frontier, its step's card and arrow out again.
+    // The step's card and arrow out again. The mounted coach mark owns
+    // anchorMissing: clearing it here hid the panel's own «İrəli» and the
+    // «Bələdçidən davam et» fallback while the mark still had nothing to point
+    // at. Only leaving review remounts the mark, so only then does it search again.
     pointStep: () => {
-      setViewSectionId(null)
       setHiddenCoachKey(null)
-      setAnchorMissing(false)
+      if (reviewMode) {
+        setViewSectionId(null)
+        setAnchorMissing(false)
+      }
     },
     hint,
   }

@@ -2083,7 +2083,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "next-module-pick",
           title: "Hansı modula keçək?",
-          instruction: "Sualınız varsa, sağda Da Vinci-yə yazın. Yoxdursa, növbəti modulu seçin: sorğuda seçdikləriniz yuxarıdadır, baxdıqlarınız işarələnib.",
+          instruction: "Sualınız varsa, «Bələdçidən soruşun» qutusuna yazın. Yoxdursa, növbəti modulu seçin: sorğuda seçdikləriniz yuxarıdadır, baxdıqlarınız işarələnib.",
           anchor: "demo-next-modules",
           placement: "auto",
           action: "choose",
