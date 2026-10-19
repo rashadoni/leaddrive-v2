@@ -494,6 +494,18 @@ jobs:
           DEMO_SOCIAL_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           DEMO_SOCIAL_RELEASE_DB_GATE: required
 
+      - name: Demo social connect database gate
+        # Same gate as in pr-checks: a prospect's own Facebook Page connected
+        # and written to through the real routes — only the proven sender is
+        # ever stored or answered, a Page an organisation relies on is
+        # refused, the tenant path is unchanged — with only graph.facebook.com
+        # and the model stubbed and a role that cannot bypass RLS (see the
+        # test's header).
+        run: npx vitest run src/__tests__/demo-social-connect-postgres.test.ts
+        env:
+          DEMO_SOCIAL_CONNECT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEMO_SOCIAL_CONNECT_DB_GATE: required
+
       - name: Finance Telegram recipient database gate
         # Same gate as in pr-checks: each organization's finance notices go to
         # its own Telegram chat through its own bot, and never to a chat named

@@ -11,7 +11,7 @@ import { DEMO_INBOX_COLLEAGUES, DEMO_INBOX_THREADS, demoInboxChannelOf, type Dem
 import { ChannelIcon, channelColor, channelLabel as productChannelLabel } from "@/lib/inbox-channels"
 import { AI_DRAFT_PANEL_COPY } from "@/components/inbox/ai-draft-panel"
 import { cn } from "@/lib/utils"
-import type { DemoSceneProps } from "../scene-props"
+import type { DemoSceneLive, DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
 import { DemoLimitNotice } from "../demo-limit-notice"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
@@ -42,10 +42,15 @@ const RAIL_CHANNELS: readonly DemoInboxChannel[] = ["email", "telegram", "sms", 
 
 type ViewKey = "all" | "me" | "unassigned" | "others" | "chatbot" | "participating"
 
+/** The real Facebook row: the prospect's own connected Page (use-demo-live-social.ts). */
+const LIVE_SOCIAL_ROW = "live-facebook"
+
 /** One row of the list: the prospect's own conversation or an invented one. */
 interface InboxRow {
   id: string
   own: boolean
+  /** The real conversation on the prospect's own Facebook Page, not an invented one. */
+  live?: boolean
   contactName: string
   companyName: string | null
   channel: DemoInboxChannel
@@ -80,7 +85,7 @@ const VIEWS = [
 
 const STATUS_TABS = ["opened", "closed", "snoozed"] as const
 
-export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
+export function InboxScene({ snapshot, step, reviewMode, dispatch, hint, live }: DemoSceneProps) {
   const t = useTranslations("inboxV2")
   const tc = useTranslations("common")
   const locale = useLocale()
@@ -109,7 +114,29 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   // around it conversations from every channel (inbox-threads.ts).
   const base = Date.parse(conversation.messages[0]?.at ?? snapshot.startedAt)
   const lastOwn = conversation.messages[conversation.messages.length - 1]
+  // The prospect's own Facebook Page, once connected: a real row, on top.
+  const social = live?.social ?? null
+  const lastLive = social?.messages[social.messages.length - 1]
+  const liveRow: InboxRow | null = social
+    ? {
+      id: LIVE_SOCIAL_ROW,
+      own: false,
+      live: true,
+      contactName: S.socialInboxContact(social.pageName),
+      companyName: null,
+      channel: "facebook",
+      preview: lastLive?.text ?? S.socialInboxWaiting(social.code),
+      at: lastLive?.at ?? snapshot.startedAt,
+      unread: 0,
+      unanswered: lastLive?.direction === "inbound",
+      assignee: "me",
+      assigneeName: conversation.assignedTo,
+      botHandled: social.messages.some((message) => message.by === "ai"),
+      messages: [],
+    }
+    : null
   const rows: InboxRow[] = [
+    ...(liveRow ? [liveRow] : []),
     {
       id: "own",
       own: true,
@@ -157,10 +184,10 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   const onOpenStep = step?.id === "conversation-open"
   const channelFilter = onOpenStep ? "all" : pickedChannel
   const activeView: ViewKey = onOpenStep ? "all" : view
-  // Newest first, as the product sorts them.
+  // Newest first, as the product sorts them — the real Facebook row above them all.
   const visible = rows
     .filter((row) => (channelFilter === "all" || row.channel === channelFilter) && inView(row, activeView))
-    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .sort((a, b) => Number(Boolean(b.live)) - Number(Boolean(a.live)) || Date.parse(b.at) - Date.parse(a.at))
   const active = activeId && activeId !== "own" ? rows.find((row) => row.id === activeId) ?? null : null
 
   const pickChannel = (channel: DemoInboxChannel) => {
@@ -365,6 +392,7 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                 <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
                   <ChannelIcon channel={row.channel} className="h-3.5 w-3.5 shrink-0" />
                   <span>{row.own ? channelLabel : productChannelLabel(row.channel)}</span>
+                  {row.live && <span data-testid="demo-inbox-live-badge" className="rounded-full bg-sky-100 px-1.5 py-0.5 font-medium text-sky-800 dark:bg-sky-500/15 dark:text-sky-300">{S.socialInboxLive}</span>}
                   {row.unanswered && <span className="rounded-full bg-red-100 px-1.5 py-0.5 font-medium text-red-700 dark:bg-red-500/15 dark:text-red-300">{S.unanswered}</span>}
                   {row.unread > 0 && (
                     <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D00] px-1 text-[10px] font-semibold text-white">{row.unread}</span>
@@ -379,7 +407,9 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
 
       {/* Thread */}
       <div className="flex min-w-0 flex-col">
-        {active ? (
+        {active?.live && social ? (
+          <LiveSocialThread social={social} row={active} locale={locale} aiLabel={t("messageAuthorAi")} assigneeLabel={tc("assignee")} />
+        ) : active ? (
           <SampleThread row={active} base={base} locale={locale} unassigned={t("view_unassigned")} aiLabel={t("messageAuthorAi")} teamLabel={t("composer_note")} assigneeLabel={tc("assignee")} />
         ) : !selected ? (
           <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
@@ -691,6 +721,62 @@ function SampleThread({
         )}
       </div>
       <p className="shrink-0 border-t border-border/60 p-3 text-[11px] text-muted-foreground">{S.sampleThreadNote}</p>
+    </>
+  )
+}
+
+/**
+ * The real conversation on the prospect's own Facebook Page, read-only: what
+ * the one person who wrote with the code said, and what the demo's AI agent
+ * answered on Messenger. Nothing else from the Page is ever here.
+ */
+function LiveSocialThread({
+  social,
+  row,
+  locale,
+  aiLabel,
+  assigneeLabel,
+}: {
+  social: NonNullable<DemoSceneLive["social"]>
+  row: InboxRow
+  locale: string
+  aiLabel: string
+  assigneeLabel: string
+}) {
+  return (
+    <>
+      <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-border/60 px-4 py-2">
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold">{row.contactName}</span>
+        <span className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium", channelColor("facebook"))}>
+          <ChannelIcon channel="facebook" className="h-3 w-3" /> {productChannelLabel("facebook")}
+        </span>
+        <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-800 dark:bg-sky-500/15 dark:text-sky-300">{S.socialInboxLive}</span>
+        <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{assigneeLabel}: {row.assigneeName}</span>
+      </div>
+      <div data-testid="demo-inbox-live-thread" className="flex-1 space-y-3 p-4">
+        {social.messages.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{S.socialInboxWaiting(social.code)}</p>
+        ) : (
+          social.messages.map((message, index) => (
+            <div key={`${index}-${message.at}`} className={cn("flex", message.direction === "inbound" ? "justify-start" : "justify-end")}>
+              <div className={cn("max-w-[85%] break-words rounded-xl px-3 py-2 text-sm", message.direction === "inbound" ? "bg-muted" : "bg-primary/10")}>
+                <p className="leading-relaxed">{message.text}</p>
+                <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                  {message.by === "ai" && (
+                    <span className="inline-flex items-center gap-1 rounded bg-[hsl(var(--ai-from))]/15 px-1 py-0.5 font-semibold text-[hsl(var(--ai-from))]">
+                      <Sparkles className="h-2.5 w-2.5" aria-hidden="true" /> {aiLabel}
+                    </span>
+                  )}
+                  <ChannelIcon channel="facebook" className="h-3 w-3" />
+                  <span>{productChannelLabel("facebook")}</span>
+                  <span className="ml-auto">{formatDateTime(message.at, locale)}</span>
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      <p className="shrink-0 border-t border-border/60 p-3 text-[11px] text-muted-foreground">{S.socialInboxNote}</p>
     </>
   )
 }

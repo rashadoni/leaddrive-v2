@@ -61,10 +61,15 @@ export const demoGrantIssueSchema = z.object({
   locale: z.enum(["az", "ru", "en"]).default("az"),
   /** A real AI call to the prospect's proven phone. Only in a guided scenario. */
   liveCallEnabled: z.boolean().default(false),
+  /** The prospect may connect his own Facebook Page for the day. Only in a guided scenario. */
+  liveSocialEnabled: z.boolean().default(false),
 }).superRefine((value, context) => {
   const hasScenario = !!value.scenarioId
   if (value.liveCallEnabled && !hasScenario) {
     context.addIssue({ code: "custom", path: ["liveCallEnabled"], message: "A live call needs a guided scenario" })
+  }
+  if (value.liveSocialEnabled && !hasScenario) {
+    context.addIssue({ code: "custom", path: ["liveSocialEnabled"], message: "A Facebook Page connection needs a guided scenario" })
   }
   const hasModules = value.moduleIds.length > 0
   if (hasScenario && hasModules) {
@@ -96,6 +101,17 @@ export const demoWhatsAppWelcomeSchema = z.object({
 export const demoWhatsAppActionSchema = z.discriminatedUnion("action", [
   demoWhatsAppWelcomeSchema,
   z.object({ action: z.literal("ticket") }).strict(),
+])
+
+/**
+ * What the demo page may ask of the prospect's own Facebook Page: start the
+ * connect with the consent line ticked, pick one of the granted Pages by its
+ * place in the list (never by an id), or «Ayır».
+ */
+export const demoSocialActionSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("start"), consent: z.literal(true) }).strict(),
+  z.object({ action: z.literal("choose"), page: z.number().int().min(0).max(24) }).strict(),
+  z.object({ action: z.literal("disconnect") }).strict(),
 ])
 
 export const demoPhoneVerifySchema = z.object({

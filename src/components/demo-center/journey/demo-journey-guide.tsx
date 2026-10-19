@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 import { DemoLiveCall, type DemoLiveCallState } from "./demo-live-call"
 import { DemoLiveWhatsApp } from "./demo-live-whatsapp"
+import { DemoLiveSocial } from "./demo-live-social"
+import type { DemoLiveSocialHandle } from "./use-demo-live-social"
 import { LIVE_WHATSAPP_TICKET_SECTIONS, type DemoLiveWhatsAppHandle } from "./use-demo-live-whatsapp"
 import { demoTarget } from "./demo-target"
 import { useGuideVoice, type GuideVoice } from "./demo-guide-voice"
@@ -77,6 +79,8 @@ export interface DemoJourneyGuideProps {
   onOpenChapter?: (sectionId: string) => void
   /** The live WhatsApp thread, when this chapter shows it (the player reads it once for the page). */
   liveWhatsApp?: DemoLiveWhatsAppHandle
+  /** The prospect's own Facebook Page, when this chapter shows it (the player reads it once for the page). */
+  liveSocial?: DemoLiveSocialHandle
   /**
    * The guide's hands: runs an assistant answer's action against the player's
    * latest position. `askedKey` is where the question was asked; when the
@@ -120,6 +124,7 @@ export function DemoJourneyGuide({
   onGuideAction,
   onOpenChapter,
   liveWhatsApp,
+  liveSocial,
   onAssistantAction,
 }: DemoJourneyGuideProps) {
   const sections = activeSections(manifest)
@@ -276,6 +281,11 @@ export function DemoJourneyGuide({
           panel asks the server whether this session has one and renders
           nothing when it has not. */}
       {liveWhatsApp ? <DemoLiveWhatsApp live={liveWhatsApp} mode={LIVE_WHATSAPP_TICKET_SECTIONS.has(section.id) ? "ticket" : "chat"} /> : null}
+
+      {/* Beside it, the prospect's own Facebook Page — only where the admin
+          allowed it and the server has the demo's Meta app; otherwise the
+          panel renders nothing. */}
+      {liveSocial ? <DemoLiveSocial live={liveSocial} /> : null}
 
       <DemoAssistant
         enabled={manifest.capabilities.assistant}

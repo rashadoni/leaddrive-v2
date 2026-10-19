@@ -65,6 +65,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           data: { status: "COMPLETED", completedAt: now, sessionLastSeenAt: now, sessionHash: null },
         })
         if (!updated.count) return false
+        // «Bitir» releases the prospect's own Facebook Page too: asked for now,
+        // unbound by the cron within five minutes (docs/DEMO_CENTER.md).
+        await tx.demoSocialConnection.updateMany({
+          where: { grantId: grant.id, scrubbedAt: null, releaseRequestedAt: null },
+          data: { releaseRequestedAt: now, releaseReason: "finished" },
+        })
         await tx.demoAccessEvent.create({
           data: {
             grantId: grant.id,

@@ -237,6 +237,31 @@ pgDescribe("demo tables on a real Postgres", () => {
     await expect(bypass(() => prisma.demoGrant.create({ data: { ...base, tokenHash: token("b"), moduleIds: [] } }))).rejects.toThrow()
   })
 
+  it("switches the prospect's own Facebook Page on for a guided story only, and records it in ISSUED", async () => {
+    const { issueDemoGrant } = await import("@/lib/demo-center/issue-grant")
+    const { PROSPECT_TO_CLOSED_WON } = await import("@/lib/demo-center/journey")
+    const request = await storedRequest("social@example.az")
+    const options = { moduleIds: [], scenarioId: PROSPECT_TO_CLOSED_WON.scenarioId, linkValidDays: 7, sessionDurationMinutes: 120, inactivityMinutes: 30, locale: "az", liveCallEnabled: false, liveSocialEnabled: true }
+
+    const story = await issueDemoGrant({ request, options, actorUserId: "user-admin" })
+    if (!story.ok) throw new Error(`issue failed: ${JSON.stringify(story)}`)
+    const issued = await bypass(() => prisma.demoGrant.findUniqueOrThrow({ where: { id: story.grantId }, include: { events: { where: { eventType: "ISSUED" } } } }))
+    expect(issued.liveSocialEnabled).toBe(true)
+    expect(issued.events[0].metadata).toMatchObject({ liveSocialEnabled: true })
+
+    // A playlist has no inbox chapters: the issuer drops the switch, and the database refuses it outright.
+    const playlist = await issueDemoGrant({ request, options: { ...options, scenarioId: undefined, moduleIds: ["crm"] }, actorUserId: "user-admin" })
+    if (!playlist.ok) throw new Error(`issue failed: ${JSON.stringify(playlist)}`)
+    expect((await bypass(() => prisma.demoGrant.findUniqueOrThrow({ where: { id: playlist.grantId } }))).liveSocialEnabled).toBe(false)
+    const bare = await storedRequest("social-bare@example.az")
+    await expect(bypass(() => prisma.demoGrant.create({
+      data: {
+        requestId: bare.id, tokenHash: "e".repeat(64), tokenHint: "abcd", locale: "az", watermark: "ci",
+        linkExpiresAt: new Date(Date.now() + 86_400_000), createdBy: "user-admin", moduleIds: ["crm"], liveSocialEnabled: true,
+      },
+    }))).rejects.toThrow(/demo_grants_live_social_scenario_check/)
+  })
+
   it("stores every event type the demo code writes", async () => {
     const { REPORTED_JOURNEY_EVENTS } = await import("@/lib/demo-center/journey")
     const { writtenDemoEventTypes } = await import("./helpers/demo-event-types")

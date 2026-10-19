@@ -105,6 +105,21 @@ function matchesPublicPath(pathname: string, configuredPath: string): boolean {
   return pathname === path || pathname.startsWith(`${path}/`)
 }
 const BRIGHT_DATA_WEBHOOK_PATH = "/api/v1/social/providers/bright-data/webhook"
+/**
+ * The Facebook OAuth callback stays behind a session — except for a demo state
+ * (`ldd.…`): a prospect connecting his own Page to the demo has no CRM session.
+ * The route hands such a state to the demo before it reads anything else
+ * (src/lib/demo-center/demo-social-callback.ts), which needs the state's
+ * signature, the nonce cookie of the browser that started and a live connection
+ * row. The product's own state is base64url and never starts with `ldd.`, so
+ * this opens nothing of the product's path.
+ */
+const FACEBOOK_OAUTH_CALLBACK_PATH = "/api/v1/social/oauth/facebook/callback"
+function isDemoSocialOAuthCallback(req: { method: string; nextUrl: URL }, pathname: string): boolean {
+  return pathname === FACEBOOK_OAUTH_CALLBACK_PATH
+    && req.method === "GET"
+    && (req.nextUrl.searchParams.get("state") ?? "").startsWith("ldd.")
+}
 const FACEBOOK_NATIVE_WORKER_PATHS = new Set([
   "/api/v1/social/providers/facebook-native-search/jobs",
   "/api/v1/social/providers/facebook-native-search/results",
@@ -874,7 +889,7 @@ const authMiddleware = auth(async (req) => {
   // Bright Data uses its route-level context-bound bearer secret; middleware
   // must let the exact callback path reach that verifier without opening the
   // surrounding social provider namespace.
-  if (pathname.startsWith("/api/v1/public/") || pathname.startsWith("/api/v1/calendar/feed/") || pathname.startsWith("/api/v1/webhooks/") || pathname === "/api/v1/journeys/process" || pathname.startsWith("/api/v1/calls/webhook") || pathname === THREECX_LOOKUP_PATH || VOICE_AGENT_INTERNAL_PATHS.has(pathname) || pathname.startsWith("/api/v1/calls/twiml") || pathname.startsWith("/api/cron/") || pathname.startsWith("/api/v1/social/cron/") || pathname.startsWith("/api/v1/payment-webhooks/") || pathname === BRIGHT_DATA_WEBHOOK_PATH || FACEBOOK_NATIVE_WORKER_PATHS.has(pathname)) {
+  if (pathname.startsWith("/api/v1/public/") || pathname.startsWith("/api/v1/calendar/feed/") || pathname.startsWith("/api/v1/webhooks/") || pathname === "/api/v1/journeys/process" || pathname.startsWith("/api/v1/calls/webhook") || pathname === THREECX_LOOKUP_PATH || VOICE_AGENT_INTERNAL_PATHS.has(pathname) || pathname.startsWith("/api/v1/calls/twiml") || pathname.startsWith("/api/cron/") || pathname.startsWith("/api/v1/social/cron/") || pathname.startsWith("/api/v1/payment-webhooks/") || pathname === BRIGHT_DATA_WEBHOOK_PATH || FACEBOOK_NATIVE_WORKER_PATHS.has(pathname) || isDemoSocialOAuthCallback(req, pathname)) {
     return withCspHeaders(nextWithTrustedTenant(req, tenantSlug), nonce)
   }
 

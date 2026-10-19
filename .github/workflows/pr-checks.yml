@@ -377,6 +377,19 @@ jobs:
           DEMO_SOCIAL_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           DEMO_SOCIAL_RELEASE_DB_GATE: required
 
+      - name: Demo social connect database gate
+        # A prospect connects his own Facebook Page to the demo and writes to
+        # it, through the real routes on a real Postgres with a role that
+        # cannot bypass RLS; only graph.facebook.com and the model are stubbed.
+        # What a mocked Prisma cannot show: that a message from anyone but the
+        # one proven sender adds nothing to any table of the schema, that a
+        # Page another tenant relies on is refused under FORCE RLS, and that a
+        # Page LeadDrive Inc. serves still takes the tenant path.
+        run: npx vitest run src/__tests__/demo-social-connect-postgres.test.ts
+        env:
+          DEMO_SOCIAL_CONNECT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEMO_SOCIAL_CONNECT_DB_GATE: required
+
       - name: Finance Telegram recipient database gate
         # Who receives a tenant's payment notices, read off the requests that
         # leave for api.telegram.org. Until 2026-10-07 every tenant's

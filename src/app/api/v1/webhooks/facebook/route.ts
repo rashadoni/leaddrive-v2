@@ -18,6 +18,7 @@ import {
   handleInstagramInboundAudio,
   parseInstagramAttachment,
 } from "@/lib/social/instagram-inbound-audio"
+import { handleDemoSocialEntry } from "@/lib/demo-center/demo-social-inbound"
 
 const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN
 
@@ -204,7 +205,15 @@ export async function POST(req: NextRequest) {
         }
         if (!channel) console.warn(`[FB Webhook] unresolved IG entry — entry.id=${pageId} recipient=${recipientId ?? "?"}`)
       }
-      if (!channel) continue
+      if (!channel) {
+        // A Page the signed tenant has no channel for may be a prospect's own Page connected to the
+        // demo — only for the sales organisation's own app, and only demo tables are written
+        // (src/lib/demo-center/demo-social-inbound.ts). Before any tenant work; it never throws.
+        if (body.object === "page" && tenant?.organizationId) {
+          await handleDemoSocialEntry({ organizationId: tenant.organizationId, entry })
+        }
+        continue
+      }
 
       // RLS: org resolved — ALL remaining per-entry work runs tenant-scoped.
       await runWithTenant(channel.organizationId, async () => {

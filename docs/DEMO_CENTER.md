@@ -120,10 +120,11 @@ Rules that hold for every later change:
   Instagram inbox channel stores it as `channel_configs.pageId`, Social
   Monitoring stores it as `social_accounts.handle`, and Instagram DMs ride the
   linked Facebook Page's subscription: an organisation using the Page only
-  through Instagram must block the unsubscribe too. **PR 2 must store
-  `linkedInstagramId` at connect whenever Meta returns it** (the Page's
-  `instagram_business_account`); a row without it is checked by its Page id
-  alone.
+  through Instagram must block the unsubscribe too. The connect stores
+  `linkedInstagramId` whenever Meta returns the Page's
+  `instagram_business_account` with the requested fields, and never fails for
+  want of it (the read goes again without the field); a row without it is
+  checked by its Page id alone.
 - **Never revoke the person's Meta grant.** Unbinding means the Page
   unsubscribed from our app and every token and identifier of ours wiped; the
   engine sends nothing for the grant and never decrypts the user token
@@ -136,9 +137,15 @@ Rules that hold for every later change:
   Inc.'s staged Page tokens, and it let one row's revoke kill a due sibling's
   Page token before that sibling had unsubscribed. The authorization stays
   with the person, who can remove LeadDrive in Meta's Business Integrations.
-  **For PR 2:** the connect panel links to Business Integrations, and the
-  consent text must say that the authorization stays with him after the demo
-  and that he can remove LeadDrive there.
+  The connect panel links there, and the consent text
+  (`src/lib/demo-center/demo-social-consent.ts`) says that the authorization
+  stays with him after the demo and that he can remove LeadDrive there.
+- **Only the proven sender exists** (owner, 2026-10-19). The demo shows and
+  answers only the person who wrote to the Page with the session's code. Before
+  the proof an event without the code is dropped unstored; the first message
+  with the code proves its sender in one atomic update; from then on every
+  other sender's event is dropped before anything else of it is read — not
+  stored, counted, logged or answered. One proven sender per connection.
 
 What the release leaves behind: the wiped row (timestamps, reason, Meta's
 answer to the unsubscribe as a short code, counts) and the `SOCIAL_*` events,
@@ -151,6 +158,134 @@ taken on the clock of the claim, so a run that started long ago cannot hand
 out a lease that has already run out. The deploy step «Verify the
 demo social release scheduler» fails when a connection is more than 30 minutes
 past its end without a single attempt.
+
+### Switches
+
+The feature exists only where both are on, and only in a granted session (not
+the open demo, not the admin preview), in the inbox chapters:
+
+- **The server's:** `DEMO_SOCIAL_META_APP_CONFIG_ID` names LeadDrive Inc.'s
+  staged Facebook app row (on production `channel_configs`
+  `cmua55s6t03n0kpvtm63bclud`, app 2414060595720618, `appReviewOnly`), read
+  inside the sales organisation through `inDemoSalesOrganization` +
+  `getPinnedMetaApp`, plus the product's `FACEBOOK_REDIRECT_URI`. Unset: no
+  panel, the routes answer `enabled: false` / 404, the callback binds nothing,
+  the webhook's demo branch returns before it reads a row.
+- **The admin's, per grant:** `demo_grants.liveSocialEnabled`, ticked at issue
+  time in the request page next to the live call, exactly as that one is
+  (`issue` route → `issueDemoGrant`, recorded in the ISSUED event's metadata).
+  Off for every grant the public form issues. A CHECK holds it to guided-story
+  grants. Re-issuing is how it changes, as for the call.
+
+### Connecting (`demo-social-oauth.ts`, `demo-social.ts`)
+
+- «Facebook ilə qoşun» posts the consent to
+  `/api/v1/public/demo-access/[token]/social`; the server makes (or reuses)
+  the grant's row under an advisory lock that also holds the ceiling of 20
+  open connections, sets an httpOnly nonce cookie scoped to the callback path,
+  and answers Meta's dialog address. The panel opens the tab inside the press
+  and points it there.
+- The dialog is the product's own for the pinned app: `config_id` when the
+  row carries `settings.loginConfigId` (Facebook Login for Business), else
+  exactly `public_profile,pages_show_list,pages_manage_metadata,pages_messaging`.
+- The state is `ldd.<base64url {connection id, issued at}>.<hmac>`; no raw demo
+  token anywhere; fifteen minutes; one use (the row's nonce hash is consumed).
+  The product's callback hands it over in its first lines, and the proxy lets
+  exactly that GET past the login wall — a product state is base64url and
+  never contains a dot, so neither path can take the other's state.
+- Code → short token → long-lived token (POST bodies), stored encrypted at
+  once with `/me`'s id; then `/me/accounts`, and when that is empty the granted
+  Page ids from `debug_token` read one by one, as the product does. Pages an
+  organisation relies on (by Page id or linked Instagram id) or another live
+  demo holds are refused. One Page left: its token is stored, then
+  `POST subscribed_apps` with `subscribed_fields=messages` only. Several: their
+  ids and names are kept in `pendingPages` and the panel asks by name; the
+  choice is re-read from Meta and re-checked. A subscription Meta did not
+  confirm asks for the release at once.
+- **One exception to the Bearer rule above:** `debug_token` takes the token it
+  inspects as `input_token` and the app token as `access_token` in its query —
+  Graph has no other place for them. It goes through the product's own helper
+  (`grantedPageIds`, which redacts every provider answer) and only when
+  `/me/accounts` came back empty. Every other call of the connect sends tokens
+  as a Bearer header or a form body.
+
+### Messages (`demo-social-inbound.ts`)
+
+The Facebook webhook hands an entry to `handleDemoSocialEntry` only on its
+«no channel» branch, for a `page` object signed with the sales organisation's
+own app (`?t=<its slug>`), before any tenant work: a Page LeadDrive Inc. has as
+an active channel takes the tenant path unchanged. The demo writes
+`demo_social_messages` alone (idempotent by Meta's message id), never a tenant
+table, and runs none of LeadDrive Inc.'s automations. The agent is the
+WhatsApp demo's — the same profile, history building, commitment guard and
+model — with a Messenger frame that has it speak as LeadDrive's demo agent,
+never as the Page's business; at most ten answers per connection, three
+seconds apart, counted on the row (tokens too, not in the tenant's AI log),
+sent with the stored Page token through `sendFacebookMessage`, to the proven
+sender only, and only after `demoSocialReleaseReason` is asked once more.
+
+The public read gives the Page's name, the code, the end of the day and the
+proven sender's conversation — no id, no token; the Messenger link is a
+redirect of ours (`…/social/messenger` → `m.me/<page>`). «Ayır» and «Bitir»
+set the release request (`disconnected`, `finished`); the panel then says
+«ayrılır…», later «ayrıldı», with the Business Integrations link.
+
+### Draft for the owner: privacy policy addition (not yet in `messages/*.json`)
+
+The policy text is the owner's to approve; nothing below is published. It
+would go after §8 (`privacy.p8_deletion`). English first, then Russian.
+
+> **Demo: connecting your own Facebook Page.** In a personal LeadDrive demo you
+> may connect one Facebook Page you manage, for the day of the demo. LeadDrive
+> then receives Messenger messages sent to that Page through our Meta app. Only
+> the person who first writes to the Page with the demo's code is processed:
+> his messages and the demo AI agent's replies (at most ten) are kept in the
+> demo's own records — not in any customer's CRM workspace —, shown on that
+> demo page, and sent to Anthropic to write the replies. Messages from anyone
+> else are discarded on receipt without being stored, shown or answered. We
+> keep the Page's id and name, the linked Instagram account's id when Meta
+> provides it, the Meta user id of the person who connected the Page, and
+> encrypted access tokens. The connection ends at 23:59 Baku time at the
+> latest, or earlier when you press «Ayır», finish the demo or the demo
+> session ends. Normally within five minutes the Page is unsubscribed from our
+> app — unless another LeadDrive customer relies on that Page — and every
+> token, identifier and message of the connection is deleted from active
+> systems; if Meta does not answer, we retry for up to 24 hours and then delete
+> our copy regardless. What remains is a record without identifiers (times,
+> why it ended, Meta's answer as a short code, counts). Daily backups taken
+> while the connection was live can still hold these records until they are
+> removed (section 7). LeadDrive does not withdraw the authorisation you gave
+> our app at Meta; you can remove LeadDrive in Meta's Business Integrations
+> settings at any time.
+
+> **Демо: подключение своей Facebook-страницы.** В персональном демо LeadDrive
+> можно подключить одну свою Facebook-страницу на день демо. Тогда LeadDrive
+> получает через наше Meta-приложение сообщения Messenger, написанные этой
+> странице. Обрабатывается только тот, кто первым написал странице с кодом
+> демо: его сообщения и ответы демо-ИИ-агента (не больше десяти) хранятся в
+> собственных записях демо — не в CRM какого-либо клиента, — показываются на
+> его странице демо и отправляются в Anthropic, чтобы составить ответы.
+> Сообщения всех остальных отбрасываются при получении: не сохраняются, не
+> показываются, ответа не получают. Мы храним id и название страницы, id
+> связанного Instagram-аккаунта, если Meta его отдаёт, Meta-id человека,
+> подключившего страницу, и токены доступа в зашифрованном виде. Подключение
+> заканчивается не позже 23:59 по Баку или раньше — по «Ayır», по завершении
+> демо или по окончании сессии. Обычно в течение пяти минут страница
+> отписывается от нашего приложения — если на неё не опирается другой клиент
+> LeadDrive — и все токены, идентификаторы и сообщения подключения удаляются из
+> рабочих систем; если Meta не отвечает, мы повторяем до 24 часов, а затем
+> удаляем свою копию в любом случае. Остаётся запись без идентификаторов
+> (время, причина окончания, ответ Meta коротким кодом, счётчики). Ежедневные
+> резервные копии, снятые, пока подключение было живо, могут хранить эти
+> записи до их удаления (раздел 7). LeadDrive не отзывает разрешение, которое
+> вы дали нашему приложению в Meta; удалить LeadDrive можно в любой момент в
+> разделе Meta «Business Integrations».
+
+Also for the owner to look at: the demo landing bullet «No tenant or real
+customer data access» (`messages/*.json`, the demo page) stays true — the
+demo still reads no tenant's data, and a Page's other customers' messages are
+never kept — but it does not mention that the prospect's own Page can be
+connected.
 
 ## Voice phase
 

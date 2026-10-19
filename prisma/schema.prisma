@@ -22101,6 +22101,10 @@ model DemoGrant {
   /// The live WhatsApp thread with the demo's AI agent (demo-whatsapp.ts);
   /// offered to every prospect, unlike the call.
   liveWhatsAppEnabled    Boolean     @default(false)
+  /// The admin allowed the prospect to connect his own Facebook Page to this
+  /// demo for the day (demo-social.ts). Off unless ticked at issue time, and
+  /// only where DEMO_SOCIAL_META_APP_CONFIG_ID names the demo's Meta app.
+  liveSocialEnabled      Boolean     @default(false)
   locale                 String      @default("az")
   watermark              String
   linkExpiresAt          DateTime
