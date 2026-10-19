@@ -13,6 +13,7 @@ on:
         type: choice
         options:
           - configure-monitoring-urls
+          - configure-b2-writer
           - install-backup-tools
           - activate-backup-encryption
           - run-bootstrap-backup
@@ -68,6 +69,7 @@ jobs:
     concurrency:
       group: production-deploy
       cancel-in-progress: false
+      queue: max
     steps:
       - name: Checkout dispatched revision
         uses: actions/checkout@v6
@@ -113,6 +115,8 @@ jobs:
           case "$IN_OPERATION" in
             configure-monitoring-urls)
               EXPECTED_CONFIRMATION="CONFIGURE_BACKUP_MONITORING_ON_13_140_132_245" ;;
+            configure-b2-writer)
+              EXPECTED_CONFIRMATION="CONFIGURE_B2_WRITER_ON_13_140_132_245" ;;
             install-backup-tools)
               EXPECTED_CONFIRMATION="INSTALL_PINNED_BACKUP_TOOLS_AND_EXTEND_LOG_RETENTION_ON_13_140_132_245" ;;
             activate-backup-encryption)
@@ -136,6 +140,7 @@ jobs:
 
           EMPTY_FIELDS="$IN_RECIPIENT_SHA256$IN_KEY_ATTESTATION$IN_EVIDENCE_REF$IN_EVIDENCE_AT$IN_OFFLINE_OPERATOR$IN_CANDIDATE_SHA256$IN_OFFLINE_EVIDENCE_BUNDLE"
           if [ "$IN_OPERATION" = "configure-monitoring-urls" ] \
+            || [ "$IN_OPERATION" = "configure-b2-writer" ] \
             || [ "$IN_OPERATION" = "install-backup-tools" ]; then
             [ -z "$EMPTY_FIELDS" ] || {
               echo "::error::This operation does not accept key or evidence inputs"
@@ -256,6 +261,26 @@ jobs:
             "$URL_STAGE" \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:"$REMOTE_STAGE_DIR/healthchecks.env"
           rm -f -- "$URL_STAGE"
+
+      - name: Stage writer credential from the protected environment only
+        if: ${{ inputs.operation == 'configure-b2-writer' }}
+        env:
+          B2_WRITER_ENV: ${{ secrets.BACKUP_B2_WRITER_ENV }}
+        run: |
+          set -euo pipefail
+          [ -n "$B2_WRITER_ENV" ] && [ "${#B2_WRITER_ENV}" -le 8192 ] || {
+            echo "::error::BACKUP_B2_WRITER_ENV is missing or oversized; no production configuration changed"
+            exit 1
+          }
+          WRITER_STAGE="$RUNNER_TEMP/leaddrive-b2-writer-$GITHUB_RUN_ID.env"
+          install -m 0600 /dev/null "$WRITER_STAGE"
+          # Treat the bundle only as data. The root helper validates its exact
+          # schema before any provider request or canonical environment write.
+          printf '%s' "$B2_WRITER_ENV" >"$WRITER_STAGE"
+          unset B2_WRITER_ENV
+          scp -i ~/.ssh/deploy_key "$WRITER_STAGE" \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:"$REMOTE_STAGE_DIR/b2-writer.env"
+          rm -f -- "$WRITER_STAGE"
 
       - name: Stage signed offline evidence and verifier allowlist
         if: ${{ inputs.operation == 'activate-backup-encryption' || inputs.operation == 'certify-bootstrap-restore' || inputs.operation == 'certify-offline-restore' }}
@@ -386,3 +411,4 @@ jobs:
           rm -rf -- "$RUNNER_TEMP/leaddrive-backup-evidence-$GITHUB_RUN_ID"
           rm -rf -- "$RUNNER_TEMP/leaddrive-backup-code-$GITHUB_RUN_ID"
           rm -f -- "$RUNNER_TEMP/leaddrive-healthchecks-$GITHUB_RUN_ID.env"
+          rm -f -- "$RUNNER_TEMP/leaddrive-b2-writer-$GITHUB_RUN_ID.env"

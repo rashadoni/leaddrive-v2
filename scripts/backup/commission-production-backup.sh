@@ -60,6 +60,10 @@ INCOMING_EVIDENCE_BUNDLE=""
 INCOMING_ALLOWED_SIGNERS=""
 INCOMING_CODE_BUNDLE=""
 INCOMING_MONITORING_CONFIG=""
+INCOMING_B2_WRITER_CONFIG=""
+B2_ROLLBACK_DIR=""
+B2_ENV_REPLACED=0
+B2_CONFIG_COMMITTED=0
 
 TOOLS_ROOT="/usr/local/lib/leaddrive-backup/tools"
 AGE_VERSION="1.3.2"
@@ -189,6 +193,15 @@ cleanup() {
   local status=$?
   trap - EXIT
 
+  if [ "$B2_ENV_REPLACED" -eq 1 ] && [ "$B2_CONFIG_COMMITTED" -eq 0 ]; then
+    # The durable, root-only predecessor also survives a host/process crash.
+    # Never print its contents or remove it as temporary input.
+    if ! restore_b2_writer_predecessor; then
+      printf '%s\n' '[backup-commission] FATAL: storage rollback failed; protected predecessor retained' >&2
+    fi
+    status=1
+  fi
+
   if [ -n "$ACTIVE_TRANSIENT_UNIT" ]; then
     case "$ACTIVE_TRANSIENT_UNIT" in
       leaddrive-backup-commission-*-"$WORKFLOW_RUN_ID".service)
@@ -219,11 +232,11 @@ cleanup() {
     exec 5>&-
     LOG_LOCK_HELD=0
   fi
-  if [ "$BACKUP_SERVICE_RUNTIME_MASKED" -eq 1 ] \
+  if [ "$OPERATION" != configure-b2-writer ] && { [ "$BACKUP_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$SECRETS_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$RUNTIME_FILES_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$LOG_SERVICE_RUNTIME_MASKED" -eq 1 ] \
-    || [ -e "$COMMISSION_FENCE_JOURNAL" ] || [ -L "$COMMISSION_FENCE_JOURNAL" ]; then
+    || [ -e "$COMMISSION_FENCE_JOURNAL" ] || [ -L "$COMMISSION_FENCE_JOURNAL" ]; }; then
     if ! clear_commission_runner_fence; then
       printf '[backup-commission] FATAL: runner fence cleanup failed; durable recovery journal retained\n' >&2
       status=1
@@ -268,7 +281,7 @@ cleanup() {
   fi
   if [ -n "$ENV_STAGE" ]; then
     case "$ENV_STAGE" in
-      /etc/leaddrive/.backup.env.age-stage.*|/etc/leaddrive/.backup.env.lock-stage.*|/etc/leaddrive/.backup.env.log-retention-stage.*|/etc/leaddrive/.backup.env.monitoring-stage.*) unlink -- "$ENV_STAGE" ;;
+      /etc/leaddrive/.backup.env.age-stage.*|/etc/leaddrive/.backup.env.lock-stage.*|/etc/leaddrive/.backup.env.log-retention-stage.*|/etc/leaddrive/.backup.env.monitoring-stage.*|/etc/leaddrive/.backup.env.b2-stage.*) unlink -- "$ENV_STAGE" ;;
     esac
   fi
   if [ -n "$MARKER_STAGE" ]; then
@@ -317,6 +330,7 @@ INCOMING_EVIDENCE_BUNDLE="$REMOTE_INPUT_STAGE/evidence.tar"
 INCOMING_ALLOWED_SIGNERS="$REMOTE_INPUT_STAGE/allowed-signers"
 INCOMING_CODE_BUNDLE="$REMOTE_INPUT_STAGE/backup-code.tar"
 INCOMING_MONITORING_CONFIG="$REMOTE_INPUT_STAGE/healthchecks.env"
+INCOMING_B2_WRITER_CONFIG="$REMOTE_INPUT_STAGE/b2-writer.env"
 
 trim_value() {
   local value="$1"
@@ -502,6 +516,134 @@ configure_monitoring_urls() {
   sync -f -- "$BACKUP_ENV_FILE" /etc/leaddrive \
     || fatal "cannot durably commit monitoring configuration"
   log "configured four distinct Healthchecks.io dead-man URLs; values redacted"
+}
+
+validate_b2_writer_config() {
+  local file="$1" key value endpoint region
+  [ "$(stat -c '%s' "$file")" -le 8192 ] || fatal "writer input exceeds the bounded schema"
+  # Data only: never source/eval a provider file. Exactly five generated lines,
+  # no comments, exports, quoting, duplicate keys, private keys or other settings.
+  awk -F= '
+    $0 !~ /^[A-Z0-9_]+=[A-Za-z0-9_+\/.=:-]+$/ { bad=1 }
+    $1 !~ /^(BACKUP_S3_ENDPOINT|BACKUP_S3_REGION|BACKUP_S3_BUCKET|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)$/ { bad=1 }
+    seen[$1]++ { if (seen[$1] > 1) bad=1 }
+    END { if (NR != 5 || length(seen) != 5 || bad) exit 1 }
+  ' "$file" || fatal "writer input must contain exactly five supported literal records"
+  endpoint="$(read_unique_value_from "$file" BACKUP_S3_ENDPOINT)"
+  region="$(read_unique_value_from "$file" BACKUP_S3_REGION)"
+  object_storage_endpoint_matches_region "$endpoint" "$region" \
+    || fatal "writer endpoint does not match its B2 region"
+  [ "$(read_unique_value_from "$file" BACKUP_S3_BUCKET)" = leaddrive-prod-backups ] \
+    || fatal "writer input must target the approved backup bucket"
+  for key in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+    value="$(read_unique_value_from "$file" "$key")"
+    [[ "$value" =~ ^[A-Za-z0-9_+/=-]{16,200}$ ]] || fatal "writer credential has an unsupported shape"
+  done
+}
+
+restore_b2_writer_predecessor() {
+  [[ "$B2_ROLLBACK_DIR" =~ ^/etc/leaddrive/backup-storage-rollback\.[0-9]{1,20}\.[A-Za-z0-9]{6,64}$ ]] || return 1
+  [ -d "$B2_ROLLBACK_DIR" ] && [ ! -L "$B2_ROLLBACK_DIR" ] \
+    && [ "$(stat -c '%U:%G:%a' "$B2_ROLLBACK_DIR")" = root:root:700 ] || return 1
+  [ -f "$B2_ROLLBACK_DIR/backup.env" ] && [ ! -L "$B2_ROLLBACK_DIR/backup.env" ] || return 1
+  ENV_STAGE="$(mktemp /etc/leaddrive/.backup.env.b2-stage.XXXXXX)" || return 1
+  cp --preserve=mode,ownership -- "$B2_ROLLBACK_DIR/backup.env" "$ENV_STAGE" || return 1
+  sync -f -- "$ENV_STAGE" /etc/leaddrive || return 1
+  mv -- "$ENV_STAGE" "$BACKUP_ENV_FILE" || return 1
+  ENV_STAGE=""
+  sync -f -- "$BACKUP_ENV_FILE" /etc/leaddrive || return 1
+  B2_ENV_REPLACED=0
+}
+
+configure_b2_writer() {
+  local owner mode key value service state marker lock_state enabled retention_mode days
+  local -a storage_keys=(BACKUP_S3_ENDPOINT BACKUP_S3_REGION BACKUP_S3_BUCKET AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY)
+  assert_confirmation CONFIGURE_B2_WRITER_ON_13_140_132_245
+  [ -z "$EXPECTED_RECIPIENT_SHA256$KEY_CUSTODY_ATTESTATION$EVIDENCE_REF$EVIDENCE_AT_UTC$OFFLINE_OPERATOR$EXPECTED_CANDIDATE_SHA256$OWNER_RECIPIENT" ] \
+    || fatal "storage configuration accepts no recipient or evidence override"
+  assert_root_directory /etc /etc
+  assert_root_directory /etc/leaddrive /etc/leaddrive
+  assert_root_file "canonical backup environment" "$BACKUP_ENV_FILE"
+  owner="$(stat -c '%U:%G' "$BACKUP_ENV_FILE")"
+  mode="$(stat -c '%a' "$BACKUP_ENV_FILE")"
+  { [ "$owner:$mode" = root:root:600 ] || [ "$owner:$mode" = root:leaddrive-backup:640 ]; } \
+    || fatal "canonical backup environment ownership or mode is unsafe"
+  [ -z "$(read_unique_value BACKUP_ENV_FILE)" ] || fatal "backup environment redirects its authority"
+  assert_owner_source_boundary
+  for marker in "$LOG_GENESIS_ANCHOR" "$CURRENT_RESTORE_MARKER" "$BOOTSTRAP_RESTORE_MARKER"; do
+    [ ! -e "$marker" ] && [ ! -L "$marker" ] || fatal "storage replacement refuses existing independent recovery evidence"
+  done
+  assert_root_file "live deployment marker" /opt/leaddrive-v2/.deploy-sha
+  [ "$(cat /opt/leaddrive-v2/.deploy-sha)" = "$WORKFLOW_SHA" ] \
+    || fatal "storage setup requires the exact reviewed main to be live"
+  for service in "$BACKUP_SERVICE" "$SECRETS_SERVICE" "$RUNTIME_FILES_SERVICE" "$LOG_SERVICE"; do
+    state="$(systemctl is-active "$service" 2>/dev/null || true)"
+    case "$state" in inactive|failed|unknown) ;; *) fatal "storage setup requires inactive recovery services" ;; esac
+  done
+  assert_root_file "staged writer input" "$INCOMING_B2_WRITER_CONFIG"
+  [ "$(stat -c '%U:%G:%a' "$INCOMING_B2_WRITER_CONFIG")" = root:root:600 ] \
+    && [ "$(realpath -e -- "$INCOMING_B2_WRITER_CONFIG")" = "$INCOMING_B2_WRITER_CONFIG" ] \
+    || fatal "writer input must be canonical root:root mode0600"
+  validate_b2_writer_config "$INCOMING_B2_WRITER_CONFIG"
+  assert_toolchain
+  # Verify the NEW writer against its own exact endpoint, not the old env.
+  # Only a read: this cannot enable/alter Object Lock, upload or spend storage.
+  lock_state="$(run_aws 45 \
+    "$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" AWS_ACCESS_KEY_ID)" \
+    "$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" AWS_SECRET_ACCESS_KEY)" \
+    s3api get-object-lock-configuration \
+    --endpoint-url "$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" BACKUP_S3_ENDPOINT)" \
+    --region "$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" BACKUP_S3_REGION)" \
+    --no-cli-pager --bucket leaddrive-prod-backups \
+    --query 'ObjectLockConfiguration.[ObjectLockEnabled,Rule.DefaultRetention.Mode,Rule.DefaultRetention.Days]' \
+    --cli-connect-timeout 10 --cli-read-timeout 20 \
+    --output text 2>/dev/null)" || fatal "new writer cannot verify Object Lock; configuration unchanged"
+  read -r enabled retention_mode days <<<"$lock_state"
+  [ "$enabled" = Enabled ] && [ "$retention_mode" = COMPLIANCE ] \
+    && [[ "$days" =~ ^[0-9]{1,5}$ ]] && [ "$days" -ge 14 ] \
+    && [ "$lock_state" = "$(printf 'Enabled\tCOMPLIANCE\t%s' "$days")" ] \
+    || fatal "new writer did not prove COMPLIANCE default retention of at least14days"
+  for key in "${storage_keys[@]}"; do read_unique_value "$key" >/dev/null; done
+  # Reject a malformed predecessor rather than normalising unrelated bytes.
+  [ "$(tail -c 1 "$BACKUP_ENV_FILE" | od -An -tu1 | tr -d '[:space:]')" = 10 ] \
+    || fatal "canonical environment must end with a newline"
+  B2_ROLLBACK_DIR="$(mktemp -d "/etc/leaddrive/backup-storage-rollback.$WORKFLOW_RUN_ID.XXXXXXXXXXXX")"
+  chmod 0700 "$B2_ROLLBACK_DIR"
+  cp --preserve=mode,ownership -- "$BACKUP_ENV_FILE" "$B2_ROLLBACK_DIR/backup.env"
+  sync -f -- "$B2_ROLLBACK_DIR/backup.env" "$B2_ROLLBACK_DIR" /etc/leaddrive
+  ENV_STAGE="$(mktemp /etc/leaddrive/.backup.env.b2-stage.XXXXXX)"
+  awk '!/^[[:space:]]*(export[[:space:]]+)?(BACKUP_S3_ENDPOINT|BACKUP_S3_REGION|BACKUP_S3_BUCKET|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)[[:space:]]*=/' \
+    "$BACKUP_ENV_FILE" >"$ENV_STAGE"
+  for key in "${storage_keys[@]}"; do
+    value="$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" "$key")"
+    printf '%s=%s\n' "$key" "$value" >>"$ENV_STAGE"
+  done
+  chown --reference="$BACKUP_ENV_FILE" "$ENV_STAGE"
+  chmod --reference="$BACKUP_ENV_FILE" "$ENV_STAGE"
+  for key in "${storage_keys[@]}"; do
+    [ "$(read_unique_value_from "$ENV_STAGE" "$key")" = "$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" "$key")" ] \
+      || fatal "writer configuration staging mismatch"
+  done
+  cmp -s \
+    <(awk '!/^[[:space:]]*(export[[:space:]]+)?(BACKUP_S3_ENDPOINT|BACKUP_S3_REGION|BACKUP_S3_BUCKET|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)[[:space:]]*=/' "$BACKUP_ENV_FILE") \
+    <(awk '!/^[[:space:]]*(export[[:space:]]+)?(BACKUP_S3_ENDPOINT|BACKUP_S3_REGION|BACKUP_S3_BUCKET|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)[[:space:]]*=/' "$ENV_STAGE") \
+    || fatal "storage setup changed unrelated backup settings"
+  # Detect a concurrent local edit before atomic replacement. Shared Actions
+  # production + commissioning locks and disabled timers are also mandatory.
+  cmp -s "$BACKUP_ENV_FILE" "$B2_ROLLBACK_DIR/backup.env" || fatal "canonical environment changed during storage setup"
+  assert_owner_source_boundary
+  sync -f -- "$ENV_STAGE" /etc/leaddrive
+  cmp -s "$BACKUP_ENV_FILE" "$B2_ROLLBACK_DIR/backup.env" || fatal "canonical environment changed before storage commit"
+  for service in "$BACKUP_SERVICE" "$SECRETS_SERVICE" "$RUNTIME_FILES_SERVICE" "$LOG_SERVICE"; do
+    state="$(systemctl is-active "$service" 2>/dev/null || true)"
+    case "$state" in inactive|failed|unknown) ;; *) fatal "recovery service started before storage commit" ;; esac
+  done
+  mv -- "$ENV_STAGE" "$BACKUP_ENV_FILE"
+  B2_ENV_REPLACED=1
+  ENV_STAGE=""
+  sync -f -- "$BACKUP_ENV_FILE" /etc/leaddrive
+  B2_CONFIG_COMMITTED=1
+  log "B2 writer configured; protected predecessor retained; encryption/recipient/timers unchanged; backup/restore NOT RUN"
 }
 
 ensure_root_directory() {
@@ -3499,7 +3641,12 @@ certify_offline_restore() {
   log "independent $recovery_scope evidence certified; all four recovery timers remain disabled for the matching reviewed deployment stage"
 }
 
-recover_commission_runner_fence
+if [ "$OPERATION" = configure-b2-writer ]; then
+  [ ! -e "$COMMISSION_FENCE_JOURNAL" ] && [ ! -L "$COMMISSION_FENCE_JOURNAL" ] \
+    || fatal "storage setup refuses a pending commissioning fence; use the existing recovery procedure"
+else
+  recover_commission_runner_fence
+fi
 
 # Owner-only technical route: no independent marker, env mutation, log genesis,
 # schedule activation or implicit fallback from the independent ceremony.
@@ -3604,6 +3751,7 @@ case "$OPERATION" in
   run-owner-backup) run_verified_backup ;;
   certify-owner-restore) certify_owner_restore ;;
   configure-monitoring-urls) configure_monitoring_urls ;;
+  configure-b2-writer) configure_b2_writer ;;
   install-backup-tools) install_tools ;;
   activate-backup-encryption) activate_encryption ;;
   run-bootstrap-backup|run-verified-backup) run_verified_backup ;;
