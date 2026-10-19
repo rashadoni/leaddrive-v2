@@ -16,7 +16,7 @@
  * Nothing here may make a promise the site does not make. When the site's
  * FAQ changes, change it here in the same words.
  */
-import type { DemoJourneyStep } from "@/lib/demo-center/journey"
+import type { DemoJourneyModuleId, DemoJourneyStep } from "@/lib/demo-center/journey"
 
 export interface PreparedAnswerContext {
   /** The step the prospect is on, looked up by the server — never client text. */
@@ -99,6 +99,45 @@ export const DEMO_PREPARED_INTENTS = {
 export type DemoPreparedIntent = keyof typeof DEMO_PREPARED_INTENTS
 
 export const DEMO_PREPARED_INTENT_IDS = Object.keys(DEMO_PREPARED_INTENTS) as DemoPreparedIntent[]
+
+/**
+ * A prospect asking to be taken somewhere: the guide opens the module itself
+ * (assistant/actions.ts), as the sidebar would. Only an explicit request —
+ * «show me», «open», «go to», «let me try» — never a question about what the
+ * module is or does; those are answered, not acted on.
+ */
+const NAVIGATION_CRITERIA = (what: string, words: string) =>
+  `Explicitly asks to open, show, go to, switch to or try ${what} in this demo (e.g. ${words}). NOT a question about what it is, how it works, its price or whether it exists.`
+
+export const DEMO_NAVIGATION_INTENTS = {
+  open_marketing: { moduleId: "marketing", criteria: NAVIGATION_CRITERIA("marketing campaigns", "\"kampaniyaları göstərin\", \"покажите рассылки\", \"open campaigns\"") },
+  open_omnichannel: { moduleId: "omnichannel", criteria: NAVIGATION_CRITERIA("the inbox, omnichannel or the AI agent for chats", "\"inboxu açın\", \"покажите омниканал\", \"show the WhatsApp inbox\"") },
+  open_ai_calls: { moduleId: "ai-calls", criteria: NAVIGATION_CRITERIA("AI phone calls", "\"AI zəngi göstərin\", \"покажите ИИ-звонки\", \"show the AI call\"") },
+  open_deals: { moduleId: "deals", criteria: NAVIGATION_CRITERIA("sales: deals, the pipeline, the task board or quotes — NOT leads or the lead card, which are in the omnichannel part", "\"sövdələşmələri göstərin\", \"покажите сделки\", \"open the pipeline\"") },
+  open_service_desk: { moduleId: "service-desk", criteria: NAVIGATION_CRITERIA("the Service Desk, tickets or customer support", "\"Service Desk-i açın\", \"покажите тикеты\", \"open support\"") },
+  open_call_center: { moduleId: "call-center", criteria: NAVIGATION_CRITERIA("the Call Center, telephony or the call log", "\"zəng jurnalını göstərin\", \"покажите колл-центр\", \"open telephony\"") },
+  open_route_field: { moduleId: "route-field", criteria: NAVIGATION_CRITERIA("Route & Field: field agents, routes, the live map or visits", "\"marşrutları göstərin\", \"покажите полевых агентов\", \"open the live map\"") },
+  open_personnel: { moduleId: "personnel", criteria: NAVIGATION_CRITERIA("Personnel: attendance, the timesheet or workday tracking", "\"tabeli göstərin\", \"покажите учёт рабочего времени\", \"open attendance\"") },
+  open_contracts: { moduleId: "contracts", criteria: NAVIGATION_CRITERIA("Contracts: agreements, approvals or e-signature", "\"müqavilələri göstərin\", \"покажите договоры\", \"open contracts\"") },
+} as const satisfies Record<string, { moduleId: DemoJourneyModuleId; criteria: string }>
+
+export type DemoNavigationIntent = keyof typeof DEMO_NAVIGATION_INTENTS
+
+export const DEMO_NAVIGATION_INTENT_IDS = Object.keys(DEMO_NAVIGATION_INTENTS) as DemoNavigationIntent[]
+
+/** Every intent the router may choose: the prepared answers and the requests to go somewhere. */
+export const DEMO_ROUTER_INTENT_IDS = [...DEMO_PREPARED_INTENT_IDS, ...DEMO_NAVIGATION_INTENT_IDS] as const
+
+export type DemoRouterIntent = DemoPreparedIntent | DemoNavigationIntent
+
+export function isNavigationIntent(intent: string): intent is DemoNavigationIntent {
+  return Object.prototype.hasOwnProperty.call(DEMO_NAVIGATION_INTENTS, intent)
+}
+
+/** The criteria the router shows for an intent of either kind. */
+export function demoRouterIntentCriteria(intent: DemoRouterIntent): string {
+  return isNavigationIntent(intent) ? DEMO_NAVIGATION_INTENTS[intent].criteria : DEMO_PREPARED_INTENTS[intent].criteria
+}
 
 /** The prepared answer for an intent, or null when Da Vinci should answer instead. */
 export function preparedAnswer(intent: DemoPreparedIntent, context: PreparedAnswerContext): string | null {

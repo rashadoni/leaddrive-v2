@@ -9,6 +9,8 @@ import {
   DEMO_PUBLIC_CLIP_SLUGS,
   activeSections,
   demoPublicClipUrl,
+  getDemoJourneyModule,
+  moduleOfSection,
   sectionStatus,
   type DemoJourneyManifest,
   type DemoJourneyProgress,
@@ -27,6 +29,7 @@ import { demoTarget } from "./demo-target"
 import { useGuideVoice, type GuideVoice } from "./demo-guide-voice"
 import { GuideVoiceSwitch } from "./guide-voice-switch"
 import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
+import { parseDemoAssistantAction, type DemoAssistantAction } from "@/lib/demo-center/assistant/actions"
 
 /**
  * The guide panel: where the prospect is in the story, what to do now, and
@@ -74,7 +77,20 @@ export interface DemoJourneyGuideProps {
   onOpenChapter?: (sectionId: string) => void
   /** The live WhatsApp thread, when this chapter shows it (the player reads it once for the page). */
   liveWhatsApp?: DemoLiveWhatsAppHandle
+  /**
+   * The guide's hands: runs an assistant answer's action against the player's
+   * latest position. `askedKey` is where the question was asked; when the
+   * story moved meanwhile, a jump becomes an offer and nothing else happens.
+   */
+  onAssistantAction?: (action: DemoAssistantAction, askedKey: string) => DemoAssistantActionResult
 }
+
+/**
+ * What became of an answer's action: done, offered as a button (the screen
+ * moved and a jump would still open something), moved (it pointed at a step
+ * the prospect has left — the answer is about the wrong step), or dropped.
+ */
+export type DemoAssistantActionResult = "done" | "offer" | "moved" | "dropped"
 
 export type DemoClipEvent = "video.started" | "video.completed" | "video.error"
 
@@ -104,6 +120,7 @@ export function DemoJourneyGuide({
   onGuideAction,
   onOpenChapter,
   liveWhatsApp,
+  onAssistantAction,
 }: DemoJourneyGuideProps) {
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((candidate) => candidate.id === section.id)
@@ -267,6 +284,7 @@ export function DemoJourneyGuide({
         snapshot={snapshot}
         prompts={section.assistantPrompts ?? []}
         voice={voice}
+        onAction={onAssistantAction}
       />
 
       <ol className="space-y-1.5" aria-label={S.guide}>
@@ -345,6 +363,7 @@ function DemoAssistant({
   snapshot,
   prompts,
   voice,
+  onAction,
 }: {
   enabled: boolean
   token: string
@@ -353,9 +372,12 @@ function DemoAssistant({
   prompts: readonly string[]
   /** A prepared answer comes with its recording; Da Vinci's own words stay text. */
   voice?: GuideVoice
+  onAction?: (action: DemoAssistantAction, askedKey: string) => DemoAssistantActionResult
 }) {
   const [question, setQuestion] = useState("")
-  const [answer, setAnswer] = useState<string | null>(null)
+  // The conversation so far, newest last: the last few questions and answers,
+  // and on the newest answer a worded button when the guide only offers a jump.
+  const [turns, setTurns] = useState<ReadonlyArray<AssistantTurn>>([])
   const [error, setError] = useState<string | null>(null)
   const [remaining, setRemaining] = useState<number | null>(null)
   const [asking, setAsking] = useState(false)
@@ -380,7 +402,9 @@ function DemoAssistant({
     if (!trimmed || asking) return
     setAsking(true)
     setError(null)
-    setAnswer(null)
+    // A new question retires the previous answer's offer.
+    setTurns((current) => current.map((turn) => (turn.offer ? { ...turn, offer: undefined } : turn)))
+    const askedKey = `${snapshot.sectionId}:${snapshot.stepId}`
     try {
       const response = await fetch(`/api/v1/public/demo-access/${encodeURIComponent(token)}/assistant`, {
         method: "POST",
@@ -394,15 +418,26 @@ function DemoAssistant({
         }),
       })
       const payload = await response.json().catch(() => null) as
-        { success?: boolean; answer?: string; error?: string; remaining?: number; audio?: string } | null
+        { success?: boolean; answer?: string; error?: string; remaining?: number; audio?: string; action?: unknown } | null
       if (typeof payload?.remaining === "number") setRemaining(payload.remaining)
       if (!response.ok || !payload?.success || !payload.answer) {
         setError(payload?.error ?? S.assistantFailed)
         return
       }
-      setAnswer(payload.answer)
+      // The hands first: only an action from the closed list, planned by the
+      // player against where the prospect is now.
+      const action = parseDemoAssistantAction(payload.action)
+      const result = action && onAction ? onAction(action, askedKey) : null
+      const offer = result === "offer" && action?.kind === "open_module" ? action : undefined
+      // An answer that points at a step the prospect has already left would
+      // read out that old step over the new one's narration: neither its words
+      // nor its recording are true any more.
+      const moved = result === "moved"
       // Only our own recordings: a path under the guide's sound folder.
-      if (payload.audio?.startsWith("/sounds/demo-guide/")) voice?.play(payload.audio)
+      if (!moved && payload.audio?.startsWith("/sounds/demo-guide/")) voice?.play(payload.audio)
+      const asked: AssistantTurn = { id: `you-${Date.now()}`, who: "you", text: trimmed }
+      const said: AssistantTurn = { id: `guide-${Date.now()}`, who: "guide", text: moved ? S.assistantMoved : payload.answer, offer }
+      setTurns((current) => [...current, asked, said].slice(-ASSISTANT_TURNS_SHOWN))
       setQuestion("")
     } catch {
       setError(S.assistantFailed)
@@ -456,14 +491,60 @@ function DemoAssistant({
         </Button>
       </form>
 
-      {answer && (
-        <p role="status" aria-live="polite" className="mt-2 rounded-md bg-muted/60 p-2.5 text-xs leading-relaxed">{answer}</p>
+      {turns.length > 0 && (
+        <ol data-testid="demo-assistant-turns" className="mt-2 space-y-1.5">
+          {turns.map((turn, index) => {
+            const newest = index === turns.length - 1
+            // The offer outlives navigation: once the prospect is in that
+            // module, pressing it would open nothing, so it is not shown.
+            const offered = turn.offer && moduleOfSection(snapshot.sectionId)?.id !== turn.offer.moduleId
+              ? getDemoJourneyModule(turn.offer.moduleId)
+              : null
+            return (
+              <li
+                key={turn.id}
+                {...(newest ? { role: "status", "aria-live": "polite" as const } : {})}
+                className={cn("min-w-0 break-words rounded-md p-2.5 text-xs leading-relaxed [overflow-wrap:anywhere]", turn.who === "you" ? "ml-6 border border-zinc-200 dark:border-zinc-700" : "bg-muted/60")}
+              >
+                <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{turn.who === "you" ? S.assistantYou : S.assistantGuide}</span>
+                {turn.text}
+                {newest && turn.offer && offered ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 h-auto min-h-7 w-full whitespace-normal py-1 text-xs"
+                    onClick={() => {
+                      const offer = turn.offer
+                      if (!offer || !onAction) return
+                      setTurns((current) => current.map((candidate) => (candidate.id === turn.id ? { ...candidate, offer: undefined } : candidate)))
+                      onAction(offer, `${snapshot.sectionId}:${snapshot.stepId}`)
+                    }}
+                  >
+                    {S.assistantOpenModule(offered.title)}
+                  </Button>
+                ) : null}
+              </li>
+            )
+          })}
+        </ol>
       )}
       {error && (
         <p role="alert" className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs leading-relaxed text-amber-900">{error}</p>
       )}
     </div>
   )
+}
+
+/** How many questions and answers the box keeps on screen. */
+const ASSISTANT_TURNS_SHOWN = 6
+
+interface AssistantTurn {
+  readonly id: string
+  readonly who: "you" | "guide"
+  readonly text: string
+  /** The guide offers a jump the story moved past: pressed, it opens the module from where the prospect is then. */
+  readonly offer?: Extract<DemoAssistantAction, { kind: "open_module" }>
 }
 
 /** What a chapter's clip plays from, or null when this viewer cannot be served it. */

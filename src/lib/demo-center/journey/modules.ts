@@ -109,6 +109,13 @@ function walked(section: DemoJourneySection, snapshot: Pick<DemoJourneySnapshot,
   return section.steps.every((step) => !step.required || snapshot.completedSteps.includes(step.id))
 }
 
+/** Where a module opens in this manifest: its first section, or null when the manifest has none of it. */
+export function moduleFirstSectionId(manifest: DemoJourneyManifest, moduleId: DemoJourneyModuleId): string | null {
+  const module = getDemoJourneyModule(moduleId)
+  if (!module) return null
+  return manifest.sections.find((section) => (module.sections as readonly string[]).includes(section.id))?.id ?? null
+}
+
 export interface DemoModuleChoice {
   readonly module: DemoJourneyModule
   /** Where the module opens: its first section in this manifest. */
@@ -132,10 +139,11 @@ export function demoModuleChoices(
   const choices: DemoModuleChoice[] = []
   for (const candidate of DEMO_JOURNEY_MODULES) {
     const sections = manifest.sections.filter((section) => (candidate.sections as readonly string[]).includes(section.id))
-    if (!sections.length) continue
+    const firstSectionId = moduleFirstSectionId(manifest, candidate.id)
+    if (!sections.length || !firstSectionId) continue
     choices.push({
       module: candidate,
-      firstSectionId: sections[0].id,
+      firstSectionId,
       done: sections.every((section) => walked(section, snapshot)),
       chosen: interests.has(candidate.id),
     })

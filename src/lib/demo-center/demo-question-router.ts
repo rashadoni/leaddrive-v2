@@ -1,5 +1,11 @@
 import { PiiMasker } from "@/lib/ai/pii-masker"
-import { DEMO_PREPARED_INTENTS, DEMO_PREPARED_INTENT_IDS, type DemoPreparedIntent } from "./assistant/prepared-answers"
+import {
+  DEMO_PREPARED_INTENTS,
+  DEMO_ROUTER_INTENT_IDS,
+  demoRouterIntentCriteria,
+  isNavigationIntent,
+  type DemoRouterIntent,
+} from "./assistant/prepared-answers"
 
 /**
  * Picks which prepared answer a demo question needs — Jev (TypeSafe AI), a
@@ -24,11 +30,17 @@ const MODEL = process.env.JEV_MODEL ?? "jev-latest"
 const REQUEST_TIMEOUT_MS = 4_000
 /** Where the social benchmark measured 99% agreement. */
 export const DEMO_JEV_CONFIDENCE = 0.9
+/**
+ * A request to go somewhere moves the prospect's screen, so it needs more
+ * certainty than a prepared answer: a wrong jump costs more than a slower
+ * answer from Da Vinci.
+ */
+export const DEMO_JEV_NAV_CONFIDENCE = 0.95
 /** TypeSafe's price, for the cost recorded next to the answer. */
 const USD_PER_INPUT_TOKEN = 0.042 / 1_000_000
 
 export interface DemoQuestionRoute {
-  readonly intent: DemoPreparedIntent
+  readonly intent: DemoRouterIntent
   readonly confidence: number
   readonly inputTokens: number
   readonly costUsd: number
@@ -55,9 +67,10 @@ function request(question: string, context: DemoRouteContext) {
       intent: {
         type: "choice",
         instructions:
-          "Which prepared answer does the prospect's question need? Judge by meaning; the question may be in Azerbaijani, Russian or English. "
+          "Which prepared answer does the prospect's question need, or which part of the demo do they explicitly ask to open? Judge by meaning; the question may be in Azerbaijani, Russian or English. "
+          + "An `open_*` option only for an explicit request to be taken there, never for a question about it. "
           + "Choose `other` whenever no option fits exactly — a wrong prepared answer is worse than a slower one.",
-        criteria: Object.fromEntries(DEMO_PREPARED_INTENT_IDS.map((id) => [id, DEMO_PREPARED_INTENTS[id].criteria])),
+        criteria: Object.fromEntries(DEMO_ROUTER_INTENT_IDS.map((id) => [id, demoRouterIntentCriteria(id)])),
       },
     },
   }
@@ -82,11 +95,11 @@ async function askOnce(question: string, context: DemoRouteContext, apiKey: stri
     }
     const choice = payload.answers?.intent?.choice
     const confidence = payload.answers?.intent?.confidence
-    if (typeof choice !== "string" || !(DEMO_PREPARED_INTENT_IDS as string[]).includes(choice)) return null
+    if (typeof choice !== "string" || !(DEMO_ROUTER_INTENT_IDS as readonly string[]).includes(choice)) return null
     if (typeof confidence !== "number") return null
     const inputTokens = typeof payload.usage?.input_tokens === "number" ? payload.usage.input_tokens : 0
     return {
-      intent: choice as DemoPreparedIntent,
+      intent: choice as DemoRouterIntent,
       confidence,
       inputTokens,
       costUsd: inputTokens * USD_PER_INPUT_TOKEN,
@@ -112,6 +125,7 @@ export async function routeDemoQuestion(question: string, context: DemoRouteCont
   let route = await askOnce(question, context, apiKey)
   if (route === "retry") route = await askOnce(question, context, apiKey)
   if (!route || route === "retry") return null
+  if (isNavigationIntent(route.intent)) return route.confidence >= DEMO_JEV_NAV_CONFIDENCE ? route : null
   if (route.confidence < DEMO_JEV_CONFIDENCE) return null
   if (DEMO_PREPARED_INTENTS[route.intent].answer === null) return null
   return route
