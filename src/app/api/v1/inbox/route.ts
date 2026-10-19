@@ -194,7 +194,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
 
         if (key.startsWith("contact_") || (msg.channelType === "tiktok" && meta?.provider === "tiktok_messaging" && msg.contactId)) {
           contactId = key.startsWith("contact_") ? key.replace("contact_", "") : msg.contactId
-          const c = contactById[contactId]
+          const c = contactId ? contactById[contactId] : undefined
           if (c) {
             contactName = c.fullName || contactName
             contactEmail = c.email
