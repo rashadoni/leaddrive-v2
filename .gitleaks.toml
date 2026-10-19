@@ -89,3 +89,11 @@ paths = [
 ]
 regexTarget = "secret"
 regexes = ['''^synthetic-c12-owner$''']
+
+
+[[rules.allowlists]]
+description = "Verified prose fragment in inactive Kafka operator README; not an authentication credential"
+condition = "AND"
+paths = ['''^ops/event-platform/operator/README\.md$''']
+regexTarget = "secret"
+regexes = ['''^expiry/revocation/principal$''']

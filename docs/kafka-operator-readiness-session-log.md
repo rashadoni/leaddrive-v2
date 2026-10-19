@@ -1165,3 +1165,43 @@ and genuine seven-purpose acceptance; owner bootstrap/correction/lifecycle
 choice and original-session application/domain drills; only separately approved
 reviewed-main workflow may release. These require external authority/evidence
 or belong to the original delivery scope, not another routine permission to code.
+
+
+### Explicitly authorized narrow historical prose scan correction
+
+Owner explicitly approved the proposed .gitleaks.toml exception ("начинай разрешаю")
+after reviewing its scope and negative canaries. This supersedes the earlier
+no-config-change/clean-history-PR blocker ONLY for this exception; no history
+rewrite, broad ignore, scanner disabling or other gate change is authorized.
+Resumed clean361a9e94a on the recorded dedicated worktree; context reconfirmed
+rashadoni/leaddrive-v2 and reviewed-main GitHub release route. Canonical checkout
+untouched, no production action. Latest origin/main2a410941d inspected.
+
+Applied exactly the reviewed generic-api-key rule allowlist with AND conditions:
+anchored ops/event-platform/operator/README.md path and exact secret capture
+expiry/revocation/principal. Other rules, matches/files and historical checkpoints
+remain scanned. Candidate preflight proved whole PR history0 findings while
+synthetic API/AWS credentials in that README and the same prose in another file
+still trigger. Repeat actual-config checks and hosted CI below; no unrun result
+is claimed. Resource preflight12GB available RAM/194GB disk/pressure0; only small
+sequential scanner/diff checks on Contabo. Current source298-case hosted proof
+remains unchanged; whole-app draft-skipped gates and live operations stay NOT RUN.
+
+
+Actual modified-config verification PASS: entire origin/main..HEAD history has
+0 findings; exact prose in other.md is still detected, and synthetic API/AWS
+credentials in the scoped README still trigger their respective rules. An initial
+fresh random AWS-shaped canary was not recognized by the detector; the existing
+previously detected synthetic sample was reused for a stable before/after check.
+No detector rule was changed to accommodate that sample. Diff check PASS. Updated
+readiness's obsolete clean-history blocker as superseded by the owner's explicit
+exception authorization. Latestmain adds only demo WhatsApp migration among the
+inspected event/migration paths; no Kafka/config/instruction change or import of
+unrelated work. Checkpoint contains only config and task-owned documentation.
+
+Hosted checks will be watched to completion with timeout1800 gh pr checks894
+--repo rashadoni/leaddrive-v2 --watch --interval60. Their exact result/SHA is
+retained in GitHub/PR description; no further journal-only rerun cycle required.
+No new application/executor code changed; source298-case proof remains intact.
+NOT RUN boundaries remain full-app draft gates and actual operational/production
+work. No merge/deploy or active integration follows from clearing this scan.

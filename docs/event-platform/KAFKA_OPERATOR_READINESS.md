@@ -274,11 +274,11 @@ HA/TLS/ACL and separate activation authorization. Live consumers/replay and
 alert sends remain prohibited here, so their receipts cannot be obtained by
 continuing fixture work or substituting booleans. No such task is marked done.
 
-Remaining **delivery blocker**: the scan flags one historical README prose
-fingerprint. Current wording is corrected. Passing the historical gate would
-require an authorized narrow scanner exception or branch history change;
-both are outside the present instructions to preserve checkpoints and not
-change others' checks. The failing gate remains intact and PR894 stays draft.
+Historical scan blocker (superseded by explicit owner approval): the exact
+README prose capture now has a rule-specific path+secret allowlist. Whole PR
+history locally scans clean; API/AWS canaries in the same README and this prose
+in another file remain detected. No history rewrite or other gate change.
+Hosted result is recorded in the PR; draft and activation restrictions remain.
 
 Final test-quality correction: run39166310431/job117789862494 on
 40a9b05e90ae3182b3fedf58d14f473473cf304f passed64/64 gates and24/24 real PG
@@ -483,7 +483,7 @@ Original session «Проверить защиту Kafka-консюмера» ow
 
 | Owner | Concrete action, once prerequisites/authorization exist |
 |---|---|
-| Owner personally | Decide whether to republish a clean-history PR while preserving PR894/checkpoints: the historical prose scan finding cannot be removed by an ordinary follow-up commit and gate/history rewriting is not authorized |
+| Resolved by owner approval | Exact README prose exception authorized and applied in the existing PR; no clean-history republication or checkpoint rewrite needed. Local history/negative canaries PASS; hosted result retained in PR |
 | Owner personally | Approve a named isolated staging tenant/build, independent signers, receipt archive and alert destination, plus explicit permission for real consumers/replay/drill sends; these operations remain forbidden here |
 | Original delivery session | Provision the chosen service identities/key policy and configure real readonly DB/receipt/key/archive adapters for createFundEvidenceVerifier; no fixture module may be used |
 | Original delivery session | Execute the seven-purpose real acceptance procedure in PROJECTION_RECOVERY_RUNBOOK.md, retaining authentic signed bytes and exact release/manifest/material hashes |
