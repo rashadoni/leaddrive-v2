@@ -392,6 +392,24 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
     expect(await stored(c.id)).toMatchObject({ unsubscribeOutcome: "removed", linkedInstagramId: null })
   })
 
+  it("never unsubscribes a Page Social Monitoring of another organisation follows, by Page or by its Instagram account", async () => {
+    // Social Monitoring keeps the account's public id as its handle: the Page id for Facebook, the Instagram account id for Instagram.
+    const byPage = await connection((await grant()).id, { expiresAt: at(-1) })
+    await admin.socialAccount.create({ data: { organizationId: OTHER, platform: "facebook", handle: byPage.pageId, isActive: true } })
+    const instagramId = "17841400000000004"
+    const byInstagram = await connection((await grant()).id, { expiresAt: at(-1), linkedInstagramId: instagramId })
+    await admin.socialAccount.create({ data: { organizationId: OTHER, platform: "instagram", handle: instagramId, isActive: true } })
+
+    expect(await engine.releaseDueDemoSocialConnections({ now: NOW })).toMatchObject({ released: 2, incomplete: 0 })
+
+    expect(sent()).toEqual([])
+    for (const id of [byPage.id, byInstagram.id]) {
+      const row = await stored(id)
+      expectWiped(row)
+      expect(row).toMatchObject({ unsubscribeOutcome: "kept_claimed", grantRevokeOutcome: "kept_by_design" })
+    }
+  })
+
   it("does not count a switched-off channel as a claim", async () => {
     const c = await connection((await grant()).id, { expiresAt: at(-1) })
     await admin.channelConfig.create({ data: { organizationId: OTHER, channelType: "facebook", configName: "Old", pageId: c.pageId, isActive: false } })
