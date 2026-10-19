@@ -35,7 +35,7 @@ readonly INCLUDE_LINE='#include "fanum-inbound-browser.conf"'
 # Station evidence captured by the read-only probe immediately before this
 # bundle was written.  Drift refuses the install before the first write.
 readonly EXPECTED_EXTENSIONS_FANUM_SHA256="6cc0489756b948f94b5d5acfe686d883376a7661f432adb34c130fd1dd95f6c4"
-readonly EXPECTED_AI_CORE_SHA256="50dc8af71151ab99dba0f5e0f3c35372b8793992cc2341f5eac3287caee3686d"
+readonly EXPECTED_AI_CORE_SHA256="e38400b8d339f94b78c60f44c70e3cdcac5ed71269614c3be08c0d086bd94386"
 
 # Filled from the reviewed repository files.  Site configuration is never part
 # of this list.
