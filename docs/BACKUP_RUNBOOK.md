@@ -6,8 +6,8 @@
 версии и recovery catalog действительно защищены Object Lock.
 
 Это ещё не enterprise 3-2-1/PITR: все object copies пока находятся в одном
-B2 bucket/регионе/account failure domain (Hetzner выведен в сентябре 2026,
-хранилище — Backblaze B2, см. [B2_OFFSITE_BACKUP.md](B2_OFFSITE_BACKUP.md)), PostgreSQL WAL archive не
+B2 bucket/регионе/account failure domain (хранилище — Backblaze B2,
+см. [B2_OFFSITE_BACKUP.md](B2_OFFSITE_BACKUP.md)), PostgreSQL WAL archive не
 commissioned, а полный суперпользовательский restore ролей/owners/ACL ещё не
 прошёл независимый drill. `backup-readiness` поэтому может показать
 `machine_ready=yes`, но всегда сообщает `enterprise_ga_ready=no` до закрытия
@@ -313,7 +313,9 @@ production, тикет или этот документ.
 До первой изменяющей стадии владелец репозитория обязан:
 
 1. ограничить environment `production` веткой `main`;
-2. назначить required reviewer, который не запускает свой собственный stage;
+2. сверить действующий release contract в `docs/DEPLOYMENT.md`: обязательный
+   GitHub required reviewer снят; независимый offline signer и проверка его
+   evidence остаются обязательными и не заменяются workflow actor;
 3. добавить environment secret `BACKUP_OFFLINE_ALLOWED_SIGNERS` ровно в формате
    OpenSSH allowed-signers:
 
@@ -798,7 +800,8 @@ authority/PITR/second-failure-domain/runtime gates; его нельзя инте
   только внутри того же catalog/bucket;
 - пытаются считать v3 catalog clean-host backup либо запускать bootstrap с
   committed anchor без approved signed discontinuity/reseed protocol;
-- GitHub `production` environment не требует независимого review и `main`;
+- GitHub `production` environment не ограничен точной deployment branch policy
+  `main`; независимое signed recovery evidence отсутствует или не прошло проверку;
 - любой из четырёх timer не `loaded`, `enabled`, `active` после полного normal
   deployment (не после commissioning certification).
 
@@ -811,3 +814,14 @@ authority/PITR/second-failure-domain/runtime gates; его нельзя инте
 - operational state и все host-loss credentials/CA не имеют утверждённого
   backup либо детерминированного rebootstrap authority;
 - Kafka, archive и consumer recovery остаются passive для заявленного модуля.
+
+## Отдельный owner-operated technical proof — 2026-10-19
+
+Владелец отдельно разрешил режим без независимого проверяющего:
+[owner-operated recovery](operations/owner-operated-recovery.md).
+Его отдельный Actions workflow создаёт одноразовый encrypted data candidate и
+проверяет подписанный результат настоящего isolated restore владельцем.
+Это не fallback текущей ceremony: другой scope, signature namespace, signer
+allowlist и каталог evidence. Канонический recipient/env и schedules не меняются;
+independent/enterprise/Kafka readiness этим не закрываются. Для обеих схем
+шифрование, целостность и изоляция scratch обязательны.
