@@ -124,13 +124,14 @@ function leadAdLockKey(organizationId: string, tiktokLeadId: string): string {
 }
 
 /**
- * One organization's deliveries take their turn in this process, and at most
- * two hold a lock transaction at once (`@/lib/lock-turns`). The turn is the
- * organization's because the social-monitoring fence every delivery opens is:
- * deliveries of one organization run one at a time in Postgres anyway, and
- * until 2026-10-19 each one waited for the fence holding a pooled connection,
- * so a burst of as many deliveries as the pool has connections left the one
- * inside the fence none for its work.
+ * While the organization's monitoring is paused for a clean-slate reset, each
+ * delivery takes its leads' locks in lock transactions of its own, so it takes
+ * the organization's turn in this process first and one of two slots
+ * (`@/lib/lock-turns`): waiting for a lock must not keep a pooled connection.
+ * Otherwise the social-monitoring fence queues the delivery itself and takes
+ * the lead locks on its own transaction. Until 2026-10-19 a burst of as many
+ * deliveries as the pool has connections waited for the fence holding one each
+ * and left the delivery inside the fence none for its work.
  */
 const leadAdTurns = lockTurns("tiktok-business-lead-ad", 2)
 
@@ -287,6 +288,40 @@ async function processLeadAdEvent(
   return { mentionId: mentionResult?.id ?? null, leadId: lead.id, status: "lead_created" as const }
 }
 
+/** One delivery's events: inside the organization's fence, or while it is paused under each lead's lock alone. */
+async function processLeadAdEvents(organizationId: string, events: ParsedTikTokLeadAdEvent[]) {
+  // Each event's lead lock is taken on the fence's own transaction: one
+  // connection holds the fence and the locks.
+  const fenced = await withSocialMonitoringTenantCollectionFence(
+    organizationId,
+    async () => {
+      const results = []
+      for (const event of events) {
+        results.push(await processLeadAdEvent(organizationId, event, { includeSocialMention: true }))
+      }
+      return results
+    },
+    { lockKeys: events.map((event) => leadAdLockKey(organizationId, event.tiktokLeadId)) },
+  )
+  if (fenced.allowed) return { results: fenced.value, monitoringSkipped: null }
+
+  // Lead Ads are CRM intake first. A clean-slate pause suppresses only the
+  // SocialMention mirror; lead matching, creation and CRM side effects stay live.
+  const results = await leadAdTurns.run(organizationId, async () => {
+    const results = []
+    for (const event of events) {
+      results.push(await withAdvisoryLock(
+        organizationId,
+        leadAdLockKey(organizationId, event.tiktokLeadId),
+        () => processLeadAdEvent(organizationId, event, { includeSocialMention: false }),
+        { maxWait: 30_000, timeout: 5 * 60_000 },
+      ))
+    }
+    return results
+  })
+  return { results, monitoringSkipped: fenced.reason }
+}
+
 export async function POST(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token")
   if (!token) return NextResponse.json({ error: "Missing token" }, { status: 400 })
@@ -302,35 +337,7 @@ export async function POST(req: NextRequest) {
 
   const organizationId = connection.organizationId
   return runWithTenant(organizationId, async () => {
-    const { results, monitoringSkipped } = await leadAdTurns.run(organizationId, async () => {
-      // Each event's lead lock is taken on the fence's own transaction: one
-      // connection holds the fence and the locks.
-      const fenced = await withSocialMonitoringTenantCollectionFence(
-        organizationId,
-        async () => {
-          const results = []
-          for (const event of events) {
-            results.push(await processLeadAdEvent(organizationId, event, { includeSocialMention: true }))
-          }
-          return results
-        },
-        { lockKeys: events.map((event) => leadAdLockKey(organizationId, event.tiktokLeadId)) },
-      )
-      if (fenced.allowed) return { results: fenced.value, monitoringSkipped: null }
-
-      // Lead Ads are CRM intake first. A clean-slate pause suppresses only the
-      // SocialMention mirror; lead matching, creation and CRM side effects stay live.
-      const results = []
-      for (const event of events) {
-        results.push(await withAdvisoryLock(
-          organizationId,
-          leadAdLockKey(organizationId, event.tiktokLeadId),
-          () => processLeadAdEvent(organizationId, event, { includeSocialMention: false }),
-          { maxWait: 30_000, timeout: 5 * 60_000 },
-        ))
-      }
-      return { results, monitoringSkipped: fenced.reason }
-    })
+    const { results, monitoringSkipped } = await processLeadAdEvents(organizationId, events)
 
     // Scored once each event's lock transaction has committed, never inside it.
     // Only new leads: a matched existing lead keeps the score it already has.

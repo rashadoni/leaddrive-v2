@@ -380,6 +380,18 @@ jobs:
           SOCIAL_WEBHOOK_FENCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           SOCIAL_WEBHOOK_FENCE_DB_GATE: required
 
+      - name: Social monitoring fence openers pool database gate
+        # Bursts of Apify result webhooks, Google Alerts e-mails and ingest-API
+        # posts, for one organization and for three at once, and deliveries
+        # while crons hold fences, read off the tables after the real routes ran
+        # on a real Postgres under the production RLS policies, with a
+        # three-connection pool. Until 2026-10-19 every opener of the monitoring
+        # fence waited for it holding a pooled connection, and the pool timed out.
+        run: npx vitest run src/__tests__/social-fence-openers-pool-postgres.test.ts
+        env:
+          SOCIAL_FENCE_OPENERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          SOCIAL_FENCE_OPENERS_DB_GATE: required
+
       - name: Social route provider cursor database gate
         # A source's route/provider cursor, written on a real Postgres under the
         # production RLS policies, directly and through the real Apify result

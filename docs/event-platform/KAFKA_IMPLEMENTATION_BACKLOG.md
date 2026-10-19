@@ -860,6 +860,14 @@ is superseded for this scoped integration proof only. Separate synthetic CDC
 still open. Mandatory static-checks and normal merge/release remain pending;
 no production consumer, replay or recovery commissioning occurred.
 
+### A4 infrastructure preparation — 2026-10-19
+
+[Evidence/gap matrix](INFRASTRUCTURE_READINESS.md) separates templates and
+historical synthetic receipts from unverified production guarantees. A4 remains
+BLOCKED: no allocated three-domain topology, private TLS/ACL receipts,
+immutable off-provider event archive, approved peak/WAL budget or exercised
+WAL/disk/lag response. No gate relaxed and no infrastructure activated.
+
 ### A3 recovery preparation: fresh read-only NO-GO — 2026-10-19 (Asia/Baku)
 
 Dedicated preparation starts from main226dde0e77c0c36a4de991bb703ba8f8416c5a64.
@@ -1011,6 +1019,181 @@ cases; later A5 evidence collectors are held separately for concrete negative
 controls. These proofs do not commission a production worker, logical CDC,
 HA/TLS/ACL, independent recovery/Farah confirmation, real alerts/controller,
 Fund canary or27-domain adoption. A3/A4 and activation remain NO-GO.
+
+
+### A5/A7 operator preparation — 2026-10-19
+
+На main226dde0e7 отдельная operator-readiness ветка добавляет inactive
+read-back verifier доставки десяти monitoring alarms и
+[KAFKA_OPERATOR_READINESS.md](./KAFKA_OPERATOR_READINESS.md): A5 boundary audit,
+27-domain source/projection/effect/idempotency/rebuild/evidence map и точную
+очередь следующей работы. Это не authenticated operator API и не activation.
+Boolean monitoring flags остаются недостаточным доказательством доставки;
+provider adapter/real challenge/ack receipts ещё NOT RUN.
+
+A1/A2 подготовлены отдельно в codex/kafka-worker-admission-20261018,
+e298057d94804417d38fb105d960721bae6fc1cc; здесь не дублируются. Новые реальные
+integration checks ещё NOT RUN. Общая доставка остаётся исходной сессии
+«Проверить защиту Kafka-консюмера». Никаких production mutations, consumer
+startup, offset/replay, sends, merge или deploy эта подготовка не выполняет.
+
+### A5 inactive authenticated DB admission prepared — 2026-10-19
+
+Draft PR894 extends the bounded operator preparation with a private SQL schema
+outside production migrations: trusted named-login mapping, immutable Fund
+plan/hash, independent approval, one-time consume, controller-bound generation,
+revoke and deferred transaction-end lease check. There is no HTTP/runtime
+executor, business-table grant, read-pointer switch or Kafka operation.
+
+Actual isolated PG16 run39164468500 on ab0aff696 passed13/13 admissions/races
+and28/28 receipt units. Later role/expiry/deferred-fence hardening needs its
+own exact-source receipt; see the append-only operator journal for updates.
+A passing control-schema fixture does not close K5 catch-up/promotion/rollback,
+K7 full-domain recovery, actual delivered monitoring or K8 activation.
+
+The existing scanner flags historical ordinary README prose as generic-api-key;
+no scanner policy/check/history was altered to bypass it. PR remains draft,
+without merge/deploy. Original A1/A2 PR891 and integration scheduling remain
+owned by the originating session; this branch neither starts nor reruns them.
+
+### A5 recovery manifest and synthetic pointer composition verified — 2026-10-19
+
+Operator PR894 source5ad987e953d28c36eedb9bc022eb194abb9973ab passed dedicated
+run39165969550/job117788865931:64/64 offline gates and24/24 actual isolated PG
+cases, cleanup PASS. Added exact-byte recovery manifest/parity checks and
+private synthetic pointer promotion/retained rollback/race/expiry composition.
+This advances inactive A5 preparation only: no real Fund read-pointer wiring,
+worker/consumer startup, actual delivered alerts, restore or27-domain adoption.
+K5 real controller integration and K7 runtime/domain proof remain open.
+Historical README scan false positive still blocks delivery; existing scanner
+policy/history and A1/A2 checks have not been altered. Merge/deploy not performed.
+
+### A5 actual-schema read-only Fund evidence verified — 2026-10-19
+
+Operator branch source465d9b9750cecddf11657145d0cb4d0e7d8233e0 passed own
+run39167881109/job117794570853:91 unit gates,24 operator PG and10 reader PG,
+cleanup PASS. Reader reuses real foundation/Fund/replay migrations and canonical
+reducer, bounded independent inventory, restricted FORCE-RLS/no-write login,
+READ ONLY/RepeatableRead, hashes/state/inbox/checkpoint parity and exact money4.
+No consumer, actual offsets/replay, live pointer or production change occurred.
+
+A5 actual cutover remains open: Fund GET still reads Fund rather than generic
+pointer; shadow worker requires running while SDK promotion sets promoted;
+command-side currentBalance and intentional correction/drift policy require
+an explicit contract; final snapshot→promotion write barrier and authentic
+stop/soak/restore/alert receipts are unproved. Exact source references and next
+steps are appended to KAFKA_OPERATOR_READINESS.md. A7 map remains27/27 with
+Fund-only implementation and no whole-domain safety claim. PR891 latest draft
+headf47224e2b is not certified by older passing runs; its checks are untouched.
+
+### Operator preparation: canary result boundary
+
+Inactive pure Fund canary result validation is prepared (23 focused cases).
+This is not a read adapter or activation. See KAFKA_OPERATOR_READINESS.md's
+ordered lifecycle table for the seven remaining integration/evidence steps;
+A1/A2 ownership and every domain's missing evidence remain unchanged.
+
+### Inactive canary read adapter continuation
+
+A transactional restricted Fund reader now follows the pure canary contract;
+no API/runtime wiring is active. Actual-schema hosted proof covers pointer and
+source-head boundaries separately from authenticated control authority. Final
+lifecycle, real admission/pointer composition, source barrier, financial correction
+policy and authentic operational evidence remain open in the readiness map.
+
+### Independent stop read-back and lifecycle preparation
+
+A bounded inactive read-back composition now follows a recovery close-receipt
+reference to independently pinned observer data, including lease/process and
+final checkpoint equality. No actual stop producer or operational evidence
+exists in this preparation. The readiness map specifies the compatible terminal
+canary lifecycle; continuous promoted processing still needs its own writer/
+checkpoint design. Final barrier, authenticated pointer executor, real observers,
+challenge consumption, correction authority, restore/soak/alerts remain open.
+
+### Durable observer challenge preparation
+
+Inactive stop-challenge storage now binds authenticated observer claims to one
+stop request/lease/process and supports exact one-time acceptance with deferred
+COMMIT checks. This prepares the persistence gap only. Physical stop observation,
+trusted challenge delivery, historical evidence reader, final source barrier,
+real pointer executor and genuine operational receipts remain open. No domain
+protection or business integration is activated by this contract.
+
+### Tenant source-barrier primitive
+
+Inactive kernel and disposable guard attachment prepare a transaction-scoped
+source lock, with exact installation-profile and lease checks. This does not
+close final source verification or promotion: frozen source reads/reducer proof,
+authenticated pointer CAS and worker/broker/physical-observer evidence still need
+one restricted composition. Shared event tables are fenced per tenant, not
+claimed migrated for every domain. No runtime integration is active.
+
+
+### Current-main reconciliation and isolated final transition preparation
+
+Current upstream421260026 includes original-session A1/A2 PR891; exact2936f4c2
+CDC run39170670645 passed both cdc-smoke and full-cdc-fund. Earlier pending
+A1/A2 statements are historical. This branch preserves upstream admission tests
+unchanged and adds its own shadow/final-transition fixture steps.
+
+New fixture-only composition joins same-snapshot canonical material hash, fresh
+source barrier, authenticated admission, actual build/promotion-event/pointer CAS
+and deferred finalization. Full worker evidence and exact checkpoint→inbox
+positions are required; newer-offset duplicates need an independent position
+receipt before collector certification. No domain G evidence set closes.
+
+Next runtime slice is trusted verifier/evidence registration with independent
+provenance and bounded query design, followed by physical observer/broker/soak,
+application canary/rollback, lifecycle/correction and independent restore/alarm
+drills. The 27-domain writer/effect/rebuild map remains the acceptance queue;
+topic presence never establishes protection. Hosted results and NOT RUN gates
+are recorded in docs/kafka-operator-readiness-session-log.md.
+
+
+### Signed verifier registration and bounded material continuation
+
+The inactive verifier now checks seven independently signed operational purposes
+against canonical source/shadow/checkpoint evidence and trusted key/clock/adapters.
+A separate named DB login can register one exact manifest/material/provenance per
+consumed request generation; operator self-registration remains denied. Tenant
+key fingerprints, verifier identity and admission are rechecked through final
+COMMIT. Material returns no hash beyond fixed row caps/1MiB. Hosted results remain
+in the append-only journal; synthetic signatures are not real operational proof.
+
+Remaining external prerequisites are independently managed tenant signers/key
+policy, authentic observer/provider/archive adapters and agreed staging scope.
+Actual consumers/replay/sends/production remain prohibited in this task. Original
+session owns operational/lifecycle/correction/restore drills and rollout; no
+27-domain G evidence set is closed by this software continuation.
+
+### Authorized disposable physical evidence completed — 2026-10-19
+
+Owner authorization now permits test consumers, replay and notifications in the
+selected isolated hosted profile; the prior blanket no-test prohibition above is
+superseded for that scope. Executable sourceaa2e0f49e completed operator318/318,
+both CDC jobs (including actual corrected-build replay), broker/direct-JVM/restricted
+SQL/stop races, disposable stack, secret scan, runner policy and tooling. Full
+Linux build and existing static/typecheck baseline gates also passed;18 baseline
+failing test files and1327 TS diagnostics remain, with no new gated regression.
+Exact run IDs, receipt hashes and limits are retained in
+[the CI evidence record](evidence/operator-readiness-ci-2026-10-19.json).
+
+The new inactive bounded readback adapter, durable independent test receiver and
+physical snapshot restore are tested software plus actual disposable observations.
+They do not install the runtime controller, prove human paging/production rules,
+PITR/encrypted immutable backup, or combine all seven purposes into one operational
+admission. Same-release disposable Connect digest repair changes no production
+image, foreign assertion or plugin-version requirement. A1/A2 were reused, not
+reimplemented; all27 A7 rows remain acceptance work, not protected-domain claims.
+
+Outstanding delivery queue belongs to «Проверить защиту Kafka-консюмера»:
+provision independent identities/keys/real adapters; complete seven-purpose runtime
+acceptance and TLS/ACL/HA/resource proof; obtain bootstrap/correction/promoted-worker
+policy; compose authenticated executor and explicit application cutover; execute
+each domain's writer/effect/history/correction/rebuild/restore queue. No new business
+integration or production operation is authorized by these test results. PR894 is
+draft, auto-merge OFF; final documentation does not change tested executable source.
 
 ### A3 operational preparation — 2026-10-19 12:25 Asia/Baku
 

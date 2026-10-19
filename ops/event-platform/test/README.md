@@ -52,6 +52,37 @@ publisher signatures. Production image retention/mirroring and provenance
 remain separate K1.2 prerequisites; this disposable pin refresh does not close
 them or change production services.
 
+### Current disposable pin — 2026-10-19
+
+The preceding October18 receipt is historical. Its `d76ab3d1...` manifest
+now returns404/MANIFEST_UNKNOWN. The current immutable Linux/amd64 pin is
+`ace1609f4f67a6e7ef8b058cc9f2b2fff01c755e4ead74f756132ea74dc19648`.
+The official public manifest/config bytes were independently SHA-256 checked;
+config `07b0cee93f66d2cf14c8771f6ed6aaee6059026c6908412cac4f366d53c8ce0c`
+still identifies Debezium3.7.0.Final and Kafka4.3.1. Coordinator PR909 CDC smoke
+39227102314 passed on that pin. This A4 revision requires its own fresh CI;
+neither that peer smoke nor the old October18 receipt proves its final source.
+This only repairs the disposable fixture, not production images or readiness.
+
+### Same-version disposable pin refresh — 2026-10-19
+
+The preceding `d76ab3d1…` pin is now historical: a fresh official Quay GET
+returned HTTP404/`MANIFEST_UNKNOWN` before any container execution. Preserve
+that receipt; do not retry a missing digest or remove the content pin.
+
+Reuse the already prepared and tested A5 `aa2e0f49e` same-version replacement:
+Linux/amd64 manifest
+`ace1609f4f67a6e7ef8b058cc9f2b2fff01c755e4ead74f756132ea74dc19648`.
+Root independently fetched its 4,658 manifest bytes and matched SHA-256. The
+official tag's index selects this Linux/amd64 digest; config
+`07b0cee93f66d2cf14c8771f6ed6aaee6059026c6908412cac4f366d53c8ce0c`
+still identifies `DEBEZIUM_VERSION=3.7.0.Final`, `KAFKA_VERSION=4.3.1` and the
+same entrypoint. This updates one disposable Compose line only; all runtime
+plugin/SQL/isolation assertions remain. A new exact-source hosted CDC run is
+required for this delivery; A5's earlier successful run is not substituted.
+No Docker/build work runs on the editing host, and no production image or
+service is changed by this refresh.
+
 The Compose network is internal. No service mounts host paths, production
 configuration, Docker sockets or credentials. PostgreSQL and Kafka have no host
 port. Connect and Registry also publish **no host ports**. HTTP probes execute
@@ -192,3 +223,18 @@ to the actual GitHub run receipt; this document alone is not a passing result.
   configuration is not used.
 - [Official PostgreSQL container](https://hub.docker.com/_/postgres) documents
   initialization variables, data-volume behavior and server arguments.
+
+
+### 2026-10-19 registry availability refresh for operator drills
+
+The previous amd64 digest d76ab3d1d412e9aa38fa8532ac01d99d36b87355a21ee99fbe6f847c168be924
+now returns404 MANIFEST_UNKNOWN from the official registry; the same3.7.0.Final
+tag serves index sha256:202d211b24aa3dee39ad82af9959327f79359c1fcee5701e7ad23634c207c791 and
+amd64 sha256:ace1609f4f67a6e7ef8b058cc9f2b2fff01c755e4ead74f756132ea74dc19648.
+Index/manifest/config response bytes were SHA256-verified through the public
+quay.io/v2/debezium/connect API; config sha256:07b0cee93f66d2cf14c8771f6ed6aaee6059026c6908412cac4f366d53c8ce0c
+identifies Linux/amd64, /docker-entrypoint.sh, DEBEZIUM_VERSION=3.7.0.Final and
+KAFKA_VERSION=4.3.1. Only the disposable Compose image pin changes. Existing
+plugin/runtime/CDC assertions remain unchanged and must pass on the new image;
+registry metadata alone does not establish runtime compatibility. Earlier
+receipts retain their original digests. No production image/config is updated.
