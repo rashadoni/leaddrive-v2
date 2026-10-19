@@ -1145,3 +1145,31 @@ policy, authentic observer/provider/archive adapters and agreed staging scope.
 Actual consumers/replay/sends/production remain prohibited in this task. Original
 session owns operational/lifecycle/correction/restore drills and rollout; no
 27-domain G evidence set is closed by this software continuation.
+
+### Authorized disposable physical evidence completed — 2026-10-19
+
+Owner authorization now permits test consumers, replay and notifications in the
+selected isolated hosted profile; the prior blanket no-test prohibition above is
+superseded for that scope. Executable sourceaa2e0f49e completed operator318/318,
+both CDC jobs (including actual corrected-build replay), broker/direct-JVM/restricted
+SQL/stop races, disposable stack, secret scan, runner policy and tooling. Full
+Linux build and existing static/typecheck baseline gates also passed;18 baseline
+failing test files and1327 TS diagnostics remain, with no new gated regression.
+Exact run IDs, receipt hashes and limits are retained in
+[the CI evidence record](evidence/operator-readiness-ci-2026-10-19.json).
+
+The new inactive bounded readback adapter, durable independent test receiver and
+physical snapshot restore are tested software plus actual disposable observations.
+They do not install the runtime controller, prove human paging/production rules,
+PITR/encrypted immutable backup, or combine all seven purposes into one operational
+admission. Same-release disposable Connect digest repair changes no production
+image, foreign assertion or plugin-version requirement. A1/A2 were reused, not
+reimplemented; all27 A7 rows remain acceptance work, not protected-domain claims.
+
+Outstanding delivery queue belongs to «Проверить защиту Kafka-консюмера»:
+provision independent identities/keys/real adapters; complete seven-purpose runtime
+acceptance and TLS/ACL/HA/resource proof; obtain bootstrap/correction/promoted-worker
+policy; compose authenticated executor and explicit application cutover; execute
+each domain's writer/effect/history/correction/rebuild/restore queue. No new business
+integration or production operation is authorized by these test results. PR894 is
+draft, auto-merge OFF; final documentation does not change tested executable source.

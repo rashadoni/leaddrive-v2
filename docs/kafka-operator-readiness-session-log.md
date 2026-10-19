@@ -1306,3 +1306,51 @@ only our de4 manual CDC39216412781 (cdc-smoke PASS/full-chain pending) and broke
 39216416557 are cancelled in favor of final exact-head PR-triggered runs. Their
 partial/cancelled status is not converted to full PASS. Shared other branches'
 checks/runs are not changed. All heavy work remains on GitHub-hosted Linux.
+
+### Final executable-source CI complete; independent artifact integrity verified
+
+Exactaa2e0f49e0bf50bdcd360f3df0175dee4ca11440: all eight selected hosted runs
+completed SUCCESS. Operator39217390626 passed318/318 (226+5+17+8+9+24+8+18+3),
+nine fail counters0. Broker39217390814 passed real Kafka/restricted SQL and
+client-only directJVM worker restart/parity, COMMIT/ACK boundaries, stop races,
+lost ACK/receipt and fenced takeover; pure driver DB simulation remains distinct.
+CDC39217390847 passed bothcdc-smoke/full-cdc-fund: exact same-release plugin,
+canonical source→Debezium→Kafka→restricted FundSQL, snapshot/cold restart,
+two-tenant parity/lost ACK/restart, corrected NEW build/group replay with oldbad
+builds/group/source/active/effects/other tenant preserved and replay sends NONE.
+No production TLS/ACL proof. Disposable39217390890, scan39217388559,
+runner39217388814 and tooling39217388771 SUCCESS.
+
+Full PR checks39217650528 SUCCESS, including hosted Linux production build,
+static-checks and typecheck gates. Their logs explicitly retain18 failing files
+all in baseline and1327 TypeScript diagnostics/64 gated pairs matching baseline.
+This is no-new-gated-regression evidence, NOT a zero-error app claim. No foreign
+test/gate/baseline was changed. Heavy verification never ran on Contabo.
+
+Downloaded synthetic artifact12169689695 from operator exactaa2: actualdump hash
+22253d360d006b1dd6e589c2b15ad81a3e15867d35ba2780746af7691b0cdd97 matchesreceipt;
+source/restored materialadd4e63025889bf6c06c3c5b92467cd9445effc3be105623eb149b511295d9a4,
+three aggregates and20 journal entries/all10 delivered+machineACK gates verified.
+Historical integrity only, not live admission or human paging; no synthetic clock
+revalidates old data. Retention7days, no WORM/productionPITR/encryption/RTO claim.
+Machine-readable source/run/hash/limit record added underdocs/event-platform/evidence.
+
+After all full checks, removed temporaryproduction-build label and returnedPR894
+to DRAFT; autoMergeRequest=null. No merge/deploy/production action. Latestorigin/main
+abdc13018acc9f120ee4d50fbb121a90cc3efe63 inspected: no Kafka changes; unrelated
+demo/social/TikTok work and new TikTokPR/deploy gate remain untouched/unclaimed.
+Final phase appends documentation only; executable proof remains bound toaa2.
+Resource preflight19GB RAM available/211GBdisk/pressure0. Dirty canonical preserved.
+
+Remaining NOT RUN: full production/JIT/provider/key/secret provisioning and seven-
+purpose runtime admission; actual rule/exporter triggers and human paging; production
+TLS/ACL/HA/PITR/encryption/WORM/RTO; owner bootstrap/correction/promoted-worker policy;
+explicit business cutover and exhaustive27-domain writer/effect/history/rebuild proof.
+No new business integration is activated. Original session retains overall delivery.
+Finish this phase with diff/JSON/domain-map checks, documentation checkpoint/push,
+PR body update and final available hosted checks; no request for another continue.
+
+Documentation closure checks PASS:git diff --check; historical evidence JSON parses;
+27 unique map rows match actual domain catalog; onlydocs/ changed since executable
+sourceaa2. Proceeding with explicit-path checkpoint and non-force feature push;
+final PR checks/metadata are observed externally after this committed entry.

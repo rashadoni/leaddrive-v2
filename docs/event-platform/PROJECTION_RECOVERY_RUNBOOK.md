@@ -766,3 +766,30 @@ requires a new reviewed bounded rebuild design; do not raise limits to certify a
 partial history. No activation, first-pointer bootstrap, correction policy,
 continuous promoted-worker lifecycle or provider integration follows from these
 preparation tests. Those remain coordinated by the original delivery session.
+
+### Completed disposable drills and operational evidence limits — 2026-10-19
+
+The owner explicitly authorized isolated test consumers/replay/notifications.
+On exact executable sourceaa2e0f49e, operator run39217390626 passed318/318;
+broker39217390814 passed actual Kafka/restricted SQL/direct-JVM stop/restart races;
+CDC39217390847 passed both jobs, including real canonicalSQL → Debezium → Kafka →
+FundSQL and corrected NEW build/group replay with source/active/effects/other tenant
+unchanged and replay sends NONE. Existing checks were not changed to obtain PASS.
+
+Separate HTTP receiver delivered all10 controlled gate stimuli and authenticated
+an independent machine ACK, including real restart and durable readback. Actual
+pg_dump/pg_restore into an owned UUID database plus separate restricted reader
+proved three-aggregate canonical/material parity, denied partial visibility and
+left the source unchanged. Artifact12169689695 contains only synthetic dump and
+receipts, retained7days; its hash was independently compared with the restore
+receipt. Exact links/hashes are recorded in
+[the historical CI evidence](evidence/operator-readiness-ci-2026-10-19.json).
+
+These observations are separate bounded drills. They are not a single genuine
+seven-purpose approval for any deployment, actual production rule firing/human
+paging, broker TLS/ACL/HA, production PITR/encrypted offsite immutable backup, RTO
+or persistent identity/key provisioning. Never revive historical receipts by using
+a fixture clock or key. Fresh authentic scope/lease/challenge/material/provenance
+and all requirements in the seven-purpose table still apply at real registration
+and final COMMIT. No production recovery command, offset reset, application
+cutover or merge/deploy is authorized here. Original delivery session owns them.

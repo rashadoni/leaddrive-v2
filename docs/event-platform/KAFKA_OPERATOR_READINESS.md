@@ -522,3 +522,42 @@ and key policies remain inactive, same as business read cutover. Real exporter/
 rule firing, human paging, Kafka TLS/ACL/HA, persistent provider/identity/secret
 provisioning and full27-domain G evidence remain open. Do not turn these tests
 or topic presence into production activation authority.
+
+### Final exact-source test evidence — 2026-10-19
+
+This section supersedes pending/no-test-send/no-independent-test-restore statements
+above only for the explicitly authorized disposable profile. All executable source
+at `aa2e0f49e0bf50bdcd360f3df0175dee4ca11440` completed these hosted checks:
+
+| Evidence | Actual result and boundary |
+|---|---|
+| [Operator39217390626](https://github.com/rashadoni/leaddrive-v2/actions/runs/39217390626) | 318/318, nine zero-failure steps:226 units +5 HTTP notifications +17 admission +8 shadow +9 stop challenge +24 snapshot/canary +8 source barrier +18 transition/registry/material +3 physical restore |
+| [Broker39217390814](https://github.com/rashadoni/leaddrive-v2/actions/runs/39217390814) | Real Kafka/restricted SQL and verified client-only direct-JVM worker; exact restart parity, real COMMIT before ACK, stop-during/after-COMMIT races, ACK/receipt loss, takeover and stale ACK fencing. Initial pure driver database effects remain simulated |
+| [CDC39217390847](https://github.com/rashadoni/leaddrive-v2/actions/runs/39217390847) | Both jobs PASS: canonical source → Debezium → actual Kafka bytes → restricted Fund SQL; snapshot/cold restart, two-tenant parity, committed ACK loss/restart; corrected NEW build/group replays same bytes while preserving old bad builds/group and source/active/effects/other tenant. Replay sends NONE; TLS/ACL not proven |
+| [PR gates39217650528](https://github.com/rashadoni/leaddrive-v2/actions/runs/39217650528) | Linux production build, static-checks and typecheck gates PASS. Existing baseline still contains18 failing test files and1327 TS diagnostics (64 gated pairs); no new baseline failure, not a zero-error claim |
+| Other exact-source gates | Disposable stack39217390890, scan39217388559, runner-policy39217388814 and tooling39217388771 all SUCCESS |
+
+Downloaded operator artifact12169689695 was checked against its receipt: actual
+dump SHA256 `22253d360d006b1dd6e589c2b15ad81a3e15867d35ba2780746af7691b0cdd97`,
+three restored aggregates,20 delivery/ACK journal entries covering all10 gates.
+The source material hash matches the independently restored material. This is
+historical artifact integrity; no clock is changed to admit old operational data.
+The synthetic dump/receipts expire after7 days and are not an immutable backup.
+Machine-readable source/run/hash/limitation record:
+[operator-readiness-ci-2026-10-19.json](evidence/operator-readiness-ci-2026-10-19.json).
+
+Latest inspected `origin/main` is `abdc13018acc9f120ee4d50fbb121a90cc3efe63`.
+Since the prior inspectedfbfae3961, Kafka source/contracts are unchanged; unrelated
+TikTok lock/application/demo changes and its additional PR/deploy gate were read,
+not imported or edited. No verification of that new unrelated gate is claimed.
+PR894 returned to draft with auto-merge OFF after the complete source checks;
+the temporary production-build label was removed. Final documentation checkpoints
+do not change the tested executable tree. Any future integration with newer main
+must pass that main's current required gates before its own authorized delivery.
+
+**Still open:** genuine runtime identity/key/provider provisioning; one composed
+physical stop/broker/soak/archive/restore/approval/alerts admission; actual rule
+triggers and human paging; production TLS/ACL/HA, PITR/encryption/WORM/RTO; owner
+bootstrap/correction/promoted-worker decisions; application cutover and complete
+A7 writer/effect/history/rebuild proof for every row. No27-domain G set is closed,
+no live business integration enabled, and no production/merge/deploy performed.
