@@ -485,6 +485,15 @@ jobs:
           WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           WHATSAPP_TICKET_DB_GATE: required
 
+      - name: TikTok lead ad lock database gate
+        # Same gate as in pr-checks: a burst of TikTok Lead Ads deliveries creates
+        # each lead once without running the connection pool dry (see the test's
+        # header).
+        run: npx vitest run src/__tests__/tiktok-lead-ad-lock-postgres.test.ts
+        env:
+          TIKTOK_LEAD_AD_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          TIKTOK_LEAD_AD_DB_GATE: required
+
       - name: MTM break coordinates database gate
         # Same gate as in pr-checks: no GPS entry — the phone's two routes, the
         # web/API-key one — stores a point taken during the employee's break

@@ -1,6 +1,5 @@
-import type { Prisma } from "@prisma/client"
 import { logAudit, prisma } from "@/lib/prisma"
-import { runWithTenant } from "@/lib/rls-context"
+import { lockTurns, withAdvisoryLock } from "@/lib/lock-turns"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
 import { reopenTicketForCustomerReply } from "@/lib/ticket-reopen"
 import { sanitizeLog } from "@/lib/sanitize"
@@ -80,7 +79,10 @@ export async function ensureInboundWhatsAppTicket(input: {
 }): Promise<InboundTicketResult> {
   const key = whatsappIntakeLockKey(input.organizationId, input.waPhone)
   try {
-    return await inSenderTurn(key, () => withLockSlot(() => withSenderLock(input.organizationId, key, () => placeInboundMessage(input))))
+    return await intakeTurns.run(key, () => withAdvisoryLock(input.organizationId, key, () => placeInboundMessage(input), {
+      maxWait: 10_000,
+      timeout: 60_000,
+    }))
   } catch (err) {
     console.error("[WA Webhook] Failed to ensure inbound WhatsApp ticket:", err)
     return NO_TICKET
@@ -93,58 +95,12 @@ export function whatsappIntakeLockKey(organizationId: string, waPhone: string): 
 }
 
 /**
- * Deliveries from one sender first take their turn in this process, where
- * waiting costs no database connection; production runs one process, so this
- * alone keeps them in order. Across processes (a reload's overlap, more
- * instances later) the advisory lock does the same. A lock transaction keeps
- * its pooled connection while the work inside it needs another, so only
- * LOCK_HOLDERS_PER_PROCESS intakes hold one at a time — below any pool size,
- * which leaves a connection free for the work. Without the turns and the cap,
- * eight messages from one phone took all five connections of the CI pool
- * waiting for the lock, and the intake holding it could not get one more.
+ * Deliveries from one sender take their turn in this process before the lock,
+ * and at most two hold a lock transaction at once (`@/lib/lock-turns`):
+ * without that, eight messages from one phone took all five connections of the
+ * CI pool waiting for the lock, and the intake holding it could not get one more.
  */
-const LOCK_HOLDERS_PER_PROCESS = 2
-
-type IntakeTurns = { senders: Map<string, Promise<void>>; holders: number; waiting: Array<() => void> }
-// One state per process even when the bundle copies this module into several route chunks (see rls-context.ts).
-const globalForIntake = globalThis as unknown as { __whatsappIntakeTurns?: IntakeTurns }
-const turns: IntakeTurns = (globalForIntake.__whatsappIntakeTurns ??= { senders: new Map(), holders: 0, waiting: [] })
-
-async function inSenderTurn<T>(key: string, work: () => Promise<T>): Promise<T> {
-  const previous = turns.senders.get(key) ?? Promise.resolve()
-  const result = previous.then(work)
-  const done = result.then(() => undefined, () => undefined)
-  turns.senders.set(key, done)
-  try {
-    return await result
-  } finally {
-    if (turns.senders.get(key) === done) turns.senders.delete(key)
-  }
-}
-
-async function withLockSlot<T>(work: () => Promise<T>): Promise<T> {
-  if (turns.holders < LOCK_HOLDERS_PER_PROCESS) turns.holders += 1
-  else await new Promise<void>((resolve) => turns.waiting.push(resolve))
-  try {
-    return await work()
-  } finally {
-    // The slot passes straight to the next intake, or is freed.
-    const next = turns.waiting.shift()
-    if (next) next()
-    else turns.holders -= 1
-  }
-}
-
-async function withSenderLock<T>(organizationId: string, key: string, work: () => Promise<T>) {
-  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`
-    // The transaction owns only the lock, held by its connection until commit.
-    // Inside it the RLS context is marked in-transaction, which would send the
-    // global Prisma calls below out with no tenant at all; runWithTenant gives
-    // each of them the tenant on the connection it actually uses.
-    return runWithTenant(organizationId, work)
-  }, { maxWait: 10_000, timeout: 60_000 })
-}
+const intakeTurns = lockTurns("whatsapp-inbound-ticket", 2)
 
 async function placeInboundMessage({
   organizationId,

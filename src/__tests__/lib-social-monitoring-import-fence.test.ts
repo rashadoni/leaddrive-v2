@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => {
   const tx = {
+    $executeRaw: vi.fn(),
     $executeRawUnsafe: vi.fn(),
     $queryRawUnsafe: vi.fn(),
     organization: {
@@ -37,6 +38,7 @@ beforeEach(() => {
     { orgId: "org-1", inTx: true },
     () => operation(mocks.tx),
   ))
+  mocks.tx.$executeRaw.mockResolvedValue(1)
   mocks.tx.$executeRawUnsafe.mockResolvedValue(1)
   mocks.tx.$queryRawUnsafe.mockResolvedValue([{
     settings: {},
@@ -263,5 +265,50 @@ describe("social monitoring persistence fences", () => {
     expect(mocks.tx.$queryRawUnsafe).not.toHaveBeenCalled()
     expect(mocks.queryRawUnsafe).not.toHaveBeenCalled()
     expect(persist).not.toHaveBeenCalled()
+  })
+
+  it("takes the caller's locks on its own transaction once the fence lets it in, in one order", async () => {
+    const order: string[] = []
+    mocks.tx.$executeRawUnsafe.mockImplementation(async (_sql: string, key: string) => { order.push(key) })
+    mocks.tx.$executeRaw.mockImplementation(async (_sql: TemplateStringsArray, key: string) => { order.push(key) })
+
+    const result = await withSocialMonitoringTenantCollectionFence(
+      "org-1",
+      async () => {
+        order.push("collect")
+        return "collected"
+      },
+      { lockKeys: ["lead:b", "lead:a", "lead:b"] },
+    )
+
+    expect(result).toEqual({ allowed: true, value: "collected" })
+    expect(order).toEqual(["social-monitoring-clean-slate:org-1", "lead:a", "lead:b", "collect"])
+    expect(mocks.transaction).toHaveBeenCalledTimes(1)
+  })
+
+  it("takes none of the caller's locks when the clean-slate reset has closed the fence", async () => {
+    mocks.tx.organization.findUnique.mockResolvedValue({
+      settings: { socialMonitoringCleanSlate: { collectionBlocked: true } },
+    })
+    const collect = vi.fn(async () => "should-not-run")
+
+    const result = await withSocialMonitoringTenantCollectionFence("org-1", collect, { lockKeys: ["lead:a"] })
+
+    expect(result).toEqual({ allowed: false, reason: "social_monitoring_collection_blocked" })
+    expect(mocks.tx.$executeRaw).not.toHaveBeenCalled()
+    expect(collect).not.toHaveBeenCalled()
+  })
+
+  it("refuses the caller's locks inside a fence already held, which has no transaction to take them on", async () => {
+    const collect = vi.fn(async () => "should-not-run")
+
+    await expect(withSocialMonitoringTenantCollectionFence(
+      "org-1",
+      () => withSocialMonitoringTenantCollectionFence("org-1", collect, { lockKeys: ["lead:a"] }),
+    )).rejects.toThrow(/lockKeys need a fence of their own/)
+
+    expect(mocks.transaction).toHaveBeenCalledTimes(1)
+    expect(mocks.tx.$executeRaw).not.toHaveBeenCalled()
+    expect(collect).not.toHaveBeenCalled()
   })
 })

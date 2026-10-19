@@ -251,7 +251,18 @@ export async function withSocialMonitoringImportFence<T>(
 export async function withSocialMonitoringTenantCollectionFence<T>(
   organizationId: string,
   collect: () => Promise<T>,
+  options: {
+    /**
+     * Advisory locks the caller needs while it collects, taken on the fence's
+     * own transaction once the fence has let it in. A lock transaction of the
+     * caller's own inside the fence would keep a second connection for as long
+     * as the fence lasts (the TikTok Lead Ads webhook did, until 2026-10-19).
+     * A fence already held has no transaction of its own to take them on.
+     */
+    lockKeys?: readonly string[]
+  } = {},
 ): Promise<SocialMonitoringTenantFenceResult<T>> {
+  const lockKeys = [...new Set(options.lockKeys ?? [])].sort()
   // Provider import callbacks already hold this tenant's advisory lock. Media
   // scheduling inside those callbacks must reuse the held fence instead of
   // opening another connection and deadlocking on the same session-level key.
@@ -263,11 +274,17 @@ export async function withSocialMonitoringTenantCollectionFence<T>(
         reason: "social_monitoring_collection_blocked",
       }
     }
+    if (lockKeys.length > 0) {
+      throw new Error("lockKeys need a fence of their own: this one is already held, with no transaction to take them on")
+    }
     return { allowed: true, value: await collect() }
   }
   return prisma.$transaction(async tx => {
     const gate = await checkSocialMonitoringTenantCollectionFence(tx, organizationId)
     if (!gate.allowed) return gate
+    for (const key of lockKeys) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`
+    }
     return {
       allowed: true as const,
       value: await runWithTenant(
