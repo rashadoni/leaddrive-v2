@@ -248,3 +248,28 @@ AccessDenied на restore PUT. Сеть, подпись, другие HTTP/ко�
 Причина реального обрыва этим не доказана. curl документирует
 [SigV4 и stdin config](https://curl.se/docs/manpage.html); B2 поддерживает
 [SigV4](https://postman.backblaze.com/). Живой результат этого режима ещё NOT RUN.
+
+### Живые curl controls прошли — скриншот владельца 2026-10-19
+
+Для точного1e3ccaf70a7e4c5d4e770d653faf3558be459fb2 на Mac получено:
+writer_put curl0/HTTP200; restore_get curl0/HTTP200 с побайтным сравнением;
+restore_put curl0/HTTP403/AccessDenied. Все три passed=true; итог
+curl_controls_passed_not_activation_evidence. Это закрывает неизвестность
+конкретного restore-write ACL control, а не доказывает activation/restore readiness.
+Первичный AWS CLI255/connection_closed остаётся исторически неуспешным результатом,
+и его корневая причина не установлена. Новые права/ключи для этого не выдавались.
+
+FileVault On и синтетическая Mac workbench/swap проверка — отдельные receipts.
+Настоящий backup и restore по-прежнему NOT RUN. Object Lock по последнему
+реальному ответу не настроен; writer transfer/custody и reviewed commissioning
+route ещё нужны. В owner-operated A3 путь нельзя попасть слиянием удерживаемого
+PR без решения исходного координатора.
+
+Следующая owner-side подготовка в авторизованной B2 консоли: Buckets →
+leaddrive-prod-backups → Object Lock: Disabled → Enable Object Lock on this bucket;
+затем Object Lock: Enabled → default retention14days, COMPLIANCE → Save changes.
+Включение bucket flag необратимо, default retention применяется к новым объектам;
+это не retroactive lock уже существующей синтетики. Карта/финансовые caps остаются
+без изменений; расписание, не укладывающееся в10GB, этим не признаётся устойчивым.
+Источник UI-порядка: https://www.backblaze.com/docs/cloud-storage-enable-object-lock-or-a-legal-hold-on-an-existing-bucket .
+Операторское подтверждение этих настроек/новый machine receipt пока NOT RUN.
