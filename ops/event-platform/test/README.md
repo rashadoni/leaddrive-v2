@@ -192,3 +192,18 @@ to the actual GitHub run receipt; this document alone is not a passing result.
   configuration is not used.
 - [Official PostgreSQL container](https://hub.docker.com/_/postgres) documents
   initialization variables, data-volume behavior and server arguments.
+
+
+### 2026-10-19 registry availability refresh for operator drills
+
+The previous amd64 digest d76ab3d1d412e9aa38fa8532ac01d99d36b87355a21ee99fbe6f847c168be924
+now returns404 MANIFEST_UNKNOWN from the official registry; the same3.7.0.Final
+tag serves index sha256:202d211b24aa3dee39ad82af9959327f79359c1fcee5701e7ad23634c207c791 and
+amd64 sha256:ace1609f4f67a6e7ef8b058cc9f2b2fff01c755e4ead74f756132ea74dc19648.
+Index/manifest/config response bytes were SHA256-verified through the public
+quay.io/v2/debezium/connect API; config sha256:07b0cee93f66d2cf14c8771f6ed6aaee6059026c6908412cac4f366d53c8ce0c
+identifies Linux/amd64, /docker-entrypoint.sh, DEBEZIUM_VERSION=3.7.0.Final and
+KAFKA_VERSION=4.3.1. Only the disposable Compose image pin changes. Existing
+plugin/runtime/CDC assertions remain unchanged and must pass on the new image;
+registry metadata alone does not establish runtime compatibility. Earlier
+receipts retain their original digests. No production image/config is updated.

@@ -13,9 +13,10 @@ function guard() {
   for(const key of ['PGHOSTADDR','PGSERVICE','PGSERVICEFILE']) assert.ok(!process.env[key])
 }
 export const quoteFixture = value => `'${String(value).replaceAll("'","''")}'`
-function open(login,options={}) {
+function open(login,options={},restoreDatabase) {
   guard()
-  const child=spawn('psql',['-X','-qAt','-v','ON_ERROR_STOP=1','-v',options.sanitizedDiagnostics===true?'VERBOSITY=verbose':'VERBOSITY=sqlstate'],{
+  if(restoreDatabase){assert.equal(login,'op_restore_reader');assert.match(restoreDatabase,/^kafka_operator_restore_[0-9a-f]{32}$/)}
+  const child=spawn('psql',['-X','-qAt',...(restoreDatabase?['--dbname',restoreDatabase]:[]),'-v','ON_ERROR_STOP=1','-v',options.sanitizedDiagnostics===true?'VERBOSITY=verbose':'VERBOSITY=sqlstate'],{
     env:{...process.env,PGUSER:login,PGCONNECT_TIMEOUT:'5',PGPASSWORD:'operator-fixture-only',PGOPTIONS:'-c statement_timeout=10000 -c lock_timeout=2000'},
     stdio:['pipe','pipe','pipe'],
   })
@@ -58,10 +59,10 @@ export async function fixtureSql(login,sql,options) {
   const connection=open(login,options)
   try{return await connection.command(sql)}finally{await connection.close()}
 }
-export function fixtureDatabase(login,hooks={}) {
+function database(login,hooks={},restoreDatabase) {
   return {$transaction:async(work,options)=>{
     assert.equal(options.isolationLevel,'RepeatableRead')
-    const connection=open(login);let counter=0
+    const connection=open(login,{},restoreDatabase);let counter=0
     try {
       await connection.command('BEGIN ISOLATION LEVEL REPEATABLE READ;')
       const tx={
@@ -83,4 +84,11 @@ export function fixtureDatabase(login,hooks={}) {
       throw error
     } finally {await connection.close()}
   }}
+}
+export const fixtureDatabase=(login,hooks)=>database(login,hooks)
+// Restore reader only: original environment/route guard remains mandatory;
+// no arbitrary database, connection URL, role or provider target is accepted.
+export function fixtureRestoredDatabase(name,hooks={}) {
+  guard();assert.match(name,/^kafka_operator_restore_[0-9a-f]{32}$/)
+  return database('op_restore_reader',hooks,name)
 }

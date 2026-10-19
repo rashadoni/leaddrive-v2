@@ -1242,3 +1242,28 @@ scope, and verifies read-back after actual receiver restart. Trigger values and
 machine responder are controlled test inputs, not real production rule/exporter
 or human pager evidence. No guessed external email/destination or provider send.
 No actual credential/private key is written to journal or test source.
+
+
+### Actual notification proof PASS; CDC image availability failure diagnosed
+
+Operator run39215925406 on2ec9bacbe SUCCESS, including the real separate-process
+notification delivery/read-back/restart drill (5 scenarios) and225 pure cases.
+Real external pager/human acknowledgement and exporter/rule triggering are not
+claimed. Existing consumer/SQL barriers remain unchanged and passed that run.
+
+Manual CDC39215379179 on4b684bd86 failed before connector startup: official
+quay.io/debezium/connect old pinned amd64 digest returned404 MANIFEST_UNKNOWN;
+full-cdc-fund was skipped, not passed. Primary registry HEAD/GET verified current
+same3.7.0.Final index202d211b... and amd64ace1609f...; response SHA256 and config
+07b0cee9... validated Linux/amd64, DEBEZIUM_VERSION3.7.0.Final, Kafka4.3.1 and
+entrypoint. Refresh only disposable image pin and append registry evidence;
+no foreign check, expected plugin version or production config changed.
+New exact-source CDC/broker runs required; do not substitute old cached proof.
+
+Added a physical pg_dump/pg_restore drill into a fresh UUID-namespaced database,
+independent restricted login and canonical snapshot/material comparison. Original
+DB/receipt hash must stay unchanged, partial restored visibility must deny,
+cleanup targets only the owned clone/role. Source transport keeps original route
+checks; new restore factory accepts only fixed reader plus generated clone name,
+never an arbitrary DB or URL. Full restore/PITR/encryption/WORM on production is
+not implied. All PostgreSQL/Docker work hosted only; actual restore result pending.

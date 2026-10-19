@@ -47,7 +47,7 @@ jobs:
       - name: Validate scripts and offline alert receipts
         run: |
           node --check scripts/event-platform/operator-admission.integration.mjs
-          node --test scripts/event-platform/operator-alert-evidence.test.mjs scripts/event-platform/operator-recovery-evidence.test.mjs scripts/event-platform/operator-fund-snapshot.test.mjs scripts/event-platform/operator-fund-canary.test.mjs scripts/event-platform/operator-stop-evidence.test.mjs scripts/event-platform/operator-admission-guard.test.mjs scripts/event-platform/operator-fund-verifier.test.mjs scripts/event-platform/operator-alert-http.test.mjs
+          node --test scripts/event-platform/operator-alert-evidence.test.mjs scripts/event-platform/operator-recovery-evidence.test.mjs scripts/event-platform/operator-fund-snapshot.test.mjs scripts/event-platform/operator-fund-canary.test.mjs scripts/event-platform/operator-stop-evidence.test.mjs scripts/event-platform/operator-admission-guard.test.mjs scripts/event-platform/operator-fund-verifier.test.mjs scripts/event-platform/operator-alert-http.test.mjs scripts/event-platform/operator-restore-guard.test.mjs
       - name: Real disposable notification delivery and independent read-back
         run: node --test scripts/event-platform/operator-notification.integration.mjs
 
@@ -87,3 +87,9 @@ jobs:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           LD_OPERATOR_REDUCER_MODULE: ${{ runner.temp }}/operator-canonical-reducer.mjs
         run: node --test scripts/event-platform/operator-fund-transition.integration.mjs
+
+      - name: Independent physical restore and restricted canonical parity
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          LD_OPERATOR_REDUCER_MODULE: ${{ runner.temp }}/operator-canonical-reducer.mjs
+        run: node --test scripts/event-platform/operator-fund-restore.integration.mjs
