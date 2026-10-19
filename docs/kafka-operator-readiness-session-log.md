@@ -1224,3 +1224,21 @@ bounded own notification/read-back drill and any needed operational evidence
 adapters. Test notifications must use an isolated receiver, no guessed external
 recipient/provider. Physical test evidence will be clearly distinguished from
 production readiness and synthetic JSON claims. No new business activation.
+
+
+### Test workflow dispatch and actual notification transport preparation
+
+Existing unmodified workflows dispatched on exact4b684bd860b230974392a3aa4ec8557cd20e3ca4:
+CDC39215379179 (snapshot/WAL/restart/lostACK/corrected-build replay) and broker
+39215381893 (direct-JVM/DB/stop tests). Shared disposable concurrency serializes
+them; no other session's run cancelled or gate edited. Results pending.
+
+Added inactive read-only HTTPS receipt-service adapter with fixed trusted origin/
+credential, no redirect or operator URL, deadlines, streaming byte cap and fatal
+UTF8 parse. HTTP loopback requires explicit disposable hosted CI flags. New own
+CI drill sends all10 gates to a separate loopback process, fsyncs delivery/ACK
+receipts, enforces distinct sender/reader/responder authority, idempotence and
+scope, and verifies read-back after actual receiver restart. Trigger values and
+machine responder are controlled test inputs, not real production rule/exporter
+or human pager evidence. No guessed external email/destination or provider send.
+No actual credential/private key is written to journal or test source.
