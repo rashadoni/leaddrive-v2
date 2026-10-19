@@ -860,6 +860,14 @@ is superseded for this scoped integration proof only. Separate synthetic CDC
 still open. Mandatory static-checks and normal merge/release remain pending;
 no production consumer, replay or recovery commissioning occurred.
 
+### A4 infrastructure preparation — 2026-10-19
+
+[Evidence/gap matrix](INFRASTRUCTURE_READINESS.md) separates templates and
+historical synthetic receipts from unverified production guarantees. A4 remains
+BLOCKED: no allocated three-domain topology, private TLS/ACL receipts,
+immutable off-provider event archive, approved peak/WAL budget or exercised
+WAL/disk/lag response. No gate relaxed and no infrastructure activated.
+
 ### A3 recovery preparation: fresh read-only NO-GO — 2026-10-19 (Asia/Baku)
 
 Dedicated preparation starts from main226dde0e77c0c36a4de991bb703ba8f8416c5a64.
