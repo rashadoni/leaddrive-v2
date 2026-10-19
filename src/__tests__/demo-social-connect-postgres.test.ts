@@ -650,7 +650,7 @@ describe.skipIf(!scratch)("connecting a prospect's own Facebook Page to the demo
     expect((await act(g, { action: "start", consent: true })).status).toBe(200)
   })
 
-  it("a subscription Meta did not confirm asks for the release at once — the Page token is already recorded for it", async () => {
+  it("a subscription Meta did not confirm asks for the release at once and keeps the lease, so the DELETE cannot overtake a late POST", async () => {
     const g = await grant()
     const page = fakePage("Səhifə")
     accounts = [page]
@@ -660,10 +660,17 @@ describe.skipIf(!scratch)("connecting a prospect's own Facebook Page to the demo
 
     expect(callback.location.searchParams.get("r")).toBe("failed")
     const row = await rowOf(g)
-    expect(row).toMatchObject({ pageId: page.id, connectedAt: null, releaseReason: "connect_abandoned", releaseLeaseUntil: null })
+    expect(row).toMatchObject({ pageId: page.id, connectedAt: null, releaseReason: "connect_abandoned" })
     expect(row.pageTokenCipher).toMatch(/^v1:/)
     expect((await readState(g)).body).toMatchObject({ phase: "releasing", connectFailed: true })
-    // The bind gave its lease back: the release runs at once, not two minutes later.
+    // Not confirmed may still take effect at Meta: the bind keeps its lease,
+    // so the release does not send its DELETE right behind our POST.
+    expect(row.releaseLeaseUntil!.getTime()).toBeGreaterThan(Date.now())
+    const before = sent().length
+    expect(await release.releaseDueDemoSocialConnections({ now: new Date() })).toMatchObject({ released: 0, retrying: 1 })
+    expect(sent().length).toBe(before)
+    // Once the lease has run out, the release unsubscribes the Page.
+    await admin.demoSocialConnection.update({ where: { id: row.id }, data: { releaseLeaseUntil: new Date(Date.now() - 1_000) } })
     expect(await release.releaseDueDemoSocialConnections({ now: new Date() })).toMatchObject({ released: 1 })
     expect(sent().at(-1)).toBe(`DELETE /v21.0/${page.id}/subscribed_apps`)
   })

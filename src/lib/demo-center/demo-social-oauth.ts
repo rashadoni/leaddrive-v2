@@ -531,9 +531,15 @@ async function bindPage(row: { id: string; grantId: string | null }, page: MetaP
     )
 
   let connected = false
+  let keepLease = false
   try {
     const subscribed = await subscribePageToMessages(page.id, page.token, { fields: "messages" })
     if (!subscribed.success) {
+      // Not confirmed is not «not done»: a POST that timed out on our side
+      // may still take effect at Meta a moment later. The lease is kept until
+      // it runs out, so the release's DELETE goes out at least two minutes
+      // after our POST and does not land before it.
+      keepLease = true
       await requestDemoSocialRelease({ connectionId: row.id }, "connect_abandoned", now)
       return "failed"
     }
@@ -555,7 +561,7 @@ async function bindPage(row: { id: string; grantId: string | null }, page: MetaP
     if (!connected) await unsubscribeOrphan(row.id, page)
     return connected ? "connected" : "failed"
   } finally {
-    if (!connected) await giveLeaseBack().catch(() => {})
+    if (!connected && !keepLease) await giveLeaseBack().catch(() => {})
   }
 }
 

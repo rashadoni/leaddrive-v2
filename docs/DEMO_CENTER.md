@@ -201,11 +201,13 @@ the open demo, not the admin preview), in the inbox chapters:
   `POST subscribed_apps` with `subscribed_fields=messages` only. Several: their
   ids and names are kept in `pendingPages` and the panel asks by name; the
   choice is re-read from Meta and re-checked. A subscription Meta did not
-  confirm asks for the release at once.
+  confirm asks for the release at once, and the bind keeps its lease until it
+  runs out: an unconfirmed `POST` may still take effect at Meta, so the
+  release's `DELETE` goes out at least two minutes after it.
 - The bind holds the release's two-minute lease from the moment it stores the
-  Page token until the subscribe has settled, and gives it back on every way
-  out: a release run that comes due meanwhile retries on its next tick, so its
-  `DELETE subscribed_apps` always comes after our `POST`. If the connection
+  Page token until the subscribe has settled, and gives it back on every other
+  way out: a release run that comes due meanwhile retries on its next tick, so
+  its `DELETE subscribed_apps` comes after Meta's answer to our `POST`. If the connection
   ended while the `POST` was on its way and Meta confirmed it anyway, the bind
   unsubscribes the Page itself, at once — unless an organisation claims it or
   another live demo holds it.
@@ -292,8 +294,8 @@ would go after §8 (`privacy.p8_deletion`). English first, then Russian.
 > кодом демо: его сообщения и ответы демо-ИИ-агента (не больше десяти) хранятся
 > в собственных записях демо — не в CRM какого-либо клиента, — показываются на
 > его странице демо и отправляются в Anthropic, чтобы составить ответы. Пока
-> никто не написал с кодом, каждое входящее сообщение лишь проверяется на код и
-> сразу отбрасывается. Сообщения всех остальных отбрасываются сразу: не
+> никто не написал с кодом, каждое входящее сообщение лишь проверяется на код;
+> сообщение без кода сразу отбрасывается. Сообщения всех остальных отбрасываются сразу: не
 > сохраняются, не показываются, ответа не получают. Мы храним id и название
 > страницы; id связанного Instagram-аккаунта, если Meta его отдаёт; Meta-id
 > человека, подключившего страницу; Messenger-id того, кто написал с кодом;
