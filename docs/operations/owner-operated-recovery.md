@@ -21,6 +21,69 @@ Old recipients/archives must be retained; a new candidate key cannot restore
 old ciphertext encrypted under another key. No private key goes to production,
 GitHub Actions, source control, a ticket or chat.
 
+## 0. Configure the writer through the protected production route
+
+If the production writer/endpoint pair has not been installed, use the existing
+**Commission production backup** workflow, operation `configure-b2-writer`.
+This operation is separate from creating a backup and from accepting custody.
+It installs only the five fields of the owner's existing `writer.env`:
+`BACKUP_S3_ENDPOINT`, `BACKUP_S3_REGION`, `BACKUP_S3_BUCKET`,
+`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. The only accepted bucket is
+`leaddrive-prod-backups`, on an exact matching HTTPS Backblaze B2 endpoint.
+
+On the owner's administrative machine, install this file as the protected
+GitHub **production environment** secret `BACKUP_B2_WRITER_ENV`, using the
+authenticated `rashadoni/leaddrive-v2` account and a file read (not a public
+workflow input, pasted chat message or `--body` command-line argument):
+
+```bash
+gh secret set BACKUP_B2_WRITER_ENV --env production \
+  --repo rashadoni/leaddrive-v2 < "$B2_WRITER_ENV_FILE"
+```
+
+`B2_WRITER_ENV_FILE` is the path of the existing five-field writer file, NOT
+`restore.env`, a provider master key, an age private identity or a signing key.
+Never create a new key merely to get past this step or print the file. GitHub
+temporarily stages the writer-only credential on an ephemeral Linux runner,
+then pinned SSH transfers it to a root-only production input stage. Neither
+credentials nor predecessor configuration are uploaded as Actions artifacts.
+The encrypted production environment secret persists until the owner removes
+or rotates it; the workflow cleanup removes temporary staging only. This is
+online writer custody, not offline custody of a restore/decryption key.
+
+After ordinary source delivery, wait until reviewed current `main` is actually
+live. Dispatch on that exact main SHA, `expected_main_sha` the same SHA,
+confirmation `CONFIGURE_B2_WRITER_ON_13_140_132_245`, and all evidence/recipient
+inputs empty. The route refuses a commissioned host, independent recovery
+markers or pending commissioning fence. All four schedules must already be
+disabled/inactive and runners inactive. It neither changes their state nor
+recovers a pending fence as an incidental step.
+
+The NEW writer must successfully read Object Lock `Enabled/COMPLIANCE/>=14d`
+from its own endpoint before any canonical configuration change. A timeout,
+denial, missing secret, wrong region or missing lock is a hard failure, not a
+reason to alter bucket policy. This read does **not** prove multipart upload,
+400-day per-object retention, restricted writer/restore privileges, account
+capacity/cost limits or data restoration; those remain separate prerequisites.
+No object is uploaded by configuration itself and no billing setting changes.
+
+Only those five storage fields are atomically replaced. Canonical encryption,
+all recipients, TLS/passwords, retention and other settings remain unchanged.
+A root-only directory `/etc/leaddrive/backup-storage-rollback.<run>.<random>`
+retains the complete predecessor (including old credentials) for protected
+operator recovery. Never publish, copy into a ticket, delete old keys/archives,
+or automatically "clean up" that directory. A failed post-rename durability
+step attempts atomic rollback; a hard host/process crash requires inspection
+of the current environment and protected predecessor before any retry. Do not
+claim crash-atomic certification, enable schedules, or change the recipient.
+Local operators must not concurrently modify `backup.env` or start a recovery
+runner: Actions and commissioning locks serialize the supported entrypoints,
+not arbitrary root activity. A detected pre-commit edit fails closed.
+
+Successful output says only that storage configuration was installed;
+**backup/restore NOT RUN** and Kafka remains NO-GO. Continue below with a fresh
+main-bound Mac receipt; configuration alone is not a recovery certificate.
+
 ## 1. Prepare an owner key-readability receipt
 
 Use reviewed exact main, Node20 and pinned age/age-keygen1.3.2 on the owner's

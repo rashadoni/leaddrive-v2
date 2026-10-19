@@ -16,8 +16,9 @@ without echoing it, keeps it in memory only, and writes each new key into its
 own 0600 file inside a fresh 0700 directory. It prints key IDs and
 capabilities, never a secret.
 
-    writer.env   -> AWS_* lines go into /etc/leaddrive/backup.env during the
-                    reviewed commissioning; nowhere else.
+    writer.env   -> reviewed configure-b2-writer route: protected GitHub
+                    production secret BACKUP_B2_WRITER_ENV, ephemeral runner
+                    staging, then /etc/leaddrive/backup.env; never chat/Git.
     restore.env  -> offline only (password manager / restore-drill machine);
                     never on production, in CI or in Git.
 """
