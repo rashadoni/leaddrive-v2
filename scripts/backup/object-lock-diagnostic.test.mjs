@@ -152,6 +152,28 @@ test('emits only allowlisted reported service categories without error body', ()
   ]) assert.equal(execute({ stderr, status: 254 }), 'service_error_format_unrecognized')
 })
 
+test('recognizes bounded botocore retry metadata while keeping failures redacted and failed', () => {
+  for (const [code, expected] of [
+    ['AccessDenied', 'access_denied'], ['InvalidAccessKeyId', 'credentials_rejected'],
+    ['NoSuchBucket', 'bucket_not_found'], ['ObjectLockConfigurationNotFoundError', 'lock_configuration_missing'],
+    ['InternalError', 'provider_failure'], ['SlowDown', 'throttled'],
+    ['UnknownSensitiveCode', 'service_code_unrecognized'],
+  ]) {
+    for (const attempts of [0, 1, 999]) {
+      const stderr = `An error occurred (${code}) when calling the GetObjectLockConfiguration operation (reached max retries: ${attempts}): ${privateText}\n`
+      assert.equal(execute({ stderr, status: 254 }), expected)
+      assert.notEqual(expected, 'verified')
+    }
+  }
+  for (const suffix of [' (reached max retries: -1)', ' (reached max retries: 1000)',
+    ' (reached max retries: secret)', ' (reached max retries: 1) extra',
+    ' (reached max retries: 1\n)', ' (reached max retries: 1)(reached max retries: 1)']) {
+    assert.equal(execute({ stderr: `An error occurred (AccessDenied) when calling the GetObjectLockConfiguration operation${suffix}: ${privateText}`, status: 254 }), 'service_error_format_unrecognized')
+  }
+  // A different API operation or success-looking failed response never certifies Object Lock.
+  assert.equal(execute({ stderr: `An error occurred (AccessDenied) when calling the PutObject operation (reached max retries: 0): ${privateText}`, status: 254 }), 'service_error_format_unrecognized')
+})
+
 test('distinguishes local TLS/network/CLI/timeout failures without inventing a cause', () => {
   assert.equal(execute({ stderr: `SSL validation failed for https://${privateText}`, status: 255 }), 'tls_error')
   for (const prefix of ['Could not connect to the endpoint URL:', 'Connect timeout on endpoint URL:', 'Read timeout on endpoint URL:']) {
