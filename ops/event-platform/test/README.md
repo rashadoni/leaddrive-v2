@@ -52,6 +52,18 @@ publisher signatures. Production image retention/mirroring and provenance
 remain separate K1.2 prerequisites; this disposable pin refresh does not close
 them or change production services.
 
+### Current disposable pin — 2026-10-19
+
+The preceding October18 receipt is historical. Its `d76ab3d1...` manifest
+now returns404/MANIFEST_UNKNOWN. The current immutable Linux/amd64 pin is
+`ace1609f4f67a6e7ef8b058cc9f2b2fff01c755e4ead74f756132ea74dc19648`.
+The official public manifest/config bytes were independently SHA-256 checked;
+config `07b0cee93f66d2cf14c8771f6ed6aaee6059026c6908412cac4f366d53c8ce0c`
+still identifies Debezium3.7.0.Final and Kafka4.3.1. Coordinator PR909 CDC smoke
+39227102314 passed on that pin. This A4 revision requires its own fresh CI;
+neither that peer smoke nor the old October18 receipt proves its final source.
+This only repairs the disposable fixture, not production images or readiness.
+
 ### Same-version disposable pin refresh — 2026-10-19
 
 The preceding `d76ab3d1…` pin is now historical: a fresh official Quay GET

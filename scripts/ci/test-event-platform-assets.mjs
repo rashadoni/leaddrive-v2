@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { readFile, readdir } from "node:fs/promises"
+import { readFile, readdir, mkdtemp, writeFile, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -19,6 +20,9 @@ const activationEvidence = {
   requestedBy: "operator-a",
   approvedBy: "operator-b",
   kafka: {
+    capacityVerified: true, placementVerified: true, aclNegativeTestsVerified: true,
+    effectiveTopicConfigsVerified: true, infrastructureEvidenceId: "synthetic-topology",
+    replicationFactor: 3, minInSyncReplicas: 2,
     failureDomains: 3, autoTopicCreationDisabled: true, tlsVerified: true,
     encryptionAtRest: true, privateEndpoints: true, backupDrTested: true,
     bootstrapServers: ["broker-a:9093", "broker-b:9093", "broker-c:9093"],
@@ -26,7 +30,7 @@ const activationEvidence = {
   connect: {
     imageDigest: `sha256:${"b".repeat(64)}`, postgresConnectorVerified: true,
     outboxRouterVerified: true, acksAllVerified: true, idempotenceVerified: true,
-    internalTopicReplicationFactor: 3,
+    internalTopicReplicationFactor: 3, outsideWebHostVerified: true,
   },
   registry: {
     privateEndpoint: true, tlsVerified: true, jsonSchemaReferencesVerified: true,
@@ -35,9 +39,14 @@ const activationEvidence = {
   postgres: {
     backupEvidenceId: "restore-1001", restoreVerified: true, walLevel: "logical",
     maxSlotWalKeepSizeBytes: 4_294_967_296, capacityApproved: true,
+    peakWalBytesPerSecond: 1024, maxOutageSeconds: 3600,
+    walWarningBytes: 1_073_741_824, walStopBytes: 2_147_483_648,
+    walDiskBudgetBytes: 8_589_934_592, checkpointOvershootBytes: 1_073_741_824,
+    cdcStopDrillVerified: true, walBudgetEvidenceId: "synthetic-budget",
   },
   archive: { immutable: true, offProviderCopy: true, retentionDays: 400, watermarkAlertLive: true },
   monitoring: {
+    brokerFreeSpace: true, minIsr: true, alertDeliveryVerified: true,
     connectorFailure: true, slotWalBytes: true, postgresFreeSpace: true,
     underReplicatedPartitions: true, consumerLag: true, schemaRejections: true,
     quarantineRate: true, tenantProjectionParity: true,
@@ -65,6 +74,104 @@ assert.throws(
   () => validateActivationEvidence({ ...activationEvidence, postgres: { ...activationEvidence.postgres, walLevel: "replica" } }),
   /wal_level must be logical/,
 )
+
+// A copied template or padded identity must not become an activation receipt.
+for (const [section, field, value] of [
+  [null, "approvedBy", " operator-a "],
+  [null, "requestedBy", "operator-a\n"],
+  [null, "changeId", "__APPROVED_CHANGE_ID__"],
+  ["kafka", "infrastructureEvidenceId", "__INFRASTRUCTURE_EVIDENCE_ID__"],
+  ["postgres", "walBudgetEvidenceId", "<approved-budget-id>"],
+  ["postgres", "backupEvidenceId", "restore\nreceipt"],
+  ["drill", "evidenceId", "__DRILL_RECEIPT__"],
+]) {
+  const invalid = structuredClone(activationEvidence)
+  if (section) invalid[section][field] = value
+  else invalid[field] = value
+  assert.throws(() => validateActivationEvidence(invalid), `${field} must be a real canonical identifier`)
+}
+for (const references of [
+  ["vault://a", "vault://b", "vault://c", "vault://d"],
+  { a: "vault://a", b: "vault://b", c: "vault://c", d: "vault://d" },
+  { ...activationEvidence.secretReferences, postgresCdc: undefined },
+  { ...activationEvidence.secretReferences, postgresCdc: "__SECRET_MANAGER_REFERENCE__" },
+  { ...activationEvidence.secretReferences, postgresCdc: "vault://" },
+  { ...activationEvidence.secretReferences, postgresCdc: "vault://?query-only" },
+  { ...activationEvidence.secretReferences, postgresCdc: "vault://#fragment-only" },
+  { ...activationEvidence.secretReferences, postgresCdc: "vault:// source/password" },
+]) {
+  assert.throws(() => validateActivationEvidence({ ...activationEvidence, secretReferences: references }))
+}
+for (const role of Object.keys(activationEvidence.secretReferences)) {
+  const references = { ...activationEvidence.secretReferences }
+  delete references[role]
+  references.unrelatedExtraRole = "vault://unrelated/extra"
+  assert.throws(() => validateActivationEvidence({ ...activationEvidence, secretReferences: references }),
+    /is required/, `an extra role must not replace ${role}`)
+}
+
+// Malformed credential locations must be rejected without echoing their contents.
+const admissionProbeDirectory = await mkdtemp(path.join(tmpdir(), "ld-activation-admission-"))
+try {
+  const invalid = structuredClone(activationEvidence)
+  const syntheticSensitiveValue = " synthetic-sensitive-reference "
+  invalid.secretReferences.postgresCdc = syntheticSensitiveValue
+  const evidenceFile = path.join(admissionProbeDirectory, "evidence.json")
+  await writeFile(evidenceFile, JSON.stringify(invalid), { mode: 0o600 })
+  const result = spawnSync(process.execPath, [
+    path.join(repoRoot, "scripts/event-platform/activation-preflight.mjs"),
+    "--evidence", evidenceFile, "--expected-environment", "prod",
+    "--expected-sha", activationEvidence.releaseSha,
+  ], { encoding: "utf8" })
+  assert.equal(result.status, 1)
+  assert.equal(result.stdout, "")
+  assert.match(result.stderr, /secretReferences.postgresCdc must not contain surrounding whitespace/)
+  assert.ok(!result.stderr.includes("synthetic-sensitive-reference"), "CLI must not echo malformed secret references")
+} finally {
+  await rm(admissionProbeDirectory, { recursive: true, force: true })
+}
+
+for (const field of ["maxSlotWalKeepSizeBytes", "peakWalBytesPerSecond", "maxOutageSeconds",
+  "walWarningBytes", "walStopBytes", "walDiskBudgetBytes", "checkpointOvershootBytes"]) {
+  for (const value of [undefined, 0, -1, Infinity, NaN, 1.5, "1024", Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => validateActivationEvidence({ ...activationEvidence, postgres: {
+      ...activationEvidence.postgres, [field]: value,
+    } }), `${field} must reject invalid numeric budgets`)
+  }
+}
+// Synthetic admission controls only: these values are not production evidence.
+for (const [section, field, value] of [
+  ["postgres", "maxSlotWalKeepSizeBytes", Infinity],
+  ["postgres", "maxSlotWalKeepSizeBytes", "4294967296"],
+  ["postgres", "maxSlotWalKeepSizeBytes", -1],
+  ["postgres", "walStopBytes", 4_294_967_296],
+  ["postgres", "maxOutageSeconds", 9_000_000],
+  ["postgres", "walDiskBudgetBytes", 4_294_967_296],
+  ["postgres", "cdcStopDrillVerified", false],
+  ["kafka", "failureDomains", 1],
+  ["kafka", "failureDomains", Infinity],
+  ["kafka", "replicationFactor", 1],
+  ["kafka", "minInSyncReplicas", 1],
+  ["kafka", "minInSyncReplicas", 3],
+  ["kafka", "tlsVerified", false],
+  ["kafka", "privateEndpoints", false],
+  ["archive", "retentionDays", 399],
+  ["archive", "offProviderCopy", false],
+  ["monitoring", "consumerLag", false],
+  ["postgres", "peakWalBytesPerSecond", Number.MAX_SAFE_INTEGER],
+  ["kafka", "aclNegativeTestsVerified", false],
+  ["kafka", "placementVerified", false],
+  ["connect", "outsideWebHostVerified", false],
+  ["monitoring", "brokerFreeSpace", false],
+  ["monitoring", "alertDeliveryVerified", false],
+]) {
+  const invalid = structuredClone(activationEvidence)
+  invalid[section][field] = value
+  assert.throws(() => validateActivationEvidence(invalid), `${section}.${field} must block activation`)
+}
+assert.throws(() => validateActivationEvidence({ ...activationEvidence, postgres: {
+  ...activationEvidence.postgres, walStopBytes: undefined,
+} }))
 
 async function readText(relativePath) {
   return readFile(path.join(repoRoot, relativePath), "utf8")
