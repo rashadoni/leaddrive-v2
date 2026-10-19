@@ -51,3 +51,37 @@
 - Next: publish a draft PR, freeze this reviewed source, mark ready and require
   all five real protected SUCCESS checks plus tooling before normal merge.
   New live diagnosis and this source's app deployment remain NOT RUN/pending.
+
+## 2026-10-19 12:50 Asia/Baku — Resume red-gate correction
+
+- Owner said "начинай" after the cross-session audit. Resumed this exact
+  worktree/branch, not the dirty canonical tree. Context/AGENTS, origin,
+  main protection, deploy workflow and pinned production route rechecked:
+  rashadoni/leaddrive-v2,13.140.132.245:/opt/leaddrive-v2, normal GitHub main
+  release only; five required Actions checks and enforce_admins=true unchanged.
+- Actual old c819 source tooling/type/runner/scan/scope and BOTH real CDC jobs
+  passed. Static failed19files versus18baseline: the existing operator input
+  gate requires an explicit named input-validation step for values expanded
+  into a remote command. Not a timeout, not permission to change a baseline.
+- Converted own PR909 to draft, fetched current main51f0634ea and merged it
+  normally as54d833475 (no force/reset/conflicts). Existing B2/Social/demo/etc.
+  upstream changes are inherited, not authored or selectively undone here.
+  Shared main added CI/backup changes; registered route and inspector unchanged.
+- Added a real early `Validate inputs` step before protected-route API/admission
+  and SSH. It calls the existing pure validator, with identical input bindings,
+  no GH token/secret and fixed sanitized refusal. Full independently current-main,
+  normal deployment receipt, ancestor/blob and marker/READ ONLY guards remain.
+  Did not merely rename a step or edit/weaken the failing global safety test.
+- Added regression executing the actual inline workflow validation code under
+  PATH=/nonexistent: default/valid deployed mode succeed; shell-shaped SHA,
+  newline/missing run, mixed mode and unknown mode refuse without acquisition.
+  Explicit ordering and input-binding equality are tested too.
+- Resource preflight: MemAvailable18560MiB,disk211GiB,pressure0.00,
+  existingSwapUsed2156MiB. Sequential109/109 Node tests PASS,0fail/skip,
+  runner policy72workflows PASS,diff PASS. Original Vitest file/full TS/build/
+  PG/Java/Docker NOT RUN locally: no installed worktree dependencies; hosted
+  protected gates will run it. No dependency-wide install or heavy local check.
+- Next: checkpoint four explicit owned paths, publish once while draft, freeze
+  source and mark ready for required hosted verification. No production SQL,
+  timer/key/consumer/offset/replay mutation or new expenses. A3 source/readiness
+  review is read-only in parallel; its current checks cannot be assumed green.

@@ -22,6 +22,12 @@ smoke jobs must be completed successfully on that same run/head/attempt.
 Manual, build-only, skipped, failed, foreign, duplicate and partial receipts
 fail closed. The latest run attempt is read again before admission completes.
 
+A separate named `Validate inputs` step executes the same pure input validator
+before even the protected-route API lookup. It has no GitHub token or production
+secret, emits no values, and rejects mixed, missing or malformed fields with a
+fixed error. Full receipt/main/blob admission remains mandatory afterward;
+the early shape check is not a replacement for evidence or route protection.
+
 GitHub compare must identify the release as current main's ancestor or the
 identical commit, with matching base/merge-base and zero commits behind. No
 local history fetch is needed. Fixed, nonrecursive Git tree walks must find

@@ -37,6 +37,15 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Validate inputs before any network or production access
+        env:
+          INSPECTION_ADMISSION_MODE: ${{ inputs.admission_mode }}
+          INSPECTION_DEPLOYED_SHA: ${{ inputs.deployed_sha }}
+          INSPECTION_DEPLOY_RUN_ID: ${{ inputs.deploy_run_id }}
+        run: |
+          set -euo pipefail
+          node --input-type=module -e 'import { validateInventoryInputs } from "./scripts/event-platform/inventory-admission.mjs"; try { validateInventoryInputs(process.env) } catch { process.stderr.write("INVENTORY_ADMISSION_INPUT_INVALID\n"); process.exitCode = 1 }'
+
       - name: Require protected production route
         uses: ./.github/actions/assert-production-environment-protection
         with:
