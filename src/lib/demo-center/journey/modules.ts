@@ -58,8 +58,8 @@ export const DEMO_JOURNEY_MODULES = [
   {
     id: "route-field",
     title: "Marşrut & Sahə",
-    pitch: "Agentlərin günü: xəritədə marşrut, canlı xəritə, vizitin sübutu və plan-fakt.",
-    sections: ["mtm-today", "mtm-plan", "mtm-live", "mtm-visit", "mtm-place", "mtm-results"],
+    pitch: "Agentin bir günü: müştərinin yeri, sabahın marşrutu, canlı xəritə, vizitin sübutu, axşam günün yolu və həftənin nəticəsi.",
+    sections: ["mtm-today", "mtm-place", "mtm-plan", "mtm-live", "mtm-visit", "mtm-history", "mtm-results"],
   },
   {
     id: "personnel",

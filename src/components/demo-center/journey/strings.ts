@@ -267,6 +267,10 @@ export const DEMO_JOURNEY_STRINGS = {
   mtmSampleDayNote: "nümunə gün",
   mtmBreakPrivate: "Agent fasilədədir. Fasilə şəxsi vaxtdır: bu müddətdə onun yeri yazılmır və heç kimə göstərilmir — şirkətin istəyindən asılı olmayaraq.",
   mtmOtherAgentDay: "Bu demoda günün addım-addım siyahısı Elvin Qasımov üçün göstərilir.",
+  mtmNearestCallTitle: "Nümunə zəng",
+  mtmNearestCall: "Nar Klinikadan zəng: Dr. Leyla Abbasova bu gün görüş istəyir. Kim daha yaxındır?",
+  mtmLiveMovingNote: "Xəritə hər 30 saniyədən bir yenilənir; demoda vaxt sürətləndirilib.",
+  mtmEveningAsOf: (time: string) => `saat ${time} — günün sonu (nümunə gün)`,
   // Personnel (Kadr uçotu).
   personnelTabHint: "Bu demoda Kadr uçotu bölmələrini bələdçi açır — onun addımını izləyin.",
   personnelPrivacy: "Biometriya yoxdur: nə üz, nə barmaq izi. Fasilədə yalnız vaxt görünür — əməkdaşın yeri yazılmır. Günü əməkdaş özü bağlayır.",
