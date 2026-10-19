@@ -85,3 +85,35 @@
   source and mark ready for required hosted verification. No production SQL,
   timer/key/consumer/offset/replay mutation or new expenses. A3 source/readiness
   review is read-only in parallel; its current checks cannot be assumed green.
+
+## 2026-10-19 — Combined main and known disposable registry outage
+
+- A3 source736f3982e completed all required checks plus actual owner/pgpass/PG
+  extras. Root reviewed its source/authority boundaries and normally merged892
+  as0d95071891ea8baec1a56459a440c54a680f9801 at08:57:09UTC. Automatic
+  app release39226449813 active, not yet counted as deployed. Source only;
+  no real backup/restore/provider/timer/consumer action. Owner-only evidence
+  must remain separate from independent/enterprise readiness.
+- Reconciled this branch once more with that reviewed main as199d8b1b1. This
+  tests the final combination and inherits A3's actually exercised finite45min
+  static budget; no tests/baselines removed. The earlier900 checks are historical
+  once final source is published; do not duplicate or manually cancel jobs.
+- Combined-tree109/109 targeted tests and74-workflow policy PASS. Preflight
+ 18303MiB RAM available,211GiB disk,pressure0.00,existingSwap2155MiB.
+- Before final source freeze, independently confirmed A5's already prepared
+  disposable image issue: official Quay oldd76ab3d1 manifest GET404 with exact
+  MANIFEST_UNKNOWN; replacementace1609f GET200/4658bytes and exactSHA256,
+  config07b0cee93f66d2cf14c8771f6ed6aaee6059026c6908412cac4f366d53c8ce0c.
+  Internal read-only verification also matched the official3.7.0.Final index's
+  Linux/amd64 selection and hashed config version/entrypoint. No layer download,
+  Docker, installation or production image action on Contabo.
+- Reused exactly one already tested A5aa2 Compose digest replacement, same
+ 3.7.0.Final/plugin/Kafka4.3.1. Appended current-versus-historical pin evidence.
+  Existing runtime plugin/source/SQL/isolation assertions stay unchanged. This
+  is a real observed registry outage fix in the prepared test harness, not new
+  platform scope. Fresh final-source hosted CDC proof is now required, not a
+  stale cached result; any draft-snapshot skip must remain NOT RUN.
+- Next: narrow assets/syntax/diff validation, checkpoint/push final combined
+  source while draft, confirm remote head before ready, require current five
+  protected SUCCESS checks/tooling/actual CDC before normal merge. No source
+  churn while gates run. Production inspection/real recovery remain pending.
