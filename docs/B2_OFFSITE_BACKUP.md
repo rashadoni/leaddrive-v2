@@ -203,3 +203,98 @@ SignatureDoesNotMatch и timeout. Исправленная проверка тр
 `AccessDenied`; неизвестная причина теперь FAIL. Поэтому отказ записи restore
 с пустым кодом нужно повторить исправленным скриптом, а не считать доказанным.
 Реальные ключи и production в этой проверке не использовались.
+
+## Диагностика непонятного отказа PutObject — 2026-10-19
+
+На Mac владельца FileVault теперь сообщает On; исправленный тест ключей
+подтвердил multipart upload, HEAD, побайтное скачивание и три AccessDenied.
+Но restore PutObject всё ещё завершается с неизвестной причиной: RESULT1failure.
+Это не доказательство лишних прав и не доказательство их отсутствия. Object Lock
+сообщает ObjectLockConfigurationNotFoundError; активация остаётся заблокированной.
+
+`scripts/backup/b2-put-diagnostic.py restore.env` — отдельная диагностика,
+не receipt активации. Она делает две попытки PutObject со случайным синтетическим
+файлом1КиБ под lifecycle-префиксом, отдельно when_supported/when_required.
+Это проверяет гипотезу клиентского checksum-format отказа, не утверждая её заранее.
+Каждая попытка ограничена45секундами; AWS auto-retries отключены. Никаких
+production-вызовов, установки пакетов, правки policy/ключей, Object Lock или
+финансовых настроек. При неожиданном успехе объект остаётся до lifecycle.
+
+Вывод — только JSON с фиксированными категориями, exit code и checksum mode.
+Исходный stderr/ключи/endpoint/bucket не печатаются. Числовые service codes,
+сеть, credentials и unknown НЕ становятся успешным запретом доступа. Параметры
+читаются из принадлежащего оператору обычного0400/0600файла, не исполняются как shell.
+Статус FileVault не заменяет реальный restore, signed custody или исходный Kafka gate.
+
+### Повторный Mac результат: connection_closed в обоих режимах
+
+Скриншот владельца для85f14c684: AWS CLI255/connection_closed и для
+when_supported, и дляwhen_required. Это опровергает достаточность переключения
+checksum режима для данного случая, но не устанавливает корневую причину
+и не доказывает ACL. FileVault On по предшествующему выводу.
+
+Дополнительный режим: `b2-put-diagnostic.py writer.env restore.env`. Использует
+встроенный curl SigV4 (не собственную реализацию подписи), HTTPS/HTTP1.1, фиксированное
+тело1КиБ, пустой Expect header, без inherited curl config/редиректов/TLS bypass.
+Credentials передаются только в stdin curl config. Каждый запрос ограничен30с
+и40с локальным timeout, retries0, ответ≤16КиБ, stdout содержит только fixed JSON.
+Требует успешный writer PUT, побайтный restore GET и затем HTTP403 с XML-кодом
+AccessDenied на restore PUT. Сеть, подпись, другие HTTP/коды и неожиданный успех
+остаются FAIL; частичный успех не является readiness receipt. Синтетические
+объекты остаются под существующим lifecycle-префиксом. Object Lock/gates не меняются.
+
+Выбор альтернативного клиента — проверка гипотезы формата запроса: botocore
+[добавляет Expect100-continue для file-like body](https://github.com/boto/botocore/blob/develop/botocore/handlers.py).
+Причина реального обрыва этим не доказана. curl документирует
+[SigV4 и stdin config](https://curl.se/docs/manpage.html); B2 поддерживает
+[SigV4](https://postman.backblaze.com/). Живой результат этого режима ещё NOT RUN.
+
+### Живые curl controls прошли — скриншот владельца 2026-10-19
+
+Для точного1e3ccaf70a7e4c5d4e770d653faf3558be459fb2 на Mac получено:
+writer_put curl0/HTTP200; restore_get curl0/HTTP200 с побайтным сравнением;
+restore_put curl0/HTTP403/AccessDenied. Все три passed=true; итог
+curl_controls_passed_not_activation_evidence. Это закрывает неизвестность
+конкретного restore-write ACL control, а не доказывает activation/restore readiness.
+Первичный AWS CLI255/connection_closed остаётся исторически неуспешным результатом,
+и его корневая причина не установлена. Новые права/ключи для этого не выдавались.
+
+FileVault On и синтетическая Mac workbench/swap проверка — отдельные receipts.
+Настоящий backup и restore по-прежнему NOT RUN. Object Lock по последнему
+реальному ответу не настроен; writer transfer/custody и reviewed commissioning
+route ещё нужны. В owner-operated A3 путь нельзя попасть слиянием удерживаемого
+PR без решения исходного координатора.
+
+Следующая owner-side подготовка в авторизованной B2 консоли: Buckets →
+leaddrive-prod-backups → Object Lock: Disabled → Enable Object Lock on this bucket;
+затем Object Lock: Enabled → default retention14days, COMPLIANCE → Save changes.
+Включение bucket flag необратимо, default retention применяется к новым объектам;
+это не retroactive lock уже существующей синтетики. Карта/финансовые caps остаются
+без изменений; расписание, не укладывающееся в10GB, этим не признаётся устойчивым.
+Источник UI-порядка: https://www.backblaze.com/docs/cloud-storage-enable-object-lock-or-a-legal-hold-on-an-existing-bucket .
+Операторское подтверждение этих настроек/новый machine receipt пока NOT RUN.
+
+### Object Lock flag и default14days — owner UI receipt
+
+Новые скриншоты владельца2026-10-19 показывают Object Lock Enabled, затем
+Object Lock: Default14Days на private bucket с включённым шифрованием.
+Это supersedes прежнее Disabled для UI-состояния. Режим COMPLIANCE в самой
+карточке не показан; API/readiness admission должен отдельно подтвердить
+Enabled/COMPLIANCE/Days>=14 после защищённой настройки writer. Не считать
+UI receipt фактическим backup, individual-version retention или restore.
+
+Текущий delivery blocker: A3PR892 остаётся OPEN/held за общим audit909;
+исходная сессия-координатор сообщает ошибку доступности модели.
+Владелец уже разрешил commissioning, но передача координации B2/restore
+ещё запрошена отдельно от Kafka/финансов/независимой готовности.
+Без нового решения не сливать удерживаемый A3 или подделывать независимые
+доказательства; credential/custody transfer и реальный backup/restore NOT RUN.
+
+### Решение владельца о доставке
+
+Владелец выбрал «Оставить доставку исходной сессии». Координация actual B2
+commissioning/restore остаётся у «Проверить защиту Kafka-консюмера»; pending
+предложение передать её A4 superseded. Разрешение на commissioning уже дано,
+но A4 не берёт на себя удерживаемую A3/audit интеграцию и runtime ceremony.
+Все подготовленные UI/ACL/Mac receipts сохранены; COMPLIANCE API readback,
+writer configuration, accepted custody и actual backup/restore остаются NOT RUN.
