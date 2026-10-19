@@ -482,6 +482,18 @@ jobs:
           DEMO_WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           DEMO_WHATSAPP_TICKET_DB_GATE: required
 
+      - name: Demo social release database gate
+        # Same gate as in pr-checks: a prospect's Facebook Page connected to the
+        # demo is unsubscribed at Meta and wiped, never where an organisation
+        # still relies on the Page or its Instagram account, the person's grant
+        # never touched, each Meta call sent once, with only
+        # graph.facebook.com stubbed and a role that cannot bypass RLS (see the
+        # test's header).
+        run: npx vitest run src/__tests__/demo-social-release-postgres.test.ts
+        env:
+          DEMO_SOCIAL_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEMO_SOCIAL_RELEASE_DB_GATE: required
+
       - name: Finance Telegram recipient database gate
         # Same gate as in pr-checks: each organization's finance notices go to
         # its own Telegram chat through its own bot, and never to a chat named
@@ -1782,6 +1794,42 @@ jobs:
                  exit 1
                fi
              done'
+
+      # A prospect's Facebook Page connected to the demo is unbound by this
+      # schedule. The demo's live check already stops all use when it does not
+      # run; this proves it is scheduled once and answers, and fails the deploy
+      # if any connection is more than 30 minutes past its end without a single
+      # release attempt — the sign of a cron that is not running.
+      - name: Verify the demo social release scheduler
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail
+             CRONTAB="$(crontab -l 2>/dev/null)"
+             ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
+               $0 !~ /^[[:space:]]*#/ &&
+               $0 ~ /cron-trigger\.sh \/api\/cron\/demo-social-release/ { count++ }
+               END { print count + 0 }
+             '\'')"
+             if [ "$ACTIVE_COUNT" -ne 1 ]; then
+               echo "FATAL: expected exactly one active demo social release cron; found $ACTIVE_COUNT"
+               exit 1
+             fi
+             if ! systemctl is-active --quiet cron.service; then
+               echo "FATAL: cron.service is not active"
+               exit 1
+             fi
+             SMOKE_OUTPUT="$(CRON_TRIGGER_LOCK_WAIT_SECONDS=120 /usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-trigger.sh "/api/cron/demo-social-release?smoke=1")"
+             printf "%s\n" "$SMOKE_OUTPUT"
+             if ! printf "%s\n" "$SMOKE_OUTPUT" | grep -Fq '\''"smoke":true'\''; then
+               echo "FATAL: demo social release cron smoke was not side-effect-free and successful"
+               exit 1
+             fi
+             if ! printf "%s\n" "$SMOKE_OUTPUT" | grep -Eq '\''"stranded":0[,}]'\''; then
+               echo "FATAL: a demo social connection is past its end and was never released"
+               exit 1
+             fi'
 
       - name: Verify missed inbound reconciliation scheduler
         if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}

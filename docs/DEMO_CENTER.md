@@ -78,6 +78,80 @@ screens. The contract, coverage inventory and trust-boundary tests live in
 still serves the catalog; the access, confirmation and one-session lifecycle in this
 document stay unchanged.
 
+## Live social connections
+
+A prospect may connect his own Facebook Page to the demo for one day, write
+to it with the session's code and watch the AI answer. Unlike the WhatsApp
+thread, which runs on our own number, this means holding a token to somebody
+else's Page and a webhook subscription on it. So it is built release first:
+the code that unbinds a Page (`src/lib/demo-center/demo-social-release.ts`,
+cron `/api/cron/demo-social-release` every five minutes) shipped and ran on
+production's empty table before any code that connects one.
+
+Rules that hold for every later change:
+
+- **Release before connect.** Nothing may create a row in
+  `demo_social_connections` unless the release engine in production can undo it.
+- **One function decides whether a connection is live:**
+  `demoSocialReleaseReason` (`src/lib/demo-center/demo-social-connection.ts`).
+  The webhook, the send path, the demo page and the cron all ask it. It reads
+  timestamps and the grant's state, never the grant's status alone — a closed
+  tab stays ACTIVE in the database (`access.ts` expires grants lazily). With
+  the cron down, use still stops on time; only the unbinding waits.
+- **Record before acting at Meta.** Store the user-token cipher right after the
+  code exchange, and the Page-token cipher before `POST subscribed_apps`. A
+  crash in between then leaves a row the engine can undo, and wipe.
+- **Tokens only through `encryptToken`**, with the purpose
+  `demoSocialTokenPurpose(rowId, "user" | "page")`; a CHECK refuses anything
+  that is not `v1:` ciphertext. Every Graph call sends its token as a Bearer
+  header, never in a URL or a log, and stops after 10 seconds
+  (`src/lib/social/meta-unbind.ts`).
+- **Never write to a tenant.** The rows have no organisation; they are control
+  plane, behind the system-bypass policy. Nothing goes into `channel_configs`,
+  `social_accounts`, `channel_messages`, `social_conversations`, contacts,
+  notifications or the AI log.
+- **Never unsubscribe a claimed Page.** A Page's subscription to our app is
+  shared by every organisation that uses the Page through it. Before the
+  unsubscribe the engine asks `claimedMetaPageIds`
+  (`src/lib/social/meta-page-claims.ts`, across every organisation, under
+  bypass) about the Page id and the linked Instagram account's id
+  (`linkedInstagramId`), and keeps the subscription when anyone relies on
+  either (`kept_claimed`). The Instagram id matters because an organisation's
+  Instagram inbox channel stores it as `channel_configs.pageId`, Social
+  Monitoring stores it as `social_accounts.handle`, and Instagram DMs ride the
+  linked Facebook Page's subscription: an organisation using the Page only
+  through Instagram must block the unsubscribe too. **PR 2 must store
+  `linkedInstagramId` at connect whenever Meta returns it** (the Page's
+  `instagram_business_account`); a row without it is checked by its Page id
+  alone.
+- **Never revoke the person's Meta grant.** Unbinding means the Page
+  unsubscribed from our app and every token and identifier of ours wiped; the
+  engine sends nothing for the grant and never decrypts the user token
+  (`grantRevokeOutcome` is `kept_by_design`, or `no_token` when none was
+  stored). A revoke (`DELETE /me/permissions`) can never be proven safe:
+  `/me/accounts` does not list Pages reached through a business portfolio
+  (`src/lib/social/meta-granted-assets.ts`, observed 2026-09-20 on app
+  2414060595720618), so «no Page this grant reaches is claimed» could only be
+  read from `debug_token`. On the owner's own account it would kill LeadDrive
+  Inc.'s staged Page tokens, and it let one row's revoke kill a due sibling's
+  Page token before that sibling had unsubscribed. The authorization stays
+  with the person, who can remove LeadDrive in Meta's Business Integrations.
+  **For PR 2:** the connect panel links to Business Integrations, and the
+  consent text must say that the authorization stays with him after the demo
+  and that he can remove LeadDrive there.
+
+What the release leaves behind: the wiped row (timestamps, reason, Meta's
+answer to the unsubscribe as a short code, counts) and the `SOCIAL_*` events,
+whose metadata carries no Page id, Instagram id, sender id, name or text. At
+Meta, the person's own authorization of our app stays until he removes it. An
+unsubscribe that Meta never answers is retried every tick, rows never tried
+first; 24 hours after the release was asked for, the row is wiped anyway and
+recorded as `SOCIAL_RELEASE_INCOMPLETE`. Each attempt holds a two-minute lease
+taken on the clock of the claim, so a run that started long ago cannot hand
+out a lease that has already run out. The deploy step «Verify the
+demo social release scheduler» fails when a connection is more than 30 minutes
+past its end without a single attempt.
+
 ## Voice phase
 
 The current release is intentionally silent. Narration must use the approved

@@ -24,6 +24,7 @@ import { createRequire } from "node:module"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import path from "node:path"
 import { NextRequest } from "next/server"
+import { Prisma } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
 const adminUrl = process.env.DEMO_CENTER_TEST_DATABASE_URL
@@ -61,7 +62,7 @@ vi.mock("@/lib/demo-center/sales-org", () => ({
 }))
 
 const ROOT = process.cwd()
-const DEMO_TABLES = ['"demo_requests"', '"demo_grants"', '"demo_access_events"', '"demo_phone_verifications"', '"demo_whatsapp_threads"']
+const DEMO_TABLES = ['"demo_requests"', '"demo_grants"', '"demo_access_events"', '"demo_phone_verifications"', '"demo_whatsapp_threads"', '"demo_social_connections"']
 
 // Resolved like any import, so it works from a git worktree without its own node_modules.
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
@@ -100,7 +101,7 @@ pgDescribe("demo tables on a real Postgres", () => {
     execute(adminUrl!, ["--stdin"], `CREATE DATABASE "${scratch!.name}"`)
     const migrations = demoMigrations()
     // The first one creates the tables; a filter that found none would test nothing.
-    expect(migrations.length).toBeGreaterThanOrEqual(7)
+    expect(migrations.length).toBeGreaterThanOrEqual(8)
     for (const file of migrations) execute(scratch!.url, ["--file", file])
     prisma = (await import("@/lib/prisma")).prisma
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
@@ -346,6 +347,94 @@ pgDescribe("demo tables on a real Postgres", () => {
     const other = await make("b", "c")
     await bypass(() => prisma.demoWhatsAppThread.update({ where: { id: other.id }, data: { provenAt: new Date(), ticketModeAt: new Date() } }))
     await expect(bypass(() => prisma.demoWhatsAppThread.update({ where: { id: other.id }, data: { ticketId: "ticket-1" } }))).rejects.toThrow()
+  })
+
+  it("holds a prospect's Facebook Page connection to what the release can undo", async () => {
+    const { encryptToken } = await import("@/lib/secure-token")
+    const { demoSocialCode, demoSocialTokenPurpose } = await import("@/lib/demo-center/demo-social-connection")
+    const grant = await grantInState((await storedRequest("social-page@example.az")).id, "d", session(1, "d"))
+    const now = new Date()
+    let seq = 0
+    const connection = (data: Record<string, unknown> = {}) => {
+      seq += 1
+      const id = `social-${seq}`
+      return bypass(() =>
+        prisma.demoSocialConnection.create({
+          data: {
+            id, grantId: grant.id, appConfigId: "cc-meta-app", code: demoSocialCode(grant.id),
+            createdAt: now, expiresAt: new Date(now.getTime() + 8 * 3_600_000),
+            ...data,
+          },
+        }),
+      )
+    }
+    const cipher = (kind: "user" | "page") => encryptToken("EAAG-token", demoSocialTokenPurpose("social-x", kind))
+    const wiped = { scrubbedAt: now, releaseRequestedAt: now, releaseReason: "day_over", unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_by_design" }
+
+    await expect(connection({ userTokenCipher: "EAAG-plaintext" })).rejects.toThrow() // a token that is not ciphertext
+    await expect(connection({ pageTokenCipher: "EAAG-plaintext", pageId: "123" })).rejects.toThrow()
+    await expect(connection({ pageTokenCipher: cipher("page") })).rejects.toThrow() // a Page token without its Page
+    await expect(connection({ pageId: "../me" })).rejects.toThrow() // not a Page id
+    await expect(connection({ pageId: "123", linkedInstagramId: "ig-account" })).rejects.toThrow() // not Meta's number
+    await expect(connection({ ...wiped, pageId: "123" })).rejects.toThrow() // wiped, and still naming the Page
+    await expect(connection({ ...wiped, userTokenCipher: cipher("user") })).rejects.toThrow() // wiped, and still holding a token
+    await expect(connection({ ...wiped, linkedInstagramId: "17841400000000001" })).rejects.toThrow() // wiped, and still naming the Instagram account
+    await expect(connection({ ...wiped, grantRevokeOutcome: null })).rejects.toThrow() // wiped, and no record of what became of the grant
+    await expect(connection({ ...wiped, unsubscribeOutcome: null })).rejects.toThrow() // wiped, and no one knows what Meta answered
+    await expect(connection({ expiresAt: new Date(now.getTime() + 25 * 3_600_000) })).rejects.toThrow() // more than a day
+    await expect(connection({ releaseRequestedAt: now, releaseReason: "bored" })).rejects.toThrow() // a reason the code does not have
+    await expect(connection({ releaseReason: "day_over" })).rejects.toThrow() // a reason with no moment the release was asked for
+    await expect(connection({ unsubscribeOutcome: "maybe" })).rejects.toThrow()
+    await expect(connection({ grantRevokeOutcome: "maybe" })).rejects.toThrow()
+    await expect(connection({ grantRevokeOutcome: "revoked" })).rejects.toThrow() // the release never revokes the person's grant
+    await expect(connection({ grantRevokeOutcome: "kept_shared" })).rejects.toThrow()
+    await expect(connection({ aiReplies: 21 })).rejects.toThrow()
+    await expect(connection({ releaseError: "meta_190: Error validating access token for Nigar" })).rejects.toThrow() // Meta's text
+    await expect(connection({ code: "LD-zz" })).rejects.toThrow()
+    await expect(connection({ platform: "instagram" })).rejects.toThrow() // not yet
+
+    const live = await connection({
+      pageId: "123", linkedInstagramId: "17841400000000001", pageTokenCipher: cipher("page"), userTokenCipher: cipher("user"),
+      releaseError: "meta_190_460", pendingPages: [{ id: "123", name: "Xəzər" }],
+    })
+    await expect(connection()).rejects.toThrow() // a second live connection for the same grant
+    const other = await grantInState((await storedRequest("social-page-2@example.az")).id, "e", session(1, "e"))
+    await expect(connection({ grantId: other.id, pageId: "123" })).rejects.toThrow() // a second live connection for the same Page
+
+    // Once the first one is wiped, the Page and the grant are free again.
+    await bypass(() =>
+      prisma.demoSocialConnection.update({
+        where: { id: live.id },
+        data: { ...wiped, pageId: null, linkedInstagramId: null, pageTokenCipher: null, userTokenCipher: null, pendingPages: Prisma.DbNull },
+      }),
+    )
+    const again = await connection({ grantId: other.id, pageId: "123" })
+    await connection({ ...wiped, grantId: null, grantRevokeOutcome: "no_token" }) // a wiped row that never held a user token
+    await connection()
+
+    // A message once: Meta's repeated delivery is refused, and the text has a limit.
+    await bypass(() => prisma.demoSocialMessage.create({ data: { connectionId: again.id, direction: "inbound", text: "Salam", externalId: "m_1" } }))
+    await expect(bypass(() => prisma.demoSocialMessage.create({ data: { connectionId: again.id, direction: "inbound", text: "Salam", externalId: "m_1" } }))).rejects.toThrow()
+    await expect(bypass(() => prisma.demoSocialMessage.create({ data: { connectionId: again.id, direction: "inbound", text: "x".repeat(1001) } }))).rejects.toThrow()
+    await expect(bypass(() => prisma.demoSocialMessage.create({ data: { connectionId: again.id, direction: "sideways", text: "x" } }))).rejects.toThrow()
+
+    // Deleting the grant keeps the connection, so its binding at Meta can still be undone.
+    await bypass(() => prisma.demoGrant.delete({ where: { id: other.id } }))
+    const kept = await bypass(() => prisma.demoSocialConnection.findUniqueOrThrow({ where: { id: again.id } }))
+    expect(kept.grantId).toBeNull()
+    expect(kept.pageId).toBe("123")
+    expect(await bypass(() => prisma.demoSocialMessage.count({ where: { connectionId: again.id } }))).toBe(1)
+  })
+
+  it("stores the Page connection's events in the access trail", async () => {
+    const { autoIssueDemoGrant } = await import("@/lib/demo-center/auto-issue")
+    const request = await storedRequest("social-events@example.az")
+    await autoIssueDemoGrant({ request })
+    const grant = await bypass(() => prisma.demoGrant.findFirstOrThrow({ where: { requestId: request.id } }))
+    for (const eventType of ["SOCIAL_CONNECTED", "SOCIAL_PROVEN", "SOCIAL_AI_REPLIED", "SOCIAL_RELEASED", "SOCIAL_RELEASE_INCOMPLETE"]) {
+      await bypass(() => prisma.demoAccessEvent.create({ data: { grantId: grant.id, eventType } }))
+    }
+    await expect(bypass(() => prisma.demoAccessEvent.create({ data: { grantId: grant.id, eventType: "SOCIAL_SOMETHING" } }))).rejects.toThrow()
   })
 
   it("decides a welcome under one lock: a phone's week holds across demos, and a failed send gives the claim back", async () => {

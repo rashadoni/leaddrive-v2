@@ -60,6 +60,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/mtm-attendance-reports/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-attendance-reminders/ { next }
   /cron-trigger\.sh \/api\/cron\/demo-call-retention/ { next }
+  /cron-trigger\.sh \/api\/cron\/demo-social-release/ { next }
   /cron-trigger\.sh \/api\/cron\/campaign-scheduled-send/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-demo-pulse/ { next }
   /cron-trigger\.sh \/api\/cron\/sla-escalation/ { next }
@@ -112,6 +113,14 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # first sentence, and the prospect agreed to exactly that. Daily is plenty
   # for a 90-day promise; the endpoint touches only calls the demo placed.
   printf '%s\n' "17 3 * * * $TRIGGER /api/cron/demo-call-retention >> $LOG 2>&1"
+  # A prospect's own Facebook Page is connected to the demo for one day at
+  # most. This sweep unbinds every connection that is over — unsubscribes the
+  # Page from our app and wipes our copy; the person's own Meta grant stays
+  # his (docs/DEMO_CENTER.md says why) — and the demo's own live check already
+  # stops all use without it. Every five minutes, because the unbinding is
+  # what the prospect was promised; a tick with nothing due reads one empty
+  # table, and each row is leased, so overlaps send nothing twice.
+  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/demo-social-release >> $LOG 2>&1"
   # A route stays PLANNED/IN_PROGRESS until a person closes it, so an ordinary
   # interrupted day never ended: prod had fourteen August routes sitting in the
   # "in progress" list. This sweep retires days that are over to INCOMPLETE.
