@@ -50,3 +50,22 @@ test('require every gate read-back, including final tenant parity receipt', asyn
   const f = fixture(); f.receipts.at(-1).acknowledged = false
   await rejected(f)
 })
+test('shared expected-scope mutation cannot authorize different read-back environment', async () => {
+  const f = fixture(), read = f.read
+  f.read = async id => {
+    f.expected.environment = 'production'
+    for (const receipt of f.receipts) receipt.environment = 'production'
+    return read(id)
+  }
+  await rejected(f)
+})
+test('authority and result stay pinned while caller changes its shared object', async () => {
+  const f = fixture(), read = f.read
+  f.read = async id => { f.expected.changeId = 'unrelated-change'; f.expected.destinationId = 'other'; return read(id) }
+  assert.deepEqual(await verifyOperatorAlertEvidence(f.evidence, f.expected, f.read), { verified: true, gateCount: 10, changeId: 'change-1' })
+})
+test('validated receipt manifest remains stable across asynchronous reads', async () => {
+  const f = fixture(), read = f.read
+  f.read = async id => { f.evidence.receipts.at(-1).receiptId = 'untrusted-replacement'; return read(id) }
+  assert.equal((await verifyOperatorAlertEvidence(f.evidence, f.expected, f.read)).gateCount, 10)
+})

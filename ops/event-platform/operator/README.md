@@ -97,3 +97,286 @@ trusted executor deferral/deadline handling; worker stop/actual-close; catch-up/
 real alarm challenge/read-back; promotion/rollback under load; independent
 restore, HA/TLS/ACL and separate authorization. No permission to execute those
 production operations is implied by this SQL file.
+
+## Inactive recovery receipt and test-only shadow composition
+
+The recovery manifest gate additionally checks exact approved bytes, tenant /
+build / code / broker / pointer pins, full partition coverage and checkpoint /
+archive next-position parity, stop and restore references, no effects, and
+per-aggregate source versus shadow counts, versions, history/state hashes,
+fixed-scale decimal balance and currency. Offset totals alone cannot pass an
+incorrect reducer with offsetting aggregate errors. Rollback additionally pins
+the retained target, compatibility, write fence and unexpired rollback window.
+
+This checker does not create its own authority: receipt producers/read-back,
+continuous soak telemetry, actual worker close and independent restore evidence
+are still missing runtime integrations. Synthetic fixture references do not
+certify them. The manifest byte digest differs from the plan's DB jsonb digest.
+
+`shadow-fixture.sql` belongs ONLY to the disposable test harness. It creates no
+application build/pointer/projection table and is not deployable runtime code.
+It demonstrates same-transaction admission/evidence/target checks, pointer CAS,
+immutable transition evidence and settle, with deferred lease expiry rolling
+back the whole switch. The fixture's trusted owner registers evidence after
+calling the manifest checker; controller privileges cannot mint verification.
+This does not close integration with the real Fund pointer/read path or any
+other domain, which remains subject to independent restricted-SQL proof.
+
+## Real-schema read-only Fund evidence (inactive)
+
+`operator-fund-snapshot.mjs` and its parameterized SQL read the actual Fund /
+event/outbox/head/projection/inbox/checkpoint schema. This is not a CLI and
+has no credential/production fallback or application startup integration.
+The caller supplies a real transaction factory, trusted scoped inventory and
+the existing canonical Fund reducer from the verified artifact. The function
+cannot authenticate a caller-supplied replacement reducer: that provenance is
+part of trusted server composition and the separate A1/A2 artifact contract.
+
+The reader sets READ ONLY first, requires RepeatableRead, a named restricted
+login, nine real FORCE-RLS tables, no inherited ownership and no write grants.
+The independent complete Fund-ID inventory is mandatory: internally consistent
+partial RLS visibility must not certify a whole tenant. Limits200 funds/1000
+source events/128 checkpoint entries,16KiB per source envelope and1MiB returned
+raw data fail closed. Larger histories need a separately designed bounded
+paging/snapshot contract; the reader never silently truncates or admits them.
+
+Source envelopes are processed internally with the existing pure reducer and
+are not returned or logged. The output contains aggregate hashes/exact money,
+DB timestamp/MVCC snapshot identity and last→next DB checkpoint positions.
+Fund money is NUMERIC(18,4), superseding the earlier synthetic six-place format.
+The MVCC identifier is not an exported snapshot, PITR point or archive watermark.
+It cannot bridge a later promotion transaction or authenticate broker offsets.
+`brokerPositionsAuthenticated` and `externalEvidenceVerified` remain false.
+
+The pilot deliberately requires canonical source, Fund, active-v1 and shadow
+parity, including shadow last-event time evidence. It does not approve a repair
+that intentionally diverges from active-v1/Fund. Such a repair needs a separately
+approved baseline-drift/correction policy and command-side financial invariants;
+it must not be enabled by relaxing this checker or overwriting source facts.
+
+Own CI reuses the unchanged legacy base.sql and all three actual migrations,
+compiles the existing canonical reducer with minimal pinned fixture dependencies,
+and runs restricted-reader tests. All seeded source/positions are disposable
+fixtures, not actual Kafka delivery, consumer execution or runtime cutover.
+
+### Inactive canary result contract
+
+`operator-fund-canary.mjs` validates a trusted single-snapshot read result against
+an independently authorized explicit opt-in scope: tenant, pointer version
+(bigint string), promoted fenced build, code/key/version and complete Fund
+inventory. It returns only immutable exact decimal balances and event versions;
+missing/duplicate/foreign rows and stale/rolled-back pointers fail closed.
+This pure validator does not read a database, authenticate scope, establish
+snapshot consistency or freshness, authorize correction, or wire any API.
+A later restricted read adapter must obtain all inputs in one transaction and
+prove actual pointer promotion/rollback visibility against real migrations.
+The existing worker's running-only admission remains unresolved; do not change
+it to accept promoted builds without its lease/lifecycle contract and proof.
+
+### Inactive real canary read adapter (supersedes pure-contract-only boundary)
+
+`operator-fund-canary-reader.mjs` now composes the pure contract with an actual
+read-only RepeatableRead transaction factory supplied by trusted server code.
+It requires a separately provisioned exact nonprivileged session login and
+FORCE RLS on activation/build/Fund projection/source-head tables, refuses table
+or column write grants, and reads the bounded pointer/build/rows in one query.
+The complete visible source-head inventory must match the independent authorized
+Fund inventory, and each projected event/version must match its source head.
+A stale pointer, missing row/head, or new visible aggregate fails closed.
+
+No API imports, credential provisioning, default opt-in or consumer continuation
+are installed. The transaction factory must resolve after real COMMIT; it is a
+trusted dependency, not an operator-supplied driver. This reader does not prove
+reducer correctness, broker identity, restore/soak/alert delivery, source-write
+settlement, or independent human approval. FORCE RLS and inventory rely on
+trusted role/policy provisioning. MVCC consistency permits a concurrent rollback
+to become visible on the next read; this is not a linearizable pointer lock.
+The existing checkpoint guard rejects promoted builds as well as the existing
+worker: do not loosen either to activate ongoing promoted processing.
+
+### Inactive worker stop read-back composition
+
+`operator-stop-evidence.mjs` validates the recovery manifest before reading one
+independently pinned `WorkerStopReceipt` via a trusted read-only adapter. It
+checks stop request/generation/process/challenge/observer, full scope, fresh
+ordered stop/settlement/close stages, zero outstanding SQL/ACK/children, and exact
+complete persisted next-offsets (bigint strings). Scope is copied before await,
+records are capped at64KiB and errors reveal no adapter payload. The adapter must
+also bound response bytes before decoding and attest real observation; no such
+producer is implemented here. Tests using mock read-back do not establish that
+a real worker stopped. No challenge is consumed and no broker is contacted.
+
+The result is historical evidence about one process/generation. A new writer
+may start afterward; current lease/source barrier/pointer checks remain required
+in the actual mutation transaction. Existing running-only worker and running/
+verifying-only checkpoint guards remain unchanged. See the readiness lifecycle
+table for the terminal-snapshot canary contract and continuous-mode open work.
+
+### Inactive durable stop-challenge registry
+
+`stop-challenges.sql` is a separate inactive addon to `admission.sql`, not a
+migration or runtime bootstrap. It requires an independently provisioned
+`ld_kafka_operator_observer` NOLOGIN group and named observer mappings in the
+existing private identity table. Observer mappings must have no operator
+capabilities or operator group memberships; elevated/expired/remapped/revoked
+identities fail closed. No business-table privileges are granted.
+
+Only the current named controller of a consumed `stop` request may issue one
+challenge per request/generation, bounded by its lease and at most one minute.
+The challenge pins worker instance and observer principal. That exact observer
+login may record one bounded scope/time/count/checkpoint claim; direct table
+access, replacement and operator self-registration are denied. The DB records
+its own registration time and audit actors separately from observer timestamps.
+The receipt hash is SHA-256 of PostgreSQL jsonb text, not the recovery manifest's
+raw-byte hash. Receipt registration is an authenticated claim, not proof that
+physical process/SQL/ACK observations are truthful.
+
+The assigned controller can read the record in a genuine READ ONLY transaction
+and feed it to `verifyOperatorRecoveryStop`. One-time acceptance locks the
+challenge, pins its DB receipt hash and rechecks current admission. Acceptance
+and stop-request settlement can share a transaction; deferred checks roll both
+back if the challenge/lease/observer ceases to be valid at finalization. The
+same trusted-executor requirement about `SET CONSTRAINTS IMMEDIATE` applies.
+Live read-back requires the current consumed stop lease; a historical audit read
+adapter for later operations is not exposed here. No pointer privileges or
+activation authority follow from an accepted challenge.
+
+A real observer process, authenticated delivery of the issued challenge, secret
+provisioning, actual child/SQL/ACK instrumentation, broker identity verification,
+source-write barrier and restricted pointer executor remain unimplemented.
+Actual hosted DB tests with synthetic claims prove scoped provenance and
+single-use transaction behavior only. Existing domain readiness gaps remain.
+
+### Inactive transaction-scoped tenant source-write barrier
+
+`source-barrier.sql` is an inactive kernel; the separate
+`source-barrier-fixture-attach.sql` attaches guards only in the disposable proof
+(or a separately authorized future installation). Neither is a Prisma migration,
+startup hook or production command. Six actual tables participate: funds,
+fund_transactions,domain_events,event_outbox,event_aggregate_heads and
+fund_balance_projections. Row guards take a nonwaiting shared transaction lock
+for old/new tenant IDs; a current authenticated promote/rollback controller can
+acquire the matching exclusive lock only with no existing participating writer.
+Future writes then fail immediately until the transaction ends. Same-tenant
+non-Fund rows in shared event tables also participate; other tenants remain
+independent except possible hash-collision serialization/denial.
+
+Acquisition requires READ COMMITTED, all twelve exact unfiltered ALWAYS guards
+and ordinary non-inherited source tables. Conditional/disabled/replica-only or
+incomplete installation fails closed. Schema-owner DDL must stay frozen/trusted;
+a source-table administrator can alter its own schema and is not an untrusted
+operator. ALWAYS guards also run when replication mode would skip normal
+triggers. TRUNCATE is rejected, not treated as a tenant-scoped operation.
+
+The handle is backed by a private request/generation/backend/xid8 record and
+cannot cross transaction or savepoint rollback. The controller receives no
+source write or business read grants. Existing deferred admission checks reject
+expired leases at final COMMIT and roll back the record/audit; transaction end
+releases the lock. This is not a durable freeze or activation authority.
+
+A trusted future executor MUST acquire the barrier in its own statement, then
+read/fold/verify current sources in later statements of that same transaction
+and compose lease/build/evidence checks with pointer CAS before COMMIT. A
+pre-barrier MVCC receipt, a CTE reading before acquisition, or a later transaction
+cannot reuse the handle as evidence. No such pointer executor is wired here.
+Command receipts/inbox/checkpoints/builds/pointers/effects are not fenced by
+these six source guards; their lease/CAS/effect contracts remain mandatory.
+No broker end-position or physical worker-stop proof follows from a SQL lock.
+
+
+### Isolated atomic Fund transition composition (fixture only)
+
+`fund-transition-fixture.sql` is installed only by the hosted disposable proof.
+A trusted fixture owner registers canonical evidence and its raw-byte manifest
+hash; the operator has no evidence registration API. The read-only collector
+captures a full material hash inside its canonical Repeatable Read transaction.
+The authenticated executor separately acquires the tenant barrier, verifies the
+same material under that barrier, locks the build/pointer, writes a promotion
+event, applies pointer CAS and settles admission in one transaction. Three extra
+guarded tables (inbox, checkpoints, effect outbox) supplement the six-table source
+profile. Final deferred checks reject expired admission/evidence/rollback windows
+and roll back staged build, event, pointer and settlement together.
+
+PostgreSQL16 deferred invoker guards execute with the COMMIT role. The fixture
+therefore grants controller SELECT on builds/events plus UPDATE only on the
+immutable effectsFenced column for SELECT FOR SHARE. RLS exposes only the exact
+current Fund target/request in a fresh request/generation/backend/xid8 barrier;
+without that context no rows are visible. Original guards reject fence changes;
+status mutation, trigger changes, replica mode and direct pointer writes remain
+denied. No existing guard is altered or forced immediate. PostgreSQL's
+[master-only role change](https://www.postgresql.org/message-id/E1tb0y4-0037sb-1e@gemulon.postgresql.org)
+is not assumed present in the pinned16.13 server.
+
+This is a small synthetic composition proof, not a runtime controller or trusted
+verifier implementation. The material query is deliberately unbounded over the
+small fixture and needs a production query budget/design. Genuine observer,
+broker, soak, archive/restore and delivery evidence remain absent. First-pointer
+bootstrap, correction policy, continuous promoted processing and application
+cutover are not implemented. No API, migration or active business integration
+loads this fixture.
+
+
+### Named verifier and signed provenance continuation
+
+The earlier owner-seeded/unbounded-material description above is superseded by
+`fund-evidence-registry.sql` and `operator-fund-verifier.mjs`. They remain inactive
+addons to the hosted composition, not a runtime installer or HTTP interface.
+Only a request UUID enters the verifier closure; DB context, manifest archive,
+canonical snapshot/reducer, key policy, receipt readers and clock are trusted
+service configuration. Response bytes must be bounded in transport before parse.
+The canonical source/shadow and exact checkpoint positions must match the pinned
+manifest. Material hash and canonical fold must share the same RR snapshot.
+
+Each of seven purposes (stop, broker, soak, archive, restore, approval, alerts)
+needs an Ed25519 signed raw UTF8 `FundOperationalAttestation`: fixed API version,
+purpose, signer principal, result=verified, unique receipt ID, request/plan hash/
+generation/manifest SHA/material hash, observedAt and validUntil. No URL/key is
+trusted from that document. An independent tenant/purpose/key policy pins public
+key bytes, signer and validity. Operator principals cannot be signers. The JS
+gate rereads prior policies after asynchronous reads. Private SQL policy rows
+recheck current key identity/fingerprint/validity/revocation during registration,
+transition and final deferred COMMIT. Signatures alone do not make observations
+true; keys/producers and durable signed-byte retention must be independently
+provisioned and audited.
+
+A named verifier login must be restricted, independently mapped to the tenant,
+separate from requester/approver/controller and without their or observer groups
+and capabilities. It gets only authenticated control-context read and one-use
+registration functions, no private table/source/pointer privileges. Registration
+pins exact raw manifest and provenance hashes and lease generation, bounds expiry
+and audits session_user. Final admission/verifier/key expiry or revocation rolls
+back staged control mutations. Schema owner remains trusted; the SQL endpoint
+trusts verifier service signature/reducer validation and cannot itself verify
+Ed25519 or physical truth. Never expose verifier DB credentials to an operator
+or a generic SQL/HTTP endpoint.
+
+Material queries use cap+1 row sentinels: build1/funds200/ledger1000/events1000/
+outbox1000/heads200/projections400/checkpoints128/inbox1000, no shadow/replay
+effect intent, and1MiB encoded material. Oversized input returns no hash. Executor
+sets5s statement/2s lock limits, collector10s transaction limit. These cap returned
+rows and certified bytes; they do not prove indexed scan cost or production RTO.
+Bigger tenants need a separately reviewed streaming/chunk design, not higher
+limits or truncated evidence. All proof signing keys/claims here are synthetic.
+
+
+### Authorized disposable physical drills
+
+`operator-alert-http.mjs` provides a bounded read-only HTTPS receipt adapter;
+HTTP loopback requires explicit hosted disposable flags. Its independent-process
+test sends ten controlled alerts, fsyncs receiver delivery/ACK receipts, denies
+sender/reader impersonation of the responder and verifies actual receiver restart.
+It proves test transport with machine ACK, not production rule/exporter firing
+or a person's paging response. No email address/provider was guessed.
+
+`operator-fund-restore.integration.mjs` creates a real bounded custom-format
+pg_dump, restores to a fresh UUID database, provisions a separate reader and
+compares canonical source/shadow/checkpoints/material. Source stays unchanged;
+missing restored visibility denies. Clone/role cleanup is run-owned. This does
+not prove production PITR, encrypted/WORM storage or recovery-time objectives.
+The restore factory keeps all base CI/host/service guards and accepts only the
+fixed reader and generated clone namespace. No general connection override.
+
+Successful hosted runs retain synthetic-only receipt journals, restore metadata
+and dump in GitHub artifacts for7days; no bearer/private key or real tenant data
+is archived. One failed test prevents PASS/receipt artifact issuance. These test
+adapters are not application startup or operational rollout wiring.

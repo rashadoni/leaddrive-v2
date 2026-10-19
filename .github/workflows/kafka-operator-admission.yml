@@ -6,6 +6,7 @@ on:
     paths:
       - 'ops/event-platform/operator/**'
       - 'scripts/event-platform/operator-*.mjs'
+      - 'scripts/event-platform/operator-fund-snapshot.sql'
       - '.github/workflows/kafka-operator-admission.yml'
 permissions:
   contents: read
@@ -46,8 +47,60 @@ jobs:
       - name: Validate scripts and offline alert receipts
         run: |
           node --check scripts/event-platform/operator-admission.integration.mjs
-          node --test scripts/event-platform/operator-alert-evidence.test.mjs scripts/event-platform/operator-admission-guard.test.mjs
+          node --test scripts/event-platform/operator-alert-evidence.test.mjs scripts/event-platform/operator-recovery-evidence.test.mjs scripts/event-platform/operator-fund-snapshot.test.mjs scripts/event-platform/operator-fund-canary.test.mjs scripts/event-platform/operator-stop-evidence.test.mjs scripts/event-platform/operator-admission-guard.test.mjs scripts/event-platform/operator-fund-verifier.test.mjs scripts/event-platform/operator-alert-http.test.mjs scripts/event-platform/operator-restore-guard.test.mjs
+      - name: Real disposable notification delivery and independent read-back
+        run: node --test scripts/event-platform/operator-notification.integration.mjs
+
       - name: Real named-login PostgreSQL admissions and races
         env:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
         run: node --test scripts/event-platform/operator-admission.integration.mjs
+
+      - name: Own staged COMMIT and shadow-pointer follow-on proof
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+        run: node --test scripts/event-platform/operator-shadow-composition.integration.mjs
+
+      - name: Single-use observer stop challenges in actual PostgreSQL
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+        run: node --test scripts/event-platform/operator-stop-challenges.integration.mjs
+
+      - name: Install bounded reducer proof dependencies
+        run: npm ci --prefix ops/event-platform/operator/fixtures --no-audit --no-fund
+      - name: Compile the existing canonical Fund reducer for this proof
+        run: |
+          ops/event-platform/operator/fixtures/node_modules/.bin/esbuild src/lib/event-platform/fund-balance-reducer.ts --bundle --platform=node --format=esm --outfile="$RUNNER_TEMP/operator-canonical-reducer.mjs" --alias:zod="$PWD/ops/event-platform/operator/fixtures/node_modules/zod"
+      - name: Read-only evidence against actual Fund migrations and restricted RLS
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          LD_OPERATOR_REDUCER_MODULE: ${{ runner.temp }}/operator-canonical-reducer.mjs
+        run: node --test scripts/event-platform/operator-fund-snapshot.integration.mjs
+
+      - name: Tenant source-write barrier against actual Fund migrations
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+        run: node --test scripts/event-platform/operator-source-barrier.integration.mjs
+
+      - name: Isolated authenticated Fund transition composition
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          LD_OPERATOR_REDUCER_MODULE: ${{ runner.temp }}/operator-canonical-reducer.mjs
+        run: node --test scripts/event-platform/operator-fund-transition.integration.mjs
+
+      - name: Independent physical restore and restricted canonical parity
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          LD_OPERATOR_REDUCER_MODULE: ${{ runner.temp }}/operator-canonical-reducer.mjs
+        run: node --test scripts/event-platform/operator-fund-restore.integration.mjs
+
+      - name: Preserve only synthetic disposable notification and restore evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: kafka-operator-disposable-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/operator-notifications-*/receipts.jsonl
+            ${{ runner.temp }}/operator-restore-*/restore-receipt.json
+            ${{ runner.temp }}/operator-restore-*/fund.dump
+          if-no-files-found: error
+          retention-days: 7

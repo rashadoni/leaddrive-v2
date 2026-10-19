@@ -686,3 +686,110 @@ without authentic provider read-back and a fresh independently acknowledged
 challenge. Boolean activation evidence, a control token and topic registration
 must never substitute for full-history parity, actual worker settlement,
 restricted transaction composition, independent restore or authorization.
+
+The later inactive recovery manifest gate and synthetic pointer drill in PR894
+verify consistency and transaction behavior without running this procedure.
+Their passing receipts do not authorize the commands above. In particular,
+fixture stop/restore references and timestamps are synthetic: a real operator
+must supply independently verified worker-close, continuous soak, archive /
+restore and delivered-alert evidence before any runtime admission.
+
+### Inactive independent stop-receipt check
+
+`operator-stop-evidence.mjs` composes the recovery consistency gate with trusted
+read-only observer receipt retrieval. Its independently provisioned pins must
+identify the real stop request, lease generation, process, challenge and observer;
+final persisted next-offsets must match the recovery manifest. Ordered timestamps
+and zero outstanding counts in arbitrary JSON are not actual stop evidence.
+No observer/receipt producer, challenge-consumption store or runtime executor is
+installed. Historical closure cannot authorize a later pointer write without a
+fresh lease and source barrier checked in that mutation transaction.
+
+Current promoted builds are terminal for both worker and checkpoints. The only
+specified bounded canary lifecycle stops/settles before final verification and
+promotion; later source drift denies canary reads. Continuing promoted workers
+require a separate lifecycle design and proof. Do not loosen existing status
+guards, infer a write freeze, or execute any operational command from this note.
+
+### Inactive one-time stop-challenge persistence
+
+The separate `stop-challenges.sql` contract now prepares durable issuance,
+authenticated observer registration, read-only retrieval and one-time acceptance
+with final deferred expiry checks. This supersedes the earlier “no challenge
+store” preparation statement, not the missing real observer/executor. Receipt
+claims in its hosted DB test are synthetic. Registration does not prove actual
+process closure and acceptance grants no pointer, Kafka or provider permissions.
+The issued challenge and observer identity must be independently provisioned and
+transported by a future trusted controller; no such runtime is enabled here.
+Do not execute any operational recovery command on the strength of these tests.
+
+### Inactive source-write barrier preparation
+
+A separate source-barrier kernel/fixture attachment now prepares a tenant-scoped
+transaction lock on the six Fund source/projection tables. It is installed only
+in hosted disposable tests. The handle is valid only in that transaction and
+releases at COMMIT/ROLLBACK; no durable freeze, pointer grant or Kafka action is
+implied. A future trusted executor must acquire it first, read/verify sources in
+later statements, then perform final lease/build/evidence checks and pointer CAS
+before commit. No such runtime composition exists here. Keep schema-owner DDL
+frozen and preserve all worker/checkpoint/effect guards. Do not execute production
+recovery procedures from these preparation receipts.
+
+
+### Inactive verifier registration: operational acceptance requirements
+
+PR894 now includes named verifier registration and seven signed-purpose gates;
+owner-only fixture evidence seeding is superseded. The actual-schema composition
+still does not enable any operational command in this runbook. Trusted services
+must retain exact signed bytes and resolve keys independently per tenant/purpose.
+They must apply these checks BEFORE attesting the exact manifest/material hash:
+
+| Purpose | Required real observation before signing |
+|---|---|
+| stop | Independently issued single-use challenge; actual child close and SQL/ACK settlement; exact final checkpoints, using the existing stop read-back gate |
+| broker | Authenticated cluster ID/topic incarnation/group and every frozen end position; replay start/history and retention coverage with no gap |
+| soak | Trusted ordered observations for the complete minimum soak interval, lag/age thresholds, quarantine/effect counters and parity; no single boolean substitutes for interval evidence |
+| archive | Authenticated byte hashes and per-partition archive watermark covering every frozen source position |
+| restore | Independent isolated restore/reducer with exact history/state/invariant parity, retaining its receipt bytes |
+| approval | Independent release/artifact/change approval by a non-operator signer with current authority |
+| alerts | All ten rules actually triggered; authoritative delivered read-back and responsible recipient acknowledgement through the existing alert verifier |
+
+Missing key policy, disabled/remapped/expired signer, unsigned/partial receipts,
+stale source material or any unmatched scope/generation denies registration or
+final COMMIT. Named verifier credentials belong only to this trusted service.
+Owner provisioning is separate from operator authority. Revocation must update
+the durable SQL key policy (or revoke the admitted request), not merely delete a
+PEM file from one process. No ordinary operator can edit that policy.
+
+Material row/byte caps are hard fail-closed limits, not pagination. Exceeding them
+requires a new reviewed bounded rebuild design; do not raise limits to certify a
+partial history. No activation, first-pointer bootstrap, correction policy,
+continuous promoted-worker lifecycle or provider integration follows from these
+preparation tests. Those remain coordinated by the original delivery session.
+
+### Completed disposable drills and operational evidence limits — 2026-10-19
+
+The owner explicitly authorized isolated test consumers/replay/notifications.
+On exact executable sourceaa2e0f49e, operator run39217390626 passed318/318;
+broker39217390814 passed actual Kafka/restricted SQL/direct-JVM stop/restart races;
+CDC39217390847 passed both jobs, including real canonicalSQL → Debezium → Kafka →
+FundSQL and corrected NEW build/group replay with source/active/effects/other tenant
+unchanged and replay sends NONE. Existing checks were not changed to obtain PASS.
+
+Separate HTTP receiver delivered all10 controlled gate stimuli and authenticated
+an independent machine ACK, including real restart and durable readback. Actual
+pg_dump/pg_restore into an owned UUID database plus separate restricted reader
+proved three-aggregate canonical/material parity, denied partial visibility and
+left the source unchanged. Artifact12169689695 contains only synthetic dump and
+receipts, retained7days; its hash was independently compared with the restore
+receipt. Exact links/hashes are recorded in
+[the historical CI evidence](evidence/operator-readiness-ci-2026-10-19.json).
+
+These observations are separate bounded drills. They are not a single genuine
+seven-purpose approval for any deployment, actual production rule firing/human
+paging, broker TLS/ACL/HA, production PITR/encrypted offsite immutable backup, RTO
+or persistent identity/key provisioning. Never revive historical receipts by using
+a fixture clock or key. Fresh authentic scope/lease/challenge/material/provenance
+and all requirements in the seven-purpose table still apply at real registration
+and final COMMIT. No production recovery command, offset reset, application
+cutover or merge/deploy is authorized here. Original delivery session owns them.

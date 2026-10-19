@@ -1,22 +1,63 @@
 # A5 operator readiness и A7: карта незакрытых доказательств
 
-Срез: 19 октября 2026, `origin/main` 226dde0e7. Это подготовка, не разрешение
+Срез: 19 октября 2026: Kafka base421260026, проверенный `origin/main`
+abdc13018acc9f120ee4d50fbb121a90cc3efe63 (последующие изменения
+Support/demo/social/CI не меняют Kafka contracts; новые чужие gates не проверены
+этими source runs).
+Это подготовка, не разрешение
 активации. A5 соответствует K5 backlog; A7 — K7 recovery drills и проверке
 полноты K6 по всем доменам. Ни один новый бизнес-consumer не подключён.
+
+## Актуальное состояние (заменяет исторические оценки ниже)
+
+A1/A2 доставлены исходной сессией через PR891 в main421260026. На exact source
+2936f4c2 успешны оба задания `cdc-smoke` и `full-cdc-fund` в
+[отдельном upstream run39170670645](https://github.com/rashadoni/leaddrive-v2/actions/runs/39170670645).
+Это bounded CDC/worker evidence исходной сессии; оно не доказывает production
+TLS/ACL, весь Finance или операторскую готовность. Упоминания pending/NOT RUN
+A1/A2 ниже — исторические срезы, а не текущее состояние upstream.
+
+Эта ветка добавляет inactive authenticated admission/lease, stop challenge,
+canonical snapshot/canary collectors и tenant source barrier. Изолированная
+fixture-композиция связывает проверенный snapshot, точный material hash,
+свежий barrier, promotion event, pointer CAS и deferred COMMIT admission.
+Она не содержит установленного controller и не устанавливается миграцией или
+приложением. Отдельные реальные disposable broker/stop/replay, snapshot restore
+и HTTP delivery/machine-ACK drills выполнены после разрешения владельца; они не
+составляют единый operational admission и не доказывают human paging/production.
+Отдельный
+inactive verifier теперь проверяет семь signed-purpose attestations, canonical
+source/shadow/checkpoints и регистрирует evidence отдельным именованным логином.
+Tenant/key-policy, lease и verifier recheck действуют до final COMMIT; реальных
+producer/key provisioning в этом изменении нет; inactive HTTP readback adapter
+подготовлен, но к реальному провайдеру не подключён. Material capped по
+строкам/1MiB, превышение отвергается, производительность больших tenants не доказана. Hosted [run39177477825](https://github.com/rashadoni/leaddrive-v2/actions/runs/39177477825)
+на exactbd8f89872 прошёл298/298:214 unit +17 admission +8 shadow +9 stop +
+24 actual-schema reader/canary +8 barrier +18 atomic transition/registry/material.
+Это заменяет ранние249/297 оценки, сохраняя их в append-only журнале. Signed
+claims и ключи fixtures синтетические; реальные operational observations этим
+не получены. Финальная executable sourceaa2e0f49e прошла318/318, полный
+CDC/replay и broker/direct-JVM отдельно, Linux build и baseline gates; точные
+results/hashes и ограничения — в разделе Final exact-source test evidence ниже.
+
+Collector проверяет все поля provenance реального worker и точное соответствие
+checkpoint lastEventId → inbox topic/partition/offset. Более новый broker offset
+для duplicate event без отдельного durable byte/position receipt консервативно
+не сертифицируется. Семантика самого worker не изменена.
 
 ## A5: проверенные границы и очередь
 
 | Граница | Что действительно есть | Чего нет / приёмка следующего шага |
 |---|---|---|
-| Authenticated operator admission | `projection.ts` требует разные строки requester/approver; SQL проверяет согласованность promotion evidence/pointer | Это не authentication. Нужны две отдельные admissions из доверенных session/JIT identities, tenant permission, срок действия, revocation, request hash и одноразовое atomic consume; тело запроса не задаёт identity. Повтор/конкуренция/отзыв/чужой tenant должны отказать до mutation |
-| Tenant/build | Fund shadow worker проверяет tenant, build, version, code SHA, role; restricted SQL/RLS и inbox защищают транзакцию | Отдельный operator scope должен совпадать с неизменным планом, artifact digest, cluster/topic ID, group и диапазоном. A1/A2 `worker-admission.ts`/`worker-artifact.ts` подготовлены только в e298057; не продублированы здесь. Проверка формы плана не выдаёт authority |
-| Lease/fencing | Bridge assignment fence; worker-session прекращает intake/ACK и ждёт SQL settlement; effect ledger имеет собственные lease tokens | Нет durable operator/worker ownership lease с CAS generation, expiry/revoke и проверкой перед SQL/pointer switch. Kafka membership не заменяет SQL ownership. Уже начатая SQL может закончиться после revoke; нельзя объявлять stop раньше settlement/actual child close |
-| Stop/restart | В main есть finite session, owned child supervisor, без auto-restart; исторический PR889 receipt покрывает два bounded stop/restart сценария | Не доказан standalone direct-JVM production composition. A1/A2 новые реальные integration NOT RUN; их receipts должна получить исходная сессия. Stop при lost DB/child hang/lease expiry требует controller evidence |
-| Catch-up | Inbox/checkpoints, deterministic Fund reducer и versioned shadow | Нет end-to-end controller: pinned source/cluster/topic identity, полный диапазон без retention gaps, финальный watermark, lag/age soak, count/value/hash/aggregate parity, tenant isolation. Равные итоги не доказывают равенство истории |
-| Promotion | SDK + SQL atomic promotion event/read pointer, request dedupe и независимые identity strings | Authenticated admission, lease race, финальная parity в согласованном fence, реальный canary read path и domain read-pointer integration не доказаны. Общий pointer SDK не делает Fund read cutover готовым |
-| Rollback | Runbook определяет переключение pointer с сохранением source events | Нет доказанного controller/read path и нагрузки. Старый build должен быть сохранён и достаточно актуален; проверить совместимость, обратный CAS pointer, effect/write fence и rollback window. Старые таблицы без catch-up не гарантируют безопасный откат |
-| External effects | `effects.ts` запрещает shadow/replay effects, registry пуст; SQL ledger, token/attempt и UNKNOWN reconciliation contracts | Live legacy senders обходят общий outbox. Проверять каждый API/cron/provider tail. UNKNOWN никогда не означает automatic resend. Lease projection и lease external effect — разные границы |
-| Alarm delivery | Старый activation-preflight проверяет boolean monitoring gates | Новый `operator-alert-evidence.mjs`: отдельный inactive verifier десяти read-back receipts. Не подключён к activation и не отправляет тревоги. Реальная доставка, получатель и authentic provider adapter ещё НЕ ДОКАЗАНЫ |
+| Authenticated operator admission | Inactive SQL: разные authenticated session identities requester/approver, immutable scope/hash, atomic consume, expiry/revocation и final COMMIT checks | Runtime identity provisioning/JIT, tenant authorization integration и controller endpoint отсутствуют; fixture principals не production identity proof |
+| Tenant/build | Worker checks tenant/build/version/SHA/role; A1/A2 worker-admission/artifact contracts уже в main; operator plan дополнительно pins environment/artifact/cluster/topic/group/action/pointer/evidence | Genuine release/artifact/broker identity resolution и domain-specific authorization в controller; форма плана не выдаёт authority |
+| Lease/fencing | Inactive durable request generation/lease, fresh token checks, stop challenge и transaction-scoped source barrier | Runtime owner/observer delivery и deployment installation отсутствуют; уже начатую SQL/child нужно наблюдать до реального settlement |
+| Stop/restart | Finite owned session/child; real disposable broker/restrictedSQL/direct-JVM stop-COMMIT-ACK/restart proof; private one-use observer challenge с deferred acceptance | Runtime physical observer/challenge/SQL/ACK composition and truthful signed receipt; independent lost DB/hung child operational drill |
+| Catch-up | Actual-schema canonical collector, exact checkpoint/inbox positions; actual two-tenant fullCDC corrected-build replay and independent disposable snapshot restore | Runtime frozen broker end/retention/archive, interval soak and independent provenance composed into one admission; newer-offset duplicate без byte/position receipt отвергается; production PITR/backup/RTO не доказаны |
+| Promotion | Actual event/pointer guards, restricted canary reader; fixture-only canonical material/barrier/build/event/CAS/settlement composition | Hosted final composition result см. session log; trusted adapter/key provisioning и runtime executor, first-pointer policy и application cutover не реализованы |
+| Rollback | Fixture retained build/window + reverse CAS; final expiry rollback и read adapter contract | Genuine retained/caught-up compatibility, workload drill, correction policy и promoted continuous lifecycle |
+| External effects | Shadow/replay effect denial, empty active registry, ledger UNKNOWN/lease/attempt contracts; fixture fences effect intents | Live legacy senders обходят общий outbox; all-path API/cron/provider audit и UNKNOWN reconciliation обязательны; projection lease не effect lease |
+| Alarm delivery | Inactive ten-gate verifier + bounded trusted-origin HTTP readback adapter; real disposable receiver delivery/durable readback/restart and separate machine ACK | Provider configuration, actual exporter/rule triggers, human delivery/acknowledgement and operational challenge proof; controlled stimuli не доказывают production paging |
 
 ### Ограниченный компонент этого изменения
 
@@ -45,8 +86,8 @@ expected, ни clock. Staging drill должен реально вызвать �
 и ссылку на exact SHA. Здесь сеть и отправки не вызываются.
 
 Существующий activation preflight и его проверки не изменены: их green всё
-ещё не равно A5 readiness. Новый gate пока также не исполняется автоматически
-в CI; его explicit command указан в журнале.
+ещё не равно A5 readiness. Его unit cases теперь исполняются в isolated operator CI; genuine delivery
+этим не доказывается (ранние сведения о ручном запуске superseded).
 
 ## A7: правила чтения карты 27 доменов
 
@@ -81,7 +122,7 @@ Fund имеет bounded доказательства части G, не закр
 | social | IngestEnvelope, OutboundSocialReplyEvent, SocialLegalEvent, deletion ledger | Mentions/classification/cases/evidence | Crawl, publish, legal/takedown sends | Сохранить existing receipt/evidence/action IDs; all-writer coverage не установлена | Hashed/versioned evidence + recorded classifications, без crawl/publish | Approval/provider capability, immutable evidence, deleted-source/privacy policy |
 | voip | CallEvent и call request/callback paths; inventory | Call queue/timeline/usage/consent | Dial, recording retrieval, callbacks | Stable call/effect key + callback scope нужны на всех путях | Recorded lifecycle, encrypted recording refs, без dial | Provider ambiguous start, suppression/consent race и all-path receipts |
 | support | Ticket/comments, EntitlementAuditEvent; inspected email intake | SLA clocks, queues, entitlement state | Closure/survey/email/WhatsApp/escalation | Optional comment clientRequestId; missing keys не dedupe; intake tails раньше log check | Deterministic clock inputs/receipts → shadow, без ticket factory hooks | Intake re-delivery order, alternate callers, SLA/jobs/portal, entitlement consume |
-| finance | Пять canonical Fund v1 events: opened, transaction-recorded, metadata-updated, archived, reactivated; PaymentWebhookEvent отдельно | Fund balance; invoices/receivables/budgets не покрыты пилотом | Payments/refunds/accounting exports | Fund command receipts/inbox; payments имеют отдельный bounded inventory, не общий effect proof | Fund decimal reducer в isolated build; остальная Finance требует event coverage | Fund reversal/correction, full CDC A1/A2 receipts, history completeness; payment UNKNOWN/refund/dual writes |
+| finance | Пять canonical Fund v1 events: opened, transaction-recorded, metadata-updated, archived, reactivated; PaymentWebhookEvent отдельно | Fund balance; invoices/receivables/budgets не покрыты пилотом | Payments/refunds/accounting exports | Fund command receipts/inbox; payments имеют отдельный bounded inventory, не общий effect proof | Fund decimal reducer в isolated build; остальная Finance требует event coverage | Fund reversal/correction, full history и operational proof; upstream bounded CDC receipt выше не покрывает весь Finance; payment UNKNOWN/refund/dual writes |
 | analytics | Reports/metrics definitions и queries; canonical facts кроме Fund не установлены | Dashboards/KPI/forecast/report snapshots | Export/report delivery | Нужны build/source watermark и stable export key | Versioned deterministic queries по approved facts, без source writes | Late events, exact history, metric versions, scale/RTO и all-source coverage |
 | mtm | Mobile command receipts/sync; MtmAgentWorkdayEvent, workforce events, pharmacy event/points ledger | Route/visits/attendance/timesheet/points | Route notices, reward fulfilment | Сохранить operation/command IDs и policy versions; нет общей Kafka admission | Separate routes/workforce/pharmacy shadow scopes, short-retention location | Все mobile/offline/sync writers, sequence gaps, approvals/corrections, points effect fences |
 | health | HealthPatient/Encounter/CarePlan state; canonical events не установлены | Authorized care timeline/views | Clinical integrations/notifications | Unknown; нужны command/receipt keys, consent-bound identity | Reference-only clinical facts + encrypted storage; no provider calls | Writer audit, PHI classification/erasure/legal hold, schema and correction chain |
@@ -108,19 +149,26 @@ shared senders/legacy dispatch обязателен перед признани�
 
 ## Точный порядок следующей работы
 
-1. Исходная сессия получает exact-head реальные A1/A2 CDC/worker receipts
-   для e298057 lineage; эта ветка их не запускает и не меняет чужие gates.
-2. Следующий A5 software slice: durable operator request + две authenticated
-   admissions, immutable scope/hash и atomic consume/revoke. Сначала non-production
-   restricted-SQL tests: wrong tenant/build/artifact, self-approval, expired/revoked,
-   повторный consume и конкурентный lease generation; ни одного live operation.
-3. Затем scoped controller stop/settle/lease, catch-up manifest/final parity,
-   CAS promotion/read integration, rollback compatibility/window под нагрузкой.
-4. Отдельно создать trusted receipt read-back adapter и staging challenge drill
-   для десяти alarms; online delivery не выводится из unit fixtures.
-5. A7 для каждого домена: exhaustive writers/effects → concrete schema/atomic
-   append → inbox/effect keys → wrong reducer fixture → correction rebuild →
-   exact parity → crash/duplicate/UNKNOWN → archive restore → operator drill.
+1. Isolated actual-schema transition gate завершён: final-COMMIT expiry,
+   scoped PG16 privileges, stale material и pointer races, named verifier/key
+   revocation и material caps PASS наbd8f89872.
+   Это fixture proof, не runtime activation. Upstream A1/A2 проверены отдельно.
+2. Inactive verifier/registration и fixed material budget реализованы; exact
+   hosted result этой новой фазы см. session log. Runtime требует независимого
+   provisioning tenant signers/key policy, named service login и настоящих
+   readonly adapters. Controller не может сам регистрировать verified evidence.
+3. Реальный authenticated observer: доставить одноразовый stop challenge,
+   наблюдать child/SQL/ACK settlement и независимо читать receipt. Подтвердить
+   broker cluster/topic/end positions, retention coverage и lag/age soak.
+4. Реальный restricted executor должен объединить эти доказательства с final
+   source barrier/CAS, canary application read path, retained rollback и явно
+   определённым promoted worker lifecycle. Нужны correction/reversal policy,
+   drift denial и first-pointer bootstrap policy, не произвольный SQL endpoint.
+5. Trusted provider read-back adapter и staging challenge drill для десяти
+   alarms; archive/independent restore/resource drills и activation authorization.
+6. A7 для каждого из 27 доменов: exhaustive writers/effects → concrete
+   schema/atomic append → inbox/effect keys → wrong reducer fixture → correction
+   rebuild → exact parity → crash/duplicate/UNKNOWN → restore → operator drill.
    Начинать с денежных/points/stock/entitlement/provisioning путей из backlog.
 
 HA/TLS/ACL, независимый restore, архив, ресурсный бюджет, реальные owners и
@@ -182,3 +230,342 @@ A1/A2 PR891 отдельно наблюдался OPEN на1d526a126f с pending
 receipts и затем соединять эти контракты с restricted shadow controller в
 изолированном CI, сохраняя запрет на production/consumers/offsets/sends до
 отдельного разрешения. Merge/deploy этой ветки не выполняются.
+
+## Autonomous continuation: catch-up gate and isolated transitions
+
+The prior stopping point was premature: more inactive preparation was possible.
+`operator-recovery-evidence.mjs` now validates the approved exact-byte receipt
+hash against trusted scope/pointer pins; partition completeness/full-history
+start/catch-up/archive positions; stop/SQL-settlement/actual-close references;
+zero effects/quarantine; per-aggregate count/version/history/state/decimal and
+currency parity; and rollback retention/compatibility/write-fence fields.
+36 focused local tests pass, including equal aggregate totals with offsetting
+wrong balances. This is manifest consistency, not execution of a real rebuild.
+The supplied stop/restore/soak references still need authentic evidence producers.
+A start timestamp alone does not prove continuous healthy soak telemetry.
+
+`shadow-fixture.sql` is test-only. Its private synthetic builds/pointers/evidence
+register is not the application schema. Seven additional PostgreSQL cases compose
+actual named-login admission and trusted-manifest registration with atomic
+synthetic promotion/rollback, concurrent pointer CAS, metadata/receipt expiry,
+revocation and deferred-COMMIT rollback. Only the fixture owner can register
+verified evidence; the controller cannot write the pointer/evidence directly.
+It grants no actual business privileges and invokes no Kafka, consumer or send.
+Actual results for this new source must be recorded after the dedicated CI run.
+
+A source search of non-test `src` at this baseline found `appendDomainEvent`
+callers only in the three Finance Fund REST routes (four call sites), and no
+non-test caller of the generic enqueueEffect/promotion helpers outside their
+SDK definitions. This corroborates the27-domain map's restricted scope; it is
+not proof that every indirect/SQL/legacy writer has been exhaustively inspected.
+The shared effect SDK's presence therefore cannot protect legacy sender paths.
+
+### Continuation proof and exact remaining boundary
+
+Actual run39165969550/job117788865931, source
+5ad987e953d28c36eedb9bc022eb194abb9973ab: whole SUCCESS,64/64 gate tests
+and24/24 real PostgreSQL cases; cleanup PASS. This supersedes the pending
+fixture result above. The synthetic pointer composition passed; it does not
+establish that real Fund readers support this pointer or that production
+rebuilds can run. No actual alert/restore/stop evidence was manufactured.
+
+Remaining **software integration**: connect governed identities and evidence
+producers to a restricted real Fund shadow controller/read path, verify actual
+build/lease/reader contracts, then full CDC/SQL failure/rebuild drills on the
+original session's exact worker source. Current task explicitly limits scope
+to preparation and leaves shared delivery with that session; it must not be
+silently converted into activation or27 new business integrations.
+
+Remaining **external/authorization gates**: trusted human/JIT provisioning,
+actual independently read-back stop/soak/restore/alert receipts, production
+HA/TLS/ACL and separate activation authorization. Live consumers/replay and
+alert sends remain prohibited here, so their receipts cannot be obtained by
+continuing fixture work or substituting booleans. No such task is marked done.
+
+Historical scan blocker (superseded by explicit owner approval): the exact
+README prose capture now has a rule-specific path+secret allowlist. Whole PR
+history locally scans clean; API/AWS canaries in the same README and this prose
+in another file remain detected. No history rewrite or other gate change.
+Hosted result is recorded in the PR; draft and activation restrictions remain.
+
+Final test-quality correction: run39166310431/job117789862494 on
+40a9b05e90ae3182b3fedf58d14f473473cf304f passed64/64 gates and24/24 real PG
+cases. Deferred-COMMIT negative tests now first require successful staged SQL,
+so an earlier admission error cannot falsely satisfy them. Concurrent loser
+reasons are also constrained. Executable contracts are unchanged by subsequent
+documentation; authentic operational evidence and shared runtime delivery
+remain open as described above.
+
+## Actual-schema read-only evidence — 2026-10-19
+
+Source465d9b9750cecddf11657145d0cb4d0e7d8233e0, run39167881109 /
+job117794570853 whole SUCCESS:91/91 unit gates,24/24 operator PG and10/10
+real-schema reader PG cases, cleanup PASS. The reader uses the actual three
+unchanged migrations and existing canonical Fund reducer. It is not the earlier
+replacement shadow-pointer schema and does not run a consumer.
+
+Verified: canonical/outbox hashes and complete independent Fund inventory;
+source/head/active-v1/Fund/shadow/inbox/checkpoint parity; exact NUMERIC(18,4);
+shadow lastEventId/time; immutable source fingerprints before/after reading;
+real READ ONLY refusal25006; checkpoint rewind guard23514 preserved; FORCE RLS,
+no-owner/no-write reader profile; partial/whole-aggregate visibility rejection;
+and a consistent RepeatableRead snapshot while another canonical writer commits.
+The next collection then rejects the now-stale shadow. Source payloads remain
+internal and are not included in the returned evidence.
+
+This DB-only producer leaves broker positions and external evidence explicitly
+unverified. All inbox/checkpoint seed positions are synthetic. DB MVCC identity
+is not a transfer token for a later promotion. Inventory and reducer provenance
+are trusted server inputs, not operator-supplied authority. Caps and strict
+baseline parity deliberately reject unsupported large/drift-repair scopes.
+
+### Concrete prerequisites for actual Fund cutover
+
+1. Fund list GET in `src/app/api/finance/funds/route.ts` reads
+   `prisma.fund.findMany`; detail GET in `funds/[id]/route.ts` reads
+   `prisma.fund.findFirst`. Neither resolves `projection_activations`.
+   A generic SDK pointer switch therefore does not switch these responses.
+   Add and independently verify an explicitly governed canary/versioned read
+   path before treating pointer promotion as a delivered read cutover.
+2. `consumeFundShadowRecord` in `fund-shadow-consumer.ts` admits only
+   `build.mode=shadow`, `build.status=running`. Generic SDK promotion changes
+   that status to `promoted`; blindly combining them stops further shadow
+   processing. A1/A2 owner must define/test ready/promotion/active/rollback
+   lifecycle and durable admission fencing before that composition.
+3. Fund transaction commands validate and update `funds.currentBalance`.
+   Replacing a GET response alone does not repair command-side balance checks.
+   Define correction authority and approved baseline drift for intentional
+   repairs; the current reader requires existing Fund/active-v1 parity and is
+   not a bypass for that decision. No history rewrite or direct money patch.
+4. A read-only audit snapshot does not freeze ongoing writes/new aggregates
+   across a later controller transaction. Final source/broker watermark,
+   writer/worker settlement and pointer CAS need a real barrier/transaction
+   contract, including concurrent command/new-Fund and SQL-COMMIT failure tests.
+5. Stop/soak/archive/restore/alert evidence must come from independently trusted
+   producers/read-back. Their synthetic references and booleans are not receipts.
+   Current prohibitions prevent obtaining real consumer/replay/send evidence here.
+
+A1/A2 current PR891 was observed DRAFT on
+f47224e2b250274278e88e72a08b0c7fe5424ae6 with latest heavy jobs skipped.
+Older head1d526a126f successes cannot certify it. This session neither modifies
+nor schedules those checks; original-session runtime/delivery ownership remains.
+These are exact remaining integration tasks, not reasons to mark A5/K7 ready.
+
+## Canary result contract and exact remaining lifecycle sequence
+
+The inactive `operator-fund-canary.mjs` is only a pure result validator. Its
+23 tests prove fail-closed scope/shape behavior, not real pointer reads or
+operational freshness. No production API imports it. A rollback changing the
+pointer requires a newly independently authorized scope; stale opt-in cannot
+silently follow a different build or fall back to the legacy balance.
+
+| Order | Required implementation/evidence | Acceptance boundary |
+| --- | --- | --- |
+| 1 | Restricted reader adapter reads activation/build/Fund rows in one read-only snapshot | Actual migrations, real restricted login/RLS, exact pointer string, missing/foreign rows and concurrent rollback tests; validator alone insufficient |
+| 2 | A1/A2 owner reconciles running → verifying → promoted worker lifecycle and lease generation | Authenticated controller, expired/revoked lease and stop races deny writes; promoted worker continuation explicitly specified and tested |
+| 3 | Final source barrier and complete aggregate inventory | Writers/new aggregates settled; authenticated broker partition/end evidence and SQL checkpoint settlement bound to the same approved promotion; old MVCC receipt insufficient |
+| 4 | Real admission + final verification + generic pointer CAS composition | One transaction and deferred final lease check, stale approval/build/evidence/CAS denial; no arbitrary controller SQL or effects permissions |
+| 5 | Canary API opt-in with preserved response contract | Separate authorized activation; Fund list/detail and transaction commands reconciled, no default routing change in this preparation |
+| 6 | Retained rollback and correction authority | Explicit money invariants for intentional drift, version-compatible ongoing writes, independent approval and actual restore proof; no synthetic balance corrections |
+| 7 | Authentic operational evidence | Actual stop/catch-up/soak, external effects denied, delivered-and-acknowledged alerts independently read back; simulated receipts insufficient |
+
+Steps 2–7 stay with the original delivery session and require its frozen A1/A2
+source. Consumers, offsets/replay, provider sends and production mutations are
+outside this session's authorization. All 27 domain rows above retain their
+individual missing-evidence requirements; this Fund-only contract upgrades none
+of the other domains to protected or recoverable status.
+
+## Inactive transactional canary reader continuation
+
+A restricted reader adapter is now prepared in
+`scripts/event-platform/operator-fund-canary-reader.mjs`; this supersedes the
+prior statement that only a pure validator exists. It is not wired to Fund API.
+In one read-only RepeatableRead snapshot it checks exact login, four FORCE-RLS
+read-only table profiles (including column grants), the pointer/build contract,
+complete visible source-head inventory and per-Fund event/version parity.
+A new aggregate or subsequent source write denies stale data rather than using
+legacy balances. Monetary correctness still depends on independently verified
+reducer/history evidence; matching event IDs alone does not establish it.
+
+The same disposable actual-schema fixture exercises genuine promotion/rollback
+constraints, concurrent rollback visibility, stale opt-in rejection, RLS/grants,
+read-only enforcement, source lag and new aggregates. Test seed approvals remain
+synthetic and are not authentic operational approval evidence. No running worker,
+Kafka consumer, broker offset, replay, provider send or production is involved.
+The real checkpoint migration also refuses writes for promoted builds: resolving
+worker admission alone cannot close lifecycle step2. Authenticated real pointer
+mutation composition, final barrier and operational evidence remain unimplemented.
+
+## Stop read-back and bounded lifecycle contract
+
+Inactive `operator-stop-evidence.mjs` adds the missing read-back step beyond a
+recovery manifest's bare close-receipt reference. The existing exact-byte
+recovery gate runs first; independently pinned stop request/generation/process/
+challenge/observer then bind one trusted read-only receipt. It checks exact
+scope and broker incarnation, fresh ordered intake/ACK/SQL/checkpoint/child-close
+stages, zero outstanding counts and all final next-offset checkpoints. Expected
+scope is copied before await; JSON is bounded and adapter errors sanitized.
+No observer/receipt producer is installed, and its tests prove validation only.
+The result does not certify restore/soak/alert references or consume a challenge.
+
+The compatible bounded lifecycle is a terminal canary snapshot, not a continuing
+promoted worker. This specifies future composition; no runtime is wired:
+
+| Phase | Existing state allowed | Required boundary before the next phase |
+| --- | --- | --- |
+| Shadow processing | running | Current authenticated admission/lease, exact build and effects fence; existing worker/checkpoint guards stay intact |
+| Stop and settlement | running, then verifying | Intake and ACK fenced; all SQL settled; final persisted checkpoints observed; actual child close independently read back and pinned to stop request/generation |
+| Final verification | verifying, then ready | Source/barrier and full parity rechecked under the actual mutation transaction; fresh independent approval; a historical close record alone does not exclude a later writer |
+| Pointer promotion | ready → promoted | Authenticated restricted pointer CAS, deferred final lease validation and exact approved evidence; no checkpoint or shadow-worker continuation after promoted |
+| Canary reads | promoted | Exact pinned pointer, complete visible inventory and per-row source head in one restricted snapshot; any subsequent source drift denies the read |
+| Retained rollback | promoted retained target | New independent authority and current evidence/barrier, version/retention compatibility and pointer CAS; old scope fails on the next reader snapshot |
+
+A continuous promoted projection requires a separately designed writer/build and
+checkpoint lifecycle. Changing either current status guard alone is unsafe and
+is not implemented. No source-write freeze is inferred from this table. Until
+real barrier/executor/observer composition is proven, neither terminal promotion
+nor continuous processing is operationally ready.
+
+## Durable stop challenge continuation
+
+The inactive `stop-challenges.sql` addon now prepares the previously missing
+durable one-time challenge store. Separate observer DB logins cannot request,
+approve or consume operator admissions, self-register as controllers, replace
+receipts or access business tables. One challenge binds one current stop lease,
+process and observer principal. Scoped JSON claims are registered once with
+server registration time and audit actors; the assigned controller reads them
+in a genuine read-only transaction, verifies the prior stop gate, then accepts
+the exact stored hash once. Row locks and deferred final lease/challenge/observer
+checks protect acceptance and settlement. No runtime installs this contract.
+
+This supersedes only “challenge store absent” as a software-preparation gap.
+Real process observation/provenance, challenge delivery, current broker/SQL/ACK
+instrumentation, final source barrier, actual pointer executor and later scoped
+historical evidence retrieval remain absent. The store authenticates a login's
+claim; it cannot establish physical process truth or exclude a later writer.
+Mock closed-process data in a real PostgreSQL test is not a completed stop drill.
+None of the27 domain rows or G evidence sets is upgraded by this addon.
+
+## Transactional source-write barrier preparation
+
+The inactive source-barrier kernel plus separate fixture attachment now prepare
+the missing source-freeze primitive for the Fund control transaction. Shared
+transaction advisory locks on six actual source/projection tables prevent a
+current controller from acquiring the tenant's exclusive lock while a writer
+is active; later participating writes fail while it is held. No business grants,
+app wiring, migration or production trigger installation is included.
+
+The private request/generation/backend/xid8 handle is valid only in the acquiring
+transaction, and acquisition fails on wrong isolation or incomplete/modified
+ALWAYS trigger coverage, including inheritance. Old/new tenant scopes are both
+checked. A shared-table guard also affects non-Fund rows for that same tenant;
+this is a conservative tenant source boundary, not general adoption of their
+domains. Other tenant writers can proceed. Schema-owner DDL stays trusted/frozen.
+
+This supersedes only “source-barrier primitive absent” as a preparation gap.
+Final parity/broker/worker evidence, source reads after acquisition, current
+build/lease verification and actual pointer CAS have not been composed in one
+restricted executor. Read-only snapshots from a prior transaction cannot serve
+as that final verification. Physical observer and broker receipts remain absent;
+none of the27 domain G evidence sets is closed by this primitive.
+
+
+### Verifier/material provisioning boundary
+
+The new registry and signed verifier remain inactive. The canonical collector's
+nine-table RLS check does not by itself provision ledger access for the separate
+material hash: the hosted fixture explicitly adds FORCE RLS/tenant policy on
+legacy fund_transactions and a separate SELECT grant to its restricted reader.
+The material function separately refuses missing ledger FORCE RLS, inherited
+ownership or even column-only DML grants. No production RLS migration or ledger
+permission change was made. A future
+runtime installation must independently prove this extra boundary and all scoped
+source/read-only grants before enabling material certification. Generic app.org_id
+context is not tenant authorization. Fixed caps do not prove index/scan/RTO cost.
+
+
+### External prerequisites and ownership after this preparation
+
+No missing network/physical fact can be replaced by a fixture or signed self-claim.
+Original session «Проверить защиту Kafka-консюмера» owns overall delivery.
+
+| Owner | Concrete action, once prerequisites/authorization exist |
+|---|---|
+| Resolved by owner approval | Exact README prose exception authorized and applied in the existing PR; no clean-history republication or checkpoint rewrite needed. Local history/negative canaries PASS; hosted result retained in PR |
+| Test permission resolved; provider decisions remain | Owner authorized test consumers/replay/notifications. Selected run-isolated GitHub Kafka/PG synthetic scope and loopback receiver. Real external provider/human destination and persistent signer provisioning still require named service configuration |
+| Original delivery session | Provision the chosen service identities/key policy and configure real readonly DB/receipt/key/archive adapters for createFundEvidenceVerifier; no fixture module may be used |
+| Original delivery session | Execute the seven-purpose real acceptance procedure in PROJECTION_RECOVERY_RUNBOOK.md, retaining authentic signed bytes and exact release/manifest/material hashes |
+| Owner personally | Choose first-pointer bootstrap, Fund correction/reversal and promoted-worker lifecycle policy; terminal stopped canary is the only currently specified bounded design |
+| Original delivery session | After those decisions, implement/verify application cutover and lifecycle/correction drill using the existing guards; keep all27 domains gated by their A7 writer/effect/history evidence |
+| Production workflow | Only after separately authorized reviewed merge, release the immutable main artifact through .github/workflows/deploy.yml and verify SHA-bound post-deploy smoke; no feature deployment |
+
+Test consumers/replay/notifications are now explicitly allowed in isolated
+nonproduction scope. Full GitHub checks may run via ready_for_review; the PR
+will return to draft after verification. No auto-merge, production mutation or
+new active business integration follows. No foreign gate is weakened.
+
+
+### Real disposable drills after test authorization
+
+Owner permission supersedes historical no-test-consumer/replay/notification
+statements for the selected GitHub disposable profile only. Source4b manual
+CDC failed before connector startup because the official old Connect digest
+returned404. Same-release manifest/config bytes were independently hash-checked
+and the disposable pin refreshed; strict existing plugin/version tests unchanged.
+New de4 CDC-smoke passed actual transport/plugin/snapshot/cold-restart assertions;
+full-chain Fund and broker jobs remain pending until exact receipts are recorded.
+
+Operator de4 run39216417379 passed318/318, adding five real HTTP delivery/read-back/
+restart cases and three actual pg_dump/pg_restore cases. Notification stimuli are
+controlled and ACK actor is a separate machine identity, not a human; all ten
+receipt gates reached an actual independently authenticated receiver. Restore
+uses a new isolated database and reader with exact canonical/material parity,
+partial visibility denial and unchanged source. This is snapshot restore, not
+production PITR, encryption, immutable offsite archive or independent recovery RTO.
+Receipts/dump are synthetic-data-only hosted artifacts with7-day retention.
+
+These bounded observations do not compose genuine stop/broker/soak/archive/restore/
+approval/alerts into one authenticated runtime transition. The operator SQL/JIT
+and key policies remain inactive, same as business read cutover. Real exporter/
+rule firing, human paging, Kafka TLS/ACL/HA, persistent provider/identity/secret
+provisioning and full27-domain G evidence remain open. Do not turn these tests
+or topic presence into production activation authority.
+
+### Final exact-source test evidence — 2026-10-19
+
+This section supersedes pending/no-test-send/no-independent-test-restore statements
+above only for the explicitly authorized disposable profile. All executable source
+at `aa2e0f49e0bf50bdcd360f3df0175dee4ca11440` completed these hosted checks:
+
+| Evidence | Actual result and boundary |
+|---|---|
+| [Operator39217390626](https://github.com/rashadoni/leaddrive-v2/actions/runs/39217390626) | 318/318, nine zero-failure steps:226 units +5 HTTP notifications +17 admission +8 shadow +9 stop challenge +24 snapshot/canary +8 source barrier +18 transition/registry/material +3 physical restore |
+| [Broker39217390814](https://github.com/rashadoni/leaddrive-v2/actions/runs/39217390814) | Real Kafka/restricted SQL and verified client-only direct-JVM worker; exact restart parity, real COMMIT before ACK, stop-during/after-COMMIT races, ACK/receipt loss, takeover and stale ACK fencing. Initial pure driver database effects remain simulated |
+| [CDC39217390847](https://github.com/rashadoni/leaddrive-v2/actions/runs/39217390847) | Both jobs PASS: canonical source → Debezium → actual Kafka bytes → restricted Fund SQL; snapshot/cold restart, two-tenant parity, committed ACK loss/restart; corrected NEW build/group replays same bytes while preserving old bad builds/group and source/active/effects/other tenant. Replay sends NONE; TLS/ACL not proven |
+| [PR gates39217650528](https://github.com/rashadoni/leaddrive-v2/actions/runs/39217650528) | Linux production build, static-checks and typecheck gates PASS. Existing baseline still contains18 failing test files and1327 TS diagnostics (64 gated pairs); no new baseline failure, not a zero-error claim |
+| Other exact-source gates | Disposable stack39217390890, scan39217388559, runner-policy39217388814 and tooling39217388771 all SUCCESS |
+
+Downloaded operator artifact12169689695 was checked against its receipt: actual
+dump SHA256 `22253d360d006b1dd6e589c2b15ad81a3e15867d35ba2780746af7691b0cdd97`,
+three restored aggregates,20 delivery/ACK journal entries covering all10 gates.
+The source material hash matches the independently restored material. This is
+historical artifact integrity; no clock is changed to admit old operational data.
+The synthetic dump/receipts expire after7 days and are not an immutable backup.
+Machine-readable source/run/hash/limitation record:
+[operator-readiness-ci-2026-10-19.json](evidence/operator-readiness-ci-2026-10-19.json).
+
+Latest inspected `origin/main` is `abdc13018acc9f120ee4d50fbb121a90cc3efe63`.
+Since the prior inspectedfbfae3961, Kafka source/contracts are unchanged; unrelated
+TikTok lock/application/demo changes and its additional PR/deploy gate were read,
+not imported or edited. No verification of that new unrelated gate is claimed.
+PR894 returned to draft with auto-merge OFF after the complete source checks;
+the temporary production-build label was removed. Final documentation checkpoints
+do not change the tested executable tree. Any future integration with newer main
+must pass that main's current required gates before its own authorized delivery.
+
+**Still open:** genuine runtime identity/key/provider provisioning; one composed
+physical stop/broker/soak/archive/restore/approval/alerts admission; actual rule
+triggers and human paging; production TLS/ACL/HA, PITR/encryption/WORM/RTO; owner
+bootstrap/correction/promoted-worker decisions; application cutover and complete
+A7 writer/effect/history/rebuild proof for every row. No27-domain G set is closed,
+no live business integration enabled, and no production/merge/deploy performed.
