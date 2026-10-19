@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       select: { status: true, settings: true, capabilities: true, tokenExpiresAt: true, lastInboundAt: true },
     })
     const settings = record(connection?.settings)
-    const refreshValid = typeof settings.refreshExpiresAt === "string" && Date.parse(settings.refreshExpiresAt) > Date.now()
+    const refreshValid = settings.grantVerified === true && typeof settings.refreshExpiresAt === "string" && Date.parse(settings.refreshExpiresAt) > Date.now()
     return NextResponse.json({
       configured: messagingConfigured() && new URL(messagingConfig().redirectUri).origin === request.nextUrl.origin,
       status: connection?.status === "connected" && !refreshValid ? "needs_access" : connection?.status ?? "needs_access",

@@ -76,6 +76,7 @@ describe("native TikTok durable delivery", () => {
   it("does not send attachments or reuse legacy automation claims", async () => {
     expect(await sendNativeMessagingReply({ ...opts, attachment: { buffer: Buffer.from("x"), mime: "image/png", filename: "x.png", url: "https://example.test/x.png" } })).toMatchObject({ success: false, statusCode: 400 })
     expect(await sendNativeMessagingReply({ ...opts, chatwootAutoReplyClaim: { inboundMessageId: "x", cooldownMs: 1000 } })).toMatchObject({ success: false, statusCode: 400 })
+    expect(await sendNativeMessagingReply({ ...opts, deliveryIdempotency: { source: "flow", key: "a".repeat(64) } })).toMatchObject({ success: false, statusCode: 400 })
     expect(mocks.send).not.toHaveBeenCalled()
   })
 })

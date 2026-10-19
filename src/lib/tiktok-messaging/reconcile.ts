@@ -1,14 +1,15 @@
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { lockTurns } from "@/lib/lock-turns"
 import { record, TIKTOK_MESSAGING_PROVIDER } from "./config"
 
 const turns = lockTurns("tiktok-messaging-reconcile", 1)
-type Result = { kind: "missing" | "conflict" | "too_recent" } | { kind: "reconciled" | "replayed"; messageId: string; outcome: "delivered" | "not_delivered" }
+type Result = { kind: "missing" } | { kind: "conflict" } | { kind: "too_recent" } | { kind: "reconciled" | "replayed"; messageId: string; outcome: "delivered" | "not_delivered" }
 
 /** Operator explicitly verifies the TikTok app conversation; no inferred non-delivery. */
 export async function reconcileNativeMessaging(organizationId: string, userId: string, conversationId: string, attemptId: string, outcome: "delivered" | "not_delivered"): Promise<Result> {
-  return turns.run(organizationId, () => runWithTenant(organizationId, () => prisma.$transaction(async tx => {
+  return turns.run(organizationId, () => runWithTenant(organizationId, () => prisma.$transaction(async (tx: Prisma.TransactionClient): Promise<Result> => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`tiktok-messaging-connection:${organizationId}`}, 0))`
     const conversation = await tx.socialConversation.findFirst({ where: { id: conversationId, organizationId, platform: "tiktok", deletedAt: null } })
     if (!conversation || record(conversation.metadata).provider !== TIKTOK_MESSAGING_PROVIDER) return { kind: "missing" }

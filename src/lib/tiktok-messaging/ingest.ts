@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { lockTurns } from "@/lib/lock-turns"
@@ -16,7 +17,7 @@ export async function ingestMessagingInbound(event: MessagingInbound, appId: str
   if (connections.length !== 1) return "ignored"
   const { id: connectionId, organizationId } = connections[0]
   const externalId = messagingConversationKey(event.businessId, event.conversationId)
-  return turns.run(organizationId, () => runWithTenant(organizationId, () => prisma.$transaction(async tx => {
+  return turns.run(organizationId, () => runWithTenant(organizationId, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`tiktok-messaging-connection:${organizationId}`}, 0))`
     // Recheck after the lock: disconnect/reconnect may have happened since lookup.
     const connection = await tx.channelConnection.findFirst({ where: { id: connectionId, organizationId, status: "connected", provider: TIKTOK_MESSAGING_PROVIDER } })
@@ -36,7 +37,7 @@ export async function ingestMessagingInbound(event: MessagingInbound, appId: str
     })
     // Hidden/trash conversations keep evidence but are not silently reopened.
     await tx.channelMessage.create({ data: {
-      organizationId, channelConfigId: active.id, conversationId: conversation.id, channelType: "tiktok", direction: "inbound",
+      organizationId, channelConfigId: active.id, conversationId: conversation.id, contactId: conversation.contactId, channelType: "tiktok", direction: "inbound",
       from: event.senderId, to: event.businessId, body: event.body, messageType: event.messageType, status: "delivered", externalId: messageExternalId,
       createdAt: at, metadata: { ...metadata, senderName: event.senderName, providerMessageId: event.messageId, providerTimestamp: event.timestamp, unsupportedMedia: event.messageType !== "text" },
     } })

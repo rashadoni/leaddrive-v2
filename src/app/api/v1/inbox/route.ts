@@ -192,8 +192,8 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
         let contactPhone: string | null = null
         let contactLifecycleStage: string | null = null
 
-        if (key.startsWith("contact_")) {
-          contactId = key.replace("contact_", "")
+        if (key.startsWith("contact_") || (msg.channelType === "tiktok" && meta?.provider === "tiktok_messaging" && msg.contactId)) {
+          contactId = key.startsWith("contact_") ? key.replace("contact_", "") : msg.contactId
           const c = contactById[contactId]
           if (c) {
             contactName = c.fullName || contactName

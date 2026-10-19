@@ -25,3 +25,9 @@ Verification so far: remote-alt npm ci completed, Prisma client generated, first
 Targeted lint of the new backend/routes/settings UI passed. The expanded suite passed 95/95 tests in 13 files, including 10 credential lifecycle/dispatch tests and existing Chatwoot ledger/catalog/reply-policy regressions. Tests model provider calls and transactions; they are not proof of real PostgreSQL races or live TikTok delivery. First failure was corrected solely by updating the old assertion to include the newly selected provider metadata.
 
 Ready for a path-scoped checkpoint and draft PR. Mandatory GitHub checks will run after readiness; full build and live browser/provider acceptance remain NOT RUN (shared-host policy and pending TikTok access). Current scope: OAuth connection/status, native inbound inbox messages, manual text replies, safe retry/reconciliation and local disconnect. No production changes or test messages.
+
+## 2026-10-19 — PR and final local verification
+
+Created and attached PR https://github.com/rashadoni/leaddrive-v2/pull/917 after checkpoint 5929f447f. During final review, explicitly typed new Prisma transaction callbacks/JSON writes and reconciliation results. Added canonical-host checks for OAuth, safe status serialization tests, manual-only native dispatch and linked-contact retention. No settings or messages changed in provider/production accounts.
+
+Latest targeted verification: 98/98 tests passed in 14 files; targeted ESLint passed. PR will run the five required checks plus the existing production-build job on GitHub-hosted Linux. Build/CI results are pending; no merge/deploy has occurred. Next: resolve any CI regressions, then present the concrete owner release scope before merging under DELIVERY-ARCHITECTURE.md.

@@ -14,7 +14,7 @@ export const messagingIdentity = (organizationId: string) => ({ organizationId, 
 const tokenPurpose = (orgId: string) => `${TIKTOK_MESSAGING_PURPOSE}:${orgId}`
 
 export async function beginMessagingAuthorization(organizationId: string, fingerprint: string): Promise<void> {
-  await turns.run(organizationId, () => runWithTenant(organizationId, () => prisma.$transaction(async tx => {
+  await turns.run(organizationId, () => runWithTenant(organizationId, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`tiktok-messaging-connection:${organizationId}`}, 0))`
     await tx.channelConnection.upsert({
     where: { organizationId_platform_surface_provider: messagingIdentity(organizationId) },
@@ -26,7 +26,7 @@ export async function beginMessagingAuthorization(organizationId: string, finger
 
 /** Local disconnect always clears both tokens. Provider only guarantees access-token revocation. */
 export async function disconnectMessaging(organizationId: string): Promise<boolean> {
-  return turns.run(organizationId, () => runWithTenant(organizationId, () => prisma.$transaction(async tx => {
+  return turns.run(organizationId, () => runWithTenant(organizationId, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`tiktok-messaging-connection:${organizationId}`}, 0))`
     const connection = await tx.channelConnection.findUnique({ where: { organizationId_platform_surface_provider: messagingIdentity(organizationId) } })
     if (!connection) return false
@@ -44,7 +44,7 @@ export async function disconnectMessaging(organizationId: string): Promise<boole
 }
 
 export async function retryMessagingSubscription(organizationId: string): Promise<void> {
-  await turns.run(organizationId, () => runWithTenant(organizationId, () => prisma.$transaction(async tx => {
+  await turns.run(organizationId, () => runWithTenant(organizationId, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`tiktok-messaging-connection:${organizationId}`}, 0))`
     const connection = await tx.channelConnection.findUnique({ where: { organizationId_platform_surface_provider: messagingIdentity(organizationId) } })
     if (connection?.status !== "connected") throw new TikTokMessagingError("tiktok_not_connected")
@@ -68,7 +68,7 @@ export async function saveMessagingConnection(organizationId: string, userId: st
   if (!requiredMessagingScopes(scopes)) throw new TikTokMessagingError("tiktok_required_scopes_missing")
   // One account cannot silently feed multiple tenants. Cross-tenant scope is
   // used ONLY for this ownership check, never for conversation/message writes.
-  return turns.run(`bind:${clientId}:${token.openId}`, () => runWithRlsBypass(() => prisma.$transaction(async tx => {
+  return turns.run(`bind:${clientId}:${token.openId}`, () => runWithRlsBypass(() => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`tiktok-messaging-account:${clientId}:${token.openId}`}, 0))`
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`tiktok-messaging-connection:${organizationId}`}, 0))`
     const claimed = await tx.channelConnection.findFirst({ where: {
@@ -116,7 +116,7 @@ export async function saveMessagingConnection(organizationId: string, userId: st
 /** Refresh serialized across workers. Commit rotations even if subsequent validation is unavailable. */
 type AccountAccess = { accessToken: string; openId: string; channelConfigId: string }
 async function withMessagingAccount<T>(organizationId: string, connectionId: string, action: (access: AccountAccess, tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-  const result = await turns.run(`refresh:${connectionId}`, () => runWithTenant(organizationId, () => prisma.$transaction(async tx => {
+  const result = await turns.run(`refresh:${connectionId}`, () => runWithTenant(organizationId, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`tiktok-messaging-connection:${organizationId}`}, 0))`
     const connection = await tx.channelConnection.findFirst({ where: { id: connectionId, ...messagingIdentity(organizationId), status: "connected" } })
     let settings = record(connection?.settings)
@@ -136,7 +136,7 @@ async function withMessagingAccount<T>(organizationId: string, connectionId: str
       settings = { ...settings, grantVerified: false, refreshExpiresAt: new Date(Date.now() + refreshed.refreshExpiresIn * 1000).toISOString() }
       await tx.channelConnection.updateMany({ where: { id: connectionId, organizationId }, data: {
         accessToken: encryptToken(refreshed.accessToken, tokenPurpose(organizationId)), refreshToken: encryptToken(refreshed.refreshToken, tokenPurpose(organizationId)),
-        tokenExpiresAt: new Date(Date.now() + refreshed.expiresIn * 1000), settings,
+        tokenExpiresAt: new Date(Date.now() + refreshed.expiresIn * 1000), settings: settings as Prisma.InputJsonObject,
       } })
       accessToken = refreshed.accessToken
     }

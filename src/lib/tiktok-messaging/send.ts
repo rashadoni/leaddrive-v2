@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { createHash } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
@@ -24,6 +25,7 @@ export function messagingDeliveryKey(value: SendConversationReplyOptions["delive
 /** All native callers converge here; this adapter never falls back to Chatwoot. */
 export async function sendNativeMessagingReply(opts: SendConversationReplyOptions): Promise<SendConversationReplyResult> {
   const key = messagingDeliveryKey(opts.deliveryIdempotency)
+  if (opts.deliveryIdempotency?.source !== "manual") return fail("Automated native TikTok replies are not enabled.", 400)
   if (!opts.conversationId || !key) return fail("A conversation and valid idempotency key are required.", 400)
   if (opts.attachment) return fail("TikTok native replies currently support text only.", 400)
   if (!opts.body.trim() || opts.body.length > 6000) return fail("TikTok replies must contain 1–6000 characters.", 400)
@@ -32,7 +34,7 @@ export async function sendNativeMessagingReply(opts: SendConversationReplyOption
   let attempt: { id: string; metadata: Record<string, string>; connectionId: string; businessId: string; recipient: string; channelConfigId: string } | null = null
   let networkStarted = false
   try {
-    const claim = await turns.run(opts.organizationId, () => runWithTenant(opts.organizationId, () => prisma.$transaction(async tx => {
+    const claim = await turns.run(opts.organizationId, () => runWithTenant(opts.organizationId, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`tiktok-messaging-connection:${opts.organizationId}`}, 0))`
       const conversation = await tx.socialConversation.findFirst({ where: { id: opts.conversationId!, organizationId: opts.organizationId, platform: "tiktok", deletedAt: null } })
       const binding = record(conversation?.metadata)
