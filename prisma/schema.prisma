@@ -22160,6 +22160,11 @@ model DemoWhatsAppThread {
   lastAiReplyAt      DateTime?
   closedAt           DateTime?
   closeReason        String?
+  /// The prospect pressed «Mesajımdan bilet açılsın»: their next message opens a real ticket.
+  ticketModeAt       DateTime?
+  ticketClaimedAt    DateTime?
+  /// The ticket this demo opened in the sales organisation (tickets.id; no FK — tenant table).
+  ticketId           String?   @unique(map: "demo_whatsapp_threads_ticket_key")
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

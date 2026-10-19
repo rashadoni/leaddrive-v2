@@ -171,6 +171,9 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "mtm-plan-map": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Route planner: clients on the map" },
   "mtm-live-roster": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Live map: the team and their statuses" },
   "mtm-live-map": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Live map" },
+  "mtm-live-call": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Live map: a client asks — who is nearest" },
+  "mtm-history-filter": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "History: the employee, the day and «Göstər»" },
+  "mtm-history-trip": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "History: the day as legs, a break as its length only" },
   "mtm-visit-card": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "Visit: zone, photos, presentation, signature" },
   "mtm-visit-left-open": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "A visit the agent left open" },
   "mtm-place-request": { area: "mtm", scene: MTM_SCENE, productFiles: [], label: "«Client is here»: before / proposed" },
@@ -201,6 +204,7 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "prs-today-attention": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Today: who needs attention, explanations" },
   "prs-timesheet": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Timesheet grid and the day card" },
   "prs-risk": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Suspicious records" },
+  "prs-risk-decision": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Risk review: the two times, the reason, close" },
   "prs-n1t": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "N-1t timesheet for accounting" },
   "prs-month-close": { area: "personnel", scene: PERSONNEL_SCENE, productFiles: [], label: "Close the month" },
   /* ── Contracts ── */

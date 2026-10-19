@@ -16,7 +16,7 @@ import { buildMtmAttendanceReport, type MtmAttendanceCorrection, type MtmAttenda
 import { MTM_ATTENDANCE_BASELINE_RULE } from "@/lib/mtm/attendance-rules"
 import type { AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
 import type { AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
-import type { AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
+import type { AttendanceRiskItem, AttendanceRiskReport } from "@/lib/mtm/attendance-risk-contract"
 import { attendanceTodayRange } from "@/lib/mtm/attendance-today"
 import { addDays, mtmDemoAt } from "./mtm-demo-data"
 
@@ -245,4 +245,39 @@ export function personnelDemoRisks(today: string): AttendanceRiskItem[] {
       claimedAt: mtmDemoAt(addDays(today, -1), "08:50"), serverReceivedAt: mtmDemoAt(addDays(today, -1), "09:02"), createdAt: mtmDemoAt(addDays(today, -1), "09:02"), relatedNames: [],
       deltaSeconds: -720, thresholdSeconds: 300 },
   ]
+}
+
+/**
+ * The one answer that comes back after «İzahat istə»: Lalə's, written on her
+ * phone a quarter of an hour later. The others are still waiting.
+ */
+export const PERSONNEL_DEMO_EXPLANATION = {
+  employeeId: "emp-02",
+  answeredAt: "09:34",
+  answer: "Metroda qatar tuneldə on beş dəqiqə dayandı. Rəhbərimə 09:05-də yazmışdım.",
+} as const
+
+/** What the reviewer writes when closing the shared-phone record — a sample; the prospect may change it. */
+export const PERSONNEL_DEMO_RISK_REASON = "Ülvi ilə danışdım: telefonu xarab idi, Kamalın telefonundan qeyd etdi. Anbar rəhbəri onun 08:55-də işdə olduğunu təsdiqlədi."
+export const PERSONNEL_DEMO_REVIEWER = "Orxan Musayev"
+
+/**
+ * The review list in the shape its API answers with (`AttendanceRiskReport`),
+ * for the product's own table (`buildAttendanceRiskTable`). Once the first
+ * record is closed it carries the reviewer, the moment and the reason, as the
+ * product's dismissal does; the time itself does not change.
+ */
+export function personnelDemoRiskReport(today: string, closed: { reason: string } | null): AttendanceRiskReport {
+  const items = personnelDemoRisks(today).map((item) => (closed && item.id === "risk-1"
+    ? { ...item, dismissal: { at: mtmDemoAt(today, PERSONNEL_DEMO_CLOCK), byName: PERSONNEL_DEMO_REVIEWER, reason: closed.reason } }
+    : item))
+  return {
+    directory: PERSONNEL_DEMO_EMPLOYEES.map((employee) => ({ id: employee.id, name: employee.name, teamId: employee.teamId ?? null, teamName: employee.teamName ?? null })),
+    items,
+    snapshot: {
+      id: "0".repeat(64),
+      asOf: mtmDemoAt(today, PERSONNEL_DEMO_CLOCK),
+      query: { from: addDays(today, -6), to: today, status: "ALL", kind: "ALL", teamId: "", employeeId: "" },
+    },
+  }
 }

@@ -1548,6 +1548,13 @@ run_aws() {
     timeout "$timeout_seconds" "$AWS_BIN" "$@"
 }
 
+# Object Storage is Backblaze B2 (S3-compatible API). Hetzner Object Storage
+# went away with the Hetzner account in September 2026; its endpoint form is no
+# longer accepted. The region is B2's cluster name, e.g. eu-central-003.
+object_storage_endpoint_matches_region() {
+  [[ "$2" =~ ^[a-z]{2}-[a-z]+-[0-9]{3}$ ]] && [ "$1" = "https://s3.$2.backblazeb2.com" ]
+}
+
 prove_object_lock() {
   local endpoint region bucket access_key secret_key lock_state
   local lock_enabled lock_mode lock_days
@@ -1556,8 +1563,8 @@ prove_object_lock() {
   bucket="$(require_static_value BACKUP_S3_BUCKET)"
   access_key="$(require_static_value AWS_ACCESS_KEY_ID)"
   secret_key="$(require_static_value AWS_SECRET_ACCESS_KEY)"
-  [ "$endpoint" = "https://${region}.your-objectstorage.com" ] \
-    || fatal "Object Storage endpoint does not match its configured Hetzner region"
+  object_storage_endpoint_matches_region "$endpoint" "$region" \
+    || fatal "Object Storage endpoint does not match its configured B2 region"
   lock_state="$(run_aws 45 "$access_key" "$secret_key" \
     s3api get-object-lock-configuration \
       --endpoint-url "$endpoint" --region "$region" --no-cli-pager \

@@ -228,7 +228,7 @@ jobs:
         run: |
           python3 .github/scripts/test_remediate_postgres_source_tls.py
           python3 .github/scripts/test_provision_postgres_restore_scratch.py
-          node --test scripts/backup/object-lock-diagnostic.test.mjs
+          node --test scripts/backup/object-lock-diagnostic.test.mjs scripts/backup/object-storage-endpoint.test.mjs scripts/backup/b2-key-denial.test.mjs
 
       - name: Event-platform migration and database invariant gate
         run: node scripts/ci/test-event-platform-migrations.mjs
@@ -318,6 +318,17 @@ jobs:
           FINANCE_BILL_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           FINANCE_BILL_PAYMENT_DB_GATE: required
 
+      - name: Demo WhatsApp ticket database gate
+        # The demo's real Service Desk ticket (opened on the prospect's own
+        # press) is read back for the demo page only through the sales
+        # organisation's door, by the id the demo keeps, under the product's
+        # FORCE RLS on tickets with a role that cannot bypass it (see the
+        # test's header).
+        run: npx vitest run src/__tests__/demo-whatsapp-ticket-postgres.test.ts
+        env:
+          DEMO_WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEMO_WHATSAPP_TICKET_DB_GATE: required
+
       - name: Finance Telegram recipient database gate
         # Who receives a tenant's payment notices, read off the requests that
         # leave for api.telegram.org. Until 2026-10-07 every tenant's
@@ -342,6 +353,30 @@ jobs:
         env:
           WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           WHATSAPP_TICKET_DB_GATE: required
+
+      - name: TikTok lead ad lock database gate
+        # Simultaneous TikTok Lead Ads deliveries, read off the tables after the
+        # real webhook ran on a real Postgres under the production RLS policies,
+        # with a three-connection pool. Until 2026-10-19 each delivery waited for
+        # its organization's monitoring fence, and for its lead's lock, holding a
+        # pooled connection: a burst as large as the pool left the delivery
+        # inside no connection for its work, and the whole pool timed out.
+        run: npx vitest run src/__tests__/tiktok-lead-ad-lock-postgres.test.ts
+        env:
+          TIKTOK_LEAD_AD_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          TIKTOK_LEAD_AD_DB_GATE: required
+
+      - name: Social webhook fence pool database gate
+        # Bursts of Facebook/Instagram and TikTok comments, read off the table
+        # after the real webhooks ran on a real Postgres under the production
+        # RLS policies, with a three-connection pool. Until 2026-10-19 each
+        # delivery waited for its organization's monitoring fence holding a
+        # pooled connection: a burst as large as the pool left the delivery
+        # inside no connection for its work, and comments were lost.
+        run: npx vitest run src/__tests__/social-webhook-fence-pool-postgres.test.ts
+        env:
+          SOCIAL_WEBHOOK_FENCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          SOCIAL_WEBHOOK_FENCE_DB_GATE: required
 
       - name: MTM break coordinates database gate
         # Where an employee spent a break is not stored, read off the table

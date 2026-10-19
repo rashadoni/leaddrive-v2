@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -75,6 +76,8 @@ const COPY: Record<Loc, Record<string, string>> = {
     lang_az: "Azerbaijani",
     lang_ru: "Russian",
     lang_en: "English",
+    langChangeAt: "Change it:",
+    langChangeLink: "Settings → Organization → Customer language",
   },
   ru: {
     regenerateHint: "Генерируйте новый ключ только если старый утек или нужно отозвать все текущие embeds. Все сайты со старым snippet надо будет обновить.",
@@ -102,6 +105,8 @@ const COPY: Record<Loc, Record<string, string>> = {
     lang_az: "азербайджанский",
     lang_ru: "русский",
     lang_en: "английский",
+    langChangeAt: "Сменить язык:",
+    langChangeLink: "Настройки → Организация → Язык общения с клиентами",
   },
   az: {
     regenerateHint: "Yeni açarı yalnız köhnə açar sızıbsa və ya bütün mövcud embed-ləri ləğv etmək istəyirsinizsə yaradın. Köhnə snippet olan bütün saytlar yenilənməlidir.",
@@ -129,6 +134,8 @@ const COPY: Record<Loc, Record<string, string>> = {
     lang_az: "Azərbaycan dili",
     lang_ru: "rus dili",
     lang_en: "ingilis dili",
+    langChangeAt: "Dili dəyişmək:",
+    langChangeLink: "Parametrlər → Təşkilat → Müştərilərlə ünsiyyət dili",
   },
 }
 
@@ -307,7 +314,13 @@ export default function WebChatSettingsPage() {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">{t("embedHint")}</p>
-        {widgetLang && <p className="text-xs text-muted-foreground">{c.langHint.replace("{lang}", c[`lang_${widgetLang}`])}</p>}
+        {widgetLang && (
+          <p className="text-xs text-muted-foreground">
+            {c.langHint.replace("{lang}", c[`lang_${widgetLang}`])}{" "}
+            {c.langChangeAt}{" "}
+            <Link href="/settings/organization" className="font-medium text-primary underline underline-offset-2">{c.langChangeLink}</Link>.
+          </p>
+        )}
         <p className="text-xs text-amber-700 dark:text-amber-300">{c.regenerateHint}</p>
       </div>
 
