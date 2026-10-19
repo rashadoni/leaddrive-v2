@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
-import { lockTurns } from "@/lib/lock-turns"
 import { ingestMentionWithResult } from "@/lib/social/ingest-mention"
 import { findMatchedKeyword } from "@/lib/social/keyword-match"
 import { withSocialMonitoringTenantCollectionFence } from "@/lib/social/monitoring-import-fence"
@@ -42,20 +41,6 @@ type MetaWebhookValue = {
 type MetaWebhookChange = MetaWebhookValue & { value?: MetaWebhookValue }
 type MetaWebhookEntry = { id?: string; changes?: MetaWebhookChange[]; messaging?: MetaWebhookChange[] }
 type MetaWebhookBody = { entry?: MetaWebhookEntry[]; object?: string }
-
-/**
- * One organization's deliveries take their turn in this process before they
- * open its social-monitoring fence, and at most two hold the fence's
- * transaction at once (`@/lib/lock-turns`). The fence keeps its pooled
- * connection from the moment it opens, waiting for the organization's lock
- * included, and the comments are stored on another one. Until 2026-10-19 a
- * burst of comments on one page — as many simultaneous deliveries as the pool
- * has connections — left the delivery inside the fence no connection for its
- * work, and the pool timed out. Some deliveries failed outright; in others the
- * comment's timeout was logged and swallowed below and the webhook answered
- * 200, so Meta never redelivered a comment that was never stored.
- */
-const metaCommentTurns = lockTurns("meta-social-webhook", 2)
 
 /**
  * Meta Graph webhook receiver — accepts Facebook Page and Instagram Business comment events.
@@ -127,7 +112,6 @@ export async function POST(req: NextRequest) {
     // The outer tenant scope is required because the fence opens a new
     // transaction after the bypass-only account lookup has completed.
     const fenced = await runWithTenant(account.organizationId, () =>
-      metaCommentTurns.run(account.organizationId, () =>
       withSocialMonitoringTenantCollectionFence(account.organizationId, async () => {
 
     const changes = entry.changes || entry.messaging || []
@@ -262,7 +246,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-      })),
+      }),
     )
     if (!fenced.allowed) blocked += 1
   }

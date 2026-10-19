@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
-import { lockTurns } from "@/lib/lock-turns"
 import { crudeSentiment } from "@/lib/sentiment"
 import { ingestMentionWithResult } from "@/lib/social/ingest-mention"
 import { parseTikTokOrganicWebhook } from "@/lib/channels/tiktok-webhook-events"
@@ -35,15 +34,6 @@ async function resolveOrganicConnection(token: string): Promise<ChannelConnectio
   } : null
 }
 
-/**
- * One organization's deliveries take their turn in this process before they
- * open its social-monitoring fence, and at most two hold the fence's
- * transaction at once (`@/lib/lock-turns`): until 2026-10-19 each delivery
- * waited for the organization's fence holding a pooled connection, so a burst
- * as large as the pool left the delivery inside the fence none for its work.
- */
-const organicTurns = lockTurns("tiktok-organic-webhook", 2)
-
 export async function POST(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token")
   if (!token) return NextResponse.json({ error: "Missing token" }, { status: 400 })
@@ -57,7 +47,7 @@ export async function POST(req: NextRequest) {
   const events = parseTikTokOrganicWebhook(body)
   if (events.length === 0) return NextResponse.json({ ok: true, ignored: "no-valid-events" })
 
-  const fenced = await runWithTenant(connection.organizationId, () => organicTurns.run(connection.organizationId, () =>
+  const fenced = await runWithTenant(connection.organizationId, () =>
     withSocialMonitoringTenantCollectionFence(connection.organizationId, async () => {
       const results = []
       for (const event of events) {
@@ -94,7 +84,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({ ok: true, data: { ingested: results.length, results } })
     }),
-  ))
+  )
   if (!fenced.allowed) {
     // Acknowledge signed provider delivery so TikTok does not retry while an
     // operator intentionally keeps Social Monitoring paused after clean-slate.

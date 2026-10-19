@@ -2,6 +2,7 @@
 import { timingSafeEqual } from "node:crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { enterRlsBypass } from "./rls-context"
+import { enterScheduledWork } from "./scheduled-work"
 
 /** Constant-time string compare — journeys/process already used timingSafeEqual; the choke point must not downgrade it. */
 function safeEqual(a: string, b: string): boolean {
@@ -15,8 +16,9 @@ function safeEqual(a: string, b: string): boolean {
  * classifier in src/__tests__/rls-bypass-classifier.test.ts is written
  * against THIS function; do not re-inline secret checks in routes).
  *
- * Returns null on success (and binds RLS bypass to the request) or a
- * NextResponse error: 503 when CRON_SECRET is unset, 401 on mismatch.
+ * Returns null on success (and binds RLS bypass to the request, which it
+ * also marks as scheduled work, `scheduled-work.ts`) or a NextResponse error:
+ * 503 when CRON_SECRET is unset, 401 on mismatch.
  */
 export function requireCronAuth(req: NextRequest): NextResponse | null {
   const secret = process.env.CRON_SECRET
@@ -30,5 +32,6 @@ export function requireCronAuth(req: NextRequest): NextResponse | null {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   enterRlsBypass()
+  enterScheduledWork()
   return null
 }
