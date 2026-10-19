@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { gateChannelsAccess } from "@/lib/channels-access"
+import { withRlsSessionAuth } from "@/lib/with-rls"
 import { messagingConfig } from "@/lib/tiktok-messaging/config"
 import { createMessagingState, messagingStateFingerprint } from "@/lib/tiktok-messaging/oauth-state"
 import { beginMessagingAuthorization } from "@/lib/tiktok-messaging/store"
 
-export async function POST(request: NextRequest) {
+export const POST = withRlsSessionAuth(async (request: NextRequest, session) => {
+  // The channel gate's grandfather query needs tenant RLS before it runs.
   const gate = await gateChannelsAccess(request)
   if (gate instanceof NextResponse) return gate
+  if (gate.orgId !== session.orgId || gate.userId !== session.userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   if (request.headers.get("origin") !== request.nextUrl.origin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   try {
     const config = messagingConfig()
@@ -21,4 +24,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "tiktok_messaging_connection_unavailable" }, { status: 503 })
   }
-}
+})

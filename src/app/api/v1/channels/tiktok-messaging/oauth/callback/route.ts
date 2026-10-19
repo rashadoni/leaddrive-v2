@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { gateChannelsAccess } from "@/lib/channels-access"
+import { withRlsSessionAuth } from "@/lib/with-rls"
 import { auditChannelChange } from "@/lib/channels/channel-credential-audit"
 import { messagingConfig, requiredMessagingScopes, TIKTOK_MESSAGING_CHANNEL, TIKTOK_MESSAGING_RETURN_PATH, TIKTOK_MESSAGING_WEBHOOK_PATH } from "@/lib/tiktok-messaging/config"
 import { exchangeMessagingCode, verifyMessagingAccountAccess, subscribeMessagingWebhook, verifyMessagingGrant, TikTokMessagingError } from "@/lib/tiktok-messaging/api"
 import { consumeMessagingAuthorization, saveMessagingConnection } from "@/lib/tiktok-messaging/store"
 import { messagingStateFingerprint, verifyMessagingState } from "@/lib/tiktok-messaging/oauth-state"
 
-export async function GET(request: NextRequest) {
+export const GET = withRlsSessionAuth(async (request: NextRequest, session) => {
+  // Keep the fresh administrator gate inside the resolved session's RLS scope.
   const gate = await gateChannelsAccess(request)
   if (gate instanceof NextResponse) return gate
+  if (gate.orgId !== session.orgId || gate.userId !== session.userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   const finish = (result: string) => {
     // Fixed relative path; never echo provider error text or auth codes.
     const url = new URL(TIKTOK_MESSAGING_RETURN_PATH, request.nextUrl.origin)
@@ -43,4 +46,4 @@ export async function GET(request: NextRequest) {
     const known = error instanceof TikTokMessagingError ? error.reason : "connection_failed"
     return finish(["tiktok_advanced_access_required", "tiktok_account_already_connected", "tiktok_different_account_requires_new_workspace", "tiktok_required_scopes_missing"].includes(known) ? known : "connection_failed")
   }
-}
+})

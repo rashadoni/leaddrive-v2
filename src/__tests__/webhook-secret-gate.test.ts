@@ -34,6 +34,7 @@ const VERIFICATION_MARKERS = [
   "x-telegram-bot-api-secret-token",
   "webhookSecret",          // per-channel secret read from settings
   "verifySignature",
+  "verifyMessagingWebhook", // TikTok HMAC-SHA256 + timestamp + constant-time comparison; route tests exercise rejection before ingestion
   "parseMetaSignedRequest", // Meta signed_request: HMAC-SHA256 over the payload (lib/social/meta-signed-request)
   "svix",
 ]
