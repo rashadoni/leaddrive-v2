@@ -127,6 +127,19 @@ describe("the evening's history of Elvin's day", () => {
   })
 })
 
+describe("the client the manager moved in the morning", () => {
+  it("is where the agent showed it on every screen after the approval, and at its old pin before", async () => {
+    const { mtmDemoPlaceRequest, mtmDemoPlannerCandidates } = await import("@/components/demo-center/journey/scenes/mtm-demo-data")
+    const request = mtmDemoPlaceRequest(TODAY)
+    const before = mtmDemoMapClients(false).find((client) => client.id === "pl-apt24")!
+    const after = mtmDemoMapClients(true).find((client) => client.id === "pl-apt24")!
+    expect([before.latitude, before.longitude]).toEqual([request.previous.latitude, request.previous.longitude])
+    expect([after.latitude, after.longitude]).toEqual([request.proposed.latitude, request.proposed.longitude])
+    const planned = mtmDemoPlannerCandidates(true).find((candidate) => candidate.customerId === "pl-apt24")!
+    expect([planned.latitude, planned.longitude]).toEqual([request.proposed.latitude, request.proposed.longitude])
+  })
+})
+
 describe("the live map at noon", () => {
   it("moves the agent on the way down her street and nobody else", () => {
     const noon = Date.parse(mtmDemoAt(TODAY, MTM_DEMO_CLOCK))

@@ -246,12 +246,23 @@ export const MTM_DEMO_PLACES: readonly MtmDemoPlace[] = [
     doctors: [{ id: "dr-cavadova", name: "Dr. Səbinə Cavadova", specialty: "Ginekoloq", visitsThisMonth: 0 }] },
 ]
 
+/** Where Aptek 24 really is: Nərmin's «Müştəri buradadır» (`mtmDemoPlaceRequest`). */
+const APT24_PROPOSED = { latitude: 40.40238, longitude: 49.85322 } as const
+
+/**
+ * The base as it stands: once the manager approved Nərmin's request, Aptek 24
+ * is where she showed it to be, on every screen after.
+ */
+function placesAsOf(placeApproved: boolean): readonly MtmDemoPlace[] {
+  return placeApproved ? MTM_DEMO_PLACES.map((place) => (place.id === "pl-apt24" ? { ...place, ...APT24_PROPOSED } : place)) : MTM_DEMO_PLACES
+}
+
 /**
  * The client base on the live map's «Müştərilər» layer, in the shape its
  * answer has (`LiveMapClient`): every clinic and pharmacy, its class, its zone.
  */
-export function mtmDemoMapClients(): LiveMapClient[] {
-  return MTM_DEMO_PLACES.map((place) => ({
+export function mtmDemoMapClients(placeApproved = false): LiveMapClient[] {
+  return placesAsOf(placeApproved).map((place) => ({
     id: place.id,
     name: place.name,
     latitude: place.latitude,
@@ -263,8 +274,8 @@ export function mtmDemoMapClients(): LiveMapClient[] {
 }
 
 /** The planner's candidates — the product's shape: a pharmacy as itself, a clinic as its doctors. */
-export function mtmDemoPlannerCandidates(): RoutePlannerCandidate[] {
-  return MTM_DEMO_PLACES.flatMap((place): RoutePlannerCandidate[] => {
+export function mtmDemoPlannerCandidates(placeApproved = false): RoutePlannerCandidate[] {
+  return placesAsOf(placeApproved).flatMap((place): RoutePlannerCandidate[] => {
     const base = { customerId: place.id, placeName: place.name, address: place.address, category: place.category, latitude: place.latitude, longitude: place.longitude, lastVisitAt: null }
     if (place.doctors.length === 0) {
       return [{ ...base, key: place.id, contactId: null, name: place.name, specialtyName: null, monthlyVisitCount: place.visitsThisMonth }]
@@ -505,7 +516,7 @@ export function mtmDemoLeftOpen(today: string) {
 export function mtmDemoPlaceRequest(today: string) {
   const place = placeOf("pl-apt24")
   const sentAt = mtmDemoAt(today, "11:56")
-  const proposed = { latitude: 40.40238, longitude: 49.85322 }
+  const proposed = { ...APT24_PROPOSED }
   const agentFix = { latitude: 40.40242, longitude: 49.85317, accuracyMeters: 12 }
   const verdict = evaluateCustomerLocationRequest(
     { proposed, agent: { ...agentFix, fixAgeSeconds: 20 } },

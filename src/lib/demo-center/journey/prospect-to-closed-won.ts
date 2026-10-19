@@ -1547,7 +1547,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "mtm-history-show",
           title: "Elvinin günü",
-          instruction: "Saat 18:40-dır. Elvin seçilib, tarix — bu gün. «Göstər» basın: günün yolu xəritədə, hissə-hissə isə sağda görünəcək.",
+          instruction: "Saat 18:40-dır. Elvin seçilib, tarix — bu gün. «Göstər» basın: günün yolu xəritədə, hissələri isə siyahıda görünəcək.",
           anchor: "mtm-history-filter",
           placement: "bottom",
           action: "click",

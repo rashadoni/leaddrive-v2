@@ -247,7 +247,7 @@ export function mtmDemoElvinHistoryView(today: string) {
       id: "route-elvin",
       points: day.map((stop, index) => {
         const place = mtmDemoPlace(stop.place)
-        return { id: `rp-elvin-${index}`, orderIndex: index, status: "VISITED" as const, plannedTime: stop.planned, label: place.name, customer: { latitude: place.latitude, longitude: place.longitude } }
+        return { id: `rp-elvin-${index}`, orderIndex: index, status: "VISITED" as const, plannedTime: mtmDemoAt(today, stop.planned), label: place.name, customer: { latitude: place.latitude, longitude: place.longitude } }
       }),
     }],
     matchedTrack: { segments },

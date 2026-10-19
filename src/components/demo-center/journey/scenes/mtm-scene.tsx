@@ -28,11 +28,11 @@ import { MtmTeamResultsView } from "@/components/mtm/team-results"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 import { createDateFormatter, formatDate, formatDateTime } from "@/lib/format-date"
 import { MTM_ROUTE_TIME_SLOTS } from "@/lib/mtm/route-time-slots"
-import { isLiveMapAgentPositionVisible, type LiveMapAgent } from "@/lib/mtm-types"
+import { isLiveMapAgentPositionVisible, type LiveMapAgent, type MtmDashboardAgent } from "@/lib/mtm-types"
 import { defaultWeek, fieldNow, finishedDaysPercent, homeTeam, percentOf, planCard, todayPlan, weekComparison, weekTotals } from "@/lib/mtm/home-dashboard"
 import { buildHomeBase } from "@/lib/mtm/home-insights"
 import { buildExplainableKpi } from "@/lib/mtm/explainable-kpi"
-import { applyRosterFilters, foldRosterText, rosterDistanceToPoint, ROSTER_DEFAULT_VIEW, sortRoster, type RosterFilters, type RosterSort, type RosterView } from "@/lib/mtm/live-map-roster"
+import { applyRosterFilters, foldRosterText, rosterDistanceToPoint, ROSTER_DEFAULT_VIEW, sortRoster, withRosterFilter, type RosterFilters, type RosterSort, type RosterView } from "@/lib/mtm/live-map-roster"
 import type { LiveMapClient } from "@/lib/mtm/live-map-clients"
 import { extendLiveMapTrails, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
@@ -386,7 +386,8 @@ function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
   const locale = useLocale()
   const today = mtmDemoToday(snapshot.startedAt)
   const day = addDays(today, 1)
-  const candidates = useMemo(() => mtmDemoPlannerCandidates(), [])
+  const placeApproved = snapshot.ui["mtm.placeApproved"] === true
+  const candidates = useMemo(() => mtmDemoPlannerCandidates(placeApproved), [placeApproved])
   const allPlaces = useMemo(() => routePlannerPlaces(candidates), [candidates])
   const categories = useMemo(() => [...new Set(candidates.map((candidate) => candidate.category).filter((value): value is string => Boolean(value)))].sort(), [candidates])
   const [onlyDue, setOnlyDue] = useState(true)
@@ -643,12 +644,13 @@ const LIVE_SIMULATED_CONTROLS = [
 /** One answer of the roster per this many milliseconds of the demo, for this many answers. */
 const LIVE_TICK_MS = 2_000
 const LIVE_TICK_SECONDS = 30
-const LIVE_TICKS = 20
+/** Twenty sample minutes: Nərmin is still on her way (she arrives at 12:36). */
+const LIVE_TICKS = 40
 const NEAREST_FIRST: RosterSort = { column: "distance", direction: "asc" }
 /** The client the sample call is from. */
 const NEAREST_CLIENT_ID = "pl-nar"
 
-function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }: DemoSceneProps) {
+function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const tMap = useTranslations("mtmMap")
   const tNav = useTranslations("nav")
   const tc = useTranslations("common")
@@ -661,13 +663,16 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }:
   const roster = useMemo(() => mtmDemoRosterAgents(today, nowMs), [today, nowMs])
   const route = useMemo(() => mtmDemoElvinRoute(today), [today])
   const steps = useMemo(() => mtmDemoElvinSteps(today), [today])
-  const clients = useMemo(() => mtmDemoMapClients(), [])
+  const placeApproved = snapshot.ui["mtm.placeApproved"] === true
+  const clients = useMemo(() => mtmDemoMapClients(placeApproved), [placeApproved])
   const chosen = typeof snapshot.ui["mtm.liveAgent"] === "string" ? (snapshot.ui["mtm.liveAgent"] as string) : null
   const [selected, setSelected] = useState<string | null>(chosen)
   const [stopOrder, setStopOrder] = useState<number | null>(null)
   const [search, setSearch] = useState("")
   const [filters, setFilters] = useState<RosterFilters>({})
   const [view, setView] = useState<RosterView>(ROSTER_DEFAULT_VIEW)
+  // With a point picked the list is «nearest first» until somebody asks for another order (the page's own rule).
+  const [nearestFirst, setNearestFirst] = useState(snapshot.ui["mtm.nearestShown"] === true)
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => new Set())
   const [showLastKnown, setShowLastKnown] = useState(true)
   const [layers, setLayers] = useState({ agents: true, route: true, trails: true, clients: true, labels: true })
@@ -675,10 +680,11 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }:
     const client = snapshot.ui["mtm.nearestShown"] === true ? clients.find((candidate) => candidate.id === NEAREST_CLIENT_ID) : null
     return client ? { latitude: client.latitude, longitude: client.longitude, label: client.name } : null
   })
-  // The trail the page would have drawn since it opened: the answers of the last few minutes.
+  // The trail the page would have drawn since it opened: the answers of the
+  // last few minutes, of the positions it draws (never one from a break).
   const [trails, setTrails] = useState<LiveMapTrails>(() => {
     let seeded: LiveMapTrails = new Map()
-    for (let at = startMs - 6 * 60_000; at <= startMs; at += LIVE_TICK_SECONDS * 1_000) seeded = extendLiveMapTrails(seeded, mtmDemoRosterAgents(today, at), at)
+    for (let at = startMs - 6 * 60_000; at <= startMs; at += LIVE_TICK_SECONDS * 1_000) seeded = extendLiveMapTrails(seeded, drawnPositions(mtmDemoRosterAgents(today, at)), at)
     return seeded
   })
   const rosterRef = useRef<HTMLDivElement>(null)
@@ -690,7 +696,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }:
     return () => clearTimeout(timer)
   }, [tick])
   useEffect(() => {
-    if (tick > 0) setTrails((current) => extendLiveMapTrails(current, roster, nowMs))
+    if (tick > 0) setTrails((current) => extendLiveMapTrails(current, drawnPositions(roster), nowMs))
   }, [tick, roster, nowMs])
 
   // With a point picked every row says how far its employee is from it — only
@@ -702,7 +708,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }:
     const query = foldRosterText(search.trim())
     return query ? agents.filter((agent) => foldRosterText(agent.name).includes(query)) : agents
   }, [agents, search])
-  const sort = referencePoint ? NEAREST_FIRST : view.sort.column === "distance" ? ROSTER_DEFAULT_VIEW.sort : view.sort
+  const sort = referencePoint && nearestFirst ? NEAREST_FIRST : view.sort.column === "distance" && !referencePoint ? ROSTER_DEFAULT_VIEW.sort : view.sort
   const rows = useMemo(() => sortRoster(applyRosterFilters(searched, filters), sort, "az"), [searched, filters, sort])
   // The page's own rule: a live position while the workday runs, and the
   // last known one — grey — when the signal is old, never a point from a break.
@@ -729,20 +735,23 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }:
     setStopOrder(null)
     if (!reviewMode && step?.id === "mtm-live-agent" && agentId === "agent-elvin") dispatch({ type: "ui", path: "mtm.liveAgent", value: agentId })
   }
+  const changePoint = (point: LiveMapReferencePoint | null) => {
+    setReferencePoint(point)
+    setNearestFirst(point != null)
+    // The point gone, a filter on the distance would match nobody (the page's own rule).
+    if (!point) setFilters((current) => withRosterFilter(current, "distance", undefined))
+  }
   const nearestTo = (client: LiveMapClient) => {
-    setReferencePoint({ latitude: client.latitude, longitude: client.longitude, label: client.name })
+    changePoint({ latitude: client.latitude, longitude: client.longitude, label: client.name })
     if (!reviewMode && nearestStep) dispatch({ type: "ui", path: "mtm.nearestShown", value: true })
+  }
+  const changeView = (next: RosterView) => {
+    // The list hands back the order it was shown; only a different one is a choice.
+    if (next.sort.column !== sort.column || next.sort.direction !== sort.direction) setNearestFirst(false)
+    setView(next)
   }
   const simulated = (event: MouseEvent<HTMLDivElement>) => {
     const target = event.target as Element | null
-    // «Tarixçə» is the evening's chapter of this module: the guide opens it there.
-    if (target?.closest?.('[data-testid="mtm-map-mode-history"]')) {
-      event.preventDefault()
-      event.stopPropagation()
-      if (openSection && !reviewMode) openSection("mtm-history")
-      else hint(S.mtmTabHint)
-      return
-    }
     if (!target?.closest?.(LIVE_SIMULATED_CONTROLS)) return
     event.preventDefault()
     event.stopPropagation()
@@ -758,7 +767,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }:
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-md border bg-muted/40 p-0.5" role="tablist" aria-label={tMap("modeLabel")}>
             <Button type="button" role="tab" aria-selected size="sm" className="min-h-9"><Radio className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("liveMode")}</Button>
-            <Button type="button" role="tab" aria-selected={false} variant="ghost" size="sm" className="min-h-9" data-testid="mtm-map-mode-history"><History className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("historyMode")}</Button>
+            <Button type="button" role="tab" aria-selected={false} variant="ghost" size="sm" className="min-h-9" data-testid="mtm-map-mode-history" onClick={() => hint(S.mtmTabHint)}><History className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("historyMode")}</Button>
           </div>
           <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" aria-hidden="true" />{tMap("lastUpdate")}: {S.mtmAsOf(format.clock(new Date(nowMs).toISOString()))}</span>
         </div>
@@ -809,7 +818,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }:
         <div data-tour-id="mtm-live-call" data-testid="mtm-live-call" className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
           <PhoneIncoming className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 flex-1"><span className="font-semibold">{S.mtmNearestCallTitle}:</span> {S.mtmNearestCall}</span>
-          <Button type="button" size="sm" className="min-h-9 shrink-0" onClick={() => nearestTo(callFrom)} {...(nearestStep && !referencePoint ? demoTarget("mtm-live-nearest") : {})}>
+          <Button type="button" size="sm" className="min-h-9 shrink-0" onClick={() => nearestTo(callFrom)} {...(nearestStep && snapshot.ui["mtm.nearestShown"] !== true ? demoTarget("mtm-live-nearest") : {})}>
             <MapPin aria-hidden="true" />{tMap("clients.nearest")}
           </Button>
         </div>
@@ -848,7 +857,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }:
           <LiveMapTools
             near={mapAgents[0] ? { latitude: mapAgents[0].latitude, longitude: mapAgents[0].longitude } : null}
             referencePoint={referencePoint}
-            onReferencePointChange={(point) => setReferencePoint(point)}
+            onReferencePointChange={changePoint}
             pickingPoint={false}
             onPickingPointChange={() => hint(S.demoButtonHint)}
             rulerActive={false}
@@ -874,7 +883,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }:
             filters={filters}
             onFiltersChange={setFilters}
             view={{ ...view, sort }}
-            onViewChange={setView}
+            onViewChange={changeView}
             onHide={() => hint(S.demoButtonHint)}
             hiddenAgentIds={hiddenIds}
             onToggleAgentOnMap={(agentId) => setHiddenIds((current) => {
@@ -913,6 +922,11 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }:
   )
 }
 
+/** The positions the live map draws — a live one while the workday runs; nothing from a break. */
+function drawnPositions(agents: readonly MtmDashboardAgent[]): MtmDashboardAgent[] {
+  return agents.filter((agent) => isLiveMapAgentPositionVisible(agent.freshness, agent.workdayState))
+}
+
 /** «450 m», «7,8 km» — the roster's distance to the picked point. */
 function formatMeters(meters: number): string {
   return meters < 1_000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1_000).toLocaleString("az", { maximumFractionDigits: 1 })} km`
@@ -929,7 +943,7 @@ function formatMeters(meters: number): string {
  * (`mtm-demo-day.ts`), read in the evening. A break is a leg with its
  * length and nothing else — where he was is not recorded.
  */
-function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint, openSection }: DemoSceneProps) {
+function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const t = useTranslations("mtmMap.history")
   const tMap = useTranslations("mtmMap")
   const tNav = useTranslations("nav")
@@ -965,10 +979,11 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint, openSection
     if (reviewMode) return
     if (step?.id === "mtm-history-show") dispatch({ type: "ui", path: "mtm.historyShown", value: true })
   }
-  const toLive = (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    if (openSection && !reviewMode) openSection("mtm-live")
-    else hint(S.mtmTabHint)
+  // A break is its length only: its row brings no stretch of track forward —
+  // the map would join the fix before it to the one after.
+  const focusLeg = (focus: DayTripFocus | null) => {
+    const entry = focus ? data.trip.entries.find((candidate) => candidate.id === focus.id) : null
+    setTripFocus(entry?.kind === "GAP" && entry.reason === "WORKDAY_PAUSED" ? null : focus)
   }
   const playbackPoint = data.points[Math.min(playbackIndex, lastIndex)]
   const distance = data.summary.distanceMeters
@@ -987,7 +1002,7 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint, openSection
         <h1 className="text-xl font-semibold tracking-tight">{tNav("mtmMap")}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-md border bg-muted/40 p-0.5" role="tablist" aria-label={tMap("modeLabel")}>
-            <Button type="button" role="tab" aria-selected={false} variant="ghost" size="sm" className="min-h-9" onClick={toLive}><Radio className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("liveMode")}</Button>
+            <Button type="button" role="tab" aria-selected={false} variant="ghost" size="sm" className="min-h-9" onClick={() => hint(S.mtmTabHint)}><Radio className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("liveMode")}</Button>
             <Button type="button" role="tab" aria-selected size="sm" className="min-h-9"><History className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("historyMode")}</Button>
           </div>
           <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" aria-hidden="true" />{S.mtmEveningAsOf(MTM_DEMO_EVENING)}</span>
@@ -1113,7 +1128,7 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint, openSection
                 trip={data.trip}
                 multiDay={false}
                 focusId={tripFocus?.id ?? null}
-                onFocus={setTripFocus}
+                onFocus={focusLeg}
                 formatMoment={formatMoment}
                 formatDuration={formatDuration}
                 roadsMatched

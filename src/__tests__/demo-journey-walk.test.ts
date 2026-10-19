@@ -814,7 +814,8 @@ describe("the Route & Field module", () => {
     expect(document.querySelector('[data-testid="live-map-agent-distance-agent-aysu"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="live-map-agent-distance-agent-rauf"]')).toBeNull()
     const order = Array.from(document.querySelectorAll('[data-tour-id="mtm-live-roster"] [data-testid^="live-map-agent-card-"]')).map((row) => row.getAttribute("data-testid"))
-    expect(order[0]).toBe("live-map-agent-card-agent-aysu")
+    // By distance, not by name (by name Elvin would come before Tural); Rauf, unmeasured, last.
+    expect(order).toEqual(["aysu", "nermin", "tural", "elvin", "rauf"].map((id) => `live-map-agent-card-agent-${id}`))
 
     await walkTo("mtm-history-show")
     expect(document.querySelector('[data-tour-id="mtm-history-trip"]')).toBeNull()
