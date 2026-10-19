@@ -997,3 +997,41 @@
   billing/permissions/retention/timer changes. Current A3 source will complete
   required hosted gates after this bounded consolidation. Root delivery hold
   and real backup/restore NOT RUN remain unchanged.
+
+### 2026-10-19T07:55Z — consume peer ACL control; final-source hosted checks
+
+- PR913 now documents owner Mac curl control on exact1e3ccaf70a7e4c5d4e770d653faf3558be459fb2:
+  writer PUT curl0/HTTP200, restore GET curl0/HTTP200 byte-identical, restore PUT
+  curl0/HTTP403/S3AccessDenied, all passed=true. Receipt committed00024b9c4.
+  A3 read that peer-published documentation/body and relevant public control code;
+  direct curl screenshot was in peer chat, not separately viewed here. Treat
+  this as peer-reported diagnostic evidence, not Farah/independent/signed
+  commissioning or real-data recovery acceptance.
+- This closes the specific restore-write ACL uncertainty by a separate successful
+  authenticated control. It does NOT make original AWS CLI255/connection_closed
+  a policy denial or prove its root cause. No more duplicate network retries
+  from A3. Object Lock remains unconfigured at last real observation; peer owns
+  existing owner-side storage/transport preparation, no parallel panel commands.
+- Coordination posted directly, not via owner relay:
+  PR913 comment6262315385 / PR8926262315740 (diagnostic ownership);
+  PR8926262370106 / PR9136262370443 (consume actual control receipt).
+  Peer branch not modified/merged. PR892 description reconciled with evidence.
+- Final published sourceff9cc418826720f1840063c83e0f1d9ede299913 is ready again;
+  only docs/B2_OFFSITE_BACKUP.md and append-only journal differ from oldb80.
+  No duplicate6bb executable/test/CI step remains in final source; checkpoints
+  preserved, no force push/reset/history truncation.
+- Current hosted extras PASS, not draft-event skips this time:
+  owner39218257895/job117947413237 (13 real synthetic owner tests, pinned image,
+  actual networkless PostgreSQL self-test, positive no-swap and explicit unsafe
+  swap refusal); pgpass39218257949; tenant39218258028; runner39218258290;
+  scan39218257872. PR39218257966 pr-scope PASS, static/type RUNNING.
+  Application build scope-SKIPPED, NOT RUN for A3. No all-required claim yet.
+- Actual scope/owner checkout logs prove tested merge
+  8ba6b7acb4bf7012c3832705a565cdb902e44a6a. Fetched exact object and verified
+  parents mainb639238aeecd335773f96c53acdccd880477b2aa + sourceff9cc4188.
+  Current main laterabdc13018 adds unrelated web-chat copy after TikTok PR912;
+  shared pr-checks adds that main's gate but no backup source/routing contract
+  changes. Do not chase every unrelated main edit or attribute main merges to A3.
+- Original coordinator hold not released; real source candidate, private archive
+  restore, actual signed receipt, A3 main delivery/timers/PITR/Kafka changes still
+  NOT RUN. Source prep/current gates continue while peer storage work progresses.
