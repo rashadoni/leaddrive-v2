@@ -179,8 +179,17 @@ fatal() {
 
 safe_remove_stage_tree() {
   local path="$1"
+  if [[ "$WORKFLOW_RUN_ID" =~ ^[0-9]+$ ]] \
+    && [ "$path" = "$TOOLS_ROOT/commission-code-${WORKFLOW_RUN_ID}" ] \
+    && [ "$(realpath -e -- "$TOOLS_ROOT" 2>/dev/null || true)" = "$TOOLS_ROOT" ] \
+    && [ "$(realpath -e -- "$path" 2>/dev/null || true)" = "$path" ] \
+    && (assert_root_directory "backup tool authority" "$TOOLS_ROOT" \
+      && assert_root_directory "current-run code stage" "$path") >/dev/null 2>&1; then
+    rm -rf -- "$path"
+    return
+  fi
   case "$path" in
-    /var/tmp/leaddrive-backup-tools.*|/var/tmp/leaddrive-backup-evidence.*|/var/tmp/leaddrive-backup-commission-stage.[A-Za-z0-9]*|/run/leaddrive-backup-commission-code-[0-9]*|"$SIGNED_DIR"/.signed-stage.*|"$TOOLS_ROOT"/age/.1.3.2.stage.*|"$TOOLS_ROOT"/aws-cli/.2.36.40.stage.*|"$AGE_ROOT"|"$AWS_ROOT")
+    /var/tmp/leaddrive-backup-tools.*|/var/tmp/leaddrive-backup-evidence.*|/var/tmp/leaddrive-backup-commission-stage.[A-Za-z0-9]*|"$SIGNED_DIR"/.signed-stage.*|"$TOOLS_ROOT"/age/.1.3.2.stage.*|"$TOOLS_ROOT"/aws-cli/.2.36.40.stage.*|"$AGE_ROOT"|"$AWS_ROOT")
       rm -rf -- "$path"
       ;;
     *)
@@ -2479,7 +2488,7 @@ activate_encryption() {
 }
 
 prepare_commission_code() {
-  local entries expected_entries bundled_manifest file
+  local entries expected_entries bundled_manifest file stage
   [ -f "$INCOMING_CODE_BUNDLE" ] && [ ! -L "$INCOMING_CODE_BUNDLE" ] \
     || fatal "exact-main backup code bundle is missing"
   [ "$(stat -c '%u' "$INCOMING_CODE_BUNDLE")" = "0" ] \
@@ -2502,10 +2511,18 @@ prepare_commission_code() {
     | awk '$1 !~ /^-/ { unsafe=1 } END { exit unsafe }' \
     || fatal "exact-main backup code bundle contains a link or special file"
 
-  CODE_STAGE="/run/leaddrive-backup-commission-code-${WORKFLOW_RUN_ID}"
-  [ ! -e "$CODE_STAGE" ] && [ ! -L "$CODE_STAGE" ] \
+  # Public reviewed executables belong with the already admitted tools, not
+  # with plaintext staging: /run may deliberately disallow execution.
+  assert_root_directory "backup tool authority" "$TOOLS_ROOT"
+  [ "$(realpath -e -- "$TOOLS_ROOT")" = "$TOOLS_ROOT" ] \
+    || fatal "backup tool authority must be canonical"
+  [[ "$WORKFLOW_RUN_ID" =~ ^[0-9]+$ ]] || fatal "unsafe code-stage run identifier"
+  stage="$TOOLS_ROOT/commission-code-${WORKFLOW_RUN_ID}"
+  [ ! -e "$stage" ] && [ ! -L "$stage" ] \
     || fatal "this workflow run already has a staged backup-code directory"
-  install -d -o root -g root -m 0755 "$CODE_STAGE"
+  # Acquire cleanup ownership only after an exclusive creation succeeds.
+  mkdir -m 0755 -- "$stage"
+  CODE_STAGE="$stage"
   tar --no-same-owner --no-same-permissions -xf "$INCOMING_CODE_BUNDLE" -C "$CODE_STAGE"
   while IFS= read -r file || [ -n "$file" ]; do
     [ -f "$CODE_STAGE/$file" ] && [ ! -L "$CODE_STAGE/$file" ] \

@@ -160,6 +160,13 @@ roles, pgpass, immutable-program hashes, resource/lock/restore isolation and
 Object Lock checks apply. A failed storage check remains a hard failure; do
 not dispatch repeatedly without diagnosing it.
 
+Reviewed public executable helpers are staged in the root-managed, canonical
+`/usr/local/lib/leaddrive-backup/tools/commission-code-<run-id>` directory.
+They do not execute from plaintext `/run` staging, which may be `noexec`.
+Only a newly created current-run code directory is acquired for cleanup;
+pre-existing directories and symlinks are rejected without deletion. This does
+not relax plaintext mount protections, signature/hash checks or admission.
+
 New public recipient is passed only to these three explicit helper invocations;
 DB/runtime force monthly retention >=400d. Secrets archive also covers the
 configured longest retention. Canonical env is archived unchanged and remains

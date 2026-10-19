@@ -51,6 +51,13 @@ jobs:
         run: |
           node scripts/ci/test-event-platform-assets.mjs
           bash -n scripts/backup/commission-production-backup.sh scripts/backup/postgres-backup.sh scripts/backup/snapshot-secrets.sh scripts/backup/snapshot-runtime-files.sh scripts/backup/verify-offline-backup.sh
+      - name: Executable code staging with a real noexec plaintext mount (synthetic only)
+        run: |
+          set -euo pipefail
+          STAGE="$(mktemp -d "$RUNNER_TEMP/owner-noexec.XXXXXX")"
+          trap 'sudo umount -- "$STAGE"; rmdir -- "$STAGE"' EXIT
+          sudo mount -t tmpfs -o "noexec,nosuid,nodev,size=8m,mode=0700,uid=$(id -u),gid=$(id -g)" tmpfs "$STAGE"
+          LEADDRIVE_TEST_NOEXEC_ROOT="$STAGE" node --test scripts/backup/commission-code-staging.test.mjs
       - name: Build isolated owner workbench (synthetic data only)
         run: docker build -f ops/backup/owner-workstation.Dockerfile -t owner-workbench-test .
       - name: Check network isolation and disposable PostgreSQL
