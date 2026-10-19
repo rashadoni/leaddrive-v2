@@ -289,3 +289,12 @@ UI receipt фактическим backup, individual-version retention или re
 ещё запрошена отдельно от Kafka/финансов/независимой готовности.
 Без нового решения не сливать удерживаемый A3 или подделывать независимые
 доказательства; credential/custody transfer и реальный backup/restore NOT RUN.
+
+### Решение владельца о доставке
+
+Владелец выбрал «Оставить доставку исходной сессии». Координация actual B2
+commissioning/restore остаётся у «Проверить защиту Kafka-консюмера»; pending
+предложение передать её A4 superseded. Разрешение на commissioning уже дано,
+но A4 не берёт на себя удерживаемую A3/audit интеграцию и runtime ceremony.
+Все подготовленные UI/ACL/Mac receipts сохранены; COMPLIANCE API readback,
+writer configuration, accepted custody и actual backup/restore остаются NOT RUN.
