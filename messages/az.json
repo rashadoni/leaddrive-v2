@@ -30128,5 +30128,24 @@
         "done": "Tətbiqdə qeyd olunur: {total} nəfərdən {count}"
       }
     }
+  },
+  "fieldAppDownload": {
+    "pageTitle": "LeadDrive Route Field — Android üçün",
+    "eyebrow": "Səyyar əməkdaşlar üçün mobil tətbiq",
+    "title": "LeadDrive Route Field",
+    "lead": "LeadDrive CRM istifadə edən şirkətlərin səyyar əməkdaşları üçün marşrut, ziyarət və tapşırıqlar.",
+    "download": "Android üçün yüklə",
+    "version": "Versiya {version} · {date}",
+    "unavailable": "Yükləmə müvəqqəti əlçatan deyil. Bir neçə dəqiqədən sonra yenidən cəhd edin.",
+    "stepsTitle": "Necə quraşdırmalı",
+    "step1": "«Android üçün yüklə» düyməsinə toxunun və yüklənmiş faylı açın.",
+    "step2": "Telefon soruşarsa, bu mənbədən tətbiq quraşdırılmasına icazə verin.",
+    "step3": "«Quraşdır» düyməsinə toxunun. Tətbiq artıq quraşdırılıbsa, yeni versiya onun üstündən qurulur — göndərilməmiş ziyarətlər və qaralamalar qalır.",
+    "step4": "Tətbiqi açın, şirkət kodunu və administratorun verdiyi giriş məlumatlarını daxil edin.",
+    "updatesTitle": "Yeniləmələr",
+    "updates": "Yeni versiya çıxanda tətbiq açılan kimi onu özü təklif edir: «Yenilə» düyməsinə toxunun.",
+    "playNote": "Tezliklə Google Play-də.",
+    "privacy": "Tətbiqin məxfilik siyasəti",
+    "languageLabel": "Dil"
   }
 }
