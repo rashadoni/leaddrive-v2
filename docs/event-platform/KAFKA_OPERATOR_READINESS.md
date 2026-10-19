@@ -1,7 +1,9 @@
 # A5 operator readiness и A7: карта незакрытых доказательств
 
 Срез: 19 октября 2026: Kafka base421260026, проверенный `origin/main`
-9cd84838d (последующие изменения Support/demo/CI не меняют Kafka contracts).
+abdc13018acc9f120ee4d50fbb121a90cc3efe63 (последующие изменения
+Support/demo/social/CI не меняют Kafka contracts; новые чужие gates не проверены
+этими source runs).
 Это подготовка, не разрешение
 активации. A5 соответствует K5 backlog; A7 — K7 recovery drills и проверке
 полноты K6 по всем доменам. Ни один новый бизнес-consumer не подключён.
@@ -19,18 +21,24 @@ A1/A2 ниже — исторические срезы, а не текущее �
 canonical snapshot/canary collectors и tenant source barrier. Изолированная
 fixture-композиция связывает проверенный snapshot, точный material hash,
 свежий barrier, promotion event, pointer CAS и deferred COMMIT admission.
-Она не содержит установленного controller или genuine physical-stop/restore/
-alarm receipts и не устанавливается миграцией или приложением. Отдельный
+Она не содержит установленного controller и не устанавливается миграцией или
+приложением. Отдельные реальные disposable broker/stop/replay, snapshot restore
+и HTTP delivery/machine-ACK drills выполнены после разрешения владельца; они не
+составляют единый operational admission и не доказывают human paging/production.
+Отдельный
 inactive verifier теперь проверяет семь signed-purpose attestations, canonical
 source/shadow/checkpoints и регистрирует evidence отдельным именованным логином.
 Tenant/key-policy, lease и verifier recheck действуют до final COMMIT; реальных
-producer/adapter/key provisioning в этом изменении нет. Material capped по
+producer/key provisioning в этом изменении нет; inactive HTTP readback adapter
+подготовлен, но к реальному провайдеру не подключён. Material capped по
 строкам/1MiB, превышение отвергается, производительность больших tenants не доказана. Hosted [run39177477825](https://github.com/rashadoni/leaddrive-v2/actions/runs/39177477825)
 на exactbd8f89872 прошёл298/298:214 unit +17 admission +8 shadow +9 stop +
 24 actual-schema reader/canary +8 barrier +18 atomic transition/registry/material.
 Это заменяет ранние249/297 оценки, сохраняя их в append-only журнале. Signed
 claims и ключи fixtures синтетические; реальные operational observations этим
-не получены.
+не получены. Финальная executable sourceaa2e0f49e прошла318/318, полный
+CDC/replay и broker/direct-JVM отдельно, Linux build и baseline gates; точные
+results/hashes и ограничения — в разделе Final exact-source test evidence ниже.
 
 Collector проверяет все поля provenance реального worker и точное соответствие
 checkpoint lastEventId → inbox topic/partition/offset. Более новый broker offset
@@ -44,12 +52,12 @@ checkpoint lastEventId → inbox topic/partition/offset. Более новый b
 | Authenticated operator admission | Inactive SQL: разные authenticated session identities requester/approver, immutable scope/hash, atomic consume, expiry/revocation и final COMMIT checks | Runtime identity provisioning/JIT, tenant authorization integration и controller endpoint отсутствуют; fixture principals не production identity proof |
 | Tenant/build | Worker checks tenant/build/version/SHA/role; A1/A2 worker-admission/artifact contracts уже в main; operator plan дополнительно pins environment/artifact/cluster/topic/group/action/pointer/evidence | Genuine release/artifact/broker identity resolution и domain-specific authorization в controller; форма плана не выдаёт authority |
 | Lease/fencing | Inactive durable request generation/lease, fresh token checks, stop challenge и transaction-scoped source barrier | Runtime owner/observer delivery и deployment installation отсутствуют; уже начатую SQL/child нужно наблюдать до реального settlement |
-| Stop/restart | Finite owned session/child, upstream bounded CDC worker proof; private one-use observer challenge с deferred acceptance | Physical observer process/SQL/ACK instrumentation, direct-JVM deployed composition, hung child/lost DB и truthful receipt proof |
-| Catch-up | Actual-schema readonly canonical collector, full worker provenance, exact checkpoint/inbox positions, recovery manifest gate | Genuine frozen broker end/retention, archive/restore, soak и independent provenance; newer-offset duplicate без byte/position receipt отвергается |
+| Stop/restart | Finite owned session/child; real disposable broker/restrictedSQL/direct-JVM stop-COMMIT-ACK/restart proof; private one-use observer challenge с deferred acceptance | Runtime physical observer/challenge/SQL/ACK composition and truthful signed receipt; independent lost DB/hung child operational drill |
+| Catch-up | Actual-schema canonical collector, exact checkpoint/inbox positions; actual two-tenant fullCDC corrected-build replay and independent disposable snapshot restore | Runtime frozen broker end/retention/archive, interval soak and independent provenance composed into one admission; newer-offset duplicate без byte/position receipt отвергается; production PITR/backup/RTO не доказаны |
 | Promotion | Actual event/pointer guards, restricted canary reader; fixture-only canonical material/barrier/build/event/CAS/settlement composition | Hosted final composition result см. session log; trusted adapter/key provisioning и runtime executor, first-pointer policy и application cutover не реализованы |
 | Rollback | Fixture retained build/window + reverse CAS; final expiry rollback и read adapter contract | Genuine retained/caught-up compatibility, workload drill, correction policy и promoted continuous lifecycle |
 | External effects | Shadow/replay effect denial, empty active registry, ledger UNKNOWN/lease/attempt contracts; fixture fences effect intents | Live legacy senders обходят общий outbox; all-path API/cron/provider audit и UNKNOWN reconciliation обязательны; projection lease не effect lease |
-| Alarm delivery | Inactive verifier десяти read-back/ack receipts с independently pinned authority; unit evidence | Authentic provider read-back adapter, actual rule triggers, delivery/recipient acknowledgement и durable challenge proof; реальных отправок здесь нет |
+| Alarm delivery | Inactive ten-gate verifier + bounded trusted-origin HTTP readback adapter; real disposable receiver delivery/durable readback/restart and separate machine ACK | Provider configuration, actual exporter/rule triggers, human delivery/acknowledgement and operational challenge proof; controlled stimuli не доказывают production paging |
 
 ### Ограниченный компонент этого изменения
 

@@ -1354,3 +1354,11 @@ Documentation closure checks PASS:git diff --check; historical evidence JSON par
 27 unique map rows match actual domain catalog; onlydocs/ changed since executable
 sourceaa2. Proceeding with explicit-path checkpoint and non-force feature push;
 final PR checks/metadata are observed externally after this committed entry.
+
+Final map review also reconciled the document's current opening/A5 table with the
+new real disposable evidence and latestmainabdc13018, so readers need not infer
+current stop/catch-up/alert limits from historical paragraphs. This documentation-
+only clarification supersedes earlier no-test-restore/no-test-send summaries;
+318 physical/contract results remain distinct from absent runtime/prod authority.
+Documentation diff check PASS; no executable change. Checkpoint2eed51207 precedes
+this clarification; final head checks are watched without another code iteration.
