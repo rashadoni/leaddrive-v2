@@ -7,13 +7,7 @@
  * own text must never come back out, since it can carry names and ids.
  */
 import { describe, expect, it, vi } from "vitest"
-import {
-  MAX_PAGE_LIST_REQUESTS,
-  classifyGraphFailure,
-  listAccessiblePageIds,
-  revokeUserGrant,
-  unsubscribePageFromApp,
-} from "@/lib/social/meta-unbind"
+import { classifyGraphFailure, unsubscribePageFromApp } from "@/lib/social/meta-unbind"
 
 const TOKEN = "EAAG-secret-token-value"
 
@@ -66,57 +60,11 @@ describe("the Graph calls", () => {
     expect(calls).toHaveLength(0)
   })
 
-  it("revokes the grant with DELETE /me/permissions and the user token as a Bearer header", async () => {
-    const { fetch, calls } = recorder([jsonResponse(200, { success: true })])
-    await expect(revokeUserGrant(TOKEN, { fetch })).resolves.toEqual({ verdict: "removed", code: null })
-    const url = new URL(calls[0].url)
-    expect([calls[0].method, url.pathname, url.search]).toEqual(["DELETE", "/v21.0/me/permissions", ""])
-    expectTokenOnlyInHeader(calls)
-  })
-
-  it("lists the Pages by its own cursor, never by Meta's `next` link, which carries the token", async () => {
-    const { fetch, calls } = recorder([
-      jsonResponse(200, {
-        data: [{ id: "111" }, { id: "222" }],
-        paging: { cursors: { before: "b1", after: "c1" }, next: `https://graph.facebook.com/v21.0/me/accounts?access_token=${TOKEN}&after=c1` },
-      }),
-      jsonResponse(200, { data: [{ id: "333" }, { id: "111" }], paging: { cursors: { before: "b2", after: "c2" } } }),
-    ])
-    await expect(listAccessiblePageIds(TOKEN, { fetch })).resolves.toEqual({ ok: true, pageIds: ["111", "222", "333"], complete: true })
-    expect(calls.map((call) => [call.method, new URL(call.url).pathname])).toEqual([
-      ["GET", "/v21.0/me/accounts"],
-      ["GET", "/v21.0/me/accounts"],
-    ])
-    expect(new URL(calls[0].url).searchParams.get("fields")).toBe("id")
-    expect(new URL(calls[0].url).searchParams.get("after")).toBeNull()
-    expect(new URL(calls[1].url).searchParams.get("after")).toBe("c1")
-    expectTokenOnlyInHeader(calls)
-  })
-
-  it("stops after five result pages and says the listing is incomplete", async () => {
-    const page = (n: number) =>
-      jsonResponse(200, { data: [{ id: String(1000 + n) }], paging: { cursors: { after: `c${n}` }, next: "https://graph.facebook.com/next" } })
-    const { fetch, calls } = recorder(Array.from({ length: MAX_PAGE_LIST_REQUESTS + 1 }, (_, n) => page(n)))
-    const listing = await listAccessiblePageIds(TOKEN, { fetch })
-    expect(listing).toMatchObject({ ok: true, complete: false })
-    expect(calls).toHaveLength(MAX_PAGE_LIST_REQUESTS)
-  })
-
-  it("calls a listing with an id that is not a Page id incomplete, so nothing is decided on it", async () => {
-    const { fetch } = recorder([jsonResponse(200, { data: [{ id: "111" }, { id: "x'1" }, { name: "no id" }] })])
-    await expect(listAccessiblePageIds(TOKEN, { fetch })).resolves.toEqual({ ok: true, pageIds: ["111"], complete: false })
-  })
-
-  it("reports a failed listing with its verdict and code", async () => {
-    const { fetch } = recorder([jsonResponse(400, { error: { code: 190, error_subcode: 460, message: "Nigar Əliyeva changed her password" } })])
-    await expect(listAccessiblePageIds(TOKEN, { fetch })).resolves.toEqual({ ok: false, verdict: "token_invalid", code: "meta_190_460" })
-  })
-
   it("turns a timeout and a lost connection into retries with our own code", async () => {
     const timeout = Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" })
     const { fetch } = recorder([timeout, new TypeError("fetch failed")])
     await expect(unsubscribePageFromApp("1234567890", TOKEN, { fetch })).resolves.toEqual({ verdict: "retry", code: "net_timeout" })
-    await expect(revokeUserGrant(TOKEN, { fetch })).resolves.toEqual({ verdict: "retry", code: "net_error" })
+    await expect(unsubscribePageFromApp("1234567890", TOKEN, { fetch })).resolves.toEqual({ verdict: "retry", code: "net_error" })
   })
 })
 

@@ -22203,6 +22203,11 @@ model DemoSocialConnection {
   pendingPages       Json?
   pageId             String?
   pageName           String?
+  /// The Instagram account linked to the Page (Meta's number), when Meta
+  /// returns it. Its DMs ride the Page's subscription, and organisations store
+  /// it as channel_configs.pageId / social_accounts.handle, so the release
+  /// checks it as a claim next to pageId. Wiped at release.
+  linkedInstagramId  String?
   provenSenderId     String?
   subscribedAt       DateTime?
   connectedAt        DateTime?
@@ -22220,6 +22225,8 @@ model DemoSocialConnection {
   /// A short code such as http_500 or meta_190 — never Meta's text.
   releaseError       String?
   unsubscribeOutcome String?
+  /// kept_by_design | no_token: the release never revokes the person's Meta
+  /// grant (demo-social-release.ts says why), and the column keeps its name.
   grantRevokeOutcome String?
   scrubbedAt         DateTime?
   createdAt          DateTime   @default(now())

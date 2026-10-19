@@ -115,10 +115,11 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   printf '%s\n' "17 3 * * * $TRIGGER /api/cron/demo-call-retention >> $LOG 2>&1"
   # A prospect's own Facebook Page is connected to the demo for one day at
   # most. This sweep unbinds every connection that is over — unsubscribes the
-  # Page from our app, revokes the grant, wipes our copy — and the demo's own
-  # live check already stops all use without it. Every five minutes, because
-  # the unbinding is what the prospect was promised; a tick with nothing due
-  # reads one empty table, and each row is leased, so overlaps send nothing twice.
+  # Page from our app and wipes our copy; the person's own Meta grant stays
+  # his (docs/DEMO_CENTER.md says why) — and the demo's own live check already
+  # stops all use without it. Every five minutes, because the unbinding is
+  # what the prospect was promised; a tick with nothing due reads one empty
+  # table, and each row is leased, so overlaps send nothing twice.
   printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/demo-social-release >> $LOG 2>&1"
   # A route stays PLANNED/IN_PROGRESS until a person closes it, so an ordinary
   # interrupted day never ended: prod had fourteen August routes sitting in the

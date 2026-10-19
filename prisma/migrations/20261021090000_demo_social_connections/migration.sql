@@ -10,6 +10,11 @@
 -- `scrubbedAt` is set. What survives is the row's timestamps, its reason,
 -- Meta's answers as short codes, and its counts.
 --
+-- The release unsubscribes the Page from our app and never takes back the
+-- person's whole Meta grant: `/me/accounts` does not list Pages reached
+-- through a business portfolio, so a revoke could never be proven not to cut
+-- an organisation's Page tokens. The authorization stays with the person.
+--
 -- Control plane, like every demo table: no organisation owns these rows, FORCE
 -- RLS behind the system-bypass policy. Nothing here or in the code that writes
 -- it touches a tenant table.
@@ -30,6 +35,7 @@ CREATE TABLE "demo_social_connections" (
   "pendingPages" JSONB,
   "pageId" TEXT,
   "pageName" TEXT,
+  "linkedInstagramId" TEXT,
   "provenSenderId" TEXT,
   "subscribedAt" TIMESTAMP(3),
   "connectedAt" TIMESTAMP(3),
@@ -87,6 +93,11 @@ ALTER TABLE "demo_social_connections"
 -- A Page id is Meta's number; it goes into a Graph path.
 ALTER TABLE "demo_social_connections"
   ADD CONSTRAINT "demo_social_connections_page_id_check" CHECK ("pageId" IS NULL OR "pageId" ~ '^[0-9]{1,32}$');
+-- The Instagram account linked to the Page, as Meta's number. Its DMs ride the
+-- Page's subscription, and an organisation's Instagram channel or monitored
+-- account is stored under this id, not the Page's: the release checks both.
+ALTER TABLE "demo_social_connections"
+  ADD CONSTRAINT "demo_social_connections_linked_instagram_id_check" CHECK ("linkedInstagramId" IS NULL OR "linkedInstagramId" ~ '^[0-9]{1,32}$');
 ALTER TABLE "demo_social_connections"
   ADD CONSTRAINT "demo_social_connections_pending_pages_check" CHECK ("pendingPages" IS NULL OR jsonb_typeof("pendingPages") = 'array');
 -- A connection lasts one Baku day at most (demoWhatsAppThreadEnds caps it at 23 hours).
@@ -111,17 +122,21 @@ ALTER TABLE "demo_social_connections"
   ADD CONSTRAINT "demo_social_connections_unsubscribe_outcome_check" CHECK ("unsubscribeOutcome" IS NULL OR "unsubscribeOutcome" IN (
     'removed', 'gone', 'not_subscribed', 'kept_claimed', 'token_invalid', 'refused', 'decrypt_failed', 'unreachable'
   ));
+-- What became of the person's Meta grant. Nothing is ever sent for it: the
+-- grant stays with the person by design when we held a user token, and there
+-- is nothing to keep when we did not.
 ALTER TABLE "demo_social_connections"
   ADD CONSTRAINT "demo_social_connections_grant_revoke_outcome_check" CHECK ("grantRevokeOutcome" IS NULL OR "grantRevokeOutcome" IN (
-    'revoked', 'gone', 'no_token', 'kept_shared', 'kept_unverified', 'token_invalid', 'refused', 'decrypt_failed', 'unreachable'
+    'kept_by_design', 'no_token'
   ));
--- A wiped row holds no secret and no identifier, says why it ended, and says
--- what Meta answered to both steps.
+-- A wiped row holds no secret and no identifier, says why it ended, what Meta
+-- answered to the unsubscribe, and what became of the grant.
 ALTER TABLE "demo_social_connections"
   ADD CONSTRAINT "demo_social_connections_scrubbed_check" CHECK ("scrubbedAt" IS NULL OR (
     "oauthStateHash" IS NULL AND "metaUserId" IS NULL
     AND "userTokenCipher" IS NULL AND "pageTokenCipher" IS NULL
-    AND "pendingPages" IS NULL AND "pageId" IS NULL AND "pageName" IS NULL AND "provenSenderId" IS NULL
+    AND "pendingPages" IS NULL AND "pageId" IS NULL AND "pageName" IS NULL AND "linkedInstagramId" IS NULL
+    AND "provenSenderId" IS NULL
     AND "releaseReason" IS NOT NULL
     AND "unsubscribeOutcome" IS NOT NULL AND "grantRevokeOutcome" IS NOT NULL
   ));

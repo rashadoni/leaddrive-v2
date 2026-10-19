@@ -484,8 +484,9 @@ jobs:
 
       - name: Demo social release database gate
         # Same gate as in pr-checks: a prospect's Facebook Page connected to the
-        # demo is unbound at Meta and wiped, never where an organisation still
-        # relies on the Page or the grant, each Meta call sent once, with only
+        # demo is unsubscribed at Meta and wiped, never where an organisation
+        # still relies on the Page or its Instagram account, the person's grant
+        # never touched, each Meta call sent once, with only
         # graph.facebook.com stubbed and a role that cannot bypass RLS (see the
         # test's header).
         run: npx vitest run src/__tests__/demo-social-release-postgres.test.ts

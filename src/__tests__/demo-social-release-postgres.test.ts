@@ -4,15 +4,20 @@
  *
  * A prospect who connects his own Page to the demo hands us a token to it and
  * a webhook subscription on it. The release engine
- * (src/lib/demo-center/demo-social-release.ts) has to give both back when the
- * demo is over — and must never undo anything an organisation relies on: a
- * Page's subscription to our app is shared by everyone using that Page through
- * it, and one grant covers every Page the person granted. Whether a Page is
- * claimed is read across every organisation from tables under FORCE RLS,
- * where a read without bypass silently answers «nobody»; a mocked Prisma would
- * accept any answer. So the real engine runs here against real rows, and only
- * `fetch` to graph.facebook.com is stubbed: every request's method, path and
- * Bearer header is asserted, and no token may ever appear in a URL.
+ * (src/lib/demo-center/demo-social-release.ts) has to unsubscribe the Page and
+ * wipe every token and identifier of ours when the demo is over — and must
+ * never undo anything an organisation relies on: a Page's subscription to our
+ * app is shared by everyone using that Page, or the Instagram account linked to
+ * it, through our app. Whether a Page is claimed is read across every
+ * organisation from tables under FORCE RLS, where a read without bypass
+ * silently answers «nobody»; a mocked Prisma would accept any answer. So the
+ * real engine runs here against real rows, and only `fetch` to
+ * graph.facebook.com is stubbed: every request's method, path and Bearer
+ * header is asserted, and no token may ever appear in a URL.
+ *
+ * The person's Meta grant is never taken back (the engine's comment says why):
+ * no case may send `/me/accounts` or `/me/permissions`, and no user token ever
+ * leaves in a request.
  *
  * Set DEMO_SOCIAL_RELEASE_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55498:5432 postgres:16
@@ -97,11 +102,14 @@ interface MetaCall {
 }
 
 const metaCalls: MetaCall[] = []
+/** Every request of the whole file, never cleared: no case may hide a call to the person's grant. */
+const everyCall: MetaCall[] = []
 /** Every token this file handed to a row, to prove none ever lands in a URL. */
 const tokens = new Set<string>()
-/** The Pages each user token reaches on /me/accounts. */
-const pagesOf = new Map<string, string[]>()
+/** The user tokens among them: the release never sends one. */
+const userTokens = new Set<string>()
 let metaDelayMs = 0
+const GRANT_PATHS = /\/me\/(accounts|permissions)/
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } })
@@ -109,9 +117,7 @@ function json(status: number, body: unknown): Response {
 
 function healthyMeta(call: MetaCall): Response {
   const token = call.authorization?.replace(/^Bearer /, "") ?? ""
-  if (call.method === "DELETE" && /^\/v21\.0\/[0-9]+\/subscribed_apps$/.test(call.path)) return json(200, { success: true })
-  if (call.method === "GET" && call.path === "/v21.0/me/accounts") return json(200, { data: (pagesOf.get(token) ?? []).map((id) => ({ id })) })
-  if (call.method === "DELETE" && call.path === "/v21.0/me/permissions") return json(200, { success: true })
+  if (call.method === "DELETE" && /^\/v21\.0\/[0-9]+\/subscribed_apps$/.test(call.path) && token) return json(200, { success: true })
   return json(400, { error: { code: 100, message: "unexpected call" } })
 }
 
@@ -128,6 +134,7 @@ const fakeFetch = vi.fn(async (input: string | URL | Request, init?: RequestInit
     authorization: new Headers(init?.headers).get("authorization"),
   }
   metaCalls.push(call)
+  everyCall.push(call)
   if (metaDelayMs) await new Promise((resolve) => setTimeout(resolve, metaDelayMs))
   return meta(call)
 })
@@ -178,6 +185,8 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
   }, 300_000)
 
   afterAll(async () => {
+    // Over every case of the file, whatever a case did with its own log.
+    expect(everyCall.filter((call) => GRANT_PATHS.test(call.path))).toEqual([])
     vi.unstubAllGlobals()
     await app?.$disconnect()
     await admin?.$disconnect()
@@ -193,7 +202,6 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
     await admin.channelConfig.deleteMany()
     await admin.socialAccount.deleteMany()
     metaCalls.length = 0
-    pagesOf.clear()
     meta = healthyMeta
     metaDelayMs = 0
   })
@@ -204,6 +212,10 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
       expect(call.authorization).toMatch(/^Bearer \S+$/)
       expect(call.url).not.toContain("access_token")
       for (const token of tokens) expect(call.url).not.toContain(token)
+      // Only a Page's own unsubscribe, with a Page token: never the person's grant.
+      expect(call.path).not.toMatch(GRANT_PATHS)
+      expect(call.path).toMatch(/^\/v21\.0\/[0-9]+\/subscribed_apps$/)
+      for (const token of userTokens) expect(call.authorization).not.toContain(token)
     }
   })
 
@@ -228,6 +240,7 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
     const userToken = `user-token-${rowSeq}-${randomBytes(4).toString("hex")}`
     tokens.add(pageToken)
     tokens.add(userToken)
+    userTokens.add(userToken)
     const pageId = `${7_000_000 + rowSeq}`
     const withPage = options.page !== false
     const withUser = options.user !== false
@@ -250,7 +263,6 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
         { connectionId: id, direction: "outbound", text: "Salam! LeadDrive demo agentiyəm.", externalId: `m_${rowSeq}_2` },
       ],
     })
-    pagesOf.set(userToken, [pageId])
     return { row, id, pageId, pageToken, userToken }
   }
 
@@ -262,7 +274,7 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
     expect(row.scrubbedAt).not.toBeNull()
     expect(row).toMatchObject({
       oauthStateHash: null, metaUserId: null, userTokenCipher: null, pageTokenCipher: null,
-      pendingPages: null, pageId: null, pageName: null, provenSenderId: null, releaseLeaseUntil: null,
+      pendingPages: null, pageId: null, pageName: null, linkedInstagramId: null, provenSenderId: null, releaseLeaseUntil: null,
     })
   }
 
@@ -275,26 +287,22 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
     expect([Number(demo[0].count), Number(channels[0].count)]).toEqual([0, 0])
   })
 
-  it("at the end of the Baku day: unsubscribes the Page, lists the person's Pages, revokes the grant, and wipes everything", async () => {
+  it("at the end of the Baku day: unsubscribes the Page, leaves the person's grant to him, and wipes everything", async () => {
     const g = await grant()
     const c = await connection(g.id, { expiresAt: at(-1) })
 
     const run = await engine.releaseDueDemoSocialConnections({ now: NOW })
 
     expect(run).toEqual({ checked: 1, due: 1, released: 1, retrying: 0, incomplete: 0 })
-    expect(sent()).toEqual([
-      `DELETE /v21.0/${c.pageId}/subscribed_apps ${c.pageToken}`,
-      `GET /v21.0/me/accounts ${c.userToken}`,
-      "DELETE /v21.0/me/permissions " + c.userToken,
-    ])
+    expect(sent()).toEqual([`DELETE /v21.0/${c.pageId}/subscribed_apps ${c.pageToken}`])
     const row = await stored(c.id)
     expectWiped(row)
-    expect(row).toMatchObject({ releaseReason: "day_over", unsubscribeOutcome: "removed", grantRevokeOutcome: "revoked", releaseAttempts: 1, releaseError: null })
+    expect(row).toMatchObject({ releaseReason: "day_over", unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_by_design", releaseAttempts: 1, releaseError: null })
     expect(row.releaseRequestedAt).toEqual(NOW)
     expect(await messagesOf(c.id)).toBe(0)
     const events = await eventsOf(g.id)
     expect(events.map((event) => event.eventType)).toEqual(["SOCIAL_RELEASED"])
-    expect(events[0].metadata).toEqual({ platform: "facebook", reason: "day_over", unsubscribe: "removed", grantRevoke: "revoked" })
+    expect(events[0].metadata).toEqual({ platform: "facebook", reason: "day_over", unsubscribe: "removed", grantRevoke: "kept_by_design" })
     expect(JSON.stringify(events[0].metadata)).not.toMatch(new RegExp(`${c.pageId}|${c.row.provenSenderId}|${c.row.metaUserId}|Xəzər`))
   })
 
@@ -314,7 +322,7 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
 
     await engine.releaseDueDemoSocialConnections({ now: NOW })
 
-    expect(metaCalls.map((call) => call.method)).toEqual(["DELETE", "GET", "DELETE"])
+    expect(metaCalls.map((call) => call.method)).toEqual(["DELETE"])
     const row = await stored(c.id)
     expectWiped(row)
     expect(row.releaseReason).toBe("revoked")
@@ -340,10 +348,10 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
 
     expect(await engine.releaseDueDemoSocialConnections({ now: NOW })).toMatchObject({ due: 1, released: 1 })
 
-    expect(metaCalls).toHaveLength(3)
+    expect(metaCalls).toHaveLength(1)
     const row = await stored(c.id)
     expectWiped(row)
-    expect(row).toMatchObject({ releaseReason: "grant_gone", unsubscribeOutcome: "removed", grantRevokeOutcome: "revoked" })
+    expect(row).toMatchObject({ releaseReason: "grant_gone", unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_by_design" })
   })
 
   it("never unsubscribes a Page another organisation's active channel uses — a claim the app role sees only through bypass", async () => {
@@ -352,11 +360,36 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
 
     await engine.releaseDueDemoSocialConnections({ now: NOW })
 
-    // Neither the Page's subscription nor the grant that reaches the Page is touched.
-    expect(sent()).toEqual([`GET /v21.0/me/accounts ${c.userToken}`])
+    expect(sent()).toEqual([])
     const row = await stored(c.id)
     expectWiped(row)
-    expect(row).toMatchObject({ unsubscribeOutcome: "kept_claimed", grantRevokeOutcome: "kept_shared" })
+    expect(row).toMatchObject({ unsubscribeOutcome: "kept_claimed", grantRevokeOutcome: "kept_by_design" })
+  })
+
+  it("never unsubscribes a Page another organisation uses only through its linked Instagram account", async () => {
+    const instagramId = "17841400000000001"
+    const g = await grant()
+    const c = await connection(g.id, { expiresAt: at(-1), linkedInstagramId: instagramId })
+    // An Instagram inbox channel stores the Instagram account's id as its pageId; its DMs ride this Page's subscription.
+    await admin.channelConfig.create({ data: { organizationId: OTHER, channelType: "instagram", configName: "Their Instagram", pageId: instagramId, isActive: true } })
+
+    expect(await engine.releaseDueDemoSocialConnections({ now: NOW })).toMatchObject({ released: 1, incomplete: 0 })
+
+    expect(sent()).toEqual([])
+    const row = await stored(c.id)
+    expectWiped(row)
+    expect(row).toMatchObject({ unsubscribeOutcome: "kept_claimed", grantRevokeOutcome: "kept_by_design" })
+    expect(JSON.stringify((await eventsOf(g.id))[0].metadata)).not.toContain(instagramId)
+  })
+
+  it("unsubscribes a Page whose linked Instagram account nobody claims", async () => {
+    const c = await connection((await grant()).id, { expiresAt: at(-1), linkedInstagramId: "17841400000000002" })
+    await admin.channelConfig.create({ data: { organizationId: OTHER, channelType: "instagram", configName: "Another account", pageId: "17841400000000003", isActive: true } })
+
+    await engine.releaseDueDemoSocialConnections({ now: NOW })
+
+    expect(sent()).toEqual([`DELETE /v21.0/${c.pageId}/subscribed_apps ${c.pageToken}`])
+    expect(await stored(c.id)).toMatchObject({ unsubscribeOutcome: "removed", linkedInstagramId: null })
   })
 
   it("does not count a switched-off channel as a claim", async () => {
@@ -368,38 +401,42 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
     expect((await stored(c.id)).unsubscribeOutcome).toBe("removed")
   })
 
-  it("does not revoke a grant that also reaches a Page LeadDrive Inc. relies on", async () => {
+  it("never touches the person's grant, even when it also reaches a Page LeadDrive Inc. relies on (the owner testing with his own account)", async () => {
     const c = await connection((await grant()).id, { expiresAt: at(-1) })
-    pagesOf.set(c.userToken, [c.pageId, "373662722735767"])
     await admin.socialAccount.create({ data: { organizationId: SALES, platform: "facebook", handle: "373662722735767", isActive: true } })
 
     await engine.releaseDueDemoSocialConnections({ now: NOW })
 
-    expect(sent()).toEqual([
-      `DELETE /v21.0/${c.pageId}/subscribed_apps ${c.pageToken}`,
-      `GET /v21.0/me/accounts ${c.userToken}`,
-    ])
-    expect(await stored(c.id)).toMatchObject({ unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_shared", scrubbedAt: NOW })
+    // His own Page only: LeadDrive Inc.'s staged Page tokens rest on the same grant.
+    expect(sent()).toEqual([`DELETE /v21.0/${c.pageId}/subscribed_apps ${c.pageToken}`])
+    expect(await stored(c.id)).toMatchObject({ unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_by_design", scrubbedAt: NOW })
   })
 
-  it("does not revoke a grant another live demo connection of the same person rests on", async () => {
+  it("one person, three connections: each due Page is unsubscribed with its own token, the live one is untouched", async () => {
     const live = await connection((await grant()).id)
-    const over = await connection((await grant()).id, { expiresAt: at(-1), metaUserId: live.row.metaUserId })
+    const first = await connection((await grant()).id, { expiresAt: at(-2), metaUserId: live.row.metaUserId })
+    const second = await connection((await grant()).id, { expiresAt: at(-1), metaUserId: live.row.metaUserId })
 
-    await engine.releaseDueDemoSocialConnections({ now: NOW })
+    expect(await engine.releaseDueDemoSocialConnections({ now: NOW })).toMatchObject({ due: 2, released: 2 })
 
-    expect(sent()).toEqual([`DELETE /v21.0/${over.pageId}/subscribed_apps ${over.pageToken}`])
-    expect(await stored(over.id)).toMatchObject({ unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_shared" })
-    expect((await stored(live.id)).scrubbedAt).toBeNull()
+    // Nothing the first release does can kill the second one's Page token: no grant is revoked in between.
+    expect(sent()).toEqual([
+      `DELETE /v21.0/${first.pageId}/subscribed_apps ${first.pageToken}`,
+      `DELETE /v21.0/${second.pageId}/subscribed_apps ${second.pageToken}`,
+    ])
+    for (const c of [first, second]) expect(await stored(c.id)).toMatchObject({ unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_by_design" })
+    expect(await stored(live.id)).toMatchObject({ scrubbedAt: null, pageTokenCipher: live.row.pageTokenCipher, userTokenCipher: live.row.userTokenCipher })
   })
 
-  it("revokes the grant of a connect abandoned before any Page was bound", async () => {
-    const c = await connection((await grant()).id, { createdAt: at(-31) }, { page: false })
+  it("a connect abandoned before any Page was bound: nothing to send; the grant is kept when we held a token, none when we did not", async () => {
+    const withToken = await connection((await grant()).id, { createdAt: at(-31) }, { page: false })
+    const withoutToken = await connection((await grant()).id, { createdAt: at(-31) }, { page: false, user: false })
 
-    await engine.releaseDueDemoSocialConnections({ now: NOW })
+    expect(await engine.releaseDueDemoSocialConnections({ now: NOW })).toMatchObject({ due: 2, released: 2, incomplete: 0 })
 
-    expect(sent()).toEqual([`GET /v21.0/me/accounts ${c.userToken}`, `DELETE /v21.0/me/permissions ${c.userToken}`])
-    expect(await stored(c.id)).toMatchObject({ releaseReason: "connect_abandoned", unsubscribeOutcome: "not_subscribed", grantRevokeOutcome: "revoked" })
+    expect(sent()).toEqual([])
+    expect(await stored(withToken.id)).toMatchObject({ releaseReason: "connect_abandoned", unsubscribeOutcome: "not_subscribed", grantRevokeOutcome: "kept_by_design" })
+    expect(await stored(withoutToken.id)).toMatchObject({ releaseReason: "connect_abandoned", unsubscribeOutcome: "not_subscribed", grantRevokeOutcome: "no_token" })
   })
 
   it("on a Meta 500: keeps the tokens, counts the attempt, sends nothing again before the lease ends, and finishes later", async () => {
@@ -412,56 +449,55 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
     const failed = await stored(c.id)
     expect(sent()).toEqual([`DELETE /v21.0/${c.pageId}/subscribed_apps ${c.pageToken}`])
     expect(failed).toMatchObject({
-      scrubbedAt: null, releaseAttempts: 1, releaseError: "meta_2", unsubscribeOutcome: null,
+      scrubbedAt: null, releaseAttempts: 1, releaseError: "meta_2", unsubscribeOutcome: null, grantRevokeOutcome: null,
       userTokenCipher: before.userTokenCipher, pageTokenCipher: before.pageTokenCipher, pageId: c.pageId,
     })
     expect(await messagesOf(c.id)).toBe(2)
 
-    // A minute later another tick: the lease still holds, Meta hears nothing.
+    // Another tick: the lease still holds, Meta hears nothing.
     expect(await engine.releaseDueDemoSocialConnections({ now: at(1) })).toMatchObject({ released: 0, retrying: 1 })
     expect(metaCalls).toHaveLength(1)
 
+    // The lease runs on the real clock: let it run out, as two minutes would.
+    await admin.demoSocialConnection.update({ where: { id: c.id }, data: { releaseLeaseUntil: new Date(Date.now() - 1_000) } })
     meta = healthyMeta
     expect(await engine.releaseDueDemoSocialConnections({ now: at(3) })).toMatchObject({ released: 1, retrying: 0 })
     expect(metaCalls.map((call) => `${call.method} ${call.path}`)).toEqual([
       `DELETE /v21.0/${c.pageId}/subscribed_apps`,
       `DELETE /v21.0/${c.pageId}/subscribed_apps`,
-      "GET /v21.0/me/accounts",
-      "DELETE /v21.0/me/permissions",
     ])
     const row = await stored(c.id)
     expectWiped(row)
-    expect(row).toMatchObject({ releaseAttempts: 2, unsubscribeOutcome: "removed", grantRevokeOutcome: "revoked" })
+    expect(row).toMatchObject({ releaseAttempts: 2, unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_by_design", scrubbedAt: at(3) })
     // The clock of the release started at the first attempt.
     expect(row.releaseRequestedAt).toEqual(NOW)
     expect((await eventsOf(g.id)).map((event) => event.eventType)).toEqual(["SOCIAL_RELEASED"])
   })
 
-  it("does not repeat a finished step: after the Page is unsubscribed and the revoke fails, only the revoke is retried", async () => {
-    const c = await connection((await grant()).id, { expiresAt: at(-1) })
-    meta = (call) => (call.path === "/v21.0/me/permissions" ? json(503, null) : healthyMeta(call))
+  it("does not repeat a finished step: a row whose unsubscribe an earlier run recorded is wiped without a request", async () => {
+    const c = await connection((await grant()).id, {
+      expiresAt: at(-10), releaseRequestedAt: at(-6), releaseReason: "day_over", releaseAttempts: 1, unsubscribeOutcome: "removed",
+    })
 
-    await engine.releaseDueDemoSocialConnections({ now: NOW })
-    expect(await stored(c.id)).toMatchObject({ unsubscribeOutcome: "removed", grantRevokeOutcome: null, releaseError: "http_503", scrubbedAt: null })
+    expect(await engine.releaseDueDemoSocialConnections({ now: NOW })).toMatchObject({ released: 1 })
 
-    meta = healthyMeta
-    metaCalls.length = 0
-    await engine.releaseDueDemoSocialConnections({ now: at(3) })
-    expect(sent()).toEqual([`GET /v21.0/me/accounts ${c.userToken}`, `DELETE /v21.0/me/permissions ${c.userToken}`])
-    expect(await stored(c.id)).toMatchObject({ unsubscribeOutcome: "removed", grantRevokeOutcome: "revoked", scrubbedAt: at(3) })
+    expect(sent()).toEqual([])
+    const row = await stored(c.id)
+    expectWiped(row)
+    expect(row).toMatchObject({ unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_by_design", releaseAttempts: 2, releaseRequestedAt: at(-6) })
   })
 
-  it("treats a dead token (Meta #190) as gone and wipes the row", async () => {
+  it("treats a dead Page token (Meta #190) as gone and wipes the row", async () => {
     const g = await grant()
     const c = await connection(g.id, { expiresAt: at(-1) })
     meta = () => json(400, { error: { code: 190, error_subcode: 458, message: "The user has not authorized application" } })
 
     expect(await engine.releaseDueDemoSocialConnections({ now: NOW })).toMatchObject({ released: 1, incomplete: 0 })
 
-    expect(metaCalls.map((call) => `${call.method} ${call.path}`)).toEqual([`DELETE /v21.0/${c.pageId}/subscribed_apps`, "GET /v21.0/me/accounts"])
+    expect(metaCalls.map((call) => `${call.method} ${call.path}`)).toEqual([`DELETE /v21.0/${c.pageId}/subscribed_apps`])
     const row = await stored(c.id)
     expectWiped(row)
-    expect(row).toMatchObject({ unsubscribeOutcome: "token_invalid", grantRevokeOutcome: "token_invalid", releaseError: "meta_190_458" })
+    expect(row).toMatchObject({ unsubscribeOutcome: "token_invalid", grantRevokeOutcome: "kept_by_design", releaseError: "meta_190_458" })
     expect((await eventsOf(g.id)).map((event) => event.eventType)).toEqual(["SOCIAL_RELEASED"])
   })
 
@@ -477,23 +513,23 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
 
     const row = await stored(c.id)
     expectWiped(row)
-    expect(row).toMatchObject({ unsubscribeOutcome: "unreachable", grantRevokeOutcome: "unreachable", releaseAttempts: 301 })
+    expect(row).toMatchObject({ unsubscribeOutcome: "unreachable", grantRevokeOutcome: "kept_by_design", releaseAttempts: 301 })
     expect(await messagesOf(c.id)).toBe(0)
     const events = await eventsOf(g.id)
     expect(events.map((event) => event.eventType)).toEqual(["SOCIAL_RELEASE_INCOMPLETE"])
-    expect(events[0].metadata).toEqual({ platform: "facebook", reason: "day_over", unsubscribe: "unreachable", grantRevoke: "unreachable" })
+    expect(events[0].metadata).toEqual({ platform: "facebook", reason: "day_over", unsubscribe: "unreachable", grantRevoke: "kept_by_design" })
     expect(await engine.demoSocialReleaseHealth(NOW)).toEqual({ live: 0, due: 0, stranded: 0, incompleteLast7d: 1 })
   })
 
-  it("wipes a row whose tokens no longer decrypt, and says the release is incomplete", async () => {
+  it("wipes a row whose Page token no longer decrypts, and says the release is incomplete", async () => {
     const g = await grant()
     // Encrypted for another row: under this row's purpose it does not decrypt (as after a NEXTAUTH_SECRET rotation).
     const c = await connection(g.id, { expiresAt: at(-1), pageTokenCipher: encryptToken("page-token-elsewhere", demoSocialTokenPurpose("conn-other", "page")) })
 
     await engine.releaseDueDemoSocialConnections({ now: NOW })
 
-    expect(sent()).toEqual([`GET /v21.0/me/accounts ${c.userToken}`, `DELETE /v21.0/me/permissions ${c.userToken}`])
-    expect(await stored(c.id)).toMatchObject({ unsubscribeOutcome: "decrypt_failed", grantRevokeOutcome: "revoked" })
+    expect(sent()).toEqual([])
+    expect(await stored(c.id)).toMatchObject({ unsubscribeOutcome: "decrypt_failed", grantRevokeOutcome: "kept_by_design" })
     expect((await eventsOf(g.id)).map((event) => event.eventType)).toEqual(["SOCIAL_RELEASE_INCOMPLETE"])
   })
 
@@ -511,11 +547,7 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
     ])
 
     expect(runs[0].released + runs[1].released).toBe(3)
-    const expected = rows.flatMap((c) => [
-      `DELETE /v21.0/${c.pageId}/subscribed_apps ${c.pageToken}`,
-      `GET /v21.0/me/accounts ${c.userToken}`,
-      `DELETE /v21.0/me/permissions ${c.userToken}`,
-    ])
+    const expected = rows.map((c) => `DELETE /v21.0/${c.pageId}/subscribed_apps ${c.pageToken}`)
     expect([...sent()].sort()).toEqual([...expected].sort())
     for (const c of rows) {
       const row = await stored(c.id)
@@ -523,6 +555,42 @@ describe.skipIf(!scratch)("releasing prospects' Facebook Pages on a real Postgre
       expect(row.releaseAttempts).toBe(1)
     }
     expect(await admin.demoAccessEvent.count({ where: { eventType: "SOCIAL_RELEASED", grantId: { in: rows.map((c) => c.row.grantId!) } } })).toBe(3)
+  })
+
+  it("a run that started 150 seconds ago still takes a lease that holds: a second run sends nothing", async () => {
+    const c = await connection((await grant()).id, { expiresAt: at(-5) })
+    meta = () => json(500, null)
+
+    // The run's own `now` is two and a half minutes old, as after a long tick.
+    expect(await engine.releaseDueDemoSocialConnections({ now: new Date(NOW.getTime() - 150_000) })).toMatchObject({ due: 1, retrying: 1 })
+    const leased = await stored(c.id)
+    expect(leased.releaseLeaseUntil!.getTime()).toBeGreaterThan(Date.now() + engine.DEMO_SOCIAL_RELEASE_LEASE_MS - 30_000)
+
+    meta = healthyMeta
+    expect(await engine.releaseDueDemoSocialConnections({ now: NOW })).toMatchObject({ due: 1, released: 0, retrying: 1 })
+
+    expect(metaCalls).toHaveLength(1)
+    expect(await stored(c.id)).toMatchObject({ scrubbedAt: null, releaseAttempts: 1, releaseLeaseUntil: leased.releaseLeaseUntil })
+  })
+
+  it("tries a row never tried before one Meta keeps failing: with a limit of one, the second row is not starved", async () => {
+    // 29 and 28 minutes past their end: one more tick and an untried row would count as stranded.
+    const failing = await connection((await grant()).id, { expiresAt: at(-29) })
+    const untried = await connection((await grant()).id, { expiresAt: at(-28) })
+    meta = () => json(500, null)
+
+    expect(await engine.releaseDueDemoSocialConnections({ now: NOW, limit: 1 })).toMatchObject({ due: 2, released: 0, retrying: 2 })
+    expect(sent()).toEqual([`DELETE /v21.0/${failing.pageId}/subscribed_apps ${failing.pageToken}`])
+    expect((await engine.demoSocialReleaseHealth(NOW)).stranded).toBe(0)
+
+    meta = healthyMeta
+    metaCalls.length = 0
+    expect(await engine.releaseDueDemoSocialConnections({ now: at(3), limit: 1 })).toMatchObject({ due: 2, released: 1, retrying: 1 })
+
+    expect(sent()).toEqual([`DELETE /v21.0/${untried.pageId}/subscribed_apps ${untried.pageToken}`])
+    expectWiped(await stored(untried.id))
+    expect(await stored(failing.id)).toMatchObject({ scrubbedAt: null, releaseAttempts: 1 })
+    expect((await engine.demoSocialReleaseHealth(at(3))).stranded).toBe(0)
   })
 
   it("still releases when called inside a tenant's context: the engine enters bypass itself", async () => {

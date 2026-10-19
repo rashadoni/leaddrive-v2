@@ -369,26 +369,34 @@ pgDescribe("demo tables on a real Postgres", () => {
       )
     }
     const cipher = (kind: "user" | "page") => encryptToken("EAAG-token", demoSocialTokenPurpose("social-x", kind))
-    const wiped = { scrubbedAt: now, releaseRequestedAt: now, releaseReason: "day_over", unsubscribeOutcome: "removed", grantRevokeOutcome: "revoked" }
+    const wiped = { scrubbedAt: now, releaseRequestedAt: now, releaseReason: "day_over", unsubscribeOutcome: "removed", grantRevokeOutcome: "kept_by_design" }
 
     await expect(connection({ userTokenCipher: "EAAG-plaintext" })).rejects.toThrow() // a token that is not ciphertext
     await expect(connection({ pageTokenCipher: "EAAG-plaintext", pageId: "123" })).rejects.toThrow()
     await expect(connection({ pageTokenCipher: cipher("page") })).rejects.toThrow() // a Page token without its Page
     await expect(connection({ pageId: "../me" })).rejects.toThrow() // not a Page id
+    await expect(connection({ pageId: "123", linkedInstagramId: "ig-account" })).rejects.toThrow() // not Meta's number
     await expect(connection({ ...wiped, pageId: "123" })).rejects.toThrow() // wiped, and still naming the Page
     await expect(connection({ ...wiped, userTokenCipher: cipher("user") })).rejects.toThrow() // wiped, and still holding a token
-    await expect(connection({ ...wiped, grantRevokeOutcome: null })).rejects.toThrow() // wiped, and no one knows what Meta answered
+    await expect(connection({ ...wiped, linkedInstagramId: "17841400000000001" })).rejects.toThrow() // wiped, and still naming the Instagram account
+    await expect(connection({ ...wiped, grantRevokeOutcome: null })).rejects.toThrow() // wiped, and no record of what became of the grant
+    await expect(connection({ ...wiped, unsubscribeOutcome: null })).rejects.toThrow() // wiped, and no one knows what Meta answered
     await expect(connection({ expiresAt: new Date(now.getTime() + 25 * 3_600_000) })).rejects.toThrow() // more than a day
     await expect(connection({ releaseRequestedAt: now, releaseReason: "bored" })).rejects.toThrow() // a reason the code does not have
     await expect(connection({ releaseReason: "day_over" })).rejects.toThrow() // a reason with no moment the release was asked for
     await expect(connection({ unsubscribeOutcome: "maybe" })).rejects.toThrow()
     await expect(connection({ grantRevokeOutcome: "maybe" })).rejects.toThrow()
+    await expect(connection({ grantRevokeOutcome: "revoked" })).rejects.toThrow() // the release never revokes the person's grant
+    await expect(connection({ grantRevokeOutcome: "kept_shared" })).rejects.toThrow()
     await expect(connection({ aiReplies: 21 })).rejects.toThrow()
     await expect(connection({ releaseError: "meta_190: Error validating access token for Nigar" })).rejects.toThrow() // Meta's text
     await expect(connection({ code: "LD-zz" })).rejects.toThrow()
     await expect(connection({ platform: "instagram" })).rejects.toThrow() // not yet
 
-    const live = await connection({ pageId: "123", pageTokenCipher: cipher("page"), userTokenCipher: cipher("user"), releaseError: "meta_190_460", pendingPages: [{ id: "123", name: "Xəzər" }] })
+    const live = await connection({
+      pageId: "123", linkedInstagramId: "17841400000000001", pageTokenCipher: cipher("page"), userTokenCipher: cipher("user"),
+      releaseError: "meta_190_460", pendingPages: [{ id: "123", name: "Xəzər" }],
+    })
     await expect(connection()).rejects.toThrow() // a second live connection for the same grant
     const other = await grantInState((await storedRequest("social-page-2@example.az")).id, "e", session(1, "e"))
     await expect(connection({ grantId: other.id, pageId: "123" })).rejects.toThrow() // a second live connection for the same Page
@@ -397,10 +405,11 @@ pgDescribe("demo tables on a real Postgres", () => {
     await bypass(() =>
       prisma.demoSocialConnection.update({
         where: { id: live.id },
-        data: { ...wiped, pageId: null, pageTokenCipher: null, userTokenCipher: null, pendingPages: Prisma.DbNull },
+        data: { ...wiped, pageId: null, linkedInstagramId: null, pageTokenCipher: null, userTokenCipher: null, pendingPages: Prisma.DbNull },
       }),
     )
     const again = await connection({ grantId: other.id, pageId: "123" })
+    await connection({ ...wiped, grantId: null, grantRevokeOutcome: "no_token" }) // a wiped row that never held a user token
     await connection()
 
     // A message once: Meta's repeated delivery is refused, and the text has a limit.

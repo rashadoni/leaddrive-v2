@@ -4,9 +4,9 @@ import { demoSocialReleaseHealth, releaseDueDemoSocialConnections } from "@/lib/
 
 /**
  * Every five minutes: unbind the prospects' Facebook Pages whose demo is over
- * — unsubscribe the Page from our app, revoke the grant, wipe our copy
- * (src/lib/demo-center/demo-social-release.ts). With no connections it reads
- * one empty table and does nothing.
+ * — unsubscribe the Page from our app and wipe our copy; the person's own Meta
+ * grant is left to him (src/lib/demo-center/demo-social-release.ts says why).
+ * With no connections it reads one empty table and does nothing.
  */
 export async function POST(req: NextRequest) {
   // Authenticate first: the engine reads every connection under RLS bypass.
