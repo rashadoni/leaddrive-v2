@@ -20,13 +20,15 @@ import { runWithTenant } from "@/lib/rls-context"
  * order — and then one of the caller's slots: at most `holdersPerProcess` of
  * its lock transactions at a time, each keeping one connection, which leaves
  * the pool a connection for the work. Each caller has its own turns and slots,
- * so a slow one (a TikTok delivery waiting for its organization's monitoring
- * fence) holds up only its own kind. The price is that the slots add up: the
- * four callers (WhatsApp intake, TikTok Lead Ads, Meta and TikTok comment
- * webhooks) can keep eight connections, more than the pool of a 2-core server
- * (5). What the caps rule out is one kind's burst running the pool dry; five
- * lock transactions at once still take bursts of three kinds together, two of
- * them each for two organizations (or senders).
+ * so a slow one holds up only its own kind, and the slots add up. The callers:
+ *  - WhatsApp intake, per sender: 2;
+ *  - the social-monitoring fence, per organization, for every opener — crons,
+ *    user routes, webhooks (`social/monitoring-import-fence.ts`): 2; its gate
+ *    for scheduled work only orders openers and keeps no connection of its own;
+ *  - the TikTok Lead Ads webhook, only while its organization's monitoring is
+ *    paused for a clean-slate reset: 2.
+ * That is four connections, six during a reset: below the production pool
+ * (13), and below a 2-core server's (5) outside a reset.
  */
 export type LockTurns = {
   /** `work` in its key's turn and in one of the caller's slots. */
