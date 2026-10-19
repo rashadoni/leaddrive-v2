@@ -698,3 +698,44 @@
 - Acknowledged hold and current typecheckout proof in PR892. Pending FileVault/
   new ARM64 guard result, B2 live permissions/Object Lock/configuration and
   reviewed-main delivery remain actual prerequisites before customer-data work.
+
+## 2026-10-19 (Asia/Baku): final current-source acceptance and explicit external hold
+
+- Source9cfccedaf48ac238ff8be24edc2a1ef20def6602 now passes ALL five required
+  gates:pr-scope/static/type39177466404,runner39177466464,scan39177466417.
+  Static completed28m31s; type13m38s. Actual completed static117823353336 and
+  type117823353416 checkout logs both show10b3e6c0cd69875753ffc7fe275f7cf4ca8bf00e,
+  whose verified parents are main9cd84838d and source9cf. No old/skipped source
+  acceptance substituted. PR application build scope-SKIPPED, NOT RUN.
+- Additional PASS:owner39177466420 with13real synthetic crypto/boundary/swap
+  tests, pinned image build, actual no-swap PG self-test and explicit swap-enabled
+  Docker refusal; pgpass39177466448;tenant39177466407.13diagnostic tests PASS.
+- Final exact-source readiness sent to coordinator PR892 comment6256920527.
+  Source frozen; no further implementation change is planned while held.
+- Prepared public /tmp/leaddrive-a3-mac-preflight-9cf.sh, syntax PASS only. It
+  refuses non-ARM64-Mac/foreign Docker endpoint, reports FileVault, verifies the
+  public bundle SHA, builds reviewed test image and runs synthetic no-swap
+  positive/explicit-swap negative. Reads no owner keys or real archives, creates
+  no production connection. Supplied safe one-command SCP+local Bash route.
+  Actual Mac run/FileVault/new ARM64 swap proof remain PENDING/NOT RUN here.
+- Remaining external conditions are concrete:coordinator explicitly HOLDS A3
+  main/runtime commissioning until PR909 shared audit slot clears; separate B2
+  PR899/live permission/Object Lock/production configuration needs one owner and
+  accepted evidence; physical Mac new preflight/main-bound signing/real scratch
+  execution is not remotely callable from this session. No private key transfer
+  requested as a workaround, no extra authorization/owner-relay request.
+- NOT RUN by A3:main merge/deploy, real production encrypted backup, actual
+  customer-data scratch restore, signed actual source/restore receipt, PITR,
+  timer activation, source PostgreSQL/Kafka/offset/replay changes. Independent
+  Farah/two-offline-media/enterprise readiness remain unmet, never substituted.
+- Status:all available independent code preparation/current-source checks
+  complete; A3 overall OPEN/NO-GO. Last completed action:verified final static
+  checkout/required gates and delivered exact-source readiness to coordinator.
+  Precise stopping point:before coordinated reviewed-main code delivery and live
+  storage admission, before any real backup or restore. Next action:after root
+  audit/B2 slot clearance, reconcile approved main, verify live storage and Mac
+  preflight, generate fresh main-bound owner key proof, then one encrypted
+  candidate and isolated Mac restore. No generic permission needed to resume.
+- Dirty canonical checkout and unrelated branches/worktrees preserved. Journal
+  remains append-only in local checkpoint commits; journal-only pushes avoided
+  so completed acceptance is not churned. User can continue from this exact cwd.
