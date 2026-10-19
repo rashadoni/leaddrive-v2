@@ -1362,3 +1362,11 @@ only clarification supersedes earlier no-test-restore/no-test-send summaries;
 318 physical/contract results remain distinct from absent runtime/prod authority.
 Documentation diff check PASS; no executable change. Checkpoint2eed51207 precedes
 this clarification; final head checks are watched without another code iteration.
+
+## 2026-10-19 — original coordinator resumes existing source-only A5 delivery
+
+- Owner asked the original Kafka task to inspect these prepared sessions and begin the remaining work. Original coordinator retains overall delivery; no runtime activation, paid infrastructure, independent identity substitute, offset reset or customer replay follows from this source integration.
+- Resolved this dedicated Contabo worktree/branch codex/kafka-operator-readiness, active origin https://github.com/rashadoni/leaddrive-v2.git, registered production13.140.132.245:/opt/leaddrive-v2, reviewed main -> GitHub Actions deploy.yml only. AGENTS blob matches current main exactly. Dirty canonical checkout untouched.
+- Read-only review of prepared14a7355b0ce89979a76855a471a9087ff04f6e33 against current main0d95071891ea8baec1a56459a440c54a680f9801 found two expected merge conflicts and no blocking defect in reviewed source. Normal merge1891f125f preserves both narrow gitleaks exceptions and both A5/A1/A2/A3 backlog history sections. No scanner rule broadened or gate bypassed.
+- Resource preflight:17800MiB available RAM,210GiB disk, memory pressure averages0; pre-existing swap2140MiB. Actual sequential offline operator tests on merged tree:226/226 PASS,0 skipped. These are pure bounded Node tests, not the earlier318 hosted PostgreSQL scenarios. Task diff whitespace PASS. Hosted operator/PostgreSQL/full protected/CDC/broker checks on the newly published head are still required; older executable aa2 passes remain historical.
+- No Prisma/application route wiring, production SQL migration, controller provisioning, broker/ACL/TLS/HA mutation, notification paging integration or live financial correction performed. Customer backup/restore, seven-purpose runtime acceptance and27-domain adoption remain NOT RUN. Existing draft894 is being prepared for fresh exact-head checks, not claimed merged or deployed.
