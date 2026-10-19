@@ -93,3 +93,14 @@ jobs:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           LD_OPERATOR_REDUCER_MODULE: ${{ runner.temp }}/operator-canonical-reducer.mjs
         run: node --test scripts/event-platform/operator-fund-restore.integration.mjs
+
+      - name: Preserve only synthetic disposable notification and restore evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: kafka-operator-disposable-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/operator-notifications-*/receipts.jsonl
+            ${{ runner.temp }}/operator-restore-*/restore-receipt.json
+            ${{ runner.temp }}/operator-restore-*/fund.dump
+          if-no-files-found: error
+          retention-days: 7

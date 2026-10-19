@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import {execFile} from 'node:child_process'
 import {promisify} from 'node:util'
 import {randomUUID,createHash} from 'node:crypto'
-import {mkdtemp,readFile,stat,chmod} from 'node:fs/promises'
+import {mkdtemp,readFile,stat,chmod,writeFile} from 'node:fs/promises'
 import {join} from 'node:path'
 import {fixtureSql,fixtureDatabase,fixtureRestoredDatabase,quoteFixture as q} from './operator-postgres-client.fixture.mjs'
 import {collectFundRecoveryDatabaseSnapshot} from './operator-fund-snapshot.mjs'
@@ -27,13 +27,15 @@ const original=()=>collectFundRecoveryDatabaseSnapshot(fixtureDatabase('op_final
 const sourceHash=()=>fixtureSql('op_final_reader',`BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;SELECT set_config('app.org_id','org-a',true);SELECT ld_kafka_operator.fund_material_hash('org-a',${q(scope.buildId)});COMMIT;`)
 const before=await sourceHash(),snapshot=await original()
 assert.match(before,/^org-a\n[0-9a-f]{64}$/)
-let created=false,role=false
+let created=false,role=false,archiveDigest
+let failed=false
+async function scenario(name,work){await test(name,async()=>{try{await work()}catch(error){failed=true;throw error}})}
 try{
- await test('pg_dump archive is real bounded readable bytes pinned by SHA before isolated restore',async()=>{
+ await scenario('pg_dump archive is real bounded readable bytes pinned by SHA before isolated restore',async()=>{
   await command('pg_dump',['--dbname','kafka_operator_test','--format','custom','--no-owner','--no-privileges','--file',archive])
   const size=(await stat(archive)).size;assert.ok(size>0&&size<=16777216)
   await chmod(archive,0o400)
-  const digest=createHash('sha256').update(await readFile(archive)).digest('hex')
+  const digest=createHash('sha256').update(await readFile(archive)).digest('hex');archiveDigest=digest
   await command('pg_restore',['--list',archive])
   assert.equal(createHash('sha256').update(await readFile(archive)).digest('hex'),digest)
   await admin(`CREATE DATABASE "${databaseName}";`);created=true
@@ -51,18 +53,20 @@ try{
  const restored=()=>collectFundRecoveryDatabaseSnapshot(fixtureRestoredDatabase(databaseName,{afterQuery:async(statement,tx)=>{
   if(statement.includes('AS snapshot'))restoredHash=(await tx.$queryRawUnsafe('SELECT ld_kafka_operator.fund_material_hash($1,$2::uuid) AS hash','org-a',scope.buildId))[0].hash
  }}),{...scope,expectedReaderRole:'op_restore_reader'},reduceFundBalance)
- await test('independent restricted restore login reproduces exact canonical histories/states/checkpoints/material',async()=>{
+ await scenario('independent restricted restore login reproduces exact canonical histories/states/checkpoints/material',async()=>{
   const value=await restored()
   for(const key of ['source','shadow','checkpoints'])assert.deepEqual(value[key],snapshot[key])
   assert.equal('org-a\n'+restoredHash,before)
   assert.equal(await sourceHash(),before)
  })
- await test('partial restored visibility denies certification and source archive/database stay unchanged',async()=>{
+ await scenario('partial restored visibility denies certification and source archive/database stay unchanged',async()=>{
   await sql(`CREATE POLICY operator_restore_missing ON funds AS RESTRICTIVE TO op_restore_reader USING(id<>${q(scope.fundIds[0])});`)
   try{await assert.rejects(restored(),{message:'FUND_RECOVERY_SNAPSHOT_INVALID'})}finally{await sql('DROP POLICY operator_restore_missing ON funds;')}
   assert.deepEqual((await restored()).source,snapshot.source)
   assert.equal(await sourceHash(),before)
  })
+ assert.equal(failed,false,'every physical drill scenario must succeed before issuing receipt')
+ await writeFile(join(directory,'restore-receipt.json'),JSON.stringify({apiVersion:'event-platform.leaddrive.io/v1',kind:'IsolatedFundRestoreReceipt',scope:'disposable-pg-dump',observedAt:new Date().toISOString(),archiveSha256:archiveDigest,materialHash:before.split('\n')[1],organizationId:scope.organizationId,buildId:scope.buildId,fixtureBuildCodeSha:scope.codeSha,source:snapshot.source,shadow:snapshot.shadow,checkpoints:snapshot.checkpoints,verified:true,productionPitrEncryptionWormProven:false}),{flag:'wx',mode:0o600})
  console.log('operator_independent_restore=PASS; scope=disposable-pg-dump; canonical_exact_parity=PASS; source_unchanged=PASS; production_pitr_encryption_worm=NOT_PROVEN')
 }finally{
  if(created)await admin(`DROP DATABASE "${databaseName}";`)

@@ -40,14 +40,16 @@ const evidence={apiVersion:'event-platform.leaddrive.io/v1',kind:'KafkaOperatorA
  receipts:OPERATOR_ALERT_GATES.map(gate=>({gate,receiptId:`delivery-${randomUUID()}`}))}
 const expected=()=>({...scope,now:new Date().toISOString(),maxAgeMs:60000})
 const manifest=evidence.receipts.map(item=>({...scope,...item,triggeredAt:new Date().toISOString()}))
+let failed=false
+async function scenario(name,work){await test(name,async()=>{try{await work()}catch(error){failed=true;throw error}})}
 try{
  await start()
- await test('actual separate receiver durably receives all ten controlled test alerts; accepted is not acknowledged',async()=>{
+ await scenario('actual separate receiver durably receives all ten controlled test alerts; accepted is not acknowledged',async()=>{
   for(const body of manifest)assert.equal((await post('/alerts','sender',body)).status,202)
   assert.equal((await read(manifest[0].receiptId)).acknowledged,false)
   await assert.rejects(verifyOperatorAlertEvidence(evidence,expected(),read),{message:'OPERATOR_ALERT_EVIDENCE_INVALID'})
  })
- await test('sender/reader cannot forge responder authority; authenticated responder ACK is observed independently',async()=>{
+ await scenario('sender/reader cannot forge responder authority; authenticated responder ACK is observed independently',async()=>{
   assert.equal((await post('/ack','sender',{receiptId:manifest[0].receiptId})).status,403)
   assert.equal((await post('/ack','reader',{receiptId:manifest[0].receiptId})).status,403)
   assert.equal((await post('/alerts','reader',manifest[0])).status,403)
@@ -55,7 +57,7 @@ try{
   const result=await verifyOperatorAlertEvidence(evidence,expected(),read)
   assert.equal(result.gateCount,10);assert.equal((await read(manifest[0].receiptId)).responderId,scope.responderId)
  })
- await test('repeated delivery/ACK is idempotent and changed payload/scope cannot overwrite receipt',async()=>{
+ await scenario('repeated delivery/ACK is idempotent and changed payload/scope cannot overwrite receipt',async()=>{
   const before=await readFile(config.path),hash=createHash('sha256').update(before).digest('hex')
   assert.equal((await post('/alerts','sender',manifest[0])).status,200)
   assert.equal((await post('/ack','responder',{receiptId:manifest[0].receiptId})).status,200)
@@ -65,15 +67,16 @@ try{
   assert.equal(createHash('sha256').update(await readFile(config.path)).digest('hex'),hash)
   assert.equal(before.toString().trim().split('\n').length,20)
  })
- await test('independent read-back refuses missing/auth/redirect/oversized/chunked/invalid responses',async()=>{
+ await scenario('independent read-back refuses missing/auth/redirect/oversized/chunked/invalid responses',async()=>{
   for(const id of ['missing','probe-redirect','probe-large','probe-chunked','probe-bad-json','probe-bad-utf8'])await assert.rejects(read(id),{message:'OPERATOR_ALERT_READBACK_DENIED'})
   const unauthorized=createOperatorAlertReadBack({origin,bearerToken:randomBytes(32).toString('hex'),disposableLoopback:true})
   await assert.rejects(unauthorized(manifest[0].receiptId),{message:'OPERATOR_ALERT_READBACK_DENIED'})
  })
- await test('actual receiver restart preserves fsynced delivery/ACK receipts for readonly verification',async()=>{
+ await scenario('actual receiver restart preserves fsynced delivery/ACK receipts for readonly verification',async()=>{
   const before=await readFile(config.path);await stop();await start(true)
   assert.equal((await verifyOperatorAlertEvidence(evidence,expected(),read)).gateCount,10)
   assert.deepEqual(await readFile(config.path),before)
  })
+ assert.equal(failed,false,'every physical drill scenario must succeed before issuing receipt')
  console.log('operator_notification_delivery=PASS; scope=disposable-http; controlled_triggers=10; independent_machine_ack=PASS; receiver_restart=PASS; production_rules_human_paging=NOT_PROVEN')
 }finally{await stop()}

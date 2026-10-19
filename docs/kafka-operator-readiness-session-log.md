@@ -1267,3 +1267,28 @@ cleanup targets only the owned clone/role. Source transport keeps original route
 checks; new restore factory accepts only fixed reader plus generated clone name,
 never an arbitrary DB or URL. Full restore/PITR/encryption/WORM on production is
 not implied. All PostgreSQL/Docker work hosted only; actual restore result pending.
+
+
+### Actual physical restore PASS and durable run evidence
+
+Operator39216417379 on exactde4f9bc08 SUCCESS:226 units,5 real notification,
+17 admission,8 shadow,9 stop,24 snapshot/canary,8 barrier,18 transition and3
+physical restore scenarios=318 PASS. pg_dump/pg_restore created a new namespaced
+DB; independent restricted login produced identical canonical source/shadow/
+checkpoints/material, missing aggregate visibility denied, source unchanged,
+owned clone/reader cleaned. This is actual nonproduction snapshot restore, not
+PITR/encrypted backup/WORM proof. Notification ACK is machine, not a human.
+
+Checkpointc6fd6f215 contains only read-back cancellation on header/parse denial;
+its title mentioned artifact work prematurely because the edit script stopped
+before later edits. No history rewrite; artifact/receipt edits completed here.
+Success-only upload of synthetic receipts and owned dump to GitHub artifacts
+(retention7days), exact archive/material hashes in restore receipt. No passwords,
+private keys or real tenant data occur in dump/receipts; role password globals
+are not pg_dump contents. Global PASS/receipt requires every node:test scenario
+to succeed, not merely its resolving Promise. Hosted repeat pending.
+
+Old broker39215381893 at4b was cancelled by dispatching its own replacement
+39216416557; no other branch/session touched. New CDC39216412781 and broker
+39216416557 use exactde4 digest refresh; results pending. Existing foreign
+workflow/test definitions unchanged. No business module activation.
