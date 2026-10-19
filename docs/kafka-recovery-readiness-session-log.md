@@ -1035,3 +1035,19 @@
 - Original coordinator hold not released; real source candidate, private archive
   restore, actual signed receipt, A3 main delivery/timers/PITR/Kafka changes still
   NOT RUN. Source prep/current gates continue while peer storage work progresses.
+
+### Explicit owner coordination decision — 2026-10-19 11:56 Asia/Baku
+
+- Asked one narrow routing clarification because original coordinator is idle
+  after model-capacity failure and its explicit A3 hold remains. This was not
+  a repeated merge/deploy authorization request: user already authorized task
+  PRs/Actions commissioning, but assigned common delivery to original chat.
+- Owner chose exactly: "Оставить исходному координатору". Therefore this chat
+  does not take over A3/common delivery or override that hold. No re-ask or
+  implicit override from generic continue instructions. Existing original
+  authorization/restrictions, one storage owner, mandatory gates and Actions
+  remain in force. Continue independent source checks/evidence only; hand
+  coordinator exact ready source when checks complete.
+- Current sourceff9 extra owner/pgpass/tenant/runner/scan PASS; required static/
+  type still running. Real production candidate/restore/receipts, A3 main
+  delivery and timer changes remain NOT RUN; no private keys/costs requested.
