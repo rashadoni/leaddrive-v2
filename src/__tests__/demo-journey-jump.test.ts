@@ -350,7 +350,7 @@ describe("a module of its own: Route & Field", () => {
     // Contracts are chosen here as a prospect would, from «what next».
     const onlyThese = { ...start(), identity: { ...identity, interests: ["route-field", "personnel", "contracts"] } }
     let current = jump(onlyThese, "mtm-today").snapshot
-    for (const sectionId of ["mtm-today", "mtm-plan", "mtm-live", "mtm-visit", "mtm-place", "mtm-results", "prs-today", "prs-timesheet", "prs-risk", "prs-month", "ctr-list", "ctr-approve", "ctr-sign", "ctr-control"]) {
+    for (const sectionId of ["mtm-today", "mtm-plan", "mtm-live", "mtm-visit", "mtm-place", "mtm-results", "prs-today", "prs-explain", "prs-timesheet", "prs-risk", "prs-month", "ctr-list", "ctr-approve", "ctr-sign", "ctr-control"]) {
       // Each module ends on «what next»; the next one is the prospect's choice.
       if (current.sectionId === "next-module") current = reduceJourney(current, actionFor(current), manifest, NOW).snapshot
       expect(current.sectionId).toBe(sectionId)

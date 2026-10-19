@@ -151,6 +151,7 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
       "mtm-place",
       "mtm-results",
       "prs-today",
+      "prs-explain",
       "prs-timesheet",
       "prs-risk",
       "prs-month",
