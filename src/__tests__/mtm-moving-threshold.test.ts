@@ -23,7 +23,8 @@ const at = (seconds: number) => new Date(Date.parse("2026-10-15T09:00:00.000Z") 
 /** About this many metres north of a pharmacy door. */
 const north = (meters: number) => 40.4093 + meters / 111_195
 
-const listed = (speed: number | null) => rosterValue({ agentId: "a", speed } as MtmDashboardAgent, "speed")
+// A live fix: the list reads no speed from a last known point (rosterSpeed).
+const listed = (speed: number | null) => rosterValue({ agentId: "a", freshness: "ONLINE", speed } as MtmDashboardAgent, "speed")
 
 describe("the line between moving and standing", () => {
   it("is 3 km/h as a screen shows it: a fix shown as «2 km/h» stands, one shown as «3 km/h» moves", () => {

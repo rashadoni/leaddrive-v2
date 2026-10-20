@@ -7,6 +7,8 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { isValidTimezone, dateInputValueInTimezone } from "@/lib/timezone"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { classifyGpsFreshness, explainMissingLocation, mapWorkdayState } from "@/lib/mtm/live-location"
+import { readMtmLastBreakEnds } from "@/lib/mtm/live-break-ends"
+import { isMtmPositionHeldByBreak, mtmFreshnessAcrossBreak } from "@/lib/mtm-types"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
@@ -1016,11 +1018,24 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     // explicitly unavailable so every consumer can render N/A truthfully.
     percentage: eligibleStops === 0 ? null : Math.round((actualStops / eligibleStops) * 1_000) / 10,
   }
+  // On a break, and back from one until the first fix after it, his newest
+  // point is where the work stopped, not where he is: the live map shows it
+  // grey, «GPS неактивен» (isMtmPositionHeldByBreak). Until 2026-10-20 this
+  // line said «Fasilədə» beside a green «GPS online» for the first minutes of
+  // every break — the same moment, two answers on two screens. The shift is
+  // read only where Workforce is on; a Routes-only tenant's week reads none.
+  const lastBreakEndedAt = activeWorkdayRaw
+    ? (await readMtmLastBreakEnds({ organizationId: auth.orgId, workdays: [activeWorkdayRaw] })).get(activeWorkdayRaw.id) ?? null
+    : null
   const gps = latestLocation ? {
-    freshness: classifyGpsFreshness(latestLocation.recordedAt, generatedAt, {
+    freshness: mtmFreshnessAcrossBreak(classifyGpsFreshness(latestLocation.recordedAt, generatedAt, {
       onlineSeconds: settings.offlineThresholdSeconds,
       delayedSeconds: Math.max(settings.offlineThresholdSeconds, settings.locationWindowMinutes * 60),
-    }),
+    }), isMtmPositionHeldByBreak({
+      workdayState: mapWorkdayState(activeWorkdayRaw?.status),
+      recordedAt: latestLocation.recordedAt,
+      lastBreakEndedAt,
+    })),
     recordedAt: latestLocation.recordedAt,
     latitude: latestLocation.latitude,
     longitude: latestLocation.longitude,

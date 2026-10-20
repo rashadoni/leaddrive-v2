@@ -61,3 +61,27 @@ export function liveMapAgentMarker(input: {
     size,
   }
 }
+
+/** A step further than this is not a move to watch: the first fix after a silence, a jump across town. */
+export const LIVE_MAP_GLIDE_MAX_METERS = 3_000
+
+/**
+ * Does the marker glide to its new place, or go straight there? It glides
+ * only for a real, short move between two live positions that somebody is
+ * watching. A grey last known point on either side is a jump: from the point
+ * he left before a break to his first fix after it, a glide would draw the
+ * way he went in between — the very thing his break keeps to himself (and,
+ * after a phone gone quiet, a way nobody saw him go).
+ */
+export function liveMapMarkerGlides(input: {
+  /** The dispatcher's «Плавное движение». */
+  enabled: boolean
+  /** The tab is hidden, or the viewer asked the system for less motion. */
+  still: boolean
+  meters: number
+  fromLastKnown: boolean
+  toLastKnown: boolean
+}): boolean {
+  return input.enabled && !input.still && !input.fromLastKnown && !input.toLastKnown &&
+    input.meters >= 1 && input.meters <= LIVE_MAP_GLIDE_MAX_METERS
+}

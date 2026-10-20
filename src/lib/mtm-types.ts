@@ -88,6 +88,13 @@ export interface MtmDashboardAgent extends Omit<LiveMapAgent, "latitude" | "long
   workdayCarryover?: boolean
   /** When the break he is on began — only while the workday is paused. */
   workdayPausedAt?: string | null
+  /**
+   * Seconds of break already over in this workday, as the workday row adds
+   * them up. It grows each time a break ends, so the page knows a break lay
+   * between two positions even when none of its answers fell inside it (the
+   * live map's tail is never drawn across one). Workforce tenants only.
+   */
+  workdayPausedSeconds?: number | null
   /** When the workday was closed — only once it is. */
   workdayCompletedAt?: string | null
   /** When the visit the agent is in was opened — it may be an earlier day. Only with CHECKED_IN. */
@@ -249,28 +256,110 @@ export function presentMtmGpsFreshness(
  */
 export const MTM_STATIONARY_MAX_SILENCE_MS = 10 * 60 * 1000
 
+/**
+ * How long after it was last heard from the field app still counts as there
+ * while its owner is on a break. No GPS point comes during a break; the sign
+ * is the app's bell asking for notifications every two minutes while one of
+ * its main screens is open (NOTIFICATION_BELL_REFRESH_MS in leaddrive-mtm;
+ * src/lib/mtm/break-presence.ts). Two minutes between signs plus the live
+ * map's own thirty-second refresh: with the organization's «fresh» limit
+ * shorter than that (it may be set down to 30 s) the app would read
+ * «на связи» and «не на связи» by turns all through the break. A longer
+ * limit of the organization's own stands.
+ */
+export const MTM_BREAK_APP_PRESENCE_SECONDS = 180
+
+/**
+ * How long after it was last heard from the field app still counts as there:
+ * the organization's «fresh» limit, and on a break at least
+ * MTM_BREAK_APP_PRESENCE_SECONDS. One rule for the page's «В сети», the hint
+ * that explains it and the moment the page looks again — the hint said only
+ * the organization's limit while somebody on a break was held for three
+ * minutes, and the page looked again only at that limit.
+ */
+export function mtmAppPresenceSeconds(
+  workdayState: LiveMapAgent["workdayState"],
+  thresholds: MtmLiveMapFreshnessThresholds | null | undefined,
+): number {
+  const { onlineSeconds } = normalizedThresholds(thresholds)
+  return workdayState === "PAUSED" ? Math.max(onlineSeconds, MTM_BREAK_APP_PRESENCE_SECONDS) : onlineSeconds
+}
+
+/**
+ * Is this coordinate where the work stopped rather than where he is? Then it
+ * is shown as the last known point (STALE, grey), never as a live position.
+ * A break is the employee's own time (owner's rule) and no point is accepted
+ * during it, so:
+ *
+ *   - his workday is paused: every point he has is from before the break;
+ *   - it was recorded before his latest break ended: he is back at work, but
+ *     the phone has not sent a fix since, and the newest point is still the
+ *     one he left before the break. Drawn live, it would stand him where he
+ *     paused, rank him among «Кто ближе» from there, and the first new fix
+ *     would draw a line from it across the break. A point taken at the very
+ *     second he resumed is the first of the new leg, as GPS ingestion counts
+ *     it (isDuringMtmWorkdayPause).
+ *
+ * When the latest break ended is read off the workday's journal by the
+ * server (src/lib/mtm/live-break-ends.ts), which applies the whole rule to
+ * the freshness it sends; a page knows only the state, and keeps what the
+ * server said (presentMtmGpsFreshness never upgrades a STALE).
+ */
+export function isMtmPositionHeldByBreak(input: {
+  workdayState: LiveMapAgent["workdayState"]
+  recordedAt: Date | string | null | undefined
+  lastBreakEndedAt?: Date | string | null
+}): boolean {
+  if (input.workdayState === "PAUSED") return true
+  if (input.workdayState !== "ACTIVE" || input.recordedAt == null || input.lastBreakEndedAt == null) return false
+  const recordedMs = new Date(input.recordedAt).getTime()
+  const endedMs = new Date(input.lastBreakEndedAt).getTime()
+  return Number.isFinite(recordedMs) && Number.isFinite(endedMs) && recordedMs < endedMs
+}
+
+/** How a coordinate held by a break is shown: as a last known one. No coordinate stays none. */
+export function mtmFreshnessAcrossBreak<F extends MtmGpsFreshness>(freshness: F, heldByBreak: boolean): F | "STALE" {
+  return heldByBreak && freshness !== "NO_LOCATION" ? "STALE" : freshness
+}
+
 export function presentMtmDashboardAgent(
   agent: MtmDashboardAgent,
   thresholds: MtmLiveMapFreshnessThresholds | null | undefined,
   nowMs: number,
 ): MtmDashboardAgent {
-  const freshness = presentMtmGpsFreshness(agent.freshness, agent.recordedAt, thresholds, nowMs)
-  const policy = normalizedThresholds(thresholds)
+  const aged = presentMtmGpsFreshness(agent.freshness, agent.recordedAt, thresholds, nowMs)
+  // A break is the employee's own time (owner's rule): no point is accepted
+  // during it, so the only coordinate he has is where the work stopped — not
+  // where he is. From the first second of the break the page shows it the way
+  // it shows any phone gone quiet: the grey last known point, «GPS неактивен»,
+  // nobody's nearest. Until 2026-10-20 a break counted as a live position for
+  // as long as that last point was fresh — ten minutes by default — so the
+  // pre-break point stood on the map as a green, then amber marker, and was
+  // ranked among «Кто ближе» (the demo clip shows it grey from the start).
+  // The server applies the same rule to a point left before a break that has
+  // just ended (isMtmPositionHeldByBreak); its STALE is never upgraded here.
+  const heldByBreak = isMtmPositionHeldByBreak({ workdayState: agent.workdayState, recordedAt: agent.recordedAt })
+  const freshness = mtmFreshnessAcrossBreak(aged, heldByBreak)
   const lastSeenAtMs = agent.lastSeenAt ? Date.parse(agent.lastSeenAt) : Number.NaN
+  // On a break the app's only sign is the bell's poll every two minutes, so
+  // the window is at least that long there (MTM_BREAK_APP_PRESENCE_SECONDS).
+  const presenceSeconds = mtmAppPresenceSeconds(agent.workdayState, thresholds)
   const appPresent = agent.isOnline && Number.isFinite(lastSeenAtMs) &&
-    Math.max(0, nowMs - lastSeenAtMs) <= policy.onlineSeconds * 1_000
+    Math.max(0, nowMs - lastSeenAtMs) <= presenceSeconds * 1_000
   // Between two answers of the server the page goes on counting «стоит N
   // минут». It stops when the coordinate behind it has grown older than the
   // silence the server itself would not count as standing — whatever the
   // organization's own idea of «свежая».
   const recordedAtMs = agent.recordedAt ? Date.parse(agent.recordedAt) : Number.NaN
   const standingStillKnown = Number.isFinite(recordedAtMs) && nowMs - recordedAtMs <= MTM_STATIONARY_MAX_SILENCE_MS
+  // «Стоит N минут» explains a live position; on a break there is none.
+  const forgetStanding = !standingStillKnown || heldByBreak
   return {
     ...agent,
     isOnline: appPresent,
     freshness,
     fieldStatus: freshness === "STALE" || freshness === "NO_LOCATION" ? "OFFLINE" : agent.fieldStatus,
-    ...(agent.stationarySince && !standingStillKnown ? { stationarySince: null } : {}),
+    ...(agent.stationarySince && forgetStanding ? { stationarySince: null } : {}),
   }
 }
 
@@ -279,9 +368,13 @@ export function isLiveMapPositionVisible(freshness: MtmGpsFreshness): freshness 
   return freshness === "ONLINE" || freshness === "DELAYED"
 }
 
-/** A recent coordinate is live only while the employee still has an open workday. */
+/**
+ * A recent coordinate is live only while the employee is at work: not before
+ * the workday, not after it, and not on a break — then it is the last known
+ * point, drawn grey (presentMtmDashboardAgent), never a live one.
+ */
 export function isLiveWorkdayPositionVisible(state: LiveMapAgent["workdayState"]): boolean {
-  return state === "ACTIVE" || state === "PAUSED"
+  return state === "ACTIVE"
 }
 
 export function isLiveMapAgentPositionVisible(

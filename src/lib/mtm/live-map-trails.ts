@@ -13,6 +13,20 @@
  * stays in «История» (SWM-12 — live mode never loads a day's GPS). So a page
  * opened a minute ago has no tails yet, and that is the truth.
  *
+ * A break ends a tail. It is the employee's own time (owner's rule): nothing
+ * is recorded during it, and a line from where he paused to where he resumed
+ * would say where he went in between. So the tail of somebody on a break is
+ * cut: what is left of it is one mark, never drawn, at the newest moment the
+ * page knew of him then, and only a position recorded after that mark starts
+ * a new tail. Dropping the tail alone was not enough (verification of
+ * 2026-10-20): the first answer after RESUME can still carry the point he
+ * left before the break, and with no tail to compare it with it began a new
+ * one that the first fix after the break then joined — a line across the
+ * break. The server, for its part, no longer calls that point live
+ * (isMtmPositionHeldByBreak). A break that began and ended between two
+ * answers of the roster is given away by the server's running total of
+ * breaks.
+ *
  * Pure data and pure functions.
  */
 import { calculateDistance } from "@/lib/geo-utils"
@@ -28,6 +42,18 @@ export interface LiveMapTrailPoint {
    * from here is drawn, and the point does not age while he stands on it.
    */
   heardAt?: string
+  /**
+   * The workday's seconds of break already over when this position was seen
+   * (`workdayPausedSeconds`). A position with a different total lies on the
+   * other side of a break, and the tail does not join the two.
+   */
+  workdayPausedSeconds?: number | null
+  /**
+   * Where the tail was cut by a break: the newest moment the page knew of
+   * him when he was seen on it. Never drawn; it only says that nothing
+   * recorded up to it may start a tail again.
+   */
+  breakCut?: true
 }
 
 export type LiveMapTrails = ReadonlyMap<string, readonly LiveMapTrailPoint[]>
@@ -53,6 +79,8 @@ interface TrailSource {
   latitude?: number | null
   longitude?: number | null
   recordedAt?: string | null
+  /** See LiveMapTrailPoint; absent where the organization keeps no workday breaks. */
+  workdayPausedSeconds?: number | null
 }
 
 /** The last moment the phone is known to have been at this point. */
@@ -65,7 +93,19 @@ function admissible(agent: TrailSource): LiveMapTrailPoint | null {
   if (typeof latitude !== "number" || !Number.isFinite(latitude) || latitude < -90 || latitude > 90) return null
   if (typeof longitude !== "number" || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) return null
   if (typeof recordedAt !== "string" || !Number.isFinite(Date.parse(recordedAt))) return null
-  return { latitude, longitude, recordedAt }
+  const breaks = breaksOver(agent.workdayPausedSeconds)
+  return breaks == null ? { latitude, longitude, recordedAt } : { latitude, longitude, recordedAt, workdayPausedSeconds: breaks }
+}
+
+function breaksOver(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null
+}
+
+/** A break was taken between the two: both totals are known and they differ. */
+function breakBetween(last: LiveMapTrailPoint, next: LiveMapTrailPoint): boolean {
+  const before = breaksOver(last.workdayPausedSeconds)
+  const after = breaksOver(next.workdayPausedSeconds)
+  return before != null && after != null && before !== after
 }
 
 /**
@@ -76,14 +116,43 @@ function admissible(agent: TrailSource): LiveMapTrailPoint | null {
  * name search narrows the roster for a moment, and clearing it must not find
  * every tail gone. A tail is drawn only beside a marker, so an employee who
  * has really left the roster has none on the map.
+ *
+ * `onBreak` — who is on a break in this answer, with the position that came
+ * with him: his tail is cut (see the top of this file), and he adds nothing
+ * to it whatever position comes with him.
  */
-export function extendLiveMapTrails(trails: LiveMapTrails, agents: readonly TrailSource[], nowMs: number): LiveMapTrails {
+export function extendLiveMapTrails(
+  trails: LiveMapTrails,
+  agents: readonly TrailSource[],
+  nowMs: number,
+  onBreak: readonly TrailSource[] = [],
+): LiveMapTrails {
+  const fresh = (point: LiveMapTrailPoint) => nowMs - lastHeardMs(point) <= TRAIL_MAX_AGE_MS
   const next = new Map<string, readonly LiveMapTrailPoint[]>()
   for (const [agentId, points] of trails) {
-    const kept = points.filter((point) => nowMs - lastHeardMs(point) <= TRAIL_MAX_AGE_MS)
+    const kept = points.filter(fresh)
     if (kept.length > 0) next.set(agentId, kept)
   }
+  const resting = new Set<string>()
+  for (const agent of onBreak) {
+    resting.add(agent.agentId)
+    const known = [next.get(agent.agentId)?.at(-1), admissible(agent)]
+      .filter((point): point is LiveMapTrailPoint => point != null && fresh(point))
+    const newest = known.reduce<LiveMapTrailPoint | null>((found, point) => (!found || lastHeardMs(point) > lastHeardMs(found) ? point : found), null)
+    if (!newest) {
+      next.delete(agent.agentId)
+      continue
+    }
+    next.set(agent.agentId, [{
+      latitude: newest.latitude,
+      longitude: newest.longitude,
+      recordedAt: newest.recordedAt,
+      ...(newest.heardAt ? { heardAt: newest.heardAt } : {}),
+      breakCut: true,
+    }])
+  }
   for (const agent of agents) {
+    if (resting.has(agent.agentId)) continue
     const kept = next.get(agent.agentId) ?? []
     const point = admissible(agent)
     if (!point || nowMs - Date.parse(point.recordedAt) > TRAIL_MAX_AGE_MS) continue
@@ -92,8 +161,14 @@ export function extendLiveMapTrails(trails: LiveMapTrails, agents: readonly Trai
       next.set(agent.agentId, [point])
       continue
     }
-    // Older than what is already known, or the same answer again: nothing new.
+    // Older than what is already known, or the same answer again: nothing new
+    // — nor anything recorded up to the place a break cut the tail at.
     if (Date.parse(point.recordedAt) <= lastHeardMs(last)) continue
+    // After a break: a new tail.
+    if (last.breakCut || breakBetween(last, point)) {
+      next.set(agent.agentId, [point])
+      continue
+    }
     const moved = calculateDistance(last.latitude, last.longitude, point.latitude, point.longitude) >= TRAIL_MIN_STEP_METERS
     next.set(agent.agentId, moved
       ? [...kept, point].slice(-TRAIL_MAX_POINTS)
@@ -108,6 +183,12 @@ export function liveMapTrailSegments(points: readonly LiveMapTrailPoint[]): Live
   const segments: LiveMapTrailPoint[][] = []
   let current: LiveMapTrailPoint[] = []
   for (const point of points) {
+    // A break's mark is never drawn, and nothing is drawn across it.
+    if (point.breakCut) {
+      if (current.length >= 2) segments.push(current)
+      current = []
+      continue
+    }
     const previous = current[current.length - 1]
     if (previous && Date.parse(point.recordedAt) - lastHeardMs(previous) > TRAIL_MAX_GAP_MS) {
       if (current.length >= 2) segments.push(current)

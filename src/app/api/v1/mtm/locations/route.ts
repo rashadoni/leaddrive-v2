@@ -15,7 +15,8 @@ import {
   liveMapWorkdayRead,
   mapWorkdayState,
 } from "@/lib/mtm/live-location"
-import { isLiveMapAgentPositionVisible, isLiveMapPositionVisible } from "@/lib/mtm-types"
+import { isLiveMapAgentPositionVisible, isLiveMapPositionVisible, isMtmPositionHeldByBreak, mtmFreshnessAcrossBreak } from "@/lib/mtm-types"
+import { readMtmLastBreakEnds } from "@/lib/mtm/live-break-ends"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { isValidTimezone } from "@/lib/timezone"
 import { advanceMtmAgentLatestLocation } from "@/lib/mtm/mobile-location-latest"
@@ -108,7 +109,7 @@ type AgentWithLocations = Prisma.MtmAgentGetPayload<{
     tags: true
     mapColor: true
     locations: true
-    workdays: { select: { status: true; workDate: true; startedAt: true; pausedAt: true; completedAt: true } }
+    workdays: { select: { id: true; status: true; workDate: true; startedAt: true; pausedAt: true; completedAt: true; totalPausedSeconds: true } }
   }
 }>
 
@@ -327,7 +328,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
           // Keep an unfinished prior-day shift visible. Calling it "not
           // started" would hide the exact anomaly the operator must resolve.
           ...liveMapWorkdayRead(routeToday),
-          select: { status: true, workDate: true, startedAt: true, pausedAt: true, completedAt: true },
+          select: { id: true, status: true, workDate: true, startedAt: true, pausedAt: true, completedAt: true, totalPausedSeconds: true },
         } } : {}),
       },
     })
@@ -419,19 +420,40 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     }
     const checkedInAgents = new Set(openVisitSinceByAgent.keys())
 
+    // The shift each employee is in, and — for whoever has come back from a
+    // break — when his latest break ended, from the shift's own journal: the
+    // newest point may still be the one he left before it.
+    const shiftByAgent = new Map((agents as AgentWithLocations[]).map((a) => [
+      a.id,
+      liveMapWorkdayOf(fieldSessionEnabled ? a.workdays ?? [] : [], routeToday),
+    ]))
+    const lastBreakEndByWorkday = await readMtmLastBreakEnds({
+      organizationId: orgId,
+      workdays: [...shiftByAgent.values()].map((shift) => shift.effective),
+    })
+
     // Determine field status per agent
     const agentLocations = (agents as AgentWithLocations[]).map((a) => {
       const loc = a.locations.find((candidate: AgentLocationRow) => isLiveMapAdmissibleLocation(candidate, maxAccuracyMeters)) ?? null
       const dayRoutes = dayRoutesByAgent.get(a.id) ?? null
       const isCheckedIn = checkedInAgents.has(a.id)
-      const workdays = fieldSessionEnabled ? a.workdays ?? [] : []
-      const { active: activeWorkday, effective: effectiveWorkday } = liveMapWorkdayOf(workdays, routeToday)
+      const { active: activeWorkday, effective: effectiveWorkday } = shiftByAgent.get(a.id) ?? { active: undefined, effective: undefined }
 
-      const freshness = classifyGpsFreshness(loc?.recordedAt, now, {
+      const workdayState = fieldSessionEnabled ? mapWorkdayState(effectiveWorkday?.status) : "NOT_STARTED"
+      // A break is the employee's own time: the point he left before it is
+      // where the work stopped, not where he is — the last known point, from
+      // the first second of the break until his first fix after it. So it is
+      // in this answer too, for every reader of it: the marker count, the
+      // counts by status and by signal, and an integration's key, not only
+      // the page that presents the row again (isMtmPositionHeldByBreak).
+      const freshness = mtmFreshnessAcrossBreak(classifyGpsFreshness(loc?.recordedAt, now, {
         onlineSeconds: settings.offlineThresholdSeconds,
         delayedSeconds: Math.max(settings.offlineThresholdSeconds, settings.locationWindowMinutes * 60),
-      })
-      const workdayState = fieldSessionEnabled ? mapWorkdayState(effectiveWorkday?.status) : "NOT_STARTED"
+      }), isMtmPositionHeldByBreak({
+        workdayState,
+        recordedAt: loc?.recordedAt,
+        lastBreakEndedAt: effectiveWorkday ? lastBreakEndByWorkday.get(effectiveWorkday.id) : null,
+      }))
       const workdayCarryover = fieldSessionEnabled && Boolean(
         activeWorkday && activeWorkday.workDate.getTime() !== routeToday.getTime(),
       )
@@ -480,6 +502,9 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         // state, date and start, and nothing more of the workday.
         workdayPausedAt: workforceEnabled && effectiveWorkday?.status === "PAUSED" ? effectiveWorkday.pausedAt ?? null : null,
         workdayCompletedAt: workforceEnabled && effectiveWorkday?.status === "COMPLETED" ? effectiveWorkday.completedAt ?? null : null,
+        // The breaks already over, in seconds: it grows when one ends, so the
+        // page's tail is cut at a break no answer of the roster fell inside.
+        workdayPausedSeconds: workforceEnabled && effectiveWorkday ? effectiveWorkday.totalPausedSeconds ?? null : null,
         workdayCarryover,
         locationState: explainMissingLocation({ hasLocation: Boolean(loc), lastSeenAt: a.lastSeenAt }),
         routeCompletion: dayRoutes?.completion ?? 0,
@@ -491,8 +516,9 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         // first, and then nothing is claimed about a visit either.
         openVisitSince: fieldStatus === "CHECKED_IN" ? openVisitSinceByAgent.get(a.id) ?? null : null,
         // Only with the status it explains, only for a position the map
-        // shows, and only when the anchor is about that very point: whenever
-        // the two disagree the duration is left out, never guessed.
+        // shows — never on a break, whose last point is where the work
+        // stopped — and only when the anchor is about that very point:
+        // whenever the two disagree the duration is left out, never guessed.
         stationarySince: fieldStatus === "STOPPED" && loc && isLiveMapAgentPositionVisible(freshness, workdayState)
           ? shownMtmStationarySince(loc, stationaryAnchorByAgent.get(a.id), now)
           : null,

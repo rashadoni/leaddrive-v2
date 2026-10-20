@@ -405,6 +405,63 @@ describe("GET /api/v1/mtm/location-history", () => {
     expect(body.data.workdays).toEqual([expect.objectContaining({ id: "wd-20", workDate: "2026-09-20" })])
   })
 
+  // Breaks are read by the one reader of the workday journal (workday-pauses.ts).
+  // This route used to pair PAUSE with RESUME itself and ignore FINISH: a day
+  // finished during a break kept that break open to the end of the window.
+  it("ends a break where the day was finished during it — the next day's lost signal is a lost signal, its lunch a break", async () => {
+    const utc = (day: string, clock: string) => new Date(`2026-09-${day}T${clock}:00.000Z`)
+    let sequence = 0
+    const fixes = (day: string, from: string, to: string, workdayId: string) => {
+      const start = utc(day, from).getTime()
+      const end = utc(day, to).getTime()
+      return Array.from({ length: Math.round((end - start) / 60_000) + 1 }, (_, index) => ({
+        id: `loc-${String(sequence++).padStart(4, "0")}`,
+        latitude: 40.38 + index * 0.0005, longitude: 49.83, accuracy: 8, speed: null, heading: null, battery: 80, isMoving: true,
+        recordedAt: new Date(start + index * 60_000), workdayId,
+      }))
+    }
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", name: "Anar", role: "AGENT", team: null } as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([
+      { id: "wd-20", status: "COMPLETED", workDate: new Date("2026-09-20T00:00:00.000Z"), startedAt: utc("20", "09:00"), completedAt: utc("20", "11:20") },
+      { id: "wd-21", status: "COMPLETED", workDate: new Date("2026-09-21T00:00:00.000Z"), startedAt: utc("21", "05:00"), completedAt: utc("21", "09:00") },
+    ] as never)
+    vi.mocked(prisma.mtmAgentLocation.findMany).mockResolvedValue([
+      ...fixes("20", "09:00", "10:59", "wd-20"),
+      // The 21st: the phone lost the signal from 06:00 to 07:00, and the agent took lunch from 08:00 to 08:40.
+      ...fixes("21", "05:00", "06:00", "wd-21"),
+      ...fixes("21", "07:00", "08:00", "wd-21"),
+      ...fixes("21", "08:40", "09:00", "wd-21"),
+    ] as never)
+    // The journal, answering the route's own question: the event types it asks for.
+    const journal = [
+      { workdayId: "wd-20", type: "START", occurredAt: utc("20", "09:00"), appliedAt: utc("20", "09:00") },
+      // The 20th was finished from a break: no RESUME ever came.
+      { workdayId: "wd-20", type: "PAUSE", occurredAt: utc("20", "11:00"), appliedAt: utc("20", "11:00") },
+      { workdayId: "wd-20", type: "FINISH", occurredAt: utc("20", "11:20"), appliedAt: utc("20", "11:20") },
+      { workdayId: "wd-21", type: "START", occurredAt: utc("21", "05:00"), appliedAt: utc("21", "05:00") },
+      { workdayId: "wd-21", type: "PAUSE", occurredAt: utc("21", "08:00"), appliedAt: utc("21", "08:00") },
+      { workdayId: "wd-21", type: "RESUME", occurredAt: utc("21", "08:40"), appliedAt: utc("21", "08:40") },
+      { workdayId: "wd-21", type: "FINISH", occurredAt: utc("21", "09:00"), appliedAt: utc("21", "09:00") },
+    ]
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockImplementation((async (args: { where: { type?: { in: string[] } } }) =>
+      journal.filter((event) => !args.where.type || args.where.type.in.includes(event.type))) as never)
+
+    const response = await GET(request("?agentId=agent-1&date=2026-09-20&toDate=2026-09-21&from=00%3A00&to=23%3A59"))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    const reasonAt = (iso: string) => body.data.gaps.find((gap: { startedAt: string }) => gap.startedAt === iso)?.reason
+    expect(reasonAt("2026-09-21T06:00:00.000Z")).toBe("TELEMETRY_GAP")
+    expect(reasonAt("2026-09-21T08:00:00.000Z")).toBe("WORKDAY_PAUSED")
+    // The break of the 20th is twenty minutes, not a night and a morning.
+    expect(reasonAt("2026-09-20T10:59:00.000Z")).toBe("TELEMETRY_GAP")
+    expect(body.data.summary).toMatchObject({ pausedGapCount: 1, gapCount: 2 })
+    // And the day's legs say the same: one «Перерыв», on the 21st, forty minutes.
+    const breaks = body.data.trip.entries.filter((entry: { kind: string; reason?: string }) => entry.kind === "GAP" && entry.reason === "WORKDAY_PAUSED")
+    expect(breaks.map((entry: { startedAt: string; durationSeconds: number }) => [entry.startedAt, entry.durationSeconds])).toEqual([["2026-09-21T08:00:00.000Z", 40 * 60]])
+  })
+
   it("refuses a range longer than two weeks or ending before it starts", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", name: "Anar", role: "AGENT", team: null } as never)
     expect((await GET(request("?agentId=agent-1&date=2026-09-01&toDate=2026-09-15"))).status).toBe(400)

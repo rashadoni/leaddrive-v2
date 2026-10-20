@@ -96,7 +96,11 @@ export function DayTripLedger({
       <ol className="divide-y">
         {trip.entries.map((entry, index) => {
           const dayHeader = multiDay && entryDays[index] !== entryDays[index - 1] ? entryDays[index] : null
-          const focus: DayTripFocus | null = "at" in entry
+          // A break has only its duration (the demo clip «Marşrut & Sahə»): it
+          // is the employee's own time, and a row that drew a line from where
+          // he paused to where he resumed would say where he went in between.
+          // So it is a plain row, not a button, and puts nothing on the map.
+          const focus: DayTripFocus | null = "at" in entry || (entry.kind === "GAP" && entry.reason === "WORKDAY_PAUSED")
             ? null
             : {
                 id: entry.id,

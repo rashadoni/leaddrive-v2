@@ -13,6 +13,7 @@ import { LOCATION_HISTORY_MAX_RAW_POINTS, type HistoryLocationPoint, type Histor
 import { mapMatchingBaseUrl, matchRoads } from "@/lib/mtm/map-matching"
 import { distanceBasis, type DistanceBasis } from "@/lib/mtm/road-distance"
 import { liveMapDayPauses, liveMapDayPolicy, liveMapDayTotals, liveMapDayTrack } from "@/lib/mtm/live-map-day-totals"
+import { MTM_WORKDAY_PAUSE_EVENT_TYPES } from "@/lib/mtm/workday-pauses"
 
 // Asked for when an employee is selected and then every couple of minutes
 // while his card is open — never on the roster's timer. Thirty a minute lets a
@@ -59,7 +60,7 @@ type VisitRow = Prisma.MtmVisitGetPayload<{
 
 type WorkdayRow = Prisma.MtmAgentWorkdayGetPayload<{ select: { startedAt: true; completedAt: true } }>
 
-type PauseEventRow = Prisma.MtmAgentWorkdayEventGetPayload<{ select: { type: true; occurredAt: true } }>
+type PauseEventRow = Prisma.MtmAgentWorkdayEventGetPayload<{ select: { type: true; occurredAt: true; appliedAt: true } }>
 
 // Out of his team and unknown read the same: the answer must not tell a
 // manager whether an employee id of another team, or another company, exists.
@@ -195,11 +196,11 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
           where: {
             organizationId: orgId,
             agentId,
-            type: { in: ["PAUSE", "RESUME"] },
+            type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
             occurredAt: { gte: dayStart, lt: dayEnd },
           },
           orderBy: { occurredAt: "asc" },
-          select: { type: true, occurredAt: true },
+          select: { type: true, occurredAt: true, appliedAt: true },
         })
         : Promise.resolve([]),
     ])

@@ -17765,6 +17765,7 @@
       "chipOffline": "Only those with no live signal: the position is older than {minutes} min, never arrived, or the app is not connected.",
       "agents": "How many employees in your access the server sent, before the list's filters.",
       "appPresence": "«{online}» means the app contacted the server in the last {minutes} min. It is about the app itself, not GPS.",
+      "appPresenceWithBreak": "«{online}» means the app contacted the server in the last {minutes} min — for someone on a break, in the last {breakMinutes} min: no GPS is recorded on a break, and the app checks in less often. It is about the app itself, not GPS.",
       "gpsFreshness": "How long ago the latest position arrived: «{fresh}» is within {freshMinutes} min, «{delayed}» up to {delayedMinutes} min, «{stale}» older. The limits are set in the MTM settings.",
       "workday": "The workday the employee starts and finishes in the app: running, on a break, finished or not started.",
       "lastKnown": "Employees with a stale position appear as grey markers where the last signal was. This button shows or hides them.",

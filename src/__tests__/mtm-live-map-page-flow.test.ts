@@ -81,13 +81,14 @@ import { ROSTER_VIEW_STORAGE_KEY } from "@/lib/mtm/live-map-roster"
 import { resetLiveMapPlaceCacheForTests } from "@/components/mtm/live-map-agent-place"
 import { resetLiveMapShareLinkCacheForTests } from "@/components/mtm/live-map-agent-share"
 import { locationShareLinkExpiresAt } from "@/lib/mtm/location-share-link"
+import { liveMapTrailSegments, type LiveMapTrailPoint } from "@/lib/mtm/live-map-trails"
 import { readHint } from "./helpers/hint"
 
 const METERS_PER_DEGREE = (Math.PI * 6_371_000) / 180
 const CENTRE = { latitude: 40.4093, longitude: 49.8671 }
 const northOf = (meters: number) => ({ latitude: CENTRE.latitude + meters / METERS_PER_DEGREE, longitude: CENTRE.longitude })
 
-interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string; managerId?: string; managerName?: string; tags?: string[] }
+interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string; managerId?: string; managerName?: string; tags?: string[]; pausedSeconds?: number; lastSeenAt?: string }
 let rosterRows: Row[]
 let requests: string[]
 /** What the journal and the road server answer for the selected employee's card. */
@@ -185,12 +186,13 @@ function answer(now: number) {
     success: true,
     data: {
       agentLocations: rosterRows.map((row) => ({
-        agentId: row.agentId, name: row.name, isOnline: true, lastSeenAt: iso(0), teamId: null, teamName: null,
+        agentId: row.agentId, name: row.name, isOnline: true, lastSeenAt: row.lastSeenAt ?? iso(0), teamId: null, teamName: null,
         managerId: row.managerId ?? null, managerName: row.managerName ?? null,
         tags: row.tags ?? [], mapColor: null,
         fieldStatus: row.fieldStatus, freshness: row.meters == null ? "NO_LOCATION" : "ONLINE",
         workdayState: row.workdayState ?? "ACTIVE", workdayDate: "2026-10-09", workdayStartedAt: iso(120), workdayCarryover: false,
         workdayPausedAt: workforceEnabled && row.workdayState === "PAUSED" ? iso(35) : null, workdayCompletedAt: null,
+        workdayPausedSeconds: workforceEnabled ? row.pausedSeconds ?? 0 : null,
         locationState: row.meters == null ? "NO_LOCATION_REPORTED" : "AVAILABLE",
         routeCompletion: 0, routeVisited: 0, routeTotal: 0, openVisitSince: null,
         ...(row.meters == null ? {} : { ...northOf(row.meters), accuracy: 10, speed: 20, battery: row.battery ?? 70, recordedAt: iso(row.minutesAgo) }),
@@ -712,22 +714,22 @@ describe("the live map page, end to end", () => {
     // then for as long as the answers are on their way — a loaded runner is slow.
     await settle(800)
     for (let turn = 0; turn < 150; turn += 1) {
-      const waiting = byTestId("live-map-agent-place-text")?.textContent === "определяю улицу…"
-        || document.querySelectorAll('[data-testid="live-map-agent-event"]').length === 0
-      if (!waiting) break
+      if (document.querySelectorAll('[data-testid="live-map-agent-event"]').length > 0) break
       await settle(20)
     }
     const detail = byTestId("live-map-agent-detail")!
-    expect(detail.querySelector('[data-testid="live-map-agent-place-text"]')?.textContent).toBe("Nizami küçəsi")
+    // She is on a break: where she is is her own (owner's rule). The card says
+    // since when, and names no street — nor asks anybody for one.
     // (Run in the first half-hour after the organization's midnight, the break began «вчера» and carries its date.)
     expect(detail.querySelector('[data-testid="live-map-since-BREAK"]')?.textContent).toMatch(/^Перерыв с .*\d{2}:\d{2} · 35 мин$/)
+    expect(byTestId("live-map-agent-place")).toBeNull()
     const events = [...detail.querySelectorAll('[data-testid="live-map-agent-event"]')].map((row) => row.textContent?.replace(/^\d{2}:\d{2}/, ""))
     expect(events).toEqual(["Перерыв", "Завершил визит · Аптека на углу", "Рабочий день начат"])
     // Asked for him, for today — his own journal, not the team's feed under the map.
     const card = requests.filter((request) => !request.startsWith("/api/v1/mtm/locations") && !request.startsWith("/api/v1/mtm/routes"))
     expect(card.filter((request) => request.startsWith("/api/v1/mtm/activity"))).toEqual(["/api/v1/mtm/activity?agentId=near&period=today&type=FIELD_DAY&limit=100"])
     expect(card.filter((request) => request.startsWith("/api/v1/mtm/alerts"))).toEqual(["/api/v1/mtm/alerts?view=groups&agentId=near&status=all"])
-    expect(card.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(1)
+    expect(card.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(0)
     // Whom she reports to is said in the card, whether or not the list draws that column.
     expect(detail.querySelector('[data-testid="live-map-agent-manager"]')?.textContent).toBe("Руководитель: Старший Первый")
     // And the labels a manager put on her.
@@ -735,6 +737,17 @@ describe("the live map page, end to end", () => {
     expect(byTestId("roster-column-manager")).toBeNull()
     // The list above it can be taken away as a file.
     expect(byTestId("live-map-roster-export")?.textContent).toBe("Excel")
+
+    // Somebody at work is placed on his street.
+    await press(byTestId("live-map-agent-card-mid"))
+    await settle(800)
+    for (let turn = 0; turn < 150; turn += 1) {
+      const text = byTestId("live-map-agent-place-text")?.textContent
+      if (text && text !== "определяю улицу…") break
+      await settle(20)
+    }
+    expect(byTestId("live-map-agent-place-text")?.textContent).toBe("Nizami küçəsi")
+    expect(requests.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(1)
   })
 
   it("the card also carries the day in numbers, the phone, and worded links to the other screens already narrowed to him", async () => {
@@ -1878,6 +1891,200 @@ describe("the live map page, end to end", () => {
       expect(rowIds()).toEqual([])
       expect(byTestId("live-map-agent-share")).toBeNull()
       expect(requests).toEqual(["/api/v1/mtm/locations"])
+    })
+  })
+
+  // The demo clip «Marşrut & Sahə» (owner, 2026-10-20: production must look
+  // and behave like it): somebody on a break is the grey point he left before
+  // it from the first second, «GPS неактивен», and nobody's nearest. Until then
+  // a break counted as a live position for as long as that point was fresh.
+  describe("an employee on a break", () => {
+    const onBreak = (over: Partial<Row> = {}): Row => ({ agentId: "near", name: "Nigar", fieldStatus: "STOPPED", meters: 450, minutesAgo: 1, workdayState: "PAUSED", ...over })
+    const marker = (agentId: string) => (mapProp<Array<{ agentId: string; freshness: string }>>("agents") ?? []).find((agent) => agent.agentId === agentId)
+    const cell = (agentId: string, column: string) => container.querySelector(`[data-testid="live-map-agent-card-${agentId}"] [data-column="${column}"]`)?.textContent
+
+    it("is his last point before the break, grey, from its first minute — counted with the breaks and the old signals", async () => {
+      rosterRows[1] = onBreak()
+      await open()
+      // On the map, but as the phone's last signal, not as where he is.
+      expect(marker("near")?.freshness).toBe("STALE")
+      expect(cell("near", "status")).toContain("GPS неактивен")
+      expect(container.textContent).toContain("Последние известные позиции показаны серым: 1.")
+      expect(container.textContent).toContain("Рабочий день приостановлен 1")
+      expect(container.textContent).toContain("Устарела 1")
+      // The others are where they are.
+      expect(["far", "mid"].map((agentId) => marker(agentId)?.freshness)).toEqual(["ONLINE", "ONLINE"])
+      // «Скрыть» takes the grey point away; nothing of him is left on the map.
+      await press([...container.querySelectorAll("button")].find((button) => button.textContent === "Скрыть их"))
+      expect(marker("near")).toBeUndefined()
+    })
+
+    it("is not measured by «who is nearest», however close his last point is", async () => {
+      rosterRows[1] = onBreak({ meters: 50 })
+      await open()
+      await press(byTestId("live-map-tool-point"))
+      await press(byTestId("live-map-pick-point"))
+      await act(async () => { mapProp<(latitude: number, longitude: number) => void>("onMapPress")(CENTRE.latitude, CENTRE.longitude) })
+      await settle()
+      expect(rowIds().slice(0, 2)).toEqual(["mid", "far"])
+      expect(rowIds().indexOf("near")).toBeGreaterThan(1)
+      expect(cell("near", "distance")).toBe("—")
+    })
+
+    // Verification of 2026-10-20: on a break the app is held «В сети» for at
+    // least three minutes — the bell asks every two — but the hint said only
+    // the organization's limit, which may be set down to half a minute.
+    it("says in the app's hint how long it counts as connected on a break, where that is not the organization's limit", async () => {
+      const summaryLabel = (text: string) => [...document.body.querySelectorAll("[data-hint-value]")].find((node) => node.textContent === text)
+      rosterRows[1] = onBreak()
+      freshnessThresholds = { onlineSeconds: 60, delayedSeconds: 600 }
+      try {
+        await open()
+        expect(await readHint(summaryLabel("Приложение:"))).toBe(
+          "«В сети» — приложение связывалось с сервером за последние 1 мин, а у сотрудника на перерыве — за последние 3 мин: на перерыве GPS не пишется, и приложение выходит на связь реже. Это про само приложение, не про GPS.")
+        // The same words in his card.
+        await press(byTestId("live-map-agent-card-near"))
+        const inCard = [...(byTestId("live-map-agent-detail")?.querySelectorAll("[data-hint-value]") ?? [])].find((node) => node.textContent?.startsWith("Приложение:"))
+        expect(await readHint(inCard)).toContain("на перерыве — за последние 3 мин")
+
+        // A tenant without Workforce has no breaks: the organization's limit alone.
+        await act(async () => { root.unmount() })
+        root = createRoot(container)
+        workforceEnabled = false
+        await open()
+        expect(await readHint(summaryLabel("Приложение:"))).toBe("«В сети» — приложение связывалось с сервером за последние 1 мин. Это про само приложение, не про GPS.")
+      } finally {
+        freshnessThresholds = { onlineSeconds: 300, delayedSeconds: 600 }
+      }
+    })
+
+    // Verification of 2026-10-20: the card still said how long to the next
+    // stop, measured from the grey point he left before the break, and at
+    // what speed — the speed of his last fix before it.
+    it("gives no time to the next stop and no speed, from the point he left before the break", async () => {
+      routes = [{
+        id: "route-1", status: "IN_PROGRESS", date: "2026-10-09",
+        points: [
+          { id: "p1", orderIndex: 0, status: "PENDING", plannedTime: null, visitedAt: null, visits: [],
+            customer: { id: "c1", name: "Клиника", address: null, ...northOf(5_000), geofenceRadius: null } },
+        ],
+      }]
+      const card = async () => {
+        await open()
+        await press(byTestId("live-map-agent-card-near"))
+        for (let turn = 0; turn < 150 && !byTestId("mtm-map-selected-route")?.textContent?.includes("Клиника"); turn += 1) await settle(20)
+        return byTestId("live-map-agent-detail")?.textContent ?? ""
+      }
+      // At work, the same row: both are said.
+      rosterRows[1] = onBreak({ workdayState: "ACTIVE", fieldStatus: "ON_ROAD" })
+      const working = await card()
+      expect(working).toContain("До точки")
+      expect(working).toMatch(/\d+ км\/ч/)
+
+      await act(async () => { root.unmount() })
+      root = createRoot(container)
+      rosterRows[1] = onBreak()
+      const resting = await card()
+      expect(byTestId("mtm-map-selected-route")?.textContent).toContain("Клиника")
+      expect(resting).not.toContain("До точки")
+      expect(resting).not.toMatch(/\d+ км\/ч/)
+    })
+
+    describe("as the map refreshes", () => {
+      const forward = async (ms: number, step = 1_000) => {
+        for (let passed = 0; passed < ms; passed += step) {
+          await act(async () => { await vi.advanceTimersByTimeAsync(Math.min(step, ms - passed)) })
+        }
+      }
+      const metres = (point: { latitude: number }) => Math.round((point.latitude - CENTRE.latitude) * METERS_PER_DEGREE)
+      const tail = (agentId: string) => (mapProp<Map<string, LiveMapTrailPoint[]> | null>("trails")?.get(agentId) ?? []).map(metres)
+      /** The lines the map draws of his tail, in metres north of the centre. */
+      const drawn = (agentId: string) => liveMapTrailSegments(mapProp<Map<string, LiveMapTrailPoint[]> | null>("trails")?.get(agentId) ?? [])
+        .map((segment) => segment.map(metres))
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date", "performance"] })
+        vi.setSystemTime(new Date("2026-10-09T10:00:10.000Z"))
+      })
+      afterEach(() => { vi.useRealTimers() })
+
+      it("loses his tail at a break and starts a new one after it — also after a break no refresh fell inside", async () => {
+        rosterRows[1] = { agentId: "near", name: "Nigar", fieldStatus: "ON_ROAD", meters: 450, minutesAgo: 0, pausedSeconds: 0 }
+        await act(async () => { root.render(createElement(MtmMapPage)) })
+        await forward(1_000)
+        rosterRows[1] = { ...rosterRows[1], meters: 700 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([450, 700])
+
+        // The next answer finds him on a break, the point from before it with him.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "STOPPED", workdayState: "PAUSED", minutesAgo: 0.5 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([])
+        expect(marker("near")?.freshness).toBe("STALE")
+
+        // Back at work a kilometre and a half on: a new tail, not a line across the break.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "ON_ROAD", workdayState: "ACTIVE", meters: 2_200, minutesAgo: 0, pausedSeconds: 120 }
+        await forward(30_000)
+        rosterRows[1] = { ...rosterRows[1], meters: 2_400 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([2_200, 2_400])
+
+        // Two minutes of break between two refreshes: the page saw none of it, the day's total did.
+        rosterRows[1] = { ...rosterRows[1], meters: 3_300, pausedSeconds: 240 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([3_300])
+        // Somebody who took no break keeps his whole tail.
+        expect(tail("far").length).toBeGreaterThan(0)
+      })
+
+      // Verification of 2026-10-20: the page looked again only when the
+      // organization's limit ran out, so somebody on a break went on reading
+      // «В сети» after his three minutes until the next refresh.
+      it("stops counting him «В сети» the moment his break's three minutes run out, between two refreshes", async () => {
+        const online = () => [...container.querySelectorAll('[role="status"] span')]
+          .map((node) => node.textContent ?? "").find((text) => /^В сети \d+$/.test(text))
+        freshnessThresholds = { onlineSeconds: 60, delayedSeconds: 600 }
+        try {
+          // The bell last asked 2 min 45 s ago; his last point is from before the break.
+          rosterRows[1] = onBreak({ minutesAgo: 30, lastSeenAt: new Date(Date.now() - 165_000).toISOString() })
+          await act(async () => { root.render(createElement(MtmMapPage)) })
+          await forward(1_000)
+          expect(online()).toBe("В сети 4")
+          // Fifteen seconds on his three minutes are over; the next refresh is half a minute away.
+          await forward(15_000)
+          expect(online()).toBe("В сети 3")
+        } finally {
+          freshnessThresholds = { onlineSeconds: 300, delayedSeconds: 600 }
+        }
+      })
+
+      // Verification of 2026-10-20: after a short break the first answer can
+      // still carry the point from before it — fresh by the clock — and the
+      // page started a new tail with it, which the first fix after the break
+      // then joined: a line from where he paused to where he came back.
+      it("starts no tail with the point he left before the break, when the first answer after it still carries that point", async () => {
+        rosterRows[1] = { agentId: "near", name: "Nigar", fieldStatus: "ON_ROAD", meters: 450, minutesAgo: 0, pausedSeconds: 0 }
+        await act(async () => { root.render(createElement(MtmMapPage)) })
+        await forward(1_000)
+        rosterRows[1] = { ...rosterRows[1], meters: 700 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([[450, 700]])
+
+        // On a break: the point he left (700 m, half a minute old) comes with him.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "STOPPED", workdayState: "PAUSED", minutesAgo: 0.5 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([])
+        // Back at work, before his first fix: the same point, a minute old, called live.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "ON_ROAD", workdayState: "ACTIVE", minutesAgo: 1, pausedSeconds: 60 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([])
+        // The first fix after the break, a kilometre and a half on.
+        rosterRows[1] = { ...rosterRows[1], meters: 2_200, minutesAgo: 0 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([2_200])
+        rosterRows[1] = { ...rosterRows[1], meters: 2_400 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([[2_200, 2_400]])
+      })
     })
   })
 
