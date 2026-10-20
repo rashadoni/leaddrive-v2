@@ -112,9 +112,12 @@ export const MTM_DEMO_AGENTS: readonly MtmDemoAgent[] = [
     where: "Xətai Tibb Mərkəzi — dünəndən açıq vizit", mapColor: "amber", team: "center", battery: 51,
   },
   {
-    id: "agent-aysu", name: "Aysu Kərimli", status: "LATE", latitude: 40.37490, longitude: 49.83180,
+    // Her route is under way (one stop of five), so the product never calls her «late» — that is a
+    // published route still untouched after the organization's hour (`deriveMtmLiveFieldStatus`).
+    // She has stood near Dəniz Stomatologiya since 11:35, the time she was due there: «Dayanıb».
+    id: "agent-aysu", name: "Aysu Kərimli", status: "STOPPED", latitude: 40.37490, longitude: 49.83180,
     visited: 1, total: 5, week: [[5, 6], [4, 6], [5, 6]], lastWeek: [23, 30], forMinutes: 35,
-    where: "Dəniz Stomatologiyaya gecikir", mapColor: "red", team: "south", battery: 33,
+    where: "Dəniz Stomatologiya yaxınlığında dayanıb", mapColor: "red", team: "south", battery: 33,
   },
   {
     id: "agent-rauf", name: "Rauf Əhmədli", status: "PAUSED",
@@ -156,8 +159,10 @@ export function mtmDemoRosterAgents(today: string, atMs = Date.parse(mtmDemoAt(t
     const common = {
       agentId: agent.id,
       name: agent.name,
-      isOnline: true,
-      lastSeenAt: new Date(clock - MINUTE).toISOString(),
+      // The server learns of the app only from the points it stores (`lastSeenAt`), and a phone on a
+      // break stores none: past five minutes of it the app reads «Şəbəkədə deyil» too.
+      isOnline: !agent.beforeBreak,
+      lastSeenAt: agent.beforeBreak ? mtmDemoAt(today, agent.beforeBreak.at) : new Date(clock - MINUTE).toISOString(),
       ...MTM_DEMO_TEAMS[agent.team],
       managerId: "manager-sebine",
       managerName: MTM_DEMO_MANAGER,
@@ -217,33 +222,48 @@ export interface MtmDemoPlace {
   readonly latitude: number
   readonly longitude: number
   readonly category: "A" | "B" | "C" | "VIP"
-  /** The organization itself is visited (a pharmacy), or the doctors listed. */
-  readonly doctors: ReadonlyArray<{ readonly id: string; readonly name: string; readonly specialty: string; readonly visitsThisMonth: number }>
-  readonly visitsThisMonth: number
+  /**
+   * The organization itself is visited (a pharmacy), or the doctors listed.
+   * `earlierThisMonth` counts the checked-out visits of this month before
+   * today; today's own visits (`HOME_DAY`) are added to it wherever the
+   * month is counted (`mtmDemoPlannerCandidates`), as the product counts them.
+   */
+  readonly doctors: ReadonlyArray<{ readonly id: string; readonly name: string; readonly specialty: string; readonly earlierThisMonth: number }>
+  readonly earlierThisMonth: number
 }
 
-/** Clinics and pharmacies of the invented base. Orange on the planner: nobody there seen this month. */
+/** Clinics and pharmacies of the invented base. Orange on the planner: nobody there seen this month, today included. */
 export const MTM_DEMO_PLACES: readonly MtmDemoPlace[] = [
-  { id: "pl-nar", name: "Nar Klinika", address: "Yasamal r., Şərifzadə küç. 14", latitude: 40.37840, longitude: 49.84910, category: "A", visitsThisMonth: 0,
-    doctors: [{ id: "dr-abbasova", name: "Dr. Leyla Abbasova", specialty: "Kardioloq", visitsThisMonth: 2 }, { id: "dr-mammadov", name: "Dr. Orxan Məmmədov", specialty: "Terapevt", visitsThisMonth: 0 }] },
-  { id: "pl-sefa", name: "Şəfa Tibb Mərkəzi", address: "Nərimanov r., Təbriz küç. 52", latitude: 40.40930, longitude: 49.86710, category: "VIP", visitsThisMonth: 0,
-    doctors: [{ id: "dr-quliyeva", name: "Dr. Sevinc Quliyeva", specialty: "Endokrinoloq", visitsThisMonth: 1 }, { id: "dr-hasanov", name: "Dr. Kamran Həsənov", specialty: "Nevroloq", visitsThisMonth: 0 }] },
-  { id: "pl-respublika", name: "Respublika Diaqnostika", address: "Yasamal r., Ş. Mehdiyev küç. 9", latitude: 40.38600, longitude: 49.82850, category: "B", visitsThisMonth: 0,
-    doctors: [{ id: "dr-aliyeva", name: "Dr. Günay Əliyeva", specialty: "Terapevt", visitsThisMonth: 0 }] },
-  { id: "pl-usaq", name: "Bakı Uşaq Klinikası", address: "Nəsimi r., Səməd Vurğun küç. 31", latitude: 40.41300, longitude: 49.84100, category: "A", visitsThisMonth: 0,
-    doctors: [{ id: "dr-rustamova", name: "Dr. Aynur Rüstəmova", specialty: "Pediatr", visitsThisMonth: 0 }, { id: "dr-nabiyev", name: "Dr. Fərid Nəbiyev", specialty: "Pediatr", visitsThisMonth: 1 }] },
-  { id: "pl-xetai", name: "Xətai Tibb Mərkəzi", address: "Xətai r., Babək pr. 18", latitude: 40.38300, longitude: 49.92400, category: "B", visitsThisMonth: 0,
-    doctors: [{ id: "dr-ismayilov", name: "Dr. Rəşad İsmayılov", specialty: "Kardioloq", visitsThisMonth: 0 }] },
-  { id: "pl-deniz", name: "Dəniz Stomatologiya", address: "Səbail r., Neftçilər pr. 61", latitude: 40.37200, longitude: 49.83700, category: "C", visitsThisMonth: 1,
-    doctors: [{ id: "dr-kazimova", name: "Dr. Nigar Kazımova", specialty: "Stomatoloq", visitsThisMonth: 1 }] },
-  { id: "pl-aile5", name: "Ailə Poliklinikası №5", address: "Nərimanov r., Ziya Bünyadov pr. 7", latitude: 40.41700, longitude: 49.91500, category: "B", visitsThisMonth: 0,
-    doctors: [{ id: "dr-huseynova", name: "Dr. Ülviyyə Hüseynova", specialty: "Ailə həkimi", visitsThisMonth: 0 }] },
-  { id: "pl-apt24", name: "Aptek 24 — Gənclik", address: "Nərimanov r., Atatürk pr. 40", latitude: 40.40050, longitude: 49.85100, category: "A", visitsThisMonth: 0, doctors: [] },
-  { id: "pl-aptplus", name: "Aptek Plus — 28 May", address: "Nəsimi r., 28 May küç. 3", latitude: 40.37970, longitude: 49.85160, category: "B", visitsThisMonth: 2, doctors: [] },
-  { id: "pl-aptderman", name: "Aptek Dərman — Nəsimi", address: "Nəsimi r., Füzuli küç. 66", latitude: 40.39200, longitude: 49.84100, category: "C", visitsThisMonth: 0, doctors: [] },
-  { id: "pl-aptsaglam", name: "Aptek Sağlam — Əhmədli", address: "Xətai r., Əhmədli, Q. Qarayev pr. 12", latitude: 40.38700, longitude: 49.95300, category: "C", visitsThisMonth: 0, doctors: [] },
-  { id: "pl-yasamal", name: "Yasamal Ailə Klinikası", address: "Yasamal r., İnşaatçılar pr. 21", latitude: 40.39600, longitude: 49.81900, category: "A", visitsThisMonth: 0,
-    doctors: [{ id: "dr-cavadova", name: "Dr. Səbinə Cavadova", specialty: "Ginekoloq", visitsThisMonth: 0 }] },
+  { id: "pl-nar", name: "Nar Klinika", address: "Yasamal r., Şərifzadə küç. 14", latitude: 40.37840, longitude: 49.84910, category: "A", earlierThisMonth: 0,
+    doctors: [{ id: "dr-abbasova", name: "Dr. Leyla Abbasova", specialty: "Kardioloq", earlierThisMonth: 1 }, { id: "dr-mammadov", name: "Dr. Orxan Məmmədov", specialty: "Terapevt", earlierThisMonth: 0 }] },
+  { id: "pl-sefa", name: "Şəfa Tibb Mərkəzi", address: "Nərimanov r., Təbriz küç. 52", latitude: 40.40930, longitude: 49.86710, category: "VIP", earlierThisMonth: 0,
+    doctors: [{ id: "dr-quliyeva", name: "Dr. Sevinc Quliyeva", specialty: "Endokrinoloq", earlierThisMonth: 1 }, { id: "dr-hasanov", name: "Dr. Kamran Həsənov", specialty: "Nevroloq", earlierThisMonth: 0 }] },
+  // This morning Rauf saw Dr. Məlikov and Elvin Dr. Səmədova here; Dr. Əliyeva is still to be seen this month.
+  { id: "pl-respublika", name: "Respublika Diaqnostika", address: "Yasamal r., Ş. Mehdiyev küç. 9", latitude: 40.38600, longitude: 49.82850, category: "B", earlierThisMonth: 0,
+    doctors: [
+      { id: "dr-aliyeva", name: "Dr. Günay Əliyeva", specialty: "Terapevt", earlierThisMonth: 0 },
+      { id: "dr-melikov", name: "Dr. Elçin Məlikov", specialty: "Uroloq", earlierThisMonth: 0 },
+      { id: "dr-semedova", name: "Dr. Arzu Səmədova", specialty: "Kardioloq", earlierThisMonth: 0 },
+    ] },
+  { id: "pl-usaq", name: "Bakı Uşaq Klinikası", address: "Nəsimi r., Səməd Vurğun küç. 31", latitude: 40.41300, longitude: 49.84100, category: "A", earlierThisMonth: 0,
+    doctors: [{ id: "dr-rustamova", name: "Dr. Aynur Rüstəmova", specialty: "Pediatr", earlierThisMonth: 0 }, { id: "dr-nabiyev", name: "Dr. Fərid Nəbiyev", specialty: "Pediatr", earlierThisMonth: 1 }] },
+  { id: "pl-xetai", name: "Xətai Tibb Mərkəzi", address: "Xətai r., Babək pr. 18", latitude: 40.38300, longitude: 49.92400, category: "B", earlierThisMonth: 0,
+    doctors: [{ id: "dr-ismayilov", name: "Dr. Rəşad İsmayılov", specialty: "Kardioloq", earlierThisMonth: 0 }] },
+  { id: "pl-deniz", name: "Dəniz Stomatologiya", address: "Səbail r., Neftçilər pr. 61", latitude: 40.37200, longitude: 49.83700, category: "C", earlierThisMonth: 0,
+    doctors: [{ id: "dr-kazimova", name: "Dr. Nigar Kazımova", specialty: "Stomatoloq", earlierThisMonth: 1 }] },
+  { id: "pl-aile5", name: "Ailə Poliklinikası №5", address: "Nərimanov r., Ziya Bünyadov pr. 7", latitude: 40.41700, longitude: 49.91500, category: "B", earlierThisMonth: 0,
+    doctors: [{ id: "dr-huseynova", name: "Dr. Ülviyyə Hüseynova", specialty: "Ailə həkimi", earlierThisMonth: 0 }, { id: "dr-qedirov", name: "Dr. Ramil Qədirov", specialty: "Ailə həkimi", earlierThisMonth: 0 }] },
+  { id: "pl-apt24", name: "Aptek 24 — Gənclik", address: "Nərimanov r., Atatürk pr. 40", latitude: 40.40050, longitude: 49.85100, category: "A", earlierThisMonth: 0, doctors: [] },
+  { id: "pl-aptplus", name: "Aptek Plus — 28 May", address: "Nəsimi r., 28 May küç. 3", latitude: 40.37970, longitude: 49.85160, category: "B", earlierThisMonth: 0, doctors: [] },
+  { id: "pl-aptderman", name: "Aptek Dərman — Nəsimi", address: "Nəsimi r., Füzuli küç. 66", latitude: 40.39200, longitude: 49.84100, category: "C", earlierThisMonth: 0, doctors: [] },
+  { id: "pl-aptsaglam", name: "Aptek Sağlam — Əhmədli", address: "Xətai r., Əhmədli, Q. Qarayev pr. 12", latitude: 40.38700, longitude: 49.95300, category: "C", earlierThisMonth: 0, doctors: [] },
+  // Nərmin saw Dr. Vəliyev here this morning and Rauf Dr. Orucova; Dr. Cavadova is still to be seen.
+  { id: "pl-yasamal", name: "Yasamal Ailə Klinikası", address: "Yasamal r., İnşaatçılar pr. 21", latitude: 40.39600, longitude: 49.81900, category: "A", earlierThisMonth: 0,
+    doctors: [
+      { id: "dr-cavadova", name: "Dr. Səbinə Cavadova", specialty: "Ginekoloq", earlierThisMonth: 0 },
+      { id: "dr-veliyev", name: "Dr. Kənan Vəliyev", specialty: "Pediatr", earlierThisMonth: 0 },
+      { id: "dr-orucova", name: "Dr. Lamiyə Orucova", specialty: "Terapevt", earlierThisMonth: 0 },
+    ] },
 ]
 
 /** Where Aptek 24 really is: Nərmin's «Müştəri buradadır» (`mtmDemoPlaceRequest`). */
@@ -273,12 +293,21 @@ export function mtmDemoMapClients(placeApproved = false): LiveMapClient[] {
   }))
 }
 
-/** The planner's candidates — the product's shape: a pharmacy as itself, a clinic as its doctors. */
+/**
+ * The planner's candidates — the product's shape: a pharmacy as itself, a
+ * clinic as its doctors. The month is counted as the product's candidates
+ * answer counts it (`/api/v1/mtm/routes/candidates?period=MONTH`): every
+ * checked-out visit this month by any agent — a pharmacy's visits, a doctor's
+ * own — so the visits of this very morning count too. Aptek 24, where Nərmin
+ * was at 11:50, is no longer «not visited this month».
+ */
 export function mtmDemoPlannerCandidates(placeApproved = false): RoutePlannerCandidate[] {
+  const today = mtmDemoCheckedOutToday()
+  const seenToday = (placeId: string, contactId: string | null) => today.filter((visit) => visit.place === placeId && (contactId === null || visit.contact === contactId)).length
   return placesAsOf(placeApproved).flatMap((place): RoutePlannerCandidate[] => {
     const base = { customerId: place.id, placeName: place.name, address: place.address, category: place.category, latitude: place.latitude, longitude: place.longitude, lastVisitAt: null }
     if (place.doctors.length === 0) {
-      return [{ ...base, key: place.id, contactId: null, name: place.name, specialtyName: null, monthlyVisitCount: place.visitsThisMonth }]
+      return [{ ...base, key: place.id, contactId: null, name: place.name, specialtyName: null, monthlyVisitCount: place.earlierThisMonth + seenToday(place.id, null) }]
     }
     return place.doctors.map((doctor) => ({
       ...base,
@@ -286,9 +315,14 @@ export function mtmDemoPlannerCandidates(placeApproved = false): RoutePlannerCan
       contactId: doctor.id,
       name: doctor.name,
       specialtyName: doctor.specialty,
-      monthlyVisitCount: doctor.visitsThisMonth,
+      monthlyVisitCount: doctor.earlierThisMonth + seenToday(place.id, doctor.id),
     }))
   })
+}
+
+/** Today's visits checked out by the demo's clock, with whom (a clinic's doctor). */
+function mtmDemoCheckedOutToday(): Array<{ place: string; contact: string | null }> {
+  return Object.values(HOME_DAY).flatMap((day) => day.visits.filter((visit) => visit.checkOut).map((visit) => ({ place: visit.place, contact: visit.contact ?? null })))
 }
 
 /** Who the planner plans for: the agent with no route for the next working day («Qərar gözləyir»). */
@@ -299,19 +333,20 @@ export const MTM_DEMO_PLAN_AGENT = "agent-aysu"
  * clock (`elvinDayAt`): at 12:10 he is in Şəfa since 11:52 and the afternoon
  * is still a plan; in the evening every stop is done.
  */
-export const MTM_DEMO_ELVIN_DAY: ReadonlyArray<{ readonly place: string; readonly planned: string; readonly checkIn: string; readonly checkOut: string }> = [
-  { place: "pl-nar", planned: "09:30", checkIn: "09:34", checkOut: "09:58" },
+export const MTM_DEMO_ELVIN_DAY: ReadonlyArray<{ readonly place: string; readonly contact?: string; readonly planned: string; readonly checkIn: string; readonly checkOut: string }> = [
+  { place: "pl-nar", contact: "dr-abbasova", planned: "09:30", checkIn: "09:34", checkOut: "09:58" },
   { place: "pl-aptplus", planned: "10:00", checkIn: "10:07", checkOut: "10:51" },
-  { place: "pl-respublika", planned: "11:00", checkIn: "11:08", checkOut: "11:29" },
-  { place: "pl-sefa", planned: "12:00", checkIn: "11:52", checkOut: "12:24" },
-  { place: "pl-usaq", planned: "13:30", checkIn: "13:24", checkOut: "13:52" },
+  { place: "pl-respublika", contact: "dr-semedova", planned: "11:00", checkIn: "11:08", checkOut: "11:29" },
+  { place: "pl-sefa", contact: "dr-quliyeva", planned: "12:00", checkIn: "11:52", checkOut: "12:24" },
+  { place: "pl-usaq", contact: "dr-nabiyev", planned: "13:30", checkIn: "13:24", checkOut: "13:52" },
   { place: "pl-aptderman", planned: "14:30", checkIn: "14:08", checkOut: "14:31" },
 ]
 
 /** The day as it stands at `clock`: what has not happened yet is not there. */
-function elvinDayAt(clock: string): ReadonlyArray<{ place: string; planned: string; checkIn?: string; checkOut?: string }> {
+function elvinDayAt(clock: string): ReadonlyArray<{ place: string; contact?: string; planned: string; checkIn?: string; checkOut?: string }> {
   return MTM_DEMO_ELVIN_DAY.map((stop) => ({
     place: stop.place,
+    contact: stop.contact,
     planned: stop.planned,
     checkIn: stop.checkIn <= clock ? stop.checkIn : undefined,
     checkOut: stop.checkOut <= clock ? stop.checkOut : undefined,
@@ -389,7 +424,7 @@ export function mtmDemoAttention(today: string): MtmPanelAttention {
     todayIsWorkingDay: true,
     week,
     items: [
-      { kind: "customerLocationRequests", count: 1, date: today, people: ["Nərmin Hüseynli"], peopleCount: 1, types: [], since: mtmDemoAt(today, "11:56") },
+      { kind: "customerLocationRequests", count: 1, date: today, people: ["Nərmin Hüseynli"], peopleCount: 1, types: [], since: mtmDemoPlaceRequest(today).sentAt },
       { kind: "contactCreateRequests", count: 2, date: addDays(today, -1), people: ["Tural Babayev", "Aysu Kərimli"], peopleCount: 2, types: [] },
       { kind: "photosPendingReview", count: 7, date: today, people: ["Elvin Qasımov", "Nərmin Hüseynli"], peopleCount: 3, types: [] },
     ],
@@ -508,14 +543,18 @@ export function mtmDemoLeftOpen(today: string) {
 }
 
 /**
- * «Клиент здесь»: Nərmin checked in at the pharmacy at 11:50 and the visit
- * read «outside the zone» — its pin sits on the wrong side of the avenue — so
- * at 11:56 she sent where it really is. The distances are the product's own
- * check (`evaluateCustomerLocationRequest`), not typed in.
+ * «Клиент здесь»: at the pharmacy's door Nərmin found its pin on the wrong
+ * side of the avenue, so at 11:48 she sent where it really is, and at 11:50
+ * checked in there. The product lets such a check-in in and ties it to the
+ * waiting request only when the request was there first
+ * (`waitingLocationRequestCovers`, src/lib/mtm/check-in-geofence.ts): that is
+ * what makes the card's «Agent artıq bu yerdən vizit qeyd edib» and its
+ * re-count on «Təsdiqlə» true. The distances are the product's own check
+ * (`evaluateCustomerLocationRequest`), not typed in.
  */
 export function mtmDemoPlaceRequest(today: string) {
   const place = placeOf("pl-apt24")
-  const sentAt = mtmDemoAt(today, "11:56")
+  const sentAt = mtmDemoAt(today, "11:48")
   const proposed = { ...APT24_PROPOSED }
   const agentFix = { latitude: 40.40242, longitude: 49.85317, accuracyMeters: 12 }
   const verdict = evaluateCustomerLocationRequest(
@@ -535,22 +574,27 @@ export function mtmDemoPlaceRequest(today: string) {
     /** Straight-line metres between the old pin and the proposed one. */
     movedMeters: verdict.facts.movedMeters ?? 0,
     agentToProposedMeters: verdict.facts.agentToProposedMeters,
-    /** She checked in from this very spot: approving re-counts that visit inside the zone. */
-    checkedInFromHereAt: mtmDemoAt(today, "11:50"),
+    /** She checked in from this very spot after sending it: approving re-counts that visit inside the zone. */
+    checkedInFromHereAt: mtmDemoAt(today, HOME_DAY["agent-nermin"].visits.find((visit) => visit.place === place.id)!.checkIn),
     outsideVisitsHere90Days: 2,
     comment: "Aptek prospektin o biri tərəfindədir, giriş Atatürk pr. 40-dan.",
   }
 }
 
-/** Each agent's day on «Bu gün»: the stops done and where he goes next (Baku time). */
-const HOME_DAY: Record<string, { visits: ReadonlyArray<{ place: string; checkIn: string; checkOut?: string }>; next?: { place: string; planned: string } }> = {
-  "agent-elvin": { visits: ELVIN_DAY.filter((stop) => stop.checkIn).map((stop) => ({ place: stop.place, checkIn: stop.checkIn!, checkOut: stop.checkOut })) },
+/**
+ * Each agent's day on «Bu gün»: the stops done and where he goes next (Baku
+ * time). At a clinic a visit is to one of its doctors (`contact`), as the
+ * planner's month counts it.
+ */
+const HOME_DAY: Record<string, { visits: ReadonlyArray<{ place: string; contact?: string; checkIn: string; checkOut?: string }>; next?: { place: string; planned: string } }> = {
+  "agent-elvin": { visits: ELVIN_DAY.filter((stop) => stop.checkIn).map((stop) => ({ place: stop.place, contact: stop.contact, checkIn: stop.checkIn!, checkOut: stop.checkOut })) },
   "agent-nermin": {
     visits: [
-      { place: "pl-yasamal", checkIn: "09:20", checkOut: "09:41" },
-      { place: "pl-aile5", checkIn: "10:05", checkOut: "10:26" },
-      { place: "pl-xetai", checkIn: "10:50", checkOut: "11:12" },
-      // Checked in 280 m from the pin, sent «Müştəri buradadır» at 11:56 (mtmDemoPlaceRequest).
+      { place: "pl-yasamal", contact: "dr-veliyev", checkIn: "09:20", checkOut: "09:41" },
+      { place: "pl-aile5", contact: "dr-huseynova", checkIn: "10:05", checkOut: "10:26" },
+      { place: "pl-xetai", contact: "dr-ismayilov", checkIn: "10:50", checkOut: "11:12" },
+      // At the door at 11:48 she sent «Müştəri buradadır» (mtmDemoPlaceRequest); the check-in, 280 m
+      // from the old pin, was let in two minutes later because it was made at the place she named.
       { place: "pl-apt24", checkIn: "11:50", checkOut: "12:02" },
     ],
     next: { place: "pl-aptsaglam", planned: "12:40" },
@@ -560,9 +604,9 @@ const HOME_DAY: Record<string, { visits: ReadonlyArray<{ place: string; checkIn:
   "agent-aysu": { visits: [{ place: "pl-aptplus", checkIn: "09:50", checkOut: "10:12" }], next: { place: "pl-deniz", planned: "11:35" } },
   "agent-rauf": {
     visits: [
-      { place: "pl-respublika", checkIn: "09:25", checkOut: "09:49" },
-      { place: "pl-yasamal", checkIn: "10:30", checkOut: "10:52" },
-      { place: "pl-aile5", checkIn: "11:31", checkOut: "11:50" },
+      { place: "pl-respublika", contact: "dr-melikov", checkIn: "09:25", checkOut: "09:49" },
+      { place: "pl-yasamal", contact: "dr-orucova", checkIn: "10:30", checkOut: "10:52" },
+      { place: "pl-aile5", contact: "dr-qedirov", checkIn: "11:31", checkOut: "11:50" },
     ],
     next: { place: "pl-xetai", planned: "12:40" },
   },
@@ -661,6 +705,8 @@ export interface MtmDemoHistoryVisit {
   readonly customer: string
   readonly address: string
   readonly status: "CHECKED_IN" | "CHECKED_OUT"
+  /** The clinic's doctor the visit was to; null at a pharmacy. */
+  readonly contactId: string | null
   readonly checkInAt: string
   readonly checkOutAt: string | null
   readonly duration: number | null
@@ -693,6 +739,7 @@ export function mtmDemoVisitHistory(today: string): MtmDemoHistoryVisit[] {
       customer: place.name,
       address: place.address,
       status: checkOutAt ? "CHECKED_OUT" as const : "CHECKED_IN" as const,
+      contactId: visit.contact ?? null,
       checkInAt,
       checkOutAt,
       duration: checkOutAt ? Math.round((Date.parse(checkOutAt) - Date.parse(checkInAt)) / MINUTE) : null,
