@@ -1,0 +1,58 @@
+name: Owner exact template recovery checks
+
+# Public synthetic data ONLY, including drafts. Prove this narrow native path
+# before marking ready for the repository's expensive required general gates.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'ops/backup/owner-workstation*'
+      - 'scripts/backup/owner-template.test.mjs'
+      - '.github/workflows/owner-template-checks.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ops/backup/owner-workstation*'
+      - 'scripts/backup/owner-template.test.mjs'
+      - '.github/workflows/owner-template-checks.yml'
+
+permissions:
+  contents: read
+concurrency:
+  group: owner-template-checks-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  owner-template-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Portable exact-contract and input-authority tests
+        run: node --test scripts/backup/owner-template.test.mjs
+      - name: Build exact pinned public owner workbench
+        run: docker build -f ops/backup/owner-workstation.Dockerfile -t owner-template-test .
+      - name: Full synthetic vector database restore with limited role
+        run: |
+          docker run --rm --network none --read-only --memory 1536m --memory-swap 1536m --cpus 1 \
+            --tmpfs /scratch:rw,noexec,nosuid,size=128m,mode=0700 \
+            --tmpfs /database:rw,noexec,nosuid,size=512m,mode=0755 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/reviewed,readonly" \
+            -e "GITHUB_ACTIONS=$GITHUB_ACTIONS" -e "RUNNER_ENVIRONMENT=$RUNNER_ENVIRONMENT" \
+            -e LEADDRIVE_TEST_OWNER_TEMPLATE=1 --entrypoint node \
+            owner-template-test --test /reviewed/scripts/backup/owner-template.test.mjs
+      - name: Actual entrypoint exact clone before private inputs with poisoned parent route
+        run: |
+          docker run --rm --network none --read-only --memory 1g --memory-swap 1g --cpus 1 \
+            --tmpfs /scratch:rw,noexec,nosuid,size=128m,mode=0700 \
+            --tmpfs /database:rw,noexec,nosuid,size=256m,mode=0700 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            -e PGHOSTADDR=203.0.113.1 -e PGOPTIONS='-c search_path=private_unsafe' \
+            owner-template-test --self-test
