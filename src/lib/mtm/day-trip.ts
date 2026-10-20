@@ -376,34 +376,54 @@ export function buildDayTrip(input: {
   moveBetween(cursor, dayTo)
   const legs = mergeNeighbours(entries.splice(1))
 
-  // A visit is named once. Cut at a break taken during it, its time on site
-  // is on both sides of the break: the first row names it — with its own
-  // check-in and check-out, not the minutes of the piece («Визит 0 мин» for
-  // half an hour at a customer who saw him at once, then made him wait);
-  // the row after the break is the same place, the visit not named again.
-  // Named on the merged rows: after the break the place can be two GPS
-  // stops (drift indoors past the stop radius), and the merge of a «Там же»
-  // row with the next one took that stop's visit and named it again.
+  // A visit is named once, on the first row of its time on site — with its
+  // own check-in and check-out when a break fell inside it, not the minutes
+  // of the row («Визит 0 мин» for half an hour at a customer who saw him at
+  // once, then made him wait). A break taken during it leaves its time on
+  // site on both sides. A row after the break is «Там же, после перерыва»,
+  // the visit not named again, when it is at the same place, inside the
+  // visit's own check-in..check-out, and only breaks and rows of that same
+  // time on site lie between it and the named row; a drive, a lost signal or
+  // another place ends the visit's time on site. The visit's own times decide
+  // it, not where a stop begins: the first fix after «Продолжить» can come
+  // late, or 80 m off in the same building, and the place is then a stop of
+  // its own. Named on the merged rows: a «Там же» row merged with the next
+  // GPS stop of the visit (drift indoors) would have taken that stop's visit.
   const visitsById = new Map(input.visits.map((visit) => [visit.id, visit] as const))
-  const breakEnds = new Set(breaks.map((span) => span.to))
-  const named = new Map<string, DayTripStay>()
-  entries.push(...legs.map((stay) => {
-    if (stay.kind !== "STAY" || !stay.visit) return stay
-    const first = named.get(stay.visit.id)
-    if (!first) {
-      named.set(stay.visit.id, stay)
-      const own = visitsById.get(stay.visit.id)
+  const named = new Set<string>()
+  // The visit whose time on site the rows are telling, from the row that names it.
+  let site: { visitId: string; first: DayTripStay; checkInAt: number; checkOutAt: number | null; pastBreak: boolean } | null = null
+  const ofSite = (stay: DayTripStay): boolean => {
+    if (!site) return false
+    // A row of the visit is in its time by its own stop; a row of none, if it lies inside check-in..check-out.
+    const inTime = stay.visit
+      ? stay.visit.id === site.visitId
+      : site.checkOutAt != null && stay.startedAt.getTime() < site.checkOutAt && stay.endedAt.getTime() > site.checkInAt
+    const { first } = site
+    return inTime && (first.latitude == null || first.longitude == null || stay.latitude == null || stay.longitude == null
+      || calculateDistance(first.latitude, first.longitude, stay.latitude, stay.longitude) < SAME_PLACE_METERS)
+  }
+  for (const leg of legs) {
+    if (leg.kind === "GAP" && leg.reason === "WORKDAY_PAUSED") {
+      if (site) site.pastBreak = true
+      entries.push(leg)
+    } else if (leg.kind === "STAY" && ofSite(leg)) {
+      entries.push(site?.pastBreak ? { ...leg, visit: null, afterBreak: true } : leg)
+    } else if (leg.kind !== "STAY" || !leg.visit) {
+      site = null
+      entries.push(leg)
+    } else {
+      const own = visitsById.get(leg.visit.id)
       const checkOutAt = own?.checkOutAt
-      return own && checkOutAt && breaks.some((span) => span.from < checkOutAt.getTime() && span.to > own.checkInAt.getTime())
-        ? { ...stay, visitTimes: { checkInAt: own.checkInAt, checkOutAt } }
-        : stay
+      site = { visitId: leg.visit.id, first: leg, checkInAt: own?.checkInAt.getTime() ?? leg.startedAt.getTime(), checkOutAt: checkOutAt?.getTime() ?? null, pastBreak: false }
+      // Named again only after a drive, a lost signal or another place.
+      const firstTime = !named.has(leg.visit.id)
+      named.add(leg.visit.id)
+      entries.push(firstTime && own && checkOutAt && breaks.some((span) => span.from < checkOutAt.getTime() && span.to > own.checkInAt.getTime())
+        ? { ...leg, visitTimes: { checkInAt: own.checkInAt, checkOutAt } }
+        : leg)
     }
-    const samePlace = first.latitude == null || first.longitude == null || stay.latitude == null || stay.longitude == null
-      || calculateDistance(first.latitude, first.longitude, stay.latitude, stay.longitude) < SAME_PLACE_METERS
-    return breakEnds.has(stay.startedAt.getTime()) && samePlace
-      ? { ...stay, visit: null, afterBreak: true as const }
-      : stay
-  }))
+  }
 
   const completedAt = input.workday?.completedAt?.getTime()
   if (completedAt != null) entries.push({ kind: "END", id: "end", at: new Date(completedAt), source: "WORKDAY" })

@@ -83,6 +83,8 @@ function seg(from: string, to: string, a: readonly [number, number], b: readonly
 const A = [40.40, 49.85] as const
 const A_STREET = [40.401, 49.85] as const // 111 m from A: off the stop
 const A80 = [40.40072, 49.85] as const // 80 m from A: the same building, past the stop radius
+const A_NORTH = [40.4009, 49.85] as const // 100 m north of A
+const A_SOUTH = [40.3991, 49.85] as const // 100 m south of A, 200 m from A_NORTH
 const B = [40.43, 49.87] as const
 const C = [40.45, 49.89] as const
 const ROAD = [40.36, 49.85] as const
@@ -351,6 +353,54 @@ const CASES: Case[] = [
       expect(stays).toEqual([["09:59:30", "10:20:10", "v1", false], ["10:50:00", "11:10:30", null, true]])
     },
   },
+  // Verification of round 5 (probe A1): the first fix after «Продолжить» is
+  // 80 m off, in the same building — past the stop radius, so the time after
+  // the break is a stop of its own, starting at that fix, not at the break's
+  // end. Told by where a stop starts, the visit was named again: «Визит
+  // 10:00–11:10», «Перерыв», «Визит · на месте 20 мин» for one visit.
+  {
+    name: "a break in the middle of a visit, the first fix after it 80 m off",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:10:00", A80, A80), ...seg("11:10:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]),
+    visits: [visit("v1", "10:00:30", "11:10:00", A)],
+    reads: (day) => {
+      expect(day.stops.map((stop) => [clock(stop.startedAt), clock(stop.endedAt), stop.visit?.id])).toEqual([
+        ["09:59:30", "10:20:00", "v1"],
+        ["10:50:20", "11:10:30", "v1"],
+      ])
+      const stays = rowsOf(day.trip).flatMap((row) => row.kind === "STAY" ? [[clock(row.startedAt), clock(row.endedAt), row.visit?.id ?? null, row.visitTimes ? [clock(row.visitTimes.checkInAt), clock(row.visitTimes.checkOutAt)] : null, row.afterBreak ?? false]] : [])
+      expect(stays).toEqual([["09:59:30", "10:20:00", "v1", ["10:00:30", "11:10:00"], false], ["10:50:20", "11:10:30", null, null, true]])
+    },
+  },
+  // Its twin (probe A2): the first fix after «Продолжить» twenty seconds late, at the spot.
+  {
+    name: "a break in the middle of a visit, the first fix after it late, at the spot",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:10:00", A, A), ...seg("11:10:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]),
+    visits: [visit("v1", "10:00:30", "11:10:00", A)],
+    reads: (day) => {
+      const stays = rowsOf(day.trip).flatMap((row) => row.kind === "STAY" ? [[clock(row.startedAt), clock(row.endedAt), row.visit?.id ?? null, row.afterBreak ?? false]] : [])
+      expect(stays).toEqual([["09:59:30", "10:20:10", "v1", false], ["10:50:00", "11:10:00", null, true]])
+    },
+  },
+  // Drift inside the building after the break: two stops of the visit, 100 m
+  // either side of the spot — too far apart to merge, each the same place as
+  // the visit's. Neither brings the name back.
+  {
+    name: "a break in the middle of a visit, two stops after it on either side of the spot",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:00:00", A_NORTH, A_NORTH), ...seg("11:00:30", "11:10:00", A_SOUTH, A_SOUTH), ...seg("11:10:30", "11:30:00", [40.398, 49.85], ROAD)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]),
+    visits: [visit("v1", "10:00:30", "11:10:00", A)],
+    reads: (day) => {
+      expect(day.stops.map((stop) => [clock(stop.startedAt), clock(stop.endedAt), stop.visit?.id])).toEqual([
+        ["09:59:30", "10:20:00", "v1"],
+        ["10:50:20", "11:00:00", "v1"],
+        ["11:00:30", "11:10:00", "v1"],
+      ])
+      const stays = rowsOf(day.trip).flatMap((row) => row.kind === "STAY" ? [[clock(row.startedAt), clock(row.endedAt), row.visit?.id ?? null, row.afterBreak ?? false]] : [])
+      expect(stays).toEqual([["09:59:30", "10:20:00", "v1", false], ["10:50:20", "11:00:00", null, true], ["11:00:30", "11:10:00", null, true]])
+    },
+  },
   // S5: sparse fixes at a customer, a 4-minute break in a 20-minute silence.
   {
     name: "sparse fixes at a customer, a 4-minute break in a 20-minute silence",
@@ -495,7 +545,12 @@ describe("a day with breaks, told once", () => {
 // The same days through the route itself: what the page, the stop list, the
 // map's popups, the timeline and the CSV are handed.
 describe("GET /api/v1/mtm/location-history on a day with breaks", () => {
-  const ROUTE_CASES = ["a fix at the second of «Перерыв» and of «Продолжить», at one spot", "parked, pressed «Перерыв» at once, resumed and drove off", "parked at a customer's door, checked in, a break, checked out", "a 38-minute lunch at one spot", "a dozing phone inside a break (old data)", "a break in the middle of a visit, at one spot", "a break in the middle of a visit, two GPS stops after it", "a visit wholly inside a break (old data)"]
+  const ROUTE_CASES = [
+    "a fix at the second of «Перерыв» and of «Продолжить», at one spot", "parked, pressed «Перерыв» at once, resumed and drove off",
+    "parked at a customer's door, checked in, a break, checked out", "a 38-minute lunch at one spot", "a dozing phone inside a break (old data)",
+    "a break in the middle of a visit, at one spot", "a break in the middle of a visit, two GPS stops after it", "a visit wholly inside a break (old data)",
+    "a break in the middle of a visit, the first fix after it 80 m off", "a break in the middle of a visit, two stops after it on either side of the spot",
+  ]
 
   beforeEach(() => {
     vi.clearAllMocks()
