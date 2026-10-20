@@ -25,7 +25,7 @@ import {
   type HistoryVisit,
 } from "@/lib/mtm/location-history"
 import { buildDayTrip } from "@/lib/mtm/day-trip"
-import { MTM_WORKDAY_PAUSE_EVENT_TYPES, mtmWorkdayPauses, type MtmWorkdayPauseEvent } from "@/lib/mtm/workday-pauses"
+import { MTM_WORKDAY_PAUSE_EVENT_TYPES, mtmWorkdayPausesByShift, type MtmWorkdayPauseEvent } from "@/lib/mtm/workday-pauses"
 import { matchRoads } from "@/lib/mtm/map-matching"
 import { distanceBasis, drivingDistanceMeters } from "@/lib/mtm/road-distance"
 
@@ -374,15 +374,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       select: { workdayId: true, type: true, occurredAt: true, appliedAt: true },
     })
     : []
-  const eventsByWorkday = new Map<string, MtmWorkdayPauseEvent[]>()
-  for (const event of pauseEvents) {
-    const list = eventsByWorkday.get(event.workdayId) ?? []
-    list.push(event)
-    eventsByWorkday.set(event.workdayId, list)
-  }
-  const workdayBreaks = [...eventsByWorkday.values()]
-    .flatMap((events) => mtmWorkdayPauses(events))
-    .sort((a, b) => a.from.getTime() - b.from.getTime())
+  const workdayBreaks = mtmWorkdayPausesByShift(pauseEvents)
   const pauses: HistoryPauseInterval[] = workdayBreaks.map((pause) => ({ startedAt: pause.from, endedAt: pause.to }))
   // Kilometres and the drawn track along the roads, from the self-hosted OSRM
   // (map-matching.ts), on the full accepted track; the rule for what counts

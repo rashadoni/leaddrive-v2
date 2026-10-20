@@ -43,6 +43,8 @@ vi.mock("@/lib/mtm-audit", async (importOriginal) => ({
 import { GET } from "@/app/api/v1/mtm/locations/day-totals/route"
 import { resetLiveMapDayTotalsCacheForTests } from "@/lib/mtm/live-map-day-totals-cache"
 import { GET as historyGET } from "@/app/api/v1/mtm/location-history/route"
+import { GET as periodGET } from "@/app/api/v1/mtm/agent-period/route"
+import { GET as ownDayGET } from "@/app/api/v1/mtm/mobile/location/route"
 import { prisma } from "@/lib/prisma"
 import { getOrgId, requireAuth } from "@/lib/api-auth"
 import { calculateDistance } from "@/lib/geo-utils"
@@ -286,6 +288,76 @@ describe("GET /api/v1/mtm/locations/day-totals", () => {
     // The visit is open and somebody has to close it: History shows it, as before.
     expect(history.visits.map((visit: { id: string }) => visit.id)).toEqual(["forgotten"])
     expect(history.summary.visitCount).toBe(1)
+  })
+
+  // Verification of 2026-10-20: History stopped matching the road across a
+  // break and the card did not, so a day with a short break had two
+  // mileages — 2.87 km on the card, 7 km in History with this road server.
+  it("the two still agree on a day with a four-minute break during a drive — the kilometres too, and the road is matched across it by neither", async () => {
+    fixes = [...drive(utc("05:00:00"), 40.40), ...drive(utc("05:14:30"), 40.4115)]
+    shifts = [{
+      id: "w1", organizationId: ORG, agentId: AGENT, workDate: new Date("2026-10-09T00:00:00.000Z"), status: "STARTED",
+      startedAt: utc("04:58:00"), pausedAt: null, completedAt: null, totalPausedSeconds: 260,
+      startLatitude: 40.40, startLongitude: 49.85, endLatitude: null, endLongitude: null,
+    }]
+    shiftEvents = [
+      { id: "e1", organizationId: ORG, agentId: AGENT, workdayId: "w1", type: "PAUSE", occurredAt: utc("05:10:05"), appliedAt: utc("05:10:05") },
+      { id: "e2", organizationId: ORG, agentId: AGENT, workdayId: "w1", type: "RESUME", occurredAt: utc("05:14:25"), appliedAt: utc("05:14:25") },
+    ]
+    const card = (await read()).body.data
+    const askedByTheCard = fetchMock.mock.calls.map(([url]) => String(url))
+    fetchMock.mockClear()
+    const response = await historyGET(historyRequest(`?agentId=${AGENT}&date=2026-10-09`))
+    expect(response.status).toBe(200)
+    const history = (await response.json()).data
+
+    expect(onTheCard(card)).toEqual(inHistory(history))
+    // Twenty steps of 70 m on each side, and the shortest road between the fixes either side of the break.
+    expect(card.distanceMeters).toBe(40 * 70 + 4_200)
+    // History's «Перерыв» is the shift's own 260 s.
+    expect(history.gaps.map((gap: Row) => [gap.reason, gap.startedAt, gap.endedAt, gap.durationSeconds]))
+      .toEqual([["WORKDAY_PAUSED", "2026-10-09T05:10:05.000Z", "2026-10-09T05:14:25.000Z", 260]])
+    expect(history.trip.summary.pausedSeconds).toBe(260)
+    // No stretch either screen asked the road server to match holds both sides of the break.
+    const coordinate = (row: Row) => `${(row.longitude as number).toFixed(6)},${(row.latitude as number).toFixed(6)}`
+    const paused = coordinate(fixes.find((row) => (row.recordedAt as Date).getTime() === utc("05:10:00").getTime())!)
+    const resumed = coordinate(fixes.find((row) => (row.recordedAt as Date).getTime() === utc("05:14:30").getTime())!)
+    const matched = [...askedByTheCard, ...fetchMock.mock.calls.map(([url]) => String(url))].filter((url) => url.includes("/match/v1/"))
+    expect(matched.length).toBeGreaterThan(0)
+    expect(matched.some((url) => decodeURIComponent(url).includes(paused) && decodeURIComponent(url).includes(resumed))).toBe(false)
+  })
+
+  // The same day on the two other screens that count its kilometres: the
+  // period view, whose every day opens that day's History, and the
+  // employee's own day in the field app. Neither cut the road at a break.
+  it("the period view and the employee's own day count the kilometres of a day with a four-minute break as History does", async () => {
+    fixes = [...drive(utc("05:00:00"), 40.40), ...drive(utc("05:14:30"), 40.4115)]
+    shifts = [{
+      id: "w1", organizationId: ORG, agentId: AGENT, workDate: new Date("2026-10-09T00:00:00.000Z"), status: "STARTED",
+      startedAt: utc("04:58:00"), pausedAt: null, completedAt: null, totalPausedSeconds: 260,
+      startLatitude: 40.40, startLongitude: 49.85, endLatitude: null, endLongitude: null,
+    }]
+    shiftEvents = [
+      { id: "e1", organizationId: ORG, agentId: AGENT, workdayId: "w1", type: "PAUSE", occurredAt: utc("05:10:05"), appliedAt: utc("05:10:05") },
+      { id: "e2", organizationId: ORG, agentId: AGENT, workdayId: "w1", type: "RESUME", occurredAt: utc("05:14:25"), appliedAt: utc("05:14:25") },
+    ]
+    const history = (await (await historyGET(historyRequest(`?agentId=${AGENT}&date=2026-10-09`))).json()).data
+    expect(history.summary.distanceMeters).toBe(40 * 70 + 4_200)
+
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValueOnce({ id: AGENT, name: "Сотрудник" } as never)
+    const periodResponse = await periodGET(new NextRequest(new URL(`http://localhost:3000/api/v1/mtm/agent-period?agentId=${AGENT}&from=2026-10-09&to=2026-10-09`)))
+    expect(periodResponse.status).toBe(200)
+    const period = (await periodResponse.json()).data
+    expect(period.days.map((day: Row) => [day.date, day.distanceMeters])).toEqual([["2026-10-09", history.summary.distanceMeters]])
+
+    vi.mocked(resolveMobileAuth).mockResolvedValue({
+      orgId: ORG, agentId: AGENT, role: "AGENT", tenantCapabilities: { routeField: true, workforceHrm: true, personnel: true },
+    } as never)
+    const ownResponse = await ownDayGET(new NextRequest(new URL("http://localhost:3000/api/v1/mtm/mobile/location?date=2026-10-09")))
+    expect(ownResponse.status).toBe(200)
+    const own = (await ownResponse.json()).data
+    expect(own.distanceMeters).toBe(history.summary.distanceMeters)
+    expect(own.pauses).toEqual([{ from: "2026-10-09T05:10:05.000Z", to: "2026-10-09T05:14:25.000Z" }])
   })
 
   it("lets only numbers leave the server: no coordinate, no point, no stop, no client — and does not even read what it has no use for", async () => {

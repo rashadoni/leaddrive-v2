@@ -220,18 +220,29 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     const shift = workday as WorkdayRow | null
     const truncated = rows.length === LOCATION_HISTORY_MAX_RAW_POINTS
 
+    // The shift's breaks, read by the one reader of the journal as History
+    // reads them: they cut the day's gaps and the road server's stretches alike.
+    const pauses = liveMapDayPauses(pauseEvents as PauseEventRow[])
     // The kilometres along the roads, from the company's own road server —
     // without them the card would show a second, smaller figure for the day
     // History shows. Its answers are kept per stretch of a hundred fixes, so
-    // a day that grew since the last question costs one request.
+    // a day that grew since the last question costs one request. The road is
+    // not matched across a break, as in History (matchRoads): until
+    // 2026-10-20 History cut its stretches there and the card did not, and
+    // one day had two mileages, the card's and History's.
     const track = liveMapDayTrack(rows, policy.maxAccuracyMeters)
-    const road = truncated ? null : await matchRoads(track, { deadlineMs: ROAD_DEADLINE_MS }).catch(() => null)
+    const road = truncated
+      ? null
+      : await matchRoads(track, {
+        deadlineMs: ROAD_DEADLINE_MS,
+        breaks: pauses.map((pause) => ({ from: pause.startedAt, to: pause.endedAt })),
+      }).catch(() => null)
     const roadServerSilent = !truncated && road === null && track.length >= 2 && mapMatchingBaseUrl() !== null
     const totals = liveMapDayTotals({
       rows,
       visits,
       workday: shift ? { startedAt: shift.startedAt, completedAt: shift.completedAt } : null,
-      pauses: liveMapDayPauses(pauseEvents as PauseEventRow[]),
+      pauses,
       policy,
       roadSteps: road?.stepMeters,
       truncated,

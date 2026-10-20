@@ -8,6 +8,8 @@ import { isValidTimezone, localDateTimeToUtc } from "@/lib/timezone"
 import { AGENT_PERIOD_MAX_DAYS, agentPeriodDayTracks, buildAgentPeriod, periodDays } from "@/lib/mtm/agent-period"
 import { matchRoads } from "@/lib/mtm/map-matching"
 import { distanceBasis } from "@/lib/mtm/road-distance"
+import { MTM_WORKDAY_PAUSE_EVENT_TYPES, mtmWorkdayPausesByShift, type MtmWorkdayPauseEvent } from "@/lib/mtm/workday-pauses"
+import { workforceEnabledForMixedSurface } from "@/lib/workforce-capability"
 
 /**
  * GET /api/v1/mtm/agent-period?agentId=&from=YYYY-MM-DD&to=YYYY-MM-DD
@@ -57,7 +59,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const rangeStart = localDateTimeToUtc(`${from}T00:00`, timezone)
   const rangeEnd = localDateTimeToUtc(`${next.toISOString().slice(0, 10)}T00:00`, timezone)
 
-  const [workdays, visits, routes, points] = await Promise.all([
+  // The breaks are Workforce records and History reads them only with the
+  // module (location-history/route.ts); the period's kilometres follow it.
+  const workforceEnabled = await workforceEnabledForMixedSurface(auth.orgId, "MTM/agent-period GET")
+
+  const [workdays, visits, routes, points, pauseEvents] = await Promise.all([
     prisma.mtmAgentWorkday.findMany({
       where: {
         organizationId: auth.orgId,
@@ -98,14 +104,30 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       take: MAX_POINTS,
       select: { id: true, latitude: true, longitude: true, accuracy: true, speed: true, heading: true, battery: true, isMoving: true, recordedAt: true },
     }),
+    workforceEnabled
+      ? prisma.mtmAgentWorkdayEvent.findMany({
+        where: {
+          organizationId: auth.orgId,
+          agentId,
+          type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
+          occurredAt: { gte: rangeStart, lt: rangeEnd },
+        },
+        orderBy: { occurredAt: "asc" },
+        select: { workdayId: true, type: true, occurredAt: true, appliedAt: true },
+      })
+      : Promise.resolve([] as Array<MtmWorkdayPauseEvent & { workdayId: string }>),
   ])
+  // Each shift's breaks, by the one reader of the journal, as History reads them.
+  const breaks = mtmWorkdayPausesByShift(pauseEvents)
 
   const periodPoints = points.map((point) => ({ ...point, workdayId: null }))
   // Kilometres along the roads: every day's track in one request to OSRM, so
-  // the days share its time budget; the steps come back cut per day.
+  // the days share its time budget; the steps come back cut per day. Not
+  // matched across a break, as in History (matchRoads): each day links to
+  // its History, and the two must give it one mileage.
   const tracks = agentPeriodDayTracks({ points: periodPoints, timezone, maxAccuracyMeters: settings.historyMaxAccuracyMeters })
   const joined = [...tracks.values()].flat()
-  const road = await matchRoads(joined, { deadlineMs: ROAD_DEADLINE_MS }).catch(() => null)
+  const road = await matchRoads(joined, { deadlineMs: ROAD_DEADLINE_MS, breaks }).catch(() => null)
   const roadStepsByDay = new Map<string, Array<number | null>>()
   if (road) {
     let offset = 0

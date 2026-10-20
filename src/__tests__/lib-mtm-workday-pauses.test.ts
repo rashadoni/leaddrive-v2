@@ -5,6 +5,7 @@ import {
   mtmLastBreakEndedAt,
   mtmWorkdayPauses,
   mtmWorkdayPausesBetween,
+  mtmWorkdayPausesByShift,
   serializeMtmWorkdayPauses,
 } from "@/lib/mtm/workday-pauses"
 import { detectHistoryGaps, type HistoryLocationPoint } from "@/lib/mtm/location-history"
@@ -231,6 +232,28 @@ describe("when the latest break ended", () => {
       { type: "RESUME", occurredAt: at("12:30") },
       { type: "PAUSE", occurredAt: at("15:00") },
     ]))).toEqual(at("12:30"))
+  })
+})
+
+describe("the breaks of several shifts", () => {
+  it("read each shift's journal on its own, in order of start", () => {
+    const events = [
+      // The 20th was finished from a break; the 21st has its own lunch.
+      { workdayId: "w21", type: "PAUSE", occurredAt: new Date("2026-09-21T08:00:00.000Z") },
+      { workdayId: "w20", type: "PAUSE", occurredAt: new Date("2026-09-20T11:00:00.000Z") },
+      { workdayId: "w20", type: "FINISH", occurredAt: new Date("2026-09-20T11:20:00.000Z") },
+      { workdayId: "w21", type: "RESUME", occurredAt: new Date("2026-09-21T08:40:00.000Z") },
+    ]
+    expect(serializeMtmWorkdayPauses(mtmWorkdayPausesByShift(events))).toEqual([
+      { from: "2026-09-20T11:00:00.000Z", to: "2026-09-20T11:20:00.000Z" },
+      { from: "2026-09-21T08:00:00.000Z", to: "2026-09-21T08:40:00.000Z" },
+    ])
+    // One shift's RESUME never closes another shift's break (read as one
+    // journal, these two would make a ten-minute break).
+    expect(mtmWorkdayPausesByShift([
+      { workdayId: "w1", type: "PAUSE", occurredAt: new Date("2026-09-20T11:00:00.000Z") },
+      { workdayId: "w2", type: "RESUME", occurredAt: new Date("2026-09-20T11:10:00.000Z") },
+    ])).toEqual([{ from: new Date("2026-09-20T11:00:00.000Z"), to: null }])
   })
 })
 

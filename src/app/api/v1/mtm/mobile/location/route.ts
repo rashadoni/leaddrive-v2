@@ -493,7 +493,10 @@ export const GET = withMobileRls(async (req, auth) => {
       }),
     ])
     const workforceEnabled = auth.tenantCapabilities?.workforceHrm === true
-    const road = await matchRoads(locations, { deadlineMs: ROAD_DEADLINE_MS }).catch(() => null)
+    const breaks = mtmWorkdayPauses(pauseEvents)
+    // The road is not matched across a break, as in History (matchRoads): the
+    // step over it is counted the way his manager's History counts it.
+    const road = await matchRoads(locations, { deadlineMs: ROAD_DEADLINE_MS, breaks }).catch(() => null)
 
     return NextResponse.json({
       success: true,
@@ -502,7 +505,7 @@ export const GET = withMobileRls(async (req, auth) => {
         timezone,
         gpsIntervalSeconds: settings.gpsInterval,
         distanceMeters: drivingDistanceMeters(locations, road?.stepMeters),
-        pauses: serializeMtmWorkdayPauses(mtmWorkdayPauses(pauseEvents)),
+        pauses: serializeMtmWorkdayPauses(breaks),
         locations: locations.map((location) => locationForEnabledProducts(location, workforceEnabled)),
       },
     })

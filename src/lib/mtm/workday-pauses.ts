@@ -106,6 +106,26 @@ export function mtmWorkdayPauses(events: readonly MtmWorkdayPauseEvent[]): MtmWo
 }
 
 /**
+ * The breaks of several shifts — a window of History, a period — in order of
+ * their start. Each shift's journal is read on its own: a FINISH or a REOPEN
+ * closes or opens a break of its own shift only, and one shift's break must
+ * not run on into the next shift's day.
+ */
+export function mtmWorkdayPausesByShift(
+  events: readonly (MtmWorkdayPauseEvent & { workdayId: string })[],
+): MtmWorkdayPause[] {
+  const byShift = new Map<string, MtmWorkdayPauseEvent[]>()
+  for (const event of events) {
+    const list = byShift.get(event.workdayId) ?? []
+    list.push(event)
+    byShift.set(event.workdayId, list)
+  }
+  return [...byShift.values()]
+    .flatMap((shift) => mtmWorkdayPauses(shift))
+    .sort((a, b) => a.from.getTime() - b.from.getTime())
+}
+
+/**
  * True when the moment falls inside a break.
  *
  * The boundary belongs to work on both ends: the point captured at the very
