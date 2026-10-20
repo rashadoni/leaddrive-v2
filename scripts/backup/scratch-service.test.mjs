@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { chmodSync, chownSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, chownSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
@@ -200,7 +200,7 @@ runuser -u postgres -- ${pg}psql -X -v ON_ERROR_STOP=1 -h "/run/leaddrive-restor
   -c "CREATE DATABASE fixture_restore;" >/dev/null
 runuser -u postgres -- ${pg}pg_dump -h /var/run/postgresql -p 55431 -d postgres -Fc >"$TEST_ROOT/public.dump"
 chmod 0644 "$TEST_ROOT/public.dump"
-runuser -u postgres -- ${pg}pg_restore -h "/run/leaddrive-restore-scratch-$WORKFLOW_RUN_ID" -p 55432 -d fixture_restore "$TEST_ROOT/public.dump"
+runuser -u postgres -- ${pg}pg_restore --exit-on-error --no-owner --no-privileges -h "/run/leaddrive-restore-scratch-$WORKFLOW_RUN_ID" -p 55432 -d fixture_restore "$TEST_ROOT/public.dump"
 [ "$(runuser -u postgres -- ${pg}psql -X -At -h "/run/leaddrive-restore-scratch-$WORKFLOW_RUN_ID" -p 55432 -d fixture_restore -c 'SELECT value FROM fixture_sentinel')" = 'source must survive' ]
 runuser -u postgres -- ${pg}dropdb -h "/run/leaddrive-restore-scratch-$WORKFLOW_RUN_ID" -p 55432 fixture_restore
 case "$TEST_CASE" in failure) exit 23;; success) stop_commission_scratch;; esac
@@ -267,8 +267,22 @@ stop_commission_scratch
   } finally {
     // Fresh hosted synthetic authorities only, proved absent at entry. Never
     // remove a real cluster/configuration or acquire any pre-existing service.
-    if (provisioned) ok(command('python3', [new URL('../../.github/scripts/provision_postgres_restore_scratch.py', import.meta.url).pathname, 'rollback']), 'synthetic fixture rollback')
-    if (ownedSource) ok(command('pg_dropcluster', ['--stop', '16', cluster]))
+    if (provisioned) {
+      // This is fixture teardown, NOT proof of the independent production
+      // provisioner's rollback ceremony. pg_dropcluster does not own custom
+      // TLS filenames; remove only these fresh synthetic files before dropping
+      // this fixture's already-tested cluster. All were absent at entry.
+      if (existsSync('/var/lib/postgresql/16/leaddriverestore/postmaster.pid')) {
+        ok(command('pg_ctlcluster', ['--skip-systemctl-redirect', '16', 'leaddriverestore', 'stop']))
+      }
+      for (const name of ['server.crt', 'server.key']) unlinkSync('/etc/postgresql/16/leaddriverestore/' + name)
+      ok(command('pg_dropcluster', ['--stop', '16', 'leaddriverestore']), 'drop fresh synthetic scratch')
+    }
+    if (ownedSource) {
+      ok(command('pg_ctlcluster', ['16', cluster, 'stop']))
+      for (const name of ['fixture.crt', 'fixture.key']) unlinkSync('/etc/postgresql/16/' + cluster + '/' + name)
+      ok(command('pg_dropcluster', ['--stop', '16', cluster]))
+    }
     if (ownedEtc) rmSync('/etc/leaddrive', { recursive: true })
     if (ownedUser) ok(command('userdel', ['leaddrive-backup']))
     rmSync(root, { recursive: true, force: true })
