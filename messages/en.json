@@ -1,4 +1,43 @@
 {
+  "mtmTaskQuickAdd": {
+    "title": "New task",
+    "who": "To",
+    "whoPlaceholder": "Choose a person",
+    "search": "Name or team",
+    "recent": "Recent",
+    "matches": "Matches · {shown} of {total}",
+    "noMatches": "Nobody found",
+    "noTeam": "No team",
+    "onShift": "on shift",
+    "onShiftRoute": "on shift · {visited} of {planned} stops",
+    "offShift": "off shift",
+    "pushReady": "pop-up will reach",
+    "pushOff": "notifications not set up",
+    "reachYes": "The task will pop up on their phone",
+    "reachNo": "Notifications aren't set up on the phone — they'll see the task when they open the app",
+    "keys": "↑ ↓ to choose, Enter to confirm",
+    "what": "What to do",
+    "whatPlaceholder": "For example: get the contract signed",
+    "due": "Due",
+    "dueToday": "Today",
+    "dueTomorrow": "Tomorrow",
+    "dueNone": "No deadline",
+    "dueDate": "Date…",
+    "dueDateLabel": "Due date",
+    "send": "Send",
+    "sending": "Sending…",
+    "sent": "Task sent: {name}",
+    "chooseWho": "Choose who the task is for",
+    "writeWhat": "Write what to do",
+    "chooseDay": "Choose the due date",
+    "dueInPast": "That date has already passed",
+    "failed": "The task couldn't be sent. Try again.",
+    "hint": {
+      "who": "Start typing a name or a team. Empty: recent people first, then everyone by team.",
+      "due": "«Today», «Tomorrow» and a date mean 18:00 that day, company time.",
+      "send": "Send the task. It appears in the list and in their app at once."
+    }
+  },
   "mtmJointVisit": {
     "title": "Joint visit with the manager",
     "managerFallback": "The manager",
@@ -14536,7 +14575,6 @@
   },
   "mtmTasksPage": {
     "hint": {
-      "add": "Give an employee a task: what to do, by when and at which client.",
       "team": "Show the tasks of one team's employees.",
       "agent": "Show one employee's tasks.",
       "reset": "Clear the filters and go back to open tasks.",

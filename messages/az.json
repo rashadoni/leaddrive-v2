@@ -1,4 +1,43 @@
 {
+  "mtmTaskQuickAdd": {
+    "title": "Yeni tapşırıq",
+    "who": "Kimə",
+    "whoPlaceholder": "Əməkdaşı seçin",
+    "search": "Ad və ya komanda",
+    "recent": "Son seçilənlər",
+    "matches": "Uyğunluqlar · {total} nəfərdən {shown}",
+    "noMatches": "Heç kim tapılmadı",
+    "noTeam": "Komandasız",
+    "onShift": "növbədədir",
+    "onShiftRoute": "növbədədir · {planned} nöqtədən {visited}",
+    "offShift": "növbədə deyil",
+    "pushReady": "bildiriş çatacaq",
+    "pushOff": "bildirişlər qoşulmayıb",
+    "reachYes": "Tapşırıq əməkdaşın telefonunda pəncərə kimi açılacaq",
+    "reachNo": "Telefonda bildirişlər qoşulmayıb — əməkdaş tapşırığı tətbiqi açanda görəcək",
+    "keys": "↑ ↓ — seçmək, Enter — təsdiq",
+    "what": "Nə etməli",
+    "whatPlaceholder": "Məsələn: müqaviləyə imza al",
+    "due": "Müddət",
+    "dueToday": "Bu gün",
+    "dueTomorrow": "Sabah",
+    "dueNone": "Müddətsiz",
+    "dueDate": "Tarix…",
+    "dueDateLabel": "Son tarix",
+    "send": "Göndər",
+    "sending": "Göndərilir…",
+    "sent": "Tapşırıq göndərildi: {name}",
+    "chooseWho": "Tapşırığın kimə olduğunu seçin",
+    "writeWhat": "Nə etmək lazım olduğunu yazın",
+    "chooseDay": "Son tarixi seçin",
+    "dueInPast": "Bu tarix artıq keçib",
+    "failed": "Tapşırığı göndərmək alınmadı. Yenidən cəhd edin.",
+    "hint": {
+      "who": "Ad və ya komanda yazmağa başlayın. Boş sahədə yuxarıda son seçilənlər, aşağıda komandalar üzrə hamı.",
+      "due": "«Bu gün», «Sabah» və tarix həmin günün saat 18:00-ı deməkdir, şirkətin vaxtı ilə.",
+      "send": "Tapşırığı əməkdaşa göndər. O, dərhal siyahıda və onun tətbiqində görünəcək."
+    }
+  },
   "mtmJointVisit": {
     "title": "Rəhbərlə birgə vizit",
     "managerFallback": "Rəhbər",
@@ -14532,7 +14571,6 @@
   },
   "mtmTasksPage": {
     "hint": {
-      "add": "Əməkdaşa tapşırıq ver: nə etməli, hansı müddətə və hansı müştəridə.",
       "team": "Bir komandanın əməkdaşlarının tapşırıqlarını göstər.",
       "agent": "Bir əməkdaşın tapşırıqlarını göstər.",
       "reset": "Filtrləri götür və açıq tapşırıqlara qayıt.",
