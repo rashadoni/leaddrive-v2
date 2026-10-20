@@ -835,7 +835,7 @@ function GroupDetail(props: {
               onDiscard={props.onDiscard}
             />
           ) : group.canManage ? null : <span className="text-muted-foreground">{t("readOnlyHint")}</span>}
-          footerClassName={props.changeCount > 0 ? "bg-orange-50/70 dark:bg-orange-950/20" : undefined}
+          footerClassName={props.changeCount > 0 ? "border-t-2 border-t-orange-400 dark:border-t-orange-500" : undefined}
         >
           <p className="text-sm" data-testid="mtm-product-chosen">
             {editing

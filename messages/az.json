@@ -11738,7 +11738,6 @@
     "hint": {
       "createGroup": "Məhsul qrupu yarat. Üst qrup seçilibsə, yenisi onun alt qrupu olacaq.",
       "group": "Qrupu açın: onun təqdimatları və hər birini kimin gördüyü.",
-      "lockedGroup": "Qrupu administrator və ya bu qrupun, yaxud üst qrupun meneceri dəyişə bilər.",
       "managers": "Qrup menecerləri onun təqdimatlarını əlavə edir, silir və paylayır — alt qruplarda da.",
       "uploadAndCreate": "Faylı yüklə və bu qrupda təqdimat yarat. Sonra kimin görəcəyini qeyd edin.",
       "openedCount": "Agentlərin bu təqdimatı mobil tətbiqdə neçə dəfə açdığı.",

@@ -11742,7 +11742,6 @@
     "hint": {
       "createGroup": "Create a product group. If a parent group is chosen, the new one becomes its subgroup.",
       "group": "Open the group: its presentations and who sees each of them.",
-      "lockedGroup": "Only an administrator or a manager of this group or a group above it can change it.",
       "managers": "Group managers can add, delete and assign its presentations — in its subgroups too.",
       "uploadAndCreate": "Upload the file and create the presentation in this group. Then tick who sees it.",
       "openedCount": "How many times agents opened this presentation in the mobile app.",
