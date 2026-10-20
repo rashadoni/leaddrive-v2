@@ -5,7 +5,7 @@ FROM node:24-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bd
 FROM postgres:16.15-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 AS vector-build
 # pgvector v0.6.0, exact upstream commit and archive checksum. No native-CPU
 # instructions or LLVM build dependency; build tooling never enters runtime.
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl ca-certificates \
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl ca-certificates "postgresql-server-dev-16=$PG_VERSION" \
  && curl --proto '=https' --tlsv1.2 -fsSL --connect-timeout 15 --max-time 120 \
       https://codeload.github.com/pgvector/pgvector/tar.gz/281d4fcf60e2f037fa09d62be2543bb4d7511f2b -o /tmp/vector.tar.gz \
  && printf '%s  /tmp/vector.tar.gz\n' e0728ec19cb9d75fcd5a329c48c070b942eb888e6cb83d9e50cc622f6b7d297a | sha256sum -c - \
@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 
 FROM postgres:16.15-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
 COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
-COPY --from=vector-build /out/usr/local/lib/postgresql/vector.so /usr/local/lib/postgresql/vector.so
-COPY --from=vector-build /out/usr/local/share/postgresql/extension/vector* /usr/local/share/postgresql/extension/
+COPY --from=vector-build /out/usr/lib/postgresql/16/lib/vector.so /usr/lib/postgresql/16/lib/vector.so
+COPY --from=vector-build /out/usr/share/postgresql/16/extension/vector* /usr/share/postgresql/16/extension/
 RUN apt-get update && apt-get install -y --no-install-recommends bash coreutils findutils util-linux tar grep sed openssh-client curl ca-certificates \
  && rm -rf /var/lib/apt/lists \
  && case "$(uname -m)" in \

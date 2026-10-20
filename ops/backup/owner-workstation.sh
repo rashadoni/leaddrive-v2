@@ -99,6 +99,10 @@ SQL
   PGPASSFILE=/scratch/pgpass dropdb -w -h 127.0.0.1 -p 55432 -U owner_restore_verifier \
     --maintenance-db=postgres leaddrive_workbench_preflight >/database/clone-cleanup.log 2>&1 \
     || fatal 'private compatibility clone cleanup failed'
+  [ "$(PGPASSFILE=/scratch/pgpass psql -X -w -h 127.0.0.1 -p 55432 -U owner_restore_verifier \
+    -d postgres -At -v ON_ERROR_STOP=1 \
+    -c "SELECT count(*) FROM pg_database WHERE datname='leaddrive_workbench_preflight'")" = 0 ] \
+    || fatal 'private compatibility clone absence not proved'
   if [ "$mode" = --self-test ]; then
     [ "$(age --version)" = v1.3.2 ] || fatal 'unexpected age version'
     printf '#!/bin/bash\nprintf scratch-script-readable\n' >/scratch/noexec-probe.sh
