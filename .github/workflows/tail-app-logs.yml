@@ -21,6 +21,7 @@ on:
         options:
           - logs
           - backup-readiness
+          - backup-compatibility
           - backup-run-failure
           - backup-log-inventory
           - postgres-tls-metadata
@@ -127,6 +128,9 @@ jobs:
           set -euo pipefail
           node --test .github/scripts/test-inspect-backup-run-failure.mjs
           node .github/scripts/inspect-backup-run-failure.mjs --admit >> "$GITHUB_OUTPUT"
+      - name: Verify read-only backup compatibility diagnostic before production access
+        if: ${{ inputs.view == 'backup-compatibility' }}
+        run: node --test .github/scripts/test-inspect-backup-compatibility.mjs
       - name: Setup pinned production SSH
         uses: ./.github/actions/setup-production-ssh
         with:
@@ -160,6 +164,28 @@ jobs:
           }
           printf '%s' "$DIAGNOSTIC_OUTPUT" \
             | node .github/scripts/inspect-backup-run-failure.mjs --validate-output
+      - name: Inspect bounded PostgreSQL compatibility metadata without customer data
+        if: ${{ inputs.view == 'backup-compatibility' }}
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          set +e
+          DIAGNOSTIC_OUTPUT="$(
+            ssh -T -o ConnectTimeout=15 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 \
+              -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              "node --input-type=module - --inspect '$EXPECTED_MAIN_SHA'" \
+              < .github/scripts/inspect-backup-compatibility.mjs 2>/dev/null
+          )"
+          DIAGNOSTIC_STATUS=$?
+          set -e
+          printf '%s' "$DIAGNOSTIC_OUTPUT" \
+            | node .github/scripts/inspect-backup-compatibility.mjs --validate-output
+          [ "$DIAGNOSTIC_STATUS" -eq 0 ] || {
+            echo "::error::Read-only compatibility inspection refused; no raw diagnostics exported"
+            exit 1
+          }
       - name: Inspect bounded Support logging readiness without selecting a tenant
         if: ${{ inputs.view == 'support-ux-readiness' }}
         run: |

@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'scripts/backup/**'
+      - '.github/scripts/inspect-backup-compatibility.mjs'
+      - '.github/scripts/test-inspect-backup-compatibility.mjs'
       - 'ops/backup/owner-workstation*'
       - '.github/workflows/owner-recovery-*.yml'
       - 'scripts/server-deploy.sh'
@@ -12,6 +14,8 @@ on:
     branches: [main]
     paths:
       - 'scripts/backup/**'
+      - '.github/scripts/inspect-backup-compatibility.mjs'
+      - '.github/scripts/test-inspect-backup-compatibility.mjs'
       - 'ops/backup/owner-workstation*'
       - '.github/workflows/owner-recovery-*.yml'
 permissions:

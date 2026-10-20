@@ -89,6 +89,23 @@ main-bound Mac receipt; configuration alone is not a recovery certificate.
 
 ## 1. Prepare an owner key-readability receipt
 
+Before asking the owner to repeat this receipt, finish backend preparation.
+The protected **Inspect production safely** view `backup-compatibility`, on
+exact current/live main, reads only source catalog compatibility metadata and
+fixed local extension-file availability. It prints no database/connection
+identity, arbitrary extension/schema/locale names, credentials or customer
+rows. It does not start scratch or write SQL; finite refusal stages are
+independently schema-validated before display.
+
+The result explicitly says `scratchDatabaseCompatibility=not-inspected`:
+source versions and installed files alone do not prove verifier-owned template
+extensions or a matching offline image/collation. Follow BACKUP_RUNBOOK's
+compatibility preflight. In particular, a plain-table lifecycle fixture and a
+plain PostgreSQL image do not establish pgvector recovery. Do not request a
+new Mac key receipt or attempt an owner archive until those remaining
+prerequisites have actual evidence. No source package/configuration/role
+mutation or unrestricted SUPERUSER restore is authorized by this view.
+
 Use reviewed exact main, Node20 and pinned age/age-keygen1.3.2 on the owner's
 administrative machine. The helper is portable to Mac for this small key test;
 full archive restore below requires a Linux restore workstation/isolated Linux
