@@ -209,8 +209,9 @@ function holdsTheFourFacts(name: string, day: Pick<Day, "stops" | "timeline" | "
   // A visit is named once.
   const named = rows.flatMap((row) => row.kind === "STAY" && row.visit ? [row.visit.id] : [])
   expect(named, `${name}: a visit named twice`).toEqual([...new Set(named)])
-  // A stop piece under the minimum is there only for its visit.
-  expect(day.stops.filter((stop) => stop.durationSeconds < POLICY.stopMinimumSeconds && !stop.visit).map((stop) => stop.id), `${name}: short stops without a visit`).toEqual([])
+  // No stop is shorter than the minimum «Детали остановок» promises — not
+  // even one with a visit: the visit is the trip's to tell, by its own times.
+  expect(day.stops.filter((stop) => stop.durationSeconds < POLICY.stopMinimumSeconds).map((stop) => stop.id), `${name}: stops under the minimum`).toEqual([])
 }
 
 const CASES: Case[] = [
@@ -248,7 +249,11 @@ const CASES: Case[] = [
       expect(stays.map((stay) => [stay.kind === "STAY" && stay.visit?.id, stay.kind === "STAY" && stay.visitTimes])).toEqual([
         ["v1", { checkInAt: at("09:10:10"), checkOutAt: at("09:40:20") }],
       ])
-      expect(day.stops.map((stop) => [clock(stop.startedAt), clock(stop.endedAt), stop.visit?.id])).toEqual([["09:10:00", "09:10:20", "v1"]])
+      // Twenty seconds at the door are no stop: not «0 мин» in «Детали
+      // остановок», on the map's popup, in the timeline or the CSV. The trip
+      // has the visit by itself, as a visit no stop covers.
+      expect(day.stops).toEqual([])
+      expect(stays.map((stay) => stay.id)).toEqual(["visit-v1"])
       // The visit itself is never re-timed: once in the timeline, as recorded.
       expect(day.timeline.filter((event) => event.kind === "VISIT").map((event) => [clock(event.at), event.endedAt && clock(event.endedAt)])).toEqual([["09:10:10", "09:40:20"]])
     },

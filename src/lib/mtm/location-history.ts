@@ -453,9 +453,11 @@ export type HistoryStayPiece = HistorySpan & {
  * told of the place is only its time outside the breaks:
  *  - a stretch the breaks cover wholly is gone: it was the break;
  *  - a piece shorter than the organization's minimum stop is gone, unless it
- *    is the first piece of its visit — the visit is never lost, and a piece
- *    of a few seconds without one is no stop (parked, pressed «Перерыв» at
- *    once, resumed and drove off: two pieces of five seconds);
+ *    is the first piece of its visit (`visitOf`) — the visit is never lost,
+ *    and a piece of a few seconds without one is no stop (parked, pressed
+ *    «Перерыв» at once, resumed and drove off: two pieces of five seconds).
+ *    A GPS stop's pieces name no visit (cutHistoryStopsAtBreaks), so a short
+ *    one always goes: the visit reaches the trip as a visit no stop covers;
  *  - a piece without a place of its own (`hasPlace`: for a GPS stop, no fix
  *    of its own outside the breaks) is gone: its place would be the break's.
  *
@@ -560,7 +562,12 @@ export function cutHistoryStopsAtBreaks(stops: readonly HistoryStop[], input: {
       to: stop.endedAt.getTime(),
       breaks,
       minimumSeconds: input.minimumSeconds,
-      visitOf: (piece) => confirmedVisitForStop(input.visits, new Date(piece.from), new Date(piece.to))?.id ?? null,
+      // No piece is kept only to carry its visit. Seconds at a customer's
+      // door before «Перерыв» were a stop of «0 мин» in «Детали остановок»
+      // (whose header promises the minimum) and on the map's popup; the visit
+      // reaches the trip by itself (buildDayTrip: a visit no stop covers),
+      // named by its own check-in and check-out.
+      visitOf: () => null,
       hasPlace: (piece) => within(piece).length > 0,
     })
     if (!pieces) return [stop]
