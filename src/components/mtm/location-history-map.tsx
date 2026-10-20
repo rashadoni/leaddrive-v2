@@ -199,9 +199,10 @@ export default function LocationHistoryMap({
   // which way he went. Nor is a lost signal beside a break: one of its ends
   // is the break's edge, and a line to the fix on the other side would cross
   // the break. The track itself stays broken there, however short the break —
-  // every break between two fixes is a gap (detectHistoryGaps,
-  // splitHistoryPathAtGaps) — and so does the line along the streets, which
-  // the server never matches across a break (matchRoads).
+  // every break is a gap, as long as the journal says (detectHistoryGaps),
+  // and the track is cut wherever one takes time between two fixes
+  // (splitHistoryPathAtGaps) — and so does the line along the streets, which
+  // the server never matches across a break between two fixes (matchRoads).
   const signalGaps = useMemo(() => gaps.filter((gap) => gap.reason !== "WORKDAY_PAUSED" && !gap.besideBreak), [gaps])
   const gapSegments = useMemo(() => layers.gaps ? signalGaps.map((gap) => ({
       id: gap.id,

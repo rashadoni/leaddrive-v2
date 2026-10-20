@@ -47,6 +47,26 @@ describe("the history track", () => {
     expect(splitHistoryPathAtGaps(points, [{ startedAt: "2026-09-21T08:05:30.000Z", endedAt: "2026-09-21T08:30:00.000Z" }])).toHaveLength(1)
   })
 
+  // Old data: fixes recorded inside a break (accepted until 2026-10-11). The
+  // break is the journal's, from «Перерыв» to «Продолжить» (detectHistoryGaps,
+  // verification of 2026-10-20, round 4), and no line joins a fix inside it
+  // to anything: none is drawn in his own time.
+  it("joins a fix recorded inside a break to nothing", () => {
+    const points = [
+      point(40.1, "2026-09-21T08:00:00.000Z"),
+      point(40.2, "2026-09-21T08:00:30.000Z"),
+      point(40.25, "2026-09-21T08:02:00.000Z"),
+      point(40.26, "2026-09-21T08:03:00.000Z"),
+      point(40.3, "2026-09-21T08:05:00.000Z"),
+      point(40.31, "2026-09-21T08:05:30.000Z"),
+    ]
+    const lunch = [{ startedAt: "2026-09-21T08:00:35.000Z", endedAt: "2026-09-21T08:04:55.000Z" }]
+    expect(splitHistoryPathAtGaps(points, lunch)).toEqual([
+      [[40.1, 49.8], [40.2, 49.8]],
+      [[40.3, 49.8], [40.31, 49.8]],
+    ])
+  })
+
   it("drops a lone point that no line can join", () => {
     const points = [point(40.1, "2026-09-21T08:00:00.000Z"), point(40.9, "2026-09-21T12:00:00.000Z")]
     expect(splitHistoryPathAtGaps(points, [{ startedAt: "2026-09-21T08:00:00.000Z", endedAt: "2026-09-21T12:00:00.000Z" }])).toEqual([])

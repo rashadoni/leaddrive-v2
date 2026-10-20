@@ -12,24 +12,27 @@ export type HistoryPathGap = { startedAt: string; endedAt: string }
 /**
  * The accepted points as runs of the actual track, split at every gap.
  *
- * Cut between two points when a gap begins between them. A lost signal
- * begins at the last point before the silence (to the second); a break
- * begins when he pressed «Перерыв», inside the silence — it is as long as the
- * journal says, not as the fixes around it (detectHistoryGaps). A day thinned
- * for the map (downsampleHistoryPoints) is cut as well where the point a gap
- * began at was left out.
+ * Cut between two points when a gap takes any of the time between them. A
+ * lost signal runs from the last point before the silence to the first after
+ * it; a break runs from «Перерыв» to «Продолжить», as the journal says, not as
+ * the fixes around it (detectHistoryGaps) — so a fix recorded inside a break
+ * (data from before 2026-10-11) is joined to nothing, and no line is drawn in
+ * his own time. A day thinned for the map (downsampleHistoryPoints) is cut as
+ * well where the point a gap began at was left out.
  */
 export function splitHistoryPathAtGaps(
   points: readonly HistoryPathPoint[],
   gaps: readonly HistoryPathGap[],
 ): Array<Array<[number, number]>> {
-  const gapStarts = gaps.map((gap) => Date.parse(gap.startedAt)).filter(Number.isFinite)
+  const spans = gaps
+    .map((gap) => ({ from: Date.parse(gap.startedAt), to: Date.parse(gap.endedAt) }))
+    .filter((span) => Number.isFinite(span.from) && Number.isFinite(span.to))
   const runs: Array<Array<[number, number]>> = []
   let run: Array<[number, number]> = []
   let previous: number | null = null
   for (const point of points) {
     const at = Date.parse(point.recordedAt)
-    if (previous !== null && gapStarts.some((start) => start > previous! - 1_000 && start < at)) {
+    if (previous !== null && spans.some((span) => span.from < at && (span.to > previous! || span.from > previous! - 1_000))) {
       if (run.length > 1) runs.push(run)
       run = []
     }

@@ -338,10 +338,35 @@ describe("the breaks between two fixes", () => {
       expect(lunch.id).toBe(`gap-${before.id}-${after.id}`)
     })
 
-    it("cut nothing between fixes recorded inside a break", () => {
-      // Every half minute, through the break: no pair of fixes has the break between them.
+    // Verification of 2026-10-20: data from before such fixes were refused
+    // (2026-10-11) has fixes inside a break. They used to decide it: its edges
+    // moved to them and it split at each — History counted 14 minutes of a
+    // 38-minute lunch. The journal decides it now.
+    it("are the journal's breaks, also with fixes recorded inside them", () => {
+      // Every half minute, through the break: the break is still its 100 s, and no lost signal.
       const through = ["13:04:30", "13:05:00", "13:05:30", "13:06:00", "13:06:30", "13:07:00"].map(fix)
-      expect(said(through, [pause("13:05:10", "13:06:50")])).toEqual([])
+      expect(told(through, [pause("13:05:10", "13:06:50")])).toEqual([["WORKDAY_PAUSED", "13:05:10", "13:06:50", 100, false]])
+      // A lunch at a cafe with a dozing phone: two fixes inside it, one just after.
+      const lunch = [fix("12:25:30"), fix("12:40:00"), fix("12:55:00"), fix("13:05:00")]
+      expect(told(lunch, [pause("12:26:00", "13:04:00")])).toEqual([["WORKDAY_PAUSED", "12:26:00", "13:04:00", 2_280, false]])
+      // A break still running is no gap; the silence around it is told as any silence.
+      expect(told([fix("12:25:30"), fix("12:40:00")], [{ startedAt: second("12:26:00"), endedAt: null }]))
+        .toEqual([["TELEMETRY_GAP", "12:25:30", "12:40:00", 870, false]])
+    })
+
+    it("are there before the day's first fix and after its last: the journal has them", () => {
+      // Finished from a break, the phone silent since «Перерыв».
+      const day = [fix("12:25:00"), fix("12:25:30")]
+      const [lunch, ...rest] = detectHistoryGaps(day, 300, [pause("12:26:00", "13:00:00")])
+      expect(rest).toEqual([])
+      expect(lunch).toMatchObject({ id: `gap-${day[1].id}-end`, reason: "WORKDAY_PAUSED", durationSeconds: 34 * 60 })
+      expect([lunch.startLatitude, lunch.endLatitude]).toEqual([day[1].latitude, day[1].latitude])
+      // Paused at once after «Начать», the first fix after «Продолжить».
+      const later = [fix("09:31:00"), fix("09:31:30")]
+      expect(detectHistoryGaps(later, 300, [pause("09:00:30", "09:30:00")]))
+        .toMatchObject([{ id: `gap-start-${later[0].id}`, reason: "WORKDAY_PAUSED", durationSeconds: 1_770 }])
+      // No fix at all: no path to cut and no silence to explain.
+      expect(detectHistoryGaps([], 300, [pause("09:00:30", "09:30:00")])).toEqual([])
     })
   })
 })
