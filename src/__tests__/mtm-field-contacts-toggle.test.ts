@@ -67,7 +67,7 @@ describe("field contacts organization switch", () => {
     const page = source("src/app/(dashboard)/mtm/contacts/page.tsx")
     const gated = page.slice(page.indexOf("<FieldContactsGate>"), page.indexOf("</FieldContactsGate>") + "</FieldContactsGate>".length)
     expect(gated).toContain("<MtmContactExplorer />")
-    expect(gated).toContain("<ContactCreateRequestQueue />")
+    expect(gated).toContain("<ContactCreateRequestQueue ")
 
     expect(source("src/components/mtm/field-contacts-gate.tsx"))
       .toContain('<MtmFeatureGate feature="fieldContactsEnabled">{children}</MtmFeatureGate>')

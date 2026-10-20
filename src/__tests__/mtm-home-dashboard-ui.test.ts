@@ -261,7 +261,8 @@ describe("Zeytun Pharma, Sunday 11 October", () => {
     expect(request.querySelector("p")?.textContent).toBe("Заявка на нового клиента")
     expect(request.textContent).toContain("Seymur Məmmədov · ждёт с 8 окт.")
     expect(request.querySelector("a")?.textContent).toBe("Открыть заявку")
-    expect(request.querySelector("a")?.getAttribute("href")).toBe("/mtm/contacts")
+    // The request queue unfolded, not the list of existing clients (owner, 2026-10-20).
+    expect(request.querySelector("a")?.getAttribute("href")).toBe("/mtm/contacts?requests=open")
 
     const alerts = attentionRow("olderAlerts")!
     expect(alerts.querySelector("p")?.textContent).toBe("6 оповещений не разобрано")

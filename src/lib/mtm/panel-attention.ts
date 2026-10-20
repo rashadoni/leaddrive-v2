@@ -20,6 +20,7 @@
  * Shifts are deliberately absent: work time is Workforce, which the owner
  * withdrew from the CRM on 2026-10-10.
  */
+import { MTM_CONTACT_REQUESTS_HREF } from "@/lib/mtm/contact-create-request-link"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import { resolveWorkCalendarDay, type WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 
@@ -317,7 +318,10 @@ export function attentionItemHref(item: Pick<MtmPanelAttentionItem, "kind" | "da
     case "attendanceRequests":
       return "/mtm/attendance/requests"
     case "contactCreateRequests":
-      return "/mtm/contacts"
+      // The queue above the Clients list, unfolded: the bare /mtm/contacts
+      // showed the list of existing clients and the request as one folded
+      // line (owner, 2026-10-20).
+      return MTM_CONTACT_REQUESTS_HREF
     case "customerLocationRequests":
     case "customerCreateRequests":
     case "routeChangeRequests":

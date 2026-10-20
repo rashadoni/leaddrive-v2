@@ -141,7 +141,10 @@ describe("the rows of the block", () => {
   })
 
   it("leads each row to the list of exactly those rows", () => {
-    expect(attentionItemHref({ kind: "contactCreateRequests", date: "2026-10-08" })).toBe("/mtm/contacts")
+    // The queue above the Clients list, unfolded (owner, 2026-10-20): the bare
+    // list showed existing clients and the request folded to one line. What
+    // the address opens is checked on the page in mtm-panel-contact-request-link-ui.
+    expect(attentionItemHref({ kind: "contactCreateRequests", date: "2026-10-08" })).toBe("/mtm/contacts?requests=open")
     expect(attentionItemHref({ kind: "customerCreateRequests", date: null })).toBe("/mtm/routes?view=approvals")
     expect(attentionItemHref({ kind: "routeChangeRequests", date: null })).toBe("/mtm/routes?view=approvals")
     expect(attentionItemHref({ kind: "routesAwaitingPublish", date: "2026-10-12" })).toBe("/mtm/routes")

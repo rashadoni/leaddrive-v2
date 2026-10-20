@@ -488,3 +488,34 @@ describe("«Müştərilər»: the chips over the list", () => {
       .toBe("/mtm/routes/plan?customerId=org-clinic&contactId=d-001")
   })
 })
+
+describe("«Müştərilər» opened by the Panel's «Sorğuya bax»", () => {
+  /** The page again, at `search`, with a manager whose default view is the cardiologists. */
+  async function reopen(search: string) {
+    await act(async () => { root.unmount() })
+    const answer = globalThis.fetch
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => (
+      new URL(input, "http://localhost:3000").pathname === "/api/v1/mtm/contacts/views"
+        ? Response.json({ success: true, data: { views: [{ id: "view-cardio", name: "Kardioloqlar", filters: { specialties: ["Kardioloq"] }, isDefault: true, isShared: false, canDelete: true }] } })
+        : answer(input, init)
+    )))
+    navigation.params = new URLSearchParams(search)
+    root = createRoot(container)
+    await act(async () => { root.render(createElement(MtmContactExplorer)) })
+    await settle()
+  }
+
+  afterEach(() => { navigation.params = new URLSearchParams("") })
+
+  // The queue's switch in the address is not a filter of the list: the list
+  // under the unfolded requests is the one the manager opens every day.
+  it("still opens the list on the manager's default view", async () => {
+    await reopen("requests=open")
+    expect(listed()).toEqual(["Nigar Hüseynova", "Rəşad Əliyev"])
+  })
+
+  it("lets a filter in the address win over the default view, as before", async () => {
+    await reopen("requests=open&specialty=Pediatr")
+    expect(listed()).toEqual(["Aysel Məmmədova"])
+  })
+})

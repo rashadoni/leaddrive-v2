@@ -16210,7 +16210,7 @@
         "kpiWeekPlan": "Həftənin əvvəlindən bu günədək planın baş çəkilən nöqtələri — bu günlərin bütün plan nöqtələrindən. Rəng — artıq bitmiş günlərə görə. Aşağıda — keçən həftənin eyni günü ilə fərq, faiz bəndi ilə.",
         "kpiAttention": "Neçə məsələ qərarınızı gözləyir: agentlərin müraciətləri, dərc olunmamış marşrutlar, baxılmamış xəbərdarlıqlar, yoxlanılmamış fotolar. Siyahı — aşağıdakı kartda.",
         "ctaLocationRequests": "Marşrut təsdiqlərini açacaq: müştərinin yeni yerini qəbul edin və ya əvvəlkini saxlayın.",
-        "ctaContactCreate": "Agentlərin yeni müştəri müraciətləri ilə müştəriləri açacaq — qəbul edin və ya rədd edin.",
+        "ctaContactCreate": "Agentlərin yeni müştəri sorğularını açacaq — qəbul edin və ya rədd edin.",
         "ctaCustomerCreate": "Marşrut təsdiqlərini açacaq: agentlərin yeni müəssisə müraciətləri.",
         "ctaRouteChange": "Marşrut təsdiqlərini açacaq: agentlər dərc olunmuş marşrutu dəyişməyi xahiş edir.",
         "ctaPublish": "Marşrutları açacaq. Qaralamanı agent dərc olunana qədər görmür.",

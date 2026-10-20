@@ -32,13 +32,20 @@ function language(value: string): keyof typeof COPY {
   return "ru"
 }
 
-export function ContactCreateRequestQueue() {
+/**
+ * `openOnArrival`: the address asked for the requests (the Panel's «Sorğuya
+ * bax», see src/lib/mtm/contact-create-request-link.ts), so the cards stand
+ * open from the start instead of behind «Nəzərdən keçir».
+ */
+export function ContactCreateRequestQueue({ openOnArrival = false }: { openOnArrival?: boolean } = {}) {
   const copy = COPY[language(useLocale())]
   const [rows, setRows] = useState<RequestRow[]>([])
   const [comments, setComments] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(openOnArrival)
+  // A link followed while this page is already on screen asks again.
+  useEffect(() => { if (openOnArrival) setOpen(true) }, [openOnArrival])
 
   const load = useCallback(async () => {
     setLoading(true)
