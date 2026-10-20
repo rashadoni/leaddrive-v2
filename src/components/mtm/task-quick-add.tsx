@@ -118,7 +118,7 @@ function writeRecent(ids: string[]) {
 function Highlighted({ name, query }: { name: string; query: string }) {
   const range = matchRange(name, query)
   if (!range) return <>{name}</>
-  return <>{name.slice(0, range[0])}<mark className="rounded-sm bg-amber-200 px-px text-inherit dark:bg-amber-500/40">{name.slice(range[0], range[1])}</mark>{name.slice(range[1])}</>
+  return <>{name.slice(0, range[0])}<mark className="bg-transparent font-extrabold text-primary underline decoration-2 underline-offset-2">{name.slice(range[0], range[1])}</mark>{name.slice(range[1])}</>
 }
 
 export function MtmTaskQuickAdd({
@@ -263,7 +263,7 @@ export function MtmTaskQuickAdd({
               >
                 {selected ? (
                   <>
-                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-800 dark:bg-orange-500/20 dark:text-orange-200">{initials(selected.name)}</span>
+                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-card text-xs font-bold text-foreground dark:border-zinc-600">{initials(selected.name)}</span>
                     <span className="truncate font-medium">{selected.name}</span>
                   </>
                 ) : <span className="text-muted-foreground">{t("whoPlaceholder")}</span>}
@@ -313,7 +313,7 @@ export function MtmTaskQuickAdd({
                         className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2 py-2", index === active && "bg-muted")}
                         data-testid={`mtm-task-quick-option-${agent.id}`}
                       >
-                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-800 dark:bg-orange-500/20 dark:text-orange-200">{initials(agent.name)}</span>
+                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-card text-xs font-bold text-foreground dark:border-zinc-600">{initials(agent.name)}</span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-semibold"><Highlighted name={agent.name} query={query} /></span>
                           <span className="block truncate text-xs text-muted-foreground">{[agent.team?.name, statusOf(agent)].filter(Boolean).join(" · ")}</span>
