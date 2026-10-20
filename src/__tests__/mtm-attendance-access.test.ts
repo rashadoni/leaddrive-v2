@@ -227,6 +227,21 @@ describe("attendance switch can only be changed by an administrator", () => {
     expect(writeMtmAudit).not.toHaveBeenCalled()
   })
 
+  // Neither switch is in «Что может агент» since 2026-10-20 (a field agent is
+  // outside HR accounting), so its admin-only list no longer names them. The
+  // settings API refuses them by itself.
+  it.each([
+    [{ attendanceEnabled: true }],
+    [{ attendanceBranchQrEnabled: true }],
+    [{ attendanceBranchQrEnabled: false }],
+  ])("refuses a manager's %j outright, outside the agent matrix's admin-only list", async (change) => {
+    caller("manager", MANAGER)
+    const response = await updateSettings(put({ ...change, maxPhotosPerVisit: 12 }))
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ code: "MTM_ATTENDANCE_ADMIN_REQUIRED" })
+    expect(prisma.mtmSetting.upsert).not.toHaveBeenCalled()
+  })
+
   it("continues ignoring older protected switches when a manager saves an allowed setting", async () => {
     caller("manager", MANAGER)
     const response = await updateSettings(put({ fieldContactsEnabled: false, pharmacyPromotionsEnabled: false, maxPhotosPerVisit: 12 }))

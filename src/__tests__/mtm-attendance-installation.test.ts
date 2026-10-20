@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma"
 import { enforceAttendanceInstallationApproval } from "@/lib/mtm/attendance-installation-policy"
 import { AttendanceInstallationDecisionSchema, AttendanceInstallationRequestSchema, attendanceInstallationState } from "@/lib/mtm/attendance-installation-contract"
 import { readOwnAttendanceInstallation, submitAttendanceInstallation } from "@/lib/mtm/attendance-installation-store"
-import { agentPermissionStates } from "@/lib/mtm/agent-permissions"
 import type { Prisma } from "@prisma/client"
 
 const scope = { organizationId: "fictional-installation-org", agentId: "fictional-installation-employee" }
@@ -73,10 +72,6 @@ describe("installation approval boundaries", () => {
     expect(AttendanceInstallationRequestSchema.safeParse({ requestId: randomUUID(), latitude: 40 }).success).toBe(false)
     expect(AttendanceInstallationDecisionSchema.safeParse({ requestId: randomUUID(), action: "APPROVE", reason: " " }).success).toBe(false)
     expect(AttendanceInstallationDecisionSchema.safeParse({ requestId: randomUUID(), action: "REVOKE", reason: "Fictional replacement" }).success).toBe(true)
-  })
-  it("keeps the old bootstrap shape when attendance is disabled", () => {
-    expect(agentPermissionStates({ attendanceEnabled: false })).not.toHaveProperty("attendanceInstallation")
-    expect(agentPermissionStates({ attendanceEnabled: true })).toHaveProperty("attendanceInstallation", true)
   })
   it("projects a revocation ahead of the original approval", () => {
     expect(attendanceInstallationState(null)).toBe("NOT_REQUESTED")
