@@ -1,4 +1,5 @@
 import { calculateDistance } from "@/lib/geo-utils"
+import { mtmWorkdayPausesBetween } from "@/lib/mtm/workday-pauses"
 
 export const LOCATION_HISTORY_DISTANCE_FORMULA = "haversine-driving-v2"
 export const LOCATION_HISTORY_MAX_RAW_POINTS = 5_001
@@ -203,6 +204,15 @@ function overlapSeconds(aFrom: number, aTo: number, bFrom: number, bTo: number):
  * break, and a real outage no longer stands out among them. The workday's own
  * PAUSE/RESUME events are the evidence — the app stops tracking on pause by
  * design, so the silence is expected, dated and explainable.
+ *
+ * A break is a gap however short it is. Until 2026-10-20 only a silence
+ * longer than the threshold (five minutes by default) could be one, so a
+ * four-minute break got no «Перерыв» row, was counted inside «В пути», and
+ * the track joined the point where he paused to the point where he resumed —
+ * the way he went in his own time. Now a break taken between two fixes is a
+ * gap of its own whatever the threshold. The silence it does not explain
+ * must still be no longer than the threshold: an hour without a fix around a
+ * four-minute break is a lost signal, and stays one.
  */
 export function detectHistoryGaps(
   points: HistoryLocationPoint[],
@@ -210,19 +220,23 @@ export function detectHistoryGaps(
   pauses: readonly HistoryPauseInterval[] = [],
 ): HistoryGap[] {
   const gaps: HistoryGap[] = []
+  const breaks = pauses.map((pause) => ({ from: pause.startedAt, to: pause.endedAt }))
   for (let index = 1; index < points.length; index += 1) {
     const durationSeconds = Math.floor(
       (points[index].recordedAt.getTime() - points[index - 1].recordedAt.getTime()) / 1_000,
     )
-    if (durationSeconds > gapThresholdSeconds) {
+    const between = mtmWorkdayPausesBetween(points[index - 1].recordedAt, points[index].recordedAt, breaks)
+    if (durationSeconds > gapThresholdSeconds || between.length > 0) {
       const from = points[index - 1].recordedAt.getTime()
       const to = points[index].recordedAt.getTime()
-      const paused = pauses.some((pause) => overlapSeconds(
-        from,
-        to,
-        pause.startedAt.getTime(),
-        pause.endedAt ? pause.endedAt.getTime() : to,
-      ) >= durationSeconds * PAUSE_EXPLAINS_GAP_SHARE)
+      const breakSeconds = between.reduce((sum, pause) => sum + ((pause.to as Date).getTime() - pause.from.getTime()) / 1_000, 0)
+      const paused = (between.length > 0 && durationSeconds - breakSeconds <= gapThresholdSeconds)
+        || pauses.some((pause) => overlapSeconds(
+          from,
+          to,
+          pause.startedAt.getTime(),
+          pause.endedAt ? pause.endedAt.getTime() : to,
+        ) >= durationSeconds * PAUSE_EXPLAINS_GAP_SHARE)
       gaps.push({
         id: `gap-${points[index - 1].id}-${points[index].id}`,
         startedAt: points[index - 1].recordedAt,

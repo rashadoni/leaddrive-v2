@@ -48,6 +48,24 @@ describe("cutting a day into traces", () => {
   it("drops a repeated second — OSRM refuses timestamps that do not increase", () => {
     expect(buildMatchChunks([fix(0), fix(0, 40.41), fix(30)])[0]).toHaveLength(2)
   })
+
+  // Verification of 2026-10-20: a four-minute break is far from the ten
+  // minutes that cut a trace, so the road was matched from where he paused
+  // to where he resumed — the way he went in his own time.
+  it("cuts the trace at a break between two fixes, however short — and only there", () => {
+    const day = [fix(0), fix(30), fix(60), fix(60 + 270), fix(60 + 300), fix(60 + 330)]
+    const lunch = { from: at(65), to: at(60 + 265) }
+    expect(buildMatchChunks(day, MATCH_CHUNK_SIZE, [lunch]).map((chunk) => chunk.map((point) => point.recordedAt))).toEqual([
+      [at(0), at(30), at(60)],
+      [at(60 + 270), at(60 + 300), at(60 + 330)],
+    ])
+    // Without it the day is one stretch. A break still running has no fix after
+    // it, and one with a fix inside it (data from before breaks refused fixes)
+    // is not between two fixes: neither cuts anything.
+    expect(buildMatchChunks(day).map((chunk) => chunk.length)).toEqual([6])
+    expect(buildMatchChunks(day, MATCH_CHUNK_SIZE, [{ from: at(65), to: null }]).map((chunk) => chunk.length)).toEqual([6])
+    expect(buildMatchChunks(day, MATCH_CHUNK_SIZE, [{ from: at(10), to: at(40) }]).map((chunk) => chunk.length)).toEqual([6])
+  })
 })
 
 describe("the OSRM request and answer", () => {
@@ -229,7 +247,7 @@ describe("the history map", () => {
   const route = readFileSync("src/app/api/v1/mtm/location-history/route.ts", "utf8")
 
   it("counts and draws the roads on the full accepted track, and draws them only whole", () => {
-    expect(route).toContain("const road = rawTruncated ? null : await matchRoads(prepared.points).catch(() => null)")
+    expect(route).toContain("const road = rawTruncated ? null : await matchRoads(prepared.points, { breaks: workdayBreaks }).catch(() => null)")
     expect(route).toContain("const distanceMeters = rawTruncated ? null : drivingDistanceMeters(prepared.points, road?.stepMeters)")
     expect(route).toContain("roadSteps: road?.stepMeters,")
     expect(route).toContain("const matchedTrack = road?.complete && road.segments.length")

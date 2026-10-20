@@ -119,6 +119,30 @@ export function isDuringMtmWorkdayPause(moment: Date, pauses: readonly MtmWorkda
 }
 
 /**
+ * The breaks taken between two consecutive fixes: begun at or after the
+ * earlier one and over by the later one, so nothing was recorded inside them.
+ * The edges are work, as for isDuringMtmWorkdayPause — a fix at the very
+ * second of PAUSE comes before the break, one at RESUME after it. A break
+ * still running has nothing after it and is never between two fixes.
+ *
+ * However short the silence around it, such a break is the employee's own
+ * time: the day's path is cut there, and what lies across it is not drawn.
+ */
+export function mtmWorkdayPausesBetween(
+  earlier: Date,
+  later: Date,
+  pauses: readonly MtmWorkdayPause[],
+): MtmWorkdayPause[] {
+  const from = earlier.getTime()
+  const to = later.getTime()
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return []
+  return pauses.filter((pause) => pause.to !== null
+    && pause.from.getTime() >= from
+    && pause.to.getTime() <= to
+    && pause.to.getTime() > pause.from.getTime())
+}
+
+/**
  * When the latest break that is over ended — the moment from which a point
  * is again a position at work (isMtmPositionHeldByBreak in mtm-types.ts).
  * A break still running has no end and is not counted; null when no break

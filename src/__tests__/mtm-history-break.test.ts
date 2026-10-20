@@ -52,6 +52,8 @@ import LocationHistoryMap from "@/components/mtm/location-history-map"
 import { buildDayTrip } from "@/lib/mtm/day-trip"
 import { detectHistoryGaps, detectHistoryStops, type HistoryLocationPoint } from "@/lib/mtm/location-history"
 import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
+import { matchRoads, resetMapMatchingState } from "@/lib/mtm/map-matching"
+import { mtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
 
 const DAY = "2026-10-20"
 const at = (clock: string) => new Date(`${DAY}T${clock}:00.000Z`)
@@ -181,5 +183,97 @@ describe("a break in the day's path", () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  // Verification of 2026-10-20: a break no longer than the gap threshold
+  // (five minutes by default) was no gap at all. The day read «В пути» across
+  // it, and both the track and the line along the streets joined where he
+  // paused to where he resumed. The day goes through the history API's own
+  // steps, in its order (the route itself is run in api-mtm-location-history):
+  // the journal's breaks, the road server, the gaps, the trip.
+  it("of four minutes: its own «Перерыв» row, and no line of the map crosses it", async () => {
+    const utc = (clock: string) => new Date(`${DAY}T${clock}.000Z`)
+    const fixes = [
+      ...track("05:00", "05:30", HOME, PHARMACY),
+      ...track("05:34", "06:00", CAFE_STREET, CLINIC),
+    ]
+    // «Перерыв» at 05:30:05, «Продолжить» at 05:33:55: no fix in between, as the server takes none.
+    const breaks = mtmWorkdayPauses([
+      { type: "START", occurredAt: utc("05:00:00") },
+      { type: "PAUSE", occurredAt: utc("05:30:05") },
+      { type: "RESUME", occurredAt: utc("05:33:55") },
+      { type: "FINISH", occurredAt: utc("06:00:00") },
+    ])
+    // The road server matches every stretch it is asked for into one line through its fixes.
+    resetMapMatchingState()
+    const osrm = vi.fn(async (input: string | URL) => {
+      const url = String(input)
+      if (url.includes("/route/v1/")) return Response.json({ code: "Ok", routes: [{ distance: 2_000 }] })
+      const coordinates = url.split("/match/v1/driving/")[1].split("?")[0].split(";").map((pair) => pair.split(",").map(Number))
+      return Response.json({
+        code: "Ok",
+        matchings: [{ geometry: { coordinates }, legs: coordinates.slice(1).map(() => ({ distance: 100 })) }],
+        tracepoints: coordinates.map((_, index) => ({ matchings_index: 0, waypoint_index: index })),
+      })
+    })
+    const road = await matchRoads(fixes, { baseUrl: "http://osrm.test", fetchImpl: osrm as unknown as typeof fetch, breaks })
+    resetMapMatchingState()
+    const gaps = detectHistoryGaps(fixes, 300, breaks.map((pause) => ({ startedAt: pause.from, endedAt: pause.to })))
+    const stops = detectHistoryStops({ points: fixes, visits: [], radiusMeters: 50, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
+    const trip = buildDayTrip({ points: fixes, stops, visits: [], gaps, workday: { startedAt: utc("05:00:00"), completedAt: utc("06:00:00") }, roadSteps: road?.stepMeters })
+    // As the page receives them: over JSON.
+    const data = JSON.parse(JSON.stringify({ points: fixes, gaps, trip, matchedTrack: road?.complete ? { segments: road.segments } : null })) as {
+      trip: DayTripData
+      points: ReturnType<typeof day>["points"]
+      gaps: ReturnType<typeof day>["gaps"]
+      matchedTrack: { segments: Array<Array<[number, number]>> } | null
+    }
+    expect(data.matchedTrack?.segments.length).toBeGreaterThan(0)
+
+    // The ledger: «Перерыв 4 мин» between two drives (the clock here is UTC), and nothing to press.
+    const focused: Array<DayTripFocus | null> = []
+    await render(createElement(DayTripLedger, {
+      trip: data.trip, multiDay: false, focusId: null, onFocus: (focus: DayTripFocus | null) => focused.push(focus),
+      formatMoment: (value: string) => value.slice(11, 16),
+      formatDuration: (seconds: number) => `${Math.round(seconds / 60)} мин`,
+    }))
+    const rows = [...container.querySelectorAll("li")]
+    expect(rows.map((row) => row.querySelector(".font-medium")?.textContent)).toEqual([
+      "Начал день", "В пути", "Перерыв", "В пути", "Закрыл день",
+    ])
+    const breakRow = rows[2]
+    expect(breakRow.textContent).toBe("Перерыв4 мин05:30–05:34")
+    expect(breakRow.querySelector("button, a, [tabindex], [role='button']")).toBeNull()
+    await act(async () => { (breakRow.querySelector("span") as HTMLElement).click() })
+    expect(focused).toEqual([])
+    expect(data.trip.summary).toMatchObject({ movingSeconds: 60 * 60 - 4 * 60, pausedSeconds: 4 * 60, unknownSeconds: 0 })
+
+    // The map: the straight track and the line along the streets, both cut at the break; no red line for it.
+    await act(async () => { root.unmount() })
+    root = createRoot(container)
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    try {
+      await render(createElement(LocationHistoryMap, {
+        points: data.points, stops: [], visits: [], workday: null, plannedRoutes: [], gaps: data.gaps,
+        layers: { planned: true, actual: true, stops: true, visits: true, gaps: true, roads: true },
+        locale: "ru", timezone: "UTC", playbackIndex: data.points.length - 1, matchedTrack: data.matchedTrack,
+      }))
+      await act(async () => { await vi.advanceTimersByTimeAsync(150) })
+    } finally {
+      vi.useRealTimers()
+    }
+    const lines = (color: string) => [...container.querySelectorAll<HTMLElement>(`[data-line="${color}"]`)]
+      .map((line) => JSON.parse(line.dataset.positions ?? "[]") as Array<[number, number]>)
+    const at0930 = data.points.find((point) => point.recordedAt === `${DAY}T05:30:00.000Z`)!
+    const at0934 = data.points.find((point) => point.recordedAt === `${DAY}T05:34:00.000Z`)!
+    const near = (a: [number, number], b: { latitude: number; longitude: number }) =>
+      Math.abs(a[0] - b.latitude) < 1e-6 && Math.abs(a[1] - b.longitude) < 1e-6
+    const crosses = (run: Array<[number, number]>) => run.some((point, index) => index > 0 && near(run[index - 1], at0930) && near(point, at0934))
+    const roads = lines(HISTORY_MAP_COLORS.track)
+    const straight = lines(HISTORY_MAP_COLORS.raw)
+    expect(roads.length).toBeGreaterThan(0)
+    expect(straight).toHaveLength(2)
+    expect([...roads, ...straight].some(crosses)).toBe(false)
+    expect(lines(HISTORY_MAP_COLORS.gap)).toEqual([])
   })
 })

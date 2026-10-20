@@ -349,11 +349,6 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     maxAccuracyMeters,
   )
   const rawTruncated = rawLocations.length === rawLimit
-  // Kilometres and the drawn track along the roads, from the self-hosted OSRM
-  // (map-matching.ts), on the full accepted track; the rule for what counts
-  // is road-distance.ts. Without an answer: straight lines, as before.
-  const road = rawTruncated ? null : await matchRoads(prepared.points).catch(() => null)
-  const distanceMeters = rawTruncated ? null : drivingDistanceMeters(prepared.points, road?.stepMeters)
   const gapThresholdSeconds = Math.max(settings.offlineThresholdSeconds, settings.gpsInterval * 3)
   /**
    * The workday's own breaks, so a break is not reported as a telemetry
@@ -385,10 +380,17 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     list.push(event)
     eventsByWorkday.set(event.workdayId, list)
   }
-  const pauses: HistoryPauseInterval[] = [...eventsByWorkday.values()]
+  const workdayBreaks = [...eventsByWorkday.values()]
     .flatMap((events) => mtmWorkdayPauses(events))
-    .map((pause) => ({ startedAt: pause.from, endedAt: pause.to }))
-    .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime())
+    .sort((a, b) => a.from.getTime() - b.from.getTime())
+  const pauses: HistoryPauseInterval[] = workdayBreaks.map((pause) => ({ startedAt: pause.from, endedAt: pause.to }))
+  // Kilometres and the drawn track along the roads, from the self-hosted OSRM
+  // (map-matching.ts), on the full accepted track; the rule for what counts
+  // is road-distance.ts. Without an answer: straight lines, as before. Read
+  // after the breaks: the road is not matched across one, so the line along
+  // the streets is cut where the straight track is (detectHistoryGaps).
+  const road = rawTruncated ? null : await matchRoads(prepared.points, { breaks: workdayBreaks }).catch(() => null)
+  const distanceMeters = rawTruncated ? null : drivingDistanceMeters(prepared.points, road?.stepMeters)
   const gaps = detectHistoryGaps(prepared.points, gapThresholdSeconds, pauses)
   const stops = detectHistoryStops({
     points: prepared.points,

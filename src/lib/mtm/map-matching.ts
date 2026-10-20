@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { mtmWorkdayPausesBetween, type MtmWorkdayPause } from "@/lib/mtm/workday-pauses"
 
 /**
  * The day's GPS track along the streets (owner 2026-09-27: «отличная идея,
@@ -66,21 +67,33 @@ const epochSeconds = (value: Date | string) => Math.floor(new Date(value).getTim
  * Indices of the fixes to match: runs split where the phone was silent,
  * with strictly increasing timestamps (OSRM refuses a repeated second), cut
  * to the request size with one shared fix so the stretches join.
+ *
+ * A run is also cut at every break taken between two fixes, however short:
+ * matched as one stretch, OSRM drew the road from where he paused to where
+ * he resumed — which way he went in his own time (workday-pauses.ts).
  */
-function buildIndexedTraces(points: readonly MatchPoint[], chunkSize: number): { runs: number[][]; chunks: number[][] } {
+function buildIndexedTraces(
+  points: readonly MatchPoint[],
+  chunkSize: number,
+  breaks: readonly MtmWorkdayPause[] = [],
+): { runs: number[][]; chunks: number[][] } {
   const runs: number[][] = []
   let run: number[] = []
   let lastSecond = Number.NEGATIVE_INFINITY
+  let lastAt: Date | null = null
   points.forEach((point, index) => {
     const second = epochSeconds(point.recordedAt)
     if (!Number.isFinite(second) || !Number.isFinite(point.latitude) || !Number.isFinite(point.longitude)) return
     if (second <= lastSecond) return
-    if (run.length && second - lastSecond > MATCH_SPLIT_GAP_SECONDS) {
+    const at = new Date(point.recordedAt)
+    if (run.length && (second - lastSecond > MATCH_SPLIT_GAP_SECONDS
+      || (lastAt && breaks.length > 0 && mtmWorkdayPausesBetween(lastAt, at, breaks).length > 0))) {
       runs.push(run)
       run = []
     }
     run.push(index)
     lastSecond = second
+    lastAt = at
   })
   if (run.length) runs.push(run)
 
@@ -94,8 +107,12 @@ function buildIndexedTraces(points: readonly MatchPoint[], chunkSize: number): {
   return { runs, chunks }
 }
 
-export function buildMatchChunks(points: readonly MatchPoint[], chunkSize = MATCH_CHUNK_SIZE): MatchPoint[][] {
-  return buildIndexedTraces(points, chunkSize).chunks.map((chunk) => chunk.map((index) => points[index]))
+export function buildMatchChunks(
+  points: readonly MatchPoint[],
+  chunkSize = MATCH_CHUNK_SIZE,
+  breaks: readonly MtmWorkdayPause[] = [],
+): MatchPoint[][] {
+  return buildIndexedTraces(points, chunkSize, breaks).chunks.map((chunk) => chunk.map((index) => points[index]))
 }
 
 export function osrmMatchUrl(baseUrl: string, chunk: readonly MatchPoint[]): string {
@@ -220,10 +237,20 @@ function hashKey(parts: string[]): string {
  * The track along the streets and the metres along them, for the points as
  * given (stepMeters is aligned with them). Null only where there is no OSRM
  * to ask, it is cooling down after a failure, or there is nothing to match.
+ *
+ * `breaks`: the employee's breaks, from the one reader of the workday journal
+ * (workday-pauses.ts). The road is not matched across one; the step over it
+ * is counted as over any other silence — the shortest road between the fixes.
  */
 export async function matchRoads(
   points: readonly MatchPoint[],
-  options: { baseUrl?: string | null; fetchImpl?: typeof fetch; now?: () => number; deadlineMs?: number } = {},
+  options: {
+    baseUrl?: string | null
+    fetchImpl?: typeof fetch
+    now?: () => number
+    deadlineMs?: number
+    breaks?: readonly MtmWorkdayPause[]
+  } = {},
 ): Promise<RoadMatch | null> {
   const baseUrl = options.baseUrl === undefined ? mapMatchingBaseUrl() : options.baseUrl
   if (!baseUrl || points.length < 2) return null
@@ -232,7 +259,7 @@ export async function matchRoads(
   const fetchImpl = options.fetchImpl ?? fetch
   const deadline = now() + (options.deadlineMs ?? DEFAULT_DEADLINE_MS)
 
-  const { runs, chunks } = buildIndexedTraces(points, MATCH_CHUNK_SIZE)
+  const { runs, chunks } = buildIndexedTraces(points, MATCH_CHUNK_SIZE, options.breaks)
   const stepMeters: Array<number | null> = Array(points.length).fill(null)
   const matched: boolean[] = Array(points.length).fill(false)
   const chunkAnswers: Array<ChunkAnswer | null> = Array(chunks.length).fill(null)

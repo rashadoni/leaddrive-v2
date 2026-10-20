@@ -4,8 +4,10 @@ import {
   MTM_WORKDAY_PAUSE_EVENT_TYPES,
   mtmLastBreakEndedAt,
   mtmWorkdayPauses,
+  mtmWorkdayPausesBetween,
   serializeMtmWorkdayPauses,
 } from "@/lib/mtm/workday-pauses"
+import { detectHistoryGaps, type HistoryLocationPoint } from "@/lib/mtm/location-history"
 
 const at = (hhmm: string) => new Date(`2026-09-08T${hhmm}:00.000Z`)
 
@@ -229,5 +231,55 @@ describe("when the latest break ended", () => {
       { type: "RESUME", occurredAt: at("12:30") },
       { type: "PAUSE", occurredAt: at("15:00") },
     ]))).toEqual(at("12:30"))
+  })
+})
+
+// The day's path is cut at every break taken between two fixes, however short
+// (verification of 2026-10-20: a four-minute break was no gap at all).
+describe("the breaks between two fixes", () => {
+  const second = (hhmmss: string) => new Date(`2026-09-08T${hhmmss}.000Z`)
+  const lunch = { from: second("13:05:05"), to: second("13:08:55") }
+
+  it("are those begun at or after the earlier fix and over by the later — the edges are work", () => {
+    expect(mtmWorkdayPausesBetween(second("13:05:00"), second("13:09:00"), [lunch])).toEqual([lunch])
+    // A fix at the very second of PAUSE, and one at RESUME: still between them.
+    expect(mtmWorkdayPausesBetween(second("13:05:05"), second("13:08:55"), [lunch])).toEqual([lunch])
+    // A fix inside the break (data from before such fixes were refused): not between.
+    expect(mtmWorkdayPausesBetween(second("13:05:00"), second("13:07:00"), [lunch])).toEqual([])
+    expect(mtmWorkdayPausesBetween(second("13:07:00"), second("13:09:00"), [lunch])).toEqual([])
+    // A break still running has nothing after it.
+    expect(mtmWorkdayPausesBetween(second("13:05:00"), second("13:09:00"), [{ from: lunch.from, to: null }])).toEqual([])
+    expect(mtmWorkdayPausesBetween(second("13:09:00"), second("13:05:00"), [lunch])).toEqual([])
+  })
+
+  describe("as the day's gaps", () => {
+    let sequence = 0
+    const fix = (hhmmss: string): HistoryLocationPoint => ({
+      id: `p${sequence++}`, latitude: 40.4 + sequence * 0.001, longitude: 49.8, accuracy: 8, speed: null, heading: null,
+      battery: 80, isMoving: true, recordedAt: second(hhmmss), workdayId: "w1",
+    })
+    const pause = (from: string, to: string) => ({ startedAt: second(from), endedAt: second(to) })
+    const said = (points: HistoryLocationPoint[], pauses: Array<{ startedAt: Date; endedAt: Date | null }>) =>
+      detectHistoryGaps(points, 300, pauses).map((gap) => [gap.reason, gap.durationSeconds])
+
+    it("make a four-minute break a gap of its own, under the five minutes that make a silence one", () => {
+      expect(said([fix("13:04:30"), fix("13:05:00"), fix("13:09:00"), fix("13:09:30")], [pause("13:05:05", "13:08:55")]))
+        .toEqual([["WORKDAY_PAUSED", 240]])
+      // The same silence with no break pressed is no gap, as before.
+      expect(said([fix("13:04:30"), fix("13:05:00"), fix("13:09:00"), fix("13:09:30")], [])).toEqual([])
+    })
+
+    it("call it a break while what it leaves unexplained is no longer than the threshold — and a lost signal beyond that", () => {
+      // Six minutes without a fix, four of them a break: the two left over would be no gap on their own.
+      expect(said([fix("13:00:00"), fix("13:06:00")], [pause("13:01:00", "13:05:00")])).toEqual([["WORKDAY_PAUSED", 360]])
+      // An hour without a fix around a four-minute break: a lost signal, not a break.
+      expect(said([fix("13:00:00"), fix("14:00:00")], [pause("13:30:00", "13:34:00")])).toEqual([["TELEMETRY_GAP", 3_600]])
+    })
+
+    it("cut nothing between fixes recorded inside a break", () => {
+      // Every half minute, through the break: no pair of fixes has the break between them.
+      const through = ["13:04:30", "13:05:00", "13:05:30", "13:06:00", "13:06:30", "13:07:00"].map(fix)
+      expect(said(through, [pause("13:05:10", "13:06:50")])).toEqual([])
+    })
   })
 })

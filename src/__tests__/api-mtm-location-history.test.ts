@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
 vi.mock("@/lib/prisma", async () => {
@@ -19,6 +19,8 @@ import { GET } from "@/app/api/v1/mtm/location-history/route"
 import { prisma } from "@/lib/prisma"
 import { requireAuth } from "@/lib/api-auth"
 import { writeMtmAudit } from "@/lib/mtm-audit"
+import { resetMapMatchingState } from "@/lib/mtm/map-matching"
+import { splitHistoryPathAtGaps } from "@/lib/mtm/history-path"
 
 const ORG = "org-1"
 const admin = {
@@ -460,6 +462,117 @@ describe("GET /api/v1/mtm/location-history", () => {
     // And the day's legs say the same: one «Перерыв», on the 21st, forty minutes.
     const breaks = body.data.trip.entries.filter((entry: { kind: string; reason?: string }) => entry.kind === "GAP" && entry.reason === "WORKDAY_PAUSED")
     expect(breaks.map((entry: { startedAt: string; durationSeconds: number }) => [entry.startedAt, entry.durationSeconds])).toEqual([["2026-09-21T08:00:00.000Z", 40 * 60]])
+  })
+
+  // Verification of 2026-10-20: only a silence longer than the gap threshold
+  // (five minutes) could be a gap, so a four-minute break got no «Перерыв»
+  // row, was counted inside «В пути», and both the straight track and the
+  // line along the streets joined the point where he paused to the point
+  // where he resumed — 1.6 km of his own time, drawn.
+  describe("a break shorter than the gap threshold", () => {
+    const utc = (clock: string) => new Date(`2026-10-20T${clock}.000Z`)
+    let sequence = 0
+    const leg = (from: string, to: string, start: [number, number], end: [number, number]) => {
+      const t0 = utc(from).getTime()
+      const t1 = utc(to).getTime()
+      const steps = Math.round((t1 - t0) / 30_000)
+      return Array.from({ length: steps + 1 }, (_, index) => ({
+        id: `loc-${String(sequence++).padStart(4, "0")}`,
+        latitude: start[0] + (end[0] - start[0]) * index / steps,
+        longitude: start[1] + (end[1] - start[1]) * index / steps,
+        accuracy: 8, speed: 40, heading: null, battery: 80, isMoving: true,
+        recordedAt: new Date(t0 + (t1 - t0) * index / steps), workdayId: "wd-1",
+      }))
+    }
+    // 09:00–10:00 Baku. Drove until 09:30:00, pressed «Перерыв» at 09:30:05,
+    // went about 1.6 km, pressed «Продолжить» at 09:34:25; the first fix after it at 09:34:30.
+    const fixes = [
+      ...leg("05:00:00", "05:30:00", [40.38, 49.83], [40.43, 49.87]),
+      ...leg("05:34:30", "06:00:00", [40.445, 49.885], [40.41, 49.93]),
+    ]
+    const journal = [
+      { workdayId: "wd-1", type: "START", occurredAt: utc("05:00:00"), appliedAt: utc("05:00:00") },
+      { workdayId: "wd-1", type: "PAUSE", occurredAt: utc("05:30:05"), appliedAt: utc("05:30:05") },
+      { workdayId: "wd-1", type: "RESUME", occurredAt: utc("05:34:25"), appliedAt: utc("05:34:25") },
+      { workdayId: "wd-1", type: "FINISH", occurredAt: utc("06:00:00"), appliedAt: utc("06:00:00") },
+    ]
+    /** The road server: matches every stretch it is asked for into one line through its fixes, and routes a silence as 2 km. */
+    const osrm = vi.fn(async (input: string | URL) => {
+      const url = String(input)
+      if (url.includes("/route/v1/")) return Response.json({ code: "Ok", routes: [{ distance: 2_000 }] })
+      const coordinates = url.split("/match/v1/driving/")[1].split("?")[0].split(";").map((pair) => pair.split(",").map(Number) as [number, number])
+      return Response.json({
+        code: "Ok",
+        matchings: [{ geometry: { coordinates }, legs: coordinates.slice(1).map(() => ({ distance: 100 })) }],
+        tracepoints: coordinates.map((_, index) => ({ matchings_index: 0, waypoint_index: index })),
+      })
+    })
+
+    beforeEach(() => {
+      resetMapMatchingState()
+      osrm.mockClear()
+      vi.stubEnv("MTM_MAP_MATCHING_URL", "http://osrm.test")
+      vi.stubGlobal("fetch", osrm)
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", name: "Anar", role: "AGENT", team: null } as never)
+      vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+      vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
+      vi.mocked(prisma.mtmAgentLocation.findMany).mockResolvedValue(fixes as never)
+      vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
+        id: "wd-1", status: "COMPLETED", startedAt: utc("05:00:00"), pausedAt: null, completedAt: utc("06:00:00"),
+        totalPausedSeconds: 260, startLatitude: null, startLongitude: null, endLatitude: null, endLongitude: null,
+      } as never)
+      // The journal, answering the route's own question: the event types it asks for.
+      vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockImplementation((async (args: { where: { type?: { in: string[] } } }) =>
+        journal.filter((event) => !args.where.type || args.where.type.in.includes(event.type))) as never)
+    })
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      vi.unstubAllGlobals()
+      resetMapMatchingState()
+    })
+
+    it("is a «Перерыв» of its own, counted apart from «В пути», and neither line is drawn across it", async () => {
+      const response = await GET(request("?agentId=agent-1&date=2026-10-20"))
+      expect(response.status).toBe(200)
+      const { data } = await response.json()
+      expect(data.policy.gapThresholdSeconds).toBe(300)
+
+      // The silence around the break: 09:30:00 to 09:34:30, four and a half minutes.
+      expect(data.gaps.map((gap: { reason: string; startedAt: string; endedAt: string; durationSeconds: number }) =>
+        [gap.reason, gap.startedAt, gap.endedAt, gap.durationSeconds])).toEqual([
+        ["WORKDAY_PAUSED", "2026-10-20T05:30:00.000Z", "2026-10-20T05:34:30.000Z", 270],
+      ])
+      expect(data.summary).toMatchObject({ pausedGapCount: 1, gapCount: 0, anomalyCount: 0 })
+
+      // The day's legs: drove, «Перерыв», drove — the break is not inside «В пути».
+      const legs = data.trip.entries.map((entry: { kind: string; reason?: string; startedAt?: string; durationSeconds?: number }) =>
+        entry.kind === "GAP" ? [entry.kind, entry.reason, entry.startedAt, entry.durationSeconds] : [entry.kind])
+      expect(legs).toEqual([
+        ["START"], ["MOVE"], ["GAP", "WORKDAY_PAUSED", "2026-10-20T05:30:00.000Z", 270], ["MOVE"], ["END"],
+      ])
+      expect(data.trip.summary).toMatchObject({ movingSeconds: 3_600 - 270, pausedSeconds: 270, unknownSeconds: 0 })
+
+      const paused = [fixes.find((fix) => fix.recordedAt.getTime() === utc("05:30:00").getTime())!]
+        .map((fix) => [fix.latitude, fix.longitude] as [number, number])[0]
+      const resumed = [fixes.find((fix) => fix.recordedAt.getTime() === utc("05:34:30").getTime())!]
+        .map((fix) => [fix.latitude, fix.longitude] as [number, number])[0]
+      const same = (a: [number, number], b: [number, number]) => Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6
+      const joins = (run: Array<[number, number]>) => run.some((point, index) => index > 0 && same(run[index - 1], paused) && same(point, resumed))
+
+      // The straight track, as the page draws it from this answer: two pieces, cut at the break.
+      const straight = splitHistoryPathAtGaps(data.points, data.gaps)
+      expect(straight).toHaveLength(2)
+      expect(straight.some(joins)).toBe(false)
+
+      // The line along the streets: no stretch the road server is asked to
+      // match holds both sides of the break, so none of its lines joins them.
+      const coordinate = (point: [number, number]) => `${point[1].toFixed(6)},${point[0].toFixed(6)}`
+      const matched = osrm.mock.calls.map(([url]) => String(url)).filter((url) => url.includes("/match/v1/"))
+      expect(matched.length).toBeGreaterThan(0)
+      expect(matched.some((url) => url.includes(coordinate(paused)) && url.includes(coordinate(resumed)))).toBe(false)
+      expect(data.matchedTrack.segments.length).toBeGreaterThan(0)
+      expect(data.matchedTrack.segments.some(joins)).toBe(false)
+    })
   })
 
   it("refuses a range longer than two weeks or ending before it starts", async () => {
