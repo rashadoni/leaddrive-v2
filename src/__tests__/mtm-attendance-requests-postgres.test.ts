@@ -300,6 +300,56 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
       catalogueVersion: null, unit: "DAYS", startDate: "2027-09-01", endDate: "2027-09-01", reason: "Fictional agent record" }))).rejects.toMatchObject({ status: 403 })
     expect(await tenant(self.organizationId, () => prisma.mtmHrmRequest.count({ where: { agentId: "request-pg-field-agent" } }))).toBe(0)
   })
+  // Owner, 2026-10-20: «у полевого агента всё кадровое убрать совсем» — no
+  // leave, absence or time correction for a field agent, whatever the
+  // Attendance switch says (it is on here). A card that filed a request as
+  // office staff keeps it for HR; as an agent it can neither see, cancel nor
+  // add to it, and no door writes a row.
+  it("refuses a field agent every own-request door with the switch on, writes nothing, and keeps its earlier request", async () => {
+    const moved = "request-pg-moved-to-field"
+    await bypass(() => prisma.mtmAgent.create({ data: { id: moved, organizationId: self.organizationId, name: "Fictional employee moved to the field", role: "EMPLOYEE", attendanceParticipant: true, status: "ACTIVE" } }))
+    const cancelApi = await import("@/app/api/v2/mtm/mobile/route-field/attendance/requests/[id]/route")
+    const uploadApi = await import("@/app/api/v2/mtm/mobile/route-field/attendance/attachments/route")
+    const explanationsApi = await import("@/app/api/v2/mtm/mobile/route-field/attendance/explanations/route")
+    const url = (path: string) => `http://localhost/api/v2/mtm/mobile/route-field/attendance/${path}`
+    const refusal = async (response: Response) => ({ status: response.status, code: (await response.json()).code })
+    const refused = { status: 403, code: "MTM_ATTENDANCE_SELF_REQUIRED" }
+    const rows = () => tenant(self.organizationId, async () => ({
+      requests: await prisma.mtmHrmRequest.findMany({ where: { agentId: moved }, select: { id: true, status: true } }),
+      attachments: await prisma.mtmAttendanceAttachment.count({ where: { agentId: moved } }),
+      audit: await prisma.mtmAuditLog.count({ where: { agentId: moved } }),
+    }))
+    Object.assign(identity, { agentId: moved, role: "EMPLOYEE" })
+    try {
+      const filed = await submit(input("2028-01-10"))
+      expect(filed.status).toBe(201)
+      const requestId = (await filed.json()).data.request.id as string
+      await bypass(() => prisma.mtmAgent.update({ where: { id: moved }, data: { role: "AGENT" } }))
+      identity.role = "AGENT"
+      const before = await rows()
+      expect(before.requests).toEqual([{ id: requestId, status: "PENDING" }])
+
+      const leave = { ...input("2028-01-12"), kind: "ANNUAL_LEAVE", unit: "DAYS", startTime: undefined, endTime: undefined }
+      const correction = { ...input("2028-01-10"), kind: "TIME_CORRECTION", startTime: "09:00", endTime: "18:00" }
+      for (const body of [input("2028-01-11"), leave, correction]) expect(await refusal(await submit(body))).toEqual(refused)
+      expect(await refusal(await api.GET(new NextRequest(url("requests"))))).toEqual(refused)
+      expect(await refusal(await cancelApi.DELETE(new NextRequest(url(`requests/${requestId}`), { method: "DELETE" }), { params: Promise.resolve({ id: requestId }) }))).toEqual(refused)
+      expect(await refusal(await quotaApi.GET(new NextRequest(url("request-limits?month=2028-01"))))).toEqual(refused)
+      expect(await refusal(await uploadApi.POST(new NextRequest(url("attachments"), { method: "POST" })))).toEqual(refused)
+      expect(await refusal(await explanationsApi.GET(new NextRequest(url("explanations"))))).toEqual(refused)
+      const agent = { organizationId: self.organizationId, agentId: moved, role: "AGENT" }
+      const bytes = await sharp({ create: { width: 16, height: 16, channels: 3, background: "white" } }).png().toBuffer()
+      await expect(tenant(self.organizationId, () => photos.uploadAttendanceDocument(agent, { clientRequestId: randomUUID(), clientAttachmentId: randomUUID() }, bytes))).rejects.toMatchObject(refused)
+      await expect(tenant(self.organizationId, () => store.submitAttendanceRequest(agent, input("2028-01-13")))).rejects.toMatchObject(refused)
+
+      // Nothing written, nothing taken away: the earlier request still waits for HR.
+      expect(await rows()).toEqual(before)
+    } finally {
+      Object.assign(identity, { agentId: "request-pg-owner", role: "EMPLOYEE" })
+    }
+    // An employee HR keeps still files, the same moment.
+    expect((await submit(input("2028-02-14"))).status).toBe(201)
+  })
   it("rolls back every HR row and audit when an employee inbox insert fails", async () => {
     const body = { clientRequestId: randomUUID(), agentIds: [self.agentId, "request-pg-colleague"], dayKindKey: "STUDY_LEAVE", catalogueVersion: null,
       unit: "DAYS", startDate: "2027-08-15", endDate: "2027-08-16", reason: "PRIVATE_ATOMIC_HR_REASON" }

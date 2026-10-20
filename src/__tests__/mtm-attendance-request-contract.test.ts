@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest"
 import sharp from "sharp"
 import { AttendanceRequestInputSchema, attendanceRequestMinutes, attendanceRequestWindowsOverlap } from "@/lib/mtm/attendance-request-contract"
 import { prepareAttendanceDocument, attendanceAttachmentPath } from "@/lib/mtm/attendance-attachment"
-import { agentPermissionStates, agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { isMtmMobileApiPath } from "@/lib/mtm/mobile-api-path"
 import { isWithdrawnCrmPath } from "@/lib/crm-product-availability"
 
@@ -27,13 +26,6 @@ describe("attendance request intervals and backward compatibility", () => {
     expect(attendanceRequestWindowsOverlap(left, { ...left, unit: "DAYS" })).toBe(true)
     expect(attendanceRequestWindowsOverlap(left, { ...left, startDate: "2026-10-14", endDate: "2026-10-14" })).toBe(false)
     expect(attendanceRequestMinutes(left)).toBe(60)
-  })
-  it("omits every new bootstrap key until the one attendance switch is explicitly on", () => {
-    for (const value of [undefined, false, "true"] as const) {
-      expect(agentPermissionStates({ attendanceEnabled: value as boolean })).not.toHaveProperty("attendanceRequests")
-      expect(agentPermissionEnabled({ attendanceEnabled: value as boolean }, "attendanceRequests")).toBe(false)
-    }
-    expect(agentPermissionStates({ attendanceEnabled: true })).toHaveProperty("attendanceRequests", true)
   })
   it("admits the authenticated mobile paths at the edge without reviving a withdrawn path", () => {
     for (const path of ["/api/v2/mtm/mobile/route-field/attendance/requests", `/api/v2/mtm/mobile/route-field/attendance/attachments/${randomUUID()}`]) {
