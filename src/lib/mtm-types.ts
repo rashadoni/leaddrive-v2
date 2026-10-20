@@ -256,6 +256,43 @@ export function presentMtmGpsFreshness(
  */
 export const MTM_STATIONARY_MAX_SILENCE_MS = 10 * 60 * 1000
 
+/**
+ * Is this coordinate where the work stopped rather than where he is? Then it
+ * is shown as the last known point (STALE, grey), never as a live position.
+ * A break is the employee's own time (owner's rule) and no point is accepted
+ * during it, so:
+ *
+ *   - his workday is paused: every point he has is from before the break;
+ *   - it was recorded before his latest break ended: he is back at work, but
+ *     the phone has not sent a fix since, and the newest point is still the
+ *     one he left before the break. Drawn live, it would stand him where he
+ *     paused, rank him among «Кто ближе» from there, and the first new fix
+ *     would draw a line from it across the break. A point taken at the very
+ *     second he resumed is the first of the new leg, as GPS ingestion counts
+ *     it (isDuringMtmWorkdayPause).
+ *
+ * When the latest break ended is read off the workday's journal by the
+ * server (src/lib/mtm/live-break-ends.ts), which applies the whole rule to
+ * the freshness it sends; a page knows only the state, and keeps what the
+ * server said (presentMtmGpsFreshness never upgrades a STALE).
+ */
+export function isMtmPositionHeldByBreak(input: {
+  workdayState: LiveMapAgent["workdayState"]
+  recordedAt: Date | string | null | undefined
+  lastBreakEndedAt?: Date | string | null
+}): boolean {
+  if (input.workdayState === "PAUSED") return true
+  if (input.workdayState !== "ACTIVE" || input.recordedAt == null || input.lastBreakEndedAt == null) return false
+  const recordedMs = new Date(input.recordedAt).getTime()
+  const endedMs = new Date(input.lastBreakEndedAt).getTime()
+  return Number.isFinite(recordedMs) && Number.isFinite(endedMs) && recordedMs < endedMs
+}
+
+/** How a coordinate held by a break is shown: as a last known one. No coordinate stays none. */
+export function mtmFreshnessAcrossBreak<F extends MtmGpsFreshness>(freshness: F, heldByBreak: boolean): F | "STALE" {
+  return heldByBreak && freshness !== "NO_LOCATION" ? "STALE" : freshness
+}
+
 export function presentMtmDashboardAgent(
   agent: MtmDashboardAgent,
   thresholds: MtmLiveMapFreshnessThresholds | null | undefined,
@@ -270,7 +307,10 @@ export function presentMtmDashboardAgent(
   // as long as that last point was fresh — ten minutes by default — so the
   // pre-break point stood on the map as a green, then amber marker, and was
   // ranked among «Кто ближе» (the demo clip shows it grey from the start).
-  const freshness: MtmGpsFreshness = agent.workdayState === "PAUSED" && aged !== "NO_LOCATION" ? "STALE" : aged
+  // The server applies the same rule to a point left before a break that has
+  // just ended (isMtmPositionHeldByBreak); its STALE is never upgraded here.
+  const heldByBreak = isMtmPositionHeldByBreak({ workdayState: agent.workdayState, recordedAt: agent.recordedAt })
+  const freshness = mtmFreshnessAcrossBreak(aged, heldByBreak)
   const policy = normalizedThresholds(thresholds)
   const lastSeenAtMs = agent.lastSeenAt ? Date.parse(agent.lastSeenAt) : Number.NaN
   const appPresent = agent.isOnline && Number.isFinite(lastSeenAtMs) &&
@@ -282,7 +322,7 @@ export function presentMtmDashboardAgent(
   const recordedAtMs = agent.recordedAt ? Date.parse(agent.recordedAt) : Number.NaN
   const standingStillKnown = Number.isFinite(recordedAtMs) && nowMs - recordedAtMs <= MTM_STATIONARY_MAX_SILENCE_MS
   // «Стоит N минут» explains a live position; on a break there is none.
-  const forgetStanding = !standingStillKnown || agent.workdayState === "PAUSED"
+  const forgetStanding = !standingStillKnown || heldByBreak
   return {
     ...agent,
     isOnline: appPresent,

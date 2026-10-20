@@ -220,6 +220,55 @@ describe("GET /api/v1/mtm/mobile/manager/locations", () => {
     })
   })
 
+  // The web map shows an employee on a break as the grey point he left
+  // before it (demo clip «Marşrut & Sahə», owner 2026-10-20); the manager's
+  // phone was handed that point as his live position for the first five
+  // minutes of every break, and again just after it.
+  describe("an employee on a break, or just back from one", () => {
+    const NOW = new Date("2026-08-21T10:00:00.000Z")
+    const minutesAgo = (minutes: number) => new Date(NOW.getTime() - minutes * 60_000)
+    const fix = (minutes: number) => ({
+      latitude: 40.4, longitude: 49.8, accuracy: 8, speed: 12, heading: 0, battery: 80, isMoving: true, recordedAt: minutesAgo(minutes),
+    })
+    const employee = (id: string, minutes: number, workdays: unknown[]) => ({
+      id, name: id, role: "AGENT", isOnline: true, lastSeenAt: minutesAgo(minutes), locations: [fix(minutes)], workdays,
+    })
+    const journal = [
+      { workdayId: "wd-back", type: "PAUSE", occurredAt: minutesAgo(30), appliedAt: minutesAgo(30) },
+      { workdayId: "wd-back", type: "RESUME", occurredAt: minutesAgo(2), appliedAt: minutesAgo(2) },
+    ]
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(NOW)
+      vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockImplementation((async (query: {
+        where: { organizationId: string; workdayId: { in: string[] }; type: { in: string[] } }
+      }) => journal.filter((event) => query.where.organizationId === "org-1" &&
+        query.where.workdayId.in.includes(event.workdayId) && query.where.type.in.includes(event.type))) as never)
+    })
+
+    it("hands over no live position — only the timestamped last known one", async () => {
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+        employee("on-break", 1, [{ id: "wd-break", status: "PAUSED", totalPausedSeconds: 0 }]),
+        employee("back-no-fix-yet", 3, [{ id: "wd-back", status: "STARTED", totalPausedSeconds: 28 * 60 }]),
+        employee("back-moving", 1, [{ id: "wd-back", status: "STARTED", totalPausedSeconds: 28 * 60 }]),
+        employee("working", 1, [{ id: "wd-work", status: "STARTED", totalPausedSeconds: 0 }]),
+      ] as never)
+
+      const body = await (await ManagerLocations(request("/api/v1/mtm/mobile/manager/locations"))).json()
+      const byId = Object.fromEntries(body.data.locations.map((row: { id: string }) => [row.id, row]))
+
+      for (const id of ["on-break", "back-no-fix-yet"]) {
+        expect(byId[id]).toMatchObject({ freshness: "STALE", hasLiveLocation: false, location: null, liveLocation: null })
+        expect(byId[id].lastKnownLocation).toMatchObject({ latitude: 40.4, longitude: 49.8 })
+      }
+      for (const id of ["back-moving", "working"]) {
+        expect(byId[id]).toMatchObject({ freshness: "ONLINE", hasLiveLocation: true, location: { latitude: 40.4 } })
+      }
+      // The shift is read to decide this, and none of it goes out.
+      expect(Object.keys(byId["on-break"])).not.toContain("workdays")
+    })
+  })
+
   it("rejects field agents before resolving team scope or querying coordinates", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH, role: "AGENT" } as never)
 

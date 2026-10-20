@@ -8,6 +8,8 @@ import {
   liveMapRouteCacheScopeKey,
   isLiveMapAgentPositionVisible,
   isLiveMapPositionVisible,
+  isMtmPositionHeldByBreak,
+  mtmFreshnessAcrossBreak,
   parseMtmLiveMapContract,
   presentMtmDashboardAgent,
   presentMtmGpsFreshness,
@@ -240,6 +242,27 @@ describe("an employee on a break, as the live map presents him", () => {
   it("keeps what the app itself said: presence is not GPS", () => {
     expect(presentMtmDashboardAgent(onBreak, thresholds, recordedAtMs + 60_000).isOnline).toBe(true)
     expect(presentMtmDashboardAgent(onBreak, thresholds, recordedAtMs + 300_001).isOnline).toBe(false)
+  })
+})
+
+describe("a coordinate a break holds back", () => {
+  const recordedAt = "2026-08-01T12:00:00.000Z"
+  it("is every coordinate of somebody on a break, and one from before his latest break once he is back", () => {
+    expect(isMtmPositionHeldByBreak({ workdayState: "PAUSED", recordedAt })).toBe(true)
+    expect(isMtmPositionHeldByBreak({ workdayState: "ACTIVE", recordedAt, lastBreakEndedAt: "2026-08-01T12:00:01.000Z" })).toBe(true)
+    // The fix taken the very second he resumed is the first of the new leg.
+    expect(isMtmPositionHeldByBreak({ workdayState: "ACTIVE", recordedAt, lastBreakEndedAt: recordedAt })).toBe(false)
+    expect(isMtmPositionHeldByBreak({ workdayState: "ACTIVE", recordedAt, lastBreakEndedAt: "2026-08-01T11:59:59.000Z" })).toBe(false)
+    expect(isMtmPositionHeldByBreak({ workdayState: "ACTIVE", recordedAt, lastBreakEndedAt: null })).toBe(false)
+    // A closed or unstarted day is the workday's own rule, not the break's.
+    expect(isMtmPositionHeldByBreak({ workdayState: "CLOSED", recordedAt, lastBreakEndedAt: "2026-08-01T13:00:00.000Z" })).toBe(false)
+    expect(isMtmPositionHeldByBreak({ workdayState: "ACTIVE", recordedAt: null, lastBreakEndedAt: recordedAt })).toBe(false)
+  })
+
+  it("is shown as the last known point, and no coordinate stays none", () => {
+    expect((["ONLINE", "DELAYED", "STALE"] as const).map((freshness) => mtmFreshnessAcrossBreak(freshness, true))).toEqual(["STALE", "STALE", "STALE"])
+    expect(mtmFreshnessAcrossBreak("NO_LOCATION", true)).toBe("NO_LOCATION")
+    expect(mtmFreshnessAcrossBreak("ONLINE", false)).toBe("ONLINE")
   })
 })
 

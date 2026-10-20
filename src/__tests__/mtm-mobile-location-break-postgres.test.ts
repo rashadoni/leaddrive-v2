@@ -151,6 +151,7 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
   let postBatch!: typeof import("@/app/api/v2/mtm/mobile/location/batch/route").POST
   let postPoint!: typeof import("@/app/api/v1/mtm/mobile/location/route").POST
   let postWeb!: typeof import("@/app/api/v1/mtm/locations/route").POST
+  let getRoster!: typeof import("@/app/api/v1/mtm/locations/route").GET
   let getNotifications!: typeof import("@/app/api/v1/mtm/mobile/notifications/route").GET
   let sequence = 0
 
@@ -166,6 +167,7 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
     postBatch = (await import("@/app/api/v2/mtm/mobile/location/batch/route")).POST
     postPoint = (await import("@/app/api/v1/mtm/mobile/location/route")).POST
     postWeb = (await import("@/app/api/v1/mtm/locations/route")).POST
+    getRoster = (await import("@/app/api/v1/mtm/locations/route")).GET
     getNotifications = (await import("@/app/api/v1/mtm/mobile/notifications/route")).GET
     await bypass(() => prisma.organization.create({
       data: { id: ORG, name: "Tenant with field agents", slug: ORG, modules: { mtm: true, "route-field": true } },
@@ -336,6 +338,33 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
       expect((await presence(agentId)).lastSeenAt?.getTime()).toBe(tenMinutesAgo.getTime())
       expect(await storedMinutes(agentId)).toEqual([])
     }
+  })
+
+  /** The managers' live roster as the web map reads it, by employee. */
+  async function roster(): Promise<Record<string, { freshness: string; fieldStatus: string; recordedAt?: string }>> {
+    const response = await getRoster(new NextRequest(WEB_URL))
+    expect(response.status).toBe(200)
+    const body = await response.json() as { data: { agentLocations: Array<{ agentId: string; freshness: string; fieldStatus: string; recordedAt?: string }> } }
+    return Object.fromEntries(body.data.agentLocations.map((row) => [row.agentId, row]))
+  }
+
+  // Back from a short break the phone has not sent a fix yet, and the newest
+  // stored point — fresh by the clock — is the one he left before it. The
+  // roster reads the shift's journal for it (live-break-ends.ts) and calls
+  // it the last known point, not where he is (verification of 2026-10-20).
+  it("calls the point left before a break that has just ended the last known one, until the first fix after it", async () => {
+    const shift = { status: "STARTED" as const, journal: [{ type: "PAUSE" as const, minute: 176 }, { type: "RESUME" as const, minute: 178 }] }
+    const notYet = await agentWithDay(shift)
+    const moving = await agentWithDay(shift)
+    for (const { workdayId } of [notYet, moving]) {
+      await bypass(() => prisma.mtmAgentWorkday.update({ where: { id: workdayId }, data: { totalPausedSeconds: 120 } }))
+    }
+    expect((await sendBatch(notYet.agentId, [{ clientLocationId: "before", minute: 175 }])).status).toBe(201)
+    expect((await sendBatch(moving.agentId, [{ clientLocationId: "before", minute: 175 }, { clientLocationId: "after", minute: 179 }])).status).toBe(201)
+
+    const rows = await roster()
+    expect(rows[notYet.agentId]).toMatchObject({ freshness: "STALE", fieldStatus: "OFFLINE", recordedAt: at(175).toISOString() })
+    expect(rows[moving.agentId]).toMatchObject({ freshness: "ONLINE", recordedAt: at(179).toISOString() })
   })
 
   it("stores the work on both sides of a break and nothing taken inside it", async () => {
