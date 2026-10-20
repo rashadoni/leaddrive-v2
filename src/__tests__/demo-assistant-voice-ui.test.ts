@@ -32,7 +32,8 @@ vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => crea
 import { DemoJourneyPlayer } from "@/components/demo-center/journey/demo-journey-player"
 import { DEMO_JOURNEY_STRINGS as S } from "@/components/demo-center/journey/strings"
 import { DEMO_ASSISTANT_VOICE_CLIP_MAX_SECONDS, DEMO_VOICE_REFUSAL_TEXT } from "@/lib/demo-center/assistant/voice-policy"
-import { DEMO_JOURNEY_MODULES, PROSPECT_TO_CLOSED_WON } from "@/lib/demo-center/journey"
+import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
+import { DEMO_JOURNEY_MODULES, PROSPECT_TO_CLOSED_WON, findStep } from "@/lib/demo-center/journey"
 
 const messages = JSON.parse(readFileSync(path.join(process.cwd(), "messages/az.json"), "utf8"))
 const TOKEN = "voice-test-token-0001"
@@ -273,6 +274,11 @@ const questionBox = () => document.getElementById("demo-assistant-question") as 
 const askButton = () => questionBox().form!.querySelector<HTMLButtonElement>('button[type="submit"]')!
 const heardWaiting = () => container.querySelector('[data-testid="demo-assistant-heard-waiting"]')?.textContent ?? null
 const playedBlobs = () => played.filter((src) => src.startsWith("blob:"))
+/** Where the story is, as the player keeps it for the tab. */
+function frontier(): { sectionId: string; stepId: string } {
+  const parsed = JSON.parse(window.sessionStorage.getItem(`ld_demo_journey_${TOKEN.slice(-16)}`)!)
+  return parsed.snapshot ?? parsed
+}
 
 /** Press the button the way a keyboard does (a click with no pointer before it). */
 async function press() {
@@ -997,5 +1003,53 @@ describe("a spoken question heard while another is being answered", () => {
     await settle(80)
     expect(callsTo("/assistant")).toHaveLength(2)
     expect(JSON.parse(String(callsTo("/assistant")[1].init?.body))).toMatchObject({ question: HEARD })
+  })
+})
+
+/**
+ * «İrəli» while a clip is being turned into text (verifier, after
+ * 315f12a64): the new step's narration waited for the reply, the reply said
+ * «a question», and that dropped it; the question was asked about the step
+ * it was sent from, so its answer was not spoken either — the new step said
+ * nothing at all. The question is still asked where it was sent from, its
+ * answer stays text, and the guide reads the step the prospect moved to.
+ */
+describe("«İrəli» while a clip is being heard", () => {
+  const answers: ReadonlyArray<{ name: string; reply: () => Record<string, unknown>; text: string }> = [
+    { name: "a Da Vinci answer", reply: davinci, text: "Bu, lidin balıdır." },
+    { name: "a prepared answer", reply: () => ({ success: true, answer: "Sabit tariflər yoxdur.", remaining: 48, source: "prepared", audio: "/sounds/demo-guide/abc.mp3" }), text: "Sabit tariflər yoxdur." },
+  ]
+
+  it.each(answers)("$name: the question is asked about the step it was sent from and stays text, and the new step is read", async ({ reply: answer, text }) => {
+    await renderPlayer()
+    reply = answer()
+    await consentAndListen()
+    const hearing = gate()
+    gates.transcribe = hearing.promise
+    speakFor(1)
+    await press()
+    expect(voiceState()).toBe("sending")
+    const sentFrom = frontier()
+    const before = played.length
+
+    // The prospect goes on while the clip is being heard: the new step waits for the reply.
+    await act(async () => nextButton()!.click())
+    await settle()
+    const now = frontier()
+    expect(now.stepId, "«İrəli» opened another step").not.toBe(sentFrom.stepId)
+    expect(played.length, "nothing starts before the reply says what the clip was").toBe(before)
+
+    await hearing.open()
+    await settle(120)
+    // Still a question, asked about the step it was sent from.
+    expect(callsTo("/assistant")).toHaveLength(1)
+    expect(JSON.parse(String(callsTo("/assistant")[0].init?.body))).toMatchObject({ question: HEARD, sectionId: sentFrom.sectionId, stepId: sentFrom.stepId })
+    expect(container.querySelector('[data-testid="demo-assistant-turns"]')?.textContent).toContain(text)
+    // The step on screen is read, and the answer about the step left cuts nothing off.
+    const narration = stepVoiceUrl(findStep(PROSPECT_TO_CLOSED_WON, now.stepId)!.step)
+    expect(played.slice(before), "the new step is read, and only that").toEqual([narration])
+    expect(guideAudio()?.src).toBe(narration)
+    expect(guideAudio()?.paused, "the guide reads the new step").toBe(false)
+    expect(callsTo("/assistant/voice"), "nothing is paid to be spoken for an answer about a step left").toEqual([])
   })
 })

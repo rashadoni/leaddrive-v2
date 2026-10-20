@@ -51,7 +51,8 @@ let users = 0
 // The prospect's microphone is opening or open: nothing starts.
 let microphoneOpen = false
 // What the open microphone paused, and the newest recording asked for while
-// it was open: the guide goes on with one of them when the clip is thrown away.
+// it was open: the guide goes on with one of them when the clip is thrown
+// away, and with the newest one when the prospect moved on while it was heard.
 let pausedForMicrophone = false
 let heldUrl: string | null = null
 
@@ -110,7 +111,8 @@ function start(url: string) {
   // The demo is gone (a clip released as the page unmounts reports late): nothing plays for it.
   if (users === 0) return
   // Never into the prospect's question: asked for now, it is said once the
-  // clip is thrown away — or not at all, when the clip is sent.
+  // clip is thrown away, or heard after the prospect moved on — or not at
+  // all, when the clip is sent from the step still on screen.
   if (microphoneOpen) {
     heldUrl = url
     return
@@ -164,8 +166,13 @@ function stopAudio() {
  *   for meanwhile, or else what the microphone paused.
  * - `sent`: the clip came back as a question, and its answer is on the way,
  *   so nothing of before is taken up again.
+ * - `sent-moved-on`: it came back as a question, but the prospect went on to
+ *   another step while it was being heard. It is asked about the step it was
+ *   sent from, and an answer about a step left is not spoken — so the step on
+ *   screen now is read (the newest recording asked for meanwhile); what the
+ *   microphone paused is not taken up again.
  */
-export type GuideMicrophoneChange = "opening" | "open" | "discarded" | "sent"
+export type GuideMicrophoneChange = "opening" | "open" | "discarded" | "sent" | "sent-moved-on"
 
 export function setGuideVoiceMicrophone(change: GuideMicrophoneChange): void {
   if (change === "opening" || change === "open") {
@@ -183,7 +190,7 @@ export function setGuideVoiceMicrophone(change: GuideMicrophoneChange): void {
   pausedForMicrophone = false
   if (change === "sent" || !readPref()) return
   if (next) start(next)
-  else if (resume && sharedAudio) playNow(sharedAudio)
+  else if (resume && change === "discarded" && sharedAudio) playNow(sharedAudio)
 }
 
 export interface GuideVoice {

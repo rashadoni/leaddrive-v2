@@ -352,7 +352,11 @@ routes 404, no hash handed out, and the private page keeps `microphone=()`):
   says what it was. A clip that comes back with no question in it (silent,
   too short, not heard, or the request failed) counts as thrown away. When
   the clip comes back as a question, nothing of before is taken up: an
-  answer to it is coming. A scroll that starts on the button is usually
+  answer to it is coming. If the prospect pressed «İrəli» while it was being
+  turned into text, the question is still asked about the step it was sent
+  from, but the guide reads the step it moved to: an answer that lands after
+  the prospect left the step it was asked on stays text — no recording, and
+  nothing is paid to be spoken. A scroll that starts on the button is usually
   thrown away before the microphone even opens, so it does not interrupt the
   guide at all.
 - One question at a time. A spoken question heard while another is still

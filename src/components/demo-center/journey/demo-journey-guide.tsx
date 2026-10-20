@@ -149,9 +149,10 @@ export function DemoJourneyGuide({
   // The guide reads each step aloud when it opens (guide-voice.ts). Keyed by
   // the step, so a re-render never restarts a sentence mid-way. A step that
   // opens while the prospect's microphone is open is not read into the
-  // question: the voice module holds it until the clip is thrown away, and
-  // drops it when the clip is sent (demo-guide-voice.ts) — the coach card's
-  // switch and the clip's «say the step again» go through the same gate.
+  // question: the voice module holds it until the clip is thrown away or
+  // comes back as a question from the step left, and drops it when the clip
+  // is sent from this step (demo-guide-voice.ts) — the coach card's switch
+  // and the clip's «say the step again» go through the same gate.
   const voice = useGuideVoice()
   const narration = step && !reviewMode ? stepVoiceUrl(step) : null
   useEffect(() => {
@@ -485,14 +486,15 @@ function DemoAssistant({
   // button, a cancelled pointer, a clip that came back with no question in
   // it) takes nothing from the prospect: the answer that came back meanwhile
   // is heard now. A clip heard as a question is a new question: an answer to
-  // the one before, held or still on its way, is not spoken.
+  // the one before, held or still on its way, is not spoken — also when the
+  // prospect moved on while it was heard (the guide then reads the new step).
   const microphoneChanged = (change: GuideMicrophoneChange) => {
     micOpenRef.current = change === "opening" || change === "open"
     setGuideVoiceMicrophone(change)
     if (micOpenRef.current) return
     const held = heldAnswerRef.current
     heldAnswerRef.current = null
-    if (change === "sent") {
+    if (change === "sent" || change === "sent-moved-on") {
       newestAnswerRef.current = null
       return
     }
@@ -529,6 +531,9 @@ function DemoAssistant({
         setError(payload?.error ?? S.assistantFailed)
         return
       }
+      // Where the prospect is as the answer lands, read before its own action
+      // can move the story: an answer to a step left is text only (below).
+      const left = positionRef.current !== askedKey
       // The hands first: only an action from the closed list, planned by the
       // player against where the prospect is now.
       const action = parseDemoAssistantAction(payload.action)
@@ -541,15 +546,19 @@ function DemoAssistant({
       // A question typed while the microphone is open is answered in text:
       // no recording plays into the clip, and nothing is paid to be spoken.
       const micOpen = micOpenRef.current
+      // So is one answered after the prospect left the step it was asked on
+      // (a spoken question heard after «İrəli» is asked about the step it was
+      // sent from): the guide is reading the new step, and an answer about the
+      // old one would cut it off — or be paid for, only to be thrown away.
       // Only our own recordings: a path under the guide's sound folder.
-      if (!moved && !micOpen && payload.audio?.startsWith("/sounds/demo-guide/")) voice?.play(payload.audio)
+      if (!moved && !micOpen && !left && payload.audio?.startsWith("/sounds/demo-guide/")) voice?.play(payload.audio)
       // A Da Vinci answer has no recording; with the switch on it is spoken
       // once, in the same voice, through the same element — unless the guide's
       // voice is off, when nothing is sent to be spoken at all. Off NOW: this
       // runs seconds after the press, and `voice.on` is the press's render.
       const answerId = typeof payload.answerId === "string" ? payload.answerId : null
       newestAnswerRef.current = answerId
-      if (voiceEnabled && !moved && !micOpen && !payload.audio && answerId && typeof payload.answerHash === "string" && voice && isGuideVoiceOn() && !voiceExhausted) {
+      if (voiceEnabled && !moved && !micOpen && !left && !payload.audio && answerId && typeof payload.answerHash === "string" && voice && isGuideVoiceOn() && !voiceExhausted) {
         void speak(answerId, payload.answer, payload.answerHash, askedKey)
       }
       const asked: AssistantTurn = { id: `you-${Date.now()}`, who: "you", text: trimmed }

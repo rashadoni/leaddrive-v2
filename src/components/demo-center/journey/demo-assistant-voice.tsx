@@ -32,6 +32,9 @@ import { startVoiceCapture, VoiceCaptureError, type VoiceCapture } from "./demo-
  * prospect what the guide was saying or an answer on its way. A clip sent is
  * a question only once it comes back as text: one that is silent, too short
  * or not heard (a refusal, a failure) asks nothing, and is thrown away too.
+ * A clip is about the step it was sent from: heard after the prospect went on
+ * to another one, it says so (`sent-moved-on`), and the guide reads the step
+ * on screen now rather than wait for an answer that will stay text.
  */
 
 /** A press held at least this long is «hold to talk»: letting go sends. Shorter is a tap. */
@@ -64,7 +67,9 @@ export interface DemoAssistantVoiceProps {
    * done with — its clip thrown away (`discarded`) or heard as a question
    * (`sent`, just before `onHeard`). A clip on its way to be heard is
    * neither yet: it is `sent` when it comes back as text and `discarded` when
-   * it comes back with none, refused or failed. Only a real move is
+   * it comes back with none, refused or failed. Text that comes back after
+   * the prospect went on to another step is `sent-moved-on`: still a
+   * question, about the step it was sent from. Only a real move is
    * reported, each once.
    */
   readonly onMicrophoneChange: (change: GuideMicrophoneChange) => void
@@ -95,6 +100,11 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onMicrophon
   useEffect(() => {
     onMicrophoneChangeRef.current = onMicrophoneChange
   }, [onMicrophoneChange])
+  // The step on screen now; a clip carries the one it was sent from.
+  const stepIdRef = useRef(stepId)
+  useEffect(() => {
+    stepIdRef.current = stepId
+  }, [stepId])
 
   const move = useCallback((next: VoiceState) => {
     const change = microphoneChange(stateRef.current, next)
@@ -180,7 +190,9 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onMicrophon
     // Left the page meanwhile: the unmount already said it was thrown away.
     if (stateRef.current !== "sending") return
     move("idle")
-    onMicrophoneChangeRef.current(heardText ? "sent" : "discarded")
+    // «İrəli» pressed while it was being heard: the question is still asked,
+    // about the step it was sent from, but the prospect is on another one now.
+    onMicrophoneChangeRef.current(!heardText ? "discarded" : stepIdRef.current === stepId ? "sent" : "sent-moved-on")
     if (!heardText) return
     if (mountedRef.current) setHeard(heardText)
     onHeard(heardText)
