@@ -14,6 +14,7 @@ import {
   type AgentPermissionId,
 } from "@/lib/mtm/agent-permissions"
 import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
+import { mayUseAttendanceSelf } from "@/lib/mtm/attendance-employee-contract"
 import { canManageFieldMasterData } from "@/lib/mtm/field-scope"
 import { mobileCapabilities } from "@/lib/mtm/mobile-capabilities"
 import {
@@ -138,11 +139,11 @@ const FACTS: Partial<Record<AgentPermissionId, Fact[]>> = {
     },
     {
       file: "src/app/api/v2/mtm/mobile/route-field/workday-return/route.ts",
-      contains: 'await requireAttendanceSelf(prisma,{organizationId:auth.orgId,agentId:auth.agentId,role:auth.role},"attendanceWorkday")',
+      contains: 'await requireAttendanceSelf(prisma,{organizationId:auth.orgId,agentId:auth.agentId,role:auth.role})',
     },
     {
       file: "src/lib/mtm/workday-return.ts",
-      contains: 'await requireAttendanceSelf(tx,self,"attendanceWorkday")',
+      contains: 'await requireAttendanceSelf(tx,self)',
     },
     {
       file: "src/lib/mtm/workday-return.ts",
@@ -157,6 +158,21 @@ const FACTS: Partial<Record<AgentPermissionId, Fact[]>> = {
   locationTeam: [
     { check: () => !mobileCapabilities("AGENT").includes("TEAM_READ") },
     { file: "src/app/api/v1/mtm/locations/route.ts", contains: 'if (!actor || actor.role === "AGENT") {' },
+  ],
+  // Leave, absence and time correction are HR's; a field agent is outside HR
+  // accounting (owner, 2026-10-20: «у полевого агента всё кадровое убрать
+  // совсем»), whatever the Attendance switch says. One guard in front of every
+  // own request, its documents and the list; the phone is not told it may.
+  attendanceRequests: [
+    { check: () => !mayUseAttendanceSelf("AGENT", true, true) && mayUseAttendanceSelf("EMPLOYEE", true, true) },
+    {
+      file: "src/lib/mtm/attendance-self-access.ts",
+      contains: 'if (self.role === "AGENT") throw new AttendanceRequestError("MTM_ATTENDANCE_SELF_REQUIRED", 403)',
+    },
+    { file: "src/lib/mtm/attendance-request-store.ts", contains: "const timezone = await requireAttendanceSelf(db, self)" },
+    { file: "src/app/api/v2/mtm/mobile/route-field/attendance/requests/route.ts", contains: "await requireAttendanceSelf(prisma, self)" },
+    { file: "src/app/api/v2/mtm/mobile/route-field/attendance/attachments/route.ts", contains: "await requireAttendanceSelf(prisma, self)" },
+    { file: "src/app/api/v1/mtm/mobile/bootstrap/route.ts", contains: "attendanceRequests: attendanceSelf," },
   ],
   routeViewOwn: [{
     check: () => canViewMtmRoute(agent, { primaryAgentId: "agent-1" })
@@ -295,7 +311,6 @@ describe("switch rows are enforced where the agent asks", () => {
       "attendanceBranchQr",
       "attendanceInstallation",
       "attendanceLocation",
-      "attendanceRequests",
       "attendanceWorkday",
       "checkInOutsideZone",
       "contactChangeRequest", "contactCreateRequest", "customerCreateRequest", "customerLocationRequest",
@@ -303,16 +318,19 @@ describe("switch rows are enforced where the agent asks", () => {
     ])
   })
 
-  it("uses the one attendance switch in the request writer, with no separate permission level", () => {
-    const row = AGENT_SWITCH_ROWS.find((candidate) => candidate.id === "attendanceRequests")
-    expect(row?.setting).toBe("attendanceEnabled")
-    expect(source("src/lib/mtm/attendance-self-access.ts")).toContain('agentPermissionEnabled({ attendanceEnabled:')
-    expect(source("src/lib/mtm/attendance-self-access.ts")).toContain('"attendanceRequests"')
+  // The Attendance switch once let agents file leave too (2026-10-14, option
+  // «а»). Since 2026-10-20 a field agent has no HR requests at all: the row is
+  // a rule, and the switch it rode stays a switch for the rows that remain.
+  it("gives a field agent no attendance requests, whatever the Attendance switch says", () => {
+    expect(AGENT_PERMISSION_ROWS.find((row) => row.id === "attendanceRequests")).toEqual({ id: "attendanceRequests", group: "workday", kind: "never" })
+    expect(agentPermissionStates({ attendanceEnabled: true })).not.toHaveProperty("attendanceRequests")
+    expect(AGENT_SWITCH_ROWS.filter((row) => row.setting === "attendanceEnabled").map((row) => row.id)).not.toContain("attendanceRequests")
+    expect(source("src/lib/mtm/attendance-self-access.ts")).not.toContain("agentPermissionEnabled")
   })
 
   it("uses the same attendance switch for installation requests and requires own access in the writer", () => {
     expect(AGENT_SWITCH_ROWS.find(row => row.id === "attendanceInstallation")?.setting).toBe("attendanceEnabled")
-    expect(source("src/lib/mtm/attendance-installation-store.ts")).toContain('await requireAttendanceSelf(tx, self, "attendanceInstallation")')
+    expect(source("src/lib/mtm/attendance-installation-store.ts")).toContain('await requireAttendanceSelf(tx, self)')
   })
 
   // Publishing one's own routes is not a switch: one tick on the agent's card

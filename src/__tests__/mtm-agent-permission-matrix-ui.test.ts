@@ -150,6 +150,15 @@ describe("«Что может агент»", () => {
     expect(row("visitExecute").querySelector("button")).toBeNull()
   })
 
+  // Owner, 2026-10-20: «у полевого агента всё кадровое убрать совсем». With
+  // Attendance on, the row says so and offers nothing to press.
+  it("states that a field agent has no attendance requests, with Attendance on", async () => {
+    await open({ attendanceEnabled: true })
+    expect(row("attendanceRequests").textContent).toContain("Не может никогда")
+    expect(row("attendanceRequests").querySelector('[role="switch"]')).toBeNull()
+    expect(writes).toEqual([])
+  })
+
   it("counts per-agent grants over the organization's agents", async () => {
     await open()
     expect(row("routePlanOwn").textContent).toContain("Могут: 1 из 2")

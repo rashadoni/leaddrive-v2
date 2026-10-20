@@ -119,7 +119,7 @@ export async function returnOwnMtmWorkday(context: {
       if (context.attendanceRole) {
         const self={organizationId,agentId,role:context.attendanceRole}
         await lockAttendanceRequests(tx,self)
-        await requireAttendanceSelf(tx,self,"attendanceWorkday")
+        await requireAttendanceSelf(tx,self)
       }
 
       const workday = await tx.mtmAgentWorkday.findFirst({

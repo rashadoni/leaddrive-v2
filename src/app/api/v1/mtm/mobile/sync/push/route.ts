@@ -1041,7 +1041,10 @@ export const POST = withMobileRls(async (req, auth) => {
           // 2026-10-14), and a phone can still have an attendance envelope
           // queued from before an exclusion. The canonical field action remains
           // valid; the attendance hooks below discard that optional evidence.
-          const excludedFieldWorkday = auth.role === "AGENT" && isRouteFieldSessionOperation(auth, entity)
+          // Not for the route-field session only: since 2026-10-20 the self
+          // check below refuses every field agent, and an optional envelope
+          // must not cost an agent its day on any tenant.
+          const excludedFieldWorkday = auth.role === "AGENT"
             && await isAttendanceMarkExempt(tx, { organizationId: orgId, agentId })
           if (!excludedFieldWorkday) {
             const timezone = await requireAttendanceSelf(tx, { organizationId: orgId, agentId, role: auth.role })

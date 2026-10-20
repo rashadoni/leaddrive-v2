@@ -30,10 +30,13 @@ describe("attendance request intervals and backward compatibility", () => {
   })
   it("omits every new bootstrap key until the one attendance switch is explicitly on", () => {
     for (const value of [undefined, false, "true"] as const) {
-      expect(agentPermissionStates({ attendanceEnabled: value as boolean })).not.toHaveProperty("attendanceRequests")
-      expect(agentPermissionEnabled({ attendanceEnabled: value as boolean }, "attendanceRequests")).toBe(false)
+      expect(agentPermissionStates({ attendanceEnabled: value as boolean })).not.toHaveProperty("attendanceWorkday")
+      expect(agentPermissionEnabled({ attendanceEnabled: value as boolean }, "attendanceWorkday")).toBe(false)
     }
-    expect(agentPermissionStates({ attendanceEnabled: true })).toHaveProperty("attendanceRequests", true)
+    expect(agentPermissionStates({ attendanceEnabled: true })).toHaveProperty("attendanceWorkday", true)
+    // A field agent has no HR requests at all (owner, 2026-10-20): the switch
+    // never grants them; bootstrap names them for the office shell only.
+    expect(agentPermissionStates({ attendanceEnabled: true })).not.toHaveProperty("attendanceRequests")
   })
   it("admits the authenticated mobile paths at the edge without reviving a withdrawn path", () => {
     for (const path of ["/api/v2/mtm/mobile/route-field/attendance/requests", `/api/v2/mtm/mobile/route-field/attendance/attachments/${randomUUID()}`]) {

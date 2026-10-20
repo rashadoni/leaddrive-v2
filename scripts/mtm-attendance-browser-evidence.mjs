@@ -347,8 +347,8 @@ try {
     const after = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: before.id } })
     assert.equal(after.attendanceExcluded, true)
     for (const key of ['role', 'teamId', 'userId', 'passwordHash', 'canPlanOwnRoutes', 'canSelfPublishRoutes']) assert.equal(after[key], before[key])
-    // The field agent still files leave and sick leave with HR.
-    await mobile('field', '/requests')
+    // A field agent has no HR requests at all (owner, 2026-10-20).
+    await mobile('field', '/requests', { status: 403 })
     await request(mobiles.field, '/api/v1/mtm/mobile/bootstrap')
     await api('admin', '/employees/participation', { method: 'POST', body: { ...input, clientRequestId: randomUUID(), included: true, previousEventId: result.eventId } })
     assert.equal((await api('admin', '/employees')).employees.find(row => row.id === before.id).included, true)
@@ -1198,7 +1198,8 @@ try {
     assert.equal(own.headers()['content-type'], 'image/jpeg')
     assert.equal((await sharp(sanitizedBytes).metadata()).exif, undefined)
     await api('admin', `/attachments/${selected.id}`, { status: 404 })
-    await mobile('field', `/attachments/${selected.id}`, { status: 404 })
+    // A field agent has no own attendance at all now: refused before any lookup.
+    await mobile('field', `/attachments/${selected.id}`, { status: 403 })
     const submitted = await mobile('employee', '/requests', { method: 'POST', status: 201, body: {
       clientRequestId, kind: 'SICK_LEAVE', unit: 'DAYS', startDate: date(28), endDate: date(28),
       reason: 'Fictional document request for access verification', attachmentIds: [selected.id],
