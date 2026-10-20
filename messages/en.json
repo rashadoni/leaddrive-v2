@@ -1,4 +1,37 @@
 {
+  "mtmJointVisit": {
+    "title": "Joint visit with the manager",
+    "managerFallback": "The manager",
+    "notRated": "Manager on the visit: {name}. Not rated yet",
+    "ratedBy": "{name} · rated {date}",
+    "outOfFive": "of 5",
+    "scoreLabel": "{score} of 5",
+    "skipped": "did not come up on the visit",
+    "notRatedYet": "not rated yet",
+    "criteria": {
+      "PREPARATION": "Visit preparation",
+      "RAPPORT": "Rapport with the client",
+      "NEEDS": "Finding out needs",
+      "PRESENTATION": "Product presentation",
+      "OBJECTIONS": "Handling objections",
+      "CLOSING": "Agreement at the end"
+    },
+    "listBadge": "Joint",
+    "listBadgeHint": "The agent marked this visit as made together with the manager",
+    "tab": "Manager's ratings",
+    "tabCount": "Manager's ratings ({count})",
+    "tabHint": "How managers rated this employee's work on joint visits over the last 30 days. A rating is given in the app: «Team» → «I'm going on a visit with an agent».",
+    "periodTitle": "Manager's ratings · last {days} days",
+    "periodJoint": "{count, plural, one {# joint visit} other {# joint visits}}",
+    "periodRated": "{count} rated",
+    "weakest": "{label} — the weakest",
+    "recentTitle": "Latest ratings",
+    "openVisit": "Open visit",
+    "customerFallback": "Institution",
+    "empty": "No rated joint visits in the last 30 days. A manager rates an agent in the app: «Team» → «I'm going on a visit with an agent».",
+    "forbidden": "Ratings are visible to managers only.",
+    "loadError": "Could not load the ratings. Refresh the page."
+  },
   "mtmClientVisits": {
     "outcomes": {
       "SUCCESSFUL": "Successful",
@@ -16069,6 +16102,9 @@
       "retry": "Try again"
     },
     "action": {
+      "JOINT_VISIT_START": "Joint visit started",
+      "JOINT_VISIT_END": "Joint visit ended",
+      "VISIT_EVALUATION_SAVE": "Agent rated on a visit",
       "WORKDAY_REOPEN": "Workday reopened",
       "WORKDAY_REOPEN_UNDO": "Reopen undone",
       "HRM_REQUEST_DECISION": "Request decided",
