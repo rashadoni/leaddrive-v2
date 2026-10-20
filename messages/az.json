@@ -19513,7 +19513,7 @@
     "monthCloseN1tTeamSelected": "Tabeli bağlamaq üçün «{all}» seçin.",
     "monthCloseRetryHint": "Eyni bağlamanı yenidən göndərir — ikinci tabel yaranmır.",
     "monthCloseMoreCloses": "İlk 20 bağlanmış tabel göstərilir. Qalanları «Bağlanmış aylar» səhifəsindədir.",
-    "monthCloseOpenN1tHint": "Bu ayın N-1t tabelini açır: ay bitəndən sonra orada bir basışla bağlanır.",
+    "monthCloseOpenN1tHint": "Bağlanacaq ayın N-1t tabelini açır: göstərilən ay bitibsə onu, yoxsa yenicə bitmiş ayı. Orada bir basışla bağlanır.",
     "monthCloseN1tNotYet": "Ay hələ davam edir: bitəndən sonra bu tabel burada bir basışla bağlanır.",
     "reminderEmployeeStart": "İş gününüz başlayıb — gəlişinizi qeyd edin",
     "reminderEmployeeFinish": "Qrafik üzrə iş gününüz bitib — gedişinizi qeyd edin",

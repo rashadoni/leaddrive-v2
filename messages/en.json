@@ -19517,7 +19517,7 @@
     "monthCloseN1tTeamSelected": "To close the timesheet, choose «{all}».",
     "monthCloseRetryHint": "Sends the same close again — no second timesheet is created.",
     "monthCloseMoreCloses": "The first 20 closed timesheets are shown. The rest are on the «Closed months» page.",
-    "monthCloseOpenN1tHint": "Opens this month's N-1t: once the month is over it is closed there in one press.",
+    "monthCloseOpenN1tHint": "Opens the N-1t of the month to close: the shown month once it is over, otherwise the one that just ended. There it is closed in one press.",
     "monthCloseN1tNotYet": "The month is still running: once it is over, this timesheet is closed here in one press.",
     "reminderEmployeeStart": "Your scheduled workday has started — record your arrival",
     "reminderEmployeeFinish": "Your scheduled workday has ended — record your departure",

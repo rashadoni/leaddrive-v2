@@ -27,12 +27,13 @@ const reportFor = (from: string, to: string) => buildMtmAttendanceReport({ from,
 const json = (body: unknown) => new Response(JSON.stringify(body))
 const fetchMock = vi.fn<typeof fetch>(async input => {
   const url = new URL(String(input), "https://crm.test")
-  if (url.pathname === "/api/v1/mtm/attendance/rules") return json({ success: true, data: { today: "2026-10-14", canManageRules: true } })
+  if (url.pathname === "/api/v1/mtm/attendance/rules") return json({ success: true, data: { today, canManageRules: true } })
   if (url.pathname === "/api/v1/mtm/attendance/report") return json({ success: true, data: reportFor(url.searchParams.get("from")!, url.searchParams.get("to")!) })
   if (url.pathname === "/api/v1/mtm/attendance/views") return json({ success: true, data: savedViews })
   return json({ success: true, data: { items: [], views: [], schedules: [] } })
 })
 let savedViews: unknown[] = []
+let today = "2026-10-14"
 let container: HTMLDivElement, root: Root
 async function render(props: Parameters<typeof MtmAttendanceReportWorkspace>[0]) {
   await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "ru", timeZone: "Asia/Baku", messages: ru },
@@ -41,7 +42,7 @@ async function render(props: Parameters<typeof MtmAttendanceReportWorkspace>[0])
 }
 const reportCalls = () => fetchMock.mock.calls.map(([url]) => new URL(String(url), "https://crm.test")).filter(url => url.pathname.endsWith("/report"))
 
-beforeEach(() => { savedViews = []; container = document.createElement("div"); document.body.append(container); root = createRoot(container); fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock) })
+beforeEach(() => { savedViews = []; today = "2026-10-14"; container = document.createElement("div"); document.body.append(container); root = createRoot(container); fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock) })
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); document.body.innerHTML = ""; vi.unstubAllGlobals() })
 
 describe("Personnel → Timesheet month", () => {
@@ -128,15 +129,43 @@ describe("Personnel → Timesheet month", () => {
   })
 
   // Owner, 2026-10-20 (the «Kadr uçotu» clip): the month closes on its N-1t in one press.
-  it("«Close month» opens the shown month's N-1t, where the press is", async () => {
-    await render({ layout: "timesheet", initialForm: "MONTH" })
-    await act(async () => container.querySelector<HTMLButtonElement>(`button[aria-label="${p("previousMonth")}"]`)!.click())
+  // A running month has no press yet, so «Close month» there opens the month that just ended.
+  const closeMonthLink = () => container.querySelector<HTMLAnchorElement>('[data-testid="attendance-timesheet-close-month"]')!
+  const moveMonth = async (label: "previousMonth" | "nextMonth") => {
+    await act(async () => container.querySelector<HTMLButtonElement>(`button[aria-label="${p(label)}"]`)!.click())
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
-    const link = container.querySelector<HTMLAnchorElement>('[data-testid="attendance-timesheet-close-month"]')!
+  }
+
+  it("«Close month» on the running month opens the N-1t of the month that just ended", async () => {
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    expect(container.querySelector('[data-testid="attendance-month-switcher"]')?.textContent).toContain("октябрь 2026")
+    const link = closeMonthLink()
     expect(link.textContent).toBe(p("closeMonth"))
     expect(link.getAttribute("href")).toBe("/mtm/attendance/reports?report=n1t&date=2026-09-01")
     const { readHint } = await import("./helpers/hint")
     expect(await readHint(link)).toBe(ru.mtmAttendance.monthCloseOpenN1tHint)
+  })
+
+  it("«Close month» on a month that is over opens that month's N-1t", async () => {
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    await moveMonth("previousMonth")
+    await moveMonth("previousMonth")
+    expect(container.querySelector('[data-testid="attendance-month-switcher"]')?.textContent).toContain("август 2026")
+    expect(closeMonthLink().getAttribute("href")).toBe("/mtm/attendance/reports?report=n1t&date=2026-08-01")
+  })
+
+  it("«Close month» on a future month still opens the month that just ended", async () => {
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    await moveMonth("nextMonth")
+    expect(container.querySelector('[data-testid="attendance-month-switcher"]')?.textContent).toContain("ноябрь 2026")
+    expect(closeMonthLink().getAttribute("href")).toBe("/mtm/attendance/reports?report=n1t&date=2026-09-01")
+  })
+
+  it("«Close month» in January opens December of the year before", async () => {
+    today = "2027-01-12"
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    expect(container.querySelector('[data-testid="attendance-month-switcher"]')?.textContent).toContain("январь 2027")
+    expect(closeMonthLink().getAttribute("href")).toBe("/mtm/attendance/reports?report=n1t&date=2026-12-01")
   })
 
 })
