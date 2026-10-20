@@ -11,8 +11,9 @@ import { startKafkaWorkerSession } from "../../src/lib/event-platform/worker-ses
 import { createFundShadowPartitionWorker } from "../../src/lib/event-platform/fund-shadow-worker"
 import { createFundShadowPostgresFixture, fundShadowDatabase, type FundShadowContext } from "../../src/__tests__/fixtures/fund-shadow-postgres"
 import { createBrokerFixtureHarness } from "./fixtures/kafka-broker-harness"
-import { assertFullCdcEnvironment, assertFullCdcHeaders, assertPrivatePostgresTarget, FULL_CDC_CONNECTOR, FULL_CDC_SLOT,
-  FULL_CDC_TOPIC, renderFullCdcBoundary, renderFullCdcConnector } from "./fixtures/cdc-fund-contract.mjs"
+import { assertFullCdcEnvironment, assertFullCdcHeaders, assertPrivatePostgresTarget, assertScratchDatabase,
+  createFullCdcReleaseSettle, FULL_CDC_CONNECTOR, FULL_CDC_LOGIN, FULL_CDC_SLOT, FULL_CDC_TOPIC, fullCdcConnectorReleased,
+  renderFullCdcBoundary, renderFullCdcConnector, renderFullCdcReleaseQuery } from "./fixtures/cdc-fund-contract.mjs"
 
 const root = resolve(process.cwd())
 const project = process.env.LD_EVENT_STACK_PROJECT ?? ""
@@ -36,6 +37,24 @@ function connect(path: string, method = "GET", body?: unknown, allowFailure = fa
   return compose(["exec", "-T", "connect", "curl", "--fail", "--silent", "--show-error", "--max-time", "5",
     "-X", method, ...(body ? ["-H", "Content-Type: application/json", "--data-binary", "@-"] : []),
     `http://connect:8083${path}`], { input: body ? JSON.stringify(body) : undefined, allowFailure })
+}
+/** HTTP code of the connector status read, without --fail: 404 is evidence. */
+function connectorStatusCode() {
+  const result = compose(["exec", "-T", "connect", "curl", "--silent", "--show-error", "--max-time", "5", "--output", "/dev/null",
+    "--write-out", "%{http_code}", `http://connect:8083/connectors/${FULL_CDC_CONNECTOR}/status`], { allowFailure: true })
+  return result.status === 0 ? result.stdout.trim() : ""
+}
+function connectorListing() {
+  const result = connect("/connectors", "GET", undefined, true)
+  return result.status === 0 ? result.stdout : undefined
+}
+function scratchSessionEvidence(database: string) {
+  // Sanitized counts only, for a failed DROP DATABASE: CDC login versus the rest.
+  try {
+    const result = dba("event_platform_test", `SELECT 'cdc=' || count(*) FILTER (WHERE usename='${FULL_CDC_LOGIN}') || ',other=' ||
+      count(*) FILTER (WHERE usename IS DISTINCT FROM '${FULL_CDC_LOGIN}') FROM pg_stat_activity WHERE datname='${assertScratchDatabase(database)}';`, true)
+    return result.status === 0 ? result.stdout.trim() : "unavailable"
+  } catch { return "unavailable" }
 }
 async function waitFor(check: () => boolean, name: string, attempts = 60) {
   for (let i = 0; i < attempts; i++) { if (check()) return; await pause(1000) }
@@ -111,11 +130,12 @@ async function main() {
   const proxy = await openProxy()
   const db = createFundShadowPostgresFixture({ adminUrl: proxy.url, environment: "testbroker", sourceAppWrites: true, codeSha })
   let harness: ReturnType<typeof createBrokerFixtureHarness> | undefined
-  let connectorCreated = false, phase = "setup"
+  let connectorCreated = false, phase = "setup", scratchDatabase = ""
   const sessions: Array<ReturnType<typeof startKafkaWorkerSession>> = []
   try {
     await db.setup()
     const database = db.databaseName
+    scratchDatabase = database
     harness = createBrokerFixtureHarness()
     harness.create("finance", "empty") // No fixture produce() call anywhere in this proof.
     assert.equal(harness.configurations.get("finance")!.topic, FULL_CDC_TOPIC)
@@ -357,20 +377,40 @@ async function main() {
   finally {
     for (const session of sessions) session.stop()
     await Promise.allSettled(sessions.map(session => session.done))
-    const cleanupErrors: unknown[] = []
-    if (harness) { try { await harness.close() } catch (error) { cleanupErrors.push(error) } }
+    const cleanupErrors: unknown[] = [], failedCleanup: string[] = []
+    if (harness) { try { await harness.close() } catch (error) { cleanupErrors.push(error); failedCleanup.push("broker-harness") } }
     if (connectorCreated) {
+      let stage = "connect-start"
       try {
         compose(["start", "connect"])
-        await waitFor(() => connect("/connectors", "GET", undefined, true).status === 0, "cleanup Connect")
+        // DELETE only once this worker's herder has loaded the connector config.
+        stage = "connector-listed"
+        await waitFor(() => {
+          const names = JSON.parse(connectorListing() ?? "null")
+          return Array.isArray(names) && names.includes(FULL_CDC_CONNECTOR)
+        }, "cleanup Connect")
+        stage = "connector-delete"
         connect(`/connectors/${FULL_CDC_CONNECTOR}`, "DELETE")
-        await waitFor(() => dba(db.databaseName, `SELECT active::text FROM pg_replication_slots WHERE slot_name='${FULL_CDC_SLOT}'
-          AND slot_type='logical' AND plugin='pgoutput' AND database='${db.databaseName}';`).stdout.trim() === "false", "exact inactive slot")
-        dba(db.databaseName, `SELECT pg_drop_replication_slot('${FULL_CDC_SLOT}');`)
-      } catch (error) { cleanupErrors.push(error) }
+        // DELETE is asynchronous and a reconnecting task frees the slot for a
+        // moment: drop nothing until the whole released state has held.
+        stage = "connector-release"
+        const settled = createFullCdcReleaseSettle()
+        await waitFor(() => settled(fullCdcConnectorReleased({ listing: connectorListing(), statusCode: connectorStatusCode(),
+          postgres: dba(scratchDatabase, renderFullCdcReleaseQuery(scratchDatabase)).stdout.trim() }), Date.now()), "connector release")
+        stage = "slot-drop"
+        dba(scratchDatabase, `SELECT pg_drop_replication_slot('${FULL_CDC_SLOT}');`)
+      } catch (error) { cleanupErrors.push(error); failedCleanup.push(stage) }
     }
-    try { await db.close() } catch (error) { cleanupErrors.push(error) }
-    try { await closeProxy(proxy.child) } catch (error) { cleanupErrors.push(error) }
+    // After that release only this run's own fixture clients can remain on the
+    // scratch database: close() disconnects them, and DROP DATABASE (no FORCE)
+    // waits for their backends to exit. Nothing else is terminated.
+    try { await db.close() } catch (error) {
+      cleanupErrors.push(error)
+      failedCleanup.push(`scratch-database(${scratchDatabase ? scratchSessionEvidence(scratchDatabase) : "not-created"})`)
+    }
+    try { await closeProxy(proxy.child) } catch (error) { cleanupErrors.push(error); failedCleanup.push("proxy") }
+    // Fixed stage labels and session counts only, never data or error text.
+    if (failedCleanup.length) console.error(`full_cdc_fund_cleanup_failed=${failedCleanup.join(";")}`)
     assert.equal(cleanupErrors.length, 0, "full CDC owned cleanup failed; outer disposable project teardown remains required")
   }
 }
