@@ -96,6 +96,7 @@ describe("MTM calm colours (owner, 2026-10-18)", () => {
  */
 const DEMO_SCENES = [
   "src/components/demo-center/journey/scenes/mtm-scene.tsx",
+  "src/components/demo-center/journey/scenes/personnel-scene.tsx",
 ]
 
 /** A class that fills in only for the chosen one: `active ? "bg-primary …" : …`. */
@@ -103,7 +104,7 @@ const FILLS_WHEN_CHOSEN = /\?\s*"[^"]*\b(?:bg-primary|bg-foreground|bg-orange-50
 /** A pressed or selected Button with no variant is the filled default one (the scenes write a Button on one line). */
 const pressedDefaultButton = (line: string) => /<Button\b/.test(line) && /\baria-(?:selected|pressed)\b/.test(line) && !/\bvariant=/.test(line)
 
-describe("the demo's MTM screens in the calm colours (owner, 2026-10-20)", () => {
+describe("the demo's MTM and Personnel screens in the calm colours (owner, 2026-10-20)", () => {
   const lines = DEMO_SCENES.flatMap((path) => readFileSync(path, "utf8").split("\n").map((line, index) => ({ at: `${path}:${index + 1}`, line })))
 
   it("paint no pale fill, and fill no tab, chip or button because it is the chosen one", () => {
