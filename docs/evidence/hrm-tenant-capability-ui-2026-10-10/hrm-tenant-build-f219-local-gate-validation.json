@@ -1,0 +1,36 @@
+{
+  "status": "PASS_EXACT_HEAD_BUILD_AND_EXISTING_TYPECHECK_GATES",
+  "artifactPath": "/tmp/hrm-ui-final-build-38056170322-LG61K6",
+  "headSha": "f219771906cb4df755df69ad600a30c33d7b52cd",
+  "workflowSha": "5c02f3c9daca7a99293ffd3bb694bf7b654e2ddb",
+  "runId": "38056170322",
+  "runAttempt": "1",
+  "tscExit": "2",
+  "diagnosticCount": 1162,
+  "newGatedDiagnostics": {},
+  "products": [
+    {
+      "path": ".next/BUILD_ID",
+      "sha256": "f72a1f9e7d4db6a81f2ad0a6e97a75b7fd03f776fc809ede638750df741f8f88",
+      "bytes": 21
+    },
+    {
+      "path": ".next/standalone/server.js",
+      "sha256": "6973592d3b7ff81c9e59905c2d5a485e5d44401086455c48b543fa740df6fade",
+      "bytes": 7826
+    },
+    {
+      "path": ".next/server/app-paths-manifest.json",
+      "sha256": "ee4cae3197f4721f2ff493fd82153cddc629c9b1ddc1e314ee396f55da631cf5",
+      "bytes": 136258
+    }
+  ],
+  "routes": [
+    "/admin/tenants/[id]/page",
+    "/admin/tenants/[id]/edit/page",
+    "/api/v1/admin/tenants/[id]/route",
+    "/api/v1/admin/tenants/[id]/capabilities/route"
+  ],
+  "providerKey": "synthetic build-only CARTO marker; provider integration NOT RUN",
+  "deploy": false
+}

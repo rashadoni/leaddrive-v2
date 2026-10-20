@@ -1,0 +1,38 @@
+{
+  "headSha": "f219771906cb4df755df69ad600a30c33d7b52cd",
+  "requiredChecks": [
+    {
+      "name": "pr-scope",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/38056170297/job/114225093464"
+    },
+    {
+      "name": "static-checks",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/38056170297/job/114225177972"
+    },
+    {
+      "name": "typecheck",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/38056170297/job/114225177942"
+    },
+    {
+      "name": "runner-policy",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/38056170308/job/114225044159"
+    },
+    {
+      "name": "scan",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/38056170300/job/114225044339"
+    }
+  ],
+  "allRequiredPassed": true,
+  "ownColdBuildStatus": "PASS",
+  "ownColdBuildRun": "https://github.com/rashadoni/leaddrive-v2/actions/runs/38056170322"
+}
