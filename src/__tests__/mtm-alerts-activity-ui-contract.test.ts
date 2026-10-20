@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 import { mtmAccessErrorKey } from "@/lib/mtm/access-error"
-import { activityRowHref } from "@/lib/mtm/activity-actions"
+import { activityDetails, activityRowHref } from "@/lib/mtm/activity-actions"
 import { fieldSyncAuditData, routeTransitionActions } from "@/lib/mtm/field-sync-audit"
 import { groupMtmAlertsByAgentDay, type MtmAlertDayRow } from "@/lib/mtm/alert-day-groups"
 
@@ -115,7 +115,12 @@ describe("activity rows", () => {
     }
     expect(messages.az.mtmActivity.action.CHECK_IN).not.toBe("Check-in")
     expect(messages.ru.mtmActivity.action.CHECK_OUT).not.toBe("Check-out")
-    expect(pages.activity).toContain("subject?.customerName")
+    // The cell itself, not the page's source: the customer comes before
+    // anything else the row could be called, and the visit's id stays off the line.
+    expect(activityDetails(
+      { action: "CHECK_IN", entity: "visit", entityId: "visit-1", metadataKind: "force_checkin", subject: { customerName: "Zeytun Aptek", visitId: "visit-1", routeId: null } },
+      (key) => key,
+    )).toEqual({ label: "Zeytun Aptek", title: "visit-1" })
     expect(pages.activity).toContain("activityRowHref(log)")
   })
 
