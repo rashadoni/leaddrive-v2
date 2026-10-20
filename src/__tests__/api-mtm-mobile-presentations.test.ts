@@ -38,10 +38,13 @@ beforeEach(() => {
 })
 
 describe("mobile product presentation catalog", () => {
-  it("inherits products from a directly assigned parent portfolio", async () => {
+  // Who sees what is proved on a real Postgres (mtm-product-viewers-postgres.test.ts);
+  // here: the phone asks for its own list, and gets the groups above its presentations.
+  it("asks for the presentations the agent is listed on, and names their groups up to the portfolio", async () => {
     vi.mocked(prisma.mtmProductGroup.findMany).mockResolvedValue([
-      { id: "portfolio", parentId: null, name: "Cardiology", description: null, sortOrder: 0, members: [{ role: "AGENT" }] },
+      { id: "portfolio", parentId: null, name: "Cardiology", description: null, sortOrder: 0, members: [] },
       { id: "line", parentId: "portfolio", name: "Hypertension", description: null, sortOrder: 0, members: [] },
+      { id: "other", parentId: null, name: "Gastro", description: null, sortOrder: 1, members: [] },
     ] as never)
     vi.mocked(prisma.mtmProduct.findMany).mockResolvedValue([{
       id: "product-1",
@@ -65,6 +68,12 @@ describe("mobile product presentation catalog", () => {
     const json = await response.json()
 
     expect(response.status).toBe(200)
+    expect(vi.mocked(prisma.mtmProduct.findMany).mock.calls[0][0].where).toMatchObject({
+      organizationId: "org-1",
+      isActive: true,
+      deletedAt: null,
+      viewers: { some: { organizationId: "org-1", agentId: "agent-1" } },
+    })
     expect(json.data.groups.map((group: { id: string }) => group.id)).toEqual(["portfolio", "line"])
     expect(json.data.products[0]).toMatchObject({
       id: "product-1",

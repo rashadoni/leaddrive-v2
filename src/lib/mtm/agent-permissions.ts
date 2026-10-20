@@ -28,8 +28,6 @@ export type AgentPermissionSurface = "app" | "web"
 
 /** Tenant MTM settings that are agent permissions. All are booleans. */
 export const AGENT_PERMISSION_SETTING_KEYS = [
-  "attendanceEnabled",
-  "attendanceBranchQrEnabled",
   "teamScheduleVisibilityEnabled",
   "taskSelfCreate",
   "taskSelfRecurring",
@@ -50,10 +48,14 @@ export type AgentPermissionSettings = Record<AgentPermissionSettingKey, boolean>
  * `agentCheckInOutsideZone` is deliberately not here: it sits beside the zone
  * radius on the settings page, and whoever may set that radius — which lifts
  * the zone just as well when set wide enough — may lift the zone outright.
+ *
+ * Nor are the Attendance switches (`attendanceEnabled`,
+ * `attendanceBranchQrEnabled`) since 2026-10-20: no row of this list reads
+ * them, because a field agent is outside HR accounting. They stay
+ * administrator-only all the same — the settings API refuses a manager's
+ * change of either with 403 before anything is written.
  */
 export const AGENT_PERMISSION_ADMIN_ONLY_KEYS = [
-  "attendanceEnabled",
-  "attendanceBranchQrEnabled",
   "agentContactCreateRequests",
   "agentContactChangeRequests",
   "agentCustomerCreateRequests",
@@ -82,12 +84,18 @@ export const AGENT_PERMISSION_ROWS = [
   { id: "workdayOwn", group: "workday", kind: "always" },
   // The same day only; yesterday changes through a time-correction request.
   { id: "workdayReturn", group: "workday", kind: "always" },
-  // The same whole-feature switch; no second permission level to configure.
-  { id: "attendanceWorkday", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
-  { id: "attendanceLocation", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
-  { id: "attendanceBranchQr", group: "workday", kind: "switch", setting: "attendanceBranchQrEnabled", requires: "attendanceEnabled", surfaces: ["app"] },
-  { id: "attendanceInstallation", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
-  { id: "attendanceRequests", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
+  // HR attendance — day marks, location consent, phone approval, branch QR and
+  // own requests — is for the employees HR keeps, and a field agent is outside
+  // HR accounting (owner, 2026-10-14 for the day; 2026-10-20: «у полевого
+  // агента всё кадровое убрать совсем»). These rows rode the Attendance switch
+  // until then; the server refuses an agent whatever it says (see
+  // requireAttendanceSelf), so a switch here would change nothing. The stored
+  // switches stay: they turn the feature on for office employees.
+  { id: "attendanceWorkday", group: "workday", kind: "never" },
+  { id: "attendanceLocation", group: "workday", kind: "never" },
+  { id: "attendanceBranchQr", group: "workday", kind: "never" },
+  { id: "attendanceInstallation", group: "workday", kind: "never" },
+  { id: "attendanceRequests", group: "workday", kind: "never" },
   { id: "locationShare", group: "workday", kind: "always" },
   { id: "locationHistoryOwn", group: "workday", kind: "always" },
   { id: "locationTeam", group: "workday", kind: "never" },
@@ -190,11 +198,10 @@ export function agentPermissionEnabled(settings: Partial<AgentPermissionSettings
 }
 
 /** Every switch at once — what the field app receives in its bootstrap. */
-export type AgentPermissionStates = Record<Exclude<AgentSwitchId, "attendanceRequests" | "attendanceWorkday" | "attendanceLocation" | "attendanceInstallation" | "attendanceBranchQr">, boolean> & { attendanceRequests?: true; attendanceWorkday?: true; attendanceLocation?: true; attendanceInstallation?: true; attendanceBranchQr?: true }
+export type AgentPermissionStates = Record<AgentSwitchId, boolean>
 export function agentPermissionStates(settings: Partial<AgentPermissionSettings>): AgentPermissionStates {
   return Object.fromEntries(
-    AGENT_SWITCH_ROWS.filter((row) => row.id !== "attendanceBranchQr" || (settings.attendanceEnabled === true && settings.attendanceBranchQrEnabled === true)).filter((row) => !["attendanceRequests", "attendanceWorkday", "attendanceLocation", "attendanceInstallation"].includes(row.id) || settings.attendanceEnabled === true)
-      .map((row) => [row.id, agentPermissionEnabled(settings, row.id)]),
+    AGENT_SWITCH_ROWS.map((row) => [row.id, agentPermissionEnabled(settings, row.id)]),
   ) as AgentPermissionStates
 }
 

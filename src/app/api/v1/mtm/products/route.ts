@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { resolveMtmProductAccess } from "@/lib/mtm/product-access"
+import { canManageMtmProductGroup, resolveMtmProductAccess } from "@/lib/mtm/product-access"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
 
 const PRESENTATION_MIME_TYPES = [
@@ -24,31 +24,47 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
   if (!access) {
     return NextResponse.json({ error: "MTM access required", code: "MTM_AGENT_ACCESS_REQUIRED" }, { status: 403 })
   }
-  const products = await prisma.mtmProduct.findMany({
-    where: { organizationId: auth.orgId, groupId: { in: [...access.visibleIds] } },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    include: {
-      group: { select: { id: true, name: true, parentId: true } },
-      document: {
-        select: {
-          id: true,
-          title: true,
-          fileName: true,
-          mimeType: true,
-          sizeBytes: true,
-          deletedAt: true,
+  const visibleGroupIds = [...access.visibleIds]
+  const [products, deleted] = await Promise.all([
+    prisma.mtmProduct.findMany({
+      where: { organizationId: auth.orgId, groupId: { in: visibleGroupIds }, deletedAt: null },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      include: {
+        group: { select: { id: true, name: true, parentId: true } },
+        document: {
+          select: {
+            id: true,
+            title: true,
+            fileName: true,
+            mimeType: true,
+            sizeBytes: true,
+            deletedAt: true,
+          },
         },
+        viewers: { select: { agentId: true } },
+        _count: { select: { presentationSessions: true } },
       },
-      _count: { select: { presentationSessions: true } },
-    },
-  })
+    }),
+    // A deleted presentation leaves the list, not the history: its showings
+    // still count on the group's «Vizitdə».
+    prisma.mtmProduct.findMany({
+      where: { organizationId: auth.orgId, groupId: { in: visibleGroupIds }, deletedAt: { not: null } },
+      select: { groupId: true, _count: { select: { presentationSessions: true } } },
+    }),
+  ])
+  const deletedShowings: Record<string, number> = {}
+  for (const product of deleted as Array<{ groupId: string; _count: { presentationSessions: number } }>) {
+    deletedShowings[product.groupId] = (deletedShowings[product.groupId] ?? 0) + product._count.presentationSessions
+  }
   return NextResponse.json({
     success: true,
     data: {
-      products: products.map((product) => ({
+      products: (products as Array<{ groupId: string; viewers: Array<{ agentId: string }> }>).map(({ viewers, ...product }) => ({
         ...product,
-        canManage: access.managedIds.has(product.groupId),
+        viewerAgentIds: viewers.map((viewer) => viewer.agentId),
+        canManage: canManageMtmProductGroup(access, product.groupId),
       })),
+      deletedShowings,
     },
   })
 })
@@ -59,11 +75,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
     return NextResponse.json({ error: "Invalid product", details: parsed.error.flatten() }, { status: 400 })
   }
   const access = await resolveMtmProductAccess(auth)
-  if (
-    !access ||
-    !["ADMIN", "MANAGER", "SUPERVISOR"].includes(access.actor.role) ||
-    !access.managedIds.has(parsed.data.groupId)
-  ) {
+  if (!access || !canManageMtmProductGroup(access, parsed.data.groupId)) {
     return NextResponse.json({ error: "Group is outside your scope", code: "MTM_PRODUCT_FORBIDDEN" }, { status: 403 })
   }
 
@@ -101,6 +113,10 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
     })
     return NextResponse.json({ success: true, data: product }, { status: 201 })
   } catch (error) {
+    // A live presentation of the group already has this name (a deleted one does not count).
+    if ((error as { code?: string })?.code === "P2002") {
+      return NextResponse.json({ error: "A presentation with this name already exists in the group", code: "MTM_PRODUCT_NAME_TAKEN" }, { status: 409 })
+    }
     console.error("[MTM/products POST]", error)
     return NextResponse.json({ error: "Failed to create product", code: "MTM_PRODUCT_CREATE_FAILED" }, { status: 500 })
   }

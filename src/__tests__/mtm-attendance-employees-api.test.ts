@@ -99,9 +99,16 @@ describe("employee enrollment HTTP authorization and payload boundaries", () => 
     expect(failed.status).toBe(500)
     expect(await failed.text()).not.toMatch(/PRIVATE|PAYLOAD/)
   })
-  it.each(["AGENT", "EMPLOYEE", "ADMIN", "MANAGER", "SUPERVISOR"])("excludes %s from new self attendance without changing its role", role => {
+  it.each(["EMPLOYEE", "ADMIN", "MANAGER", "SUPERVISOR"])("excludes %s from new self attendance without changing its role", role => {
     expect(mayUseAttendanceSelf(role, true, true)).toBe(true)
     expect(mayUseAttendanceSelf(role, true, true, true)).toBe(false)
     expect(mayUseAttendanceSelf(role, false, true)).toBe(false)
+    expect(mayUseAttendanceSelf(role, true, false)).toBe(false)
+  })
+  // Owner, 2026-10-20: «у полевого агента всё кадровое убрать совсем» — not
+  // even leave or a time correction, enrolled or not.
+  it("gives a field agent no self attendance at all", () => {
+    expect(mayUseAttendanceSelf("AGENT", true, true)).toBe(false)
+    expect(mayUseAttendanceSelf("AGENT", true, false)).toBe(false)
   })
 })
