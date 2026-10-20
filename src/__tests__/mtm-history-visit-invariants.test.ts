@@ -292,6 +292,55 @@ describe("a visit's time is what the fixes allow", () => {
     expect(trip.summary.movingSeconds).toBe(50 * 60)
   })
 
+  it("ends a forgotten visit where he was seen going, though the phone fell silent on the way", () => {
+    // Left the clinic at 11:30, silent from 11:33 to 11:45, then at the pharmacy.
+    const leaving = fixes("11:30", "11:50", CLINIC, PHARMACY)
+    const trip = dayOf({
+      points: [
+        ...fixes("09:30", "10:00:30", HOME, CLINIC),
+        ...fixes("10:00:30", "11:30", CLINIC),
+        ...leaving.filter((point) => point.recordedAt <= at("11:33") || point.recordedAt >= at("11:45")),
+        ...fixes("11:50", "12:20", PHARMACY),
+      ],
+      visits: [visit("v1", "Dr. Əliyeva", CLINIC, "10:00:30", "15:00")],
+    })
+    expect(trip.entries.map(told).slice(2, 6)).toEqual([
+      "STAY 10:00:30-11:30:30 Dr. Əliyeva",
+      "MOVE 11:30:30-11:33:00",
+      "GAP 11:33:00-11:45:00 TELEMETRY_GAP",
+      "MOVE 11:45:00-11:50:00",
+    ])
+  })
+
+  it("tells a visit checked in and out while the phone was silent between two drives whole", () => {
+    // Seen driving up to 10:00 and again from 10:40, never at the clinic: the
+    // visit's own check-in and check-out are all there is, and they are kept.
+    const trip = dayOf({
+      points: [...fixes("09:30", "10:00", HOME, north(CLINIC, -1_000)), ...fixes("10:40", "11:00", north(CLINIC, 1_000), PHARMACY)],
+      visits: [visit("v1", "Dr. Əliyeva", CLINIC, "10:05", "10:35")],
+      workday: { startedAt: at("09:30"), completedAt: at("11:00") },
+    })
+    expect(trip.entries.map(told).slice(1, 6)).toEqual([
+      "MOVE 09:30:00-10:00:00",
+      "GAP 10:00:00-10:05:00 TELEMETRY_GAP",
+      "STAY 10:05:00-10:35:00 Dr. Əliyeva",
+      "GAP 10:35:00-10:40:00 TELEMETRY_GAP",
+      "MOVE 10:40:00-11:00:00",
+    ])
+  })
+
+  it("does not run a visit past the closed day when it was checked out after the last fix", () => {
+    const trip = dayOf({
+      points: [...fixes("09:30", "10:00:30", HOME, CLINIC), ...fixes("10:00:30", "12:00", CLINIC)],
+      visits: [visit("v1", "Dr. Əliyeva", CLINIC, "10:00:30", "18:40")],
+      workday: { startedAt: at("09:30"), completedAt: at("12:10") },
+    })
+    expect(trip.entries.map(told).slice(-2)).toEqual([
+      "STAY 10:00:30-12:10:00 Dr. Əliyeva",
+      "END 12:10:00",
+    ])
+  })
+
   it("keeps a visit made with the phone silent, and the silence after a check-out made elsewhere is no visit", () => {
     // Quiet from 10:20; next seen at the pharmacy at 10:50. The clinic's
     // check-out at 11:00 came from the pharmacy: on site until 10:20 is all

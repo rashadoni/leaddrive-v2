@@ -151,15 +151,16 @@ function stopSharing(stops: readonly HistoryStop[], interval: Interval): History
 type Place = { latitude: number; longitude: number }
 
 /**
- * When the fixes show he was away from `place`: every run of fixes farther
- * than SAME_PLACE_METERS from it (and outside every stop at it), unbroken by
- * a silence, lasting at least LEFT_PLACE_SECONDS. A run is away from the fix
- * before it, if he was seen going, to the fix after it, if he was seen coming
- * back. A silence is nobody's evidence but the visit's own record: a
- * check-out inside it, after the place's last fix, was made on site, and so
- * was a check-in inside it before he is seen back; a silence between two runs
- * elsewhere is not known to be away — a visit made with the phone silent
- * still happened.
+ * When the fixes show he was away from `place`. An absence is a stretch of
+ * fixes all farther than SAME_PLACE_METERS from it (and outside every stop
+ * at it) — silences inside it included — whose fixes span at least
+ * LEFT_PLACE_SECONDS of tracked time; a fix or two thrown off indoors are not
+ * one. It runs from the fix before it, if he was seen going, to the fix after
+ * it, if he was seen coming back. A silence is evidence only by the visit's
+ * own record: a check-out inside the silence after the place's last fix was
+ * made on site, a check-in inside the silence before he is seen back was
+ * too, and a visit checked in and out inside a silence among fixes elsewhere
+ * happened with the phone silent.
  */
 function timeAway(input: {
   place: Place
@@ -167,40 +168,86 @@ function timeAway(input: {
   stopsAtPlace: readonly HistoryStop[]
   /** Fixes the next fix follows only after a silence (a gap of the day). */
   silenceAfter: ReadonlySet<number>
+  /** Only absences that reach into this matter: a fortnight's track is not walked once per visit. */
+  within: Interval
   checkInAt: number
   checkOutAt: number | null
 }): Interval[] {
-  const { place, points } = input
-  const far = points.map((point) => {
-    const at = point.recordedAt.getTime()
-    return calculateDistance(place.latitude, place.longitude, point.latitude, point.longitude) > SAME_PLACE_METERS
-      && !input.stopsAtPlace.some((stop) => stop.startedAt.getTime() <= at && at <= stop.endedAt.getTime())
-  })
-  const away: Interval[] = []
+  const { place, points, silenceAfter, checkInAt, checkOutAt } = input
+  if (!points.length) return []
   const time = (index: number) => points[index].recordedAt.getTime()
-  for (let first = 0; first < points.length; first += 1) {
-    if (!far[first]) continue
+  const farMemo = new Map<number, boolean>()
+  const far = (index: number): boolean => {
+    let value = farMemo.get(index)
+    if (value === undefined) {
+      const point = points[index]
+      const at = time(index)
+      value = calculateDistance(place.latitude, place.longitude, point.latitude, point.longitude) > SAME_PLACE_METERS
+        && !input.stopsAtPlace.some((stop) => stop.startedAt.getTime() <= at && at <= stop.endedAt.getTime())
+      farMemo.set(index, value)
+    }
+    return value
+  }
+  const inside = (at: number | null, from: number, to: number): at is number => at != null && at > from && at < to
+  // From the fix before `within` to the first at or after its end, widened
+  // to the whole of an absence that crosses either edge.
+  let low = 0
+  let high = points.length
+  while (low < high) {
+    const middle = (low + high) >> 1
+    if (time(middle) < input.within.from) low = middle + 1
+    else high = middle
+  }
+  let start = Math.max(0, low - 1)
+  let end = Math.min(low, points.length - 1)
+  while (end < points.length - 1 && time(end) < input.within.to) end += 1
+  while (start > 0 && far(start) && far(start - 1)) start -= 1
+  while (end < points.length - 1 && far(end) && far(end + 1)) end += 1
+
+  const away: Interval[] = []
+  for (let first = start; first <= end; first += 1) {
+    if (!far(first)) continue
     let last = first
-    while (last + 1 < points.length && far[last + 1] && !input.silenceAfter.has(time(last))) last += 1
-    const firstAt = time(first)
-    const lastAt = time(last)
-    if (lastAt - firstAt >= LEFT_PLACE_SECONDS * 1_000) {
-      let from = firstAt
-      if (first > 0 && !far[first - 1]) {
+    let trackedMs = 0
+    // Silences inside the absence that the visit's own record vouches for.
+    const vouched: Interval[] = []
+    while (last + 1 < points.length && far(last + 1)) {
+      if (silenceAfter.has(time(last))) {
+        if (inside(checkInAt, time(last), time(last + 1)) && inside(checkOutAt, time(last), time(last + 1))) {
+          vouched.push({ from: checkInAt, to: checkOutAt })
+        }
+      } else {
+        trackedMs += time(last + 1) - time(last)
+      }
+      last += 1
+    }
+    if (trackedMs >= LEFT_PLACE_SECONDS * 1_000) {
+      let from = time(first)
+      if (first > 0) {
         const before = time(first - 1)
-        const checkOut = input.checkOutAt
-        from = input.silenceAfter.has(before) && checkOut != null && checkOut > before && checkOut < firstAt ? checkOut : before
+        from = silenceAfter.has(before) && inside(checkOutAt, before, from) ? checkOutAt : before
       }
-      let to = lastAt
-      if (last + 1 < points.length && !far[last + 1]) {
+      let to = time(last)
+      if (last + 1 < points.length) {
         const after = time(last + 1)
-        to = input.silenceAfter.has(lastAt) && input.checkInAt > lastAt && input.checkInAt < after ? input.checkInAt : after
+        to = silenceAfter.has(to) && inside(checkInAt, to, after) ? checkInAt : after
       }
-      away.push({ from, to })
+      away.push(...subtract({ from, to }, vouched))
     }
     first = last
   }
   return away
+}
+
+/**
+ * In time order; of two that start together the shorter first — a visit of
+ * no length (opened where no stop tells its end) before the stand it opens,
+ * so that the stand joins the visit and not the row before.
+ */
+function byTime(a: { id: string; startedAt: Date; endedAt: Date }, b: { id: string; startedAt: Date; endedAt: Date }): number {
+  return a.startedAt.getTime() - b.startedAt.getTime()
+    || a.endedAt.getTime() - b.endedAt.getTime()
+    || a.id.localeCompare(b.id)
 }
 
 /** Metres of a contiguous run of the day's fixes: the counted steps inside it. */
@@ -298,9 +345,12 @@ export function buildDayTrip(input: {
     const from = visit.checkInAt.getTime()
     const openedIn = input.stops.find((stop) => stop.startedAt.getTime() <= from && from <= stop.endedAt.getTime()) ?? null
     const recordedEnd = visit.checkOutAt?.getTime() ?? openedIn?.endedAt.getTime() ?? from
-    // The next visit begins where this one ends at the latest.
+    // The next visit begins where this one ends at the latest, and none
+    // runs past a closed day: a check-out made at home in the evening, after
+    // the last fix, is not time at the customer's.
     const nextAt = visits[index + 1]?.checkInAt.getTime() ?? Number.POSITIVE_INFINITY
-    const span = { from, to: Math.max(from, Math.min(recordedEnd, nextAt)) }
+    const dayClosedAt = input.workday?.completedAt?.getTime() ?? Number.POSITIVE_INFINITY
+    const span = { from, to: Math.max(from, Math.min(recordedEnd, nextAt, dayClosedAt)) }
     const own = openedIn ?? stopSharing(input.stops, span)
     const place: Place | null = own
       ? { latitude: own.latitude, longitude: own.longitude }
@@ -318,6 +368,7 @@ export function buildDayTrip(input: {
         stopsAtPlace: input.stops.filter((stop) =>
           calculateDistance(place.latitude, place.longitude, stop.latitude, stop.longitude) < SAME_PLACE_METERS),
         silenceAfter,
+        within: span,
         checkInAt: from,
         checkOutAt: visit.checkOutAt?.getTime() ?? null,
       })
@@ -369,8 +420,7 @@ export function buildDayTrip(input: {
         visit: null,
       }
     }))
-  const stays = [...visitStays, ...stopStays]
-    .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime() || a.id.localeCompare(b.id))
+  const stays = [...visitStays, ...stopStays].sort(byTime)
   const stayIntervals = stays.map((stay) => ({ from: stay.startedAt.getTime(), to: stay.endedAt.getTime() }))
 
   // 2. Silence, minus the part of it spent standing at a stop: a phone quiet
@@ -397,8 +447,7 @@ export function buildDayTrip(input: {
       })))
 
   // 3. Everything between those anchors is movement, measured on the track.
-  const anchors: Array<DayTripStay | DayTripGap> = [...stays, ...silences]
-    .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime() || a.id.localeCompare(b.id))
+  const anchors: Array<DayTripStay | DayTripGap> = [...stays, ...silences].sort(byTime)
   const firstPointAt = points[0]?.recordedAt.getTime()
   const lastPointAt = points.at(-1)?.recordedAt.getTime()
   const candidatesFrom = [input.workday?.startedAt.getTime(), firstPointAt, anchors[0]?.startedAt.getTime()]
