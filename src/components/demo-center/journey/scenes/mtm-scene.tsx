@@ -649,6 +649,12 @@ const LIVE_STATUS_CHIPS = [
   { status: "OFFLINE", key: "offline", tone: "text-muted-foreground", icon: WifiOff },
 ] as const
 
+/** The map and the list side by side as the page sets them, by the list's own width (map/page.tsx `CANVAS_COLUMNS`). */
+const LIVE_CANVAS_COLUMNS = {
+  narrow: "lg:grid-cols-[minmax(0,1fr)_400px]",
+  wide: "lg:grid-cols-[minmax(0,1fr)_400px] min-[85rem]:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)]",
+} as const
+
 /** The page's tools that reach the server or the browser's full screen: explained here instead. */
 const LIVE_SIMULATED_CONTROLS = [
   "live-map-roster-export",
@@ -785,7 +791,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
   const callFrom = clients.find((client) => client.id === NEAREST_CLIENT_ID)!
 
   return (
-    <div className="space-y-3" onClickCapture={simulated}>
+    <div className="flex flex-col gap-3" onClickCapture={simulated}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <PageDescription icon={MapPin} title={tNav("mtmMap")} description={tMap("subtitle")} />
@@ -857,8 +863,9 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
         </div>
       ) : null}
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
-        <div data-tour-id="mtm-live-map" className="relative isolate h-[54vh] min-h-[360px] overflow-hidden rounded-lg border border-zinc-200 bg-card lg:h-[560px] dark:border-zinc-700">
+      {/* The page's canvas: the map as tall as the window and staying in view beside a long list. */}
+      <div className={`grid gap-3 max-lg:order-first ${LIVE_CANVAS_COLUMNS[view.width]} lg:items-start`} style={{ minHeight: 480 }}>
+        <div data-tour-id="mtm-live-map" className="relative isolate order-1 h-[54vh] min-h-[360px] overflow-hidden rounded-lg border border-zinc-200 bg-card lg:sticky lg:top-3 lg:h-[calc(100vh-7rem)] lg:min-h-[480px] dark:border-zinc-700">
           <MtmLiveMap
             agents={mapAgents}
             plannedRoute={layers.route && selected === "agent-elvin" ? route : undefined}
@@ -905,7 +912,7 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
             fullscreenSupported
           />
         </div>
-        <div data-tour-id="mtm-live-roster" ref={rosterRef} className="min-w-0">
+        <div data-tour-id="mtm-live-roster" ref={rosterRef} className="order-2 flex min-w-0 flex-col gap-3">
           <LiveMapRoster
             agents={searched}
             rows={rows}
