@@ -1,0 +1,288 @@
+name: Set demo switches on prod
+
+# Operator job: turn two demo features on or off on the running deployment —
+# the prospect connecting his own Facebook Page to a guided demo, and the demo
+# guide's voice (spoken Da Vinci answers and «Səslə soruşun»). No build and no
+# release — the app reads both switches on every request
+# (src/lib/demo-center/demo-social-oauth.ts, docs/DEMO_CENTER.md «Switches»).
+#
+# Why this exists: both are kill switches in the canonical app env, and until
+# now moving one meant a root shell on production. This is the path every
+# other operator setting takes: checked, locked, written atomically, handed to
+# the running process alone, and verified there.
+#
+# Usage: run this workflow and choose
+#   social_page          keep — leave it as it is
+#                        on   — DEMO_SOCIAL_META_APP_CONFIG_ID = social_app_config_id
+#                        off  — DEMO_SOCIAL_META_APP_CONFIG_ID written EMPTY. The app
+#                               reads it as `?.trim() || null` (demoSocialConfiguredId),
+#                               so empty is unset: no panel, the demo's social routes
+#                               answer enabled:false / 404, the callback binds nothing,
+#                               the webhook's demo branch returns before it reads a row.
+#                               Pages already connected are released by their own cron.
+#   social_app_config_id required with `on`, refused without it: the id of LeadDrive
+#                        Inc.'s staged Facebook app row in channel_configs (a cuid)
+#   assistant_voice      keep | on | off — DEMO_ASSISTANT_VOICE=on / off. The guide's
+#                        voice is off unless the value is `on` (demoAssistantVoiceEnabled,
+#                        src/lib/demo-center/assistant-voice-switch.ts). A build that
+#                        does not have the guide's voice yet does not read the key at
+#                        all: it is written and held, and harmless, until that ships.
+#   An existing value is REPLACED. Values never appear in logs.
+#
+# Before anything is written the job refuses an id that is not a cuid, or that
+# came without `on`, and refuses `on` while the running app has no
+# FACEBOOK_REDIRECT_URI — the app ignores the id without it (demoSocialMetaApp).
+# After the restart it requires the app to answer /api/v1/ping and the running
+# process to hold exactly the new values (for an empty one: no value at all).
+# Whether the id resolves to the app row is NOT checked: the app answers that
+# only to an admin session (a demo request's page offers the «Facebook
+# səhifəsi» tick only when it does) and to a demo token, and there is no
+# read-only endpoint for it — look at a request page after `on`.
+# A run that would change nothing writes nothing and restarts nothing.
+# What the job does is tested by running it:
+# src/__tests__/demo-switches-operator-job.test.ts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      social_page:
+        description: "Своя страница Facebook в демо: keep — не менять; on — включить (нужен social_app_config_id); off — выключить"
+        type: choice
+        options:
+          - keep
+          - "on"
+          - "off"
+        default: keep
+      social_app_config_id:
+        description: "Только при on: id строки channel_configs стейджингового приложения Facebook LeadDrive Inc. (cuid)"
+        type: string
+        required: false
+        default: ""
+      assistant_voice:
+        description: "Голос гида демо (ответы вслух и «Səslə soruşun»): keep — не менять; on — включить; off — выключить"
+        type: choice
+        options:
+          - keep
+          - "on"
+          - "off"
+        default: keep
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  set-demo-switches:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # The id becomes part of a remote command line — anything outside a
+      # cuid's shape is refused here, before the production key is installed.
+      - name: Validate inputs
+        env:
+          SOCIAL_PAGE_CHOICE: ${{ inputs.social_page }}
+          SOCIAL_APP_CONFIG_ID: ${{ inputs.social_app_config_id }}
+          VOICE_CHOICE: ${{ inputs.assistant_voice }}
+          LC_ALL: C.UTF-8
+        run: |
+          set -euo pipefail
+          refuse() { echo "::error::$1; nothing was changed"; exit 1; }
+          case "$SOCIAL_PAGE_CHOICE" in keep|on|off) ;; *) refuse "social_page must be keep, on or off" ;; esac
+          case "$VOICE_CHOICE" in keep|on|off) ;; *) refuse "assistant_voice must be keep, on or off" ;; esac
+          if [ "$SOCIAL_PAGE_CHOICE" = on ]; then
+            [ -n "$SOCIAL_APP_CONFIG_ID" ] || refuse "social_page=on needs social_app_config_id: the id of the demo's Facebook app row"
+            [[ "$SOCIAL_APP_CONFIG_ID" =~ ^c[a-z0-9]{20,30}$ ]] || refuse "social_app_config_id is not a channel_configs id (a cuid: c, then 20-30 lowercase letters or digits)"
+          else
+            # An id that would not be written must not look as if it had been.
+            [ -z "$SOCIAL_APP_CONFIG_ID" ] || refuse "social_app_config_id is taken only with social_page=on"
+          fi
+          echo "inputs have the expected shape"
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Write demo switches to canonical app env and restart PM2
+        env:
+          SOCIAL_PAGE_CHOICE: ${{ inputs.social_page }}
+          SOCIAL_APP_CONFIG_ID: ${{ inputs.social_app_config_id }}
+          VOICE_CHOICE: ${{ inputs.assistant_voice }}
+          LC_ALL: C.UTF-8
+        run: |
+          set -euo pipefail
+          # The choices become the values the app reads. «Validate inputs» has
+          # refused everything else already; the id is held to its shape once
+          # more here, where it is put inside the single quotes of the remote
+          # command line.
+          refuse() { echo "::error::$1; nothing was changed"; exit 1; }
+          GIVEN_KEYS=""
+          DEMO_SOCIAL_META_APP_CONFIG_ID=""
+          DEMO_ASSISTANT_VOICE=""
+          case "$SOCIAL_PAGE_CHOICE" in
+            keep) ;;
+            on)
+              [[ "$SOCIAL_APP_CONFIG_ID" =~ ^c[a-z0-9]{20,30}$ ]] || refuse "social_app_config_id is not a channel_configs id"
+              DEMO_SOCIAL_META_APP_CONFIG_ID="$SOCIAL_APP_CONFIG_ID"
+              GIVEN_KEYS+=" DEMO_SOCIAL_META_APP_CONFIG_ID"
+              ;;
+            # Written empty: the app reads an empty id as no id.
+            off) GIVEN_KEYS+=" DEMO_SOCIAL_META_APP_CONFIG_ID" ;;
+            *) refuse "social_page must be keep, on or off" ;;
+          esac
+          case "$VOICE_CHOICE" in
+            keep) ;;
+            on|off) DEMO_ASSISTANT_VOICE="$VOICE_CHOICE"; GIVEN_KEYS+=" DEMO_ASSISTANT_VOICE" ;;
+            *) refuse "assistant_voice must be keep, on or off" ;;
+          esac
+          GIVEN_KEYS="${GIVEN_KEYS# }"
+          if [ -z "$GIVEN_KEYS" ]; then
+            echo "Nothing to change — keep and keep: production was not contacted, the app env is untouched and PM2 was not restarted"
+            exit 0
+          fi
+
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "GIVEN_KEYS='$GIVEN_KEYS' DEMO_SOCIAL_META_APP_CONFIG_ID='$DEMO_SOCIAL_META_APP_CONFIG_ID' DEMO_ASSISTANT_VOICE='$DEMO_ASSISTANT_VOICE' bash -s" <<'REMOTE'
+          set -euo pipefail
+          # Which keys this run sets — a plain shell variable from here on, so
+          # that PM2 --update-env does not carry it into the app.
+          given_keys="$GIVEN_KEYS"
+          unset GIVEN_KEYS
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          ENV="$APP_ENV_FILE"
+          ENV_DIR="$(dirname -- "$ENV")"
+          APP_ENV_LOCK_FILE="${APP_ENV_LOCK_FILE:-/run/lock/leaddrive-app-env.lock}"
+          [ -d "$ENV_DIR" ] && [ ! -L "$ENV_DIR" ] || { echo "FATAL: app env parent $ENV_DIR missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G' "$ENV_DIR")" = "root:root" ] || { echo "FATAL: app env parent must be owned by root:root"; exit 1; }
+          ENV_DIR_MODE="$(stat -c '%a' "$ENV_DIR")"
+          (( (8#$ENV_DIR_MODE & 8#022) == 0 )) || { echo "FATAL: app env parent must not be group- or world-writable"; exit 1; }
+          [ -f "$ENV" ] && [ ! -L "$ENV" ] || { echo "FATAL: canonical app env $ENV missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G:%a' "$ENV")" = "root:root:600" ] || { echo "FATAL: canonical app env must be root:root mode 0600"; exit 1; }
+          [ -d "$(dirname -- "$APP_ENV_LOCK_FILE")" ] || { echo "FATAL: app-env lock parent missing"; exit 1; }
+          exec 9>"$APP_ENV_LOCK_FILE"
+          flock -w 120 9 || { echo "FATAL: another canonical app-env update is running"; exit 1; }
+
+          KEYS="DEMO_SOCIAL_META_APP_CONFIG_ID DEMO_ASSISTANT_VOICE"
+          given() { case " $given_keys " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+          # What the file holds for a key now — compared and counted, never printed.
+          kept() { sed -nE "s/^[[:space:]]*(export[[:space:]]+)?$1=(.*)$/\2/p" "$ENV" | tail -1; }
+          app_pid() { pm2 pid leaddrive-v2 2>/dev/null | tail -1; }
+          app_environ() {
+            local pid; pid="$(app_pid)"
+            [ -n "$pid" ] && [ "$pid" != "0" ] && [ -r "/proc/$pid/environ" ] && echo "/proc/$pid/environ"
+          }
+          # The file is not what the app reads — the process is. An empty value
+          # is read as off, and so is no value at all: for an empty value the
+          # process must hold nothing but an empty one.
+          process_holds() {
+            local environ; environ="$(app_environ)" || return 1
+            if [ -n "$2" ]; then
+              grep -zFxq -- "$1=$2" "$environ"
+            else
+              ! grep -zq -- "^$1=." "$environ"
+            fi
+          }
+
+          # An id without the product's Facebook redirect URI is ignored by the
+          # app (demoSocialMetaApp): the panel would stay off while this job
+          # said on. The restart keeps what the process has, so ask the process.
+          if given DEMO_SOCIAL_META_APP_CONFIG_ID && [ -n "$DEMO_SOCIAL_META_APP_CONFIG_ID" ]; then
+            environ="$(app_environ)" || {
+              echo "FATAL: the running app cannot be read (is PM2 leaddrive-v2 up?), so it cannot be asked for its FACEBOOK_REDIRECT_URI; nothing was changed"
+              exit 1
+            }
+            grep -zq -- '^FACEBOOK_REDIRECT_URI=.*[^[:space:]]' "$environ" || {
+              echo "FATAL: the running app has no FACEBOOK_REDIRECT_URI, and without it the app ignores the demo's Facebook app; nothing was changed"
+              exit 1
+            }
+          fi
+
+          changed_keys=()
+          for key in $KEYS; do
+            value="${!key:-}"
+            if ! given "$key"; then
+              echo "$key: not asked — left as it is"
+            elif [ "$(kept "$key")" = "$value" ] && process_holds "$key" "$value"; then
+              echo "$key: already so"
+            else
+              changed_keys+=("$key")
+            fi
+          done
+          if [ "${#changed_keys[@]}" -eq 0 ]; then
+            echo "Nothing to change — the app env is untouched and PM2 was not restarted"
+            exit 0
+          fi
+
+          ENV_STAGE="$(mktemp "$ENV_DIR/.app.env.demo-switches.XXXXXX")"
+          cleanup() { [ -z "$ENV_STAGE" ] || rm -f -- "$ENV_STAGE"; }
+          trap cleanup EXIT
+          cp --preserve=mode,ownership "$ENV" "$ENV_STAGE"
+          # A file that does not end with a line break would have the first new key glued onto its last line.
+          [ -z "$(tail -c1 "$ENV_STAGE")" ] || printf '\n' >> "$ENV_STAGE"
+          for key in "${changed_keys[@]}"; do
+            # Replace-or-append so on and off take turns on one line; values never echo.
+            sed -i "/^[[:space:]]*\(export[[:space:]]\+\)\?${key}=/d" "$ENV_STAGE"
+            printf '%s=%s\n' "$key" "${!key}" >> "$ENV_STAGE"
+            echo "$key: staged for canonical app env"
+          done
+          # ENV_STAGE was created in $ENV_DIR, so this replace cannot cross a
+          # filesystem boundary or leave a partially written app env.
+          mv -f "$ENV_STAGE" "$ENV"
+          ENV_STAGE=""
+
+          # PM2 --update-env merges this shell's environment over what the
+          # process has. Only the keys written above go to it: one that was not
+          # asked for arrives here as an empty string, and for the Facebook
+          # switch an empty string is off — it would switch off a working demo
+          # in the running process until the next deploy.
+          for key in $KEYS; do
+            case " ${changed_keys[*]} " in *" $key "*) export "$key" ;; *) unset "$key" ;; esac
+          done
+          pm2 restart leaddrive-v2 --update-env >/dev/null
+          echo "PM2 restarted with updated env (${changed_keys[*]})"
+
+          HEALTHY=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if curl -fsS --max-time 10 http://127.0.0.1:3001/api/v1/ping >/dev/null 2>&1; then
+              HEALTHY=true
+              break
+            fi
+            sleep 5
+          done
+          [ "$HEALTHY" = true ] || { echo "FATAL: the app does not answer /api/v1/ping after the restart"; exit 1; }
+          echo "ping ok"
+
+          # Each key written must be, with exactly its new value, in the
+          # environment of the process that now runs.
+          for key in "${changed_keys[@]}"; do
+            process_holds "$key" "${!key}" || { echo "FATAL: the running process does not hold the new $key"; exit 1; }
+          done
+          echo "running process holds: ${changed_keys[*]}"
+
+          # What the app now does, in words — matched on the value, never printing it.
+          for key in "${changed_keys[@]}"; do
+            case "$key=${!key}" in
+              DEMO_SOCIAL_META_APP_CONFIG_ID=)
+                echo "Facebook Page in the demo: off — no panel, the routes answer enabled:false / 404" ;;
+              DEMO_SOCIAL_META_APP_CONFIG_ID=*)
+                echo "Facebook Page in the demo: on in the running app, which has its redirect URI. Whether the id names the demo's app row is not checked here: only a demo request's admin page tells — its «Facebook səhifəsi» tick is offered only when it does" ;;
+              DEMO_ASSISTANT_VOICE=on)
+                echo "Guide voice: on (a build without the guide's voice does not read the switch)" ;;
+              DEMO_ASSISTANT_VOICE=off)
+                echo "Guide voice: off" ;;
+            esac
+          done
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
