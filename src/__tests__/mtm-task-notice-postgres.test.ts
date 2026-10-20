@@ -6,7 +6,10 @@
  *
  * Read off the tables after the real handlers ran on a real Postgres: which
  * agent got a line, in which language, with which words — and that a task the
- * agent wrote for himself, or one the server refused, tells nobody. The push
+ * agent wrote for himself, or one the server refused, tells nobody. The same
+ * for «Дать задачу» on the manager's phone (POST /mobile/manager/tasks): the
+ * panel's task, due at 18:00 of the chosen day, never doubled by a resend,
+ * never given outside the manager's team. The push
  * itself is pinned in lib-mtm-task-assigned-notify.test.ts; here Firebase is
  * not configured, so nothing leaves the test.
  *
@@ -42,14 +45,17 @@ const scratch = vi.hoisted(() => {
   return { name, url: url.toString() }
 })
 
+/** Whose phone is calling; null means the request comes from a browser. */
+const caller = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 /** Who sits at the browser. */
 const browser = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 
 vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
   const mock = makeMobileAuthMock()
-  mock.resolveMobileAuth.mockImplementation(async () => null)
-  mock.getMobileAuth.mockImplementation(() => null)
+  mock.resolveMobileAuth.mockImplementation(async () => caller.current)
+  // Synchronous, like the real one: it only reads the token and picks the branch.
+  mock.getMobileAuth.mockImplementation(() => caller.current)
   return mock
 })
 vi.mock("@/lib/api-auth", () => ({
@@ -108,6 +114,7 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
   let bypass!: typeof import("@/lib/rls-context").runWithRlsBypass
   let createTask!: typeof import("@/app/api/v1/mtm/tasks/route").POST
   let updateTask!: typeof import("@/app/api/v1/mtm/tasks/[id]/route").PUT
+  let giveTask!: typeof import("@/app/api/v1/mtm/mobile/manager/tasks/route").POST
   let taskId = ""
   let taskVersion = 0
 
@@ -122,6 +129,7 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
     createTask = (await import("@/app/api/v1/mtm/tasks/route")).POST
     updateTask = (await import("@/app/api/v1/mtm/tasks/[id]/route")).PUT
+    giveTask = (await import("@/app/api/v1/mtm/mobile/manager/tasks/route")).POST
 
     await bypass(async () => {
       await prisma.organization.create({ data: { id: ORG, name: ORG, slug: ORG, modules: { mtm: true, "route-field": true } } })
@@ -147,13 +155,14 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
   }, 60_000)
 
   function browserOf(userId: string) {
+    caller.current = null
     browser.current = { orgId: ORG, userId, role: "member", email: `${userId}@example.test`, name: userId, principalType: "session" }
   }
 
   async function call(handler: (req: NextRequest, ctx?: never) => Promise<Response>, url: string, method: string, body: unknown, ctx?: unknown) {
     const response = await (handler as (req: NextRequest, ctx?: unknown) => Promise<Response>)(new NextRequest(url, {
       method,
-      headers: { "content-type": "application/json" },
+      headers: caller.current ? { Authorization: "Bearer mobile", "content-type": "application/json" } : { "content-type": "application/json" },
       body: JSON.stringify(body),
     }), ctx)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the handler's JSON, read field by field below
@@ -215,5 +224,79 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
     expect(outside.status).toBe(403)
 
     expect(await notices()).toHaveLength(2)
+  })
+
+  function phoneOf(agentId: string, role: string, name: string) {
+    browser.current = null
+    caller.current = {
+      orgId: ORG,
+      agentId,
+      userId: "",
+      role,
+      email: `${agentId}@example.test`,
+      name,
+      tenantCapabilities: { routeField: true, workforceHrm: true },
+    }
+  }
+
+  async function tasksOf(agentId: string) {
+    return bypass(() => prisma.mtmTask.findMany({
+      where: { organizationId: ORG, agentId },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, title: true, dueDate: true, status: true, events: { select: { type: true, evidence: true } } },
+    }))
+  }
+
+  it("lets the manager give a task from his phone: the panel's task, due tomorrow at 18:00, and the agent told", async () => {
+    phoneOf(MANAGER, "SUPERVISOR", "Team Manager")
+    const given = await call(giveTask, `${BASE}/mobile/manager/tasks`, "POST", { agentId: AYSEL, title: "Bring the samples", due: "tomorrow" })
+    expect(given.status).toBe(201)
+    expect(given.body.data.agent).toEqual({ id: AYSEL, name: "Aysel" })
+    // Firebase is not configured here, so no phone can be reached.
+    expect(given.body.data.pushReady).toBe(false)
+
+    const [task] = (await tasksOf(AYSEL)).filter((row) => row.title === "Bring the samples")
+    expect(task.status).toBe("PENDING")
+    expect(task.dueDate?.toISOString()).toBe(new Date(tomorrowEveningInBaku()).toISOString())
+    expect(task.events).toEqual([{ type: "CREATED", evidence: expect.objectContaining({ actorAgentId: MANAGER, actorRole: "SUPERVISOR", channel: "mobile" }) }])
+
+    const rows = await notices()
+    expect(rows.at(-1)).toEqual({
+      agentId: AYSEL,
+      type: "task",
+      title: "Team Manager sizə yeni tapşırıq verdi",
+      body: "Bring the samples · son müddət: sabah 18:00",
+      metadata: { domain: "task", event: "task_assigned", assignedTaskId: task.id, giverAgentId: MANAGER },
+    })
+  })
+
+  it("answers a resend with the same task instead of a second one", async () => {
+    phoneOf(MANAGER, "SUPERVISOR", "Team Manager")
+    const before = (await tasksOf(AYSEL)).length
+    const noticesBefore = (await notices()).length
+    const again = await call(giveTask, `${BASE}/mobile/manager/tasks`, "POST", { agentId: AYSEL, title: "Bring the samples", due: "tomorrow" })
+    expect(again.status).toBe(200)
+    expect((await tasksOf(AYSEL)).length).toBe(before)
+    expect((await notices()).length).toBe(noticesBefore)
+  })
+
+  it("gives no task to someone outside the team, to himself, by an agent, or for a day gone by", async () => {
+    const before = await bypass(() => prisma.mtmTask.count({ where: { organizationId: ORG } }))
+    const noticesBefore = (await notices()).length
+
+    phoneOf(MANAGER, "SUPERVISOR", "Team Manager")
+    for (const agentId of [OTHER_TEAM, MANAGER, "no-such-card"]) {
+      const refused = await call(giveTask, `${BASE}/mobile/manager/tasks`, "POST", { agentId, title: "Nope", due: "today" })
+      expect({ agentId, status: refused.status, code: refused.body.code }).toEqual({ agentId, status: 403, code: "MTM_TASK_SCOPE_DENIED" })
+    }
+    const past = await call(giveTask, `${BASE}/mobile/manager/tasks`, "POST", { agentId: AYSEL, title: "Too late", due: "2020-01-01" })
+    expect(past.status).toBe(400)
+
+    phoneOf(ELVIN, "AGENT", "Elvin")
+    const byAgent = await call(giveTask, `${BASE}/mobile/manager/tasks`, "POST", { agentId: AYSEL, title: "Nope", due: "today" })
+    expect(byAgent.status).toBe(403)
+
+    expect(await bypass(() => prisma.mtmTask.count({ where: { organizationId: ORG } }))).toBe(before)
+    expect((await notices()).length).toBe(noticesBefore)
   })
 })
