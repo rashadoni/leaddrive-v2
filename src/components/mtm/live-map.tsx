@@ -1280,7 +1280,9 @@ export default function MtmLiveMap({
             const status = agent.fieldStatus || (agent.isOnline ? "ON_ROAD" : "OFFLINE")
             const statusKey: MtmFieldStatus = isMtmFieldStatus(status) ? status : "OFFLINE"
             const isFocused = agent.agentId === focusAgentId
-            const speedKmh = mtmSpeedKmh(agent.speed)
+            // A grey last known point has no speed now: the last fix before a
+            // break may have been taken on the move.
+            const speedKmh = agent.freshness === "STALE" ? null : mtmSpeedKmh(agent.speed)
             return (
               <GlidingMarker
                 key={marker.id}

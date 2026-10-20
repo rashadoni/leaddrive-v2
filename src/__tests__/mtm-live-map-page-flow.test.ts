@@ -1931,6 +1931,38 @@ describe("the live map page, end to end", () => {
       expect(cell("near", "distance")).toBe("—")
     })
 
+    // Verification of 2026-10-20: the card still said how long to the next
+    // stop, measured from the grey point he left before the break, and at
+    // what speed — the speed of his last fix before it.
+    it("gives no time to the next stop and no speed, from the point he left before the break", async () => {
+      routes = [{
+        id: "route-1", status: "IN_PROGRESS", date: "2026-10-09",
+        points: [
+          { id: "p1", orderIndex: 0, status: "PENDING", plannedTime: null, visitedAt: null, visits: [],
+            customer: { id: "c1", name: "Клиника", address: null, ...northOf(5_000), geofenceRadius: null } },
+        ],
+      }]
+      const card = async () => {
+        await open()
+        await press(byTestId("live-map-agent-card-near"))
+        for (let turn = 0; turn < 150 && !byTestId("mtm-map-selected-route")?.textContent?.includes("Клиника"); turn += 1) await settle(20)
+        return byTestId("live-map-agent-detail")?.textContent ?? ""
+      }
+      // At work, the same row: both are said.
+      rosterRows[1] = onBreak({ workdayState: "ACTIVE", fieldStatus: "ON_ROAD" })
+      const working = await card()
+      expect(working).toContain("До точки")
+      expect(working).toMatch(/\d+ км\/ч/)
+
+      await act(async () => { root.unmount() })
+      root = createRoot(container)
+      rosterRows[1] = onBreak()
+      const resting = await card()
+      expect(byTestId("mtm-map-selected-route")?.textContent).toContain("Клиника")
+      expect(resting).not.toContain("До точки")
+      expect(resting).not.toMatch(/\d+ км\/ч/)
+    })
+
     describe("as the map refreshes", () => {
       const forward = async (ms: number, step = 1_000) => {
         for (let passed = 0; passed < ms; passed += step) {

@@ -1338,10 +1338,14 @@ export default function MtmMapPage() {
     const agent = agents.find(a => a.agentId === selectedAgent)
     if (agent?.latitude == null || agent.longitude == null ||
         !Number.isFinite(agent.latitude) || !Number.isFinite(agent.longitude)) return null
+    // Only from where he is: not from the grey point he left before a break,
+    // nor from a phone gone quiet or a closed workday — the same rule as the
+    // distance in the list and the street in the card.
+    if (!hasRenderableLivePosition(agent.freshness, agent.workdayState, workforceEnabled)) return null
     const distMeters = calculateDistance(agent.latitude, agent.longitude, nextStop.latitude, nextStop.longitude)
     const speedKmh = agent.speed != null && mtmSpeedMoving(agent.speed) ? agent.speed : 30 // fallback 30 km/h
     return Math.round((distMeters / 1000) / speedKmh * 3600)
-  }, [selectedAgent, routeStops, agents])
+  }, [selectedAgent, routeStops, agents, workforceEnabled])
   const showRosterLoading = sessionStatus === "loading" || (Boolean(identityKey) && loading && !roster)
 
   const formatVisitOpened = (value: string) => formatDateTime(value, locale, visitOpenedOnAnotherDay(value, contract?.timezone)
@@ -1354,7 +1358,9 @@ export default function MtmMapPage() {
   const renderAgentDetail = (agent: AgentLocation) => {
     const appPresent = agent.isOnline
     const hasFreshGps = agent.freshness === "ONLINE"
-    const speedKmh = mtmSpeedKmh(agent.speed)
+    // A speed belongs to a live position: the last fix before a break may
+    // have been taken at 40 km/h, and he is not driving now.
+    const speedKmh = hasRenderableLivePosition(agent.freshness, agent.workdayState, workforceEnabled) ? mtmSpeedKmh(agent.speed) : null
     const workdayTone = agent.workdayState === "ACTIVE"
       ? "font-medium text-emerald-700 dark:text-emerald-400"
       : agent.workdayState === "PAUSED"
