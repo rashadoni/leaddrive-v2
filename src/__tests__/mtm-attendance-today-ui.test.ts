@@ -10,6 +10,7 @@ import { defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
 import { attendanceTodayRange } from "@/lib/mtm/attendance-today"
 import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
 import type { AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
+import { readHint } from "./helpers/hint"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const ru = JSON.parse(readFileSync("messages/ru.json", "utf8"))
@@ -21,9 +22,12 @@ const kinds = defaultAttendanceDayKinds(key => ({ ru: ru.mtmAttendance[`dayKindN
 const day = (agentId: string, date: string, start: string) => ({ id: `${agentId}-${date}`, agentId, workDate: date, status: "STARTED", startedAt: at(date, start), completedAt: null, totalPausedSeconds: 0,
   events: [{ type: "START", occurredAt: at(date, start) }] })
 const range = attendanceTodayRange(today)
-const report = buildMtmAttendanceReport({ from: range.from, to: range.to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
-  employees: ["Айсель", "Нигяр", "Рашад", "Эльвин"].map(name => ({ id: `id-${name}`, name, teamId: null, teamName: null })),
-  workdays: [day("id-Айсель", today, "08:55"), day("id-Нигяр", today, "09:25"), day("id-Эльвин", "2026-10-13", "09:00"), day("id-Эльвин", today, "09:00")] })
+const reportOf = (extra: { name: string; start: string } | null = null) => buildMtmAttendanceReport({ from: range.from, to: range.to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
+  employees: ["Айсель", "Нигяр", "Рашад", "Эльвин", ...(extra ? [extra.name] : [])].map(name => ({ id: `id-${name}`, name, teamId: null, teamName: null })),
+  workdays: [day("id-Айсель", today, "08:55"), day("id-Нигяр", today, "09:25"), day("id-Эльвин", "2026-10-13", "09:00"), day("id-Эльвин", today, "09:00"),
+    ...(extra ? [day(`id-${extra.name}`, today, extra.start)] : [])] })
+const report = reportOf()
+let currentReport = report
 const version = "2026-10-13T08:00:00.000Z"
 const leaveRequest = (id: string, name: string): AttendanceReviewItem => ({
   id, clientRequestId: `${id}-client`, agentId: `agent-${id}`, status: "PENDING", startDate: "2026-10-20", endDate: "2026-10-24", reason: "Семейный отпуск",
@@ -42,7 +46,7 @@ let explanations: unknown[] | null = null
 const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
   const url = String(input)
   if (url.startsWith("/api/v1/mtm/attendance/rules")) return json({ success: true, data: { today, canManageRules: true } })
-  if (url.startsWith("/api/v1/mtm/attendance/report")) return json({ success: true, data: report })
+  if (url.startsWith("/api/v1/mtm/attendance/report")) return json({ success: true, data: currentReport })
   if (url.startsWith("/api/v1/mtm/attendance/explanations") && init?.method === "POST" && !url.includes("/decision")) return json({ success: true, data: { created: 2, already: 0, notNeeded: 0 } }, 201)
   if (url.startsWith("/api/v1/mtm/attendance/explanations") && !init?.method) return explanations ? json({ success: true, data: { items: explanations } }) : json({ error: "Forbidden" }, 403)
   if (url.includes("/decision") && init?.method === "POST") return json(decisionStatus < 400 ? { success: true, data: { request: { status: "APPROVED" } } } : { error: "x" }, decisionStatus)
@@ -66,11 +70,11 @@ async function type(field: HTMLInputElement, value: string) {
 }
 
 beforeEach(() => {
-  requests = [leaveRequest("r1", "Айсель Мамедова"), leaveRequest("r2", "Мурад Гасанов")]; requestsStatus = 200; decisionStatus = 200; explanations = null
+  requests = [leaveRequest("r1", "Айсель Мамедова"), leaveRequest("r2", "Мурад Гасанов")]; requestsStatus = 200; decisionStatus = 200; explanations = null; currentReport = report
   container = document.createElement("div"); document.body.append(container); root = createRoot(container)
   fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock)
 })
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals() })
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe("Personnel → Today", () => {
   it("shows today's figures from the report and an action beside each person who needs one", async () => {
@@ -108,6 +112,18 @@ describe("Personnel → Today", () => {
     expect(names("notYet")).toEqual(["Рашад"])
     expect(byTestId("attendance-now-working")!.textContent).toContain(p("nowSince").replace("{time}", "08:55"))
     expect(now.querySelector("li a")!.getAttribute("href")).toBe(`/mtm/attendance/people/${encodeURIComponent("id-Айсель")}`)
+  })
+
+  // Owner, 2026-10-20: the «Kadr uçotu» clip says it under «Now», and so does the product.
+  it("says under «Now» that there is no biometrics, no place on a break, and the employee closes the day", async () => {
+    await render()
+    const line = byTestId("attendance-now-privacy")!
+    expect(line.textContent).toBe(p("nowPrivacy"))
+    expect(az.personnel.nowPrivacy).toBe("Biometriya yoxdur: nə üz, nə barmaq izi. Fasilədə yalnız vaxt görünür — əməkdaşın yeri yazılmır. Günü əməkdaş özü bağlayır.")
+    // The shield icon on its own, no coloured square behind it (calm colours, 2026-10-18).
+    expect(line.querySelector("svg")).not.toBeNull()
+    expect(line.innerHTML).not.toMatch(/\bbg-/)
+    expect(byTestId("attendance-today-now")!.contains(line)).toBe(true)
   })
   it("approves in one click with the request version and removes the row", async () => {
     await render()
@@ -172,19 +188,44 @@ describe("Personnel → Today", () => {
   })
 
   // Owner, 2026-10-16 (approved mockup): tick the late and the absent and ask them to explain.
-  it("asks everyone late or absent today for an explanation with one tick and one button", async () => {
+  // Owner, 2026-10-20 (the «Kadr uçotu» clip, «bir düymə ilə»): they come ticked, so it is one button.
+  it("asks everyone late or absent today for an explanation with one button", async () => {
     explanations = []
     await render()
     const bar = byTestId("attendance-explain-bar")!
     expect(bar.textContent).toContain(p("explainHint"))
-    const all = bar.querySelector<HTMLInputElement>('input[type="checkbox"]')!
-    await act(async () => all.click())
+    expect(bar.querySelector<HTMLInputElement>('input[type="checkbox"]')!.checked).toBe(true)
     const ask = byTestId("attendance-explain-ask") as HTMLButtonElement
+    expect(ask.disabled).toBe(false)
     expect(ask.textContent).toBe(ru.personnel.explainAsk.replace("{count}", "2"))
+    expect(await readHint(ask)).toBe(p("explainAskHint"))
     await act(async () => ask.click())
     const post = fetchMock.mock.calls.find(([url, init]) => String(url) === "/api/v1/mtm/attendance/explanations" && init?.method === "POST")!
     expect(JSON.parse(String(post[1]!.body)).items).toEqual([{ agentId: "id-Рашад", date: today, kind: "ABSENT" }, { agentId: "id-Нигяр", date: today, kind: "LATE" }])
     expect(container.querySelector('[role="status"]')?.textContent).toContain("2")
+  })
+
+  it("keeps HR's untick through the minute's refresh and ticks only someone new", async () => {
+    explanations = []
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await render()
+    const tick = (name: string) => container.querySelector<HTMLInputElement>(`input[aria-label="${p("explainSelect").replace("{name}", name)}"]`)
+    expect(tick("Нигяр")!.checked).toBe(true)
+    await act(async () => tick("Нигяр")!.click())
+    expect(tick("Нигяр")!.checked).toBe(false)
+    expect(byTestId("attendance-explain-ask")!.textContent).toBe(ru.personnel.explainAsk.replace("{count}", "1"))
+    // A minute later Камран has come in forty minutes late; the screen reloads by itself.
+    currentReport = reportOf({ name: "Камран", start: "09:40" })
+    const loads = fetchMock.mock.calls.filter(([url]) => String(url).startsWith("/api/v1/mtm/attendance/report")).length
+    await act(async () => { vi.advanceTimersByTime(60_000) })
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).startsWith("/api/v1/mtm/attendance/report")).length).toBe(loads + 1)
+    expect(tick("Камран")!.checked).toBe(true)
+    expect(tick("Нигяр")!.checked).toBe(false)
+    expect(tick("Рашад")!.checked).toBe(true)
+    await act(async () => (byTestId("attendance-explain-ask") as HTMLButtonElement).click())
+    const post = fetchMock.mock.calls.find(([url, init]) => String(url) === "/api/v1/mtm/attendance/explanations" && init?.method === "POST")!
+    expect(JSON.parse(String(post[1]!.body)).items).toEqual([{ agentId: "id-Рашад", date: today, kind: "ABSENT" }, { agentId: "id-Камран", date: today, kind: "LATE" }])
   })
 
   it("shows who was asked and who answered, and HR accepts the answer", async () => {
@@ -199,6 +240,8 @@ describe("Personnel → Today", () => {
     expect(statuses).toEqual([p("explainAnswered"), ru.personnel.explainWaiting.replace("{time}", "10:05")])
     await act(async () => buttonIn(byTestId("attendance-today-attention"), p("explainAnswered"))!.click())
     expect(byTestId("attendance-explain-answer")?.textContent).toContain("Затопило квартиру")
+    // When the answer came, in the organisation's time (the «Kadr uçotu» clip, 2026-10-20).
+    expect(byTestId("attendance-explain-answered-at")?.textContent).toBe(ru.personnel.explainAnsweredAt.replace("{time}", "11:00"))
     await act(async () => buttonIn(byTestId("attendance-explain-answer"), p("explainAccept"))!.click())
     const decision = fetchMock.mock.calls.find(([url]) => String(url) === "/api/v1/mtm/attendance/explanations/e1/decision")!
     expect(JSON.parse(String(decision[1]!.body))).toEqual({ decision: "ACCEPTED" })

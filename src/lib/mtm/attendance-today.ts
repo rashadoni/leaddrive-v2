@@ -80,6 +80,36 @@ export function summarizeAttendanceToday(rows: readonly MtmAttendanceReportRow[]
 
 export type AttendanceTodaySummary = ReturnType<typeof summarizeAttendanceToday>
 
+/** One explanation per person, day and reason — the key the explanations API answers with. */
+export function attendanceExplanationKey(employeeId: string, date: string, kind: "LATE" | "ABSENT"): string {
+  return `${employeeId}|${date}|${kind}`
+}
+
+/**
+ * The rows of «needs attention» HR can still ask to explain: late or absent,
+ * with nothing asked or written for that day and reason yet. In list order.
+ */
+export function attendanceAskableExplanations(attention: readonly AttendanceTodayAttention[], explained: ReadonlySet<string>): string[] {
+  return attention.flatMap(item => {
+    if (item.type !== "late" && item.type !== "absent") return []
+    const key = attendanceExplanationKey(item.employeeId, item.date, item.type === "late" ? "LATE" : "ABSENT")
+    return explained.has(key) ? [] : [key]
+  })
+}
+
+/**
+ * «İzahat istə» in one click (owner, 2026-10-20, the «Kadr uçotu» clip: «bir
+ * düymə ilə»): a row that can be asked is ticked when it first appears. The
+ * screen reloads every minute; a row it has already shown keeps whatever HR
+ * did with its tick, so an untick is not undone by the next refresh. Returns
+ * the rows to tick now; `seen` is updated in place.
+ */
+export function attendanceNewlyAskable(askable: readonly string[], seen: Set<string>): string[] {
+  const fresh = askable.filter(key => !seen.has(key))
+  for (const key of fresh) seen.add(key)
+  return fresh
+}
+
 export type AttendanceNowPerson = { employeeId: string; name: string; at: string | null; dayKind: MtmAttendanceReportRow["dayKind"] | null }
 export type AttendanceNow = { working: AttendanceNowPerson[]; paused: AttendanceNowPerson[]; left: AttendanceNowPerson[]; notYet: AttendanceNowPerson[] }
 /**

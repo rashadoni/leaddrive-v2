@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import { defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
-import { attendanceTodayRange, attendanceWeekStart, summarizeAttendanceToday } from "@/lib/mtm/attendance-today"
+import { attendanceAskableExplanations, attendanceExplanationKey, attendanceNewlyAskable, attendanceTodayRange, attendanceWeekStart, summarizeAttendanceToday } from "@/lib/mtm/attendance-today"
 import type { AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 
 // Wednesday 14 October 2026, 12:00 in Baku: past the 09:00 start and its grace.
@@ -96,5 +96,28 @@ describe("Personnel → Today → Now", () => {
     const rows = buildMtmAttendanceReport({ from: saturday, to: saturday, now: "2026-10-17T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
       employees: [{ id: "a", name: "Fictional a", teamId: null, teamName: null }], workdays: [] }).rows
     expect(attendanceNow(rows, saturday)).toEqual({ working: [], paused: [], left: [], notYet: [] })
+  })
+})
+
+describe("Personnel → Today: asking for explanations in one click", () => {
+  const attention = () => summarizeAttendanceToday(report(), today).attention
+
+  it("offers the late and the absent of today, not a missing finish, and not one already asked", () => {
+    const keys = attendanceAskableExplanations(attention(), new Set())
+    expect(keys).toEqual([attendanceExplanationKey("absent", today, "ABSENT"), attendanceExplanationKey("late", today, "LATE")])
+    // Asked, answered or written by the employee himself: nothing left to ask.
+    expect(attendanceAskableExplanations(attention(), new Set([attendanceExplanationKey("late", today, "LATE")])))
+      .toEqual([attendanceExplanationKey("absent", today, "ABSENT")])
+  })
+
+  it("ticks a row once, when it first appears, so an untick survives the minute's refresh", () => {
+    const seen = new Set<string>()
+    const first = attendanceAskableExplanations(attention(), new Set())
+    expect(attendanceNewlyAskable(first, seen)).toEqual(first)
+    // The same rows a minute later: nothing is ticked again, whatever HR did with them.
+    expect(attendanceNewlyAskable(first, seen)).toEqual([])
+    // Somebody else comes in late: only that row is ticked.
+    const later = [...first, attendanceExplanationKey("came-late", today, "LATE")]
+    expect(attendanceNewlyAskable(later, seen)).toEqual([attendanceExplanationKey("came-late", today, "LATE")])
   })
 })
