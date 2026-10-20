@@ -425,6 +425,9 @@ const COPY = {
   },
 }
 
+/** The widget's own words, for a screen that draws its quiet state without asking the server (the demo's visit page). */
+export const ADVISOR_RECORD_COPY = COPY
+
 function domainLabelFor(copy: (typeof COPY)["en"], key: AdvisorDomainKey, fallback?: string) {
   return copy.domains[key] || fallback || key
 }
