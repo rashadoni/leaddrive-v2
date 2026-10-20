@@ -67,6 +67,8 @@ test("real function gives database a private noexec tmpfs and hard cgroup ceilin
     "--property=ProtectSystem=strict", "--property=NoNewPrivileges=yes", "--property=RestrictNamespaces=yes",
     "--owner-operated", "age1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   ]) assert(args.includes(value), value)
+  assert(!args.includes("--property=RuntimeDirectory=leaddrive-postgres-backup"))
+  assert(!args.includes("--property=ReadWritePaths=/run/leaddrive-postgres-backup"))
   assert(!args.some(value => /remount|swapoff/.test(value)))
   assert.equal(readFileSync(join(root, "host-admission"), "utf8"), "/run/leaddrive-postgres-backup\n65534\n65534\n")
 }))
@@ -199,6 +201,10 @@ run_transient_backup_unit database nobody nogroup "$TEST_PROGRAM" 30 "$TEST_ROOT
       assert.fail(result.stderr + "\nSynthetic fixture only:\n" + diagnostic.stdout)
     }
     assert.match(readFileSync(join(root, "journal"), "utf8"), /PRIVATE_WORKSPACE_KERNEL_TEST=PASS/)
+    assert.equal(existsSync("/run/leaddrive-postgres-backup/noexec-probe"), false,
+      "private mount contents must not reach the host workspace")
+    assert.equal(existsSync("/run/leaddrive-postgres-backup"), true,
+      "the pre-existing guarded host mountpoint must survive unit retirement")
     assert.equal(hostSize(), before, "global /run must not be resized")
   } finally {
     if (attempted) {

@@ -2800,11 +2800,11 @@ run_transient_backup_unit() {
       storage_args=(
         --property=StateDirectory=leaddrive-postgres-backup
         --property=StateDirectoryMode=0750
-        --property=RuntimeDirectory=leaddrive-postgres-backup
-        --property=RuntimeDirectoryMode=0750
         --property=ReadWritePaths=/var/lib/leaddrive-postgres-backup
-        --property=ReadWritePaths=/run/leaddrive-postgres-backup
         # Separate mount in this unit only; never resize/remount global /run.
+        # Do not also declare RuntimeDirectory or ReadWritePaths for this path:
+        # systemd's same-path bind/access mount wins over TemporaryFileSystem.
+        # The guarded, pre-existing host directory remains empty underneath.
         # The ceiling is not preallocation. Cgroup memory includes tmpfs pages.
         "--property=TemporaryFileSystem=/run/leaddrive-postgres-backup:rw,nodev,nosuid,noexec,size=3221225472,mode=0750,uid=$workspace_uid,gid=$workspace_gid"
         --property=MemoryHigh=3221225472
