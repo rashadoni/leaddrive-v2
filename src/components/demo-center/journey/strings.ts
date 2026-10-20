@@ -107,6 +107,7 @@ export const DEMO_JOURNEY_STRINGS = {
   voiceStarting: "Mikrofon açılır…",
   voiceSending: "Səsiniz mətnə çevrilir…",
   voiceHeard: (text: string) => `Eşitdim: «${text}»`,
+  voiceHeardWaiting: (ask: string) => `Səsli sualınız yuxarıdakı sahədədir: əvvəlki suala cavab gələndən sonra «${ask}» düyməsini basın.`,
   voiceConsentTitle: "Səslə soruşmaq",
   voiceConsentBody: (max: number) =>
     `Düyməni basanda mikrofon yalnız sualınızı yazır — ən çoxu ${max} saniyə. Səs yalnız mətnə çevrilmək üçün Google-a göndərilir; biz səsi saxlamırıq. Eşidilən mətni əvvəlcə ekranda görəcəksiniz, sonra o, sual kimi bələdçiyə gedir. Hər sualdan sonra mikrofon bağlanır.`,

@@ -14,7 +14,8 @@ import { startVoiceCapture, VoiceCaptureError, type VoiceCapture } from "./demo-
  * once, speak, tap again. At most 15 seconds; the clip goes to our server,
  * which has Google turn it into text and keeps nothing. What was heard is
  * shown («Eşitdim: …») and then asked as the question, through the same
- * assistant path as a typed one.
+ * assistant path as a typed one — or, while another question is still being
+ * answered, left in the box for one press of «Soruş».
  *
  * Before the first clip the prospect reads what happens to the recording and
  * agrees; the microphone is not touched until then. It is opened for one clip
@@ -28,7 +29,9 @@ import { startVoiceCapture, VoiceCaptureError, type VoiceCapture } from "./demo-
  *
  * Every move of the microphone is reported (`onMicrophoneChange`): the guide
  * must not talk into the question, and a clip thrown away must not cost the
- * prospect what the guide was saying or an answer on its way.
+ * prospect what the guide was saying or an answer on its way. A clip sent is
+ * a question only once it comes back as text: one that is silent, too short
+ * or not heard (a refusal, a failure) asks nothing, and is thrown away too.
  */
 
 /** A press held at least this long is «hold to talk»: letting go sends. Shorter is a tap. */
@@ -43,8 +46,10 @@ function microphoneChange(from: VoiceState, to: VoiceState): GuideMicrophoneChan
   if (from === to) return null
   if (to === "starting") return "opening"
   if (to === "recording") return "open"
+  // Whether the clip carried a question only the reply says: `send` reports it.
+  if (to === "sending") return null
   if (from !== "starting" && from !== "recording") return null
-  return to === "sending" ? "sent" : "discarded"
+  return "discarded"
 }
 
 export interface DemoAssistantVoiceProps {
@@ -56,11 +61,14 @@ export interface DemoAssistantVoiceProps {
   readonly exhausted: boolean
   /**
    * The microphone is being asked for (`opening`), records (`open`), or is
-   * closed again — its clip thrown away (`discarded`) or on its way to be
-   * heard (`sent`). Only a real move is reported, each once.
+   * done with — its clip thrown away (`discarded`) or heard as a question
+   * (`sent`, just before `onHeard`). A clip on its way to be heard is
+   * neither yet: it is `sent` when it comes back as text and `discarded` when
+   * it comes back with none, refused or failed. Only a real move is
+   * reported, each once.
    */
   readonly onMicrophoneChange: (change: GuideMicrophoneChange) => void
-  /** The heard text: the box asks it as the question. */
+  /** The heard text: the box asks it as the question, or holds it while another is being answered. */
   readonly onHeard: (text: string) => void
   /** The server's refusal code, when it has one, and whether it says voice is over for this demo. */
   readonly onRefused: (code: string | undefined, exhausted?: boolean) => void
@@ -113,7 +121,12 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onMicrophon
       captureRef.current?.cancel()
       captureRef.current = null
       // Thrown away, and said so: the guide would otherwise stay silent for good.
-      if (stateRef.current === "starting" || stateRef.current === "recording") move("idle")
+      // A clip still being heard is said to be thrown away here and not again
+      // when its reply lands: it would reach the guide of whatever page is there by then.
+      if (stateRef.current === "sending") {
+        move("idle")
+        onMicrophoneChangeRef.current("discarded")
+      } else if (stateRef.current === "starting" || stateRef.current === "recording") move("idle")
     }
   }, [move])
 
@@ -121,6 +134,7 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onMicrophon
   // button gives way to the note, so the microphone goes with it.
   useEffect(() => {
     exhaustedRef.current = exhausted
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- releases the microphone, a device outside React; the one move to «idle» is part of that release
     if (exhausted) discard()
   }, [exhausted, discard])
 
@@ -144,6 +158,10 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onMicrophon
     }
     const clip = capture.stop()
     move("sending")
+    // The clip is a question only if it comes back as text. Silent, too short,
+    // refused or failed, it asks nothing: the guide goes on with what it was
+    // saying and an answer on its way, as after a clip thrown away.
+    let heardText: string | null = null
     try {
       const response = await fetch(
         `/api/v1/public/demo-access/${encodeURIComponent(token)}/assistant/transcribe?stepId=${encodeURIComponent(stepId)}`,
@@ -153,15 +171,19 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onMicrophon
       if (!response.ok || !payload?.success || !payload.text) {
         onRefused(payload?.code, payload?.exhausted)
         if (mountedRef.current) setError(payload?.error ?? S.voiceFailed)
-        return
+      } else {
+        heardText = payload.text
       }
-      if (mountedRef.current) setHeard(payload.text)
-      onHeard(payload.text)
     } catch {
       if (mountedRef.current) setError(S.voiceFailed)
-    } finally {
-      move("idle")
     }
+    // Left the page meanwhile: the unmount already said it was thrown away.
+    if (stateRef.current !== "sending") return
+    move("idle")
+    onMicrophoneChangeRef.current(heardText ? "sent" : "discarded")
+    if (!heardText) return
+    if (mountedRef.current) setHeard(heardText)
+    onHeard(heardText)
   }, [move, onHeard, onRefused, stepId, token])
 
   // The fifteen-second stop fires long after `begin`: it calls the latest `send`, not the one of that moment.

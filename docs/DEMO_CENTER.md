@@ -343,14 +343,24 @@ routes 404, no hash handed out, and the private page keeps `microphone=()`):
   is opening or open, the guide's one audio element starts nothing — no step
   narration, no coach-card switch, no prepared recording, no spoken answer —
   and what was playing pauses the moment the microphone actually opens. A
-  question typed while it is open is answered in text, and nothing is sent to
-  be spoken for it. When the clip is thrown away (a touch that slides off the
+  question typed while it is open, or while its clip is being turned into
+  text, is answered in text, and nothing is sent to be spoken for it. When the clip is thrown away (a touch that slides off the
   button, a cancelled pointer, voice running out) the guide goes on: what it
   was saying resumes (or the step it moved to meanwhile is read), and a
   spoken answer that came back meanwhile is played.
-  When the clip is sent, nothing of before is taken up: an answer to it is
-  coming. A scroll that starts on the button is usually thrown away before
-  the microphone even opens, so it does not interrupt the guide at all.
+  The guide waits while the clip is turned into text, because only the reply
+  says what it was. A clip that comes back with no question in it (silent,
+  too short, not heard, or the request failed) counts as thrown away. When
+  the clip comes back as a question, nothing of before is taken up: an
+  answer to it is coming. A scroll that starts on the button is usually
+  thrown away before the microphone even opens, so it does not interrupt the
+  guide at all.
+- One question at a time. A spoken question heard while another is still
+  being answered is not asked alongside it, and is not asked by itself once
+  that answer is in: that answer may move the story on, and the prospect,
+  not the page, decides whether the question still fits the screen. It
+  waits in the box with a line that says so, and one press of «Soruş» asks
+  it. The answer before it does not wipe it from the box.
 - The prospect presses and holds «Səslə soruşun» (or taps to start and stop)
   after a one-time consent line, speaks up to 15 s; the page sends a mono
   16 kHz WAV to `POST …/assistant/transcribe`; Google's `gemini-3.5-transcribe`

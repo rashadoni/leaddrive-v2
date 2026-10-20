@@ -406,6 +406,12 @@ function DemoAssistant({
   const [error, setError] = useState<string | null>(null)
   const [remaining, setRemaining] = useState<number | null>(null)
   const [asking, setAsking] = useState(false)
+  // The live «a question is being answered»: a clip is heard seconds after the
+  // press that stopped it, and calls the `ask` of that press's render.
+  const askingRef = useRef(false)
+  // A spoken question heard while another was still being answered: it waits
+  // in the box, and one press of «Soruş» asks it.
+  const [heardWaiting, setHeardWaiting] = useState<string | null>(null)
   // Voice minutes ran out for this demo or for today: answers stay text and the button goes.
   const [voiceExhausted, setVoiceExhausted] = useState(false)
   const [voiceNote, setVoiceNote] = useState<string | null>(null)
@@ -413,8 +419,9 @@ function DemoAssistant({
   // that comes back after either moved would talk over the wrong screen.
   const positionRef = useRef(`${snapshot.sectionId}:${snapshot.stepId}`)
   const newestAnswerRef = useRef<string | null>(null)
-  // «Səslə soruşun» has the microphone opening or open: nothing may play,
-  // or the guide's voice would be in the question.
+  // «Səslə soruşun» has the microphone opening or open, or its clip is being
+  // turned into text: nothing may play, or the guide's voice would be in the
+  // question — or start, only to be cut by the answer to it.
   const micOpenRef = useRef(false)
   // A spoken answer that came back while the microphone was open: heard once
   // the clip is thrown away, never once it is sent (that is a new question).
@@ -475,9 +482,10 @@ function DemoAssistant({
   }
 
   // What the microphone did. A clip thrown away (a scroll that began on the
-  // button, a cancelled pointer) takes nothing from the prospect: the answer
-  // that came back meanwhile is heard now. A clip sent is a new question: an
-  // answer to the one before, held or still on its way, is not spoken.
+  // button, a cancelled pointer, a clip that came back with no question in
+  // it) takes nothing from the prospect: the answer that came back meanwhile
+  // is heard now. A clip heard as a question is a new question: an answer to
+  // the one before, held or still on its way, is not spoken.
   const microphoneChanged = (change: GuideMicrophoneChange) => {
     micOpenRef.current = change === "opening" || change === "open"
     setGuideVoiceMicrophone(change)
@@ -493,8 +501,10 @@ function DemoAssistant({
 
   const ask = async (text: string) => {
     const trimmed = text.trim()
-    if (!trimmed || asking) return
+    if (!trimmed || askingRef.current) return
+    askingRef.current = true
     setAsking(true)
+    setHeardWaiting(null)
     setError(null)
     setVoiceNote(null)
     // A new question retires the previous answer's offer.
@@ -545,12 +555,25 @@ function DemoAssistant({
       const asked: AssistantTurn = { id: `you-${Date.now()}`, who: "you", text: trimmed }
       const said: AssistantTurn = { id: `guide-${Date.now()}`, who: "guide", text: moved ? S.assistantMoved : payload.answer, offer }
       setTurns((current) => [...current, asked, said].slice(-ASSISTANT_TURNS_SHOWN))
-      setQuestion("")
+      // Only the question just answered leaves the box: a spoken one waiting there stays.
+      setQuestion((current) => (current === text ? "" : current))
     } catch {
       setError(S.assistantFailed)
     } finally {
+      askingRef.current = false
       setAsking(false)
     }
+  }
+
+  // What «Səslə soruşun» heard is asked — unless another question is still
+  // being answered. One at a time, so it waits in the box for one press of
+  // «Soruş», rather than going by itself once that answer is in: the answer
+  // may have moved the story on, and the prospect, not the page, decides
+  // whether the question still fits the screen.
+  const heardQuestion = (heard: string) => {
+    setQuestion(heard)
+    if (askingRef.current) setHeardWaiting(heard)
+    else void ask(heard)
   }
 
   return (
@@ -596,6 +619,9 @@ function DemoAssistant({
         <Button type="submit" size="sm" className="mt-1.5 h-7 w-full text-xs" disabled={asking || !question.trim()}>
           {asking ? S.assistantAsking : S.assistantAsk}
         </Button>
+        {heardWaiting !== null && question === heardWaiting ? (
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground" data-testid="demo-assistant-heard-waiting">{S.voiceHeardWaiting(S.assistantAsk)}</p>
+        ) : null}
       </form>
 
       {voiceEnabled ? (
@@ -605,7 +631,7 @@ function DemoAssistant({
           busy={asking}
           exhausted={voiceExhausted}
           onMicrophoneChange={microphoneChanged}
-          onHeard={(heard) => { setQuestion(heard); void ask(heard) }}
+          onHeard={heardQuestion}
           onRefused={refusedVoice}
         />
       ) : null}

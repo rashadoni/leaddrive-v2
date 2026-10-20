@@ -31,7 +31,7 @@ vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => crea
 
 import { DemoJourneyPlayer } from "@/components/demo-center/journey/demo-journey-player"
 import { DEMO_JOURNEY_STRINGS as S } from "@/components/demo-center/journey/strings"
-import { DEMO_ASSISTANT_VOICE_CLIP_MAX_SECONDS } from "@/lib/demo-center/assistant/voice-policy"
+import { DEMO_ASSISTANT_VOICE_CLIP_MAX_SECONDS, DEMO_VOICE_REFUSAL_TEXT } from "@/lib/demo-center/assistant/voice-policy"
 import { DEMO_JOURNEY_MODULES, PROSPECT_TO_CLOSED_WON } from "@/lib/demo-center/journey"
 
 const messages = JSON.parse(readFileSync(path.join(process.cwd(), "messages/az.json"), "utf8"))
@@ -52,11 +52,12 @@ let audioElements: Array<{ src: string; paused: boolean }>
 const guideAudio = () => audioElements.at(-1)
 let calls: Array<{ url: string; init?: RequestInit }>
 let reply: Record<string, unknown>
-let transcribeReply: { status: number; body: Record<string, unknown> }
+/** What the transcribe route answers; `fails`: the request itself fails (the network, a dropped connection). */
+let transcribeReply: { status: number; body: Record<string, unknown>; fails?: boolean }
 let voiceReply: { status: number; audio?: boolean; body?: Record<string, unknown> }
 let microphone: { asked: number; stopped: number; closed: number; live: number; deny: string | null; processor: FakeProcessor | null }
 /** Held answers: a request waits here until its gate opens (the server or the microphone taking its time). */
-let gates: { assistant: Promise<void> | null; voice: Promise<void> | null; microphone: Promise<void> | null }
+let gates: { assistant: Promise<void> | null; voice: Promise<void> | null; microphone: Promise<void> | null; transcribe: Promise<void> | null }
 
 function gate() {
   let open!: () => void
@@ -94,7 +95,7 @@ beforeEach(() => {
   transcribeReply = { status: 200, body: { success: true, text: HEARD } }
   voiceReply = { status: 200, audio: true }
   microphone = { asked: 0, stopped: 0, closed: 0, live: 0, deny: null, processor: null }
-  gates = { assistant: null, voice: null, microphone: null }
+  gates = { assistant: null, voice: null, microphone: null, transcribe: null }
 
   class FakeAudio {
     src = ""
@@ -162,7 +163,11 @@ beforeEach(() => {
   vi.stubGlobal("cancelAnimationFrame", (id: number) => clearTimeout(id))
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url: String(url), init })
-    if (String(url).includes("/assistant/transcribe")) return new Response(JSON.stringify(transcribeReply.body), { status: transcribeReply.status })
+    if (String(url).includes("/assistant/transcribe")) {
+      if (gates.transcribe) await gates.transcribe
+      if (transcribeReply.fails) throw new TypeError("Failed to fetch")
+      return new Response(JSON.stringify(transcribeReply.body), { status: transcribeReply.status })
+    }
     if (String(url).endsWith("/assistant/voice")) {
       if (gates.voice) await gates.voice
       return voiceReply.audio
@@ -263,6 +268,10 @@ function nextButton(): HTMLButtonElement | null {
 const voiceSwitch = () => document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-voice"], [data-testid="demo-guide-voice"]')!
 
 const voiceNote = () => container.querySelector('[data-testid="demo-assistant-voice-note"]')?.textContent ?? null
+const voiceAlert = () => container.querySelector('[data-testid="demo-assistant-voice"] [role="alert"]')?.textContent ?? null
+const questionBox = () => document.getElementById("demo-assistant-question") as HTMLTextAreaElement
+const askButton = () => questionBox().form!.querySelector<HTMLButtonElement>('button[type="submit"]')!
+const heardWaiting = () => container.querySelector('[data-testid="demo-assistant-heard-waiting"]')?.textContent ?? null
 const playedBlobs = () => played.filter((src) => src.startsWith("blob:"))
 
 /** Press the button the way a keyboard does (a click with no pointer before it). */
@@ -775,5 +784,218 @@ describe("the guide and an open microphone", () => {
     await settle(80)
     expect(playedBlobs(), "heard once the clip is thrown away").toEqual(["blob:voice-1"])
     expect(callsTo("/assistant/transcribe")).toEqual([])
+  })
+})
+
+/**
+ * A clip that comes back with no question in it (verifier, after 93dca4595):
+ * silent, too short, or not heard at all. It asked nothing, so it costs the
+ * prospect nothing either: the guide reads on from where the microphone
+ * stopped it, and a spoken answer that came back meanwhile, or is still on
+ * its way, is heard — as after a clip thrown away.
+ */
+describe("a clip that comes back with no question in it", () => {
+  const emptyClips: ReadonlyArray<{ name: string; reply: typeof transcribeReply; alert: string }> = [
+    { name: "silent (422)", reply: { status: 422, body: { success: false, code: "silent", error: DEMO_VOICE_REFUSAL_TEXT.silent } }, alert: DEMO_VOICE_REFUSAL_TEXT.silent },
+    { name: "too short (400)", reply: { status: 400, body: { success: false, code: "too_short", error: DEMO_VOICE_REFUSAL_TEXT.too_short } }, alert: DEMO_VOICE_REFUSAL_TEXT.too_short },
+    { name: "Google failed (502)", reply: { status: 502, body: { success: false, code: "unavailable", error: DEMO_VOICE_REFUSAL_TEXT.unavailable } }, alert: DEMO_VOICE_REFUSAL_TEXT.unavailable },
+    { name: "the request failed", reply: { status: 0, body: {}, fails: true }, alert: S.voiceFailed },
+  ]
+
+  it.each(emptyClips)("$name: nothing is asked, and the guide reads on from where the microphone stopped it", async ({ reply: empty, alert }) => {
+    await renderPlayer()
+    const first = played[0]
+    expect(first, "the first step speaks").toMatch(/^\/sounds\/demo-guide\//)
+    expect(guideAudio()?.paused, "the guide is talking").toBe(false)
+    transcribeReply = empty
+    // A tap: the microphone listens, and the guide goes quiet for it.
+    await consentAndListen()
+    expect(voiceState()).toBe("recording")
+    expect(guideAudio()?.paused, "the microphone open, the guide is quiet").toBe(true)
+
+    speakFor(1)
+    await press()
+    await settle(80)
+    expect(callsTo("/assistant/transcribe")).toHaveLength(1)
+    expect(voiceState()).toBe("idle")
+    expect(voiceAlert()).toBe(alert)
+    expect(callsTo("/assistant"), "no question was asked").toEqual([])
+    expect(guideAudio()?.src).toBe(first)
+    expect(guideAudio()?.paused, "the guide reads on").toBe(false)
+  })
+
+  it.each(emptyClips)("$name: a spoken answer that came back while the microphone was open is heard", async ({ reply: empty }) => {
+    await renderPlayer()
+    // A typed answer's voice is still being made…
+    const answer = gate()
+    gates.voice = answer.promise
+    await askTyped("Bu bal necə hesablanır?")
+    expect(callsTo("/assistant/voice")).toHaveLength(1)
+    // …when a tap leaves the microphone listening; it comes back meanwhile, and waits.
+    transcribeReply = empty
+    await consentAndListen()
+    expect(voiceState()).toBe("recording")
+    await answer.open()
+    await settle(80)
+    expect(playedBlobs(), "not into the open microphone").toEqual([])
+
+    speakFor(1)
+    await press()
+    await settle(80)
+    expect(callsTo("/assistant"), "the clip asked nothing").toHaveLength(1)
+    expect(playedBlobs(), "the answer that waited is heard").toEqual(["blob:voice-1"])
+    expect(guideAudio()?.paused).toBe(false)
+  })
+
+  it("a spoken answer still on its way while the clip is being heard is played when it lands", async () => {
+    await renderPlayer()
+    const answer = gate()
+    gates.voice = answer.promise
+    await askTyped("Bu bal necə hesablanır?")
+    transcribeReply = emptyClips[0].reply
+    await consentAndListen()
+    // The clip is being turned into text: whether it was a question is not known yet.
+    const hearing = gate()
+    gates.transcribe = hearing.promise
+    speakFor(1)
+    await press()
+    expect(voiceState()).toBe("sending")
+    expect(microphone.live, "the microphone is let go as the clip leaves").toBe(0)
+    await hearing.open()
+    await settle(80)
+    expect(voiceState()).toBe("idle")
+    expect(playedBlobs()).toEqual([])
+
+    await answer.open()
+    await settle(80)
+    expect(callsTo("/assistant")).toHaveLength(1)
+    expect(playedBlobs(), "the answer on its way is heard").toEqual(["blob:voice-1"])
+  })
+
+  it("nothing starts while the clip is being heard, and a clip heard as a question keeps the guide quiet for its answer", async () => {
+    await renderPlayer()
+    await consentAndListen()
+    const hearing = gate()
+    gates.transcribe = hearing.promise
+    speakFor(1)
+    await press()
+    expect(voiceState()).toBe("sending")
+    const before = played.length
+    // The voice switched off and on while the clip is being heard: «on» says the step, and that waits for the reply.
+    await act(async () => voiceSwitch().click())
+    await act(async () => voiceSwitch().click())
+    await settle()
+    expect(voiceSwitch().textContent).toContain(S.voiceOff)
+    expect(played.length, "nothing starts before the reply says what the clip was").toBe(before)
+
+    await hearing.open()
+    await settle(120)
+    expect(callsTo("/assistant")).toHaveLength(1)
+    expect(JSON.parse(String(callsTo("/assistant")[0].init?.body))).toMatchObject({ question: HEARD })
+    // The step is not read over the question; its spoken answer is what plays.
+    expect(played.slice(before)).toEqual(["blob:voice-1"])
+  })
+
+  it("a page left while its clip is being heard asks nothing, and its late reply does not open the next page's microphone to the guide", async () => {
+    await renderPlayer()
+    await consentAndListen()
+    const hearing = gate()
+    gates.transcribe = hearing.promise
+    speakFor(1)
+    await press()
+    expect(voiceState()).toBe("sending")
+    act(() => root.unmount())
+    root = createRoot(container)
+    await renderPlayer()
+    await consentAndListen()
+    expect(voiceState()).toBe("recording")
+    const before = played.length
+
+    // The clip of the page that is gone comes back as text only now.
+    await hearing.open()
+    await settle(80)
+    expect(callsTo("/assistant"), "no question is asked for a page that is gone").toEqual([])
+    // This page's microphone is still open: «İrəli» reads nothing into it.
+    await act(async () => nextButton()!.click())
+    await settle()
+    expect(voiceState()).toBe("recording")
+    expect(played.length, "no step narration over the open microphone").toBe(before)
+  })
+})
+
+/**
+ * A spoken question heard while a typed one is still being answered
+ * (verifier, after 93dca4595): it was shown as «Eşitdim: …», paid for, and
+ * asked into an `ask` that was busy — so it was never asked, and the typed
+ * answer then wiped it from the box. One question at a time: it waits in the
+ * box, it says so, and one press of «Soruş» asks it.
+ */
+describe("a spoken question heard while another is being answered", () => {
+  it("waits in the box, says so, survives the answer before it, and one press of «Soruş» asks it", async () => {
+    await renderPlayer()
+    await consentAndListen()
+    expect(voiceState()).toBe("recording")
+    // A tap left the microphone listening; the prospect types a question meanwhile.
+    const answer = gate()
+    gates.assistant = answer.promise
+    await askTyped("Bu bal necə hesablanır?")
+    expect(callsTo("/assistant")).toHaveLength(1)
+    expect(askButton().textContent).toBe(S.assistantAsking)
+
+    // The clip is stopped while that question is still being answered.
+    speakFor(1)
+    await press()
+    await settle(80)
+    expect(container.querySelector('[data-testid="demo-assistant-voice-heard"]')?.textContent).toBe(S.voiceHeard(HEARD))
+    expect(callsTo("/assistant"), "one question at a time").toHaveLength(1)
+    expect(questionBox().value).toBe(HEARD)
+
+    // The typed answer lands: the spoken question is still in the box, nothing asked it, and the box says so.
+    await answer.open()
+    await settle(80)
+    expect(container.querySelector('[data-testid="demo-assistant-turns"]')?.textContent).toContain("Bu bal necə hesablanır?")
+    expect(callsTo("/assistant")).toHaveLength(1)
+    expect(questionBox().value, "the answer before it does not wipe it").toBe(HEARD)
+    expect(heardWaiting()).toBe(S.voiceHeardWaiting(S.assistantAsk))
+    expect(askButton().disabled).toBe(false)
+
+    // One press asks it.
+    await act(async () => askButton().click())
+    await settle(80)
+    const asked = callsTo("/assistant")
+    expect(asked).toHaveLength(2)
+    expect(JSON.parse(String(asked[1].init?.body))).toMatchObject({ question: HEARD })
+    expect(heardWaiting()).toBeNull()
+    expect(questionBox().value).toBe("")
+  })
+
+  it("heard while a question typed during the clip's hearing is answered: not asked alongside it", async () => {
+    await renderPlayer()
+    await consentAndListen()
+    const hearing = gate()
+    gates.transcribe = hearing.promise
+    speakFor(1)
+    // Stopped while nothing was being asked…
+    await press()
+    expect(voiceState()).toBe("sending")
+    // …then a question typed while the clip is being heard.
+    const answer = gate()
+    gates.assistant = answer.promise
+    await askTyped("Bu bal necə hesablanır?")
+    expect(callsTo("/assistant")).toHaveLength(1)
+
+    await hearing.open()
+    await settle(80)
+    expect(callsTo("/assistant"), "not a second question while the first is answered").toHaveLength(1)
+    expect(questionBox().value).toBe(HEARD)
+    expect(heardWaiting()).toBe(S.voiceHeardWaiting(S.assistantAsk))
+
+    await answer.open()
+    await settle(80)
+    expect(questionBox().value).toBe(HEARD)
+    await act(async () => askButton().click())
+    await settle(80)
+    expect(callsTo("/assistant")).toHaveLength(2)
+    expect(JSON.parse(String(callsTo("/assistant")[1].init?.body))).toMatchObject({ question: HEARD })
   })
 })

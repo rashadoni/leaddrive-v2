@@ -156,12 +156,14 @@ function stopAudio() {
  * - `opening`: the microphone is asked for. Nothing new starts; what is
  *   playing goes on — nothing is recorded yet, and a touch that turns out to
  *   be a scroll is thrown away before the microphone ever opens.
- * - `open`: recording. What is playing pauses; nothing starts.
+ * - `open`: recording. What is playing pauses; nothing starts. It stays so
+ *   while the clip is turned into text: only the reply says what it was.
  * - `discarded`: the clip was thrown away (a scroll, a cancelled pointer, the
- *   voice minutes ran out). The guide goes on: the newest recording it was
- *   asked for meanwhile, or else what the microphone paused.
- * - `sent`: the clip is a question now and its answer is on the way, so
- *   nothing of before is taken up again.
+ *   voice minutes ran out) or came back with no question in it (silent, too
+ *   short, not heard). The guide goes on: the newest recording it was asked
+ *   for meanwhile, or else what the microphone paused.
+ * - `sent`: the clip came back as a question, and its answer is on the way,
+ *   so nothing of before is taken up again.
  */
 export type GuideMicrophoneChange = "opening" | "open" | "discarded" | "sent"
 
