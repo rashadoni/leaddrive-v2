@@ -61,6 +61,8 @@ export const ENTITY_TO_MODULE: Record<string, string> = {
   // «Клиент здесь»: an agent asks for a customer's pin to be moved — for whoever may decide it.
   // The literal is MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY (src/lib/mtm/customer-location-request-notification.ts).
   mtm_location_request: "mtm",
+  // «Yeni həkim»: an agent asks for a new doctor (MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_ENTITY).
+  mtm_contact_create_request: "mtm",
   mtm_attendance_request: "mtm",
   mtm_attendance_risk: "mtm",
   mtm_attendance_reminder: "mtm",
@@ -189,6 +191,8 @@ export const NOTIFICATION_KINDS: NotificationKind[] = (
     // «Клиент здесь»: an agent asks, from the spot, for a customer's pin to be moved.
     // On unless switched off — see KINDS_ON_UNLESS_SWITCHED_OFF in prefs.ts.
     { kind: "mtm.locationRequest.submitted", entityType: "mtm_location_request" },
+    // «Yeni həkim»: an agent asks for a new doctor; on unless switched off, like the pin request.
+    { kind: "mtm.contactCreateRequest.submitted", entityType: "mtm_contact_create_request" },
     { kind: "mtm.attendanceRequest.submitted", entityType: "mtm_attendance_request" },
     { kind: "mtm.attendanceInstallation.requested", entityType: "mtm_attendance_installation" },
     { kind: "mtm.attendanceRisk.detected", entityType: "mtm_attendance_risk" },

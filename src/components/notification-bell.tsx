@@ -27,6 +27,7 @@ import {
   MTM_LOCATION_REQUEST_NOTIFICATION_URL,
   MTM_LOCATION_REQUEST_TOAST_MS,
 } from "@/lib/mtm/customer-location-request-notification"
+import { MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_ENTITY, MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_URL } from "@/lib/mtm/contact-create-request-notification"
 
 interface Notification {
   id: string
@@ -65,6 +66,7 @@ function getEntityUrl(type?: string, id?: string) {
   if (type === MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY) return MTM_ATTENDANCE_RISK_NOTIFICATION_URL
   if (type === MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY) return MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL
   if (type === MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY) return MTM_LOCATION_REQUEST_NOTIFICATION_URL
+  if (type === MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_ENTITY) return MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_URL
   if (!type || !id) return null
   const base = entityUrls[type]
   return base ? `${base}/${id}` : null

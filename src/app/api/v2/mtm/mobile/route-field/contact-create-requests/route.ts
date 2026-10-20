@@ -7,6 +7,7 @@ import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { agentPermissionDeniedBody, agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { contactRequestHash, rankContactDuplicates } from "@/lib/mtm/contact-create-request"
+import { notifyContactCreateRequestReviewers } from "@/lib/mtm/contact-create-request-notify"
 
 const bodySchema = z.object({
   idempotencyKey: z.string().trim().min(8).max(128),
@@ -125,6 +126,16 @@ export const POST = withMobileRls(async (req, auth) => {
       ...normalized,
       duplicateSnapshot: duplicates,
     },
+  })
+  // Whoever may decide it is told now (owner, 2026-10-20: the first request had
+  // waited twelve days unseen). Not awaited, never fails the request; a repeat
+  // of the same sending returned above and tells nobody twice.
+  void notifyContactCreateRequestReviewers({
+    organizationId: auth.orgId,
+    requestId: created.id,
+    requestedByAgentId: actor.agentId,
+    doctorName: created.displayName,
+    clinicName: created.clinicName,
   })
   return NextResponse.json({ success: true, data: { ...created, duplicateCandidates: duplicates } }, { status: 201 })
 }, { requiredCapability: "route-field" })

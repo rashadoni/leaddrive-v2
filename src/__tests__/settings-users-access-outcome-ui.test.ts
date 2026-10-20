@@ -230,11 +230,11 @@ describe("user card — the employee card behind Route & Field", () => {
 
     expect(fieldCard()?.value).toBe("card-own")
     expect([...(fieldCard()?.options ?? [])].map((option) => option.textContent)).toEqual([
-      "Нет карточки", "Seymur — Агент", "Field Manager — Супервайзер", "Создать новую карточку",
+      "Нет карточки", "Seymur — Агент", "Field Manager — Админ", "Создать новую карточку",
     ])
     expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Всё, включая удаление"])
     expect(document.querySelector('[data-testid="user-field-card"]')?.textContent)
-      .toContain("В поле — Супервайзер: своя команда.")
+      .toContain("В поле — Админ: своя команда.")
   })
 
   it("saving without touching the card writes nothing to the field module", async () => {
