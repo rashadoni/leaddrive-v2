@@ -144,6 +144,44 @@ describe("«След»: where an employee has just been", () => {
     expect(stillThere.get("a")).toHaveLength(1)
   })
 
+  // A break is the employee's own time (owner's rule): a line from where he
+  // paused to where he came back would say where he went in between.
+  it("ends at a break: nothing joins where he paused to where he came back", () => {
+    let trails: LiveMapTrails = new Map()
+    trails = extendLiveMapTrails(trails, [
+      { agentId: "a", ...north(0), recordedAt: at(4), workdayPausedSeconds: 0 },
+      { agentId: "b", ...north(0), recordedAt: at(4) },
+    ], NOW - 3 * 60_000)
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(200), recordedAt: at(3), workdayPausedSeconds: 0 }], NOW - 150_000)
+    expect(seen(trails, "a")).toEqual([0, 200])
+    // An answer that finds him on a break: his tail goes, whatever position comes with him.
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(200), recordedAt: at(3), workdayPausedSeconds: 0 }], NOW - 120_000, ["a"])
+    expect(trails.has("a")).toBe(false)
+    expect(seen(trails, "b")).toEqual([0])
+    // Back at work a kilometre further on, ninety seconds later: a new tail starts there.
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(1_200), recordedAt: at(1), workdayPausedSeconds: 90 }], NOW - 30_000)
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(1_400), recordedAt: at(0.5), workdayPausedSeconds: 90 }], NOW)
+    expect(seen(trails, "a")).toEqual([1_200, 1_400])
+    expect(liveMapTrailSegments(trails.get("a") ?? []).map((segment) => segment.length)).toEqual([2])
+  })
+
+  it("ends at a break that no answer fell inside: the workday's own total of breaks gives it away", () => {
+    let trails: LiveMapTrails = new Map()
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(0), recordedAt: at(4), workdayPausedSeconds: 600 }], NOW - 3.5 * 60_000)
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(200), recordedAt: at(3.5), workdayPausedSeconds: 600 }], NOW - 3 * 60_000)
+    // Two minutes of break began and ended between two answers; he came back 900 m away.
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(1_100), recordedAt: at(1), workdayPausedSeconds: 720 }], NOW - 30_000)
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(1_300), recordedAt: at(0.5), workdayPausedSeconds: 720 }], NOW)
+    expect(seen(trails, "a")).toEqual([1_100, 1_300])
+    // The same answer read again after the break changes nothing; nor does a
+    // tenant that keeps no breaks — there is no total to compare.
+    expect(seen(extendLiveMapTrails(trails, [{ agentId: "a", ...north(1_300), recordedAt: at(0.5), workdayPausedSeconds: 720 }], NOW), "a")).toEqual([1_100, 1_300])
+    let routesOnly: LiveMapTrails = new Map()
+    routesOnly = extendLiveMapTrails(routesOnly, [{ agentId: "a", ...north(0), recordedAt: at(2) }], NOW - 60_000)
+    routesOnly = extendLiveMapTrails(routesOnly, [{ agentId: "a", ...north(300), recordedAt: at(1), workdayPausedSeconds: null }], NOW)
+    expect(seen(routesOnly, "a")).toEqual([0, 300])
+  })
+
   it("measures a ruler's line as the sum of its segments", () => {
     expect(pathLengthMeters([])).toBe(0)
     expect(pathLengthMeters([north(0)])).toBe(0)
@@ -437,7 +475,9 @@ describe("the wiring of the tools", () => {
     // SWM-12: live mode never loads a day's GPS. One position per employee per answer.
     // …and only a position the map itself would draw at that moment: not a
     // coordinate shared with the workday closed, not a stale one.
-    expect(page).toMatch(/setTrails\(\(current\) => extendLiveMapTrails\(\s*current,\s*nextAgents\.filter\(\(agent\) => hasRenderableLivePosition\(agent\.freshness, agent\.workdayState, nextContract\.workforceEnabled\)\),\s*Date\.parse\(nextContract\.generatedAt\),/)
+    // The positions are read as the list presents them, so a break is a grey last-known point, never a tail's.
+    expect(page).toContain("const presentedAgents = nextAgents.map((agent) => presentMtmDashboardAgent(agent, nextContract.freshnessThresholds, answeredAt))")
+    expect(page).toMatch(/setTrails\(\(current\) => extendLiveMapTrails\(\s*current,\s*presentedAgents\.filter\(\(agent\) => hasRenderableLivePosition\(agent\.freshness, agent\.workdayState, nextContract\.workforceEnabled\)\),\s*answeredAt,\s*presentedAgents\.filter\(\(agent\) => agent\.workdayState === "PAUSED"\)\.map\(\(agent\) => agent\.agentId\),/)
     expect(page.match(/setTrails\(/g) ?? []).toHaveLength(2)
     expect(page).toContain("trails={mapLook.trails ? trails : null}")
     expect(page).not.toContain("replayTrack=")

@@ -191,11 +191,55 @@ describe("SWM-12 local GPS freshness aging", () => {
     expect(isLiveMapPositionVisible("NO_LOCATION")).toBe(false)
   })
 
-  it("keeps the final coordinate out of live mode after the workday ends", () => {
+  it("keeps the final coordinate out of live mode after the workday ends — and during a break", () => {
     expect(isLiveMapAgentPositionVisible("ONLINE", "ACTIVE")).toBe(true)
-    expect(isLiveMapAgentPositionVisible("DELAYED", "PAUSED")).toBe(true)
+    expect(isLiveMapAgentPositionVisible("DELAYED", "ACTIVE")).toBe(true)
+    expect(isLiveMapAgentPositionVisible("ONLINE", "PAUSED")).toBe(false)
     expect(isLiveMapAgentPositionVisible("ONLINE", "CLOSED")).toBe(false)
     expect(isLiveMapAgentPositionVisible("ONLINE", "NOT_STARTED")).toBe(false)
+  })
+})
+
+// The demo clip «Marşrut & Sahə» (owner, 2026-10-20: «как в ролике»): the agent
+// on a break is the grey point he left before it, «GPS aktiv deyil», from the
+// first second — production used to keep him a live marker while that point
+// was fresh, ten minutes by default.
+describe("an employee on a break, as the live map presents him", () => {
+  const recordedAt = "2026-08-01T12:00:00.000Z"
+  const recordedAtMs = Date.parse(recordedAt)
+  const thresholds = CONTRACT.freshnessThresholds
+  const onBreak: MtmDashboardAgent = {
+    ...agent("employee-1", 40.4, 49.8),
+    fieldStatus: "STOPPED",
+    routeCompletion: 50,
+    locationState: "AVAILABLE",
+    lastSeenAt: recordedAt,
+    workdayState: "PAUSED",
+    workdayPausedAt: "2026-08-01T12:01:00.000Z",
+    stationarySince: "2026-08-01T11:40:00.000Z",
+  }
+
+  it("is the last known point from the first second: grey, no live status, no «стоит N минут»", () => {
+    // Thirty seconds after his last point, a signal any working agent would call fresh.
+    const shown = presentMtmDashboardAgent(onBreak, thresholds, recordedAtMs + 30_000)
+    expect(shown).toMatchObject({ freshness: "STALE", fieldStatus: "OFFLINE", workdayState: "PAUSED", stationarySince: null })
+    // The point itself stays: it is where the work stopped, drawn grey.
+    expect([shown.latitude, shown.longitude, shown.recordedAt]).toEqual([40.4, 49.8, recordedAt])
+    expect(isLiveMapAgentPositionVisible(shown.freshness, shown.workdayState)).toBe(false)
+    // The same agent at work, the same instant: live.
+    const working = presentMtmDashboardAgent({ ...onBreak, workdayState: "ACTIVE", workdayPausedAt: null }, thresholds, recordedAtMs + 30_000)
+    expect(working).toMatchObject({ freshness: "ONLINE", fieldStatus: "STOPPED", stationarySince: onBreak.stationarySince })
+  })
+
+  it("never invents a point for somebody who has none", () => {
+    const shown = presentMtmDashboardAgent({ ...onBreak, freshness: "NO_LOCATION", latitude: undefined, longitude: undefined, recordedAt: undefined, stationarySince: undefined }, thresholds, recordedAtMs)
+    expect(shown.freshness).toBe("NO_LOCATION")
+    expect(shown).not.toHaveProperty("stationarySince", null)
+  })
+
+  it("keeps what the app itself said: presence is not GPS", () => {
+    expect(presentMtmDashboardAgent(onBreak, thresholds, recordedAtMs + 60_000).isOnline).toBe(true)
+    expect(presentMtmDashboardAgent(onBreak, thresholds, recordedAtMs + 300_001).isOnline).toBe(false)
   })
 })
 

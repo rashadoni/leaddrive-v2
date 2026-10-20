@@ -372,8 +372,8 @@ export default function MtmMapPage() {
       if (!referencePoint) return presented
       // With a point picked on the map every row says how far its employee is
       // from it — measured only from a position the map itself would draw. A
-      // workday that is closed, a signal gone stale: no marker, and no place
-      // among «the nearest».
+      // workday that is closed, a break, a signal gone stale: no live marker,
+      // and no place among «the nearest».
       const drawn = hasRenderableLivePosition(presented.freshness, presented.workdayState, contract?.workforceEnabled !== false)
       return { ...presented, distanceMeters: drawn ? rosterDistanceToPoint(presented, referencePoint) : null }
     }),
@@ -656,11 +656,16 @@ export default function MtmMapPage() {
       rosterSnapshotRef.current = nextSnapshot
       setRosterSnapshot(nextSnapshot)
       // «След»: one more position per employee, from this answer and no other
-      // source — and only a position the map itself would draw at this moment.
+      // source — and only a position the map itself would draw at this moment,
+      // as the list presents it. Somebody on a break loses his tail; the next
+      // one starts after it (live-map-trails.ts).
+      const answeredAt = Date.parse(nextContract.generatedAt)
+      const presentedAgents = nextAgents.map((agent) => presentMtmDashboardAgent(agent, nextContract.freshnessThresholds, answeredAt))
       setTrails((current) => extendLiveMapTrails(
         current,
-        nextAgents.filter((agent) => hasRenderableLivePosition(agent.freshness, agent.workdayState, nextContract.workforceEnabled)),
-        Date.parse(nextContract.generatedAt),
+        presentedAgents.filter((agent) => hasRenderableLivePosition(agent.freshness, agent.workdayState, nextContract.workforceEnabled)),
+        answeredAt,
+        presentedAgents.filter((agent) => agent.workdayState === "PAUSED").map((agent) => agent.agentId),
       ))
       setFreshnessNow(Date.parse(nextContract.generatedAt))
       setLoadError(null)

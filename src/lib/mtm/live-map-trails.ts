@@ -13,6 +13,13 @@
  * stays in «История» (SWM-12 — live mode never loads a day's GPS). So a page
  * opened a minute ago has no tails yet, and that is the truth.
  *
+ * A break ends a tail. It is the employee's own time (owner's rule): nothing
+ * is recorded during it, and a line from where he paused to where he resumed
+ * would say where he went in between. So the tail of somebody on a break is
+ * dropped, and the first position after it starts a new one — also after a
+ * break that began and ended between two answers of the roster, which the
+ * server's running total of breaks gives away.
+ *
  * Pure data and pure functions.
  */
 import { calculateDistance } from "@/lib/geo-utils"
@@ -28,6 +35,12 @@ export interface LiveMapTrailPoint {
    * from here is drawn, and the point does not age while he stands on it.
    */
   heardAt?: string
+  /**
+   * The workday's seconds of break already over when this position was seen
+   * (`workdayPausedSeconds`). A position with a different total lies on the
+   * other side of a break, and the tail does not join the two.
+   */
+  workdayPausedSeconds?: number | null
 }
 
 export type LiveMapTrails = ReadonlyMap<string, readonly LiveMapTrailPoint[]>
@@ -53,6 +66,8 @@ interface TrailSource {
   latitude?: number | null
   longitude?: number | null
   recordedAt?: string | null
+  /** See LiveMapTrailPoint; absent where the organization keeps no workday breaks. */
+  workdayPausedSeconds?: number | null
 }
 
 /** The last moment the phone is known to have been at this point. */
@@ -65,7 +80,19 @@ function admissible(agent: TrailSource): LiveMapTrailPoint | null {
   if (typeof latitude !== "number" || !Number.isFinite(latitude) || latitude < -90 || latitude > 90) return null
   if (typeof longitude !== "number" || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) return null
   if (typeof recordedAt !== "string" || !Number.isFinite(Date.parse(recordedAt))) return null
-  return { latitude, longitude, recordedAt }
+  const breaks = breaksOver(agent.workdayPausedSeconds)
+  return breaks == null ? { latitude, longitude, recordedAt } : { latitude, longitude, recordedAt, workdayPausedSeconds: breaks }
+}
+
+function breaksOver(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null
+}
+
+/** A break was taken between the two: both totals are known and they differ. */
+function breakBetween(last: LiveMapTrailPoint, next: LiveMapTrailPoint): boolean {
+  const before = breaksOver(last.workdayPausedSeconds)
+  const after = breaksOver(next.workdayPausedSeconds)
+  return before != null && after != null && before !== after
 }
 
 /**
@@ -76,19 +103,31 @@ function admissible(agent: TrailSource): LiveMapTrailPoint | null {
  * name search narrows the roster for a moment, and clearing it must not find
  * every tail gone. A tail is drawn only beside a marker, so an employee who
  * has really left the roster has none on the map.
+ *
+ * `onBreak` — who is on a break in this answer: his tail is dropped, and he
+ * adds nothing to it whatever position comes with him.
  */
-export function extendLiveMapTrails(trails: LiveMapTrails, agents: readonly TrailSource[], nowMs: number): LiveMapTrails {
+export function extendLiveMapTrails(
+  trails: LiveMapTrails,
+  agents: readonly TrailSource[],
+  nowMs: number,
+  onBreak: Iterable<string> = [],
+): LiveMapTrails {
+  const resting = new Set(onBreak)
   const next = new Map<string, readonly LiveMapTrailPoint[]>()
   for (const [agentId, points] of trails) {
+    if (resting.has(agentId)) continue
     const kept = points.filter((point) => nowMs - lastHeardMs(point) <= TRAIL_MAX_AGE_MS)
     if (kept.length > 0) next.set(agentId, kept)
   }
   for (const agent of agents) {
+    if (resting.has(agent.agentId)) continue
     const kept = next.get(agent.agentId) ?? []
     const point = admissible(agent)
     if (!point || nowMs - Date.parse(point.recordedAt) > TRAIL_MAX_AGE_MS) continue
     const last = kept[kept.length - 1]
-    if (!last) {
+    // Nothing yet — or what there is lies before a break: a new tail.
+    if (!last || (Date.parse(point.recordedAt) > lastHeardMs(last) && breakBetween(last, point))) {
       next.set(agent.agentId, [point])
       continue
     }

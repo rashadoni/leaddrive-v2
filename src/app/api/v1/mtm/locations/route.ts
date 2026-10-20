@@ -108,7 +108,7 @@ type AgentWithLocations = Prisma.MtmAgentGetPayload<{
     tags: true
     mapColor: true
     locations: true
-    workdays: { select: { status: true; workDate: true; startedAt: true; pausedAt: true; completedAt: true } }
+    workdays: { select: { status: true; workDate: true; startedAt: true; pausedAt: true; completedAt: true; totalPausedSeconds: true } }
   }
 }>
 
@@ -327,7 +327,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
           // Keep an unfinished prior-day shift visible. Calling it "not
           // started" would hide the exact anomaly the operator must resolve.
           ...liveMapWorkdayRead(routeToday),
-          select: { status: true, workDate: true, startedAt: true, pausedAt: true, completedAt: true },
+          select: { status: true, workDate: true, startedAt: true, pausedAt: true, completedAt: true, totalPausedSeconds: true },
         } } : {}),
       },
     })
@@ -480,6 +480,9 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         // state, date and start, and nothing more of the workday.
         workdayPausedAt: workforceEnabled && effectiveWorkday?.status === "PAUSED" ? effectiveWorkday.pausedAt ?? null : null,
         workdayCompletedAt: workforceEnabled && effectiveWorkday?.status === "COMPLETED" ? effectiveWorkday.completedAt ?? null : null,
+        // The breaks already over, in seconds: it grows when one ends, so the
+        // page's tail is cut at a break no answer of the roster fell inside.
+        workdayPausedSeconds: workforceEnabled && effectiveWorkday ? effectiveWorkday.totalPausedSeconds ?? null : null,
         workdayCarryover,
         locationState: explainMissingLocation({ hasLocation: Boolean(loc), lastSeenAt: a.lastSeenAt }),
         routeCompletion: dayRoutes?.completion ?? 0,
@@ -491,8 +494,9 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         // first, and then nothing is claimed about a visit either.
         openVisitSince: fieldStatus === "CHECKED_IN" ? openVisitSinceByAgent.get(a.id) ?? null : null,
         // Only with the status it explains, only for a position the map
-        // shows, and only when the anchor is about that very point: whenever
-        // the two disagree the duration is left out, never guessed.
+        // shows — never on a break, whose last point is where the work
+        // stopped — and only when the anchor is about that very point:
+        // whenever the two disagree the duration is left out, never guessed.
         stationarySince: fieldStatus === "STOPPED" && loc && isLiveMapAgentPositionVisible(freshness, workdayState)
           ? shownMtmStationarySince(loc, stationaryAnchorByAgent.get(a.id), now)
           : null,

@@ -87,7 +87,7 @@ const METERS_PER_DEGREE = (Math.PI * 6_371_000) / 180
 const CENTRE = { latitude: 40.4093, longitude: 49.8671 }
 const northOf = (meters: number) => ({ latitude: CENTRE.latitude + meters / METERS_PER_DEGREE, longitude: CENTRE.longitude })
 
-interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string; managerId?: string; managerName?: string; tags?: string[] }
+interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string; managerId?: string; managerName?: string; tags?: string[]; pausedSeconds?: number }
 let rosterRows: Row[]
 let requests: string[]
 /** What the journal and the road server answer for the selected employee's card. */
@@ -191,6 +191,7 @@ function answer(now: number) {
         fieldStatus: row.fieldStatus, freshness: row.meters == null ? "NO_LOCATION" : "ONLINE",
         workdayState: row.workdayState ?? "ACTIVE", workdayDate: "2026-10-09", workdayStartedAt: iso(120), workdayCarryover: false,
         workdayPausedAt: workforceEnabled && row.workdayState === "PAUSED" ? iso(35) : null, workdayCompletedAt: null,
+        workdayPausedSeconds: workforceEnabled ? row.pausedSeconds ?? 0 : null,
         locationState: row.meters == null ? "NO_LOCATION_REPORTED" : "AVAILABLE",
         routeCompletion: 0, routeVisited: 0, routeTotal: 0, openVisitSince: null,
         ...(row.meters == null ? {} : { ...northOf(row.meters), accuracy: 10, speed: 20, battery: row.battery ?? 70, recordedAt: iso(row.minutesAgo) }),
@@ -712,22 +713,22 @@ describe("the live map page, end to end", () => {
     // then for as long as the answers are on their way — a loaded runner is slow.
     await settle(800)
     for (let turn = 0; turn < 150; turn += 1) {
-      const waiting = byTestId("live-map-agent-place-text")?.textContent === "определяю улицу…"
-        || document.querySelectorAll('[data-testid="live-map-agent-event"]').length === 0
-      if (!waiting) break
+      if (document.querySelectorAll('[data-testid="live-map-agent-event"]').length > 0) break
       await settle(20)
     }
     const detail = byTestId("live-map-agent-detail")!
-    expect(detail.querySelector('[data-testid="live-map-agent-place-text"]')?.textContent).toBe("Nizami küçəsi")
+    // She is on a break: where she is is her own (owner's rule). The card says
+    // since when, and names no street — nor asks anybody for one.
     // (Run in the first half-hour after the organization's midnight, the break began «вчера» and carries its date.)
     expect(detail.querySelector('[data-testid="live-map-since-BREAK"]')?.textContent).toMatch(/^Перерыв с .*\d{2}:\d{2} · 35 мин$/)
+    expect(byTestId("live-map-agent-place")).toBeNull()
     const events = [...detail.querySelectorAll('[data-testid="live-map-agent-event"]')].map((row) => row.textContent?.replace(/^\d{2}:\d{2}/, ""))
     expect(events).toEqual(["Перерыв", "Завершил визит · Аптека на углу", "Рабочий день начат"])
     // Asked for him, for today — his own journal, not the team's feed under the map.
     const card = requests.filter((request) => !request.startsWith("/api/v1/mtm/locations") && !request.startsWith("/api/v1/mtm/routes"))
     expect(card.filter((request) => request.startsWith("/api/v1/mtm/activity"))).toEqual(["/api/v1/mtm/activity?agentId=near&period=today&type=FIELD_DAY&limit=100"])
     expect(card.filter((request) => request.startsWith("/api/v1/mtm/alerts"))).toEqual(["/api/v1/mtm/alerts?view=groups&agentId=near&status=all"])
-    expect(card.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(1)
+    expect(card.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(0)
     // Whom she reports to is said in the card, whether or not the list draws that column.
     expect(detail.querySelector('[data-testid="live-map-agent-manager"]')?.textContent).toBe("Руководитель: Старший Первый")
     // And the labels a manager put on her.
@@ -735,6 +736,17 @@ describe("the live map page, end to end", () => {
     expect(byTestId("roster-column-manager")).toBeNull()
     // The list above it can be taken away as a file.
     expect(byTestId("live-map-roster-export")?.textContent).toBe("Excel")
+
+    // Somebody at work is placed on his street.
+    await press(byTestId("live-map-agent-card-mid"))
+    await settle(800)
+    for (let turn = 0; turn < 150; turn += 1) {
+      const text = byTestId("live-map-agent-place-text")?.textContent
+      if (text && text !== "определяю улицу…") break
+      await settle(20)
+    }
+    expect(byTestId("live-map-agent-place-text")?.textContent).toBe("Nizami küçəsi")
+    expect(requests.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(1)
   })
 
   it("the card also carries the day in numbers, the phone, and worded links to the other screens already narrowed to him", async () => {
@@ -1878,6 +1890,88 @@ describe("the live map page, end to end", () => {
       expect(rowIds()).toEqual([])
       expect(byTestId("live-map-agent-share")).toBeNull()
       expect(requests).toEqual(["/api/v1/mtm/locations"])
+    })
+  })
+
+  // The demo clip «Marşrut & Sahə» (owner, 2026-10-20: production must look
+  // and behave like it): somebody on a break is the grey point he left before
+  // it from the first second, «GPS неактивен», and nobody's nearest. Until then
+  // a break counted as a live position for as long as that point was fresh.
+  describe("an employee on a break", () => {
+    const onBreak = (over: Partial<Row> = {}): Row => ({ agentId: "near", name: "Nigar", fieldStatus: "STOPPED", meters: 450, minutesAgo: 1, workdayState: "PAUSED", ...over })
+    const marker = (agentId: string) => (mapProp<Array<{ agentId: string; freshness: string }>>("agents") ?? []).find((agent) => agent.agentId === agentId)
+    const cell = (agentId: string, column: string) => container.querySelector(`[data-testid="live-map-agent-card-${agentId}"] [data-column="${column}"]`)?.textContent
+
+    it("is his last point before the break, grey, from its first minute — counted with the breaks and the old signals", async () => {
+      rosterRows[1] = onBreak()
+      await open()
+      // On the map, but as the phone's last signal, not as where he is.
+      expect(marker("near")?.freshness).toBe("STALE")
+      expect(cell("near", "status")).toContain("GPS неактивен")
+      expect(container.textContent).toContain("Последние известные позиции показаны серым: 1.")
+      expect(container.textContent).toContain("Рабочий день приостановлен 1")
+      expect(container.textContent).toContain("Устарела 1")
+      // The others are where they are.
+      expect(["far", "mid"].map((agentId) => marker(agentId)?.freshness)).toEqual(["ONLINE", "ONLINE"])
+      // «Скрыть» takes the grey point away; nothing of him is left on the map.
+      await press([...container.querySelectorAll("button")].find((button) => button.textContent === "Скрыть их"))
+      expect(marker("near")).toBeUndefined()
+    })
+
+    it("is not measured by «who is nearest», however close his last point is", async () => {
+      rosterRows[1] = onBreak({ meters: 50 })
+      await open()
+      await press(byTestId("live-map-tool-point"))
+      await press(byTestId("live-map-pick-point"))
+      await act(async () => { mapProp<(latitude: number, longitude: number) => void>("onMapPress")(CENTRE.latitude, CENTRE.longitude) })
+      await settle()
+      expect(rowIds().slice(0, 2)).toEqual(["mid", "far"])
+      expect(rowIds().indexOf("near")).toBeGreaterThan(1)
+      expect(cell("near", "distance")).toBe("—")
+    })
+
+    describe("as the map refreshes", () => {
+      const forward = async (ms: number, step = 1_000) => {
+        for (let passed = 0; passed < ms; passed += step) {
+          await act(async () => { await vi.advanceTimersByTimeAsync(Math.min(step, ms - passed)) })
+        }
+      }
+      const tail = (agentId: string) => (mapProp<Map<string, Array<{ latitude: number }>> | null>("trails")?.get(agentId) ?? [])
+        .map((point) => Math.round((point.latitude - CENTRE.latitude) * METERS_PER_DEGREE))
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date", "performance"] })
+        vi.setSystemTime(new Date("2026-10-09T10:00:10.000Z"))
+      })
+      afterEach(() => { vi.useRealTimers() })
+
+      it("loses his tail at a break and starts a new one after it — also after a break no refresh fell inside", async () => {
+        rosterRows[1] = { agentId: "near", name: "Nigar", fieldStatus: "ON_ROAD", meters: 450, minutesAgo: 0, pausedSeconds: 0 }
+        await act(async () => { root.render(createElement(MtmMapPage)) })
+        await forward(1_000)
+        rosterRows[1] = { ...rosterRows[1], meters: 700 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([450, 700])
+
+        // The next answer finds him on a break, the point from before it with him.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "STOPPED", workdayState: "PAUSED", minutesAgo: 0.5 }
+        await forward(30_000)
+        expect(mapProp<Map<string, unknown[]>>("trails").has("near")).toBe(false)
+        expect(marker("near")?.freshness).toBe("STALE")
+
+        // Back at work a kilometre and a half on: a new tail, not a line across the break.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "ON_ROAD", workdayState: "ACTIVE", meters: 2_200, minutesAgo: 0, pausedSeconds: 120 }
+        await forward(30_000)
+        rosterRows[1] = { ...rosterRows[1], meters: 2_400 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([2_200, 2_400])
+
+        // Two minutes of break between two refreshes: the page saw none of it, the day's total did.
+        rosterRows[1] = { ...rosterRows[1], meters: 3_300, pausedSeconds: 240 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([3_300])
+        // Somebody who took no break keeps his whole tail.
+        expect(tail("far").length).toBeGreaterThan(0)
+      })
     })
   })
 

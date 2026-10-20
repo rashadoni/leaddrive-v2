@@ -952,8 +952,10 @@ describe("GET /api/v1/mtm/locations", () => {
       const res = await GET(makeReq())
       expect(res.status).toBe(200)
       const json = await res.json()
-      return Object.fromEntries(json.data.agentLocations.map((row: { agentId: string }) => [row.agentId, row])) as Record<string, { fieldStatus: string; stationarySince: string | null }>
+      lastAnswer = json.data
+      return Object.fromEntries(json.data.agentLocations.map((row: { agentId: string }) => [row.agentId, row])) as Record<string, { fieldStatus: string; stationarySince: string | null; workdayPausedSeconds?: number | null }>
     }
+    let lastAnswer: { contract: { markerCount: number } } | null = null
     beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW) })
     afterEach(() => { vi.useRealTimers() })
 
@@ -989,6 +991,32 @@ describe("GET /api/v1/mtm/locations", () => {
       )
       expect(byId["went-home"].stationarySince).toBeNull()
       expect(byId["not-started"].stationarySince).toBeNull()
+    })
+
+    // A break is the employee's own time: his last point is where the work
+    // stopped, drawn grey — not a live position anybody stands at (demo clip
+    // «Marşrut & Sahə», owner 2026-10-20). Three minutes into it that point is
+    // still «fresh» by the clock, and the server used to count it as live.
+    it("says nothing on a break, counts no live marker for it, and sends how much break the day has already had", async () => {
+      const onBreak = [{ ...working[0], status: "PAUSED", pausedAt: minutesAgo(3), totalPausedSeconds: 900 }]
+      const resumed = [{ ...working[0], totalPausedSeconds: 1_500 }]
+      const byId = await roster(
+        [agent("on-break", { workdays: onBreak }), agent("stands", { workdays: resumed })],
+        [anchor("on-break"), anchor("stands")],
+      )
+      expect(byId["on-break"].stationarySince).toBeNull()
+      expect(byId.stands.stationarySince).toBe(minutesAgo(42).toISOString())
+      expect(lastAnswer?.contract.markerCount).toBe(1)
+      expect([byId["on-break"].workdayPausedSeconds, byId.stands.workdayPausedSeconds]).toEqual([900, 1_500])
+      const query = vi.mocked(prisma.mtmAgent.findMany).mock.calls.at(-1)?.[0] as { select: { workdays: { select: Record<string, boolean> } } }
+      expect(query.select.workdays.select).toMatchObject({ totalPausedSeconds: true })
+
+      // A tenant without Workforce keeps no breaks to speak of.
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+        plan: "pro", addons: [], features: ["mtm"], modules: { mtm: true, "workforce-hrm": false },
+      } as never)
+      const routesOnly = await roster([agent("stands", { workdays: resumed })], [anchor("stands")])
+      expect(routesOnly.stands.workdayPausedSeconds).toBeNull()
     })
 
     it("leaves it out whenever the anchor is not about the point on the map — a missing duration, never a wrong one", async () => {
