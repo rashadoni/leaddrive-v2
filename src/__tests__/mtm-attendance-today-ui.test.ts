@@ -22,10 +22,10 @@ const kinds = defaultAttendanceDayKinds(key => ({ ru: ru.mtmAttendance[`dayKindN
 const day = (agentId: string, date: string, start: string) => ({ id: `${agentId}-${date}`, agentId, workDate: date, status: "STARTED", startedAt: at(date, start), completedAt: null, totalPausedSeconds: 0,
   events: [{ type: "START", occurredAt: at(date, start) }] })
 const range = attendanceTodayRange(today)
-const reportOf = (extra: { name: string; start: string } | null = null) => buildMtmAttendanceReport({ from: range.from, to: range.to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
-  employees: ["Айсель", "Нигяр", "Рашад", "Эльвин", ...(extra ? [extra.name] : [])].map(name => ({ id: `id-${name}`, name, teamId: null, teamName: null })),
+const reportOf = (extra: readonly { name: string; start: string }[] = []) => buildMtmAttendanceReport({ from: range.from, to: range.to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
+  employees: ["Айсель", "Нигяр", "Рашад", "Эльвин", ...extra.map(person => person.name)].map(name => ({ id: `id-${name}`, name, teamId: null, teamName: null })),
   workdays: [day("id-Айсель", today, "08:55"), day("id-Нигяр", today, "09:25"), day("id-Эльвин", "2026-10-13", "09:00"), day("id-Эльвин", today, "09:00"),
-    ...(extra ? [day(`id-${extra.name}`, today, extra.start)] : [])] })
+    ...extra.map(person => day(`id-${person.name}`, today, person.start))] })
 const report = reportOf()
 let currentReport = report
 const version = "2026-10-13T08:00:00.000Z"
@@ -215,7 +215,7 @@ describe("Personnel → Today", () => {
     expect(tick("Нигяр")!.checked).toBe(false)
     expect(byTestId("attendance-explain-ask")!.textContent).toBe(ru.personnel.explainAsk.replace("{count}", "1"))
     // A minute later Камран has come in forty minutes late; the screen reloads by itself.
-    currentReport = reportOf({ name: "Камран", start: "09:40" })
+    currentReport = reportOf([{ name: "Камран", start: "09:40" }])
     const loads = fetchMock.mock.calls.filter(([url]) => String(url).startsWith("/api/v1/mtm/attendance/report")).length
     await act(async () => { vi.advanceTimersByTime(60_000) })
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
@@ -226,6 +226,36 @@ describe("Personnel → Today", () => {
     await act(async () => (byTestId("attendance-explain-ask") as HTMLButtonElement).click())
     const post = fetchMock.mock.calls.find(([url, init]) => String(url) === "/api/v1/mtm/attendance/explanations" && init?.method === "POST")!
     expect(JSON.parse(String(post[1]!.body)).items).toEqual([{ agentId: "id-Рашад", date: today, kind: "ABSENT" }, { agentId: "id-Камран", date: today, kind: "LATE" }])
+  })
+
+  // The card draws six rows. A seventh late arrival came ticked but off screen, so unticking every
+  // row HR could see still asked him (verifier, 2026-10-20). Everyone the button asks is drawn.
+  it("draws every row the button would ask, so unticking what is on screen leaves nobody asked unseen", async () => {
+    explanations = []
+    currentReport = reportOf(["Камран", "Лейла", "Орхан", "Сабина", "Тофиг", "Улвия", "Фарид"].map((name, index) => ({ name, start: `09:4${index}` })))
+    await render()
+    const card = byTestId("attendance-today-attention")!
+    const ticks = Array.from(card.querySelectorAll<HTMLInputElement>('li input[type="checkbox"]'))
+    const ask = () => byTestId("attendance-explain-ask") as HTMLButtonElement
+    const asking = (count: number) => ru.personnel.explainAsk.replace("{count}", String(count))
+    // Рашад absent, Нигяр and seven more late: nine to ask, nine rows on screen, each ticked.
+    expect(ticks).toHaveLength(9)
+    expect(ticks.every(tick => tick.checked)).toBe(true)
+    expect(ask().textContent).toBe(asking(9))
+    // What the card leaves out is the rest — the missing finish and the suspicious mark — and it says so.
+    expect(Array.from(card.querySelectorAll<HTMLElement>('[data-testid="attendance-today-attention-item"]')).map(item => item.dataset.type))
+      .toEqual(["absent", ...Array(8).fill("late")])
+    expect(card.textContent).toContain(ru.personnel.moreAttention.replace("{count}", "2"))
+    for (const tick of ticks) await act(async () => tick.click())
+    expect(ask().textContent).toBe(asking(0))
+    expect(ask().disabled).toBe(true)
+    // Ticking one back asks that one alone.
+    await act(async () => card.querySelector<HTMLInputElement>(`input[aria-label="${p("explainSelect").replace("{name}", "Фарид")}"]`)!.click())
+    expect(ask().textContent).toBe(asking(1))
+    await act(async () => ask().click())
+    const posts = fetchMock.mock.calls.filter(([url, init]) => String(url) === "/api/v1/mtm/attendance/explanations" && init?.method === "POST")
+    expect(posts).toHaveLength(1)
+    expect(JSON.parse(String(posts[0][1]!.body)).items).toEqual([{ agentId: "id-Фарид", date: today, kind: "LATE" }])
   })
 
   it("shows who was asked and who answered, and HR accepts the answer", async () => {

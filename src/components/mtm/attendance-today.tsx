@@ -214,6 +214,12 @@ export function MtmAttendanceToday() {
   const askable = data?.explanations ? attendanceAskableExplanations(summary?.attention ?? [], new Set(explanationOf.keys())) : []
   const clock = (value: string) => formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: data?.timezone ?? "Asia/Baku" })
   const picked = askable.filter(key => selected.has(key))
+  // The card keeps to ATTENTION_LIMIT rows but never hides one the button would ask: they come
+  // ticked, so everyone «İzahat istə» sends to is on screen with a tick HR can take off.
+  const askableKeys = new Set(askable)
+  const shown = attention.filter(({ item }, index) => { const key = explainKey(item); return index < ATTENTION_LIMIT || (key !== null && askableKeys.has(key)) })
+  const shownRisks = risks.slice(0, Math.max(0, ATTENTION_LIMIT - shown.length))
+  const notShown = attentionCount - shown.length - shownRisks.length
 
   return <div className="space-y-4" data-testid="attendance-today">
     <header className="flex flex-wrap items-end justify-between gap-3">
@@ -287,7 +293,7 @@ export function MtmAttendanceToday() {
               <p className="w-full text-xs text-muted-foreground">{t("explainHint")}</p>
             </div> : null}
           <ul className="divide-y divide-border">
-            {attention.slice(0, ATTENTION_LIMIT).map(({ key, item }) => {
+            {shown.map(({ key, item }) => {
               const explainId = explainKey(item), explanation = explainId ? explanationOf.get(explainId) : undefined
               return <li key={key} className="py-2.5" data-testid="attendance-today-attention-item" data-type={item.type}><div className="flex flex-wrap items-center gap-3">
               {explainId && data?.explanations ? <input type="checkbox" className="h-4 w-4 shrink-0" aria-label={t("explainSelect", { name: item.employeeName })} disabled={!!explanation}
@@ -309,13 +315,13 @@ export function MtmAttendanceToday() {
                   <Button size="sm" variant="outline" className="min-h-9 text-rose-700 dark:text-rose-300" disabled={busyId !== null} onClick={() => void decideExplanation(explanation, "REJECTED")}>{t("explainReject")}</Button></span>
               </div> : null}
             </li> })}
-            {risks.slice(0, Math.max(0, ATTENTION_LIMIT - attention.length)).map(item => <li key={item.id} className="flex flex-wrap items-center gap-3 py-2.5" data-testid="attendance-today-attention-item" data-type="risk">
+            {shownRisks.map(item => <li key={item.id} className="flex flex-wrap items-center gap-3 py-2.5" data-testid="attendance-today-attention-item" data-type="risk">
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.employeeName}</p>
                 <p className="text-sm text-muted-foreground">{a(ATTENDANCE_RISK_MESSAGES[item.kind])}{item.relatedNames.length ? ` · ${item.relatedNames.join(", ")}` : ""}</p></div>
               <Button asChild size="sm" variant="outline" className="min-h-9 shrink-0"><Link prefetch={false} href="/mtm/attendance/review">{t("check")}</Link></Button>
             </li>)}
           </ul></>}
-        {data && attentionCount > ATTENTION_LIMIT ? <p className="mb-3 text-xs text-muted-foreground">{t("moreAttention", { count: attentionCount - ATTENTION_LIMIT })}</p> : null}
+        {data && notShown > 0 ? <p className="mb-3 text-xs text-muted-foreground">{t("moreAttention", { count: notShown })}</p> : null}
         {data && summary && summary.people ? <p className="mb-3 text-xs text-muted-foreground">{t("quiet", { count: summary.quiet })}</p> : null}
       </HomeCard>
     </div>
