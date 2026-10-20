@@ -134,8 +134,9 @@ describe("a break in the day's path", () => {
     const breakRow = rows.find((row) => row.textContent?.startsWith("Перерыв"))!
     const signalRow = rows.find((row) => row.textContent?.startsWith("Нет данных с телефона"))!
 
-    // «Перерыв 40 мин 09:30–10:10», and nothing to press.
-    expect(breakRow.textContent).toBe("Перерыв40 мин09:30–10:10")
+    // «Перерыв 39 мин 09:31–10:10» — from «Перерыв» to «Продолжить», as the
+    // journal says, not from the fix before it — and nothing to press.
+    expect(breakRow.textContent).toBe("Перерыв39 мин09:31–10:10")
     expect(breakRow.querySelector("button, a, [tabindex], [role='button']")).toBeNull()
     expect(breakRow.querySelector("[aria-pressed]")).toBeNull()
     await act(async () => { (breakRow.querySelector("span") as HTMLElement).click() })
@@ -242,11 +243,12 @@ describe("a break in the day's path", () => {
       "Начал день", "В пути", "Перерыв", "В пути", "Закрыл день",
     ])
     const breakRow = rows[2]
-    expect(breakRow.textContent).toBe("Перерыв4 мин05:30–05:34")
+    // 05:30:05 to 05:33:55, the journal's 3 min 50 s.
+    expect(breakRow.textContent).toBe("Перерыв4 мин05:30–05:33")
     expect(breakRow.querySelector("button, a, [tabindex], [role='button']")).toBeNull()
     await act(async () => { (breakRow.querySelector("span") as HTMLElement).click() })
     expect(focused).toEqual([])
-    expect(data.trip.summary).toMatchObject({ movingSeconds: 60 * 60 - 4 * 60, pausedSeconds: 4 * 60, unknownSeconds: 0 })
+    expect(data.trip.summary).toMatchObject({ movingSeconds: 60 * 60 - 230, pausedSeconds: 230, unknownSeconds: 0 })
 
     // The map: the straight track and the line along the streets, both cut at the break; no red line for it.
     await act(async () => { root.unmount() })
@@ -275,5 +277,132 @@ describe("a break in the day's path", () => {
     expect(straight).toHaveLength(2)
     expect([...roads, ...straight].some(crosses)).toBe(false)
     expect(lines(HISTORY_MAP_COLORS.gap)).toEqual([])
+  })
+
+  // Verification of 2026-10-20: the whole silence around a break took one
+  // name. A one-minute break inside six minutes without a fix read «Перерыв
+  // 6 мин» and «перерыв 6 мин» in the summary — against the journal and the
+  // attendance report — and a break with a few seconds too many of silence
+  // around it read «Нет данных» with no «Перерыв» at all, a red line and a
+  // clickable row across it. Each day goes through the detectors and the trip
+  // builder the API runs, then the ledger and the map, as the page shows them.
+  describe("is exactly as long as the journal says, whatever the silence around it", () => {
+    const utc = (clock: string) => new Date(`${DAY}T${clock}.000Z`)
+    const cases: Array<{
+      name: string
+      fixes: () => HistoryLocationPoint[]
+      lunch: [string, string]
+      rows: string[]
+      paused: number
+      unknown: number
+      /** The last fix before the silence and the first after it. */
+      silence: [string, string]
+    }> = [
+      {
+        name: "a one-minute break in six minutes without a fix",
+        fixes: () => [...track("09:00", "09:26", HOME, PHARMACY), ...track("09:32", "10:00", CAFE_STREET, CLINIC)],
+        lunch: ["09:30:30", "09:31:30"],
+        rows: ["Начал день", "В пути", "Перерыв1 мин09:30–09:31", "В пути", "Закрыл день"],
+        paused: 60,
+        unknown: 0,
+        silence: ["09:26:00", "09:32:00"],
+      },
+      {
+        name: "115 s of break with 305 s of silence left over — 5 s before it, 300 s after",
+        fixes: () => [...track("09:00", "09:30", HOME, PHARMACY), ...track("09:37", "10:00", CAFE_STREET, CLINIC)],
+        lunch: ["09:30:05", "09:32:00"],
+        rows: ["Начал день", "В пути", "Перерыв2 мин09:30–09:32", "В пути", "Закрыл день"],
+        paused: 115,
+        unknown: 0,
+        silence: ["09:30:00", "09:37:00"],
+      },
+      {
+        name: "four minutes, the fixes right before «Перерыв» and right after «Продолжить»",
+        fixes: () => [...track("09:00", "09:30", HOME, PHARMACY), ...track("09:34", "10:00", CAFE_STREET, CLINIC)],
+        lunch: ["09:30:05", "09:33:55"],
+        rows: ["Начал день", "В пути", "Перерыв4 мин09:30–09:33", "В пути", "Закрыл день"],
+        paused: 230,
+        unknown: 0,
+        silence: ["09:30:00", "09:34:00"],
+      },
+      {
+        name: "an hour without a fix around a four-minute break",
+        fixes: () => [...track("09:00", "09:30", HOME, PHARMACY), ...track("10:30", "11:00", CAFE_STREET, CLINIC)],
+        lunch: ["10:00:00", "10:04:00"],
+        rows: [
+          "Начал день", "В пути",
+          "Нет данных с телефона30 мин09:30–10:00", "Перерыв4 мин10:00–10:04", "Нет данных с телефона26 мин10:04–10:30",
+          "В пути", "Закрыл день",
+        ],
+        paused: 240,
+        unknown: 56 * 60,
+        silence: ["09:30:00", "10:30:00"],
+      },
+    ]
+
+    it.each(cases)("$name", async ({ fixes: make, lunch, rows: expectedRows, paused, unknown, silence }) => {
+      const fixes = make()
+      const breaks = mtmWorkdayPauses([
+        { type: "PAUSE", occurredAt: utc(lunch[0]) },
+        { type: "RESUME", occurredAt: utc(lunch[1]) },
+      ])
+      const gaps = detectHistoryGaps(fixes, 300, breaks.map((pause) => ({ startedAt: pause.from, endedAt: pause.to })))
+      const stops = detectHistoryStops({ points: fixes, visits: [], radiusMeters: 50, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
+      const workday = { startedAt: fixes[0].recordedAt, completedAt: fixes.at(-1)!.recordedAt }
+      const trip = buildDayTrip({ points: fixes, stops, visits: [], gaps, workday })
+      const data = JSON.parse(JSON.stringify({ points: fixes, gaps, trip })) as {
+        trip: DayTripData
+        points: ReturnType<typeof day>["points"]
+        gaps: ReturnType<typeof day>["gaps"]
+      }
+
+      // The ledger: the break with the journal's length, and the silence on
+      // either side of it a row only where that side alone is a lost signal.
+      const focused: Array<DayTripFocus | null> = []
+      await render(createElement(DayTripLedger, {
+        trip: data.trip, multiDay: false, focusId: null, onFocus: (focus: DayTripFocus | null) => focused.push(focus),
+        formatMoment: (value: string) => value.slice(11, 16),
+        formatDuration: (seconds: number) => `${Math.round(seconds / 60)} мин`,
+      }))
+      const rows = [...container.querySelectorAll("li")]
+      // A silence's row in full; of every other row its title.
+      const read = (row: Element) => {
+        const title = row.querySelector(".font-medium")?.textContent
+        return title === "Перерыв" || title === "Нет данных с телефона" ? row.textContent : title
+      }
+      expect(rows.map(read)).toEqual(expectedRows)
+      const breakRow = rows.find((row) => row.textContent?.startsWith("Перерыв"))!
+      expect(breakRow.querySelector("button, a, [tabindex], [role='button']")).toBeNull()
+      await act(async () => { (breakRow.querySelector("span") as HTMLElement).click() })
+      expect(focused).toEqual([])
+      expect(data.trip.summary).toMatchObject({ pausedSeconds: paused, unknownSeconds: unknown })
+      // The figure the attendance report counts for the same break.
+      expect(paused).toBe((utc(lunch[1]).getTime() - utc(lunch[0]).getTime()) / 1_000)
+
+      // The map: the track cut at the break, and no line of any colour joins the two sides of it.
+      await act(async () => { root.unmount() })
+      root = createRoot(container)
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      try {
+        await render(createElement(LocationHistoryMap, {
+          points: data.points, stops: [], visits: [], workday: null, plannedRoutes: [], gaps: data.gaps,
+          layers: { planned: true, actual: true, stops: true, visits: true, gaps: true },
+          locale: "ru", timezone: "UTC", playbackIndex: data.points.length - 1,
+        }))
+        await act(async () => { await vi.advanceTimersByTimeAsync(150) })
+      } finally {
+        vi.useRealTimers()
+      }
+      const lines = [...container.querySelectorAll<HTMLElement>("[data-line]")]
+        .map((line) => ({ color: line.dataset.line, positions: JSON.parse(line.dataset.positions ?? "[]") as Array<[number, number]> }))
+      const before = data.points.find((point) => point.recordedAt === `${DAY}T${silence[0]}.000Z`)!
+      const after = data.points.find((point) => point.recordedAt === `${DAY}T${silence[1]}.000Z`)!
+      const near = (a: [number, number], b: { latitude: number; longitude: number }) =>
+        Math.abs(a[0] - b.latitude) < 1e-6 && Math.abs(a[1] - b.longitude) < 1e-6
+      const runs = lines.filter((line) => line.color === HISTORY_MAP_COLORS.track)
+      expect(runs).toHaveLength(2)
+      expect(lines.some((line) => line.positions.some((point) => near(point, before)) && line.positions.some((point) => near(point, after)))).toBe(false)
+      expect(lines.filter((line) => line.color === HISTORY_MAP_COLORS.gap)).toEqual([])
+    })
   })
 })

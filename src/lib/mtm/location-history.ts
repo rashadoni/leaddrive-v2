@@ -70,10 +70,22 @@ export type HistoryGap = {
   endedAt: Date
   durationSeconds: number
   reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"
+  /**
+   * The last fix before the silence and the first fix after it — except
+   * beside a break, below.
+   */
   startLatitude: number
   startLongitude: number
   endLatitude: number
   endLongitude: number
+  /**
+   * A lost signal on one side of a break (detectHistoryGaps). One of its ends
+   * is the break's edge, where no fix was taken: where he was there is not
+   * known, so no line is drawn for it and no distance is told. Its start and
+   * its end are both the one fix it has — the fix before it, or, after the
+   * break, the fix after it.
+   */
+  besideBreak?: true
 }
 
 export type HistoryAnomaly = {
@@ -197,6 +209,19 @@ function overlapSeconds(aFrom: number, aTo: number, bFrom: number, bTo: number):
   return Math.max(0, Math.min(aTo, bTo) - Math.max(aFrom, bFrom)) / 1_000
 }
 
+type Span = { from: number; to: number }
+
+/** The breaks as one set of times: two that overlap or touch are one stretch. */
+function mergedSpans(spans: readonly Span[]): Span[] {
+  const merged: Span[] = []
+  for (const span of [...spans].sort((a, b) => a.from - b.from)) {
+    const last = merged.at(-1)
+    if (last && span.from <= last.to) last.to = Math.max(last.to, span.to)
+    else merged.push({ ...span })
+  }
+  return merged
+}
+
 /**
  * Why the phone was silent decides what the day's card says. A pause the
  * agent pressed themselves is not a telemetry failure, and calling it one
@@ -205,14 +230,25 @@ function overlapSeconds(aFrom: number, aTo: number, bFrom: number, bTo: number):
  * PAUSE/RESUME events are the evidence — the app stops tracking on pause by
  * design, so the silence is expected, dated and explainable.
  *
- * A break is a gap however short it is. Until 2026-10-20 only a silence
- * longer than the threshold (five minutes by default) could be one, so a
- * four-minute break got no «Перерыв» row, was counted inside «В пути», and
- * the track joined the point where he paused to the point where he resumed —
- * the way he went in his own time. Now a break taken between two fixes is a
- * gap of its own whatever the threshold. The silence it does not explain
- * must still be no longer than the threshold: an hour without a fix around a
- * four-minute break is a lost signal, and stays one.
+ * A break taken between two fixes (mtmWorkdayPausesBetween) is a gap of its
+ * own however short, and it is exactly as long as the journal says — from
+ * the second he pressed «Перерыв» to the second he pressed «Продолжить», the
+ * figure the attendance report counts. The silence on either side of it is
+ * work time without a fix, and each side is told as any such silence is: a
+ * lost signal when it alone is longer than the threshold, and otherwise
+ * nothing — part of the drive, as it would be with no break at all. So an
+ * hour without a fix around a four-minute break is «Нет сигнала»,
+ * «Перерыв 4 мин», «Нет сигнала»; a one-minute break in six minutes without
+ * a fix is «Перерыв 1 мин», not six; and the few seconds between the last fix
+ * and the press of «Перерыв» are no lost signal, whatever follows the break.
+ *
+ * Until 2026-10-20 the whole silence took one name: a break swallowed up to
+ * the threshold of lost signal around it, or a few seconds too many of lost
+ * signal swallowed the break.
+ *
+ * A silence longer than the threshold with no break wholly inside it is one
+ * gap from fix to fix, as before; a break with a fix recorded inside it (data
+ * from before such fixes were refused) still explains it by share.
  */
 export function detectHistoryGaps(
   points: HistoryLocationPoint[],
@@ -222,35 +258,77 @@ export function detectHistoryGaps(
   const gaps: HistoryGap[] = []
   const breaks = pauses.map((pause) => ({ from: pause.startedAt, to: pause.endedAt }))
   for (let index = 1; index < points.length; index += 1) {
-    const durationSeconds = Math.floor(
-      (points[index].recordedAt.getTime() - points[index - 1].recordedAt.getTime()) / 1_000,
-    )
-    const between = mtmWorkdayPausesBetween(points[index - 1].recordedAt, points[index].recordedAt, breaks)
-    if (durationSeconds > gapThresholdSeconds || between.length > 0) {
-      const from = points[index - 1].recordedAt.getTime()
-      const to = points[index].recordedAt.getTime()
-      const breakSeconds = between.reduce((sum, pause) => sum + ((pause.to as Date).getTime() - pause.from.getTime()) / 1_000, 0)
-      const paused = (between.length > 0 && durationSeconds - breakSeconds <= gapThresholdSeconds)
-        || pauses.some((pause) => overlapSeconds(
-          from,
-          to,
-          pause.startedAt.getTime(),
-          pause.endedAt ? pause.endedAt.getTime() : to,
-        ) >= durationSeconds * PAUSE_EXPLAINS_GAP_SHARE)
+    const before = points[index - 1]
+    const after = points[index]
+    const from = before.recordedAt.getTime()
+    const to = after.recordedAt.getTime()
+    const durationSeconds = Math.floor((to - from) / 1_000)
+    const id = `gap-${before.id}-${after.id}`
+    const edges = {
+      startLatitude: before.latitude,
+      startLongitude: before.longitude,
+      endLatitude: after.latitude,
+      endLongitude: after.longitude,
+    }
+
+    const taken = mergedSpans(mtmWorkdayPausesBetween(before.recordedAt, after.recordedAt, breaks)
+      .map((pause) => ({ from: pause.from.getTime(), to: (pause.to as Date).getTime() })))
+    if (taken.length > 0) {
+      // The silence without the breaks: the stretches of work before, between and after them.
+      const leftOver: Span[] = []
+      let cursor = from
+      for (const span of taken) {
+        if (span.from > cursor) leftOver.push({ from: cursor, to: span.from })
+        cursor = span.to
+      }
+      if (to > cursor) leftOver.push({ from: cursor, to })
+      const lost = leftOver.filter((span) => Math.floor((span.to - span.from) / 1_000) > gapThresholdSeconds)
+
+      taken.forEach((span, order) => gaps.push({
+        id: order === 0 ? id : `${id}-break-${order}`,
+        startedAt: new Date(span.from),
+        endedAt: new Date(span.to),
+        durationSeconds: Math.floor((span.to - span.from) / 1_000),
+        reason: "WORKDAY_PAUSED",
+        ...edges,
+      }))
+      lost.forEach((span, order) => {
+        // The one fix this stretch has: after the last break, the one after it.
+        const fix = span.to === to ? after : before
+        gaps.push({
+          id: `${id}-signal-${order}`,
+          startedAt: new Date(span.from),
+          endedAt: new Date(span.to),
+          durationSeconds: Math.floor((span.to - span.from) / 1_000),
+          reason: "TELEMETRY_GAP",
+          startLatitude: fix.latitude,
+          startLongitude: fix.longitude,
+          endLatitude: fix.latitude,
+          endLongitude: fix.longitude,
+          besideBreak: true,
+        })
+      })
+      continue
+    }
+
+    if (durationSeconds > gapThresholdSeconds) {
+      const paused = pauses.some((pause) => overlapSeconds(
+        from,
+        to,
+        pause.startedAt.getTime(),
+        pause.endedAt ? pause.endedAt.getTime() : to,
+      ) >= durationSeconds * PAUSE_EXPLAINS_GAP_SHARE)
       gaps.push({
-        id: `gap-${points[index - 1].id}-${points[index].id}`,
-        startedAt: points[index - 1].recordedAt,
-        endedAt: points[index].recordedAt,
+        id,
+        startedAt: before.recordedAt,
+        endedAt: after.recordedAt,
         durationSeconds,
         reason: paused ? "WORKDAY_PAUSED" : "TELEMETRY_GAP",
-        startLatitude: points[index - 1].latitude,
-        startLongitude: points[index - 1].longitude,
-        endLatitude: points[index].latitude,
-        endLongitude: points[index].longitude,
+        ...edges,
       })
     }
   }
-  return gaps
+  return gaps.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime() || a.id.localeCompare(b.id))
 }
 
 export function detectHistoryAnomalies(input: {

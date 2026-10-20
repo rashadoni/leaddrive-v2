@@ -21,7 +21,7 @@ export type DayTripData = {
         visit: { id: string; customerId: string; customerName: string } | null
       }
     | { kind: "MOVE"; id: string; startedAt: string; endedAt: string; durationSeconds: number; distanceMeters: number; pointCount: number }
-    | { kind: "GAP"; id: string; startedAt: string; endedAt: string; durationSeconds: number; reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"; displacementMeters: number; roadMeters?: number | null }
+    | { kind: "GAP"; id: string; startedAt: string; endedAt: string; durationSeconds: number; reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"; displacementMeters: number | null; roadMeters?: number | null }
   >
   summary: {
     movingSeconds: number
@@ -144,7 +144,7 @@ export function DayTripLedger({
               title = entry.reason === "WORKDAY_PAUSED" ? t("pause") : t("noSignal")
               detail = entry.reason === "TELEMETRY_GAP" && entry.roadMeters != null && entry.roadMeters >= MEANINGFUL_DISPLACEMENT_METERS
                 ? t("noSignalRoad", { duration: formatDuration(entry.durationSeconds), distance: kilometres(entry.roadMeters) })
-                : entry.reason === "TELEMETRY_GAP" && entry.displacementMeters >= MEANINGFUL_DISPLACEMENT_METERS
+                : entry.reason === "TELEMETRY_GAP" && entry.displacementMeters != null && entry.displacementMeters >= MEANINGFUL_DISPLACEMENT_METERS
                   ? t("noSignalMoved", { duration: formatDuration(entry.durationSeconds), distance: kilometres(entry.displacementMeters) })
                   : formatDuration(entry.durationSeconds)
               break

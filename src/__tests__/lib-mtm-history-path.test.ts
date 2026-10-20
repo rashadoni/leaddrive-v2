@@ -25,6 +25,28 @@ describe("the history track", () => {
     expect(splitHistoryPathAtGaps(points, [])).toHaveLength(1)
   })
 
+  // A break begins when he pressed «Перерыв», inside the silence, not at the
+  // fix before it (detectHistoryGaps, verification of 2026-10-20).
+  it("breaks where a gap begins inside the silence — a break — and where the point it began at was thinned out", () => {
+    const points = [
+      point(40.1, "2026-09-21T08:00:00.000Z"),
+      point(40.2, "2026-09-21T08:00:30.000Z"),
+      point(40.3, "2026-09-21T08:05:00.000Z"),
+      point(40.31, "2026-09-21T08:05:30.000Z"),
+    ]
+    const lunch = [{ startedAt: "2026-09-21T08:00:35.000Z", endedAt: "2026-09-21T08:04:55.000Z" }]
+    expect(splitHistoryPathAtGaps(points, lunch)).toEqual([
+      [[40.1, 49.8], [40.2, 49.8]],
+      [[40.3, 49.8], [40.31, 49.8]],
+    ])
+    // The map's points thinned: the fix the lost signal began at (08:00:30) is not among them.
+    const thinned = [points[0], points[2], points[3]]
+    const signal = [{ startedAt: "2026-09-21T08:00:30.000Z", endedAt: "2026-09-21T08:05:00.000Z" }]
+    expect(splitHistoryPathAtGaps(thinned, signal)).toEqual([[[40.3, 49.8], [40.31, 49.8]]])
+    // A gap that begins at the later point belongs to the stretch after it.
+    expect(splitHistoryPathAtGaps(points, [{ startedAt: "2026-09-21T08:05:30.000Z", endedAt: "2026-09-21T08:30:00.000Z" }])).toHaveLength(1)
+  })
+
   it("drops a lone point that no line can join", () => {
     const points = [point(40.1, "2026-09-21T08:00:00.000Z"), point(40.9, "2026-09-21T12:00:00.000Z")]
     expect(splitHistoryPathAtGaps(points, [{ startedAt: "2026-09-21T08:00:00.000Z", endedAt: "2026-09-21T12:00:00.000Z" }])).toEqual([])

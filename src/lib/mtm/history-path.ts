@@ -9,7 +9,16 @@
 export type HistoryPathPoint = { latitude: number; longitude: number; recordedAt: string }
 export type HistoryPathGap = { startedAt: string; endedAt: string }
 
-/** The accepted points as runs of the actual track, split at every gap. */
+/**
+ * The accepted points as runs of the actual track, split at every gap.
+ *
+ * Cut between two points when a gap begins between them. A lost signal
+ * begins at the last point before the silence (to the second); a break
+ * begins when he pressed «Перерыв», inside the silence — it is as long as the
+ * journal says, not as the fixes around it (detectHistoryGaps). A day thinned
+ * for the map (downsampleHistoryPoints) is cut as well where the point a gap
+ * began at was left out.
+ */
 export function splitHistoryPathAtGaps(
   points: readonly HistoryPathPoint[],
   gaps: readonly HistoryPathGap[],
@@ -20,8 +29,7 @@ export function splitHistoryPathAtGaps(
   let previous: number | null = null
   for (const point of points) {
     const at = Date.parse(point.recordedAt)
-    // A gap starts at the last point before the silence (to the second).
-    if (previous !== null && gapStarts.some((start) => Math.abs(start - previous!) < 1_000 && at > start)) {
+    if (previous !== null && gapStarts.some((start) => start > previous! - 1_000 && start < at)) {
       if (run.length > 1) runs.push(run)
       run = []
     }

@@ -159,8 +159,58 @@ describe("the day as a trip", () => {
     const trip = buildDayTrip({ points: unique, stops: [], visits: [], gaps, workday: null })
     expect(trip.entries.find((entry) => entry.kind === "GAP")).toMatchObject({ reason: "WORKDAY_PAUSED" })
     expect(trip.summary.unknownSeconds).toBe(0)
-    expect(trip.summary.pausedSeconds).toBe(60 * 60)
+    // As long as the journal says: from «Перерыв» at 09:31 to «Продолжить» at 10:30.
+    expect(trip.summary.pausedSeconds).toBe(59 * 60)
     expect(trip.entries[0]).toMatchObject({ kind: "START", source: "GPS" })
+  })
+
+  // Verification of 2026-10-20: «summary.pausedSeconds» is the journal's
+  // break time. Paused at a customer's door and resumed there, the fixes on
+  // both sides made one stop across the break, and the stop swallowed it:
+  // no «Перерыв» row, nothing in the summary, and a stay that said where he
+  // spent his own time.
+  it("cuts a stop at a break taken at the door: the break is its own row, and the visit is on both sides of it", () => {
+    const points = [
+      ...track("09:00", "09:30", HOME, PHARMACY),
+      ...track("09:30", "09:50", PHARMACY, PHARMACY),
+      ...track("10:10", "10:30", PHARMACY, PHARMACY),
+      ...track("10:30", "10:50", PHARMACY, CLINIC),
+    ].filter((point, index, all) => index === 0 || point.recordedAt > all[index - 1].recordedAt)
+    const visits = [visit("v1", "Aptek 24", PHARMACY, "09:31", "10:29")]
+    const gaps = detectHistoryGaps(points, 300, [{ startedAt: at("09:50"), endedAt: at("10:10") }])
+    const stops = detectHistoryStops({ points, visits, radiusMeters: 80, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
+    // The fixes alone: one stop, across the break.
+    expect(stops.map((stop) => [stop.startedAt.toISOString().slice(11, 16), stop.endedAt.toISOString().slice(11, 16)])).toEqual([["09:30", "10:30"]])
+    const trip = buildDayTrip({ points, stops, visits, gaps, workday: { startedAt: at("09:00"), completedAt: at("10:50") } })
+    expect(trip.entries.map(describeEntry)).toEqual([
+      "START 09:00 WORKDAY",
+      "MOVE 09:00-09:30",
+      "STAY 09:30-09:50 Aptek 24",
+      "GAP 09:50-10:10 WORKDAY_PAUSED",
+      "STAY 10:10-10:30 Aptek 24",
+      "MOVE 10:30-10:50",
+      "END 10:50 WORKDAY",
+    ])
+    expect(trip.summary).toMatchObject({ pausedSeconds: 20 * 60, staySeconds: 40 * 60, visitCount: 1, unknownSeconds: 0 })
+  })
+
+  it("keeps two breaks in one silence two rows: the work between them is not his own time", () => {
+    const points = [
+      ...track("09:00", "10:00", HOME, PHARMACY),
+      ...track("10:12", "10:40", PHARMACY, CLINIC),
+    ].filter((point, index, all) => index === 0 || point.recordedAt > all[index - 1].recordedAt)
+    const second = (clock: string) => new Date(`${DAY}T${clock}.000Z`)
+    const gaps = detectHistoryGaps(points, 300, [
+      { startedAt: second("10:00:10"), endedAt: second("10:04:00") },
+      { startedAt: second("10:05:00"), endedAt: second("10:12:00") },
+    ])
+    const trip = buildDayTrip({ points, stops: [], visits: [], gaps, workday: null })
+    const breaks = trip.entries.flatMap((entry) => entry.kind === "GAP" ? [[entry.reason, entry.startedAt.toISOString().slice(11, 19), entry.durationSeconds]] : [])
+    expect(breaks).toEqual([
+      ["WORKDAY_PAUSED", "10:00:10", 230],
+      ["WORKDAY_PAUSED", "10:05:00", 420],
+    ])
+    expect(trip.summary.pausedSeconds).toBe(230 + 420)
   })
 
   it("is empty for a day without a single fix, workday or visit", () => {

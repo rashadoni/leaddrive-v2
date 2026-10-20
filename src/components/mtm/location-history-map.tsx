@@ -74,6 +74,8 @@ type Gap = {
   endedAt: string
   /** Why the phone was silent: only a lost signal is drawn — a break is the employee's own time. */
   reason?: "TELEMETRY_GAP" | "WORKDAY_PAUSED"
+  /** A lost signal beside a break: one end is the break's edge, where nobody knows where he was. */
+  besideBreak?: boolean
   startLatitude: number
   startLongitude: number
   endLatitude: number
@@ -194,11 +196,13 @@ export default function LocationHistoryMap({
   // The red dotted «no points — path unknown» line joins the two ends of a
   // lost signal. A break is not one: drawn from where he paused to where he
   // resumed it would mislabel his own time as a signal loss and still say
-  // which way he went. The track itself stays broken there, however short
-  // the break — every break between two fixes is a gap (detectHistoryGaps,
+  // which way he went. Nor is a lost signal beside a break: one of its ends
+  // is the break's edge, and a line to the fix on the other side would cross
+  // the break. The track itself stays broken there, however short the break —
+  // every break between two fixes is a gap (detectHistoryGaps,
   // splitHistoryPathAtGaps) — and so does the line along the streets, which
   // the server never matches across a break (matchRoads).
-  const signalGaps = useMemo(() => gaps.filter((gap) => gap.reason !== "WORKDAY_PAUSED"), [gaps])
+  const signalGaps = useMemo(() => gaps.filter((gap) => gap.reason !== "WORKDAY_PAUSED" && !gap.besideBreak), [gaps])
   const gapSegments = useMemo(() => layers.gaps ? signalGaps.map((gap) => ({
       id: gap.id,
       startedAt: gap.startedAt,

@@ -261,19 +261,58 @@ describe("the breaks between two fixes", () => {
     const pause = (from: string, to: string) => ({ startedAt: second(from), endedAt: second(to) })
     const said = (points: HistoryLocationPoint[], pauses: Array<{ startedAt: Date; endedAt: Date | null }>) =>
       detectHistoryGaps(points, 300, pauses).map((gap) => [gap.reason, gap.durationSeconds])
+    const clock = (value: Date) => value.toISOString().slice(11, 19)
+    const told = (points: HistoryLocationPoint[], pauses: Array<{ startedAt: Date; endedAt: Date | null }>) =>
+      detectHistoryGaps(points, 300, pauses).map((gap) =>
+        [gap.reason, clock(gap.startedAt), clock(gap.endedAt), gap.durationSeconds, gap.besideBreak ?? false])
 
     it("make a four-minute break a gap of its own, under the five minutes that make a silence one", () => {
-      expect(said([fix("13:04:30"), fix("13:05:00"), fix("13:09:00"), fix("13:09:30")], [pause("13:05:05", "13:08:55")]))
-        .toEqual([["WORKDAY_PAUSED", 240]])
+      // Fixes right before «Перерыв» and right after «Продолжить»: the break is the journal's 3 min 50 s.
+      expect(told([fix("13:04:30"), fix("13:05:00"), fix("13:09:00"), fix("13:09:30")], [pause("13:05:05", "13:08:55")]))
+        .toEqual([["WORKDAY_PAUSED", "13:05:05", "13:08:55", 230, false]])
       // The same silence with no break pressed is no gap, as before.
       expect(said([fix("13:04:30"), fix("13:05:00"), fix("13:09:00"), fix("13:09:30")], [])).toEqual([])
     })
 
-    it("call it a break while what it leaves unexplained is no longer than the threshold — and a lost signal beyond that", () => {
-      // Six minutes without a fix, four of them a break: the two left over would be no gap on their own.
-      expect(said([fix("13:00:00"), fix("13:06:00")], [pause("13:01:00", "13:05:00")])).toEqual([["WORKDAY_PAUSED", 360]])
-      // An hour without a fix around a four-minute break: a lost signal, not a break.
-      expect(said([fix("13:00:00"), fix("14:00:00")], [pause("13:30:00", "13:34:00")])).toEqual([["TELEMETRY_GAP", 3_600]])
+    // Verification of 2026-10-20: the whole silence took one name. A break
+    // swallowed up to the threshold of lost signal around it (a one-minute
+    // break read «Перерыв 6 мин»), or a few seconds too many of lost signal
+    // swallowed the break. The break is now the journal's length, and each
+    // side of it is told as any silence is.
+    it("are exactly as long as the journal says, however long the silence around them", () => {
+      // A one-minute break in six minutes without a fix (a tunnel, then the break).
+      expect(told([fix("09:26:00"), fix("09:32:00")], [pause("09:30:30", "09:31:30")]))
+        .toEqual([["WORKDAY_PAUSED", "09:30:30", "09:31:30", 60, false]])
+      // Four minutes of break in six minutes without a fix.
+      expect(said([fix("13:00:00"), fix("13:06:00")], [pause("13:01:00", "13:05:00")])).toEqual([["WORKDAY_PAUSED", 240]])
+    })
+
+    it("leave on either side a lost signal only where that side alone is longer than the threshold", () => {
+      // 115 s of break with 305 s left over: 5 s before it, 300 s after — neither side a lost signal.
+      expect(told([fix("09:30:00"), fix("09:37:00")], [pause("09:30:05", "09:32:00")]))
+        .toEqual([["WORKDAY_PAUSED", "09:30:05", "09:32:00", 115, false]])
+      // A second more after it is one.
+      expect(told([fix("09:30:00"), fix("09:37:01")], [pause("09:30:05", "09:32:00")])).toEqual([
+        ["WORKDAY_PAUSED", "09:30:05", "09:32:00", 115, false],
+        ["TELEMETRY_GAP", "09:32:00", "09:37:01", 301, true],
+      ])
+      // An hour without a fix around a four-minute break: a lost signal, the break, a lost signal.
+      expect(told([fix("13:00:00"), fix("14:00:00")], [pause("13:30:00", "13:34:00")])).toEqual([
+        ["TELEMETRY_GAP", "13:00:00", "13:30:00", 1_800, true],
+        ["WORKDAY_PAUSED", "13:30:00", "13:34:00", 240, false],
+        ["TELEMETRY_GAP", "13:34:00", "14:00:00", 1_560, true],
+      ])
+    })
+
+    it("give a lost signal beside a break only the fix it has: no line from it crosses the break", () => {
+      const before = fix("13:00:00")
+      const after = fix("14:00:00")
+      const [lostBefore, lunch, lostAfter] = detectHistoryGaps([before, after], 300, [pause("13:30:00", "13:34:00")])
+      expect([lostBefore.startLatitude, lostBefore.endLatitude]).toEqual([before.latitude, before.latitude])
+      expect([lostAfter.startLatitude, lostAfter.endLatitude]).toEqual([after.latitude, after.latitude])
+      // The break keeps the fixes either side of the silence; the map draws nothing for it.
+      expect([lunch.startLatitude, lunch.endLatitude]).toEqual([before.latitude, after.latitude])
+      expect(lunch.id).toBe(`gap-${before.id}-${after.id}`)
     })
 
     it("cut nothing between fixes recorded inside a break", () => {

@@ -143,6 +143,8 @@ type HistoryData = {
     startLongitude: number
     endLatitude: number
     endLongitude: number
+    /** A lost signal beside a break (detectHistoryGaps): the map draws no line for it. */
+    besideBreak?: boolean
   }>
   anomalies: Array<{
     id: string

@@ -149,7 +149,11 @@ describe("MTM location history calculations", () => {
       startedAt: new Date("2026-07-15T08:01:00.000Z"),
       endedAt: new Date("2026-07-15T08:06:00.000Z"),
     }]
-    expect(detectHistoryGaps(points, 300, brief)[0]).toMatchObject({ reason: "TELEMETRY_GAP" })
+    // The five minutes of break are a break, and the thirty-four after it a lost signal.
+    expect(detectHistoryGaps(points, 300, brief).map((gap) => [gap.reason, gap.durationSeconds])).toEqual([
+      ["WORKDAY_PAUSED", 5 * 60],
+      ["TELEMETRY_GAP", 34 * 60],
+    ])
   })
 
   it("keeps a paused gap out of the GPS-quality findings and names it in the timeline", () => {

@@ -59,8 +59,12 @@ export type DayTripGap = {
   endedAt: Date
   durationSeconds: number
   reason: HistoryGap["reason"]
-  /** Straight line between the last fix before and the first fix after. */
-  displacementMeters: number
+  /**
+   * Straight line between the last fix before and the first fix after. Null
+   * for a lost signal beside a break: one of its ends is the break's edge,
+   * where no fix was taken, so how far he went in it is not known.
+   */
+  displacementMeters: number | null
   /**
    * The shortest road between those two fixes, when OSRM answered: at least
    * this much was driven while the phone was silent. Null without an answer.
@@ -125,7 +129,9 @@ function pathMeters(points: readonly HistoryLocationPoint[], counted: ReadonlyMa
  * One place, one row; one silence, one row. Two stays on the same spot merge
  * unless each is a different visit. Back-to-back silences (a phone sending a
  * fix every ten minutes) merge into one, measured from its first edge to its
- * last.
+ * last. Two breaks merge only where one ends the second the next begins:
+ * between two breaks he worked, and a row from the first to the second would
+ * count that time as his own.
  */
 function mergeNeighbours(entries: readonly DayTripEntry[]): DayTripEntry[] {
   const merged: DayTripEntry[] = []
@@ -148,16 +154,18 @@ function mergeNeighbours(entries: readonly DayTripEntry[]): DayTripEntry[] {
       }
       continue
     }
-    if (previous?.kind === "GAP" && entry.kind === "GAP" && previous.reason === entry.reason) {
+    if (previous?.kind === "GAP" && entry.kind === "GAP" && previous.reason === entry.reason
+      && (entry.reason !== "WORKDAY_PAUSED" || previous.endedAt.getTime() === entry.startedAt.getTime())) {
       merged[merged.length - 1] = {
         ...previous,
         endedAt: entry.endedAt,
         durationSeconds: seconds(previous.startedAt.getTime(), entry.endedAt.getTime()),
         toLatitude: entry.toLatitude,
         toLongitude: entry.toLongitude,
-        displacementMeters: Math.round(calculateDistance(
-          previous.fromLatitude, previous.fromLongitude, entry.toLatitude, entry.toLongitude,
-        )),
+        // Beside a break one end is unknown, and so is the whole stretch's.
+        displacementMeters: previous.displacementMeters != null && entry.displacementMeters != null
+          ? Math.round(calculateDistance(previous.fromLatitude, previous.fromLongitude, entry.toLatitude, entry.toLongitude))
+          : null,
         roadMeters: previous.roadMeters != null && entry.roadMeters != null ? previous.roadMeters + entry.roadMeters : null,
       }
       continue
@@ -188,7 +196,7 @@ export function buildDayTrip(input: {
 
   // 1. Where the agent stood: every GPS stop, plus every visit no stop covers
   //    (a visit made with the phone silent still happened).
-  const stays: DayTripStay[] = input.stops.map((stop) => ({
+  const placed: DayTripStay[] = input.stops.map((stop) => ({
     kind: "STAY",
     id: `stay-${stop.id}`,
     startedAt: stop.startedAt,
@@ -208,7 +216,7 @@ export function buildDayTrip(input: {
     const overlapsStop = input.stops.some((stop) =>
       visit.checkInAt <= stop.endedAt && end >= stop.startedAt)
     if (overlapsStop) continue
-    stays.push({
+    placed.push({
       kind: "STAY",
       id: `visit-${visit.id}`,
       startedAt: visit.checkInAt,
@@ -220,31 +228,58 @@ export function buildDayTrip(input: {
       visit: { id: visit.id, customerId: visit.customerId, customerName: visit.customer.name },
     })
   }
+  // A break is the employee's own time and its own row, exactly as long as
+  // the journal says (detectHistoryGaps). Standing at one spot before and
+  // after it, the fixes make one stop across it; the stop is cut there, so it
+  // neither swallows the break nor says where he spent it.
+  const breakIntervals = input.gaps
+    .filter((gap) => gap.reason === "WORKDAY_PAUSED")
+    .map((gap) => ({ from: gap.startedAt.getTime(), to: gap.endedAt.getTime() }))
+  const stays: DayTripStay[] = placed.flatMap((stay) => {
+    const whole = { from: stay.startedAt.getTime(), to: stay.endedAt.getTime() }
+    const pieces = subtract(whole, breakIntervals)
+    if (!pieces.length || (pieces.length === 1 && pieces[0].from === whole.from && pieces[0].to === whole.to)) return [stay]
+    const worth = pieces.filter((piece) => seconds(piece.from, piece.to) >= MIN_GAP_REMAINDER_SECONDS)
+    const kept = worth.length ? worth : [pieces.reduce((longest, piece) => piece.to - piece.from > longest.to - longest.from ? piece : longest)]
+    return kept.map((piece, index) => ({
+      ...stay,
+      id: index === 0 ? stay.id : `${stay.id}-${index}`,
+      startedAt: new Date(piece.from),
+      endedAt: new Date(piece.to),
+      durationSeconds: seconds(piece.from, piece.to),
+    }))
+  })
   stays.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime() || a.id.localeCompare(b.id))
   const stayIntervals = stays.map((stay) => ({ from: stay.startedAt.getTime(), to: stay.endedAt.getTime() }))
 
   // 2. Silence, minus the part of it spent standing at a stop: a phone quiet
-  //    in a customer's back room is a visit, not a hole in the day.
-  const silences: DayTripGap[] = input.gaps.flatMap((gap) =>
-    subtract({ from: gap.startedAt.getTime(), to: gap.endedAt.getTime() }, stayIntervals)
-      .filter((piece) => seconds(piece.from, piece.to) >= MIN_GAP_REMAINDER_SECONDS)
-      .map((piece, index) => ({
-        kind: "GAP" as const,
-        id: `${gap.id}-${index}`,
-        startedAt: new Date(piece.from),
-        endedAt: new Date(piece.to),
-        durationSeconds: seconds(piece.from, piece.to),
-        reason: gap.reason,
-        displacementMeters: Math.round(calculateDistance(
-          gap.startLatitude, gap.startLongitude, gap.endLatitude, gap.endLongitude,
-        )),
-        // The road of the whole silence belongs to one piece of it, not to each.
-        roadMeters: index === 0 ? roadAcross.get(gap.endedAt.getTime()) ?? null : null,
-        fromLatitude: gap.startLatitude,
-        fromLongitude: gap.startLongitude,
-        toLatitude: gap.endLatitude,
-        toLongitude: gap.endLongitude,
-      })))
+  //    in a customer's back room is a visit, not a hole in the day. A break
+  //    is kept whole, however short.
+  const silences: DayTripGap[] = input.gaps.flatMap((gap) => {
+    const paused = gap.reason === "WORKDAY_PAUSED"
+    const pieces = paused
+      ? [{ from: gap.startedAt.getTime(), to: gap.endedAt.getTime() }]
+      : subtract({ from: gap.startedAt.getTime(), to: gap.endedAt.getTime() }, stayIntervals)
+        .filter((piece) => seconds(piece.from, piece.to) >= MIN_GAP_REMAINDER_SECONDS)
+    return pieces.map((piece, index) => ({
+      kind: "GAP" as const,
+      id: `${gap.id}-${index}`,
+      startedAt: new Date(piece.from),
+      endedAt: new Date(piece.to),
+      durationSeconds: seconds(piece.from, piece.to),
+      reason: gap.reason,
+      displacementMeters: gap.besideBreak ? null : Math.round(calculateDistance(
+        gap.startLatitude, gap.startLongitude, gap.endLatitude, gap.endLongitude,
+      )),
+      // The road of the whole silence belongs to one piece of it, not to
+      // each — and beside a break to none: part of it was driven in his own time.
+      roadMeters: index === 0 && !gap.besideBreak ? roadAcross.get(gap.endedAt.getTime()) ?? null : null,
+      fromLatitude: gap.startLatitude,
+      fromLongitude: gap.startLongitude,
+      toLatitude: gap.endLatitude,
+      toLongitude: gap.endLongitude,
+    }))
+  })
 
   // 3. Everything between those anchors is movement, measured on the track.
   const anchors: Array<DayTripStay | DayTripGap> = [...stays, ...silences]
@@ -310,8 +345,8 @@ export function buildDayTrip(input: {
     if (to <= cursor && anchor.kind === "GAP") continue
     moveBetween(cursor, from)
     // A short silence that ends where it began: the phone was quiet while
-    // the agent stood there.
-    if (anchor.kind === "GAP" && anchor.reason === "TELEMETRY_GAP"
+    // the agent stood there. Beside a break nobody knows where it ended.
+    if (anchor.kind === "GAP" && anchor.reason === "TELEMETRY_GAP" && anchor.displacementMeters != null
       && anchor.displacementMeters < SAME_PLACE_METERS && anchor.durationSeconds <= SAME_PLACE_SILENCE_SECONDS) {
       entries.push(stayStill(`still-${anchor.id}`, from, to, anchor.fromLatitude, anchor.fromLongitude))
     } else {

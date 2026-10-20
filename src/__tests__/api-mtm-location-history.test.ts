@@ -456,12 +456,20 @@ describe("GET /api/v1/mtm/location-history", () => {
     const reasonAt = (iso: string) => body.data.gaps.find((gap: { startedAt: string }) => gap.startedAt === iso)?.reason
     expect(reasonAt("2026-09-21T06:00:00.000Z")).toBe("TELEMETRY_GAP")
     expect(reasonAt("2026-09-21T08:00:00.000Z")).toBe("WORKDAY_PAUSED")
-    // The break of the 20th is twenty minutes, not a night and a morning.
-    expect(reasonAt("2026-09-20T10:59:00.000Z")).toBe("TELEMETRY_GAP")
-    expect(body.data.summary).toMatchObject({ pausedGapCount: 1, gapCount: 2 })
-    // And the day's legs say the same: one «Перерыв», on the 21st, forty minutes.
+    // The break of the 20th is twenty minutes, from PAUSE to FINISH, not a
+    // night and a morning; the night after the finished day is no break.
+    expect(reasonAt("2026-09-20T11:00:00.000Z")).toBe("WORKDAY_PAUSED")
+    expect(reasonAt("2026-09-20T11:20:00.000Z")).toBe("TELEMETRY_GAP")
+    // The minute between the last fix and «Перерыв» is the phone's own interval, no lost signal.
+    expect(reasonAt("2026-09-20T10:59:00.000Z")).toBeUndefined()
+    expect(body.data.summary).toMatchObject({ pausedGapCount: 2, gapCount: 2 })
+    // And the day's legs say the same: twenty minutes on the 20th, forty on the 21st — the journal's breaks.
     const breaks = body.data.trip.entries.filter((entry: { kind: string; reason?: string }) => entry.kind === "GAP" && entry.reason === "WORKDAY_PAUSED")
-    expect(breaks.map((entry: { startedAt: string; durationSeconds: number }) => [entry.startedAt, entry.durationSeconds])).toEqual([["2026-09-21T08:00:00.000Z", 40 * 60]])
+    expect(breaks.map((entry: { startedAt: string; durationSeconds: number }) => [entry.startedAt, entry.durationSeconds])).toEqual([
+      ["2026-09-20T11:00:00.000Z", 20 * 60],
+      ["2026-09-21T08:00:00.000Z", 40 * 60],
+    ])
+    expect(body.data.trip.summary.pausedSeconds).toBe(60 * 60)
   })
 
   // Verification of 2026-10-20: only a silence longer than the gap threshold
@@ -537,20 +545,23 @@ describe("GET /api/v1/mtm/location-history", () => {
       const { data } = await response.json()
       expect(data.policy.gapThresholdSeconds).toBe(300)
 
-      // The silence around the break: 09:30:00 to 09:34:30, four and a half minutes.
+      // The break itself, 09:30:05 to 09:34:25 — the journal's 260 s, the
+      // workday's totalPausedSeconds — not the silence of 09:30:00 to 09:34:30 around it.
       expect(data.gaps.map((gap: { reason: string; startedAt: string; endedAt: string; durationSeconds: number }) =>
         [gap.reason, gap.startedAt, gap.endedAt, gap.durationSeconds])).toEqual([
-        ["WORKDAY_PAUSED", "2026-10-20T05:30:00.000Z", "2026-10-20T05:34:30.000Z", 270],
+        ["WORKDAY_PAUSED", "2026-10-20T05:30:05.000Z", "2026-10-20T05:34:25.000Z", 260],
       ])
       expect(data.summary).toMatchObject({ pausedGapCount: 1, gapCount: 0, anomalyCount: 0 })
+      expect(data.timeline.filter((event: { kind: string }) => event.kind === "WORKDAY_PAUSE").map((event: { at: string; endedAt: string }) => [event.at, event.endedAt]))
+        .toEqual([["2026-10-20T05:30:05.000Z", "2026-10-20T05:34:25.000Z"]])
 
       // The day's legs: drove, «Перерыв», drove — the break is not inside «В пути».
       const legs = data.trip.entries.map((entry: { kind: string; reason?: string; startedAt?: string; durationSeconds?: number }) =>
         entry.kind === "GAP" ? [entry.kind, entry.reason, entry.startedAt, entry.durationSeconds] : [entry.kind])
       expect(legs).toEqual([
-        ["START"], ["MOVE"], ["GAP", "WORKDAY_PAUSED", "2026-10-20T05:30:00.000Z", 270], ["MOVE"], ["END"],
+        ["START"], ["MOVE"], ["GAP", "WORKDAY_PAUSED", "2026-10-20T05:30:05.000Z", 260], ["MOVE"], ["END"],
       ])
-      expect(data.trip.summary).toMatchObject({ movingSeconds: 3_600 - 270, pausedSeconds: 270, unknownSeconds: 0 })
+      expect(data.trip.summary).toMatchObject({ movingSeconds: 3_600 - 260, pausedSeconds: 260, unknownSeconds: 0 })
 
       const paused = [fixes.find((fix) => fix.recordedAt.getTime() === utc("05:30:00").getTime())!]
         .map((fix) => [fix.latitude, fix.longitude] as [number, number])[0]

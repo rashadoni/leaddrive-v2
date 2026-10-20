@@ -534,7 +534,9 @@ describe("GET /api/v1/mtm/locations/day-totals", () => {
 
     it("a break he pressed himself is not «нет данных»", async () => {
       const { body } = await read()
-      expect(body.data).toMatchObject({ unknownSeconds: 0, movingSeconds: 20 * 60 })
+      // The break is the journal's 29 min 20 s. The twenty seconds from the
+      // last fix to «Перерыв», and from «Продолжить» to the next fix, are the drives'.
+      expect(body.data).toMatchObject({ unknownSeconds: 0, movingSeconds: 20 * 60 + 40 })
     })
 
     // Breaks are read as History reads them (workday-pauses.ts). This route
@@ -547,8 +549,8 @@ describe("GET /api/v1/mtm/locations/day-totals", () => {
         { id: "e2", organizationId: ORG, agentId: AGENT, type: "FINISH", occurredAt: utc("05:15:00"), appliedAt: utc("05:15:00") },
       ]
       const { body } = await read()
-      // Five minutes of break do not explain half an hour of silence: the day says «нет данных» as History does.
-      expect(body.data).toMatchObject({ unknownSeconds: 30 * 60, movingSeconds: 20 * 60 })
+      // The break is its 4 min 40 s, up to the finish; the 25 minutes after it say «нет данных», as in History.
+      expect(body.data).toMatchObject({ unknownSeconds: 25 * 60, movingSeconds: 20 * 60 + 20 })
     })
 
     it("without the workforce module neither the shift nor its breaks are read: the silence stays unexplained", async () => {
