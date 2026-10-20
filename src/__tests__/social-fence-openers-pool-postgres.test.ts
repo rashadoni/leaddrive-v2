@@ -325,9 +325,9 @@ pgDescribe("social-monitoring fence openers beyond the comment webhooks, on a re
         purgeAt: tomorrow,
         inputSnapshot: {
           leadDriveSuppressDependentPaidRuns: true,
-          // A run started for a scenario, as the collector starts them. Without
-          // a target scenario and an archive start the source's cursor update
-          // fails on Postgres (42P18, an untyped null) — a defect of its own.
+          // A run started for a scenario, as the collector starts them. A run
+          // without either value is covered by
+          // social-route-provider-cursor-postgres.test.ts (42P18 until 2026-10-19).
           leadDriveProviderCursorScope: {
             targetScenarioId: `scenario-${organizationId}`,
             archiveStartAt: new Date(Date.now() - 30 * 24 * 60 * 60_000).toISOString(),
