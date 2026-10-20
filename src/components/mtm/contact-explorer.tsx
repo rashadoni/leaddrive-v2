@@ -88,6 +88,7 @@ import {
 import { contactFieldVisibility, type MtmContactSwitchableField } from "@/lib/mtm/contact-field-visibility"
 import { mtmApiErrorKey } from "@/lib/mtm/api-error-message"
 import { contactClassOptions } from "@/lib/mtm/contact-classes"
+import { contactListStateInUrl } from "@/lib/mtm/contact-create-request-link"
 import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -436,7 +437,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
   const [transferReceiptStored, setTransferReceiptStored] = useState(false)
   const [transferReceiptBusy, setTransferReceiptBusy] = useState(false)
   const [online, setOnline] = useState(true)
-  const initialUrlHadState = useRef(searchParams.toString().length > 0)
+  const initialUrlHadState = useRef(contactListStateInUrl(searchParams))
   const defaultSavedViewApplied = useRef(false)
   const visitDate = useMemo(
     () => createDateFormatter(locale, { dateStyle: "medium" }),

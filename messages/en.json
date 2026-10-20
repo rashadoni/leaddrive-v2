@@ -16214,7 +16214,7 @@
         "kpiWeekPlan": "Plan stops visited from the start of the week to today, out of all plan stops for those days. The colour follows the days already over. Below: the difference from last week by the same day, in percentage points.",
         "kpiAttention": "How many questions wait for your decision: agents' requests, unpublished routes, unhandled alerts, unchecked photos. The list is in the card below.",
         "ctaLocationRequests": "Opens route approvals: accept the client's new place or keep the old one.",
-        "ctaContactCreate": "Opens clients with agents' requests for new clients: accept or decline.",
+        "ctaContactCreate": "Opens agents' requests for new clients: accept or decline.",
         "ctaCustomerCreate": "Opens route approvals: agents' requests for new institutions.",
         "ctaRouteChange": "Opens route approvals: agents ask to change a published route.",
         "ctaPublish": "Opens routes. An agent does not see a draft until it is published.",
