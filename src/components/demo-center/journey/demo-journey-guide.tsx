@@ -28,7 +28,7 @@ import { DemoLiveSocial } from "./demo-live-social"
 import type { DemoLiveSocialHandle } from "./use-demo-live-social"
 import { LIVE_WHATSAPP_TICKET_SECTIONS, type DemoLiveWhatsAppHandle } from "./use-demo-live-whatsapp"
 import { demoTarget } from "./demo-target"
-import { useGuideVoice, type GuideVoice } from "./demo-guide-voice"
+import { isGuideVoiceOn, useGuideVoice, type GuideVoice } from "./demo-guide-voice"
 import { GuideVoiceSwitch } from "./guide-voice-switch"
 import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { parseDemoAssistantAction, type DemoAssistantAction } from "@/lib/demo-center/assistant/actions"
@@ -428,13 +428,19 @@ function DemoAssistant({
     )
   }
 
-  const refusedVoice = (code: string | undefined) => {
-    if (code === "demo_budget" || code === "day_budget") setVoiceExhausted(true)
+  // Over the budget ends voice for this demo only when the server says not
+  // even one full question fits any more (`exhausted`); a long answer's
+  // estimate can be refused while there is still room to ask. A refusal
+  // without the flag is taken at its word.
+  const refusedVoice = (code: string | undefined, exhausted?: boolean) => {
+    if ((code === "demo_budget" || code === "day_budget") && exhausted !== false) setVoiceExhausted(true)
   }
 
   // One voicing per answer, and only an answer the server vouched for: the
   // id and hash it issued go back with the text, unchanged.
   const speak = async (answerId: string, answer: string, answerHash: string, askedKey: string) => {
+    // The switch as it is now: switched off while the answer was coming, it sends nothing.
+    if (!isGuideVoiceOn()) return
     try {
       const response = await fetch(`/api/v1/public/demo-access/${encodeURIComponent(token)}/assistant/voice`, {
         method: "POST",
@@ -447,9 +453,10 @@ function DemoAssistant({
         if (newestAnswerRef.current === answerId && positionRef.current === askedKey) voice?.playBlob(audio)
         return
       }
-      const payload = await response.json().catch(() => null) as { code?: string; error?: string } | null
-      refusedVoice(payload?.code)
-      setVoiceNote(payload?.code === "demo_budget" || payload?.code === "day_budget" ? S.voiceExhausted : S.voiceAnswerFailed)
+      const payload = await response.json().catch(() => null) as { code?: string; error?: string; exhausted?: boolean } | null
+      const overBudget = payload?.code === "demo_budget" || payload?.code === "day_budget"
+      refusedVoice(payload?.code, payload?.exhausted)
+      setVoiceNote(overBudget && payload?.exhausted !== false ? S.voiceExhausted : S.voiceAnswerFailed)
     } catch {
       setVoiceNote(S.voiceAnswerFailed)
     }
@@ -496,10 +503,11 @@ function DemoAssistant({
       if (!moved && payload.audio?.startsWith("/sounds/demo-guide/")) voice?.play(payload.audio)
       // A Da Vinci answer has no recording; with the switch on it is spoken
       // once, in the same voice, through the same element — unless the guide's
-      // voice is off, when nothing is sent to be spoken at all.
+      // voice is off, when nothing is sent to be spoken at all. Off NOW: this
+      // runs seconds after the press, and `voice.on` is the press's render.
       const answerId = typeof payload.answerId === "string" ? payload.answerId : null
       newestAnswerRef.current = answerId
-      if (voiceEnabled && !moved && !payload.audio && answerId && typeof payload.answerHash === "string" && voice?.on && !voiceExhausted) {
+      if (voiceEnabled && !moved && !payload.audio && answerId && typeof payload.answerHash === "string" && voice && isGuideVoiceOn() && !voiceExhausted) {
         void speak(answerId, payload.answer, payload.answerHash, askedKey)
       }
       const asked: AssistantTurn = { id: `you-${Date.now()}`, who: "you", text: trimmed }
@@ -564,7 +572,12 @@ function DemoAssistant({
           stepId={snapshot.stepId}
           busy={asking}
           exhausted={voiceExhausted}
-          onBeforeRecord={() => voice?.stop()}
+          onBeforeRecord={() => {
+            // A spoken answer still on its way would play over the recording:
+            // it is dropped, and the one playing stops.
+            newestAnswerRef.current = null
+            voice?.stop()
+          }}
           onHeard={(heard) => { setQuestion(heard); void ask(heard) }}
           onRefused={refusedVoice}
         />

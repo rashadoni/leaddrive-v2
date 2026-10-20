@@ -54,6 +54,16 @@ function readPref(): boolean {
   }
 }
 
+/**
+ * Whether the guide's voice is on right now — not as it was when the
+ * component last rendered. A decision taken after an await (a Da Vinci answer
+ * takes seconds) reads this: the prospect may have switched the voice off in
+ * between, and then nothing goes to Google to be spoken.
+ */
+export function isGuideVoiceOn(): boolean {
+  return readPref()
+}
+
 function notify() {
   for (const listener of listeners) listener()
 }

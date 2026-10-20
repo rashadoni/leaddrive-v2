@@ -18,10 +18,18 @@ import { startVoiceCapture, VoiceCaptureError, type VoiceCapture } from "./demo-
  * Before the first clip the prospect reads what happens to the recording and
  * agrees; the microphone is not touched until then. It is opened for one clip
  * and released after it, whatever happened.
+ *
+ * Only a press records. A finger that starts on the button and slides off
+ * across the page is a scroll, not a question: the clip is thrown away, not
+ * sent, and so is one the browser cancels. When the voice minutes run out
+ * while a clip is open, it is released there and then — the button is gone,
+ * and a microphone with no button to stop it would send by itself at 15 s.
  */
 
 /** A press held at least this long is «hold to talk»: letting go sends. Shorter is a tap. */
 const HOLD_MS = 450
+/** A touch that travels this far before it is a hold is a swipe across the page. */
+const SWIPE_PX = 10
 
 type VoiceState = "idle" | "consent" | "starting" | "recording" | "sending"
 
@@ -30,14 +38,14 @@ export interface DemoAssistantVoiceProps {
   readonly stepId: string
   /** A question is on its way: no new clip until it is answered. */
   readonly busy: boolean
-  /** The voice minutes ran out (either route said so): the button gives way to the note. */
+  /** The voice minutes ran out (either route said so): the button gives way to the note, and an open clip is released. */
   readonly exhausted: boolean
-  /** Called before the microphone opens, so the guide is not recorded talking. */
+  /** Called before the microphone opens, so the guide is not recorded talking: what plays stops, and a spoken answer still on its way is dropped. */
   readonly onBeforeRecord: () => void
   /** The heard text: the box asks it as the question. */
   readonly onHeard: (text: string) => void
-  /** The server's refusal code, when it has one (the budget ones end voice for this demo). */
-  readonly onRefused: (code: string | undefined) => void
+  /** The server's refusal code, when it has one, and whether it says voice is over for this demo. */
+  readonly onRefused: (code: string | undefined, exhausted?: boolean) => void
 }
 
 export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRecord, onHeard, onRefused }: DemoAssistantVoiceProps) {
@@ -50,14 +58,27 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRec
   const captureRef = useRef<VoiceCapture | null>(null)
   const stateRef = useRef<VoiceState>("idle")
   const pressedAtRef = useRef<number | null>(null)
+  // Where a press began, and whether a finger made it: a touch that moves is a swipe.
+  const pressPointRef = useRef<{ x: number; y: number; touch: boolean } | null>(null)
   const suppressClickRef = useRef(false)
   const startedAtRef = useRef(0)
   const mountedRef = useRef(true)
+  const exhaustedRef = useRef(exhausted)
 
   const move = useCallback((next: VoiceState) => {
     stateRef.current = next
     if (mountedRef.current) setState(next)
   }, [])
+
+  // The clip is thrown away, not sent. During «starting» the capture is not
+  // there yet: leaving that state makes `begin` cancel it the moment it opens.
+  const discard = useCallback(() => {
+    captureRef.current?.cancel()
+    captureRef.current = null
+    pressedAtRef.current = null
+    pressPointRef.current = null
+    if (stateRef.current === "recording" || stateRef.current === "starting") move("idle")
+  }, [move])
 
   // Leaving the page (or the chapter) in the middle of a clip releases the microphone.
   useEffect(() => {
@@ -68,6 +89,13 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRec
       captureRef.current = null
     }
   }, [])
+
+  // The minutes ran out (a spoken answer's refusal can land mid-clip): the
+  // button gives way to the note, so the microphone goes with it.
+  useEffect(() => {
+    exhaustedRef.current = exhausted
+    if (exhausted) discard()
+  }, [exhausted, discard])
 
   useEffect(() => {
     if (state !== "recording") return
@@ -81,6 +109,12 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRec
     const capture = captureRef.current
     if (!capture || stateRef.current !== "recording") return
     captureRef.current = null
+    // No voice left: what was recorded goes nowhere.
+    if (exhaustedRef.current) {
+      capture.cancel()
+      move("idle")
+      return
+    }
     const clip = capture.stop()
     move("sending")
     try {
@@ -88,9 +122,9 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRec
         `/api/v1/public/demo-access/${encodeURIComponent(token)}/assistant/transcribe?stepId=${encodeURIComponent(stepId)}`,
         { method: "POST", credentials: "same-origin", headers: { "Content-Type": "audio/wav" }, body: clip.wav },
       )
-      const payload = await response.json().catch(() => null) as { success?: boolean; text?: string; error?: string; code?: string } | null
+      const payload = await response.json().catch(() => null) as { success?: boolean; text?: string; error?: string; code?: string; exhausted?: boolean } | null
       if (!response.ok || !payload?.success || !payload.text) {
-        onRefused(payload?.code)
+        onRefused(payload?.code, payload?.exhausted)
         if (mountedRef.current) setError(payload?.error ?? S.voiceFailed)
         return
       }
@@ -110,7 +144,7 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRec
   }, [send])
 
   const begin = useCallback(async () => {
-    if (stateRef.current !== "idle") return
+    if (stateRef.current !== "idle" || exhaustedRef.current) return
     setError(null)
     setHeard(null)
     setElapsed(0)
@@ -146,13 +180,24 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRec
     }
     if (stateRef.current === "idle") {
       pressedAtRef.current = Date.now()
+      pressPointRef.current = { x: event.clientX, y: event.clientY, touch: event.pointerType === "touch" }
       void begin()
     }
+  }
+
+  // A finger that travels before the press becomes a hold was scrolling the
+  // page: no click follows it, and a tap would otherwise leave the clip open.
+  const onPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const pressedAt = pressedAtRef.current
+    const from = pressPointRef.current
+    if (pressedAt === null || !from?.touch || Date.now() - pressedAt >= HOLD_MS) return
+    if (Math.hypot(event.clientX - from.x, event.clientY - from.y) > SWIPE_PX) discard()
   }
 
   const onPointerUp = () => {
     const pressedAt = pressedAtRef.current
     pressedAtRef.current = null
+    pressPointRef.current = null
     // Held: letting go sends. A tap leaves it listening until the next press.
     if (pressedAt !== null && Date.now() - pressedAt >= HOLD_MS && stateRef.current === "recording") void send()
   }
@@ -221,8 +266,10 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRec
         disabled={state === "sending" || (busy && state === "idle")}
         className={cn("h-auto min-h-9 w-full touch-none select-none whitespace-normal py-1.5 text-xs [-webkit-touch-callout:none]", recording && "animate-pulse")}
         onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        // The browser took the pointer back (a system gesture, a call): not a release, so nothing is sent.
+        onPointerCancel={discard}
         onPointerLeave={onPointerUp}
         onClick={onClick}
         onContextMenu={(event) => event.preventDefault()}

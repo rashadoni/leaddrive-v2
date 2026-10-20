@@ -27,11 +27,15 @@ export const DEMO_ASSISTANT_VOICE_CLIP_SAMPLE_RATE = 16_000
 /** The longest answer that is spoken; a longer one stays text. */
 export const DEMO_ASSISTANT_VOICE_MAX_CHARS = 1_200
 /**
- * Seconds of speech a character can take, at most. The guide's recordings
+ * Seconds of speech a character takes, generously. The guide's recordings
  * run at about 0.08 s a character; live on 2026-10-20 an Azerbaijani sentence
  * took 0.093 s and a Russian one 0.11 s. The claim is made before Google
- * answers, so it is an upper bound, and it is lowered to the real length
- * afterwards — never raised, so what was claimed is never exceeded.
+ * answers, so it is an estimate meant to be above the real length — but only
+ * an estimate: figures read aloud (a phone number, an amount, a date) take far
+ * more time than their characters, and a model can run on. So once the audio
+ * is there, its real length is what the demo's row records, lower or higher
+ * than the claim (assistant-voice.ts): Google bills the audio it made, and the
+ * ceilings count what was billed.
  */
 export const DEMO_ASSISTANT_VOICE_SECONDS_PER_CHAR = 0.14
 
@@ -87,13 +91,29 @@ export const DEMO_ASSISTANT_VOICE_LIMITS: DemoVoiceLimits = {
   perDay: DEMO_ASSISTANT_VOICE_SECONDS_PER_DAY,
 }
 
-/** Whether `claim` more seconds fit both ceilings. The demo's own is named first. */
+export type DemoVoiceBudgetRefusal = { ok: false; refusal: "demo_budget" | "day_budget"; secondsLeft: number }
+
+/**
+ * Whether `claim` more seconds fit both ceilings. The demo's own is named
+ * first. A refusal says how many seconds are still left under both: a long
+ * answer's claim can be refused while a question still fits.
+ */
 export function checkVoiceBudget(
   spent: DemoVoiceSpend,
   claim: number,
   limits: DemoVoiceLimits = DEMO_ASSISTANT_VOICE_LIMITS,
-): { ok: true } | { ok: false; refusal: "demo_budget" | "day_budget" } {
-  if (spent.demo + claim > limits.perDemo) return { ok: false, refusal: "demo_budget" }
-  if (spent.day + claim > limits.perDay) return { ok: false, refusal: "day_budget" }
+): { ok: true } | DemoVoiceBudgetRefusal {
+  const secondsLeft = Math.max(0, Math.min(limits.perDemo - spent.demo, limits.perDay - spent.day))
+  if (spent.demo + claim > limits.perDemo) return { ok: false, refusal: "demo_budget", secondsLeft }
+  if (spent.day + claim > limits.perDay) return { ok: false, refusal: "day_budget", secondsLeft }
   return { ok: true }
+}
+
+/**
+ * What a budget refusal tells the page. Voice is over for this demo only
+ * when not even one full question fits; until then a refused answer stays
+ * text and «Səslə soruşun» stays.
+ */
+export function demoVoiceBudgetLeft(secondsLeft: number): { secondsLeft: number; exhausted: boolean } {
+  return { secondsLeft, exhausted: secondsLeft < DEMO_ASSISTANT_VOICE_CLIP_MAX_SECONDS }
 }

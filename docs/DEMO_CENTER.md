@@ -337,14 +337,22 @@ routes 404, no hash handed out, and the private page keeps `microphone=()`):
   `POST …/assistant/voice` speaks only a text that hash vouches for, once,
   with the recordings' model and voice, and plays as a blob through the
   guide's one audio element. Prepared answers keep their recordings. Nothing
-  is sent to be spoken while the guide's voice is switched off.
+  is sent to be spoken while the guide's voice is switched off — read when
+  the answer arrives, not when the question was asked. A spoken answer still
+  on its way when the prospect starts a recording is dropped, never played
+  over the microphone.
 - The prospect presses and holds «Səslə soruşun» (or taps to start and stop)
   after a one-time consent line, speaks up to 15 s; the page sends a mono
   16 kHz WAV to `POST …/assistant/transcribe`; Google's `gemini-3.5-transcribe`
   (az-AZ, ru-RU, en-US) returns the text, the route returns only the text and
   keeps nothing; the page shows «Eşitdim: …» and asks it through `/assistant`,
   which masks it before Claude like a typed question. The microphone is
-  released after every clip.
+  released after every clip. Google gets exactly the samples the route
+  measured and claimed, in a WAV the route builds — never the uploaded file,
+  whose extra `fmt `/`data` chunks another decoder would read as many times
+  the length. A touch that slides more than 10 px before it becomes a hold
+  (a scroll starting on the button) and a cancelled pointer throw the clip
+  away instead of sending it.
 - Every Google call sends the key in `x-goog-api-key`, never in the address,
   and every Interactions API call says `store: false` (Google's default keeps
   an interaction, input included, for 55 days).
@@ -353,8 +361,13 @@ routes 404, no hash handed out, and the private page keeps `microphone=()`):
   (`ASSISTANT_VOICED`, `ASSISTANT_HEARD`; metadata is seconds and an outcome,
   never text or audio) under one advisory lock before Google is called
   (`src/lib/demo-center/assistant-voice.ts`). A spoken answer's claim is an
-  upper bound lowered to the audio's length afterwards; a failed call keeps
-  its claim. Proven on a real Postgres in
+  estimate (0.14 s a character); afterwards the row records the audio's real
+  length, lower or higher (figures read aloud run longer than prose), because
+  that is what Google billed. A failed call keeps its claim. A refusal over
+  the budget carries `secondsLeft` and `exhausted` (fewer seconds left than
+  one 15 s question): only then does the page drop the button and stop
+  speaking answers; otherwise just that answer stays text. When voice runs
+  out mid-clip, the open clip is released, not sent. Proven on a real Postgres in
   `demo-assistant-voice-postgres.test.ts` («Demo assistant voice budget
   database gate» in `static-checks` and in the deploy).
 - Granted sessions only, through the assistant's own session check

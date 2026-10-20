@@ -42,6 +42,14 @@ let reply: Record<string, unknown>
 let transcribeReply: { status: number; body: Record<string, unknown> }
 let voiceReply: { status: number; audio?: boolean; body?: Record<string, unknown> }
 let microphone: { asked: number; stopped: number; closed: number; deny: string | null; processor: FakeProcessor | null }
+/** Held answers: a request waits here until its gate opens (the server or the microphone taking its time). */
+let gates: { assistant: Promise<void> | null; voice: Promise<void> | null; microphone: Promise<void> | null }
+
+function gate() {
+  let open!: () => void
+  const promise = new Promise<void>((resolve) => { open = resolve })
+  return { promise, open: () => act(async () => { open() }) }
+}
 
 class FakeProcessor {
   onaudioprocess: ((event: { inputBuffer: { getChannelData: () => Float32Array } }) => void) | null = null
@@ -60,13 +68,17 @@ function speakFor(seconds: number) {
 
 beforeEach(() => {
   window.sessionStorage.clear()
-  window.localStorage.removeItem("ld_demo_guide_voice")
+  // On, as a fresh browser has it — written out, because the switch also keeps
+  // its last choice in memory, and a case that turned it off must not leave
+  // the next one silent.
+  window.localStorage.setItem("ld_demo_guide_voice", "on")
   played = []
   calls = []
   reply = { success: true, answer: "Bu, lidin balıdır.", remaining: 49, source: "davinci", answerId: "ans-1", answerHash: "a".repeat(64) }
   transcribeReply = { status: 200, body: { success: true, text: HEARD } }
   voiceReply = { status: 200, audio: true }
   microphone = { asked: 0, stopped: 0, closed: 0, deny: null, processor: null }
+  gates = { assistant: null, voice: null, microphone: null }
 
   class FakeAudio {
     src = ""
@@ -94,6 +106,7 @@ beforeEach(() => {
     value: {
       getUserMedia: vi.fn(async () => {
         microphone.asked += 1
+        if (gates.microphone) await gates.microphone
         if (microphone.deny) throw Object.assign(new Error("denied"), { name: microphone.deny })
         return { getTracks: () => [{ stop: () => { microphone.stopped += 1 } }] }
       }),
@@ -112,11 +125,15 @@ beforeEach(() => {
     calls.push({ url: String(url), init })
     if (String(url).includes("/assistant/transcribe")) return new Response(JSON.stringify(transcribeReply.body), { status: transcribeReply.status })
     if (String(url).endsWith("/assistant/voice")) {
+      if (gates.voice) await gates.voice
       return voiceReply.audio
         ? new Response(new Uint8Array([82, 73, 70, 70]), { status: 200, headers: { "Content-Type": "audio/wav" } })
         : new Response(JSON.stringify(voiceReply.body ?? {}), { status: voiceReply.status })
     }
-    if (String(url).endsWith("/assistant")) return new Response(JSON.stringify(reply), { status: 200 })
+    if (String(url).endsWith("/assistant")) {
+      if (gates.assistant) await gates.assistant
+      return new Response(JSON.stringify(reply), { status: 200 })
+    }
     return new Response(JSON.stringify({ success: true, accepted: 1 }), { status: 200 })
   }))
   Element.prototype.scrollIntoView = () => {}
@@ -168,12 +185,32 @@ const button = () => container.querySelector<HTMLButtonElement>('[data-testid="d
 const voiceState = () => container.querySelector('[data-testid="demo-assistant-voice"]')?.getAttribute("data-voice-state") ?? null
 const callsTo = (suffix: string) => calls.filter((call) => call.url.split("?")[0].endsWith(suffix))
 
-function pointer(type: "pointerdown" | "pointerup") {
+function pointer(type: "pointerdown" | "pointerup" | "pointermove" | "pointercancel", init: PointerEventInit = {}) {
   const Event = (window as unknown as { PointerEvent?: typeof MouseEvent }).PointerEvent ?? window.MouseEvent
   return act(async () => {
-    button()!.dispatchEvent(new Event(type, { bubbles: true, button: 0 }))
+    button()!.dispatchEvent(new Event(type, { bubbles: true, button: 0, ...init }))
   })
 }
+
+/** A finger on the button: jsdom's PointerEvent carries its type and where it is. */
+function touch(type: "pointerdown" | "pointerup" | "pointermove" | "pointercancel", x: number, y: number) {
+  expect(typeof window.PointerEvent, "jsdom has PointerEvent").toBe("function")
+  return pointer(type, { pointerType: "touch", isPrimary: true, clientX: x, clientY: y })
+}
+
+async function askTyped(question: string) {
+  const box = document.getElementById("demo-assistant-question") as HTMLTextAreaElement
+  const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!
+  await act(async () => {
+    setValue.call(box, question)
+    box.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+  await act(async () => box.form!.requestSubmit())
+  await settle(80)
+}
+
+const voiceNote = () => container.querySelector('[data-testid="demo-assistant-voice-note"]')?.textContent ?? null
+const playedBlobs = () => played.filter((src) => src.startsWith("blob:"))
 
 /** Press the button the way a keyboard does (a click with no pointer before it). */
 async function press() {
@@ -306,6 +343,131 @@ describe("«Səslə soruşun»", () => {
     expect(container.querySelector('[data-testid="demo-assistant-voice-exhausted"]')?.textContent).toBe(S.voiceExhausted)
   })
 
+  it("a finger that slides off the button is a scroll: the clip is thrown away, never sent", async () => {
+    await renderPlayer()
+    await consentAndListen()
+    await press()
+    await settle(80)
+    calls = []
+    expect(microphone.stopped).toBe(1)
+
+    await touch("pointerdown", 120, 300)
+    await settle()
+    expect(voiceState()).toBe("recording")
+    await touch("pointermove", 121, 260)
+    expect(voiceState()).toBe("idle")
+    expect(microphone.stopped).toBe(2)
+    expect(microphone.closed).toBe(2)
+    await touch("pointerup", 121, 240)
+    // Whatever the room says next goes nowhere: there is no clip any more.
+    speakFor(DEMO_ASSISTANT_VOICE_CLIP_MAX_SECONDS + 1)
+    await settle(80)
+    expect(callsTo("/assistant/transcribe")).toEqual([])
+    expect(callsTo("/assistant")).toEqual([])
+    expect(button()!.textContent).toContain(S.voiceAsk)
+  })
+
+  it("a finger that only trembles is still a tap, and a held finger may drift", async () => {
+    await renderPlayer()
+    await consentAndListen()
+    await press()
+    await settle(80)
+    calls = []
+
+    // A tap with a few pixels of jitter (and the click a tap ends with): still listening until the next tap.
+    await touch("pointerdown", 60, 60)
+    await settle()
+    await touch("pointermove", 63, 64)
+    await touch("pointerup", 63, 64)
+    await act(async () => button()!.click())
+    expect(voiceState()).toBe("recording")
+    speakFor(1)
+    await touch("pointerdown", 61, 61)
+    await touch("pointerup", 61, 61)
+    await act(async () => button()!.click())
+    await settle(80)
+    expect(callsTo("/assistant/transcribe")).toHaveLength(1)
+
+    // Held past the hold time, then moved: a hold, and letting go sends.
+    calls = []
+    await touch("pointerdown", 60, 60)
+    await settle()
+    speakFor(1)
+    await settle(500)
+    await touch("pointermove", 60, 120)
+    expect(voiceState()).toBe("recording")
+    await touch("pointerup", 60, 120)
+    await settle(80)
+    expect(callsTo("/assistant/transcribe")).toHaveLength(1)
+  })
+
+  it("a pointer the browser cancels throws the clip away instead of sending it", async () => {
+    await renderPlayer()
+    await consentAndListen()
+    await press()
+    await settle(80)
+    calls = []
+
+    await touch("pointerdown", 40, 40)
+    await settle()
+    expect(voiceState()).toBe("recording")
+    await touch("pointercancel", 40, 40)
+    expect(voiceState()).toBe("idle")
+    expect(microphone.stopped).toBe(2)
+    speakFor(DEMO_ASSISTANT_VOICE_CLIP_MAX_SECONDS + 1)
+    await settle(80)
+    expect(callsTo("/assistant/transcribe")).toEqual([])
+  })
+
+  it("voice running out in the middle of a clip releases the microphone there and then, and nothing is sent", async () => {
+    // A tap left it listening; a typed question's spoken answer is refused: the minutes are gone.
+    voiceReply = { status: 429, audio: false, body: { success: false, code: "demo_budget", error: "x", secondsLeft: 4, exhausted: true } }
+    await renderPlayer()
+    await consentAndListen()
+    expect(voiceState()).toBe("recording")
+    await askTyped("Bu bal necə hesablanır?")
+    expect(callsTo("/assistant/voice")).toHaveLength(1)
+
+    expect(button()).toBeNull()
+    expect(container.querySelector('[data-testid="demo-assistant-voice-exhausted"]')?.textContent).toBe(S.voiceExhausted)
+    expect(microphone.stopped).toBe(1)
+    expect(microphone.closed).toBe(1)
+    // The fifteen-second stop would have sent it by itself.
+    speakFor(DEMO_ASSISTANT_VOICE_CLIP_MAX_SECONDS + 1)
+    await settle(80)
+    expect(callsTo("/assistant/transcribe")).toEqual([])
+  })
+
+  it("voice running out while the microphone is still opening: the clip is released the moment it opens", async () => {
+    transcribeReply = { status: 422, body: { success: false, code: "silent", error: "x" } }
+    await renderPlayer()
+    await consentAndListen()
+    await press()
+    await settle(80)
+    expect(microphone.stopped).toBe(1)
+
+    const answer = gate()
+    gates.voice = answer.promise
+    voiceReply = { status: 429, audio: false, body: { success: false, code: "day_budget", error: "x", secondsLeft: 0, exhausted: true } }
+    await askTyped("Bu bal necə hesablanır?")
+    const opening = gate()
+    gates.microphone = opening.promise
+    await press()
+    expect(voiceState()).toBe("starting")
+
+    await answer.open()
+    await settle(80)
+    expect(button()).toBeNull()
+    await opening.open()
+    await settle(80)
+    expect(microphone.asked).toBe(2)
+    expect(microphone.stopped).toBe(2)
+    expect(microphone.closed).toBe(2)
+    speakFor(DEMO_ASSISTANT_VOICE_CLIP_MAX_SECONDS + 1)
+    await settle(80)
+    expect(callsTo("/assistant/transcribe")).toHaveLength(1)
+  })
+
   it("releases the microphone when the page goes away in the middle of a clip", async () => {
     await renderPlayer()
     await consentAndListen()
@@ -317,17 +479,6 @@ describe("«Səslə soruşun»", () => {
 })
 
 describe("Da Vinci's answers in the guide's voice", () => {
-  async function askTyped(question: string) {
-    const box = document.getElementById("demo-assistant-question") as HTMLTextAreaElement
-    const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!
-    await act(async () => {
-      setValue.call(box, question)
-      box.dispatchEvent(new Event("input", { bubbles: true }))
-    })
-    await act(async () => box.form!.requestSubmit())
-    await settle(80)
-  }
-
   it("speaks a Da Vinci answer once, sending back exactly what the server vouched for, through the one audio element", async () => {
     await renderPlayer()
     const before = played.length
@@ -350,6 +501,76 @@ describe("Da Vinci's answers in the guide's voice", () => {
     await renderPlayer(false)
     await askTyped("Bu bal necə hesablanır?")
     expect(callsTo("/assistant/voice")).toEqual([])
+  })
+
+  it("a spoken answer still on its way when a recording starts is dropped, never played over the microphone", async () => {
+    const answer = gate()
+    gates.voice = answer.promise
+    await renderPlayer()
+    await askTyped("Bu bal necə hesablanır?")
+    expect(callsTo("/assistant/voice")).toHaveLength(1)
+    // The text is on the screen and the audio is still being made: the prospect starts asking.
+    await consentAndListen()
+    expect(voiceState()).toBe("recording")
+    await answer.open()
+    await settle(80)
+    expect(playedBlobs()).toEqual([])
+
+    // The question that was being recorded gets its own answer, and that one is spoken.
+    speakFor(1)
+    await press()
+    await settle(120)
+    expect(callsTo("/assistant/voice")).toHaveLength(2)
+    expect(playedBlobs()).toEqual(["blob:voice-1"])
+  })
+
+  it("the guide's voice switched off while the answer is coming: nothing is sent to be spoken", async () => {
+    const answer = gate()
+    gates.assistant = answer.promise
+    await renderPlayer()
+    await askTyped("Bu bal necə hesablanır?")
+    expect(callsTo("/assistant")).toHaveLength(1)
+    // The one switch on screen: in the coach card while it carries the step, in the panel otherwise.
+    const toggle = () => container.querySelector<HTMLButtonElement>('[data-testid="demo-coach-voice"], [data-testid="demo-guide-voice"]')!
+    expect(toggle().textContent).toContain(S.voiceOff)
+    await act(async () => toggle().click())
+    expect(toggle().textContent).toContain(S.voiceOn)
+
+    await answer.open()
+    await settle(80)
+    expect(container.querySelector('[data-testid="demo-assistant-turns"]')?.textContent).toContain("Bu, lidin balıdır.")
+    expect(callsTo("/assistant/voice")).toEqual([])
+
+    // On again: the next answer is spoken.
+    await act(async () => toggle().click())
+    gates.assistant = null
+    await askTyped("Bəs bu?")
+    expect(callsTo("/assistant/voice")).toHaveLength(1)
+  })
+
+  it("a long answer refused over the budget stays text, and voice goes on while a question still fits", async () => {
+    voiceReply = { status: 429, audio: false, body: { success: false, code: "demo_budget", error: "x", secondsLeft: 140, exhausted: false } }
+    await renderPlayer()
+    await askTyped("Bu bal necə hesablanır?")
+    expect(callsTo("/assistant/voice")).toHaveLength(1)
+    expect(button(), "«Səslə soruşun» stays").not.toBeNull()
+    expect(container.querySelector('[data-testid="demo-assistant-voice-exhausted"]')).toBeNull()
+    expect(voiceNote()).toBe(S.voiceAnswerFailed)
+
+    voiceReply = { status: 200, audio: true }
+    await askTyped("Bəs bu?")
+    expect(callsTo("/assistant/voice")).toHaveLength(2)
+    expect(playedBlobs()).toEqual(["blob:voice-1"])
+  })
+
+  it("over the budget with not even one question left: the button gives way to the note", async () => {
+    voiceReply = { status: 429, audio: false, body: { success: false, code: "demo_budget", error: "x", secondsLeft: 9, exhausted: true } }
+    await renderPlayer()
+    await askTyped("Bu bal necə hesablanır?")
+    expect(button()).toBeNull()
+    expect(container.querySelector('[data-testid="demo-assistant-voice-exhausted"]')?.textContent).toBe(S.voiceExhausted)
+    await askTyped("Bəs bu?")
+    expect(callsTo("/assistant/voice")).toHaveLength(1)
   })
 
   it("says it could not speak the answer, and the text stays", async () => {

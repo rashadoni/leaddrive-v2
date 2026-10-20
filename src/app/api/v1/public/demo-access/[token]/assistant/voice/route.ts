@@ -7,6 +7,7 @@ import { demoAssistantVoiceEnabled } from "@/lib/demo-center/assistant-voice-swi
 import {
   DEMO_ASSISTANT_VOICE_MAX_CHARS,
   DEMO_VOICE_REFUSAL_TEXT,
+  demoVoiceBudgetLeft,
   speechSecondsUpperBound,
   type DemoVoiceRefusal,
 } from "@/lib/demo-center/assistant/voice-policy"
@@ -22,8 +23,12 @@ import { runWithRlsBypass } from "@/lib/rls-context"
  * the hash does not vouch for is refused before any spend, so this route
  * cannot be made to say arbitrary words in the guide's voice. An answer is
  * spoken once. The seconds are claimed in the database before Google is
- * asked (assistant-voice.ts); the audio comes back as a WAV file and is kept
- * nowhere.
+ * asked (assistant-voice.ts) and settled at the audio's real length; the
+ * audio comes back as a WAV file and is kept nowhere.
+ *
+ * A refusal over the budget says how many seconds are left and whether voice
+ * is over for this demo: a long answer's estimate can be refused while a
+ * question still fits, and then only this answer stays text.
  *
  * Granted sessions only, checked exactly as the assistant does
  * (active-grant.ts). With `DEMO_ASSISTANT_VOICE` off the route does not exist.
@@ -56,7 +61,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     stepId: findStep(manifest, String(body.stepId))?.step.id ?? null,
     now,
   })
-  if (!claim.ok) return refuse(claim.refusal, claim.refusal === "already_voiced" ? 409 : 429)
+  if (!claim.ok) {
+    return claim.refusal === "already_voiced"
+      ? refuse("already_voiced", 409)
+      : refuse(claim.refusal, 429, demoVoiceBudgetLeft(claim.secondsLeft))
+  }
 
   const spoken = await synthesizeGeminiSpeech({
     apiKey,
@@ -77,9 +86,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   })
 }
 
-function refuse(refusal: DemoVoiceRefusal, status: number) {
+function refuse(refusal: DemoVoiceRefusal, status: number, budget?: { secondsLeft: number; exhausted: boolean }) {
   return NextResponse.json(
-    { success: false, code: refusal, error: DEMO_VOICE_REFUSAL_TEXT[refusal] },
+    { success: false, code: refusal, error: DEMO_VOICE_REFUSAL_TEXT[refusal], ...budget },
     { status, headers: noStoreHeaders() },
   )
 }

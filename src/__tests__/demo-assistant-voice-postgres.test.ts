@@ -16,7 +16,13 @@
  *   - that the day's window is the column's own UTC time while the session
  *     runs in Europe/Berlin, as production's does;
  *   - that what is stored is seconds and an outcome, and nothing of the clip,
- *     the question or the answer.
+ *     the question or the answer;
+ *   - that a spoken answer longer than its estimate is recorded at its real
+ *     length, and the next claim sees it;
+ *   - that Google hears exactly the seconds that were charged, whatever
+ *     chunks the uploaded file carries;
+ *   - that a refusal says what is left, and a refused long answer does not
+ *     end voice while a question still fits.
  *
  * The real routes run (`/assistant/voice`, `/assistant/transcribe`) with the
  * real session check; only `fetch` to generativelanguage.googleapis.com is
@@ -143,6 +149,41 @@ function wavClip(seconds: number): Uint8Array<ArrayBuffer> {
   buffer.writeUInt32LE(samples * 2, 40)
   for (let index = 0; index < samples; index += 1) buffer.writeInt16LE(Math.round(Math.sin(index / 7) * 8000), 44 + index * 2)
   return new Uint8Array(buffer)
+}
+
+/** One RIFF chunk: id, little-endian size, body, pad byte. */
+function riffChunk(id: string, body: Buffer): Buffer {
+  const head = Buffer.alloc(8)
+  head.write(id, 0, "latin1")
+  head.writeUInt32LE(body.length, 4)
+  return Buffer.concat([head, body, Buffer.alloc(body.length & 1)])
+}
+
+function monoFmt(rate: number, bits: number): Buffer {
+  const body = Buffer.alloc(16)
+  body.writeUInt16LE(1, 0)
+  body.writeUInt16LE(1, 2)
+  body.writeUInt32LE(rate, 4)
+  body.writeUInt32LE((rate * bits) / 8, 8)
+  body.writeUInt16LE(bits / 8, 12)
+  body.writeUInt16LE(bits, 14)
+  return body
+}
+
+/**
+ * Half a second by this server's reading — the last `fmt ` before the first
+ * `data` — and about sixty by ffmpeg's: its first `fmt ` (8 kHz, 8-bit), read
+ * on into the second `data`.
+ */
+function craftedClip(measured: Buffer): Uint8Array<ArrayBuffer> {
+  const body = Buffer.concat([
+    Buffer.from("WAVE", "latin1"),
+    riffChunk("fmt ", monoFmt(8_000, 8)),
+    riffChunk("fmt ", monoFmt(16_000, 16)),
+    riffChunk("data", measured),
+    riffChunk("data", Buffer.alloc(480_000, 0x41)),
+  ])
+  return new Uint8Array(Buffer.concat([riffChunk("RIFF", body).subarray(0, 8), body]))
 }
 
 /** An answer of fifty characters: every one claims the same seconds (CLAIM). */
@@ -273,7 +314,7 @@ describe.skipIf(!scratch)("the guide's voice budget on a real Postgres under row
     const raw = await app.$queryRaw<{ count: bigint }[]>`SELECT count(*)::bigint AS count FROM demo_access_events`
     expect(Number(raw[0].count)).toBe(0)
     // The claim takes its sum inside the bypass, sees the 590 seconds, and refuses 15 more.
-    expect(await voice.claimDemoVoiceSeconds({ grantId: who.grantId, kind: "hear", seconds: 15 })).toEqual({ ok: false, refusal: "demo_budget" })
+    expect(await voice.claimDemoVoiceSeconds({ grantId: who.grantId, kind: "hear", seconds: 15 })).toEqual({ ok: false, refusal: "demo_budget", secondsLeft: 10 })
     expect(await voice.claimDemoVoiceSeconds({ grantId: who.grantId, kind: "hear", seconds: 10 })).toMatchObject({ ok: true, seconds: 10 })
   })
 
@@ -363,6 +404,58 @@ describe.skipIf(!scratch)("the guide's voice budget on a real Postgres under row
       ["voiced_short", { seconds: 4, outcome: "voiced" }],
       ["voiced_failed", { seconds: CLAIM, outcome: "failed" }],
     ])
+  })
+
+  it("records a spoken answer's real length when it runs past the estimate, and the next claim sees it", async () => {
+    const who = await session()
+    // Room for this answer's estimate and ten seconds more.
+    await admin.demoAccessEvent.create({
+      data: { id: "voiced_seed", grantId: who.grantId, eventType: "ASSISTANT_VOICED", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_DEMO - CLAIM - 10, outcome: "voiced" } },
+    })
+    // Figures read aloud: the audio runs past the 0.14 s a character.
+    speechSeconds = CLAIM + 7.4
+    expect((await speak(who, "figures", answerText(1))).status).toBe(200)
+    expect((await admin.demoAccessEvent.findUnique({ where: { id: "voiced_figures" } }))?.metadata).toEqual({ seconds: CLAIM + 8, outcome: "voiced" })
+    // Two seconds are left, not ten: a five-second question no longer fits, and Google is not asked.
+    const refused = await hear(who, wavClip(5))
+    expect(refused.status).toBe(429)
+    expect(await refused.json()).toMatchObject({ code: "demo_budget", secondsLeft: 2, exhausted: true })
+    expect(googleCalls.map((call) => call.kind)).toEqual(["speak"])
+  })
+
+  it("sends Google the half second it measured and charged, never the uploaded file's own chunks", async () => {
+    const who = await session()
+    const measured = Buffer.alloc(16_000)
+    for (let index = 0; index < measured.length; index += 2) measured.writeInt16LE(Math.round(Math.sin(index / 9) * 6000), index)
+    const clip = craftedClip(measured)
+    expect(clip.byteLength).toBeLessThan(44 + 16_000 * 2 * 16)
+    const response = await hear(who, clip)
+    expect(response.status).toBe(200)
+    const [row] = await voiceRows(who.grantId)
+    expect(row.metadata).toEqual({ seconds: 1, outcome: "heard" })
+    expect(googleCalls).toHaveLength(1)
+    const forwarded = Buffer.from(JSON.parse(googleCalls[0].body).input[0].data, "base64")
+    // The page's own 44-byte header around exactly the measured samples.
+    expect(forwarded.length).toBe(44 + measured.length)
+    expect(forwarded.subarray(0, 44).equals(Buffer.from(wavClip(0.5)).subarray(0, 44))).toBe(true)
+    expect(forwarded.subarray(44).equals(measured)).toBe(true)
+  })
+
+  it("a long answer refused over the budget says a question still fits — and the question then goes through", async () => {
+    const who = await session()
+    await admin.demoAccessEvent.create({
+      data: { id: "voiced_seed", grantId: who.grantId, eventType: "ASSISTANT_VOICED", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_DEMO - 20, outcome: "voiced" } },
+    })
+    const long = "Bu ekran lidin mənbəyini, marağını və balını göstərir. ".repeat(6)
+    expect(speechSecondsUpperBound(long)).toBeGreaterThan(20)
+    const refused = await speak(who, "long-1", long)
+    expect(refused.status).toBe(429)
+    expect(await refused.json()).toMatchObject({ code: "demo_budget", secondsLeft: 20, exhausted: false })
+    expect((await hear(who, wavClip(15))).status).toBe(200)
+    // Five seconds left: not one full question any more, so now voice is over.
+    const over = await speak(who, "long-2", long)
+    expect(await over.json()).toMatchObject({ code: "demo_budget", secondsLeft: 5, exhausted: true })
+    expect(googleCalls.map((call) => call.kind)).toEqual(["hear"])
   })
 
   it("keeps nothing of a heard question: the answer is the text, the one row written is seconds and an outcome", async () => {

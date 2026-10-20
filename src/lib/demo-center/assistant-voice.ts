@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { hmacToken } from "@/lib/secure-token"
-import { checkVoiceBudget, DEMO_ASSISTANT_VOICE_LIMITS, type DemoVoiceLimits } from "./assistant/voice-policy"
+import { checkVoiceBudget, DEMO_ASSISTANT_VOICE_LIMITS, type DemoVoiceBudgetRefusal, type DemoVoiceLimits } from "./assistant/voice-policy"
 
 /**
  * The guide's voice budget, kept where no restart and no second process can
@@ -15,8 +15,10 @@ import { checkVoiceBudget, DEMO_ASSISTANT_VOICE_LIMITS, type DemoVoiceLimits } f
  * one advisory lock, against both ceilings (this demo's ten minutes, every
  * demo's 300 a day), so requests arriving together cannot each see the same
  * room and all go out. Only then is Google called, outside the lock. A spoken
- * answer's claim is lowered to the audio's real length afterwards (never
- * raised); a failed call keeps its claim, because Google may have billed it.
+ * answer's claim is an estimate; once the audio is there the row records its
+ * real length instead, lower or higher, because that is what Google billed and
+ * what the next claim must see. A failed call keeps its claim, because Google
+ * may have billed it.
  *
  * The rows hold seconds and an outcome, nothing else: never the question, the
  * answer, or the audio.
@@ -59,7 +61,8 @@ export type DemoVoiceKind = "speak" | "hear"
 
 export type DemoVoiceClaim =
   | { ok: true; eventId: string; seconds: number }
-  | { ok: false; refusal: "already_voiced" | "demo_budget" | "day_budget" }
+  | { ok: false; refusal: "already_voiced" }
+  | DemoVoiceBudgetRefusal
 
 function secondsOf(metadata: unknown): number {
   const value = (metadata as { seconds?: unknown } | null)?.seconds
@@ -122,13 +125,15 @@ export async function claimDemoVoiceSeconds(params: {
 export type DemoVoiceOutcome = "voiced" | "heard" | "silent" | "failed"
 
 /**
- * What became of a claim. The seconds may only go down: a spoken answer
- * shorter than claimed gives the rest back, a failed call keeps its claim.
+ * What became of a claim. A spoken answer records the audio's real length,
+ * shorter or longer than claimed: shorter gives the rest back, longer is spend
+ * Google billed all the same, and a ledger that left it out would let the
+ * ceilings drift above ten minutes a demo. A failed call keeps its claim.
  */
 export async function settleDemoVoiceSeconds(claim: { eventId: string; seconds: number }, outcome: DemoVoiceOutcome, usedSeconds?: number): Promise<void> {
   const seconds = usedSeconds === undefined || outcome === "failed"
     ? claim.seconds
-    : Math.min(claim.seconds, Math.max(1, Math.ceil(usedSeconds)))
+    : Math.max(1, Math.ceil(usedSeconds))
   await runWithRlsBypass(() =>
     prisma.demoAccessEvent.update({ where: { id: claim.eventId }, data: { metadata: { seconds, outcome } } }),
   )

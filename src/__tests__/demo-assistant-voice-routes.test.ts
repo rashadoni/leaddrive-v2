@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   claim: vi.fn(),
   settle: vi.fn(),
   session: true,
+  /** Each file the transcribe route handed to Google's client, as the very buffer it passed. */
+  forwarded: [] as Buffer[],
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -43,10 +45,21 @@ vi.mock("@/lib/demo-center/assistant-voice", async (importOriginal) => ({
   settleDemoVoiceSeconds: mocks.settle,
 }))
 vi.mock("@/lib/ai/anthropic-client", () => ({ getAnthropicClient: () => ({ messages: { create: mocks.claude } }) }))
+vi.mock("@/lib/ai/gemini-speech", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/ai/gemini-speech")>()
+  return {
+    ...real,
+    transcribeGeminiAudio: (input: Parameters<typeof real.transcribeGeminiAudio>[0]) => {
+      mocks.forwarded.push(input.wav)
+      return real.transcribeGeminiAudio(input)
+    },
+  }
+})
 
 import { POST as ASK } from "@/app/api/v1/public/demo-access/[token]/assistant/route"
 import { POST as SPEAK } from "@/app/api/v1/public/demo-access/[token]/assistant/voice/route"
 import { POST as HEAR } from "@/app/api/v1/public/demo-access/[token]/assistant/transcribe/route"
+import { pcm16Wav, readWav } from "@/lib/ai/gemini-speech"
 import { demoAnswerHash } from "@/lib/demo-center/assistant-voice"
 import { DEMO_VOICE_REFUSAL_TEXT, speechSecondsUpperBound } from "@/lib/demo-center/assistant/voice-policy"
 import { DEMO_GUIDE_VOICE, DEMO_GUIDE_VOICE_DIRECTION } from "@/lib/demo-center/guide-voice"
@@ -78,6 +91,31 @@ function wavClip(seconds: number, { rate = 16_000, channels = 1 }: { rate?: numb
   buffer.writeUInt32LE(samples * 2, 40)
   for (let index = 0; index < samples; index += 1) buffer.writeInt16LE((index * 37) % 4000, 44 + index * 2)
   return new Uint8Array(buffer)
+}
+
+/** One RIFF chunk: id, little-endian size, body, and the pad byte an odd body takes. */
+function chunk(id: string, body: Buffer): Buffer {
+  const head = Buffer.alloc(8)
+  head.write(id, 0, "latin1")
+  head.writeUInt32LE(body.length, 4)
+  return Buffer.concat([head, body, Buffer.alloc(body.length & 1)])
+}
+
+/** A mono PCM `fmt ` body at `rate` and `bits`. */
+function fmtBody(rate: number, bits: number): Buffer {
+  const body = Buffer.alloc(16)
+  body.writeUInt16LE(1, 0)
+  body.writeUInt16LE(1, 2)
+  body.writeUInt32LE(rate, 4)
+  body.writeUInt32LE((rate * bits) / 8, 8)
+  body.writeUInt16LE(bits / 8, 12)
+  body.writeUInt16LE(bits, 14)
+  return body
+}
+
+function riff(chunks: Buffer[]): Uint8Array<ArrayBuffer> {
+  const body = Buffer.concat([Buffer.from("WAVE", "latin1"), ...chunks])
+  return new Uint8Array(Buffer.concat([chunk("RIFF", body).subarray(0, 8), body]))
 }
 
 function speak(body: Record<string, unknown>) {
@@ -118,6 +156,7 @@ const valid = () => ({ answerId: "evt_answer_1", answer: ANSWER, answerHash: dem
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.session = true
+  mocks.forwarded = []
   process.env.DEMO_ASSISTANT_VOICE = "on"
   process.env.GEMINI_API_KEY = KEY
   process.env.TYPESAFE_API_KEY = "test-key"
@@ -227,14 +266,29 @@ describe("speaking an answer", () => {
   })
 
   it("over the budget, or already spoken: refused in words, and Google is not asked", async () => {
-    mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "demo_budget" })
+    mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "demo_budget", secondsLeft: 0 })
     const spent = await speak(valid())
     expect(spent.status).toBe(429)
-    expect(await spent.json()).toEqual({ success: false, code: "demo_budget", error: DEMO_VOICE_REFUSAL_TEXT.demo_budget })
-    mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "day_budget" })
+    expect(await spent.json()).toEqual({ success: false, code: "demo_budget", error: DEMO_VOICE_REFUSAL_TEXT.demo_budget, secondsLeft: 0, exhausted: true })
+    mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "day_budget", secondsLeft: 0 })
     expect((await speak(valid())).status).toBe(429)
     mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "already_voiced" })
-    expect((await speak(valid())).status).toBe(409)
+    const again = await speak(valid())
+    expect(again.status).toBe(409)
+    expect(await again.json()).toEqual({ success: false, code: "already_voiced", error: DEMO_VOICE_REFUSAL_TEXT.already_voiced })
+    expect(google).toEqual([])
+  })
+
+  it("a refused answer says what is left: voice is over only when not even a fifteen-second question fits", async () => {
+    // A long answer's estimate (here 140 s left) is refused while a question still fits.
+    for (const [secondsLeft, exhausted] of [[140, false], [15, false], [14, true], [0, true]] as const) {
+      mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "demo_budget", secondsLeft })
+      const refused = await speak(valid())
+      expect(refused.status).toBe(429)
+      expect(await refused.json(), `${secondsLeft} s left`).toMatchObject({ code: "demo_budget", secondsLeft, exhausted })
+    }
+    mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "day_budget", secondsLeft: 40 })
+    expect(await (await speak(valid())).json()).toMatchObject({ code: "day_budget", secondsLeft: 40, exhausted: false })
     expect(google).toEqual([])
   })
 
@@ -287,6 +341,48 @@ describe("hearing a question", () => {
     expect(written).not.toContain(Buffer.from(clip).toString("base64").slice(0, 40))
     expect(mocks.createEvent).not.toHaveBeenCalled()
     expect(mocks.updateEvent).not.toHaveBeenCalled()
+  })
+
+  it("sends Google exactly the audio it measured and claimed, never the caller's own file", async () => {
+    // A second `fmt ` and a second `data`: this reader takes the last `fmt `
+    // before the first `data` (16 kHz, 16-bit) and measures half a second;
+    // ffmpeg takes the FIRST `fmt ` (8 kHz, 8-bit) and reads on into the
+    // second `data` — about sixty seconds of the same bytes.
+    const measured = Buffer.alloc(16_000)
+    for (let index = 0; index < measured.length; index += 2) measured.writeInt16LE(((index * 13) % 6000) - 3000, index)
+    const crafted = riff([
+      chunk("fmt ", fmtBody(8_000, 8)),
+      chunk("fmt ", fmtBody(16_000, 16)),
+      chunk("data", measured),
+      chunk("data", Buffer.alloc(480_000, 0x41)),
+    ])
+    expect(crafted.byteLength).toBeLessThan(44 + 16_000 * 2 * 16)
+    expect(readWav(Buffer.from(crafted))?.seconds).toBe(0.5)
+    googleReply = () => Response.json({ status: "completed", steps: [{ type: "model_output", content: [{ type: "text", text: "Salam" }] }] })
+
+    const response = await hear(crafted)
+    expect(response.status).toBe(200)
+    expect(mocks.claim).toHaveBeenCalledWith(expect.objectContaining({ kind: "hear", seconds: 1 }))
+    expect(google).toHaveLength(1)
+    const sent = JSON.parse(String(google[0].init?.body))
+    const forwarded = Buffer.from(sent.input[0].data, "base64")
+    // One canonical header around the measured half second, and nothing else of the upload.
+    expect(forwarded.length).toBe(44 + measured.length)
+    expect(forwarded.equals(pcm16Wav(measured, 16_000))).toBe(true)
+    expect(readWav(forwarded)).toMatchObject({ format: 1, channels: 1, sampleRate: 16_000, bitsPerSample: 16, seconds: 0.5 })
+    // The copy handed to Google's client is zeroed once the call is over, like the upload.
+    expect(mocks.forwarded).toHaveLength(1)
+    expect(mocks.forwarded[0].length).toBe(44 + measured.length)
+    expect(mocks.forwarded[0].every((byte) => byte === 0)).toBe(true)
+  })
+
+  it("a refused question says what is left, and Google is not asked", async () => {
+    mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "demo_budget", secondsLeft: 3 })
+    const refused = await hear(wavClip(5))
+    expect(refused.status).toBe(429)
+    expect(await refused.json()).toEqual({ success: false, code: "demo_budget", error: DEMO_VOICE_REFUSAL_TEXT.demo_budget, secondsLeft: 3, exhausted: true })
+    expect(google).toEqual([])
+    expect(mocks.forwarded).toEqual([])
   })
 
   it("nothing intelligible: says so, and the clip's seconds stay spent", async () => {
