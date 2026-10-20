@@ -199,6 +199,12 @@ function mergeNeighbours(entries: readonly DayTripEntry[]): DayTripEntry[] {
 export function buildDayTrip(input: {
   /** Accepted points in time order — the same set the distance is counted on. */
   points: readonly HistoryLocationPoint[]
+  /**
+   * The detector's stops as made (detectHistoryStops without the gaps). The
+   * trip cuts them at the breaks itself and keeps a visit's first piece
+   * however short (cutHistoryStopsAtBreaks); the stop list's cut drops it.
+   * Stops already cut come back as they are, without what that cut dropped.
+   */
   stops: readonly HistoryStop[]
   visits: readonly HistoryVisit[]
   gaps: readonly HistoryGap[]
@@ -217,16 +223,17 @@ export function buildDayTrip(input: {
     if (input.roadSteps?.[index] != null) roadAcross.set(point.recordedAt.getTime(), Math.round(steps[index]))
   })
 
-  // 1. Where the agent stood: every GPS stop, cut at the breaks — the stops
-  //    History hands over are cut already (detectHistoryStops), and come
-  //    back from cutHistoryStopsAtBreaks as they are — plus every visit no
-  //    stop covers (a visit made with the phone silent still happened), cut
-  //    by the same rule (historyStayOutsideBreaks). A break is the employee's
-  //    own time and its own row, exactly as long as the journal says
-  //    (detectHistoryGaps): no stay is told inside it.
+  // 1. Where the agent stood: every GPS stop, cut at the breaks, plus every
+  //    visit no stop covers (a visit made with the phone silent still
+  //    happened), cut by the same rule (historyStayOutsideBreaks). A break is
+  //    the employee's own time and its own row, exactly as long as the
+  //    journal says (detectHistoryGaps): no stay is told inside it. The first
+  //    piece of a visit stays however short: checked in at 10:00, «Перерыв»
+  //    at 10:03 — those minutes were at the customer's, and without them the
+  //    drive before ran on to the break, across the check-in.
   const breaks = historyBreakSpans(input.gaps)
   const minimumSeconds = input.stopMinimumSeconds ?? DEFAULT_STOP_MINIMUM_SECONDS
-  const stops = cutHistoryStopsAtBreaks(input.stops, { points, visits: input.visits, gaps: input.gaps, minimumSeconds })
+  const stops = cutHistoryStopsAtBreaks(input.stops, { points, visits: input.visits, gaps: input.gaps, minimumSeconds, keepFirstPieceOfVisit: true })
   const placed: DayTripStay[] = stops.map((stop) => ({
     kind: "STAY",
     id: `stay-${stop.id}`,

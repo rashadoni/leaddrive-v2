@@ -125,13 +125,14 @@ export function liveMapDayTotals(input: {
 
   const distanceMeters = drivingDistanceMeters(points, input.roadSteps)
   const gaps = detectHistoryGaps(points, policy.gapThresholdSeconds, input.pauses)
+  // As made, not cut: the trip cuts them at the breaks by its own rule, as
+  // History's trip does (buildDayTrip).
   const stops = detectHistoryStops({
     points,
     visits: input.visits,
     radiusMeters: policy.stopRadiusMeters,
     minimumSeconds: policy.stopMinimumSeconds,
     offlineThresholdSeconds: policy.offlineThresholdSeconds,
-    gaps,
   })
   const trip = buildDayTrip({
     points,

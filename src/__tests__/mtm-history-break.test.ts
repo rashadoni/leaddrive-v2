@@ -52,7 +52,7 @@ vi.mock("@/components/mtm/carto-basemap", () => ({ CartoBasemap: () => null }))
 import { DayTripLedger, type DayTripData, type DayTripFocus } from "@/components/mtm/day-trip-ledger"
 import LocationHistoryMap from "@/components/mtm/location-history-map"
 import { buildDayTrip } from "@/lib/mtm/day-trip"
-import { detectHistoryGaps, detectHistoryStops, type HistoryLocationPoint, type HistoryVisit } from "@/lib/mtm/location-history"
+import { cutHistoryStopsAtBreaks, detectHistoryGaps, detectHistoryStops, type HistoryLocationPoint, type HistoryVisit } from "@/lib/mtm/location-history"
 import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
 import { matchRoads, resetMapMatchingState } from "@/lib/mtm/map-matching"
 import { mtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
@@ -427,9 +427,12 @@ describe("a break in the day's path", () => {
       const pauses = mtmWorkdayPauses([{ type: "PAUSE", occurredAt: utc(lunch[0]) }, { type: "RESUME", occurredAt: utc(lunch[1]) }])
         .map((pause) => ({ startedAt: pause.from, endedAt: pause.to }))
       const gaps = detectHistoryGaps(fixes, 300, pauses)
-      const stops = detectHistoryStops({ points: fixes, visits, radiusMeters: 50, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300, gaps })
+      // As the route does: the stop list reads the stops cut at the breaks,
+      // and the trip cuts the detector's own by its rule.
+      const detected = detectHistoryStops({ points: fixes, visits, radiusMeters: 50, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
+      const stops = cutHistoryStopsAtBreaks(detected, { points: fixes, visits, gaps, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
       const workday = { startedAt: fixes[0].recordedAt, completedAt: fixes.at(-1)!.recordedAt }
-      const trip = buildDayTrip({ points: fixes, stops, visits, gaps, workday, stopMinimumSeconds: 5 * 60 })
+      const trip = buildDayTrip({ points: fixes, stops: detected, visits, gaps, workday, stopMinimumSeconds: 5 * 60 })
       return JSON.parse(JSON.stringify({ points: fixes, gaps, stops, trip })) as {
         points: ReturnType<typeof day>["points"]
         gaps: ReturnType<typeof day>["gaps"]
@@ -508,5 +511,24 @@ describe("a break in the day's path", () => {
         "Перерыв30 мин09:10–09:39", expect.stringMatching(/^В пути/), "Закрыл день09:50",
       ])
     })
+
+    // Verification of round 5: checked in, «Перерыв» three minutes later. The
+    // stop list has no stop of three minutes; the trip has them as the visit —
+    // they were «В пути» across the check-in.
+    it("checked in, a break three minutes later: those minutes are the visit, not «В пути»", async () => {
+      const fixes = [
+        ...track("09:00", "10:00", HOME, PHARMACY),
+        ...track("10:00", "10:03", PHARMACY, PHARMACY),
+        ...track("10:33", "11:10", PHARMACY, PHARMACY),
+        ...track("11:10", "11:30", PHARMACY, CLINIC),
+      ].filter((point, index, all) => index === 0 || point.recordedAt > all[index - 1].recordedAt)
+      const data = historyOf(fixes, ["10:03:00", "10:33:00"], [aptek("10:00:30", "11:10:00")])
+      expect(data.stops.map((stop) => [stop.startedAt.slice(11, 16), stop.endedAt.slice(11, 16)])).toEqual([["10:33", "11:10"]])
+      expect(await ledger(data.trip)).toEqual([
+        "Начал день09:00", expect.stringMatching(/^В пути60 мин.*09:00–10:00$/), "Aptek 24Визит 10:00–11:1010:00–10:03",
+        "Перерыв30 мин10:03–10:33", "Там же, после перерыва37 мин10:33–11:10", expect.stringMatching(/^В пути.*11:10–11:30$/), "Закрыл день11:30",
+      ])
+    })
+
   })
 })

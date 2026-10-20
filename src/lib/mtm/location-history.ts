@@ -456,8 +456,8 @@ export type HistoryStayPiece = HistorySpan & {
  *    is the first piece of its visit (`visitOf`) — the visit is never lost,
  *    and a piece of a few seconds without one is no stop (parked, pressed
  *    «Перерыв» at once, resumed and drove off: two pieces of five seconds).
- *    A GPS stop's pieces name no visit (cutHistoryStopsAtBreaks), so a short
- *    one always goes: the visit reaches the trip as a visit no stop covers;
+ *    Only the trip names a GPS stop's visits here (cutHistoryStopsAtBreaks):
+ *    the stop list keeps no stop under the minimum;
  *  - a piece without a place of its own (`hasPlace`: for a GPS stop, no fix
  *    of its own outside the breaks) is gone: its place would be the break's.
  *
@@ -525,8 +525,8 @@ function historyStop(input: {
 }
 
 /**
- * The stops cut at the employee's breaks — the one cut, for every reader of
- * the day.
+ * The stops cut at the employee's breaks — one cut, read by every reader of
+ * the day, with one difference between them.
  *
  * Standing at one spot before and after a break, the fixes make one stop
  * across it. Until 2026-10-20 only the trip cut it, so «Детали остановок»,
@@ -536,11 +536,16 @@ function historyStop(input: {
  * historyStayOutsideBreaks; each piece's place, accuracy and battery are read
  * off its own fixes, and its visit is the one it overlaps.
  *
- * detectHistoryStops cuts with it, given the day's gaps, and every History
- * pipeline gives them. buildDayTrip passes the stops it is handed through it
- * as well: stops already cut come back exactly as they are, and a caller that
- * hands it the detector's stops without the gaps (the demo day) still gets
- * no stay told across a break.
+ * The difference is a piece shorter than the minimum that is the first of
+ * its visit: the minutes at a customer's door before «Перерыв».
+ *  - The stop list, the map's popup, the timeline and its CSV drop it (the
+ *    default): «Детали остановок» promises stops of at least the minimum, and
+ *    a «0 мин» stop there is noise.
+ *  - The trip keeps it (`keepFirstPieceOfVisit`, buildDayTrip): those
+ *    minutes are the visit, not a drive. Dropped, they went into the drive
+ *    before the break — «В пути» across the check-in.
+ * So the History route hands the trip the detector's stops as made, and the
+ * trip cuts them itself; stops already cut come back exactly as they are.
  */
 export function cutHistoryStopsAtBreaks(stops: readonly HistoryStop[], input: {
   points: readonly HistoryLocationPoint[]
@@ -548,6 +553,8 @@ export function cutHistoryStopsAtBreaks(stops: readonly HistoryStop[], input: {
   gaps: readonly HistoryGap[]
   minimumSeconds: number
   offlineThresholdSeconds?: number
+  /** The trip's cut: the first piece of a visit is kept however short. */
+  keepFirstPieceOfVisit?: boolean
 }): HistoryStop[] {
   const breaks = historyBreakSpans(input.gaps)
   if (!breaks.length) return [...stops]
@@ -562,12 +569,12 @@ export function cutHistoryStopsAtBreaks(stops: readonly HistoryStop[], input: {
       to: stop.endedAt.getTime(),
       breaks,
       minimumSeconds: input.minimumSeconds,
-      // No piece is kept only to carry its visit. Seconds at a customer's
-      // door before «Перерыв» were a stop of «0 мин» in «Детали остановок»
-      // (whose header promises the minimum) and on the map's popup; the visit
-      // reaches the trip by itself (buildDayTrip: a visit no stop covers),
-      // named by its own check-in and check-out.
-      visitOf: () => null,
+      // For the list no piece is kept only to carry its visit: seconds at a
+      // customer's door before «Перерыв» were a stop of «0 мин» in «Детали
+      // остановок» and on the map's popup. The trip keeps them as the visit.
+      visitOf: input.keepFirstPieceOfVisit
+        ? (piece) => confirmedVisitForStop(input.visits, new Date(piece.from), new Date(piece.to))?.id ?? null
+        : () => null,
       hasPlace: (piece) => within(piece).length > 0,
     })
     if (!pieces) return [stop]
@@ -586,8 +593,9 @@ export function cutHistoryStopsAtBreaks(stops: readonly HistoryStop[], input: {
 /**
  * Where the agent stood, from the accepted fixes: runs of fixes within the
  * stop radius for at least the minimum stop. With the day's `gaps`
- * (detectHistoryGaps) they come back cut at his breaks
- * (cutHistoryStopsAtBreaks) — every History pipeline passes them.
+ * (detectHistoryGaps) they come back cut at his breaks as the stop list
+ * reads them (cutHistoryStopsAtBreaks). The trip takes them as made, without
+ * the gaps: it cuts them by its own rule (buildDayTrip).
  */
 export function detectHistoryStops(input: {
   points: HistoryLocationPoint[]

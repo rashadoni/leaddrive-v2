@@ -168,8 +168,9 @@ describe("the day as a trip", () => {
   // break time. Paused at a customer's door and resumed there, the fixes on
   // both sides made one stop across the break, and the stop swallowed it:
   // no «Перерыв» row, nothing in the summary, and a stay that said where he
-  // spent his own time. The stop is now cut where it is made
-  // (detectHistoryStops), so every reader of the day has the same pieces.
+  // spent his own time. The stop is now cut at the break for the stop list
+  // (detectHistoryStops given the gaps), and the trip cuts the detector's own
+  // stop by the same rule.
   it("cuts a stop at a break taken at the door: the break is its own row, and the visit is named once", () => {
     const points = [
       ...track("09:00", "09:30", HOME, PHARMACY),
@@ -186,7 +187,10 @@ describe("the day as a trip", () => {
       .toEqual([["09:30", "10:30", "Aptek 24"]])
     const stops = detectHistoryStops({ points, visits, radiusMeters: 80, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300, gaps })
     expect(clocks(stops)).toEqual([["09:30", "09:50", "Aptek 24"], ["10:10", "10:30", "Aptek 24"]])
-    const trip = buildDayTrip({ points, stops, visits, gaps, workday: { startedAt: at("09:00"), completedAt: at("10:50") } })
+    const detected = detectHistoryStops({ points, visits, radiusMeters: 80, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
+    const trip = buildDayTrip({ points, stops: detected, visits, gaps, workday: { startedAt: at("09:00"), completedAt: at("10:50") } })
+    // Handed the list's stops, the trip reads the same.
+    expect(buildDayTrip({ points, stops, visits, gaps, workday: { startedAt: at("09:00"), completedAt: at("10:50") } })).toEqual(trip)
     expect(trip.entries.map(describeEntry)).toEqual([
       "START 09:00 WORKDAY",
       "MOVE 09:00-09:30",

@@ -15,6 +15,7 @@ import {
   LOCATION_HISTORY_MAX_RAW_POINTS_RANGE,
   buildHistoryCsv,
   buildHistoryTimeline,
+  cutHistoryStopsAtBreaks,
   detectHistoryAnomalies,
   detectHistoryGaps,
   type HistoryPauseInterval,
@@ -384,15 +385,23 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const road = rawTruncated ? null : await matchRoads(prepared.points, { breaks: workdayBreaks }).catch(() => null)
   const distanceMeters = rawTruncated ? null : drivingDistanceMeters(prepared.points, road?.stepMeters)
   const gaps = detectHistoryGaps(prepared.points, gapThresholdSeconds, pauses)
-  // Cut at the breaks, once, here: the stop list, the map, the timeline, the
-  // CSV, the counts and the trip all read these stops.
-  const stops = detectHistoryStops({
+  const detectedStops = detectHistoryStops({
     points: prepared.points,
     visits: visits as HistoryVisit[],
     radiusMeters: policyStopRadiusMeters,
     minimumSeconds: policyStopMinimumMinutes * 60,
     offlineThresholdSeconds: settings.offlineThresholdSeconds,
+  })
+  // Cut at the breaks, once, here: the stop list, the map, the timeline, the
+  // CSV and the counts read these stops, none shorter than the minimum. The
+  // trip cuts the same stops by the same rule, and keeps one thing these
+  // drop: a visit's minutes at the door before «Перерыв» (cutHistoryStopsAtBreaks).
+  const stops = cutHistoryStopsAtBreaks(detectedStops, {
+    points: prepared.points,
+    visits: visits as HistoryVisit[],
     gaps,
+    minimumSeconds: policyStopMinimumMinutes * 60,
+    offlineThresholdSeconds: settings.offlineThresholdSeconds,
   })
   const anomalies = detectHistoryAnomalies({
     acceptedPoints: prepared.points,
@@ -431,7 +440,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   // The visit stays in the day's table and timeline; it is not a leg of it.
   const trip = rawTruncated ? null : buildDayTrip({
     points: prepared.points,
-    stops,
+    stops: detectedStops,
     visits: (visits as HistoryVisit[]).filter((visit) => visit.checkInAt >= from),
     gaps,
     workday: workday ? { startedAt: workday.startedAt, completedAt: workday.completedAt } : null,
