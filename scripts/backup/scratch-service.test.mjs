@@ -155,7 +155,7 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
     writeFileSync(sourceConf, readFileSync(sourceConf, 'utf8') + `\nlisten_addresses='127.0.0.2'\nssl=on\nssl_cert_file='${config}/fixture.crt'\nssl_key_file='${config}/fixture.key'\n`)
     writeFileSync(join(config, 'pg_hba.conf'), 'local all postgres peer\nhostssl all fixture_source 127.0.0.2/32 scram-sha-256\nhost all all 0.0.0.0/0 reject\n')
     ok(command('pg_ctlcluster', ['16', cluster, 'start']))
-    ok(admin("CREATE ROLE fixture_source LOGIN PASSWORD 'public-synthetic-only';\nCREATE TABLE fixture_sentinel(value text);\nINSERT INTO fixture_sentinel VALUES ('source must survive');\n"))
+    ok(admin("CREATE ROLE fixture_source LOGIN PASSWORD 'public-synthetic-only';\nGRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO fixture_source;\nCREATE TABLE fixture_sentinel(value text);\nINSERT INTO fixture_sentinel VALUES ('source must survive');\n"))
     mkdirSync('/etc/leaddrive', { mode: 0o755 }); ownedEtc = true
     writeFileSync('/etc/leaddrive/managed-postgres-ca.crt', readFileSync(config + '/fixture.crt'), { mode: 0o644 })
     writeFileSync('/etc/leaddrive/backup.pgpass', '127.0.0.2:55431:postgres:fixture_source:public-synthetic-only\n', { mode: 0o600 })
