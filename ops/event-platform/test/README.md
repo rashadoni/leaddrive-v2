@@ -83,6 +83,35 @@ required for this delivery; A5's earlier successful run is not substituted.
 No Docker/build work runs on the editing host, and no production image or
 service is changed by this refresh.
 
+### Same-version disposable pin refresh — 2026-10-20
+
+The `ace1609f…` pin is now historical: PR935 `cdc-smoke` run39386122497 and
+`broker-driver` run39386122462 failed at image pull with `manifest unknown`
+before any assertion ran, and a public Quay GET of that digest returns
+HTTP404/`MANIFEST_UNKNOWN`. The official `3.7.0.Final` tag now serves index
+`b2e746c95645aeb44ae47c26655cd5750263948e5dfbfc15f624e0d920977f6a`, whose
+Linux/amd64 manifest is
+`8107474c18d56317c007dd930f2782c9636198a895144a0c1dddd6d6a7536d6e`
+(4,658 bytes, SHA-256 matched). Its config
+`7b3202fa3437ca7ba2c47d252436e35f3d223270cbabd4ef70ad9fe7104b9d8d`
+(18,400 bytes, SHA-256 matched) identifies Linux/amd64, created
+2026-10-20T01:43:12Z, `/docker-entrypoint.sh`, `DEBEZIUM_VERSION=3.7.0.Final`
+and `KAFKA_VERSION=4.3.1`. Only metadata was fetched; no layer was pulled on
+the editing host. One Compose line changes; the runtime plugin/SQL/isolation
+assertions are unchanged and must pass on this image in fresh hosted CI.
+
+**Why the pin keeps breaking.** Quay's tag history
+(`/api/v1/repository/debezium/connect/tag/?specificTag=3.7.0.Final&onlyActiveTags=false`)
+shows Debezium re-pushing `3.7.0.Final` every night at about 01:00UTC — 15
+consecutive daily pushes from 2026-10-06 to 2026-10-20 — and the previous
+index plus its platform manifests answer 404 as soon as the tag moves
+(`202d211b…` and `c804b88d…` checked). So every Quay pin, this one included,
+stops resolving at the next nightly push. Refreshing it by hand is a daily
+chore, not a fix. The durable fix is to keep our own copy of one reviewed
+digest — for example copied byte-for-byte into this public repository's GHCR
+package, which keeps the same `sha256` — and pin that; it is a separate
+change.
+
 The Compose network is internal. No service mounts host paths, production
 configuration, Docker sockets or credentials. PostgreSQL and Kafka have no host
 port. Connect and Registry also publish **no host ports**. HTTP probes execute
