@@ -60,7 +60,7 @@ scratch_connection_query scratch 'SELECT 1'
 `, { TEST_ROOT: root, PGHOSTADDR: '203.0.113.42', PGPASSWORD: 'public-fixture-do-not-inherit', PGOPTIONS: '-c dangerous=1' })
   assert.equal(result.status, 0, result.stderr)
   const args = readFileSync(join(root, 'environment'), 'utf8').split('\n')
-  for (const value of ['leaddrive-backup', '-i', 'PGHOSTADDR=127.0.0.1', 'PGSSLMODE=verify-full',
+  for (const value of ['leaddrive-backup', '-i', 'PATH=/usr/sbin:/usr/bin:/sbin:/bin', 'PGHOSTADDR=127.0.0.1', 'PGSSLMODE=verify-full',
     'PGSSLROOTCERT=/etc/leaddrive/restore-postgres-ca.crt', 'PGUSER=leaddrive_restore_verifier', '-w']) assert(args.includes(value), value)
   assert(!args.some(v => /203\.0\.113|do-not-inherit|dangerous/.test(v)))
   const timeoutArgs = readFileSync(join(root, 'timeout'), 'utf8').split('\n')
