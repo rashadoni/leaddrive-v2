@@ -207,7 +207,8 @@ describe("attendance API and server page guards", () => {
     }) as never)
     const content = await AttendanceLayout({ children: "authorized attendance content" })
     const az = JSON.parse(readFileSync("messages/az.json", "utf8"))
-    const html = renderToStaticMarkup(createElement(NextIntlClientProvider, { locale: "az", timeZone: "Asia/Baku", messages: az, children: content }))
+    const props = { locale: "az", timeZone: "Asia/Baku", messages: az, children: content }
+    const html = renderToStaticMarkup(createElement(NextIntlClientProvider, props))
     expect(html).toContain("authorized attendance content")
     // The section's own menu above the page (owner, 2026-10-20), the page's tab lit.
     expect(html).toContain('aria-label="Kadr uçotu"')

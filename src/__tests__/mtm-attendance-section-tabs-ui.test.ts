@@ -22,7 +22,8 @@ const ALL = PERSONNEL.map((item) => item.href)
 let container: HTMLDivElement, root: Root
 async function render(pathname: string, hrefs: readonly string[] = ALL, element = createElement(MtmAttendanceSectionTabs, { hrefs })) {
   navigation.pathname = pathname
-  await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "az", timeZone: "Asia/Baku", messages: az, children: element })))
+  const props = { locale: "az", timeZone: "Asia/Baku", messages: az, children: element }
+  await act(async () => root.render(createElement(NextIntlClientProvider, props)))
 }
 const tabs = () => Array.from(container.querySelectorAll<HTMLAnchorElement>('[data-testid="attendance-section-tabs"] a'))
 const current = () => tabs().filter((tab) => tab.getAttribute("aria-current") === "page")
