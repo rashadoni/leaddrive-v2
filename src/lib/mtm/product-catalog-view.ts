@@ -3,6 +3,11 @@
  * from the two lists the page already reads (/api/v1/mtm/product-groups and
  * /api/v1/mtm/products). Pure — the page and its tests read the same answers.
  *
+ * Owner, 2026-10-21: «нет выбора презентации… я хочу выбрать несколько
+ * презентаций и указать, для какого агента будут видны… и нет сохранения».
+ * So who sees what is decided per presentation: choose presentations, tick
+ * agents, «Yadda saxla».
+ *
  * Owner, 2026-10-15, on the screen: «этот раздел не очень понятен… нужно
  * подтянуть интуитивность и интерактивность». It was a form to create a group
  * on top, a flat list of groups and three boxes under each other, and nothing
@@ -26,6 +31,8 @@ export type ProductCatalogProduct = {
   groupId: string
   isActive: boolean
   document: { deletedAt: string | null } | null
+  /** The field agents who get this presentation in the app. */
+  viewerAgentIds: string[]
   _count: { presentationSessions: number }
 }
 
@@ -67,52 +74,88 @@ export function productGroupAncestry<T extends ProductCatalogGroup>(groups: T[],
   return chain
 }
 
-/**
- * The field agents who get this group in the app: its own, and those of every
- * group above it — a membership grants the group's subgroups too
- * (`expandVisibleProductGroupIds`).
- */
-export function agentsWhoSeeProductGroup(groups: ProductCatalogGroup[], groupId: string): {
-  own: Set<string>
-  inherited: Set<string>
-} {
-  const [group, ...above] = productGroupAncestry(groups, groupId)
-  const own = new Set(group?.members.filter((member) => member.role === "AGENT").map((member) => member.agentId) ?? [])
-  const inherited = new Set<string>()
-  for (const ancestor of above) {
-    for (const member of ancestor.members) {
-      if (member.role === "AGENT" && !own.has(member.agentId)) inherited.add(member.agentId)
-    }
-  }
-  return { own, inherited }
-}
-
 /** A product an agent can open: active, with a file that still exists. */
 export function productPresentationReady(product: ProductCatalogProduct): boolean {
   return product.isActive && product.document != null && product.document.deletedAt == null
 }
 
-export type ProductGroupReadiness = "READY" | "NO_PRESENTATIONS" | "NO_AGENTS"
+/**
+ * The field agents who see at least one of this group's presentations. Each
+ * presentation has its own list (owner, 2026-10-21); a group hands nobody
+ * anything by itself, and a subgroup inherits nobody from above.
+ */
+export function productGroupViewers(products: ProductCatalogProduct[], groupId: string): Set<string> {
+  const viewers = new Set<string>()
+  for (const product of products) {
+    if (product.groupId !== groupId) continue
+    for (const agentId of product.viewerAgentIds) viewers.add(agentId)
+  }
+  return viewers
+}
+
+/** The group's presentations an agent could open but nobody gets. */
+export function productsNobodySees(products: ProductCatalogProduct[], groupId: string): ProductCatalogProduct[] {
+  return products.filter((product) =>
+    product.groupId === groupId && productPresentationReady(product) && product.viewerAgentIds.length === 0)
+}
+
+export type ProductGroupReadiness = "READY" | "PARTLY" | "NO_PRESENTATIONS" | "NO_AGENTS"
 
 /**
  * Will an agent see something of this group on a visit? Presentations first —
- * without one there is nothing to show, whoever is ticked.
+ * without one there is nothing to show, whoever is ticked. PARTLY: some are
+ * seen, and some nobody gets.
  */
-export function productGroupReadiness(
-  groups: ProductCatalogGroup[],
-  products: ProductCatalogProduct[],
-  groupId: string,
-): ProductGroupReadiness {
-  if (!products.some((product) => product.groupId === groupId && productPresentationReady(product))) return "NO_PRESENTATIONS"
-  const { own, inherited } = agentsWhoSeeProductGroup(groups, groupId)
-  return own.size + inherited.size > 0 ? "READY" : "NO_AGENTS"
+export function productGroupReadiness(products: ProductCatalogProduct[], groupId: string): ProductGroupReadiness {
+  const ready = products.filter((product) => product.groupId === groupId && productPresentationReady(product))
+  if (ready.length === 0) return "NO_PRESENTATIONS"
+  const unseen = ready.filter((product) => product.viewerAgentIds.length === 0).length
+  if (unseen === ready.length) return "NO_AGENTS"
+  return unseen > 0 ? "PARTLY" : "READY"
 }
 
-/** How many times agents opened this group's presentations on a visit. */
-export function productGroupShowings(products: ProductCatalogProduct[], groupId: string): number {
+/**
+ * How many times agents opened this group's presentations on a visit —
+ * deleted ones included: a deleted presentation leaves the list, not the
+ * history.
+ */
+export function productGroupShowings(
+  products: ProductCatalogProduct[],
+  groupId: string,
+  deletedShowings: Record<string, number> = {},
+): number {
   return products
     .filter((product) => product.groupId === groupId)
-    .reduce((sum, product) => sum + product._count.presentationSessions, 0)
+    .reduce((sum, product) => sum + product._count.presentationSessions, deletedShowings[groupId] ?? 0)
+}
+
+export type ViewerState = "all" | "some" | "none"
+
+/** Does the agent see all the chosen presentations, some of them, or none? */
+export function viewerState(chosen: ProductCatalogProduct[], agentId: string): ViewerState {
+  const seen = chosen.filter((product) => product.viewerAgentIds.includes(agentId)).length
+  if (chosen.length > 0 && seen === chosen.length) return "all"
+  return seen > 0 ? "some" : "none"
+}
+
+/**
+ * What «Yadda saxla» will send: a tick (`true`) gives the agent every chosen
+ * presentation, an untick (`false`) takes them all away. A tick that changes
+ * nothing — the agent already sees them all — is not a change.
+ */
+export function viewerChanges(chosen: ProductCatalogProduct[], pending: ReadonlyMap<string, boolean>): {
+  add: string[]
+  remove: string[]
+} {
+  const add: string[] = []
+  const remove: string[] = []
+  if (chosen.length === 0) return { add, remove }
+  for (const [agentId, on] of pending) {
+    const state = viewerState(chosen, agentId)
+    if (on && state !== "all") add.push(agentId)
+    if (!on && state !== "none") remove.push(agentId)
+  }
+  return { add, remove }
 }
 
 /** «Gastro_Omez-2026_v3.pdf» → «Gastro Omez-2026 v3»: the name the form offers for a chosen file. */
