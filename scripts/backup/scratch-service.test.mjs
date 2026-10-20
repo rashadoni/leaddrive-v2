@@ -246,6 +246,9 @@ CREATE FUNCTION fixture_function() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETU
       for (const name of ['postgres-restore-canary.sh', 'native-scratch-template.mjs', 'canary.sql', 'migration-ledger.sql']) {
         writeFileSync(join(code, name), readFileSync(join(repo, 'scripts/backup', name)), { mode: 0o644 })
       }
+      const backup = readFileSync(join(repo, 'scripts/backup/postgres-backup.sh'), 'utf8')
+      const sourceCheck = backup.match(/^assert_native_source_contract\(\) \{[\s\S]*?^\}/m)[0]
+      writeFileSync(join(code, 'source-check.sh'), `set -Eeuo pipefail\nSCRATCH_TEMPLATE_ARG=admitted\nSCRIPT_DIR=${JSON.stringify(code)}\nfatal() { exit 70; }\n${sourceCheck}\nassert_native_source_contract\n`, { mode: 0o644 })
       const canaryScript = readFileSync(join(repo, 'scripts/backup/postgres-restore-canary.sh'), 'utf8')
       const securityStart = canaryScript.indexOf('WITH raw(kind, k1, k2, k3, k4, k5, k6, k7, k8) AS (')
       assert(securityStart > 0)
@@ -286,6 +289,10 @@ if node "$helper" --plan bootstrap "$SCRATCH_SYSTEM_IDENTIFIER" "$SCRATCH_SOURCE
 [ "$(printf '%s' 'SELECT count(*) FROM pg_catalog.pg_extension' | scratch_admin_sql "$SCRATCH_TEMPLATE")" = 1 ]
 drop_commission_scratch_template
 prepare_commission_scratch_template
+runuser -u leaddrive-backup -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/nonexistent \\
+ PGHOST=127.0.0.2 PGHOSTADDR=127.0.0.2 PGPORT=55431 PGDATABASE=postgres PGUSER=fixture_source \\
+ PGPASSFILE=/etc/leaddrive/backup.pgpass PGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt PGSSLMODE=verify-full \\
+ bash ${JSON.stringify(join(code, 'source-check.sh'))}
 # Same exact database name but different complete marker: never drop it.
 wrong_nonce="${'$'}{SCRATCH_TEMPLATE_NONCE:0:31}a"
 [ "$wrong_nonce" != "$SCRATCH_TEMPLATE_NONCE" ] || wrong_nonce="${'$'}{SCRATCH_TEMPLATE_NONCE:0:31}b"

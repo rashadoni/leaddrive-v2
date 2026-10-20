@@ -70,6 +70,19 @@ fatal() {
   exit 1
 }
 
+assert_native_source_contract() {
+  [ -n "$SCRATCH_TEMPLATE_ARG" ] || return 0
+  local sql proof
+  [ -f "$SCRIPT_DIR/native-scratch-template.mjs" ] && [ ! -L "$SCRIPT_DIR/native-scratch-template.mjs" ] \
+    || fatal "native source compatibility helper is unavailable"
+  sql="$(node "$SCRIPT_DIR/native-scratch-template.mjs" --source-contract-sql)" \
+    || fatal "native source compatibility plan refused"
+  proof="$(PGOPTIONS='-c search_path=pg_catalog,pg_temp -c default_transaction_read_only=on -c statement_timeout=10000' \
+    psql -X -w -qAt -v ON_ERROR_STOP=1 -c "$sql")" \
+    || fatal "native source compatibility query failed"
+  [ "$proof" = 1 ] || fatal "source extension/locale contract changed across recovery capture"
+}
+
 require_env() {
   local name="$1"
   [ -n "${!name:-}" ] || fatal "$name is required"
@@ -344,6 +357,7 @@ DUMP_LIST="$WORK_DIR/database.list"
 MANIFEST_FILE="$WORK_DIR/manifest.env"
 
 SNAPSHOT_SESSION_OUTPUT="$WORK_DIR/source-snapshot-session.tsv"
+assert_native_source_contract
 log "exporting one read-only MVCC snapshot for both source canary and pg_dump"
 {
   printf '%s\n' \
@@ -607,6 +621,7 @@ capture_migration_ledger "$MIGRATION_LEDGER_AFTER_FILE"
 cmp -s -- "$MIGRATION_LEDGER_FILE" "$MIGRATION_LEDGER_AFTER_FILE" \
   || fatal "Prisma migration ledger changed while the recovery point was being captured"
 rm -f -- "$MIGRATION_LEDGER_AFTER_FILE"
+assert_native_source_contract
 
 kill "$SNAPSHOT_HOLDER_PID" >/dev/null 2>&1 || true
 wait "$SNAPSHOT_HOLDER_PID" >/dev/null 2>&1 || true

@@ -70,3 +70,22 @@ test('CLI rejects malformed/private input without printing it', () => {
   assert.equal(result.stdout, '')
   assert.equal(result.stderr, 'native scratch template plan refused\n')
 })
+
+test('source locale/extension drift is checked on both sides of capture, not only before starting scratch', () => {
+  const backup = readFileSync(new URL('./postgres-backup.sh', import.meta.url), 'utf8')
+  const fn = backup.match(/^assert_native_source_contract\(\) \{[\s\S]*?^\}/m)[0]
+  for (const proof of ['1', '0', '', 'query-failure']) {
+    const script = `set -Eeuo pipefail\nSCRATCH_TEMPLATE_ARG=admitted\nSCRIPT_DIR=${JSON.stringify(new URL('.', import.meta.url).pathname)}
+fatal() { exit 70; }
+psql() { [ "$TEST_PROOF" != query-failure ] || return 1; printf '%s' "$TEST_PROOF"; }
+${fn}
+assert_native_source_contract
+`
+    const result = spawnSync('bash', ['-c', script], { encoding: 'utf8', env: { ...process.env, TEST_PROOF: proof } })
+    assert.equal(result.status === 0, proof === '1', proof)
+  }
+  const calls = [...backup.matchAll(/^assert_native_source_contract$/gm)].map(m => m.index)
+  assert.equal(calls.length, 2)
+  assert(calls[0] < backup.indexOf('pg_dump \\'))
+  assert(calls[1] > backup.indexOf('capture_migration_ledger "$MIGRATION_LEDGER_AFTER_FILE"'))
+})
