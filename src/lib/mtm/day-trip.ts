@@ -269,33 +269,7 @@ export function buildDayTrip(input: {
     else for (const piece of pieces) placed.push(stay(piece.index === 0 ? `visit-${visit.id}` : `visit-${visit.id}-${piece.index}`, piece.from, piece.to))
   }
   placed.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime() || a.id.localeCompare(b.id))
-
-  // A visit is named once. Cut at a break taken during it, its time on site
-  // is on both sides of the break: the first row names it — with its own
-  // check-in and check-out, not the minutes of the piece («Визит 0 мин» for
-  // half an hour at a customer who saw him at once, then made him wait);
-  // the row after the break is the same place, the visit not named again.
-  const visitsById = new Map(input.visits.map((visit) => [visit.id, visit] as const))
-  const breakEnds = new Set(breaks.map((span) => span.to))
-  const named = new Map<string, DayTripStay>()
-  const stays: DayTripStay[] = placed.map((stay) => {
-    if (!stay.visit) return stay
-    const first = named.get(stay.visit.id)
-    if (!first) {
-      named.set(stay.visit.id, stay)
-      const own = visitsById.get(stay.visit.id)
-      const checkOutAt = own?.checkOutAt
-      return own && checkOutAt && breaks.some((span) => span.from < checkOutAt.getTime() && span.to > own.checkInAt.getTime())
-        ? { ...stay, visitTimes: { checkInAt: own.checkInAt, checkOutAt } }
-        : stay
-    }
-    const samePlace = first.latitude == null || first.longitude == null || stay.latitude == null || stay.longitude == null
-      || calculateDistance(first.latitude, first.longitude, stay.latitude, stay.longitude) < SAME_PLACE_METERS
-    return breakEnds.has(stay.startedAt.getTime()) && samePlace
-      ? { ...stay, visit: null, afterBreak: true as const }
-      : stay
-  })
-  const stayIntervals = stays.map((stay) => ({ from: stay.startedAt.getTime(), to: stay.endedAt.getTime() }))
+  const stayIntervals = placed.map((stay) => ({ from: stay.startedAt.getTime(), to: stay.endedAt.getTime() }))
 
   // 2. Silence, minus the part of it spent standing at a stop: a phone quiet
   //    in a customer's back room is a visit, not a hole in the day. A break
@@ -327,7 +301,7 @@ export function buildDayTrip(input: {
   })
 
   // 3. Everything between those anchors is movement, measured on the track.
-  const anchors: Array<DayTripStay | DayTripGap> = [...stays, ...silences]
+  const anchors: Array<DayTripStay | DayTripGap> = [...placed, ...silences]
     .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime() || a.id.localeCompare(b.id))
   const firstPointAt = points[0]?.recordedAt.getTime()
   const lastPointAt = points.at(-1)?.recordedAt.getTime()
@@ -401,7 +375,35 @@ export function buildDayTrip(input: {
   }
   moveBetween(cursor, dayTo)
   const legs = mergeNeighbours(entries.splice(1))
-  entries.push(...legs)
+
+  // A visit is named once. Cut at a break taken during it, its time on site
+  // is on both sides of the break: the first row names it — with its own
+  // check-in and check-out, not the minutes of the piece («Визит 0 мин» for
+  // half an hour at a customer who saw him at once, then made him wait);
+  // the row after the break is the same place, the visit not named again.
+  // Named on the merged rows: after the break the place can be two GPS
+  // stops (drift indoors past the stop radius), and the merge of a «Там же»
+  // row with the next one took that stop's visit and named it again.
+  const visitsById = new Map(input.visits.map((visit) => [visit.id, visit] as const))
+  const breakEnds = new Set(breaks.map((span) => span.to))
+  const named = new Map<string, DayTripStay>()
+  entries.push(...legs.map((stay) => {
+    if (stay.kind !== "STAY" || !stay.visit) return stay
+    const first = named.get(stay.visit.id)
+    if (!first) {
+      named.set(stay.visit.id, stay)
+      const own = visitsById.get(stay.visit.id)
+      const checkOutAt = own?.checkOutAt
+      return own && checkOutAt && breaks.some((span) => span.from < checkOutAt.getTime() && span.to > own.checkInAt.getTime())
+        ? { ...stay, visitTimes: { checkInAt: own.checkInAt, checkOutAt } }
+        : stay
+    }
+    const samePlace = first.latitude == null || first.longitude == null || stay.latitude == null || stay.longitude == null
+      || calculateDistance(first.latitude, first.longitude, stay.latitude, stay.longitude) < SAME_PLACE_METERS
+    return breakEnds.has(stay.startedAt.getTime()) && samePlace
+      ? { ...stay, visit: null, afterBreak: true as const }
+      : stay
+  }))
 
   const completedAt = input.workday?.completedAt?.getTime()
   if (completedAt != null) entries.push({ kind: "END", id: "end", at: new Date(completedAt), source: "WORKDAY" })

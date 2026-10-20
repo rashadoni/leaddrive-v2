@@ -82,6 +82,7 @@ function seg(from: string, to: string, a: readonly [number, number], b: readonly
 }
 const A = [40.40, 49.85] as const
 const A_STREET = [40.401, 49.85] as const // 111 m from A: off the stop
+const A80 = [40.40072, 49.85] as const // 80 m from A: the same building, past the stop radius
 const B = [40.43, 49.87] as const
 const C = [40.45, 49.89] as const
 const ROAD = [40.36, 49.85] as const
@@ -321,6 +322,25 @@ const CASES: Case[] = [
       ])
     },
   },
+  // Verification of round 4 (probe «visit_spanning_break_two_stops_after»):
+  // after the break he stood at the spot, then 80 m off in the same building
+  // — two GPS stops of the visit. Merging the «Там же» row with the second
+  // took that stop's visit, and the visit was named twice.
+  {
+    name: "a break in the middle of a visit, two GPS stops after it",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:00", "11:00:00", A, A), ...seg("11:00:30", "11:10:00", A80, A80), ...seg("11:10:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]),
+    visits: [visit("v1", "10:00:30", "11:10:00", A)],
+    reads: (day) => {
+      expect(day.stops.map((stop) => [clock(stop.startedAt), clock(stop.endedAt), stop.visit?.id])).toEqual([
+        ["09:59:30", "10:20:10", "v1"],
+        ["10:50:00", "11:00:00", "v1"],
+        ["11:00:30", "11:10:30", "v1"],
+      ])
+      const stays = rowsOf(day.trip).flatMap((row) => row.kind === "STAY" ? [[clock(row.startedAt), clock(row.endedAt), row.visit?.id ?? null, row.afterBreak ?? false]] : [])
+      expect(stays).toEqual([["09:59:30", "10:20:10", "v1", false], ["10:50:00", "11:10:30", null, true]])
+    },
+  },
   // S5: sparse fixes at a customer, a 4-minute break in a 20-minute silence.
   {
     name: "sparse fixes at a customer, a 4-minute break in a 20-minute silence",
@@ -452,7 +472,7 @@ describe("a day with breaks, told once", () => {
 // The same days through the route itself: what the page, the stop list, the
 // map's popups, the timeline and the CSV are handed.
 describe("GET /api/v1/mtm/location-history on a day with breaks", () => {
-  const ROUTE_CASES = ["a fix at the second of «Перерыв» and of «Продолжить», at one spot", "parked, pressed «Перерыв» at once, resumed and drove off", "parked at a customer's door, checked in, a break, checked out", "a 38-minute lunch at one spot", "a dozing phone inside a break (old data)", "a break in the middle of a visit, at one spot", "a visit wholly inside a break (old data)"]
+  const ROUTE_CASES = ["a fix at the second of «Перерыв» and of «Продолжить», at one spot", "parked, pressed «Перерыв» at once, resumed and drove off", "parked at a customer's door, checked in, a break, checked out", "a 38-minute lunch at one spot", "a dozing phone inside a break (old data)", "a break in the middle of a visit, at one spot", "a break in the middle of a visit, two GPS stops after it", "a visit wholly inside a break (old data)"]
 
   beforeEach(() => {
     vi.clearAllMocks()
