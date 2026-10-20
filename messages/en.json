@@ -11449,7 +11449,7 @@
     "perm_attendanceWorkday": "Own workday",
     "perm_attendanceWorkday_hint": "Start and finish your own workday and record a break. Uses the same Attendance switch.",
     "perm_attendanceRequests": "Attendance requests",
-    "perm_attendanceRequests_hint": "Ask for leave, a sick day, time off, business travel, remote work or overtime. Uses the same Attendance switch.",
+    "perm_attendanceRequests_hint": "Leave, sick leave and time corrections are for the employees HR keeps in Personnel. A field agent is outside HR accounting.",
     "title": "Access & permissions",
     "description": "Who works in Route & Field, whose clients, routes and visits they see — and what agents are allowed to do. A change applies at once.",
     "adminOnly": "This section is open to the organization's administrator only.",

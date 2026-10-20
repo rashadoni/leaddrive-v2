@@ -11445,7 +11445,7 @@
     "perm_attendanceWorkday": "Öz iş günü",
     "perm_attendanceWorkday_hint": "Öz iş gününü başlatmaq və bitirmək, fasiləni qeyd etmək. İş vaxtı uçotunun ümumi keçidindən istifadə edir.",
     "perm_attendanceRequests": "İş günü müraciətləri",
-    "perm_attendanceRequests_hint": "Məzuniyyət, xəstəlik, istirahət, saatlıq icazə, ezamiyyət, məsafədən iş və ya əlavə iş üçün müraciət edin. İş günü uçotunun ümumi keçidindən istifadə edir.",
+    "perm_attendanceRequests_hint": "Məzuniyyət, xəstəlik və vaxt düzəlişi «Kadr uçotu»nda aparılan əməkdaşlar üçündür. Sahə agenti kadr uçotundan kənardadır.",
     "title": "Giriş və icazələr",
     "description": "«Marşrut & Sahə» bölməsində kim işləyir, kimin müştərilərini, marşrutlarını və vizitlərini görür — və agentlərə nəyə icazə verilir. Dəyişiklik dərhal qüvvəyə minir.",
     "adminOnly": "Bu bölmə yalnız təşkilatın administratoru üçün açıqdır.",

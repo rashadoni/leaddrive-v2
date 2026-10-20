@@ -66,9 +66,13 @@ export type AttendanceEmployeeDirectory = {
     history: Array<{ id: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; at: string; byName: string | null }> }>
   timezone: string
 }
-const SELF_ROLES = new Set(["AGENT", "EMPLOYEE", "ADMIN", "MANAGER", "SUPERVISOR"])
+/** Own attendance — day marks, requests, their documents, explanations — is
+ * HR's, for the employees HR keeps. A field agent is outside it altogether
+ * (owner, 2026-10-14 for the day; 2026-10-20: «у полевого агента всё кадровое
+ * убрать совсем»), so AGENT is not a self role. */
+const SELF_ROLES = new Set(["EMPLOYEE", "ADMIN", "MANAGER", "SUPERVISOR"])
 export function mayUseAttendanceSelf(role: string, attendanceEnabled: boolean, participant: boolean, excluded = false) {
-  return attendanceEnabled && !excluded && SELF_ROLES.has(role) && (role === "AGENT" || participant)
+  return attendanceEnabled && !excluded && SELF_ROLES.has(role) && participant
 }
 /** Exact allowlist is applied by fresh mobile authentication, including dual
  * web/mobile transports that don't use withMobileRls. Unknown paths deny. */

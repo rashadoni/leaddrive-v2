@@ -79,7 +79,7 @@ export async function publishAttendanceLocationPolicy(reviewer: AttendanceReview
 }
 export async function readOwnAttendanceLocation(self: AttendanceSelf): Promise<OwnAttendanceLocation> {
   return prisma.$transaction(async tx => {
-    await requireAttendanceSelf(tx,self,"attendanceLocation")
+    await requireAttendanceSelf(tx,self)
     const policy = await currentPolicy(tx,self.organizationId), consent = await currentConsent(tx,self)
     return {policy:policy ? policyDto(policy):null,consent:consent ? {id:consent.id,policyRevisionId:consent.policyRevisionId,accepted:consent.accepted,createdAt:consent.createdAt.toISOString()}:null,
       maySendLocation:policy?.enabled===true && consent?.accepted===true && consent.policyRevisionId===policy.id}
@@ -91,7 +91,7 @@ export async function recordOwnAttendanceLocationConsent(self: AttendanceSelf, r
   const input = parsed.data, hash = digest(self.agentId,input)
   return prisma.$transaction(async tx => {
     await lockAttendanceRequests(tx,self)
-    await requireAttendanceSelf(tx,self,"attendanceLocation")
+    await requireAttendanceSelf(tx,self)
     await lockLocationPolicy(tx,self.organizationId)
     const [replay] = await tx.$queryRaw<ConsentRow[]>`SELECT * FROM mtm_attendance_location_consents WHERE "organizationId"=${self.organizationId} AND "agentId"=${self.agentId} AND "requestId"=${input.requestId}`
     if (replay) {
