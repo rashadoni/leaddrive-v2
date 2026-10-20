@@ -19,6 +19,7 @@ import {
   MTM_DEMO_AGENTS,
   MTM_DEMO_CLOCK,
   MTM_DEMO_ELVIN_DAY,
+  MTM_DEMO_FRESHNESS,
   MTM_DEMO_PLACES,
   mtmDemoAt,
   mtmDemoAttention,
@@ -219,6 +220,14 @@ describe("the morning, as the product would have recorded it", () => {
     expect(mtmDemoPlannerCandidates().find((candidate) => candidate.customerId === "pl-apt24")!.monthlyVisitCount).toBeGreaterThan(0)
   })
 
+  it("keeps the live map's limits at the product's defaults, as its answer would carry them", () => {
+    // locations/route.ts: onlineSeconds = offlineThresholdSeconds, delayedSeconds = max(that, locationWindowMinutes × 60).
+    expect(MTM_DEMO_FRESHNESS).toEqual({
+      onlineSeconds: MTM_SETTING_DEFAULTS.offlineThresholdSeconds,
+      delayedSeconds: Math.max(MTM_SETTING_DEFAULTS.offlineThresholdSeconds, MTM_SETTING_DEFAULTS.locationWindowMinutes * 60),
+    })
+  })
+
   it("gives everyone on the live map the status the product derives from their own facts", () => {
     for (const agent of mtmDemoRosterAgents(TODAY)) {
       const demo = MTM_DEMO_AGENTS.find((candidate) => candidate.id === agent.agentId)!
@@ -234,10 +243,7 @@ describe("the morning, as the product would have recorded it", () => {
       expect(agent.fieldStatus, agent.name).toBe(derived)
       // And the page, presenting the answer at noon with the default limits, changes nothing in it:
       // nobody is «in the app» who sent the server nothing for minutes (a break stores no points).
-      const presented = presentMtmDashboardAgent(agent, {
-        onlineSeconds: MTM_SETTING_DEFAULTS.offlineThresholdSeconds,
-        delayedSeconds: Math.max(MTM_SETTING_DEFAULTS.offlineThresholdSeconds, MTM_SETTING_DEFAULTS.locationWindowMinutes * 60),
-      }, noonMs)
+      const presented = presentMtmDashboardAgent(agent, MTM_DEMO_FRESHNESS, noonMs)
       expect({ isOnline: presented.isOnline, freshness: presented.freshness, fieldStatus: presented.fieldStatus }, agent.name)
         .toEqual({ isOnline: agent.isOnline, freshness: agent.freshness, fieldStatus: agent.fieldStatus })
     }
@@ -245,5 +251,15 @@ describe("the morning, as the product would have recorded it", () => {
     const rauf = mtmDemoRosterAgents(TODAY).find((agent) => agent.agentId === "agent-rauf")!
     expect(rauf.isOnline).toBe(false)
     expect(Date.parse(rauf.lastSeenAt!)).toBeLessThanOrEqual(Date.parse(rauf.recordedAt!))
+  })
+})
+
+describe("the demo's scenes in the browser", () => {
+  it("import none of the modules that read the database: their figures come as data, kept equal by these tests", async () => {
+    const { readdirSync, readFileSync } = await import("node:fs")
+    const dir = "src/components/demo-center/journey/scenes"
+    const serverOnly = /from "@\/lib\/(?:prisma|rls-context|mtm-settings|mtm\/workday|mtm\/attendance-risk-detection|mtm\/attendance-risk-policy)"/
+    const found = readdirSync(dir).filter((name) => /\.tsx?$/.test(name) && serverOnly.test(readFileSync(`${dir}/${name}`, "utf8")))
+    expect(found).toEqual([])
   })
 })

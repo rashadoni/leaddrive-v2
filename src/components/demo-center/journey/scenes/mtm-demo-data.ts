@@ -54,6 +54,17 @@ export const MTM_DEMO_CLOCK = "12:10"
 /** The evening the manager reads the day's road at. */
 export const MTM_DEMO_EVENING = "18:40"
 
+/**
+ * The live map's limits — a coordinate «fresh» for five minutes, «late» until
+ * ten, the app «in the network» while it was heard from in the last five — as
+ * the page gets them in its answer (`freshnessThresholds`): the organization's
+ * settings at the product's defaults (`offlineThresholdSeconds`,
+ * `locationWindowMinutes` in src/lib/mtm-settings.ts). That module reads the
+ * database and is not for the browser; demo-mtm-field-day.test.ts keeps the
+ * two equal.
+ */
+export const MTM_DEMO_FRESHNESS = { onlineSeconds: 300, delayedSeconds: 600 } as const
+
 export function addDays(dateKey: string, days: number): string {
   return new Date(Date.parse(`${dateKey}T12:00:00.000Z`) + days * 24 * 60 * MINUTE).toISOString().slice(0, 10)
 }

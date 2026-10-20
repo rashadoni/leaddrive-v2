@@ -40,7 +40,6 @@ import { extendLiveMapTrails, type LiveMapTrails } from "@/lib/mtm/live-map-trai
 import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
 import { MAX_RANGE_DAYS } from "@/lib/mtm/history-range"
 import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
-import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
 import { formatInTimezone } from "@/lib/timezone"
 import {
   routePlannerDayMinutes,
@@ -64,6 +63,7 @@ import {
   MTM_DEMO_AGENTS,
   MTM_DEMO_CLOCK,
   MTM_DEMO_EVENING,
+  MTM_DEMO_FRESHNESS,
   MTM_DEMO_PLAN_AGENT,
   MTM_DEMO_TIMEZONE,
   addDays,
@@ -778,8 +778,8 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
   }
   const layer = (id: keyof typeof layers, label: string, layerHint: string, shownByDefault?: true) => ({ id, label, hint: layerHint, on: layers[id], onToggle: () => setLayers((current) => ({ ...current, [id]: !current[id] })), shownByDefault })
   // The organization's limits as the page says them in its hints — the product's defaults here.
-  const freshMinutes = Math.round(MTM_SETTING_DEFAULTS.offlineThresholdSeconds / 60)
-  const delayedMinutes = Math.round(Math.max(MTM_SETTING_DEFAULTS.offlineThresholdSeconds, MTM_SETTING_DEFAULTS.locationWindowMinutes * 60) / 60)
+  const freshMinutes = Math.round(MTM_DEMO_FRESHNESS.onlineSeconds / 60)
+  const delayedMinutes = Math.round(MTM_DEMO_FRESHNESS.delayedSeconds / 60)
   const appPresenceHint = tMap("hint.appPresence", { online: tMap("presence.online"), minutes: freshMinutes })
   const gpsFreshnessHint = tMap("hint.gpsFreshness", { fresh: tMap("freshness.online"), freshMinutes, delayed: tMap("freshness.delayed"), delayedMinutes, stale: tMap("freshness.stale") })
   const callFrom = clients.find((client) => client.id === NEAREST_CLIENT_ID)!
