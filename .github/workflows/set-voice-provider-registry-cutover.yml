@@ -55,6 +55,23 @@ jobs:
     timeout-minutes: 25
     environment: production
     steps:
+      # OPERATION and EXPECTED_SHA are expanded into the command string the
+      # production shell runs ("OPERATION='$OPERATION' EXPECTED_SHA='$EXPECTED_SHA'
+      # bash -s"), so a quote in either would end the quoting there.
+      # confirmation is compared on this runner only and never reaches a server.
+      - name: Validate inputs
+        env:
+          OPERATION: ${{ inputs.operation }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          OPERATION_RE='^[a-z-]+$'
+          SHA_RE='^[0-9a-f]{40}$'
+          [[ "$OPERATION" =~ $OPERATION_RE ]] \
+            || { echo "::error::operation has an unexpected shape"; exit 1; }
+          [[ "$EXPECTED_SHA" =~ $SHA_RE ]] \
+            || { echo "::error::commit SHA has an unexpected shape"; exit 1; }
+
       - name: Checkout operator code
         uses: actions/checkout@v6
 

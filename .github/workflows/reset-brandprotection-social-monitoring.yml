@@ -34,6 +34,21 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      # Both values are expanded into the command string the production shell
+      # runs ("RESET_EXECUTE='$RESET_EXECUTE' RESET_CONFIRM='$RESET_CONFIRM'
+      # bash -s"), so a quote in either would end the quoting there.
+      - name: Validate inputs
+        env:
+          RESET_EXECUTE: ${{ inputs.execute || 'no' }}
+          RESET_CONFIRM: ${{ inputs.confirm || '' }}
+        run: |
+          EXECUTE_RE='^(no|yes)$'
+          CONFIRM_RE='^[a-z-]*$'
+          [[ "$RESET_EXECUTE" =~ $EXECUTE_RE ]] \
+            || { echo "::error::execute has an unexpected shape"; exit 1; }
+          [[ "$RESET_CONFIRM" =~ $CONFIRM_RE ]] \
+            || { echo "::error::confirm has an unexpected shape"; exit 1; }
+
       - name: Validate authorization
         env:
           RESET_EXECUTE: ${{ inputs.execute || 'no' }}

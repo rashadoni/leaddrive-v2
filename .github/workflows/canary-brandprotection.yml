@@ -41,6 +41,17 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
+      # STEP is expanded into the command string the production shell runs
+      # ("STEP='$STEP' bash -s"), so a quote in it would end the quoting there.
+      # confirm is compared on this runner only and never reaches the server.
+      - name: Validate inputs
+        env:
+          STEP: ${{ inputs.step }}
+        run: |
+          STEP_RE='^[a-z0-9-]+$'
+          [[ "$STEP" =~ $STEP_RE ]] \
+            || { echo "::error::step has an unexpected shape"; exit 1; }
+
       - name: Guard write/spend steps behind confirm
         env:
           STEP: ${{ inputs.step }}
