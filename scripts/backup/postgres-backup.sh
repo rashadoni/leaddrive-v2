@@ -599,7 +599,7 @@ SNAPSHOT_HOLDER_PID=""
 
 log "restoring into scratch database and comparing canary"
 SOURCE_SYSTEM_IDENTIFIER="${source_database_identity%%|*}"
-"$SCRIPT_DIR/postgres-restore-canary.sh" \
+TMPDIR="$WORK_DIR" "$SCRIPT_DIR/postgres-restore-canary.sh" \
   "$DUMP_FILE" "$SOURCE_CANARY" "$SOURCE_SYSTEM_IDENTIFIER" "$AUTHORITY_FILE" \
   "$MIGRATION_LEDGER_FILE" "$RECOVERY_DB_CONTRACT_FILE"
 
