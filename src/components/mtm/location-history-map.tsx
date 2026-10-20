@@ -72,6 +72,8 @@ type Gap = {
   id: string
   startedAt: string
   endedAt: string
+  /** Why the phone was silent: only a lost signal is drawn — a break is the employee's own time. */
+  reason?: "TELEMETRY_GAP" | "WORKDAY_PAUSED"
   startLatitude: number
   startLongitude: number
   endLatitude: number
@@ -189,14 +191,19 @@ export default function LocationHistoryMap({
         : null,
     ].filter(Boolean) as Array<{ key: string; label: string; latitude: number; longitude: number; at: string }>
   }, [t, workday])
-  const gapSegments = useMemo(() => layers.gaps ? gaps.map((gap) => ({
+  // The red dotted «no points — path unknown» line joins the two ends of a
+  // lost signal. A break is not one: drawn from where he paused to where he
+  // resumed it would mislabel his own time as a signal loss and still say
+  // which way he went. The track itself stays broken there (splitHistoryPathAtGaps).
+  const signalGaps = useMemo(() => gaps.filter((gap) => gap.reason !== "WORKDAY_PAUSED"), [gaps])
+  const gapSegments = useMemo(() => layers.gaps ? signalGaps.map((gap) => ({
       id: gap.id,
       startedAt: gap.startedAt,
       coordinates: [
         [gap.startLatitude, gap.startLongitude],
         [gap.endLatitude, gap.endLongitude],
       ] as L.LatLngTuple[],
-    })).filter((gap) => new Date(gap.startedAt).getTime() <= playbackAt) : [], [gaps, layers.gaps, playbackAt])
+    })).filter((gap) => new Date(gap.startedAt).getTime() <= playbackAt) : [], [layers.gaps, playbackAt, signalGaps])
   const visibleStops = useMemo(
     () => layers.stops ? stops.filter((stop) => new Date(stop.startedAt).getTime() <= playbackAt) : [],
     [layers.stops, playbackAt, stops],
@@ -231,10 +238,10 @@ export default function LocationHistoryMap({
   const coordinates = useMemo(() => [
     ...fullActualPath,
     ...plannedPaths.flatMap((route) => route.coordinates),
-    ...(layers.gaps ? gaps.flatMap((gap) => [[gap.startLatitude, gap.startLongitude] as L.LatLngTuple, [gap.endLatitude, gap.endLongitude] as L.LatLngTuple]) : []),
+    ...(layers.gaps ? signalGaps.flatMap((gap) => [[gap.startLatitude, gap.startLongitude] as L.LatLngTuple, [gap.endLatitude, gap.endLongitude] as L.LatLngTuple]) : []),
     ...(layers.stops ? stops.map((stop) => [stop.latitude, stop.longitude] as L.LatLngTuple) : []),
     ...(layers.visits ? visitMarkers.map((visit) => [visit.latitude, visit.longitude] as L.LatLngTuple) : []),
-  ], [fullActualPath, gaps, layers.gaps, layers.stops, layers.visits, plannedPaths, stops, visitMarkers])
+  ], [fullActualPath, layers.gaps, layers.stops, layers.visits, plannedPaths, signalGaps, stops, visitMarkers])
 
   useEffect(() => {
     const element = containerRef.current
