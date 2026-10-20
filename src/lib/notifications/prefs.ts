@@ -10,6 +10,7 @@ import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/attendance-r
  * backend push block and the toast gate in the bell component.
  */
 import { MTM_LOCATION_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/customer-location-request-notification"
+import { MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/contact-create-request-notification"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -75,6 +76,8 @@ export const DEFAULT_SECTION_PUSH: Record<string, boolean> = {
 export const KINDS_ON_UNLESS_SWITCHED_OFF: ReadonlySet<string> = new Set([
   "mtm.attendanceReminder.detected",
   MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
+  // A new-doctor request waited twelve days unseen (owner, 2026-10-20).
+  MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_KIND,
   MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND,
   MTM_ATTENDANCE_RISK_NOTIFICATION_KIND,
   MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_KIND,

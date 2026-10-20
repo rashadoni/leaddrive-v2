@@ -2769,4 +2769,92 @@ pgDescribe("client categories on a real Postgres", () => {
       expect(await card()).toEqual(["Routeova Kept", "Routeova Never", "Routeova Taken"])
     })
   })
+
+  // Owner, 2026-10-20: «запросы на нового врача от агента не могу найти, куда
+  // пришло» — the first one had waited twelve days, saved and listed, but nobody
+  // was told it had come.
+  describe("a new-doctor request from the phone", () => {
+    const ids = {} as Record<"agent" | "lead" | "otherLead", string>
+    const submit = async (key: string) => {
+      const { resolveMobileAuth } = await import("@/lib/mobile-auth")
+      vi.mocked(resolveMobileAuth).mockResolvedValue({ agentId: ids.agent, userId: `user-of-${ids.agent}`, orgId: ORG, email: "doctor-agent@example.com", name: "Agent", role: "AGENT" } as never)
+      const { POST } = await import("@/app/api/v2/mtm/mobile/route-field/contact-create-requests/route")
+      const response = await POST(send("POST", "/api/v2/mtm/mobile/route-field/contact-create-requests", {
+        idempotencyKey: key,
+        displayName: "Fictional Newdoctor",
+        specialtyName: "Terapevt",
+        clinicName: "Fictional Request Clinic",
+      }))
+      return { status: response.status, body: await response.json() }
+    }
+    const toldAbout = (requestId: string) => bypass(() => prisma.notification.findMany({
+      where: { organizationId: ORG, entityType: "mtm_contact_create_request", entityId: requestId },
+      orderBy: { userId: "asc" },
+    }))
+    // Fire-and-forget: the answer goes out before the bell rows are written —
+    // wait until the count has stood still for a while.
+    const settle = async (requestId: string) => {
+      let last = -1
+      let still = 0
+      for (let attempt = 0; attempt < 100 && still < 5; attempt++) {
+        const count = (await toldAbout(requestId)).length
+        still = count === last && count > 0 ? still + 1 : 0
+        last = count
+        await new Promise((resolve) => setTimeout(resolve, 40))
+      }
+    }
+
+    beforeAll(async () => {
+      await bypass(async () => {
+        await prisma.user.createMany({
+          data: [
+            { id: "doctor-lead", organizationId: ORG, email: "doctor-lead@example.com", name: "Lead of the agent", passwordHash: "-", role: "member", preferredLanguage: "az" },
+            { id: "doctor-other-lead", organizationId: ORG, email: "doctor-other-lead@example.com", name: "Lead of nobody here", passwordHash: "-", role: "member", preferredLanguage: "ru" },
+            // The company's web administrator, with no MTM card at all.
+            { id: "doctor-web-admin", organizationId: ORG, email: "doctor-web-admin@example.com", name: "Web administrator", passwordHash: "-", role: "admin", preferredLanguage: "en" },
+          ],
+        })
+        ids.lead = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Lead", role: "MANAGER", userId: "doctor-lead" }, select: { id: true } })).id
+        ids.otherLead = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Other Lead", role: "MANAGER", userId: "doctor-other-lead" }, select: { id: true } })).id
+        ids.agent = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Doctor Agent", role: "AGENT", managerId: ids.lead }, select: { id: true } })).id
+      })
+    })
+
+    it("tells his manager and the company's administrators, in their language — not a manager of other people — and only once", async () => {
+      const first = await submit("doctor-request-0001")
+      expect(first.status, JSON.stringify(first.body).slice(0, 300)).toBe(201)
+      const requestId = first.body.data.id as string
+      await settle(requestId)
+      const told = await toldAbout(requestId)
+      const users = told.map((row) => row.userId)
+      expect(users).toContain("doctor-lead")
+      expect(users).not.toContain("doctor-other-lead")
+      // The company's web administrator may decide any request; told in his language.
+      expect(users).toContain("doctor-web-admin")
+      expect(told.find((row) => row.userId === "doctor-web-admin")?.title).toBe("New doctor: an agent asks to add one")
+      expect(told.find((row) => row.userId === "doctor-lead")).toMatchObject({
+        type: "info",
+        isRead: false,
+        title: "Yeni həkim: agent əlavə etməyi xahiş edir",
+        message: "Fictional Doctor Agent «Fictional Newdoctor» həkimini (Fictional Request Clinic) əlavə etməyi xahiş edir. Yoxlayın və təsdiq edin və ya rədd edin.",
+      })
+
+      // The phone repeats the sending: the same request, nobody told twice.
+      const again = await submit("doctor-request-0001")
+      expect(again.body.idempotent).toBe(true)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      expect((await toldAbout(requestId)).length).toBe(told.length)
+    })
+
+    it("counts his manager among the cards whose phone is told — the one without a CRM login too", async () => {
+      const { contactCreateRequestReviewerCards } = await import("@/lib/mtm/contact-create-request-notify")
+      await bypass(() => prisma.mtmAgent.update({ where: { id: ids.lead }, data: { userId: null } }))
+      const cards = await bypass(() => contactCreateRequestReviewerCards({ organizationId: ORG, requestedByAgentId: ids.agent }))
+      const cardIds = cards.map((card) => card.id)
+      expect(cardIds).toContain(ids.lead)
+      expect(cardIds).not.toContain(ids.otherLead)
+      expect(cardIds).not.toContain(ids.agent)
+      await bypass(() => prisma.mtmAgent.update({ where: { id: ids.lead }, data: { userId: "doctor-lead" } }))
+    })
+  })
 })
