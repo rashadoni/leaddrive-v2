@@ -96,6 +96,30 @@ export const DEMO_JOURNEY_STRINGS = {
   assistantRemaining: (left: number) => `${left} sual qalıb`,
   assistantPreviewOnly: "Admin ön baxışında köməkçi sual qəbul etmir — o, müştərinin canlı sessiyasında işləyir.",
   assistantOpenDemo: "Köməkçi açıq demoda söndürülüb. Şəxsi demo istəyin — orada suallarınıza cavab verir.",
+  // «Səslə soruşun» (owner, 2026-10-20). Every line is what the page and the
+  // server do: up to 15 s, the clip goes to Google only to become text and we
+  // keep nothing, the heard text is shown first, the microphone is released
+  // after each clip.
+  voiceAsk: "Səslə soruşun",
+  voiceHint: "Basıb saxlayın və danışın, ya da bir dəfə basın, danışın və yenidən basın.",
+  voiceStop: (seconds: number) => `Bitirdim, göndərin · 0:${String(seconds).padStart(2, "0")}`,
+  voiceListening: (max: number) => `Dinləyirəm — ən çoxu ${max} saniyə.`,
+  voiceStarting: "Mikrofon açılır…",
+  voiceSending: "Səsiniz mətnə çevrilir…",
+  voiceHeard: (text: string) => `Eşitdim: «${text}»`,
+  voiceHeardWaiting: (ask: string) => `Səsli sualınız yuxarıdakı sahədədir: əvvəlki suala cavab gələndən sonra «${ask}» düyməsini basın.`,
+  voiceConsentTitle: "Səslə soruşmaq",
+  voiceConsentBody: (max: number) =>
+    `Düyməni basanda mikrofon yalnız sualınızı yazır — ən çoxu ${max} saniyə. Səs yalnız mətnə çevrilmək üçün Google-a göndərilir; biz səsi saxlamırıq. Eşidilən mətni əvvəlcə ekranda görəcəksiniz, sonra o, sual kimi bələdçiyə gedir. Hər sualdan sonra mikrofon bağlanır.`,
+  voiceConsentAccept: "Razıyam, mikrofonu açın",
+  voiceConsentDecline: "Yox, yazacağam",
+  voiceAnswersNote: "Bələdçinin yazılı cavabları Google-un səs xidməti ilə səsləndirilir; biz səsi saxlamırıq.",
+  voiceDenied: "Mikrofona icazə verilmədi. Brauzerdə bu səhifəyə mikrofon icazəsi verin və ya sualı yazın.",
+  voiceNoMicrophone: "Mikrofon tapılmadı. Sualı yazın.",
+  voiceUnsupported: "Bu brauzer səs yazmağı dəstəkləmir. Sualı yazın.",
+  voiceFailed: "Səsi mətnə çevirə bilmədik. Yenidən cəhd edin və ya sualı yazın.",
+  voiceAnswerFailed: "Cavabı səsləndirə bilmədik — mətn yuxarıdadır.",
+  voiceExhausted: "Səs limiti doldu: sualları yazın, cavablar mətnlə davam edir.",
   clipOpenDemo: "Video şəxsi demoda açılır. Bələdçi mətni burada hər addımı izah edir.",
   badgeOpen: "Açıq demo",
   openIntro: "Bu, LeadDrive-ın real interfeysidir. Qeydlər nümunədir, heç nə göndərilmir.",

@@ -320,11 +320,85 @@ demo still reads no tenant's data, and a Page's other customers' messages are
 never kept — but it does not mention that the prospect's own Page can be
 connected.
 
-## Voice phase
+## Voice
 
-The current release is intentionally silent. Narration must use the approved
-external Google AI Studio workflow with credentials supplied through the
-deployment environment. Do not add local TTS or commit provider credentials.
+**Recorded narration.** Every step and every prepared answer is recorded in
+advance with Gemini TTS, voice Kore (`src/lib/demo-center/guide-voice.ts`,
+`scripts/demo-guide/generate-voice.ts`), and shipped under
+`public/sounds/demo-guide/`. Do not add local TTS or commit provider
+credentials.
+
+**Spoken answers and «Səslə soruşun»** (owner, 2026-10-20). Behind the kill
+switch `DEMO_ASSISTANT_VOICE` (off unless `on`; off means no button, both
+routes 404, no hash handed out, and the private page keeps `microphone=()`):
+
+- A Da Vinci answer comes back from `/assistant` with its id (the
+  `ASSISTANT_ASKED` event's) and a keyed hash of exactly its text.
+  `POST …/assistant/voice` speaks only a text that hash vouches for, once,
+  with the recordings' model and voice, and plays as a blob through the
+  guide's one audio element. Prepared answers keep their recordings. Nothing
+  is sent to be spoken while the guide's voice is switched off — read when
+  the answer arrives, not when the question was asked.
+- The guide never talks into the prospect's question. While the microphone
+  is opening or open, the guide's one audio element starts nothing — no step
+  narration, no coach-card switch, no prepared recording, no spoken answer —
+  and what was playing pauses the moment the microphone actually opens. A
+  question typed while it is open, or while its clip is being turned into
+  text, is answered in text, and nothing is sent to be spoken for it. When the clip is thrown away (a touch that slides off the
+  button, a cancelled pointer, voice running out) the guide goes on: what it
+  was saying resumes (or the step it moved to meanwhile is read), and a
+  spoken answer that came back meanwhile is played.
+  The guide waits while the clip is turned into text, because only the reply
+  says what it was. A clip that comes back with no question in it (silent,
+  too short, not heard, or the request failed) counts as thrown away. When
+  the clip comes back as a question, nothing of before is taken up: an
+  answer to it is coming. If the prospect pressed «İrəli» while it was being
+  turned into text, the question is still asked about the step it was sent
+  from, but the guide reads the step it moved to: an answer that lands after
+  the prospect left the step it was asked on stays text — no recording, and
+  nothing is paid to be spoken. A scroll that starts on the button is usually
+  thrown away before the microphone even opens, so it does not interrupt the
+  guide at all.
+- One question at a time. A spoken question heard while another is still
+  being answered is not asked alongside it, and is not asked by itself once
+  that answer is in: that answer may move the story on, and the prospect,
+  not the page, decides whether the question still fits the screen. It
+  waits in the box with a line that says so, and one press of «Soruş» asks
+  it. The answer before it does not wipe it from the box.
+- The prospect presses and holds «Səslə soruşun» (or taps to start and stop)
+  after a one-time consent line, speaks up to 15 s; the page sends a mono
+  16 kHz WAV to `POST …/assistant/transcribe`; Google's `gemini-3.5-transcribe`
+  (az-AZ, ru-RU, en-US) returns the text, the route returns only the text and
+  keeps nothing; the page shows «Eşitdim: …» and asks it through `/assistant`,
+  which masks it before Claude like a typed question. The microphone is
+  released after every clip. Google gets exactly the samples the route
+  measured and claimed, in a WAV the route builds — never the uploaded file,
+  whose extra `fmt `/`data` chunks another decoder would read as many times
+  the length. A touch that slides more than 10 px before it becomes a hold
+  (a scroll starting on the button) and a cancelled pointer throw the clip
+  away instead of sending it.
+- Every Google call sends the key in `x-goog-api-key`, never in the address,
+  and every Interactions API call says `store: false` (Google's default keeps
+  an interaction, input included, for 55 days).
+- Budget: 10 minutes of voice per demo (spoken answers plus heard clips) and
+  300 minutes a day across demos, claimed in `demo_access_events`
+  (`ASSISTANT_VOICED`, `ASSISTANT_HEARD`; metadata is seconds and an outcome,
+  never text or audio) under one advisory lock before Google is called
+  (`src/lib/demo-center/assistant-voice.ts`). A spoken answer's claim is an
+  estimate (0.14 s a character); afterwards the row records the audio's real
+  length, lower or higher (figures read aloud run longer than prose), because
+  that is what Google billed. A failed call keeps its claim. A refusal over
+  the budget carries `exhausted` (fewer seconds left than one 15 s question):
+  only then does the page drop the button and stop speaking answers;
+  otherwise just that answer stays text. It does not carry the seconds left:
+  that figure is the smaller of the demo's and the day's, and the day's pool
+  is every other prospect's voice. When voice runs
+  out mid-clip, the open clip is released, not sent. Proven on a real Postgres in
+  `demo-assistant-voice-postgres.test.ts` («Demo assistant voice budget
+  database gate» in `static-checks` and in the deploy).
+- Granted sessions only, through the assistant's own session check
+  (`src/lib/demo-center/active-grant.ts`); the open demo and the admin preview
+  never show the button.
 
 ## Rollout checklist
 

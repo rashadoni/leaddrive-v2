@@ -15,6 +15,7 @@ import { isDemoRequestApiPath, withDemoRequestCors } from "@/lib/demo-request-co
 import { SESSION_EXPIRED_CODE } from "@/lib/session-expired"
 import { isWithdrawnCrmPath } from "@/lib/crm-product-availability"
 import { redactOpaquePathSegments } from "@/lib/opaque-path-redaction"
+import { demoAssistantVoiceEnabled } from "@/lib/demo-center/assistant-voice-switch"
 
 type SessionModuleGateUser = {
   role?: string
@@ -324,7 +325,15 @@ function withCspHeaders(response: NextResponse, nonce: string, allowSameOriginFr
   // Default deny. Only the signed-in app response opts in, so every other
   // branch — marketing, public, login, redirects — stays microphone=().
   const signedInApp = micAllowed && !!pathname && isMicAllowedInApp(pathname)
-  const micPolicy = signedInApp ? "microphone=(self)" : "microphone=()"
+  // «Səslə soruşun» (owner, 2026-10-20): the private demo page — a capability
+  // link bound to one browser's session — may ask for the microphone while the
+  // demo's voice switch is on, and only then. Its button is pressed for each
+  // clip, and the routes behind it refuse anything but that granted session.
+  // The open demo (/demo-open), the marketing pages and every API answer stay
+  // denied; the admin preview (/demo-preview) is a signed-in page and keeps
+  // the signed-in app's policy, but no voice button is drawn there.
+  const privateDemoMicrophone = isPrivateDemo && demoAssistantVoiceEnabled()
+  const micPolicy = signedInApp || privateDemoMicrophone ? "microphone=(self)" : "microphone=()"
   // Location («Моё местоположение» in the organization's map picker, owner
   // 2026-10-06). The grant follows the microphone's, for the same reason: the
   // document that was loaded first decides for every later in-app navigation,

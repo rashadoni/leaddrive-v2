@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 // Mock rate-limit before importing middleware
 vi.mock("@/lib/rate-limit", () => ({
@@ -688,6 +688,51 @@ describe("middleware", async () => {
       await policy("/portal/login", null),
     ]
     expect(elsewhere.filter((value) => !value.includes("geolocation=()"))).toEqual([])
+  })
+
+  // «Səslə soruşun» (owner, 2026-10-20): the private demo's button records a
+  // question in the browser, so that page may ask for the microphone — only
+  // while the demo's voice switch is on, and no other public page ever.
+  describe("the private demo's microphone", () => {
+    const DEMO_PAGE = `/demo-access/${"a".repeat(64)}`
+    const DENIED = "camera=(), microphone=(), geolocation=()"
+    const policy = async (pathname: string, auth: unknown = null, method = "GET") =>
+      (await authMiddleware(makeReq({ pathname, auth, method, host: "app.leaddrivecrm.org" }))).headers.get("permissions-policy")
+
+    afterEach(() => {
+      delete process.env.DEMO_ASSISTANT_VOICE
+    })
+
+    it("stays denied while the switch is off — its default", async () => {
+      delete process.env.DEMO_ASSISTANT_VOICE
+      expect(await policy(DEMO_PAGE)).toBe(DENIED)
+      process.env.DEMO_ASSISTANT_VOICE = "off"
+      expect(await policy(DEMO_PAGE)).toBe(DENIED)
+    })
+
+    it("with the switch on, opens to the private demo page alone: not its location or camera, not the open demo, not an API answer", async () => {
+      process.env.DEMO_ASSISTANT_VOICE = "on"
+      expect(await policy(DEMO_PAGE)).toBe("camera=(), microphone=(self), geolocation=()")
+      expect(await policy(`${DEMO_PAGE}/`)).toBe("camera=(), microphone=(self), geolocation=()")
+      const elsewhere = {
+        "/demo-open": await policy("/demo-open"),
+        "/demo": await policy("/demo"),
+        "/login": await policy("/login"),
+        "/demo-accessx": await policy("/demo-accessx"),
+        transcribe: await policy(`/api/v1/public/demo-access/${"a".repeat(64)}/assistant/transcribe`, null, "POST"),
+        state: await policy(`/api/v1/public/demo-access/${"a".repeat(64)}`),
+        // Signed out, the admin preview is a redirect to the login page.
+        "/demo-preview": await policy("/demo-preview/request-1"),
+      }
+      expect(Object.entries(elsewhere).filter(([, value]) => value !== DENIED)).toEqual([])
+    })
+
+    it("leaves the signed-in admin preview on the signed-in app's policy, switch or not (no voice button is drawn there)", async () => {
+      const superadmin = { user: { id: "u1", organizationId: "org-1", role: "superadmin" } }
+      const before = await policy("/demo-preview/request-1", superadmin)
+      process.env.DEMO_ASSISTANT_VOICE = "on"
+      expect(await policy("/demo-preview/request-1", superadmin)).toBe(before)
+    })
   })
 
   // ─── Rate limiting ────────────────────────────────────────

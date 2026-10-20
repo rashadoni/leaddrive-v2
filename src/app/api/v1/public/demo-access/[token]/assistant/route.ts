@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAnthropicClient } from "@/lib/ai/anthropic-client"
 import { calculateAiCost } from "@/lib/ai/budget"
-import { expireDemoGrantIfNeeded, noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
+import { noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
+import { loadActiveDemoGrant } from "@/lib/demo-center/active-grant"
+import { demoAnswerHash } from "@/lib/demo-center/assistant-voice"
+import { demoAssistantVoiceEnabled } from "@/lib/demo-center/assistant-voice-switch"
 import { buildAssistantGrounding } from "@/lib/demo-center/assistant/context"
 import { routeDemoQuestion } from "@/lib/demo-center/demo-question-router"
 import { demoVoiceUrl } from "@/lib/demo-center/guide-voice"
-import { demoGrantManifest } from "@/lib/demo-center/grant-manifest"
 import { DEMO_NAVIGATION_INTENTS, isNavigationIntent, preparedAnswer, stepNarration } from "@/lib/demo-center/assistant/prepared-answers"
 import type { DemoAssistantAction } from "@/lib/demo-center/assistant/actions"
 import { PiiMasker } from "@/lib/ai/pii-masker"
@@ -34,8 +36,7 @@ import {
   type DemoJourneyState,
   type DemoProspectIdentity,
 } from "@/lib/demo-center/journey"
-import { demoSessionCookieName, maskEmail, maskPhone, secureHashMatches } from "@/lib/demo-center/security"
-import { hashOneTimeToken } from "@/lib/one-time-token"
+import { maskEmail, maskPhone } from "@/lib/demo-center/security"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 
@@ -62,6 +63,12 @@ import { runWithRlsBypass } from "@/lib/rls-context"
  * assistant/actions.ts; the browser plans it again against its own position
  * and opens the module the way the sidebar does. «Where do I click» brings
  * the step's card back. Da Vinci's own answers carry no action.
+ *
+ * Owner, 2026-10-20: Da Vinci's answers are spoken too. While the voice is on
+ * (`DEMO_ASSISTANT_VOICE`), such an answer comes with its id and a keyed hash
+ * of exactly its text, and `./voice` speaks only a text that hash vouches
+ * for — never one the browser made up. Prepared answers keep their
+ * recordings.
  */
 
 const ASKED = "ASSISTANT_ASKED"
@@ -87,22 +94,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     : "STARTED"
 
   return runWithRlsBypass(async () => {
-    const grant = await prisma.demoGrant.findUnique({
-      where: { tokenHash: hashOneTimeToken(token) },
-      include: { request: { select: { name: true, company: true, jobTitle: true, email: true, phone: true, source: true } } },
-    })
-    if (!grant) return refuse("not_enabled", 404)
-
     const now = new Date()
-    if (await expireDemoGrantIfNeeded(grant, now)) return refuse("not_enabled", 410)
-    if (grant.status !== "ACTIVE") return refuse("not_enabled", 401)
-    if (!secureHashMatches(request.cookies.get(demoSessionCookieName(token))?.value, grant.sessionHash)) {
-      return refuse("not_enabled", 401)
-    }
-    // The grant's own story: with the live call when it has one, so a question
-    // asked on the call step is answered about the call step.
-    const manifest = demoGrantManifest(grant)
-    if (!manifest.capabilities.assistant) return refuse("not_enabled", 403)
+    // An active grant in THIS browser's session, and its own story
+    // (active-grant.ts — the voice routes check exactly the same way).
+    const active = await loadActiveDemoGrant(request, token, now)
+    if (!active.ok) return refuse("not_enabled", active.status)
+    const { grant, manifest } = active
 
     // The claimed position must exist in the story; anything else is treated
     // as the start rather than trusted or echoed back.
@@ -223,7 +220,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Neither the question nor the answer is stored — only where it was
     // asked and what it cost, so the admin timeline shows what the demo
     // actually cost.
-    await prisma.demoAccessEvent.create({
+    const recorded = await prisma.demoAccessEvent.create({
       data: {
         grantId: grant.id,
         eventType: ASKED,
@@ -240,8 +237,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       },
     })
 
+    // The answer's id is its event's; the hash covers the grant, that id and
+    // the exact text, so the voice route speaks this answer once and nothing
+    // else. Without the switch there is nothing to speak it with.
+    const answerId = recorded?.id
+    const voiced = demoAssistantVoiceEnabled() && answerId
+      ? { answerId, answerHash: demoAnswerHash(grant.id, answerId, answer) }
+      : {}
     return NextResponse.json(
-      { success: true, answer, remaining: Math.max(0, DEMO_ASSISTANT_MAX_QUESTIONS - (count + 1)) },
+      { success: true, answer, remaining: Math.max(0, DEMO_ASSISTANT_MAX_QUESTIONS - (count + 1)), source: "davinci", ...voiced },
       { headers: noStoreHeaders() },
     )
   })

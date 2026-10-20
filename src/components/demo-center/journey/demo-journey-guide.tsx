@@ -28,10 +28,11 @@ import { DemoLiveSocial } from "./demo-live-social"
 import type { DemoLiveSocialHandle } from "./use-demo-live-social"
 import { LIVE_WHATSAPP_TICKET_SECTIONS, type DemoLiveWhatsAppHandle } from "./use-demo-live-whatsapp"
 import { demoTarget } from "./demo-target"
-import { useGuideVoice, type GuideVoice } from "./demo-guide-voice"
+import { isGuideVoiceOn, setGuideVoiceMicrophone, useGuideVoice, type GuideMicrophoneChange, type GuideVoice } from "./demo-guide-voice"
 import { GuideVoiceSwitch } from "./guide-voice-switch"
 import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { parseDemoAssistantAction, type DemoAssistantAction } from "@/lib/demo-center/assistant/actions"
+import { DemoAssistantVoice } from "./demo-assistant-voice"
 
 /**
  * The guide panel: where the prospect is in the story, what to do now, and
@@ -87,6 +88,11 @@ export interface DemoJourneyGuideProps {
    * story moved meanwhile, a jump becomes an offer and nothing else happens.
    */
   onAssistantAction?: (action: DemoAssistantAction, askedKey: string) => DemoAssistantActionResult
+  /**
+   * The server's voice switch (owner, 2026-10-20): Da Vinci's answers are
+   * spoken in the guide's voice and «Səslə soruşun» is offered. Granted only.
+   */
+  assistantVoice?: boolean
 }
 
 /**
@@ -126,6 +132,7 @@ export function DemoJourneyGuide({
   liveWhatsApp,
   liveSocial,
   onAssistantAction,
+  assistantVoice = false,
 }: DemoJourneyGuideProps) {
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((candidate) => candidate.id === section.id)
@@ -140,7 +147,12 @@ export function DemoJourneyGuide({
   const stepIsOnScene = sceneHasCoachMark && !anchorMissing && !reviewMode
 
   // The guide reads each step aloud when it opens (guide-voice.ts). Keyed by
-  // the step, so a re-render never restarts a sentence mid-way.
+  // the step, so a re-render never restarts a sentence mid-way. A step that
+  // opens while the prospect's microphone is open is not read into the
+  // question: the voice module holds it until the clip is thrown away or
+  // comes back as a question from the step left, and drops it when the clip
+  // is sent from this step (demo-guide-voice.ts) — the coach card's switch
+  // and the clip's «say the step again» go through the same gate.
   const voice = useGuideVoice()
   const narration = step && !reviewMode ? stepVoiceUrl(step) : null
   useEffect(() => {
@@ -295,6 +307,7 @@ export function DemoJourneyGuide({
         prompts={section.assistantPrompts ?? []}
         voice={voice}
         onAction={onAssistantAction}
+        voiceEnabled={assistantVoice}
       />
 
       <ol className="space-y-1.5" aria-label={S.guide}>
@@ -374,15 +387,18 @@ function DemoAssistant({
   prompts,
   voice,
   onAction,
+  voiceEnabled = false,
 }: {
   enabled: boolean
   token: string
   variant: DemoJourneyVariant
   snapshot: DemoJourneySnapshot
   prompts: readonly string[]
-  /** A prepared answer comes with its recording; Da Vinci's own words stay text. */
+  /** A prepared answer comes with its recording; with the voice switch on, Da Vinci's is spoken too. */
   voice?: GuideVoice
   onAction?: (action: DemoAssistantAction, askedKey: string) => DemoAssistantActionResult
+  /** The server's voice switch: spoken Da Vinci answers and «Səslə soruşun». */
+  voiceEnabled?: boolean
 }) {
   const [question, setQuestion] = useState("")
   // The conversation so far, newest last: the last few questions and answers,
@@ -391,6 +407,29 @@ function DemoAssistant({
   const [error, setError] = useState<string | null>(null)
   const [remaining, setRemaining] = useState<number | null>(null)
   const [asking, setAsking] = useState(false)
+  // The live «a question is being answered»: a clip is heard seconds after the
+  // press that stopped it, and calls the `ask` of that press's render.
+  const askingRef = useRef(false)
+  // A spoken question heard while another was still being answered: it waits
+  // in the box, and one press of «Soruş» asks it.
+  const [heardWaiting, setHeardWaiting] = useState<string | null>(null)
+  // Voice minutes ran out for this demo or for today: answers stay text and the button goes.
+  const [voiceExhausted, setVoiceExhausted] = useState(false)
+  const [voiceNote, setVoiceNote] = useState<string | null>(null)
+  // Where the prospect is now and which answer is newest: a spoken answer
+  // that comes back after either moved would talk over the wrong screen.
+  const positionRef = useRef(`${snapshot.sectionId}:${snapshot.stepId}`)
+  const newestAnswerRef = useRef<string | null>(null)
+  // «Səslə soruşun» has the microphone opening or open, or its clip is being
+  // turned into text: nothing may play, or the guide's voice would be in the
+  // question — or start, only to be cut by the answer to it.
+  const micOpenRef = useRef(false)
+  // A spoken answer that came back while the microphone was open: heard once
+  // the clip is thrown away, never once it is sent (that is a new question).
+  const heldAnswerRef = useRef<{ answerId: string; askedKey: string; audio: Blob } | null>(null)
+  useEffect(() => {
+    positionRef.current = `${snapshot.sectionId}:${snapshot.stepId}`
+  }, [snapshot.sectionId, snapshot.stepId])
 
   // The reference product kept its assistant behind an explicit activation
   // too. In the open demo the switch stays off: nobody has verified who is
@@ -407,11 +446,69 @@ function DemoAssistant({
     )
   }
 
+  // Over the budget ends voice for this demo only when the server says not
+  // even one full question fits any more (`exhausted`); a long answer's
+  // estimate can be refused while there is still room to ask. A refusal
+  // without the flag is taken at its word.
+  const refusedVoice = (code: string | undefined, exhausted?: boolean) => {
+    if ((code === "demo_budget" || code === "day_budget") && exhausted !== false) setVoiceExhausted(true)
+  }
+
+  // One voicing per answer, and only an answer the server vouched for: the
+  // id and hash it issued go back with the text, unchanged.
+  const speak = async (answerId: string, answer: string, answerHash: string, askedKey: string) => {
+    // The switch as it is now: switched off while the answer was coming, it sends nothing.
+    if (!isGuideVoiceOn()) return
+    try {
+      const response = await fetch(`/api/v1/public/demo-access/${encodeURIComponent(token)}/assistant/voice`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answerId, answer, answerHash, stepId: snapshot.stepId }),
+      })
+      if (response.ok && (response.headers.get("content-type") ?? "").startsWith("audio/")) {
+        const audio = await response.blob()
+        if (newestAnswerRef.current !== answerId || positionRef.current !== askedKey) return
+        if (micOpenRef.current) heldAnswerRef.current = { answerId, askedKey, audio }
+        else voice?.playBlob(audio)
+        return
+      }
+      const payload = await response.json().catch(() => null) as { code?: string; error?: string; exhausted?: boolean } | null
+      const overBudget = payload?.code === "demo_budget" || payload?.code === "day_budget"
+      refusedVoice(payload?.code, payload?.exhausted)
+      setVoiceNote(overBudget && payload?.exhausted !== false ? S.voiceExhausted : S.voiceAnswerFailed)
+    } catch {
+      setVoiceNote(S.voiceAnswerFailed)
+    }
+  }
+
+  // What the microphone did. A clip thrown away (a scroll that began on the
+  // button, a cancelled pointer, a clip that came back with no question in
+  // it) takes nothing from the prospect: the answer that came back meanwhile
+  // is heard now. A clip heard as a question is a new question: an answer to
+  // the one before, held or still on its way, is not spoken — also when the
+  // prospect moved on while it was heard (the guide then reads the new step).
+  const microphoneChanged = (change: GuideMicrophoneChange) => {
+    micOpenRef.current = change === "opening" || change === "open"
+    setGuideVoiceMicrophone(change)
+    if (micOpenRef.current) return
+    const held = heldAnswerRef.current
+    heldAnswerRef.current = null
+    if (change === "sent" || change === "sent-moved-on") {
+      newestAnswerRef.current = null
+      return
+    }
+    if (held && newestAnswerRef.current === held.answerId && positionRef.current === held.askedKey) voice?.playBlob(held.audio)
+  }
+
   const ask = async (text: string) => {
     const trimmed = text.trim()
-    if (!trimmed || asking) return
+    if (!trimmed || askingRef.current) return
+    askingRef.current = true
     setAsking(true)
+    setHeardWaiting(null)
     setError(null)
+    setVoiceNote(null)
     // A new question retires the previous answer's offer.
     setTurns((current) => current.map((turn) => (turn.offer ? { ...turn, offer: undefined } : turn)))
     const askedKey = `${snapshot.sectionId}:${snapshot.stepId}`
@@ -428,12 +525,15 @@ function DemoAssistant({
         }),
       })
       const payload = await response.json().catch(() => null) as
-        { success?: boolean; answer?: string; error?: string; remaining?: number; audio?: string; action?: unknown } | null
+        { success?: boolean; answer?: string; error?: string; remaining?: number; audio?: string; action?: unknown; answerId?: unknown; answerHash?: unknown } | null
       if (typeof payload?.remaining === "number") setRemaining(payload.remaining)
       if (!response.ok || !payload?.success || !payload.answer) {
         setError(payload?.error ?? S.assistantFailed)
         return
       }
+      // Where the prospect is as the answer lands, read before its own action
+      // can move the story: an answer to a step left is text only (below).
+      const left = positionRef.current !== askedKey
       // The hands first: only an action from the closed list, planned by the
       // player against where the prospect is now.
       const action = parseDemoAssistantAction(payload.action)
@@ -443,17 +543,46 @@ function DemoAssistant({
       // read out that old step over the new one's narration: neither its words
       // nor its recording are true any more.
       const moved = result === "moved"
+      // A question typed while the microphone is open is answered in text:
+      // no recording plays into the clip, and nothing is paid to be spoken.
+      const micOpen = micOpenRef.current
+      // So is one answered after the prospect left the step it was asked on
+      // (a spoken question heard after «İrəli» is asked about the step it was
+      // sent from): the guide is reading the new step, and an answer about the
+      // old one would cut it off — or be paid for, only to be thrown away.
       // Only our own recordings: a path under the guide's sound folder.
-      if (!moved && payload.audio?.startsWith("/sounds/demo-guide/")) voice?.play(payload.audio)
+      if (!moved && !micOpen && !left && payload.audio?.startsWith("/sounds/demo-guide/")) voice?.play(payload.audio)
+      // A Da Vinci answer has no recording; with the switch on it is spoken
+      // once, in the same voice, through the same element — unless the guide's
+      // voice is off, when nothing is sent to be spoken at all. Off NOW: this
+      // runs seconds after the press, and `voice.on` is the press's render.
+      const answerId = typeof payload.answerId === "string" ? payload.answerId : null
+      newestAnswerRef.current = answerId
+      if (voiceEnabled && !moved && !micOpen && !left && !payload.audio && answerId && typeof payload.answerHash === "string" && voice && isGuideVoiceOn() && !voiceExhausted) {
+        void speak(answerId, payload.answer, payload.answerHash, askedKey)
+      }
       const asked: AssistantTurn = { id: `you-${Date.now()}`, who: "you", text: trimmed }
       const said: AssistantTurn = { id: `guide-${Date.now()}`, who: "guide", text: moved ? S.assistantMoved : payload.answer, offer }
       setTurns((current) => [...current, asked, said].slice(-ASSISTANT_TURNS_SHOWN))
-      setQuestion("")
+      // Only the question just answered leaves the box: a spoken one waiting there stays.
+      setQuestion((current) => (current === text ? "" : current))
     } catch {
       setError(S.assistantFailed)
     } finally {
+      askingRef.current = false
       setAsking(false)
     }
+  }
+
+  // What «Səslə soruşun» heard is asked — unless another question is still
+  // being answered. One at a time, so it waits in the box for one press of
+  // «Soruş», rather than going by itself once that answer is in: the answer
+  // may have moved the story on, and the prospect, not the page, decides
+  // whether the question still fits the screen.
+  const heardQuestion = (heard: string) => {
+    setQuestion(heard)
+    if (askingRef.current) setHeardWaiting(heard)
+    else void ask(heard)
   }
 
   return (
@@ -499,7 +628,22 @@ function DemoAssistant({
         <Button type="submit" size="sm" className="mt-1.5 h-7 w-full text-xs" disabled={asking || !question.trim()}>
           {asking ? S.assistantAsking : S.assistantAsk}
         </Button>
+        {heardWaiting !== null && question === heardWaiting ? (
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground" data-testid="demo-assistant-heard-waiting">{S.voiceHeardWaiting(S.assistantAsk)}</p>
+        ) : null}
       </form>
+
+      {voiceEnabled ? (
+        <DemoAssistantVoice
+          token={token}
+          stepId={snapshot.stepId}
+          busy={asking}
+          exhausted={voiceExhausted}
+          onMicrophoneChange={microphoneChanged}
+          onHeard={heardQuestion}
+          onRefused={refusedVoice}
+        />
+      ) : null}
 
       {turns.length > 0 && (
         <ol data-testid="demo-assistant-turns" className="mt-2 space-y-1.5">
@@ -542,6 +686,12 @@ function DemoAssistant({
       {error && (
         <p role="alert" className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs leading-relaxed text-amber-900">{error}</p>
       )}
+      {voiceNote && !voiceExhausted ? (
+        <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground" data-testid="demo-assistant-voice-note">{voiceNote}</p>
+      ) : null}
+      {voiceEnabled && voice?.on ? (
+        <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">{S.voiceAnswersNote}</p>
+      ) : null}
     </div>
   )
 }

@@ -13,7 +13,7 @@
 import { execFileSync } from "node:child_process"
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
-import { DEMO_GUIDE_VOICE, DEMO_GUIDE_VOICE_DIR, demoGuideVoiceTexts, demoVoiceKey } from "../../src/lib/demo-center/guide-voice"
+import { DEMO_GUIDE_VOICE, DEMO_GUIDE_VOICE_DIR, DEMO_GUIDE_VOICE_DIRECTION, DEMO_GUIDE_VOICE_STYLE, demoGuideVoiceTexts, demoVoiceKey } from "../../src/lib/demo-center/guide-voice"
 import { GEMINI_TTS_SUCCESSOR, geminiTtsModelRetired, geminiTtsPcm, geminiTtsRequest, geminiTtsTooShort } from "../lib/gemini-tts.mjs"
 
 const OUT_DIR = path.join(process.cwd(), "public", DEMO_GUIDE_VOICE_DIR)
@@ -28,11 +28,10 @@ let keyIndex = 0
 const exhausted = new Set<number>()
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-// The same delivery the demo clips were read with: calm, clear, unhurried.
-// A preview model is told so in the text; a 3.8 model would read that sentence
-// into the recording, so it gets the same thing as style metadata instead.
-const direction = "Sakit, aydın və mehriban səslə, tələsmədən, Azərbaycan dilində oxu:"
-const style = "calm, clear and kind, unhurried"
+// The same delivery the demo clips were read with (guide-voice.ts), shared
+// with the answers the guide speaks live.
+const direction = DEMO_GUIDE_VOICE_DIRECTION
+const style = DEMO_GUIDE_VOICE_STYLE
 
 async function record(text: string, outFile: string): Promise<void> {
   for (let attempt = 1; attempt <= 12; attempt += 1) {

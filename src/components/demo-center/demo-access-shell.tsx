@@ -32,6 +32,8 @@ interface AccessPayload {
   identity?: DemoProspectIdentity
   /** Booleans only: whether this grant may place a real AI call, and how far the prospect got. */
   liveCall?: DemoLiveCallState | null
+  /** The guide speaks Da Vinci's answers and offers «Səslə soruşun» (the server's switch). */
+  assistantVoice?: boolean
   linkExpiresAt?: string
   serverNow?: string
   sessionExpiresAt?: string
@@ -194,6 +196,7 @@ export function DemoAccessShell({ token }: { token: string }) {
         // decides, via the server, which one this prospect walks.
         manifest={payload.liveCall?.enabled ? withLiveCall(manifest) : manifest}
         liveCall={payload.liveCall?.enabled ? payload.liveCall : undefined}
+        assistantVoice={payload.assistantVoice === true}
         identity={payload.identity}
         company={payload.company}
         watermark={payload.watermark}
