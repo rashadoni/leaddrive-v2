@@ -8,9 +8,10 @@ import { AttendanceCorrectionBasisSchema, AttendanceRequestError } from "@/lib/m
 import { lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
 import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import { readAttendanceProjectionInTransaction } from "@/lib/mtm/attendance-report-store"
-import { AttendanceMonthCloseSchema, AttendanceMonthQuerySchema, AttendanceMonthSelectionSchema, type AttendanceMonthDirectory, type AttendanceMonthDetail, type AttendanceMonthSelection, type AttendanceMonthSummary } from "@/lib/mtm/attendance-month-contract"
-import { attendanceMonthHash, attendanceMonthRange, buildAttendanceMonthSnapshot, verifiedAttendanceMonthSnapshot } from "@/lib/mtm/attendance-month-snapshot"
+import { AttendanceMonthCloseSchema, AttendanceMonthN1tQuerySchema, AttendanceMonthQuerySchema, AttendanceMonthSelectionSchema, type AttendanceMonthBlocker, type AttendanceMonthCandidate, type AttendanceMonthDirectory, type AttendanceMonthDetail, type AttendanceMonthN1tState, type AttendanceMonthPayload, type AttendanceMonthSelection, type AttendanceMonthSummary } from "@/lib/mtm/attendance-month-contract"
+import { attendanceMonthHash, attendanceMonthRange, buildAttendanceMonthSnapshot, frozenAttendanceMonthTable, verifiedAttendanceMonthSnapshot } from "@/lib/mtm/attendance-month-snapshot"
 import type { AttendanceTable } from "@/lib/mtm/attendance-table"
+import { currentDateKey } from "@/lib/mtm/mobile-week"
 type Tx=Prisma.TransactionClient
 type Row={id:string;month:Date;createdAt:Date;createdByName:string|null;createdBy:string;requestHash:string;payloadHash:string;payload:unknown}
 const fail=(code:string,status=409):never=>{throw new AttendanceRequestError(`MTM_ATTENDANCE_MONTH_${code}`,status)}
@@ -23,14 +24,18 @@ async function writeScope(tx:Tx, reviewer:AttendanceReviewer, ids:readonly strin
   const targets=await tx.mtmAgent.findMany({where:{organizationId:reviewer.organizationId,id:{in:[...ids]},...ATTENDANCE_TRACKED_CARD_WHERE},select:{id:true,userId:true}})
   if(targets.length!==ids.length || targets.some(row=>row.userId===reviewer.userId)) return fail("FORBIDDEN",403)
 }
+type Projection=Awaited<ReturnType<typeof readAttendanceProjectionInTransaction>>
+function built(report:Projection, selection:AttendanceMonthSelection) {
+  try{return buildAttendanceMonthSnapshot(report,selection,new Date())}catch(error){if(error instanceof Error && error.message.startsWith("MTM_ATTENDANCE_MONTH_"))throw new AttendanceRequestError(error.message,409);throw error}
+}
 async function snapshot(tx:Tx, reviewer:AttendanceReviewer, selection:AttendanceMonthSelection, asOf:Date) {
   const range=attendanceMonthRange(selection.month)
   const report=await readAttendanceProjectionInTransaction(tx,{organizationId:reviewer.organizationId,authorizedEmployeeIds:selection.agentIds,query:{...range,form:"ALL"},now:asOf})
-  try{return buildAttendanceMonthSnapshot(report,selection,new Date())}catch(error){if(error instanceof Error && error.message.startsWith("MTM_ATTENDANCE_MONTH_"))throw new AttendanceRequestError(error.message,409);throw error}
+  return built(report,selection)
 }
 export async function previewAttendanceMonth(reviewer:AttendanceReviewer,raw:unknown,locale:"az"|"ru"|"en") {
   const parsed=AttendanceMonthSelectionSchema.safeParse(raw);if(!parsed.success)return fail("INVALID",400)
-  return prisma.$transaction(async tx=>{await writeScope(tx,reviewer,parsed.data.agentIds);const value=await snapshot(tx,reviewer,parsed.data,new Date());return {month:parsed.data.month,agentIds:value.payload.agentIds,hash:value.hash,asOf:value.payload.asOf,table:value.payload.tables[locale] as AttendanceTable,blockers:value.blockers}}, {isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:15000})
+  return prisma.$transaction(async tx=>{await writeScope(tx,reviewer,parsed.data.agentIds);const value=await snapshot(tx,reviewer,parsed.data,new Date()),frozen=frozenAttendanceMonthTable(value.payload,locale);return {month:parsed.data.month,agentIds:value.payload.agentIds,hash:value.hash,asOf:value.payload.asOf,form:frozen.form,table:frozen.table,blockers:value.blockers}}, {isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:15000})
 }
 export async function closeAttendanceMonth(reviewer:AttendanceReviewer,raw:unknown) {
   const parsed=AttendanceMonthCloseSchema.safeParse(raw);if(!parsed.success)return fail("INVALID",400)
@@ -73,26 +78,86 @@ async function readSnapshot(tx:Tx,reviewer:AttendanceReviewer,id:string) {
   if(actor.scopedAgentIds!==null && payload.agentIds.some(id=>!actor.scopedAgentIds!.includes(id)))return fail("FORBIDDEN",403)
   return {row,payload}
 }
+/** The closed month's file: its frozen N-1t (the month grid only for a month closed before the N-1t was frozen). */
 export async function readAttendanceMonthTable(reviewer:AttendanceReviewer,id:string,locale:"az"|"ru"|"en") {
-  return prisma.$transaction(async tx=>{const {row,payload}=await readSnapshot(tx,reviewer,id);return {month:row.month.toISOString().slice(0,7),table:payload.tables[locale] as AttendanceTable}},{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead})
+  return prisma.$transaction(async tx=>{const {row,payload}=await readSnapshot(tx,reviewer,id);return {month:row.month.toISOString().slice(0,7),...frozenAttendanceMonthTable(payload,locale)}},{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead})
+}
+/** A closed month as it was frozen, and the approved corrections that changed its days afterwards. */
+async function monthDetail(tx:Tx,organizationId:string,row:Row,payload:AttendanceMonthPayload,locale:"az"|"ru"|"en"):Promise<AttendanceMonthDetail> {
+  const baseline=[...new Set(payload.coverage.flatMap(day=>day.correctionIds))]
+  const corrections=await tx.$queryRaw<{id:string;agentId:string;sourceDate:Date;occurredAt:Date;requestId:string|null;beforeFacts:unknown;afterFacts:unknown;reviewerName:string|null}[]>`
+    SELECT correction.id,correction."agentId",covered."sourceDate",correction."occurredAt",correction."requestId",correction."beforeFacts",correction."afterFacts",actor.name AS "reviewerName"
+    FROM workforce_time_corrections correction JOIN mtm_agent_workdays day ON day."organizationId"=correction."organizationId" AND day.id=correction."workdayId" AND day."agentId"=correction."agentId"
+    JOIN mtm_attendance_month_days covered ON covered."organizationId"=day."organizationId" AND covered."agentId"=day."agentId" AND covered."sourceDate"=day."workDate"
+    JOIN users actor ON actor."organizationId"=correction."organizationId" AND actor.id=correction."actorUserId"
+    WHERE covered."organizationId"=${organizationId} AND covered."closeId"=${row.id} AND NOT(correction.id=ANY(${baseline}::text[])) ORDER BY correction."createdAt",correction.id LIMIT 1001`
+  const {form,table}=frozenAttendanceMonthTable(payload,locale),employeeColumn=table.columns.findIndex(c=>c.key==="employee")
+  return {...summary(row,payload.agentIds.length),form,agentIds:payload.agentIds,table,moreCorrections:corrections.length>1000,corrections:corrections.slice(0,1000).map(c=>{
+    const beforeRaw=c.beforeFacts as {kind?:unknown}|null,before=AttendanceCorrectionBasisSchema.parse(beforeRaw?.kind==="MISSING"?beforeRaw:{kind:"WORKDAY",facts:beforeRaw}),after=AttendanceCorrectionBasisSchema.parse({kind:"WORKDAY",facts:c.afterFacts})
+    if(after.kind!=="WORKDAY")return fail("DAMAGED")
+    return {id:c.id,employeeId:c.agentId,employeeName:String(table.rows.find(r=>r.key===c.agentId)?.cells[employeeColumn]??""),date:c.sourceDate.toISOString().slice(0,10),at:c.occurredAt.toISOString(),reviewerName:c.reviewerName,requestId:c.requestId,
+      before:before.kind==="WORKDAY"?{startedAt:before.facts.startedAt,completedAt:before.facts.completedAt}:null,after:{startedAt:after.facts.startedAt,completedAt:after.facts.completedAt}}
+  })}
 }
 export async function readAttendanceMonth(reviewer:AttendanceReviewer,id:string,locale:"az"|"ru"|"en"):Promise<AttendanceMonthDetail> {
   return prisma.$transaction(async tx=>{
-    const {row,payload}=await readSnapshot(tx,reviewer,id),baseline=[...new Set(payload.coverage.flatMap(day=>day.correctionIds))]
-    const corrections=await tx.$queryRaw<{id:string;agentId:string;sourceDate:Date;occurredAt:Date;requestId:string|null;beforeFacts:unknown;afterFacts:unknown;reviewerName:string|null}[]>`
-      SELECT correction.id,correction."agentId",covered."sourceDate",correction."occurredAt",correction."requestId",correction."beforeFacts",correction."afterFacts",actor.name AS "reviewerName"
-      FROM workforce_time_corrections correction JOIN mtm_agent_workdays day ON day."organizationId"=correction."organizationId" AND day.id=correction."workdayId" AND day."agentId"=correction."agentId"
-      JOIN mtm_attendance_month_days covered ON covered."organizationId"=day."organizationId" AND covered."agentId"=day."agentId" AND covered."sourceDate"=day."workDate"
-      JOIN users actor ON actor."organizationId"=correction."organizationId" AND actor.id=correction."actorUserId"
-      WHERE covered."organizationId"=${reviewer.organizationId} AND covered."closeId"=${id} AND NOT(correction.id=ANY(${baseline}::text[])) ORDER BY correction."createdAt",correction.id LIMIT 1001`
-    const table=payload.tables[locale] as AttendanceTable,employeeColumn=table.columns.findIndex(c=>c.key==="employee")
-    return {...summary(row,payload.agentIds.length),table,moreCorrections:corrections.length>1000,corrections:corrections.slice(0,1000).map(c=>{
-      const beforeRaw=c.beforeFacts as {kind?:unknown}|null,before=AttendanceCorrectionBasisSchema.parse(beforeRaw?.kind==="MISSING"?beforeRaw:{kind:"WORKDAY",facts:beforeRaw}),after=AttendanceCorrectionBasisSchema.parse({kind:"WORKDAY",facts:c.afterFacts})
-      if(after.kind!=="WORKDAY")return fail("DAMAGED")
-      return {id:c.id,employeeId:c.agentId,employeeName:String(table.rows.find(r=>r.key===c.agentId)?.cells[employeeColumn]??""),date:c.sourceDate.toISOString().slice(0,10),at:c.occurredAt.toISOString(),reviewerName:c.reviewerName,requestId:c.requestId,
-        before:before.kind==="WORKDAY"?{startedAt:before.facts.startedAt,completedAt:before.facts.completedAt}:null,after:{startedAt:after.facts.startedAt,completedAt:after.facts.completedAt}}
-    })}
+    const {row,payload}=await readSnapshot(tx,reviewer,id)
+    return monthDetail(tx,reviewer.organizationId,row,payload,locale)
   },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:15000})
+}
+/** Closes of one month a viewer may open: only those whose every employee is in the viewer's scope. */
+function visibleClosesScope(scopedAgentIds:readonly string[]|null) {
+  return scopedAgentIds===null?Prisma.empty:Prisma.sql`AND NOT EXISTS(SELECT 1 FROM mtm_attendance_month_members member WHERE member."organizationId"=closed."organizationId" AND member."closeId"=closed.id AND NOT(member."agentId"=ANY(${[...scopedAgentIds]}::text[])))`
+}
+/** One close holds at most 100 people (AttendanceMonthSelectionSchema); a larger roster closes in blocks of 100. */
+const N1T_CLOSE_SIZE=100,N1T_CLOSES_SHOWN=20,N1T_BLOCKERS_SHOWN=50
+/**
+ * Personnel → Reports → N-1t for one month (owner, 2026-10-20: production behaves like the clip).
+ * A closed month answers with its frozen N-1t, author and time, and the corrections approved after
+ * the close; a finished open month answers with the exact previews «Bu tabeli bağla» will freeze for
+ * everyone the viewer may close, or with the days that block it. Nothing is written here.
+ */
+export async function readAttendanceMonthN1t(reviewer:AttendanceReviewer,raw:unknown):Promise<AttendanceMonthN1tState> {
+  const parsed=AttendanceMonthN1tQuerySchema.safeParse(raw);if(!parsed.success)return fail("INVALID",400)
+  const {month,locale}=parsed.data,org=reviewer.organizationId,date=new Date(`${month}-01T00:00:00Z`),{to}=attendanceMonthRange(month)
+  return prisma.$transaction(async tx=>{
+    const actor=await currentAttendanceReadActor(tx,reviewer)
+    let writer:Awaited<ReturnType<typeof resolveAttendanceReviewerScope>>|null=null
+    try{writer=await resolveAttendanceReviewerScope(tx,reviewer)}catch(e){if(!(e instanceof AttendanceRequestError && e.status===403))throw e}
+    const rows=await tx.$queryRaw<Row[]>(Prisma.sql`SELECT * FROM mtm_attendance_month_closes closed WHERE closed."organizationId"=${org} AND closed.month=${date}::date ${visibleClosesScope(actor.scopedAgentIds)} ORDER BY closed."createdAt",closed.id LIMIT ${N1T_CLOSES_SHOWN+1}`)
+    const closes:AttendanceMonthDetail[]=[]
+    for(const row of rows.slice(0,N1T_CLOSES_SHOWN))closes.push(await monthDetail(tx,org,row,verifiedAttendanceMonthSnapshot(row.payload,row.payloadHash),locale))
+    const people:{id:string;userId:string|null}[]=await tx.mtmAgent.findMany({where:{organizationId:org,...ATTENDANCE_TRACKED_CARD_WHERE,...(actor.scopedAgentIds===null?{}:{id:{in:[...actor.scopedAgentIds]}})},select:{id:true,userId:true},orderBy:[{name:"asc"},{id:"asc"}]})
+    const members:{agentId:string}[]=people.length?await tx.$queryRaw<{agentId:string}[]>`SELECT "agentId" FROM mtm_attendance_month_members WHERE "organizationId"=${org} AND month=${date}::date AND "agentId"=ANY(${people.map(p=>p.id)}::text[])`:[]
+    const closed=new Set<string>(members.map(m=>m.agentId)),shown=new Set<string>(closes.flatMap(c=>c.agentIds)),now=new Date()
+    // Where the day starts first: if the month runs even there, it runs everywhere, and no preview is needed.
+    let finished=currentDateKey(now,"Pacific/Kiritimati")>to,open=people.filter(p=>!closed.has(p.id))
+    let eligible:string[]=[],report:Projection|null=null,readFor=0
+    if(finished && open.length){
+      // The N-1t has a line only for people counted in the month: someone whose attendance starts
+      // later, or who is excluded for the whole month, is neither open nor closable.
+      readFor=open.length
+      report=await readAttendanceProjectionInTransaction(tx,{organizationId:org,authorizedEmployeeIds:open.map(p=>p.id),query:{from:`${month}-01`,to,form:"ALL"},now})
+      const counted=new Set<string>((report.accountingRows??report.rows).filter(row=>row.date.startsWith(month)).map(row=>row.employeeId))
+      open=open.filter(p=>counted.has(p.id))
+      if(writer)eligible=open.filter(p=>p.userId!==reviewer.userId && (writer!.scopedAgentIds===null||writer!.scopedAgentIds.includes(p.id))).map(p=>p.id)
+    }
+    const ownOpen=open.some(p=>p.userId===reviewer.userId)
+    const candidates:AttendanceMonthCandidate[]=[],blockers:AttendanceMonthBlocker[]=[]
+    let blockerCount=0
+    for(let index=0;finished && index<eligible.length;index+=N1T_CLOSE_SIZE){
+      const selection={month,agentIds:eligible.slice(index,index+N1T_CLOSE_SIZE)}
+      // The one projection already read is exactly the close's own when it holds just these people.
+      const value=report && readFor===selection.agentIds.length && eligible.length<=N1T_CLOSE_SIZE?built(report,selection):await snapshot(tx,reviewer,selection,now)
+      if(value.ongoing){finished=false;candidates.length=0;blockers.length=0;blockerCount=0;break}
+      const table=value.payload.n1t![locale] as AttendanceTable,employee=table.columns.findIndex(c=>c.key==="employee")
+      candidates.push({agentIds:value.payload.agentIds,hash:value.hash,asOf:value.payload.asOf,table})
+      blockerCount+=value.blockers.length
+      for(const blocker of value.blockers.slice(0,Math.max(0,N1T_BLOCKERS_SHOWN-blockers.length)))blockers.push({...blocker,employeeName:String(table.rows.find(r=>r.key===blocker.employeeId)?.cells[employee]??"")})
+    }
+    return {month,finished,canClose:writer!==null,closes,moreCloses:rows.length>N1T_CLOSES_SHOWN,closedElsewhere:[...closed].filter(id=>!shown.has(id)).length,
+      open:open.length,ownOpen,notIncluded:writer?open.length-eligible.length-(ownOpen?1:0):0,candidates,blockers,moreBlockers:blockerCount-blockers.length}
+  },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:30000})
 }
 export async function readAttendanceMonthDirectory(reviewer:AttendanceReviewer,raw:unknown):Promise<AttendanceMonthDirectory> {
   const parsed=AttendanceMonthQuerySchema.safeParse(raw);if(!parsed.success)return fail("INVALID",400)
@@ -104,7 +169,7 @@ export async function readAttendanceMonthDirectory(reviewer:AttendanceReviewer,r
     const employees=await tx.mtmAgent.findMany({where:{organizationId:org,...ATTENDANCE_TRACKED_CARD_WHERE,...(actor.scopedAgentIds===null?{}:{id:{in:[...actor.scopedAgentIds]}})},select:{id:true,name:true,userId:true,team:{select:{name:true}}},orderBy:[{name:"asc"},{id:"asc"}],skip:offset,take:51})
     const ids=employees.slice(0,50).map(e=>e.id),date=new Date(`${month}-01T00:00:00Z`)
     const closed=ids.length?await tx.$queryRaw<{agentId:string}[]>`SELECT "agentId" FROM mtm_attendance_month_members WHERE "organizationId"=${org} AND month=${date}::date AND "agentId"=ANY(${ids}::text[])`:[]
-    const scope=actor.scopedAgentIds===null?Prisma.empty:Prisma.sql`AND NOT EXISTS(SELECT 1 FROM mtm_attendance_month_members member WHERE member."organizationId"=closed."organizationId" AND member."closeId"=closed.id AND NOT(member."agentId"=ANY(${actor.scopedAgentIds}::text[])))`
+    const scope=visibleClosesScope(actor.scopedAgentIds)
     const rows=await tx.$queryRaw<(Row & {employeeCount:number})[]>(Prisma.sql`SELECT closed.id,closed.month,closed."createdAt",closed."createdByName",(SELECT count(*)::int FROM mtm_attendance_month_members member WHERE member."organizationId"=closed."organizationId" AND member."closeId"=closed.id) AS "employeeCount" FROM mtm_attendance_month_closes closed WHERE closed."organizationId"=${org} AND closed.month=${date}::date ${scope} ORDER BY closed."createdAt" DESC,closed.id OFFSET ${offset} LIMIT 51`)
     return {month,canClose:writer!==null,employees:employees.slice(0,50).map(e=>({id:e.id,name:e.name,teamName:e.team?.name??null,closed:closed.some(c=>c.agentId===e.id),own:e.userId===reviewer.userId,canClose:writer!==null && e.userId!==reviewer.userId && (writer.scopedAgentIds===null||writer.scopedAgentIds.includes(e.id))})),moreEmployees:employees.length>50,items:rows.slice(0,50).map(r=>summary(r,r.employeeCount)),moreSnapshots:rows.length>50}
   },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:15000})

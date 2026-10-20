@@ -4,7 +4,7 @@ vi.mock("@/lib/prisma", async () => ({ prisma: (await import("./mocks/mtm-prisma
 vi.mock("@/lib/api-auth", () => ({ requireAuth: vi.fn(), getOrgId: vi.fn(), getSession: vi.fn().mockResolvedValue(null), isAuthError: (value: unknown) => value instanceof Response }))
 vi.mock("@/lib/mtm/route-permissions", async original => ({ ...await original<typeof import("@/lib/mtm/route-permissions")>(), resolveMtmRouteActor: vi.fn() }))
 vi.mock("@/lib/tenant-capability-access", async original => ({ ...await original<typeof import("@/lib/tenant-capability-access")>(), requireTenantCapabilityAccessResponse: vi.fn().mockResolvedValue(null) }))
-vi.mock("@/lib/mtm/attendance-month-store", () => ({ readAttendanceMonthDirectory:vi.fn(),closeAttendanceMonth:vi.fn(),previewAttendanceMonth:vi.fn(),readAttendanceMonth:vi.fn(),readAttendanceMonthTable:vi.fn() }))
+vi.mock("@/lib/mtm/attendance-month-store", () => ({ readAttendanceMonthDirectory:vi.fn(),closeAttendanceMonth:vi.fn(),previewAttendanceMonth:vi.fn(),readAttendanceMonth:vi.fn(),readAttendanceMonthTable:vi.fn(),readAttendanceMonthN1t:vi.fn() }))
 import { prisma } from "@/lib/prisma"
 import { requireAuth } from "@/lib/api-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
@@ -15,6 +15,7 @@ import { GET, POST } from "@/app/api/v1/mtm/attendance/months/route"
 import { POST as PREVIEW } from "@/app/api/v1/mtm/attendance/months/preview/route"
 import { GET as DETAIL } from "@/app/api/v1/mtm/attendance/months/[id]/route"
 import { GET as EXPORT } from "@/app/api/v1/mtm/attendance/months/[id]/export/route"
+import { GET as N1T } from "@/app/api/v1/mtm/attendance/months/n1t/route"
 const id="00000000-0000-4000-8000-000000000001",ctx={params:Promise.resolve({id})}
 const request=(body?:string,query="month=2026-09")=>new NextRequest(`http://localhost/api/v1/mtm/attendance/months?${query}`,body===undefined?{}:{method:"POST",body,headers:{"content-type":"application/json"}})
 beforeEach(()=>{
@@ -24,7 +25,7 @@ beforeEach(()=>{
  vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{key:"attendanceEnabled",value:true}] as never)
  vi.mocked(store.readAttendanceMonthDirectory).mockResolvedValue({} as never)
  vi.mocked(store.closeAttendanceMonth).mockResolvedValue({id,idempotent:false} as never)
- vi.mocked(store.readAttendanceMonthTable).mockResolvedValue({month:"2026-09",table:{title:"Fictional frozen month",columns:[{key:"employee",label:"Employee"}],rows:[{key:"a",cells:["Fictional employee"]}],details:[],totals:[]}})
+ vi.mocked(store.readAttendanceMonthTable).mockResolvedValue({month:"2026-09",form:"MONTH",table:{title:"Fictional frozen month",columns:[{key:"employee",label:"Employee"}],rows:[{key:"a",cells:["Fictional employee"]}],details:[],totals:[]}})
 })
 describe("month close HTTP boundaries",()=>{
  it("runs the authenticated directory under tenant RLS and marks it private",async()=>{
@@ -33,7 +34,7 @@ describe("month close HTTP boundaries",()=>{
  })
  it("hides all surfaces while attendance is disabled",async()=>{
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([])
-  for(const response of [await GET(request(),undefined),await POST(request("{}"),undefined),await PREVIEW(request("{}"),undefined),await DETAIL(request(),ctx),await EXPORT(request(undefined,"locale=en&format=pdf"),ctx)])expect(response.status).toBe(404)
+  for(const response of [await GET(request(),undefined),await POST(request("{}"),undefined),await PREVIEW(request("{}"),undefined),await DETAIL(request(),ctx),await EXPORT(request(undefined,"locale=en&format=pdf"),ctx),await N1T(request(undefined,"month=2026-09&locale=az"),undefined)])expect(response.status).toBe(404)
   for(const fn of Object.values(store))expect(fn).not.toHaveBeenCalled()
  })
  it.each(["api_key",undefined])("refuses %s before reaching a snapshot",async principalType=>{
@@ -60,6 +61,17 @@ describe("month close HTTP boundaries",()=>{
   expect(Buffer.from(await response.arrayBuffer()).subarray(0,4).toString()).toBe("%PDF")
   expect(store.readAttendanceMonthTable).toHaveBeenCalledWith({organizationId:"month-fixture",userId:"month-admin",principalType:"session"},id,"en")
   expect(store.readAttendanceMonthDirectory).not.toHaveBeenCalled()
+ })
+ // Personnel → Reports → N-1t reads the month (frozen N-1t or what a press freezes) under the same boundary.
+ it("reads the N-1t month for a signed-in person under tenant RLS, privately",async()=>{
+  vi.mocked(store.readAttendanceMonthN1t).mockImplementationOnce(async(reviewer,query)=>{expect(reviewer).toEqual({organizationId:"month-fixture",userId:"month-admin",principalType:"session"});expect(query).toEqual({month:"2026-09",locale:"az"});expect(getRlsContext()).toMatchObject({orgId:"month-fixture"});return {} as never})
+  const response=await N1T(request(undefined,"month=2026-09&locale=az"),undefined);expect(response.status).toBe(200);expect(response.headers.get("cache-control")).toBe("private, no-store")
+  vi.mocked(requireAuth).mockResolvedValue({orgId:"month-fixture",userId:"month-admin",role:"admin",principalType:"api_key"} as never)
+  expect((await N1T(request(undefined,"month=2026-09&locale=az"),undefined)).status).toBe(403);expect(store.readAttendanceMonthN1t).toHaveBeenCalledTimes(1)
+ })
+ it("names the closed month's file after its N-1t form",async()=>{
+  vi.mocked(store.readAttendanceMonthTable).mockResolvedValueOnce({month:"2026-09",form:"N1T",table:{title:"Fictional N-1t",columns:[{key:"index",label:"№"}],rows:[{key:"a",cells:[1]}],details:[],totals:[]}})
+  const response=await EXPORT(request(undefined,"locale=az&format=xlsx"),ctx);expect(response.status).toBe(200);expect(response.headers.get("content-disposition")).toContain("N-1t-2026-09.xlsx")
  })
  it("validates export locale and format before reading stored employee cells",async()=>{
   expect((await EXPORT(request(undefined,"locale=xx&format=pdf"),ctx)).status).toBe(400)
