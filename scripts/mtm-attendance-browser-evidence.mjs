@@ -991,6 +991,9 @@ try {
     // Field agents stay in MTM: the HR branch list does not offer them (#796).
     await page.locator('#branch-employee-search').fill('Fixture field')
     await clickResponse(button('branchesFind'), `${apiRoot}/branches/assignments`, 'GET')
+    // The response lands before React draws it, and the card is blank meanwhile:
+    // an instant zero proved nothing. Wait for the drawn empty result first.
+    await page.getByTestId('branches-assignments').getByText(t('branchesNoEmployees'), { exact: true }).waitFor()
     assert.equal(await page.getByTestId('branch-employee').filter({ hasText: 'Fixture field' }).count(), 0)
     // An office employee no other case touches (00–02 belong to other cases).
     const office = await rosterCard('Fixture roster 07')
@@ -1018,7 +1021,10 @@ try {
     await page.locator('#risk-reason').fill('Fictional clock verified through browser')
     await clickResponse(button('riskDismiss'), `${apiRoot}/review/${risk.id}`)
     await filterResponse(() => page.locator('#risk-status').selectOption('DISMISSED'), `${apiRoot}/review`, { status: 'DISMISSED' })
-    assert.ok(await page.getByTestId('risk-row').count() >= 2)
+    // The response lands before React draws it: run 39450774119 counted the
+    // table too early while its screenshot showed both rows. Wait for the rows.
+    const dismissed = page.getByTestId('risk-row').filter({ hasText: t('riskDismissed') })
+    await poll(async () => await dismissed.count() >= 2 && await dismissed.filter({ hasText: 'Fictional clock verified through browser' }).count() === 1, 'Dismissed risks drawn')
     assert.deepEqual(await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: workday.id } }), workday)
     return { detector: 'Seeded finding; only review/dismissal is browser-tested' }
   })
