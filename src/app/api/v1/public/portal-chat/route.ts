@@ -10,6 +10,7 @@ import { getSupportAgentConfig } from "@/lib/ai/support-agent"
 import { isSupportAiEnabled, SUPPORT_AI_DISABLED_ERROR } from "@/lib/ai/support-feature"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
 import { ASSISTANT_ESCALATION_DESCRIPTION_HEAD, chatTicketDescription } from "@/lib/ticketing/chat-transcript"
+import { assistantChatMessages, copyAssistantChatToComments } from "@/lib/ticketing/assistant-chat-ticket"
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { assistantEscalationSubject } from "@/lib/ticketing/customer-ticket-text"
 import { resolveAiModel } from "@/lib/ai/budget"
@@ -85,11 +86,7 @@ async function createEscalationTicket(
 ): Promise<{ ticketId: string; ticketNumber: string } | null> {
   try {
     // Get all chat messages from this session to copy into ticket
-    const chatMessages = await prisma.aiChatMessage.findMany({
-      where: { sessionId },
-      orderBy: { createdAt: "asc" },
-      select: { role: true, content: true, createdAt: true },
-    })
+    const chatMessages = await assistantChatMessages(sessionId)
 
     const ticket = await createTicketWithAssignment({
       organizationId,
@@ -109,16 +106,7 @@ async function createEscalationTicket(
 
     // Copy chat messages as TicketComment entries so they appear in ticket detail
     // All messages are public (isInternal: false) so both portal and admin can see them
-    for (const msg of chatMessages) {
-      await prisma.ticketComment.create({
-        data: {
-          ticketId: ticket.id,
-          userId: null,
-          comment: `[${msg.role === "user" ? "Клиент" : "Da Vinci Bot"}] ${msg.content}`,
-          isInternal: false,
-        },
-      })
-    }
+    await copyAssistantChatToComments(ticket.id, chatMessages)
 
     // Update session status to escalated
     await prisma.aiChatSession.update({

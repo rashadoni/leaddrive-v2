@@ -21,7 +21,6 @@ interface TicketInfo {
   ticketNumber: string
   status: string
   satisfactionRating: number | null
-  lastCommentCount: number
 }
 
 interface PortalChatWidgetProps {
@@ -135,7 +134,6 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
             ticketNumber: msg.escalationTicketNumber || "",
             status: "new",
             satisfactionRating: null,
-            lastCommentCount: 0,
           })
         }
       }
@@ -168,33 +166,21 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
         const data = json.data
         const comments = data.comments || []
 
-        // Check for operator comments (isAgent=true means operator)
-        // Filter out user-echo comments: check legacy [Клиент] prefix AND current locale's client tag
-        const agentComments = comments.filter((c: { isAgent: boolean; comment: string }) =>
-          c.isAgent &&
-          !c.comment.startsWith("[Клиент]") &&
-          !c.comment.startsWith(`[${t("chatHistoryClientTag")}]`) &&
-          !c.comment.startsWith("[Da Vinci]")
-        )
-        if (agentComments.length > ticket.lastCommentCount) {
-          const newComments = agentComments.slice(ticket.lastCommentCount)
+        // Replies of a person on the team (`author`, portal-ticket-view.ts) — not the ticket's copy of
+        // this chat, whose Da Vinci messages the API also puts on the support side (until 2026-10-19
+        // they came back here as the operator's), and each reply once.
+        const operatorReplies = comments.filter((c: { author?: string }) => c.author === "agent")
+        if (operatorReplies.length > 0) {
           setMessages(prev => {
-            const newMsgs = [...prev]
-            for (const c of newComments) {
-              if (!newMsgs.some(m => m.id === `op-${c.id}`)) {
-                newMsgs.push({
-                  id: `op-${c.id}`,
-                  role: "operator",
-                  content: c.comment,
-                  createdAt: c.createdAt,
-                })
-              }
-            }
-            return newMsgs
+            const unseen = operatorReplies.filter((c: { id: string }) => !prev.some(m => m.id === `op-${c.id}`))
+            if (unseen.length === 0) return prev
+            return [...prev, ...unseen.map((c: { id: string; comment: string; createdAt: string }) => ({
+              id: `op-${c.id}`,
+              role: "operator" as const,
+              content: c.comment,
+              createdAt: c.createdAt,
+            }))]
           })
-          setTrackedTickets(prev => prev.map(tk =>
-            tk.id === ticket.id ? { ...tk, lastCommentCount: agentComments.length } : tk
-          ))
         }
 
         // Check for status change
@@ -290,7 +276,6 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
               ticketNumber: json.data.escalationTicketNumber || "",
               status: "open",
               satisfactionRating: null,
-              lastCommentCount: 0,
             }]
           })
         }
@@ -320,19 +305,12 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
     try {
       const userMessages = messages.filter(m => m.role === "user")
       const subject = userMessages[0]?.content?.slice(0, 100) || t("chatRequestSubject")
-      const clientTag = t("chatHistoryClientTag")
-      const chatHistory = messages
-        .filter(m => m.role !== "operator")
-        .map(m => `[${m.role === "user" ? clientTag : "Da Vinci"}] ${m.content}`).join("\n\n")
 
+      // The server copies the chat into the ticket from this session (portal-tickets route).
       const res = await fetch("/api/v1/public/portal-tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject,
-          description: `${t("chatHistoryCreatedFrom")}\n\n--- ${t("chatHistoryTitle")} ---\n${chatHistory}`,
-          category: "general",
-        }),
+        body: JSON.stringify({ subject, category: "general", chatSessionId: sessionId }),
       })
       const json = await res.json()
       if (res.ok && json.success) {
@@ -353,7 +331,6 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
           ticketNumber,
           status: "new",
           satisfactionRating: null,
-          lastCommentCount: 0,
         }])
       } else {
         setMessages(prev => [...prev, {
