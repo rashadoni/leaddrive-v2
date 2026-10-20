@@ -243,7 +243,23 @@ production: output contains only fixed cause classifications, source line
 numbers and public run metadata; the runner independently validates its shape.
 No match, expired/missing logs, truncated sampling or `UNKNOWN` is not a proved
 cause and never means backup success. Do not enable timers, relax checks or
-dispatch another backup merely because this diagnostic completes.
+dispatch another backup merely because this diagnostic completes. Format2
+refines workspace failure predicates and adds only anonymous host memory/swap
+and global `/run` filesystem counters. These are current observations, not
+historical capacity measurements; raw identities/env/SQL/log text stay private.
+
+The transient database worker has its own3GiB noexec/nodev/nosuid tmpfs at the
+same canonical work path, rather than sharing the global `/run` capacity. Only
+that unit sees this mount. Its dedicated unprivileged UID/GID owns the private
+mode0750 workspace; unexpected prior files, symlinks, mode/ownership or inspection
+failures abort without deleting them. Global `/run` is never remounted/resized.
+The fixed ceilings do not preallocate payload memory: MemoryHigh3GiB,
+MemoryMax4GiB and MemorySwapMax0 apply to this worker. Admission requires8GiB
+currently available host memory and a swap-free host before launch. A failed
+admission is not permission to stop unrelated services, enable swap, loosen
+the database-size ratio/minimum, spill plaintext to disk or buy more resources.
+The original tmpfs size, role/TLS, restore-canary, crypto and Object Lock checks
+remain mandatory; a database that outgrows this bound must fail closed.
 
 Before dispatch, all existing timers must be disabled/inactive or absent. The
 existing durable commissioning fence restores recorded states on failure; on

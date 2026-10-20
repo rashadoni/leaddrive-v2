@@ -2745,6 +2745,29 @@ assert_full_recovery_program_matches_committed_genesis() {
   fi
 }
 
+assert_empty_transient_workspace() {
+  local path="$1" expected_uid="$2" expected_gid="$3" entries
+  [ -d "$path" ] && [ ! -L "$path" ] \
+    && [ "$(realpath -e -- "$path")" = "$path" ] \
+    && [ "$(stat -c '%u:%g:%a' "$path")" = "$expected_uid:$expected_gid:750" ] \
+    || fatal "transient database workspace has unsafe canonical ownership or mode"
+  entries="$(find "$path" -mindepth 1 -maxdepth 1 -print -quit)" \
+    || fatal "cannot inspect transient database workspace; nothing launched"
+  [ -z "$entries" ] \
+    || fatal "transient database workspace is not empty; existing files preserved"
+}
+
+assert_transient_database_memory_budget() {
+  local available_kib swap_kib
+  available_kib="$(awk '$1 == "MemAvailable:" { print $2 }' /proc/meminfo)"
+  swap_kib="$(awk '$1 == "SwapTotal:" { print $2 }' /proc/meminfo)"
+  [[ "$available_kib" =~ ^[0-9]+$ ]] && [ "$available_kib" -ge 8388608 ] \
+    || fatal "database worker requires at least 8 GiB currently available host memory"
+  [[ "$swap_kib" =~ ^[0-9]+$ ]] && [ "$swap_kib" -eq 0 ] \
+    || fatal "database worker requires a swap-free production host"
+  log "database worker admitted: private_tmpfs_bytes=3221225472 memory_max_bytes=4294967296"
+}
+
 LAST_TRANSIENT_INVOCATION=""
 run_transient_backup_unit() {
   local label="$1"
@@ -2754,7 +2777,7 @@ run_transient_backup_unit() {
   local timeout_seconds="$5"
   local output_file="$6"
   local unit="leaddrive-backup-commission-${label}-${WORKFLOW_RUN_ID}.service"
-  local launch_status result exec_status invocation load_state active_state sub_state deadline
+  local launch_status result exec_status invocation load_state active_state sub_state deadline workspace_uid workspace_gid
   local -a identity_args=()
   local -a storage_args=()
   local -a executable_args=()
@@ -2767,13 +2790,25 @@ run_transient_backup_unit() {
   fi
   case "$label" in
     database)
+      assert_transient_database_memory_budget
+      workspace_uid="$(id -u -- "$run_user")"
+      workspace_gid="$(getent group "$run_group" | awk -F: '{ print $3 }')"
+      [[ "$workspace_uid" =~ ^[0-9]+$ ]] && [ "$workspace_uid" -gt 0 ] \
+        && [[ "$workspace_gid" =~ ^[0-9]+$ ]] && [ "$workspace_gid" -gt 0 ] \
+        || fatal "database workspace requires the dedicated unprivileged identity"
+      assert_empty_transient_workspace /run/leaddrive-postgres-backup "$workspace_uid" "$workspace_gid"
       storage_args=(
         --property=StateDirectory=leaddrive-postgres-backup
         --property=StateDirectoryMode=0750
-        --property=RuntimeDirectory=leaddrive-postgres-backup
-        --property=RuntimeDirectoryMode=0750
         --property=ReadWritePaths=/var/lib/leaddrive-postgres-backup
-        --property=ReadWritePaths=/run/leaddrive-postgres-backup
+        # Separate mount in this unit only; never resize/remount global /run.
+        # Do not also declare RuntimeDirectory or ReadWritePaths for this path:
+        # systemd's same-path bind/access mount wins over TemporaryFileSystem.
+        # The guarded, pre-existing host directory remains empty underneath.
+        # The ceiling is not preallocation. Cgroup memory includes tmpfs pages.
+        "--property=TemporaryFileSystem=/run/leaddrive-postgres-backup:rw,nodev,nosuid,noexec,size=3221225472,mode=0750,uid=$workspace_uid,gid=$workspace_gid"
+        --property=MemoryHigh=3221225472
+        --property=MemoryMax=4294967296
       )
       executable_args=(--commission-monthly)
       ;;
