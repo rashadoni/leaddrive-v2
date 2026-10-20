@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { DEMO_ASSISTANT_VOICE_CLIP_MAX_SECONDS } from "@/lib/demo-center/assistant/voice-policy"
 import { cn } from "@/lib/utils"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
+import type { GuideMicrophoneChange } from "./demo-guide-voice"
 import { startVoiceCapture, VoiceCaptureError, type VoiceCapture } from "./demo-voice-capture"
 
 /**
@@ -24,6 +25,10 @@ import { startVoiceCapture, VoiceCaptureError, type VoiceCapture } from "./demo-
  * sent, and so is one the browser cancels. When the voice minutes run out
  * while a clip is open, it is released there and then — the button is gone,
  * and a microphone with no button to stop it would send by itself at 15 s.
+ *
+ * Every move of the microphone is reported (`onMicrophoneChange`): the guide
+ * must not talk into the question, and a clip thrown away must not cost the
+ * prospect what the guide was saying or an answer on its way.
  */
 
 /** A press held at least this long is «hold to talk»: letting go sends. Shorter is a tap. */
@@ -33,6 +38,15 @@ const SWIPE_PX = 10
 
 type VoiceState = "idle" | "consent" | "starting" | "recording" | "sending"
 
+/** What a move of the state machine did to the microphone, if anything. */
+function microphoneChange(from: VoiceState, to: VoiceState): GuideMicrophoneChange | null {
+  if (from === to) return null
+  if (to === "starting") return "opening"
+  if (to === "recording") return "open"
+  if (from !== "starting" && from !== "recording") return null
+  return to === "sending" ? "sent" : "discarded"
+}
+
 export interface DemoAssistantVoiceProps {
   readonly token: string
   readonly stepId: string
@@ -40,15 +54,19 @@ export interface DemoAssistantVoiceProps {
   readonly busy: boolean
   /** The voice minutes ran out (either route said so): the button gives way to the note, and an open clip is released. */
   readonly exhausted: boolean
-  /** Called before the microphone opens, so the guide is not recorded talking: what plays stops, and a spoken answer still on its way is dropped. */
-  readonly onBeforeRecord: () => void
+  /**
+   * The microphone is being asked for (`opening`), records (`open`), or is
+   * closed again — its clip thrown away (`discarded`) or on its way to be
+   * heard (`sent`). Only a real move is reported, each once.
+   */
+  readonly onMicrophoneChange: (change: GuideMicrophoneChange) => void
   /** The heard text: the box asks it as the question. */
   readonly onHeard: (text: string) => void
   /** The server's refusal code, when it has one, and whether it says voice is over for this demo. */
   readonly onRefused: (code: string | undefined, exhausted?: boolean) => void
 }
 
-export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRecord, onHeard, onRefused }: DemoAssistantVoiceProps) {
+export function DemoAssistantVoice({ token, stepId, busy, exhausted, onMicrophoneChange, onHeard, onRefused }: DemoAssistantVoiceProps) {
   const [state, setState] = useState<VoiceState>("idle")
   const [consented, setConsented] = useState(false)
   const [elapsed, setElapsed] = useState(0)
@@ -64,10 +82,17 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRec
   const startedAtRef = useRef(0)
   const mountedRef = useRef(true)
   const exhaustedRef = useRef(exhausted)
+  // The state machine moves long after a render (a microphone opening, a reply): it reports to the latest callback.
+  const onMicrophoneChangeRef = useRef(onMicrophoneChange)
+  useEffect(() => {
+    onMicrophoneChangeRef.current = onMicrophoneChange
+  }, [onMicrophoneChange])
 
   const move = useCallback((next: VoiceState) => {
+    const change = microphoneChange(stateRef.current, next)
     stateRef.current = next
     if (mountedRef.current) setState(next)
+    if (change) onMicrophoneChangeRef.current(change)
   }, [])
 
   // The clip is thrown away, not sent. During «starting» the capture is not
@@ -87,8 +112,10 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRec
       mountedRef.current = false
       captureRef.current?.cancel()
       captureRef.current = null
+      // Thrown away, and said so: the guide would otherwise stay silent for good.
+      if (stateRef.current === "starting" || stateRef.current === "recording") move("idle")
     }
-  }, [])
+  }, [move])
 
   // The minutes ran out (a spoken answer's refusal can land mid-clip): the
   // button gives way to the note, so the microphone goes with it.
@@ -148,7 +175,6 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRec
     setError(null)
     setHeard(null)
     setElapsed(0)
-    onBeforeRecord()
     move("starting")
     try {
       const capture = await startVoiceCapture({
@@ -169,7 +195,7 @@ export function DemoAssistantVoice({ token, stepId, busy, exhausted, onBeforeRec
       setError(kind === "denied" ? S.voiceDenied : kind === "no_microphone" ? S.voiceNoMicrophone : kind === "unsupported" ? S.voiceUnsupported : S.voiceFailed)
       move("idle")
     }
-  }, [move, onBeforeRecord])
+  }, [move])
 
   const onPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0 || !consented) return

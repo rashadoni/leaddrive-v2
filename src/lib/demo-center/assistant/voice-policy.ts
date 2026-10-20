@@ -95,8 +95,9 @@ export type DemoVoiceBudgetRefusal = { ok: false; refusal: "demo_budget" | "day_
 
 /**
  * Whether `claim` more seconds fit both ceilings. The demo's own is named
- * first. A refusal says how many seconds are still left under both: a long
- * answer's claim can be refused while a question still fits.
+ * first. A refusal knows how many seconds are still left under both — a long
+ * answer's claim can be refused while a question still fits — but that
+ * figure stays on the server (`demoVoiceExhausted`).
  */
 export function checkVoiceBudget(
   spent: DemoVoiceSpend,
@@ -110,10 +111,12 @@ export function checkVoiceBudget(
 }
 
 /**
- * What a budget refusal tells the page. Voice is over for this demo only
- * when not even one full question fits; until then a refused answer stays
- * text and «Səslə soruşun» stays.
+ * What a budget refusal tells the page: whether voice is over for this demo,
+ * that is, not even one full question fits; until then a refused answer
+ * stays text and «Səslə soruşun» stays. Only that. The seconds left are the
+ * smaller of this demo's and the whole day's — and the day's are every other
+ * prospect's voice, which is none of this one's business.
  */
-export function demoVoiceBudgetLeft(secondsLeft: number): { secondsLeft: number; exhausted: boolean } {
-  return { secondsLeft, exhausted: secondsLeft < DEMO_ASSISTANT_VOICE_CLIP_MAX_SECONDS }
+export function demoVoiceExhausted(secondsLeft: number): { exhausted: boolean } {
+  return { exhausted: secondsLeft < DEMO_ASSISTANT_VOICE_CLIP_MAX_SECONDS }
 }

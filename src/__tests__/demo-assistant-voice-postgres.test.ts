@@ -21,8 +21,9 @@
  *     length, and the next claim sees it;
  *   - that Google hears exactly the seconds that were charged, whatever
  *     chunks the uploaded file carries;
- *   - that a refusal says what is left, and a refused long answer does not
- *     end voice while a question still fits.
+ *   - that a refusal says whether voice is over and nothing of how much is
+ *     left (the day's pool is every demo's), and a refused long answer does
+ *     not end voice while a question still fits.
  *
  * The real routes run (`/assistant/voice`, `/assistant/transcribe`) with the
  * real session check; only `fetch` to generativelanguage.googleapis.com is
@@ -419,7 +420,9 @@ describe.skipIf(!scratch)("the guide's voice budget on a real Postgres under row
     // Two seconds are left, not ten: a five-second question no longer fits, and Google is not asked.
     const refused = await hear(who, wavClip(5))
     expect(refused.status).toBe(429)
-    expect(await refused.json()).toMatchObject({ code: "demo_budget", secondsLeft: 2, exhausted: true })
+    const body = await refused.json()
+    expect(body).toMatchObject({ code: "demo_budget", exhausted: true })
+    expect(body).not.toHaveProperty("secondsLeft")
     expect(googleCalls.map((call) => call.kind)).toEqual(["speak"])
   })
 
@@ -450,12 +453,33 @@ describe.skipIf(!scratch)("the guide's voice budget on a real Postgres under row
     expect(speechSecondsUpperBound(long)).toBeGreaterThan(20)
     const refused = await speak(who, "long-1", long)
     expect(refused.status).toBe(429)
-    expect(await refused.json()).toMatchObject({ code: "demo_budget", secondsLeft: 20, exhausted: false })
+    expect(await refused.json()).toEqual({ success: false, code: "demo_budget", error: expect.any(String), exhausted: false })
     expect((await hear(who, wavClip(15))).status).toBe(200)
     // Five seconds left: not one full question any more, so now voice is over.
     const over = await speak(who, "long-2", long)
-    expect(await over.json()).toMatchObject({ code: "demo_budget", secondsLeft: 5, exhausted: true })
+    expect(await over.json()).toEqual({ success: false, code: "demo_budget", error: expect.any(String), exhausted: true })
     expect(googleCalls.map((call) => call.kind)).toEqual(["hear"])
+  })
+
+  it("a refusal from the day's pool tells this prospect nothing of what the other demos used", async () => {
+    const who = await session()
+    const others = await session()
+    // Other prospects left today's pool forty seconds; this demo has its whole ten minutes.
+    await admin.demoAccessEvent.create({
+      data: { grantId: others.grantId, eventType: "ASSISTANT_HEARD", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_DAY - 40, outcome: "heard" }, occurredAt: hoursAgo(2) },
+    })
+    const long = "Bu ekran lidin mənbəyini, marağını və balını göstərir. ".repeat(6)
+    expect(speechSecondsUpperBound(long)).toBeGreaterThan(40)
+    const refused = await speak(who, "long-day", long)
+    expect(refused.status).toBe(429)
+    expect(await refused.json()).toEqual({ success: false, code: "day_budget", error: expect.any(String), exhausted: false })
+    // A question still fits the day; then ten seconds are left, and voice is over for today.
+    expect((await hear(who, wavClip(15))).status).toBe(200)
+    expect((await hear(who, wavClip(15))).status).toBe(200)
+    const over = await hear(who, wavClip(15))
+    expect(over.status).toBe(429)
+    expect(await over.json()).toEqual({ success: false, code: "day_budget", error: expect.any(String), exhausted: true })
+    expect(googleCalls.map((call) => call.kind)).toEqual(["hear", "hear"])
   })
 
   it("keeps nothing of a heard question: the answer is the text, the one row written is seconds and an outcome", async () => {

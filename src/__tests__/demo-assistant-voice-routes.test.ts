@@ -269,7 +269,7 @@ describe("speaking an answer", () => {
     mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "demo_budget", secondsLeft: 0 })
     const spent = await speak(valid())
     expect(spent.status).toBe(429)
-    expect(await spent.json()).toEqual({ success: false, code: "demo_budget", error: DEMO_VOICE_REFUSAL_TEXT.demo_budget, secondsLeft: 0, exhausted: true })
+    expect(await spent.json()).toEqual({ success: false, code: "demo_budget", error: DEMO_VOICE_REFUSAL_TEXT.demo_budget, exhausted: true })
     mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "day_budget", secondsLeft: 0 })
     expect((await speak(valid())).status).toBe(429)
     mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "already_voiced" })
@@ -279,16 +279,20 @@ describe("speaking an answer", () => {
     expect(google).toEqual([])
   })
 
-  it("a refused answer says what is left: voice is over only when not even a fifteen-second question fits", async () => {
+  it("a refused answer says whether voice is over — only when not even a fifteen-second question fits — and never the seconds left", async () => {
     // A long answer's estimate (here 140 s left) is refused while a question still fits.
     for (const [secondsLeft, exhausted] of [[140, false], [15, false], [14, true], [0, true]] as const) {
       mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "demo_budget", secondsLeft })
       const refused = await speak(valid())
       expect(refused.status).toBe(429)
-      expect(await refused.json(), `${secondsLeft} s left`).toMatchObject({ code: "demo_budget", secondsLeft, exhausted })
+      expect(await refused.json(), `${secondsLeft} s left`).toEqual({ success: false, code: "demo_budget", error: DEMO_VOICE_REFUSAL_TEXT.demo_budget, exhausted })
     }
+    // The seconds left are the smaller of this demo's and the day's, and the
+    // day's pool is every other prospect's voice: the page is not told them.
     mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "day_budget", secondsLeft: 40 })
-    expect(await (await speak(valid())).json()).toMatchObject({ code: "day_budget", secondsLeft: 40, exhausted: false })
+    const day = await (await speak(valid())).json()
+    expect(day).toEqual({ success: false, code: "day_budget", error: DEMO_VOICE_REFUSAL_TEXT.day_budget, exhausted: false })
+    expect(day).not.toHaveProperty("secondsLeft")
     expect(google).toEqual([])
   })
 
@@ -376,11 +380,13 @@ describe("hearing a question", () => {
     expect(mocks.forwarded[0].every((byte) => byte === 0)).toBe(true)
   })
 
-  it("a refused question says what is left, and Google is not asked", async () => {
+  it("a refused question says whether voice is over, never the seconds left, and Google is not asked", async () => {
     mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "demo_budget", secondsLeft: 3 })
     const refused = await hear(wavClip(5))
     expect(refused.status).toBe(429)
-    expect(await refused.json()).toEqual({ success: false, code: "demo_budget", error: DEMO_VOICE_REFUSAL_TEXT.demo_budget, secondsLeft: 3, exhausted: true })
+    expect(await refused.json()).toEqual({ success: false, code: "demo_budget", error: DEMO_VOICE_REFUSAL_TEXT.demo_budget, exhausted: true })
+    mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "day_budget", secondsLeft: 900 })
+    expect(await (await hear(wavClip(5))).json()).toEqual({ success: false, code: "day_budget", error: DEMO_VOICE_REFUSAL_TEXT.day_budget, exhausted: false })
     expect(google).toEqual([])
     expect(mocks.forwarded).toEqual([])
   })

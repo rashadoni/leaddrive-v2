@@ -11,7 +11,7 @@ import {
   DEMO_ASSISTANT_VOICE_CLIP_SAMPLE_RATE,
   DEMO_VOICE_REFUSAL_TEXT,
   clipChargeSeconds,
-  demoVoiceBudgetLeft,
+  demoVoiceExhausted,
   type DemoVoiceRefusal,
 } from "@/lib/demo-center/assistant/voice-policy"
 import { findStep } from "@/lib/demo-center/journey"
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     now,
   })
   if (!claim.ok) {
-    return claim.refusal === "already_voiced" ? refuse("already_voiced", 409) : refuse(claim.refusal, 429, demoVoiceBudgetLeft(claim.secondsLeft))
+    return claim.refusal === "already_voiced" ? refuse("already_voiced", 409) : refuse(claim.refusal, 429, demoVoiceExhausted(claim.secondsLeft))
   }
 
   // What was measured and claimed, and nothing else of the upload.
@@ -124,7 +124,7 @@ async function readBody(request: NextRequest, limit: number): Promise<Buffer | n
   return Buffer.concat(chunks)
 }
 
-function refuse(refusal: DemoVoiceRefusal, status: number, budget?: { secondsLeft: number; exhausted: boolean }) {
+function refuse(refusal: DemoVoiceRefusal, status: number, budget?: { exhausted: boolean }) {
   return NextResponse.json(
     { success: false, code: refusal, error: DEMO_VOICE_REFUSAL_TEXT[refusal], ...budget },
     { status, headers: noStoreHeaders() },

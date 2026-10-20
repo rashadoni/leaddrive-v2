@@ -7,7 +7,7 @@ import { demoAssistantVoiceEnabled } from "@/lib/demo-center/assistant-voice-swi
 import {
   DEMO_ASSISTANT_VOICE_MAX_CHARS,
   DEMO_VOICE_REFUSAL_TEXT,
-  demoVoiceBudgetLeft,
+  demoVoiceExhausted,
   speechSecondsUpperBound,
   type DemoVoiceRefusal,
 } from "@/lib/demo-center/assistant/voice-policy"
@@ -26,9 +26,10 @@ import { runWithRlsBypass } from "@/lib/rls-context"
  * asked (assistant-voice.ts) and settled at the audio's real length; the
  * audio comes back as a WAV file and is kept nowhere.
  *
- * A refusal over the budget says how many seconds are left and whether voice
- * is over for this demo: a long answer's estimate can be refused while a
- * question still fits, and then only this answer stays text.
+ * A refusal over the budget says whether voice is over for this demo (not
+ * how many seconds are left: that figure includes the day's pool across all
+ * demos): a long answer's estimate can be refused while a question still
+ * fits, and then only this answer stays text.
  *
  * Granted sessions only, checked exactly as the assistant does
  * (active-grant.ts). With `DEMO_ASSISTANT_VOICE` off the route does not exist.
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!claim.ok) {
     return claim.refusal === "already_voiced"
       ? refuse("already_voiced", 409)
-      : refuse(claim.refusal, 429, demoVoiceBudgetLeft(claim.secondsLeft))
+      : refuse(claim.refusal, 429, demoVoiceExhausted(claim.secondsLeft))
   }
 
   const spoken = await synthesizeGeminiSpeech({
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   })
 }
 
-function refuse(refusal: DemoVoiceRefusal, status: number, budget?: { secondsLeft: number; exhausted: boolean }) {
+function refuse(refusal: DemoVoiceRefusal, status: number, budget?: { exhausted: boolean }) {
   return NextResponse.json(
     { success: false, code: refusal, error: DEMO_VOICE_REFUSAL_TEXT[refusal], ...budget },
     { status, headers: noStoreHeaders() },

@@ -338,9 +338,19 @@ routes 404, no hash handed out, and the private page keeps `microphone=()`):
   with the recordings' model and voice, and plays as a blob through the
   guide's one audio element. Prepared answers keep their recordings. Nothing
   is sent to be spoken while the guide's voice is switched off — read when
-  the answer arrives, not when the question was asked. A spoken answer still
-  on its way when the prospect starts a recording is dropped, never played
-  over the microphone.
+  the answer arrives, not when the question was asked.
+- The guide never talks into the prospect's question. While the microphone
+  is opening or open, the guide's one audio element starts nothing — no step
+  narration, no coach-card switch, no prepared recording, no spoken answer —
+  and what was playing pauses the moment the microphone actually opens. A
+  question typed while it is open is answered in text, and nothing is sent to
+  be spoken for it. When the clip is thrown away (a touch that slides off the
+  button, a cancelled pointer, voice running out) the guide goes on: what it
+  was saying resumes (or the step it moved to meanwhile is read), and a
+  spoken answer that came back meanwhile is played.
+  When the clip is sent, nothing of before is taken up: an answer to it is
+  coming. A scroll that starts on the button is usually thrown away before
+  the microphone even opens, so it does not interrupt the guide at all.
 - The prospect presses and holds «Səslə soruşun» (or taps to start and stop)
   after a one-time consent line, speaks up to 15 s; the page sends a mono
   16 kHz WAV to `POST …/assistant/transcribe`; Google's `gemini-3.5-transcribe`
@@ -364,9 +374,11 @@ routes 404, no hash handed out, and the private page keeps `microphone=()`):
   estimate (0.14 s a character); afterwards the row records the audio's real
   length, lower or higher (figures read aloud run longer than prose), because
   that is what Google billed. A failed call keeps its claim. A refusal over
-  the budget carries `secondsLeft` and `exhausted` (fewer seconds left than
-  one 15 s question): only then does the page drop the button and stop
-  speaking answers; otherwise just that answer stays text. When voice runs
+  the budget carries `exhausted` (fewer seconds left than one 15 s question):
+  only then does the page drop the button and stop speaking answers;
+  otherwise just that answer stays text. It does not carry the seconds left:
+  that figure is the smaller of the demo's and the day's, and the day's pool
+  is every other prospect's voice. When voice runs
   out mid-clip, the open clip is released, not sent. Proven on a real Postgres in
   `demo-assistant-voice-postgres.test.ts` («Demo assistant voice budget
   database gate» in `static-checks` and in the deploy).

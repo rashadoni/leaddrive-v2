@@ -10,6 +10,11 @@
  * sent to the transcribe route; «Eşitdim: …» shown and then asked as the
  * question; the microphone released after every clip; errors in words; a
  * Da Vinci answer spoken once through the guide's one audio element.
+ *
+ * And, in every case, the guide never starts talking while a microphone
+ * track is live: what the audio element is asked to play is recorded with
+ * whether the microphone was open at that moment, and `afterEach` holds every
+ * case to none.
  */
 import { readFileSync } from "node:fs"
 import path from "node:path"
@@ -33,15 +38,23 @@ const messages = JSON.parse(readFileSync(path.join(process.cwd(), "messages/az.j
 const TOKEN = "voice-test-token-0001"
 const HEARD = "Sövdələşmələri göstərin"
 const DEVICE_RATE = 48_000
+const davinci = () => ({ success: true, answer: "Bu, lidin balıdır.", remaining: 49, source: "davinci", answerId: "ans-1", answerHash: "a".repeat(64) })
 
 let container: HTMLDivElement
 let root: Root
 let played: string[]
+/** What the guide started playing while a microphone track was live: its voice would be in the question. */
+let playedIntoMicrophone: string[]
+/** Every pause of the guide's element: a scroll that began on the button must not cut the guide off. */
+let pauses: number
+/** Every audio element the page made: the guide's one, last. */
+let audioElements: Array<{ src: string; paused: boolean }>
+const guideAudio = () => audioElements.at(-1)
 let calls: Array<{ url: string; init?: RequestInit }>
 let reply: Record<string, unknown>
 let transcribeReply: { status: number; body: Record<string, unknown> }
 let voiceReply: { status: number; audio?: boolean; body?: Record<string, unknown> }
-let microphone: { asked: number; stopped: number; closed: number; deny: string | null; processor: FakeProcessor | null }
+let microphone: { asked: number; stopped: number; closed: number; live: number; deny: string | null; processor: FakeProcessor | null }
 /** Held answers: a request waits here until its gate opens (the server or the microphone taking its time). */
 let gates: { assistant: Promise<void> | null; voice: Promise<void> | null; microphone: Promise<void> | null }
 
@@ -73,11 +86,14 @@ beforeEach(() => {
   // the next one silent.
   window.localStorage.setItem("ld_demo_guide_voice", "on")
   played = []
+  playedIntoMicrophone = []
+  pauses = 0
+  audioElements = []
   calls = []
-  reply = { success: true, answer: "Bu, lidin balıdır.", remaining: 49, source: "davinci", answerId: "ans-1", answerHash: "a".repeat(64) }
+  reply = davinci()
   transcribeReply = { status: 200, body: { success: true, text: HEARD } }
   voiceReply = { status: 200, audio: true }
-  microphone = { asked: 0, stopped: 0, closed: 0, deny: null, processor: null }
+  microphone = { asked: 0, stopped: 0, closed: 0, live: 0, deny: null, processor: null }
   gates = { assistant: null, voice: null, microphone: null }
 
   class FakeAudio {
@@ -85,8 +101,21 @@ beforeEach(() => {
     playbackRate = 1
     defaultPlaybackRate = 1
     preservesPitch = false
-    play() { played.push(this.src); return Promise.resolve() }
-    pause() {}
+    paused = true
+    ended = false
+    constructor() {
+      audioElements.push(this)
+    }
+    play() {
+      played.push(this.src)
+      if (microphone.live > 0) playedIntoMicrophone.push(this.src)
+      this.paused = false
+      return Promise.resolve()
+    }
+    pause() {
+      pauses += 1
+      this.paused = true
+    }
   }
   vi.stubGlobal("Audio", FakeAudio)
   class FakeAudioContext {
@@ -108,7 +137,17 @@ beforeEach(() => {
         microphone.asked += 1
         if (gates.microphone) await gates.microphone
         if (microphone.deny) throw Object.assign(new Error("denied"), { name: microphone.deny })
-        return { getTracks: () => [{ stop: () => { microphone.stopped += 1 } }] }
+        microphone.live += 1
+        let stopped = false
+        return {
+          getTracks: () => [{
+            stop: () => {
+              microphone.stopped += 1
+              if (!stopped) microphone.live -= 1
+              stopped = true
+            },
+          }],
+        }
       }),
     },
   })
@@ -146,6 +185,7 @@ afterEach(() => {
   act(() => root.unmount())
   document.body.innerHTML = ""
   vi.unstubAllGlobals()
+  expect(playedIntoMicrophone, "the guide started talking while the microphone was open").toEqual([])
 })
 
 async function settle(ms = 40) {
@@ -208,6 +248,19 @@ async function askTyped(question: string) {
   await act(async () => box.form!.requestSubmit())
   await settle(80)
 }
+
+/** «İrəli» where the step is shown: on the coach card, or in the panel without one. */
+function nextButton(): HTMLButtonElement | null {
+  const within = [document.querySelector('[data-testid="demo-coach-card"]'), container.querySelector('[data-testid="demo-guide"]')]
+  for (const scope of within) {
+    const found = scope && Array.from(scope.querySelectorAll<HTMLButtonElement>("button")).find((candidate) => !candidate.disabled && candidate.textContent?.includes(S.next))
+    if (found) return found
+  }
+  return null
+}
+
+/** The one voice switch on screen: in the coach card while it carries the step, in the panel otherwise. */
+const voiceSwitch = () => document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-voice"], [data-testid="demo-guide-voice"]')!
 
 const voiceNote = () => container.querySelector('[data-testid="demo-assistant-voice-note"]')?.textContent ?? null
 const playedBlobs = () => played.filter((src) => src.startsWith("blob:"))
@@ -420,13 +473,18 @@ describe("«Səslə soruşun»", () => {
   })
 
   it("voice running out in the middle of a clip releases the microphone there and then, and nothing is sent", async () => {
-    // A tap left it listening; a typed question's spoken answer is refused: the minutes are gone.
-    voiceReply = { status: 429, audio: false, body: { success: false, code: "demo_budget", error: "x", secondsLeft: 4, exhausted: true } }
+    // A typed answer's voice is on its way when a tap leaves the microphone
+    // listening; then it is refused: the minutes are gone.
+    const answer = gate()
+    gates.voice = answer.promise
+    voiceReply = { status: 429, audio: false, body: { success: false, code: "demo_budget", error: "x", exhausted: true } }
     await renderPlayer()
-    await consentAndListen()
-    expect(voiceState()).toBe("recording")
     await askTyped("Bu bal necə hesablanır?")
     expect(callsTo("/assistant/voice")).toHaveLength(1)
+    await consentAndListen()
+    expect(voiceState()).toBe("recording")
+    await answer.open()
+    await settle(80)
 
     expect(button()).toBeNull()
     expect(container.querySelector('[data-testid="demo-assistant-voice-exhausted"]')?.textContent).toBe(S.voiceExhausted)
@@ -448,7 +506,7 @@ describe("«Səslə soruşun»", () => {
 
     const answer = gate()
     gates.voice = answer.promise
-    voiceReply = { status: 429, audio: false, body: { success: false, code: "day_budget", error: "x", secondsLeft: 0, exhausted: true } }
+    voiceReply = { status: 429, audio: false, body: { success: false, code: "day_budget", error: "x", exhausted: true } }
     await askTyped("Bu bal necə hesablanır?")
     const opening = gate()
     gates.microphone = opening.promise
@@ -468,13 +526,17 @@ describe("«Səslə soruşun»", () => {
     expect(callsTo("/assistant/transcribe")).toHaveLength(1)
   })
 
-  it("releases the microphone when the page goes away in the middle of a clip", async () => {
+  it("releases the microphone when the page goes away in the middle of a clip, and the next page's guide speaks", async () => {
     await renderPlayer()
     await consentAndListen()
     expect(microphone.stopped).toBe(0)
+    const before = played.length
     act(() => root.unmount())
     expect(microphone.stopped).toBe(1)
+    expect(played.length, "nothing starts for a page that is gone").toBe(before)
     root = createRoot(container)
+    await renderPlayer()
+    expect(played.length, "the guide is not left waiting for a microphone that went with the page").toBe(before + 1)
   })
 })
 
@@ -503,7 +565,7 @@ describe("Da Vinci's answers in the guide's voice", () => {
     expect(callsTo("/assistant/voice")).toEqual([])
   })
 
-  it("a spoken answer still on its way when a recording starts is dropped, never played over the microphone", async () => {
+  it("a spoken answer that comes back while the microphone is open waits, and is dropped once the clip is sent", async () => {
     const answer = gate()
     gates.voice = answer.promise
     await renderPlayer()
@@ -514,7 +576,7 @@ describe("Da Vinci's answers in the guide's voice", () => {
     expect(voiceState()).toBe("recording")
     await answer.open()
     await settle(80)
-    expect(playedBlobs()).toEqual([])
+    expect(playedBlobs(), "not over the open microphone").toEqual([])
 
     // The question that was being recorded gets its own answer, and that one is spoken.
     speakFor(1)
@@ -549,7 +611,7 @@ describe("Da Vinci's answers in the guide's voice", () => {
   })
 
   it("a long answer refused over the budget stays text, and voice goes on while a question still fits", async () => {
-    voiceReply = { status: 429, audio: false, body: { success: false, code: "demo_budget", error: "x", secondsLeft: 140, exhausted: false } }
+    voiceReply = { status: 429, audio: false, body: { success: false, code: "demo_budget", error: "x", exhausted: false } }
     await renderPlayer()
     await askTyped("Bu bal necə hesablanır?")
     expect(callsTo("/assistant/voice")).toHaveLength(1)
@@ -564,7 +626,7 @@ describe("Da Vinci's answers in the guide's voice", () => {
   })
 
   it("over the budget with not even one question left: the button gives way to the note", async () => {
-    voiceReply = { status: 429, audio: false, body: { success: false, code: "demo_budget", error: "x", secondsLeft: 9, exhausted: true } }
+    voiceReply = { status: 429, audio: false, body: { success: false, code: "demo_budget", error: "x", exhausted: true } }
     await renderPlayer()
     await askTyped("Bu bal necə hesablanır?")
     expect(button()).toBeNull()
@@ -579,5 +641,139 @@ describe("Da Vinci's answers in the guide's voice", () => {
     await askTyped("Bu bal necə hesablanır?")
     expect(container.querySelector('[data-testid="demo-assistant-turns"]')?.textContent).toContain("Bu, lidin balıdır.")
     expect(container.querySelector('[data-testid="demo-assistant-voice-note"]')?.textContent).toBe(S.voiceAnswerFailed)
+  })
+})
+
+/**
+ * The guide never talks into the question (verifier, after e658fd644): not
+ * an answer typed while a tap leaves the microphone listening, not a step
+ * that opens meanwhile, not the voice switched back on. And a touch that
+ * turns out to be a scroll takes nothing away: the guide reads on, and an
+ * answer on its way is heard.
+ */
+describe("the guide and an open microphone", () => {
+  it("a question typed while a tap leaves the microphone listening is answered in text: nothing plays into the clip, nothing is sent to be spoken", async () => {
+    await renderPlayer()
+    await consentAndListen()
+    expect(voiceState()).toBe("recording")
+    await askTyped("Bu bal necə hesablanır?")
+    expect(voiceState(), "still listening").toBe("recording")
+    expect(container.querySelector('[data-testid="demo-assistant-turns"]')?.textContent).toContain("Bu, lidin balıdır.")
+    expect(callsTo("/assistant/voice"), "nothing paid to be spoken while the microphone is open").toEqual([])
+    expect(playedBlobs()).toEqual([])
+
+    // A prepared answer's recording does not play into it either.
+    reply = { success: true, answer: "Sabit tariflər yoxdur.", remaining: 48, source: "prepared", audio: "/sounds/demo-guide/abc.mp3" }
+    await askTyped("Qiymət nədir?")
+    expect(played).not.toContain("/sounds/demo-guide/abc.mp3")
+
+    // The clip sent, the question it carried gets its spoken answer.
+    reply = davinci()
+    speakFor(1)
+    await press()
+    await settle(120)
+    expect(callsTo("/assistant/transcribe")).toHaveLength(1)
+    expect(callsTo("/assistant/voice")).toHaveLength(1)
+    expect(playedBlobs()).toEqual(["blob:voice-1"])
+  })
+
+  it("a step opened, or the voice switched back on, while the microphone is open is said only once the clip is thrown away", async () => {
+    await renderPlayer()
+    const first = played[0]
+    expect(first, "the first step speaks").toMatch(/^\/sounds\/demo-guide\//)
+    await consentAndListen()
+    expect(voiceState()).toBe("recording")
+    const before = played.length
+
+    // «İrəli» while it listens: the next step opens, and is not read into the question.
+    await act(async () => nextButton()!.click())
+    await settle()
+    expect(played.length, "no step narration over the open microphone").toBe(before)
+    // Off and on again: «on» says the step inside the click — that waits as well.
+    await act(async () => voiceSwitch().click())
+    await act(async () => voiceSwitch().click())
+    await settle()
+    expect(voiceSwitch().textContent).toContain(S.voiceOff)
+    expect(played.length, "no coach-card voice over the open microphone").toBe(before)
+
+    // Thrown away: the guide reads the step it is on now.
+    await pointer("pointercancel")
+    await settle()
+    expect(voiceState()).toBe("idle")
+    expect(microphone.live).toBe(0)
+    expect(played.length).toBe(before + 1)
+    expect(played.at(-1)).toMatch(/^\/sounds\/demo-guide\//)
+    expect(played.at(-1), "the new step, not the one before").not.toBe(first)
+  })
+
+  it("a scroll that begins on the button, thrown away while the microphone is still opening, cuts nothing off", async () => {
+    await renderPlayer()
+    await consentAndListen()
+    // The consent's own clip is thrown away, and the guide is reading the step again.
+    await pointer("pointercancel")
+    await settle()
+    await act(async () => voiceSwitch().click())
+    await act(async () => voiceSwitch().click())
+    await settle()
+    expect(guideAudio()?.src).toMatch(/^\/sounds\/demo-guide\//)
+    expect(guideAudio()?.paused, "the guide is talking").toBe(false)
+
+    // A typed answer's voice is still being made…
+    const answer = gate()
+    gates.voice = answer.promise
+    await askTyped("Bu bal necə hesablanır?")
+    expect(callsTo("/assistant/voice")).toHaveLength(1)
+
+    // …when a finger lands on the button and slides on: a scroll.
+    const opening = gate()
+    gates.microphone = opening.promise
+    const pausesBefore = pauses
+    await touch("pointerdown", 120, 300)
+    expect(voiceState()).toBe("starting")
+    await touch("pointermove", 121, 260)
+    expect(voiceState()).toBe("idle")
+    await touch("pointerup", 121, 240)
+    await opening.open()
+    await settle()
+    expect(microphone.asked).toBe(2)
+    expect(microphone.live, "the microphone that opened late is let go at once").toBe(0)
+    expect(pauses, "the guide was not cut off").toBe(pausesBefore)
+    expect(guideAudio()?.paused).toBe(false)
+
+    await answer.open()
+    await settle(80)
+    expect(playedBlobs(), "the answer on its way is heard").toEqual(["blob:voice-1"])
+    expect(callsTo("/assistant/transcribe")).toEqual([])
+  })
+
+  it("a scroll seen only after the microphone opened gives it all back: the guide reads on, and the answer that came back meanwhile is heard", async () => {
+    await renderPlayer()
+    const first = played[0]
+    await consentAndListen()
+    expect(guideAudio()?.paused, "the microphone open, the guide is quiet").toBe(true)
+    // Thrown away: the guide reads on from where it was.
+    await pointer("pointercancel")
+    await settle()
+    expect(guideAudio()?.src).toBe(first)
+    expect(guideAudio()?.paused, "the guide reads on").toBe(false)
+    const answer = gate()
+    gates.voice = answer.promise
+    await askTyped("Bu bal necə hesablanır?")
+    expect(callsTo("/assistant/voice")).toHaveLength(1)
+
+    await touch("pointerdown", 120, 300)
+    await settle()
+    expect(voiceState()).toBe("recording")
+    expect(guideAudio()?.paused, "the microphone open, the guide is quiet").toBe(true)
+    await answer.open()
+    await settle(80)
+    expect(playedBlobs(), "not into the open microphone").toEqual([])
+
+    await touch("pointermove", 121, 260)
+    expect(voiceState()).toBe("idle")
+    await touch("pointerup", 121, 240)
+    await settle(80)
+    expect(playedBlobs(), "heard once the clip is thrown away").toEqual(["blob:voice-1"])
+    expect(callsTo("/assistant/transcribe")).toEqual([])
   })
 })
