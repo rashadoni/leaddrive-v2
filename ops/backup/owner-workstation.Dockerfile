@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
       https://codeload.github.com/pgvector/pgvector/tar.gz/281d4fcf60e2f037fa09d62be2543bb4d7511f2b -o /tmp/vector.tar.gz \
  && printf '%s  /tmp/vector.tar.gz\n' e0728ec19cb9d75fcd5a329c48c070b942eb888e6cb83d9e50cc622f6b7d297a | sha256sum -c - \
  && mkdir /tmp/vector && tar -xzf /tmp/vector.tar.gz -C /tmp/vector --strip-components=1 \
- && make -C /tmp/vector -j2 OPTFLAGS='' with_llvm=no \
- && make -C /tmp/vector install DESTDIR=/out OPTFLAGS='' with_llvm=no
+ && make -C /tmp/vector -j2 PG_CONFIG=/usr/lib/postgresql/16/bin/pg_config OPTFLAGS='' with_llvm=no \
+ && make -C /tmp/vector install DESTDIR=/out PG_CONFIG=/usr/lib/postgresql/16/bin/pg_config OPTFLAGS='' with_llvm=no
 
 FROM postgres:16.15-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
 COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node

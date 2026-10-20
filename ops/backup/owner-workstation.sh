@@ -79,6 +79,11 @@ SQL
       PGHOSTADDR=127.0.0.1 PGSSLMODE=disable PGCONNECT_TIMEOUT=3 \
       psql -X -w -h 127.0.0.1 -p 55432 -U scratch_admin -d template1 -v ON_ERROR_STOP=1 \
       >/database/template.log 2>&1 || fatal 'exact extension template bootstrap failed; no private inputs read'
+  node "$compatibility" --seal-template-sql "$system_identifier" \
+    | env -i PATH="$PATH" HOME=/nonexistent LC_ALL=C PGPASSWORD="$admin_password" \
+      PGHOSTADDR=127.0.0.1 PGSSLMODE=disable PGCONNECT_TIMEOUT=3 \
+      psql -X -w -h 127.0.0.1 -p 55432 -U scratch_admin -d postgres -v ON_ERROR_STOP=1 \
+      >/database/template-seal.log 2>&1 || fatal 'private template connection seal failed'
   rm -f -- /database/init.pass
   [ ! -e /database/init.pass ] && [ ! -L /database/init.pass ] \
     || fatal 'ephemeral bootstrap password cleanup failed'

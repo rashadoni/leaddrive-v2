@@ -299,7 +299,8 @@ other than loopback and requires separate tmpfs mounts for plaintext and PGDATA.
 The fresh cluster explicitly uses UTF8/libc C.UTF-8. Before reading restore
 keys, its entrypoint prepares template1 with verifier-owned plpgsql1.0,
 btree_gist1.7, pgcrypto1.3 and vector0.6.0, atomically returns the verifier to
-NOSUPERUSER, closes direct template connections, and proves an actual limited
+NOSUPERUSER, closes direct template connections from a separate maintenance
+connection, and proves an actual limited
 role clone. Failed extension installation rolls back the whole privilege and
 extension transaction. Existing private mounts are refused, never acquired.
 

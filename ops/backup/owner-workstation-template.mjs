@@ -69,8 +69,32 @@ BEGIN
 END
 $proof$;
 COMMIT;
+`
+}
+
+// PostgreSQL refuses to disable connections to the current database. The
+// caller must have disconnected from template1 and use maintenance postgres.
+export function sealTemplateSql(systemIdentifier) {
+  if (!/^[1-9][0-9]{0,19}$/.test(systemIdentifier ?? '')) throw Error('INPUT')
+  return `BEGIN;
+SET LOCAL search_path=pg_catalog,pg_temp;
+SET LOCAL statement_timeout='10s';
+SET LOCAL lock_timeout='5s';
+DO $guard$
+BEGIN
+  IF current_database()<>'postgres' OR current_setting('port')<>'55432'
+    OR current_setting('server_version_num')::int NOT BETWEEN 160000 AND 169999
+    OR (pg_control_system()).system_identifier::text<>'${systemIdentifier}'
+    OR NOT (SELECT rolsuper FROM pg_roles WHERE rolname=current_user)
+    OR NOT EXISTS (SELECT 1 FROM pg_database d WHERE datname='template1'
+      AND datistemplate AND datallowconn AND ${localePredicate})
+    OR NOT EXISTS (SELECT 1 FROM pg_roles r WHERE rolname='${role}' AND ${cleanRole})
+  THEN RAISE EXCEPTION 'OWNER_TEMPLATE_SEAL_REFUSED'; END IF;
+END
+$guard$;
 -- Cloning remains permitted; customer SQL cannot reconnect to this template.
 ALTER DATABASE template1 ALLOW_CONNECTIONS false;
+COMMIT;
 `
 }
 
@@ -113,6 +137,7 @@ export function validateClone(value) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     if (process.argv.length === 4 && process.argv[2] === '--bootstrap-sql') process.stdout.write(bootstrapSql(process.argv[3]))
+    else if (process.argv.length === 4 && process.argv[2] === '--seal-template-sql') process.stdout.write(sealTemplateSql(process.argv[3]))
     else if (process.argv.length === 3 && process.argv[2] === '--verification-sql') process.stdout.write(verificationSql)
     else if (process.argv.length === 3 && process.argv[2] === '--validate-clone') {
       const buffer = Buffer.alloc(16385)

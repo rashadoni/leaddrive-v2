@@ -4,7 +4,7 @@ import { chownSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { networkInterfaces } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { bootstrapSql, requiredExtensions, validateClone, verificationSql } from '../../ops/backup/owner-workstation-template.mjs'
+import { bootstrapSql, requiredExtensions, sealTemplateSql, validateClone, verificationSql } from '../../ops/backup/owner-workstation-template.mjs'
 
 const helper = new URL('../../ops/backup/owner-workstation-template.mjs', import.meta.url).pathname
 const role = 'owner_restore_verifier'
@@ -17,13 +17,17 @@ test('bootstrap is bounded to fresh template1/PG16/loopback port and one atomic 
   const sql = bootstrapSql('123456789')
   for (const guard of ["current_database()<>'template1'", "current_setting('port')<>'55432'", '123456789',
     'pg_event_trigger', 'pg_auth_members', 'pg_available_extension_versions', 'datistemplate AND datallowconn',
-    'DROP EXTENSION plpgsql RESTRICT', 'ALTER DATABASE template1 ALLOW_CONNECTIONS false']) assert(sql.includes(guard), guard)
+    'DROP EXTENSION plpgsql RESTRICT']) assert(sql.includes(guard), guard)
+  assert(!sql.includes('ALLOW_CONNECTIONS false'))
+  assert(sealTemplateSql('123456789').includes("current_database()<>'postgres'"))
+  assert(sealTemplateSql('123456789').includes('ALTER DATABASE template1 ALLOW_CONNECTIONS false'))
   assert(sql.startsWith('BEGIN;'))
   assert(sql.indexOf('ALTER ROLE owner_restore_verifier SUPERUSER') > sql.indexOf('OWNER_TEMPLATE_REFUSED'))
   assert(sql.indexOf('ALTER ROLE owner_restore_verifier NOSUPERUSER') < sql.indexOf('COMMIT;'))
   assert(!/\b(?:CASCADE|REASSIGN|ALTER SYSTEM|CREATE ROLE|PASSWORD|5432)\b|UPDATE pg_/.test(sql.replace(/--[^\n]*/g, '')))
   for (const invalid of ['', '0', '-1', '1;DROP DATABASE postgres', 'a'.repeat(40), '123\n', '1'.repeat(21)]) {
     assert.throws(() => bootstrapSql(invalid), /INPUT/)
+    assert.throws(() => sealTemplateSql(invalid), /INPUT/)
   }
 })
 
@@ -141,6 +145,11 @@ CREATE FUNCTION fixture_echo(text) RETURNS text LANGUAGE plpgsql AS $$ BEGIN RET
     assert.notEqual(denied.status, 0, 'plain template must not falsely pass the full vector restore')
     assert.match(denied.stderr, /permission denied to create extension|must be superuser/i)
     ok(drop('fixture_unprepared'))
+    assert.notEqual(admin(target, 55432, 'template1', bootstrapSql(sourceId)).status, 0, 'wrong system identity refused')
+    ok(admin(target, 55432, 'template1', "CREATE TABLE public.fixture_refuse(value text); INSERT INTO public.fixture_refuse VALUES('must remain');"))
+    assert.notEqual(admin(target, 55432, 'template1', bootstrapSql(targetId)).status, 0, 'nonempty template refused')
+    assert.equal(admin(target, 55432, 'template1', 'SELECT value FROM public.fixture_refuse').stdout.trim(), 'must remain')
+    ok(admin(target, 55432, 'template1', 'DROP TABLE public.fixture_refuse'))
     // Failure injection in a public synthetic transaction, NOT a production
     // bootstrap option or a claim that an altered script is the normal path.
     const failedSql = bootstrapSql(targetId).replace("CREATE EXTENSION vector WITH SCHEMA public VERSION '0.6.0';", 'SELECT 1/0;')
@@ -150,6 +159,7 @@ CREATE FUNCTION fixture_echo(text) RETURNS text LANGUAGE plpgsql AS $$ BEGIN RET
     // The unmodified actual bootstrap must refuse the real SOURCE endpoint.
     assert.notEqual(admin(source, 55431, 'template1', bootstrapSql(sourceId)).status, 0)
     ok(admin(target, 55432, 'template1', bootstrapSql(targetId)), 'actual unmodified bootstrap')
+    ok(admin(target, 55432, 'postgres', sealTemplateSql(targetId)), 'separate maintenance connection seal')
     assert.equal(admin(target, 55432, 'postgres', "SELECT datallowconn::int FROM pg_database WHERE datname='template1'").stdout.trim(), '0')
     ok(create('fixture_restored'))
     const proof = query('fixture_restored', verificationSql); ok(proof)
