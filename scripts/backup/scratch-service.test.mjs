@@ -128,7 +128,7 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
   assert.equal(process.env.GITHUB_ACTIONS, 'true')
   assert.equal(process.env.RUNNER_ENVIRONMENT, 'github-hosted')
   for (const path of ['/etc/leaddrive', '/etc/postgresql/16/leaddriverestore', '/var/lib/postgresql/16/leaddriverestore',
-    '/var/lib/leaddrive-postgres-scratch-maintenance', '/var/lib/leaddrive-recovery-runner-locks']) assert(!existsSync(path), 'never acquire pre-existing fixture authority: ' + path)
+    '/var/lib/leaddrive-postgres-scratch-maintenance', '/var/lib/leaddrive-recovery-runner-locks', '/opt/leaddrive-v2']) assert(!existsSync(path), 'never acquire pre-existing fixture authority: ' + path)
   assert(existsSync('/usr/lib/postgresql/16/bin/postgres'), 'hosted PostgreSQL16 must be installed, not a DEV fallback')
   const root = mkdtempSync('/run/leaddrive-scratch-native-'), runId = String(process.pid) + String(Date.now()).slice(-8)
   const cluster = 'leaddrivefixture' + process.pid
@@ -139,7 +139,7 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
   const ok = (result, label = 'public fixture') => assert.equal(result.status, 0, label + ': ' + result.stderr + '\n' + result.stdout)
   const admin = sql => command('runuser', ['-u', 'postgres', '--', pg + 'psql', '-X', '-v', 'ON_ERROR_STOP=1', '-At', '-h', '/var/run/postgresql', '-p', '55431', '-d', 'postgres'], { input: sql })
   const digest = path => createHash('sha256').update(readFileSync(path)).digest('hex')
-  let ownedSource = false, provisioned = false, ownedUser = false, ownedEtc = false
+  let ownedSource = false, provisioned = false, ownedUser = false, ownedEtc = false, ownedMarker = false
   try {
     const absent = command('id', ['leaddrive-backup'])
     assert.notEqual(absent.status, 0, 'never reuse a pre-existing backup account')
@@ -149,7 +149,7 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
     const gid = Number(command('id', ['-g', 'leaddrive-backup']).stdout.trim())
     const postgresUid = Number(command('id', ['-u', 'postgres']).stdout.trim())
     const postgresGid = Number(command('id', ['-g', 'postgres']).stdout.trim())
-    ok(command('pg_createcluster', ['--port', '55431', '--start-conf=manual', '16', cluster]))
+    ok(command('pg_createcluster', ['--port', '55431', '--start-conf=manual', '--encoding', 'UTF8', '--locale', 'C.UTF-8', '16', cluster]))
     ownedSource = true
     const config = '/etc/postgresql/16/' + cluster
     ok(command('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2', '-subj', '/CN=public-fixture-source',
@@ -161,16 +161,34 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
     writeFileSync(join(config, 'pg_hba.conf'), 'local all postgres peer\nhostssl all fixture_source 127.0.0.1/32 scram-sha-256\nhost all all 0.0.0.0/0 reject\n')
     ok(command('pg_ctlcluster', ['16', cluster, 'start']))
     ok(admin("CREATE ROLE fixture_source LOGIN PASSWORD 'public-synthetic-only';\nGRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO fixture_source;\nCREATE TABLE fixture_sentinel(value text);\nINSERT INTO fixture_sentinel VALUES ('source must survive');\n"))
+    ok(admin('CREATE EXTENSION pgcrypto;\nCREATE EXTENSION btree_gist;\n'))
     mkdirSync('/etc/leaddrive', { mode: 0o755 }); ownedEtc = true
     writeFileSync('/etc/leaddrive/managed-postgres-ca.crt', readFileSync(config + '/fixture.crt'), { mode: 0o644 })
     writeFileSync('/etc/leaddrive/backup.pgpass', '127.0.0.2:55431:postgres:fixture_source:public-synthetic-only\n', { mode: 0o600 })
     chownSync('/etc/leaddrive/backup.pgpass', uid, gid)
-    writeFileSync('/etc/leaddrive/backup.env', 'PGHOST=127.0.0.2\nPGHOSTADDR=127.0.0.2\nPGPORT=55431\nPGDATABASE=postgres\nPGUSER=fixture_source\nPGPASSFILE=/etc/leaddrive/backup.pgpass\nPGSSLMODE=verify-full\nPGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt\nPGCONNECT_TIMEOUT=2\n', { mode: 0o640 })
+    writeFileSync('/etc/leaddrive/backup.env', 'PGHOST=127.0.0.2\nPGHOSTADDR=127.0.0.2\nPGPORT=55431\nPGDATABASE=postgres\nPGUSER=fixture_source\nPGPASSFILE=/etc/leaddrive/backup.pgpass\nPGSSLMODE=verify-full\nPGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt\nPGCONNECT_TIMEOUT=2\nBACKUP_EXPECTED_DB_ROLE=fixture_source\n', { mode: 0o640 })
     chownSync('/etc/leaddrive/backup.env', 0, gid)
     const sourceConnection = { ...env, PGHOST: '127.0.0.2', PGHOSTADDR: '127.0.0.2', PGPORT: '55431', PGDATABASE: 'postgres',
       PGUSER: 'fixture_source', PGPASSFILE: '/etc/leaddrive/backup.pgpass', PGSSLMODE: 'verify-full',
       PGSSLROOTCERT: '/etc/leaddrive/managed-postgres-ca.crt', PGCONNECT_TIMEOUT: '2' }
     ok(command(pg + 'psql', ['-X', '-w', '-At', '-c', 'SELECT (pg_control_system()).system_identifier::text'], { env: sourceConnection }), 'native synthetic source TLS/identity admission')
+    mkdirSync('/opt/leaddrive-v2/.next/standalone', { recursive: true, mode: 0o755 })
+    ownedMarker = true
+    writeFileSync('/opt/leaddrive-v2/.next/standalone/.deploy-sha', 'a'.repeat(40) + '\n', { mode: 0o644 })
+    const metadataHelper = new URL('../../.github/scripts/inspect-backup-compatibility.mjs', import.meta.url).pathname
+    const metadata = command(process.execPath, [metadataHelper, '--inspect', 'a'.repeat(40)])
+    ok(metadata, 'real limited-login source catalog compatibility metadata')
+    const report = JSON.parse(metadata.stdout)
+    assert.equal(report.source.major, 16)
+    assert.equal(report.source.encoding, 'UTF8')
+    assert.equal(report.source.unknownExtensionCount, 0)
+    assert.equal(report.scratchDatabaseCompatibility, 'not-inspected')
+    for (const name of ['plpgsql', 'pgcrypto', 'btree_gist']) {
+      assert(report.source.extensions.some(entry => entry.name === name))
+      assert.equal(report.source.extensions.find(entry => entry.name === name).sourceVersionAvailable, true)
+    }
+    for (const privateValue of ['fixture_source', 'fixture_sentinel', '127.0.0.2', 'public-synthetic-only', 'source must survive']) assert(!metadata.stdout.includes(privateValue))
+    ok(command(process.execPath, [metadataHelper, '--validate-output'], { input: metadata.stdout }), 'second independent output schema')
     const provisioner = new URL('../../.github/scripts/provision_postgres_restore_scratch.py', import.meta.url).pathname
     ok(command('python3', [provisioner, 'apply']), 'reviewed real provisioning')
     provisioned = true
@@ -288,6 +306,7 @@ stop_commission_scratch
       ok(command('pg_dropcluster', ['--stop', '16', cluster]))
     }
     if (ownedEtc) rmSync('/etc/leaddrive', { recursive: true })
+    if (ownedMarker) rmSync('/opt/leaddrive-v2', { recursive: true })
     if (ownedUser) ok(command('userdel', ['leaddrive-backup']))
     rmSync(root, { recursive: true, force: true })
   }
