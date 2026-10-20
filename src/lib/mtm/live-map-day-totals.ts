@@ -131,6 +131,7 @@ export function liveMapDayTotals(input: {
     radiusMeters: policy.stopRadiusMeters,
     minimumSeconds: policy.stopMinimumSeconds,
     offlineThresholdSeconds: policy.offlineThresholdSeconds,
+    gaps,
   })
   const trip = buildDayTrip({
     points,
@@ -139,6 +140,7 @@ export function liveMapDayTotals(input: {
     gaps,
     workday: input.workday,
     roadSteps: input.roadSteps,
+    stopMinimumSeconds: policy.stopMinimumSeconds,
   })
 
   return {

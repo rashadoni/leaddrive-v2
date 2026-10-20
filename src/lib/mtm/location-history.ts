@@ -422,7 +422,7 @@ function visitOverlapsStop(visit: HistoryVisit, startedAt: Date, endedAt: Date):
 }
 
 function confirmedVisitForStop(
-  visits: HistoryVisit[],
+  visits: readonly HistoryVisit[],
   startedAt: Date,
   endedAt: Date,
 ): HistoryStop["visit"] {
@@ -438,12 +438,157 @@ function confirmedVisitForStop(
   }
 }
 
+/** One piece of a stretch at one place that the breaks leave standing (historyStayOutsideBreaks). */
+export type HistoryStayPiece = HistorySpan & {
+  /** Its order among all the stretch's pieces, those not kept included — a stable suffix for its id. */
+  index: number
+  /** The visit this piece is part of, if any. */
+  visitId: string | null
+}
+
+/**
+ * The one rule for time at one place around the employee's breaks — a GPS
+ * stop (detectHistoryStops) and a visit no stop covers (day-trip.ts) alike.
+ * A break is his own time and its own row (detectHistoryGaps), so what is
+ * told of the place is only its time outside the breaks:
+ *  - a stretch the breaks cover wholly is gone: it was the break;
+ *  - a piece shorter than the organization's minimum stop is gone, unless it
+ *    is the first piece of its visit — the visit is never lost, and a piece
+ *    of a few seconds without one is no stop (parked, pressed «Перерыв» at
+ *    once, resumed and drove off: two pieces of five seconds);
+ *  - a piece without a place of its own (`hasPlace`: for a GPS stop, no fix
+ *    of its own outside the breaks) is gone: its place would be the break's.
+ *
+ * Null when no break touches the stretch: it stays exactly as it is.
+ */
+export function historyStayOutsideBreaks(input: {
+  from: number
+  to: number
+  breaks: readonly HistorySpan[]
+  minimumSeconds: number
+  visitOf: (piece: HistorySpan) => string | null
+  hasPlace?: (piece: HistorySpan) => boolean
+}): HistoryStayPiece[] | null {
+  const whole = { from: input.from, to: input.to }
+  const touching = input.breaks.filter((span) => span.from < whole.to && span.to > whole.from)
+  if (!touching.length) return null
+  const kept: HistoryStayPiece[] = []
+  const named = new Set<string>()
+  spanWithout(whole, touching).forEach((piece, index) => {
+    if (input.hasPlace && !input.hasPlace(piece)) return
+    const visitId = input.visitOf(piece)
+    const firstOfVisit = visitId != null && !named.has(visitId)
+    if (wholeSeconds(piece) < input.minimumSeconds && !firstOfVisit) return
+    if (visitId != null) named.add(visitId)
+    kept.push({ ...piece, index, visitId })
+  })
+  return kept
+}
+
+function historyStop(input: {
+  id: string
+  fixes: readonly HistoryLocationPoint[]
+  startedAt: Date
+  endedAt: Date
+  visits: readonly HistoryVisit[]
+  /** Without it, the stop the piece was cut from lends its own. */
+  offlineThresholdSeconds: number | null
+  connectivity?: HistoryStop["connectivity"]
+}): HistoryStop {
+  const { fixes, startedAt, endedAt } = input
+  const accuracies = fixes.flatMap((point) => point.accuracy == null ? [] : [point.accuracy])
+  const batteries = fixes.flatMap((point) => point.battery == null ? [] : [point.battery])
+  // A silence inside the stop, its edges included: a piece cut at a break
+  // runs to the second of «Перерыв» or from the second of «Продолжить».
+  const moments = [startedAt.getTime(), ...fixes.map((point) => point.recordedAt.getTime()), endedAt.getTime()]
+  const offline = input.offlineThresholdSeconds
+  const hasOfflineGap = offline != null && moments.some((moment, index) =>
+    index > 0 && moment - moments[index - 1] > offline * 1_000)
+  return {
+    id: input.id,
+    startedAt,
+    endedAt,
+    durationSeconds: Math.floor((endedAt.getTime() - startedAt.getTime()) / 1_000),
+    latitude: fixes.reduce((sum, point) => sum + point.latitude, 0) / fixes.length,
+    longitude: fixes.reduce((sum, point) => sum + point.longitude, 0) / fixes.length,
+    pointCount: fixes.length,
+    averageAccuracy: accuracies.length
+      ? Math.round(accuracies.reduce((sum, value) => sum + value, 0) / accuracies.length * 10) / 10
+      : null,
+    batteryStart: batteries[0] ?? null,
+    batteryEnd: batteries.at(-1) ?? null,
+    connectivity: offline == null ? input.connectivity ?? "ONLINE" : hasOfflineGap ? "OFFLINE_GAPS" : "ONLINE",
+    visit: confirmedVisitForStop(input.visits, startedAt, endedAt),
+  }
+}
+
+/**
+ * The stops cut at the employee's breaks — the one cut, for every reader of
+ * the day.
+ *
+ * Standing at one spot before and after a break, the fixes make one stop
+ * across it. Until 2026-10-20 only the trip cut it, so «Детали остановок»,
+ * the map's popup, the timeline and its CSV still gave the whole stop —
+ * «1 ч 19 мин» at the place where he spent his lunch — while the trip said
+ * 26 and 16 minutes around the break. The pieces follow
+ * historyStayOutsideBreaks; each piece's place, accuracy and battery are read
+ * off its own fixes, and its visit is the one it overlaps.
+ *
+ * detectHistoryStops cuts with it, given the day's gaps, and every History
+ * pipeline gives them. buildDayTrip passes the stops it is handed through it
+ * as well: stops already cut come back exactly as they are, and a caller that
+ * hands it the detector's stops without the gaps (the demo day) still gets
+ * no stay told across a break.
+ */
+export function cutHistoryStopsAtBreaks(stops: readonly HistoryStop[], input: {
+  points: readonly HistoryLocationPoint[]
+  visits: readonly HistoryVisit[]
+  gaps: readonly HistoryGap[]
+  minimumSeconds: number
+  offlineThresholdSeconds?: number
+}): HistoryStop[] {
+  const breaks = historyBreakSpans(input.gaps)
+  if (!breaks.length) return [...stops]
+  return stops.flatMap((stop) => {
+    // A stop is one run of consecutive fixes: its fixes are those of its time.
+    const within = (span: HistorySpan) => input.points.filter((point) => {
+      const at = point.recordedAt.getTime()
+      return at >= span.from && at <= span.to
+    })
+    const pieces = historyStayOutsideBreaks({
+      from: stop.startedAt.getTime(),
+      to: stop.endedAt.getTime(),
+      breaks,
+      minimumSeconds: input.minimumSeconds,
+      visitOf: (piece) => confirmedVisitForStop(input.visits, new Date(piece.from), new Date(piece.to))?.id ?? null,
+      hasPlace: (piece) => within(piece).length > 0,
+    })
+    if (!pieces) return [stop]
+    return pieces.map((piece) => historyStop({
+      id: piece.index === 0 ? stop.id : `${stop.id}-${piece.index}`,
+      fixes: within(piece),
+      startedAt: new Date(piece.from),
+      endedAt: new Date(piece.to),
+      visits: input.visits,
+      offlineThresholdSeconds: input.offlineThresholdSeconds ?? null,
+      connectivity: stop.connectivity,
+    }))
+  })
+}
+
+/**
+ * Where the agent stood, from the accepted fixes: runs of fixes within the
+ * stop radius for at least the minimum stop. With the day's `gaps`
+ * (detectHistoryGaps) they come back cut at his breaks
+ * (cutHistoryStopsAtBreaks) — every History pipeline passes them.
+ */
 export function detectHistoryStops(input: {
   points: HistoryLocationPoint[]
   visits: HistoryVisit[]
   radiusMeters: number
   minimumSeconds: number
   offlineThresholdSeconds: number
+  gaps?: readonly HistoryGap[]
 }): HistoryStop[] {
   const { points, visits, radiusMeters, minimumSeconds, offlineThresholdSeconds } = input
   const stops: HistoryStop[] = []
@@ -467,36 +612,23 @@ export function detectHistoryStops(input: {
     const endedAt = points[endIndex].recordedAt
     const durationSeconds = Math.floor((endedAt.getTime() - anchor.recordedAt.getTime()) / 1_000)
     if (endIndex > startIndex && durationSeconds >= minimumSeconds) {
-      const cluster = points.slice(startIndex, endIndex + 1)
-      const accuracies = cluster.flatMap((point) => point.accuracy == null ? [] : [point.accuracy])
-      const batteries = cluster.flatMap((point) => point.battery == null ? [] : [point.battery])
-      const hasOfflineGap = cluster.some((point, index) =>
-        index > 0
-        && point.recordedAt.getTime() - cluster[index - 1].recordedAt.getTime() > offlineThresholdSeconds * 1_000,
-      )
-      stops.push({
+      stops.push(historyStop({
         id: `stop-${anchor.id}-${points[endIndex].id}`,
+        fixes: points.slice(startIndex, endIndex + 1),
         startedAt: anchor.recordedAt,
         endedAt,
-        durationSeconds,
-        latitude: cluster.reduce((sum, point) => sum + point.latitude, 0) / cluster.length,
-        longitude: cluster.reduce((sum, point) => sum + point.longitude, 0) / cluster.length,
-        pointCount: cluster.length,
-        averageAccuracy: accuracies.length
-          ? Math.round(accuracies.reduce((sum, value) => sum + value, 0) / accuracies.length * 10) / 10
-          : null,
-        batteryStart: batteries[0] ?? null,
-        batteryEnd: batteries.at(-1) ?? null,
-        connectivity: hasOfflineGap ? "OFFLINE_GAPS" : "ONLINE",
-        visit: confirmedVisitForStop(visits, anchor.recordedAt, endedAt),
-      })
+        visits,
+        offlineThresholdSeconds,
+      }))
       startIndex = endIndex + 1
       continue
     }
     startIndex += 1
   }
 
-  return stops
+  return input.gaps
+    ? cutHistoryStopsAtBreaks(stops, { points, visits, gaps: input.gaps, minimumSeconds, offlineThresholdSeconds })
+    : stops
 }
 
 const TIMELINE_PRIORITY: Record<HistoryTimelineEvent["kind"], number> = {

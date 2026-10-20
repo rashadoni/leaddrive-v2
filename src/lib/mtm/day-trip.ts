@@ -1,5 +1,13 @@
 import { calculateDistance } from "@/lib/geo-utils"
-import type { HistoryGap, HistoryLocationPoint, HistoryStop, HistoryVisit } from "@/lib/mtm/location-history"
+import {
+  cutHistoryStopsAtBreaks,
+  historyBreakSpans,
+  historyStayOutsideBreaks,
+  type HistoryGap,
+  type HistoryLocationPoint,
+  type HistoryStop,
+  type HistoryVisit,
+} from "@/lib/mtm/location-history"
 import { drivingStepMeters } from "@/lib/mtm/road-distance"
 
 /**
@@ -28,6 +36,8 @@ const MIN_MOVE_SECONDS = 60
 const SAME_PLACE_METERS = 150
 /** A silence this short that starts and ends on one spot is part of standing there. */
 const SAME_PLACE_SILENCE_SECONDS = 30 * 60
+/** The organization's minimum stop when the caller does not say (MTM_SETTING_DEFAULTS.historyStopMinimumMinutes). */
+const DEFAULT_STOP_MINIMUM_SECONDS = 5 * 60
 
 export type DayTripStay = {
   kind: "STAY"
@@ -40,6 +50,17 @@ export type DayTripStay = {
   /** A visit recorded without a check-out; its end is not known. */
   open: boolean
   visit: { id: string; customerId: string; customerName: string } | null
+  /**
+   * A break fell inside this row's visit: the visit as recorded, from
+   * check-in to check-out. The row itself is only its time outside the break,
+   * so its minutes are not the visit's.
+   */
+  visitTimes?: { checkInAt: Date; checkOutAt: Date }
+  /**
+   * The same place after a break, while the visit named on the row before
+   * the break went on: its minutes on site, with the visit not named twice.
+   */
+  afterBreak?: true
 }
 
 export type DayTripMove = {
@@ -184,6 +205,8 @@ export function buildDayTrip(input: {
   workday: { startedAt: Date; completedAt: Date | null } | null
   /** Road metres per step of `points` (map-matching.ts), where OSRM answered. */
   roadSteps?: ReadonlyArray<number | null> | null
+  /** The organization's minimum stop, in seconds (detectHistoryStops' minimumSeconds). */
+  stopMinimumSeconds?: number
 }): DayTrip {
   const { points } = input
   const steps = drivingStepMeters(points, input.roadSteps)
@@ -194,9 +217,17 @@ export function buildDayTrip(input: {
     if (input.roadSteps?.[index] != null) roadAcross.set(point.recordedAt.getTime(), Math.round(steps[index]))
   })
 
-  // 1. Where the agent stood: every GPS stop, plus every visit no stop covers
-  //    (a visit made with the phone silent still happened).
-  const placed: DayTripStay[] = input.stops.map((stop) => ({
+  // 1. Where the agent stood: every GPS stop, cut at the breaks — the stops
+  //    History hands over are cut already (detectHistoryStops), and come
+  //    back from cutHistoryStopsAtBreaks as they are — plus every visit no
+  //    stop covers (a visit made with the phone silent still happened), cut
+  //    by the same rule (historyStayOutsideBreaks). A break is the employee's
+  //    own time and its own row, exactly as long as the journal says
+  //    (detectHistoryGaps): no stay is told inside it.
+  const breaks = historyBreakSpans(input.gaps)
+  const minimumSeconds = input.stopMinimumSeconds ?? DEFAULT_STOP_MINIMUM_SECONDS
+  const stops = cutHistoryStopsAtBreaks(input.stops, { points, visits: input.visits, gaps: input.gaps, minimumSeconds })
+  const placed: DayTripStay[] = stops.map((stop) => ({
     kind: "STAY",
     id: `stay-${stop.id}`,
     startedAt: stop.startedAt,
@@ -209,47 +240,61 @@ export function buildDayTrip(input: {
       ? { id: stop.visit.id, customerId: stop.visit.customerId, customerName: stop.visit.customerName }
       : null,
   }))
-  const coveredVisitIds = new Set(input.stops.flatMap((stop) => stop.visit ? [stop.visit.id] : []))
+  const coveredVisitIds = new Set(stops.flatMap((stop) => stop.visit ? [stop.visit.id] : []))
   for (const visit of input.visits) {
     if (coveredVisitIds.has(visit.id) || visit.status === "CANCELLED") continue
     const end = visit.checkOutAt ?? visit.checkInAt
-    const overlapsStop = input.stops.some((stop) =>
+    const overlapsStop = stops.some((stop) =>
       visit.checkInAt <= stop.endedAt && end >= stop.startedAt)
     if (overlapsStop) continue
-    placed.push({
+    const stay = (id: string, from: number, to: number): DayTripStay => ({
       kind: "STAY",
-      id: `visit-${visit.id}`,
-      startedAt: visit.checkInAt,
-      endedAt: end,
-      durationSeconds: seconds(visit.checkInAt.getTime(), end.getTime()),
+      id,
+      startedAt: new Date(from),
+      endedAt: new Date(to),
+      durationSeconds: seconds(from, to),
       latitude: visit.checkInLat ?? visit.customer.latitude,
       longitude: visit.checkInLng ?? visit.customer.longitude,
       open: visit.checkOutAt == null,
       visit: { id: visit.id, customerId: visit.customerId, customerName: visit.customer.name },
     })
+    const pieces = historyStayOutsideBreaks({
+      from: visit.checkInAt.getTime(),
+      to: end.getTime(),
+      breaks,
+      minimumSeconds,
+      visitOf: () => visit.id,
+    })
+    if (!pieces) placed.push(stay(`visit-${visit.id}`, visit.checkInAt.getTime(), end.getTime()))
+    else for (const piece of pieces) placed.push(stay(piece.index === 0 ? `visit-${visit.id}` : `visit-${visit.id}-${piece.index}`, piece.from, piece.to))
   }
-  // A break is the employee's own time and its own row, exactly as long as
-  // the journal says (detectHistoryGaps). Standing at one spot before and
-  // after it, the fixes make one stop across it; the stop is cut there, so it
-  // neither swallows the break nor says where he spent it.
-  const breakIntervals = input.gaps
-    .filter((gap) => gap.reason === "WORKDAY_PAUSED")
-    .map((gap) => ({ from: gap.startedAt.getTime(), to: gap.endedAt.getTime() }))
-  const stays: DayTripStay[] = placed.flatMap((stay) => {
-    const whole = { from: stay.startedAt.getTime(), to: stay.endedAt.getTime() }
-    const pieces = subtract(whole, breakIntervals)
-    if (!pieces.length || (pieces.length === 1 && pieces[0].from === whole.from && pieces[0].to === whole.to)) return [stay]
-    const worth = pieces.filter((piece) => seconds(piece.from, piece.to) >= MIN_GAP_REMAINDER_SECONDS)
-    const kept = worth.length ? worth : [pieces.reduce((longest, piece) => piece.to - piece.from > longest.to - longest.from ? piece : longest)]
-    return kept.map((piece, index) => ({
-      ...stay,
-      id: index === 0 ? stay.id : `${stay.id}-${index}`,
-      startedAt: new Date(piece.from),
-      endedAt: new Date(piece.to),
-      durationSeconds: seconds(piece.from, piece.to),
-    }))
+  placed.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime() || a.id.localeCompare(b.id))
+
+  // A visit is named once. Cut at a break taken during it, its time on site
+  // is on both sides of the break: the first row names it — with its own
+  // check-in and check-out, not the minutes of the piece («Визит 0 мин» for
+  // half an hour at a customer who saw him at once, then made him wait);
+  // the row after the break is the same place, the visit not named again.
+  const visitsById = new Map(input.visits.map((visit) => [visit.id, visit] as const))
+  const breakEnds = new Set(breaks.map((span) => span.to))
+  const named = new Map<string, DayTripStay>()
+  const stays: DayTripStay[] = placed.map((stay) => {
+    if (!stay.visit) return stay
+    const first = named.get(stay.visit.id)
+    if (!first) {
+      named.set(stay.visit.id, stay)
+      const own = visitsById.get(stay.visit.id)
+      const checkOutAt = own?.checkOutAt
+      return own && checkOutAt && breaks.some((span) => span.from < checkOutAt.getTime() && span.to > own.checkInAt.getTime())
+        ? { ...stay, visitTimes: { checkInAt: own.checkInAt, checkOutAt } }
+        : stay
+    }
+    const samePlace = first.latitude == null || first.longitude == null || stay.latitude == null || stay.longitude == null
+      || calculateDistance(first.latitude, first.longitude, stay.latitude, stay.longitude) < SAME_PLACE_METERS
+    return breakEnds.has(stay.startedAt.getTime()) && samePlace
+      ? { ...stay, visit: null, afterBreak: true as const }
+      : stay
   })
-  stays.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime() || a.id.localeCompare(b.id))
   const stayIntervals = stays.map((stay) => ({ from: stay.startedAt.getTime(), to: stay.endedAt.getTime() }))
 
   // 2. Silence, minus the part of it spent standing at a stop: a phone quiet

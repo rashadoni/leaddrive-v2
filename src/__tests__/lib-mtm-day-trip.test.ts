@@ -168,8 +168,9 @@ describe("the day as a trip", () => {
   // break time. Paused at a customer's door and resumed there, the fixes on
   // both sides made one stop across the break, and the stop swallowed it:
   // no «Перерыв» row, nothing in the summary, and a stay that said where he
-  // spent his own time.
-  it("cuts a stop at a break taken at the door: the break is its own row, and the visit is on both sides of it", () => {
+  // spent his own time. The stop is now cut where it is made
+  // (detectHistoryStops), so every reader of the day has the same pieces.
+  it("cuts a stop at a break taken at the door: the break is its own row, and the visit is named once", () => {
     const points = [
       ...track("09:00", "09:30", HOME, PHARMACY),
       ...track("09:30", "09:50", PHARMACY, PHARMACY),
@@ -178,18 +179,28 @@ describe("the day as a trip", () => {
     ].filter((point, index, all) => index === 0 || point.recordedAt > all[index - 1].recordedAt)
     const visits = [visit("v1", "Aptek 24", PHARMACY, "09:31", "10:29")]
     const gaps = detectHistoryGaps(points, 300, [{ startedAt: at("09:50"), endedAt: at("10:10") }])
-    const stops = detectHistoryStops({ points, visits, radiusMeters: 80, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
-    // The fixes alone: one stop, across the break.
-    expect(stops.map((stop) => [stop.startedAt.toISOString().slice(11, 16), stop.endedAt.toISOString().slice(11, 16)])).toEqual([["09:30", "10:30"]])
+    const clocks = (stops: ReturnType<typeof detectHistoryStops>) => stops.map((stop) =>
+      [stop.startedAt.toISOString().slice(11, 16), stop.endedAt.toISOString().slice(11, 16), stop.visit?.customerName ?? "—"])
+    // The fixes alone make one stop, across the break; with the day's gaps, two pieces around it.
+    expect(clocks(detectHistoryStops({ points, visits, radiusMeters: 80, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })))
+      .toEqual([["09:30", "10:30", "Aptek 24"]])
+    const stops = detectHistoryStops({ points, visits, radiusMeters: 80, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300, gaps })
+    expect(clocks(stops)).toEqual([["09:30", "09:50", "Aptek 24"], ["10:10", "10:30", "Aptek 24"]])
     const trip = buildDayTrip({ points, stops, visits, gaps, workday: { startedAt: at("09:00"), completedAt: at("10:50") } })
     expect(trip.entries.map(describeEntry)).toEqual([
       "START 09:00 WORKDAY",
       "MOVE 09:00-09:30",
       "STAY 09:30-09:50 Aptek 24",
       "GAP 09:50-10:10 WORKDAY_PAUSED",
-      "STAY 10:10-10:30 Aptek 24",
+      "STAY 10:10-10:30 —",
       "MOVE 10:30-10:50",
       "END 10:50 WORKDAY",
+    ])
+    // The visit is told by its own check-in and check-out; after the break, the same place.
+    const stays = trip.entries.filter((entry) => entry.kind === "STAY")
+    expect(stays.map((stay) => [stay.visitTimes ?? null, stay.afterBreak ?? false])).toEqual([
+      [{ checkInAt: at("09:31"), checkOutAt: at("10:29") }, false],
+      [null, true],
     ])
     expect(trip.summary).toMatchObject({ pausedSeconds: 20 * 60, staySeconds: 40 * 60, visitCount: 1, unknownSeconds: 0 })
   })

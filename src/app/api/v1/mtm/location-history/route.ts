@@ -384,12 +384,15 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const road = rawTruncated ? null : await matchRoads(prepared.points, { breaks: workdayBreaks }).catch(() => null)
   const distanceMeters = rawTruncated ? null : drivingDistanceMeters(prepared.points, road?.stepMeters)
   const gaps = detectHistoryGaps(prepared.points, gapThresholdSeconds, pauses)
+  // Cut at the breaks, once, here: the stop list, the map, the timeline, the
+  // CSV, the counts and the trip all read these stops.
   const stops = detectHistoryStops({
     points: prepared.points,
     visits: visits as HistoryVisit[],
     radiusMeters: policyStopRadiusMeters,
     minimumSeconds: policyStopMinimumMinutes * 60,
     offlineThresholdSeconds: settings.offlineThresholdSeconds,
+    gaps,
   })
   const anomalies = detectHistoryAnomalies({
     acceptedPoints: prepared.points,
@@ -433,6 +436,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     gaps,
     workday: workday ? { startedAt: workday.startedAt, completedAt: workday.completedAt } : null,
     roadSteps: road?.stepMeters,
+    stopMinimumSeconds: policyStopMinimumMinutes * 60,
   })
   const points = downsampleHistoryPoints(prepared.points, outputLimit)
   const exportCsv = searchParams.get("format") === "csv"

@@ -40,8 +40,10 @@ vi.mock("react-leaflet", async () => {
     MapContainer: ({ children }: { children?: unknown }) => h("div", { "data-testid": "history-map" }, children as never),
     Polyline: ({ positions, pathOptions }: { positions: Array<[number, number]>; pathOptions: { color: string; dashArray?: string } }) =>
       h("i", { "data-line": pathOptions.color, "data-dash": pathOptions.dashArray ?? "", "data-positions": JSON.stringify(positions) }),
-    CircleMarker: () => null,
-    Popup: () => null,
+    // A marker says its colour, and its popup is in the page: the stop's own minutes are read off it.
+    CircleMarker: ({ pathOptions, children }: { pathOptions?: { color?: string }; children?: unknown }) =>
+      h("b", { "data-marker": pathOptions?.color ?? "" }, children as never),
+    Popup: ({ children }: { children?: unknown }) => h("span", { "data-popup": "" }, children as never),
     useMap: () => ({ invalidateSize: () => {}, fitBounds: () => {}, setView: () => {} }),
   }
 })
@@ -50,7 +52,7 @@ vi.mock("@/components/mtm/carto-basemap", () => ({ CartoBasemap: () => null }))
 import { DayTripLedger, type DayTripData, type DayTripFocus } from "@/components/mtm/day-trip-ledger"
 import LocationHistoryMap from "@/components/mtm/location-history-map"
 import { buildDayTrip } from "@/lib/mtm/day-trip"
-import { detectHistoryGaps, detectHistoryStops, type HistoryLocationPoint } from "@/lib/mtm/location-history"
+import { detectHistoryGaps, detectHistoryStops, type HistoryLocationPoint, type HistoryVisit } from "@/lib/mtm/location-history"
 import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
 import { matchRoads, resetMapMatchingState } from "@/lib/mtm/map-matching"
 import { mtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
@@ -90,7 +92,7 @@ function day() {
     ...track("11:20", "11:40", PHARMACY, HOME),
   ].filter((point, index, all) => index === 0 || point.recordedAt > all[index - 1].recordedAt)
   const gaps = detectHistoryGaps(points, 300, [{ startedAt: at("09:31"), endedAt: at("10:10") }])
-  const stops = detectHistoryStops({ points, visits: [], radiusMeters: 80, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
+  const stops = detectHistoryStops({ points, visits: [], radiusMeters: 80, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300, gaps })
   const trip = buildDayTrip({ points, stops, visits: [], gaps, workday: { startedAt: at("09:00"), completedAt: at("11:40") } })
   // As the page receives them: over JSON.
   return JSON.parse(JSON.stringify({ points, gaps, stops, trip })) as {
@@ -220,7 +222,7 @@ describe("a break in the day's path", () => {
     const road = await matchRoads(fixes, { baseUrl: "http://osrm.test", fetchImpl: osrm as unknown as typeof fetch, breaks })
     resetMapMatchingState()
     const gaps = detectHistoryGaps(fixes, 300, breaks.map((pause) => ({ startedAt: pause.from, endedAt: pause.to })))
-    const stops = detectHistoryStops({ points: fixes, visits: [], radiusMeters: 50, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
+    const stops = detectHistoryStops({ points: fixes, visits: [], radiusMeters: 50, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300, gaps })
     const trip = buildDayTrip({ points: fixes, stops, visits: [], gaps, workday: { startedAt: utc("05:00:00"), completedAt: utc("06:00:00") }, roadSteps: road?.stepMeters })
     // As the page receives them: over JSON.
     const data = JSON.parse(JSON.stringify({ points: fixes, gaps, trip, matchedTrack: road?.complete ? { segments: road.segments } : null })) as {
@@ -347,7 +349,7 @@ describe("a break in the day's path", () => {
         { type: "RESUME", occurredAt: utc(lunch[1]) },
       ])
       const gaps = detectHistoryGaps(fixes, 300, breaks.map((pause) => ({ startedAt: pause.from, endedAt: pause.to })))
-      const stops = detectHistoryStops({ points: fixes, visits: [], radiusMeters: 50, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
+      const stops = detectHistoryStops({ points: fixes, visits: [], radiusMeters: 50, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300, gaps })
       const workday = { startedAt: fixes[0].recordedAt, completedAt: fixes.at(-1)!.recordedAt }
       const trip = buildDayTrip({ points: fixes, stops, visits: [], gaps, workday })
       const data = JSON.parse(JSON.stringify({ points: fixes, gaps, trip })) as {
@@ -403,6 +405,108 @@ describe("a break in the day's path", () => {
       expect(runs).toHaveLength(2)
       expect(lines.some((line) => line.positions.some((point) => near(point, before)) && line.positions.some((point) => near(point, after)))).toBe(false)
       expect(lines.filter((line) => line.color === HISTORY_MAP_COLORS.gap)).toEqual([])
+    })
+  })
+
+  // Verification of 2026-10-20, round 4: the trip cut a stop at a break, but
+  // the stop list, the map's popup and the timeline still gave it whole —
+  // «1 ч 19 мин» at the spot where he had his lunch. The stops are cut once,
+  // where they are made, and every reader has the same pieces. A visit with a
+  // break inside it is named once, by its own check-in and check-out.
+  describe("cuts the stops around it once, for every reader", () => {
+    const utc = (clock: string) => new Date(`${DAY}T${clock}.000Z`)
+    const ledger = async (trip: DayTripData) => {
+      await render(createElement(DayTripLedger, {
+        trip, multiDay: false, focusId: null, onFocus: () => {},
+        formatMoment: (value: string) => value.slice(11, 16),
+        formatDuration: (seconds: number) => `${Math.round(seconds / 60)} мин`,
+      }))
+      return [...container.querySelectorAll("li")].map((row) => row.textContent)
+    }
+    const historyOf = (fixes: HistoryLocationPoint[], lunch: [string, string], visits: HistoryVisit[] = []) => {
+      const pauses = mtmWorkdayPauses([{ type: "PAUSE", occurredAt: utc(lunch[0]) }, { type: "RESUME", occurredAt: utc(lunch[1]) }])
+        .map((pause) => ({ startedAt: pause.from, endedAt: pause.to }))
+      const gaps = detectHistoryGaps(fixes, 300, pauses)
+      const stops = detectHistoryStops({ points: fixes, visits, radiusMeters: 50, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300, gaps })
+      const workday = { startedAt: fixes[0].recordedAt, completedAt: fixes.at(-1)!.recordedAt }
+      const trip = buildDayTrip({ points: fixes, stops, visits, gaps, workday, stopMinimumSeconds: 5 * 60 })
+      return JSON.parse(JSON.stringify({ points: fixes, gaps, stops, trip })) as {
+        points: ReturnType<typeof day>["points"]
+        gaps: ReturnType<typeof day>["gaps"]
+        stops: Array<{ id: string; latitude: number; longitude: number; startedAt: string; endedAt: string; durationSeconds: number; pointCount: number; averageAccuracy: number | null; batteryStart: number | null; batteryEnd: number | null; connectivity: "ONLINE" | "OFFLINE_GAPS"; visit: { customerName: string; customerAddress: string | null; confirmed: true } | null }>
+        trip: DayTripData
+      }
+    }
+    const aptek = (checkIn: string, checkOut: string): HistoryVisit => ({
+      id: "v1", customerId: "c1", status: "CHECKED_OUT", checkInAt: utc(checkIn), checkOutAt: utc(checkOut),
+      checkInLat: PHARMACY[0], checkInLng: PHARMACY[1],
+      customer: { name: "Aptek 24", address: null, latitude: PHARMACY[0], longitude: PHARMACY[1] },
+    })
+
+    it("a 38-minute lunch at one spot: the map's popups give each stop its own minutes, as the trip does", async () => {
+      const fixes = [
+        ...track("09:00", "09:10", HOME, PHARMACY),
+        ...track("09:10", "09:35", PHARMACY, PHARMACY),
+        ...track("10:14", "10:29", PHARMACY, PHARMACY),
+        ...track("10:29", "10:40", PHARMACY, CLINIC),
+      ].filter((point, index, all) => index === 0 || point.recordedAt > all[index - 1].recordedAt)
+      const data = historyOf(fixes, ["09:35:50", "10:13:50"])
+      expect((await ledger(data.trip)).slice(2, 5)).toEqual([
+        "Остановка без визита26 мин09:10–09:35", "Перерыв38 мин09:35–10:13", "Остановка без визита15 мин10:13–10:29",
+      ])
+      await act(async () => { root.unmount() })
+      root = createRoot(container)
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      try {
+        await render(createElement(LocationHistoryMap, {
+          points: data.points, stops: data.stops, visits: [], workday: null, plannedRoutes: [], gaps: data.gaps,
+          layers: { planned: true, actual: false, stops: true, visits: true, gaps: true },
+          locale: "ru", timezone: "UTC", playbackIndex: data.points.length - 1,
+        }))
+        await act(async () => { await vi.advanceTimersByTimeAsync(150) })
+      } finally {
+        vi.useRealTimers()
+      }
+      const popups = [...container.querySelectorAll<HTMLElement>(`[data-marker="#b45309"] [data-popup]`)]
+      expect(popups.map((popup) => [...popup.querySelectorAll("div")].map((line) => line.textContent).filter((line) => line?.startsWith("Длительность")))).toEqual([
+        ["Длительность: 26 мин"],
+        ["Длительность: 15 мин"],
+      ])
+    })
+
+    it("a visit with a break inside it is named once, by its own check-in and check-out; after the break, the same place", async () => {
+      const fixes = [
+        ...track("11:30", "12:00", CAFE_STREET, PHARMACY),
+        ...track("12:00", "12:25", PHARMACY, PHARMACY),
+        ...track("13:05", "13:30", PHARMACY, PHARMACY),
+        ...track("13:30", "13:50", PHARMACY, CLINIC),
+      ].filter((point, index, all) => index === 0 || point.recordedAt > all[index - 1].recordedAt)
+      const data = historyOf(fixes, ["12:26:00", "13:04:00"], [aptek("12:01:00", "13:29:00")])
+      const rows = await ledger(data.trip)
+      expect(rows.slice(2, 5)).toEqual([
+        "Aptek 24Визит 12:01–13:2911:59–12:26",
+        "Перерыв38 мин12:26–13:04",
+        "Там же, после перерыва26 мин13:04–13:30",
+      ])
+      expect(rows.filter((row) => row?.includes("Aptek 24"))).toHaveLength(1)
+      expect(data.trip.summary).toMatchObject({ visitCount: 1, pausedSeconds: 38 * 60 })
+    })
+
+    it("parked at the door, checked in, a break, checked out: the visit, not «Визит 0 мин»", async () => {
+      const fixes = [
+        ...track("09:00", "09:10", HOME, PHARMACY),
+        ...track("09:40", "09:40", PHARMACY, PHARMACY),
+        ...track("09:41", "09:50", CAFE_STREET, CLINIC),
+      ].filter((point, index, all) => index === 0 || point.recordedAt > all[index - 1].recordedAt)
+      const data = historyOf(fixes, ["09:10:20", "09:39:50"], [aptek("09:10:10", "09:40:20")])
+      const rows = await ledger(data.trip)
+      expect(rows.filter((row) => row?.includes("Aptek 24"))).toEqual(["Aptek 24Визит 09:10–09:4009:10–09:10"])
+      // No row of a few seconds: the piece after the break, ten seconds, does not name the visit again.
+      expect(rows.filter((row) => /(^|\D)0 мин/.test(row ?? ""))).toEqual([])
+      expect(rows).toEqual([
+        "Начал день09:00", expect.stringMatching(/^В пути10 мин/), "Aptek 24Визит 09:10–09:4009:10–09:10",
+        "Перерыв30 мин09:10–09:39", expect.stringMatching(/^В пути/), "Закрыл день09:50",
+      ])
     })
   })
 })

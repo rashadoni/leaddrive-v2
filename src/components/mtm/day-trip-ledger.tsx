@@ -19,6 +19,10 @@ export type DayTripData = {
         longitude: number | null
         open: boolean
         visit: { id: string; customerId: string; customerName: string } | null
+        /** A break fell inside the visit: the visit as recorded (day-trip.ts). */
+        visitTimes?: { checkInAt: string; checkOutAt: string }
+        /** The same place after a break, the visit before it still going on. */
+        afterBreak?: boolean
       }
     | { kind: "MOVE"; id: string; startedAt: string; endedAt: string; durationSeconds: number; distanceMeters: number; pointCount: number }
     | { kind: "GAP"; id: string; startedAt: string; endedAt: string; durationSeconds: number; reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"; displacementMeters: number | null; roadMeters?: number | null }
@@ -133,12 +137,17 @@ export function DayTripLedger({
               detail = `${formatDuration(entry.durationSeconds)} · ${kilometres(entry.distanceMeters)}`
               break
             case "STAY":
-              title = entry.visit?.customerName ?? t("stopWithoutVisit")
+              // A visit with a break inside it is named once, by its own
+              // check-in and check-out: the row is only its time outside the
+              // break, which can be seconds. After the break, the same place.
+              title = entry.visit?.customerName ?? (entry.afterBreak ? t("stayAfterBreak") : t("stopWithoutVisit"))
               detail = entry.open
                 ? t("visitOpen")
-                : entry.visit
-                  ? t("visitFor", { duration: formatDuration(entry.durationSeconds) })
-                  : formatDuration(entry.durationSeconds)
+                : entry.visit && entry.visitTimes
+                  ? t("visitBetween", { from: clock(entry.visitTimes.checkInAt), to: clock(entry.visitTimes.checkOutAt) })
+                  : entry.visit
+                    ? t("visitFor", { duration: formatDuration(entry.durationSeconds) })
+                    : formatDuration(entry.durationSeconds)
               break
             case "GAP":
               title = entry.reason === "WORKDAY_PAUSED" ? t("pause") : t("noSignal")
