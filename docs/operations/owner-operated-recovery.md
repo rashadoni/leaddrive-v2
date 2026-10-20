@@ -288,12 +288,29 @@ Retain owner objects and evidence; do not delete data or weaken Object Lock to
 ## Disposable Mac Linux workbench
 
 `ops/backup/owner-workstation.Dockerfile` pins the multi-platform PostgreSQL
-16.13 base and official age1.3.2 release checksums. Distribution packages are
-resolved at build time. It supports native Apple ARM64; no production keys or
+16.15 bookworm/glibc and Node24 indexes, pgvector0.6.0 upstream commit/archive
+checksum, and official age1.3.2 release checksums. Distribution packages and
+compiler dependencies are resolved at build time; this is not a claim of a
+bit-reproducible final image. The indexes include Apple ARM64, but native ARM
+build/restore remains NOT RUN until actually exercised on the owner's worker.
+No production keys or
 archives are included in the image. The entrypoint refuses network interfaces
 other than loopback and requires separate tmpfs mounts for plaintext and PGDATA.
-The GitHub check builds it and runs **synthetic** PostgreSQL isolation only.
-This is not evidence of a customer-data restore.
+The fresh cluster explicitly uses UTF8/libc C.UTF-8. Before reading restore
+keys, its entrypoint prepares template1 with verifier-owned plpgsql1.0,
+btree_gist1.7, pgcrypto1.3 and vector0.6.0, atomically returns the verifier to
+NOSUPERUSER, closes direct template connections, and proves an actual limited
+role clone. Failed extension installation rolls back the whole privilege and
+extension transaction. Existing private mounts are refused, never acquired.
+
+The narrow `owner-template-checks.yml` check runs even on drafts, without secrets
+or production access. It must prove a FULL synthetic database dump/restore,
+including extension comments, vector index/data and tenant RLS, with strict
+pg_restore errors and the limited verifier. This is not a customer-data restore,
+an independent certificate, or proof that the native production scratch has
+been bootstrapped. The SQL planner is only for a newly initialized networkless
+owner cluster; do not run it against production. Native target admission and
+its separate identity/owned-unit/maintenance locks remain a distinct step.
 
 On the Mac, use a separate Colima profile so existing default workloads are
 unaffected. Check available memory/disk first; do not start if capacity is

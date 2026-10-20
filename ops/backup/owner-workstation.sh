@@ -16,6 +16,7 @@ assert_swap_disabled /sys/fs/cgroup/memory.swap.max
   || fatal 'requires Docker --network none'
 for mount in /scratch /database; do
   [ "$(findmnt -n -T "$mount" -o FSTYPE)" = tmpfs ] || fatal 'private scratch and database must be tmpfs'
+  [ -z "$(find "$mount" -mindepth 1 -maxdepth 1 -print -quit)" ] || fatal 'private mounts must be empty; never acquire prior data'
   chmod 0700 "$mount"
 done
 started=0
@@ -40,6 +41,9 @@ if [ "$mode" = --key-proof ]; then
     /scratch/keys/identity.agekey /scratch/keys/owner-evidence "$3" "$1" "$2" /scratch/output/evidence.env \
     >/scratch/key-proof.log 2>&1 || fatal 'key proof failed; no receipt exported'
 elif [ "$mode" = --self-test ] || [ "$mode" = --restore ]; then
+  # Neither the official base image defaults nor caller-supplied PG variables
+  # may route administration or the limited verifier to a different server.
+  for pg_variable in "${!PG@}"; do unset "$pg_variable"; done
   if [ "$mode" = --self-test ]; then
     [ "$#" = 0 ] || fatal 'self-test accepts no input'
   else
@@ -51,6 +55,7 @@ elif [ "$mode" = --self-test ] || [ "$mode" = --restore ]; then
   printf '%s\n' "$admin_password" >/database/init.pass
   chown postgres:postgres /database/init.pass
   gosu postgres initdb -D /database/cluster -A scram-sha-256 -U scratch_admin --pwfile=/database/init.pass \
+    --encoding=UTF8 --locale-provider=libc --lc-collate=C.UTF-8 --lc-ctype=C.UTF-8 \
     >/database/init.log 2>&1 || fatal 'scratch cluster initialization failed'
   gosu postgres pg_ctl -D /database/cluster -l /database/server.log \
     -o '-h 127.0.0.1 -p 55432 -k /database' -w start >/database/start.log 2>&1 \
@@ -58,9 +63,22 @@ elif [ "$mode" = --self-test ] || [ "$mode" = --restore ]; then
   started=1
   PGPASSWORD="$admin_password" psql -X -h 127.0.0.1 -p 55432 -U scratch_admin -d postgres -v ON_ERROR_STOP=1 \
     >/database/bootstrap.log 2>&1 <<SQL
-CREATE ROLE owner_restore_verifier LOGIN NOSUPERUSER CREATEDB PASSWORD '$verifier_password';
+CREATE ROLE owner_restore_verifier LOGIN NOSUPERUSER NOINHERIT CREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '$verifier_password';
 GRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO owner_restore_verifier;
 SQL
+  compatibility=/usr/local/lib/leaddrive/owner-workstation-template.mjs
+  # Fresh initdb + private PGDATA + network-none are the admission here, not
+  # credentials to any external/source database. Never run this on production.
+  system_identifier="$(env -i PATH="$PATH" HOME=/nonexistent LC_ALL=C PGPASSWORD="$admin_password" \
+    PGHOSTADDR=127.0.0.1 PGSSLMODE=disable PGCONNECT_TIMEOUT=3 \
+    psql -X -w -h 127.0.0.1 -p 55432 -U scratch_admin -d postgres -At \
+      -v ON_ERROR_STOP=1 -c 'SELECT (pg_control_system()).system_identifier::text')" \
+    || fatal 'fresh private cluster identity unavailable'
+  node "$compatibility" --bootstrap-sql "$system_identifier" \
+    | env -i PATH="$PATH" HOME=/nonexistent LC_ALL=C PGPASSWORD="$admin_password" \
+      PGHOSTADDR=127.0.0.1 PGSSLMODE=disable PGCONNECT_TIMEOUT=3 \
+      psql -X -w -h 127.0.0.1 -p 55432 -U scratch_admin -d template1 -v ON_ERROR_STOP=1 \
+      >/database/template.log 2>&1 || fatal 'exact extension template bootstrap failed; no private inputs read'
   printf '127.0.0.1:55432:*:owner_restore_verifier:%s\n' "$verifier_password" >/scratch/pgpass
   unset admin_password verifier_password PGPASSWORD PGHOST PGPORT PGUSER PGDATABASE PGSERVICE PGSERVICEFILE PGOPTIONS
   export VERIFY_PGHOST=127.0.0.1 VERIFY_PGPORT=55432 VERIFY_PGUSER=owner_restore_verifier
@@ -70,12 +88,23 @@ SQL
   role="$(PGPASSFILE=/scratch/pgpass psql -X -h 127.0.0.1 -p 55432 -U owner_restore_verifier -d postgres -Atc \
     'select rolsuper::int, rolcreatedb::int from pg_roles where rolname=current_user')"
   [ "$role" = '0|1' ] || fatal 'scratch role privileges differ'
+  PGPASSFILE=/scratch/pgpass createdb -w -h 127.0.0.1 -p 55432 -U owner_restore_verifier \
+    --maintenance-db=postgres leaddrive_workbench_preflight >/database/clone.log 2>&1 \
+    || fatal 'private template clone failed'
+  node "$compatibility" --verification-sql \
+    | PGPASSFILE=/scratch/pgpass psql -X -w -h 127.0.0.1 -p 55432 -U owner_restore_verifier \
+      -d leaddrive_workbench_preflight -qAt -v ON_ERROR_STOP=1 \
+    | node "$compatibility" --validate-clone >/database/clone-proof.log 2>&1 \
+    || fatal 'private clone compatibility refused'
+  PGPASSFILE=/scratch/pgpass dropdb -w -h 127.0.0.1 -p 55432 -U owner_restore_verifier \
+    --maintenance-db=postgres leaddrive_workbench_preflight >/database/clone-cleanup.log 2>&1 \
+    || fatal 'private compatibility clone cleanup failed'
   if [ "$mode" = --self-test ]; then
     [ "$(age --version)" = v1.3.2 ] || fatal 'unexpected age version'
     printf '#!/bin/bash\nprintf scratch-script-readable\n' >/scratch/noexec-probe.sh
     chmod 0600 /scratch/noexec-probe.sh
     [ "$(bash /scratch/noexec-probe.sh)" = scratch-script-readable ] || fatal 'scratch script interpretation failed'
-    printf 'networkless ephemeral PostgreSQL, interpreted scratch helper and pinned age: passed\n'
+    printf 'networkless ephemeral PostgreSQL, exact extension ownership/locale clone, interpreted scratch helper and pinned age: passed\n'
     exit 0
   fi
   install -d -m 0700 /scratch/keys /scratch/output
