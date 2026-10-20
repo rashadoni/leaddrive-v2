@@ -140,6 +140,11 @@ COMMISSION_SHIP_LOGS_SHA256=""
 COMMISSION_RECOVERY_PROGRAM_SET_SHA256=""
 COMMISSION_RECOVERY_DB_CONTRACT_SHA256=""
 ACTIVE_TRANSIENT_UNIT=""
+SCRATCH_UNIT=""
+SCRATCH_DESCRIPTION=""
+SCRATCH_INVOCATION=""
+SCRATCH_SYSTEM_IDENTIFIER=""
+SCRATCH_LOCK_HELD=0
 COMMISSION_FENCE_STAGE=""
 LOG_GENESIS_ANCHOR_SHA256=""
 LOG_GENESIS_ANCHOR_BYTES=""
@@ -200,6 +205,7 @@ safe_remove_stage_tree() {
 
 cleanup() {
   local status=$?
+  local scratch_cleanup_failed=0
   trap - EXIT
 
   if [ "$B2_ENV_REPLACED" -eq 1 ] && [ "$B2_CONFIG_COMMITTED" -eq 0 ]; then
@@ -225,6 +231,20 @@ cleanup() {
     ACTIVE_TRANSIENT_UNIT=""
   fi
 
+  # Retire the database worker before its scratch server. Never stop a unit
+  # merely because its name resembles ours; check the creation nonce too.
+  if [ -n "$SCRATCH_UNIT" ]; then
+    if ! stop_commission_scratch; then
+      printf '%s\n' '[backup-commission] FATAL: owned scratch shutdown unproved; runner fence retained for inspection' >&2
+      status=1
+      scratch_cleanup_failed=1
+    fi
+  fi
+  if [ "$SCRATCH_LOCK_HELD" -eq 1 ]; then
+    exec 4>&-
+    SCRATCH_LOCK_HELD=0
+  fi
+
   if [ "$BACKUP_LOCK_HELD" -eq 1 ]; then
     exec 8>&-
     BACKUP_LOCK_HELD=0
@@ -241,7 +261,7 @@ cleanup() {
     exec 5>&-
     LOG_LOCK_HELD=0
   fi
-  if [ "$OPERATION" != configure-b2-writer ] && { [ "$BACKUP_SERVICE_RUNTIME_MASKED" -eq 1 ] \
+  if [ "$scratch_cleanup_failed" -eq 0 ] && [ "$OPERATION" != configure-b2-writer ] && { [ "$BACKUP_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$SECRETS_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$RUNTIME_FILES_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$LOG_SERVICE_RUNTIME_MASKED" -eq 1 ] \
@@ -2768,6 +2788,228 @@ assert_transient_database_memory_budget() {
   log "database worker admitted: private_tmpfs_bytes=3221225472 memory_max_bytes=4294967296"
 }
 
+scratch_control_state() {
+  LC_ALL=C /usr/lib/postgresql/16/bin/pg_controldata \
+    /var/lib/postgresql/16/leaddriverestore 2>/dev/null \
+    | awk -F: '/^Database system identifier:/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); id=$2}
+      /^Database cluster state:/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); state=$2}
+      END {if (id ~ /^[0-9]+$/ && state != "") print id "|" state; else exit 1}'
+}
+
+assert_scratch_port_free() {
+  local listeners
+  listeners="$(ss -H -ltn 'sport = :55432')" || return 1
+  [ -z "$listeners" ]
+}
+
+scratch_connection_query() {
+  local target="$1" sql="$2" key value
+  local -a connection=(PATH=/usr/bin:/bin LC_ALL=C HOME=/nonexistent
+    PGOPTIONS='-c statement_timeout=10000 -c default_transaction_read_only=on')
+  if [ "$target" = source ]; then
+    for key in PGHOST PGHOSTADDR PGPORT PGDATABASE PGUSER PGPASSFILE PGSSLMODE PGSSLROOTCERT PGCONNECT_TIMEOUT; do
+      value="$(require_static_value "$key")" || return 1
+      connection+=("$key=$value")
+    done
+  elif [ "$target" = scratch ]; then
+    connection+=(PGHOST=127.0.0.1 PGHOSTADDR=127.0.0.1 PGPORT=55432
+      PGDATABASE=postgres PGUSER=leaddrive_restore_verifier
+      PGPASSFILE=/etc/leaddrive/restore-verifier.pgpass PGSSLMODE=verify-full
+      PGSSLROOTCERT=/etc/leaddrive/restore-postgres-ca.crt PGCONNECT_TIMEOUT=2)
+  else
+    return 1
+  fi
+  timeout 35 runuser -u leaddrive-backup -- env -i "${connection[@]}" \
+    /usr/lib/postgresql/16/bin/psql -X -w -v ON_ERROR_STOP=1 -At -c "$sql" 2>/dev/null
+}
+
+admit_commission_scratch() {
+  local path expected state control source_id entries metadata configured
+  local lock=/var/lib/leaddrive-recovery-runner-locks/postgres-restore-scratch-maintenance.lock
+  local data=/var/lib/postgresql/16/leaddriverestore
+  local config=/etc/postgresql/16/leaddriverestore
+  [[ "$WORKFLOW_RUN_ID" =~ ^[0-9]{1,20}$ ]] || fatal "invalid scratch operation identity"
+  assert_transient_database_memory_budget
+  assert_root_directory "scratch maintenance lock directory" "${lock%/*}"
+  [ "$(realpath -e -- "${lock%/*}")" = "${lock%/*}" ] \
+    && [ -f "$lock" ] && [ ! -L "$lock" ] \
+    && [ "$(stat -c '%U:%a:%h' -- "$lock")" = root:600:1 ] \
+    || fatal "scratch maintenance lock authority refused"
+  exec 4<"$lock"
+  flock -n 4 || fatal "scratch maintenance is already active"
+  [ "$(stat -Lc '%d:%i' -- "$lock")" = "$(stat -Lc '%d:%i' -- "/proc/$$/fd/4")" ] \
+    || fatal "scratch maintenance lock inode changed"
+  SCRATCH_LOCK_HELD=1
+  for path in /etc/postgresql /etc/postgresql/16 /var/lib/postgresql /var/lib/postgresql/16 \
+    "$data" "$config"; do
+    [ -d "$path" ] && [ ! -L "$path" ] && [ "$(realpath -e -- "$path")" = "$path" ] \
+      || fatal "scratch directory authority is not canonical"
+    metadata="$(stat -c '%U:%a' -- "$path")"
+    case "$metadata" in root:700|root:750|root:755|postgres:700|postgres:750|postgres:755) ;;
+      *) fatal "scratch directory authority is unsafe" ;; esac
+  done
+  [ "$(stat -c '%U:%G:%a' -- "$data")" = postgres:postgres:700 ] \
+    || fatal "scratch data authority must remain private to postgres"
+  for path in "$config/postgresql.conf" "$config/pg_hba.conf" "$config/pg_ident.conf" \
+    "$config/start.conf" "$config/server.crt" "$config/server.key" \
+    "$data/PG_VERSION" "$data/global/pg_control" "$data/postgresql.auto.conf"; do
+    [ -f "$path" ] && [ ! -L "$path" ] && [ "$(realpath -e -- "$path")" = "$path" ] \
+      && [ "$(stat -c '%h' -- "$path")" = 1 ] \
+      || fatal "scratch file authority is not canonical"
+    metadata="$(stat -c '%U:%a' -- "$path")"
+    case "$metadata" in root:600|root:640|root:644|postgres:600|postgres:640|postgres:644) ;;
+      *) fatal "scratch file authority is unsafe" ;; esac
+  done
+  [ "$(cat -- "$data/PG_VERSION")" = 16 ] || fatal "scratch major is not the reviewed PostgreSQL 16"
+  configured="$(sed 's/#.*//; /^[[:space:]]*$/d; s/^[[:space:]]*//; s/[[:space:]]*$//' "$config/start.conf")"
+  [ "$configured" = manual ] || fatal "scratch must remain manually started"
+  configured="$(sed 's/#.*//; /^[[:space:]]*$/d' "$data/postgresql.auto.conf")"
+  [ -z "$configured" ] || fatal "scratch auto-configuration contains unreviewed settings"
+  for path in postmaster.pid standby.signal recovery.signal; do
+    [ ! -e "$data/$path" ] && [ ! -L "$data/$path" ] \
+      || fatal "scratch has pre-existing process/recovery state; nothing started"
+  done
+  [ -d "$data/pg_wal" ] && [ ! -L "$data/pg_wal" ] \
+    && [ "$(realpath -e -- "$data/pg_wal")" = "$data/pg_wal" ] \
+    || fatal "scratch WAL must stay inside the separate cluster"
+  entries="$(find "$data/pg_tblspc" -mindepth 1 -maxdepth 1 -print -quit)" \
+    || fatal "scratch tablespace inventory is unreadable"
+  [ -z "$entries" ] && [ ! -L "$data/pg_tblspc" ] \
+    || fatal "external scratch tablespaces are forbidden"
+  entries="$(find "$data" -xdev \( -type l -o -type f -links +1 \) -print -quit)" \
+    || fatal "cannot inspect scratch storage aliases"
+  [ -z "$entries" ] || fatal "scratch data contains a symlink or shared file; preserve it for inspection"
+  cmp -s "$config/pg_hba.conf" <(printf '%s\n' \
+    '# Managed LeadDrive restore scratch authentication' \
+    'local all postgres peer' 'local all all reject' \
+    'hostssl all leaddrive_restore_verifier 127.0.0.1/32 scram-sha-256' \
+    'host all all 127.0.0.1/32 reject' 'host all all 0.0.0.0/0 reject' \
+    'host all all ::0/0 reject') \
+    || fatal "scratch authentication policy differs from reviewed provisioning"
+  for expected in 'VERIFY_PGHOST:127.0.0.1' 'VERIFY_PGPORT:55432' \
+    'VERIFY_PGUSER:leaddrive_restore_verifier' 'VERIFY_PGMAINTENANCE_DB:postgres' \
+    'VERIFY_PGPASSFILE:/etc/leaddrive/restore-verifier.pgpass' 'VERIFY_PGSSLMODE:verify-full' \
+    'VERIFY_PGSSLROOTCERT:/etc/leaddrive/restore-postgres-ca.crt'; do
+    [ "$(require_static_value "${expected%%:*}")" = "${expected#*:}" ] \
+      || fatal "scratch client configuration differs from the fixed provisioned contract"
+  done
+  [ "$(require_static_value PGSSLMODE)" = verify-full ] \
+    && [ "$(require_static_value PGPORT)" != 55432 ] \
+    && [ "$(read_unique_value VERIFY_ALLOW_SOURCE_CLUSTER)" != 1 ] \
+    || fatal "scratch/source connection boundary refused"
+  assert_root_file "scratch public CA" /etc/leaddrive/restore-postgres-ca.crt
+  ! cmp -s /etc/leaddrive/restore-postgres-ca.crt /etc/leaddrive/managed-postgres-ca.crt \
+    || fatal "scratch CA must differ from source CA"
+  state="$(systemctl show --property=ActiveState --value postgresql@16-leaddriverestore.service)" \
+    || fatal "cannot inspect canonical scratch service state"
+  [ "$state" = inactive ] || fatal "canonical scratch service is not inactive"
+  entries="$(systemctl list-units --all --plain --no-legend 'leaddrive-restore-scratch-*.service')" \
+    || fatal "cannot inspect old scratch lifecycle units"
+  [ -z "$entries" ] || fatal "prior scratch lifecycle state exists; preserve and inspect it"
+  assert_scratch_port_free || fatal "scratch port already has a listener"
+  control="$(scratch_control_state)" || fatal "cannot inspect stopped scratch identity"
+  [[ "$control" =~ ^([0-9]{1,20})\|shut\ down$ ]] \
+    || fatal "scratch is not a cleanly stopped standalone cluster"
+  SCRATCH_SYSTEM_IDENTIFIER="${BASH_REMATCH[1]}"
+  source_id="$(scratch_connection_query source "SELECT (pg_control_system()).system_identifier::text")" \
+    || fatal "source identity query failed before scratch launch"
+  [[ "$source_id" =~ ^[0-9]{1,20}$ ]] && [ "$source_id" != "$SCRATCH_SYSTEM_IDENTIFIER" ] \
+    || fatal "scratch system identity is not distinct from source"
+  configured="$(df -B1 --output=avail "$data" | tail -1 | tr -d '[:space:]')"
+  [[ "$configured" =~ ^[0-9]+$ ]] && [ "$configured" -ge 10737418240 ] \
+    || fatal "scratch requires at least 10 GiB free on its separate data filesystem"
+}
+
+start_commission_scratch() {
+  local unit runtime load token state deadline proof
+  admit_commission_scratch
+  unit="leaddrive-restore-scratch-${WORKFLOW_RUN_ID}.service"
+  runtime="leaddrive-restore-scratch-${WORKFLOW_RUN_ID}"
+  load="$(systemctl show --property=LoadState --value "$unit")" \
+    || fatal "cannot inspect requested scratch unit"
+  [ "$load" = not-found ] || fatal "requested scratch unit already exists"
+  [ ! -e "/run/$runtime" ] && [ ! -L "/run/$runtime" ] \
+    || fatal "scratch runtime already exists"
+  token="$(cat /proc/sys/kernel/random/uuid)"
+  [[ "$token" =~ ^[0-9a-f-]{36}$ ]] || fatal "cannot allocate scratch ownership nonce"
+  SCRATCH_DESCRIPTION="LeadDrive scratch $WORKFLOW_RUN_ID $token"
+  SCRATCH_UNIT="$unit"
+  systemd-run --quiet --unit="$unit" --description="$SCRATCH_DESCRIPTION" \
+    --uid=postgres --gid=postgres --property=Type=exec \
+    --property=RuntimeDirectory="$runtime" --property=RuntimeDirectoryMode=0700 \
+    --property=ProtectSystem=strict \
+    --property=ReadWritePaths=/var/lib/postgresql/16/leaddriverestore \
+    --property=MemoryHigh=805306368 --property=MemoryMax=1073741824 --property=MemorySwapMax=0 \
+    --property=RuntimeMaxSec=14520 --property=TimeoutStopSec=60 \
+    --property=KillSignal=SIGINT --property=KillMode=mixed --property=Restart=no \
+    --property=UMask=0077 --property=LimitCORE=0 --property=TasksMax=64 \
+    --property=NoNewPrivileges=yes --property=PrivateDevices=yes --property=PrivateTmp=yes \
+    --property=PrivateIPC=yes --property=ProtectHome=yes --property=RestrictNamespaces=yes \
+    --property=RestrictAddressFamilies='AF_UNIX AF_INET' --property=RestrictSUIDSGID=yes \
+    --property=StandardOutput=journal --property=StandardError=journal \
+    /usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/16/leaddriverestore \
+    -c config_file=/etc/postgresql/16/leaddriverestore/postgresql.conf \
+    -c data_directory=/var/lib/postgresql/16/leaddriverestore \
+    -c hba_file=/etc/postgresql/16/leaddriverestore/pg_hba.conf \
+    -c ident_file=/etc/postgresql/16/leaddriverestore/pg_ident.conf \
+    -c listen_addresses=127.0.0.1 -c port=55432 \
+    -c "unix_socket_directories=/run/$runtime" -c "external_pid_file=/run/$runtime/postgres.pid" \
+    -c ssl=on -c ssl_min_protocol_version=TLSv1.2 \
+    -c ssl_cert_file=/etc/postgresql/16/leaddriverestore/server.crt \
+    -c ssl_key_file=/etc/postgresql/16/leaddriverestore/server.key \
+    -c ssl_passphrase_command= -c archive_library= \
+    -c archive_mode=off -c archive_command= -c restore_command= -c primary_conninfo= \
+    -c shared_preload_libraries= -c session_preload_libraries= -c local_preload_libraries= \
+    -c logging_collector=off -c log_destination=stderr \
+    -c max_connections=8 -c shared_buffers=128MB -c work_mem=4MB \
+    -c maintenance_work_mem=64MB -c max_parallel_workers=0 -c max_worker_processes=0 \
+    -c dynamic_shared_memory_type=mmap -c huge_pages=off -c temp_file_limit=1048576 \
+    >/dev/null 2>&1 || fatal "bounded scratch launch failed; cleanup will inspect ownership"
+  SCRATCH_INVOCATION="$(systemctl show --property=InvocationID --value "$unit")"
+  [[ "$SCRATCH_INVOCATION" =~ ^[0-9a-f]{32}$ ]] || fatal "scratch invocation identity is unavailable"
+  deadline=$((SECONDS + 45))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    state="$(systemctl show --property=ActiveState --value "$unit")" || break
+    [ "$state" = active ] || break
+    if proof="$(scratch_connection_query scratch "SELECT (pg_control_system()).system_identifier::text || '|' || current_setting('port') || '|' || rolsuper::int || '|' || rolcreatedb::int || '|' || rolcreaterole::int || '|' || rolreplication::int || '|' || rolbypassrls::int || '|' || rolcanlogin::int || '|' || rolinherit::int || '|' || (SELECT count(*) FROM pg_auth_members WHERE roleid=pg_roles.oid OR member=pg_roles.oid) || '|' || (SELECT ssl::int FROM pg_stat_ssl WHERE pid=pg_backend_pid()) || '|' || (SELECT count(*) FROM pg_database WHERE datname ~ '^leaddrive_restore_verify_') FROM pg_roles WHERE rolname=session_user")"; then
+      [ "$proof" = "$SCRATCH_SYSTEM_IDENTIFIER|55432|0|1|0|0|0|1|0|0|1|0" ] \
+        || fatal "scratch TLS/limited-role/identity/orphan preflight refused"
+      log "bounded scratch started; distinct identity, verify-full, limited role and no orphan canary proved before dump"
+      return 0
+    fi
+    sleep 1
+  done
+  fatal "scratch TLS readiness deadline expired"
+}
+
+stop_commission_scratch() {
+  local load description invocation control
+  [ -n "$SCRATCH_UNIT" ] || return 0
+  [ "$SCRATCH_LOCK_HELD" = 1 ] \
+    && [ "$SCRATCH_UNIT" = "leaddrive-restore-scratch-${WORKFLOW_RUN_ID}.service" ] \
+    && [ -n "$SCRATCH_DESCRIPTION" ] || return 1
+  load="$(systemctl show --property=LoadState --value "$SCRATCH_UNIT")" || return 1
+  if [ "$load" != not-found ]; then
+    description="$(systemctl show --property=Description --value "$SCRATCH_UNIT")" || return 1
+    [ "$description" = "$SCRATCH_DESCRIPTION" ] || return 1
+    if [ -n "$SCRATCH_INVOCATION" ]; then
+      invocation="$(systemctl show --property=InvocationID --value "$SCRATCH_UNIT")" || return 1
+      # Inactive/expired units can already have lost their invocation ID.
+      [ -z "$invocation" ] || [ "$invocation" = "$SCRATCH_INVOCATION" ] || return 1
+    fi
+    systemctl stop "$SCRATCH_UNIT" >/dev/null 2>&1 || return 1
+  fi
+  assert_scratch_port_free || return 1
+  [ ! -e /var/lib/postgresql/16/leaddriverestore/postmaster.pid ] \
+    && [ ! -L /var/lib/postgresql/16/leaddriverestore/postmaster.pid ] || return 1
+  control="$(scratch_control_state)" || return 1
+  [ "$control" = "$SCRATCH_SYSTEM_IDENTIFIER|shut down" ] || return 1
+  systemctl reset-failed "$SCRATCH_UNIT" >/dev/null 2>&1 || true
+  SCRATCH_UNIT=""
+  SCRATCH_INVOCATION=""
+  log "owned scratch stopped cleanly; no cluster/configuration/credential deletion"
+}
+
 LAST_TRANSIENT_INVOCATION=""
 run_transient_backup_unit() {
   local label="$1"
@@ -2849,6 +3091,7 @@ run_transient_backup_unit() {
     --property=StandardOutput=journal \
     --property=StandardError=journal \
     --property=TimeoutStartSec="$timeout_seconds" \
+    --property=RuntimeMaxSec="$timeout_seconds" \
     --property=MemorySwapMax=0 \
     --property=UMask=0077 \
     --property=NoNewPrivileges=yes \
@@ -3004,10 +3247,12 @@ run_verified_backup() {
   database_log="$WORK_DIR/database.log"
   secrets_log="$WORK_DIR/secrets.log"
   runtime_files_log="$WORK_DIR/runtime-files.log"
+  start_commission_scratch
   release_backup_locks
   run_transient_backup_unit database leaddrive-backup leaddrive-backup \
     "$CODE_STAGE/scripts/backup/postgres-backup.sh" 14400 "$database_log"
   database_invocation="$LAST_TRANSIENT_INVOCATION"
+  stop_commission_scratch || fatal "scratch shutdown was not proved; no completed candidate admitted"
   run_transient_backup_unit secrets root root \
     "$CODE_STAGE/scripts/backup/snapshot-secrets.sh" 1800 "$secrets_log"
   secrets_invocation="$LAST_TRANSIENT_INVOCATION"
