@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
-import { HintValue } from "@/components/hint"
+import { Hint, HintValue } from "@/components/hint"
 import Link from "next/link"
 import { useFormatter, useLocale, useTranslations } from "next-intl"
 import { formatDate, formatDateTime, formatTime } from "@/lib/format-date"
@@ -397,7 +397,8 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         <div className="flex flex-wrap items-start gap-2">
           <MtmAttendanceExportButtons config={currentConfig} snapshot={report?.snapshot ?? null}
             onRefresh={() => void load(report ? { from: report.from, to: report.to } : range, customView?.config)} onAccessLost={clearPrivateReport} />
-          <Button asChild variant="outline" className="min-h-11 rounded-full"><Link href="/mtm/attendance/timesheet?view=months" prefetch={false}><Lock className="mr-2 h-4 w-4" aria-hidden="true" />{p("closeMonth")}</Link></Button>
+          {/* The month closes on its N-1t in one press (owner, 2026-10-20, the «Kadr uçotu» clip); history stays under «Daha çox». */}
+          <Hint text={t("monthCloseOpenN1tHint")}><Button asChild variant="outline" className="min-h-11 rounded-full"><Link href={range.from ? `/mtm/attendance/reports?report=n1t&date=${range.from}` : "/mtm/attendance/reports?report=n1t"} prefetch={false} data-testid="attendance-timesheet-close-month"><Lock className="mr-2 h-4 w-4" aria-hidden="true" />{p("closeMonth")}</Link></Button></Hint>
           <DropdownMenu><DropdownMenuTrigger asChild><Button type="button" variant="outline" className="min-h-11 rounded-full" data-testid="attendance-timesheet-more">{p("more")}<ChevronDown className="ml-2 h-4 w-4" aria-hidden="true" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
               {(["branches", "decisions", "months"] as const).map(view => <DropdownMenuItem key={view} asChild><Link href={`/mtm/attendance/timesheet?view=${view}`} prefetch={false}>{p(`tabs.${view}`)}</Link></DropdownMenuItem>)}

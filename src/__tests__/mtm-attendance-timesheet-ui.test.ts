@@ -127,6 +127,18 @@ describe("Personnel → Timesheet month", () => {
     expect(reportCalls().at(-1)?.searchParams.get("to")).toBe("2026-09-30")
   })
 
+  // Owner, 2026-10-20 (the «Kadr uçotu» clip): the month closes on its N-1t in one press.
+  it("«Close month» opens the shown month's N-1t, where the press is", async () => {
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    await act(async () => container.querySelector<HTMLButtonElement>(`button[aria-label="${p("previousMonth")}"]`)!.click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    const link = container.querySelector<HTMLAnchorElement>('[data-testid="attendance-timesheet-close-month"]')!
+    expect(link.textContent).toBe(p("closeMonth"))
+    expect(link.getAttribute("href")).toBe("/mtm/attendance/reports?report=n1t&date=2026-09-01")
+    const { readHint } = await import("./helpers/hint")
+    expect(await readHint(link)).toBe(ru.mtmAttendance.monthCloseOpenN1tHint)
+  })
+
 })
 
 describe("Timesheet saved forms", () => {
