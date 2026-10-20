@@ -11,6 +11,7 @@ import {
   mtmTaskScopeWhere,
 } from "@/lib/mtm/task-access"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { notifyAgentOfAssignedTask } from "@/lib/mtm/task-assigned-notify"
 import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
 import { MTM_OPEN_TASK_STATUSES, mtmOverdueTaskWhere, mtmTaskOverdueDays } from "@/lib/mtm/task-overdue"
 import { mtmAwaitingReviewTaskWhere } from "@/lib/mtm/task-review-queue"
@@ -417,6 +418,18 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
       },
       req,
     }).catch((error) => console.warn("[MTM/tasks POST] audit failed", error))
+
+    // The agent hears of it at once: a bell line and a pop-up on his phone.
+    await notifyAgentOfAssignedTask({
+      organizationId: auth.orgId,
+      taskId: task.id,
+      agentId: task.agentId,
+      taskTitle: task.title,
+      dueDate: task.dueDate,
+      timezone: settings.timezone,
+      giverAgentId: actor.agentId,
+      giverName: auth.name,
+    }).catch((error) => console.warn("[MTM/tasks POST] agent notice failed", error))
 
     return NextResponse.json({ success: true, data: task }, { status: 201 })
   } catch (error) {

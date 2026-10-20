@@ -605,6 +605,14 @@ jobs:
           MTM_JOINT_VISIT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_JOINT_VISIT_DB_GATE: required
 
+      - name: MTM task notice database gate
+        # Same gate as in pr-checks: a task given to an agent reaches his bell,
+        # a self-made or refused one tells nobody (see the test's header).
+        run: npx vitest run src/__tests__/mtm-task-notice-postgres.test.ts
+        env:
+          MTM_TASK_NOTICE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_TASK_NOTICE_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:
