@@ -17,8 +17,16 @@
  *  3. «перерыв» in the summary is the journal's break time;
  *  4. on the road + standing + break + no data never exceed the shift;
  * and every reader of the day reads the same cut stops — the trip with one
- * difference, stated below: a visit's minutes before a break, under the
+ * difference, stated below: a visit's minutes beside a break, under the
  * minimum stop, are the trip's and not the stop list's.
+ *
+ * And a visit a break fell inside is told by its own time on site (round 7):
+ * check-in to check-out — a visit still open, to the day's last fix — minus
+ * the breaks. No second of it is «В пути», a lost signal or a stay without
+ * the visit, unless the fixes show he left (farther than 150 m from the place
+ * of the row that names it, for at least the minimum stop). The first row
+ * names the visit; every later row of its time on site is «Там же, после
+ * перерыва».
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
@@ -40,6 +48,7 @@ vi.mock("@/lib/crm-product-availability", async (importOriginal) => ({
 }))
 
 import { GET } from "@/app/api/v1/mtm/location-history/route"
+import { calculateDistance } from "@/lib/geo-utils"
 import { prisma } from "@/lib/prisma"
 import { requireAuth } from "@/lib/api-auth"
 import { buildDayTrip, type DayTrip, type DayTripEdge, type DayTripEntry } from "@/lib/mtm/day-trip"
@@ -84,6 +93,7 @@ function seg(from: string, to: string, a: readonly [number, number], b: readonly
 }
 const A = [40.40, 49.85] as const
 const A_STREET = [40.401, 49.85] as const // 111 m from A: off the stop
+const A40 = [40.40036, 49.85] as const // 40 m from A: inside the stop radius of A, past it of the drive's last fix
 const A80 = [40.40072, 49.85] as const // 80 m from A: the same building, past the stop radius
 const A_NORTH = [40.4009, 49.85] as const // 100 m north of A
 const A_SOUTH = [40.3991, 49.85] as const // 100 m south of A, 200 m from A_NORTH
@@ -115,6 +125,8 @@ type Case = {
 }
 
 type Day = {
+  /** The accepted fixes. */
+  points: HistoryLocationPoint[]
   gaps: HistoryGap[]
   /** The detector's stops as made: what the trip is handed. */
   detected: HistoryStop[]
@@ -151,7 +163,7 @@ function historyDay(day: Case): Day {
     policy: liveMapDayPolicy({ historyMaxAccuracyMeters: 100, historyStopRadiusMeters: 50, historyStopMinimumMinutes: 5, offlineThresholdSeconds: 300, gpsInterval: 30 }),
     truncated: false,
   })
-  return { gaps, detected, stops, timeline, trip, card }
+  return { points, gaps, detected, stops, timeline, trip, card }
 }
 
 type Row = Exclude<DayTripEntry, { kind: "START" | "END" }>
@@ -159,6 +171,11 @@ const rowsOf = (trip: DayTrip) => trip.entries.filter((entry): entry is Row => e
 const span = (row: { startedAt: Date; endedAt: Date | null }) => ({ from: row.startedAt.getTime(), to: (row.endedAt ?? row.startedAt).getTime() })
 const overlapping = (a: { from: number; to: number }, b: { from: number; to: number }) => a.from < b.to && b.from < a.to
 const told = (row: Row) => `${row.kind}${row.kind === "GAP" ? ` ${row.reason}` : ""} ${clock(row.startedAt)}–${clock(row.endedAt)}`
+/** The trip's stays: start, end, the visit it names, and how it tells the visit. */
+const stayRows = (day: Pick<Day, "trip">) => rowsOf(day.trip).flatMap((row) => row.kind === "STAY" ? [[
+  clock(row.startedAt), clock(row.endedAt), row.visit?.id ?? null,
+  row.visitTimes ? `${clock(row.visitTimes.checkInAt)}–${clock(row.visitTimes.checkOutAt)}` : row.open ? "open" : row.afterBreak ? "after break" : null,
+]] : [])
 
 /** Seconds covered by a set of spans, each second once. */
 function coveredSeconds(spans: Array<{ from: number; to: number }>): number {
@@ -176,30 +193,77 @@ function coveredSeconds(spans: Array<{ from: number; to: number }>): number {
 const journalBreaks = (events: MtmWorkdayPauseEvent[]) =>
   mtmWorkdayPauses(events).flatMap((pause) => pause.to ? [{ from: pause.from.getTime(), to: pause.to.getTime() }] : [])
 
-/**
- * The time at the customer's of a visit a break fell inside: from check-in to
- * check-out, outside the breaks — less a piece after a break shorter than the
- * minimum stop (resumed at the door and drove off: no stop, the owner's
- * rule). The first piece stays however short: he was there from the check-in.
- * A visit with no break inside it is told by its GPS stop, as on any day; a
- * stop ends at its last fix, and a check-out pressed a minute later in the
- * car is in the drive (the demo day has three) — that is not a break's doing.
- */
-function atTheCustomers(visit: HistoryVisit, breaks: Array<{ from: number; to: number }>) {
-  if (!visit.checkOutAt || !breaks.some((pause) => pause.from < visit.checkOutAt!.getTime() && pause.to > visit.checkInAt.getTime())) return []
-  let pieces = [{ from: visit.checkInAt.getTime(), to: visit.checkOutAt.getTime() }]
-  for (const pause of breaks) {
-    pieces = pieces.flatMap((piece) => pause.to <= piece.from || pause.from >= piece.to ? [piece] : [
-      ...pause.from > piece.from ? [{ from: piece.from, to: pause.from }] : [],
-      ...pause.to < piece.to ? [{ from: pause.to, to: piece.to }] : [],
+type Span = { from: number; to: number }
+const overlapSeconds = (a: Span, b: Span) => Math.max(0, Math.min(a.to, b.to) - Math.max(a.from, b.from)) / 1_000
+function minus(pieces: Span[], holes: Span[]): Span[] {
+  for (const hole of holes) {
+    pieces = pieces.flatMap((piece) => hole.to <= piece.from || hole.from >= piece.to ? [piece] : [
+      ...hole.from > piece.from ? [{ from: piece.from, to: hole.from }] : [],
+      ...hole.to < piece.to ? [{ from: hole.to, to: piece.to }] : [],
     ])
   }
-  return pieces.filter((piece, index) => index === 0 || piece.to - piece.from >= POLICY.stopMinimumSeconds * 1_000)
+  return pieces
 }
-const overlapSeconds = (a: { from: number; to: number }, b: { from: number; to: number }) =>
-  Math.max(0, Math.min(a.to, b.to) - Math.max(a.from, b.from)) / 1_000
 
-function holdsTheFourFacts(name: string, day: Pick<Day, "stops" | "timeline" | "trip">, events: MtmWorkdayPauseEvent[], shift: { startedAt: Date; completedAt: Date | null }, visits: HistoryVisit[]) {
+/** The visit's check-in..check-out; a visit still open runs to the day's last fix. */
+function visitSpan(visit: HistoryVisit, points: HistoryLocationPoint[]): Span {
+  const from = visit.checkInAt.getTime()
+  return { from, to: visit.checkOutAt?.getTime() ?? Math.max(from, points.at(-1)?.recordedAt.getTime() ?? from) }
+}
+
+/**
+ * The rule, read off the day itself. A visit's time on site: check-in to
+ * check-out (still open: to the day's last fix), minus the breaks, minus
+ * where the fixes show he left — a run of fixes farther than 150 m from the
+ * place of the row that names the visit, for at least the minimum stop, from
+ * the last fix there to the first fix back. Only for a visit a break fell
+ * inside: a visit with no break inside it is told by its GPS stop, as on any
+ * day — a stop ends at its last fix, and a check-out pressed a minute later
+ * in the car is in the drive (the demo day has three); that is not a break's
+ * doing, and main tells it the same way.
+ */
+function timeOnSite(visit: HistoryVisit, breaks: Span[], points: HistoryLocationPoint[], place: { latitude: number | null; longitude: number | null } | null): Span[] {
+  const whole = visitSpan(visit, points)
+  if (!breaks.some((pause) => pause.from < whole.to && pause.to > whole.from)) return []
+  const away: Span[] = []
+  if (place?.latitude != null && place.longitude != null) {
+    const far = points.map((point) => calculateDistance(place.latitude!, place.longitude!, point.latitude, point.longitude) > 150)
+    for (let first = 0; first < points.length; first += 1) {
+      if (!far[first]) continue
+      let last = first
+      while (far[last + 1]) last += 1
+      if (points[last].recordedAt.getTime() - points[first].recordedAt.getTime() >= POLICY.stopMinimumSeconds * 1_000) {
+        away.push({ from: points[first - 1]?.recordedAt.getTime() ?? -Infinity, to: points[last + 1]?.recordedAt.getTime() ?? Infinity })
+      }
+      first = last
+    }
+  }
+  return minus([whole], [...breaks, ...away]).filter((piece) => piece.to > piece.from)
+}
+
+/**
+ * Whose time each row tells: a row naming a visit, that visit's; a «Там же,
+ * после перерыва» row, the visit of the row that named it, with only breaks,
+ * lost signals beside them and other «Там же» rows between — anything else
+ * is a failure of its own.
+ */
+function visitOfRows(name: string, rows: Row[]): Array<string | null> {
+  return rows.map((row, index) => {
+    if (row.kind !== "STAY") return null
+    if (row.visit) return row.visit.id
+    if (!row.afterBreak) return null
+    for (let back = index - 1; back >= 0; back -= 1) {
+      const before = rows[back]
+      if (before.kind === "GAP" && (before.reason === "WORKDAY_PAUSED" || before.displacementMeters == null)) continue
+      if (before.kind === "STAY" && before.afterBreak) continue
+      if (before.kind === "STAY" && before.visit) return before.visit.id
+      break
+    }
+    throw new Error(`${name}: «Там же» ${told(row)} follows no visit`)
+  })
+}
+
+function holdsTheFourFacts(name: string, day: Pick<Day, "points" | "stops" | "timeline" | "trip">, events: MtmWorkdayPauseEvent[], shift: { startedAt: Date; completedAt: Date | null }, visits: HistoryVisit[]) {
   const rows = rowsOf(day.trip)
   const breakRows = rows.filter((row) => row.kind === "GAP" && row.reason === "WORKDAY_PAUSED")
   const breaks = journalBreaks(events)
@@ -239,33 +303,43 @@ function holdsTheFourFacts(name: string, day: Pick<Day, "stops" | "timeline" | "
   expect(stopEvents.map((event) => event.id), `${name}: timeline stops are the stop list`).toEqual(day.stops.map((stop) => stop.id))
   // The trip and the stop list differ in one thing. Every stay the trip took
   // from a GPS stop is a stop of the list, never a whole one the list has
-  // cut — except a visit's first minutes before a break, under the minimum:
-  // the list drops them («Детали остановок» promises the minimum), the trip
-  // keeps them, named by the visit (they were at the customer's, not «В пути»).
-  for (const row of rows) {
-    if (row.kind !== "STAY" || !row.id.startsWith("stay-")) continue
+  // cut — except a piece beside a break, under the minimum, in a visit's
+  // time: the list drops it («Детали остановок» promises the minimum), the
+  // trip keeps it as that visit's (he was at the customer's, not «В пути»).
+  const visitOfRow = visitOfRows(name, rows)
+  rows.forEach((row, index) => {
+    if (row.kind !== "STAY" || !row.id.startsWith("stay-")) return
     const stop = day.stops.find((candidate) => `stay-${candidate.id}` === row.id)
     if (stop) {
       expect(row.startedAt.getTime(), `${name}: ${told(row)} starts where its stop does`).toBe(stop.startedAt.getTime())
-      continue
+      return
     }
-    expect({ visit: Boolean(row.visit), visitTimes: Boolean(row.visitTimes), underMinimum: row.durationSeconds < POLICY.stopMinimumSeconds, endsAtBreak: breaks.some((pause) => pause.from === row.endedAt.getTime()) },
-      `${name}: ${told(row)}, not in the stop list, is a visit's first minutes before a break`)
-      .toEqual({ visit: true, visitTimes: true, underMinimum: true, endsAtBreak: true })
-  }
-  // No row told by a visit's place — the visit's own, or «Там же» — lies in a
-  // drive's time, and «в пути» holds none of the time at the customer's of a
-  // visit a break fell inside.
+    const own = visits.find((visit) => visit.id === visitOfRow[index])
+    expect(Boolean(own && overlapping(span(row), visitSpan(own, day.points))), `${name}: ${told(row)}, not in the stop list, is a visit's`).toBe(true)
+  })
+  // No row told by a visit's place — the visit's own, or «Там же» — lies in a drive's time.
   const drives = rows.filter((row) => row.kind === "MOVE")
   const atVisit = rows.filter((row) => row.kind === "STAY" && (row.visit || row.afterBreak))
   expect(atVisit.flatMap((row) => drives.filter((drive) => overlapping(span(row), span(drive))).map((drive) => `${told(row)} inside ${told(drive)}`)), `${name}: a visit's row inside a drive`).toEqual([])
-  for (const visit of visits) {
-    const pieces = atTheCustomers(visit, breaks)
-    expect(drives.reduce((sum, drive) => sum + pieces.reduce((total, piece) => total + overlapSeconds(span(drive), piece), 0), 0), `${name}: seconds of ${visit.id} at the customer's told as «В пути»`).toBe(0)
-  }
-  // A visit is named once.
+  // A visit is named once, and a visit a break fell inside is told whole: its
+  // time on site, minus the breaks, lies wholly in rows that name it or say
+  // «Там же» after it — no second of it «В пути», «Нет данных» or a stop
+  // without it, unless the fixes show he left.
   const named = rows.flatMap((row) => row.kind === "STAY" && row.visit ? [row.visit.id] : [])
   expect(named, `${name}: a visit named twice`).toEqual([...new Set(named)])
+  for (const visit of visits) {
+    const namer = rows.find((row) => row.kind === "STAY" && row.visit?.id === visit.id) as Extract<Row, { kind: "STAY" }> | undefined
+    const pieces = timeOnSite(visit, breaks, day.points, namer ?? null)
+    const total = pieces.reduce((sum, piece) => sum + (piece.to - piece.from) / 1_000, 0)
+    const ownRows = rows.filter((_, index) => visitOfRow[index] === visit.id)
+    const inOwnRows = pieces.reduce((sum, piece) => sum + ownRows.reduce((inRows, row) => inRows + overlapSeconds(span(row), piece), 0), 0)
+    expect(total - inOwnRows, `${name}: seconds of ${visit.id}'s time on site told as something else`).toBe(0)
+    // The first row of it names it — by its own times, its minutes not being the visit's.
+    if (pieces.length) {
+      expect(namer?.visitTimes ?? (namer?.open ? "open" : null), `${name}: ${visit.id} named by its own times`)
+        .toEqual(visit.checkOutAt ? { checkInAt: visit.checkInAt, checkOutAt: visit.checkOutAt } : "open")
+    }
+  }
   // No stop is shorter than the minimum «Детали остановок» promises — not
   // even one with a visit: the visit is the trip's to tell, by its own times.
   expect(day.stops.filter((stop) => stop.durationSeconds < POLICY.stopMinimumSeconds).map((stop) => stop.id), `${name}: stops under the minimum`).toEqual([])
@@ -301,16 +375,16 @@ const CASES: Case[] = [
     journal: journal(["PAUSE", "09:10:20"], ["RESUME", "09:40:00"]),
     visits: [visit("v1", "09:10:10", "09:40:20", A)],
     reads: (day) => {
-      const stays = rowsOf(day.trip).filter((row) => row.kind === "STAY")
       // Named once, by its own check-in and check-out — not «Визит 0 мин».
-      expect(stays.map((stay) => [stay.kind === "STAY" && stay.visit?.id, stay.kind === "STAY" && stay.visitTimes])).toEqual([
-        ["v1", { checkInAt: at("09:10:10"), checkOutAt: at("09:40:20") }],
-      ])
-      // Twenty seconds at the door are no stop: not «0 мин» in «Детали
-      // остановок», on the map's popup, in the timeline or the CSV. The trip
-      // keeps them, from where he parked: they are the visit's.
+      // The twenty seconds after «Продолжить», at the door until the
+      // check-out, are the visit's too: «Там же», not the drive's (round 7;
+      // until then the drive ran from the press, across the check-out).
+      expect(stayRows(day)).toEqual([["09:10:00", "09:10:20", "v1", "09:10:10–09:40:20"], ["09:40:00", "09:40:20", null, "after break"]])
+      // Seconds at the door are no stop: not «0 мин» in «Детали остановок»,
+      // on the map's popup, in the timeline or the CSV. The trip keeps them,
+      // from where he parked, as the stop's own pieces: they are the visit's.
       expect(day.stops).toEqual([])
-      expect(stays.map((stay) => [stay.id, clock(stay.startedAt), clock(stay.endedAt)])).toEqual([[`stay-${day.detected[0].id}`, "09:10:00", "09:10:20"]])
+      expect(rowsOf(day.trip).flatMap((row) => row.kind === "STAY" ? [row.id] : [])).toEqual([`stay-${day.detected[0].id}`, `stay-${day.detected[0].id}-1`])
       // The visit itself is never re-timed: once in the timeline, as recorded.
       expect(day.timeline.filter((event) => event.kind === "VISIT").map((event) => [clock(event.at), event.endedAt && clock(event.endedAt)])).toEqual([["09:10:10", "09:40:20"]])
     },
@@ -418,8 +492,9 @@ const CASES: Case[] = [
         ["09:59:30", "10:20:00", "v1"],
         ["10:50:20", "11:10:30", "v1"],
       ])
-      const stays = rowsOf(day.trip).flatMap((row) => row.kind === "STAY" ? [[clock(row.startedAt), clock(row.endedAt), row.visit?.id ?? null, row.visitTimes ? [clock(row.visitTimes.checkInAt), clock(row.visitTimes.checkOutAt)] : null, row.afterBreak ?? false]] : [])
-      expect(stays).toEqual([["09:59:30", "10:20:00", "v1", ["10:00:30", "11:10:00"], false], ["10:50:20", "11:10:30", null, null, true]])
+      // Its time on site runs to «Перерыв» and from «Продолжить», whatever
+      // second the fixes on either side came.
+      expect(stayRows(day)).toEqual([["09:59:30", "10:20:10", "v1", "10:00:30–11:10:00"], ["10:50:00", "11:10:30", null, "after break"]])
     },
   },
   // Its twin (probe A2): the first fix after «Продолжить» twenty seconds late, at the spot.
@@ -435,7 +510,8 @@ const CASES: Case[] = [
   },
   // Drift inside the building after the break: two stops of the visit, 100 m
   // either side of the spot — too far apart to merge, each the same place as
-  // the visit's. Neither brings the name back.
+  // the visit's. Neither brings the name back, and with the half minute
+  // between them told as the visit's (round 7), they read as one «Там же».
   {
     name: "a break in the middle of a visit, two stops after it on either side of the spot",
     points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:00:00", A_NORTH, A_NORTH), ...seg("11:00:30", "11:10:00", A_SOUTH, A_SOUTH), ...seg("11:10:30", "11:30:00", [40.398, 49.85], ROAD)],
@@ -447,8 +523,7 @@ const CASES: Case[] = [
         ["10:50:20", "11:00:00", "v1"],
         ["11:00:30", "11:10:00", "v1"],
       ])
-      const stays = rowsOf(day.trip).flatMap((row) => row.kind === "STAY" ? [[clock(row.startedAt), clock(row.endedAt), row.visit?.id ?? null, row.afterBreak ?? false]] : [])
-      expect(stays).toEqual([["09:59:30", "10:20:00", "v1", false], ["10:50:20", "11:00:00", null, true], ["11:00:30", "11:10:00", null, true]])
+      expect(stayRows(day)).toEqual([["09:59:30", "10:20:10", "v1", "10:00:30–11:10:00"], ["10:50:00", "11:10:00", null, "after break"]])
     },
   },
   // Verification of round 5 (probe B): checked in at 10:00:30, «Перерыв» at
@@ -470,6 +545,98 @@ const CASES: Case[] = [
       const stays = rowsOf(day.trip).flatMap((row) => row.kind === "STAY" ? [[row.visit?.id ?? null, row.visitTimes ? [clock(row.visitTimes.checkInAt), clock(row.visitTimes.checkOutAt)] : null, row.afterBreak ?? false]] : [])
       expect(stays).toEqual([["v1", ["10:00:30", "11:10:00"], false], [null, null, true]])
       expect(day.trip.summary.movingSeconds).toBe(3_570 + 13_800)
+    },
+  },
+  // Verification of round 6 (probe E10, a regression against main): a visit
+  // still open — he is at the customer's now — with a break inside it. The
+  // open visit had no check-out to overlap, so the stop's piece after
+  // «Продолжить» matched no visit: «Визит», «Перерыв», «Остановка без
+  // визита» at the same customer's, in the trip and in «Детали остановок».
+  {
+    name: "a visit still open, a break inside it, the day open",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:10:00", A, A)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]),
+    visits: [visit("v1", "10:00:30", null, A)],
+    workday: { startedAt: at("09:00:00"), completedAt: null },
+    reads: (day) => {
+      // The stop list: both pieces are the visit's.
+      expect(day.stops.map((stop) => [clock(stop.startedAt), clock(stop.endedAt), stop.visit?.id])).toEqual([
+        ["09:59:30", "10:20:10", "v1"],
+        ["10:50:00", "11:10:00", "v1"],
+      ])
+      // The trip: named once, as a visit not closed; after the break, the same place.
+      expect(stayRows(day)).toEqual([["09:59:30", "10:20:10", "v1", "open"], ["10:50:00", "11:10:00", null, "after break"]])
+    },
+  },
+  // Probe E5c: B with the first fix after «Продолжить» 80 m off. The minutes
+  // before the break made no stop of their own (under the minimum), and the
+  // stop after the break covered the visit: «В пути» ran to the break, across
+  // the check-in.
+  {
+    name: "checked in, a break three minutes later, the first fix after it 80 m off",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:03:00", A, A), ...seg("10:33:20", "11:10:00", A80, A80), ...seg("11:10:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:03:00"], ["RESUME", "10:33:00"]),
+    visits: [visit("v1", "10:00:30", "11:10:00", A)],
+    reads: (day) => {
+      expect(day.stops.map((stop) => [clock(stop.startedAt), clock(stop.endedAt), stop.visit?.id])).toEqual([["10:33:20", "11:10:30", "v1"]])
+      expect(rowsOf(day.trip).map(told)).toEqual([
+        "MOVE 09:00:00–10:00:30", "STAY 10:00:30–10:03:00", "GAP WORKDAY_PAUSED 10:03:00–10:33:00", "STAY 10:33:00–11:10:30", "MOVE 11:10:30–15:00:00",
+      ])
+      expect(stayRows(day)).toEqual([["10:00:30", "10:03:00", "v1", "10:00:30–11:10:00"], ["10:33:00", "11:10:30", null, "after break"]])
+    },
+  },
+  // Probe E5, the mirror of B: three minutes at the customer's after
+  // «Продолжить», under the minimum, then the check-out and the drive off.
+  // They were «В пути» from the press, across the check-out.
+  {
+    name: "checked in, a break, three minutes after it, checked out and drove off",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:03:00", A, A), ...seg("10:33:00", "10:36:00", A, A), ...seg("10:36:30", "11:00:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:03:00"], ["RESUME", "10:33:00"]),
+    visits: [visit("v1", "10:00:30", "10:36:00", A)],
+    reads: (day) => {
+      // «Детали остановок» still lists nothing under the minimum.
+      expect(day.stops).toEqual([])
+      expect(rowsOf(day.trip).map(told)).toEqual([
+        "MOVE 09:00:00–09:59:30", "STAY 09:59:30–10:03:00", "GAP WORKDAY_PAUSED 10:03:00–10:33:00", "STAY 10:33:00–10:36:00", "MOVE 10:36:00–15:00:00",
+      ])
+      expect(stayRows(day)).toEqual([["09:59:30", "10:03:00", "v1", "10:00:30–10:36:00"], ["10:33:00", "10:36:00", null, "after break"]])
+    },
+  },
+  // Probes E8 and E8b: the first fix after «Продолжить» seven minutes late,
+  // 80 m and 40 m off. The silence beside the break was «Нет данных», and
+  // the stop after it named the visit a second time («Визит · на месте 13
+  // мин»). He was checked in and the fixes on both sides are at the place:
+  // those minutes are the visit's.
+  ...([["80 m", A80, "11:10:30"], ["40 m", A40, "11:10:00"]] as const).map(([off, place, stopEnd]): Case => ({
+    name: `the first fix after «Продолжить» seven minutes late, ${off} off`,
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:57:00", "11:10:00", place, place), ...seg("11:10:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]),
+    visits: [visit("v1", "10:00:30", "11:10:00", A)],
+    reads: (day) => {
+      expect(day.stops.map((stop) => [clock(stop.startedAt), clock(stop.endedAt), stop.visit?.id])).toEqual([
+        ["09:59:30", "10:20:00", "v1"],
+        ["10:57:00", stopEnd, "v1"],
+      ])
+      expect(rowsOf(day.trip).map(told)).toEqual([
+        "MOVE 09:00:00–09:59:30", "STAY 09:59:30–10:20:10", "GAP WORKDAY_PAUSED 10:20:10–10:50:00", `STAY 10:50:00–${stopEnd}`, `MOVE ${stopEnd}–15:00:00`,
+      ])
+      expect(stayRows(day)).toEqual([["09:59:30", "10:20:10", "v1", "10:00:30–11:10:00"], ["10:50:00", stopEnd, null, "after break"]])
+      expect(day.trip.summary.unknownSeconds).toBe(0)
+    },
+  })),
+  // The exception in the rule: checked out from the road. After the break he
+  // stood at the spot ten minutes, drove off, and pressed check-out twenty
+  // minutes later. The fixes show he left: the drive is «В пути», not «Там же».
+  {
+    name: "a break in the middle of a visit, checked out from the road",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:00:00", A, A), ...seg("11:00:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]),
+    visits: [visit("v1", "10:00:30", "11:20:00", A)],
+    reads: (day) => {
+      expect(rowsOf(day.trip).map(told)).toEqual([
+        "MOVE 09:00:00–09:59:30", "STAY 09:59:30–10:20:10", "GAP WORKDAY_PAUSED 10:20:10–10:50:00", "STAY 10:50:00–11:00:30", "MOVE 11:00:30–15:00:00",
+      ])
+      expect(stayRows(day)).toEqual([["09:59:30", "10:20:10", "v1", "10:00:30–11:20:00"], ["10:50:00", "11:00:30", null, "after break"]])
     },
   },
   // S5: sparse fixes at a customer, a 4-minute break in a 20-minute silence.
@@ -592,7 +759,7 @@ describe("a day with breaks, told once", () => {
       // list's rule or the trip's; the detector given the gaps cuts as the list does.
       const cut = { points: sorted(day.points), visits: day.visits ?? [], gaps: read.gaps, minimumSeconds: POLICY.stopMinimumSeconds, offlineThresholdSeconds: POLICY.offlineThresholdSeconds }
       expect(cutHistoryStopsAtBreaks(read.stops, cut)).toEqual(read.stops)
-      expect(cutHistoryStopsAtBreaks(read.stops, { ...cut, keepFirstPieceOfVisit: true })).toEqual(read.stops)
+      expect(cutHistoryStopsAtBreaks(read.stops, { ...cut, keepVisitPieces: true })).toEqual(read.stops)
       expect(detectHistoryStops({ points: cut.points, visits: cut.visits, radiusMeters: POLICY.stopRadiusMeters, minimumSeconds: POLICY.stopMinimumSeconds, offlineThresholdSeconds: POLICY.offlineThresholdSeconds, gaps: read.gaps }))
         .toEqual(read.stops)
       // The live map's card reads the same day.
@@ -635,7 +802,7 @@ describe("a day with breaks, told once", () => {
       { type: "PAUSE", occurredAt: facts.pauses[0].startedAt },
       { type: "RESUME", occurredAt: facts.pauses[0].endedAt as Date },
     ]
-    holdsTheFourFacts("demo day", { stops, timeline, trip }, events, facts.workday, facts.visits)
+    holdsTheFourFacts("demo day", { points, stops, timeline, trip }, events, facts.workday, facts.visits)
     // «Fasilə» 12:26–13:04, as MTM_DEMO_ELVIN_WORKDAY has it.
     expect(trip.entries.filter((entry) => entry.kind === "GAP" && entry.reason === "WORKDAY_PAUSED").map((entry) => entry.kind === "GAP" && entry.durationSeconds)).toEqual([38 * 60])
     expect(MTM_DEMO_ELVIN_WORKDAY.paused).toBe("12:26")
@@ -651,6 +818,9 @@ describe("GET /api/v1/mtm/location-history on a day with breaks", () => {
     "a break in the middle of a visit, at one spot", "a break in the middle of a visit, two GPS stops after it", "a visit wholly inside a break (old data)",
     "a break in the middle of a visit, the first fix after it 80 m off", "a break in the middle of a visit, two stops after it on either side of the spot",
     "checked in, a break three minutes later, a long stay after it", "the day open, a break after the last fix",
+    "a visit still open, a break inside it, the day open", "checked in, a break three minutes later, the first fix after it 80 m off",
+    "checked in, a break, three minutes after it, checked out and drove off", "the first fix after «Продолжить» seven minutes late, 80 m off",
+    "the first fix after «Продолжить» seven minutes late, 40 m off", "a break in the middle of a visit, checked out from the road",
   ]
 
   beforeEach(() => {

@@ -2,7 +2,6 @@ import { calculateDistance } from "@/lib/geo-utils"
 import {
   cutHistoryStopsAtBreaks,
   historyBreakSpans,
-  historyStayOutsideBreaks,
   type HistoryGap,
   type HistoryLocationPoint,
   type HistoryStop,
@@ -47,7 +46,11 @@ export type DayTripStay = {
   durationSeconds: number
   latitude: number | null
   longitude: number | null
-  /** A visit recorded without a check-out; its end is not known. */
+  /**
+   * A visit recorded without a check-out; its end is not known. Also the
+   * row naming such a visit when a break fell inside it: its minutes are
+   * not the visit's, and the visit has no check-out to tell instead.
+   */
   open: boolean
   visit: { id: string; customerId: string; customerName: string } | null
   /**
@@ -144,6 +147,62 @@ function subtract(interval: Interval, holes: readonly Interval[]): Interval[] {
   return pieces
 }
 
+/** Every one of `intervals` minus every one of `holes`, as the pieces that remain, in time order. */
+function without(intervals: readonly Interval[], holes: readonly Interval[]): Interval[] {
+  return intervals.flatMap((interval) => subtract(interval, holes))
+    .filter((piece) => piece.to > piece.from)
+    .sort((a, b) => a.from - b.from)
+}
+
+type Place = { latitude: number; longitude: number }
+
+/** Where he checked in, or the customer's own place: a visit's place when no stop of its own tells it. */
+function checkInPlace(visit: HistoryVisit): Place | null {
+  if (visit.checkInLat != null && visit.checkInLng != null) return { latitude: visit.checkInLat, longitude: visit.checkInLng }
+  if (visit.customer.latitude != null && visit.customer.longitude != null) return { latitude: visit.customer.latitude, longitude: visit.customer.longitude }
+  return null
+}
+
+/**
+ * The time on site of every visit a break fell inside: from its check-in to
+ * its check-out — for a visit still open, to the day's last fix, since its
+ * end is not known — as one interval, the breaks still in it. A visit no
+ * break fell inside is told by its stops, as on any day.
+ */
+function visitsBrokenByBreaks(visits: readonly HistoryVisit[], breaks: readonly Interval[], lastPointAt: number | undefined): Map<string, Interval> {
+  const sites = new Map<string, Interval>()
+  for (const visit of visits) {
+    const from = visit.checkInAt.getTime()
+    const to = visit.checkOutAt?.getTime() ?? Math.max(from, lastPointAt ?? from)
+    if (breaks.some((span) => span.from < to && span.to > from)) sites.set(visit.id, { from, to })
+  }
+  return sites
+}
+
+/**
+ * When the fixes show he had left a place: a run of fixes all farther than
+ * SAME_PLACE_METERS from it, lasting at least the minimum stop, from the
+ * last fix at the place before it to the first fix back. A shorter run is
+ * a fix thrown off indoors or a step to the car, not a departure.
+ */
+function awayFrom(place: Place, points: readonly HistoryLocationPoint[], minimumSeconds: number): Interval[] {
+  const away: Interval[] = []
+  const far = points.map((point) => calculateDistance(place.latitude, place.longitude, point.latitude, point.longitude) > SAME_PLACE_METERS)
+  for (let first = 0; first < points.length; first += 1) {
+    if (!far[first]) continue
+    let last = first
+    while (last + 1 < points.length && far[last + 1]) last += 1
+    if (seconds(points[first].recordedAt.getTime(), points[last].recordedAt.getTime()) >= minimumSeconds) {
+      away.push({
+        from: first > 0 ? points[first - 1].recordedAt.getTime() : Number.NEGATIVE_INFINITY,
+        to: last + 1 < points.length ? points[last + 1].recordedAt.getTime() : Number.POSITIVE_INFINITY,
+      })
+    }
+    first = last
+  }
+  return away
+}
+
 /** Metres of a contiguous run of the day's fixes: the counted steps inside it. */
 function pathMeters(points: readonly HistoryLocationPoint[], counted: ReadonlyMap<HistoryLocationPoint, number>): number {
   let meters = 0
@@ -206,9 +265,10 @@ export function buildDayTrip(input: {
   points: readonly HistoryLocationPoint[]
   /**
    * The detector's stops as made (detectHistoryStops without the gaps). The
-   * trip cuts them at the breaks itself and keeps a visit's first piece
-   * however short (cutHistoryStopsAtBreaks); the stop list's cut drops it.
-   * Stops already cut come back as they are, without what that cut dropped.
+   * trip cuts them at the breaks itself and keeps a piece in a visit's time
+   * on site however short (cutHistoryStopsAtBreaks); the stop list's cut
+   * drops it. Stops already cut come back as they are; what that cut dropped
+   * of a visit is still the visit's, told from the visit's own times.
    */
   stops: readonly HistoryStop[]
   visits: readonly HistoryVisit[]
@@ -228,17 +288,17 @@ export function buildDayTrip(input: {
     if (input.roadSteps?.[index] != null) roadAcross.set(point.recordedAt.getTime(), Math.round(steps[index]))
   })
 
-  // 1. Where the agent stood: every GPS stop, cut at the breaks, plus every
-  //    visit no stop covers (a visit made with the phone silent still
-  //    happened), cut by the same rule (historyStayOutsideBreaks). A break is
-  //    the employee's own time and its own row, exactly as long as the
-  //    journal says (detectHistoryGaps): no stay is told inside it. The first
-  //    piece of a visit stays however short: checked in at 10:00, «Перерыв»
-  //    at 10:03 — those minutes were at the customer's, and without them the
-  //    drive before ran on to the break, across the check-in.
+  // 1. Where the agent stood: every GPS stop, cut at the breaks, and every
+  //    visit's time on site that no stop tells. A break is the employee's own
+  //    time and its own row, exactly as long as the journal says
+  //    (detectHistoryGaps): no stay is told inside it. A piece of a stop in a
+  //    visit's time on site stays however short (cutHistoryStopsAtBreaks):
+  //    checked in at 10:00, «Перерыв» at 10:03 — those minutes were at the
+  //    customer's, and without them the drive before ran on to the break,
+  //    across the check-in.
   const breaks = historyBreakSpans(input.gaps)
   const minimumSeconds = input.stopMinimumSeconds ?? DEFAULT_STOP_MINIMUM_SECONDS
-  const stops = cutHistoryStopsAtBreaks(input.stops, { points, visits: input.visits, gaps: input.gaps, minimumSeconds, keepFirstPieceOfVisit: true })
+  const stops = cutHistoryStopsAtBreaks(input.stops, { points, visits: input.visits, gaps: input.gaps, minimumSeconds, keepVisitPieces: true })
   const placed: DayTripStay[] = stops.map((stop) => ({
     kind: "STAY",
     id: `stay-${stop.id}`,
@@ -252,33 +312,62 @@ export function buildDayTrip(input: {
       ? { id: stop.visit.id, customerId: stop.visit.customerId, customerName: stop.visit.customerName }
       : null,
   }))
+  const firstPointAt = points[0]?.recordedAt.getTime()
+  const lastPointAt = points.at(-1)?.recordedAt.getTime()
+  const sitesOfVisits = visitsBrokenByBreaks(input.visits, breaks, lastPointAt)
+  const visitStay = (visit: HistoryVisit, id: string, from: number, to: number, place: { latitude: number | null; longitude: number | null } | null): DayTripStay => ({
+    kind: "STAY",
+    id,
+    startedAt: new Date(from),
+    endedAt: new Date(to),
+    durationSeconds: seconds(from, to),
+    latitude: place?.latitude ?? null,
+    longitude: place?.longitude ?? null,
+    open: visit.checkOutAt == null,
+    visit: { id: visit.id, customerId: visit.customerId, customerName: visit.customer.name },
+  })
+  // A visit no break fell inside, that no stop covers (made with the phone
+  // silent): the visit as recorded, as on any day.
   const coveredVisitIds = new Set(stops.flatMap((stop) => stop.visit ? [stop.visit.id] : []))
   for (const visit of input.visits) {
-    if (coveredVisitIds.has(visit.id) || visit.status === "CANCELLED") continue
+    if (sitesOfVisits.has(visit.id) || coveredVisitIds.has(visit.id) || visit.status === "CANCELLED") continue
     const end = visit.checkOutAt ?? visit.checkInAt
     const overlapsStop = stops.some((stop) =>
       visit.checkInAt <= stop.endedAt && end >= stop.startedAt)
     if (overlapsStop) continue
-    const stay = (id: string, from: number, to: number): DayTripStay => ({
-      kind: "STAY",
-      id,
-      startedAt: new Date(from),
-      endedAt: new Date(to),
-      durationSeconds: seconds(from, to),
+    placed.push(visitStay(visit, `visit-${visit.id}`, visit.checkInAt.getTime(), end.getTime(), {
       latitude: visit.checkInLat ?? visit.customer.latitude,
       longitude: visit.checkInLng ?? visit.customer.longitude,
-      open: visit.checkOutAt == null,
-      visit: { id: visit.id, customerId: visit.customerId, customerName: visit.customer.name },
+    }))
+  }
+  // A visit a break fell inside: no second of its time on site is told as a
+  // drive, a lost signal or a stay without it, unless the fixes show he left
+  // (awayFrom). The stops tell what they cover; every second they leave —
+  // before the first fix after «Продолжить», after the last fix before
+  // «Перерыв», a lost signal beside the break, minutes under the minimum
+  // stop that no stop made — is the visit's, at the place of its own stops.
+  // Until 2026-10-20 those seconds went to whatever the fixes made of them:
+  // with the first fix after the break 80 m off, the minutes before an early
+  // break were «В пути» across the check-in; three minutes after it, «В пути»
+  // across the check-out; seven minutes late, «Нет данных», and the visit
+  // named a second time after it.
+  for (const visit of input.visits) {
+    const site = sitesOfVisits.get(visit.id)
+    if (!site || visit.status === "CANCELLED") continue
+    const ownStops = placed.filter((stay) => stay.visit?.id === visit.id && stay.latitude != null && stay.longitude != null)
+    const place = ownStops.length
+      ? { latitude: ownStops[0].latitude as number, longitude: ownStops[0].longitude as number }
+      : checkInPlace(visit)
+    const told = placed.map((stay) => ({ from: stay.startedAt.getTime(), to: stay.endedAt.getTime() }))
+    const away = place ? awayFrom(place, points, minimumSeconds) : []
+    without([site], [...breaks, ...away, ...told]).forEach((piece, index) => {
+      // Its own fixes, if any: a fix at either edge is the neighbouring stop's.
+      const fixes = points.filter((point) => point.recordedAt.getTime() > piece.from && point.recordedAt.getTime() < piece.to)
+      const own = fixes.length
+        ? { latitude: fixes.reduce((sum, point) => sum + point.latitude, 0) / fixes.length, longitude: fixes.reduce((sum, point) => sum + point.longitude, 0) / fixes.length }
+        : place
+      placed.push(visitStay(visit, index === 0 ? `visit-${visit.id}` : `visit-${visit.id}-${index}`, piece.from, piece.to, own))
     })
-    const pieces = historyStayOutsideBreaks({
-      from: visit.checkInAt.getTime(),
-      to: end.getTime(),
-      breaks,
-      minimumSeconds,
-      visitOf: () => visit.id,
-    })
-    if (!pieces) placed.push(stay(`visit-${visit.id}`, visit.checkInAt.getTime(), end.getTime()))
-    else for (const piece of pieces) placed.push(stay(piece.index === 0 ? `visit-${visit.id}` : `visit-${visit.id}-${piece.index}`, piece.from, piece.to))
   }
   placed.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime() || a.id.localeCompare(b.id))
   const stayIntervals = placed.map((stay) => ({ from: stay.startedAt.getTime(), to: stay.endedAt.getTime() }))
@@ -315,8 +404,6 @@ export function buildDayTrip(input: {
   // 3. Everything between those anchors is movement, measured on the track.
   const anchors: Array<DayTripStay | DayTripGap> = [...placed, ...silences]
     .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime() || a.id.localeCompare(b.id))
-  const firstPointAt = points[0]?.recordedAt.getTime()
-  const lastPointAt = points.at(-1)?.recordedAt.getTime()
   const candidatesFrom = [input.workday?.startedAt.getTime(), firstPointAt, anchors[0]?.startedAt.getTime()]
     .filter((value): value is number => value != null)
   const candidatesTo = [input.workday?.completedAt?.getTime(), lastPointAt, ...anchors.map((a) => a.endedAt.getTime())]
@@ -388,29 +475,28 @@ export function buildDayTrip(input: {
   moveBetween(cursor, dayTo)
   const legs = mergeNeighbours(entries.splice(1))
 
-  // A visit is named once, on the first row of its time on site — with its
-  // own check-in and check-out when a break fell inside it, not the minutes
-  // of the row («Визит 0 мин» for half an hour at a customer who saw him at
-  // once, then made him wait). A break taken during it leaves its time on
-  // site on both sides. A row after the break is «Там же, после перерыва»,
-  // the visit not named again, when it is at the same place, inside the
-  // visit's own check-in..check-out, and only breaks and rows of that same
-  // time on site lie between it and the named row; a drive, a lost signal or
-  // another place ends the visit's time on site. The visit's own times decide
-  // it, not where a stop begins: the first fix after «Продолжить» can come
-  // late, or 80 m off in the same building, and the place is then a stop of
-  // its own. Named on the merged rows: a «Там же» row merged with the next
+  // A visit is named once, on the first row of its time on site — when a
+  // break fell inside it, by its own check-in and check-out (or «not closed»,
+  // a visit still open), not the minutes of the row («Визит 0 мин» for half
+  // an hour at a customer who saw him at once, then made him wait). Every
+  // later row of its time on site is «Там же, после перерыва», the visit not
+  // named again: a row at the same place that is the visit's, or that lies
+  // inside its check-in..check-out (an open visit's end is not known, so it
+  // is never before the row), with only breaks, lost signals beside them and
+  // rows of that same time on site between it and the named row. A drive, a
+  // lost signal of its own or another place ends the visit's time on site:
+  // he left. Named on the merged rows: a «Там же» row merged with the next
   // GPS stop of the visit (drift indoors) would have taken that stop's visit.
   const visitsById = new Map(input.visits.map((visit) => [visit.id, visit] as const))
   const named = new Set<string>()
   // The visit whose time on site the rows are telling, from the row that names it.
-  let site: { visitId: string; first: DayTripStay; checkInAt: number; checkOutAt: number | null; pastBreak: boolean } | null = null
+  let site: { visitId: string; first: DayTripStay; checkInAt: number; checkOutAt: number; pastBreak: boolean } | null = null
   const ofSite = (stay: DayTripStay): boolean => {
     if (!site) return false
     // A row of the visit is in its time by its own stop; a row of none, if it lies inside check-in..check-out.
     const inTime = stay.visit
       ? stay.visit.id === site.visitId
-      : site.checkOutAt != null && stay.startedAt.getTime() < site.checkOutAt && stay.endedAt.getTime() > site.checkInAt
+      : stay.startedAt.getTime() < site.checkOutAt && stay.endedAt.getTime() > site.checkInAt
     const { first } = site
     return inTime && (first.latitude == null || first.longitude == null || stay.latitude == null || stay.longitude == null
       || calculateDistance(first.latitude, first.longitude, stay.latitude, stay.longitude) < SAME_PLACE_METERS)
@@ -419,21 +505,31 @@ export function buildDayTrip(input: {
     if (leg.kind === "GAP" && leg.reason === "WORKDAY_PAUSED") {
       if (site) site.pastBreak = true
       entries.push(leg)
+    } else if (leg.kind === "GAP" && leg.displacementMeters == null) {
+      // A lost signal beside a break: where he was in it is not known
+      // (displacementMeters), so it is no evidence that he left.
+      entries.push(leg)
     } else if (leg.kind === "STAY" && ofSite(leg)) {
-      entries.push(site?.pastBreak ? { ...leg, visit: null, afterBreak: true } : leg)
+      entries.push(site?.pastBreak ? { ...leg, visit: null, open: false, afterBreak: true } : leg)
     } else if (leg.kind !== "STAY" || !leg.visit) {
       site = null
       entries.push(leg)
     } else {
       const own = visitsById.get(leg.visit.id)
-      const checkOutAt = own?.checkOutAt
-      site = { visitId: leg.visit.id, first: leg, checkInAt: own?.checkInAt.getTime() ?? leg.startedAt.getTime(), checkOutAt: checkOutAt?.getTime() ?? null, pastBreak: false }
+      site = {
+        visitId: leg.visit.id,
+        first: leg,
+        checkInAt: own?.checkInAt.getTime() ?? leg.startedAt.getTime(),
+        checkOutAt: own ? own.checkOutAt?.getTime() ?? Number.POSITIVE_INFINITY : leg.endedAt.getTime(),
+        pastBreak: false,
+      }
       // Named again only after a drive, a lost signal or another place.
       const firstTime = !named.has(leg.visit.id)
       named.add(leg.visit.id)
-      entries.push(firstTime && own && checkOutAt && breaks.some((span) => span.from < checkOutAt.getTime() && span.to > own.checkInAt.getTime())
-        ? { ...leg, visitTimes: { checkInAt: own.checkInAt, checkOutAt } }
-        : leg)
+      const broken = firstTime && own && sitesOfVisits.has(own.id)
+      entries.push(!broken ? leg
+        : own.checkOutAt ? { ...leg, visitTimes: { checkInAt: own.checkInAt, checkOutAt: own.checkOutAt } }
+          : { ...leg, open: true })
     }
   }
 

@@ -447,16 +447,16 @@ export type HistoryStayPiece = HistorySpan & {
 }
 
 /**
- * The one rule for time at one place around the employee's breaks — a GPS
- * stop (detectHistoryStops) and a visit no stop covers (day-trip.ts) alike.
- * A break is his own time and its own row (detectHistoryGaps), so what is
- * told of the place is only its time outside the breaks:
+ * The one rule for a GPS stop around the employee's breaks
+ * (cutHistoryStopsAtBreaks). A break is his own time and its own row
+ * (detectHistoryGaps), so what is told of the place is only its time outside
+ * the breaks:
  *  - a stretch the breaks cover wholly is gone: it was the break;
  *  - a piece shorter than the organization's minimum stop is gone, unless it
- *    is the first piece of its visit (`visitOf`) — the visit is never lost,
- *    and a piece of a few seconds without one is no stop (parked, pressed
- *    «Перерыв» at once, resumed and drove off: two pieces of five seconds).
- *    Only the trip names a GPS stop's visits here (cutHistoryStopsAtBreaks):
+ *    lies in a visit's time on site (`visitOf`) — no second of a visit is a
+ *    drive, however short, and a piece of a few seconds without one is no
+ *    stop (parked, pressed «Перерыв» at once, resumed and drove off: two
+ *    pieces of five seconds). Only the trip names a GPS stop's visits here:
  *    the stop list keeps no stop under the minimum;
  *  - a piece without a place of its own (`hasPlace`: for a GPS stop, no fix
  *    of its own outside the breaks) is gone: its place would be the break's.
@@ -475,13 +475,10 @@ export function historyStayOutsideBreaks(input: {
   const touching = input.breaks.filter((span) => span.from < whole.to && span.to > whole.from)
   if (!touching.length) return null
   const kept: HistoryStayPiece[] = []
-  const named = new Set<string>()
   spanWithout(whole, touching).forEach((piece, index) => {
     if (input.hasPlace && !input.hasPlace(piece)) return
     const visitId = input.visitOf(piece)
-    const firstOfVisit = visitId != null && !named.has(visitId)
-    if (wholeSeconds(piece) < input.minimumSeconds && !firstOfVisit) return
-    if (visitId != null) named.add(visitId)
+    if (wholeSeconds(piece) < input.minimumSeconds && visitId == null) return
     kept.push({ ...piece, index, visitId })
   })
   return kept
@@ -492,7 +489,7 @@ function historyStop(input: {
   fixes: readonly HistoryLocationPoint[]
   startedAt: Date
   endedAt: Date
-  visits: readonly HistoryVisit[]
+  visit: HistoryStop["visit"]
   /** Without it, the stop the piece was cut from lends its own. */
   offlineThresholdSeconds: number | null
   connectivity?: HistoryStop["connectivity"]
@@ -520,7 +517,7 @@ function historyStop(input: {
     batteryStart: batteries[0] ?? null,
     batteryEnd: batteries.at(-1) ?? null,
     connectivity: offline == null ? input.connectivity ?? "ONLINE" : hasOfflineGap ? "OFFLINE_GAPS" : "ONLINE",
-    visit: confirmedVisitForStop(input.visits, startedAt, endedAt),
+    visit: input.visit,
   }
 }
 
@@ -534,16 +531,24 @@ function historyStop(input: {
  * «1 ч 19 мин» at the place where he spent his lunch — while the trip said
  * 26 and 16 minutes around the break. The pieces follow
  * historyStayOutsideBreaks; each piece's place, accuracy and battery are read
- * off its own fixes, and its visit is the one it overlaps.
+ * off its own fixes.
  *
- * The difference is a piece shorter than the minimum that is the first of
- * its visit: the minutes at a customer's door before «Перерыв».
+ * A piece keeps the visit whose time on site it lies in: the one it overlaps
+ * from check-in to check-out, or the stop's own visit when that one is still
+ * open and the piece comes after its check-in. An open visit has no
+ * check-out to overlap, and until 2026-10-20 its stop's piece after
+ * «Продолжить» matched none: a manager watching a visit still going on read
+ * «Визит», «Перерыв», «Остановка без визита» at the same customer's.
+ *
+ * The readers differ in one thing: a piece shorter than the minimum that
+ * lies in a visit's time on site — the minutes at a customer's door before
+ * «Перерыв», or after «Продолжить» before the check-out.
  *  - The stop list, the map's popup, the timeline and its CSV drop it (the
  *    default): «Детали остановок» promises stops of at least the minimum, and
  *    a «0 мин» stop there is noise.
- *  - The trip keeps it (`keepFirstPieceOfVisit`, buildDayTrip): those
- *    minutes are the visit, not a drive. Dropped, they went into the drive
- *    before the break — «В пути» across the check-in.
+ *  - The trip keeps it (`keepVisitPieces`, buildDayTrip): those minutes are
+ *    the visit, not a drive. Dropped, they went into the drive beside the
+ *    break — «В пути» across the check-in or the check-out.
  * So the History route hands the trip the detector's stops as made, and the
  * trip cuts them itself; stops already cut come back exactly as they are.
  */
@@ -553,8 +558,8 @@ export function cutHistoryStopsAtBreaks(stops: readonly HistoryStop[], input: {
   gaps: readonly HistoryGap[]
   minimumSeconds: number
   offlineThresholdSeconds?: number
-  /** The trip's cut: the first piece of a visit is kept however short. */
-  keepFirstPieceOfVisit?: boolean
+  /** The trip's cut: a piece in a visit's time on site is kept however short. */
+  keepVisitPieces?: boolean
 }): HistoryStop[] {
   const breaks = historyBreakSpans(input.gaps)
   if (!breaks.length) return [...stops]
@@ -564,6 +569,10 @@ export function cutHistoryStopsAtBreaks(stops: readonly HistoryStop[], input: {
       const at = point.recordedAt.getTime()
       return at >= span.from && at <= span.to
     })
+    const own = stop.visit ? input.visits.find((visit) => visit.id === stop.visit?.id) : undefined
+    const visitOf = (piece: HistorySpan): HistoryStop["visit"] =>
+      confirmedVisitForStop(input.visits, new Date(piece.from), new Date(piece.to))
+      ?? (own && own.checkOutAt == null && own.checkInAt.getTime() <= piece.to ? stop.visit : null)
     const pieces = historyStayOutsideBreaks({
       from: stop.startedAt.getTime(),
       to: stop.endedAt.getTime(),
@@ -572,9 +581,7 @@ export function cutHistoryStopsAtBreaks(stops: readonly HistoryStop[], input: {
       // For the list no piece is kept only to carry its visit: seconds at a
       // customer's door before «Перерыв» were a stop of «0 мин» in «Детали
       // остановок» and on the map's popup. The trip keeps them as the visit.
-      visitOf: input.keepFirstPieceOfVisit
-        ? (piece) => confirmedVisitForStop(input.visits, new Date(piece.from), new Date(piece.to))?.id ?? null
-        : () => null,
+      visitOf: input.keepVisitPieces ? (piece) => visitOf(piece)?.id ?? null : () => null,
       hasPlace: (piece) => within(piece).length > 0,
     })
     if (!pieces) return [stop]
@@ -583,7 +590,7 @@ export function cutHistoryStopsAtBreaks(stops: readonly HistoryStop[], input: {
       fixes: within(piece),
       startedAt: new Date(piece.from),
       endedAt: new Date(piece.to),
-      visits: input.visits,
+      visit: visitOf(piece),
       offlineThresholdSeconds: input.offlineThresholdSeconds ?? null,
       connectivity: stop.connectivity,
     }))
@@ -632,7 +639,7 @@ export function detectHistoryStops(input: {
         fixes: points.slice(startIndex, endIndex + 1),
         startedAt: anchor.recordedAt,
         endedAt,
-        visits,
+        visit: confirmedVisitForStop(visits, anchor.recordedAt, endedAt),
         offlineThresholdSeconds,
       }))
       startIndex = endIndex + 1

@@ -504,12 +504,16 @@ describe("a break in the day's path", () => {
       const data = historyOf(fixes, ["09:10:20", "09:39:50"], [aptek("09:10:10", "09:40:20")])
       const rows = await ledger(data.trip)
       expect(rows.filter((row) => row?.includes("Aptek 24"))).toEqual(["Aptek 24Визит 09:10–09:4009:10–09:10"])
-      // No row of a few seconds: the piece after the break, ten seconds, does not name the visit again.
-      expect(rows.filter((row) => /(^|\D)0 мин/.test(row ?? ""))).toEqual([])
+      // The piece after the break, ten seconds at the door, does not name the
+      // visit again — and is not the drive's either: he was still checked in
+      // there. The drive starts at his last fix at the door (09:40); the fix
+      // after it is 2 km off, so the check-out at 09:40:20 was pressed on the road.
       expect(rows).toEqual([
         "Начал день09:00", expect.stringMatching(/^В пути10 мин/), "Aptek 24Визит 09:10–09:4009:10–09:10",
-        "Перерыв30 мин09:10–09:39", expect.stringMatching(/^В пути/), "Закрыл день09:50",
+        "Перерыв30 мин09:10–09:39", "Там же, после перерыва0 мин09:39–09:40", expect.stringMatching(/^В пути10 мин.*09:40–09:50$/), "Закрыл день09:50",
       ])
+      // «Детали остановок» still lists no stop of a few seconds.
+      expect(data.stops).toEqual([])
     })
 
     // Verification of round 5: checked in, «Перерыв» three minutes later. The
@@ -527,6 +531,27 @@ describe("a break in the day's path", () => {
       expect(await ledger(data.trip)).toEqual([
         "Начал день09:00", expect.stringMatching(/^В пути60 мин.*09:00–10:00$/), "Aptek 24Визит 10:00–11:1010:00–10:03",
         "Перерыв30 мин10:03–10:33", "Там же, после перерыва37 мин10:33–11:10", expect.stringMatching(/^В пути.*11:10–11:30$/), "Закрыл день11:30",
+      ])
+    })
+
+    // Verification of round 6 (E10): he is at the customer's now, the visit
+    // not closed, a break taken in the middle of it. The open visit had no
+    // check-out to overlap, and after «Продолжить» the ledger read
+    // «Остановка без визита» at the same customer's.
+    it("a visit still open, a break inside it: named once, «Визит не закрыт», then the same place", async () => {
+      const fixes = [
+        ...track("09:00", "10:00", HOME, PHARMACY),
+        ...track("10:00", "10:20", PHARMACY, PHARMACY),
+        ...track("10:50", "11:10", PHARMACY, PHARMACY),
+      ].filter((point, index, all) => index === 0 || point.recordedAt > all[index - 1].recordedAt)
+      const open = { ...aptek("10:00:30", "10:00:30"), status: "CHECKED_IN", checkOutAt: null }
+      const data = historyOf(fixes, ["10:20:10", "10:50:00"], [open], true)
+      expect(data.stops.map((stop) => [stop.startedAt.slice(11, 16), stop.endedAt.slice(11, 16), stop.visit?.customerName ?? null])).toEqual([
+        ["10:00", "10:20", "Aptek 24"],
+        ["10:50", "11:10", "Aptek 24"],
+      ])
+      expect((await ledger(data.trip)).slice(2)).toEqual([
+        "Aptek 24Визит не закрыт10:00–10:20", "Перерыв30 мин10:20–10:50", "Там же, после перерыва20 мин10:50–11:10", "Последний сигнал, день не закрыт11:10",
       ])
     })
 
