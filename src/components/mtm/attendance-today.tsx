@@ -214,10 +214,12 @@ export function MtmAttendanceToday() {
   const askable = data?.explanations ? attendanceAskableExplanations(summary?.attention ?? [], new Set(explanationOf.keys())) : []
   const clock = (value: string) => formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: data?.timezone ?? "Asia/Baku" })
   const picked = askable.filter(key => selected.has(key))
-  // The card keeps to ATTENTION_LIMIT rows but never hides one the button would ask: they come
-  // ticked, so everyone «İzahat istə» sends to is on screen with a tick HR can take off.
+  // The card keeps to ATTENTION_LIMIT rows but never hides a late or absent row that is asked or
+  // will be: one still to ask comes ticked, so everyone «İzahat istə» sends to is on screen with a
+  // tick HR can take off; one already asked keeps its row, because this card is the only place in
+  // the CRM where its answer is read and decided.
   const askableKeys = new Set(askable)
-  const shown = attention.filter(({ item }, index) => { const key = explainKey(item); return index < ATTENTION_LIMIT || (key !== null && askableKeys.has(key)) })
+  const shown = attention.filter(({ item }, index) => { const key = explainKey(item); return index < ATTENTION_LIMIT || (key !== null && (askableKeys.has(key) || explanationOf.has(key))) })
   const shownRisks = risks.slice(0, Math.max(0, ATTENTION_LIMIT - shown.length))
   const notShown = attentionCount - shown.length - shownRisks.length
 

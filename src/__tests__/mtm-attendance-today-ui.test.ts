@@ -258,6 +258,40 @@ describe("Personnel → Today", () => {
     expect(JSON.parse(String(posts[0][1]!.body)).items).toEqual([{ agentId: "id-Фарид", date: today, kind: "LATE" }])
   })
 
+  // After the one click everyone asked is no longer «to ask»; the rows below the sixth dropped off
+  // and an answer there could be read and decided nowhere — this card is the only place that decides
+  // one (verifier, 2026-10-20). A row once asked keeps its place on the card.
+  it("keeps everyone it asked on the card after the click, so an answer below the sixth row can be accepted", async () => {
+    explanations = []
+    const late = ["Камран", "Лейла", "Орхан", "Сабина", "Тофиг", "Улвия", "Фарид"]
+    currentReport = reportOf(late.map((name, index) => ({ name, start: `09:4${index}` })))
+    await render()
+    const card = () => byTestId("attendance-today-attention")!
+    const rows = () => Array.from(card().querySelectorAll<HTMLElement>('[data-testid="attendance-today-attention-item"]'))
+    const names = () => rows().map(row => row.querySelector("p")!.textContent)
+    expect(rows()).toHaveLength(9)
+    // What the phones send back: all nine asked at 10:05, Нигяр — the ninth row — has answered.
+    const asked = (name: string, kind: "LATE" | "ABSENT", answer: string | null) => ({ id: `e-${name}`, employeeId: `id-${name}`, employeeName: name, date: today, kind,
+      status: answer ? "ANSWERED" : "REQUESTED", lateMinutes: kind === "LATE" ? 30 : null, requestedAt: at(today, "10:05"), requestedByName: "HR", answer,
+      answeredAt: answer ? at(today, "10:20") : null, decidedAt: null, decidedByName: null })
+    explanations = [asked("Рашад", "ABSENT", null), ...late.map(name => asked(name, "LATE", null)), asked("Нигяр", "LATE", "Пробка на въезде")]
+    await act(async () => (byTestId("attendance-explain-ask") as HTMLButtonElement).click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    const post = fetchMock.mock.calls.find(([url, init]) => String(url) === "/api/v1/mtm/attendance/explanations" && init?.method === "POST")!
+    expect(JSON.parse(String(post[1]!.body)).items).toHaveLength(9)
+    // Nobody left to ask, and still all nine on the card, each with how its question stands.
+    expect(byTestId("attendance-explain-bar")).toBeNull()
+    expect(names()).toEqual(["Рашад", "Фарид", "Улвия", "Тофиг", "Сабина", "Орхан", "Лейла", "Камран", "Нигяр"])
+    expect(rows().map(row => row.querySelector('[data-testid="attendance-explain-status"]')?.textContent))
+      .toEqual([...Array(8).fill(ru.personnel.explainWaiting.replace("{time}", "10:05")), p("explainAnswered")])
+    expect(card().textContent).toContain(ru.personnel.moreAttention.replace("{count}", "2"))
+    await act(async () => buttonIn(rows()[8], p("explainAnswered"))!.click())
+    expect(byTestId("attendance-explain-answer")?.textContent).toContain("Пробка на въезде")
+    await act(async () => buttonIn(byTestId("attendance-explain-answer"), p("explainAccept"))!.click())
+    const decision = fetchMock.mock.calls.find(([url]) => String(url) === `/api/v1/mtm/attendance/explanations/${encodeURIComponent("e-Нигяр")}/decision`)!
+    expect(JSON.parse(String(decision[1]!.body))).toEqual({ decision: "ACCEPTED" })
+  })
+
   it("shows who was asked and who answered, and HR accepts the answer", async () => {
     explanations = [{ id: "e1", employeeId: "id-Рашад", employeeName: "Рашад", date: today, kind: "ABSENT", status: "ANSWERED", lateMinutes: null, requestedAt: at(today, "10:05"),
       requestedByName: "HR", answer: "Затопило квартиру", answeredAt: at(today, "11:00"), decidedAt: null, decidedByName: null },
