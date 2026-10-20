@@ -66,6 +66,13 @@ jobs:
             LEADDRIVE_TEST_REAL_WORKSPACE=1 "$NODE" --test scripts/backup/transient-workspace.test.mjs
       - name: Build isolated owner workbench (synthetic data only)
         run: docker build -f ops/backup/owner-workstation.Dockerfile -t owner-workbench-test .
+      - name: Real bounded scratch lifecycle with separate PostgreSQL16 source (synthetic only)
+        run: |
+          set -euo pipefail
+          test -x /usr/lib/postgresql/16/bin/postgres
+          NODE="$(command -v node)"
+          sudo env "GITHUB_ACTIONS=$GITHUB_ACTIONS" "RUNNER_ENVIRONMENT=$RUNNER_ENVIRONMENT" \
+            LEADDRIVE_TEST_REAL_SCRATCH=1 "$NODE" --test scripts/backup/scratch-service.test.mjs
       - name: Real PostgreSQL canary authentication and cleanup (synthetic only)
         run: |
           docker run --rm --network none --read-only --memory 1g --memory-swap 1g --cpus 1 \

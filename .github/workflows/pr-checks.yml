@@ -265,6 +265,7 @@ jobs:
           node --test scripts/backup/b2-writer-configuration.test.mjs
           node --test --test-concurrency=1 scripts/backup/commission-code-staging.test.mjs scripts/backup/transient-workspace.test.mjs
           node --test scripts/backup/scratch-authentication.test.mjs
+          node --test scripts/backup/scratch-service.test.mjs
 
       - name: Event-platform migration and database invariant gate
         run: node scripts/ci/test-event-platform-migrations.mjs
