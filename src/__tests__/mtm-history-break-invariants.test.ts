@@ -26,7 +26,8 @@
  * the visit, unless the fixes show he left (farther than 150 m from the place
  * of the row that names it, for at least the minimum stop). The first row
  * names the visit; every later row of its time on site is «Там же, после
- * перерыва».
+ * перерыва». Every day of the verifier's round-6 probe is read the same
+ * way, and none may read worse on its visits than main did.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
@@ -807,6 +808,145 @@ describe("a day with breaks, told once", () => {
     expect(trip.entries.filter((entry) => entry.kind === "GAP" && entry.reason === "WORKDAY_PAUSED").map((entry) => entry.kind === "GAP" && entry.durationSeconds)).toEqual([38 * 60])
     expect(MTM_DEMO_ELVIN_WORKDAY.paused).toBe("12:26")
   })
+})
+
+// Every day of the verifier's round-6 probe (zz-v9-new; its report says 25,
+// the probe holds 26 with the two controls): visits around breaks
+// at one place and 100 m off, check-ins and check-outs inside a break, open
+// visits, late and off first fixes, two breaks. Each holds every fact above,
+// and none reads worse on its visits than main did (merge base 9365d3632, as
+// the route gave it): no visit main named is missing, and no second main
+// told as a visit, inside that visit's check-in..check-out, is «В пути» now.
+// (Of two visits at one place, main and this branch both name only the
+// first — an older fault, not a break's; the table holds it as main had it.)
+const V9_DAYS: Array<Case & { main: Array<[visitId: string, from: string, to: string]> }> = [
+  { name: "E1 check-in during a break, long stay before and after",
+    points: [...seg("09:00:00", "09:55:00", ROAD, A), ...seg("09:55:30", "10:00:00", A, A), ...seg("10:30:20", "11:00:00", A, A), ...seg("11:00:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:00:10"], ["RESUME", "10:30:00"]), visits: [visit("v1", "10:10:00", "11:00:00", A)],
+    main: [["v1", "09:54:30", "11:00:00"]] },
+  { name: "E1b check-in during a break, short stay before",
+    points: [...seg("09:00:00", "09:58:00", ROAD, A), ...seg("09:58:30", "10:00:00", A, A), ...seg("10:30:20", "11:00:00", A, A), ...seg("11:00:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:00:10"], ["RESUME", "10:30:00"]), visits: [visit("v1", "10:10:00", "11:00:00", A)],
+    main: [["v1", "09:57:30", "11:00:00"]] },
+  { name: "E2 check-out during a break, stays after",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:00:00", A, A), ...seg("11:00:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "10:25:00", A)],
+    main: [["v1", "09:59:30", "11:00:00"]] },
+  { name: "E2b check-out during a break, leaves at once",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "10:52:00", A, A), ...seg("10:52:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "10:25:00", A)],
+    main: [["v1", "09:59:30", "10:52:00"]] },
+  { name: "E3 two visits at one place, the break between",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:20:00", A, A), ...seg("11:20:30", "11:40:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "10:20:00", A), visit("v2", "10:51:00", "11:20:00", A)],
+    main: [["v1", "09:59:30", "11:20:00"]] },
+  { name: "E3b two visits at one place, the first checked out after «Продолжить»",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:20:00", A, A), ...seg("11:20:30", "11:40:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "10:50:40", A), visit("v2", "10:51:00", "11:20:00", A)],
+    main: [["v1", "09:59:30", "11:20:00"]] },
+  { name: "E3c two visits back to back at one place, the break inside the first",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:30:00", A, A), ...seg("11:30:30", "11:50:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "11:00:00", A), visit("v2", "11:00:30", "11:30:00", A)],
+    main: [["v1", "09:59:30", "11:30:00"]] },
+  { name: "E3d two visits at one place, no break (control)",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "11:30:00", A, A), ...seg("11:30:30", "11:50:00", A_STREET, FAR)],
+    journal: [], visits: [visit("v1", "10:00:30", "11:00:00", A), visit("v2", "11:00:30", "11:30:00", A)],
+    main: [["v1", "09:59:30", "11:30:00"]] },
+  { name: "E4 visit at A, break, visit at B 100 m off",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:20:00", A_NORTH, A_NORTH), ...seg("11:20:30", "11:40:00", [40.402, 49.85], FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "10:20:00", A), visit("v2", "10:51:00", "11:20:00", A_NORTH)],
+    main: [["v1", "09:59:30", "10:20:00"], ["v2", "10:50:20", "11:20:00"]] },
+  { name: "E4b visit at A, break, visit at B 100 m off, A checked out after «Продолжить»",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:20:00", A_NORTH, A_NORTH), ...seg("11:20:30", "11:40:00", [40.402, 49.85], FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "10:51:00", A), visit("v2", "10:51:30", "11:20:00", A_NORTH)],
+    main: [["v1", "09:59:30", "10:20:00"], ["v1", "10:50:20", "11:20:00"]] },
+  { name: "E4c visit at A, break, a stop at B 100 m off without a visit",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:10:00", A_NORTH, A_NORTH), ...seg("11:10:30", "11:40:00", [40.402, 49.85], FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "10:20:00", A)],
+    main: [["v1", "09:59:30", "10:20:00"]] },
+  { name: "E4d visit at A spanning the break, then a visit at B 100 m off",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:00:00", A, A), ...seg("11:00:30", "11:30:00", A_NORTH, A_NORTH), ...seg("11:30:30", "11:50:00", [40.402, 49.85], FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "11:00:00", A), visit("v2", "11:01:00", "11:30:00", A_NORTH)],
+    main: [["v1", "09:59:30", "11:00:00"], ["v2", "11:00:30", "11:30:00"]] },
+  { name: "E5 a visit under the minimum before and after a break, drives off",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:03:00", A, A), ...seg("10:33:00", "10:36:00", A, A), ...seg("10:36:30", "11:00:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:03:00"], ["RESUME", "10:33:00"]), visits: [visit("v1", "10:00:30", "10:36:00", A)],
+    main: [["v1", "09:59:30", "10:36:00"]] },
+  { name: "E5b under the minimum before and after a break, no visit",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:03:00", A, A), ...seg("10:33:00", "10:36:00", A, A), ...seg("10:36:30", "11:00:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:03:00"], ["RESUME", "10:33:00"]),
+    main: [] },
+  { name: "E5c a visit under the minimum before a break, the first fix after it 80 m off (B with drift)",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:03:00", A, A), ...seg("10:33:20", "11:10:00", A80, A80), ...seg("11:10:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:03:00"], ["RESUME", "10:33:00"]), visits: [visit("v1", "10:00:30", "11:10:00", A)],
+    main: [["v1", "10:33:20", "11:10:30"]] },
+  { name: "E5d a visit under the minimum before a break, first fix after it 6 min late at the spot",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:03:00", A, A), ...seg("10:39:00", "11:10:00", A, A), ...seg("11:10:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:03:00"], ["RESUME", "10:33:00"]), visits: [visit("v1", "10:00:30", "11:10:00", A)],
+    main: [["v1", "09:59:30", "11:10:00"]] },
+  { name: "E6 two breaks inside one visit",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:30:20", "11:00:00", A, A), ...seg("11:10:20", "12:00:00", A, A), ...seg("12:00:30", "12:20:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:30:00"], ["PAUSE", "11:00:10"], ["RESUME", "11:10:00"]), visits: [visit("v1", "10:00:30", "12:00:00", A)],
+    main: [["v1", "09:59:30", "12:00:00"]] },
+  { name: "E7 two breaks inside one visit, three minutes of work between",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:30:20", "10:33:00", A, A), ...seg("10:50:20", "11:10:00", A, A), ...seg("11:10:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:30:00"], ["PAUSE", "10:33:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "11:10:00", A)],
+    main: [["v1", "09:59:30", "11:10:00"]] },
+  { name: "E8 first fix after «Продолжить» 7 min late and 80 m off",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:57:00", "11:10:00", A80, A80), ...seg("11:10:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "11:10:00", A)],
+    main: [["v1", "09:59:30", "10:20:00"], ["v1", "10:57:00", "11:10:30"]] },
+  { name: "E8b first fix after «Продолжить» 7 min late, 40 m off (inside the radius)",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:57:00", "11:10:00", A40, A40), ...seg("11:10:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", "11:10:00", A)],
+    main: [["v1", "09:59:30", "10:20:00"], ["v1", "10:57:00", "11:10:00"]] },
+  { name: "E9 check-in during a break, leaves three minutes after «Продолжить»",
+    points: [...seg("09:00:00", "09:58:00", ROAD, A), ...seg("09:58:30", "10:00:00", A, A), ...seg("10:30:20", "10:33:00", A, A), ...seg("10:33:30", "11:00:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:00:10"], ["RESUME", "10:30:00"]), visits: [visit("v1", "10:10:00", "10:33:00", A)],
+    main: [["v1", "09:57:30", "10:33:00"]] },
+  { name: "E10 a visit still open, a break inside it, day open",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:20:00", A, A), ...seg("10:50:20", "11:10:00", A, A)],
+    journal: journal(["PAUSE", "10:20:10"], ["RESUME", "10:50:00"]), visits: [visit("v1", "10:00:30", null, A)],
+    workday: { startedAt: at("09:00:00"), completedAt: null },
+    main: [["v1", "09:59:30", "11:10:00"]] },
+  { name: "E10b a visit still open, no break (control), day open",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "11:10:00", A, A)],
+    journal: [], visits: [visit("v1", "10:00:30", null, A)],
+    workday: { startedAt: at("09:00:00"), completedAt: null },
+    main: [["v1", "09:59:30", "11:10:00"]] },
+  { name: "E11 visit with the phone silent, under the minimum before and after the break",
+    points: [...seg("09:30:00", "09:59:00", ROAD, A), ...seg("10:45:00", "11:00:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:03:00"], ["RESUME", "10:33:00"]), visits: [visit("v1", "10:00:00", "10:36:00", A)],
+    main: [["v1", "09:59:00", "10:45:00"]] },
+  { name: "E12 B, then a second visit at the same spot after the break",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:00:30", "10:03:00", A, A), ...seg("10:33:00", "11:10:00", A, A), ...seg("11:10:30", "11:30:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:03:00"], ["RESUME", "10:33:00"]), visits: [visit("v1", "10:00:30", "10:02:30", A), visit("v2", "10:34:00", "11:10:00", A)],
+    main: [["v1", "09:59:30", "11:10:00"]] },
+  { name: "E13 open day, currently on a second break after a resumed first one",
+    points: seg("09:00:00", "10:00:00", ROAD, A_STREET),
+    journal: journal(["PAUSE", "10:00:30"], ["RESUME", "10:30:00"], ["PAUSE", "10:31:00"]),
+    workday: { startedAt: at("09:00:00"), completedAt: null },
+    main: [] },
+]
+
+describe("the verifier's days of round 6, never worse than main on their visits", () => {
+  it("are the probe's 26", () => expect(new Set(V9_DAYS.map((day) => day.name.split(" ")[0])).size).toBe(26))
+  for (const day of V9_DAYS) {
+    it(day.name, () => {
+      const read = historyDay(day)
+      const visits = day.visits ?? []
+      holdsTheFourFacts(day.name, read, day.journal, day.workday ?? { startedAt: at("09:00:00"), completedAt: at("15:00:00") }, visits)
+      const rows = rowsOf(read.trip)
+      const named = new Set(rows.flatMap((row) => row.kind === "STAY" && row.visit ? [row.visit.id] : []))
+      const drives = rows.filter((row) => row.kind === "MOVE")
+      for (const [visitId, from, to] of day.main) {
+        expect(named.has(visitId), `${day.name}: ${visitId}, named on main, is named`).toBe(true)
+        const own = visitSpan(visits.find((candidate) => candidate.id === visitId)!, read.points)
+        const toldAsVisit = { from: Math.max(at(from).getTime(), own.from), to: Math.min(at(to).getTime(), own.to) }
+        expect(drives.reduce((sum, drive) => sum + overlapSeconds(span(drive), toldAsVisit), 0), `${day.name}: seconds of ${visitId} main told as the visit, «В пути» now`).toBe(0)
+      }
+    })
+  }
 })
 
 // The same days through the route itself: what the page, the stop list, the
