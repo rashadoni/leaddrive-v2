@@ -26,7 +26,7 @@ vi.mock("next-intl", () => ({
 }))
 
 import type { MtmDashboardAgent } from "@/lib/mtm-types"
-import { parseMtmLiveMapContract } from "@/lib/mtm-types"
+import { parseMtmLiveMapContract, presentMtmDashboardAgent } from "@/lib/mtm-types"
 import { MTM_AGENT_MAP_COLOR_KEYS } from "@/lib/mtm/agent-tags"
 import {
   applyRosterFilters,
@@ -44,6 +44,7 @@ import {
   rosterFilterOptions,
   rosterFilterTicked,
   rosterSignalAge,
+  rosterSpeed,
   rosterStatusChipOn,
   rosterTickState,
   rosterValue,
@@ -56,6 +57,7 @@ import {
   type RosterFilters,
   type RosterView,
 } from "@/lib/mtm/live-map-roster"
+import { rosterCellText, type RosterExportWords } from "@/lib/mtm/live-map-roster-export"
 import { LiveMapRoster } from "@/components/mtm/live-map-roster"
 
 const NOW = Date.parse("2026-10-09T10:00:00.000Z")
@@ -109,6 +111,37 @@ describe("what a column holds", () => {
     expect(TEAM.map((agent) => rosterValue(agent, "app"))).toEqual(["ONLINE", "ONLINE", "ONLINE", "ONLINE", "OFFLINE", "OFFLINE"])
     // A status the list does not know is not a seventh group: it is «GPS inactive».
     expect(rosterValue(person("x", "X", { fieldStatus: "SOMETHING_NEW" }), "status")).toBe("OFFLINE")
+  })
+
+  // Verification of 2026-10-20: a grey last known point kept the speed of the
+  // fix it was — on a break, the speed he drove at before he pressed it. The
+  // column read «42 км/ч» beside «GPS неактивен», the speed filter put him
+  // under «В пути», the sort by speed ranked him first and the Excel file
+  // wrote it down, while his card and the map's balloon showed no speed.
+  it("has no speed for a position that is not live: on a break, or back from one before his first fix", () => {
+    const working = person("w1", "Fərid", { speed: 10 })
+    const paused = presentMtmDashboardAgent(
+      person("p1", "Nigar", { workdayState: "PAUSED", fieldStatus: "STOPPED", speed: 42 }),
+      { onlineSeconds: 300, delayedSeconds: 600 },
+      NOW,
+    )
+    // Back at work, the newest point still the one from before the break: the server sends it as the last known one.
+    const back = person("b1", "Murad", { freshness: "STALE", fieldStatus: "OFFLINE", speed: 50 })
+    expect(paused.freshness).toBe("STALE")
+    const rows = [working, paused, back]
+    expect(rows.map(rosterSpeed)).toEqual([10, null, null])
+    expect(rows.map((agent) => rosterValue(agent, "speed"))).toEqual(["MOVING", "UNKNOWN", "UNKNOWN"])
+    // «В пути» in the speed filter holds the one who is moving now.
+    expect(rosterFilterOptions(rows, {}, "speed")).toEqual([
+      { value: "MOVING", count: 1 }, { value: "STILL", count: 0 }, { value: "UNKNOWN", count: 2 },
+    ])
+    expect(ids(applyRosterFilters(rows, { speed: onlyRosterFilterValue("MOVING") }))).toEqual(["w1"])
+    // No speed is last whichever way the column is sorted.
+    expect(ids(sortRoster(rows, { column: "speed", direction: "desc" }, "az"))).toEqual(["w1", "b1", "p1"])
+    expect(ids(sortRoster(rows, { column: "speed", direction: "asc" }, "az"))).toEqual(["w1", "b1", "p1"])
+    // …and the Excel file says what the column says.
+    const words = { speed: (kmh: number) => `${kmh} km/h` } as unknown as RosterExportWords
+    expect(rows.map((agent) => rosterCellText(agent, "speed", words))).toEqual(["10 km/h", "—", "—"])
   })
 
   it("draws the class boundaries where the labels say: below 20, 20-50, above 50; moving is 3 km/h as the cell shows it", () => {
@@ -857,6 +890,18 @@ describe("the list on the page", () => {
     expect(state.selected).toBeNull()
     expect(rowIds()).toEqual(["a2", "a1", "a6", "a5"])
     expect(groupRow("t-south").querySelector("button")?.getAttribute("aria-expanded")).toBe("false")
+  })
+
+  it("shows no speed beside a grey last known point", async () => {
+    agents = [
+      person("w1", "Fərid", { speed: 30 }),
+      presentMtmDashboardAgent(person("p1", "Nigar", { workdayState: "PAUSED", fieldStatus: "STOPPED", speed: 42 }), { onlineSeconds: 300, delayedSeconds: 600 }, NOW),
+    ]
+    state.view = { ...state.view, columns: [...state.view.columns, "speed"] }
+    await draw()
+    expect(cell("w1", "speed").textContent).toBe("30 км/ч")
+    expect(cell("p1", "status").textContent).toContain("GPS неактивен")
+    expect(cell("p1", "speed").textContent).toBe("—")
   })
 
   it("chooses the columns of the wide table, keeps the name, and can put the list away", async () => {
