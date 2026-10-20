@@ -4,11 +4,13 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent }
 import dynamic from "next/dynamic"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
-import { Activity, ArrowLeft, BarChart3, BellRing, Check, CheckCircle2, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Clock, Clock3, Download, FileSpreadsheet, Grid2X2, GripVertical, HelpCircle, History, Layers3, LocateFixed, MapPin, Pause, PhoneIncoming, Play, Plus, Radio, RefreshCw, RotateCcw, Route as RouteIcon, Satellite, Search, Send, Sparkles, TrendingUp, WifiOff, X } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Activity, AlertTriangle, ArrowLeft, ArrowUpRight, BarChart3, BellRing, Check, CheckCircle2, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Clock, Clock3, Download, FileSpreadsheet, Flag, Grid2X2, GripVertical, History, Layers3, List, LocateFixed, MapPin, Navigation, Pause, PauseCircle, PhoneIncoming, Play, Plus, Radio, RefreshCw, RotateCcw, Route as RouteIcon, Satellite, Search, Send, Sparkles, TrendingUp, WifiOff, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { HintValue } from "@/components/hint"
+import { ADVISOR_RECORD_COPY } from "@/components/ai/advisor-record-widget"
+import { MTM_TAB_ROW, mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
 import { DayTripLedger, type DayTripFocus } from "@/components/mtm/day-trip-ledger"
 import type { LiveMapReferencePoint } from "@/components/mtm/live-map"
 import { HomeAttentionCard, attentionRowCount } from "@/components/mtm/home-attention-card"
@@ -36,6 +38,9 @@ import { applyRosterFilters, foldRosterText, rosterDistanceToPoint, ROSTER_DEFAU
 import type { LiveMapClient } from "@/lib/mtm/live-map-clients"
 import { extendLiveMapTrails, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
+import { MAX_RANGE_DAYS } from "@/lib/mtm/history-range"
+import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
+import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
 import { formatInTimezone } from "@/lib/timezone"
 import {
   routePlannerDayMinutes,
@@ -53,6 +58,7 @@ import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
 import { DEMO_TARGET_ATTRIBUTE, demoTarget } from "../demo-target"
+import { DemoHelpButton } from "./demo-help-button"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 import {
   MTM_DEMO_AGENTS,
@@ -141,10 +147,12 @@ export function MtmScene(props: DemoSceneProps) {
 
   return (
     <div data-testid="demo-scene-mtm" className="space-y-4" onClickCapture={keepInDemo}>
-      {/* The product's MtmModuleNavigation, drawn from its own list: it reads the session to filter the tools. */}
-      <div className="mb-2 border-b border-zinc-200/80 pb-3 dark:border-zinc-700/80">
+      {/* The product's MtmModuleNavigation, drawn from its own list (it reads the
+          session to filter the tools): one menu with an underline, the chosen
+          page dark text over an orange line (owner-approved colours, 2026-10-18). */}
+      <div className="mb-6 border-b border-zinc-200/80 dark:border-zinc-700/80">
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-          <nav aria-label={t("primaryNavigationLabel")} className="-mx-1 flex min-w-0 flex-wrap gap-1 px-1 sm:flex-1">
+          <nav aria-label={t("primaryNavigationLabel")} className="-mx-1 flex min-w-0 gap-1 overflow-x-auto px-1 sm:flex-1">
             {MTM_PRIMARY_NAVIGATION.map((item) => {
               const active = isMtmNavigationItemActive(item.href, PATH_OF[screen])
               const Icon = item.icon
@@ -155,8 +163,8 @@ export function MtmScene(props: DemoSceneProps) {
                   aria-current={active ? "page" : undefined}
                   onClick={() => (active ? undefined : hint(S.mtmTabHint))}
                   className={cn(
-                    "flex min-h-11 shrink-0 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors",
-                    active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                    "-mb-px flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium outline-none transition-[border-color,color] duration-150 focus-visible:ring-2 focus-visible:ring-primary/35",
+                    active ? "border-primary font-semibold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" />
@@ -165,7 +173,8 @@ export function MtmScene(props: DemoSceneProps) {
               )
             })}
           </nav>
-          <button type="button" onClick={() => hint(S.mtmTabHint)} className="flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted/60 sm:w-auto dark:border-zinc-700">
+          {/* None of the demo's pages is one of the tools, so the button keeps its grey edge. */}
+          <button type="button" onClick={() => hint(S.mtmTabHint)} className="mb-2 flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-card px-4 text-sm font-semibold text-foreground outline-none transition-[background-color,border-color,color,transform] duration-150 hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:scale-[0.98] sm:w-auto dark:border-zinc-700">
             <Grid2X2 className="h-4 w-4" aria-hidden="true" />
             <span>{t("allTools")}</span>
             <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -263,11 +272,14 @@ function TodayScreen({ snapshot, hint }: DemoSceneProps) {
           <h2 className="text-2xl font-bold tracking-tight first-letter:uppercase">{format.day(today)}</h2>
           <p className="min-h-5 text-sm text-muted-foreground">{[t(attention.todayIsWorkingDay ? "workingDay" : "dayOff"), tw("summaryAsOf", { time: MTM_DEMO_CLOCK }), S.mtmSampleDayNote].join(" · ")}</p>
         </div>
+        {/* The page's own controls: «Kömək», then the team, the employee and the refresh in one row. */}
         <div className="flex flex-wrap items-center gap-2">
+          <DemoHelpButton variant="label" onClick={() => hint(S.demoButtonHint)} />
           <MtmFilterBar testId="mtm-week-filters">
             <MtmFilterSelect testId="mtm-week-team" label={tw("team")} value="" allLabel={tw("allTeams")} options={[{ value: "team-center", label: "Bakı — Mərkəz" }, { value: "team-south", label: "Bakı — Cənub" }]} onChange={() => hint(S.demoButtonHint)} />
+            <MtmFilterSelect testId="mtm-week-employee" label={tw("employee")} value="" allLabel={tw("chooseEmployee")} options={MTM_DEMO_AGENTS.map((agent) => ({ value: agent.id, label: agent.name }))} onChange={() => hint(S.mtmTabHint)} />
+            <Button type="button" variant="outline" size="icon" className="h-11 w-11" aria-label={tw("refresh")} onClick={() => hint(S.demoButtonHint)}><RefreshCw className="h-4 w-4" aria-hidden="true" /></Button>
           </MtmFilterBar>
-          <Button type="button" variant="outline" size="icon" className="h-11 w-11" aria-label={tw("refresh")} onClick={() => hint(S.demoButtonHint)}><RefreshCw className="h-4 w-4" aria-hidden="true" /></Button>
         </div>
       </div>
 
@@ -380,6 +392,10 @@ function retimed(order: readonly PlannedStop[], times: readonly string[]): Plann
   const slots = [...times].sort()
   return order.map((stop, index) => ({ ...stop, plannedTime: slots[index] ?? routePlannerNextSlot(slots[slots.length - 1]) }))
 }
+
+/** The planner's map chips (route-planner.tsx): the chosen one outlined dark with an inset ring, the rest white. */
+const PLANNER_CHIP_ON = "border border-foreground bg-white text-foreground ring-1 ring-inset ring-foreground dark:bg-zinc-900"
+const PLANNER_CHIP_OFF = "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900"
 
 function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const t = useTranslations("mtmRoutePlanner")
@@ -530,14 +546,15 @@ function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
                 </ul>
               ) : null}
             </div>
-            <button type="button" aria-pressed={onlyDue} onClick={() => setOnlyDue(true)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", onlyDue ? "bg-orange-500 text-white" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+            {/* The chosen chip is outlined dark, never filled (owner-approved colours, 2026-10-18). */}
+            <button type="button" aria-pressed={onlyDue} onClick={() => setOnlyDue(true)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", onlyDue ? PLANNER_CHIP_ON : PLANNER_CHIP_OFF)}>
               {t("onlyDue", { month: monthLabel, count: duePlaces })}
             </button>
-            <button type="button" aria-pressed={!onlyDue} onClick={() => setOnlyDue(false)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", !onlyDue ? "bg-orange-500 text-white" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+            <button type="button" aria-pressed={!onlyDue} onClick={() => setOnlyDue(false)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", !onlyDue ? PLANNER_CHIP_ON : PLANNER_CHIP_OFF)}>
               {t("all", { count: allPlaces.length })}
             </button>
             {categories.map((value) => (
-              <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory((current) => (current === value ? "" : value))} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-medium shadow-sm", category === value ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+              <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory((current) => (current === value ? "" : value))} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-medium shadow-sm", category === value ? PLANNER_CHIP_ON : PLANNER_CHIP_OFF)}>
                 {t("category", { category: value })}
               </button>
             ))}
@@ -554,8 +571,8 @@ function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
             <h2 className="text-[15px] font-semibold first-letter:uppercase">{t("routeOf", { day: routeDayLabel })}</h2>
             <div className="mt-1 flex flex-wrap gap-1.5">
               <HomePill tone={stops.length > 0 ? "green" : "zinc"}>{t("stops", { count: stops.length })}</HomePill>
-              {stops.length > 1 ? <HomePill tone="zinc">{t("km", { km: lengthKm.toLocaleString(locale, { maximumFractionDigits: 1 }) })}</HomePill> : null}
-              {dayMinutes !== null ? <HomePill tone="zinc">{dayMinutes % 60 === 0 ? t("durationHours", { hours: dayMinutes / 60 }) : t("duration", { hours: Math.floor(dayMinutes / 60), minutes: dayMinutes % 60 })}</HomePill> : null}
+              {stops.length > 1 ? <HintValue text={t("hint.length")}><HomePill tone="zinc">{t("km", { km: lengthKm.toLocaleString(locale, { maximumFractionDigits: 1 }) })}</HomePill></HintValue> : null}
+              {dayMinutes !== null ? <HintValue text={t("hint.duration")}><HomePill tone="zinc">{dayMinutes % 60 === 0 ? t("durationHours", { hours: dayMinutes / 60 }) : t("duration", { hours: Math.floor(dayMinutes / 60), minutes: dayMinutes % 60 })}</HomePill></HintValue> : null}
             </div>
           </div>
           {stops.length === 0 ? (
@@ -592,7 +609,7 @@ function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
             </ol>
           )}
           <div className="space-y-2 border-t border-zinc-100 p-3 dark:border-zinc-800">
-            <Button variant="outline" className="w-full border-primary/50 bg-primary/5 font-semibold text-primary" onClick={suggest} {...(snapshot.ui["mtm.planSuggested"] === true ? {} : demoTarget("mtm-plan-suggest"))}>
+            <Button variant="outline" className="w-full border-primary/50 font-semibold text-primary" onClick={suggest} {...(snapshot.ui["mtm.planSuggested"] === true ? {} : demoTarget("mtm-plan-suggest"))}>
               <Sparkles aria-hidden="true" />{t("suggest")}
             </Button>
             <p className="text-center text-[11px] leading-4 text-muted-foreground">{t("suggestNote", { month: monthLabel })}</p>
@@ -622,13 +639,14 @@ function PlanScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
  * measures everyone from that client (`rosterDistanceToPoint`) and puts the
  * nearest first; nobody on a break is measured.
  */
+/** The page's status chips (map/page.tsx): outlined, each in its status colour as text, the chosen one outlined dark. */
 const LIVE_STATUS_CHIPS = [
-  { status: "CHECKED_IN", key: "checkedIn", tone: "text-green-600 border-green-200 dark:border-green-800" },
-  { status: "ON_ROAD", key: "onRoad", tone: "text-blue-600 border-blue-200 dark:border-blue-800" },
-  { status: "STOPPED", key: "stopped", tone: "text-amber-700 border-amber-200 dark:text-amber-300 dark:border-amber-800" },
-  { status: "ROUTE_FINISHED", key: "routeFinished", tone: "text-emerald-700 border-emerald-200 dark:text-emerald-300 dark:border-emerald-800" },
-  { status: "LATE", key: "late", tone: "text-red-600 border-red-200 dark:border-red-800" },
-  { status: "OFFLINE", key: "offline", tone: "text-muted-foreground" },
+  { status: "CHECKED_IN", key: "checkedIn", tone: "text-green-700 dark:text-green-400", icon: MapPin },
+  { status: "ON_ROAD", key: "onRoad", tone: "text-blue-700 dark:text-blue-400", icon: Navigation },
+  { status: "STOPPED", key: "stopped", tone: "text-amber-700 dark:text-amber-300", icon: PauseCircle },
+  { status: "ROUTE_FINISHED", key: "routeFinished", tone: "text-emerald-700 dark:text-emerald-300", icon: Flag },
+  { status: "LATE", key: "late", tone: "text-red-600 dark:text-red-400", icon: AlertTriangle },
+  { status: "OFFLINE", key: "offline", tone: "text-muted-foreground", icon: WifiOff },
 ] as const
 
 /** The page's tools that reach the server or the browser's full screen: explained here instead. */
@@ -675,7 +693,8 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
   const [nearestFirst, setNearestFirst] = useState(snapshot.ui["mtm.nearestShown"] === true)
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => new Set())
   const [showLastKnown, setShowLastKnown] = useState(true)
-  const [layers, setLayers] = useState({ agents: true, route: true, trails: true, clients: true, labels: true })
+  // The page's own defaults: names over the markers and the client base are off until asked for.
+  const [layers, setLayers] = useState({ agents: true, route: true, labels: false, trails: true, glide: true, clients: false })
   const [referencePoint, setReferencePoint] = useState<LiveMapReferencePoint | null>(() => {
     const client = snapshot.ui["mtm.nearestShown"] === true ? clients.find((candidate) => candidate.id === NEAREST_CLIENT_ID) : null
     return client ? { latitude: client.latitude, longitude: client.longitude, label: client.name } : null
@@ -757,48 +776,61 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
     event.stopPropagation()
     hint(S.demoButtonHint)
   }
-  const layer = (id: keyof typeof layers, label: string, layerHint: string) => ({ id, label, hint: layerHint, on: layers[id], onToggle: () => setLayers((current) => ({ ...current, [id]: !current[id] })), shownByDefault: true })
+  const layer = (id: keyof typeof layers, label: string, layerHint: string, shownByDefault?: true) => ({ id, label, hint: layerHint, on: layers[id], onToggle: () => setLayers((current) => ({ ...current, [id]: !current[id] })), shownByDefault })
+  // The organization's limits as the page says them in its hints — the product's defaults here.
+  const freshMinutes = Math.round(MTM_SETTING_DEFAULTS.offlineThresholdSeconds / 60)
+  const delayedMinutes = Math.round(Math.max(MTM_SETTING_DEFAULTS.offlineThresholdSeconds, MTM_SETTING_DEFAULTS.locationWindowMinutes * 60) / 60)
+  const appPresenceHint = tMap("hint.appPresence", { online: tMap("presence.online"), minutes: freshMinutes })
+  const gpsFreshnessHint = tMap("hint.gpsFreshness", { fresh: tMap("freshness.online"), freshMinutes, delayed: tMap("freshness.delayed"), delayedMinutes, stale: tMap("freshness.stale") })
   const callFrom = clients.find((client) => client.id === NEAREST_CLIENT_ID)!
 
   return (
     <div className="space-y-3" onClickCapture={simulated}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">{tNav("mtmMap")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <PageDescription icon={MapPin} title={tNav("mtmMap")} description={tMap("subtitle")} />
+          <DemoHelpButton variant="label" onClick={() => hint(S.demoButtonHint)} />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-md border bg-muted/40 p-0.5" role="tablist" aria-label={tMap("modeLabel")}>
-            <Button type="button" role="tab" aria-selected size="sm" className="min-h-9"><Radio className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("liveMode")}</Button>
-            <Button type="button" role="tab" aria-selected={false} variant="ghost" size="sm" className="min-h-9" data-testid="mtm-map-mode-history" onClick={() => hint(S.mtmTabHint)}><History className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("historyMode")}</Button>
+          <div className={MTM_TAB_ROW} role="tablist" aria-label={tMap("modeLabel")}>
+            <Button type="button" role="tab" aria-selected variant="ghost" size="sm" className={mtmTabClass(true)}><Radio className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("liveMode")}</Button>
+            <Button type="button" role="tab" aria-selected={false} variant="ghost" size="sm" className={mtmTabClass(false)} data-testid="mtm-map-mode-history" onClick={() => hint(S.mtmTabHint)}><History className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("historyMode")}</Button>
           </div>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" aria-hidden="true" />{tMap("lastUpdate")}: {S.mtmAsOf(format.clock(new Date(nowMs).toISOString()))}</span>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" aria-hidden="true" />{tMap("lastUpdate")}: <HintValue text={tMap("hint.lastUpdate")}>{S.mtmAsOf(format.clock(new Date(nowMs).toISOString()))}</HintValue></span>
+          <Button className="min-h-11" variant="outline" size="sm" onClick={() => hint(S.demoButtonHint)}><RefreshCw className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {tc("refresh")}</Button>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label={tc("status")}>
-        <Button size="sm" className="min-h-9" onClick={() => setFilters({})}>{tc("all")} ({agents.length})</Button>
+      <div className="-mx-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label={tc("status")}>
+        <Button className={`min-h-11 shrink-0 ${mtmChipClass(true)}`} variant="outline" size="sm" aria-pressed onClick={() => setFilters({})}>{tc("all")} ({agents.length})</Button>
         {LIVE_STATUS_CHIPS.map((chip) => (
-          <Button key={chip.status} size="sm" variant="outline" className={cn("min-h-9", chip.tone)} onClick={() => hint(S.demoButtonHint)}>
-            {tMap(`fieldStatus.${chip.key}`)} ({count(chip.status)})
+          <Button key={chip.status} variant="outline" size="sm" aria-pressed={false} className={`min-h-11 shrink-0 ${mtmChipClass(false, chip.tone)}`} onClick={() => hint(S.demoButtonHint)}>
+            <chip.icon className="mr-1 h-3 w-3" aria-hidden="true" /> {tMap(`fieldStatus.${chip.key}`)} ({count(chip.status)})
           </Button>
         ))}
       </div>
 
+      {/* The page's count line, every group as it prints it (zeros included), and the demo's own note on its clock. */}
       <div role="status" className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border bg-card px-3 py-2 text-xs">
-        <span className="font-semibold">{tMap("agents")}: {agents.length}</span>
+        <HintValue className="font-semibold" text={tMap("hint.agents")}>{tMap("agents")}: {agents.length}</HintValue>
         <span className="flex flex-wrap items-center gap-x-2">
-          <span className="font-bold">{tMap("appPresence")}:</span>
+          <HintValue className="font-bold" text={appPresenceHint}>{tMap("appPresence")}:</HintValue>
           <span className="text-green-700 dark:text-green-400">{tMap("presence.online")} {agents.filter((agent) => agent.isOnline).length}</span>
           <span className="text-muted-foreground">{tMap("presence.offline")} {agents.filter((agent) => !agent.isOnline).length}</span>
         </span>
         <span className="flex flex-wrap items-center gap-x-2">
-          <span className="font-bold">{tMap("gpsFreshness")}:</span>
+          <HintValue className="font-bold" text={gpsFreshnessHint}>{tMap("gpsFreshness")}:</HintValue>
           <span className="text-blue-700 dark:text-blue-400">{tMap("freshness.online")} {agents.filter((agent) => agent.freshness === "ONLINE").length}</span>
           <span className="text-amber-700 dark:text-amber-300">{tMap("freshness.delayed")} {agents.filter((agent) => agent.freshness === "DELAYED").length}</span>
           <span className="text-muted-foreground">{tMap("freshness.stale")} {agents.filter((agent) => agent.freshness === "STALE").length}</span>
+          <span className="text-muted-foreground">{tMap("freshness.noLocation")} {agents.filter((agent) => agent.freshness === "NO_LOCATION").length}</span>
         </span>
         <span className="flex flex-wrap items-center gap-x-2">
-          <span className="font-bold">{tMap("workdayState")}:</span>
+          <HintValue className="font-bold" text={tMap("hint.workday")}>{tMap("workdayState")}:</HintValue>
           <span className="text-emerald-700 dark:text-emerald-400">{tMap("workday.active")} {agents.filter((agent) => agent.workdayState === "ACTIVE").length}</span>
           <span className="text-amber-700 dark:text-amber-300">{tMap("workday.paused")} {agents.filter((agent) => agent.workdayState === "PAUSED").length}</span>
+          <span className="text-muted-foreground">{tMap("workday.closed")} {agents.filter((agent) => agent.workdayState === "CLOSED").length}</span>
+          <span className="text-muted-foreground">{tMap("workday.not_started")} {agents.filter((agent) => agent.workdayState === "NOT_STARTED" || !agent.workdayState).length}</span>
         </span>
         <span className="text-muted-foreground">{S.mtmLiveMovingNote}</span>
       </div>
@@ -813,10 +845,11 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
         </div>
       ) : null}
 
-      {/* The sample's own call: a client wants somebody today. «Kim daha yaxındır» is the button of the client's balloon on the map. */}
+      {/* The sample's own call: a client wants somebody today. «Kim daha yaxındır» is the button of the
+          client's balloon on the map; here a notice of the page's kind — white, with a coloured edge. */}
       {nearestStep || referencePoint ? (
-        <div data-tour-id="mtm-live-call" data-testid="mtm-live-call" className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-          <PhoneIncoming className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <div data-tour-id="mtm-live-call" data-testid="mtm-live-call" className="flex flex-wrap items-center gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card px-3 py-2 text-sm text-foreground dark:border-zinc-700 dark:border-l-amber-500">
+          <PhoneIncoming className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
           <span className="min-w-0 flex-1"><span className="font-semibold">{S.mtmNearestCallTitle}:</span> {S.mtmNearestCall}</span>
           <Button type="button" size="sm" className="min-h-9 shrink-0" onClick={() => nearestTo(callFrom)} {...(nearestStep && snapshot.ui["mtm.nearestShown"] !== true ? demoTarget("mtm-live-nearest") : {})}>
             <MapPin aria-hidden="true" />{tMap("clients.nearest")}
@@ -837,18 +870,19 @@ function LiveScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePro
             showWorkdayStatus
             timeZone={MTM_DEMO_TIMEZONE}
             trails={layers.trails ? trails : null}
-            glideMarkers
+            glideMarkers={layers.glide}
             referencePoint={referencePoint}
             clients={layers.clients ? clients : undefined}
             onClientNearest={nearestTo}
           />
           <LiveMapLayersControl
             layers={[
-              layer("agents", tMap("layers.agents"), tMap("layers.agentsHint")),
-              layer("route", tMap("layers.route"), tMap("layers.routeHint")),
-              layer("trails", tMap("layers.trails"), tMap("layers.trailsHint")),
-              layer("clients", tMap("layers.clients"), tMap("layers.clientsHint")),
+              layer("agents", tMap("layers.agents"), tMap("layers.agentsHint"), true),
+              layer("route", tMap("layers.route"), tMap("layers.routeHint"), true),
               layer("labels", tMap("layers.labels"), tMap("layers.labelsHint")),
+              layer("trails", tMap("layers.trails"), tMap("layers.trailsHint"), true),
+              layer("glide", tMap("layers.glide"), tMap("layers.glideHint")),
+              layer("clients", tMap("layers.clients"), tMap("layers.clientsHint")),
             ]}
             hiddenAgentCount={hiddenIds.size}
             onShowAllAgents={() => setHiddenIds(new Set())}
@@ -955,6 +989,7 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
   const [layers, setLayers] = useState({ planned: true, actual: true, stops: true, visits: true, gaps: true, roads: true })
   const [playbackIndex, setPlaybackIndex] = useState(data.points.length - 1)
   const [playing, setPlaying] = useState(false)
+  const [playbackRate, setPlaybackRate] = useState(1)
   const [tripFocus, setTripFocus] = useState<DayTripFocus | null>(null)
   const lastIndex = data.points.length - 1
   const formatMoment = (value: string, options?: Intl.DateTimeFormatOptions) =>
@@ -970,9 +1005,9 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
     const timer = setTimeout(() => {
       setPlaybackIndex((index) => Math.min(index + 1, lastIndex))
       if (playbackIndex + 1 >= lastIndex) setPlaying(false)
-    }, 60)
+    }, 60 / playbackRate)
     return () => clearTimeout(timer)
-  }, [lastIndex, playbackIndex, playing])
+  }, [lastIndex, playbackIndex, playbackRate, playing])
 
   const show = () => {
     setLoaded(true)
@@ -986,6 +1021,7 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
     setTripFocus(entry?.kind === "GAP" && entry.reason === "WORKDAY_PAUSED" ? null : focus)
   }
   const playbackPoint = data.points[Math.min(playbackIndex, lastIndex)]
+  const playbackSpeedKmh = mtmSpeedKmh(playbackPoint.speed)
   const distance = data.summary.distanceMeters
   const metrics = [
     { icon: RouteIcon, label: t("distance"), value: distance < 1_000 ? `${distance} m` : `${(distance / 1_000).toFixed(2)} km`, hint: t("hint.historyDistanceRoads") },
@@ -998,12 +1034,15 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
 
   return (
     <div className="space-y-3" data-testid="mtm-history">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">{tNav("mtmMap")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <PageDescription icon={History} title={tNav("mtmMap")} description={t("subtitle")} />
+          <DemoHelpButton variant="label" onClick={() => hint(S.demoButtonHint)} />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-md border bg-muted/40 p-0.5" role="tablist" aria-label={tMap("modeLabel")}>
-            <Button type="button" role="tab" aria-selected={false} variant="ghost" size="sm" className="min-h-9" onClick={() => hint(S.mtmTabHint)}><Radio className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("liveMode")}</Button>
-            <Button type="button" role="tab" aria-selected size="sm" className="min-h-9"><History className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("historyMode")}</Button>
+          <div className={MTM_TAB_ROW} role="tablist" aria-label={tMap("modeLabel")}>
+            <Button type="button" role="tab" aria-selected={false} variant="ghost" size="sm" className={mtmTabClass(false)} onClick={() => hint(S.mtmTabHint)}><Radio className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("liveMode")}</Button>
+            <Button type="button" role="tab" aria-selected variant="ghost" size="sm" className={mtmTabClass(true)}><History className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{tMap("historyMode")}</Button>
           </div>
           <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" aria-hidden="true" />{S.mtmEveningAsOf(MTM_DEMO_EVENING)}</span>
         </div>
@@ -1026,11 +1065,14 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
           <MtmFilterDate testId="mtm-location-history-date-to" label={t("dateTo")} value={today} onChange={() => hint(S.demoButtonHint)} />
           <MtmFilterDate type="time" label={t("from")} value="00:00" onChange={() => hint(S.demoButtonHint)} />
           <MtmFilterDate type="time" label={t("to")} value={MTM_DEMO_EVENING} onChange={() => hint(S.demoButtonHint)} />
+          <MtmFilterSelect testId="mtm-location-history-accuracy" label={t("accuracyFilter")} value="100" emptyValue="100" showValue clearable={false} allLabel="≤ 100 m"
+            options={[25, 50, 100, 200, 500].map((value) => ({ value: String(value), label: `≤ ${value} m` }))}
+            onChange={() => hint(S.demoButtonHint)} />
           <Button data-testid="mtm-location-history-submit" type="submit" className="h-10 rounded-full px-4" {...(loaded ? {} : demoTarget("mtm-history-show"))}>
             <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" />{t("show")}
           </Button>
         </MtmFilterBar>
-        <p className="mt-2 text-xs text-muted-foreground">{t("timezoneHint", { timezone: MTM_DEMO_TIMEZONE })}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{t("timezoneHint", { timezone: MTM_DEMO_TIMEZONE })} {t("rangeHint", { days: MAX_RANGE_DAYS })}</p>
       </form>
 
       {!loaded ? (
@@ -1055,7 +1097,7 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-card p-2 dark:border-zinc-700">
             <div className="flex flex-wrap items-center gap-1.5" aria-label={t("layers")}>
               <span className="mr-1 inline-flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground"><Layers3 className="h-3.5 w-3.5" aria-hidden="true" />{t("layers")}</span>
-              {(Object.keys(layers) as Array<keyof typeof layers>).map((key) => (
+              {(Object.keys(layers) as Array<keyof typeof layers>).filter((key) => key !== "roads" || Boolean(data.matchedTrack)).map((key) => (
                 <button key={key} type="button" aria-pressed={layers[key]} onClick={() => setLayers((current) => ({ ...current, [key]: !current[key] }))} className={`min-h-11 rounded-md border px-3 py-2 text-xs transition-colors ${layers[key] ? "border-foreground font-semibold text-foreground" : "text-muted-foreground hover:bg-muted"}`}>
                   {t(`layer.${key}`)}
                 </button>
@@ -1077,7 +1119,7 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
                 <div className="text-muted-foreground">{t("pointProgress", { current: playbackIndex + 1, total: data.points.length })}</div>
               </div>
             </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-[auto_auto_minmax(180px,1fr)] md:items-center">
+            <div className="mt-3 grid gap-2 md:grid-cols-[auto_auto_minmax(180px,1fr)_110px] md:items-center">
               <Button data-testid="mtm-location-history-play" type="button" variant={playing ? "secondary" : "default"} className="min-h-11" onClick={() => {
                 if (playing) return setPlaying(false)
                 if (playbackIndex >= lastIndex) setPlaybackIndex(0)
@@ -1093,11 +1135,23 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
                 <span className="sr-only">{t("replayPosition")}</span>
                 <input type="range" min={0} max={lastIndex} step={1} value={playbackIndex} aria-label={t("replayPosition")} onChange={(event) => { setPlaying(false); setPlaybackIndex(Number(event.target.value)) }} className="h-2 w-full cursor-pointer accent-primary" />
               </label>
+              <label className="space-y-1 text-xs font-medium">
+                <span className="sr-only">{t("playbackRate")}</span>
+                <Select className="min-h-11" value={String(playbackRate)} aria-label={t("playbackRate")} onChange={(event) => setPlaybackRate(Number(event.target.value))}>
+                  {[0.5, 1, 2, 4].map((rate) => <option key={rate} value={rate}>{t("playbackRateValue", { rate })}</option>)}
+                </Select>
+              </label>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span>{t("accuracy")}: <HintValue text={playbackPoint.accuracy == null ? null : t("hint.historyPointAccuracy")}>{playbackPoint.accuracy == null ? "—" : `${Math.round(playbackPoint.accuracy)} m`}</HintValue></span>
+              <span>{t("battery")}: {playbackPoint.battery == null ? "—" : `${Math.round(playbackPoint.battery)}%`}</span>
+              <span>{t("gpsSpeed")}: <HintValue text={playbackSpeedKmh == null ? null : t("hint.historyPointSpeed")}>{playbackSpeedKmh == null ? "—" : tMap("roster.kmh", { value: playbackSpeedKmh })}</HintValue></span>
+              <HintValue text={t("hint.historyPointMoving")}>{playbackPoint.isMoving ? t("moving") : t("stationary")}</HintValue>
             </div>
           </section>
 
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-            <div className="space-y-2">
+            <div className="space-y-2 xl:sticky xl:top-3">
               <div data-tour-id="mtm-history-map" className="relative isolate h-[56vh] min-h-[420px] overflow-hidden rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
                 <LocationHistoryMap
                   points={data.points}
@@ -1115,12 +1169,13 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
                 />
               </div>
               <ul data-testid="mtm-history-map-legend" className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">
-                <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{layers.roads ? t("legendRoads") : t("legendTrack")}</li>
-                {layers.roads ? <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-2 border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.raw }} />{t("legendRaw")}</li> : null}
+                <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{data.matchedTrack && layers.roads ? t("legendRoads") : t("legendTrack")}</li>
+                {data.matchedTrack && layers.roads ? <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-2 border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.raw }} />{t("legendRaw")}</li> : null}
                 <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.gap }} />{t("legendGap")}</li>
                 <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dashed" style={{ borderColor: HISTORY_MAP_COLORS.plan }} />{t("legendPlan")}</li>
                 <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.stop }} />{t("legendStop")}</li>
                 <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.visit }} />{t("legendVisit")}</li>
+                <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.current }} />{t("legendCurrent")}</li>
               </ul>
             </div>
             <aside data-tour-id="mtm-history-trip" className="space-y-3">
@@ -1160,7 +1215,6 @@ function HistoryScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
  */
 function VisitScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const t = useTranslations("mtmVisitsPage")
-  const tNav = useTranslations("nav")
   const tFilters = useTranslations("mtmFilters")
   const locale = useLocale()
   const today = mtmDemoToday(snapshot.startedAt)
@@ -1193,15 +1247,19 @@ function VisitScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-2">
           <PageDescription icon={CheckSquare} title={t("title")} description={t("subtitle")} />
-          <Button variant="outline" size="sm" onClick={() => hint(S.demoButtonHint)} className="border-orange-200 bg-orange-50/60 text-orange-800 hover:bg-orange-100 dark:border-orange-900/60 dark:bg-orange-950/20 dark:text-orange-300">
-            <HelpCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />{tNav("help")}
-          </Button>
+          <DemoHelpButton variant="label" onClick={() => hint(S.demoButtonHint)} />
         </div>
-        <Button className="min-h-11" onClick={() => hint(S.demoButtonHint)}><Plus className="mr-2 h-4 w-4" aria-hidden="true" />{t("add")}</Button>
+        <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
+          <Button className="min-h-11" onClick={() => hint(S.demoButtonHint)}><Plus className="mr-2 h-4 w-4" aria-hidden="true" />{t("add")}</Button>
+        </div>
       </div>
 
-      <div data-tour-id="mtm-visit-card">
-        <VisitReviewView data={review} closeHref="/mtm/visits" now={now} />
+      {/* The page's grid: the visit's card and, beside it on a wide screen or under it here, its AI notes. */}
+      <div className="grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div data-tour-id="mtm-visit-card">
+          <VisitReviewView data={review} closeHref="/mtm/visits" now={now} />
+        </div>
+        <AdvisorQuietCard title={t("advisorRisk")} />
       </div>
 
       {active.length > 0 ? (
@@ -1229,7 +1287,7 @@ function VisitScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
         </section>
       ) : null}
 
-      <section data-tour-id="mtm-visit-left-open" data-testid="mtm-visits-left-open" className="rounded-2xl border border-amber-200 bg-amber-50/60 shadow-sm dark:border-amber-900 dark:bg-amber-950/20" aria-labelledby="left-open-visits-title">
+      <section data-tour-id="mtm-visit-left-open" data-testid="mtm-visits-left-open" className="rounded-2xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 shadow-sm" aria-labelledby="left-open-visits-title">
         <div className="border-b border-amber-200 p-4 dark:border-amber-900 sm:p-5">
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />
@@ -1253,7 +1311,7 @@ function VisitScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
               disabled={reminded}
               onClick={remind}
               {...(reminded ? {} : demoTarget("mtm-visit-remind"))}
-              className="min-h-9 shrink-0 border-amber-300 bg-white text-amber-900 hover:bg-amber-50 dark:border-amber-700 dark:bg-transparent dark:text-amber-200"
+              className="min-h-9 shrink-0 border-zinc-200 bg-white text-amber-700 hover:bg-muted dark:border-zinc-700 dark:bg-transparent dark:text-amber-300"
             >
               {reminded ? <Check aria-hidden="true" /> : <BellRing aria-hidden="true" />}
               {reminded ? t("reminded") : t("remindAgent")}
@@ -1347,9 +1405,37 @@ function VisitGps({ visit }: { visit: MtmDemoHistoryVisit }) {
     <span className="inline-flex flex-wrap items-center gap-1.5">
       <VisitPlaceBadge place={visitPlaceSummary(visit.place)} />
       {visit.locationRequest === "SUBMITTED" ? (
-        <span data-testid="mtm-visit-location-request" className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">{t("locationRequestWaiting")}</span>
+        <span tabIndex={0} data-testid="mtm-visit-location-request" className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">{t("locationRequestWaiting")}</span>
       ) : null}
     </span>
+  )
+}
+
+/**
+ * The visit page's «Ziyarət üzrə AI qeydləri» (`AdvisorRecordWidget`) as it
+ * reads for a visit the Advisor raised nothing about: its title, the way to
+ * the Advisor centre and its own «no risk» line. The widget asks the server;
+ * the demo has nothing to ask, so its quiet answer is drawn with its words.
+ */
+function AdvisorQuietCard({ title }: { title: string }) {
+  const locale = useLocale()
+  const copy = ADVISOR_RECORD_COPY[locale === "ru" || locale === "en" ? locale : "az"]
+  return (
+    <section data-testid="mtm-visit-advisor" className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <h3 className="truncate text-sm font-semibold">{title}</h3>
+        </div>
+        <Button variant="ghost" size="sm" className="h-7 px-2" title={copy.openAdvisorCenter} aria-label={copy.openAdvisorCenter} asChild>
+          <a href="/dashboard"><ArrowUpRight className="h-3.5 w-3.5" /></a>
+        </Button>
+      </div>
+      <div className="flex items-start gap-2 text-xs text-muted-foreground">
+        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-600" />
+        {copy.noRisk}
+      </div>
+    </section>
   )
 }
 
@@ -1365,7 +1451,6 @@ function VisitGps({ visit }: { visit: MtmDemoHistoryVisit }) {
  */
 function PlaceScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const t = useTranslations("mtmRoutesPage")
-  const tNav = useTranslations("nav")
   const locale = useLocale()
   const today = mtmDemoToday(snapshot.startedAt)
   const request = useMemo(() => mtmDemoPlaceRequest(today), [today])
@@ -1389,35 +1474,43 @@ function PlaceScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
       return
     }
     dispatch({ type: "ui", path: "mtm.placeApproved", value: true })
+    toast.success(t("locationAccepted"))
   }
 
   return (
-    <div className="space-y-4">
-      <header className="flex flex-col gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700">
+    <div className="space-y-3">
+      <header data-testid="mtm-route-header" className="flex flex-col gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700">
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <RouteIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-          <h1 className="text-lg font-semibold leading-6 text-foreground">{t("title")}</h1>
-          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0 border-orange-200 bg-orange-50/60 text-orange-800 dark:border-orange-900/60 dark:bg-orange-950/20 dark:text-orange-300" aria-label={tNav("help")} onClick={() => hint(S.demoButtonHint)}><HelpCircle className="h-4 w-4" aria-hidden="true" /></Button>
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold leading-6 text-foreground">{t("title")}</h1>
+          </div>
+          <DemoHelpButton className="shrink-0" onClick={() => hint(S.demoButtonHint)} />
         </div>
         <div className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center">
-          <div className="flex min-w-0 flex-1 flex-wrap gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700" role="group" aria-label={t("primaryViews")}>
-            <Button variant="ghost" size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => hint(S.mtmTabHint)}>{t("viewList")}</Button>
-            <Button aria-pressed size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3">
-              <ClipboardCheck className="mr-1 h-4 w-4" aria-hidden="true" />{t("viewApprovals")}
-              {approved ? null : <span className="ml-1.5 min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-[11px] font-semibold leading-5 text-white">1</span>}
-            </Button>
-          </div>
+          {/* The page's own tabs: an underline on one grey rule, the count a neutral chip. */}
+          <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label={t("primaryViews")}>
+            <div className={MTM_TAB_ROW} role="group" aria-label={t("primaryViews")}>
+              <Button aria-pressed={false} variant="ghost" size="sm" className={mtmTabClass(false)} onClick={() => hint(S.mtmTabHint)}><List className="mr-1 h-4 w-4" aria-hidden="true" />{t("viewList")}</Button>
+              <Button aria-pressed variant="ghost" size="sm" className={mtmTabClass(true)}>
+                <ClipboardCheck className="mr-1 h-4 w-4" aria-hidden="true" />{t("viewApprovals")}
+                {approved ? null : <span className="ml-1.5 min-w-5 rounded-full border border-zinc-300 px-1.5 text-center text-[11px] font-semibold leading-5 text-foreground dark:border-zinc-600">1</span>}
+              </Button>
+            </div>
+          </nav>
           <div className="flex shrink-0 items-center justify-end gap-2">
-            <Button variant="outline" className="min-h-10 whitespace-nowrap px-3" onClick={() => hint(S.demoButtonHint)}><FileSpreadsheet className="mr-1 h-4 w-4" aria-hidden="true" />{t("excelExchange")}</Button>
-            <Button className="min-h-10 whitespace-nowrap px-4" onClick={() => hint(S.demoButtonHint)}><Plus className="mr-1 h-4 w-4" aria-hidden="true" />{t("add")}</Button>
+            <Button variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10" onClick={() => hint(S.demoButtonHint)}><FileSpreadsheet className="mr-1 h-4 w-4" aria-hidden="true" />{t("excelExchange")}</Button>
+            <Button className="min-h-11 flex-1 whitespace-nowrap px-4 sm:flex-none lg:min-h-10" onClick={() => hint(S.demoButtonHint)}><Plus className="mr-1 h-4 w-4" aria-hidden="true" /> {t("add")}</Button>
           </div>
         </div>
       </header>
 
       {approved ? (
-        <p role="status" data-testid="mtm-place-approved" className="rounded-xl border border-zinc-200 bg-card px-4 py-6 text-center text-sm text-muted-foreground dark:border-zinc-700">
-          {t("locationAccepted")} {t("needsAttentionClearDescription")}
-        </p>
+        // As the page says it when nothing is left to decide (`mtm-approvals-empty`); the card itself went with a toast.
+        <div role="status" data-testid="mtm-place-approved" className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-card px-4 py-4 text-sm dark:border-zinc-700">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+          {t("needsAttentionClearDescription")}
+        </div>
       ) : (
         <section data-tour-id="mtm-place-request" className="overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700" aria-labelledby="customer-location-heading">
           <header className="flex flex-wrap items-center gap-2 border-b border-zinc-200 px-4 py-4 dark:border-zinc-700 sm:px-5">
@@ -1425,7 +1518,7 @@ function PlaceScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
               <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
               {t("locationQueueTitle")}
             </h2>
-            <Badge variant="warning">{t("pendingApprovalsCount", { count: 1 })}</Badge>
+            <span className="text-sm font-medium text-muted-foreground">· {t("pendingApprovalsCount", { count: 1 })}</span>
           </header>
           <article className="grid gap-4 p-4 sm:p-5 xl:grid-cols-2">
             <div className="relative isolate h-64 overflow-hidden rounded-lg border border-zinc-200 bg-muted xl:h-full xl:min-h-72 dark:border-zinc-700">
@@ -1447,8 +1540,8 @@ function PlaceScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
               </div>
               <dl className="grid grid-cols-2 gap-2">
                 {facts.map(([label, value]) => (
-                  <div key={label} className="rounded-lg border border-zinc-200 bg-muted/40 px-3 py-2 dark:border-zinc-700">
-                    <dt className="text-[11px] text-muted-foreground">{label}</dt>
+                  <div key={label} className="rounded-lg border border-zinc-200 bg-card px-3 py-2 dark:border-zinc-700">
+                    <dt className="text-[11px] text-muted-foreground"><HintValue text={t("hint.locationFacts")}>{label}</HintValue></dt>
                     <dd className="text-sm font-semibold text-foreground">{value}</dd>
                   </div>
                 ))}
@@ -1457,7 +1550,7 @@ function PlaceScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
                 <span className="block text-[11px] text-muted-foreground">{t("locationAgentComment")}</span>
                 {request.comment}
               </p>
-              <p data-testid="mtm-customer-location-visits" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              <p data-testid="mtm-customer-location-visits" className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card px-3 py-2 text-sm text-foreground dark:border-zinc-700 dark:border-l-amber-500">
                 {t("locationVisitsNote", { count: 1, time: clock.format(new Date(request.checkedInFromHereAt)) })}
               </p>
               <div className="mt-auto space-y-2">
@@ -1489,7 +1582,6 @@ function PlaceScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScenePr
 function ResultsScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const ta = useTranslations("mtmAnalytics")
   const tr = useTranslations("mtmTeamResults")
-  const tNav = useTranslations("nav")
   const today = mtmDemoToday(snapshot.startedAt)
   const facts = useMemo(() => mtmDemoKpiFacts(today), [today])
   const chosenPeriod = snapshot.ui["mtm.resultsPeriod"] === "lastWeek" ? "lastWeek" : null
@@ -1525,9 +1617,7 @@ function ResultsScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <PageDescription icon={BarChart3} title={ta("title")} />
-        <Button variant="outline" size="sm" onClick={() => hint(S.demoButtonHint)} className="border-orange-200 bg-orange-50/60 text-orange-800 hover:bg-orange-100 dark:border-orange-900/60 dark:bg-orange-950/20 dark:text-orange-300">
-          <HelpCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />{tNav("help")}
-        </Button>
+        <DemoHelpButton variant="label" onClick={() => hint(S.demoButtonHint)} />
       </div>
       <div data-tour-id="mtm-results-team" ref={resultsRef}>
         <MtmTeamResultsView
