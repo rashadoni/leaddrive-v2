@@ -19,6 +19,7 @@ const functions = ['fatal', 'log', 'trim_value', 'read_static_env_value', 'read_
   'scratch_admin_sql', 'prepare_commission_scratch_template', 'drop_commission_scratch_template', 'stop_commission_scratch']
 const definitions = functions.map(extract).join('\n')
 const globals = `WORKFLOW_RUN_ID="$TEST_RUN_ID"
+OPERATION=run-verified-backup
 BACKUP_ENV_FILE=/etc/leaddrive/backup.env
 SCRATCH_UNIT="" SCRATCH_DESCRIPTION="" SCRATCH_INVOCATION="" SCRATCH_SYSTEM_IDENTIFIER="" SCRATCH_LOCK_HELD=0
 SCRATCH_TEMPLATE="" SCRATCH_TEMPLATE_NONCE="" SCRATCH_SOURCE_IDENTIFIER=""
@@ -235,6 +236,63 @@ CREATE FUNCTION fixture_function() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETU
     const sourceBefore = admin("SELECT (pg_control_system()).system_identifier, pg_postmaster_start_time(), value FROM fixture_sentinel;")
     ok(sourceBefore)
     const repo = new URL('../..', import.meta.url).pathname.replace(/\/$/, '')
+    if (nativeTemplate) {
+      // Exercise the actual no-dump preflight orchestration, native SQL,
+      // existing locks, TLS admission, preserved bytes and ten-minute kernel
+      // lifetime. Only the fixture's deliberately incomplete backup.env and
+      // public-code bundle setup are substituted; not the database lifecycle.
+      for (const [name, group, mode] of [['postgres-backup.lock', gid, 0o660], ['secrets-snapshot.lock', 0, 0o600],
+        ['runtime-files-snapshot.lock', 0, 0o600], ['log-ship.lock', gid, 0o660]]) {
+        const path = '/var/lib/leaddrive-recovery-runner-locks/' + name
+        assert(!existsSync(path))
+        writeFileSync(path, '', { mode }); chownSync(path, 0, group)
+      }
+      const preflight = join(root, 'preflight.sh')
+      const extra = ['assert_confirmation', 'assert_owner_source_boundary', 'lock_native_preflight_runners',
+        'native_preflight_preservation_digest', 'release_backup_locks', 'probe_native_scratch_template'].map(extract).join('\n')
+      writeFileSync(preflight, `set -Eeuo pipefail\n${definitions}\n${extra}\n${globals}
+OPERATION=probe-native-scratch WORKFLOW_SHA=${'a'.repeat(40)}
+CONFIRMATION=CHECK_NATIVE_SCRATCH_TEMPLATE_ON_13_140_132_245
+EXPECTED_RECIPIENT_SHA256='' KEY_CUSTODY_ATTESTATION='' EVIDENCE_REF='' EVIDENCE_AT_UTC=''
+OFFLINE_OPERATOR='' EXPECTED_CANDIDATE_SHA256='' OWNER_RECIPIENT=''
+INCOMING_EVIDENCE_BUNDLE="$TEST_ROOT/absent-evidence" INCOMING_ALLOWED_SIGNERS="$TEST_ROOT/absent-signers"
+INCOMING_MONITORING_CONFIG="$TEST_ROOT/absent-monitoring" INCOMING_B2_WRITER_CONFIG="$TEST_ROOT/absent-writer"
+BACKUP_SERVICE=fixture-backup.service SECRETS_SERVICE=fixture-secrets.service RUNTIME_FILES_SERVICE=fixture-runtime.service LOG_SERVICE=fixture-log.service
+BACKUP_TIMER=fixture-backup.timer SECRETS_TIMER=fixture-secrets.timer RUNTIME_FILES_TIMER=fixture-runtime.timer LOG_TIMER=fixture-log.timer
+BACKUP_RUNTIME_LOCK=/var/lib/leaddrive-recovery-runner-locks/postgres-backup.lock
+SECRETS_RUNTIME_LOCK=/var/lib/leaddrive-recovery-runner-locks/secrets-snapshot.lock
+RUNTIME_FILES_RUNTIME_LOCK=/var/lib/leaddrive-recovery-runner-locks/runtime-files-snapshot.lock
+LOG_RUNTIME_LOCK=/var/lib/leaddrive-recovery-runner-locks/log-ship.lock
+BACKUP_LOCK_HELD=0 SECRETS_LOCK_HELD=0 RUNTIME_FILES_LOCK_HELD=0 LOG_LOCK_HELD=0
+assert_backup_env() { :; }
+prepare_commission_code() { :; }
+assert_transient_database_memory_budget() { :; }
+systemd-run() { printf '%s\\n' "$@" >"$TEST_ROOT/preflight-argv"; command systemd-run "$@"; }
+trap 'status=$?; stop_commission_scratch || status=99; exit "$status"' EXIT
+if [ "$TEST_CASE" = preservation-refusal ]; then
+  eval "$(declare -f prepare_commission_scratch_template | sed '1s/prepare_commission_scratch_template/real_prepare/')"
+  prepare_commission_scratch_template() {
+    real_prepare
+    printf '%s\\n' ${'b'.repeat(40)} >/opt/leaddrive-v2/.next/standalone/.deploy-sha
+  }
+fi
+probe_native_scratch_template
+`)
+      for (const mode of ['normal', 'preservation-refusal']) {
+        const proof = command('bash', [preflight], { env: { ...env, TEST_RUN_ID: runId + (mode === 'normal' ? '5' : '6'), TEST_ROOT: root, TEST_CASE: mode }, timeout: 120000 })
+        assert.equal(proof.status, mode === 'normal' ? 0 : 1, proof.stdout + proof.stderr)
+        assert(readFileSync(join(root, 'preflight-argv'), 'utf8').includes('--property=RuntimeMaxSec=600'))
+        if (mode === 'normal') assert(proof.stdout.includes('NATIVE_SCRATCH_PREFLIGHT=passed'))
+        else {
+          assert(proof.stderr.includes('preservation proof changed'))
+          assert(!proof.stdout.includes('NATIVE_SCRATCH_PREFLIGHT=passed'))
+          writeFileSync('/opt/leaddrive-v2/.next/standalone/.deploy-sha', 'a'.repeat(40) + '\n')
+        }
+        assert(!existsSync('/var/lib/postgresql/16/leaddriverestore/postmaster.pid'))
+        assert.deepEqual(protectedPaths.map(digest), before)
+        assert.equal(admin("SELECT (pg_control_system()).system_identifier, pg_postmaster_start_time(), value FROM fixture_sentinel;").stdout, sourceBefore.stdout)
+      }
+    }
     let nativeDrill = ''
     if (nativeTemplate) {
       const inputs = join(root, 'inputs'), work = join(root, 'canary-work')

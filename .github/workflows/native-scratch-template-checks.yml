@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'scripts/backup/native-scratch-template*'
+      - 'scripts/backup/native-scratch-preflight*'
+      - '.github/workflows/commission-production-backup.yml'
       - 'scripts/backup/scratch-service.test.mjs'
       - 'scripts/backup/transient-workspace.test.mjs'
       - 'scripts/backup/commission-production-backup.sh'
@@ -15,6 +17,8 @@ on:
     branches: [main]
     paths:
       - 'scripts/backup/native-scratch-template*'
+      - 'scripts/backup/native-scratch-preflight*'
+      - '.github/workflows/commission-production-backup.yml'
       - 'scripts/backup/scratch-service.test.mjs'
       - 'scripts/backup/transient-workspace.test.mjs'
       - 'scripts/backup/commission-production-backup.sh'
@@ -40,6 +44,7 @@ jobs:
       - name: Portable native template authority tests
         run: |
           node --test scripts/backup/native-scratch-template.test.mjs
+          node --test scripts/backup/native-scratch-preflight.test.mjs
           node --test scripts/backup/transient-workspace.test.mjs
       - name: Actual private worker workspace and exact bounded template argument
         run: |

@@ -23,6 +23,35 @@ GitHub Actions, source control, a ticket or chat.
 
 ## 0. Configure the writer through the protected production route
 
+### Native scratch prerequisite: no private backup or Mac proof
+
+Before requesting a fresh section1 Mac receipt, deliver and execute the
+**Commission production backup** operation `probe-native-scratch` from exact
+current/live `main`, with `expected_main_sha` equal to that full SHA and
+confirmation `CHECK_NATIVE_SCRATCH_TEMPLATE_ON_13_140_132_245`. All recipient,
+custody and evidence fields must be empty. It refuses pending commissioning
+fences, active recovery services, enabled timers or an independently
+commissioned host rather than repairing their state.
+
+This preparatory operation holds the existing four writer-lock inodes plus
+the native maintenance lock, validates the source/target identity and exact
+source extension/locale contract, starts only the previously provisioned
+separate loopback scratch cluster, prepares a fresh empty run/nonce-owned
+template, removes only that template and proves a clean stop. Its server-side
+lifetime is ten minutes (full backup retains its separate four-hour ceiling).
+It compares canonical configuration/credential bytes and source identity/start
+time before/after, without reporting those values. The protected job is
+serialized with deployment and capped at15minutes.
+
+`NATIVE_SCRATCH_PREFLIGHT=passed` means only this empty-template lifecycle ran.
+No customer dump/clone/restore, encryption, B2 call/upload, signed recovery
+receipt, schedule activation, source DDL/restart or Kafka/replay happens.
+Unknown prior template/unit/storage state is retained and must be inspected;
+failure cleanup never acquires a pre-existing template or repairs an old fence.
+A real encrypted backup and owner restore remain separate mandatory stages.
+
+### Configure the existing writer
+
 If the production writer/endpoint pair has not been installed, use the existing
 **Commission production backup** workflow, operation `configure-b2-writer`.
 This operation is separate from creating a backup and from accepting custody.
