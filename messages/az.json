@@ -18168,6 +18168,7 @@
         "endGps": "Son siqnal, gün bağlanmayıb",
         "move": "Yolda",
         "stopWithoutVisit": "Ziyarətsiz dayanma",
+        "stayAfterBreak": "Həmin yerdə, fasilədən sonra",
         "visitFor": "Ziyarət · yerində {duration}",
         "visitOpen": "Ziyarət bağlanmayıb",
         "noSignal": "Telefondan məlumat yoxdur",

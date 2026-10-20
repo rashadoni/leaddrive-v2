@@ -19,6 +19,8 @@ export type DayTripData = {
         longitude: number | null
         open: boolean
         visit: { id: string; customerId: string; customerName: string } | null
+        /** The same visit again, after a break inside it: named on its first row only. */
+        afterBreak?: boolean
       }
     | { kind: "MOVE"; id: string; startedAt: string; endedAt: string; durationSeconds: number; distanceMeters: number; pointCount: number }
     | { kind: "GAP"; id: string; startedAt: string; endedAt: string; durationSeconds: number; reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"; displacementMeters: number; roadMeters?: number | null }
@@ -133,7 +135,7 @@ export function DayTripLedger({
               detail = `${formatDuration(entry.durationSeconds)} · ${kilometres(entry.distanceMeters)}`
               break
             case "STAY":
-              title = entry.visit?.customerName ?? t("stopWithoutVisit")
+              title = entry.afterBreak ? t("stayAfterBreak") : entry.visit?.customerName ?? t("stopWithoutVisit")
               detail = entry.open
                 ? t("visitOpen")
                 : entry.visit

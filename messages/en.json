@@ -18172,6 +18172,7 @@
         "endGps": "Last signal, day still open",
         "move": "On the road",
         "stopWithoutVisit": "Stop, no visit",
+        "stayAfterBreak": "Same place, after the break",
         "visitFor": "Visit · on site {duration}",
         "visitOpen": "Visit, not checked out",
         "noSignal": "No data from the phone",
