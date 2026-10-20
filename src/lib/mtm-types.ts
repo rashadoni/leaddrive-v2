@@ -270,6 +270,22 @@ export const MTM_STATIONARY_MAX_SILENCE_MS = 10 * 60 * 1000
 export const MTM_BREAK_APP_PRESENCE_SECONDS = 180
 
 /**
+ * How long after it was last heard from the field app still counts as there:
+ * the organization's «fresh» limit, and on a break at least
+ * MTM_BREAK_APP_PRESENCE_SECONDS. One rule for the page's «В сети», the hint
+ * that explains it and the moment the page looks again — the hint said only
+ * the organization's limit while somebody on a break was held for three
+ * minutes, and the page looked again only at that limit.
+ */
+export function mtmAppPresenceSeconds(
+  workdayState: LiveMapAgent["workdayState"],
+  thresholds: MtmLiveMapFreshnessThresholds | null | undefined,
+): number {
+  const { onlineSeconds } = normalizedThresholds(thresholds)
+  return workdayState === "PAUSED" ? Math.max(onlineSeconds, MTM_BREAK_APP_PRESENCE_SECONDS) : onlineSeconds
+}
+
+/**
  * Is this coordinate where the work stopped rather than where he is? Then it
  * is shown as the last known point (STALE, grey), never as a live position.
  * A break is the employee's own time (owner's rule) and no point is accepted
@@ -324,13 +340,10 @@ export function presentMtmDashboardAgent(
   // just ended (isMtmPositionHeldByBreak); its STALE is never upgraded here.
   const heldByBreak = isMtmPositionHeldByBreak({ workdayState: agent.workdayState, recordedAt: agent.recordedAt })
   const freshness = mtmFreshnessAcrossBreak(aged, heldByBreak)
-  const policy = normalizedThresholds(thresholds)
   const lastSeenAtMs = agent.lastSeenAt ? Date.parse(agent.lastSeenAt) : Number.NaN
   // On a break the app's only sign is the bell's poll every two minutes, so
   // the window is at least that long there (MTM_BREAK_APP_PRESENCE_SECONDS).
-  const presenceSeconds = agent.workdayState === "PAUSED"
-    ? Math.max(policy.onlineSeconds, MTM_BREAK_APP_PRESENCE_SECONDS)
-    : policy.onlineSeconds
+  const presenceSeconds = mtmAppPresenceSeconds(agent.workdayState, thresholds)
   const appPresent = agent.isOnline && Number.isFinite(lastSeenAtMs) &&
     Math.max(0, nowMs - lastSeenAtMs) <= presenceSeconds * 1_000
   // Between two answers of the server the page goes on counting «стоит N

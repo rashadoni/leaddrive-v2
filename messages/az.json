@@ -17722,6 +17722,7 @@
       "chipOffline": "Yalnız canlı siqnalı olmayanlar: koordinat {minutes} dəqiqədən köhnədir, heç gəlməyib və ya tətbiq əlaqədə deyil.",
       "agents": "Server giriş zonanızdan neçə əməkdaş göndərib — siyahının filtrlərindən əvvəl.",
       "appPresence": "«{online}» — tətbiq son {minutes} dəqiqədə serverlə əlaqə saxlayıb. Bu, GPS-ə yox, tətbiqin özünə aiddir.",
+      "appPresenceWithBreak": "«{online}» — tətbiq son {minutes} dəqiqədə serverlə əlaqə saxlayıb, fasilədə olan əməkdaş üçün isə son {breakMinutes} dəqiqədə: fasilədə GPS yazılmır və tətbiq serverlə daha az əlaqə saxlayır. Bu, GPS-ə yox, tətbiqin özünə aiddir.",
       "gpsFreshness": "Son koordinat nə vaxt gəlib: «{fresh}» — {freshMinutes} dəqiqədən köhnə deyil, «{delayed}» — {delayedMinutes} dəqiqəyə qədər, «{stale}» — daha köhnə. Həddlər MTM ayarlarında təyin olunur.",
       "workday": "Əməkdaşın tətbiqdə özünün başladığı və bitirdiyi iş günü: gedir, fasilədədir, bitib və ya başlamayıb.",
       "lastKnown": "Koordinatı köhnəlmiş əməkdaşlar — son siqnalın olduğu yerdə boz nişanlar. Düymə onları göstərir və ya gizlədir.",

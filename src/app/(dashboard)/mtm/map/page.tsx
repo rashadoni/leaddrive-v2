@@ -100,6 +100,7 @@ import {
   isLiveMapPositionVisible,
   liveMapIdentityKey,
   liveMapRouteCacheScopeKey,
+  mtmAppPresenceSeconds,
   parseMtmLiveMapContract,
   presentMtmDashboardAgent,
 } from "@/lib/mtm-types"
@@ -741,8 +742,10 @@ export default function MtmMapPage() {
             recordedAt + contract.freshnessThresholds.onlineSeconds * 1_000 + 1,
             recordedAt + contract.freshnessThresholds.delayedSeconds * 1_000 + 1,
           ] : []),
+          // The moment «В сети» lapses — later for somebody on a break,
+          // whom the app's bell alone keeps present (mtmAppPresenceSeconds).
           ...(agent.isOnline && Number.isFinite(lastSeenAt) ? [
-            lastSeenAt + contract.freshnessThresholds.onlineSeconds * 1_000 + 1,
+            lastSeenAt + mtmAppPresenceSeconds(agent.workdayState, contract.freshnessThresholds) * 1_000 + 1,
           ] : []),
         ].filter((boundary) => boundary > now)
       })
@@ -1129,7 +1132,14 @@ export default function MtmMapPage() {
   // the statuses use them (owner, 2026-10-15: «подсказок в модуле очень мало»).
   const freshMinutes = Math.round((contract?.freshnessThresholds.onlineSeconds ?? 300) / 60)
   const delayedMinutes = Math.round((contract?.freshnessThresholds.delayedSeconds ?? 600) / 60)
-  const appPresenceHint = tMap("hint.appPresence", { online: tMap("presence.online"), minutes: freshMinutes })
+  // On a break no GPS point comes, and the app is held present for longer
+  // (mtmAppPresenceSeconds): where that is not the same number of minutes,
+  // the hint says both, or it would describe a rule the page does not apply
+  // to people on a break. A tenant without Workforce has no breaks.
+  const breakPresenceMinutes = Math.round(mtmAppPresenceSeconds("PAUSED", contract?.freshnessThresholds) / 60)
+  const appPresenceHint = contract?.workforceEnabled !== false && breakPresenceMinutes !== freshMinutes
+    ? tMap("hint.appPresenceWithBreak", { online: tMap("presence.online"), minutes: freshMinutes, breakMinutes: breakPresenceMinutes })
+    : tMap("hint.appPresence", { online: tMap("presence.online"), minutes: freshMinutes })
   const gpsFreshnessHint = tMap("hint.gpsFreshness", {
     fresh: tMap("freshness.online"), freshMinutes,
     delayed: tMap("freshness.delayed"), delayedMinutes,
