@@ -325,17 +325,30 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
     expect(await markerMinute(agentId)).toBe(110)
   })
 
+  // A finished day clears «online»; a manager who reopens it hands it back
+  // paused. The app open on that break said «не на связи» until his first
+  // fix after it (verification of 2026-10-20).
+  it("makes the app present on a break a manager reopened, after the finish cleared it", async () => {
+    const { agentId } = await agentWithDay({ status: "PAUSED", journal: [{ type: "FINISH", minute: 150 }, { type: "REOPEN", minute: 150, appliedMinute: 160 }] })
+    await bypass(() => prisma.mtmAgent.update({ where: { id: agentId }, data: { isOnline: false, lastSeenAt: at(150) } }))
+    expect(await pollBell(agentId)).toBe(200)
+    const row = await presence(agentId)
+    expect(row.isOnline).toBe(true)
+    expect(row.lastSeenAt?.getTime()).toBeGreaterThan(at(170).getTime())
+    expect(await storedMinutes(agentId)).toEqual([])
+  })
+
   it("makes nobody present who is at work, has finished or has not started: that stays a GPS fact", async () => {
     const tenMinutesAgo = new Date(Date.now() - 10 * 60_000)
     const people = [
-      await agentWithDay({ status: "STARTED", journal: [] }),
-      await agentWithDay({ status: "COMPLETED", journal: [{ type: "PAUSE", minute: 100 }, { type: "FINISH", minute: 120 }] }),
-      await agentWithDay(null),
+      { ...await agentWithDay({ status: "STARTED", journal: [] }), wasOnline: true },
+      { ...await agentWithDay({ status: "COMPLETED", journal: [{ type: "PAUSE", minute: 100 }, { type: "FINISH", minute: 120 }] }), wasOnline: false },
+      { ...await agentWithDay(null), wasOnline: false },
     ]
-    for (const { agentId } of people) {
-      await bypass(() => prisma.mtmAgent.update({ where: { id: agentId }, data: { lastSeenAt: tenMinutesAgo, isOnline: true } }))
+    for (const { agentId, wasOnline } of people) {
+      await bypass(() => prisma.mtmAgent.update({ where: { id: agentId }, data: { lastSeenAt: tenMinutesAgo, isOnline: wasOnline } }))
       expect(await pollBell(agentId)).toBe(200)
-      expect((await presence(agentId)).lastSeenAt?.getTime()).toBe(tenMinutesAgo.getTime())
+      expect(await presence(agentId)).toEqual({ lastSeenAt: tenMinutesAgo, isOnline: wasOnline })
       expect(await storedMinutes(agentId)).toEqual([])
     }
   })

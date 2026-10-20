@@ -9,6 +9,7 @@ import {
   isLiveMapAgentPositionVisible,
   isLiveMapPositionVisible,
   isMtmPositionHeldByBreak,
+  MTM_BREAK_APP_PRESENCE_SECONDS,
   mtmFreshnessAcrossBreak,
   parseMtmLiveMapContract,
   presentMtmDashboardAgent,
@@ -242,6 +243,24 @@ describe("an employee on a break, as the live map presents him", () => {
   it("keeps what the app itself said: presence is not GPS", () => {
     expect(presentMtmDashboardAgent(onBreak, thresholds, recordedAtMs + 60_000).isOnline).toBe(true)
     expect(presentMtmDashboardAgent(onBreak, thresholds, recordedAtMs + 300_001).isOnline).toBe(false)
+  })
+
+  // On a break the app's only sign is the bell's poll every two minutes; an
+  // organization whose «fresh» is a minute would see it blink on and off
+  // (verification of 2026-10-20).
+  it("counts the app present on a break between two of its polls, whatever the organization's «fresh»", () => {
+    const strict = { onlineSeconds: 60, delayedSeconds: 600 }
+    const heard = (secondsAgo: number) => recordedAtMs + secondsAgo * 1_000
+    for (const secondsAgo of [30, 110, 150, MTM_BREAK_APP_PRESENCE_SECONDS]) {
+      expect(presentMtmDashboardAgent(onBreak, strict, heard(secondsAgo)).isOnline, `${secondsAgo} s`).toBe(true)
+    }
+    expect(presentMtmDashboardAgent(onBreak, strict, heard(MTM_BREAK_APP_PRESENCE_SECONDS + 1)).isOnline).toBe(false)
+    // At work the organization's own limit stands: there GPS says it.
+    const working = { ...onBreak, workdayState: "ACTIVE" as const, workdayPausedAt: null }
+    expect(presentMtmDashboardAgent(working, strict, heard(59)).isOnline).toBe(true)
+    expect(presentMtmDashboardAgent(working, strict, heard(110)).isOnline).toBe(false)
+    // An app the server does not call online is not made so by the window.
+    expect(presentMtmDashboardAgent({ ...onBreak, isOnline: false }, strict, heard(30)).isOnline).toBe(false)
   })
 })
 

@@ -257,6 +257,19 @@ export function presentMtmGpsFreshness(
 export const MTM_STATIONARY_MAX_SILENCE_MS = 10 * 60 * 1000
 
 /**
+ * How long after it was last heard from the field app still counts as there
+ * while its owner is on a break. No GPS point comes during a break; the sign
+ * is the app's bell asking for notifications every two minutes while one of
+ * its main screens is open (NOTIFICATION_BELL_REFRESH_MS in leaddrive-mtm;
+ * src/lib/mtm/break-presence.ts). Two minutes between signs plus the live
+ * map's own thirty-second refresh: with the organization's «fresh» limit
+ * shorter than that (it may be set down to 30 s) the app would read
+ * «на связи» and «не на связи» by turns all through the break. A longer
+ * limit of the organization's own stands.
+ */
+export const MTM_BREAK_APP_PRESENCE_SECONDS = 180
+
+/**
  * Is this coordinate where the work stopped rather than where he is? Then it
  * is shown as the last known point (STALE, grey), never as a live position.
  * A break is the employee's own time (owner's rule) and no point is accepted
@@ -313,8 +326,13 @@ export function presentMtmDashboardAgent(
   const freshness = mtmFreshnessAcrossBreak(aged, heldByBreak)
   const policy = normalizedThresholds(thresholds)
   const lastSeenAtMs = agent.lastSeenAt ? Date.parse(agent.lastSeenAt) : Number.NaN
+  // On a break the app's only sign is the bell's poll every two minutes, so
+  // the window is at least that long there (MTM_BREAK_APP_PRESENCE_SECONDS).
+  const presenceSeconds = agent.workdayState === "PAUSED"
+    ? Math.max(policy.onlineSeconds, MTM_BREAK_APP_PRESENCE_SECONDS)
+    : policy.onlineSeconds
   const appPresent = agent.isOnline && Number.isFinite(lastSeenAtMs) &&
-    Math.max(0, nowMs - lastSeenAtMs) <= policy.onlineSeconds * 1_000
+    Math.max(0, nowMs - lastSeenAtMs) <= presenceSeconds * 1_000
   // Between two answers of the server the page goes on counting «стоит N
   // минут». It stops when the coordinate behind it has grown older than the
   // silence the server itself would not count as standing — whatever the
