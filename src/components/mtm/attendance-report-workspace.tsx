@@ -356,9 +356,10 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
 
   if (layout === "timesheet") return timesheetView()
 
+  // The letter alone: a corrected day's «*» is drawn beside it in its own colour (see the cell).
   function cellCode(row: MtmAttendanceReportRow) {
-    if (row.dayKind) return `${row.dayKind.code}${row.corrections?.length ? "*" : ""}`
-    return attendanceMonthCell(row, t)
+    if (row.dayKind) return row.dayKind.code
+    return attendanceMonthCell({ ...row, corrections: undefined }, t)
   }
   function shiftMonth(step: number) {
     const [year, month] = range.from.slice(0, 7).split("-").map(Number)
@@ -379,6 +380,11 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
     const pinned = employeeId ? directory.employees.find(employee => employee.id === employeeId) : null
     const dateKinds = new Map(monthDates.map(date => [date, monthEmployees[0]?.dates.get(date)?.[0]?.isWorkingDay ?? true]))
     const legend = [...new Map(rows.flatMap(row => row.dayKind ? [[row.dayKind.key, row.dayKind] as const] : [])).values()]
+    // Two signs, two meanings, each explained in the legend when it is on screen: «*» on a day
+    // corrected through a request (as the «Kadr uçotu» clip says), «≥» on an hours total that
+    // leaves out days whose hours are unknown — before 2026-10-20 that total wore a «*» too.
+    const anyCorrected = rows.some(row => row.corrections?.length)
+    const anyPartial = monthEmployees.some(person => person.totals.unknownWorkedCount > 0)
     const chip = (active: boolean) => `inline-flex min-h-10 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "border-foreground bg-card font-semibold text-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted"}`
     const chooseIssue = (next: TimesheetIssue | null) => { setIssue(next); setPage(0) }
     // A saved form replaces the month grid until it is closed.
@@ -440,10 +446,11 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
                 const row = entries[0]
                 const cellKey = `${person.id}:${date}`
                 const dimmed = issue !== null && !entries.some(entry => hasIssue(entry, issue))
+                const corrected = entries.some(entry => entry.corrections?.length)
                 return <td key={date} className="px-px py-1 text-center">
-                  {row ? <Popover open={openCell === cellKey} onOpenChange={open => setOpenCell(open ? cellKey : null)}><PopoverTrigger asChild><button type="button" data-testid="attendance-month-cell" data-dimmed={dimmed || undefined} aria-label={`${person.name} · ${dateLabel(date)} · ${attendanceStatusText(row, locale, t)}`}
+                  {row ? <Popover open={openCell === cellKey} onOpenChange={open => setOpenCell(open ? cellKey : null)}><PopoverTrigger asChild><button type="button" data-testid="attendance-month-cell" data-dimmed={dimmed || undefined} aria-label={`${person.name} · ${dateLabel(date)} · ${attendanceStatusText(row, locale, t)}${corrected ? ` · ${p("legendCorrected")}` : ""}`}
                     className={`flex h-7 w-full min-w-[22px] items-center justify-center rounded-md text-[11px] font-bold outline-none ring-offset-1 focus-visible:ring-2 focus-visible:ring-primary data-[state=open]:ring-2 data-[state=open]:ring-primary ${dimmed ? "opacity-25" : ""} ${row.kind === "NOT_EMPLOYED" && !row.dayKind ? "opacity-40" : ""}`}
-                    style={row.dayKind && row.kind !== "UPCOMING" ? { color: row.dayKind.color } : { color: "var(--muted-foreground, #8a94a3)" }}>{cellCode(row)}{entries.length > 1 ? "+" : ""}</button></PopoverTrigger>
+                    style={row.dayKind && row.kind !== "UPCOMING" ? { color: row.dayKind.color } : { color: "var(--muted-foreground, #8a94a3)" }}>{cellCode(row)}{corrected ? <span aria-hidden="true" data-testid="attendance-corrected-mark" className="ml-px text-[13px] leading-none text-primary">*</span> : null}{entries.length > 1 ? "+" : ""}</button></PopoverTrigger>
                     <PopoverContent align="center" className="w-80 space-y-3 p-4" data-testid="attendance-day-popover">
                       {entries.map(entry => {
                         const marks = attendanceJournalEntries(entry, locale, t)
@@ -465,7 +472,9 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
                 </td>
               })}
               <td className="px-1 text-center text-[13px] font-bold tabular-nums">{worked}</td>
-              <td className="whitespace-nowrap px-1 text-center text-[13px] font-bold tabular-nums">{formatAttendanceDuration(person.totals.workedSeconds)}{!person.totals.isComplete ? "*" : ""}</td>
+              <td className="whitespace-nowrap px-1 text-center text-[13px] font-bold tabular-nums">{person.totals.unknownWorkedCount > 0
+                ? <HintValue text={p("partialTotalHint", { count: person.totals.unknownWorkedCount })}><span data-testid="attendance-partial-total">≥{formatAttendanceDuration(person.totals.workedSeconds)}</span></HintValue>
+                : formatAttendanceDuration(person.totals.workedSeconds)}</td>
               <td className="px-1 text-center text-[13px] font-bold tabular-nums">{person.totals.annualLeaveDays || "—"}</td>
               <td className="px-1 text-center text-[13px] font-bold tabular-nums">{sick || "—"}</td>
               <td className={`px-1 text-center text-[13px] font-bold tabular-nums ${missed ? "text-rose-700 dark:text-rose-300" : ""}`}>{missed || "—"}</td>
@@ -475,8 +484,10 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         {report && people.length > PAGE_SIZE ? <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground"><Button type="button" variant="outline" className="min-h-10" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("reportPrevious")}</Button>
           <span>{t("reportPage", { current: currentPage + 1, total: Math.ceil(people.length / PAGE_SIZE) })}</span><Button type="button" variant="outline" className="min-h-10" disabled={pageStart + PAGE_SIZE >= people.length} onClick={() => setPage(currentPage + 1)}>{t("reportNext")}</Button></div> : null}
       </div>}
-      {!customView && legend.length ? <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t("reportLegend")}>
+      {!customView && (legend.length || anyCorrected || anyPartial) ? <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t("reportLegend")} data-testid="attendance-timesheet-legend">
         {legend.map(kind => <span key={kind.key} className="inline-flex items-center gap-1.5"><span className="inline-flex h-5 min-w-6 items-center justify-center rounded px-1 text-[10.5px] font-bold" style={{ color: kind.color, backgroundColor: `${kind.color}1a` }}>{kind.code}</span>{attendanceDayKindLabel(kind, locale)}</span>)}
+        {anyCorrected ? <span className="inline-flex items-center gap-1.5" data-testid="attendance-legend-corrected"><span className="inline-flex h-5 min-w-6 items-center justify-center text-[13px] font-bold text-primary">*</span>{p("legendCorrected")}</span> : null}
+        {anyPartial ? <span className="inline-flex items-center gap-1.5" data-testid="attendance-legend-partial"><span className="inline-flex h-5 min-w-6 items-center justify-center text-[13px] font-bold text-foreground">≥</span>{p("legendPartialTotal")}</span> : null}
         <span className="ml-auto">{p("cellHint")}</span>
       </div> : null}
       {showExtras ? <section className="space-y-5 rounded-2xl border bg-card p-5" data-testid="attendance-timesheet-extras" aria-label={p("customFormAndDelivery")}>
