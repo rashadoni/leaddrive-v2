@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { notificationDomainPredicate } from "@/lib/mtm/notification-domain"
+import { recordMtmAppPresenceDuringBreak } from "@/lib/mtm/break-presence"
 
 type MobileNotificationRow = {
   id: string
@@ -21,6 +22,12 @@ type MobileNotificationRow = {
 // Returns this agent's own notifications + unread count.
 export const GET = withMobileRls(async (req: NextRequest, auth) => {
   try {
+    // The bell on the phone asks this every two minutes while the app is
+    // open. On a break it is the only word the app sends, so it is what tells
+    // the manager's map the app is there (break-presence.ts). It never stands
+    // in the way of the list.
+    await recordMtmAppPresenceDuringBreak({ organizationId: auth.orgId, agentId: auth.agentId })
+      .catch((error) => console.warn("[MTM/mobile/notifications GET] presence on a break not recorded", error))
     const domainPredicate = notificationDomainPredicate(auth.tenantCapabilities)
     const reminderPredicate = attendanceReminderMobilePredicate(auth.orgId, auth.agentId)
     const [items, unreadRows] = await Promise.all([
