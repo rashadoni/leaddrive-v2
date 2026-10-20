@@ -9,11 +9,11 @@ import { boundedFile, catalogSql, inspect, parseConfiguration, queryPlan, summar
 const sha = 'a'.repeat(40)
 const raw = () => ({ versionNumber: 160015, encoding: 'UTF8', provider: 'c', collate: 'C.UTF-8', ctype: 'C.UTF-8', icu: null,
   recordedVersion: null, actualVersion: null, tls: true, extensions: [
-    { name: 'vector', version: '0.6.0', schema: 'public' }, { name: 'pgcrypto', version: '1.3', schema: 'public' },
-    { name: 'plpgsql', version: '1.0', schema: 'pg_catalog' },
+    { name: 'vector', version: '0.6.0', schema: 'public', availableDefaultVersion: '0.8.0', sourceVersionAvailable: false, requiresSuperuser: null, trusted: null },
+    { name: 'pgcrypto', version: '1.3', schema: 'public', availableDefaultVersion: '1.3', sourceVersionAvailable: true, requiresSuperuser: true, trusted: true },
+    { name: 'plpgsql', version: '1.0', schema: 'pg_catalog', availableDefaultVersion: '1.0', sourceVersionAvailable: true, requiresSuperuser: false, trusted: true },
   ] })
 const configuration = () => Buffer.from('PGHOST=public-fixture-source\nPGHOSTADDR=127.0.0.2\nPGPORT=55431\nPGDATABASE=fixture_db\nPGUSER=fixture_source\nPGPASSFILE=/etc/leaddrive/backup.pgpass\nPGSSLMODE=verify-full\nPGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt\nPGCONNECT_TIMEOUT=2\nBACKUP_EXPECTED_DB_ROLE=fixture_source\nAWS_SECRET_ACCESS_KEY=must-not-leave\nPGPASSWORD=must-not-be-inherited\n')
-const control = () => ({ control: 'present', defaultVersion: '0.8.0', sourceVersionSql: 'missing' })
 const clone = object => JSON.parse(JSON.stringify(object))
 const helper = new URL('./inspect-backup-compatibility.mjs', import.meta.url).pathname
 function fixture(fn) {
@@ -22,26 +22,26 @@ function fixture(fn) {
 }
 
 test('strict source catalog reports versions without claiming scratch compatibility', () => {
-  const report = summarizeCatalog(raw(), control)
+  const report = summarizeCatalog(raw())
   assert.equal(report.source.major, 16)
   assert.equal(report.source.locale.versionMatches, true)
   assert.equal(report.source.locale.collate, 'C.UTF-8')
   assert.equal(report.scratchDatabaseCompatibility, 'not-inspected')
   assert.deepEqual(report.source.extensions.map(e => e.name), ['pgcrypto', 'plpgsql', 'vector'])
-  assert.equal(report.hostExtensionFiles.find(e => e.name === 'vector').sourceVersionSql, 'missing')
-  assert.equal(report.hostExtensionFiles.find(e => e.name === 'vector').defaultVersion, '0.8.0')
+  assert.equal(report.source.extensions.find(e => e.name === 'vector').sourceVersionAvailable, false)
+  assert.equal(report.source.extensions.find(e => e.name === 'vector').availableDefaultVersion, '0.8.0')
   assert.equal(validateOutput(clone(report)).status, 'inspected')
 })
 
 test('unknown extension/schema/custom locale identifiers never leave even through error output', () => {
   const catalog = raw()
-  catalog.extensions.push({ name: 'private_org_extension', version: '1.2', schema: 'customer_private_schema' })
+  catalog.extensions.push({ ...catalog.extensions[0], name: 'private_org_extension', version: '1.2', schema: 'customer_private_schema' })
   catalog.extensions[0].schema = 'customer_private_schema'
   catalog.collate = 'private-customer-locale'
   catalog.ctype = 'private-customer-locale'
   catalog.icu = 'private-customer-icu'
   catalog.actualVersion = 'private-customer-version'
-  const output = JSON.stringify(summarizeCatalog(catalog, control))
+  const output = JSON.stringify(summarizeCatalog(catalog))
   for (const privateValue of ['private_org_extension', 'customer_private_schema', 'private-customer-locale', 'private-customer-icu', 'private-customer-version']) assert(!output.includes(privateValue))
   const report = JSON.parse(output)
   assert.equal(report.source.unknownExtensionCount, 1)
@@ -57,19 +57,21 @@ test('malformed source, wrong major, TLS absence, duplicates and oversized catal
     { ...raw(), extensions: [{ name: '../private', version: '1.0', schema: 'public' }] },
     { ...raw(), extensions: [{ name: 'vector', version: '../private', schema: 'public' }] },
     { ...raw(), extensions: Array.from({ length: 33 }, (_, i) => ({ name: 'x' + i, version: '1.0', schema: 'public' })) }]
-  for (const value of cases) assert.throws(() => summarizeCatalog(value, control), /SOURCE_METADATA/)
+  for (const value of cases) assert.throws(() => summarizeCatalog(value), /SOURCE_METADATA/)
 })
 
-test('strict second output gate rejects extra fields, identifiers, fake readiness and inconsistent controls', () => {
-  const report = summarizeCatalog(raw(), control)
+test('strict second output gate rejects extra fields, identifiers, fake readiness and inconsistent availability', () => {
+  const report = summarizeCatalog(raw())
   const cases = []
   let value = clone(report); value.ready = true; cases.push(value)
   value = clone(report); value.source.hostname = 'private-host'; cases.push(value)
   value = clone(report); value.source.extensions[0].name = 'private-extension'; cases.push(value)
   value = clone(report); value.source.locale.collate = 'private-company-locale'; cases.push(value)
   value = clone(report); value.source.locale.provider = 'private-vendor'; cases.push(value)
-  value = clone(report); value.hostExtensionFiles[0].path = '/private'; cases.push(value)
-  value = clone(report); value.hostExtensionFiles[0].defaultVersion = null; cases.push(value)
+  value = clone(report); value.source.extensions[0].path = '/private'; cases.push(value)
+  value = clone(report); value.source.extensions[0].availableDefaultVersion = 'private-path'; cases.push(value)
+  value = clone(report); value.source.extensions[0].sourceVersionAvailable = 0; cases.push(value)
+  value = clone(report); value.source.extensions[2].requiresSuperuser = true; cases.push(value)
   value = clone(report); value.scratchDatabaseCompatibility = 'verified'; cases.push(value)
   for (const bad of cases) assert.throws(() => validateOutput(bad), /OUTPUT/)
 })
@@ -136,14 +138,14 @@ test('non-root, artifact drift and bad config refuse before any SQL; child diagn
 })
 
 test('CLI second gate bounds stdin and prints no unvalidated private payload', () => {
-  for (const input of ['private-credential-value', JSON.stringify({ ...summarizeCatalog(raw(), control), password: 'private-credential-value' }), 'x'.repeat(16385)]) {
+  for (const input of ['private-credential-value', JSON.stringify({ ...summarizeCatalog(raw()), password: 'private-credential-value' }), 'x'.repeat(16385)]) {
     const result = spawnSync(process.execPath, [helper, '--validate-output'], { input, encoding: 'utf8', timeout: 5000 })
     assert.equal(result.status, 1)
     assert.equal(result.stdout, '')
     assert(!result.stderr.includes('private-credential-value'))
     assert.equal(JSON.parse(result.stderr).status, 'refused')
   }
-  const valid = summarizeCatalog(raw(), control)
+  const valid = summarizeCatalog(raw())
   const result = spawnSync(process.execPath, [helper, '--validate-output'], { input: JSON.stringify(valid), encoding: 'utf8', timeout: 5000 })
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout), valid)

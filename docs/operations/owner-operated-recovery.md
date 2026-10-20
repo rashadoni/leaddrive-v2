@@ -92,13 +92,13 @@ main-bound Mac receipt; configuration alone is not a recovery certificate.
 Before asking the owner to repeat this receipt, finish backend preparation.
 The protected **Inspect production safely** view `backup-compatibility`, on
 exact current/live main, reads only source catalog compatibility metadata and
-fixed local extension-file availability. It prints no database/connection
+PostgreSQL's read-only available-extension/version views. It prints no database/connection
 identity, arbitrary extension/schema/locale names, credentials or customer
 rows. It does not start scratch or write SQL; finite refusal stages are
 independently schema-validated before display.
 
 The result explicitly says `scratchDatabaseCompatibility=not-inspected`:
-source versions and installed files alone do not prove verifier-owned template
+source versions and catalog availability alone do not prove verifier-owned template
 extensions or a matching offline image/collation. Follow BACKUP_RUNBOOK's
 compatibility preflight. In particular, a plain-table lifecycle fixture and a
 plain PostgreSQL image do not establish pgvector recovery. Do not request a

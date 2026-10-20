@@ -28,11 +28,22 @@ export const catalogSql = `SELECT json_build_object(
   'recordedVersion', d.datcollversion,
   'actualVersion', pg_database_collation_actual_version(d.oid),
   'tls', (SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()),
-  'extensions', (SELECT json_agg(json_build_object('name', e.extname, 'version', e.extversion, 'schema', n.nspname) ORDER BY e.extname)
+  'extensions', (SELECT json_agg(json_build_object('name', e.extname, 'version', e.extversion, 'schema', n.nspname,
+      'availableDefaultVersion', (SELECT default_version FROM pg_available_extensions WHERE name=e.extname),
+      'sourceVersionAvailable', EXISTS(SELECT 1 FROM pg_available_extension_versions WHERE name=e.extname AND version=e.extversion),
+      'requiresSuperuser', (SELECT superuser FROM pg_available_extension_versions WHERE name=e.extname AND version=e.extversion),
+      'trusted', (SELECT trusted FROM pg_available_extension_versions WHERE name=e.extname AND version=e.extversion)) ORDER BY e.extname)
     FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace))
 FROM pg_database d WHERE d.datname=current_database()`
 
-export function summarizeCatalog(raw, readControl = () => ({ control: 'not-inspected', defaultVersion: null, sourceVersionSql: 'not-inspected' })) {
+function validAvailability(entry) {
+  return (entry.availableDefaultVersion === null || version(entry.availableDefaultVersion)) &&
+    typeof entry.sourceVersionAvailable === 'boolean' &&
+    (entry.sourceVersionAvailable ? typeof entry.requiresSuperuser === 'boolean' && typeof entry.trusted === 'boolean'
+      : entry.requiresSuperuser === null && entry.trusted === null)
+}
+
+export function summarizeCatalog(raw) {
   if (!keys(raw, 'versionNumber,encoding,provider,collate,ctype,icu,recordedVersion,actualVersion,tls,extensions') ||
     !Number.isInteger(raw.versionNumber) || raw.versionNumber < 160000 || raw.versionNumber >= 170000 || raw.tls !== true ||
     !['c', 'i'].includes(raw.provider) || ![raw.encoding, raw.collate, raw.ctype].every(v => typeof v === 'string' && v.length > 0 && v.length <= 128) ||
@@ -40,13 +51,15 @@ export function summarizeCatalog(raw, readControl = () => ({ control: 'not-inspe
     !Array.isArray(raw.extensions) || raw.extensions.length < 1 || raw.extensions.length > 32) fail('SOURCE_METADATA')
   const seen = new Set()
   for (const entry of raw.extensions) {
-    if (!keys(entry, 'name,version,schema') || typeof entry.name !== 'string' || !/^[a-z][a-z0-9_-]{0,62}$/.test(entry.name) ||
-      seen.has(entry.name) || !version(entry.version) || typeof entry.schema !== 'string' || entry.schema.length > 63) fail('SOURCE_METADATA')
+    if (!keys(entry, 'name,version,schema,availableDefaultVersion,sourceVersionAvailable,requiresSuperuser,trusted') || typeof entry.name !== 'string' || !/^[a-z][a-z0-9_-]{0,62}$/.test(entry.name) ||
+      seen.has(entry.name) || !version(entry.version) || typeof entry.schema !== 'string' || entry.schema.length > 63 || !validAvailability(entry)) fail('SOURCE_METADATA')
     seen.add(entry.name)
   }
   const sorted = [...raw.extensions].sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
   const visible = sorted.filter(entry => known.has(entry.name)).map(entry => ({ name: entry.name, version: entry.version,
-    schema: ['public', 'pg_catalog'].includes(entry.schema) ? entry.schema : 'other' }))
+    schema: ['public', 'pg_catalog'].includes(entry.schema) ? entry.schema : 'other',
+    availableDefaultVersion: entry.availableDefaultVersion, sourceVersionAvailable: entry.sourceVersionAvailable,
+    requiresSuperuser: entry.requiresSuperuser, trusted: entry.trusted }))
   const rawLocale = { encoding: raw.encoding, provider: raw.provider, collate: raw.collate, ctype: raw.ctype,
     icu: raw.icu, recordedVersion: raw.recordedVersion, actualVersion: raw.actualVersion }
   return validateOutput({ format: 1, status: 'inspected', source: {
@@ -57,12 +70,11 @@ export function summarizeCatalog(raw, readControl = () => ({ control: 'not-inspe
       actualVersion: nullableVersion(raw.actualVersion) ? raw.actualVersion : 'other',
       versionMatches: raw.recordedVersion === raw.actualVersion, identityDigest: sha(JSON.stringify(rawLocale)) },
     extensions: visible, unknownExtensionCount: sorted.length - visible.length, extensionSetDigest: sha(JSON.stringify(sorted)),
-  }, hostExtensionFiles: visible.map(entry => ({ name: entry.name, ...readControl(entry.name, entry.version) })),
-  scratchDatabaseCompatibility: 'not-inspected' })
+  }, scratchDatabaseCompatibility: 'not-inspected' })
 }
 
 export function validateOutput(value) {
-  if (!keys(value, 'format,status,source,hostExtensionFiles,scratchDatabaseCompatibility') || value.format !== 1 || value.status !== 'inspected' ||
+  if (!keys(value, 'format,status,source,scratchDatabaseCompatibility') || value.format !== 1 || value.status !== 'inspected' ||
     value.scratchDatabaseCompatibility !== 'not-inspected' || !keys(value.source, 'major,versionNumber,encoding,locale,extensions,unknownExtensionCount,extensionSetDigest')) fail('OUTPUT')
   const s = value.source, l = s.locale
   if (s.major !== 16 || !Number.isInteger(s.versionNumber) || s.versionNumber < 160000 || s.versionNumber >= 170000 ||
@@ -73,19 +85,12 @@ export function validateOutput(value) {
     !['libc', 'icu'].includes(l.provider) || ![l.collate, l.ctype].every(v => v === 'other' || locale(v) === v) ||
     !(l.icu === 'other' || icu(l.icu) === l.icu) || ![l.recordedVersion, l.actualVersion].every(v => v === 'other' || nullableVersion(v)) ||
     typeof l.versionMatches !== 'boolean' || !/^[0-9a-f]{64}$/.test(l.identityDigest) ||
-    !Array.isArray(s.extensions) || s.extensions.length > known.size || s.extensions.length + s.unknownExtensionCount > 32 ||
-    !Array.isArray(value.hostExtensionFiles) || value.hostExtensionFiles.length !== s.extensions.length) fail('OUTPUT')
+    !Array.isArray(s.extensions) || s.extensions.length > known.size || s.extensions.length + s.unknownExtensionCount > 32) fail('OUTPUT')
   const seen = new Set()
-  s.extensions.forEach((entry, index) => {
-    if (!keys(entry, 'name,version,schema') || !known.has(entry.name) || seen.has(entry.name) || !version(entry.version) ||
-      !['public', 'pg_catalog', 'other'].includes(entry.schema)) fail('OUTPUT')
+  s.extensions.forEach(entry => {
+    if (!keys(entry, 'name,version,schema,availableDefaultVersion,sourceVersionAvailable,requiresSuperuser,trusted') || !known.has(entry.name) || seen.has(entry.name) || !version(entry.version) ||
+      !['public', 'pg_catalog', 'other'].includes(entry.schema) || !validAvailability(entry)) fail('OUTPUT')
     seen.add(entry.name)
-    const control = value.hostExtensionFiles[index]
-    if (!keys(control, 'name,control,defaultVersion,sourceVersionSql') || control.name !== entry.name ||
-      !['present', 'missing', 'unsafe', 'unreadable', 'not-inspected'].includes(control.control) ||
-      !(control.defaultVersion === null || version(control.defaultVersion)) ||
-      (control.control === 'present' ? !version(control.defaultVersion) : control.defaultVersion !== null) ||
-      !['present', 'missing', 'unsafe', 'unreadable', 'not-inspected'].includes(control.sourceVersionSql)) fail('OUTPUT')
   })
   return value
 }
@@ -143,29 +148,6 @@ export function queryPlan(config) {
   options: { env: environment, timeout: 42000, maxBuffer: MAX, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] } }
 }
 
-export function readControl(name, sourceVersion) {
-  if (!known.has(name) || !version(sourceVersion)) fail('SOURCE_METADATA')
-  const root = '/usr/share/postgresql/16/extension'
-  const state = path => {
-    try {
-      if (fs.realpathSync(path) !== path) return 'unsafe'
-      const st = fs.lstatSync(path)
-      return st.isFile() && st.uid === 0 && st.nlink === 1 && (st.mode & 0o022) === 0 ? 'present' : 'unsafe'
-    } catch (error) { return error.code === 'ENOENT' ? 'missing' : 'unreadable' }
-  }
-  const controlPath = `${root}/${name}.control`
-  let control = state(controlPath), defaultVersion = null
-  if (control === 'present') {
-    try {
-      const bytes = boundedFile(controlPath, MAX, 0, [0o400, 0o440, 0o444, 0o600, 0o640, 0o644])
-      const matches = [...bytes.toString('utf8').matchAll(/^\s*default_version\s*=\s*'([0-9a-zA-Z.+-]+)'\s*(?:#.*)?$/gm)]
-      if (matches.length !== 1 || !version(matches[0][1])) control = 'unsafe'
-      else defaultVersion = matches[0][1]
-    } catch { control = 'unreadable' }
-  }
-  return { control, defaultVersion, sourceVersionSql: state(`${root}/${name}--${sourceVersion}.sql`) }
-}
-
 export function inspect(expectedSha, runtime = { io: fs, uid: () => process.getuid(), spawn: spawnSync }) {
   if (!/^[0-9a-f]{40}$/.test(expectedSha ?? '') || runtime.uid() !== 0) fail('INPUT')
   const marker = boundedFile('/opt/leaddrive-v2/.next/standalone/.deploy-sha', 41, 0, [0o400, 0o440, 0o444, 0o600, 0o640, 0o644], runtime.io)
@@ -176,7 +158,7 @@ export function inspect(expectedSha, runtime = { io: fs, uid: () => process.getu
   if (result.error || result.status !== 0 || result.signal || typeof result.stdout !== 'string' || Buffer.byteLength(result.stdout) > MAX) fail('SOURCE_QUERY')
   let raw
   try { raw = JSON.parse(result.stdout) } catch { fail('SOURCE_METADATA') }
-  return summarizeCatalog(raw, readControl)
+  return summarizeCatalog(raw)
 }
 
 const direct = process.argv[1] === '-' || process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href

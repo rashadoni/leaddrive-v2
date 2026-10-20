@@ -185,7 +185,7 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
     assert.equal(report.scratchDatabaseCompatibility, 'not-inspected')
     for (const name of ['plpgsql', 'pgcrypto', 'btree_gist']) {
       assert(report.source.extensions.some(entry => entry.name === name))
-      assert.equal(report.hostExtensionFiles.find(entry => entry.name === name).control, 'present')
+      assert.equal(report.source.extensions.find(entry => entry.name === name).sourceVersionAvailable, true)
     }
     for (const privateValue of ['fixture_source', 'fixture_sentinel', '127.0.0.2', 'public-synthetic-only', 'source must survive']) assert(!metadata.stdout.includes(privateValue))
     ok(command(process.execPath, [metadataHelper, '--validate-output'], { input: metadata.stdout }), 'second independent output schema')
