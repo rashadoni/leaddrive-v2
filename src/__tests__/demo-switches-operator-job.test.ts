@@ -67,7 +67,8 @@ const pidFile = () => join(dir, "pm2.pid")
 /** A running «app» whose environment is exactly `env` — as PM2 would have it after a deploy or a reboot. */
 function startApp(env: Record<string, string>): void {
   if (existsSync(pidFile())) spawnSync("kill", [readFileSync(pidFile(), "utf8").trim()])
-  const child = spawn("/bin/sleep", ["300"], { env, detached: true, stdio: "ignore" })
+  // Exactly this environment, nothing of the test runner's: not even NODE_ENV.
+  const child = spawn("/bin/sleep", ["300"], { env: env as unknown as NodeJS.ProcessEnv, detached: true, stdio: "ignore" })
   child.unref()
   writeFileSync(pidFile(), `${child.pid}\n`)
 }
@@ -98,7 +99,7 @@ function runJob(
         SOCIAL_PAGE_CHOICE: given.social ?? "keep",
         SOCIAL_APP_CONFIG_ID: given.id ?? "",
         VOICE_CHOICE: given.voice ?? "keep",
-      },
+      } as unknown as NodeJS.ProcessEnv,
     })
     log += `${result.stdout}\n${result.stderr}\n`
     // A failed step ends the job: GitHub runs nothing after it but the cleanup.
