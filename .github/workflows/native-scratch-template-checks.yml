@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/backup/native-scratch-template*'
       - 'scripts/backup/scratch-service.test.mjs'
+      - 'scripts/backup/transient-workspace.test.mjs'
       - 'scripts/backup/commission-production-backup.sh'
       - 'scripts/backup/postgres-backup.sh'
       - 'scripts/backup/postgres-restore-canary.sh'
@@ -15,6 +16,7 @@ on:
     paths:
       - 'scripts/backup/native-scratch-template*'
       - 'scripts/backup/scratch-service.test.mjs'
+      - 'scripts/backup/transient-workspace.test.mjs'
       - 'scripts/backup/commission-production-backup.sh'
       - 'scripts/backup/postgres-backup.sh'
       - 'scripts/backup/postgres-restore-canary.sh'
@@ -36,7 +38,14 @@ jobs:
         with:
           node-version: '20'
       - name: Portable native template authority tests
-        run: node --test scripts/backup/native-scratch-template.test.mjs
+        run: |
+          node --test scripts/backup/native-scratch-template.test.mjs
+          node --test scripts/backup/transient-workspace.test.mjs
+      - name: Actual private worker workspace and exact bounded template argument
+        run: |
+          NODE="$(command -v node)"
+          sudo env "GITHUB_ACTIONS=$GITHUB_ACTIONS" "RUNNER_ENVIRONMENT=$RUNNER_ENVIRONMENT" \
+            LEADDRIVE_TEST_REAL_WORKSPACE=1 "$NODE" --test scripts/backup/transient-workspace.test.mjs
       - name: Build exact pgvector in disposable hosted native PostgreSQL16 only
         run: |
           set -euo pipefail
