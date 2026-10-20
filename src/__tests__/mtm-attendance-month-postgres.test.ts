@@ -198,8 +198,11 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
    const candidate=state.candidates[0]
    await expect(inC(()=>store.closeAttendanceMonth(closer,{month:"2026-08",agentIds:candidate.agentIds,requestId:randomUUID(),preview:{hash:candidate.hash,asOf:candidate.asOf}}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_MONTH_UNRESOLVED"})
    expect((await inC(()=>store.readAttendanceMonthN1t(closer,{month:"2026-08",locale:"en"}))).closes).toEqual([])
-   // The running month offers no press at all.
-   expect(await inC(()=>store.readAttendanceMonthN1t(closer,{month:"2026-10",locale:"en"}))).toMatchObject({finished:false,candidates:[],blockers:[]})
+   // The running month offers no press at all. The store reads the real clock, so the clock is pinned
+   // inside October in every time zone (Kiritimati, UTC+14, starts the day first): unpinned, October is
+   // a finished month from 1 November and this line would go red in static-checks and in the deploy gate.
+   vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-10-21T08:00:00Z"))
+   try{expect(await inC(()=>store.readAttendanceMonthN1t(closer,{month:"2026-10",locale:"en"}))).toMatchObject({finished:false,candidates:[],blockers:[]})}finally{vi.useRealTimers()}
   })
 
   it("leaves one closed month when two people press at the same moment",async()=>{
