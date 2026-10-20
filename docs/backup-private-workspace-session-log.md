@@ -18,3 +18,8 @@
 ## PR929 published; actual gates next
 
 - Source checkpoint2056cfcdad1e9dab537f83753ddfbfcf38bce854 pushed normally; draftPR929 https://github.com/rashadoni/leaddrive-v2/pull/929 opened, then markedready with this frozen source head. No source push after ready merely for journal updates. Main/live remainsa155, no new backup attempt. Required5actual source gates and extra real isolated kernel/cgroup proof pending; skipped draft jobs do not count. Next read actual real-unit result first and fix any real failure before merge, then normal immutable release and refined read-only resource diagnosis.
+
+## Actual hosted kernel failure; bounded synthetic diagnostics
+
+- Actual owner-checks39347766754/job118384442872 FAILED on head2056: real noexec staging passed, but real systemd workspace process exited1. The kernel test is NOT PASS; Docker steps subsequently skipped. Production remains unchanged. Portable mocks are not accepted as evidence of actual mount behavior.
+- Added assertion-line and synthetic-only UID/mode/filesystem/size observations to that CI fixture's bounded journal. No production credentials/customer data involved. Need actual failed predicate before correction. systemd v255 namespace source orders READ_WRITE ahead of TMPFS and drops same-path duplicates (https://raw.githubusercontent.com/systemd/systemd/v255/src/core/namespace.c); overlapping explicit ReadWritePaths is a hypothesis to verify, not yet an observed production root cause.

@@ -154,7 +154,11 @@ test("actual systemd unit mounts only a private bounded workspace; kernel/cgroup
     writeFileSync(environment, "# Synthetic, no credentials or customer data.\n", { mode: 0o644 })
     writeFileSync(program, `#!/bin/bash
 set -euo pipefail
+trap 'printf "SYNTHETIC_FIXTURE_FAILED_LINE=%s\\n" "$LINENO"' ERR
 work=/run/leaddrive-postgres-backup
+printf 'SYNTHETIC_WORKSPACE_UID=%s MODE=%s TYPE=%s TOTAL=%s\\n' \
+  "$(id -u)" "$(stat -c '%u:%g:%a' "$work")" \
+  "$(findmnt -n -o FSTYPE --target "$work")" "$(df -B1 --output=size "$work" | tail -1 | tr -d ' ')"
 [ "$(id -u)" = 65534 ]
 [ "$(stat -c '%u:%g:%a' "$work")" = 65534:65534:750 ]
 [ "$(findmnt -n -o FSTYPE --target "$work")" = tmpfs ]
