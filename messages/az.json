@@ -29811,6 +29811,13 @@
     "explainFailed": "Alınmadı. Səhifəni yeniləyib yenidən cəhd edin.",
     "explainHint": "İzahat gecikən və ya səbəbsiz gəlməyənlərdən istənir. Məzuniyyətdə, xəstəlikdə, ezamiyyətdə olanlar və icazə alanlar bura düşmür.",
     "peopleTabs": "Əməkdaşlar bölmələri",
+    "sectionHints": {
+      "personnelToday": "Bu günün mənzərəsi: kim gəlib, kim gecikib, kim yoxdur və qərar gözləyən müraciətlər.",
+      "personnelTimesheet": "Ayın tabeli: hər əməkdaşın hər günü bir hərflə; Excel və PDF.",
+      "personnelPeople": "Uçotda olan əməkdaşlar, filiallar və telefonlar.",
+      "personnelReports": "Bütün hesabatlar: gecikmələr, gəlməyənlər, mühasibatlıq üçün tabel və başqaları.",
+      "personnelSettings": "İş saatları, bayramlar, gün növləri, müraciətlər və yoxlamalar."
+    },
     "settingsTabs": "Parametr bölmələri",
     "tabs": {
       "employees": "Əməkdaşlar",
