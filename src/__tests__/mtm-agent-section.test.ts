@@ -109,6 +109,7 @@ function pickerRow(client: Client) {
     id: client.id,
     name: client.name,
     specialtyName: client.specialty,
+    category: "B",
     institution: { id: `org-${client.workplace}`, name: client.workplace, address: "Nizami küçəsi 5", city: "Bakı", locality: null, district: null, administrativeDistrict: null, cityDistrict: null },
     agents: client.owners.map((ownerId, index) => ({ agentId: ownerId, role: index === 0 ? "PRIMARY" : "SECONDARY", name: agents.find((agent) => agent.id === ownerId)?.name ?? "" })),
   }
@@ -627,12 +628,7 @@ describe("the agent's page — the card's picker and its edit button", () => {
     await click(byTestId("agent-clients-specialty"))
     const option = Array.from(document.body.querySelectorAll<HTMLLabelElement>("[data-testid='agent-clients-specialty-options'] label")).find((item) => item.textContent?.includes(label))
     await click(option?.querySelector("input"))
-    await until(() => document.body.querySelectorAll("[data-testid='agent-clients-group']").length > 0, `the doctors of ${label}`)
-  }
-  async function openGroups() {
-    for (const toggle of Array.from(document.body.querySelectorAll("[data-testid='agent-clients-group'] button[aria-expanded='false']"))) {
-      if (toggle.getAttribute("aria-expanded") === "false") await click(toggle)
-    }
+    await until(() => document.body.querySelectorAll("[data-testid='agent-clients-doctor']").length > 0, `the doctors of ${label}`)
   }
 
   ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} }
@@ -662,7 +658,6 @@ describe("the agent's page — the card's picker and its edit button", () => {
     await until(() => Boolean(byTestId("agent-clients-start")), "the picker's first step")
 
     await chooseSpecialty("Terapevt")
-    await openGroups()
     // A colleague's doctor is offered too, and stays the colleague's as well.
     expect(doctorRow("Kamran Hüseynov")?.textContent).toContain(LEYLA.name)
     await click(doctorRow("Elvin Babayev")?.querySelector("[role='checkbox']"))
@@ -697,7 +692,6 @@ describe("the agent's page — the card's picker and its edit button", () => {
     await until(() => Boolean(byTestId("agent-clients-start")), "the picker's first step")
 
     await chooseSpecialty("Kardioloq")
-    await openGroups()
     await click(doctorRow("Aysel Quliyeva")?.querySelector("[role='checkbox']"))
     expect(doctorRow("Aysel Quliyeva")?.textContent).toContain(forms.clientsWillBeRemoved)
     expect(byTestId("mtm-agent-attach-bar")?.textContent).toContain(fill(section.attachWillRemove, { count: 1 }))

@@ -17,6 +17,7 @@ type PickerSelectRow = {
   middleName: string | null
   displayName: string | null
   specialtyName: string | null
+  category: string
   workplaces: Array<{ customer: PickerInstitution }>
   agentAssignments: Array<{ agentId: string; role: string; agent: { name: string } }>
 }
@@ -34,7 +35,8 @@ function values(params: URLSearchParams, name: string): string[] {
  *
  * The «Клиенты агента» tab of an agent's card (src/lib/mtm/agent-client-picker.ts):
  * the specialties, the cities of those, the districts of those — each with
- * counts — and the active doctors that match, grouped by institution. Only
+ * counts — and the active doctors that match, each with his class and his
+ * institution, those of one institution next to each other. Only
  * doctors the caller may see, and only for someone who may assign them; with
  * `agentId`, the doctors already that agent's are marked.
  */
@@ -70,6 +72,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       middleName: true,
       displayName: true,
       specialtyName: true,
+      category: true,
       workplaces: {
         where: { deletedAt: null, endedOn: null },
         orderBy: [{ isPrimary: "desc" }, { startedOn: "desc" }],
@@ -92,6 +95,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     id: contact.id,
     name: contactDisplayName(contact),
     specialtyName: contact.specialtyName,
+    category: contact.category,
     institution: contact.workplaces[0]?.customer ?? null,
     agents: contact.agentAssignments.map(assignment => ({ agentId: assignment.agentId, role: assignment.role, name: assignment.agent.name })),
   }))
