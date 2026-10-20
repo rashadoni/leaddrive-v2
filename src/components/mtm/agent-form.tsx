@@ -25,10 +25,11 @@ import {
 /** What the server accepts for a number: «+», a country code, at most 15 digits; spaces and dashes are fine. */
 const internationalPhone = (value: string) => /^\+[1-9]\d{6,14}$/.test(value.replace(/[\s\-()]/g, ""))
 
-const PHONE_ERROR: Record<string, string> = {
+const PROFILE_ERROR: Record<string, string> = {
   MTM_AGENT_PHONE_INVALID: "whatsappPhoneInvalid",
   MTM_AGENT_PHONE_TAKEN: "whatsappPhoneTaken",
   MTM_PASSWORD_WEAK: "passwordRules",
+  MTM_AGENT_CODE_TAKEN: "externalCodeTaken",
 }
 
 interface AgentFormProps {
@@ -149,6 +150,10 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
   // is saved must be what they can read (2026-10-06: one typed behind the dots
   // twice, and the phone refused both).
   const [passwordHidden, setPasswordHidden] = useState(false)
+  // The code an empty «External code» field will be given on saving, shown in
+  // the field before it is (owner, 2026-10-20: «чтоб автоматически задавался.
+  // последовательно»). The server draws it again at the save.
+  const [nextCode, setNextCode] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -196,6 +201,15 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
           // «стажёр» on the only card that carries it would turn back.
           const others = cards.filter(card => card.id !== initialData?.id)
           setKnownTags(normalizeMtmAgentTags(others.flatMap(card => card.tags ?? [])).sort((a, b) => a.localeCompare(b)))
+        })
+        .catch(() => {})
+      setNextCode("")
+      fetch("/api/v1/mtm/agents/next-code", {
+        headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string>,
+      })
+        .then(r => r.json())
+        .then(json => {
+          if (json?.success && typeof json.data?.code === "string") setNextCode(json.data.code)
         })
         .catch(() => {})
     }
@@ -305,8 +319,8 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       })
       const json = await res.json()
       if (!res.ok) {
-        if (PHONE_ERROR[json.code]) setTab("profile")
-        throw new Error(PHONE_ERROR[json.code] ? tf(PHONE_ERROR[json.code]) : agentSaveErrorMessage(json, { tc, tf }))
+        if (PROFILE_ERROR[json.code]) setTab("profile")
+        throw new Error(PROFILE_ERROR[json.code] ? tf(PROFILE_ERROR[json.code]) : agentSaveErrorMessage(json, { tc, tf }))
       }
       const savedId: string | undefined = isEdit ? agentId! : json?.data?.id
       if (savedId && !isEdit) setSavedAgentId(savedId)
@@ -436,7 +450,16 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
             ) : null}
             <div>
               <Label htmlFor="externalCode">{tf("externalCode")}</Label>
-              <Input id="externalCode" value={form.externalCode} onChange={e => update("externalCode", e.target.value)} placeholder={tf("externalCodeHint")} />
+              <Input
+                id="externalCode"
+                data-testid="agent-external-code"
+                value={form.externalCode}
+                onChange={e => update("externalCode", e.target.value)}
+                placeholder={nextCode ? tf("externalCodeAuto", { code: nextCode }) : tf("externalCodeHint")}
+              />
+              {!form.externalCode.trim() ? (
+                <p className="text-xs text-muted-foreground mt-1" data-testid="agent-external-code-hint">{tf("externalCodeAutoHint")}</p>
+              ) : null}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

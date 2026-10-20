@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { NextRequest } from "next/server"
+import { Prisma } from "@prisma/client"
 
 vi.mock("@/lib/prisma", async () => {
   const { makeMtmPrismaMock } = await import("./mocks/mtm-prisma")
@@ -473,6 +474,12 @@ describe("GET /api/v1/mtm/agents", () => {
 
 // ─── POST /api/v1/mtm/agents ───────────────────────────────
 describe("POST /api/v1/mtm/agents", () => {
+  // A new card without a code reads the organization's codes first (the
+  // sequence); the list tests above leave this mock refusing.
+  beforeEach(() => {
+    vi.mocked(prisma.mtmAgent.findMany).mockReset().mockResolvedValue([])
+  })
+
   it("returns 401 when not authenticated", async () => {
     vi.mocked(getOrgId).mockResolvedValue(null)
     const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "A" }))
@@ -533,7 +540,8 @@ describe("POST /api/v1/mtm/agents", () => {
     expect(res.status).toBe(201)
     const createArgs = vi.mocked(prisma.mtmAgent.create).mock.calls[0][0] as any
     expect(createArgs.data.email ?? null).toBeNull()
-    expect(createArgs.data.externalCode ?? null).toBeNull()
+    // An empty code is no longer stored empty: the first in the sequence is given (2026-10-20).
+    expect(createArgs.data.externalCode).toBe("AG-001")
   })
 
   it("still refuses a written email that is not an email", async () => {
@@ -598,6 +606,120 @@ describe("POST /api/v1/mtm/agents", () => {
 })
 
 // ─── GET /api/v1/mtm/agents/[id] ───────────────────────────
+// Owner, 2026-10-20, on the agent form: «тут код агента чтоб автоматически
+// задавался. последовательно». Whether Postgres really refuses a taken code,
+// and two saves at once really get two codes, is shown on a real database in
+// mtm-contact-categories-postgres.test.ts; here, what each route asks for.
+describe("the agent's code given in sequence", () => {
+  const taken = () => new Prisma.PrismaClientKnownRequestError("Unique constraint failed on the fields: (`organizationId`,`externalCode`)", {
+    code: "P2002",
+    clientVersion: "6",
+    meta: { target: ["organizationId", "externalCode"] },
+  })
+  // The organization's codes, newest card first, as the sequence reads them.
+  const codesInOrganization = (...codes: string[][]) => {
+    let call = 0
+    vi.mocked(prisma.mtmAgent.findMany).mockImplementation((async (args: any) => {
+      if (!args?.select?.externalCode || !args?.orderBy) return []
+      const answer = codes[Math.min(call, codes.length - 1)]
+      call += 1
+      return answer.map((externalCode) => ({ externalCode }))
+    }) as any)
+  }
+  const codeReads = () => vi.mocked(prisma.mtmAgent.findMany).mock.calls.filter(([args]: any[]) => args?.select?.externalCode && args?.orderBy)
+
+  afterEach(() => {
+    vi.mocked(prisma.mtmAgent.findMany).mockReset().mockResolvedValue([])
+    vi.mocked(prisma.mtmAgent.create).mockReset()
+    vi.mocked(prisma.mtmAgent.updateMany).mockReset()
+  })
+
+  it("gives a new agent saved without a code the next one of the organization's sequence", async () => {
+    mockAgentAdministrator()
+    codesInOrganization(["AG-016", "NZ-001", "AG-007"])
+    vi.mocked(prisma.mtmAgent.create).mockImplementation((async (args: any) => ({ id: "new-agent", ...args.data })) as any)
+
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Fictional Agent", externalCode: "" }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.externalCode).toBe("AG-017")
+    // Every card of the organization counts, the inactive ones too.
+    expect(codeReads()[0][0]).toMatchObject({ where: { organizationId: ORG, externalCode: { not: null } } })
+    expect(codeReads()[0][0]).not.toHaveProperty("where.status")
+  })
+
+  it("keeps a code typed in the form as typed", async () => {
+    mockAgentAdministrator()
+    codesInOrganization(["AG-016"])
+    vi.mocked(prisma.mtmAgent.create).mockImplementation((async (args: any) => ({ id: "new-agent", ...args.data })) as any)
+
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Fictional Agent", externalCode: " EXT-9 " }))
+
+    expect(res.status).toBe(201)
+    expect(vi.mocked(prisma.mtmAgent.create).mock.calls[0][0].data.externalCode).toBe("EXT-9")
+    expect(codeReads()).toHaveLength(0)
+  })
+
+  it("draws again when another save took the drawn code a moment earlier", async () => {
+    mockAgentAdministrator()
+    codesInOrganization(["AG-016"], ["AG-017", "AG-016"])
+    vi.mocked(prisma.mtmAgent.create)
+      .mockRejectedValueOnce(taken())
+      .mockImplementation((async (args: any) => ({ id: "new-agent", ...args.data })) as any)
+
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Fictional Agent" }))
+
+    expect(res.status).toBe(201)
+    expect(vi.mocked(prisma.mtmAgent.create).mock.calls.map(([args]: any[]) => args.data.externalCode)).toEqual(["AG-017", "AG-018"])
+  })
+
+  it("refuses a typed code another agent holds, by a code the form names", async () => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.create).mockRejectedValue(taken())
+
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Fictional Agent", externalCode: "AG-007" }))
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ code: "MTM_AGENT_CODE_TAKEN" })
+    expect(prisma.mtmAgent.create).toHaveBeenCalledTimes(1)
+  })
+
+  it("gives a card saved from the form with the code field empty the next code, and leaves the code alone when the field is not sent", async () => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "Agent", role: "AGENT", status: "ACTIVE", managerId: null, externalCode: null } as any)
+    vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
+    codesInOrganization(["AG-016"])
+
+    const filled = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/a1", "PUT", { name: "Agent", externalCode: "" }), makeParams("a1"))
+    expect(filled.status).toBe(200)
+    expect(vi.mocked(prisma.mtmAgent.updateMany).mock.calls[0][0].data.externalCode).toBe("AG-017")
+
+    const untouched = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/a1", "PUT", { status: "INACTIVE" }), makeParams("a1"))
+    expect(untouched.status).toBe(200)
+    expect(vi.mocked(prisma.mtmAgent.updateMany).mock.calls[1][0].data).not.toHaveProperty("externalCode")
+
+    vi.mocked(prisma.mtmAgent.updateMany).mockRejectedValueOnce(taken())
+    const refused = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/a1", "PUT", { externalCode: "AG-007" }), makeParams("a1"))
+    expect(refused.status).toBe(409)
+    expect((await refused.json()).code).toBe("MTM_AGENT_CODE_TAKEN")
+  })
+
+  it("tells the form the code it will give, and only to whoever may create cards", async () => {
+    codesInOrganization(["AG-016", "NZ-001"])
+    const { GET: NextCode } = await import("@/app/api/v1/mtm/agents/next-code/route")
+
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    const outsider = await NextCode(makeReq("/api/v1/mtm/agents/next-code"))
+    expect(outsider.status).not.toBe(200)
+    expect(codeReads()).toHaveLength(0)
+
+    mockAgentAdministrator()
+    const shown = await NextCode(makeReq("/api/v1/mtm/agents/next-code"))
+    expect(shown.status).toBe(200)
+    expect((await shown.json()).data).toEqual({ code: "AG-017" })
+  })
+})
+
 describe("GET /api/v1/mtm/agents/[id]", () => {
   it("returns 401 when not authenticated", async () => {
     vi.mocked(getOrgId).mockResolvedValue(null)

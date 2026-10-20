@@ -24,6 +24,7 @@ import {
 import { checkPermission } from "@/lib/permissions"
 import { passwordPolicyError } from "@/lib/password-policy"
 import { checkSignInPhone } from "@/lib/mtm/mobile-login-phone"
+import { mtmAgentCodeTakenResponse, writeWithMtmAgentCode } from "@/lib/mtm/agent-external-code"
 import {
   MTM_AGENT_WEB_ONLY_SELECT,
   mtmAgentNotesReader,
@@ -208,6 +209,7 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
       select: {
         id: true,
         name: true,
+        externalCode: true,
         email: true,
         phone: true,
         role: true,
@@ -276,7 +278,6 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
 
     const data: Prisma.MtmAgentUncheckedUpdateManyInput = {}
     if (body.name !== undefined) data.name = body.name
-    if (body.externalCode !== undefined) data.externalCode = body.externalCode ?? null
     if (body.email !== undefined) data.email = body.email ?? null
     if (body.phone !== undefined) {
       // A changed number is the one the agent will sign in by: held to the
@@ -309,10 +310,22 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
       data.passwordHash = await bcrypt.hash(body.password, 12)
     }
 
-    const agent = await prisma.mtmAgent.updateMany({
+    const write = (externalCode?: string) => prisma.mtmAgent.updateMany({
       where: { id: scopedAgentIdFilter(administration, id), organizationId: orgId },
-      data,
+      data: externalCode === undefined ? data : { ...data, externalCode },
     })
+    let agent: Prisma.BatchPayload
+    if (body.externalCode === undefined) {
+      agent = await write()
+    } else {
+      // The code field sent empty — a card that never had one, or one cleared
+      // in the form — gets the next code in the organization's sequence, the
+      // way a new card does.
+      const saved = await writeWithMtmAgentCode(prisma, orgId, body.externalCode ?? null, write)
+      if (!saved.ok) return mtmAgentCodeTakenResponse(saved.code)
+      agent = saved.value
+      data.externalCode = saved.code
+    }
     if (agent.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     await writeMtmAudit({

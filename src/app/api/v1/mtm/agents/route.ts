@@ -31,6 +31,7 @@ import { checkPermission } from "@/lib/permissions"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { passwordPolicyError } from "@/lib/password-policy"
 import { checkSignInPhone } from "@/lib/mtm/mobile-login-phone"
+import { mtmAgentCodeTakenResponse, writeWithMtmAgentCode } from "@/lib/mtm/agent-external-code"
 import {
   MTM_AGENT_WEB_ONLY_SELECT,
   mtmAgentNotesReader,
@@ -461,11 +462,12 @@ export const POST = withRls(async (req, auth) => {
       passwordHash = await bcrypt.hash(body.password, 12)
     }
 
-    const agent = await prisma.mtmAgent.create({
+    // No code typed: the next one in the organization's sequence is given.
+    const saved = await writeWithMtmAgentCode(prisma, orgId, body.externalCode ?? null, (externalCode) => prisma.mtmAgent.create({
       data: {
         organizationId: orgId,
         name: body.name,
-        externalCode: body.externalCode ?? null,
+        externalCode,
         email: body.email ?? null,
         phone: body.phone ?? null,
         passwordHash,
@@ -482,7 +484,9 @@ export const POST = withRls(async (req, auth) => {
       // card, or a manager, whose new card is never his own (the link check
       // above). So the answer may carry the labels and the colour just saved.
       select: { ...AGENT_RESPONSE_SELECT, ...MTM_AGENT_WEB_ONLY_SELECT },
-    })
+    }))
+    if (!saved.ok) return mtmAgentCodeTakenResponse(saved.code)
+    const agent = saved.value
 
     await writeMtmAudit({
       organizationId: orgId,
@@ -493,6 +497,7 @@ export const POST = withRls(async (req, auth) => {
       metadataKind: "agent_create",
       newData: {
         name: agent.name,
+        externalCode: agent.externalCode,
         email: agent.email,
         role: agent.role,
         canPlanOwnRoutes: agent.canPlanOwnRoutes,
