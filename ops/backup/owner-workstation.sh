@@ -79,6 +79,9 @@ SQL
       PGHOSTADDR=127.0.0.1 PGSSLMODE=disable PGCONNECT_TIMEOUT=3 \
       psql -X -w -h 127.0.0.1 -p 55432 -U scratch_admin -d template1 -v ON_ERROR_STOP=1 \
       >/database/template.log 2>&1 || fatal 'exact extension template bootstrap failed; no private inputs read'
+  rm -f -- /database/init.pass
+  [ ! -e /database/init.pass ] && [ ! -L /database/init.pass ] \
+    || fatal 'ephemeral bootstrap password cleanup failed'
   printf '127.0.0.1:55432:*:owner_restore_verifier:%s\n' "$verifier_password" >/scratch/pgpass
   unset admin_password verifier_password PGPASSWORD PGHOST PGPORT PGUSER PGDATABASE PGSERVICE PGSERVICEFILE PGOPTIONS
   export VERIFY_PGHOST=127.0.0.1 VERIFY_PGPORT=55432 VERIFY_PGUSER=owner_restore_verifier

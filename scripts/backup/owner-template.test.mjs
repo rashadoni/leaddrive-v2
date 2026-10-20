@@ -131,8 +131,10 @@ CREATE FUNCTION fixture_echo(text) RETURNS text LANGUAGE plpgsql AS $$ BEGIN RET
     const create = database => command('createdb', ['-w', '--maintenance-db=postgres', database], { env: connection })
     const drop = database => command('dropdb', ['-w', '--maintenance-db=postgres', database], { env: connection })
     const dump = join(work, 'full.dump')
-    chownSync(work, uid, gid)
-    ok(command('gosu', ['postgres', 'pg_dump', '-h', source, '-p', '55431', '-U', 'postgres', '-d', 'postgres', '-Fc', '-f', dump]))
+    // Root client owns /scratch and its private file. The public synthetic
+    // source uses its explicitly fresh local trust HBA; do not open the RAM
+    // mount to another OS identity just to write this test dump.
+    ok(command('pg_dump', ['-h', source, '-p', '55431', '-U', 'postgres', '-d', 'postgres', '-Fc', '-f', dump]))
     const restore = database => command('pg_restore', ['-w', '--exit-on-error', '--no-owner', '--no-privileges', '--dbname=' + database, dump], { env: connection })
     ok(create('fixture_unprepared'))
     const denied = restore('fixture_unprepared')
