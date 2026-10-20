@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireMobileCapability } from "@/lib/mtm/mobile-capabilities"
-import { expandVisibleProductGroupIds } from "@/lib/mtm/product-group-access"
+import { mtmPhoneProductWhere } from "@/lib/mtm/product-visibility"
 import {
   isPresentationTimePlausible,
   PresentationSessionOpenSchema,
@@ -31,7 +31,7 @@ export const POST = withMobileRls(async (req, auth) => {
     })
     if (existing) return NextResponse.json({ success: true, data: existing, idempotent: true })
 
-    const [visit, groups, product] = await Promise.all([
+    const [visit, product] = await Promise.all([
       prisma.mtmVisit.findFirst({
         where: {
           id: parsed.data.visitId,
@@ -41,16 +41,8 @@ export const POST = withMobileRls(async (req, auth) => {
         },
         select: { id: true, customerId: true, checkInAt: true, checkOutAt: true },
       }),
-      prisma.mtmProductGroup.findMany({
-        where: { organizationId: auth.orgId, isActive: true },
-        select: {
-          id: true,
-          parentId: true,
-          members: { where: { agentId: auth.agentId }, select: { id: true } },
-        },
-      }),
       prisma.mtmProduct.findFirst({
-        where: { id: parsed.data.productId, organizationId: auth.orgId, isActive: true },
+        where: { id: parsed.data.productId, organizationId: auth.orgId, isActive: true, deletedAt: null },
         select: {
           id: true,
           groupId: true,
@@ -67,12 +59,11 @@ export const POST = withMobileRls(async (req, auth) => {
       return NextResponse.json({ error: "Product not found", code: "MTM_PRODUCT_NOT_FOUND" }, { status: 404 })
     }
 
-    const visibleGroupIds = expandVisibleProductGroupIds(groups.map((group) => ({
-      id: group.id,
-      parentId: group.parentId,
-      hasDirectMembership: group.members.length > 0,
-    })))
-    if (!visibleGroupIds.has(product.groupId)) {
+    const assigned = await prisma.mtmProduct.findFirst({
+      where: { AND: [{ id: product.id }, mtmPhoneProductWhere({ orgId: auth.orgId, agentId: auth.agentId })] },
+      select: { id: true },
+    })
+    if (!assigned) {
       return NextResponse.json({ error: "Product is not assigned", code: "MTM_PRODUCT_NOT_ASSIGNED" }, { status: 403 })
     }
     if (!product.document || product.document.deletedAt) {

@@ -195,7 +195,8 @@ export const SECTION_DESCRIPTORS: Record<string, SectionDescriptor> = {
     createdField: "createdAt",
   },
   mtm_customers: { model: "mtmCustomer", permission: "tpm", module: "mtm", createdField: "createdAt" },
-  mtm_products: { model: "mtmProduct", permission: "tpm", module: "mtm", createdField: "createdAt" },
+  // A deleted presentation keeps its row for the visit history; it is not a product any more.
+  mtm_products: { model: "mtmProduct", permission: "tpm", module: "mtm", createdField: "createdAt", baseWhere: { deletedAt: null } },
 }
 
 /**

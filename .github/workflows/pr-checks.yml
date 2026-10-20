@@ -533,6 +533,18 @@ jobs:
           MTM_TASK_NOTICE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_TASK_NOTICE_DB_GATE: required
 
+      - name: MTM presentation viewers database gate
+        # «Products and presentations» (2026-10-21): who sees each presentation
+        # and deleting one. The real handlers and the migration's own backfill
+        # on a real Postgres: the backfill copies yesterday's visibility exactly,
+        # a phone gets only what its agent is listed on, a refused save writes
+        # nothing, and a deleted presentation leaves every phone while its
+        # showings and the visit naming it stay.
+        run: npx vitest run src/__tests__/mtm-product-viewers-postgres.test.ts
+        env:
+          MTM_PRODUCT_VIEWERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_PRODUCT_VIEWERS_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:
