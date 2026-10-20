@@ -12,12 +12,13 @@
  * Every name, department and minute is made up. The clock is the Route &
  * Field module's demo day (the latest Thursday), at 09:20 Baku time.
  */
-import { buildMtmAttendanceReport, type MtmAttendanceCorrection, type MtmAttendanceEmployee, type MtmAttendanceEventInput, type MtmAttendanceReportRow, type MtmAttendanceWorkday } from "@/lib/mtm/attendance-report"
+import { buildMtmAttendanceReport, type MtmAttendanceCorrection, type MtmAttendanceEmployee, type MtmAttendanceEventInput, type MtmAttendanceWorkday } from "@/lib/mtm/attendance-report"
 import { MTM_ATTENDANCE_BASELINE_RULE } from "@/lib/mtm/attendance-rules"
 import type { AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
 import type { AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 import type { AttendanceRiskItem, AttendanceRiskReport } from "@/lib/mtm/attendance-risk-contract"
 import { attendanceTodayRange } from "@/lib/mtm/attendance-today"
+import type { WorkforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 import { addDays, mtmDemoAt } from "./mtm-demo-data"
 
 export const PERSONNEL_DEMO_CLOCK = "09:20"
@@ -197,9 +198,10 @@ function workdays(plan: ReturnType<typeof personnelDemoPlan>, from: string, to: 
       }
       const flagged = FLAGGED_MARKS.find((mark) => mark.personId === person.id && addDays(plan.today, -mark.daysAgo) === date)
       // A forgotten check-out is a day with its start and nothing after: a break begun and never ended
-      // would be a paused day, not the «started, no finish» its correction records (`withCorrection`).
+      // would be a paused day, not the «started, no finish» its correction records (`correctedFinish`).
       const breakAt = !missing && roll % 2 === 0 ? 15 * 60 + 30 : null
-      days.push(workday(person.id, date, start, missing ? null : finish, breakAt, flagged ? minutesOf(flagged.received) : start))
+      const day = workday(person.id, date, start, missing ? null : finish, breakAt, flagged ? minutesOf(flagged.received) : start)
+      days.push(missing?.corrected ? correctedFinish(day) : day)
     }
   }
   return days
@@ -219,7 +221,7 @@ function approvedPeriods(plan: ReturnType<typeof personnelDemoPlan>, dayKinds: r
 /** The product's timesheet over the demo facts, for any period up to today. */
 export function personnelDemoReport(today: string, from: string, to: string, dayKinds: readonly AttendanceDayKind[]) {
   const plan = personnelDemoPlan(today)
-  const report = buildMtmAttendanceReport({
+  return buildMtmAttendanceReport({
     employees: PERSONNEL_DEMO_EMPLOYEES,
     workdays: workdays(plan, from, to),
     calendar: [],
@@ -230,29 +232,35 @@ export function personnelDemoReport(today: string, from: string, to: string, day
     to,
     now: mtmDemoAt(today, PERSONNEL_DEMO_CLOCK),
   })
-  return { ...report, rows: report.rows.map((row) => withCorrection(row, plan, dayKinds)) }
 }
 
 /**
- * The missing check-out HR corrected on an employee's request: the day card's
- * «was → now». The product reads it from its correction ledger; the demo adds
- * the same record to the same row.
+ * The missing check-out HR corrected on the employee's request the next
+ * morning: the day card's «was → now». As in the product, the correction
+ * changes the day's columns (finished at 18:07) and leaves its journal alone
+ * (the start the phone sent), and the correction ledger says what was and what
+ * is — the projection the product's report store builds from that ledger
+ * (`projectAttendanceCorrectionFacts`, server-only, so written out here). The
+ * timesheet builder then counts the corrected day as it counts any other: the
+ * hours from start to finish, less the lunch hour nobody pressed a break for
+ * («Nahar 1:00 avtomatik çıxıldı» on the card). Counted by hand before, the
+ * card showed 08:52 → 18:07 as 8:15 with nothing saying where the hour went.
  */
-function withCorrection(row: MtmAttendanceReportRow, plan: ReturnType<typeof personnelDemoPlan>, dayKinds: readonly AttendanceDayKind[]): MtmAttendanceReportRow {
-  const fix = plan.missingFinish.find((entry) => entry.corrected && entry.personId === row.employeeId && entry.date === row.date)
-  if (!fix || !row.startedAt) return row
+function correctedFinish(day: MtmAttendanceWorkday): MtmAttendanceWorkday {
+  const workDate = String(day.workDate)
+  const before: WorkforceWorkdayCorrectionFacts = { id: day.id, workDate, status: "STARTED", startedAt: new Date(day.startedAt).toISOString(), pausedAt: null, completedAt: null, totalPausedSeconds: 0 }
+  const after: WorkforceWorkdayCorrectionFacts = { ...before, status: "COMPLETED", completedAt: mtmDemoAt(workDate, "18:07") }
   const correction: MtmAttendanceCorrection = {
-    id: `corr-${row.employeeId}-${row.date}`,
-    requestId: `req-corr-${row.employeeId}`,
+    id: `corr-${day.agentId}-${workDate}`,
+    requestId: `req-corr-${day.agentId}`,
     source: "REQUEST_APPROVAL",
-    occurredAt: mtmDemoAt(addDays(row.date, 1), "10:05"),
+    occurredAt: mtmDemoAt(addDays(workDate, 1), "10:05"),
     reviewer: { id: "emp-17", name: "Orxan Musayev" },
-    before: { kind: "WORKDAY", facts: { id: row.workdayId ?? `wd-${row.employeeId}-${row.date}`, workDate: row.date, status: "STARTED", startedAt: row.startedAt, pausedAt: null, completedAt: null, totalPausedSeconds: 0 } },
-    after: { id: row.workdayId ?? `wd-${row.employeeId}-${row.date}`, workDate: row.date, status: "COMPLETED", startedAt: row.startedAt, pausedAt: null, completedAt: mtmDemoAt(row.date, "18:07"), totalPausedSeconds: 0 },
+    before: { kind: "WORKDAY", facts: before },
+    after,
   }
-  const worked = Math.round((Date.parse(mtmDemoAt(row.date, "18:07")) - Date.parse(row.startedAt)) / 1000) - 3600
-  const workedDay = dayKinds.find((kind) => kind.key === "WORKED")
-  return { ...row, kind: "WORKED", completedAt: mtmDemoAt(row.date, "18:07"), workedSeconds: worked, pausedSeconds: 0, flags: row.flags.filter((flag) => flag !== "MISSING_FINISH"), corrections: [correction], ...(workedDay ? { dayKind: workedDay } : {}) }
+  return { ...day, status: after.status, completedAt: after.completedAt, totalPausedSeconds: 0,
+    correctionProjection: { valid: true, facts: after, pauseIntervals: [], history: [correction] } }
 }
 
 /**

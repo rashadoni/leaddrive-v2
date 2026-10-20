@@ -18,6 +18,8 @@ import { DEFAULT_ATTENDANCE_RISK_POLICY } from "@/lib/mtm/attendance-risk-policy
 import { AttendanceRequestInputSchema } from "@/lib/mtm/attendance-request-contract"
 import { WORKFORCE_ATTENDANCE_REVIEW_DELAY_MS } from "@/lib/mtm/workday"
 import { defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
+import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
+import { MTM_ATTENDANCE_BASELINE_RULE } from "@/lib/mtm/attendance-rules"
 import { addDays } from "@/components/demo-center/journey/scenes/mtm-demo-data"
 import {
   PERSONNEL_DEMO_EMPLOYEES,
@@ -134,6 +136,28 @@ describe("the day HR corrected", () => {
     if (before.kind !== "WORKDAY") return
     expect(row.events.map((event) => event.type)).toEqual(["START"])
     expect(before.facts).toMatchObject({ status: "STARTED", startedAt: iso(row.events[0].occurredAt), pausedAt: null, completedAt: null, totalPausedSeconds: 0 })
+  })
+
+  it("is counted as the product counts a day the phone itself closed at that minute — lunch taken off and said so", async () => {
+    // Reviewer of the re-filmed clip, 2026-10-20: the card read 08:52 → 18:07, worked 8:15, break 0:00, and
+    // nothing said where the hour went. The product takes the lunch hour off a day nobody pressed a break in
+    // (`lunchAutoSeconds`) and the card says «Nahar 1:00 avtomatik çıxıldı».
+    const { personnelDemoPlan } = await import("@/components/demo-center/journey/scenes/personnel-demo-data")
+    const plan = personnelDemoPlan(TODAY)
+    const month = personnelDemoReport(TODAY, plan.monthStart, plan.lastMonthEnd, kinds)
+    const row = month.rows.find((candidate) => candidate.corrections?.length)!
+    const employee = PERSONNEL_DEMO_EMPLOYEES.find((candidate) => candidate.id === row.employeeId)!
+    const closedByPhone = buildMtmAttendanceReport({
+      employees: [employee],
+      workdays: [{ id: "plain", agentId: employee.id, workDate: row.date, status: "COMPLETED", startedAt: row.startedAt!, completedAt: row.completedAt!, totalPausedSeconds: 0,
+        events: [{ id: "s", type: "START", occurredAt: row.startedAt! }, { id: "f", type: "FINISH", occurredAt: row.completedAt! }] }],
+      calendar: [], rules: [MTM_ATTENDANCE_BASELINE_RULE], dayKinds: kinds, from: row.date, to: row.date, now: `${TODAY}T05:20:00.000Z`,
+    }).rows[0]
+    const counted = ({ kind, dayKind, factsState, workedSeconds, pausedSeconds, lunchAutoSeconds, lateSeconds, earlyLeaveSeconds, flags }: typeof row) =>
+      ({ kind, dayKind: dayKind?.key, factsState, workedSeconds, pausedSeconds, lunchAutoSeconds, lateSeconds, earlyLeaveSeconds, flags })
+    expect(counted(row)).toEqual(counted(closedByPhone))
+    expect(row.lunchAutoSeconds).toBe(3600)
+    expect(row.workedSeconds! + row.pausedSeconds! + row.lunchAutoSeconds!).toBe((Date.parse(row.completedAt!) - Date.parse(row.startedAt!)) / 1000)
   })
 
   it("leaves every forgotten check-out of the month a day with its start alone", async () => {
