@@ -43,8 +43,6 @@ jobs:
       EXPECTED_DEBEZIUM_VERSION: 3.7.0.Final
       EXPECTED_KAFKA_VERSION: 4.3.1
       SOURCE_DIGEST_INPUT: ${{ inputs.source_digest }}
-      WORK: ${{ runner.temp }}/mirror
-      AUTH_FILE: ${{ runner.temp }}/ghcr-auth.json
     steps:
       - name: Validate the reviewed digest
         id: digest
@@ -57,7 +55,11 @@ jobs:
           fi
           echo "hex=$hex" >> "$GITHUB_OUTPUT"
           echo "tag=${EXPECTED_DEBEZIUM_VERSION}-${hex:0:12}" >> "$GITHUB_OUTPUT"
+          # `runner.temp` is not available in job-level env, so the paths are
+          # exported here for the later steps.
+          WORK="$RUNNER_TEMP/mirror"
           mkdir -p "$WORK"
+          { echo "WORK=$WORK"; echo "AUTH_FILE=$RUNNER_TEMP/ghcr-auth.json"; } >> "$GITHUB_ENV"
           # One checker for both ends of the copy: <manifest> <config> must be one
           # platform image manifest whose config blob hashes to its descriptor and
           # names linux/amd64 with the expected Debezium and Kafka versions.
