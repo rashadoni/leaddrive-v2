@@ -307,7 +307,7 @@ export function mtmDemoMapClients(placeApproved = false): LiveMapClient[] {
 /**
  * The planner's candidates — the product's shape: a pharmacy as itself, a
  * clinic as its doctors. The month is counted as the product's candidates
- * answer counts it (`/api/v1/mtm/routes/candidates?period=MONTH`): every
+ * answer counts it (the routes candidates route, `period=MONTH`): every
  * checked-out visit this month by any agent — a pharmacy's visits, a doctor's
  * own — so the visits of this very morning count too. Aptek 24, where Nərmin
  * was at 11:50, is no longer «not visited this month».
