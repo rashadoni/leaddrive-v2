@@ -291,6 +291,18 @@ pgDescribe("joint visit on a real Postgres", () => {
     const rows = await sessions()
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ organizationId: ORG, managerAgentId: MANAGER, agentId: ELVIN, endedAt: null })
+
+    // The agent is told once, in his bell, by the manager's name and in his language (Azerbaijani without a login).
+    const notices = await bypass(() => prisma.mtmNotification.findMany({
+      where: { organizationId: ORG },
+      select: { agentId: true, title: true, body: true, metadata: true },
+    }))
+    expect(notices).toEqual([{
+      agentId: ELVIN,
+      title: "Team Manager bu gün sizinlə birgə vizitdədir",
+      body: "Vizitə başlayanda «Bəli, rəhbərlə birgə» seçin — onda rəhbər vizitinizi qiymətləndirə biləcək.",
+      metadata: { domain: "route", jointSessionId: rows[0].id, managerAgentId: MANAGER },
+    }])
   })
 
   it("tells the accompanied agent who is with him, and nobody else", async () => {
@@ -449,5 +461,8 @@ pgDescribe("joint visit on a real Postgres", () => {
     expect(switched.body.data.session.agent.id).toBe(AYSEL)
     const open = (await sessions()).filter((row) => row.endedAt === null)
     expect(open.map((row) => row.agentId)).toEqual([AYSEL])
+    // Each new session tells its agent; nobody else is written to.
+    const told = await bypass(() => prisma.mtmNotification.findMany({ where: { organizationId: ORG }, select: { agentId: true } }))
+    expect(told.map((row: { agentId: string }) => row.agentId).sort()).toEqual([AYSEL, ELVIN, ELVIN].sort())
   })
 })
