@@ -212,5 +212,10 @@ describe("what the day is counted with", () => {
       { startedAt: at("09:00:00"), endedAt: at("09:30:00") },
       { startedAt: at("12:00:00"), endedAt: null },
     ])
+    // A shift finished during its break ends the break there — as History reads it.
+    expect(liveMapDayPauses([
+      { type: "PAUSE", occurredAt: at("12:00:00") },
+      { type: "FINISH", occurredAt: at("12:20:00") },
+    ])).toEqual([{ startedAt: at("12:00:00"), endedAt: at("12:20:00") }])
   })
 })
