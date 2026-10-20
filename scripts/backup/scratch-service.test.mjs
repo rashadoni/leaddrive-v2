@@ -149,7 +149,7 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
     const gid = Number(command('id', ['-g', 'leaddrive-backup']).stdout.trim())
     const postgresUid = Number(command('id', ['-u', 'postgres']).stdout.trim())
     const postgresGid = Number(command('id', ['-g', 'postgres']).stdout.trim())
-    ok(command('pg_createcluster', ['--port', '55431', '--start-conf=manual', '16', cluster]))
+    ok(command('pg_createcluster', ['--port', '55431', '--start-conf=manual', '--encoding', 'UTF8', '--locale', 'C.UTF-8', '16', cluster]))
     ownedSource = true
     const config = '/etc/postgresql/16/' + cluster
     ok(command('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2', '-subj', '/CN=public-fixture-source',
