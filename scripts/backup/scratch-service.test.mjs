@@ -257,6 +257,13 @@ stop_commission_scratch
     assert.deepEqual(protectedPaths.map(digest), before)
     assert.equal(admin("SELECT (pg_control_system()).system_identifier, pg_postmaster_start_time(), value FROM fixture_sentinel;").stdout, sourceBefore.stdout)
     assert.equal(readdirSync('/run').filter(name => name.startsWith('leaddrive-restore-scratch-')).length, 0)
+  } catch (error) {
+    // Never let a separate fixture-cleanup failure hide the original actual
+    // policy/kernel/SQL failure. Only fresh public synthetic data exists here.
+    process.stderr.write('SYNTHETIC_PRIMARY_FAILURE: ' + error.stack + '\n')
+    const unit = 'leaddrive-restore-scratch-' + runId + '1.service'
+    process.stderr.write(command('journalctl', ['--unit=' + unit, '--no-pager', '--output=cat', '--lines=20']).stdout)
+    throw error
   } finally {
     // Fresh hosted synthetic authorities only, proved absent at entry. Never
     // remove a real cluster/configuration or acquire any pre-existing service.
