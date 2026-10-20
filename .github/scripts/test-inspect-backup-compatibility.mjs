@@ -88,7 +88,7 @@ test('configuration is parsed as data, never sourced; credentials/services/paren
   assert.equal(plan.args.at(-1), catalogSql)
   for (const value of ['public-fixture-source', '127.0.0.2', 'fixture_db', 'fixture_source', 'must-not-leave', 'env']) assert(!plan.args.includes(value), value)
   assert.equal(plan.options.env.PGSSLMODE, 'verify-full')
-  assert.equal(plan.options.env.PGOPTIONS, '-c default_transaction_read_only=on -c statement_timeout=10000')
+  assert.equal(plan.options.env.PGOPTIONS, '-c default_transaction_read_only=on -c statement_timeout=10000 -c search_path=pg_catalog,pg_temp')
   assert.equal(plan.options.timeout, 42000)
   assert.equal(plan.options.maxBuffer, 16384)
   assert.equal(plan.options.env.PGPASSWORD, undefined)

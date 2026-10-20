@@ -141,7 +141,9 @@ export function parseConfiguration(bytes) {
 
 export function queryPlan(config) {
   const environment = { PATH: '/usr/sbin:/usr/bin:/sbin:/bin', HOME: '/nonexistent', LC_ALL: 'C',
-    PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=10000' }
+    // Do not inherit a role/database search_path that can shadow a catalog
+    // relation or builtin function. Explicit pg_temp keeps it after pg_catalog.
+    PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=10000 -c search_path=pg_catalog,pg_temp' }
   for (const key of configKeys.filter(key => key !== 'BACKUP_EXPECTED_DB_ROLE')) environment[key] = config[key]
   return { executable: '/usr/bin/timeout', args: ['--kill-after=5', '35', '/usr/sbin/runuser', '-u', 'leaddrive-backup', '--',
     '/usr/lib/postgresql/16/bin/psql', '-X', '-w', '-qAt', '-v', 'ON_ERROR_STOP=1', '-c', catalogSql],
