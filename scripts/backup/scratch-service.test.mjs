@@ -53,15 +53,19 @@ start_commission_scratch
 
 test('target query uses env-i, limited identity and fixed TLS route without inherited source credentials', () => fixture(root => {
   const result = shell(extract('scratch_connection_query') + `
-timeout() { shift; "$@"; }
+env() { printf '%s\\n' "$@" >"$TEST_ROOT/environment"; shift; while [[ "$1" = *=* ]]; do shift; done; "$@"; }
+timeout() { printf '%s\\n' "$@" >"$TEST_ROOT/timeout"; shift; "$@"; }
 runuser() { printf '%s\\n' "$@" >"$TEST_ROOT/query"; }
 scratch_connection_query scratch 'SELECT 1'
 `, { TEST_ROOT: root, PGHOSTADDR: '203.0.113.42', PGPASSWORD: 'public-fixture-do-not-inherit', PGOPTIONS: '-c dangerous=1' })
   assert.equal(result.status, 0, result.stderr)
-  const args = readFileSync(join(root, 'query'), 'utf8').split('\n')
-  for (const value of ['leaddrive-backup', 'env', '-i', 'PGHOSTADDR=127.0.0.1', 'PGSSLMODE=verify-full',
+  const args = readFileSync(join(root, 'environment'), 'utf8').split('\n')
+  for (const value of ['leaddrive-backup', '-i', 'PGHOSTADDR=127.0.0.1', 'PGSSLMODE=verify-full',
     'PGSSLROOTCERT=/etc/leaddrive/restore-postgres-ca.crt', 'PGUSER=leaddrive_restore_verifier', '-w']) assert(args.includes(value), value)
   assert(!args.some(v => /203\.0\.113|do-not-inherit|dangerous/.test(v)))
+  const timeoutArgs = readFileSync(join(root, 'timeout'), 'utf8').split('\n')
+  assert(!timeoutArgs.some(v => v.startsWith('PG') || v === 'env' || v === '-i'))
+  assert(!/timeout[^\n]*env -i/.test(source))
 }))
 
 test('cleanup refuses a different description or invocation and never stops an unowned unit', () => {

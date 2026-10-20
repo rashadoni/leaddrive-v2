@@ -2819,7 +2819,9 @@ scratch_connection_query() {
   else
     return 1
   fi
-  timeout 35 runuser -u leaddrive-backup -- env -i "${connection[@]}" \
+  # env execs timeout: route/passfile parameters are not retained in the
+  # long-lived timeout/runuser argv. No source process environment is inherited.
+  env -i "${connection[@]}" timeout 35 runuser -u leaddrive-backup -- \
     /usr/lib/postgresql/16/bin/psql -X -w -v ON_ERROR_STOP=1 -At -c "$sql" 2>/dev/null
 }
 
