@@ -103,6 +103,11 @@ export type DayTripEdge = {
   at: Date
   /** WORKDAY: the agent pressed the button. GPS: first / last signal only. */
   source: "WORKDAY" | "GPS"
+  /**
+   * END(GPS) only: the last thing known of the day is a «Продолжить» after
+   * its last fix. The end is that press, and no signal has come since.
+   */
+  noFixSinceBreak?: true
 }
 
 export type DayTripEntry = DayTripEdge | DayTripStay | DayTripMove | DayTripGap
@@ -433,11 +438,15 @@ export function buildDayTrip(input: {
   }
 
   const completedAt = input.workday?.completedAt?.getTime()
+  const lastBreakEnd = breaks.at(-1)?.to
   if (completedAt != null) entries.push({ kind: "END", id: "end", at: new Date(completedAt), source: "WORKDAY" })
   // An open day: not before the end of its last break. With no fix since
   // «Продолжить» the «Перерыв» row runs past the last fix, and an END at the
-  // fix put the day's end above a row that ends half an hour later.
-  else if (lastPointAt != null) entries.push({ kind: "END", id: "end", at: new Date(Math.max(lastPointAt, ...breaks.map((span) => span.to))), source: "GPS" })
+  // fix put the day's end above a row that ends half an hour later. Such an
+  // end is the press, not a signal, and says so: that half hour without a
+  // fix is the stop of tracking a manager wants to see.
+  else if (lastPointAt != null && lastBreakEnd != null && lastBreakEnd > lastPointAt) entries.push({ kind: "END", id: "end", at: new Date(lastBreakEnd), source: "GPS", noFixSinceBreak: true })
+  else if (lastPointAt != null) entries.push({ kind: "END", id: "end", at: new Date(lastPointAt), source: "GPS" })
 
   const moves = entries.filter((entry): entry is DayTripMove => entry.kind === "MOVE")
   const gapsKept = entries.filter((entry): entry is DayTripGap => entry.kind === "GAP")

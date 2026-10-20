@@ -18131,6 +18131,7 @@
         "startGps": "First signal",
         "endWorkday": "Closed the day",
         "endGps": "Last signal, day still open",
+        "endAfterBreak": "Resumed after the break, no signal since",
         "move": "On the road",
         "stopWithoutVisit": "Stop, no visit",
         "stayAfterBreak": "Same place, after the break",

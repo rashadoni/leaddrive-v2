@@ -535,14 +535,27 @@ const CASES: Case[] = [
   // Verification of round 4 (probe «break_after_last_fix_day_open»): the day
   // still open, no fix since «Продолжить» (the app killed, or the next fix not
   // in yet). The day's end was put at the last fix, above the «Перерыв» row.
+  // Round 5 (probe C): the end is now the press of «Продолжить», and it says
+  // so — not «Последний сигнал»: no signal came after 10:00, and that half
+  // hour is the stop of tracking a manager wants to see.
   {
     name: "the day open, a break after the last fix",
     points: seg("09:00:00", "10:00:00", ROAD, A),
     journal: journal(["PAUSE", "10:00:30"], ["RESUME", "10:30:00"]),
     workday: { startedAt: at("09:00:00"), completedAt: null },
     reads: (day) => {
-      expect(day.trip.entries.at(-1)).toEqual({ kind: "END", id: "end", at: at("10:30:00"), source: "GPS" })
+      expect(day.trip.entries.at(-1)).toEqual({ kind: "END", id: "end", at: at("10:30:00"), source: "GPS", noFixSinceBreak: true })
       expect(rowsOf(day.trip).map(told)).toEqual(["MOVE 09:00:00–10:00:30", "GAP WORKDAY_PAUSED 10:00:30–10:30:00"])
+    },
+  },
+  // …and with a fix after «Продолжить», the end is that fix: «Последний сигнал».
+  {
+    name: "the day open, a fix after the last break",
+    points: [...seg("09:00:00", "10:00:00", ROAD, A), ...seg("10:30:30", "10:45:00", A_STREET, FAR)],
+    journal: journal(["PAUSE", "10:00:30"], ["RESUME", "10:30:00"]),
+    workday: { startedAt: at("09:00:00"), completedAt: null },
+    reads: (day) => {
+      expect(day.trip.entries.at(-1)).toEqual({ kind: "END", id: "end", at: at("10:45:00"), source: "GPS" })
     },
   },
   // Paused right after «Начать», the first fix after «Продолжить».
@@ -588,6 +601,18 @@ describe("a day with breaks, told once", () => {
     })
   }
 
+  // A range has no workday (the route passes none): its END is a signal's,
+  // or — no fix since the last «Продолжить» — that press, told as such.
+  it("a range's end: the last fix, or a «Продолжить» after it", () => {
+    for (const [name, flagged] of [["the day open, a break after the last fix", true], ["the day open, a fix after the last break", false]] as const) {
+      const day = CASES.find((candidate) => candidate.name === name)!
+      const read = historyDay(day)
+      const range = buildDayTrip({ points: prepareHistoryPoints(sorted(day.points), 100).points, stops: read.detected, visits: [], gaps: read.gaps, workday: null, stopMinimumSeconds: POLICY.stopMinimumSeconds })
+      const end = range.entries.at(-1) as DayTripEdge
+      expect([end.kind, end.source, end.noFixSinceBreak ?? false], name).toEqual(["END", "GPS", flagged])
+    }
+  })
+
   // The demo day builds its view with the library's calls (demo-center, not
   // edited here): its stops are the detector's, without the day's gaps. Its
   // only stop near the break ends at 12:24, two minutes before «Fasilə», so
@@ -625,7 +650,7 @@ describe("GET /api/v1/mtm/location-history on a day with breaks", () => {
     "parked at a customer's door, checked in, a break, checked out", "a 38-minute lunch at one spot", "a dozing phone inside a break (old data)",
     "a break in the middle of a visit, at one spot", "a break in the middle of a visit, two GPS stops after it", "a visit wholly inside a break (old data)",
     "a break in the middle of a visit, the first fix after it 80 m off", "a break in the middle of a visit, two stops after it on either side of the spot",
-    "checked in, a break three minutes later, a long stay after it",
+    "checked in, a break three minutes later, a long stay after it", "the day open, a break after the last fix",
   ]
 
   beforeEach(() => {
@@ -639,14 +664,14 @@ describe("GET /api/v1/mtm/location-history on a day with breaks", () => {
     const events = [
       { workdayId: "w1", type: "START", occurredAt: workday.startedAt, appliedAt: workday.startedAt },
       ...day.journal.map((event) => ({ workdayId: "w1", ...event, appliedAt: event.occurredAt })),
-      { workdayId: "w1", type: "FINISH", occurredAt: workday.completedAt, appliedAt: workday.completedAt },
+      ...workday.completedAt ? [{ workdayId: "w1", type: "FINISH", occurredAt: workday.completedAt, appliedAt: workday.completedAt }] : [],
     ]
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", name: "Anar", role: "AGENT", team: null } as never)
     vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue((day.visits ?? []) as never)
     vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
     vi.mocked(prisma.mtmAgentLocation.findMany).mockResolvedValue(sorted(day.points) as never)
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
-      id: "w1", status: "COMPLETED", startedAt: workday.startedAt, pausedAt: null, completedAt: workday.completedAt,
+      id: "w1", status: workday.completedAt ? "COMPLETED" : "ACTIVE", startedAt: workday.startedAt, pausedAt: null, completedAt: workday.completedAt,
       totalPausedSeconds: 0, startLatitude: null, startLongitude: null, endLatitude: null, endLongitude: null,
     } as never)
     vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockImplementation((async (args: { where: { type?: { in: string[] } } }) =>

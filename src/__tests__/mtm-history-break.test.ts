@@ -423,7 +423,7 @@ describe("a break in the day's path", () => {
       }))
       return [...container.querySelectorAll("li")].map((row) => row.textContent)
     }
-    const historyOf = (fixes: HistoryLocationPoint[], lunch: [string, string], visits: HistoryVisit[] = []) => {
+    const historyOf = (fixes: HistoryLocationPoint[], lunch: [string, string], visits: HistoryVisit[] = [], dayOpen = false) => {
       const pauses = mtmWorkdayPauses([{ type: "PAUSE", occurredAt: utc(lunch[0]) }, { type: "RESUME", occurredAt: utc(lunch[1]) }])
         .map((pause) => ({ startedAt: pause.from, endedAt: pause.to }))
       const gaps = detectHistoryGaps(fixes, 300, pauses)
@@ -431,7 +431,7 @@ describe("a break in the day's path", () => {
       // and the trip cuts the detector's own by its rule.
       const detected = detectHistoryStops({ points: fixes, visits, radiusMeters: 50, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
       const stops = cutHistoryStopsAtBreaks(detected, { points: fixes, visits, gaps, minimumSeconds: 5 * 60, offlineThresholdSeconds: 300 })
-      const workday = { startedAt: fixes[0].recordedAt, completedAt: fixes.at(-1)!.recordedAt }
+      const workday = { startedAt: fixes[0].recordedAt, completedAt: dayOpen ? null : fixes.at(-1)!.recordedAt }
       const trip = buildDayTrip({ points: fixes, stops: detected, visits, gaps, workday, stopMinimumSeconds: 5 * 60 })
       return JSON.parse(JSON.stringify({ points: fixes, gaps, stops, trip })) as {
         points: ReturnType<typeof day>["points"]
@@ -530,5 +530,16 @@ describe("a break in the day's path", () => {
       ])
     })
 
+    // Round 5: the day still open, no fix since «Продолжить». The day ends at
+    // that press, and the row does not call it a signal.
+    it("the day open, no fix since «Продолжить»: the end says so, not «Последний сигнал»", async () => {
+      const fixes = track("09:00", "10:00", HOME, PHARMACY)
+      const rows = await ledger(historyOf(fixes, ["10:00:30", "10:30:00"], [], true).trip)
+      expect(rows.slice(-2)).toEqual(["Перерыв30 мин10:00–10:30", "Продолжил после перерыва, сигнала нет10:30"])
+      await act(async () => { root.unmount() })
+      root = createRoot(container)
+      const signal = [...fixes, ...track("10:31", "10:40", PHARMACY, CLINIC)]
+      expect((await ledger(historyOf(signal, ["10:00:30", "10:30:00"], [], true).trip)).at(-1)).toBe("Последний сигнал, день не закрыт10:40")
+    })
   })
 })

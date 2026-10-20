@@ -8,7 +8,14 @@ import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
 /** The API's `DayTrip`, as it arrives over JSON. */
 export type DayTripData = {
   entries: Array<
-    | { kind: "START" | "END"; id: string; at: string; source: "WORKDAY" | "GPS" }
+    | {
+        kind: "START" | "END"
+        id: string
+        at: string
+        source: "WORKDAY" | "GPS"
+        /** END of an open day at a «Продолжить» after the last fix (day-trip.ts). */
+        noFixSinceBreak?: boolean
+      }
     | {
         kind: "STAY"
         id: string
@@ -130,7 +137,8 @@ export function DayTripLedger({
               title = entry.source === "WORKDAY" ? t("startWorkday") : t("startGps")
               break
             case "END":
-              title = entry.source === "WORKDAY" ? t("endWorkday") : t("endGps")
+              // An end at «Продолжить» with no fix since claims no signal.
+              title = entry.source === "WORKDAY" ? t("endWorkday") : entry.noFixSinceBreak ? t("endAfterBreak") : t("endGps")
               break
             case "MOVE":
               title = t("move")

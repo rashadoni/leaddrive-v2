@@ -18127,6 +18127,7 @@
         "startGps": "İlk siqnal",
         "endWorkday": "Günü bağladı",
         "endGps": "Son siqnal, gün bağlanmayıb",
+        "endAfterBreak": "Fasilədən sonra davam etdi, siqnal yoxdur",
         "move": "Yolda",
         "stopWithoutVisit": "Ziyarətsiz dayanma",
         "stayAfterBreak": "Həmin yerdə, fasilədən sonra",
