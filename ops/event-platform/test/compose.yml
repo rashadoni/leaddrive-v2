@@ -84,7 +84,7 @@ services:
         max-file: "2"
 
   connect:
-    image: quay.io/debezium/connect:3.7.0.Final@sha256:ace1609f4f67a6e7ef8b058cc9f2b2fff01c755e4ead74f756132ea74dc19648
+    image: ghcr.io/rashadoni/debezium-connect:3.7.0.Final-8107474c18d5@sha256:8107474c18d56317c007dd930f2782c9636198a895144a0c1dddd6d6a7536d6e
     platform: linux/amd64
     restart: "no"
     mem_limit: 1024m

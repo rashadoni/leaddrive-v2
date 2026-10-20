@@ -19,11 +19,12 @@ volumes. It refuses a project that already has containers.
 |---|---|---|---|
 | `postgres` | PostgreSQL 16.13 Alpine | 384 MiB | Empty `event_platform_test`, synthetic `event_test` login, logical WAL |
 | `kafka` | Apache Kafka 4.3.1 | 1,024 MiB | One combined KRaft broker/controller, `kafka:9092` inside the test network |
-| `connect` | Debezium Connect 3.7.0.Final | 1,024 MiB | PostgreSQL connector plugin and distributed worker |
+| `connect` | Debezium Connect 3.7.0.Final (our GHCR copy) | 1,024 MiB | PostgreSQL connector plugin and distributed worker |
 | `registry` | Apicurio Registry 3.3.0 | 512 MiB | SQL/H2 **in-memory** registry; restart loses registered artifacts |
 
 All four Linux/amd64 images are pinned by manifest digest in
-[`compose.yml`](./compose.yml). Container memory ceilings total 2,944 MiB;
+[`compose.yml`](./compose.yml); Connect is pulled from this repository's GHCR
+copy of the reviewed Quay digest (see the 2026-10-20 section below). Container memory ceilings total 2,944 MiB;
 the harness requires at least 4 GiB of available runner memory for additional
 tooling and Docker overhead. Swap growth is disabled per service and logs rotate.
 This is a small synthetic fixture, not a performance sizing claim.
@@ -82,6 +83,55 @@ plugin/SQL/isolation assertions remain. A new exact-source hosted CDC run is
 required for this delivery; A5's earlier successful run is not substituted.
 No Docker/build work runs on the editing host, and no production image or
 service is changed by this refresh.
+
+### Connect pulled from our GHCR copy — 2026-10-20
+
+Quay's tag history
+(`/api/v1/repository/debezium/connect/tag/?specificTag=3.7.0.Final&onlyActiveTags=false`)
+shows Debezium re-pushing `3.7.0.Final` every night at about 01:00 UTC since at
+least 2026-10-06. The previous index and its platform manifests answer
+404/`MANIFEST_UNKNOWN` as soon as the tag moves, so every Quay pin broke the
+next night (`e37dee58…` → `d76ab3d1…` → `ace1609f…` → `8107474c…`). Each time,
+`cdc-smoke` and `broker-driver` failed at image pull, before any assertion ran.
+
+Connect now comes from this public repository's own GHCR package:
+`ghcr.io/rashadoni/debezium-connect:3.7.0.Final-8107474c18d5@sha256:8107474c18d56317c007dd930f2782c9636198a895144a0c1dddd6d6a7536d6e`.
+That is the Linux/amd64 manifest the official `3.7.0.Final` tag served on
+2026-10-20 (index `b2e746c9…`; config
+`7b3202fa3437ca7ba2c47d252436e35f3d223270cbabd4ef70ad9fe7104b9d8d`, created
+2026-10-20T01:43:12Z, `DEBEZIUM_VERSION=3.7.0.Final`, `KAFKA_VERSION=4.3.1`).
+[`mirror-debezium-connect.yml`](../../../.github/workflows/mirror-debezium-connect.yml)
+run 39407782433 copied it with `skopeo copy --preserve-digests` and read it
+back. GHCR returns the same 4,658 manifest bytes and the same 18,400 config
+bytes as Quay, so the sha256 is unchanged and the content-identity guarantee is
+the same one the Quay pin gave. An anonymous registry GET of the manifest,
+config and a layer also succeeds, which means the package is public and the CI
+jobs pull it without logging in. The pin stays exact and platform-specific,
+and the harness's runtime admission (exactly one PostgreSQL source plugin
+reporting `3.7.0.Final`) is unchanged. A digest still proves content, not
+provenance: production image retention and provenance remain K1.2 items.
+
+**Bumping Connect later** (a new Debezium version, or a fresh build of the same
+one):
+
+1. Review the new Quay digest. Fetch the tag's index through the public
+   `quay.io/v2/debezium/connect` API, pick the Linux/amd64 manifest, and
+   SHA-256-check its manifest and config bytes. Fetch metadata only; never pull
+   or build on the editing host.
+2. Run **Mirror Debezium Connect to GHCR** (`workflow_dispatch`, input
+   `source_digest=sha256:<that digest>`). It checks the source, copies it
+   without re-encoding to `3.7.0.Final-<first 12 hex>`, never moves an existing
+   tag, and fails unless GHCR serves the same digest with linux/amd64 and the
+   expected versions. For a new version, first merge a change to the
+   workflow's `EXPECTED_DEBEZIUM_VERSION` / `EXPECTED_KAFKA_VERSION`: dispatch
+   runs the copy of the file on `main`.
+3. Repin `connect.image` in [`compose.yml`](./compose.yml) to
+   `ghcr.io/rashadoni/debezium-connect:<tag>@sha256:<digest>`. For a new
+   version, change the plugin version that `scripts/event-platform/test-stack.sh`
+   admits in the same change. Then let fresh hosted `cdc-smoke` and
+   `broker-driver` runs prove it.
+
+Do not delete older mirrored tags: historical receipts name them.
 
 The Compose network is internal. No service mounts host paths, production
 configuration, Docker sockets or credentials. PostgreSQL and Kafka have no host
