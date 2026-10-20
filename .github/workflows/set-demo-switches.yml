@@ -27,7 +27,14 @@ name: Set demo switches on prod
 #                        src/lib/demo-center/assistant-voice-switch.ts). A build that
 #                        does not have the guide's voice yet does not read the key at
 #                        all: it is written and held, and harmless, until that ships.
-#   An existing value is REPLACED. Values never appear in logs.
+#   An existing value is REPLACED. The script never prints a value; the id is
+#   not a secret (it is in docs/DEMO_CENTER.md) and GitHub shows it in the step's
+#   env header. `assistant_voice=off` writes `off` even where the key was absent
+#   (absent already reads as off), so that first run restarts PM2 once.
+#   Like every set-* job, this changes the app env and the running process, not
+#   PM2's saved dump: a host reboot before the next deploy brings the last
+#   deploy's values back. Run the job again after a reboot; every deploy reads
+#   the app env and keeps what was written here.
 #
 # Before anything is written the job refuses an id that is not a cuid, or that
 # came without `on`, and refuses `on` while the running app has no
