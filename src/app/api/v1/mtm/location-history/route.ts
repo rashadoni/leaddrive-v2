@@ -25,6 +25,7 @@ import {
   type HistoryVisit,
 } from "@/lib/mtm/location-history"
 import { buildDayTrip } from "@/lib/mtm/day-trip"
+import { MTM_WORKDAY_PAUSE_EVENT_TYPES, mtmWorkdayPauses, type MtmWorkdayPauseEvent } from "@/lib/mtm/workday-pauses"
 import { matchRoads } from "@/lib/mtm/map-matching"
 import { distanceBasis, drivingDistanceMeters } from "@/lib/mtm/road-distance"
 
@@ -355,34 +356,39 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const distanceMeters = rawTruncated ? null : drivingDistanceMeters(prepared.points, road?.stepMeters)
   const gapThresholdSeconds = Math.max(settings.offlineThresholdSeconds, settings.gpsInterval * 3)
   /**
-   * The workday's own PAUSE/RESUME events, so a break is not reported as a
-   * telemetry failure. The app stops tracking while the workday is on hold —
-   * the silence that follows is expected, and the day's card should say which
+   * The workday's own breaks, so a break is not reported as a telemetry
+   * failure. The app stops tracking while the workday is on hold — the
+   * silence that follows is expected, and the day's card should say which
    * silence was which.
+   *
+   * Read by the one reader of the journal (workday-pauses.ts), each shift on
+   * its own. This route used to pair PAUSE with RESUME by itself and ignored
+   * FINISH and REOPEN: a day finished during a break left that break open to
+   * the end of the window — over a range it swallowed the next day's real
+   * signal loss as «Перерыв», and the next day's own break with it.
    */
-  const pauseEvents = workforceEnabled
+  const pauseEvents: Array<MtmWorkdayPauseEvent & { workdayId: string }> = workforceEnabled
     ? await prisma.mtmAgentWorkdayEvent.findMany({
       where: {
         organizationId: auth.orgId,
         agentId,
-        type: { in: ["PAUSE", "RESUME"] },
+        type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
         occurredAt: { gte: from, lte: to },
       },
       orderBy: { occurredAt: "asc" },
-      select: { type: true, occurredAt: true },
+      select: { workdayId: true, type: true, occurredAt: true, appliedAt: true },
     })
     : []
-  const pauses: HistoryPauseInterval[] = []
+  const eventsByWorkday = new Map<string, MtmWorkdayPauseEvent[]>()
   for (const event of pauseEvents) {
-    if (event.type === "PAUSE") {
-      // A second PAUSE without a RESUME cannot open a second interval.
-      if (!pauses.length || pauses[pauses.length - 1].endedAt) {
-        pauses.push({ startedAt: event.occurredAt, endedAt: null })
-      }
-    } else if (pauses.length && !pauses[pauses.length - 1].endedAt) {
-      pauses[pauses.length - 1].endedAt = event.occurredAt
-    }
+    const list = eventsByWorkday.get(event.workdayId) ?? []
+    list.push(event)
+    eventsByWorkday.set(event.workdayId, list)
   }
+  const pauses: HistoryPauseInterval[] = [...eventsByWorkday.values()]
+    .flatMap((events) => mtmWorkdayPauses(events))
+    .map((pause) => ({ startedAt: pause.from, endedAt: pause.to }))
+    .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime())
   const gaps = detectHistoryGaps(prepared.points, gapThresholdSeconds, pauses)
   const stops = detectHistoryStops({
     points: prepared.points,
