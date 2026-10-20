@@ -9,6 +9,7 @@ import { SignaturePreview } from "@/components/mtm/visit-signature-preview"
 import { isMtmVisitLeftOpen, MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES } from "@/lib/mtm/visit-left-open"
 import { RemindAgentButton, useMinuteClock, useOpenForText } from "./visit-left-open"
 import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
+import { JointVisitReviewBlock, type JointVisitReview } from "@/components/mtm/visit-evaluation-views"
 import { formatDateTime, formatTime as formatClockTime } from "@/lib/format-date"
 import { useMtmDistanceText } from "@/components/mtm/visit-place-badge"
 import { visitRoadmap, visitRoadmapProgress, type VisitRoadmapStep } from "@/lib/mtm/visit-roadmap"
@@ -82,6 +83,8 @@ export interface VisitReviewData {
     primaryAgentHidden?: boolean
     /** Every photo of the visit; `photos` carries only the first ones. */
     photoCount?: number
+    /** The agent marked it as made together with his manager; ratings are never sent to an agent. */
+    jointVisit?: JointVisitReview | null
   }
   geofenceRadius: number
   openTasks: { count: number; items: Array<{ id: string; title: string; priority: string; dueDate: string | null }> }
@@ -506,6 +509,10 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
           ))}
         </div>
       </div>
+
+      {/* Right under the time (owner-approved mockup, 2026-10-20): what the
+          manager who was there made of the agent's work. */}
+      {visit.jointVisit ? <JointVisitReviewBlock jointVisit={visit.jointVisit} timezone={data.timezone} /> : null}
 
       <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800 sm:px-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">

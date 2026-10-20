@@ -1,4 +1,37 @@
 {
+  "mtmJointVisit": {
+    "title": "Rəhbərlə birgə vizit",
+    "managerFallback": "Rəhbər",
+    "notRated": "Vizitdə rəhbər: {name}. Hələ qiymət yoxdur",
+    "ratedBy": "{name} · qiymət verilib: {date}",
+    "outOfFive": "/ 5",
+    "scoreLabel": "{score} / 5",
+    "skipped": "vizitdə olmayıb",
+    "notRatedYet": "hələ qiymət yoxdur",
+    "criteria": {
+      "PREPARATION": "Vizitə hazırlıq",
+      "RAPPORT": "Müştəri ilə ünsiyyət",
+      "NEEDS": "Ehtiyacların aşkarlanması",
+      "PRESENTATION": "Preparatın təqdimatı",
+      "OBJECTIONS": "Etirazlarla iş",
+      "CLOSING": "Sonda razılaşma"
+    },
+    "listBadge": "Birgə",
+    "listBadgeHint": "Agent bu vizitin rəhbərlə birgə olduğunu qeyd edib",
+    "tab": "Rəhbərin qiymətləri",
+    "tabCount": "Rəhbərin qiymətləri ({count})",
+    "tabHint": "Rəhbərlər son 30 gündə birgə vizitlərdə əməkdaşın işini necə qiymətləndirib. Qiymət tətbiqdə verilir: «Komanda» → «Agentlə vizitə gedirəm».",
+    "periodTitle": "Rəhbərin qiymətləri · son {days} gün",
+    "periodJoint": "{count} birgə vizit",
+    "periodRated": "{count} qiymətləndirilib",
+    "weakest": "{label} — ən zəif",
+    "recentTitle": "Son qiymətlər",
+    "openVisit": "Viziti aç",
+    "customerFallback": "Müəssisə",
+    "empty": "Son 30 gündə qiymətləndirilmiş birgə vizit yoxdur. Rəhbər qiyməti tətbiqdə verir: «Komanda» → «Agentlə vizitə gedirəm».",
+    "forbidden": "Qiymətləri yalnız rəhbər görür.",
+    "loadError": "Qiymətləri yükləmək alınmadı. Səhifəni yeniləyin."
+  },
   "mtmClientVisits": {
     "outcomes": {
       "SUCCESSFUL": "Uğurlu",
@@ -16065,6 +16098,9 @@
       "retry": "Yenidən cəhd et"
     },
     "action": {
+      "JOINT_VISIT_START": "Birgə vizit başladı",
+      "JOINT_VISIT_END": "Birgə vizit bitdi",
+      "VISIT_EVALUATION_SAVE": "Vizitdə agent qiymətləndirildi",
       "WORKDAY_REOPEN": "Gün yenidən açıldı",
       "WORKDAY_REOPEN_UNDO": "Yenidən açılma ləğv edildi",
       "HRM_REQUEST_DECISION": "Müraciət üzrə qərar",

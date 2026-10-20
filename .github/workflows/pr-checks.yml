@@ -510,6 +510,17 @@ jobs:
           MTM_MANAGER_MESSAGES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_MANAGER_MESSAGES_DB_GATE: required
 
+      - name: MTM joint visit database gate
+        # Joint visit (2026-10-20): a manager in the field with one agent of his
+        # team, the agent's «yes, together» at check-in, the manager's rating.
+        # The real handlers on a real Postgres: no session with an agent outside
+        # the team, no joint visit without the manager's session, no rating on
+        # a visit the agent did not mark — and the rated agent never reads it.
+        run: npx vitest run src/__tests__/mtm-joint-visit-postgres.test.ts
+        env:
+          MTM_JOINT_VISIT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_JOINT_VISIT_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:

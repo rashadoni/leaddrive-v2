@@ -10,7 +10,7 @@
 import {
   Activity, AlertTriangle, Camera, CheckCircle2, Eye, Flag, Link2, ListChecks, ListPlus, LogIn, LogOut,
   Building2, FileUp, Hexagon, Link2Off, ListMinus, Megaphone, MessageSquare, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
-  Trash2, UserCog, UserMinus, UserPlus, type LucideIcon,
+  Star, Trash2, UserCog, UserMinus, UserPlus, UsersRound, type LucideIcon,
 } from "lucide-react"
 
 import { formatDate } from "@/lib/format-date"
@@ -107,6 +107,11 @@ const META: Record<string, ActionMeta> = {
   // about the employee (agentId), so his managers see it in the journal.
   LOCATION_SHARE_LINK_CREATE: { icon: Link2,  tone: "violet" },
   LOCATION_SHARE_LINK_REVOKE: { icon: Link2Off, tone: "amber" },
+  // 2026-10-20: joint visit — a manager in the field with one agent, and his
+  // rating of the agent's work on a visit (the rating itself is not journalled).
+  JOINT_VISIT_START:   { icon: UsersRound,    tone: "teal" },
+  JOINT_VISIT_END:     { icon: Flag,          tone: "slate" },
+  VISIT_EVALUATION_SAVE: { icon: Star,        tone: "violet" },
 }
 
 /**
