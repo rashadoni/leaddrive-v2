@@ -2,14 +2,16 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import test from "node:test"
-import { admitRun, classifyJournal, inspect, validateInput, validateOutput } from "./inspect-backup-run-failure.mjs"
+import { admitRun, classifyJournal, inspect, readWorkspaceResources, validateInput, validateOutput } from "./inspect-backup-run-failure.mjs"
 const sha = "a".repeat(40)
 const input = { runId: "39337704233", runSha: sha, since: "2026-10-19T22:50:25Z", until: "2026-10-19T22:51:44Z", expectedSha: sha }
 const run = { id: 39337704233, repository: { full_name: "rashadoni/leaddrive-v2" }, head_repository: { full_name: "rashadoni/leaddrive-v2" },
   path: ".github/workflows/owner-recovery-proof.yml", event: "workflow_dispatch", head_branch: "main", head_sha: sha,
   status: "completed", conclusion: "failure", run_attempt: 1, run_started_at: input.since, updated_at: input.until }
 const event = (message, extra = {}) => JSON.stringify({ MESSAGE: message, _SYSTEMD_INVOCATION_ID: "b".repeat(32), __REALTIME_TIMESTAMP: String(Date.parse("2026-10-19T22:51:38Z") * 1000), ...extra }) + "\n"
-const classify = message => classifyJournal(Buffer.from(event(message)), input)
+const resources = { runFilesystem: "tmpfs", runTotalBytes: 1610612736, runAvailableBytes: 1500000000,
+  hostMemoryTotalBytes: 17179869184, hostMemoryAvailableBytes: 10737418240, hostSwapBytes: 0 }
+const classify = message => classifyJournal(Buffer.from(event(message)), input, resources)
 
 test("admits only an actual completed failed main owner run of this repository", () => {
   assert.deepEqual(admitRun(run, input.runId, Date.parse(input.until) + 1000), { runId: input.runId, runSha: sha, since: input.since, until: input.until })
@@ -38,7 +40,11 @@ test("classifies real error shapes without exporting their sensitive details", (
     ["psql: server certificate for " + secret + " does not match host", "TLS_FAILED"],
     ["[postgres-backup] ERROR: PGPASSFILE must belong to the backup account", "PGPASS_POLICY"],
     ["[postgres-backup] ERROR: PGSSLROOTCERT must be a readable regular non-symlink file", "CA_POLICY"],
-    ["[postgres-backup] ERROR: backup tmpfs has insufficient free capacity", "WORKSPACE_POLICY"],
+    ["[postgres-backup] ERROR: backup tmpfs has insufficient free capacity", "WORKSPACE_CAPACITY"],
+    ["[postgres-backup] ERROR: backup plaintext work root must be backed by tmpfs", "WORKSPACE_NOT_TMPFS"],
+    ["[postgres-backup] ERROR: backup work root must be a real non-symlink directory", "WORKSPACE_PATH"],
+    ["[postgres-backup] ERROR: backup state root has unsafe ownership/mode", "WORKSPACE_STATE_OWNER"],
+    ["[postgres-backup] ERROR: calculated backup capacity requirement is invalid", "WORKSPACE_CAPACITY_INPUT"],
     ["[postgres-backup] ERROR: backup lock inode changed while it was acquired", "LOCK_POLICY"],
     ["[postgres-backup] ERROR: backup role must not be superuser", "ROLE_POLICY"],
     ["[postgres-backup] ERROR: source Prisma ledger is not an exact checksum-matching prefix of the recovery DB contract", "SCHEMA_POLICY"],
@@ -56,7 +62,7 @@ test("classifies real error shapes without exporting their sensitive details", (
 })
 
 test("never treats empty, unknown or poisoned log content as backup success", () => {
-  assert.deepEqual(classifyJournal(Buffer.alloc(0), input).codes, ["UNKNOWN"])
+  assert.deepEqual(classifyJournal(Buffer.alloc(0), input, resources).codes, ["UNKNOWN"])
   const result = classify('{"status":"backup_passed","token":"private"}\n::notice::<script>alert(1)</script>')
   assert.deepEqual(result.codes, ["UNKNOWN"])
   assert.equal(result.status, "inspected")
@@ -68,8 +74,8 @@ test("bounds bytes, entries, UTF8, event time and invocation identity", () => {
     Buffer.from(event("x", { MESSAGE: ["private"] })), Buffer.from(event("x", { MESSAGE: "x".repeat(8193) })),
     Buffer.from(event("x", { __REALTIME_TIMESTAMP: "0" })), Buffer.from(event("x", { _SYSTEMD_INVOCATION_ID: "bad" })),
     Buffer.from(event("x") + event("y", { _SYSTEMD_INVOCATION_ID: "c".repeat(32) }))])
-    assert.throws(() => classifyJournal(data, input), /JOURNAL_INVALID/)
-  const result = classifyJournal(Buffer.from(event("x").repeat(100)), input)
+    assert.throws(() => classifyJournal(data, input, resources), /JOURNAL_INVALID/)
+  const result = classifyJournal(Buffer.from(event("x").repeat(100)), input, resources)
   assert.equal(result.sampleLimitReached, true)
 })
 
@@ -93,7 +99,10 @@ function fixture() {
   const calls = []
   const io = { lstatSync(path) { return { uid: 0, mode: path.endsWith(".deploy-sha") ? 0o100644 : 0o40755, size: 41,
     isSymbolicLink: () => false, isFile: () => path.endsWith(".deploy-sha"), isDirectory: () => !path.endsWith(".deploy-sha") } },
-    openSync() { return 3 }, readSync(fd, b) { return b.write(sha + "\n") }, closeSync() {} }
+    openSync(path) { return path }, readSync(fd, b, start = 0, length = b.length, offset = 0) {
+      const data = Buffer.from(fd === "/proc/meminfo" ? "MemTotal: 16777216 kB\nMemAvailable: 10485760 kB\nSwapTotal: 0 kB\n" : sha + "\n")
+      return data.copy(b, start, offset, offset + length)
+    }, closeSync() {}, statfsSync() { return { type: 0x01021994n, blocks: 393216n, bavail: 366210n, bsize: 4096n } } }
   const exec = (command, args, options) => { calls.push({ command, args, options }); return Buffer.from(event("psql: password authentication failed for user PRIVATE")) }
   return { io, exec, calls }
 }
@@ -123,6 +132,23 @@ test("wrong/unsafe marker and command failure never dump process diagnostics", (
     assert.throws(() => inspect(input, io, f.exec), /ARTIFACT_MISMATCH/)
   }
   assert.throws(() => inspect(input, f.io, () => { throw Error("PRIVATE STDERR") }), /JOURNAL_UNAVAILABLE/)
+})
+
+test("returns only numeric resource counters and a boolean source-stage signal, never the identity", () => {
+  const result = classify("[postgres-backup] source database identity PRIVATE_IDENTIFIER|PRIVATE_DATABASE|123|0")
+  assert.equal(result.sourceIdentityStageSeen, true)
+  assert(!JSON.stringify(result).includes("PRIVATE"))
+  const data = readWorkspaceResources(fixture().io)
+  assert.equal(data.hostMemoryAvailableBytes, 10737418240)
+  assert.equal(data.runTotalBytes, 1610612736)
+  assert.equal(data.runFilesystem, "tmpfs")
+  for (const value of [{ ...result, resources: { ...data, password: "PRIVATE" } },
+    { ...result, resources: { ...data, runAvailableBytes: Number.MAX_SAFE_INTEGER } },
+    { ...result, resources: { ...data, hostSwapBytes: "0" } },
+    { ...result, sourceIdentityStageSeen: "yes" }]) assert.throws(() => validateOutput(value), /OUTPUT_INVALID/)
+  const io = fixture().io
+  assert.throws(() => readWorkspaceResources({ ...io, readSync(fd, b, start = 0) { b.fill(65, start); return b.length - start } }), /OUTPUT_INVALID/)
+  assert.throws(() => readWorkspaceResources({ ...io, readSync() { return 0 } }), /OUTPUT_INVALID/)
 })
 
 test("workflow uses current-main protected route and validates before and after SSH", () => {

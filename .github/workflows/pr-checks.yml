@@ -263,7 +263,7 @@ jobs:
           node --test scripts/backup/owner-recovery.test.mjs
           node --test scripts/backup/object-storage-endpoint.test.mjs scripts/backup/b2-key-denial.test.mjs
           node --test scripts/backup/b2-writer-configuration.test.mjs
-          node --test scripts/backup/commission-code-staging.test.mjs
+          node --test --test-concurrency=1 scripts/backup/commission-code-staging.test.mjs scripts/backup/transient-workspace.test.mjs
 
       - name: Event-platform migration and database invariant gate
         run: node scripts/ci/test-event-platform-migrations.mjs
