@@ -15,11 +15,14 @@ function extract(name) {
 }
 const functions = ['fatal', 'log', 'trim_value', 'read_static_env_value', 'read_unique_value_from', 'read_unique_value',
   'require_static_value', 'assert_root_file', 'assert_root_directory', 'scratch_control_state', 'assert_scratch_port_free',
-  'scratch_connection_query', 'admit_commission_scratch', 'start_commission_scratch', 'stop_commission_scratch']
+  'scratch_connection_query', 'admit_commission_scratch', 'start_commission_scratch', 'assert_owned_scratch_running',
+  'scratch_admin_sql', 'prepare_commission_scratch_template', 'drop_commission_scratch_template', 'stop_commission_scratch']
 const definitions = functions.map(extract).join('\n')
 const globals = `WORKFLOW_RUN_ID="$TEST_RUN_ID"
 BACKUP_ENV_FILE=/etc/leaddrive/backup.env
 SCRATCH_UNIT="" SCRATCH_DESCRIPTION="" SCRATCH_INVOCATION="" SCRATCH_SYSTEM_IDENTIFIER="" SCRATCH_LOCK_HELD=0
+SCRATCH_TEMPLATE="" SCRATCH_TEMPLATE_NONCE="" SCRATCH_SOURCE_IDENTIFIER=""
+CODE_STAGE=${JSON.stringify(new URL('../..', import.meta.url).pathname.replace(/\/$/, ''))}
 `
 function fixture(fn) {
   const root = mkdtempSync(join(tmpdir(), 'leaddrive-scratch-policy-'))
@@ -121,6 +124,16 @@ test('controller starts scratch before dump, stops after database worker and kee
   assert(admit.indexOf('flock -n 4') < admit.indexOf('"$data" "$config"'))
 })
 
+test('the actual generated native drill shell parses before starting any hosted service', () => {
+  const fixture = readFileSync(new URL('./scratch-service.test.mjs', import.meta.url), 'utf8')
+  const literal = fixture.match(/nativeDrill = (`[\s\S]*?`)\n    }/)[1]
+  // Evaluate only this file's fixed public template literal with its two local
+  // code/path helpers, not any archive, environment or user-provided input.
+  const drill = new Function('code', 'join', `return ${literal}`)('/public-fixture-code', join)
+  const parsed = spawnSync('bash', ['-n'], { input: drill, encoding: 'utf8' })
+  assert.equal(parsed.status, 0, parsed.stderr)
+})
+
 test('genuine hosted two-cluster TLS lifecycle, source preservation and failure cleanup', {
   skip: process.env.LEADDRIVE_TEST_REAL_SCRATCH === '1' ? false : 'requires isolated hosted Ubuntu24 PG16/systemd; never run native clusters on DEV',
 }, () => {
@@ -162,6 +175,28 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
     ok(command('pg_ctlcluster', ['16', cluster, 'start']))
     ok(admin("CREATE ROLE fixture_source LOGIN PASSWORD 'public-synthetic-only';\nGRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO fixture_source;\nCREATE TABLE fixture_sentinel(value text);\nINSERT INTO fixture_sentinel VALUES ('source must survive');\n"))
     ok(admin('CREATE EXTENSION pgcrypto;\nCREATE EXTENSION btree_gist;\n'))
+    const nativeTemplate = process.env.LEADDRIVE_TEST_NATIVE_TEMPLATE === '1'
+    if (nativeTemplate) {
+      ok(admin(`CREATE EXTENSION vector VERSION '0.6.0';
+COMMENT ON EXTENSION vector IS 'public native vector fixture';
+CREATE TABLE organizations(id text PRIMARY KEY);
+CREATE TABLE users(id text PRIMARY KEY, "organizationId" text);
+CREATE TABLE contacts(id text PRIMARY KEY, "organizationId" text, embedding vector(3));
+CREATE INDEX fixture_hnsw ON contacts USING hnsw(embedding vector_l2_ops);
+CREATE TABLE deals(id text PRIMARY KEY, "organizationId" text);
+INSERT INTO organizations VALUES ('alpha'),('beta');
+INSERT INTO users VALUES ('user-alpha','alpha'),('user-beta','beta');
+INSERT INTO contacts VALUES ('Əlaqə Ж','alpha','[1,2,3]'),('contact-beta','beta','[4,5,6]');
+INSERT INTO deals VALUES ('deal-alpha','alpha'),('deal-beta','beta');
+ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contacts FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_contacts ON contacts USING (current_setting('app.rls_bypass',true)='on' OR "organizationId"=current_setting('app.org_id',true));
+CREATE TABLE _prisma_migrations(id text, checksum text, finished_at timestamptz, migration_name text,
+ logs text, rolled_back_at timestamptz, started_at timestamptz, applied_steps_count int);
+INSERT INTO _prisma_migrations VALUES ('fixture','${'a'.repeat(64)}','2026-10-20T00:00:00Z','20261020_fixture',NULL,NULL,'2026-10-20T00:00:00Z',1);
+CREATE FUNCTION fixture_function() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETURN 42; END $$;
+`), 'native full schema fixture')
+    }
     mkdirSync('/etc/leaddrive', { mode: 0o755 }); ownedEtc = true
     writeFileSync('/etc/leaddrive/managed-postgres-ca.crt', readFileSync(config + '/fixture.crt'), { mode: 0o644 })
     writeFileSync('/etc/leaddrive/backup.pgpass', '127.0.0.2:55431:postgres:fixture_source:public-synthetic-only\n', { mode: 0o600 })
@@ -199,6 +234,87 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
     const before = protectedPaths.map(digest)
     const sourceBefore = admin("SELECT (pg_control_system()).system_identifier, pg_postmaster_start_time(), value FROM fixture_sentinel;")
     ok(sourceBefore)
+    const repo = new URL('../..', import.meta.url).pathname.replace(/\/$/, '')
+    let nativeDrill = ''
+    if (nativeTemplate) {
+      const inputs = join(root, 'inputs'), work = join(root, 'canary-work')
+      const code = join(root, 'reviewed')
+      mkdirSync(inputs, { mode: 0o700 }); mkdirSync(work, { mode: 0o700 })
+      mkdirSync(code, { mode: 0o755 })
+      // The runner checkout's parents are not public to system accounts. Stage
+      // only exact public reviewed bytes, never chmod the checkout/private data.
+      for (const name of ['postgres-restore-canary.sh', 'native-scratch-template.mjs', 'canary.sql', 'migration-ledger.sql']) {
+        writeFileSync(join(code, name), readFileSync(join(repo, 'scripts/backup', name)), { mode: 0o644 })
+      }
+      const backup = readFileSync(join(repo, 'scripts/backup/postgres-backup.sh'), 'utf8')
+      const sourceCheck = backup.match(/^assert_native_source_contract\(\) \{[\s\S]*?^\}/m)[0]
+      writeFileSync(join(code, 'source-check.sh'), `set -Eeuo pipefail\nSCRATCH_TEMPLATE_ARG=admitted\nSCRIPT_DIR=${JSON.stringify(code)}\nfatal() { exit 70; }\n${sourceCheck}\nassert_native_source_contract\n`, { mode: 0o644 })
+      const canaryScript = readFileSync(join(repo, 'scripts/backup/postgres-restore-canary.sh'), 'utf8')
+      const securityStart = canaryScript.indexOf('WITH raw(kind, k1, k2, k3, k4, k5, k6, k7, k8) AS (')
+      assert(securityStart > 0)
+      const securitySql = canaryScript.slice(securityStart, canaryScript.indexOf('\nSQL', securityStart))
+      const exportQuery = (file, options) => {
+        const input = options[0] === '-f' ? readFileSync(options[1]) : undefined
+        if (input) options = ['-f', '-']
+        const result = command('runuser', ['-u', 'postgres', '--', pg + 'psql', '-X', '-qAt', '-F', '\t', '-v', 'ON_ERROR_STOP=1',
+          '-h', '/var/run/postgresql', '-p', '55431', '-d', 'postgres', ...options], { input })
+        ok(result, 'real public source export')
+        writeFileSync(join(inputs, file), result.stdout, { mode: 0o600 })
+      }
+      exportQuery('canary.tsv', ['-f', join(repo, 'scripts/backup/canary.sql')])
+      exportQuery('ledger.tsv', ['-f', join(repo, 'scripts/backup/migration-ledger.sql')])
+      exportQuery('authority.tsv', ['-c', securitySql])
+      writeFileSync(join(inputs, 'contract.tsv'), `SCHEMA\tprisma/schema.prisma\t${'b'.repeat(64)}\nMIGRATION_LOCK\tprisma/migrations/migration_lock.toml\t${'c'.repeat(64)}\nMIGRATION\t20261020_fixture\t${'a'.repeat(64)}\n`, { mode: 0o600 })
+      writeFileSync(join(inputs, 'bad-canary.tsv'), 'deliberate synthetic mismatch\n', { mode: 0o600 })
+      const dump = command(pg + 'pg_dump', ['-h', '/var/run/postgresql', '-p', '55431', '-U', 'postgres', '-d', 'postgres', '-Fc'], { encoding: null, maxBuffer: 4 * 1024 * 1024 })
+      // Root is peer-rejected on the source: use its genuine OS postgres login,
+      // not a source-authentication relaxation or a table-only dump.
+      const fullDump = command('runuser', ['-u', 'postgres', '--', pg + 'pg_dump', '-h', '/var/run/postgresql', '-p', '55431', '-d', 'postgres', '-Fc'], { encoding: null, maxBuffer: 4 * 1024 * 1024 })
+      assert.notEqual(dump.status, 0, 'source peer authentication remains enforced')
+      assert.equal(fullDump.status, 0, String(fullDump.stderr))
+      writeFileSync(join(inputs, 'database.dump'), fullDump.stdout, { mode: 0o600 })
+      for (const name of readdirSync(inputs)) chownSync(join(inputs, name), uid, gid)
+      chownSync(inputs, uid, gid); chownSync(work, uid, gid)
+      nativeDrill = `
+helper="$CODE_STAGE/scripts/backup/native-scratch-template.mjs"
+# Real install-error injection is synthetic only. Verify the whole temporary
+# privilege/extension transaction rolls back, then run unmodified preparation.
+SCRATCH_SOURCE_IDENTIFIER="$(scratch_connection_query source 'SELECT (pg_control_system()).system_identifier::text')"
+SCRATCH_TEMPLATE_NONCE=0123456789abcdef0123456789abcdef
+SCRATCH_TEMPLATE="leaddrive_restore_template_${'$'}{WORKFLOW_RUN_ID}_${'$'}{SCRATCH_TEMPLATE_NONCE:0:12}"
+node "$helper" --plan create "$SCRATCH_SYSTEM_IDENTIFIER" "$SCRATCH_SOURCE_IDENTIFIER" "$WORKFLOW_RUN_ID" "$SCRATCH_TEMPLATE_NONCE" | scratch_admin_sql postgres >/dev/null
+if node "$helper" --plan bootstrap "$SCRATCH_SYSTEM_IDENTIFIER" "$SCRATCH_SOURCE_IDENTIFIER" "$WORKFLOW_RUN_ID" "$SCRATCH_TEMPLATE_NONCE" \\
+ | sed 's/^CREATE EXTENSION vector.*$/SELECT 1\\/0;/' | scratch_admin_sql "$SCRATCH_TEMPLATE" >/dev/null; then exit 94; fi
+[ "$(scratch_connection_query scratch "SELECT rolsuper::int FROM pg_roles WHERE rolname=session_user")" = 0 ]
+[ "$(printf '%s' 'SELECT count(*) FROM pg_catalog.pg_extension' | scratch_admin_sql "$SCRATCH_TEMPLATE")" = 1 ]
+drop_commission_scratch_template
+prepare_commission_scratch_template
+runuser -u leaddrive-backup -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/nonexistent \\
+ PGHOST=127.0.0.2 PGHOSTADDR=127.0.0.2 PGPORT=55431 PGDATABASE=postgres PGUSER=fixture_source \\
+ PGPASSFILE=/etc/leaddrive/backup.pgpass PGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt PGSSLMODE=verify-full \\
+ bash ${JSON.stringify(join(code, 'source-check.sh'))}
+# Same exact database name but different complete marker: never drop it.
+wrong_nonce="${'$'}{SCRATCH_TEMPLATE_NONCE:0:31}a"
+[ "$wrong_nonce" != "$SCRATCH_TEMPLATE_NONCE" ] || wrong_nonce="${'$'}{SCRATCH_TEMPLATE_NONCE:0:31}b"
+if node "$helper" --plan drop "$SCRATCH_SYSTEM_IDENTIFIER" "$SCRATCH_SOURCE_IDENTIFIER" "$WORKFLOW_RUN_ID" "$wrong_nonce" | scratch_admin_sql postgres >/dev/null; then exit 95; fi
+[ "$(scratch_connection_query scratch "SELECT count(*) FROM pg_database WHERE datname='$SCRATCH_TEMPLATE'")" = 1 ]
+native_args=("$TEST_ROOT/inputs/database.dump" "$TEST_ROOT/inputs/canary.tsv" "$SCRATCH_SOURCE_IDENTIFIER" "$TEST_ROOT/inputs/authority.tsv" "$TEST_ROOT/inputs/ledger.tsv" "$TEST_ROOT/inputs/contract.tsv")
+if [ "$TEST_CASE" = canary-failure ]; then native_args[1]="$TEST_ROOT/inputs/bad-canary.tsv"; fi
+set +e
+runuser -u leaddrive-backup -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/nonexistent \\
+ TMPDIR="$TEST_ROOT/canary-work" PGHOST=127.0.0.2 PGPORT=55431 PGHOSTADDR=203.0.113.99 \\
+ VERIFY_PGHOST=127.0.0.1 VERIFY_PGPORT=55432 VERIFY_PGUSER=leaddrive_restore_verifier \\
+ VERIFY_PGMAINTENANCE_DB=postgres VERIFY_PGPASSFILE=/etc/leaddrive/restore-verifier.pgpass \\
+ VERIFY_PGSSLROOTCERT=/etc/leaddrive/restore-postgres-ca.crt VERIFY_PGSSLMODE=verify-full \\
+ VERIFY_PGTEMPLATE="$SCRATCH_TEMPLATE" bash ${JSON.stringify(join(code, 'postgres-restore-canary.sh'))} "\${native_args[@]}"
+canary_status=$?
+set -e
+if [ "$TEST_CASE" = canary-failure ]; then [ "$canary_status" -ne 0 ]; else [ "$canary_status" = 0 ]; fi
+orphan_count="$(scratch_connection_query scratch "SELECT count(*) FROM pg_database WHERE datname ~ '^leaddrive_restore_verify_'")"
+[ "$orphan_count" = 0 ]
+[ -z "$(find "$TEST_ROOT/canary-work" -mindepth 1 -print -quit)" ]
+`
+    }
     const program = join(root, 'lifecycle.sh')
     // Only host-memory counters are substituted: the hosted runner may be below
     // production's 8GiB admission. Exact real cgroup/expiry properties are tested.
@@ -206,6 +322,7 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
 assert_transient_database_memory_budget() { :; }
 trap 'status=$?; stop_commission_scratch || status=99; exit "$status"' EXIT
 start_commission_scratch
+${nativeDrill}
 # A second controller must refuse the real held maintenance lock, without
 # replacing/stopping the first server. Same source functions, fresh shell.
 bash "$TEST_ROOT/conflict.sh" >/dev/null 2>&1 && exit 98
@@ -225,16 +342,16 @@ chmod 0644 "$TEST_ROOT/public.dump"
 runuser -u postgres -- ${pg}pg_restore --exit-on-error --no-owner --no-privileges -h "/run/leaddrive-restore-scratch-$WORKFLOW_RUN_ID" -p 55432 -d fixture_restore "$TEST_ROOT/public.dump"
 [ "$(runuser -u postgres -- ${pg}psql -X -At -h "/run/leaddrive-restore-scratch-$WORKFLOW_RUN_ID" -p 55432 -d fixture_restore -c 'SELECT value FROM fixture_sentinel')" = 'source must survive' ]
 runuser -u postgres -- ${pg}dropdb -h "/run/leaddrive-restore-scratch-$WORKFLOW_RUN_ID" -p 55432 fixture_restore
-case "$TEST_CASE" in failure) exit 23;; success) stop_commission_scratch;; esac
+case "$TEST_CASE" in failure) exit 23;; success|canary-failure) stop_commission_scratch;; esac
 `)
     writeFileSync(join(root, 'conflict.sh'), `set -Eeuo pipefail\n${definitions}\n${globals}
 assert_transient_database_memory_budget() { :; }
 start_commission_scratch
 `)
     chmodSync(root, 0o755)
-    for (const mode of ['success', 'failure']) {
-      const result = command('bash', [program], { env: { ...env, TEST_RUN_ID: runId + (mode === 'success' ? '1' : '2'), TEST_ROOT: root, TEST_CASE: mode }, timeout: 120000 })
-      assert.equal(result.status, mode === 'success' ? 0 : 23, result.stderr + result.stdout)
+    for (const mode of nativeTemplate ? ['success', 'canary-failure', 'failure'] : ['success', 'failure']) {
+      const result = command('bash', [program], { env: { ...env, TEST_RUN_ID: runId + (mode === 'success' ? '1' : mode === 'canary-failure' ? '4' : '2'), TEST_ROOT: root, TEST_CASE: mode }, timeout: 120000 })
+      assert.equal(result.status, mode === 'failure' ? 23 : 0, result.stderr + result.stdout)
       const limits = readFileSync(join(root, 'limits'), 'utf8')
       for (const value of ['MemoryHigh=805306368', 'MemoryMax=1073741824', 'MemorySwapMax=0', 'RuntimeMaxUSec=4h 2min']) assert(limits.includes(value), limits)
       assert(!existsSync('/var/lib/postgresql/16/leaddriverestore/postmaster.pid'))
@@ -258,7 +375,8 @@ systemd-run() {
   command systemd-run "${'$'}{bounded[@]}"
 }
 start_commission_scratch
-declare -p SCRATCH_UNIT SCRATCH_DESCRIPTION SCRATCH_INVOCATION SCRATCH_SYSTEM_IDENTIFIER SCRATCH_LOCK_HELD WORKFLOW_RUN_ID >"$TEST_ROOT/owned-state"
+${nativeTemplate ? 'prepare_commission_scratch_template' : ''}
+declare -p SCRATCH_UNIT SCRATCH_DESCRIPTION SCRATCH_INVOCATION SCRATCH_SYSTEM_IDENTIFIER SCRATCH_LOCK_HELD WORKFLOW_RUN_ID SCRATCH_TEMPLATE SCRATCH_TEMPLATE_NONCE SCRATCH_SOURCE_IDENTIFIER CODE_STAGE >"$TEST_ROOT/owned-state"
 # Simulated total controller loss: no exit trap or client cleanup can run.
 kill -KILL $$
 `)
@@ -273,7 +391,7 @@ while [ -e /var/lib/postgresql/16/leaddriverestore/postmaster.pid ] && [ "$SECON
 # died; cleanup still checks the unique description and invocation identity.
 exec 4</var/lib/leaddrive-recovery-runner-locks/postgres-restore-scratch-maintenance.lock
 flock -n 4
-stop_commission_scratch
+${nativeTemplate ? 'if stop_commission_scratch; then exit 96; fi\n[ -n "$SCRATCH_TEMPLATE" ]\n[ ! -e /var/lib/postgresql/16/leaddriverestore/postmaster.pid ]' : 'stop_commission_scratch'}
 `], { env: { ...env, TEST_ROOT: root }, timeout: 35000 })
     ok(expired, 'actual server expiry after controller loss')
     assert.deepEqual(protectedPaths.map(digest), before)

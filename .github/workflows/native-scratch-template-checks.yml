@@ -1,0 +1,66 @@
+name: Native scratch template recovery checks
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'scripts/backup/native-scratch-template*'
+      - 'scripts/backup/scratch-service.test.mjs'
+      - 'scripts/backup/transient-workspace.test.mjs'
+      - 'scripts/backup/commission-production-backup.sh'
+      - 'scripts/backup/postgres-backup.sh'
+      - 'scripts/backup/postgres-restore-canary.sh'
+      - '.github/workflows/native-scratch-template-checks.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/backup/native-scratch-template*'
+      - 'scripts/backup/scratch-service.test.mjs'
+      - 'scripts/backup/transient-workspace.test.mjs'
+      - 'scripts/backup/commission-production-backup.sh'
+      - 'scripts/backup/postgres-backup.sh'
+      - 'scripts/backup/postgres-restore-canary.sh'
+      - '.github/workflows/native-scratch-template-checks.yml'
+permissions:
+  contents: read
+concurrency:
+  group: native-scratch-template-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-template-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Portable native template authority tests
+        run: |
+          node --test scripts/backup/native-scratch-template.test.mjs
+          node --test scripts/backup/transient-workspace.test.mjs
+      - name: Actual private worker workspace and exact bounded template argument
+        run: |
+          NODE="$(command -v node)"
+          sudo env "GITHUB_ACTIONS=$GITHUB_ACTIONS" "RUNNER_ENVIRONMENT=$RUNNER_ENVIRONMENT" \
+            LEADDRIVE_TEST_REAL_WORKSPACE=1 "$NODE" --test scripts/backup/transient-workspace.test.mjs
+      - name: Build exact pgvector in disposable hosted native PostgreSQL16 only
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16 postgresql-server-dev-16 build-essential
+          STAGE="$(mktemp -d "$RUNNER_TEMP/native-vector.XXXXXX")"
+          curl --proto '=https' --tlsv1.2 -fsSL --connect-timeout 15 --max-time 120 \
+            https://codeload.github.com/pgvector/pgvector/tar.gz/281d4fcf60e2f037fa09d62be2543bb4d7511f2b -o "$STAGE/vector.tar.gz"
+          printf '%s  %s\n' e0728ec19cb9d75fcd5a329c48c070b942eb888e6cb83d9e50cc622f6b7d297a "$STAGE/vector.tar.gz" | sha256sum -c -
+          tar -xzf "$STAGE/vector.tar.gz" -C "$STAGE" --strip-components=1
+          make -C "$STAGE" -j2 PG_CONFIG=/usr/lib/postgresql/16/bin/pg_config OPTFLAGS='' with_llvm=no
+          sudo make -C "$STAGE" install PG_CONFIG=/usr/lib/postgresql/16/bin/pg_config OPTFLAGS='' with_llvm=no
+      - name: Genuine native TLS full canary, limited role and owned cleanup
+        run: |
+          NODE="$(command -v node)"
+          sudo env "GITHUB_ACTIONS=$GITHUB_ACTIONS" "RUNNER_ENVIRONMENT=$RUNNER_ENVIRONMENT" \
+            LEADDRIVE_TEST_REAL_SCRATCH=1 LEADDRIVE_TEST_NATIVE_TEMPLATE=1 \
+            "$NODE" --test scripts/backup/scratch-service.test.mjs

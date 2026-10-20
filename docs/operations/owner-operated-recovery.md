@@ -313,6 +313,27 @@ been bootstrapped. The SQL planner is only for a newly initialized networkless
 owner cluster; do not run it against production. Native target admission and
 its separate identity/owned-unit/maintenance locks remain a distinct step.
 
+The native commissioning controller now prepares a separate, run/nonce-owned
+custom template only after its existing fixed PGDATA, source/target system
+identity, held maintenance lock and active unit InvocationID admission. It
+checks the current source's exact four extension/locale contract before any
+dump and the target's actual available versions before creating the template
+from template0 with explicit UTF8/libc C.UTF-8. Extension bootstrap and the
+temporary role privilege are one transaction, returning NOSUPERUSER before
+commit. The custom template is sealed against direct connections and supplied
+to the database worker by an explicit bounded argument, not backup.env.
+
+The unchanged strict full restore, migration/checksum, canary, RLS and optional
+PII checks remain mandatory. Native clones also prove exact extension versions,
+schemas, verifier ownership and locale before and after restoration. Cleanup
+drops only the exact marked template in the same positively identified active
+unit; unknown/pre-existing templates or an expired unit fail closed without a
+restart. The owned server still stops on cleanup refusal, but evidence/fence
+and unknown data remain for inspection. This code being delivered does not
+prove the production target was run, a private archive restored, ARM verified,
+or Kafka admitted. The path-scoped native-scratch-template-checks workflow
+uses only fresh synthetic data on hosted Ubuntu24, never DEV or production.
+
 On the Mac, use a separate Colima profile so existing default workloads are
 unaffected. Check available memory/disk first; do not start if capacity is
 insufficient. The following prepares a 2 CPU/4 GiB VM, without new services:

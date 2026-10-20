@@ -266,6 +266,7 @@ jobs:
           node --test --test-concurrency=1 scripts/backup/commission-code-staging.test.mjs scripts/backup/transient-workspace.test.mjs
           node --test scripts/backup/scratch-authentication.test.mjs
           node --test scripts/backup/scratch-service.test.mjs
+          node --test scripts/backup/native-scratch-template.test.mjs
           node --test scripts/backup/owner-template.test.mjs
           node --test .github/scripts/test-inspect-backup-compatibility.mjs
 
