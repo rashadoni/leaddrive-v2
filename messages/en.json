@@ -29817,6 +29817,7 @@
     "explainFailed": "That didn't work. Refresh the page and try again.",
     "explainHint": "Explanations are asked of people who were late or absent without a reason. Anyone on leave, sick, on a business trip or with permission to be away is not listed.",
     "peopleTabs": "Employees sections",
+    "peoplePhonesHint": "The phones employees mark from, and their approval.",
     "sectionHints": {
       "personnelToday": "Today at a glance: who is in, who is late, who is missing, and requests waiting for a decision.",
       "personnelTimesheet": "The month's timesheet: one letter per employee per day; Excel and PDF.",
