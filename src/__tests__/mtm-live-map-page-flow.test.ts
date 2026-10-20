@@ -81,6 +81,7 @@ import { ROSTER_VIEW_STORAGE_KEY } from "@/lib/mtm/live-map-roster"
 import { resetLiveMapPlaceCacheForTests } from "@/components/mtm/live-map-agent-place"
 import { resetLiveMapShareLinkCacheForTests } from "@/components/mtm/live-map-agent-share"
 import { locationShareLinkExpiresAt } from "@/lib/mtm/location-share-link"
+import { liveMapTrailSegments, type LiveMapTrailPoint } from "@/lib/mtm/live-map-trails"
 import { readHint } from "./helpers/hint"
 
 const METERS_PER_DEGREE = (Math.PI * 6_371_000) / 180
@@ -1936,8 +1937,11 @@ describe("the live map page, end to end", () => {
           await act(async () => { await vi.advanceTimersByTimeAsync(Math.min(step, ms - passed)) })
         }
       }
-      const tail = (agentId: string) => (mapProp<Map<string, Array<{ latitude: number }>> | null>("trails")?.get(agentId) ?? [])
-        .map((point) => Math.round((point.latitude - CENTRE.latitude) * METERS_PER_DEGREE))
+      const metres = (point: { latitude: number }) => Math.round((point.latitude - CENTRE.latitude) * METERS_PER_DEGREE)
+      const tail = (agentId: string) => (mapProp<Map<string, LiveMapTrailPoint[]> | null>("trails")?.get(agentId) ?? []).map(metres)
+      /** The lines the map draws of his tail, in metres north of the centre. */
+      const drawn = (agentId: string) => liveMapTrailSegments(mapProp<Map<string, LiveMapTrailPoint[]> | null>("trails")?.get(agentId) ?? [])
+        .map((segment) => segment.map(metres))
       beforeEach(() => {
         vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date", "performance"] })
         vi.setSystemTime(new Date("2026-10-09T10:00:10.000Z"))
@@ -1955,7 +1959,7 @@ describe("the live map page, end to end", () => {
         // The next answer finds him on a break, the point from before it with him.
         rosterRows[1] = { ...rosterRows[1], fieldStatus: "STOPPED", workdayState: "PAUSED", minutesAgo: 0.5 }
         await forward(30_000)
-        expect(mapProp<Map<string, unknown[]>>("trails").has("near")).toBe(false)
+        expect(drawn("near")).toEqual([])
         expect(marker("near")?.freshness).toBe("STALE")
 
         // Back at work a kilometre and a half on: a new tail, not a line across the break.
@@ -1971,6 +1975,35 @@ describe("the live map page, end to end", () => {
         expect(tail("near")).toEqual([3_300])
         // Somebody who took no break keeps his whole tail.
         expect(tail("far").length).toBeGreaterThan(0)
+      })
+
+      // Verification of 2026-10-20: after a short break the first answer can
+      // still carry the point from before it — fresh by the clock — and the
+      // page started a new tail with it, which the first fix after the break
+      // then joined: a line from where he paused to where he came back.
+      it("starts no tail with the point he left before the break, when the first answer after it still carries that point", async () => {
+        rosterRows[1] = { agentId: "near", name: "Nigar", fieldStatus: "ON_ROAD", meters: 450, minutesAgo: 0, pausedSeconds: 0 }
+        await act(async () => { root.render(createElement(MtmMapPage)) })
+        await forward(1_000)
+        rosterRows[1] = { ...rosterRows[1], meters: 700 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([[450, 700]])
+
+        // On a break: the point he left (700 m, half a minute old) comes with him.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "STOPPED", workdayState: "PAUSED", minutesAgo: 0.5 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([])
+        // Back at work, before his first fix: the same point, a minute old, called live.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "ON_ROAD", workdayState: "ACTIVE", minutesAgo: 1, pausedSeconds: 60 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([])
+        // The first fix after the break, a kilometre and a half on.
+        rosterRows[1] = { ...rosterRows[1], meters: 2_200, minutesAgo: 0 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([2_200])
+        rosterRows[1] = { ...rosterRows[1], meters: 2_400 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([[2_200, 2_400]])
       })
     })
   })

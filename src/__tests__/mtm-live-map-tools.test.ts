@@ -31,6 +31,7 @@ import {
   TRAIL_MAX_POINTS,
   type LiveMapTrails,
 } from "@/lib/mtm/live-map-trails"
+import { liveMapMarkerGlides } from "@/lib/mtm/live-map-agent-marker"
 import {
   applyRosterFilters,
   availableRosterColumns,
@@ -155,14 +156,52 @@ describe("«След»: where an employee has just been", () => {
     trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(200), recordedAt: at(3), workdayPausedSeconds: 0 }], NOW - 150_000)
     expect(seen(trails, "a")).toEqual([0, 200])
     // An answer that finds him on a break: his tail goes, whatever position comes with him.
-    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(200), recordedAt: at(3), workdayPausedSeconds: 0 }], NOW - 120_000, ["a"])
-    expect(trails.has("a")).toBe(false)
+    const onBreak = { agentId: "a", ...north(200), recordedAt: at(3), workdayPausedSeconds: 0 }
+    trails = extendLiveMapTrails(trails, [onBreak], NOW - 120_000, [onBreak])
+    expect(liveMapTrailSegments(trails.get("a") ?? [])).toEqual([])
     expect(seen(trails, "b")).toEqual([0])
     // Back at work a kilometre further on, ninety seconds later: a new tail starts there.
     trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(1_200), recordedAt: at(1), workdayPausedSeconds: 90 }], NOW - 30_000)
     trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(1_400), recordedAt: at(0.5), workdayPausedSeconds: 90 }], NOW)
     expect(seen(trails, "a")).toEqual([1_200, 1_400])
     expect(liveMapTrailSegments(trails.get("a") ?? []).map((segment) => segment.length)).toEqual([2])
+  })
+
+  // Verification of 2026-10-20: the first answer after RESUME can still carry
+  // the point he left before the break — fresh by the clock after a short
+  // one. With the tail merely dropped, that point began a new tail and the
+  // first fix after the break joined it: a line across the break.
+  it("lets nothing recorded before the break start a tail after it — not the point he left there, nor any older", () => {
+    let trails: LiveMapTrails = new Map()
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(450), recordedAt: at(6), workdayPausedSeconds: 0 }], NOW - 6 * 60_000)
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(700), recordedAt: at(5.5), workdayPausedSeconds: 0 }], NOW - 5.5 * 60_000)
+    expect(seen(trails, "a")).toEqual([450, 700])
+    // On a break: the point from before it comes with him.
+    const paused = { agentId: "a", ...north(700), recordedAt: at(5.5), workdayPausedSeconds: 0 }
+    trails = extendLiveMapTrails(trails, [], NOW - 5 * 60_000, [paused])
+    trails = extendLiveMapTrails(trails, [], NOW - 3 * 60_000, [paused])
+    // Back at work, before the first fix after it: the same point, with the
+    // break now in the day's total; then a late upload of an older one.
+    trails = extendLiveMapTrails(trails, [{ ...paused, workdayPausedSeconds: 150 }], NOW - 2 * 60_000)
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(600), recordedAt: at(7), workdayPausedSeconds: 150 }], NOW - 1.5 * 60_000)
+    expect(liveMapTrailSegments(trails.get("a") ?? [])).toEqual([])
+    // The first fix after the break, a kilometre and a half on, starts the tail.
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(2_200), recordedAt: at(1), workdayPausedSeconds: 150 }], NOW - 60_000)
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(2_400), recordedAt: at(0.5), workdayPausedSeconds: 150 }], NOW)
+    expect(seen(trails, "a")).toEqual([2_200, 2_400])
+    expect(liveMapTrailSegments(trails.get("a") ?? []).map((segment) => segment.map((point) => Math.round((point.latitude - BAKU.latitude) * METERS_PER_DEGREE)))).toEqual([[2_200, 2_400]])
+  })
+
+  it("cuts the tail at a break also when the page opened during it, and forgets the cut once it is half an hour old", () => {
+    // Opened during the break: no tail yet, only the point from before it.
+    const paused = { agentId: "a", ...north(700), recordedAt: at(4) }
+    let trails = extendLiveMapTrails(new Map(), [], NOW - 3 * 60_000, [paused])
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(700), recordedAt: at(4) }], NOW - 2 * 60_000)
+    trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(2_000), recordedAt: at(1) }], NOW - 60_000)
+    expect(seen(trails, "a")).toEqual([2_000])
+    // A break mark older than any tail is not kept.
+    expect(extendLiveMapTrails(new Map(), [], NOW, [{ agentId: "a", ...north(700), recordedAt: at(45) }]).has("a")).toBe(false)
+    expect(extendLiveMapTrails(trails, [], NOW, [{ agentId: "a", latitude: null, longitude: null, recordedAt: null }]).get("a")?.map((point) => point.breakCut)).toEqual([true])
   })
 
   it("ends at a break that no answer fell inside: the workday's own total of breaks gives it away", () => {
@@ -477,7 +516,7 @@ describe("the wiring of the tools", () => {
     // coordinate shared with the workday closed, not a stale one.
     // The positions are read as the list presents them, so a break is a grey last-known point, never a tail's.
     expect(page).toContain("const presentedAgents = nextAgents.map((agent) => presentMtmDashboardAgent(agent, nextContract.freshnessThresholds, answeredAt))")
-    expect(page).toMatch(/setTrails\(\(current\) => extendLiveMapTrails\(\s*current,\s*presentedAgents\.filter\(\(agent\) => hasRenderableLivePosition\(agent\.freshness, agent\.workdayState, nextContract\.workforceEnabled\)\),\s*answeredAt,\s*presentedAgents\.filter\(\(agent\) => agent\.workdayState === "PAUSED"\)\.map\(\(agent\) => agent\.agentId\),/)
+    expect(page).toMatch(/setTrails\(\(current\) => extendLiveMapTrails\(\s*current,\s*presentedAgents\.filter\(\(agent\) => hasRenderableLivePosition\(agent\.freshness, agent\.workdayState, nextContract\.workforceEnabled\)\),\s*answeredAt,\s*presentedAgents\.filter\(\(agent\) => agent\.workdayState === "PAUSED"\),\s*\)\)/)
     expect(page.match(/setTrails\(/g) ?? []).toHaveLength(2)
     expect(page).toContain("trails={mapLook.trails ? trails : null}")
     expect(page).not.toContain("replayTrack=")
@@ -496,8 +535,20 @@ describe("the wiring of the tools", () => {
     expect(page).toContain('{ id: "glide", label: tMap("layers.glide"), hint: tMap("layers.glideHint"), on: mapLook.glide')
   })
 
-  it("glides a marker only for a real, short move that somebody is watching", () => {
-    expect(map).toContain("if (!enabled || still || meters < 1 || meters > GLIDE_MAX_METERS) {")
+  it("glides a marker only for a real, short move between live positions that somebody is watching", () => {
+    const move = { enabled: true, still: false, meters: 600, fromLastKnown: false, toLastKnown: false }
+    expect(liveMapMarkerGlides(move)).toBe(true)
+    expect(liveMapMarkerGlides({ ...move, enabled: false })).toBe(false)
+    expect(liveMapMarkerGlides({ ...move, still: true })).toBe(false)
+    expect(liveMapMarkerGlides({ ...move, meters: 0.5 })).toBe(false)
+    expect(liveMapMarkerGlides({ ...move, meters: 3_001 })).toBe(false)
+    // From the grey point he left before a break to his first fix after it
+    // (verification of 2026-10-20), and into a grey point: straight there —
+    // a glide would draw the way he went while nobody saw him.
+    expect(liveMapMarkerGlides({ ...move, fromLastKnown: true })).toBe(false)
+    expect(liveMapMarkerGlides({ ...move, toLastKnown: true })).toBe(false)
+    expect(map).toContain("if (!liveMapMarkerGlides({ enabled, still, meters, fromLastKnown, toLastKnown: lastKnown })) {")
+    expect(map).toContain('lastKnown={agent.freshness === "STALE"}')
     // A new position arriving mid-glide starts from where the marker is, not from where it set out.
     expect(map).toContain("const from = shownRef.current")
     expect(map).toContain('document.visibilityState !== "visible"')

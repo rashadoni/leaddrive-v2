@@ -12,7 +12,7 @@ import { formatDateTime, formatTime } from "@/lib/format-date"
 import { calculateDistance } from "@/lib/geo-utils"
 import { liveMapTrailSegments, outlineCrossesItself, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 import { clusterLiveMapClients, liveMapClientColor, type LiveMapClient, type LiveMapClientNode } from "@/lib/mtm/live-map-clients"
-import { liveMapAgentMarker } from "@/lib/mtm/live-map-agent-marker"
+import { liveMapAgentMarker, liveMapMarkerGlides } from "@/lib/mtm/live-map-agent-marker"
 import { liveMapZoneHex, liveMapZonesLargestFirst, zoneAreaSquareMeters, type LiveMapZone, type LiveMapZoneChange } from "@/lib/mtm/live-map-zones"
 import { formatMtmArea } from "@/lib/mtm/visit-place-check"
 import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
@@ -230,8 +230,6 @@ const NO_ZONES: readonly LiveMapZone[] = []
 const ZONE_PANE = "mtm-own-zones"
 const ZONE_PANE_STYLE: CSSProperties = { zIndex: 350 }
 
-/** A step further than this is not a move to watch: the first fix after a silence, a jump across town. */
-const GLIDE_MAX_METERS = 3_000
 const GLIDE_MS = 1_200
 
 /**
@@ -240,16 +238,20 @@ const GLIDE_MS = 1_200
  * moves reads as somebody driving. Nothing is invented between two fixes
  * except the straight line the marker travels for a second.
  */
-function useGlidingPosition(latitude: number, longitude: number, enabled: boolean): L.LatLngTuple {
+function useGlidingPosition(latitude: number, longitude: number, enabled: boolean, lastKnown: boolean): L.LatLngTuple {
   const [position, setPosition] = useState<L.LatLngTuple>([latitude, longitude])
   const shownRef = useRef<L.LatLngTuple>([latitude, longitude])
+  // Whether the place shown is a grey last known point (liveMapMarkerGlides).
+  const shownLastKnownRef = useRef(lastKnown)
   useEffect(() => {
     const from = shownRef.current
     const to: L.LatLngTuple = [latitude, longitude]
     const meters = calculateDistance(from[0], from[1], to[0], to[1])
     const still = typeof window === "undefined" || document.visibilityState !== "visible" ||
       (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-    if (!enabled || still || meters < 1 || meters > GLIDE_MAX_METERS) {
+    const fromLastKnown = shownLastKnownRef.current
+    shownLastKnownRef.current = lastKnown
+    if (!liveMapMarkerGlides({ enabled, still, meters, fromLastKnown, toLastKnown: lastKnown })) {
       // Straight there, on the next frame the browser paints.
       const jump = window.requestAnimationFrame(() => {
         shownRef.current = to
@@ -269,16 +271,18 @@ function useGlidingPosition(latitude: number, longitude: number, enabled: boolea
     }
     frame = window.requestAnimationFrame(step)
     return () => window.cancelAnimationFrame(frame)
-  }, [latitude, longitude, enabled])
+  }, [latitude, longitude, enabled, lastKnown])
   return position
 }
 
-function GlidingMarker({ latitude, longitude, glide, ...props }: Omit<ComponentProps<typeof Marker>, "position"> & {
+function GlidingMarker({ latitude, longitude, glide, lastKnown, ...props }: Omit<ComponentProps<typeof Marker>, "position"> & {
   latitude: number
   longitude: number
   glide: boolean
+  /** A grey last known point: it never glides, neither to nor from. */
+  lastKnown: boolean
 }) {
-  const position = useGlidingPosition(latitude, longitude, glide)
+  const position = useGlidingPosition(latitude, longitude, glide, lastKnown)
   return <Marker {...props} position={position} />
 }
 
@@ -1283,6 +1287,7 @@ export default function MtmLiveMap({
                 latitude={agent.latitude}
                 longitude={agent.longitude}
                 glide={glideMarkers}
+                lastKnown={agent.freshness === "STALE"}
                 icon={agentIcon(agent.name, agent.freshness, isFocused, agent.mapColor)}
                 zIndexOffset={isFocused ? 1000 : 500}
                 alt={agent.name}

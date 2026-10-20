@@ -657,15 +657,16 @@ export default function MtmMapPage() {
       setRosterSnapshot(nextSnapshot)
       // «След»: one more position per employee, from this answer and no other
       // source — and only a position the map itself would draw at this moment,
-      // as the list presents it. Somebody on a break loses his tail; the next
-      // one starts after it (live-map-trails.ts).
+      // as the list presents it. Somebody on a break has his tail cut there,
+      // with what he was last seen at, and only a position recorded after
+      // that starts the next one (live-map-trails.ts).
       const answeredAt = Date.parse(nextContract.generatedAt)
       const presentedAgents = nextAgents.map((agent) => presentMtmDashboardAgent(agent, nextContract.freshnessThresholds, answeredAt))
       setTrails((current) => extendLiveMapTrails(
         current,
         presentedAgents.filter((agent) => hasRenderableLivePosition(agent.freshness, agent.workdayState, nextContract.workforceEnabled)),
         answeredAt,
-        presentedAgents.filter((agent) => agent.workdayState === "PAUSED").map((agent) => agent.agentId),
+        presentedAgents.filter((agent) => agent.workdayState === "PAUSED"),
       ))
       setFreshnessNow(Date.parse(nextContract.generatedAt))
       setLoadError(null)
