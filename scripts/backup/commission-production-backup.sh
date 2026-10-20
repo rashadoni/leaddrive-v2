@@ -238,7 +238,11 @@ cleanup() {
   # merely because its name resembles ours; check the creation nonce too.
   if [ -n "$SCRATCH_UNIT" ]; then
     if ! stop_commission_scratch; then
-      printf '%s\n' '[backup-commission] FATAL: owned scratch shutdown unproved; runner fence retained for inspection' >&2
+      if [ "$OPERATION" = probe-native-scratch ]; then
+        printf '%s\n' '[backup-commission] FATAL: owned scratch shutdown unproved; scratch state preserved for inspection' >&2
+      else
+        printf '%s\n' '[backup-commission] FATAL: owned scratch shutdown unproved; runner fence retained for inspection' >&2
+      fi
       status=1
       scratch_cleanup_failed=1
     fi

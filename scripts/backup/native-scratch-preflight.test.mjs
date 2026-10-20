@@ -110,6 +110,23 @@ test('protected dispatch is current-main bound and serialized; only probe has a 
   assert(launch.includes('[ "$OPERATION" != probe-native-scratch ] || runtime_seconds=600'))
 })
 
+test('actual probe cleanup leaves an old commissioning fence byte-for-byte intact', () => {
+  const root = mkdtempSync(join(tmpdir(), 'leaddrive-native-old-fence-'))
+  try {
+    writeFileSync(join(root, 'old-fence'), 'older-run-ownership-must-survive\n')
+    const declarations = controller.slice(0, controller.indexOf('\nlog() {'))
+    const result = run(`set -- probe-native-scratch\n${declarations}\n${extract('cleanup')}
+REMOTE_INPUT_STAGE=''
+COMMISSION_FENCE_JOURNAL="$TEST_ROOT/old-fence"
+clear_commission_runner_fence() { echo unexpected-fence-repair; return 91; }
+cleanup
+`, { TEST_ROOT: root })
+    assert.equal(result.status, 0, result.stderr)
+    assert(!result.stdout.includes('unexpected-fence-repair'))
+    assert.equal(readFileSync(join(root, 'old-fence'), 'utf8'), 'older-run-ownership-must-survive\n')
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
 test('actual hosted preflight program syntax is parsed without starting services on DEV', () => {
   const fixture = readFileSync(new URL('./scratch-service.test.mjs', import.meta.url), 'utf8')
   const literal = fixture.match(/writeFileSync\(preflight, (`[\s\S]*?`)\)/)[1]
