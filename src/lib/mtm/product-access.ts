@@ -51,3 +51,14 @@ export async function resolveMtmProductAccess(auth: {
     })))
   return { actor, visibleIds, managedIds }
 }
+
+/**
+ * May this user change the group's presentations — upload, delete, choose who
+ * sees them? A manager's role, and the group in his scope.
+ */
+export function canManageMtmProductGroup(
+  access: NonNullable<Awaited<ReturnType<typeof resolveMtmProductAccess>>>,
+  groupId: string,
+): boolean {
+  return ["ADMIN", "MANAGER", "SUPERVISOR"].includes(access.actor.role) && access.managedIds.has(groupId)
+}

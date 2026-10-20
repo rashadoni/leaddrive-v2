@@ -175,6 +175,7 @@ export interface MtmPrismaMock {
   mtmProductGroup: ModelMock
   mtmProductGroupMember: ModelMock
   mtmProduct: ModelMock
+  mtmProductViewer: ModelMock
   mtmPresentationSession: ModelMock
   mtmHrmRequest: ModelMock
   mtmRoute: ModelMock
@@ -390,6 +391,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmProductGroup: makeModel(),
     mtmProductGroupMember: makeModel(),
     mtmProduct: makeModel(),
+    mtmProductViewer: makeModel(),
     mtmPresentationSession: makeModel(),
     mtmHrmRequest: makeModel(),
     mtmRoute: makeModel(),

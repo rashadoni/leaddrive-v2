@@ -29,7 +29,8 @@ export const GET = withRouteFieldWebRlsAuth<RouteContext>("read", async (_req, a
     return NextResponse.json({ error: "MTM access required", code: "MTM_AGENT_ACCESS_REQUIRED" }, { status: 403 })
   }
   const product = await prisma.mtmProduct.findFirst({
-    where: { id, organizationId: auth.orgId },
+    // A deleted presentation left the catalog; its showings stay in the visits.
+    where: { id, organizationId: auth.orgId, deletedAt: null },
     select: {
       groupId: true,
       document: {

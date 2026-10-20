@@ -211,6 +211,7 @@ model Organization {
   mtmProductGroups                       MtmProductGroup[]
   mtmProductGroupMembers                 MtmProductGroupMember[]
   mtmProducts                            MtmProduct[]
+  mtmProductViewers                      MtmProductViewer[]
   mtmPresentationSessions                MtmPresentationSession[]
   mtmMediaObjects                     MtmMediaObject[]
   mtmHrmRequests                      MtmHrmRequest[]
@@ -5924,6 +5925,7 @@ model MtmAgent {
   pharmacyPromotionEvents   MtmPharmacyPromotionEvent[]     @relation("MtmPharmacyEventAgent")
   pharmacyPromotionOperations MtmPharmacyPromotionOperation[] @relation("MtmPharmacyOperationAgent")
   productGroupMemberships              MtmProductGroupMember[]
+  productViews                         MtmProductViewer[]
   presentationSessions                 MtmPresentationSession[]
 
   onboarding MtmOnboarding?
@@ -8206,6 +8208,13 @@ model MtmProductGroupMember {
 /// A product is represented in the field by its current presentation file.
 /// Sessions retain their own document/version snapshot, so replacing the
 /// current file never rewrites historical evidence.
+///
+/// Who sees it in the app is its own list (`viewers`), not its group's
+/// (owner, 2026-10-21: «выбрать несколько презентаций и указать, для какого
+/// агента будут видны»). A deleted product keeps its row: visits reference it,
+/// and the showings stay in their history. Its name is unique among the live
+/// products of a group only — a partial index, made by
+/// 20261025090000_mtm_product_viewers, since Prisma cannot declare one.
 model MtmProduct {
   id                  String          @id @default(cuid())
   organizationId      String
@@ -8219,16 +8228,36 @@ model MtmProduct {
   document            MtmDocument?    @relation(fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict)
   sortOrder           Int             @default(0)
   isActive            Boolean         @default(true)
+  deletedAt           DateTime?
+  deletedByUserId     String?
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
   presentationSessions MtmPresentationSession[]
+  viewers              MtmProductViewer[]
 
   @@unique([organizationId, id])
-  @@unique([organizationId, groupId, name])
   @@index([organizationId, groupId, isActive, sortOrder])
   @@index([organizationId, documentId])
   @@map("mtm_products")
+}
+
+/// A field agent who gets this presentation in the app. One row per agent and
+/// presentation; nothing else grants a field agent a presentation.
+model MtmProductViewer {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  productId        String
+  product          MtmProduct   @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Cascade)
+  agentId          String
+  agent            MtmAgent     @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Cascade)
+  assignedByUserId String?
+  createdAt        DateTime     @default(now())
+
+  @@unique([organizationId, productId, agentId])
+  @@index([organizationId, agentId])
+  @@map("mtm_product_viewers")
 }
 
 /// Durable proof that the authenticated agent opened a presentation. Progress

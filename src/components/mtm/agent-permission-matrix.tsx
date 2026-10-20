@@ -17,6 +17,9 @@ import {
 } from "@/lib/mtm/agent-permissions"
 import type { AccessCard } from "@/lib/mtm/access-roster"
 
+/** The switches, and whether Attendance is on at all: its rows are rules, shown only then. */
+type MatrixSettings = Partial<AgentPermissionSettings> & { attendanceEnabled?: boolean }
+
 /**
  * "What an agent may do": every function of a field agent in one list (owner,
  * 2026-10-04: "a role matrix — what the agent can do and what not, for all
@@ -37,7 +40,7 @@ export function MtmAgentPermissionMatrix({
   onCardsChanged?: () => Promise<void> | void
 }) {
   const t = useTranslations("mtmAccess")
-  const [settings, setSettings] = useState<Partial<AgentPermissionSettings> | null>(null)
+  const [settings, setSettings] = useState<MatrixSettings | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [busy, setBusy] = useState<AgentPermissionSettingKey | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -48,7 +51,7 @@ export function MtmAgentPermissionMatrix({
     const response = await fetch("/api/v1/mtm/settings", { headers: { Accept: "application/json" } })
     const body = await response.json().catch(() => null)
     if (!response.ok || !body?.data || typeof body.data !== "object" || Array.isArray(body.data)) throw new Error("settings")
-    setSettings(body.data as Partial<AgentPermissionSettings>)
+    setSettings(body.data as MatrixSettings)
   }, [])
 
   useEffect(() => {

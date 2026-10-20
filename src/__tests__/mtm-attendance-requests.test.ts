@@ -12,10 +12,11 @@ import { GET as documentGet } from "@/app/api/v2/mtm/mobile/route-field/attendan
 import { submitAttendanceRequest } from "@/lib/mtm/attendance-request-store"
 import { getRlsContext } from "@/lib/rls-context"
 
-const self = { organizationId: "request-fixture-org", agentId: "request-fixture-agent", role: "AGENT" }
+// The owner is an office employee HR keeps; a field agent has no own requests (owner, 2026-10-20).
+const self = { organizationId: "request-fixture-org", agentId: "request-fixture-agent", role: "EMPLOYEE" }
 const input = () => ({ clientRequestId: randomUUID(), kind: "HOURLY_ABSENCE", unit: "HOURS", startDate: "2026-11-02", endDate: "2026-11-02", startTime: "09:00", endTime: "11:00", reason: "Fixture request" })
 const req = (body: unknown) => new NextRequest("http://localhost/api/v2/mtm/mobile/route-field/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
-function authenticate(role = "AGENT", allowed = true) {
+function authenticate(role = "EMPLOYEE", allowed = true) {
   vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: self.organizationId, agentId: self.agentId, role, tenantCapabilities: { routeField: allowed, workforceHrm: false, personnel: allowed } } as never)
 }
 beforeEach(() => {
@@ -26,7 +27,7 @@ beforeEach(() => {
   vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)
   vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
   vi.mocked(prisma.user.findMany).mockResolvedValue([])
-  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: self.agentId } as never)
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: self.agentId, role: "EMPLOYEE", attendanceParticipant: true, attendanceExcluded: false } as never)
   vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAttendanceAttachment.count).mockResolvedValue(0)
@@ -48,10 +49,12 @@ describe("new MTM attendance own-request API", () => {
     expect(prisma.mtmAgentWorkday.update).not.toHaveBeenCalled()
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
   })
-  it.each(["off", "capability", "manager", "inactive", "foreign-input"])("refuses %s before any request or attachment is written", async (kind) => {
+  it.each(["off", "capability", "manager", "field-agent", "inactive", "foreign-input"])("refuses %s before any request or attachment is written", async (kind) => {
     if (kind === "off") vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([])
-    if (kind === "capability") authenticate("AGENT", false)
-    if (kind === "manager") authenticate("MANAGER")
+    if (kind === "capability") authenticate("EMPLOYEE", false)
+    // A manager HR has not enrolled.
+    if (kind === "manager") { authenticate("MANAGER"); vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: self.agentId, role: "MANAGER", attendanceParticipant: false, attendanceExcluded: false } as never) }
+    if (kind === "field-agent") authenticate("AGENT")
     if (kind === "inactive") vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null)
     const response = await POST(req({ ...input(), ...(kind === "foreign-input" ? { agentId: "someone-else" } : {}) }))
     expect([400, 403, 404]).toContain(response.status)

@@ -12,12 +12,13 @@
  * Every name, department and minute is made up. The clock is the Route &
  * Field module's demo day (the latest Thursday), at 09:20 Baku time.
  */
-import { buildMtmAttendanceReport, type MtmAttendanceCorrection, type MtmAttendanceEmployee, type MtmAttendanceEventInput, type MtmAttendanceReportRow, type MtmAttendanceWorkday } from "@/lib/mtm/attendance-report"
+import { buildMtmAttendanceReport, type MtmAttendanceCorrection, type MtmAttendanceEmployee, type MtmAttendanceEventInput, type MtmAttendanceWorkday } from "@/lib/mtm/attendance-report"
 import { MTM_ATTENDANCE_BASELINE_RULE } from "@/lib/mtm/attendance-rules"
 import type { AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
 import type { AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 import type { AttendanceRiskItem, AttendanceRiskReport } from "@/lib/mtm/attendance-risk-contract"
 import { attendanceTodayRange } from "@/lib/mtm/attendance-today"
+import type { WorkforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 import { addDays, mtmDemoAt } from "./mtm-demo-data"
 
 export const PERSONNEL_DEMO_CLOCK = "09:20"
@@ -76,10 +77,14 @@ function clock(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
 }
 
-/** What the phone sent for one day: start, a short break, finish (or not yet). */
-function workday(personId: string, date: string, start: number, finish: number | null, breakAt: number | null): MtmAttendanceWorkday {
+/**
+ * What the phone sent for one day: start, a short break, finish (or not yet).
+ * `startReceived` is when the server got the start, if not at once (a phone
+ * offline, or with its clock off).
+ */
+function workday(personId: string, date: string, start: number, finish: number | null, breakAt: number | null, startReceived = start): MtmAttendanceWorkday {
   const at = (minutes: number) => mtmDemoAt(date, clock(minutes))
-  const events: MtmAttendanceEventInput[] = [{ id: `${personId}-${date}-start`, type: "START", occurredAt: at(start), claimedAt: at(start), serverReceivedAt: at(start) }]
+  const events: MtmAttendanceEventInput[] = [{ id: `${personId}-${date}-start`, type: "START", occurredAt: at(start), claimedAt: at(start), serverReceivedAt: at(startReceived) }]
   if (breakAt !== null) {
     events.push({ id: `${personId}-${date}-pause`, type: "PAUSE", occurredAt: at(breakAt), claimedAt: at(breakAt), serverReceivedAt: at(breakAt) })
     if (finish !== null) events.push({ id: `${personId}-${date}-resume`, type: "RESUME", occurredAt: at(breakAt + 12), claimedAt: at(breakAt + 12), serverReceivedAt: at(breakAt + 12) })
@@ -144,6 +149,33 @@ export function personnelDemoPlan(today: string) {
 const covered = (absences: readonly DemoAbsence[], personId: string, date: string) =>
   absences.find((absence) => absence.personId === personId && absence.from <= date && date <= absence.to) ?? null
 
+/**
+ * The marks this week the product's checks raised a record on
+ * (`recordAttendanceRisks`): Ülvi's start made on Kamal's phone, Murad's start
+ * that reached the server 46 minutes late, Səidə's with her phone's clock 12
+ * minutes behind. They are days of the timesheet like any other — the record
+ * reads its times from them (`personnelDemoRisks`).
+ */
+const FLAGGED_MARKS: ReadonlyArray<{ readonly personId: string; readonly daysAgo: number; readonly claimed: string; readonly received: string; readonly onPhoneOf?: string }> = [
+  { personId: "emp-10", daysAgo: 2, claimed: "08:57", received: "08:57", onPhoneOf: "emp-08" },
+  { personId: "emp-05", daysAgo: 3, claimed: "08:55", received: "09:41" },
+  { personId: "emp-06", daysAgo: 1, claimed: "08:50", received: "09:02" },
+]
+
+const minutesOf = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5))
+
+/** When somebody's phone says he started that day: his habit, or the mark the record is about. */
+function startMinutes(plan: ReturnType<typeof personnelDemoPlan>, person: (typeof PEOPLE)[number], date: string): number {
+  const flagged = FLAGGED_MARKS.find((mark) => mark.personId === person.id && addDays(plan.today, -mark.daysAgo) === date)
+  if (flagged) return minutesOf(flagged.claimed)
+  // Today at 09:20: whoever started has started; the late ones are still on their way or just in.
+  if (date === plan.today && person.id === "emp-02") return 9 * 60 + 18
+  if (date === plan.today && person.id === "emp-08") return 9 * 60 + 14
+  const roll = spread(`${person.id}:${date}`, 100)
+  if (person.habit === "late" && roll % 3 === 0) return 9 * 60 + 12 + (roll % 24)
+  return 8 * 60 + 44 + (roll % 23)
+}
+
 /** Everybody's days from `from` to `to`, made of phone facts. Today stops at the demo clock. */
 function workdays(plan: ReturnType<typeof personnelDemoPlan>, from: string, to: string): MtmAttendanceWorkday[] {
   const days: MtmAttendanceWorkday[] = []
@@ -154,21 +186,22 @@ function workdays(plan: ReturnType<typeof personnelDemoPlan>, from: string, to: 
       if (covered(plan.absences, person.id, date)) continue
       if (plan.absent.some((entry) => entry.personId === person.id && entry.date === date)) continue
       const roll = spread(`${person.id}:${date}`, 100)
-      let start = 8 * 60 + 44 + (roll % 23)
-      if (person.habit === "late" && roll % 3 === 0) start = 9 * 60 + 12 + (roll % 24)
+      const start = startMinutes(plan, person, date)
       let finish = 18 * 60 + (roll % 17)
       if (person.habit === "early" && roll % 5 === 0) finish = 17 * 60 + 15 + (roll % 20)
       const missing = plan.missingFinish.find((entry) => entry.personId === person.id && entry.date === date)
       if (date === plan.today) {
-        // Today at 09:20: whoever started has started; the late ones are still on their way or just in.
-        if (person.id === "emp-02") start = 9 * 60 + 18
-        if (person.id === "emp-08") start = 9 * 60 + 14
         if (start > nowMinutes) continue
         const onBreak = person.id === "emp-12" ? 9 * 60 + 12 : null
         days.push(workday(person.id, date, start, null, onBreak))
         continue
       }
-      days.push(workday(person.id, date, start, missing ? null : finish, roll % 2 === 0 ? 15 * 60 + 30 : null))
+      const flagged = FLAGGED_MARKS.find((mark) => mark.personId === person.id && addDays(plan.today, -mark.daysAgo) === date)
+      // A forgotten check-out is a day with its start and nothing after: a break begun and never ended
+      // would be a paused day, not the «started, no finish» its correction records (`correctedFinish`).
+      const breakAt = !missing && roll % 2 === 0 ? 15 * 60 + 30 : null
+      const day = workday(person.id, date, start, missing ? null : finish, breakAt, flagged ? minutesOf(flagged.received) : start)
+      days.push(missing?.corrected ? correctedFinish(day) : day)
     }
   }
   return days
@@ -188,7 +221,7 @@ function approvedPeriods(plan: ReturnType<typeof personnelDemoPlan>, dayKinds: r
 /** The product's timesheet over the demo facts, for any period up to today. */
 export function personnelDemoReport(today: string, from: string, to: string, dayKinds: readonly AttendanceDayKind[]) {
   const plan = personnelDemoPlan(today)
-  const report = buildMtmAttendanceReport({
+  return buildMtmAttendanceReport({
     employees: PERSONNEL_DEMO_EMPLOYEES,
     workdays: workdays(plan, from, to),
     calendar: [],
@@ -199,52 +232,103 @@ export function personnelDemoReport(today: string, from: string, to: string, day
     to,
     now: mtmDemoAt(today, PERSONNEL_DEMO_CLOCK),
   })
-  return { ...report, rows: report.rows.map((row) => withCorrection(row, plan, dayKinds)) }
 }
 
 /**
- * The missing check-out HR corrected on an employee's request: the day card's
- * «was → now». The product reads it from its correction ledger; the demo adds
- * the same record to the same row.
+ * The missing check-out HR corrected on the employee's request the next
+ * morning: the day card's «was → now». As in the product, the correction
+ * changes the day's columns (finished at 18:07) and leaves its journal alone
+ * (the start the phone sent), and the correction ledger says what was and what
+ * is — the projection the product's report store builds from that ledger
+ * (`projectAttendanceCorrectionFacts`, server-only, so written out here). The
+ * timesheet builder then counts the corrected day as it counts any other: the
+ * hours from start to finish, less the lunch hour nobody pressed a break for
+ * («Nahar 1:00 avtomatik çıxıldı» on the card). Counted by hand before, the
+ * card showed 08:52 → 18:07 as 8:15 with nothing saying where the hour went.
  */
-function withCorrection(row: MtmAttendanceReportRow, plan: ReturnType<typeof personnelDemoPlan>, dayKinds: readonly AttendanceDayKind[]): MtmAttendanceReportRow {
-  const fix = plan.missingFinish.find((entry) => entry.corrected && entry.personId === row.employeeId && entry.date === row.date)
-  if (!fix || !row.startedAt) return row
+function correctedFinish(day: MtmAttendanceWorkday): MtmAttendanceWorkday {
+  const workDate = String(day.workDate)
+  const before: WorkforceWorkdayCorrectionFacts = { id: day.id, workDate, status: "STARTED", startedAt: new Date(day.startedAt).toISOString(), pausedAt: null, completedAt: null, totalPausedSeconds: 0 }
+  const after: WorkforceWorkdayCorrectionFacts = { ...before, status: "COMPLETED", completedAt: mtmDemoAt(workDate, "18:07") }
   const correction: MtmAttendanceCorrection = {
-    id: `corr-${row.employeeId}-${row.date}`,
-    requestId: `req-corr-${row.employeeId}`,
+    id: `corr-${day.agentId}-${workDate}`,
+    requestId: `req-corr-${day.agentId}`,
     source: "REQUEST_APPROVAL",
-    occurredAt: mtmDemoAt(addDays(row.date, 1), "10:05"),
+    occurredAt: mtmDemoAt(addDays(workDate, 1), "10:05"),
     reviewer: { id: "emp-17", name: "Orxan Musayev" },
-    before: { kind: "WORKDAY", facts: { id: row.workdayId ?? `wd-${row.employeeId}-${row.date}`, workDate: row.date, status: "STARTED", startedAt: row.startedAt, pausedAt: null, completedAt: null, totalPausedSeconds: 0 } },
-    after: { id: row.workdayId ?? `wd-${row.employeeId}-${row.date}`, workDate: row.date, status: "COMPLETED", startedAt: row.startedAt, pausedAt: null, completedAt: mtmDemoAt(row.date, "18:07"), totalPausedSeconds: 0 },
+    before: { kind: "WORKDAY", facts: before },
+    after,
   }
-  const worked = Math.round((Date.parse(mtmDemoAt(row.date, "18:07")) - Date.parse(row.startedAt)) / 1000) - 3600
-  const workedDay = dayKinds.find((kind) => kind.key === "WORKED")
-  return { ...row, kind: "WORKED", completedAt: mtmDemoAt(row.date, "18:07"), workedSeconds: worked, pausedSeconds: 0, flags: row.flags.filter((flag) => flag !== "MISSING_FINISH"), corrections: [correction], ...(workedDay ? { dayKind: workedDay } : {}) }
+  return { ...day, status: after.status, completedAt: after.completedAt, totalPausedSeconds: 0,
+    correctionProjection: { valid: true, facts: after, pauseIntervals: [], history: [correction] } }
 }
 
-/** Requests waiting on «Bu gün»: a leave, an hour off, and the forgotten check-out of yesterday. */
+/**
+ * Requests waiting on «Bu gün»: a leave, an hour off, and the forgotten
+ * check-out of yesterday. A time correction is always in hours with the day's
+ * start and end (`AttendanceRequestInputSchema`): Elnur's start is the one his
+ * phone sent, the end the 18:10 he names.
+ */
 export function personnelDemoRequests(today: string) {
+  const plan = personnelDemoPlan(today)
+  const yesterday = addDays(today, -1)
+  const elnur = PEOPLE.find((person) => person.id === "emp-07")!
   return [
     { id: "req-wait-1", employeeName: "Vüsal Hüseynov", kind: "ANNUAL_LEAVE" as const, from: addDays(today, 18), to: addDays(today, 22), unit: "DAYS" as const, startTime: null, endTime: null, reason: "Ailə səfəri" },
     { id: "req-wait-2", employeeName: "Gülnar Əliyeva", kind: "HOURLY_ABSENCE" as const, from: addDays(today, 1), to: addDays(today, 1), unit: "HOURS" as const, startTime: "14:00", endTime: "16:00", reason: "Həkim qəbulu" },
-    { id: "req-wait-3", employeeName: "Elnur Bağırov", kind: "TIME_CORRECTION" as const, from: addDays(today, -1), to: addDays(today, -1), unit: "DAYS" as const, startTime: null, endTime: null, reason: "Çıxışı qeyd etməyi unutdum, 18:10-da çıxmışam." },
+    { id: "req-wait-3", employeeName: elnur.name, kind: "TIME_CORRECTION" as const, from: yesterday, to: yesterday, unit: "HOURS" as const, startTime: clock(startMinutes(plan, elnur, yesterday)), endTime: "18:10", reason: "Çıxışı qeyd etməyi unutdum, 18:10-da çıxmışam." },
   ]
 }
 
-/** Records that ask a person to look: the product's own risk kinds, raised by the product's checks. */
+/** The product's limits for a mark's two times (`attendanceTimingRisk`; the organization's default clock difference). */
+export const PERSONNEL_DEMO_RISK_LIMITS = { delayedAfterSeconds: 15 * 60, clockDifferenceSeconds: 300 } as const
+
+/**
+ * Records that ask a person to look, as the product raises them over the
+ * week's marks (`recordAttendanceRisks`) and lists them (newest day first,
+ * `attendance-risk-review-store.ts`):
+ *
+ * - a mark on another person's phone opens a «shared installation» record for
+ *   everyone who marked on that phone that day — Ülvi and Kamal — with who
+ *   used the phone in the month before (`usualAttendanceInstallationUser`);
+ * - a start that reached the server more than a quarter of an hour late is
+ *   «delayed», one off by more than five minutes a «clock difference», each
+ *   with its seconds.
+ */
 export function personnelDemoRisks(today: string): AttendanceRiskItem[] {
-  const base = { teamId: null, timezone: TZ, canDismiss: true, relatedNamesRestricted: false, usualName: null, usualDays: null, observedDays: null, deltaSeconds: null, thresholdSeconds: null, branchName: null, distanceMeters: null, dismissal: null, action: "START" as const }
-  return [
-    { ...base, id: "risk-1", employeeId: "emp-10", employeeName: "Ülvi Cəfərov", teamName: "Anbar", kind: "SHARED_INSTALLATION", workDate: addDays(today, -2),
-      claimedAt: mtmDemoAt(addDays(today, -2), "08:57"), serverReceivedAt: mtmDemoAt(addDays(today, -2), "08:57"), createdAt: mtmDemoAt(addDays(today, -2), "08:57"), relatedNames: ["Kamal Səfərov"] },
-    { ...base, id: "risk-2", employeeId: "emp-05", employeeName: "Murad Kərimov", teamName: "Satış", kind: "DELAYED_CLAIM", workDate: addDays(today, -3),
-      claimedAt: mtmDemoAt(addDays(today, -3), "08:55"), serverReceivedAt: mtmDemoAt(addDays(today, -3), "09:41"), createdAt: mtmDemoAt(addDays(today, -3), "09:41"), relatedNames: [] },
-    { ...base, id: "risk-3", employeeId: "emp-06", employeeName: "Səidə Rəhimova", teamName: "Satış", kind: "CLOCK_DIFFERENCE", workDate: addDays(today, -1),
-      claimedAt: mtmDemoAt(addDays(today, -1), "08:50"), serverReceivedAt: mtmDemoAt(addDays(today, -1), "09:02"), createdAt: mtmDemoAt(addDays(today, -1), "09:02"), relatedNames: [],
-      deltaSeconds: -720, thresholdSeconds: 300 },
-  ]
+  const plan = personnelDemoPlan(today)
+  const base = { timezone: TZ, canDismiss: true, relatedNamesRestricted: false, usualName: null, usualDays: null, observedDays: null, deltaSeconds: null, thresholdSeconds: null, branchName: null, distanceMeters: null, dismissal: null, action: "START" as const }
+  const person = (id: string) => PERSONNEL_DEMO_EMPLOYEES.find((employee) => employee.id === id)!
+  const startOf = (personId: string, date: string) => {
+    const event = workdays(plan, date, date).find((day) => day.agentId === personId)!.events.find((entry) => entry.type === "START")!
+    const iso = (value: MtmAttendanceEventInput["claimedAt"]) => new Date(value ?? event.occurredAt).toISOString()
+    return { claimedAt: iso(event.claimedAt), serverReceivedAt: iso(event.serverReceivedAt) }
+  }
+  const items: AttendanceRiskItem[] = []
+  for (const [index, mark] of FLAGGED_MARKS.entries()) {
+    const date = addDays(today, -mark.daysAgo)
+    const own = person(mark.personId)
+    const times = startOf(mark.personId, date)
+    const id = `risk-${index + 1}`
+    if (mark.onPhoneOf) {
+      // Everybody who marked on that phone that day, each with the others' names and the phone's usual user.
+      const owner = person(mark.onPhoneOf)
+      const ownerTimes = startOf(owner.id, date)
+      const createdAt = [times.serverReceivedAt, ownerTimes.serverReceivedAt].sort().at(-1)!
+      const observed = new Set(workdays(plan, addDays(date, -30), addDays(date, -1)).filter((day) => day.agentId === owner.id).map((day) => day.workDate))
+      const usual = { usualName: owner.name, usualDays: observed.size, observedDays: observed.size }
+      items.push({ ...base, ...usual, id, employeeId: own.id, employeeName: own.name, teamId: own.teamId ?? null, teamName: own.teamName ?? null, kind: "SHARED_INSTALLATION", workDate: date, ...times, createdAt, relatedNames: [owner.name] })
+      items.push({ ...base, ...usual, id: `${id}-peer`, employeeId: owner.id, employeeName: owner.name, teamId: owner.teamId ?? null, teamName: owner.teamName ?? null, kind: "SHARED_INSTALLATION", workDate: date, ...ownerTimes, createdAt, relatedNames: [own.name] })
+      continue
+    }
+    const deltaSeconds = Math.trunc((Date.parse(times.serverReceivedAt) - Date.parse(times.claimedAt)) / 1000)
+    const delayed = deltaSeconds > PERSONNEL_DEMO_RISK_LIMITS.delayedAfterSeconds
+    items.push({ ...base, id, employeeId: own.id, employeeName: own.name, teamId: own.teamId ?? null, teamName: own.teamName ?? null,
+      kind: delayed ? "DELAYED_CLAIM" : "CLOCK_DIFFERENCE", workDate: date, ...times, createdAt: times.serverReceivedAt, relatedNames: [],
+      deltaSeconds, thresholdSeconds: delayed ? PERSONNEL_DEMO_RISK_LIMITS.delayedAfterSeconds : PERSONNEL_DEMO_RISK_LIMITS.clockDifferenceSeconds })
+  }
+  // The review's own order: the newest day first, then the newest record, then the id.
+  return items.sort((left, right) => right.workDate.localeCompare(left.workDate) || right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id))
 }
 
 /**
