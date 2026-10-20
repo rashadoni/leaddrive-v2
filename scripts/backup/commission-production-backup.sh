@@ -2808,7 +2808,7 @@ assert_scratch_port_free() {
 scratch_connection_query() {
   local target="$1" sql="$2" key value
   local -a connection=(PATH=/usr/sbin:/usr/bin:/sbin:/bin LC_ALL=C HOME=/nonexistent
-    PGOPTIONS='-c statement_timeout=10000 -c default_transaction_read_only=on')
+    PGOPTIONS='-c statement_timeout=10000 -c default_transaction_read_only=on -c search_path=pg_catalog,pg_temp')
   if [ "$target" = source ]; then
     for key in PGHOST PGHOSTADDR PGPORT PGDATABASE PGUSER PGPASSFILE PGSSLMODE PGSSLROOTCERT PGCONNECT_TIMEOUT; do
       value="$(require_static_value "$key")" || return 1

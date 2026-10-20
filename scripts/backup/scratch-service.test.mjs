@@ -228,14 +228,23 @@ CREATE FUNCTION fixture_function() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETU
     let nativeDrill = ''
     if (nativeTemplate) {
       const inputs = join(root, 'inputs'), work = join(root, 'canary-work')
+      const code = join(root, 'reviewed')
       mkdirSync(inputs, { mode: 0o700 }); mkdirSync(work, { mode: 0o700 })
+      mkdirSync(code, { mode: 0o755 })
+      // The runner checkout's parents are not public to system accounts. Stage
+      // only exact public reviewed bytes, never chmod the checkout/private data.
+      for (const name of ['postgres-restore-canary.sh', 'native-scratch-template.mjs', 'canary.sql', 'migration-ledger.sql']) {
+        writeFileSync(join(code, name), readFileSync(join(repo, 'scripts/backup', name)), { mode: 0o644 })
+      }
       const canaryScript = readFileSync(join(repo, 'scripts/backup/postgres-restore-canary.sh'), 'utf8')
       const securityStart = canaryScript.indexOf('WITH raw(kind, k1, k2, k3, k4, k5, k6, k7, k8) AS (')
       assert(securityStart > 0)
       const securitySql = canaryScript.slice(securityStart, canaryScript.indexOf('\nSQL', securityStart))
       const exportQuery = (file, options) => {
+        const input = options[0] === '-f' ? readFileSync(options[1]) : undefined
+        if (input) options = ['-f', '-']
         const result = command('runuser', ['-u', 'postgres', '--', pg + 'psql', '-X', '-qAt', '-F', '\t', '-v', 'ON_ERROR_STOP=1',
-          '-h', '/var/run/postgresql', '-p', '55431', '-d', 'postgres', ...options])
+          '-h', '/var/run/postgresql', '-p', '55431', '-d', 'postgres', ...options], { input })
         ok(result, 'real public source export')
         writeFileSync(join(inputs, file), result.stdout, { mode: 0o600 })
       }
@@ -263,7 +272,7 @@ runuser -u leaddrive-backup -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/no
  VERIFY_PGHOST=127.0.0.1 VERIFY_PGPORT=55432 VERIFY_PGUSER=leaddrive_restore_verifier \\
  VERIFY_PGMAINTENANCE_DB=postgres VERIFY_PGPASSFILE=/etc/leaddrive/restore-verifier.pgpass \\
  VERIFY_PGSSLROOTCERT=/etc/leaddrive/restore-postgres-ca.crt VERIFY_PGSSLMODE=verify-full \\
- VERIFY_PGTEMPLATE="$SCRATCH_TEMPLATE" bash ${JSON.stringify(join(repo, 'scripts/backup/postgres-restore-canary.sh'))} "\${native_args[@]}"
+ VERIFY_PGTEMPLATE="$SCRATCH_TEMPLATE" bash ${JSON.stringify(join(code, 'postgres-restore-canary.sh'))} "\${native_args[@]}"
 canary_status=$?
 set -e
 if [ "$TEST_CASE" = canary-failure ]; then [ "$canary_status" -ne 0 ]; else [ "$canary_status" = 0 ]; fi
