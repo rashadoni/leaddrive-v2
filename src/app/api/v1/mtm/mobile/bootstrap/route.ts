@@ -513,6 +513,10 @@ export const GET = withMobileRls(async (req, auth) => {
           // then answers MTM_AGENT_PERMISSION_DISABLED.
           agentPermissions: {
             ...agentPermissionStates(settings),
+            // Own attendance. Not switches of the matrix: a field agent is
+            // outside HR accounting and is sent false here (2026-10-14,
+            // 2026-10-20). The office shell of the same app opens its
+            // attendance screens from these keys; absent while Attendance is off.
             ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceMarks, attendanceLocation: attendanceMarks, attendanceInstallation: attendanceMarks, ...(settings.attendanceBranchQrEnabled === true ? { attendanceBranchQr: attendanceMarks } : {}) } : {}),
           },
           ...(attendanceMarks ? { attendanceMarkVersion: 1 } : {}),

@@ -24,7 +24,7 @@ vi.mock("next-intl", () => ({
 }))
 
 import { MtmAgentPermissionMatrix } from "@/components/mtm/agent-permission-matrix"
-import { AGENT_PERMISSION_ROWS } from "@/lib/mtm/agent-permissions"
+import { AGENT_PERMISSION_ROWS, AGENT_SWITCH_ROWS } from "@/lib/mtm/agent-permissions"
 import type { AccessCard } from "@/lib/mtm/access-roster"
 import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
 
@@ -50,6 +50,8 @@ let cardWrites: { id: string; body: Record<string, unknown> }[] = []
 let ignoreWrites = false
 let refuseWrites = false
 let refuseCardWrites = false
+
+const ATTENDANCE_ROWS = ["attendanceWorkday", "attendanceLocation", "attendanceBranchQr", "attendanceInstallation", "attendanceRequests"]
 
 let root: Root
 let container: HTMLDivElement
@@ -132,7 +134,8 @@ describe("«Что может агент»", () => {
 
   it("shows what an organization that never touched the switches has", async () => {
     await open()
-    expect(row("attendanceRequests")).toBeNull()
+    // No Attendance, no rows about it.
+    expect(ATTENDANCE_ROWS.filter((id) => row(id))).toEqual([])
     const state = (id: string) => [toggleOf(id).getAttribute("aria-checked"), toggleOf(id).textContent]
     expect(state("contactCreateRequest")).toEqual(["true", "Может"])
     expect(state("contactChangeRequest")).toEqual(["true", "Может"])
@@ -150,13 +153,22 @@ describe("«Что может агент»", () => {
     expect(row("visitExecute").querySelector("button")).toBeNull()
   })
 
-  // Owner, 2026-10-20: «у полевого агента всё кадровое убрать совсем». With
-  // Attendance on, the row says so and offers nothing to press.
-  it("states that a field agent has no attendance requests, with Attendance on", async () => {
-    await open({ attendanceEnabled: true })
-    expect(row("attendanceRequests").textContent).toContain("Не может никогда")
-    expect(row("attendanceRequests").querySelector('[role="switch"]')).toBeNull()
-    expect(writes).toEqual([])
+  // Owner, 2026-10-14 for the day, 2026-10-20: «у полевого агента всё кадровое
+  // убрать совсем». The server refuses an agent all of HR attendance whatever
+  // the switch says, so with Attendance on every such row says so and offers
+  // nothing to press — a switch there would change nothing.
+  it("states that a field agent is outside HR accounting, with Attendance and its QR on", async () => {
+    await open({ attendanceEnabled: true, attendanceBranchQrEnabled: true })
+    for (const id of ATTENDANCE_ROWS) {
+      expect(row(id).textContent, id).toContain("Не может никогда")
+      expect(row(id).textContent, id).toContain("Полевой агент вне кадрового учёта")
+      expect(row(id).querySelector('[role="switch"]'), id).toBeNull()
+    }
+    // Every switch left is one the server reads for agents; none is Attendance.
+    const switches = AGENT_PERMISSION_ROWS.filter((item) => row(item.id).querySelector('[role="switch"]')).map((item) => item.id)
+    expect(switches.sort()).toEqual(AGENT_SWITCH_ROWS.map((item) => item.id).sort())
+    for (const id of switches) await press(id)
+    expect(writes.flatMap((write) => Object.keys(write)).filter((key) => key.startsWith("attendance"))).toEqual([])
   })
 
   it("counts per-agent grants over the organization's agents", async () => {

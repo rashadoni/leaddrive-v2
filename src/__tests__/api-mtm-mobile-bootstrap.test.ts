@@ -101,6 +101,22 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     // The agent's own "Start day" stays its field session.
     expect(json.data.permissions.includes("WORKTIME_SELF_MUTATE")).toBe(role === "AGENT")
   })
+  // The office shell opens its attendance screens from these keys. They were
+  // matrix switches until 2026-10-20 and are not any more; the shape the
+  // phone receives must not move with that: absent until Attendance is on,
+  // and the branch QR key only while the QR rule is on as well.
+  it.each([
+    [[], []],
+    [[{ key: "attendanceEnabled", value: false }, { key: "attendanceBranchQrEnabled", value: true }], []],
+    [[{ key: "attendanceEnabled", value: true }], ["attendanceRequests", "attendanceWorkday", "attendanceLocation", "attendanceInstallation"]],
+    [[{ key: "attendanceEnabled", value: true }, { key: "attendanceBranchQrEnabled", value: true }], ["attendanceRequests", "attendanceWorkday", "attendanceLocation", "attendanceInstallation", "attendanceBranchQr"]],
+  ] as const)("sends an enrolled office employee the attendance keys it always had (%j)", async (stored, keys) => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue(mobileAuth("EMPLOYEE"))
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role: "EMPLOYEE", attendanceParticipant: true, attendanceExcluded: false, name: "Fictional employee", canPlanOwnRoutes: false } as never)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue(stored as never)
+    const permissions = (await (await GET(request())).json()).data.policies.agentPermissions as Record<string, boolean>
+    expect(Object.entries(permissions).filter(([key]) => key.startsWith("attendance"))).toEqual(keys.map((key) => [key, true]))
+  })
   it("gives an office employee of a Personnel-only tenant its attendance and no field surface", async () => {
     // Personnel is sold apart from routes (owner, 2026-10-14). The app opens
     // its office tabs from these attendance flags, whatever routeField says.
