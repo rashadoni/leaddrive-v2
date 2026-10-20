@@ -88,7 +88,7 @@ const METERS_PER_DEGREE = (Math.PI * 6_371_000) / 180
 const CENTRE = { latitude: 40.4093, longitude: 49.8671 }
 const northOf = (meters: number) => ({ latitude: CENTRE.latitude + meters / METERS_PER_DEGREE, longitude: CENTRE.longitude })
 
-interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string; managerId?: string; managerName?: string; tags?: string[]; pausedSeconds?: number }
+interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string; managerId?: string; managerName?: string; tags?: string[]; pausedSeconds?: number; lastSeenAt?: string }
 let rosterRows: Row[]
 let requests: string[]
 /** What the journal and the road server answer for the selected employee's card. */
@@ -186,7 +186,7 @@ function answer(now: number) {
     success: true,
     data: {
       agentLocations: rosterRows.map((row) => ({
-        agentId: row.agentId, name: row.name, isOnline: true, lastSeenAt: iso(0), teamId: null, teamName: null,
+        agentId: row.agentId, name: row.name, isOnline: true, lastSeenAt: row.lastSeenAt ?? iso(0), teamId: null, teamName: null,
         managerId: row.managerId ?? null, managerName: row.managerName ?? null,
         tags: row.tags ?? [], mapColor: null,
         fieldStatus: row.fieldStatus, freshness: row.meters == null ? "NO_LOCATION" : "ONLINE",
@@ -1931,6 +1931,33 @@ describe("the live map page, end to end", () => {
       expect(cell("near", "distance")).toBe("—")
     })
 
+    // Verification of 2026-10-20: on a break the app is held «В сети» for at
+    // least three minutes — the bell asks every two — but the hint said only
+    // the organization's limit, which may be set down to half a minute.
+    it("says in the app's hint how long it counts as connected on a break, where that is not the organization's limit", async () => {
+      const summaryLabel = (text: string) => [...document.body.querySelectorAll("[data-hint-value]")].find((node) => node.textContent === text)
+      rosterRows[1] = onBreak()
+      freshnessThresholds = { onlineSeconds: 60, delayedSeconds: 600 }
+      try {
+        await open()
+        expect(await readHint(summaryLabel("Приложение:"))).toBe(
+          "«В сети» — приложение связывалось с сервером за последние 1 мин, а у сотрудника на перерыве — за последние 3 мин: на перерыве GPS не пишется, и приложение выходит на связь реже. Это про само приложение, не про GPS.")
+        // The same words in his card.
+        await press(byTestId("live-map-agent-card-near"))
+        const inCard = [...(byTestId("live-map-agent-detail")?.querySelectorAll("[data-hint-value]") ?? [])].find((node) => node.textContent?.startsWith("Приложение:"))
+        expect(await readHint(inCard)).toContain("на перерыве — за последние 3 мин")
+
+        // A tenant without Workforce has no breaks: the organization's limit alone.
+        await act(async () => { root.unmount() })
+        root = createRoot(container)
+        workforceEnabled = false
+        await open()
+        expect(await readHint(summaryLabel("Приложение:"))).toBe("«В сети» — приложение связывалось с сервером за последние 1 мин. Это про само приложение, не про GPS.")
+      } finally {
+        freshnessThresholds = { onlineSeconds: 300, delayedSeconds: 600 }
+      }
+    })
+
     // Verification of 2026-10-20: the card still said how long to the next
     // stop, measured from the grey point he left before the break, and at
     // what speed — the speed of his last fix before it.
@@ -2007,6 +2034,27 @@ describe("the live map page, end to end", () => {
         expect(tail("near")).toEqual([3_300])
         // Somebody who took no break keeps his whole tail.
         expect(tail("far").length).toBeGreaterThan(0)
+      })
+
+      // Verification of 2026-10-20: the page looked again only when the
+      // organization's limit ran out, so somebody on a break went on reading
+      // «В сети» after his three minutes until the next refresh.
+      it("stops counting him «В сети» the moment his break's three minutes run out, between two refreshes", async () => {
+        const online = () => [...container.querySelectorAll('[role="status"] span')]
+          .map((node) => node.textContent ?? "").find((text) => /^В сети \d+$/.test(text))
+        freshnessThresholds = { onlineSeconds: 60, delayedSeconds: 600 }
+        try {
+          // The bell last asked 2 min 45 s ago; his last point is from before the break.
+          rosterRows[1] = onBreak({ minutesAgo: 30, lastSeenAt: new Date(Date.now() - 165_000).toISOString() })
+          await act(async () => { root.render(createElement(MtmMapPage)) })
+          await forward(1_000)
+          expect(online()).toBe("В сети 4")
+          // Fifteen seconds on his three minutes are over; the next refresh is half a minute away.
+          await forward(15_000)
+          expect(online()).toBe("В сети 3")
+        } finally {
+          freshnessThresholds = { onlineSeconds: 300, delayedSeconds: 600 }
+        }
       })
 
       // Verification of 2026-10-20: after a short break the first answer can
