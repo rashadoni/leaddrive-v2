@@ -407,7 +407,10 @@ export function buildDayTrip(input: {
 
   const completedAt = input.workday?.completedAt?.getTime()
   if (completedAt != null) entries.push({ kind: "END", id: "end", at: new Date(completedAt), source: "WORKDAY" })
-  else if (lastPointAt != null) entries.push({ kind: "END", id: "end", at: new Date(lastPointAt), source: "GPS" })
+  // An open day: not before the end of its last break. With no fix since
+  // «Продолжить» the «Перерыв» row runs past the last fix, and an END at the
+  // fix put the day's end above a row that ends half an hour later.
+  else if (lastPointAt != null) entries.push({ kind: "END", id: "end", at: new Date(Math.max(lastPointAt, ...breaks.map((span) => span.to))), source: "GPS" })
 
   const moves = entries.filter((entry): entry is DayTripMove => entry.kind === "MOVE")
   const gapsKept = entries.filter((entry): entry is DayTripGap => entry.kind === "GAP")

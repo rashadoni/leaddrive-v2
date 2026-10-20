@@ -40,7 +40,7 @@ vi.mock("@/lib/crm-product-availability", async (importOriginal) => ({
 import { GET } from "@/app/api/v1/mtm/location-history/route"
 import { prisma } from "@/lib/prisma"
 import { requireAuth } from "@/lib/api-auth"
-import { buildDayTrip, type DayTrip, type DayTripEntry } from "@/lib/mtm/day-trip"
+import { buildDayTrip, type DayTrip, type DayTripEdge, type DayTripEntry } from "@/lib/mtm/day-trip"
 import {
   buildHistoryTimeline,
   cutHistoryStopsAtBreaks,
@@ -104,7 +104,8 @@ type Case = {
   points: HistoryLocationPoint[]
   journal: MtmWorkdayPauseEvent[]
   visits?: HistoryVisit[]
-  workday?: { startedAt: Date; completedAt: Date }
+  /** completedAt null: the day is still open. */
+  workday?: { startedAt: Date; completedAt: Date | null }
   /** What this day must read, beyond the four facts. */
   reads?: (day: Day) => void
 }
@@ -165,7 +166,7 @@ function coveredSeconds(spans: Array<{ from: number; to: number }>): number {
 const journalBreaks = (events: MtmWorkdayPauseEvent[]) =>
   mtmWorkdayPauses(events).flatMap((pause) => pause.to ? [{ from: pause.from.getTime(), to: pause.to.getTime() }] : [])
 
-function holdsTheFourFacts(name: string, day: Pick<Day, "stops" | "timeline" | "trip">, events: MtmWorkdayPauseEvent[], shift: { startedAt: Date; completedAt: Date }) {
+function holdsTheFourFacts(name: string, day: Pick<Day, "stops" | "timeline" | "trip">, events: MtmWorkdayPauseEvent[], shift: { startedAt: Date; completedAt: Date | null }) {
   const rows = rowsOf(day.trip)
   const breakRows = rows.filter((row) => row.kind === "GAP" && row.reason === "WORKDAY_PAUSED")
   const breaks = journalBreaks(events)
@@ -186,10 +187,14 @@ function holdsTheFourFacts(name: string, day: Pick<Day, "stops" | "timeline" | "
   expect(day.trip.summary.pausedSeconds, `${name}: summary.pausedSeconds`)
     .toBe(breaks.reduce((sum, pause) => sum + Math.round((pause.to - pause.from) / 1_000), 0))
 
-  // 4. The day's four figures never add up to more than the shift.
+  // 4. The day's four figures never add up to more than the shift — an
+  //    open one ends where the trip ends it — and no row is told after its end.
+  const end = day.trip.entries.find((entry): entry is DayTripEdge => entry.kind === "END")
+  expect(rows.filter((row) => end && row.endedAt > end.at).map(told), `${name}: rows after the day's end`).toEqual([])
+  const shiftEnd = shift.completedAt ?? end?.at ?? shift.startedAt
   const { movingSeconds, staySeconds, pausedSeconds, unknownSeconds } = day.trip.summary
   expect(movingSeconds + staySeconds + pausedSeconds + unknownSeconds, `${name}: summary within the shift`)
-    .toBeLessThanOrEqual(Math.round((shift.completedAt.getTime() - shift.startedAt.getTime()) / 1_000))
+    .toBeLessThanOrEqual(Math.round((shiftEnd.getTime() - shift.startedAt.getTime()) / 1_000))
 
   // And the readers of the day read one cut set: the stop list and the map
   // popup (`stops`), the timeline and its CSV (STOP events) — none overlaps a break.
@@ -404,6 +409,19 @@ const CASES: Case[] = [
       // The drive ends at «Перерыв», not at «Закрыл день».
       // (The drive is told from «Начал день», as any first drive is.)
       expect(rowsOf(day.trip).map(told)).toEqual(["MOVE 09:00:00–12:26:00", "GAP WORKDAY_PAUSED 12:26:00–13:00:00"])
+    },
+  },
+  // Verification of round 4 (probe «break_after_last_fix_day_open»): the day
+  // still open, no fix since «Продолжить» (the app killed, or the next fix not
+  // in yet). The day's end was put at the last fix, above the «Перерыв» row.
+  {
+    name: "the day open, a break after the last fix",
+    points: seg("09:00:00", "10:00:00", ROAD, A),
+    journal: journal(["PAUSE", "10:00:30"], ["RESUME", "10:30:00"]),
+    workday: { startedAt: at("09:00:00"), completedAt: null },
+    reads: (day) => {
+      expect(day.trip.entries.at(-1)).toEqual({ kind: "END", id: "end", at: at("10:30:00"), source: "GPS" })
+      expect(rowsOf(day.trip).map(told)).toEqual(["MOVE 09:00:00–10:00:30", "GAP WORKDAY_PAUSED 10:00:30–10:30:00"])
     },
   },
   // Paused right after «Начать», the first fix after «Продолжить».
