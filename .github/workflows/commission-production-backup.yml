@@ -12,6 +12,7 @@ on:
         required: true
         type: choice
         options:
+          - probe-native-scratch
           - configure-monitoring-urls
           - configure-b2-writer
           - install-backup-tools
@@ -64,7 +65,7 @@ permissions:
 jobs:
   commission:
     runs-on: ubuntu-24.04
-    timeout-minutes: 300
+    timeout-minutes: ${{ inputs.operation == 'probe-native-scratch' && 15 || 300 }}
     environment: production
     concurrency:
       group: production-deploy
@@ -113,6 +114,8 @@ jobs:
             }
 
           case "$IN_OPERATION" in
+            probe-native-scratch)
+              EXPECTED_CONFIRMATION="CHECK_NATIVE_SCRATCH_TEMPLATE_ON_13_140_132_245" ;;
             configure-monitoring-urls)
               EXPECTED_CONFIRMATION="CONFIGURE_BACKUP_MONITORING_ON_13_140_132_245" ;;
             configure-b2-writer)
@@ -140,6 +143,7 @@ jobs:
 
           EMPTY_FIELDS="$IN_RECIPIENT_SHA256$IN_KEY_ATTESTATION$IN_EVIDENCE_REF$IN_EVIDENCE_AT$IN_OFFLINE_OPERATOR$IN_CANDIDATE_SHA256$IN_OFFLINE_EVIDENCE_BUNDLE"
           if [ "$IN_OPERATION" = "configure-monitoring-urls" ] \
+            || [ "$IN_OPERATION" = "probe-native-scratch" ] \
             || [ "$IN_OPERATION" = "configure-b2-writer" ] \
             || [ "$IN_OPERATION" = "install-backup-tools" ]; then
             [ -z "$EMPTY_FIELDS" ] || {
@@ -321,7 +325,7 @@ jobs:
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:"$REMOTE_STAGE_DIR/allowed-signers"
 
       - name: Stage exact-main backup programs
-        if: ${{ inputs.operation == 'run-bootstrap-backup' || inputs.operation == 'run-verified-backup' }}
+        if: ${{ inputs.operation == 'run-bootstrap-backup' || inputs.operation == 'run-verified-backup' || inputs.operation == 'probe-native-scratch' }}
         run: |
           set -euo pipefail
           STAGE_DIR="$RUNNER_TEMP/leaddrive-backup-code-$GITHUB_RUN_ID"

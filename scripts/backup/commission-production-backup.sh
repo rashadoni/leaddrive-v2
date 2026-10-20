@@ -238,7 +238,11 @@ cleanup() {
   # merely because its name resembles ours; check the creation nonce too.
   if [ -n "$SCRATCH_UNIT" ]; then
     if ! stop_commission_scratch; then
-      printf '%s\n' '[backup-commission] FATAL: owned scratch shutdown unproved; runner fence retained for inspection' >&2
+      if [ "$OPERATION" = probe-native-scratch ]; then
+        printf '%s\n' '[backup-commission] FATAL: owned scratch shutdown unproved; scratch state preserved for inspection' >&2
+      else
+        printf '%s\n' '[backup-commission] FATAL: owned scratch shutdown unproved; runner fence retained for inspection' >&2
+      fi
       status=1
       scratch_cleanup_failed=1
     fi
@@ -264,7 +268,8 @@ cleanup() {
     exec 5>&-
     LOG_LOCK_HELD=0
   fi
-  if [ "$scratch_cleanup_failed" -eq 0 ] && [ "$OPERATION" != configure-b2-writer ] && { [ "$BACKUP_SERVICE_RUNTIME_MASKED" -eq 1 ] \
+  if [ "$scratch_cleanup_failed" -eq 0 ] && [ "$OPERATION" != configure-b2-writer ] \
+    && [ "$OPERATION" != probe-native-scratch ] && { [ "$BACKUP_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$SECRETS_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$RUNTIME_FILES_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$LOG_SERVICE_RUNTIME_MASKED" -eq 1 ] \
@@ -2926,7 +2931,10 @@ admit_commission_scratch() {
 }
 
 start_commission_scratch() {
-  local unit runtime load token state deadline proof
+  local unit runtime load token state deadline proof runtime_seconds=14520
+  # A metadata-only preflight must not leave a four-hour server behind after
+  # controller loss. Full backup retains its separately reviewed ceiling.
+  [ "$OPERATION" != probe-native-scratch ] || runtime_seconds=600
   admit_commission_scratch
   unit="leaddrive-restore-scratch-${WORKFLOW_RUN_ID}.service"
   runtime="leaddrive-restore-scratch-${WORKFLOW_RUN_ID}"
@@ -2945,7 +2953,7 @@ start_commission_scratch() {
     --property=ProtectSystem=strict \
     --property=ReadWritePaths=/var/lib/postgresql/16/leaddriverestore \
     --property=MemoryHigh=805306368 --property=MemoryMax=1073741824 --property=MemorySwapMax=0 \
-    --property=RuntimeMaxSec=14520 --property=TimeoutStopSec=60 \
+    --property=RuntimeMaxSec="$runtime_seconds" --property=TimeoutStopSec=60 \
     --property=KillSignal=SIGINT --property=KillMode=mixed --property=Restart=no \
     --property=UMask=0077 --property=LimitCORE=0 --property=TasksMax=64 \
     --property=NoNewPrivileges=yes --property=PrivateDevices=yes --property=PrivateTmp=yes \
@@ -3087,6 +3095,108 @@ stop_commission_scratch() {
   SCRATCH_UNIT=""
   SCRATCH_INVOCATION=""
   log "owned scratch stopped cleanly; no cluster/configuration/credential deletion"
+}
+
+lock_native_preflight_runners() {
+  local service state spec fd file expected
+  # This preparatory route never masks, enables, disables or repairs a runner.
+  # Require the owner-only disabled boundary and hold the same existing lock
+  # inodes as every real writer; no unrelated lock/directory is created.
+  assert_owner_source_boundary
+  for service in "$BACKUP_SERVICE" "$SECRETS_SERVICE" "$RUNTIME_FILES_SERVICE" "$LOG_SERVICE"; do
+    state="$(systemctl is-active "$service" 2>/dev/null || true)"
+    case "$state" in inactive|failed|unknown) ;; *) fatal "scratch preflight requires inactive recovery services" ;; esac
+  done
+  for spec in "8:$BACKUP_RUNTIME_LOCK:root:leaddrive-backup:660" \
+    "7:$SECRETS_RUNTIME_LOCK:root:root:600" \
+    "6:$RUNTIME_FILES_RUNTIME_LOCK:root:root:600" \
+    "5:$LOG_RUNTIME_LOCK:root:leaddrive-backup:660"; do
+    fd="${spec%%:*}"; spec="${spec#*:}"; file="${spec%%:*}"; expected="${spec#*:}"
+    assert_root_directory "recovery lock authority" "${file%/*}"
+    [ "$(realpath -e -- "${file%/*}")" = "${file%/*}" ] \
+      && [ -f "$file" ] && [ ! -L "$file" ] \
+      && [ "$(stat -c '%U:%G:%a:%h' -- "$file")" = "$expected:1" ] \
+      || fatal "scratch preflight persistent lock authority refused"
+    case "$fd" in
+      8) exec 8<"$file" ;;
+      7) exec 7<"$file" ;;
+      6) exec 6<"$file" ;;
+      5) exec 5<"$file" ;;
+      *) fatal "scratch preflight lock descriptor refused" ;;
+    esac
+    flock -n "$fd" || fatal "a recovery writer is active; scratch preflight refused"
+    [ "$(stat -Lc '%d:%i' -- "$file")" = "$(stat -Lc '%d:%i' -- "/proc/$$/fd/$fd")" ] \
+      || fatal "scratch preflight lock inode changed"
+    case "$fd" in
+      8) BACKUP_LOCK_HELD=1 ;;
+      7) SECRETS_LOCK_HELD=1 ;;
+      6) RUNTIME_FILES_LOCK_HELD=1 ;;
+      5) LOG_LOCK_HELD=1 ;;
+    esac
+  done
+}
+
+native_preflight_preservation_digest() {
+  local file
+  # Hashes and private paths remain inside this process, never in the report.
+  # No content is staged, uploaded or accepted as a recovery receipt.
+  for file in "$BACKUP_ENV_FILE" /etc/leaddrive/backup.pgpass \
+    /etc/leaddrive/restore-verifier.pgpass /etc/leaddrive/managed-postgres-ca.crt \
+    /etc/leaddrive/restore-postgres-ca.crt \
+    /etc/postgresql/16/leaddriverestore/postgresql.conf \
+    /etc/postgresql/16/leaddriverestore/pg_hba.conf \
+    /etc/postgresql/16/leaddriverestore/server.crt \
+    /etc/postgresql/16/leaddriverestore/server.key \
+    /opt/leaddrive-v2/.next/standalone/.deploy-sha; do
+    [ -f "$file" ] && [ ! -L "$file" ] \
+      && [ "$(realpath -e -- "$file")" = "$file" ] \
+      && [ "$(stat -c '%h' -- "$file")" = 1 ] || return 1
+    stat -c '%d:%i:%u:%g:%a:%s' -- "$file" || return 1
+    sha256sum -- "$file" || return 1
+  done | sha256sum | awk '{print $1}'
+}
+
+probe_native_scratch_template() {
+  local before after source_before source_after sql proof
+  assert_confirmation CHECK_NATIVE_SCRATCH_TEMPLATE_ON_13_140_132_245
+  [ -z "$EXPECTED_RECIPIENT_SHA256$KEY_CUSTODY_ATTESTATION$EVIDENCE_REF$EVIDENCE_AT_UTC$OFFLINE_OPERATOR$EXPECTED_CANDIDATE_SHA256$OWNER_RECIPIENT" ] \
+    || fatal "native scratch preflight accepts no keys, recipients or recovery evidence"
+  for proof in "$INCOMING_EVIDENCE_BUNDLE" "$INCOMING_ALLOWED_SIGNERS" \
+    "$INCOMING_MONITORING_CONFIG" "$INCOMING_B2_WRITER_CONFIG"; do
+    [ ! -e "$proof" ] && [ ! -L "$proof" ] \
+      || fatal "native scratch preflight refuses unrelated protected inputs"
+  done
+  assert_backup_env
+  assert_root_file "live deployment marker" /opt/leaddrive-v2/.next/standalone/.deploy-sha
+  [ "$(cat /opt/leaddrive-v2/.next/standalone/.deploy-sha)" = "$WORKFLOW_SHA" ] \
+    || fatal "native scratch preflight requires exact reviewed main to be live"
+  lock_native_preflight_runners
+  prepare_commission_code
+  before="$(native_preflight_preservation_digest)" || fatal "cannot snapshot native preflight configuration authority"
+  [[ "$before" =~ ^[0-9a-f]{64}$ ]] || fatal "invalid native preflight preservation digest"
+  source_before="$(scratch_connection_query source 'SELECT (pg_control_system()).system_identifier::text || chr(124) || pg_postmaster_start_time()::text')" \
+    || fatal "cannot snapshot source lifecycle before native preflight"
+  [[ "$source_before" =~ ^[1-9][0-9]{0,19}\|.+$ ]] || fatal "source lifecycle proof is empty or malformed"
+  start_commission_scratch
+  prepare_commission_scratch_template
+  # No customer clone/dump/restore or upload. All DDL is restricted by the
+  # existing planner to the newly owned empty scratch template.
+  drop_commission_scratch_template || fatal "native preflight owned template cleanup refused"
+  stop_commission_scratch || fatal "native preflight clean shutdown not proved"
+  sql="$(node "$CODE_STAGE/scripts/backup/native-scratch-template.mjs" --source-contract-sql)" \
+    || fatal "native preflight final source plan refused"
+  proof="$(scratch_connection_query source "$sql")" \
+    || fatal "native preflight final source compatibility query failed"
+  [ "$proof" = 1 ] || fatal "source compatibility changed during native preflight"
+  source_after="$(scratch_connection_query source 'SELECT (pg_control_system()).system_identifier::text || chr(124) || pg_postmaster_start_time()::text')" \
+    || fatal "cannot recheck source lifecycle after native preflight"
+  after="$(native_preflight_preservation_digest)" || fatal "cannot recheck native preflight configuration authority"
+  [ "$before" = "$after" ] && [ "$source_before" = "$source_after" ] \
+    || fatal "native preflight preservation proof changed; not a successful preflight"
+  assert_owner_source_boundary
+  release_backup_locks
+  log "NATIVE_SCRATCH_PREFLIGHT=passed; owned empty template removed; scratch stopped; source lifecycle/configuration unchanged"
+  log "REAL_BACKUP=not_run REAL_RESTORE=not_run B2_UPLOAD=not_run SCHEDULE_ACTIVATION=not_run KAFKA=not_run"
 }
 
 LAST_TRANSIENT_INVOCATION=""
@@ -4025,9 +4135,13 @@ certify_offline_restore() {
   log "independent $recovery_scope evidence certified; all four recovery timers remain disabled for the matching reviewed deployment stage"
 }
 
-if [ "$OPERATION" = configure-b2-writer ]; then
+if [ "$OPERATION" = configure-b2-writer ] || [ "$OPERATION" = probe-native-scratch ]; then
   [ ! -e "$COMMISSION_FENCE_JOURNAL" ] && [ ! -L "$COMMISSION_FENCE_JOURNAL" ] \
-    || fatal "storage setup refuses a pending commissioning fence; use the existing recovery procedure"
+    || {
+      [ "$OPERATION" != probe-native-scratch ] \
+        || fatal "native preflight refuses a pending commissioning fence; use the existing recovery procedure"
+      fatal "storage setup refuses a pending commissioning fence; use the existing recovery procedure"
+    }
 else
   recover_commission_runner_fence
 fi
@@ -4132,6 +4246,7 @@ certify_owner_restore() {
 }
 
 case "$OPERATION" in
+  probe-native-scratch) probe_native_scratch_template ;;
   run-owner-backup) run_verified_backup ;;
   certify-owner-restore) certify_owner_restore ;;
   configure-monitoring-urls) configure_monitoring_urls ;;
