@@ -4137,7 +4137,11 @@ certify_offline_restore() {
 
 if [ "$OPERATION" = configure-b2-writer ] || [ "$OPERATION" = probe-native-scratch ]; then
   [ ! -e "$COMMISSION_FENCE_JOURNAL" ] && [ ! -L "$COMMISSION_FENCE_JOURNAL" ] \
-    || fatal "preparatory setup refuses a pending commissioning fence; use the existing recovery procedure"
+    || {
+      [ "$OPERATION" != probe-native-scratch ] \
+        || fatal "native preflight refuses a pending commissioning fence; use the existing recovery procedure"
+      fatal "storage setup refuses a pending commissioning fence; use the existing recovery procedure"
+    }
 else
   recover_commission_runner_fence
 fi
