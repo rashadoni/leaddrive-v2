@@ -7,6 +7,13 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 MODE="upload"
 FORCE_RETENTION_TIER=""
 OWNER_RECIPIENT=""
+SCRATCH_TEMPLATE_ARG=""
+if [ "${1:-}" = --scratch-template ]; then
+  [[ "${2:-}" =~ ^leaddrive_restore_template_[1-9][0-9]{0,19}_[0-9a-f]{12}$ ]] || exit 2
+  SCRATCH_TEMPLATE_ARG="$2"
+  shift 2
+fi
+readonly SCRATCH_TEMPLATE_ARG
 if [ "${1:-}" = "--local-canary" ] && [ "$#" -eq 1 ]; then
   MODE="local-canary"
 elif [ "${1:-}" = "--commission-monthly" ] && [ "$#" -eq 1 ]; then
@@ -30,6 +37,14 @@ if [ -f "$BACKUP_ENV_FILE" ]; then
   set -a
   source "$BACKUP_ENV_FILE"
   set +a
+fi
+
+# Only the admitted controller's argument may select a native template. Never
+# accept a stale/environment-file override; offline owner workbenches use their
+# independently bootstrapped default template1.
+unset VERIFY_PGTEMPLATE
+if [ -n "$SCRATCH_TEMPLATE_ARG" ]; then
+  export VERIFY_PGTEMPLATE="$SCRATCH_TEMPLATE_ARG"
 fi
 
 # Explicit owner invocation only: encrypted candidate under a separate public
