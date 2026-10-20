@@ -120,3 +120,29 @@ describe("the requests waiting on «Bu gün»", () => {
     expect(correction.endTime).toBe("18:10")
   })
 })
+
+describe("the day HR corrected", () => {
+  it("was, before the correction, exactly what the phone had sent: a start and nothing after", async () => {
+    const { personnelDemoPlan } = await import("@/components/demo-center/journey/scenes/personnel-demo-data")
+    const plan = personnelDemoPlan(TODAY)
+    const month = personnelDemoReport(TODAY, plan.monthStart, plan.lastMonthEnd, kinds)
+    const corrected = month.rows.filter((row) => row.corrections?.length)
+    expect(corrected).toHaveLength(1)
+    const [row] = corrected
+    const before = row.corrections![0].before
+    expect(before.kind).toBe("WORKDAY")
+    if (before.kind !== "WORKDAY") return
+    expect(row.events.map((event) => event.type)).toEqual(["START"])
+    expect(before.facts).toMatchObject({ status: "STARTED", startedAt: iso(row.events[0].occurredAt), pausedAt: null, completedAt: null, totalPausedSeconds: 0 })
+  })
+
+  it("leaves every forgotten check-out of the month a day with its start alone", async () => {
+    const { personnelDemoPlan } = await import("@/components/demo-center/journey/scenes/personnel-demo-data")
+    const plan = personnelDemoPlan(TODAY)
+    for (const entry of plan.missingFinish) {
+      const row = week.rows.find((candidate) => candidate.employeeId === entry.personId && candidate.date === entry.date)
+      if (!row) continue
+      expect(row.events.map((event) => event.type), `${row.employeeName} ${row.date}`).toEqual(["START"])
+    }
+  })
+})

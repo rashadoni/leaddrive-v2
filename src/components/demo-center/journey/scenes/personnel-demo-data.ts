@@ -196,7 +196,10 @@ function workdays(plan: ReturnType<typeof personnelDemoPlan>, from: string, to: 
         continue
       }
       const flagged = FLAGGED_MARKS.find((mark) => mark.personId === person.id && addDays(plan.today, -mark.daysAgo) === date)
-      days.push(workday(person.id, date, start, missing ? null : finish, roll % 2 === 0 ? 15 * 60 + 30 : null, flagged ? minutesOf(flagged.received) : start))
+      // A forgotten check-out is a day with its start and nothing after: a break begun and never ended
+      // would be a paused day, not the «started, no finish» its correction records (`withCorrection`).
+      const breakAt = !missing && roll % 2 === 0 ? 15 * 60 + 30 : null
+      days.push(workday(person.id, date, start, missing ? null : finish, breakAt, flagged ? minutesOf(flagged.received) : start))
     }
   }
   return days
