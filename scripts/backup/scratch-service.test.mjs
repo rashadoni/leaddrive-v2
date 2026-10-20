@@ -245,7 +245,7 @@ CREATE FUNCTION fixture_function() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETU
         ['runtime-files-snapshot.lock', 0, 0o600], ['log-ship.lock', gid, 0o660]]) {
         const path = '/var/lib/leaddrive-recovery-runner-locks/' + name
         assert(!existsSync(path))
-        writeFileSync(path, '', { mode }); chownSync(path, 0, group)
+        writeFileSync(path, '', { mode }); chmodSync(path, mode); chownSync(path, 0, group)
       }
       const preflight = join(root, 'preflight.sh')
       const extra = ['assert_confirmation', 'assert_owner_source_boundary', 'lock_native_preflight_runners',
