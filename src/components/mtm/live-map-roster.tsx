@@ -27,6 +27,7 @@ import {
   rosterFilterTicked,
   rosterLabels,
   rosterSignalAge,
+  rosterSpeed,
   rosterTickState,
   rosterValue,
   tickRosterFilterValue,
@@ -680,7 +681,8 @@ export function LiveMapRoster({
           ? <span className="block truncate tabular-nums" data-testid={`live-map-agent-progress-${agent.agentId}`}>{tMap("routeStop.progress", { done: agent.routeVisited ?? 0, total: agent.routeTotal ?? 0 })}</span>
           : <span className="text-muted-foreground">—</span>
       case "speed": {
-        const kmh = mtmSpeedKmh(agent.speed)
+        // A grey last known point — a break, a phone gone quiet — has no speed to show.
+        const kmh = mtmSpeedKmh(rosterSpeed(agent))
         return kmh != null
           ? <span className="block truncate tabular-nums">{tMap("roster.kmh", { value: kmh })}</span>
           : <span className="text-muted-foreground">—</span>
