@@ -124,6 +124,16 @@ test('controller starts scratch before dump, stops after database worker and kee
   assert(admit.indexOf('flock -n 4') < admit.indexOf('"$data" "$config"'))
 })
 
+test('the actual generated native drill shell parses before starting any hosted service', () => {
+  const fixture = readFileSync(new URL('./scratch-service.test.mjs', import.meta.url), 'utf8')
+  const literal = fixture.match(/nativeDrill = (`[\s\S]*?`)\n    }/)[1]
+  // Evaluate only this file's fixed public template literal with its two local
+  // code/path helpers, not any archive, environment or user-provided input.
+  const drill = new Function('code', 'join', `return ${literal}`)('/public-fixture-code', join)
+  const parsed = spawnSync('bash', ['-n'], { input: drill, encoding: 'utf8' })
+  assert.equal(parsed.status, 0, parsed.stderr)
+})
+
 test('genuine hosted two-cluster TLS lifecycle, source preservation and failure cleanup', {
   skip: process.env.LEADDRIVE_TEST_REAL_SCRATCH === '1' ? false : 'requires isolated hosted Ubuntu24 PG16/systemd; never run native clusters on DEV',
 }, () => {
@@ -263,7 +273,24 @@ CREATE FUNCTION fixture_function() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETU
       for (const name of readdirSync(inputs)) chownSync(join(inputs, name), uid, gid)
       chownSync(inputs, uid, gid); chownSync(work, uid, gid)
       nativeDrill = `
+helper="$CODE_STAGE/scripts/backup/native-scratch-template.mjs"
+# Real install-error injection is synthetic only. Verify the whole temporary
+# privilege/extension transaction rolls back, then run unmodified preparation.
+SCRATCH_SOURCE_IDENTIFIER="$(scratch_connection_query source 'SELECT (pg_control_system()).system_identifier::text')"
+SCRATCH_TEMPLATE_NONCE=0123456789abcdef0123456789abcdef
+SCRATCH_TEMPLATE="leaddrive_restore_template_${'$'}{WORKFLOW_RUN_ID}_${'$'}{SCRATCH_TEMPLATE_NONCE:0:12}"
+node "$helper" --plan create "$SCRATCH_SYSTEM_IDENTIFIER" "$SCRATCH_SOURCE_IDENTIFIER" "$WORKFLOW_RUN_ID" "$SCRATCH_TEMPLATE_NONCE" | scratch_admin_sql postgres >/dev/null
+if node "$helper" --plan bootstrap "$SCRATCH_SYSTEM_IDENTIFIER" "$SCRATCH_SOURCE_IDENTIFIER" "$WORKFLOW_RUN_ID" "$SCRATCH_TEMPLATE_NONCE" \\
+ | sed 's/^CREATE EXTENSION vector.*$/SELECT 1\\/0;/' | scratch_admin_sql "$SCRATCH_TEMPLATE" >/dev/null; then exit 94; fi
+[ "$(scratch_connection_query scratch "SELECT rolsuper::int FROM pg_roles WHERE rolname=session_user")" = 0 ]
+[ "$(printf '%s' 'SELECT count(*) FROM pg_catalog.pg_extension' | scratch_admin_sql "$SCRATCH_TEMPLATE")" = 1 ]
+drop_commission_scratch_template
 prepare_commission_scratch_template
+# Same exact database name but different complete marker: never drop it.
+wrong_nonce="${'$'}{SCRATCH_TEMPLATE_NONCE:0:31}a"
+[ "$wrong_nonce" != "$SCRATCH_TEMPLATE_NONCE" ] || wrong_nonce="${'$'}{SCRATCH_TEMPLATE_NONCE:0:31}b"
+if node "$helper" --plan drop "$SCRATCH_SYSTEM_IDENTIFIER" "$SCRATCH_SOURCE_IDENTIFIER" "$WORKFLOW_RUN_ID" "$wrong_nonce" | scratch_admin_sql postgres >/dev/null; then exit 95; fi
+[ "$(scratch_connection_query scratch "SELECT count(*) FROM pg_database WHERE datname='$SCRATCH_TEMPLATE'")" = 1 ]
 native_args=("$TEST_ROOT/inputs/database.dump" "$TEST_ROOT/inputs/canary.tsv" "$SCRATCH_SOURCE_IDENTIFIER" "$TEST_ROOT/inputs/authority.tsv" "$TEST_ROOT/inputs/ledger.tsv" "$TEST_ROOT/inputs/contract.tsv")
 if [ "$TEST_CASE" = canary-failure ]; then native_args[1]="$TEST_ROOT/inputs/bad-canary.tsv"; fi
 set +e
@@ -276,7 +303,8 @@ runuser -u leaddrive-backup -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/no
 canary_status=$?
 set -e
 if [ "$TEST_CASE" = canary-failure ]; then [ "$canary_status" -ne 0 ]; else [ "$canary_status" = 0 ]; fi
-[ "$(scratch_connection_query scratch "SELECT count(*) FROM pg_database WHERE datname ~ '^leaddrive_restore_verify_')" = 0 ]
+orphan_count="$(scratch_connection_query scratch "SELECT count(*) FROM pg_database WHERE datname ~ '^leaddrive_restore_verify_'")"
+[ "$orphan_count" = 0 ]
 [ -z "$(find "$TEST_ROOT/canary-work" -mindepth 1 -print -quit)" ]
 `
     }
@@ -340,7 +368,8 @@ systemd-run() {
   command systemd-run "${'$'}{bounded[@]}"
 }
 start_commission_scratch
-declare -p SCRATCH_UNIT SCRATCH_DESCRIPTION SCRATCH_INVOCATION SCRATCH_SYSTEM_IDENTIFIER SCRATCH_LOCK_HELD WORKFLOW_RUN_ID >"$TEST_ROOT/owned-state"
+${nativeTemplate ? 'prepare_commission_scratch_template' : ''}
+declare -p SCRATCH_UNIT SCRATCH_DESCRIPTION SCRATCH_INVOCATION SCRATCH_SYSTEM_IDENTIFIER SCRATCH_LOCK_HELD WORKFLOW_RUN_ID SCRATCH_TEMPLATE SCRATCH_TEMPLATE_NONCE SCRATCH_SOURCE_IDENTIFIER CODE_STAGE >"$TEST_ROOT/owned-state"
 # Simulated total controller loss: no exit trap or client cleanup can run.
 kill -KILL $$
 `)
@@ -355,7 +384,7 @@ while [ -e /var/lib/postgresql/16/leaddriverestore/postmaster.pid ] && [ "$SECON
 # died; cleanup still checks the unique description and invocation identity.
 exec 4</var/lib/leaddrive-recovery-runner-locks/postgres-restore-scratch-maintenance.lock
 flock -n 4
-stop_commission_scratch
+${nativeTemplate ? 'if stop_commission_scratch; then exit 96; fi\n[ -n "$SCRATCH_TEMPLATE" ]\n[ ! -e /var/lib/postgresql/16/leaddriverestore/postmaster.pid ]' : 'stop_commission_scratch'}
 `], { env: { ...env, TEST_ROOT: root }, timeout: 35000 })
     ok(expired, 'actual server expiry after controller loss')
     assert.deepEqual(protectedPaths.map(digest), before)
