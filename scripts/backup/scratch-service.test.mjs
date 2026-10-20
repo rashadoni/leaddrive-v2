@@ -153,7 +153,8 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
     chmodSync(config + '/fixture.key', 0o600); chownSync(config + '/fixture.key', postgresUid, postgresGid)
     const sourceConf = join(config, 'postgresql.conf')
     writeFileSync(sourceConf, readFileSync(sourceConf, 'utf8') + `\nlisten_addresses='127.0.0.2'\nssl=on\nssl_cert_file='${config}/fixture.crt'\nssl_key_file='${config}/fixture.key'\n`)
-    writeFileSync(join(config, 'pg_hba.conf'), 'local all postgres peer\nhostssl all fixture_source 127.0.0.2/32 scram-sha-256\nhost all all 0.0.0.0/0 reject\n')
+    // The destination is .2; Linux selects .1 as the loopback client address.
+    writeFileSync(join(config, 'pg_hba.conf'), 'local all postgres peer\nhostssl all fixture_source 127.0.0.1/32 scram-sha-256\nhost all all 0.0.0.0/0 reject\n')
     ok(command('pg_ctlcluster', ['16', cluster, 'start']))
     ok(admin("CREATE ROLE fixture_source LOGIN PASSWORD 'public-synthetic-only';\nGRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO fixture_source;\nCREATE TABLE fixture_sentinel(value text);\nINSERT INTO fixture_sentinel VALUES ('source must survive');\n"))
     mkdirSync('/etc/leaddrive', { mode: 0o755 }); ownedEtc = true
@@ -162,6 +163,10 @@ test('genuine hosted two-cluster TLS lifecycle, source preservation and failure 
     chownSync('/etc/leaddrive/backup.pgpass', uid, gid)
     writeFileSync('/etc/leaddrive/backup.env', 'PGHOST=127.0.0.2\nPGHOSTADDR=127.0.0.2\nPGPORT=55431\nPGDATABASE=postgres\nPGUSER=fixture_source\nPGPASSFILE=/etc/leaddrive/backup.pgpass\nPGSSLMODE=verify-full\nPGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt\nPGCONNECT_TIMEOUT=2\n', { mode: 0o640 })
     chownSync('/etc/leaddrive/backup.env', 0, gid)
+    const sourceConnection = { ...env, PGHOST: '127.0.0.2', PGHOSTADDR: '127.0.0.2', PGPORT: '55431', PGDATABASE: 'postgres',
+      PGUSER: 'fixture_source', PGPASSFILE: '/etc/leaddrive/backup.pgpass', PGSSLMODE: 'verify-full',
+      PGSSLROOTCERT: '/etc/leaddrive/managed-postgres-ca.crt', PGCONNECT_TIMEOUT: '2' }
+    ok(command(pg + 'psql', ['-X', '-w', '-At', '-c', 'SELECT (pg_control_system()).system_identifier::text'], { env: sourceConnection }), 'native synthetic source TLS/identity admission')
     const provisioner = new URL('../../.github/scripts/provision_postgres_restore_scratch.py', import.meta.url).pathname
     ok(command('python3', [provisioner, 'apply']), 'reviewed real provisioning')
     provisioned = true
