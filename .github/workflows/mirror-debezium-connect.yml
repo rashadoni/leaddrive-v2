@@ -1,0 +1,153 @@
+name: Mirror Debezium Connect to GHCR
+
+# Why this exists (2026-10-20): Debezium re-pushes quay.io/debezium/connect:3.7.0.Final
+# every night (~01:00 UTC) and the previous index and platform manifests answer
+# 404 MANIFEST_UNKNOWN straight away. A digest pin on Quay therefore broke every
+# night, and with it cdc-smoke and broker-driver on every event-platform PR.
+#
+# This copies ONE reviewed linux/amd64 manifest byte-for-byte into this public
+# repository's GHCR package. `skopeo copy --preserve-digests` refuses to
+# re-encode, so the GHCR manifest keeps the same sha256 — the same
+# content-identity guarantee as the Quay pin, without the nightly deletion.
+# The disposable test stack (ops/event-platform/test/compose.yml) then pins
+# ghcr.io/rashadoni/debezium-connect:<tag>@sha256:<that digest>.
+#
+# Operator-only: no pull_request trigger, no third-party action, no paid service.
+# How to bump the version: ops/event-platform/test/README.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_digest:
+        description: "Reviewed quay.io/debezium/connect linux/amd64 manifest digest (sha256:<64 hex>)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-debezium-connect
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    env:
+      SOURCE_REPO: quay.io/debezium/connect
+      TARGET_REPO: ghcr.io/rashadoni/debezium-connect
+      EXPECTED_DEBEZIUM_VERSION: 3.7.0.Final
+      EXPECTED_KAFKA_VERSION: 4.3.1
+      SOURCE_DIGEST_INPUT: ${{ inputs.source_digest }}
+      WORK: ${{ runner.temp }}/mirror
+      AUTH_FILE: ${{ runner.temp }}/ghcr-auth.json
+    steps:
+      - name: Validate the reviewed digest
+        id: digest
+        run: |
+          set -euo pipefail
+          hex="${SOURCE_DIGEST_INPUT#sha256:}"
+          if ! [[ "$hex" =~ ^[a-f0-9]{64}$ ]]; then
+            echo "::error::source_digest must be sha256:<64 lowercase hex>"
+            exit 1
+          fi
+          echo "hex=$hex" >> "$GITHUB_OUTPUT"
+          echo "tag=${EXPECTED_DEBEZIUM_VERSION}-${hex:0:12}" >> "$GITHUB_OUTPUT"
+          mkdir -p "$WORK"
+          # One checker for both ends of the copy: <manifest> <config> must be one
+          # platform image manifest whose config blob hashes to its descriptor and
+          # names linux/amd64 with the expected Debezium and Kafka versions.
+          cat > "$WORK/check-image.sh" <<'CHECK'
+          set -euo pipefail
+          manifest="$1" config="$2"
+          media_type="$(jq -r '.mediaType // empty' "$manifest")"
+          case "$media_type" in
+            application/vnd.oci.image.manifest.v1+json|application/vnd.docker.distribution.manifest.v2+json) ;;
+            *) echo "::error::expected one platform image manifest, got '$media_type' (an index is not a reviewed platform digest)"; exit 1 ;;
+          esac
+          config_digest="$(jq -r '.config.digest' "$manifest")"
+          echo "${config_digest#sha256:}  $config" | sha256sum --check --strict
+          platform="$(jq -r '"\(.os)/\(.architecture)"' "$config")"
+          [ "$platform" = "linux/amd64" ] || { echo "::error::platform is $platform, expected linux/amd64"; exit 1; }
+          for kv in "DEBEZIUM_VERSION=$EXPECTED_DEBEZIUM_VERSION" "KAFKA_VERSION=$EXPECTED_KAFKA_VERSION"; do
+            jq -e --arg kv "$kv" '(.config.Env // []) | any(. == $kv)' "$config" > /dev/null \
+              || { echo "::error::image config lacks $kv"; exit 1; }
+          done
+          echo "$manifest: $media_type, config $config_digest, $platform, $EXPECTED_DEBEZIUM_VERSION / Kafka $EXPECTED_KAFKA_VERSION"
+          CHECK
+
+      - name: Check the source before copying anything
+        env:
+          HEX: ${{ steps.digest.outputs.hex }}
+        run: |
+          set -euo pipefail
+          skopeo --version
+          src="docker://$SOURCE_REPO@sha256:$HEX"
+          skopeo inspect --retry-times 3 --raw "$src" > "$WORK/source-manifest.json"
+          echo "$HEX  $WORK/source-manifest.json" | sha256sum --check --strict
+          skopeo inspect --retry-times 3 --config --raw "$src" > "$WORK/source-config.json"
+          bash "$WORK/check-image.sh" "$WORK/source-manifest.json" "$WORK/source-config.json"
+
+      - name: Log in to GHCR with this run's token
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | skopeo login ghcr.io --authfile "$AUTH_FILE" \
+            --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Refuse to move an existing permanent tag
+        env:
+          HEX: ${{ steps.digest.outputs.hex }}
+          TAG: ${{ steps.digest.outputs.tag }}
+        run: |
+          set -euo pipefail
+          existing="$WORK/existing-manifest.json"
+          if skopeo inspect --authfile "$AUTH_FILE" --raw "docker://$TARGET_REPO:$TAG" > "$existing" 2>/dev/null; then
+            current="$(sha256sum "$existing" | cut -d' ' -f1)"
+            if [ "$current" != "$HEX" ]; then
+              echo "::error::$TARGET_REPO:$TAG already points to sha256:$current; a permanent tag is never moved"
+              exit 1
+            fi
+            echo "$TARGET_REPO:$TAG already holds sha256:$HEX; the copy below only re-checks it."
+          fi
+
+      - name: Copy the manifest and blobs byte-for-byte
+        env:
+          HEX: ${{ steps.digest.outputs.hex }}
+          TAG: ${{ steps.digest.outputs.tag }}
+        run: |
+          set -euo pipefail
+          skopeo copy --retry-times 3 --preserve-digests --dest-authfile "$AUTH_FILE" \
+            "docker://$SOURCE_REPO@sha256:$HEX" "docker://$TARGET_REPO:$TAG"
+
+      - name: Read GHCR back and verify digest, platform and versions
+        env:
+          HEX: ${{ steps.digest.outputs.hex }}
+          TAG: ${{ steps.digest.outputs.tag }}
+        run: |
+          set -euo pipefail
+          skopeo inspect --authfile "$AUTH_FILE" --raw "docker://$TARGET_REPO:$TAG" > "$WORK/ghcr-tag-manifest.json"
+          skopeo inspect --authfile "$AUTH_FILE" --raw "docker://$TARGET_REPO@sha256:$HEX" > "$WORK/ghcr-digest-manifest.json"
+          echo "$HEX  $WORK/ghcr-tag-manifest.json" | sha256sum --check --strict
+          echo "$HEX  $WORK/ghcr-digest-manifest.json" | sha256sum --check --strict
+          cmp "$WORK/source-manifest.json" "$WORK/ghcr-tag-manifest.json"
+          skopeo inspect --authfile "$AUTH_FILE" --config --raw "docker://$TARGET_REPO@sha256:$HEX" > "$WORK/ghcr-config.json"
+          cmp "$WORK/source-config.json" "$WORK/ghcr-config.json"
+          bash "$WORK/check-image.sh" "$WORK/ghcr-tag-manifest.json" "$WORK/ghcr-config.json"
+          {
+            echo "### Debezium Connect mirrored"
+            echo ""
+            echo "- source: \`$SOURCE_REPO@sha256:$HEX\`"
+            echo "- mirror: \`$TARGET_REPO:$TAG\` = \`sha256:$HEX\` (manifest and config bytes identical to the source)"
+            echo ""
+            echo "Compose pin: \`image: $TARGET_REPO:$TAG@sha256:$HEX\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Forget the GHCR credential
+        if: always()
+        run: rm -f "$AUTH_FILE"
