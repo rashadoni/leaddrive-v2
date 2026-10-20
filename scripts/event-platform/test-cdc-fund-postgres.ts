@@ -31,11 +31,18 @@ function dba(database: string, sql: string, allowFailure = false) {
   return compose(["exec", "-T", "postgres", "psql", "-U", "event_test", "-d", database,
     "-X", "-qAt", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=verbose"], { input: sql, allowFailure })
 }
-function connect(path: string, method = "GET", body?: unknown, allowFailure = false) {
+function connect(path: string, method = "GET", body?: unknown, allowFailure = false, maxSeconds = 5) {
   assert.ok(path === "/connectors" || path === `/connectors/${FULL_CDC_CONNECTOR}` || path === `/connectors/${FULL_CDC_CONNECTOR}/status`)
-  return compose(["exec", "-T", "connect", "curl", "--fail", "--silent", "--show-error", "--max-time", "5",
+  assert.ok(Number.isInteger(maxSeconds) && maxSeconds >= 1 && maxSeconds <= 30)
+  return compose(["exec", "-T", "connect", "curl", "--fail", "--silent", "--show-error", "--max-time", String(maxSeconds),
     "-X", method, ...(body ? ["-H", "Content-Type: application/json", "--data-binary", "@-"] : []),
-    `http://connect:8083${path}`], { input: body ? JSON.stringify(body) : undefined, allowFailure })
+    `http://connect:8083${path}`], { input: body ? JSON.stringify(body) : undefined, allowFailure, timeout: (maxSeconds + 25) * 1000 })
+}
+function connectorListed() {
+  const result = connect("/connectors", "GET", undefined, true)
+  if (result.status !== 0) return undefined
+  const names: unknown = JSON.parse(result.stdout); assert.ok(Array.isArray(names))
+  return names.includes(FULL_CDC_CONNECTOR)
 }
 async function waitFor(check: () => boolean, name: string, attempts = 60) {
   for (let i = 0; i < attempts; i++) { if (check()) return; await pause(1000) }
@@ -363,14 +370,31 @@ async function main() {
       try {
         compose(["start", "connect"])
         await waitFor(() => connect("/connectors", "GET", undefined, true).status === 0, "cleanup Connect")
-        connect(`/connectors/${FULL_CDC_CONNECTOR}`, "DELETE")
+        // The restarted task is still resuming the exact slot here: on the
+        // pinned 8107474c build its second START_REPLICATION meets "slot is
+        // active" for its own first walsender, and Connect answered DELETE
+        // just after 5 s (run 39408291519). A timed-out DELETE can still be
+        // applied, so repeat only this exact name, with a longer bound, until
+        // a successful listing no longer contains it.
+        await waitFor(() => {
+          if (connectorListed() === false) return true
+          connect(`/connectors/${FULL_CDC_CONNECTOR}`, "DELETE", undefined, true, 30)
+          return connectorListed() === false
+        }, "exact connector removal", 5)
         await waitFor(() => dba(db.databaseName, `SELECT active::text FROM pg_replication_slots WHERE slot_name='${FULL_CDC_SLOT}'
           AND slot_type='logical' AND plugin='pgoutput' AND database='${db.databaseName}';`).stdout.trim() === "false", "exact inactive slot")
+        // db.close() issues a plain DROP DATABASE, which refuses while any
+        // Debezium JDBC or walsender session is still attached to it.
+        await waitFor(() => dba(db.databaseName, `SELECT count(*) FROM pg_stat_activity
+          WHERE datname='${db.databaseName}' AND usename='leaddrive_event_cdc';`).stdout.trim() === "0", "exact CDC sessions closed")
         dba(db.databaseName, `SELECT pg_drop_replication_slot('${FULL_CDC_SLOT}');`)
       } catch (error) { cleanupErrors.push(error) }
     }
     try { await db.close() } catch (error) { cleanupErrors.push(error) }
     try { await closeProxy(proxy.child) } catch (error) { cleanupErrors.push(error) }
+    // Fixed fixture labels only (deadline names, bounded-command failures).
+    if (cleanupErrors.length) console.error(`full_cdc_fund_cleanup=${cleanupErrors.map(error => error instanceof Error
+      && /^(?:full CDC|Disposable Fund)[a-zA-Z ]+$/.test(error.message) ? error.message : "UNLABELLED").join("; ")}`)
     assert.equal(cleanupErrors.length, 0, "full CDC owned cleanup failed; outer disposable project teardown remains required")
   }
 }
