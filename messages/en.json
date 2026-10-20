@@ -29845,6 +29845,8 @@
     "explainRejected": "explanation not accepted",
     "explainAnswerOf": "{name}'s answer:",
     "explainAnsweredAt": "The answer came at {time}",
+    "explainForAbsent": "Explanation for the absence",
+    "explainForLate": "Explanation for being late",
     "explainAskHint": "Everyone late or absent without a reason today is ticked already — untick anyone you do not want to ask. The request goes to the employee's phone; the answer appears here.",
     "explainAccept": "Accept",
     "explainReject": "Do not accept",

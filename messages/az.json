@@ -29841,6 +29841,8 @@
     "explainRejected": "izahat qəbul edilməyib",
     "explainAnswerOf": "{name} cavabı:",
     "explainAnsweredAt": "Cavab saat {time}-da gəlib",
+    "explainForAbsent": "Gəlməmə üzrə izahat",
+    "explainForLate": "Gecikmə üzrə izahat",
     "explainAskHint": "Bu gün gecikənlər və səbəbsiz gəlməyənlər özü seçilir — soruşmaq istəmədiyinizin işarəsini götürün. Sorğu əməkdaşın telefonuna gedir, cavab burada görünəcək.",
     "explainAccept": "Qəbul et",
     "explainReject": "Qəbul etmə",

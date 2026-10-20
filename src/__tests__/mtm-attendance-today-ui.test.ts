@@ -9,6 +9,7 @@ import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import { defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
 import { attendanceTodayRange } from "@/lib/mtm/attendance-today"
 import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
+import type { AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 import type { AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
 import { readHint } from "./helpers/hint"
 
@@ -22,8 +23,9 @@ const kinds = defaultAttendanceDayKinds(key => ({ ru: ru.mtmAttendance[`dayKindN
 const day = (agentId: string, date: string, start: string) => ({ id: `${agentId}-${date}`, agentId, workDate: date, status: "STARTED", startedAt: at(date, start), completedAt: null, totalPausedSeconds: 0,
   events: [{ type: "START", occurredAt: at(date, start) }] })
 const range = attendanceTodayRange(today)
-const reportOf = (extra: readonly { name: string; start: string }[] = []) => buildMtmAttendanceReport({ from: range.from, to: range.to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
-  employees: ["Айсель", "Нигяр", "Рашад", "Эльвин", ...extra.map(person => person.name)].map(name => ({ id: `id-${name}`, name, teamId: null, teamName: null })),
+// `extra` adds a start today — for someone new, or for Рашад, who has none in the base report (absent).
+const reportOf = (extra: readonly { name: string; start: string }[] = [], approvedRequests: AttendanceApprovedPeriod[] = []) => buildMtmAttendanceReport({ from: range.from, to: range.to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds, approvedRequests,
+  employees: [...new Set(["Айсель", "Нигяр", "Рашад", "Эльвин", ...extra.map(person => person.name)])].map(name => ({ id: `id-${name}`, name, teamId: null, teamName: null })),
   workdays: [day("id-Айсель", today, "08:55"), day("id-Нигяр", today, "09:25"), day("id-Эльвин", "2026-10-13", "09:00"), day("id-Эльвин", today, "09:00"),
     ...extra.map(person => day(`id-${person.name}`, today, person.start))] })
 const report = reportOf()
@@ -55,6 +57,10 @@ const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
   return json({ error: "unexpected" }, 500)
 })
 let container: HTMLDivElement, root: Root
+// What the explanations API answers with for today.
+const explanationOf = (name: string, kind: "LATE" | "ABSENT", status: "REQUESTED" | "ANSWERED" | "ACCEPTED" | "REJECTED", answer: string | null = null) => ({
+  id: `e-${name}`, employeeId: `id-${name}`, employeeName: name, date: today, kind, status, lateMinutes: kind === "LATE" ? 30 : null,
+  requestedAt: at(today, "09:20"), requestedByName: "HR", answer, answeredAt: answer ? at(today, "11:35") : null, decidedAt: null, decidedByName: null })
 async function render() {
   await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "ru", timeZone: "Asia/Baku", messages: ru }, createElement(MtmAttendanceToday))))
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
@@ -290,6 +296,105 @@ describe("Personnel → Today", () => {
     await act(async () => buttonIn(byTestId("attendance-explain-answer"), p("explainAccept"))!.click())
     const decision = fetchMock.mock.calls.find(([url]) => String(url) === `/api/v1/mtm/attendance/explanations/${encodeURIComponent("e-Нигяр")}/decision`)!
     expect(JSON.parse(String(decision[1]!.body))).toEqual({ decision: "ACCEPTED" })
+  })
+
+  // Asked as absent at 09:20, Рашад comes at 11:30 and answers on his phone. By then his row is a late
+  // one; his answer disappeared with the absent row, nothing in the CRM could decide it, and the one
+  // click ticked his late row and asked him again (verifier, 2026-10-20).
+  it("keeps the answer of someone asked as absent who then came late readable and decidable, and never asks him again", async () => {
+    explanations = []
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await render()
+    const card = () => byTestId("attendance-today-attention")!
+    const rowOf = (name: string) => Array.from(card().querySelectorAll<HTMLElement>('[data-testid="attendance-today-attention-item"]')).find(row => row.querySelector("p")!.textContent === name)!
+    const tick = (name: string) => rowOf(name).querySelector<HTMLInputElement>('input[type="checkbox"]')!
+    const ask = () => byTestId("attendance-explain-ask") as HTMLButtonElement | null
+    const posts = () => fetchMock.mock.calls.filter(([url, init]) => String(url) === "/api/v1/mtm/attendance/explanations" && init?.method === "POST").map(([, init]) => JSON.parse(String(init!.body)).items)
+    const minute = async () => {
+      await act(async () => { vi.advanceTimersByTime(60_000) })
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    }
+    // 09:20 — Рашад has not marked in: absent, ticked; HR asks with the one button.
+    expect(rowOf("Рашад").dataset.type).toBe("absent")
+    expect(tick("Рашад").checked).toBe(true)
+    explanations = [explanationOf("Рашад", "ABSENT", "REQUESTED"), explanationOf("Нигяр", "LATE", "REQUESTED")]
+    await act(async () => ask()!.click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(posts()).toEqual([[{ agentId: "id-Рашад", date: today, kind: "ABSENT" }, { agentId: "id-Нигяр", date: today, kind: "LATE" }]])
+
+    // 11:30 — he marks in, 2 h 30 min late, and answers the absence question. The minute's reload.
+    currentReport = reportOf([{ name: "Рашад", start: "11:30" }])
+    explanations = [explanationOf("Рашад", "ABSENT", "ANSWERED", "Был у врача"), explanationOf("Нигяр", "LATE", "REQUESTED")]
+    await minute()
+    const rashad = () => rowOf("Рашад")
+    expect(rashad().dataset.type).toBe("late")
+    // His late row carries the answer, is not ticked for another question, and says what the answer is to.
+    expect(rashad().querySelector('[data-testid="attendance-explain-status"]')?.textContent).toBe(p("explainAnswered"))
+    expect(tick("Рашад").checked).toBe(false)
+    expect(tick("Рашад").disabled).toBe(true)
+    expect(rashad().querySelector('[data-testid="attendance-explain-about"]')?.textContent).toBe(p("explainForAbsent"))
+    // Nobody is left to ask, so there is nothing to press: the bar is gone.
+    expect(byTestId("attendance-explain-bar")).toBeNull()
+    expect(card().querySelectorAll('[data-testid="attendance-today-attention-item"]')).toHaveLength(4)
+
+    // HR reads the answer under his row and accepts it.
+    await act(async () => buttonIn(rashad(), p("explainAnswered"))!.click())
+    const answer = byTestId("attendance-explain-answer")!
+    expect(rashad().contains(answer)).toBe(true)
+    expect(answer.textContent).toContain("Был у врача")
+    expect(byTestId("attendance-explain-answered-at")?.textContent).toBe(ru.personnel.explainAnsweredAt.replace("{time}", "11:35"))
+    explanations = [{ ...explanationOf("Рашад", "ABSENT", "ACCEPTED", "Был у врача"), decidedAt: at(today, "11:50"), decidedByName: "HR" }, explanationOf("Нигяр", "LATE", "REQUESTED")]
+    await act(async () => buttonIn(answer, p("explainAccept"))!.click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    const decision = fetchMock.mock.calls.find(([url]) => String(url) === `/api/v1/mtm/attendance/explanations/${encodeURIComponent("e-Рашад")}/decision`)!
+    expect(JSON.parse(String(decision[1]!.body))).toEqual({ decision: "ACCEPTED" })
+    expect(rashad().querySelector('[data-testid="attendance-explain-status"]')?.textContent).toBe(p("explainAccepted"))
+
+    // 11:40 — Камран comes in late. The bar counts him alone; the press asks him alone, never Рашад again.
+    currentReport = reportOf([{ name: "Рашад", start: "11:30" }, { name: "Камран", start: "11:40" }])
+    await minute()
+    expect(tick("Камран").checked).toBe(true)
+    expect(tick("Рашад").checked).toBe(false)
+    expect(byTestId("attendance-explain-bar")!.textContent).toContain(ru.personnel.explainSelectAll.replace("{count}", "1"))
+    expect(ask()!.textContent).toBe(ru.personnel.explainAsk.replace("{count}", "1"))
+    explanations = [...explanations, explanationOf("Камран", "LATE", "REQUESTED")]
+    await act(async () => ask()!.click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(posts()).toHaveLength(2)
+    expect(posts()[1]).toEqual([{ agentId: "id-Камран", date: today, kind: "LATE" }])
+    // «Hamısını seç» cannot bring him back either: once everyone is asked there is no bar at all.
+    expect(byTestId("attendance-explain-bar")).toBeNull()
+  })
+
+  // Asked as absent, then HR records his sick leave: no late or absent row is left for him, but his
+  // answer is still to be decided — it keeps a row of its own until it is, and he is not «without questions».
+  it("gives an open explanation whose row left the list a row of its own until it is decided", async () => {
+    const sick: AttendanceApprovedPeriod = { id: "sick", agentId: "id-Рашад", startDate: today, endDate: today, decidedAt: at(today, "10:00"),
+      details: { kind: "SICK_LEAVE", unit: "DAYS", startTime: null, endTime: null, timezone: "Asia/Baku", dayKind: kinds.find(kind => kind.key === "SICK_LEAVE")! } }
+    currentReport = reportOf([], [sick])
+    explanations = [explanationOf("Рашад", "ABSENT", "ANSWERED", "Температура 39"), explanationOf("Нигяр", "LATE", "REQUESTED")]
+    await render()
+    const card = byTestId("attendance-today-attention")!
+    const items = Array.from(card.querySelectorAll<HTMLElement>('[data-testid="attendance-today-attention-item"]'))
+    expect(items.map(item => item.dataset.type)).toEqual(["late", "explanation", "missing-finish", "risk"])
+    const own = items[1]
+    expect(own.querySelector("p")!.textContent).toBe("Рашад")
+    expect(own.querySelector('[data-testid="attendance-explain-about"]')?.textContent).toBe(p("explainForAbsent"))
+    expect(own.querySelector<HTMLInputElement>('input[type="checkbox"]')!.disabled).toBe(true)
+    expect(own.querySelector("a")!.getAttribute("href")).toBe(`/mtm/attendance/timesheet?date=${today}&employeeId=${encodeURIComponent("id-Рашад")}`)
+    // The card's count includes his row, and «the rest, no questions» is Айсель alone.
+    expect(card.querySelector("span.rounded-full")?.textContent).toBe("4")
+    expect(card.textContent).toContain(ru.personnel.quiet.replace("{count}", "1"))
+    expect(byTestId("attendance-explain-bar")).toBeNull()
+    await act(async () => buttonIn(own, p("explainAnswered"))!.click())
+    expect(byTestId("attendance-explain-answer")?.textContent).toContain("Температура 39")
+    explanations = [{ ...explanationOf("Рашад", "ABSENT", "REJECTED", "Температура 39"), decidedAt: at(today, "11:50") }, explanationOf("Нигяр", "LATE", "REQUESTED")]
+    await act(async () => buttonIn(byTestId("attendance-explain-answer"), p("explainReject"))!.click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    const decision = fetchMock.mock.calls.find(([url]) => String(url) === `/api/v1/mtm/attendance/explanations/${encodeURIComponent("e-Рашад")}/decision`)!
+    expect(JSON.parse(String(decision[1]!.body))).toEqual({ decision: "REJECTED" })
+    // Decided: the row has done its work and leaves the card.
+    expect(Array.from(card.querySelectorAll<HTMLElement>('[data-testid="attendance-today-attention-item"]')).map(item => item.dataset.type)).toEqual(["late", "missing-finish", "risk"])
   })
 
   it("shows who was asked and who answered, and HR accepts the answer", async () => {

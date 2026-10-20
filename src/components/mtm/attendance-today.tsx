@@ -11,7 +11,7 @@ import { Hint } from "@/components/hint"
 import { HomeCard, HomeKpi, HomePill } from "@/components/mtm/home-parts"
 import { attendanceDayKindLabel } from "@/lib/mtm/attendance-day-kinds"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
-import { attendanceAskableExplanations, attendanceExplanationKey, attendanceNewlyAskable, attendanceNow, attendanceTodayRange, summarizeAttendanceToday, type AttendanceNow, type AttendanceNowPerson, type AttendanceTodaySummary } from "@/lib/mtm/attendance-today"
+import { attendanceAskableExplanations, attendanceExplanationKey, attendanceNewlyAskable, attendanceNow, attendanceRowExplanation, attendanceTodayRange, summarizeAttendanceToday, type AttendanceNow, type AttendanceNowPerson, type AttendanceTodayAttention, type AttendanceTodaySummary } from "@/lib/mtm/attendance-today"
 import { ATTENDANCE_RISK_MESSAGES, type AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
 import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
 import type { AttendanceExplanationDto } from "@/lib/mtm/attendance-explanation-contract"
@@ -116,11 +116,11 @@ export function MtmAttendanceToday() {
         setError(a([401, 403, 404].includes(report.status) ? "reportAccessUnavailable" : "reportLoadError")); return
       }
       const rows = reportBody.data.rows as MtmAttendanceReportRow[]
-      const summary = summarizeAttendanceToday(rows, today)
       const explanationItems: AttendanceExplanationDto[] | null = explanations.ok && explanationsBody?.success === true && Array.isArray(explanationsBody.data?.items) ? explanationsBody.data.items : null
+      // Today's explanations go into the summary: one whose row has left the list keeps a row of its own until decided.
+      const summary = summarizeAttendanceToday(rows, today, explanationItems ?? [])
       if (explanationItems) {
-        const explained = new Set(explanationItems.map(item => attendanceExplanationKey(item.employeeId, item.date, item.kind)))
-        const fresh = attendanceNewlyAskable(attendanceAskableExplanations(summary.attention, explained), seen.current)
+        const fresh = attendanceNewlyAskable(attendanceAskableExplanations(summary.attention, explanationItems), seen.current)
         if (fresh.length) setSelected(current => new Set([...current, ...fresh]))
       }
       setData({
@@ -204,22 +204,24 @@ export function MtmAttendanceToday() {
   const summary = data?.summary
   const month = data ? dateLabel(data.today, { month: "long" }) : ""
   const attention = [
-    ...(summary?.attention ?? []).map(item => ({ key: `${item.type}:${item.employeeId}:${item.date}`, item })),
+    ...(summary?.attention ?? []).map(item => ({ key: `${item.type}:${item.employeeId}:${item.date}${item.type === "explanation" ? `:${item.kind}` : ""}`, item })),
   ]
   const risks = data?.risks ?? []
   const attentionCount = attention.length + risks.length
-  const explanationOf = new Map((data?.explanations ?? []).map(item => [attendanceExplanationKey(item.employeeId, item.date, item.kind), item]))
-  const explainKey = (item: (typeof attention)[number]["item"]) => item.type === "late" || item.type === "absent" ? attendanceExplanationKey(item.employeeId, item.date, item.type === "late" ? "LATE" : "ABSENT") : null
-  // Those still to be asked: late or absent today, nothing asked or written yet.
-  const askable = data?.explanations ? attendanceAskableExplanations(summary?.attention ?? [], new Set(explanationOf.keys())) : []
+  // The row's own explanation, or on a late or absent row the one the person already has that day (attendanceRowExplanation).
+  const explanationOf = (item: AttendanceTodayAttention) => data?.explanations ? attendanceRowExplanation(item, data.explanations) : undefined
+  const explainKey = (item: AttendanceTodayAttention) => item.type === "missing-finish" ? null
+    : attendanceExplanationKey(item.employeeId, item.date, item.type === "explanation" ? item.kind : item.type === "late" ? "LATE" : "ABSENT")
+  // Those still to be asked: late or absent today, nothing asked or written for that person and day yet.
+  const askable = data?.explanations ? attendanceAskableExplanations(summary?.attention ?? [], data.explanations) : []
   const clock = (value: string) => formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: data?.timezone ?? "Asia/Baku" })
   const picked = askable.filter(key => selected.has(key))
   // The card keeps to ATTENTION_LIMIT rows but never hides a late or absent row that is asked or
   // will be: one still to ask comes ticked, so everyone «İzahat istə» sends to is on screen with a
   // tick HR can take off; one already asked keeps its row, because this card is the only place in
-  // the CRM where its answer is read and decided.
+  // the CRM where its answer is read and decided. So does an explanation on a row of its own.
   const askableKeys = new Set(askable)
-  const shown = attention.filter(({ item }, index) => { const key = explainKey(item); return index < ATTENTION_LIMIT || (key !== null && (askableKeys.has(key) || explanationOf.has(key))) })
+  const shown = attention.filter(({ item }, index) => { const key = explainKey(item); return index < ATTENTION_LIMIT || (key !== null && (askableKeys.has(key) || explanationOf(item) !== undefined)) })
   const shownRisks = risks.slice(0, Math.max(0, ATTENTION_LIMIT - shown.length))
   const notShown = attentionCount - shown.length - shownRisks.length
 
@@ -296,14 +298,18 @@ export function MtmAttendanceToday() {
             </div> : null}
           <ul className="divide-y divide-border">
             {shown.map(({ key, item }) => {
-              const explainId = explainKey(item), explanation = explainId ? explanationOf.get(explainId) : undefined
+              const explainId = explainKey(item), explanation = explanationOf(item)
+              // What the explanation is about, said when the row does not say it: its own row, or a row of the other kind.
+              const about = explanation && (item.type === "explanation" || explanation.kind !== (item.type === "late" ? "LATE" : "ABSENT"))
+                ? t(explanation.kind === "LATE" ? "explainForLate" : "explainForAbsent") : null
               return <li key={key} className="py-2.5" data-testid="attendance-today-attention-item" data-type={item.type}><div className="flex flex-wrap items-center gap-3">
               {explainId && data?.explanations ? <input type="checkbox" className="h-4 w-4 shrink-0" aria-label={t("explainSelect", { name: item.employeeName })} disabled={!!explanation}
                 checked={!explanation && selected.has(explainId)} onChange={event => setSelected(current => { const next = new Set(current); if (event.target.checked) next.add(explainId); else next.delete(explainId); return next })} /> : null}
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.employeeName}</p>
-                <p className="text-sm text-muted-foreground">{item.type === "absent" ? t("absentNoReason")
+                {item.type === "explanation" ? null : <p className="text-sm text-muted-foreground">{item.type === "absent" ? t("absentNoReason")
                   : item.type === "late" ? t("lateBy", { duration: item.lateSeconds < 3600 ? t("minutes", { count: Math.round(item.lateSeconds / 60) }) : formatAttendanceDuration(item.lateSeconds), time: formatTime(item.startedAt, locale, { hour: "2-digit", minute: "2-digit", timeZone: item.timezone }) })
-                  : t("missingFinishOn", { date: dateLabel(item.date) })}</p></div>
+                  : t("missingFinishOn", { date: dateLabel(item.date) })}</p>}
+                {about ? <p className="text-sm text-muted-foreground" data-testid="attendance-explain-about">{about}</p> : null}</div>
               {explainId && data?.explanations ? <span className="shrink-0 text-xs" data-testid="attendance-explain-status">{!explanation ? <span className="text-muted-foreground">{t("explainNotAsked")}</span>
                 : explanation.status === "REQUESTED" ? <span className="text-amber-700 dark:text-amber-400">{t("explainWaiting", { time: explanation.requestedAt ? clock(explanation.requestedAt) : "" })}</span>
                 : explanation.status === "ANSWERED" ? <button type="button" className="font-semibold text-primary hover:underline" aria-expanded={reading === explanation.id} onClick={() => setReading(reading === explanation.id ? null : explanation.id)}>{t("explainAnswered")}</button>
