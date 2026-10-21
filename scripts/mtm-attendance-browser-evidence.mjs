@@ -127,7 +127,7 @@ async function readyPage(path) {
   await page.locator('h1').first().waitFor({ timeout: 120000 })
   await poll(async () => !(await page.locator('[aria-busy="true"]').count()), 'Page still busy', 120000)
 }
-// Office staff auto-enrolled at activation; a field agent is not HR attendance.
+// Explicit Personnel staff; a technical CRM card alone is not a directory entry.
 const rosterCard = name => fixture.admin.mtmAgent.findFirstOrThrow({ where: { organizationId: fixture.organization.id, name } })
 /** Closed months pick a month with arrows (the browser's month input printed English in Azerbaijani). */
 async function chooseMonth(target) {
@@ -335,8 +335,9 @@ try {
     // attendance — it is not in the directory; office staff are.
     const before = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.manager.id } })
     const directory = await api('admin', '/employees')
-    assert.equal(directory.employees.length, 57)
+    assert.equal(directory.employees.length, 54)
     assert.equal(directory.employees.some(row => row.id === fixture.agents.field.id), false)
+    for (const name of ['admin', 'hr', 'outside']) assert.equal(directory.employees.some(row => row.id === fixture.agents[name].id), false)
     assert.ok(directory.employees.every(row => row.included))
     assert.ok(directory.employees.every(row => row.history.length === 0))
     const row = directory.employees.find(row => row.id === before.id)
@@ -628,6 +629,9 @@ try {
     // Owner, 2026-10-16: the list finds a person, «Edit» opens their page, «back» returns to the same list.
     await readyPage('employees')
     await page.getByTestId('employee-row').first().waitFor()
+    await page.locator('#employee-search').fill('Fixture admin')
+    assert.equal(await page.getByTestId('employee-row').count(), 0)
+    await page.locator('#employee-search').fill('')
     assert.equal(await page.getByTestId('employee-row').count(), 50)
     await button('employeesNext').click(); await button('employeesPrevious').click()
     await page.locator('#employee-search').fill('Fixture roster 00')

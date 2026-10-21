@@ -20515,7 +20515,7 @@
     "branchesAssignNamed": "Filialı yadda saxla: {name}",
     "branchesNoEmployees": "İcazə verilən əhatədə əməkdaş tapılmadı.",
     "employeesTitle": "Əməkdaşlar və iş günü",
-    "employeesIntro": "Burada gəliş və gedişi qeyd edən hər kəs var. MTM sahə agentləri bura daxil deyil.",
+    "employeesIntro": "Burada kadr uçotuna əlavə edilmiş əməkdaşlar göstərilir. CRM istifadəçiləri bu siyahıya avtomatik daxil edilmir.",
     "employeesAutomaticHint": "Qeyd etməli olmayan əməkdaş üçün uçotu açarla söndürün — bu gündən. Hesab saxlanılır.",
     "employeesAutomaticFooter": "Yeni əməkdaşları «Əməkdaş əlavə et» düyməsi ilə əlavə edin. Şirkət parametrlərində əlavə olunan CRM istifadəçiləri də bura avtomatik düşür. Vəzifə, şöbə, rəhbər, işə qəbul və işdən çıxma tarixləri — «Kart» bölməsində.",
     "employeesParticipationFilter": "Uçotda iştirak",

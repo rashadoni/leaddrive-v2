@@ -20519,7 +20519,7 @@
     "branchesAssignNamed": "Save branch: {name}",
     "branchesNoEmployees": "No employees found within your access scope.",
     "employeesTitle": "Employees and working day",
-    "employeesIntro": "Everyone who marks arrival and departure is here. MTM field agents are not.",
+    "employeesIntro": "Employees added to personnel records are listed here. CRM users are not added to this list automatically.",
     "employeesAutomaticHint": "Switch attendance off for anyone who need not mark — from today. The account is kept.",
     "employeesAutomaticFooter": "Add new employees with “Add employee”. CRM users added in the company settings also appear here automatically. Position, department, manager, hire and leaving dates are in the “Card”.",
     "employeesParticipationFilter": "Attendance participation",

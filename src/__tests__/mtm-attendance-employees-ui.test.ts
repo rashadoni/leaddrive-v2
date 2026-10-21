@@ -45,6 +45,16 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 
 // Owner, 2026-10-16: «просил редактируемыми сделать сотрудников… будет неудобно, когда список будет больше 200».
 describe("Personnel → Employees list", () => {
+  it("does not mix CRM user identities into the employee rows or counters", async () => {
+    directory.users = [{ id: "crm-only", name: "CRM-only administrator", existingRole: "EMPLOYEE", existingTeamId: null, eligible: false }]
+    await render()
+    expect(names()).toEqual(["Aylin Demo", "Murad Demo", "Leyla Demo"])
+    expect(container.textContent).not.toContain("CRM-only administrator")
+    expect(container.textContent).toContain(t("employeesParticipationCounts", { total: 3, included: 2, excluded: 1 }))
+    await edit("employee-search", "CRM-only administrator")
+    expect(rows()).toHaveLength(0)
+  })
+
   it.each(["ru", "az", "en"] as const)("renders %s: who, department, today, and a worded Edit link to the employee's page", async language => {
     await render(language)
     expect(names()).toEqual(["Aylin Demo", "Murad Demo", "Leyla Demo"])
