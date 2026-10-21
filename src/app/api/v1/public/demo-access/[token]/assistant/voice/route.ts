@@ -26,7 +26,8 @@ import { runWithRlsBypass } from "@/lib/rls-context"
  * asked (assistant-voice.ts) and settled at the audio's real length; the
  * audio comes back as a WAV file and is kept nowhere.
  *
- * A refusal over the budget says whether voice is over for this demo (not
+ * A refusal over the budget — the person's twenty minutes across all their
+ * demos, or the day's pool — says whether voice is over for this person (not
  * how many seconds are left: that figure includes the day's pool across all
  * demos): a long answer's estimate can be refused while a question still
  * fits, and then only this answer stays text.

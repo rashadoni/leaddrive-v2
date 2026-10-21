@@ -396,7 +396,8 @@ jobs:
           DEMO_SOCIAL_CONNECT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           DEMO_SOCIAL_CONNECT_DB_GATE: required
       - name: Demo assistant voice budget database gate
-        # The guide's voice minutes (ten per demo, 300 a day) are claimed in
+        # The guide's voice minutes (twenty per person who requested a demo,
+        # across all their grants; 300 a day) are claimed in
         # demo_access_events before Google is asked, under one advisory lock.
         # The real voice and transcribe routes run on a real Postgres under
         # FORCE RLS with a role that cannot bypass it, only Google stubbed:
