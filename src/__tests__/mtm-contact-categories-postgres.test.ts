@@ -2761,6 +2761,29 @@ pgDescribe("client categories on a real Postgres", () => {
       expect(baku.body.data.assignedHere).toBe(1)
     })
 
+    // Owner, 2026-10-21: «я не заметил категории клиентов… нужно добавить в
+    // фильтр». The class step reads the company's own classes and the class as
+    // stored, and narrows the list by it.
+    it("offers every class the company grades with, «0» included, and narrows the doctors by the class chosen", async () => {
+      await bypass(() => prisma.mtmSetting.create({ data: { organizationId: ORG, key: "contactClasses", value: ["A", "B", "C", "VIP"] } }))
+      try {
+        const all = await picker(`agentId=${agent}&specialty=Pickerologist&city=Bakı`)
+        expect(all.status, JSON.stringify(all.body).slice(0, 300)).toBe(200)
+        expect(all.body.data.classes).toEqual([
+          { value: "A", label: "A", count: 0 },
+          { value: "B", label: "B", count: 1 },
+          { value: "C", label: "C", count: 0 },
+          { value: "VIP", label: "VIP", count: 1 },
+        ])
+        const vip = await picker(`agentId=${agent}&specialty=Pickerologist&city=Bakı&class=VIP`)
+        expect((vip.body.data.contacts as Array<{ name: string }>).map(contact => contact.name)).toEqual(["Pickerova Bahar"])
+        expect(vip.body.data.matching).toBe(1)
+        expect(vip.body.data.assignedHere).toBe(0)
+      } finally {
+        await bypass(() => prisma.mtmSetting.deleteMany({ where: { organizationId: ORG, key: "contactClasses" } }))
+      }
+    })
+
     it("refuses an agent of another company", async () => {
       expect((await picker("agentId=not-an-agent-here&specialty=Pickerologist")).status).toBe(403)
     })
