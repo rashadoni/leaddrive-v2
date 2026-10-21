@@ -374,6 +374,15 @@ export const TENANT_CAPABILITY_CATALOG: TenantCapabilityDefinition[] = [
     disableMode: "hide_only",
   },
   {
+    id: "brand-monitoring",
+    label: "Brand Monitoring",
+    description: "Brand mentions, social sources, monitoring scenarios, reputation reports, and legal cases.",
+    kind: "native_module",
+    billing: "paid_addon",
+    moduleId: "social",
+    disableMode: "soft_disable",
+  },
+  {
     id: "route-field",
     label: "Route & Field",
     description: "Routes, visits, tasks, photos, agents, field analytics, and MTM operations.",
@@ -497,7 +506,9 @@ export function resolveTenantCapability(
       ? context.modules?.[definition.ownerFeatureKey] === true
       : true
   const featureState = definition.featureKey ? context.modules?.[definition.featureKey] : undefined
-  const explicitlyDisabled = featureState === false
+  const explicitlyDisabled = featureState === false || Boolean(
+    definition.moduleId && definition.disableMode === "soft_disable" && context.modules?.[definition.moduleId] === false,
+  )
   const legacyModuleEnabled = !explicitlyDisabled && Boolean(
     definition.legacyModuleIds?.some((moduleId) => hasModule(context, moduleId)),
   )
@@ -563,7 +574,7 @@ export function resolveTenantCapability(
     definition,
     status,
     reason,
-    actions: resolveCapabilityActions(definition, status, isTenantAdmin),
+    actions: resolveCapabilityActions(definition, status, isTenantAdmin, context.role === "superadmin"),
     enabled,
     visibleInMenu: enabled && status !== "hidden" && status !== "disabled",
   }
@@ -582,6 +593,7 @@ function resolveCapabilityActions(
   definition: TenantCapabilityDefinition,
   status: TenantCapabilityStatus,
   isTenantAdmin: boolean,
+  isSuperAdmin: boolean,
 ): TenantCapabilityAction[] {
   const actions: TenantCapabilityAction[] = []
 
@@ -598,11 +610,17 @@ function resolveCapabilityActions(
     // Feature-backed capabilities can be soft-disabled without deleting their
     // history. Direct management keeps the Route & Field split explicitly
     // opt-in rather than inferring billing behavior from a generic module.
+    // Module-backed paid grants remain controlled by the superadmin panel;
+    // ordinary tenant admins must not gain self-service entitlement writes.
     if (definition.disableMode === "soft_disable" && (
-      definition.appSlug || definition.featureKey || definition.directEntitlementManagement
+      definition.appSlug || definition.featureKey || definition.directEntitlementManagement ||
+      (isSuperAdmin && definition.moduleId)
     )) actions.push("disable")
   }
-  if (status === "disabled" && isTenantAdmin && (definition.appSlug || definition.directEntitlementManagement)) {
+  if (status === "disabled" && isTenantAdmin && (
+    definition.appSlug || definition.directEntitlementManagement ||
+    (isSuperAdmin && definition.moduleId && definition.disableMode === "soft_disable")
+  )) {
     actions.push("enable")
   }
 
