@@ -42,7 +42,7 @@ const risk = { id: "risk-1", employeeId: "id-Рашад", employeeName: "Кам�
   usualName: null, usualDays: null, observedDays: null, deltaSeconds: null, thresholdSeconds: null, branchName: null, distanceMeters: null, dismissal: null } as AttendanceRiskItem
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
-let requests: AttendanceReviewItem[] = [], requestsStatus = 200, decisionStatus = 200
+let requests: AttendanceReviewItem[] = [], requestsStatus = 200, decisionStatus = 200, passedToHr = false
 // Null: this user may not ask for explanations (the route refuses).
 let explanations: unknown[] | null = null
 const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
@@ -51,7 +51,7 @@ const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
   if (url.startsWith("/api/v1/mtm/attendance/report")) return json({ success: true, data: currentReport })
   if (url.startsWith("/api/v1/mtm/attendance/explanations") && init?.method === "POST" && !url.includes("/decision")) return json({ success: true, data: { created: 2, already: 0, notNeeded: 0 } }, 201)
   if (url.startsWith("/api/v1/mtm/attendance/explanations") && !init?.method) return explanations ? json({ success: true, data: { items: explanations } }) : json({ error: "Forbidden" }, 403)
-  if (url.includes("/decision") && init?.method === "POST") return json(decisionStatus < 400 ? { success: true, data: { request: { status: "APPROVED" } } } : { error: "x" }, decisionStatus)
+  if (url.includes("/decision") && init?.method === "POST") return json(decisionStatus < 400 ? { success: true, data: { request: { status: passedToHr ? "PENDING" : "APPROVED" }, passedToHr } } : { error: "x" }, decisionStatus)
   if (url.startsWith("/api/v1/mtm/attendance/requests")) return json(requestsStatus < 400 ? { success: true, data: { items: requests, nextCursor: null } } : { error: "Forbidden" }, requestsStatus)
   if (url.startsWith("/api/v1/mtm/attendance/review")) return json({ success: true, data: { items: [risk], directory: [], snapshot: {} } })
   return json({ error: "unexpected" }, 500)
@@ -76,7 +76,7 @@ async function type(field: HTMLInputElement, value: string) {
 }
 
 beforeEach(() => {
-  requests = [leaveRequest("r1", "Айсель Мамедова"), leaveRequest("r2", "Мурад Гасанов")]; requestsStatus = 200; decisionStatus = 200; explanations = null; currentReport = report
+  requests = [leaveRequest("r1", "Айсель Мамедова"), leaveRequest("r2", "Мурад Гасанов")]; requestsStatus = 200; decisionStatus = 200; passedToHr = false; explanations = null; currentReport = report
   container = document.createElement("div"); document.body.append(container); root = createRoot(container)
   fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock)
 })
@@ -166,6 +166,36 @@ describe("Personnel → Today", () => {
     expect(container.textContent).toContain(p("decisionChanged"))
     expect(container.textContent).not.toContain(p("decisionSaved"))
     expect(fetchMock.mock.calls.filter(([url]) => String(url).startsWith("/api/v1/mtm/attendance/requests?")).length).toBe(before + 1)
+  })
+
+  // Two-step approval (owner, 2026-10-21): «сначала руководитель, потом HR».
+  const twoStep = (item: AttendanceReviewItem, approval: AttendanceReviewItem["approval"], canDecide = true): AttendanceReviewItem => ({ ...item, approval, canDecide })
+  it("two-step approval: a manager's button says it passes the request to HR, and the screen says it went there", async () => {
+    requests = [twoStep(leaveRequest("r1", "Айсель Мамедова"), { twoStep: true, awaiting: "MANAGER", manager: null, passesToHr: true }),
+      // Already passed to HR by this or another manager: nothing left for this manager.
+      twoStep(leaveRequest("r2", "Мурад Гасанов"), { twoStep: true, awaiting: "HR", manager: { name: "Тогрул", at: version, note: null }, passesToHr: false }, false)]
+    passedToHr = true
+    await render()
+    expect(byTestId("attendance-today-request-r2")).toBeNull()
+    expect(byTestId("attendance-today-requests")?.textContent).toContain("1")
+    const row = byTestId("attendance-today-request-r1")
+    expect(buttonIn(row, p("approve"))).toBeUndefined()
+    await act(async () => buttonIn(row, p("passToHr"))!.click())
+    expect(JSON.parse(String(decisions()[0][1]?.body))).toEqual({ decision: "APPROVED", version, note: null })
+    expect(byTestId("attendance-today-request-r1")).toBeNull()
+    expect(container.textContent).toContain(p("passedToHr"))
+    expect(container.textContent).not.toContain(p("decisionSaved"))
+  })
+
+  it("two-step approval: HR sees which manager approved and whose manager has not answered yet, and decides with a plain approve", async () => {
+    requests = [twoStep(leaveRequest("r1", "Айсель Мамедова"), { twoStep: true, awaiting: "HR", manager: { name: "Тогрул Алиев", at: version, note: null }, passesToHr: false }),
+      twoStep(leaveRequest("r2", "Мурад Гасанов"), { twoStep: true, awaiting: "MANAGER", manager: null, passesToHr: false })]
+    await render()
+    expect(byTestId("attendance-today-request-r1")?.querySelector('[data-testid="attendance-today-manager-approved"]')?.textContent).toBe(p("managerApprovedBy").replace("{name}", "Тогрул Алиев"))
+    expect(byTestId("attendance-today-request-r2")?.querySelector('[data-testid="attendance-today-awaiting-manager"]')?.textContent).toBe(p("awaitingManager"))
+    expect(buttonIn(byTestId("attendance-today-request-r1"), p("passToHr"))).toBeUndefined()
+    await act(async () => buttonIn(byTestId("attendance-today-request-r1"), p("approve"))!.click())
+    expect(container.textContent).toContain(p("decisionSaved"))
   })
 
   it("without the right to decide hides the request card but keeps the rest of the screen", async () => {

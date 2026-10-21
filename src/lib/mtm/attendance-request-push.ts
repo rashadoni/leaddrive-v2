@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { attendanceDayKindLabel } from "@/lib/mtm/attendance-day-kinds"
 import type { AttendanceRequestDto } from "@/lib/mtm/attendance-request-contract"
-import { attendanceRequestReviewers } from "@/lib/mtm/attendance-request-notify"
+import { attendanceRequestFirstReviewers } from "@/lib/mtm/attendance-request-notify"
 import { MTM_TEAM_MESSAGES_PUSH_CHANNEL, notifyAgents } from "@/lib/mtm/push-notify"
 import { pushConfigured } from "@/lib/mtm/push-send"
 import az from "../../../messages/az.json"
@@ -22,7 +22,7 @@ const localeOf = (language: string | null | undefined): Locale => language === "
  * until the manager happened to open it — the employee who closed a forgotten
  * day could not start today until then.
  *
- * Who gets it: the same people the bell goes to (`attendanceRequestReviewers`),
+ * Who gets it: the same people the bell goes to (`attendanceRequestFirstReviewers`),
  * on their MTM manager cards — a login without a card has no phone to reach.
  * The push names the employee, the kind and the day: nothing about a customer,
  * and no reason text, since a push can show on a locked screen.
@@ -42,7 +42,7 @@ export async function pushAttendanceRequestToReviewers(
   const { organizationId, agentId, request } = input
   // Push off on this server: nobody to reach, so nothing is read either.
   if (!(deps.configured ?? pushConfigured())) return { cards: 0 }
-  const reviewers = await attendanceRequestReviewers(prisma as unknown as Prisma.TransactionClient, { organizationId, agentId })
+  const reviewers = await attendanceRequestFirstReviewers(prisma as unknown as Prisma.TransactionClient, { organizationId, agentId })
   if (reviewers.length === 0) return { cards: 0 }
   const [cards, employee] = await Promise.all([
     prisma.mtmAgent.findMany({

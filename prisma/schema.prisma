@@ -8375,6 +8375,11 @@ model MtmHrmRequest {
   attendanceDetails   Json?
   decisionNote        String?
   decidedByUserId     String?
+  // Two-step approval (Personnel → Settings → Requests): the manager's half.
+  // The request stays PENDING until HR — an administrator — decides it.
+  managerApprovedByUserId String?
+  managerApprovedAt   DateTime?
+  managerApprovalNote String?
   submittedAt         DateTime
   decidedAt           DateTime?
   cancelledAt         DateTime?
