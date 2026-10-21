@@ -38,7 +38,8 @@ function isState(value: unknown): value is AttendanceMonthN1tState {
  * snapshots of its blocks — one close per at most 100 people, in the order of
  * the form's lines — each with its own request id. A lost answer keeps those
  * bodies, so «Bağlamanın nəticəsini yoxla» repeats them and the server answers
- * from its receipt instead of closing twice.
+ * from its receipt instead of closing twice. A read that failed is read again
+ * with `reload`; until it succeeds the month shows nothing but the error.
  */
 export function useAttendanceN1tMonth(month: string | null, onAccessLost: () => void) {
   const locale = useLocale() as "az" | "ru" | "en"
@@ -97,7 +98,7 @@ export function useAttendanceN1tMonth(month: string | null, onAccessLost: () => 
   // Settled: the answer (or the failure) is about this very month. Until then a past N-1t waits.
   const current = state?.month === month ? state : null
   const settled = month === null || current !== null || failedFor === month
-  return { state: current, loading, failed: failedFor !== null && failedFor === month, settled, busy, pending, message, close, retry }
+  return { state: current, loading, failed: failedFor !== null && failedFor === month, settled, busy, pending, message, close, retry, reload }
 }
 export type AttendanceN1tMonth = ReturnType<typeof useAttendanceN1tMonth>
 

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
 import { AttendanceReportTable, AttendanceReportTotals } from "@/components/mtm/attendance-report-table"
 import { AttendanceClosedMonth, closedMonthView, n1tFormView } from "@/components/mtm/attendance-closed-month"
+import { Hint } from "@/components/hint"
 import { AttendanceN1tClosePanel, AttendanceN1tMessages, AttendanceN1tNotes, useAttendanceN1tMonth } from "@/components/mtm/attendance-n1t-month"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { formatDate } from "@/lib/format-date"
@@ -101,8 +102,11 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
   if (definition.kind !== "table") return null
   // Until the month's state is known, a past N-1t waits: a closed month must not flash today's figures.
   const waiting = !month.settled
-  // A month closed in more parts than one form holds names no frozen people, so today's figures stay hidden.
-  const hidden = !!month.state?.moreCloses
+  // Nor when that state could not be read: the month may be closed, so neither today's table nor
+  // today's Excel/PDF is offered under the error — only reading it again.
+  const unread = !!closingMonth && month.failed
+  // A month closed in more parts than one form holds names no frozen people, so today's figures stay hidden too.
+  const hidden = unread || !!month.state?.moreCloses
   const showLive = !allClosed && !(closable && !waiting) && !hidden
 
   const label = (date: string) => formatDate(`${date}T12:00:00.000Z`, locale, { dateStyle: "medium", timeZone: "UTC" })
@@ -127,7 +131,10 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
         : <MtmAttendanceExportButtons config={config} snapshot={data?.snapshot ?? null} onRefresh={() => void load(range ?? undefined)} onAccessLost={() => setError("reportAccessUnavailable")} />}
     </div>
     {error ? <p role="alert" className="text-sm text-destructive">{t(error)}</p> : null}
-    {!error && month.failed ? <p role="alert" className="text-sm text-destructive">{t("monthCloseLoadError")}</p> : null}
+    {!error && unread ? <div className="flex flex-wrap items-center gap-3" data-testid="attendance-n1t-unread">
+      <p role="alert" className="text-sm text-destructive">{t("monthCloseN1tLoadError")}</p>
+      <Hint text={t("monthCloseN1tReloadHint")}><Button type="button" variant="outline" className="min-h-11" disabled={month.loading} onClick={() => void month.reload()}>{t("monthCloseN1tReload")}</Button></Hint>
+    </div> : null}
     {!error && legacy.map((close, index) => <AttendanceClosedMonth key={close.id} view={closedMonthView(close)} tableFirst primary={!closable && !closed && index === legacy.length - 1} onAccessLost={lostAccess} />)}
     {!error && closed ? <AttendanceClosedMonth view={n1tFormView(closed)} tableFirst primary={!closable} onAccessLost={lostAccess} /> : null}
     {!error && month.state?.moreCloses ? <p className="text-sm text-muted-foreground">{t("monthCloseMoreCloses")}</p> : null}

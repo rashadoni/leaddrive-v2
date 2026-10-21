@@ -188,6 +188,31 @@ describe("N-1t of a finished month (the clip's month close)", () => {
     expect(container.querySelector('[data-testid="attendance-export"]')).not.toBeNull()
   })
 
+  it("shows only the error and a way to read again when a finished month's state cannot be read", async () => {
+    // A closed September whose live day was corrected later: today's figures are not the frozen ones.
+    live = september("08:00")
+    monthAnswer = () => json({ code: "MTM_ATTENDANCE_REQUEST_FAILED" }, 500)
+    await render()
+    // Neither today's lines nor today's Excel/PDF under the error, and no team filter to reach them.
+    expect(container.querySelectorAll('[data-testid="attendance-report-row"]')).toHaveLength(0)
+    expect(container.querySelector('[data-testid="attendance-export"]')).toBeNull()
+    expect(container.querySelector(`select[aria-label="${t.reportTeam}"]`)).toBeNull()
+    expect(text()).not.toContain(t.reportLoading)
+    const unread = container.querySelector('[data-testid="attendance-n1t-unread"]')!
+    expect(unread.querySelector('[role="alert"]')!.textContent).toBe(t.monthCloseN1tLoadError)
+    const again = button(t.monthCloseN1tReload)!
+    expect(await readHint(again)).toBe(t.monthCloseN1tReloadHint)
+    // Read again: the month turns out closed, and its frozen figures — not today's — are shown.
+    state = closedState(); monthAnswer = () => json(state)
+    await act(async () => again.click()); await settle()
+    expect(container.querySelector('[data-testid="attendance-n1t-unread"]')).toBeNull()
+    const hours = frozen.columns.findIndex(column => column.key === "hours")
+    const first = container.querySelector('[data-testid="attendance-frozen-n1t-table"] [data-testid="attendance-report-row"]')!.textContent
+    expect(first).toContain(String(frozen.rows[0].cells[hours])); expect(first).not.toContain(String(n1t(live).rows[0].cells[hours]))
+    expect(container.querySelectorAll('[data-testid="attendance-report-table"]')).toHaveLength(0)
+    expect(container.querySelector('[data-testid="attendance-closed-month"]')).not.toBeNull()
+  })
+
   it("closes a month of more than 100 people as one N-1t: one table numbered 1..105, one press, one closed card and one file", async () => {
     const report = largeSeptember(), config = attendanceN1tConfig("2026-09-01", "2026-09-30")
     const ids = report.rows.map(row => row.employeeId).filter((id, index, all) => all.indexOf(id) === index)
