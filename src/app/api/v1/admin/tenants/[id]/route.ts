@@ -17,6 +17,7 @@ import { logAudit } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { reconcileModulesWithFeatures, withRequiredModules } from "@/lib/modules"
 import { featuresToStringArray } from "@/lib/tenant-capabilities"
+import { isTenantEditorCapabilityChanges, reconcileTenantEditorEntitlements } from "@/lib/tenant-editor-entitlements"
 
 // GET /api/v1/admin/tenants/[id] — Tenant details
 export async function GET(
@@ -64,6 +65,7 @@ export async function GET(
         maxUsers: tenant.maxUsers,
         maxContacts: tenant.maxContacts,
         features: tenant.features,
+        modules: tenant.modules,
         branding: tenant.branding,
         addons: tenant.addons,
         settings: tenant.settings,
@@ -88,6 +90,11 @@ export async function PUT(
 
   const { id } = await params
   const body = await req.json()
+  if (body.capabilityChanges !== undefined && (
+    !Array.isArray(body.features) || !isTenantEditorCapabilityChanges(body.capabilityChanges)
+  )) {
+    return NextResponse.json({ error: "Invalid tenant capability changes" }, { status: 400 })
+  }
 
   return runWithRlsBypass(async () => {
     const existing = await prisma.organization.findUnique({ where: { id } })
@@ -127,6 +134,11 @@ export async function PUT(
       // OFF here actually hides it — otherwise the stale column keeps granting it.
       // Non-group keys (capability-entitlement module ids) are preserved.
       updateData.modules = reconcileModulesWithFeatures(features, existing.modules)
+      if (body.capabilityChanges !== undefined) {
+        const patch = reconcileTenantEditorEntitlements(features, existing, body.capabilityChanges)
+        updateData.features = JSON.stringify(patch.features)
+        updateData.modules = patch.modules
+      }
     }
     if (body.branding !== undefined) {
       updateData.branding = typeof body.branding === "string" ? body.branding : JSON.stringify(body.branding)
@@ -181,6 +193,9 @@ export async function PUT(
         isActive: updated.isActive,
         maxUsers: updated.maxUsers,
         maxContacts: updated.maxContacts,
+        features: updated.features,
+        modules: updated.modules,
+        addons: updated.addons,
       },
     })
   })

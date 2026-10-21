@@ -41,9 +41,19 @@ describe("office attendance fresh mobile access", () => {
     ["DELETE", "/requests/00000000-0000-4000-8000-000000000001"],
     ["GET", "/attachments/00000000-0000-4000-8000-000000000001"],
     ["GET", "/location-consent"], ["POST", "/location-consent"], ["GET", "/installation"], ["POST", "/installation"],
+    ["GET", "/explanations"], ["POST", "/explanations"],
   ])("admits the new own attendance endpoint %s %s with fresh office credentials", async (method, suffix) => {
     expect((await resolveMobileAuth(request(`/api/v2/mtm/mobile/route-field/attendance${suffix}`, method)))?.role).toBe("EMPLOYEE")
     expect(await resolveMobileAuth(request(`/api/v1/mtm/mobile/attendance${suffix}`, method))).toBeNull()
+  })
+  it.each(["PATCH", "PUT", "DELETE"])("does not admit an unsupported explanations method %s", async method => {
+    expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/attendance/explanations", method))).toBeNull()
+  })
+  it("does not turn the explanations allowance into a detail or HR decision allowance", async () => {
+    for (const path of [
+      "/api/v2/mtm/mobile/route-field/attendance/explanations/00000000-0000-4000-8000-000000000001",
+      "/api/v1/mtm/attendance/explanations/00000000-0000-4000-8000-000000000001/decision",
+    ]) expect(await resolveMobileAuth(request(path, "POST"))).toBeNull()
   })
   it("revokes office access when attendance is disabled", async () => {
     vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({ value: false } as never)
@@ -69,6 +79,9 @@ describe("Personnel without Route & Field", () => {
     expect(auth?.role).toBe(role)
     expect(auth?.tenantCapabilities).toMatchObject({ routeField: false, workforceHrm: false, personnel: true })
     expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/attendance/requests", "POST"))).not.toBeNull()
+    for (const method of ["GET", "POST"]) {
+      expect((await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/attendance/explanations", method)))?.role).toBe(role)
+    }
   })
   it.each(["MANAGER", "ADMIN"])("keeps %s out of field and manager endpoints", async role => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(personnelOnly(role) as never)

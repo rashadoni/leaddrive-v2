@@ -248,6 +248,20 @@ jobs:
           # The full attendance bundle exceeded the previous 8-GiB heap.
           # Measure 16 GiB RAM+bounded swap before allowing a 10-GiB heap.
           LEADDRIVE_BUILD_MIN_BUDGET_KIB: "16777216"
+      - name: Checkout the build-worker trace patch of this workflow's commit
+        # HRM_UI_HEAD_SHA may predate the patch script. The patch belongs to
+        # the workflow that runs the build, not to the commit under test.
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .workflow-build-patch
+          persist-credentials: false
+          sparse-checkout: scripts/ci/patch-next-build-worker-trace.mjs
+          sparse-checkout-cone-mode: false
+      - name: Keep Next build-worker trace events out of IPC
+        # Without it the server compiler's result outgrows V8's string limit
+        # over the build worker's IPC and the build hangs (2026-10-21).
+        run: node .workflow-build-patch/scripts/ci/patch-next-build-worker-trace.mjs
       - name: Full cold production bundle (no deploy)
         run: npm run build -- --webpack
         env:
