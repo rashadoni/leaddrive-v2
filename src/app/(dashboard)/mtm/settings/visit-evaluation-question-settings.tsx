@@ -199,14 +199,14 @@ export function VisitEvaluationQuestionSettings({
 
       {/* Two equal halves, like the planner buttons on «Маршруты»: the list and
           the manager's sheet drawn from it stand side by side. */}
-      <div className="mt-3 grid gap-4 lg:grid-cols-2">
-        <ul className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700" data-testid="visit-evaluation-question-rows">
+      <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ul className="min-w-0 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700" data-testid="visit-evaluation-question-rows">
           {rows.map((row) => {
             if (row.kind === "removed") {
               return (
                 <li key={`removed-${row.question.id}`} className="bg-muted/40" data-testid={`visit-evaluation-question-removed-${row.question.id}`}>
-                  <div className="flex items-center gap-2 py-2 pl-[4.75rem] pr-1">
-                    <span className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 py-2 pl-[4.75rem] pr-1">
+                    <span className="min-w-[8rem] flex-1">
                       <span className="block text-sm font-medium text-muted-foreground">{t("evalQuestionRemoved", { name: label(row.question) })}</span>
                       <span className="block text-xs text-muted-foreground">{t("evalQuestionRemovedHint")}</span>
                     </span>
@@ -223,7 +223,8 @@ export function VisitEvaluationQuestionSettings({
             const isEditing = editing?.id === question.id
             return (
               <li key={question.id} className={cn(isEditing && "bg-orange-50/60 dark:bg-orange-950/20")} data-testid={`visit-evaluation-question-${question.id}`}>
-                <div className="flex items-center gap-1 py-1.5">
+                {/* On a narrow screen the two buttons go under the name, to the right. */}
+                <div className="flex flex-wrap items-center gap-1 py-1.5">
                   <Hint wrap text={t("hint.evalQuestionMoveUp")}>
                     <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-9" aria-label={t("evalQuestionMoveUp")} onClick={() => move(index, -1)} disabled={index === 0}>
                       <ArrowUp className="h-4 w-4" />
@@ -234,12 +235,12 @@ export function VisitEvaluationQuestionSettings({
                       <ArrowDown className="h-4 w-4" />
                     </Button>
                   </Hint>
-                  <span className="min-w-0 flex-1 px-1">
+                  <span className="min-w-[8rem] flex-1 px-1">
                     <span className="block text-sm font-medium" data-testid="visit-evaluation-question-name">{label(question)}</span>
                     {isEditing ? <span className="block text-xs text-muted-foreground">{t("evalQuestionEditing")}</span> : null}
                   </span>
                   {isEditing ? null : (
-                    <span className="flex shrink-0 gap-1.5">
+                    <span className="ml-auto flex shrink-0 gap-1.5">
                       <Hint wrap text={t("hint.evalQuestionEdit")}>
                         <Button type="button" variant="outline" size="sm" onClick={() => startEditing(question)} data-testid="visit-evaluation-question-edit">
                           <Pencil className="mr-1 h-3.5 w-3.5" />{t("evalQuestionEdit")}
@@ -276,14 +277,14 @@ export function VisitEvaluationQuestionSettings({
         </ul>
 
         {/* The sheet as the manager's phone draws it from the list on the left. */}
-        <aside className="rounded-2xl border border-zinc-200 bg-muted/40 p-4 dark:border-zinc-700" aria-label={t("evalQuestionsPreviewTitle")} data-testid="visit-evaluation-question-preview">
+        <aside className="min-w-0 rounded-2xl border border-zinc-200 bg-muted/40 p-4 dark:border-zinc-700" aria-label={t("evalQuestionsPreviewTitle")} data-testid="visit-evaluation-question-preview">
           <p className="text-center text-xs text-muted-foreground">{t("evalQuestionsPreviewTitle")}</p>
           <p className="mt-2 text-sm font-semibold">{t("evalQuestionsPreviewHeading")}</p>
           <ul className="mt-1 divide-y divide-zinc-200 dark:divide-zinc-700">
             {questions.map((question) => (
-              <li key={question.id} className="flex items-center justify-between gap-3 py-1.5 text-sm">
-                <span className="min-w-0">{label(question)}</span>
-                <span className="flex shrink-0 gap-1" aria-hidden="true">
+              <li key={question.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-1.5 text-sm">
+                <span className="min-w-[9rem] flex-1">{label(question)}</span>
+                <span className="ml-auto flex shrink-0 gap-1" aria-hidden="true">
                   {[1, 2, 3, 4, 5].map((score) => (
                     <span key={score} className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-zinc-300 bg-background text-xs text-muted-foreground dark:border-zinc-700">{score}</span>
                   ))}
