@@ -727,6 +727,11 @@ jobs:
           printf 'export const DEPLOY_SHA = "%s"\nexport const BUILT_AT = "%s"\n' \
             "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/generated/build-sha.ts
 
+      - name: Keep Next build-worker trace events out of IPC
+        # Same patch as deploy.yml: without it the server compiler's result
+        # outgrows V8's string limit and the build hangs. See the script.
+        run: node scripts/ci/patch-next-build-worker-trace.mjs
+
       - name: Build the production standalone bundle
         run: |
           test -n "${NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY:-}" || {

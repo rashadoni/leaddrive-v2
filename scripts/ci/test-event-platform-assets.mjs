@@ -1032,6 +1032,124 @@ const workflowSources = await Promise.all(
 for (const [file, source] of workflowSources) {
   assert.equal(source.includes("ssh-keyscan"), false, `${file} must not trust a runtime-scanned SSH host key`)
 }
+
+// LEADDRIVE_COLD_PRODUCTION_BUILD=1 turns on Next's webpack build worker
+// (next.config.ts). The worker returns each compiler's result to the parent as
+// ONE JSON string over IPC, and V8 caps a string at 536,870,888 characters; on
+// 2026-10-21 the server compiler's debug trace events alone were 349,059,529
+// of the ≈537M that killed the build (it then hung until the step timeout).
+// So every cold build must run scripts/ci/patch-next-build-worker-trace.mjs
+// after its last install, before `next build`, in the same directory.
+function buildWorkerTracePatchGaps(file, source) {
+  const lines = source.split("\n").map((line) => (/^\s*#/u.test(line) ? "" : line))
+  const jobsAt = lines.findIndex((line) => /^jobs:\s*$/u.test(line))
+  if (jobsAt < 0) return { builds: [], gaps: [] }
+  const COLD = /LEADDRIVE_COLD_PRODUCTION_BUILD(?::\s*["']?1["']?\s*$|=["']?1\b)/mu
+  const BUILD = /\b(?:next build|npm run build)\b/u
+  const PATCH = /\bnode\s+(?:\S*\/)?scripts\/ci\/patch-next-build-worker-trace\.mjs\b/u
+  const INSTALL = /\bnpm\s+(?:ci|install|i)\b/u
+  const workingDirectory = (step) => step.match(/^\s*working-directory:\s*(\S+)\s*$/mu)?.[1] ?? "."
+  const workflowCold = COLD.test(lines.slice(0, jobsAt).join("\n"))
+  const jobStarts = []
+  for (let index = jobsAt + 1; index < lines.length; index++) {
+    if (/^ {2}[A-Za-z0-9_-]+:\s*$/u.test(lines[index])) jobStarts.push(index)
+  }
+  const builds = []
+  const gaps = []
+  jobStarts.forEach((start, jobIndex) => {
+    const job = lines[start].trim().replace(/:$/u, "")
+    const jobLines = lines.slice(start, jobStarts[jobIndex + 1] ?? lines.length)
+    const stepsAt = jobLines.findIndex((line) => /^ {4}steps:\s*$/u.test(line))
+    if (stepsAt < 0) return
+    const indent = jobLines.slice(stepsAt + 1).find((line) => /^\s*- /u.test(line))?.match(/^\s*/u)[0] ?? ""
+    const steps = []
+    for (const line of jobLines.slice(stepsAt + 1)) {
+      if (line.startsWith(`${indent}- `)) steps.push([line])
+      else if (steps.length > 0) steps.at(-1).push(line)
+    }
+    const stepTexts = steps.map((step) => step.join("\n"))
+    const jobCold = workflowCold || COLD.test(jobLines.join("\n"))
+    stepTexts.forEach((step, stepIndex) => {
+      if (!BUILD.test(step) || !jobCold) return
+      const where = `${file} job ${job}, step ${stepIndex + 1}`
+      builds.push(`${file}:${job}`)
+      let patchIndex = -1
+      for (let candidate = stepIndex - 1; candidate >= 0; candidate--) {
+        if (PATCH.test(stepTexts[candidate])) {
+          patchIndex = candidate
+          break
+        }
+      }
+      if (patchIndex < 0) {
+        gaps.push(`${where}: cold webpack build without scripts/ci/patch-next-build-worker-trace.mjs before it`)
+        return
+      }
+      const beforeBuild = step.slice(0, step.search(BUILD))
+      if (stepTexts.slice(patchIndex + 1, stepIndex).some((between) => INSTALL.test(between)) || INSTALL.test(beforeBuild)) {
+        gaps.push(`${where}: npm reinstalls node_modules between the trace patch and the build`)
+      }
+      if (workingDirectory(stepTexts[patchIndex]) !== workingDirectory(step)) {
+        gaps.push(`${where}: the trace patch runs in another working-directory than the build`)
+      }
+    })
+  })
+  return { builds, gaps }
+}
+{
+  const workflow = (jobEnv, steps) => [
+    "name: synthetic",
+    "on: workflow_dispatch",
+    "jobs:",
+    "  build:",
+    "    runs-on: ubuntu-24.04",
+    ...jobEnv,
+    "    steps:",
+    ...steps,
+    "",
+  ].join("\n")
+  const install = ["      - run: npm ci", "      - run: npx prisma generate"]
+  const patch = ["      - name: Keep Next build-worker trace events out of IPC", "        run: node scripts/ci/patch-next-build-worker-trace.mjs"]
+  const build = ["      - name: Build", "        run: npx next build --webpack", "        env:", '          LEADDRIVE_COLD_PRODUCTION_BUILD: "1"']
+  const gapsOf = (source) => buildWorkerTracePatchGaps("synthetic.yml", source).gaps
+  assert.deepEqual(gapsOf(workflow([], [...install, ...patch, ...build])), [], "a patched cold build must pass the guard")
+  assert.deepEqual(
+    gapsOf(workflow([], [...install, ...build.slice(0, 2)])),
+    [],
+    "a build without the cold flag does not use the build worker and needs no patch",
+  )
+  for (const [label, source] of [
+    ["unpatched", workflow([], [...install, ...build])],
+    ["patched after the build", workflow([], [...install, ...build, ...patch])],
+    ["reinstalled after the patch", workflow([], [...patch, ...install, ...build])],
+    ["reinstalled inside the build step", workflow([], [...install, ...patch, "      - run: |", "          npm ci", "          npx next build --webpack", "        env:", '          LEADDRIVE_COLD_PRODUCTION_BUILD: "1"'])],
+    ["cold through job env", workflow(["    env:", '      LEADDRIVE_COLD_PRODUCTION_BUILD: "1"'], [...install, "      - run: npm run build -- --webpack"])],
+    ["only checked out, never run", workflow([], [...install, "      - uses: actions/checkout@v6", "        with:", "          sparse-checkout: scripts/ci/patch-next-build-worker-trace.mjs", ...build])],
+    ["only mentioned in a comment", workflow([], [...install, "      - run: echo skip", "        # node scripts/ci/patch-next-build-worker-trace.mjs", ...build])],
+    ["patched in another directory", workflow([], [...install, ...patch, ...build, "        working-directory: runtime"])],
+  ]) {
+    assert.equal(gapsOf(source).length, 1, `the build-worker trace guard must reject a cold build that is ${label}`)
+  }
+}
+const coldBuilds = []
+for (const [file, source] of workflowSources) {
+  const { builds, gaps } = buildWorkerTracePatchGaps(file, source)
+  assert.deepEqual(gaps, [], `cold webpack builds must run scripts/ci/patch-next-build-worker-trace.mjs first:\n${gaps.join("\n")}`)
+  coldBuilds.push(...builds)
+}
+for (const expected of [
+  "deploy.yml:build",
+  "pr-checks.yml:production-build",
+  "hrm-tenant-capability-ui.yml:build-typecheck",
+  "support-ux-evidence.yml:capture",
+  "support-ux-historical-layout.yml:capture",
+  "workforce-exception-report-browser-evidence.yml:wf-c6-010-build",
+]) {
+  assert.ok(coldBuilds.includes(expected), `the build-worker trace guard no longer sees the cold build in ${expected}`)
+}
+assert.ok(
+  nextConfig.includes("scripts/ci/patch-next-build-worker-trace.mjs"),
+  "next.config.ts must point from webpackBuildWorker to the trace patch it depends on",
+)
 const productionHostWorkflows = workflowSources.filter(([, source]) => source.includes("secrets.SERVER_HOST"))
 for (const [file, source] of productionHostWorkflows) {
   if (file !== "deploy.yml") {

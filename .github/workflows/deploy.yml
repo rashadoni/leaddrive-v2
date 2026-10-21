@@ -881,6 +881,12 @@ jobs:
             "$DEPLOY_TARGET_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/generated/build-sha.ts
           cat src/generated/build-sha.ts
 
+      - name: Keep Next build-worker trace events out of IPC
+        # The build worker returns each compiler's result as one JSON string;
+        # the server's debug trace events alone reached 349M of V8's 536.9M
+        # character limit and the build hung (2026-10-21). See the script.
+        run: node scripts/ci/patch-next-build-worker-trace.mjs
+
       - name: Build Next.js standalone
         # @serwist requires webpack for sw.js. Next compiles server, edge and
         # client in sequential disposable workers. The integrated server graph
