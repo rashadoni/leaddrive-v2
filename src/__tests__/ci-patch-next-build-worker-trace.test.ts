@@ -66,10 +66,10 @@ function project(options: { version?: string; edit?: Partial<Record<string, (sou
 // these tests may happen to run on, is what lets the script touch a copy.
 const LOCAL_ENV: NodeJS.ProcessEnv = { ...process.env }
 delete LOCAL_ENV.GITHUB_ACTIONS
-function patch(root: string, cwd = ROOT, options: { flags?: string[]; env?: NodeJS.ProcessEnv } = {}) {
+function patch(root: string, cwd = ROOT, options: { flags?: string[]; env?: Record<string, string | undefined> } = {}) {
   const flags = options.flags ?? ["--allow-local"]
   const args = cwd === root ? [SCRIPT, ...flags] : [SCRIPT, ...flags, root]
-  const result = spawnSync(process.execPath, args, { cwd, encoding: "utf8", env: { ...LOCAL_ENV, ...options.env } })
+  const result = spawnSync(process.execPath, args, { cwd, encoding: "utf8", env: { ...LOCAL_ENV, ...options.env } as NodeJS.ProcessEnv })
   return { status: result.status, out: `${result.stdout}${result.stderr}` }
 }
 
