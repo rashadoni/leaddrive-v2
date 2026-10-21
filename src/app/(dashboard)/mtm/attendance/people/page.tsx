@@ -13,12 +13,15 @@ const TABS = ["employees", "branches", "phones"] as const
 
 export default async function PersonnelPeoplePage({ searchParams }: { searchParams: AttendanceSearchParams }) {
   const t = await getTranslations("personnel")
+  const m = await getTranslations("mtmAttendance")
+  // Each view's hint is what its own page says it holds.
+  const hints: Record<(typeof TABS)[number], string> = { employees: m("employeesIntro"), branches: m("branchesIntro"), phones: t("peoplePhonesHint") }
   const session = await runWithRlsBypass(async () => auth())
   const isAdmin = session?.user?.role === "admin" || session?.user?.role === "superadmin"
   const visible = TABS.filter(key => isAdmin || !ADMIN_TABS.includes(key))
   const tab = attendanceTab((await searchParams).tab, visible)
   return <div className="space-y-6">
-    <MtmAttendanceTabs base="/mtm/attendance/people" active={tab} label={t("peopleTabs")} tabs={visible.map(key => ({ key, label: t(`tabs.${key}`) }))} />
+    <MtmAttendanceTabs base="/mtm/attendance/people" active={tab} label={t("peopleTabs")} tabs={visible.map(key => ({ key, label: t(`tabs.${key}`), hint: hints[key] }))} />
     {tab === "employees" ? <MtmAttendanceEmployees /> : tab === "branches" ? <MtmAttendanceBranches /> : <MtmAttendanceInstallations />}
   </div>
 }

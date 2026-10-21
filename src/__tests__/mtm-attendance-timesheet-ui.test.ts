@@ -8,6 +8,9 @@ import { MtmAttendanceReportWorkspace } from "@/components/mtm/attendance-report
 import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import { attendanceDayKindPresetCodes, defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
 import { redirectToAttendanceTab } from "@/lib/mtm/attendance-legacy-redirect"
+import type { MtmAttendanceCorrection, MtmAttendanceWorkday } from "@/lib/mtm/attendance-report"
+import type { WorkforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
+import { readHint } from "./helpers/hint"
 
 const redirect = vi.hoisted(() => vi.fn((url: string) => { throw new Error(`REDIRECT ${url}`) }))
 vi.mock("next/navigation", async original => ({ ...(await original<typeof import("next/navigation")>()), redirect }))
@@ -18,12 +21,29 @@ const azMessages = JSON.parse(readFileSync("messages/az.json", "utf8"))
 const p = (key: string) => key.split(".").reduce((node, part) => node[part], ru.personnel) as string
 const kinds = attendanceDayKindPresetCodes(defaultAttendanceDayKinds(key => ({ ru: ru.mtmAttendance[`dayKindName${key}`], az: "x", en: "x" })), "RU")
 const at = (date: string, time: string) => `${date}T${time}:00+04:00`
+/**
+ * Rashad's month for the signs: on 12 Oct he forgot to mark his finish (hours unknown), and on
+ * 13 Oct he forgot it too, asked, and HR approved 18:07 — a correction, as the product's report
+ * store projects it from the correction ledger.
+ */
+function rashadDays(): MtmAttendanceWorkday[] {
+  const before: WorkforceWorkdayCorrectionFacts = { id: "r13", workDate: "2026-10-13", status: "STARTED", startedAt: new Date(at("2026-10-13", "08:52")).toISOString(), pausedAt: null, completedAt: null, totalPausedSeconds: 0 }
+  const after: WorkforceWorkdayCorrectionFacts = { ...before, status: "COMPLETED", completedAt: new Date(at("2026-10-13", "18:07")).toISOString() }
+  const correction: MtmAttendanceCorrection = { id: "c13", requestId: "q13", source: "REQUEST_APPROVAL", occurredAt: new Date(at("2026-10-14", "10:05")).toISOString(),
+    reviewer: { id: "hr", name: "HR" }, before: { kind: "WORKDAY", facts: before }, after }
+  return [
+    { id: "r12", agentId: "rashad", workDate: "2026-10-12", status: "STARTED", startedAt: at("2026-10-12", "09:00"), completedAt: null, totalPausedSeconds: 0, events: [{ type: "START", occurredAt: at("2026-10-12", "09:00") }] },
+    { id: "r13", agentId: "rashad", workDate: "2026-10-13", status: "COMPLETED", startedAt: after.startedAt, completedAt: after.completedAt, totalPausedSeconds: 0,
+      events: [{ type: "START", occurredAt: at("2026-10-13", "08:52") }], correctionProjection: { valid: true, facts: after, pauseIntervals: [], history: [correction] } },
+  ] as MtmAttendanceWorkday[]
+}
+let withSigns = false
 const reportFor = (from: string, to: string) => buildMtmAttendanceReport({ from, to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
   employees: [{ id: "nigar", name: "Нигяр Бабаева", teamId: "centre", teamName: "Офис «Центр»" }, { id: "rashad", name: "Рашад Алиев", teamId: "north", teamName: "Филиал «Север»" }],
   workdays: [{ id: "n14", agentId: "nigar", workDate: "2026-10-14", status: "STARTED", startedAt: at("2026-10-14", "09:25"), completedAt: null, totalPausedSeconds: 0,
     events: [{ type: "START", occurredAt: at("2026-10-14", "09:25") }] },
   { id: "n13", agentId: "nigar", workDate: "2026-10-13", status: "COMPLETED", startedAt: at("2026-10-13", "09:00"), completedAt: at("2026-10-13", "18:00"), totalPausedSeconds: 0,
-    events: [{ type: "START", occurredAt: at("2026-10-13", "09:00") }, { type: "FINISH", occurredAt: at("2026-10-13", "18:00") }] }] })
+    events: [{ type: "START", occurredAt: at("2026-10-13", "09:00") }, { type: "FINISH", occurredAt: at("2026-10-13", "18:00") }] }, ...(withSigns ? rashadDays() : [])] })
 const json = (body: unknown) => new Response(JSON.stringify(body))
 const fetchMock = vi.fn<typeof fetch>(async input => {
   const url = new URL(String(input), "https://crm.test")
@@ -41,7 +61,7 @@ async function render(props: Parameters<typeof MtmAttendanceReportWorkspace>[0])
 }
 const reportCalls = () => fetchMock.mock.calls.map(([url]) => new URL(String(url), "https://crm.test")).filter(url => url.pathname.endsWith("/report"))
 
-beforeEach(() => { savedViews = []; container = document.createElement("div"); document.body.append(container); root = createRoot(container); fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock) })
+beforeEach(() => { savedViews = []; withSigns = false; container = document.createElement("div"); document.body.append(container); root = createRoot(container); fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock) })
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); document.body.innerHTML = ""; vi.unstubAllGlobals() })
 
 describe("Personnel → Timesheet month", () => {
@@ -127,6 +147,51 @@ describe("Personnel → Timesheet month", () => {
     expect(reportCalls().at(-1)?.searchParams.get("to")).toBe("2026-09-30")
   })
 
+})
+
+describe("Timesheet signs (owner, 2026-10-20: as the «Kadr uçotu» clip explains them)", () => {
+  const rashad = () => Array.from(container.querySelectorAll('[data-testid="attendance-month-person"]')).find(row => row.textContent?.includes("Рашад"))!
+  const nigar = () => Array.from(container.querySelectorAll('[data-testid="attendance-month-person"]')).find(row => row.textContent?.includes("Нигяр"))!
+
+  it("marks a corrected day with a star that reads at rest and is explained in the legend", async () => {
+    withSigns = true
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    const cell = rashad().querySelectorAll<HTMLButtonElement>('[data-testid="attendance-month-cell"]')[12]
+    // No day card is open: the star is there on its own, in the colour of a correction.
+    expect(document.querySelector('[data-testid="attendance-day-popover"]')).toBeNull()
+    expect(cell.textContent).toBe("Я*")
+    const star = cell.querySelector('[data-testid="attendance-corrected-mark"]')!
+    expect(star.className).toContain("text-primary")
+    expect(cell.getAttribute("aria-label")).toMatch(new RegExp(`· ${p("legendCorrected")}$`))
+    const legend = container.querySelector('[data-testid="attendance-legend-corrected"]')!
+    expect(legend.textContent).toBe(`*${p("legendCorrected")}`)
+    expect(azMessages.personnel.legendCorrected).toBe("müraciətlə düzəliş edilib")
+    // Only that day has a star.
+    expect(Array.from(container.querySelectorAll('[data-testid="attendance-corrected-mark"]'))).toHaveLength(1)
+  })
+
+  it("gives an hours total that leaves out unknown days its own sign, «≥», never the correction's «*»", async () => {
+    withSigns = true
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    const cells = Array.from(rashad().querySelectorAll("td"))
+    const hours = cells[cells.length - 4]
+    expect(hours.textContent).toMatch(/^≥\d+:\d{2}$/)
+    expect(hours.textContent).not.toContain("*")
+    const hint = await readHint(hours.querySelector("[data-hint-value]"))
+    expect(hint).toContain("у 1 дня")
+    expect(hint).toMatch(/^Не меньше этого/)
+    expect(container.querySelector('[data-testid="attendance-legend-partial"]')!.textContent).toBe(`≥${p("legendPartialTotal")}`)
+    // Nigar's hours are all known: a plain total, no sign.
+    const nigarCells = Array.from(nigar().querySelectorAll("td"))
+    expect(nigarCells[nigarCells.length - 4].textContent).toMatch(/^\d+:\d{2}$/)
+  })
+
+  it("explains no sign that is not on the screen", async () => {
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    expect(container.querySelector('[data-testid="attendance-timesheet-legend"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="attendance-legend-corrected"]')).toBeNull()
+    expect(container.querySelector('[data-testid="attendance-legend-partial"]')).toBeNull()
+  })
 })
 
 describe("Timesheet saved forms", () => {
