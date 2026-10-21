@@ -56,3 +56,14 @@
 - До полного окончания deploy результат не объявляется выпущенным; рабочие пользовательские/кадровые данные не изменяются.
 
 - Quality & security gates production run39655768277 завершён SUCCESS (job119415470360): PostgreSQL attendance184/184, employees32/32, общий unit baseline18 без новых failing files. Сборка перешла к Next standalone; main всё ещё `de44f2a3325dbdc9a89e5fe14b266010cd84dff4`. Точка ожидания: сборка → штатная выкладка → подготовленный read-only smoke.
+
+- Production build job119415470995 завершился SUCCESS. Артефакт `leaddrive-prod-de44f2a3325dbdc9a89e5fe14b266010cd84dff4` размером473936873bytes создан штатным workflow, доставлен в production; job119430788916 перешёл к atomic deploy. Post-deploy smoke ещё не завершён.
+
+## 2026-10-21 — выпущено и проверено на production
+
+- Deploy workflow https://github.com/rashadoni/leaddrive-v2/actions/runs/39655768277 полностью завершился SUCCESS, включая production smoke и retention cleanup. Выпущен merge SHA `de44f2a3325dbdc9a89e5fe14b266010cd84dff4`.
+- На `https://app.leaddrivecrm.org` и `https://zeytun.leaddrivecrm.org` ping200/ok и public build-info точно совпали с release SHA.
+- Read-only authenticated smoke существующей fictional phone company: до выпуска2 CRM-only записи в employees; после0. Все3 CRM users сохранены; mobile bootstrap прежнего EMPLOYEE успешно работает. HR/personnel данных не изменяли. Sanitized receipt: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/mtm-maestro-device-20261021/personnel-roster-after-sanitized.json`.
+- Первое выполнение smoke helper остановилось до авторизации на публичном ping: Python urllib получил403; повторная проверка документированным curl transport дала200 на обоих доменах, после адаптации helper полный smoke PASS. Это ошибка транспорта первого probe, не провал приложения, и она не скрывается.
+- Кадровая правка завершена: CRM-only accounts больше не входят в список/поиск/счётчики, явно добавленные HR сотрудники сохраняются по проверенным DB/E2E сценариям. Визуальная проверка реального Zeytun под пользовательской сессией NOT RUN: такой browser session здесь не подключён; deployment SHA и функциональный smoke проверены на общем рабочем сервере через тестовую компанию.
+- Следующая часть исходной задачи: возврат к незавершённому полному Maestro offline циклу; сохранённая точка перед реальной свободной датой22октября Asia/Baku (не ранее20:00UTC21октября). Сначала read-only проверка телефона и guard, без подмены времени или новых кадровых записей.
