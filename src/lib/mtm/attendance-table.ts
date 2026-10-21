@@ -1,7 +1,7 @@
 import { attendanceCountedOvertimeSeconds, attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import { ATTENDANCE_LOCATION_STATE_MESSAGES, attendanceDayLocationText, attendanceEndpointBranch, summarizeAttendanceBranches } from "@/lib/mtm/attendance-location-report"
-import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
+import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow, type MtmAttendanceReportTotals } from "@/lib/mtm/attendance-report"
 import { attendanceStatusText, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { AttendanceViewConfigSchema, type AttendanceViewConfig, type AttendanceViewColumn } from "@/lib/mtm/attendance-view-contract"
 import { attendanceDayKindLabel, type AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
@@ -173,10 +173,17 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
   if (config.mode !== "DAY" || !config.columns.includes("notes")) {
     for (const row of rows) for (const line of attendanceApprovedLines(row, locale, t)) details.push(`${row.employeeName} · ${date(row.date)} · ${line}`)
   }
-  const totalLines = config.showTotals ? [t("reportTotalsTitle"),
+  return { title, columns, rows: tableRows, details, totals: config.showTotals ? attendanceTotalLines(totals, t) : [] }
+}
+
+/** The figures a day, journal or month table totals: plain numbers, the same in every language. */
+export type AttendanceTotalFigures = Pick<MtmAttendanceReportTotals, "workedSeconds" | "pausedSeconds" | "lateSeconds" | "earlyLeaveSeconds" | "rowCount" | "employeeCount" | "annualLeaveDays" | "unknownWorkedCount" | "unknownPausedCount">
+/** The totals under a day, journal or month table — one wording for the screen, Excel and PDF. */
+export function attendanceTotalLines(totals: AttendanceTotalFigures, t: AttendanceText): string[] {
+  const lines = [t("reportTotalsTitle"),
     t("reportTotals", { worked: formatAttendanceDuration(totals.workedSeconds), paused: formatAttendanceDuration(totals.pausedSeconds), late: formatAttendanceDuration(totals.lateSeconds), early: formatAttendanceDuration(totals.earlyLeaveSeconds) }),
-    t("reportTotalsRows", { rows: totals.rowCount, employees: totals.employeeCount })] : []
-  if (config.showTotals && totals.annualLeaveDays > 0) totalLines.push(t("reportAnnualLeaveDays", { days: totals.annualLeaveDays }))
-  if (config.showTotals && !totals.isComplete) totalLines.push(t("reportIncompleteTotals", { worked: totals.unknownWorkedCount, paused: totals.unknownPausedCount }))
-  return { title, columns, rows: tableRows, details, totals: totalLines }
+    t("reportTotalsRows", { rows: totals.rowCount, employees: totals.employeeCount })]
+  if (totals.annualLeaveDays > 0) lines.push(t("reportAnnualLeaveDays", { days: totals.annualLeaveDays }))
+  if (totals.unknownWorkedCount > 0 || totals.unknownPausedCount > 0) lines.push(t("reportIncompleteTotals", { worked: totals.unknownWorkedCount, paused: totals.unknownPausedCount }))
+  return lines
 }

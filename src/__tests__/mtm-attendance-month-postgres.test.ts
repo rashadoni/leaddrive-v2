@@ -156,19 +156,19 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
 
   it("freezes the N-1t exactly as the report computes it; a later approved correction changes only the live day and is listed apart",async()=>{
    const open=await inC(()=>store.readAttendanceMonthN1t(closer,{month,locale:"az"}))
-   expect(open).toMatchObject({month,finished:true,canClose:true,closes:[],open:3,ownOpen:false,notIncluded:0,blockers:[],moreBlockers:0,closedElsewhere:0})
+   expect(open).toMatchObject({month,finished:true,canClose:true,closed:null,legacy:[],open:3,ownOpen:false,notIncluded:0,blockers:[],moreBlockers:0,closedElsewhere:0})
    expect(open.candidates).toHaveLength(1);expect([...open.candidates[0].agentIds].sort()).toEqual([people.a,people.b,people.c].sort())
    const before=await liveN1t("az",month)
    // What the press freezes is the screen's own N-1t: same columns, lines and totals.
-   expect(visible(open.candidates[0].table)).toEqual(visible(before))
+   expect(visible(open.preview!)).toEqual(visible(before))
    expect(before.rows.map(row=>row.key)).toEqual([people.a,people.b,people.c])
    const candidate=open.candidates[0],closed=await inC(()=>store.closeAttendanceMonth(closer,{month,agentIds:candidate.agentIds,requestId:randomUUID(),preview:{hash:candidate.hash,asOf:candidate.asOf}}))
    const after=await inC(()=>store.readAttendanceMonthN1t(closer,{month,locale:"az"}))
-   expect(after).toMatchObject({open:0,candidates:[],blockers:[],closedElsewhere:0})
-   expect(after.closes).toHaveLength(1);expect(after.closes[0]).toMatchObject({id:closed.id,month,form:"N1T",createdByName:"Fictional N-1t closer",employeeCount:3,corrections:[]})
-   expect(visible(after.closes[0].table)).toEqual(visible(before))
+   expect(after).toMatchObject({open:0,candidates:[],preview:null,blockers:[],closedElsewhere:0,legacy:[]})
+   expect(after.closed).toMatchObject({month,employeeCount:3,corrections:[],closes:[{id:closed.id,month,createdByName:"Fictional N-1t closer",employeeCount:3}]})
+   expect(visible(after.closed!.table)).toEqual(visible(before))
    // Excel and PDF of the closed month are the N-1t form, the same cells.
-   const file=await inC(()=>store.readAttendanceMonthTable(closer,closed.id,"az"));expect(file.form).toBe("N1T");expect(file.table).toEqual(after.closes[0].table)
+   const file=await inC(()=>store.readAttendanceMonthTable(closer,closed.id,"az"));expect(file.form).toBe("N1T");expect(file.table).toEqual(after.closed!.table)
    const {buildAttendanceXlsx,buildAttendancePdf}=await import("@/lib/mtm/attendance-export");expect(buildAttendanceXlsx(file.table).worksheets[0].getRow(1).values).toContain(messages.az.mtmAttendance.reportIndex);expect(buildAttendancePdf(file.table).subarray(0,4).toString()).toBe("%PDF")
    const hoursAt=before.columns.findIndex(column=>column.key==="hours"),frozenHours=before.rows[0].cells[hoursAt]
    // A later approved correction: 09:10 → 09:00 on 28 September for employee A.
@@ -178,16 +178,16 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
    expect(live.startedAt.toISOString()).toBe(at("2026-09-28","09:00").toISOString())
    const liveAfter=await liveN1t("az",month);expect(liveAfter.rows[0].cells[hoursAt]).not.toBe(frozenHours)
    const frozen=await inC(()=>store.readAttendanceMonthN1t(closer,{month,locale:"az"}))
-   expect(frozen.closes[0].table).toEqual(after.closes[0].table);expect(frozen.closes[0].table.rows[0].cells[hoursAt]).toBe(frozenHours)
+   expect(frozen.closed!.table).toEqual(after.closed!.table);expect(frozen.closed!.table.rows[0].cells[hoursAt]).toBe(frozenHours)
    expect(await inC(()=>store.readAttendanceMonthTable(closer,closed.id,"az"))).toEqual(file)
-   expect(frozen.closes[0].corrections).toHaveLength(1);expect(frozen.closes[0].corrections[0]).toMatchObject({employeeId:people.a,employeeName:"Fictional N-1t employee A",date:"2026-09-28",requestId:request.id})
-   expect(frozen.closes[0].corrections[0].before?.startedAt).toBe(at("2026-09-28","09:10").toISOString());expect(frozen.closes[0].corrections[0].after.startedAt).toBe(at("2026-09-28","09:00").toISOString())
+   expect(frozen.closed!.corrections).toHaveLength(1);expect(frozen.closed!.corrections[0]).toMatchObject({employeeId:people.a,employeeName:"Fictional N-1t employee A",date:"2026-09-28",requestId:request.id})
+   expect(frozen.closed!.corrections[0].before?.startedAt).toBe(at("2026-09-28","09:10").toISOString());expect(frozen.closed!.corrections[0].after.startedAt).toBe(at("2026-09-28","09:00").toISOString())
    expect(JSON.stringify(frozen)).not.toMatch(/PRIVATE_|latitude|longitude|pauseIntervals/)
    // HR who reads everyone sees the frozen N-1t but has no press; a team manager cannot open a close holding people outside his team.
    const hr=await inC(()=>store.readAttendanceMonthN1t({...closer,userId:C_HR},{month,locale:"ru"}))
-   expect(hr).toMatchObject({canClose:false,open:0,candidates:[]});expect(hr.closes.map(close=>close.id)).toEqual([closed.id])
+   expect(hr).toMatchObject({canClose:false,open:0,candidates:[]});expect(hr.closed!.closes.map(close=>close.id)).toEqual([closed.id])
    const manager=await inC(()=>store.readAttendanceMonthN1t({...closer,userId:C_MANAGER},{month,locale:"ru"}))
-   expect(manager).toMatchObject({closes:[],closedElsewhere:2,open:0,candidates:[]})
+   expect(manager).toMatchObject({closed:null,legacy:[],closedElsewhere:2,open:0,candidates:[]})
   })
 
   it("shows the days that block a finished month instead of a press, and refuses that close",async()=>{
@@ -197,7 +197,7 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
    expect(state.blockers).toEqual([{employeeId:people.b,employeeName:"Fictional N-1t employee B",date:"2026-08-14",kind:"MISSING_FINISH"}])
    const candidate=state.candidates[0]
    await expect(inC(()=>store.closeAttendanceMonth(closer,{month:"2026-08",agentIds:candidate.agentIds,requestId:randomUUID(),preview:{hash:candidate.hash,asOf:candidate.asOf}}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_MONTH_UNRESOLVED"})
-   expect((await inC(()=>store.readAttendanceMonthN1t(closer,{month:"2026-08",locale:"en"}))).closes).toEqual([])
+   expect((await inC(()=>store.readAttendanceMonthN1t(closer,{month:"2026-08",locale:"en"}))).closed).toBeNull()
    // The running month offers no press at all. The store reads the real clock, so the clock is pinned
    // inside October in every time zone (Kiritimati, UTC+14, starts the day first): unpinned, October is
    // a finished month from 1 November and this line would go red in static-checks and in the deploy gate.
@@ -213,20 +213,87 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
    expect(presses.filter(result=>result.status==="fulfilled")).toHaveLength(1)
    const refusal=presses.find(result=>result.status==="rejected") as PromiseRejectedResult;expect(refusal.reason).toMatchObject({code:"MTM_ATTENDANCE_MONTH_ALREADY_CLOSED"})
    const rows=await inC(()=>prisma.$queryRaw<{count:number}[]>`SELECT count(*)::int AS count FROM mtm_attendance_month_closes WHERE "organizationId"=${C} AND month='2026-07-01'::date`);expect(rows[0].count).toBe(1)
-   const state=await inC(()=>store.readAttendanceMonthN1t(closer,{month:"2026-07",locale:"az"}));expect(state.closes).toHaveLength(1);expect(state).toMatchObject({open:0,candidates:[]})
+   const state=await inC(()=>store.readAttendanceMonthN1t(closer,{month:"2026-07",locale:"az"}));expect(state.closed!.closes).toHaveLength(1);expect(state).toMatchObject({open:0,candidates:[]})
   })
 
   it("keeps one tenant's frozen N-1t out of another tenant's reach",async()=>{
-   const state=await inC(()=>store.readAttendanceMonthN1t(closer,{month,locale:"en"}));const id=state.closes[0].id
+   const state=await inC(()=>store.readAttendanceMonthN1t(closer,{month,locale:"en"}));const id=state.closed!.closes[0].id
    const other={organizationId:OTHER,userId:B_ADMIN,principalType:"session" as const}
    const theirs=await tenant(OTHER,()=>store.readAttendanceMonthN1t(other,{month,locale:"en"}))
-   expect(theirs).toMatchObject({closes:[],open:0,candidates:[],closedElsewhere:0})
+   expect(theirs).toMatchObject({closed:null,legacy:[],open:0,candidates:[],closedElsewhere:0})
    expect(JSON.stringify(theirs)).not.toContain("Fictional N-1t")
    expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_month_closes WHERE id=${id}`)).toEqual([])
    expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_month_members WHERE "closeId"=${id}`)).toEqual([])
    await expect(tenant(OTHER,()=>store.readAttendanceMonth(other,id,"en"))).rejects.toMatchObject({status:404})
    await expect(tenant(OTHER,()=>store.readAttendanceMonthTable(other,id,"en"))).rejects.toMatchObject({status:404})
   })
+ })
+ // Owner, 2026-10-20: the month's N-1t is one form for accounting, however many people it has. One close
+ // still holds at most 100 (attendance-n1t-form.ts: one close of 500 took 82 s on PostgreSQL 16 and held
+ // every attendance write in the company that long), so 130 people close as two blocks read back as one.
+ describe("N-1t of more than 100 people",()=>{
+  const D="month-fixture-d",D_ADMIN="month-fixture-d-admin",N=130
+  const closer={organizationId:D,userId:D_ADMIN,principalType:"session" as const}
+  const inD=<T,>(fn:()=>Promise<T>)=>tenant(D,fn)
+  const ids=Array.from({length:N},(_,i)=>`month-fixture-d-${String(i+1).padStart(3,"0")}`)
+  const messages=Object.fromEntries((["az","ru","en"] as const).map(locale=>[locale,JSON.parse(readFileSync(`messages/${locale}.json`,"utf8")).mtmAttendance as Record<string,string>]))
+  /** Personnel → Reports → N-1t for everyone, built at this moment exactly as the screen builds it for an administrator. */
+  async function live(locale:"az"|"ru"|"en"){
+   const {readMtmAttendanceReport}=await import("@/lib/mtm/attendance-report-store"),{buildAttendanceTable}=await import("@/lib/mtm/attendance-table"),{attendanceN1tConfig,attendanceMonthRange}=await import("@/lib/mtm/attendance-month-snapshot"),{createTranslator}=await import("next-intl")
+   const range=attendanceMonthRange(month),report=await inD(()=>readMtmAttendanceReport({organizationId:D,actor:{role:"ADMIN",agentId:null,scopedAgentIds:null},query:{...range,form:"ALL"}}))
+   return buildAttendanceTable(report,attendanceN1tConfig(range.from,range.to),locale,createTranslator({locale,messages:{mtmAttendance:messages[locale]},namespace:"mtmAttendance"}))
+  }
+  // Two reads a moment apart differ only in the line that names their moment.
+  const besideMoment=(table:{details:string[]})=>({...table,details:table.details.filter((_,index)=>index!==1)})
+  const numbers=Array.from({length:N},(_,i)=>i+1)
+  beforeAll(async()=>{
+   await bypass(async()=>{
+    await prisma.organization.create({data:{id:D,slug:D,name:"Fictional large N-1t company",plan:"enterprise",modules:{mtm:true,"route-field":true},features:["mtm"]}});await prisma.mtmSetting.create({data:{organizationId:D,key:"attendanceEnabled",value:true}})
+    await prisma.user.create({data:{id:D_ADMIN,organizationId:D,name:"Fictional large N-1t closer",email:`${D_ADMIN}@example.invalid`,role:"admin",passwordHash:"unusable"}})
+   })
+   await inD(()=>prisma.mtmAgent.createMany({data:ids.map((id,i)=>({id,organizationId:D,name:`Fictional large N-1t employee ${String(i+1).padStart(3,"0")}`,role:"EMPLOYEE",attendanceParticipant:true}))}))
+   // Arrivals differ from person to person, so the totals add up real minutes.
+   const days=ids.flatMap((agentId,i)=>["2026-09-01","2026-09-02"].map(date=>({id:randomUUID(),organizationId:D,agentId,workDate:new Date(`${date}T00:00:00Z`),status:"COMPLETED" as const,startedAt:at(date,`09:${String(i%30).padStart(2,"0")}`),completedAt:at(date,"18:00"),totalPausedSeconds:0})))
+   await inD(()=>prisma.mtmAgentWorkday.createMany({data:days}))
+   await inD(()=>prisma.mtmAgentWorkdayEvent.createMany({data:days.flatMap(day=>(["START","FINISH"] as const).map(type=>{const moment=type==="START"?day.startedAt:day.completedAt;return {organizationId:D,agentId:day.agentId,workdayId:day.id,clientEventId:randomUUID(),type,occurredAt:moment,appliedAt:moment,claimedAt:moment,serverReceivedAt:moment}}))}))
+  },120000)
+
+  it("freezes 130 people as one N-1t: numbered 1..130, one set of totals, one file, equal to the live report at close time",async()=>{
+   const before=await live("az"),open=await inD(()=>store.readAttendanceMonthN1t(closer,{month,locale:"az"}))
+   expect(open).toMatchObject({finished:true,canClose:true,closed:null,legacy:[],open:N,blockers:[],notIncluded:0})
+   // Two closes carry it — 100 and 30 people, cut from the N-1t's own line order.
+   expect(open.candidates.map(candidate=>candidate.agentIds.length)).toEqual([100,30])
+   expect(open.candidates.flatMap(candidate=>candidate.agentIds)).toEqual(ids)
+   // The press freezes the screen's one N-1t: the live report's own lines, numbers, notes and totals.
+   expect(besideMoment(open.preview!)).toEqual(besideMoment(before))
+   expect(open.preview!.rows.map(row=>row.cells[0])).toEqual(numbers)
+   // As the screen sends it: block after block.
+   for(const candidate of open.candidates)expect((await inD(()=>store.closeAttendanceMonth(closer,{month,agentIds:candidate.agentIds,requestId:randomUUID(),preview:{hash:candidate.hash,asOf:candidate.asOf}}))).idempotent).toBe(false)
+   const after=await inD(()=>store.readAttendanceMonthN1t(closer,{month,locale:"az"}))
+   expect(after).toMatchObject({open:0,candidates:[],preview:null,legacy:[],closedElsewhere:0,closed:{month,employeeCount:N}})
+   expect(after.closed!.closes.map(close=>close.employeeCount)).toEqual([100,30])
+   // Frozen exactly as the screen showed it before the press, and as the report read before the close.
+   expect(after.closed!.table).toEqual(open.preview)
+   expect(besideMoment(after.closed!.table)).toEqual(besideMoment(before))
+   expect(after.closed!.table.rows.map(row=>row.cells[0])).toEqual(numbers)
+   expect(after.closed!.table.totals).toEqual(before.totals)
+   const {createTranslator}=await import("next-intl")
+   expect(after.closed!.table.totals[2]).toBe(createTranslator({locale:"az",messages:{mtmAttendance:messages.az},namespace:"mtmAttendance"})("reportTotalsRows",{rows:N*30,employees:N}))
+   // The same one form in the other languages, its totals included.
+   const russian=await inD(()=>store.readAttendanceMonthN1t(closer,{month,locale:"ru"}))
+   expect(besideMoment(russian.closed!.table)).toEqual(besideMoment(await live("ru")))
+   // One file for the month: the same form, № 1..130 down the first column.
+   const file=await inD(()=>store.readAttendanceMonthN1tForm(closer,{month,locale:"az"}))
+   expect(file).toEqual({month,table:after.closed!.table})
+   const {buildAttendanceXlsx,buildAttendancePdf}=await import("@/lib/mtm/attendance-export")
+   const sheet=buildAttendanceXlsx(file.table).worksheets[0]
+   expect(numbers.map(number=>sheet.getRow(number+1).getCell(1).value)).toEqual(numbers)
+   expect(buildAttendancePdf(file.table).subarray(0,4).toString()).toBe("%PDF")
+   // A later rename changes today's list, never the frozen form or its file.
+   await inD(()=>prisma.mtmAgent.update({where:{id:ids[120]},data:{name:"Renamed after the close"}}))
+   expect((await inD(()=>store.readAttendanceMonthN1tForm(closer,{month,locale:"az"}))).table).toEqual(file.table)
+   expect((await live("az")).rows.find(row=>row.key===ids[120])!.cells[1]).toBe("Renamed after the close")
+  },240000)
  })
  it.each(["feature","agent"])("waits for a concurrent %s update without reversing fence/row lock order",async target=>{
   const id=await employee(),input=await command([id]);let release!:()=>void,entered!:()=>void;const hold=new Promise<void>(r=>release=r),ready=new Promise<void>(r=>entered=r)

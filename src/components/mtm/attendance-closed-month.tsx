@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card"
 import { Hint } from "@/components/hint"
 import { AttendanceReportTable, AttendanceReportTotals } from "@/components/mtm/attendance-report-table"
 import { createDateFormatter } from "@/lib/format-date"
-import type { AttendanceMonthDetail } from "@/lib/mtm/attendance-month-contract"
+import type { AttendanceMonthCorrection, AttendanceMonthDetail, AttendanceMonthForm, AttendanceMonthN1tForm, AttendanceMonthSummary } from "@/lib/mtm/attendance-month-contract"
 import type { AttendanceTable } from "@/lib/mtm/attendance-table"
 
 const endpoint = "/api/v1/mtm/attendance/months"
@@ -30,6 +30,21 @@ export function AttendanceFrozenTable({ table, form }: { table: AttendanceTable;
   </div>
 }
 
+/**
+ * A closed month as its card shows it: one close from «Bağlanmış aylar», or the month's N-1t as
+ * one form (several closes of up to 100 people each), with the address of its one file.
+ */
+export type AttendanceClosedMonthView = {
+  month: string; form: AttendanceMonthForm; table: AttendanceTable
+  closes: Pick<AttendanceMonthSummary, "createdAt" | "createdByName">[]
+  corrections: AttendanceMonthCorrection[]; moreCorrections: boolean
+  file: (locale: string, format: "xlsx" | "pdf") => string
+}
+export const closedMonthView = (detail: AttendanceMonthDetail): AttendanceClosedMonthView => ({ ...detail, closes: [detail],
+  file: (locale, format) => `${endpoint}/${encodeURIComponent(detail.id)}/export?${new URLSearchParams({ locale, format })}` })
+export const n1tFormView = (closed: AttendanceMonthN1tForm): AttendanceClosedMonthView => ({ ...closed, form: "N1T",
+  file: (locale, format) => `${endpoint}/n1t/export?${new URLSearchParams({ month: closed.month, locale, format })}` })
+
 /** «sentyabr 2026»: the month in the interface language, as the clip reads it. */
 export function attendanceMonthLabel(month: string, locale: string) {
   return createDateFormatter(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-15T12:00:00Z`))
@@ -46,8 +61,8 @@ export function attendanceMonthLabel(month: string, locale: string) {
  * it was, the button's card turns into this one); «Bağlanmış aylar» puts the
  * card first. `primary` marks the screen's one filled button.
  */
-export function AttendanceClosedMonth({ detail, tableFirst = false, primary = true, onAccessLost }: {
-  detail: AttendanceMonthDetail; tableFirst?: boolean; primary?: boolean; onAccessLost: () => void
+export function AttendanceClosedMonth({ view, tableFirst = false, primary = true, onAccessLost }: {
+  view: AttendanceClosedMonthView; tableFirst?: boolean; primary?: boolean; onAccessLost: () => void
 }) {
   const t = useTranslations("mtmAttendance")
   const locale = useLocale() as "az" | "ru" | "en"
@@ -64,7 +79,7 @@ export function AttendanceClosedMonth({ detail, tableFirst = false, primary = tr
     if (exporting) return
     setExporting(format); setFailed(false)
     try {
-      const response = await fetch(`${endpoint}/${encodeURIComponent(detail.id)}/export?${new URLSearchParams({ locale, format })}`, { cache: "no-store" })
+      const response = await fetch(view.file(locale, format), { cache: "no-store" })
       if (!mounted.current) return
       if ([401, 403, 404].includes(response.status)) { onAccessLost(); return }
       if (!response.ok) throw new Error("EXPORT_FAILED")
@@ -72,22 +87,25 @@ export function AttendanceClosedMonth({ detail, tableFirst = false, primary = tr
       if (!mounted.current) return
       const url = URL.createObjectURL(blob), link = document.createElement("a")
       link.href = url
-      link.download = `${detail.form === "N1T" ? "N-1t" : "attendance-closed"}-${detail.month}.${format}`
+      link.download = `${view.form === "N1T" ? "N-1t" : "attendance-closed"}-${view.month}.${format}`
       link.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch { if (mounted.current) setFailed(true) } finally { if (mounted.current) setExporting(null) }
   }
 
+  // Who closed it and when: a month closed in parts names each person once, at their last part.
+  const closedBy = new Map<string | null, string>()
+  for (const close of view.closes) { const last = closedBy.get(close.createdByName); if (!last || close.createdAt > last) closedBy.set(close.createdByName, close.createdAt) }
   // Excel is the screen's one filled button — unless another button on the screen already is (a second close card, the close button).
   const excelVariant = primary ? "default" : "outline"
-  const table = <AttendanceFrozenTable table={detail.table} form={detail.form} />
+  const table = <AttendanceFrozenTable table={view.table} form={view.form} />
   const card = <Card className="space-y-4 p-4 sm:p-6" data-testid="attendance-closed-month">
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex min-w-0 items-start gap-3">
         <Lock className="mt-1 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold" data-testid="attendance-closed-month-title">{attendanceMonthLabel(detail.month, locale)} · {t("monthCloseClosed")}</h2>
-          <p className="text-sm text-muted-foreground" data-testid="attendance-closed-month-by">{detail.createdByName ?? "—"} · {at(detail.createdAt)}</p>
+          <h2 className="text-lg font-semibold" data-testid="attendance-closed-month-title">{attendanceMonthLabel(view.month, locale)} · {t("monthCloseClosed")}</h2>
+          <p className="text-sm text-muted-foreground" data-testid="attendance-closed-month-by">{[...closedBy].map(([name, time]) => `${name ?? "—"} · ${at(time)}`).join("; ")}</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-3">
@@ -103,12 +121,12 @@ export function AttendanceClosedMonth({ detail, tableFirst = false, primary = tr
     </div>
     {/* A notice is white with a coloured edge (MTM colours, 2026-10-18). */}
     <p className="rounded-xl border border-l-4 border-zinc-200 border-l-emerald-500 bg-card p-4 text-sm text-foreground dark:border-zinc-700 dark:border-l-emerald-500">{t("monthCloseFrozen")}</p>
-    {detail.form === "MONTH" ? <p className="text-sm text-muted-foreground" data-testid="attendance-closed-month-legacy">{t("monthCloseLegacyForm")}</p> : null}
+    {view.form === "MONTH" ? <p className="text-sm text-muted-foreground" data-testid="attendance-closed-month-legacy">{t("monthCloseLegacyForm")}</p> : null}
     {failed ? <p role="alert" className="text-sm text-destructive">{t("monthCloseExportError")}</p> : null}
     <section className="space-y-3 border-t pt-4" data-testid="attendance-closed-month-corrections" aria-label={t("monthCloseJournal")}>
       <div><h3 className="font-semibold">{t("monthCloseJournal")}</h3><p className="text-sm text-muted-foreground">{t("monthCloseJournalHint")}</p></div>
-      {!detail.corrections.length ? <p className="text-sm text-muted-foreground">{t("monthCloseNoCorrections")}</p> : null}
-      {detail.corrections.map(entry => <article key={entry.id} className="space-y-2 rounded-xl border p-4" data-testid="attendance-closed-month-correction">
+      {!view.corrections.length ? <p className="text-sm text-muted-foreground">{t("monthCloseNoCorrections")}</p> : null}
+      {view.corrections.map(entry => <article key={entry.id} className="space-y-2 rounded-xl border p-4" data-testid="attendance-closed-month-correction">
         <h4 className="font-medium">{entry.employeeName} · {day(entry.date)}</h4>
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
           <div><dt className="text-xs text-muted-foreground">{t("monthCloseBefore")}</dt><dd className="break-words">{interval(entry.before)}</dd></div>
@@ -117,7 +135,7 @@ export function AttendanceClosedMonth({ detail, tableFirst = false, primary = tr
         <p className="text-xs text-muted-foreground">{entry.reviewerName ?? "—"} · {at(entry.at)}</p>
         {entry.requestId ? <Hint text={t("monthCloseReasonInRequestHint")}><Link className="inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline" href={`/mtm/attendance/requests?requestId=${encodeURIComponent(entry.requestId)}`}>{t("monthCloseReasonInRequest")}</Link></Hint> : null}
       </article>)}
-      {detail.moreCorrections ? <p role="alert" className="text-sm">{t("monthCloseMoreCorrections")}</p> : null}
+      {view.moreCorrections ? <p role="alert" className="text-sm">{t("monthCloseMoreCorrections")}</p> : null}
     </section>
   </Card>
   return <div className="space-y-4" data-testid="attendance-closed-month-block">{tableFirst ? <>{table}{card}</> : <>{card}{table}</>}</div>

@@ -2,7 +2,8 @@ import { describe,expect,it } from "vitest"
 import { buildMtmAttendanceReport, type MtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import { readFileSync } from "node:fs"
 import { createTranslator } from "next-intl"
-import { attendanceMonthHash,attendanceN1tConfig,buildAttendanceMonthSnapshot,frozenAttendanceMonthTable,verifiedAttendanceMonthSnapshot } from "@/lib/mtm/attendance-month-snapshot"
+import { attendanceMonthHash,attendanceN1tConfig,buildAttendanceMonthSnapshot,frozenAttendanceMonthTable,frozenAttendanceN1tBlock,verifiedAttendanceMonthSnapshot } from "@/lib/mtm/attendance-month-snapshot"
+import { attendanceN1tParts } from "@/lib/mtm/attendance-n1t-form"
 import { AttendanceMonthCloseSchema,AttendanceMonthTableSchema } from "@/lib/mtm/attendance-month-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 const selection={month:"2026-09",agentIds:["fictional-a"]},now=new Date("2026-10-03T08:00:00Z")
@@ -23,9 +24,16 @@ describe("closed month payload uses frozen content",()=>{
   expect(built.payload.n1t!.az.columns.slice(0,4).map(c=>c.key)).toEqual(["index","employee","position","team"])
   expect(frozenAttendanceMonthTable(built.payload,"ru")).toEqual({form:"N1T",table:built.payload.n1t!.ru})
   expect(built.ongoing).toBe(false)
+  // With its figures and layout, so that the blocks of a month over 100 people read back as one form.
+  expect(built.payload.n1tParts).toEqual(attendanceN1tParts(input,attendanceN1tConfig("2026-09-01","2026-09-30")))
+  expect(frozenAttendanceN1tBlock(built.payload,"az")).toEqual({table:built.payload.n1t!.az,parts:built.payload.n1tParts,asOf:built.payload.asOf})
+ })
+ it("never keeps N-1t cells without the parts that join them, or parts without cells",()=>{
+  const built=buildAttendanceMonthSnapshot(report(),selection,now)
+  for(const drop of ["n1t","n1tParts"]){const damaged:Record<string,unknown>={...built.payload};delete damaged[drop];expect(()=>verifiedAttendanceMonthSnapshot(damaged,attendanceMonthHash(damaged))).toThrow()}
  })
  it("still opens a month closed before the N-1t was frozen, with its month grid and its old hash",()=>{
-  const built=buildAttendanceMonthSnapshot(report(),selection,now),legacy:Record<string,unknown>={...built.payload};delete legacy.n1t
+  const built=buildAttendanceMonthSnapshot(report(),selection,now),legacy:Record<string,unknown>={...built.payload};delete legacy.n1t;delete legacy.n1tParts
   const payload=verifiedAttendanceMonthSnapshot(JSON.parse(JSON.stringify(legacy)),attendanceMonthHash(legacy))
   expect(payload).not.toHaveProperty("n1t");expect(frozenAttendanceMonthTable(payload,"en")).toEqual({form:"MONTH",table:built.payload.tables.en})
  })

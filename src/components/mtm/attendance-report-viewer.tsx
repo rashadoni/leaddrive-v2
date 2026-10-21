@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
 import { AttendanceReportTable, AttendanceReportTotals } from "@/components/mtm/attendance-report-table"
-import { AttendanceClosedMonth } from "@/components/mtm/attendance-closed-month"
+import { AttendanceClosedMonth, closedMonthView, n1tFormView } from "@/components/mtm/attendance-closed-month"
 import { AttendanceN1tClosePanel, AttendanceN1tMessages, AttendanceN1tNotes, useAttendanceN1tMonth } from "@/components/mtm/attendance-n1t-month"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { formatDate } from "@/lib/format-date"
@@ -34,9 +34,10 @@ const SELECT = "min-h-10 min-w-44 rounded-lg border border-zinc-200 bg-card px-3
  *
  * N-1t of a finished month is also where the month is closed (owner, 2026-10-20:
  * production behaves like the «Kadr uçotu» clip): a closed month shows its
- * frozen N-1t with «Bağlanıb», who and when, its own Excel/PDF and the
- * corrections approved later; an open one shows the N-1t a press of
- * «Bu tabeli bağla» will freeze, or the days that block it.
+ * frozen N-1t — one form, however many blocks of 100 it was closed in — with
+ * «Bağlanıb», who and when, its one Excel/PDF and the corrections approved
+ * later; an open one shows the one N-1t a press of «Bu tabeli bağla» will
+ * freeze, or the days that block it.
  */
 export function MtmAttendanceReportViewer({ report, initialDate }: { report: AttendanceReportKey; initialDate?: string }) {
   const definition = ATTENDANCE_REPORTS[report]
@@ -85,9 +86,12 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
   const closingMonth = report === "n1t" && range && today && range.to < today ? range.from.slice(0, 7) : null
   const lostAccess = useCallback(() => { setData(null); setError("reportAccessUnavailable") }, [])
   const month = useAttendanceN1tMonth(closingMonth, lostAccess)
-  const closed = useMemo(() => month.state?.closes ?? [], [month.state])
-  const frozenIds = useMemo(() => new Set(closed.flatMap(close => close.agentIds)), [closed])
-  const allClosed = closed.length > 0 && month.state?.open === 0
+  // The month's N-1t as one form, and months closed before the N-1t was frozen (each its own grid).
+  const closed = month.state?.closed ?? null
+  const legacy = useMemo(() => month.state?.legacy ?? [], [month.state])
+  const frozenIds = useMemo(() => new Set([...(closed?.agentIds ?? []), ...legacy.flatMap(close => close.agentIds)]), [closed, legacy])
+  const anyClosed = !!closed || legacy.length > 0
+  const allClosed = anyClosed && month.state?.open === 0
   const closable = !!month.state?.candidates.length && !teamId
   // People in a frozen N-1t are not repeated in today's figures below it.
   const live = useMemo(() => !data || !frozenIds.size ? data : { ...data, rows: data.rows.filter(row => !frozenIds.has(row.employeeId)),
@@ -97,7 +101,9 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
   if (definition.kind !== "table") return null
   // Until the month's state is known, a past N-1t waits: a closed month must not flash today's figures.
   const waiting = !month.settled
-  const showLive = !allClosed && !(closable && !waiting)
+  // A month closed in more parts than one form holds names no frozen people, so today's figures stay hidden.
+  const hidden = !!month.state?.moreCloses
+  const showLive = !allClosed && !(closable && !waiting) && !hidden
 
   const label = (date: string) => formatDate(`${date}T12:00:00.000Z`, locale, { dateStyle: "medium", timeZone: "UTC" })
   const change = (next: Range) => { if (isDateKey(next.from) && isDateKey(next.to) && next.to >= next.from && next.to < addDateKeyDays(next.from, 366)) void load(next); else setRange(next) }
@@ -113,16 +119,17 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
         {definition.period === "range" ? <><span className="text-muted-foreground">—</span>
           <Input aria-label={t("reportTo")} type="date" className="min-h-10 w-40" value={range.to} onChange={event => change({ ...range, to: event.target.value })} /></> : null}
       </> : null}
-      {allClosed ? null : <select aria-label={t("reportTeam")} className={SELECT} value={teamId} disabled={!data} onChange={event => setTeamId(event.target.value)}>
+      {allClosed || hidden ? null : <select aria-label={t("reportTeam")} className={SELECT} value={teamId} disabled={!data} onChange={event => setTeamId(event.target.value)}>
         <option value="">{t("reportAllTeams")}</option>{teams.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>}
       <span className="flex-1" />
       {/* Today's file only for today's figures: a closed month downloads its frozen N-1t from its card. */}
-      {closingMonth && (closed.length || closable || waiting) ? null
+      {closingMonth && (anyClosed || closable || waiting || hidden) ? null
         : <MtmAttendanceExportButtons config={config} snapshot={data?.snapshot ?? null} onRefresh={() => void load(range ?? undefined)} onAccessLost={() => setError("reportAccessUnavailable")} />}
     </div>
     {error ? <p role="alert" className="text-sm text-destructive">{t(error)}</p> : null}
     {!error && month.failed ? <p role="alert" className="text-sm text-destructive">{t("monthCloseLoadError")}</p> : null}
-    {!error && closed.map((close, index) => <AttendanceClosedMonth key={close.id} detail={close} tableFirst primary={!closable && index === closed.length - 1} onAccessLost={lostAccess} />)}
+    {!error && legacy.map((close, index) => <AttendanceClosedMonth key={close.id} view={closedMonthView(close)} tableFirst primary={!closable && !closed && index === legacy.length - 1} onAccessLost={lostAccess} />)}
+    {!error && closed ? <AttendanceClosedMonth view={n1tFormView(closed)} tableFirst primary={!closable} onAccessLost={lostAccess} /> : null}
     {!error && month.state?.moreCloses ? <p className="text-sm text-muted-foreground">{t("monthCloseMoreCloses")}</p> : null}
     {!error && month.state && month.state.closedElsewhere > 0 ? <p className="text-sm text-muted-foreground" data-testid="attendance-n1t-closed-elsewhere">{t("monthCloseClosedElsewhere", { count: month.state.closedElsewhere })}</p> : null}
     {!error && closable && !waiting ? <AttendanceN1tClosePanel month={month} /> : null}

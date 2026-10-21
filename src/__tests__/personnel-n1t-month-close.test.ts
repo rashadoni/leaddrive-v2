@@ -15,8 +15,9 @@ import { MtmAttendanceReportViewer } from "@/components/mtm/attendance-report-vi
 import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { attendanceN1tConfig } from "@/lib/mtm/attendance-month-snapshot"
+import { attendanceN1tParts, joinAttendanceN1t } from "@/lib/mtm/attendance-n1t-form"
 import { createDateFormatter } from "@/lib/format-date"
-import type { AttendanceMonthDetail, AttendanceMonthN1tState } from "@/lib/mtm/attendance-month-contract"
+import type { AttendanceMonthN1tForm, AttendanceMonthN1tState } from "@/lib/mtm/attendance-month-contract"
 import { readHint } from "./helpers/hint"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -37,21 +38,34 @@ function september(start = "09:10") {
 }
 const n1t = (report: ReturnType<typeof september>) => buildAttendanceTable(report as never, attendanceN1tConfig("2026-09-01", "2026-09-30"), "az", translate)
 const frozen = n1t(september())
-const closedDetail = (): AttendanceMonthDetail => ({ id: CLOSE_ID, month: "2026-09", createdAt: "2026-10-15T05:20:00Z", createdByName: "Demo kadr rəhbəri", employeeCount: 2, form: "N1T",
-  agentIds: ["demo-a", "demo-b"], table: frozen, moreCorrections: false, corrections: [] })
-const base: AttendanceMonthN1tState = { month: "2026-09", finished: true, canClose: true, closes: [], moreCloses: false, closedElsewhere: 0, open: 2, ownOpen: false, notIncluded: 0,
-  candidates: [{ agentIds: ["demo-a", "demo-b"], hash: "a".repeat(64), asOf: "2026-10-20T08:00:00.000Z", table: frozen }], blockers: [], moreBlockers: 0 }
-const closedState = (): AttendanceMonthN1tState => ({ ...base, open: 0, candidates: [], closes: [closedDetail()] })
+const closedForm = (): AttendanceMonthN1tForm => ({ month: "2026-09", table: frozen, employeeCount: 2, agentIds: ["demo-a", "demo-b"],
+  closes: [{ id: CLOSE_ID, month: "2026-09", createdAt: "2026-10-15T05:20:00Z", createdByName: "Demo kadr rəhbəri", employeeCount: 2 }], moreCorrections: false, corrections: [] })
+const base: AttendanceMonthN1tState = { month: "2026-09", finished: true, canClose: true, closed: null, legacy: [], moreCloses: false, closedElsewhere: 0, open: 2, ownOpen: false, notIncluded: 0,
+  candidates: [{ agentIds: ["demo-a", "demo-b"], hash: "a".repeat(64), asOf: "2026-10-20T08:00:00.000Z" }], preview: frozen, blockers: [], moreBlockers: 0 }
+const closedState = (): AttendanceMonthN1tState => ({ ...base, open: 0, candidates: [], preview: null, closed: closedForm() })
+
+/** 105 people of an invented company: more than one close of 100 holds. Their hours differ so the totals mean something. */
+function largeSeptember() {
+  const people = Array.from({ length: 105 }, (_, index) => ({ id: `big-${String(index + 1).padStart(3, "0")}`, name: `Demo işçi ${String(index + 1).padStart(3, "0")}`, position: "Kassir", teamId: "t1", teamName: "Satış" }))
+  const workdays = people.flatMap((person, index) => ["2026-09-01", "2026-09-02"].map(date => {
+    const from = `09:${String(index % 50).padStart(2, "0")}`
+    return { id: `${person.id}-${date}`, agentId: person.id, workDate: date, status: "COMPLETED", startedAt: at(date, from), completedAt: at(date, "18:00"), totalPausedSeconds: 0,
+      events: [{ type: "START", occurredAt: at(date, from) }, { type: "FINISH", occurredAt: at(date, "18:00") }] }
+  }))
+  return buildMtmAttendanceReport({ from: "2026-09-01", to: "2026-09-30", now: "2026-10-20T08:00:00Z", rules: [], calendar: [], employees: people, workdays } as never)
+}
 
 let container: HTMLDivElement, root: Root
 let state: AttendanceMonthN1tState, live: ReturnType<typeof september>
 let closeAnswer: () => Promise<Response>
+/** What GET /months/n1t answers; by default the month's state. */
+let monthAnswer: () => Response
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(status < 400 ? { success: true, data } : data), { status })
 const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
   const url = new URL(String(input), "https://crm.test")
   if (url.pathname.endsWith("/rules")) return json({ today: "2026-10-20" })
   if (url.pathname.endsWith("/report")) return json(live)
-  if (url.pathname.endsWith("/months/n1t")) return json(state)
+  if (url.pathname.endsWith("/months/n1t")) return monthAnswer()
   if (url.pathname === "/api/v1/mtm/attendance/months" && init?.method === "POST") return closeAnswer()
   if (url.pathname.endsWith("/export")) return new Response("file", { headers: { "content-type": "application/pdf" } })
   return json({ code: "UNEXPECTED" }, 500)
@@ -73,6 +87,7 @@ beforeEach(() => {
   container = document.createElement("div"); document.body.append(container); root = createRoot(container)
   state = structuredClone(base); live = september()
   closeAnswer = async () => { state = closedState(); return json({ id: CLOSE_ID, idempotent: false }) }
+  monthAnswer = () => json(state)
   fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock)
 })
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals() })
@@ -110,7 +125,7 @@ describe("N-1t of a finished month (the clip's month close)", () => {
 
   it("shows the frozen figures of a closed month, not today's, and the later correction apart", async () => {
     state = closedState()
-    state.closes[0].corrections = [{ id: "c1", employeeId: "demo-a", employeeName: "Demo işçi A", date: "2026-09-28", at: "2026-10-16T06:40:00Z", reviewerName: "Demo kadr rəhbəri", requestId: "00000000-0000-4000-8000-0000000000b2",
+    state.closed!.corrections = [{ id: "c1", employeeId: "demo-a", employeeName: "Demo işçi A", date: "2026-09-28", at: "2026-10-16T06:40:00Z", reviewerName: "Demo kadr rəhbəri", requestId: "00000000-0000-4000-8000-0000000000b2",
       before: { startedAt: "2026-09-28T05:10:00Z", completedAt: "2026-09-28T14:00:00Z" }, after: { startedAt: "2026-09-28T05:00:00Z", completedAt: "2026-09-28T14:00:00Z" } }]
     live = september("08:00") // the live day was corrected after the close
     const hours = frozen.columns.findIndex(column => column.key === "hours")
@@ -125,7 +140,8 @@ describe("N-1t of a finished month (the clip's month close)", () => {
     expect(correction.textContent).toContain("Demo işçi A"); expect(correction.textContent).toContain(t.monthCloseBefore)
     expect(correction.querySelector('a[href*="requestId=00000000-0000-4000-8000-0000000000b2"]')).not.toBeNull()
     await act(async () => button(t.monthClosePdf)!.click()); await settle()
-    expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith(`/api/v1/mtm/attendance/months/${CLOSE_ID}/export?`) && String(url).includes("format=pdf"))).toBe(true)
+    // The month's one file: the N-1t of the month, not a file per close.
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/export"))).toEqual([[`/api/v1/mtm/attendance/months/n1t/export?month=2026-09&locale=az&format=pdf`, { cache: "no-store" }]])
   })
 
   it("lists the days that block the month instead of the button", async () => {
@@ -163,13 +179,50 @@ describe("N-1t of a finished month (the clip's month close)", () => {
   })
 
   it("says who closes the month to a reader without the right to close", async () => {
-    state = { ...base, canClose: false, candidates: [] }
+    state = { ...base, canClose: false, candidates: [], preview: null }
     await render()
     expect(button(t.monthCloseAction)).toBeUndefined()
     expect(container.querySelector('[data-testid="attendance-n1t-notes"]')!.textContent).toBe(t.monthCloseN1tReadOnly)
     // Live figures, live Excel/PDF and the team filter, as for any open month.
     expect(container.querySelectorAll('[data-testid="attendance-report-table"] [data-testid="attendance-report-row"]')).toHaveLength(2)
     expect(container.querySelector('[data-testid="attendance-export"]')).not.toBeNull()
+  })
+
+  it("closes a month of more than 100 people as one N-1t: one table numbered 1..105, one press, one closed card and one file", async () => {
+    const report = largeSeptember(), config = attendanceN1tConfig("2026-09-01", "2026-09-30")
+    const ids = report.rows.map(row => row.employeeId).filter((id, index, all) => all.indexOf(id) === index)
+    // The two closes the server cuts (100 + 5), each frozen on its own and joined into one form.
+    const blocks = [ids.slice(0, 100), ids.slice(100)].map(part => { const own = { ...report, rows: report.rows.filter(row => part.includes(row.employeeId)) }
+      return { table: buildAttendanceTable(own as never, config, "az", translate), parts: attendanceN1tParts(own as never, config), asOf: report.asOf } })
+    const form = joinAttendanceN1t(blocks, translate), whole = buildAttendanceTable(report as never, config, "az", translate)
+    expect(form).toEqual(whole)
+    state = { ...base, open: 105, candidates: blocks.map((block, index) => ({ agentIds: block.table.rows.map(row => row.key), hash: String(index + 1).repeat(64), asOf: "2026-10-20T08:00:00.000Z" })), preview: form }
+    const closes = [CLOSE_ID, "00000000-0000-4000-8000-0000000000a2"].map((id, index) => ({ id, month: "2026-09", createdAt: `2026-10-15T05:20:0${index}Z`, createdByName: "Demo kadr rəhbəri", employeeCount: blocks[index].table.rows.length }))
+    let answered = 0
+    closeAnswer = async () => { answered += 1; if (answered === 2) state = { ...base, open: 0, candidates: [], preview: null, closed: { month: "2026-09", table: form, employeeCount: 105, agentIds: ids, closes, corrections: [], moreCorrections: false } }; return json({ id: closes[answered - 1].id, idempotent: false }) }
+    live = report as never
+    await render()
+    const numbers = (scope: string) => [...container.querySelectorAll(`${scope} [data-testid="attendance-report-row"]`)].map(row => row.querySelector("td")!.textContent)
+    // Before: one table of 105 lines, numbered 1..105, no «Əməkdaşlar 101–105» second block, one press.
+    expect(container.querySelectorAll('[data-testid="attendance-n1t-candidate"]')).toHaveLength(1)
+    expect(numbers('[data-testid="attendance-n1t-candidate"]')).toEqual(Array.from({ length: 105 }, (_, index) => String(index + 1)))
+    expect(text()).not.toMatch(/Əməkdaşlar 1\d\d/)
+    expect(container.querySelector('[data-testid="attendance-n1t-will-freeze"]')!.textContent).toBe(translate("monthCloseN1tWillFreeze", { month: "sentyabr 2026", count: 105 }))
+    // One set of totals for all 105, in the line that counts them.
+    const totalsLine = whole.totals[2]
+    expect(totalsLine).toBe(translate("reportTotalsRows", { rows: 105 * 30, employees: 105 }))
+    expect(text().split(totalsLine)).toHaveLength(2)
+    await act(async () => button(t.monthCloseAction)!.click()); await settle()
+    // One press, two closes in the form's order, each the exact snapshot of its block.
+    expect(posts().map(([, init]) => JSON.parse(String(init!.body)))).toMatchObject([{ agentIds: ids.slice(0, 100), preview: { hash: "1".repeat(64) } }, { agentIds: ids.slice(100), preview: { hash: "2".repeat(64) } }])
+    // After: one closed card, one frozen table numbered 1..105, one set of totals, one Excel and one PDF.
+    expect(container.querySelectorAll('[data-testid="attendance-closed-month"]')).toHaveLength(1)
+    expect(container.querySelector('[data-testid="attendance-closed-month-by"]')!.textContent).toBe(`Demo kadr rəhbəri · ${createDateFormatter("az", { dateStyle: "medium", timeStyle: "short" }).format(new Date("2026-10-15T05:20:01Z"))}`)
+    expect(numbers('[data-testid="attendance-frozen-n1t-table"]')).toEqual(Array.from({ length: 105 }, (_, index) => String(index + 1)))
+    expect(text().split(totalsLine)).toHaveLength(2)
+    expect([...container.querySelectorAll("button")].filter(item => item.textContent?.trim().endsWith(t.monthCloseExcel))).toHaveLength(1)
+    await act(async () => button(t.monthCloseExcel)!.click()); await settle()
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/export")).map(([url]) => String(url))).toEqual(["/api/v1/mtm/attendance/months/n1t/export?month=2026-09&locale=az&format=xlsx"])
   })
 
   it("reads no month state while the month is still running", async () => {

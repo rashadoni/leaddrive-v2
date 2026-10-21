@@ -3,7 +3,8 @@ import { createTranslator } from "next-intl"
 import az from "../../../messages/az.json"
 import ru from "../../../messages/ru.json"
 import en from "../../../messages/en.json"
-import { buildAttendanceTable, type AttendanceTable } from "@/lib/mtm/attendance-table"
+import { buildAttendanceTable, type AttendanceTable, type AttendanceText } from "@/lib/mtm/attendance-table"
+import { attendanceN1tParts, type AttendanceN1tBlock } from "@/lib/mtm/attendance-n1t-form"
 import type { MtmAttendanceReport, MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { ATTENDANCE_N1T_COLUMNS, DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
@@ -15,6 +16,16 @@ export function attendanceMonthRange(month: string) {
 /** «Forma N-1t» for a whole month: the configuration Personnel → Reports → N-1t builds with all teams. */
 export function attendanceN1tConfig(from: string, to: string, teamId?: string): AttendanceViewConfig {
   return { version: 1, mode: "MONTH", columns: [...ATTENDANCE_N1T_COLUMNS], showTotals: true, filters: { from, to, form: "ALL", ...(teamId ? { teamId } : {}) } }
+}
+const CATALOGUES = { az: az.mtmAttendance, ru: ru.mtmAttendance, en: en.mtmAttendance }
+/** The attendance texts a frozen table is written in, on the server. */
+export function attendanceTableText(locale: "az" | "ru" | "en"): AttendanceText {
+  const messages: { mtmAttendance: Record<string, string> } = { mtmAttendance: CATALOGUES[locale] }
+  return createTranslator({ locale, messages, namespace: "mtmAttendance" })
+}
+/** A frozen N-1t as a block of its month's one form; null for a month closed before the N-1t was frozen. */
+export function frozenAttendanceN1tBlock(payload: AttendanceMonthPayload, locale: "az" | "ru" | "en"): AttendanceN1tBlock | null {
+  return payload.n1t && payload.n1tParts ? { table: payload.n1t[locale] as AttendanceTable, parts: payload.n1tParts, asOf: payload.asOf } : null
 }
 /** What a closed month shows and exports: its N-1t, or the month grid of a month closed before the N-1t was frozen. */
 export function frozenAttendanceMonthTable(payload: AttendanceMonthPayload, locale: "az" | "ru" | "en"): { form: AttendanceMonthForm; table: AttendanceTable } {
@@ -33,15 +44,15 @@ export function buildAttendanceMonthSnapshot(report: MtmAttendanceReport, select
   const blockers=rows.filter(row=>["OPEN","MISSING_FINISH","INVALID_FACTS","UPCOMING"].includes(row.kind) || currentDateKey(now,row.timezone)<=to)
     .map(row=>({employeeId:row.employeeId,date:row.sourceDate??row.date,kind:row.kind}))
   const tables={} as AttendanceMonthPayload["tables"], n1t={} as NonNullable<AttendanceMonthPayload["n1t"]>
-  const catalogues = {az:az.mtmAttendance,ru:ru.mtmAttendance,en:en.mtmAttendance}
   for(const locale of ["az","ru","en"] as const) {
-    const tableMessages: { mtmAttendance: Record<string,string> } = {mtmAttendance:catalogues[locale]}
-    const t=createTranslator({locale,messages:tableMessages,namespace:"mtmAttendance"})
+    const t=attendanceTableText(locale)
     tables[locale]=buildAttendanceTable(report,{version:1,mode:"MONTH",columns:[...DEFAULT_ATTENDANCE_VIEW_COLUMNS.MONTH],showTotals:true,filters:{from,to,form:"ALL"}},locale,t)
     // The accounting form exactly as the N-1t report computes it from this same projection.
     n1t[locale]=buildAttendanceTable(report,attendanceN1tConfig(from,to),locale,t)
   }
-  const payload=AttendanceMonthPayloadSchema.parse({version:1,month:selection.month,from,to,asOf:report.asOf,agentIds:ids,tables,n1t,
+  // Its figures and layout, so that the blocks of a month over 100 people read back as one form.
+  const n1tParts=attendanceN1tParts(report,attendanceN1tConfig(from,to))
+  const payload=AttendanceMonthPayloadSchema.parse({version:1,month:selection.month,from,to,asOf:report.asOf,agentIds:ids,tables,n1t,n1tParts,
     coverage:rows.map(row=>({agentId:row.employeeId,sourceDate:row.sourceDate,accountingDate:row.date,workdayId:row.workdayId,correctionIds:(row.corrections??[]).map(entry=>entry.id).sort()}))})
   if(new Set(payload.coverage.map(row=>row.agentId)).size!==ids.length || ids.some(id=>!payload.coverage.some(row=>row.agentId===id))) throw new Error("MTM_ATTENDANCE_MONTH_SCOPE_CHANGED")
   if(Buffer.byteLength(JSON.stringify(payload),"utf8")>2_000_000) throw new Error("MTM_ATTENDANCE_MONTH_TOO_LARGE")

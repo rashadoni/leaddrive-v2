@@ -24,7 +24,9 @@ const BLOCKER_TEXT: Record<string, string> = { OPEN: "reportOpenDay", MISSING_FI
 
 function isState(value: unknown): value is AttendanceMonthN1tState {
   const state = value as AttendanceMonthN1tState | null
-  return !!state && typeof state.month === "string" && Array.isArray(state.closes) && Array.isArray(state.candidates) && Array.isArray(state.blockers)
+  return !!state && typeof state.month === "string" && Array.isArray(state.legacy) && Array.isArray(state.candidates) && Array.isArray(state.blockers)
+    && (state.closed === null || (typeof state.closed === "object" && Array.isArray(state.closed.table?.rows) && Array.isArray(state.closed.closes)))
+    && (state.preview === null || Array.isArray(state.preview?.rows))
 }
 
 /**
@@ -32,10 +34,11 @@ function isState(value: unknown): value is AttendanceMonthN1tState {
  * bağla» on the N-1t itself, one press, as in the clip). `month` is null for a
  * month that is not over: nothing is read and nothing can be closed.
  *
- * A press sends the exact previews the screen shows — one close per block of
- * at most 100 people — each with its own request id. A lost answer keeps those
- * bodies, so «Bağlamanın nəticəsini yoxla» repeats them and the server answers from its
- * receipt instead of closing twice.
+ * The screen shows one N-1t for the whole month; a press sends it as the exact
+ * snapshots of its blocks — one close per at most 100 people, in the order of
+ * the form's lines — each with its own request id. A lost answer keeps those
+ * bodies, so «Bağlamanın nəticəsini yoxla» repeats them and the server answers
+ * from its receipt instead of closing twice.
  */
 export function useAttendanceN1tMonth(month: string | null, onAccessLost: () => void) {
   const locale = useLocale() as "az" | "ru" | "en"
@@ -99,30 +102,25 @@ export function useAttendanceN1tMonth(month: string | null, onAccessLost: () => 
 export type AttendanceN1tMonth = ReturnType<typeof useAttendanceN1tMonth>
 
 /**
- * What «Bu tabeli bağla» will freeze — the N-1t exactly as it will be kept —
- * and, under it, the press itself with the sentence that says what happens;
- * or, when a day still blocks the month, the list of those days instead of
- * the button (an unfinished, open, unclosed or broken day is never frozen).
+ * What «Bu tabeli bağla» will freeze — one N-1t for everyone, exactly as it
+ * will be kept, however many blocks of 100 carry it — and, under it, the press
+ * itself with the sentence that says what happens; or, when a day still blocks
+ * the month, the list of those days instead of the button (an unfinished,
+ * open, unclosed or broken day is never frozen).
  */
 export function AttendanceN1tClosePanel({ month }: { month: AttendanceN1tMonth }) {
   const t = useTranslations("mtmAttendance")
   const locale = useLocale() as "az" | "ru" | "en"
   const state = month.state
-  if (!state || !state.candidates.length) return null
+  if (!state || !state.candidates.length || !state.preview) return null
   const label = attendanceMonthLabel(state.month, locale)
   const count = state.candidates.reduce((total, candidate) => total + candidate.agentIds.length, 0)
   const day = (date: string) => formatDate(`${date}T12:00:00.000Z`, locale, { dateStyle: "medium", timeZone: "UTC" })
-  // Blocks of at most 100 people, numbered as one list: «Əməkdaşlar 1–100», «101–180».
-  const starts = state.candidates.map((_, index) => 1 + state.candidates.slice(0, index).reduce((total, candidate) => total + candidate.agentIds.length, 0))
   return <div className="space-y-4" data-testid="attendance-n1t-close">
-    {state.candidates.map((candidate, index) => {
-      const from = starts[index], to = from + candidate.agentIds.length - 1
-      return <div key={index} className="rounded-2xl border bg-card p-4" data-testid="attendance-n1t-candidate">
-        {state.candidates.length > 1 ? <h2 className="mb-2 text-sm font-semibold">{t("monthCloseN1tBlock", { from, to })}</h2> : null}
-        <AttendanceReportTable table={candidate.table} />
-        <AttendanceReportTotals period={candidate.table.details[0] ?? null} totals={candidate.table.totals} />
-      </div>
-    })}
+    <div className="rounded-2xl border bg-card p-4" data-testid="attendance-n1t-candidate">
+      <AttendanceReportTable table={state.preview} />
+      <AttendanceReportTotals period={state.preview.details[0] ?? null} totals={state.preview.totals} />
+    </div>
     <Card className="space-y-4 p-4 sm:p-6">
       {state.blockers.length ? <div className="space-y-2 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card p-4 text-sm dark:border-zinc-700 dark:border-l-amber-500" role="alert" data-testid="attendance-n1t-blockers">
         <p className="font-medium">{t("monthCloseN1tBlocked")}</p>
