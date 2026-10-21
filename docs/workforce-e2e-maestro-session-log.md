@@ -46,3 +46,11 @@
 
 - Added employee-explanations-authentication to the existing authenticated E2E manifest: actual office JWT GET, invalid POST reaches handler400 rather than auth401, unchanged own explanation collection, field agent403. The suite now declares65 positive cases; execution NOT RUN until hosted gate is authorized/run. node --check and git diff --check PASS.
 - Source auth checkpoint e8af4fab3 is reviewable. User approval requested once for CRM feature push, gated merge and normal deployment because task AGENTS explicitly requires it. No answer yet; dependent publication/deploy paused, independent phone journeys continue.
+
+## 2026-10-21 — выпуск разрешён, актуальная база проверена
+
+- Пользователь ответил «Да, выпустить после проверок»: это явное разрешение push, PR, merge и штатного deploy исправления «Объяснительных». Предыдущие записи об ожидании разрешения superseded; повторное согласование не требуется.
+- Сохранённые checkpoints объединены с актуальным origin/main91cfef9e без конфликтов, merge b03eba914. Канонический dirty checkout не затронут.
+- Повторная проверка на объединённом дереве:3 targeted suites/107 tests PASS; node --check E2E script и git diff --check PASS. Full typecheck/build/browser E2E выполняются только hosted CI.
+- Review: production изменение — один точный GET/POST allowlist для собственной explanations коллекции; tenant/role, остальные методы, detail/HR decision denial сохраняются. Регрессионные проверки включают настоящий resolveMobileAuth и отдельный actual-JWT hosted case.
+- Далее: PR, пять обязательных GitHub gates и65-case authenticated E2E → merge → SHA-bound deploy → live API и строгий Maestro employee smoke.
