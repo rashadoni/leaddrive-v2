@@ -23,3 +23,12 @@
 - Пользователь попросил команды отдельным копируемым блоком, а не внутри длинного вопроса; это предпочтение сохранено.
 - Пользователь предложил отдельное приложение, чтобы завтра ничего не перемешалось. Уточняем: отдельная тестовая копия или самостоятельный продукт. До ответа не меняем идентификатор/релиз и не создаём отметок на устройстве.
 - Приватные материалы текущей диагностики: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/mtm-maestro-device-20261021`, mode 0700. Это не артефакт для Git.
+
+## 2026-10-21 — завершение свежих CRM E2E и отдельный мобильный клиент
+
+- CRM run https://github.com/rashadoni/leaddrive-v2/actions/runs/39556643325 SUCCESS, exact source 092221a2f1a7302458ad0ed050443c1c38e68182. Сохранён sanitized manifest docs/workforce-e2e-maestro-evidence.json: 64 PASS / 0 FAIL / 5 NOT_RUN. Реальные credentials roles, изолированная PostgreSQL, browser HR действия, mobile HTTP с DB receipts, idempotency/tenant границы. Это не физический APK.
+- NOT_RUN: физические OS permissions, настоящая email доставка, camera/QR/offline replay, overnight soak, все комбинации controls. Не маскируются browser результатами. Production данные этим прогоном не менялись.
+- Existing MTM emulator run39556842312 SUCCESS проверил опубликованный 3.11.49 login/theme/tabs/profile/logout на вымышленном field account; отметки/заявки НЕ выполнял.
+- По уточнению пользователя «оставь серверную часть а приложение отдельное» реализация перенесена в правильный мобильный repository rashadoni/leaddrive-mtm, worktree /mnt/HC_Volume_106454338/codex-alt-data/worktrees/mtm-attendance-standalone, branch codex/attendance-standalone. Backend остаётся прежним, архивный workforce клиент не возрождается. Мобильный журнал: docs/attendance-standalone-session-log.md в указанном worktree.
+- Телефон доступен через существующий remote ADB; официальный Maestro2.11.0 уже обнаруживает Android через локальный relay. Отдельный APK com.leaddrive.attendance собирается hosted CI39559382298; полный Jest/TypeScript PASS, сборка ещё идёт. Рабочий com.mtmobileapp3.11.42/1675 не заменялся и его appdata не очищались.
+- Продолжение: получить отдельный APK, установить рядом, войти только в owned fictional office fixture и выполнить Maestro journeys.
