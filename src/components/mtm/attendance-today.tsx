@@ -4,13 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useFormatter, useLocale, useTranslations } from "next-intl"
 import { formatDate, formatTime } from "@/lib/format-date"
-import { CheckCircle2, ChevronDown, ClipboardCheck, MessageCircleQuestionMark, Users, Clock3, FileSpreadsheet, LogIn, LogOut, Paperclip, Plus, ShieldAlert, UserRoundX } from "lucide-react"
+import { CheckCircle2, ChevronDown, ClipboardCheck, MessageCircleQuestionMark, Users, Clock3, FileSpreadsheet, LogIn, LogOut, Paperclip, Plus, ShieldAlert, ShieldCheck, UserRoundX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Hint } from "@/components/hint"
 import { HomeCard, HomeKpi, HomePill } from "@/components/mtm/home-parts"
 import { attendanceDayKindLabel } from "@/lib/mtm/attendance-day-kinds"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
-import { attendanceNow, attendanceTodayRange, summarizeAttendanceToday, type AttendanceNow, type AttendanceNowPerson, type AttendanceTodaySummary } from "@/lib/mtm/attendance-today"
+import { attendanceAskableExplanations, attendanceExplanationKey, attendanceNewlyAskable, attendanceNow, attendanceRowExplanation, attendanceTodayRange, summarizeAttendanceToday, type AttendanceNow, type AttendanceNowPerson, type AttendanceTodayAttention, type AttendanceTodaySummary } from "@/lib/mtm/attendance-today"
 import { ATTENDANCE_RISK_MESSAGES, type AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
 import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
 import type { AttendanceExplanationDto } from "@/lib/mtm/attendance-explanation-contract"
@@ -24,7 +25,6 @@ type Loaded = { today: string; summary: AttendanceTodaySummary; requests: Attend
   now: AttendanceNow; timezone: string; loadedAt: string; canManage: boolean
   /** Null when this user may not ask for explanations: the controls are not drawn. */
   explanations: AttendanceExplanationDto[] | null }
-const explanationKey = (employeeId: string, date: string, kind: "LATE" | "ABSENT") => `${employeeId}|${date}|${kind}`
 const NOW_LIMIT = 3
 const NOW_COLUMNS = [
   { key: "working", label: "nowWorking", time: "nowSince", tone: "text-emerald-700 dark:text-emerald-400" },
@@ -62,6 +62,10 @@ function MtmAttendanceNow({ data }: { data: Loaded }) {
       </div>
     })}</div>
     <p className="mt-3 text-xs text-muted-foreground">{t("nowAutoHint")}</p>
+    {/* What the «Kadr uçotu» clip says under «Now» (owner, 2026-10-20), each claim true of the product:
+      no biometric step anywhere in a mark; a break shows its start time only and no input writes a
+      place inside it (workday-pauses.ts); no cron and no manager finishes anyone's day. */}
+    <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted-foreground" data-testid="attendance-now-privacy"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />{t("nowPrivacy")}</p>
   </section>
 }
 
@@ -81,6 +85,8 @@ export function MtmAttendanceToday() {
   const [reason, setReason] = useState("")
   // Owner, 2026-10-16 (approved mockup): tick the late and absent, ask them to explain.
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  // Rows this screen has already shown: each is ticked once, when it first appears (attendanceNewlyAskable).
+  const seen = useRef<Set<string>>(new Set())
   const [reading, setReading] = useState<string | null>(null)
   const active = useRef<AbortController | null>(null)
 
@@ -110,16 +116,23 @@ export function MtmAttendanceToday() {
         setError(a([401, 403, 404].includes(report.status) ? "reportAccessUnavailable" : "reportLoadError")); return
       }
       const rows = reportBody.data.rows as MtmAttendanceReportRow[]
+      const explanationItems: AttendanceExplanationDto[] | null = explanations.ok && explanationsBody?.success === true && Array.isArray(explanationsBody.data?.items) ? explanationsBody.data.items : null
+      // Today's explanations go into the summary: one whose row has left the list keeps a row of its own until decided.
+      const summary = summarizeAttendanceToday(rows, today, explanationItems ?? [])
+      if (explanationItems) {
+        const fresh = attendanceNewlyAskable(attendanceAskableExplanations(summary.attention, explanationItems), seen.current)
+        if (fresh.length) setSelected(current => new Set([...current, ...fresh]))
+      }
       setData({
         today,
-        summary: summarizeAttendanceToday(rows, today),
+        summary,
         now: attendanceNow(rows, today), timezone: rows.find(row => row.date === today)?.timezone ?? "Asia/Baku",
         loadedAt: new Date().toISOString(), canManage: rulesBody.data?.canManageRules === true,
         // Viewing attendance and deciding requests are separate rights: a
         // refused queue hides the card instead of failing the screen.
         requests: requests.ok && requestsBody?.success === true && Array.isArray(requestsBody.data?.items) ? requestsBody.data.items : null,
         risks: risks.ok && Array.isArray(risksBody?.data?.items) ? risksBody.data.items : null,
-        explanations: explanations.ok && explanationsBody?.success === true && Array.isArray(explanationsBody.data?.items) ? explanationsBody.data.items : null,
+        explanations: explanationItems,
       })
     } catch {
       if (!controller.signal.aborted) setError(a("reportLoadError"))
@@ -191,15 +204,26 @@ export function MtmAttendanceToday() {
   const summary = data?.summary
   const month = data ? dateLabel(data.today, { month: "long" }) : ""
   const attention = [
-    ...(summary?.attention ?? []).map(item => ({ key: `${item.type}:${item.employeeId}:${item.date}`, item })),
+    ...(summary?.attention ?? []).map(item => ({ key: `${item.type}:${item.employeeId}:${item.date}${item.type === "explanation" ? `:${item.kind}` : ""}`, item })),
   ]
   const risks = data?.risks ?? []
   const attentionCount = attention.length + risks.length
-  const explanationOf = new Map((data?.explanations ?? []).map(item => [explanationKey(item.employeeId, item.date, item.kind), item]))
-  const explainKey = (item: (typeof attention)[number]["item"]) => item.type === "late" || item.type === "absent" ? explanationKey(item.employeeId, item.date, item.type === "late" ? "LATE" : "ABSENT") : null
-  // Those still to be asked: late or absent today, nothing asked or written yet.
-  const askable = data?.explanations ? attention.flatMap(({ item }) => { const key = explainKey(item); return key && !explanationOf.has(key) ? [key] : [] }) : []
+  // The row's own explanation, or on a late or absent row the one the person already has that day (attendanceRowExplanation).
+  const explanationOf = (item: AttendanceTodayAttention) => data?.explanations ? attendanceRowExplanation(item, data.explanations) : undefined
+  const explainKey = (item: AttendanceTodayAttention) => item.type === "missing-finish" ? null
+    : attendanceExplanationKey(item.employeeId, item.date, item.type === "explanation" ? item.kind : item.type === "late" ? "LATE" : "ABSENT")
+  // Those still to be asked: late or absent today, nothing asked or written for that person and day yet.
+  const askable = data?.explanations ? attendanceAskableExplanations(summary?.attention ?? [], data.explanations) : []
+  const clock = (value: string) => formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: data?.timezone ?? "Asia/Baku" })
   const picked = askable.filter(key => selected.has(key))
+  // The card keeps to ATTENTION_LIMIT rows but never hides a late or absent row that is asked or
+  // will be: one still to ask comes ticked, so everyone «İzahat istə» sends to is on screen with a
+  // tick HR can take off; one already asked keeps its row, because this card is the only place in
+  // the CRM where its answer is read and decided. So does an explanation on a row of its own.
+  const askableKeys = new Set(askable)
+  const shown = attention.filter(({ item }, index) => { const key = explainKey(item); return index < ATTENTION_LIMIT || (key !== null && (askableKeys.has(key) || explanationOf(item) !== undefined)) })
+  const shownRisks = risks.slice(0, Math.max(0, ATTENTION_LIMIT - shown.length))
+  const notShown = attentionCount - shown.length - shownRisks.length
 
   return <div className="space-y-4" data-testid="attendance-today">
     <header className="flex flex-wrap items-end justify-between gap-3">
@@ -268,39 +292,44 @@ export function MtmAttendanceToday() {
           : <>{askable.length ? <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5" data-testid="attendance-explain-bar">
               <label className="inline-flex min-h-9 items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={picked.length === askable.length}
                 onChange={event => setSelected(event.target.checked ? new Set(askable) : new Set())} />{t("explainSelectAll", { count: askable.length })}</label>
-              <Button size="sm" variant="outline" className="min-h-9" disabled={!picked.length || busyId !== null} onClick={() => void askExplanations(picked)} data-testid="attendance-explain-ask">
-                <MessageCircleQuestionMark className="mr-1.5 h-4 w-4" aria-hidden="true" />{t("explainAsk", { count: picked.length })}</Button>
+              <Hint text={t("explainAskHint")} wrap={!picked.length || busyId !== null}><Button size="sm" variant="outline" className="min-h-9" disabled={!picked.length || busyId !== null} onClick={() => void askExplanations(picked)} data-testid="attendance-explain-ask">
+                <MessageCircleQuestionMark className="mr-1.5 h-4 w-4" aria-hidden="true" />{t("explainAsk", { count: picked.length })}</Button></Hint>
               <p className="w-full text-xs text-muted-foreground">{t("explainHint")}</p>
             </div> : null}
           <ul className="divide-y divide-border">
-            {attention.slice(0, ATTENTION_LIMIT).map(({ key, item }) => {
-              const explainId = explainKey(item), explanation = explainId ? explanationOf.get(explainId) : undefined
+            {shown.map(({ key, item }) => {
+              const explainId = explainKey(item), explanation = explanationOf(item)
+              // What the explanation is about, said when the row does not say it: its own row, or a row of the other kind.
+              const about = explanation && (item.type === "explanation" || explanation.kind !== (item.type === "late" ? "LATE" : "ABSENT"))
+                ? t(explanation.kind === "LATE" ? "explainForLate" : "explainForAbsent") : null
               return <li key={key} className="py-2.5" data-testid="attendance-today-attention-item" data-type={item.type}><div className="flex flex-wrap items-center gap-3">
               {explainId && data?.explanations ? <input type="checkbox" className="h-4 w-4 shrink-0" aria-label={t("explainSelect", { name: item.employeeName })} disabled={!!explanation}
                 checked={!explanation && selected.has(explainId)} onChange={event => setSelected(current => { const next = new Set(current); if (event.target.checked) next.add(explainId); else next.delete(explainId); return next })} /> : null}
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.employeeName}</p>
-                <p className="text-sm text-muted-foreground">{item.type === "absent" ? t("absentNoReason")
+                {item.type === "explanation" ? null : <p className="text-sm text-muted-foreground">{item.type === "absent" ? t("absentNoReason")
                   : item.type === "late" ? t("lateBy", { duration: item.lateSeconds < 3600 ? t("minutes", { count: Math.round(item.lateSeconds / 60) }) : formatAttendanceDuration(item.lateSeconds), time: formatTime(item.startedAt, locale, { hour: "2-digit", minute: "2-digit", timeZone: item.timezone }) })
-                  : t("missingFinishOn", { date: dateLabel(item.date) })}</p></div>
+                  : t("missingFinishOn", { date: dateLabel(item.date) })}</p>}
+                {about ? <p className="text-sm text-muted-foreground" data-testid="attendance-explain-about">{about}</p> : null}</div>
               {explainId && data?.explanations ? <span className="shrink-0 text-xs" data-testid="attendance-explain-status">{!explanation ? <span className="text-muted-foreground">{t("explainNotAsked")}</span>
-                : explanation.status === "REQUESTED" ? <span className="text-amber-700 dark:text-amber-400">{t("explainWaiting", { time: explanation.requestedAt ? formatTime(explanation.requestedAt, locale, { hour: "2-digit", minute: "2-digit", timeZone: data.timezone }) : "" })}</span>
+                : explanation.status === "REQUESTED" ? <span className="text-amber-700 dark:text-amber-400">{t("explainWaiting", { time: explanation.requestedAt ? clock(explanation.requestedAt) : "" })}</span>
                 : explanation.status === "ANSWERED" ? <button type="button" className="font-semibold text-primary hover:underline" aria-expanded={reading === explanation.id} onClick={() => setReading(reading === explanation.id ? null : explanation.id)}>{t("explainAnswered")}</button>
                 : <span className={explanation.status === "ACCEPTED" ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-300"}>{t(explanation.status === "ACCEPTED" ? "explainAccepted" : "explainRejected")}</span>}</span> : null}
               <Button asChild size="sm" variant="outline" className="min-h-9 shrink-0"><Link prefetch={false} href={item.type === "absent" ? recordHref(item.employeeId, item.date) : dayHref(item.employeeId, item.date)}>{item.type === "absent" ? t("addReason") : t("openDay")}</Link></Button>
               </div>
               {explanation && reading === explanation.id ? <div className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-sm" data-testid="attendance-explain-answer">
                 <span className="text-muted-foreground">{t("explainAnswerOf", { name: item.employeeName })}</span> «{explanation.answer}»
+                {explanation.answeredAt ? <span className="mt-1 block text-xs text-muted-foreground" data-testid="attendance-explain-answered-at">{t("explainAnsweredAt", { time: clock(explanation.answeredAt) })}</span> : null}
                 <span className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" className="min-h-9 border-emerald-600 text-emerald-700 dark:border-emerald-500 dark:text-emerald-300" disabled={busyId !== null} onClick={() => void decideExplanation(explanation, "ACCEPTED")}>{t("explainAccept")}</Button>
                   <Button size="sm" variant="outline" className="min-h-9 text-rose-700 dark:text-rose-300" disabled={busyId !== null} onClick={() => void decideExplanation(explanation, "REJECTED")}>{t("explainReject")}</Button></span>
               </div> : null}
             </li> })}
-            {risks.slice(0, Math.max(0, ATTENTION_LIMIT - attention.length)).map(item => <li key={item.id} className="flex flex-wrap items-center gap-3 py-2.5" data-testid="attendance-today-attention-item" data-type="risk">
+            {shownRisks.map(item => <li key={item.id} className="flex flex-wrap items-center gap-3 py-2.5" data-testid="attendance-today-attention-item" data-type="risk">
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.employeeName}</p>
                 <p className="text-sm text-muted-foreground">{a(ATTENDANCE_RISK_MESSAGES[item.kind])}{item.relatedNames.length ? ` · ${item.relatedNames.join(", ")}` : ""}</p></div>
               <Button asChild size="sm" variant="outline" className="min-h-9 shrink-0"><Link prefetch={false} href="/mtm/attendance/review">{t("check")}</Link></Button>
             </li>)}
           </ul></>}
-        {data && attentionCount > ATTENTION_LIMIT ? <p className="mb-3 text-xs text-muted-foreground">{t("moreAttention", { count: attentionCount - ATTENTION_LIMIT })}</p> : null}
+        {data && notShown > 0 ? <p className="mb-3 text-xs text-muted-foreground">{t("moreAttention", { count: notShown })}</p> : null}
         {data && summary && summary.people ? <p className="mb-3 text-xs text-muted-foreground">{t("quiet", { count: summary.quiet })}</p> : null}
       </HomeCard>
     </div>
