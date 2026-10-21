@@ -21,7 +21,8 @@ function request(index = 1, patch: Partial<AttendanceReviewItem> = {}): Attendan
     startDate: "2026-10-15", endDate: "2026-10-15", reason: "Демонстрационная заявка: запись к врачу на два часа.",
     submittedAt: version, decisionNote: null, decidedAt: null, cancelledAt: null, version,
     details: { version: 1, kind: "HOURLY_ABSENCE", unit: "HOURS", startTime: "10:00", endTime: "12:00", timezone: "Asia/Baku", dayKind: dayKinds.find(kind => kind.key === "HOURLY_ABSENCE")!, attachmentIds: [id(200)] },
-    employeeName: "Aylin Demo", teamName: "Demo North", reviewerName: null, ...patch,
+    employeeName: "Aylin Demo", teamName: "Demo North", reviewerName: null,
+    approval: { twoStep: false, awaiting: null, manager: null, passesToHr: false }, canDecide: true, ...patch,
   }
 }
 const fixture = () => [request(), request(2, { employeeName: "Murad Demo", reason: "Демонстрационная заявка: забыта отметка ухода.", startDate: "2026-10-12", endDate: "2026-10-12",

@@ -36,6 +36,7 @@ const leaveRequest = (id: string, name: string): AttendanceReviewItem => ({
   submittedAt: version, decisionNote: null, decidedAt: null, cancelledAt: null, version,
   details: { version: 1, kind: "ANNUAL_LEAVE", unit: "DAYS", startTime: null, endTime: null, timezone: "Asia/Baku", dayKind: kinds.find(kind => kind.key === "ANNUAL_LEAVE")!, attachmentIds: [] },
   employeeName: name, teamName: null, reviewerName: null,
+  approval: { twoStep: false, awaiting: null, manager: null, passesToHr: false }, canDecide: true,
 } as AttendanceReviewItem)
 const risk = { id: "risk-1", employeeId: "id-Рашад", employeeName: "Камран", teamId: null, teamName: null, kind: "SHARED_INSTALLATION", workDate: today, timezone: "Asia/Baku",
   claimedAt: at(today, "09:00"), serverReceivedAt: at(today, "09:00"), action: "START", createdAt: at(today, "09:01"), canDismiss: true, relatedNames: ["Эльвин"], relatedNamesRestricted: false,
