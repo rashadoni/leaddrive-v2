@@ -2707,8 +2707,9 @@ pgDescribe("client categories on a real Postgres", () => {
   })
 
   // Owner, 2026-10-16: on the agent's card, specialty → city → district, then the
-  // doctors grouped by institution. Asked of the real handler: which doctors it
-  // reads (active, with a current workplace), and which are already the agent's.
+  // doctors — since 2026-10-20 one row each, with his class and his institution.
+  // Asked of the real handler: which doctors it reads (active, with a current
+  // workplace), their class as stored, and which are already the agent's.
   describe("choosing an agent's doctors on his card", () => {
     const picker = async (query: string) => {
       const { GET } = await import("@/app/api/v1/mtm/contacts/agent-picker/route")
@@ -2719,18 +2720,18 @@ pgDescribe("client categories on a real Postgres", () => {
     beforeAll(async () => {
       await bypass(async () => {
         agent = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Picker Agent", role: "AGENT" }, select: { id: true } })).id
-        const clinic = await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Fictional Picker Clinic", city: "Bakı", district: "Nəsimi" }, select: { id: true } })
+        const clinic = await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Fictional Picker Clinic", city: "Bakı", district: "Nəsimi", address: "Fictional küç. 1" }, select: { id: true } })
         const suburb = await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Fictional Picker Suburb", locality: "Xırdalan" }, select: { id: true } })
-        const make = async (firstName: string, specialtyName: string, customerId: string | null, status: "ACTIVE" | "INACTIVE" = "ACTIVE", ended = false) => {
+        const make = async (firstName: string, specialtyName: string, customerId: string | null, status: "ACTIVE" | "INACTIVE" = "ACTIVE", ended = false, category?: "VIP") => {
           const contact = await prisma.mtmContact.create({
-            data: { organizationId: ORG, firstName, lastName: "Pickerova", displayName: `Pickerova ${firstName}`, type: "DOCTOR", specialtyName, status },
+            data: { organizationId: ORG, firstName, lastName: "Pickerova", displayName: `Pickerova ${firstName}`, type: "DOCTOR", specialtyName, status, ...(category ? { category } : {}) },
             select: { id: true },
           })
           if (customerId) await prisma.mtmContactWorkplace.create({ data: { organizationId: ORG, contactId: contact.id, customerId, isPrimary: true, ...(ended ? { endedOn: new Date("2026-01-01T00:00:00.000Z") } : {}) } })
           return contact.id
         }
         const ayan = await make("Ayan", "Pickerologist", clinic.id)
-        await make("Bahar", "Pickerologist", clinic.id)
+        await make("Bahar", "Pickerologist", clinic.id, "ACTIVE", false, "VIP")
         await make("Cəmilə", "Pickerologist", suburb.id)
         await make("Dünya", "Pickerologist", clinic.id, "INACTIVE")
         await make("Elmira", "Pickerologist", clinic.id, "ACTIVE", true)
@@ -2739,7 +2740,7 @@ pgDescribe("client categories on a real Postgres", () => {
       })
     })
 
-    it("offers the cities of the chosen specialty, then their districts, and lists the active doctors by institution", async () => {
+    it("offers the cities of the chosen specialty, then their districts, and lists each active doctor with his class and institution", async () => {
       const bySpecialty = await picker(`agentId=${agent}&specialty=Pickerologist`)
       expect(bySpecialty.status, JSON.stringify(bySpecialty.body).slice(0, 300)).toBe(200)
       // Dünya is inactive. Elmira left her workplace: she is a doctor without one.
@@ -2750,11 +2751,37 @@ pgDescribe("client categories on a real Postgres", () => {
       ]))
       const baku = await picker(`agentId=${agent}&specialty=pickerologist&city=Bakı`)
       expect(baku.body.data.districts).toEqual([{ value: "nəsimi", label: "Nəsimi", count: 2 }])
-      const groups = baku.body.data.groups as Array<{ institution: { name: string }; contacts: Array<{ name: string; assignedHere: boolean }> }>
-      expect(groups.map(group => [group.institution.name, group.contacts.map(contact => [contact.name, contact.assignedHere])])).toEqual([
-        ["Fictional Picker Clinic", [["Pickerova Ayan", true], ["Pickerova Bahar", false]]],
+      const contacts = baku.body.data.contacts as Array<{ name: string; category: string; assignedHere: boolean; place: { institution: { name: string } | null; address: string | null; district: string | null } }>
+      // Ayan was never graded: the column's own default, B.
+      expect(contacts.map(contact => [contact.name, contact.category, contact.place.institution?.name, contact.place.district, contact.place.address, contact.assignedHere])).toEqual([
+        ["Pickerova Ayan", "B", "Fictional Picker Clinic", "Nəsimi", "Fictional küç. 1", true],
+        ["Pickerova Bahar", "VIP", "Fictional Picker Clinic", "Nəsimi", "Fictional küç. 1", false],
       ])
+      expect(baku.body.data.institutions).toBe(1)
       expect(baku.body.data.assignedHere).toBe(1)
+    })
+
+    // Owner, 2026-10-21: «я не заметил категории клиентов… нужно добавить в
+    // фильтр». The class step reads the company's own classes and the class as
+    // stored, and narrows the list by it.
+    it("offers every class the company grades with, «0» included, and narrows the doctors by the class chosen", async () => {
+      await bypass(() => prisma.mtmSetting.create({ data: { organizationId: ORG, key: "contactClasses", value: ["A", "B", "C", "VIP"] } }))
+      try {
+        const all = await picker(`agentId=${agent}&specialty=Pickerologist&city=Bakı`)
+        expect(all.status, JSON.stringify(all.body).slice(0, 300)).toBe(200)
+        expect(all.body.data.classes).toEqual([
+          { value: "A", label: "A", count: 0 },
+          { value: "B", label: "B", count: 1 },
+          { value: "C", label: "C", count: 0 },
+          { value: "VIP", label: "VIP", count: 1 },
+        ])
+        const vip = await picker(`agentId=${agent}&specialty=Pickerologist&city=Bakı&class=VIP`)
+        expect((vip.body.data.contacts as Array<{ name: string }>).map(contact => contact.name)).toEqual(["Pickerova Bahar"])
+        expect(vip.body.data.matching).toBe(1)
+        expect(vip.body.data.assignedHere).toBe(0)
+      } finally {
+        await bypass(() => prisma.mtmSetting.deleteMany({ where: { organizationId: ORG, key: "contactClasses" } }))
+      }
     })
 
     it("refuses an agent of another company", async () => {

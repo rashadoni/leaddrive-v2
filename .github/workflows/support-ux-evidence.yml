@@ -1392,6 +1392,12 @@ jobs:
       - name: Install Chromium on the ephemeral hosted runner
         run: npx playwright install --with-deps chromium
 
+      - name: Keep Next build-worker trace events out of IPC
+        # Without it the server compiler's result outgrows V8's string limit
+        # over the build worker's IPC and the build hangs. See the script.
+        if: ${{ inputs.target_mode == 'ephemeral' }}
+        run: node scripts/ci/patch-next-build-worker-trace.mjs
+
       - name: Build isolated production-mode evidence application
         if: ${{ inputs.target_mode == 'ephemeral' }}
         env:
