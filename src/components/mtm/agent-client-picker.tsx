@@ -28,7 +28,11 @@ import type { AgentClientPicker, PickerOption } from "@/lib/mtm/agent-client-pic
  * галочки»).
  */
 
-type Selection = { specialties: string[]; cities: string[]; districts: string[] }
+/**
+ * `everySpecialty`: «Hamısı» chosen in the first step on purpose. An empty
+ * `specialties` alone means nothing is chosen yet, which lists nobody.
+ */
+type Selection = { specialties: string[]; everySpecialty: boolean; cities: string[]; districts: string[] }
 type PickerData = AgentClientPicker & { asOf: string }
 
 /**
@@ -76,7 +80,7 @@ function TickBox({ state }: { state: "on" | "off" }) {
   )
 }
 
-function StepSelect({ step, label, options, selected, disabled, disabledHint, onChange, testId }: {
+function StepSelect({ step, label, options, selected, disabled, disabledHint, onChange, testId, emptyLabel, every }: {
   step: number
   label: string
   options: PickerOption[]
@@ -85,13 +89,18 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
   disabledHint: string
   onChange: (values: string[]) => void
   testId: string
+  /** What the field says before anything is chosen; «Hamısı» by default. */
+  emptyLabel?: string
+  /** A step where «Hamısı» is a choice of its own, not the empty field. */
+  every?: { chosen: boolean; choose: () => void }
 }) {
   const t = useTranslations("mtmForms")
   const nameOf = (value: string) => {
     const option = options.find(item => item.value === value)
     return option?.label ?? t("clientsNotStated")
   }
-  const summary = selected.length === 0 ? t("clientsAll") : selected.length === 1 ? nameOf(selected[0]) : `${nameOf(selected[0])} +${selected.length - 1}`
+  const everyChosen = every ? every.chosen : selected.length === 0
+  const summary = every?.chosen ? t("clientsAll") : selected.length === 0 ? emptyLabel ?? t("clientsAll") : selected.length === 1 ? nameOf(selected[0]) : `${nameOf(selected[0])} +${selected.length - 1}`
   const total = options.reduce((sum, option) => sum + option.count, 0)
   const toggle = (value: string) => onChange(selected.includes(value) ? selected.filter(item => item !== value) : [...selected, value])
   return (
@@ -108,10 +117,10 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
               data-testid={testId}
               className={cn(
                 "flex h-10 w-full items-center justify-between gap-2 rounded-xl border px-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                selected.length > 0 ? "border-foreground font-semibold" : "border-input bg-background",
+                selected.length > 0 || every?.chosen ? "border-foreground font-semibold" : "border-input bg-background",
               )}
             >
-              <span className="truncate">{summary}</span>
+              <span className={cn("truncate", selected.length === 0 && !everyChosen && "text-muted-foreground")}>{summary}</span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             </button>
           </PopoverTrigger>
@@ -121,8 +130,8 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
         <PopoverContent align="start" className="z-[70] max-h-80 w-64 overflow-y-auto p-1.5" data-testid={`${testId}-options`}>
           <button
             type="button"
-            onClick={() => onChange([])}
-            className={cn("flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm hover:bg-muted", selected.length === 0 && "bg-muted font-semibold")}
+            onClick={() => (every ? every.choose() : onChange([]))}
+            className={cn("flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm hover:bg-muted", everyChosen && "bg-muted font-semibold")}
           >
             <span>{t("clientsAll")}</span><span className="tabular-nums text-muted-foreground">{total}</span>
           </button>
@@ -150,7 +159,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   onForbidden?: () => void
 }) {
   const t = useTranslations("mtmForms")
-  const [selection, setSelection] = useState<Selection>({ specialties: [], cities: [], districts: [] })
+  const [selection, setSelection] = useState<Selection>({ specialties: [], everySpecialty: false, cities: [], districts: [] })
   const [data, setData] = useState<PickerData | null>(null)
   const [loading, setLoading] = useState(true)
   const [problem, setProblem] = useState<string | null>(null)
@@ -192,8 +201,11 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   }, [agentId, orgId, selection, refresh])
 
   // Nothing is listed, nor ticked, before a specialty is chosen: a card opened
-  // and closed again must not take every doctor of the company along.
-  const chosenFirstStep = selection.specialties.length > 0
+  // and closed again must not take every doctor of the company along. The
+  // specialties are offered right there as buttons, «Hamısı» among them (owner,
+  // 2026-10-21, in front of a first step that read «Hamısı» over an empty
+  // list: «сейчас вообще ничего не загружается»).
+  const chosenFirstStep = selection.everySpecialty || selection.specialties.length > 0
   const contacts = useMemo(() => (chosenFirstStep ? data?.contacts ?? [] : []), [chosenFirstStep, data])
   const listedIds = useMemo(() => contacts.map(contact => contact.id), [contacts])
   const chosen = useMemo(() => contacts.filter(contact => !contact.assignedHere && !unticked.has(contact.id)).map(contact => contact.id), [contacts, unticked])
@@ -210,8 +222,12 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   const setStep = (step: keyof Selection, values: string[]) => {
     setShownCount(DOCTORS_PAGE)
     setSelection(current => step === "specialties"
-      ? { specialties: values, cities: [], districts: [] }
+      ? { specialties: values, everySpecialty: false, cities: [], districts: [] }
       : step === "cities" ? { ...current, cities: values, districts: [] } : { ...current, districts: values })
+  }
+  const chooseEverySpecialty = () => {
+    setShownCount(DOCTORS_PAGE)
+    setSelection({ specialties: [], everySpecialty: true, cities: [], districts: [] })
   }
   const toggle = (ids: string[], include: boolean) => setUnticked(current => {
     const next = new Set(current)
@@ -228,7 +244,8 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
     <div className="space-y-4" data-testid="agent-client-picker">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-2">
         <StepSelect step={1} label={t("clientsStepSpecialty")} options={data?.specialties ?? []} selected={selection.specialties}
-          disabled={!data} disabledHint={t("clientsLoading")} onChange={values => setStep("specialties", values)} testId="agent-clients-specialty" />
+          disabled={!data} disabledHint={t("clientsLoading")} onChange={values => setStep("specialties", values)} testId="agent-clients-specialty"
+          emptyLabel={t("clientsChoose")} every={{ chosen: selection.everySpecialty, choose: chooseEverySpecialty }} />
         <ChevronRight className="hidden h-5 w-5 shrink-0 self-center text-zinc-300 sm:mb-2.5 sm:block sm:self-end" aria-hidden="true" />
         <StepSelect step={2} label={t("clientsStepCity")} options={chosenFirstStep ? data?.cities ?? [] : []} selected={selection.cities}
           disabled={!chosenFirstStep} disabledHint={t("clientsPickSpecialtyFirst")} onChange={values => setStep("cities", values)} testId="agent-clients-city" />
@@ -240,9 +257,29 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
       {problem ? (
         <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{t(problem)}</p>
       ) : !chosenFirstStep ? (
-        <p className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-6 text-sm text-muted-foreground" data-testid="agent-clients-start">
-          <Info className="h-4 w-4 shrink-0" aria-hidden="true" />{t("clientsPickSpecialtyFirst")}
-        </p>
+        <div className="rounded-xl border border-dashed px-3 py-4" data-testid="agent-clients-start">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Info className="h-4 w-4 shrink-0" aria-hidden="true" />{t("clientsPickSpecialtyFirst")}
+          </p>
+          {data && data.specialties.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2" data-testid="agent-clients-start-choices">
+              {[...data.specialties.map(option => ({ key: option.value, label: option.label ?? t("clientsNotStated"), count: option.count, choose: () => setStep("specialties", [option.value]) })),
+                { key: "every", label: t("clientsAll"), count: data.specialties.reduce((sum, option) => sum + option.count, 0), choose: chooseEverySpecialty }]
+                .map(choice => (
+                  <button
+                    key={choice.key}
+                    type="button"
+                    onClick={choice.choose}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-full border border-zinc-300 bg-background px-4 text-sm font-semibold hover:border-foreground hover:bg-muted/40 dark:border-zinc-600"
+                    data-testid="agent-clients-start-choice"
+                  >
+                    {choice.label}
+                    <span className="font-normal text-muted-foreground">{t("clientsDoctorsCount", { count: choice.count })}</span>
+                  </button>
+                ))}
+            </div>
+          ) : null}
+        </div>
       ) : loading && !data ? (
         <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />{t("clientsLoading")}</p>
       ) : contacts.length === 0 ? (
