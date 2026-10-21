@@ -276,9 +276,6 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
       setForm((previous) => ({
         ...previous,
         capabilities,
-        features: data.data?.features
-          ? withRequiredModules(data.data.features)
-          : previous.features,
       }))
       setSaved(true)
       setTimeout(() => { if (mounted.current) setSaved(false) }, 3000)

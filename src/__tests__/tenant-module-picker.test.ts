@@ -88,6 +88,24 @@ describe("unified tenant module picker", () => {
     expect(capability("route-field")?.getAttribute("aria-checked")).toBe("true")
   })
 
+  it("preserves an unrelated draft edit made while a save is in flight", async () => {
+    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "personnel"])))
+    await render()
+    let finish!: (result: Response) => void
+    fetchMock.mockReturnValueOnce(new Promise<Response>(resolve => { finish = resolve }))
+    await click(button(messages("en").admin.tenants.save))
+    const extraLabel = Array.from(container.querySelectorAll("div"))
+      .find(element => element.textContent === "Complaints Register")!
+    const extraToggle = extraLabel.parentElement!.parentElement!.querySelector("button")!
+    await click(extraToggle)
+    expect(extraToggle.textContent).toBe("on")
+    await act(async () => finish(response({ ...tenant(["crm", "personnel"]), modules: { crm: true, personnel: true } })))
+    expect(extraToggle.textContent).toBe("on")
+    fetchMock.mockResolvedValueOnce(response({ ...tenant(["crm", "personnel", "complaints_register"]), modules: { crm: true, personnel: true } }))
+    await click(button(messages("en").admin.tenants.save))
+    expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body)).features).toContain("complaints_register")
+  })
+
   it("includes both independent capabilities in bulk actions and preserves unrelated flags", async () => {
     const flags = ["social_discovery", "ai_auto_triage", "workforce-hrm"]
     fetchMock.mockResolvedValueOnce(response(tenant(flags)))

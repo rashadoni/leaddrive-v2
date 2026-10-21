@@ -95,3 +95,15 @@
 - PASS: bounded isolated Chromium fixture rendering the actual edited page and app CSS, at desktop and 390px widths in AZ/RU/EN; independent toggle interaction, no picker overflow or page errors. Inspected AZ desktop and RU mobile screenshots. Evidence: /tmp/leaddrive-unified-picker-browser-20261021/{az,ru,en}-{desktop,mobile}.png. Fixture uses mocked Next navigation and tenant API; it is not authenticated production evidence and performs no production writes.
 - Local full production build and whole-repository typecheck: NOT RUN on Contabo under host workload policy; required hosted CI/deploy build must run before release. Full browser E2E: NOT RUN; bounded UI fixture plus API tests cover this change, without claiming full-stack authentication evidence.
 - Current state: implementation verified and ready for PR/required CI. Owner-visible scope restated before publication; prior continuation approval covers the unified list and readable independent controls.
+
+## 2026-10-21 — PR 971 published
+
+- Implementation checkpoint: 27aae1314942993bf383a77f628221120f1ade4b. Pushed only the dedicated feature branch; opened PR https://github.com/rashadoni/leaddrive-v2/pull/971, attached it to this task, then marked it ready.
+- Re-read main protection: all five required contexts (pr-scope, static-checks, typecheck, runner-policy, scan) remain GitHub Actions app 15368-bound; enforce_admins true. No bypass or gate modification.
+- Stopping point for continuity: required hosted CI is now running for exact PR head 27aae1314942993bf383a77f628221120f1ade4b. Next: inspect results, fix any introduced failure, merge only when required checks pass, then verify deployment and public build SHA.
+
+## 2026-10-21 — Save-response race fixed before release
+
+- Review identified a client-side race introduced by adopting the authoritative save response: replacing the whole feature draft could erase an unrelated extra-feature edit made while the request was pending. The response now refreshes only the independent capability state; the user's feature draft remains intact.
+- Added a regression that changes Complaints Register during an in-flight save and verifies the next save retains it. PASS: 16 editor/HRM UI tests; scoped TypeScript rerun; changed test ESLint. No layout change.
+- Earlier PR-head checks are superseded by the following checkpoint. Required checks must be green for the new exact head before merge; prior green checks are not reused.
