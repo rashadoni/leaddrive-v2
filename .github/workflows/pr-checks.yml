@@ -266,6 +266,9 @@ jobs:
           node --test --test-concurrency=1 scripts/backup/commission-code-staging.test.mjs scripts/backup/transient-workspace.test.mjs
           node --test scripts/backup/scratch-authentication.test.mjs
           node --test scripts/backup/scratch-service.test.mjs
+          node --test scripts/backup/native-scratch-template.test.mjs
+          node --test scripts/backup/native-scratch-preflight.test.mjs
+          node --test scripts/backup/owner-template.test.mjs
           node --test .github/scripts/test-inspect-backup-compatibility.mjs
 
       - name: Event-platform migration and database invariant gate
@@ -509,6 +512,38 @@ jobs:
         env:
           MTM_MANAGER_MESSAGES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_MANAGER_MESSAGES_DB_GATE: required
+
+      - name: MTM joint visit database gate
+        # Joint visit (2026-10-20): a manager in the field with one agent of his
+        # team, the agent's «yes, together» at check-in, the manager's rating.
+        # The real handlers on a real Postgres: no session with an agent outside
+        # the team, no joint visit without the manager's session, no rating on
+        # a visit the agent did not mark — and the rated agent never reads it.
+        run: npx vitest run src/__tests__/mtm-joint-visit-postgres.test.ts
+        env:
+          MTM_JOINT_VISIT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_JOINT_VISIT_DB_GATE: required
+
+      - name: MTM task notice database gate
+        # A task given in the panel (2026-10-20): the agent gets a bell line in
+        # his language, and nobody is told of a task he wrote for himself or of
+        # one the server refused — read off the tables after the real handlers.
+        run: npx vitest run src/__tests__/mtm-task-notice-postgres.test.ts
+        env:
+          MTM_TASK_NOTICE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_TASK_NOTICE_DB_GATE: required
+
+      - name: MTM presentation viewers database gate
+        # «Products and presentations» (2026-10-21): who sees each presentation
+        # and deleting one. The real handlers and the migration's own backfill
+        # on a real Postgres: the backfill copies yesterday's visibility exactly,
+        # a phone gets only what its agent is listed on, a refused save writes
+        # nothing, and a deleted presentation leaves every phone while its
+        # showings and the visit naming it stay.
+        run: npx vitest run src/__tests__/mtm-product-viewers-postgres.test.ts
+        env:
+          MTM_PRODUCT_VIEWERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_PRODUCT_VIEWERS_DB_GATE: required
 
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs

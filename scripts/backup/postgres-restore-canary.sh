@@ -22,6 +22,7 @@ CONTRACT_MIGRATIONS=""
 EXPECTED_APPLIED_MIGRATIONS=""
 RUN_VERIFY_PGPASS=""
 VERIFY_ENV=()
+TEMPLATE_ARGS=()
 
 log() {
   printf '[restore-canary] %s\n' "$*"
@@ -321,13 +322,38 @@ CONTRACT_MIGRATIONS="$(mktemp "${TMPDIR:-/tmp}/leaddrive-contract-migrations.XXX
 EXPECTED_APPLIED_MIGRATIONS="$(mktemp "${TMPDIR:-/tmp}/leaddrive-expected-applied-migrations.XXXXXX")"
 
 log "creating isolated scratch database $SCRATCH_DB"
+if [ -n "${VERIFY_PGTEMPLATE:-}" ]; then
+  [[ "$VERIFY_PGTEMPLATE" =~ ^leaddrive_restore_template_[1-9][0-9]{0,19}_[0-9a-f]{12}$ ]] \
+    || fatal "native template identity refused"
+  [ -f "$SCRIPT_DIR/native-scratch-template.mjs" ] && [ ! -L "$SCRIPT_DIR/native-scratch-template.mjs" ] \
+    || fatal "native template compatibility helper is unavailable"
+  template_state="$(env "${VERIFY_ENV[@]}" PGDATABASE="$VERIFY_PGMAINTENANCE_DB" \
+    psql -X -w -qAt -v ON_ERROR_STOP=1 -c \
+    "SELECT count(*) FROM pg_catalog.pg_database d JOIN pg_catalog.pg_roles r ON r.oid=d.datdba
+      WHERE d.datname='$VERIFY_PGTEMPLATE' AND r.rolname=session_user AND NOT d.datistemplate AND NOT d.datallowconn")" \
+    || fatal "native template admission query failed"
+  [ "$template_state" = 1 ] || fatal "native template ownership/seal refused"
+  TEMPLATE_ARGS=(--template="$VERIFY_PGTEMPLATE")
+fi
 env "${VERIFY_ENV[@]}" PGDATABASE="$VERIFY_PGMAINTENANCE_DB" \
-  createdb --maintenance-db="$VERIFY_PGMAINTENANCE_DB" "$SCRATCH_DB"
+  createdb --maintenance-db="$VERIFY_PGMAINTENANCE_DB" "${TEMPLATE_ARGS[@]}" "$SCRATCH_DB"
 SCRATCH_DB_CREATED=1
 
+prove_native_clone() {
+  [ -n "${VERIFY_PGTEMPLATE:-}" ] || return 0
+  local proof sql
+  sql="$(node "$SCRIPT_DIR/native-scratch-template.mjs" --clone-proof-sql)" \
+    || fatal "native clone compatibility plan refused"
+  proof="$(env "${VERIFY_ENV[@]}" PGDATABASE="$SCRATCH_DB" \
+    psql -X -w -qAt -v ON_ERROR_STOP=1 -c "$sql")" \
+    || fatal "native clone compatibility query failed"
+  [ "$proof" = 1 ] || fatal "native clone exact extension/ownership/locale/limited-role proof refused"
+}
+prove_native_clone
 log "restoring dump"
 env "${VERIFY_ENV[@]}" PGDATABASE="$SCRATCH_DB" \
   pg_restore --exit-on-error --no-owner --no-privileges --dbname="$SCRATCH_DB" "$DUMP_FILE"
+prove_native_clone
 
 log "comparing the exact Prisma migration ledger from the restored database"
 env "${VERIFY_ENV[@]}" PGDATABASE="$SCRATCH_DB" \

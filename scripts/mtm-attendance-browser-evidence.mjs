@@ -347,8 +347,8 @@ try {
     const after = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: before.id } })
     assert.equal(after.attendanceExcluded, true)
     for (const key of ['role', 'teamId', 'userId', 'passwordHash', 'canPlanOwnRoutes', 'canSelfPublishRoutes']) assert.equal(after[key], before[key])
-    // The field agent still files leave and sick leave with HR.
-    await mobile('field', '/requests')
+    // A field agent has no HR requests at all (owner, 2026-10-20).
+    await mobile('field', '/requests', { status: 403 })
     await request(mobiles.field, '/api/v1/mtm/mobile/bootstrap')
     await api('admin', '/employees/participation', { method: 'POST', body: { ...input, clientRequestId: randomUUID(), included: true, previousEventId: result.eventId } })
     assert.equal((await api('admin', '/employees')).employees.find(row => row.id === before.id).included, true)
@@ -991,6 +991,9 @@ try {
     // Field agents stay in MTM: the HR branch list does not offer them (#796).
     await page.locator('#branch-employee-search').fill('Fixture field')
     await clickResponse(button('branchesFind'), `${apiRoot}/branches/assignments`, 'GET')
+    // The response lands before React draws it, and the card is blank meanwhile:
+    // an instant zero proved nothing. Wait for the drawn empty result first.
+    await page.getByTestId('branches-assignments').getByText(t('branchesNoEmployees'), { exact: true }).waitFor()
     assert.equal(await page.getByTestId('branch-employee').filter({ hasText: 'Fixture field' }).count(), 0)
     // An office employee no other case touches (00–02 belong to other cases).
     const office = await rosterCard('Fixture roster 07')
@@ -1018,7 +1021,10 @@ try {
     await page.locator('#risk-reason').fill('Fictional clock verified through browser')
     await clickResponse(button('riskDismiss'), `${apiRoot}/review/${risk.id}`)
     await filterResponse(() => page.locator('#risk-status').selectOption('DISMISSED'), `${apiRoot}/review`, { status: 'DISMISSED' })
-    assert.ok(await page.getByTestId('risk-row').count() >= 2)
+    // The response lands before React draws it: run 39450774119 counted the
+    // table too early while its screenshot showed both rows. Wait for the rows.
+    const dismissed = page.getByTestId('risk-row').filter({ hasText: t('riskDismissed') })
+    await poll(async () => await dismissed.count() >= 2 && await dismissed.filter({ hasText: 'Fictional clock verified through browser' }).count() === 1, 'Dismissed risks drawn')
     assert.deepEqual(await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: workday.id } }), workday)
     return { detector: 'Seeded finding; only review/dismissal is browser-tested' }
   })
@@ -1192,7 +1198,8 @@ try {
     assert.equal(own.headers()['content-type'], 'image/jpeg')
     assert.equal((await sharp(sanitizedBytes).metadata()).exif, undefined)
     await api('admin', `/attachments/${selected.id}`, { status: 404 })
-    await mobile('field', `/attachments/${selected.id}`, { status: 404 })
+    // A field agent has no own attendance at all now: refused before any lookup.
+    await mobile('field', `/attachments/${selected.id}`, { status: 403 })
     const submitted = await mobile('employee', '/requests', { method: 'POST', status: 201, body: {
       clientRequestId, kind: 'SICK_LEAVE', unit: 'DAYS', startDate: date(28), endDate: date(28),
       reason: 'Fictional document request for access verification', attachmentIds: [selected.id],

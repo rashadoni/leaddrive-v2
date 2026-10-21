@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs"
 import { NextRequest } from "next/server"
-import type { ReactElement } from "react"
+import { createElement, type ReactElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { NextIntlClientProvider } from "next-intl"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/prisma", async () => {
@@ -28,6 +30,7 @@ vi.mock("@/lib/tenant-capability-access", async (importOriginal) => ({
 vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => { throw new Error("NEXT_NOT_FOUND") }),
   redirect: vi.fn(() => { throw new Error("NEXT_REDIRECT") }),
+  usePathname: () => "/mtm/attendance/timesheet",
 }))
 
 import { prisma } from "@/lib/prisma"
@@ -203,7 +206,14 @@ describe("attendance API and server page guards", () => {
       return [{ key: "attendanceEnabled", value: true }]
     }) as never)
     const content = await AttendanceLayout({ children: "authorized attendance content" })
-    expect(renderToStaticMarkup(content)).toContain("authorized attendance content")
+    const az = JSON.parse(readFileSync("messages/az.json", "utf8"))
+    const props = { locale: "az", timeZone: "Asia/Baku", messages: az, children: content }
+    const html = renderToStaticMarkup(createElement(NextIntlClientProvider, props))
+    expect(html).toContain("authorized attendance content")
+    // The section's own menu above the page (owner, 2026-10-20), the page's tab lit.
+    expect(html).toContain('aria-label="Kadr uçotu"')
+    expect(html).toMatch(/<a [^>]*href="\/mtm\/attendance\/timesheet"[^>]*aria-current="page"|<a [^>]*aria-current="page"[^>]*href="\/mtm\/attendance\/timesheet"/)
+    expect(html.indexOf("Kadr uçotu")).toBeLessThan(html.indexOf("authorized attendance content"))
   })
 })
 
@@ -225,6 +235,21 @@ describe("attendance switch can only be changed by an administrator", () => {
     expect(response.status).toBe(403)
     expect(prisma.mtmSetting.upsert).not.toHaveBeenCalled()
     expect(writeMtmAudit).not.toHaveBeenCalled()
+  })
+
+  // Neither switch is in «Что может агент» since 2026-10-20 (a field agent is
+  // outside HR accounting), so its admin-only list no longer names them. The
+  // settings API refuses them by itself.
+  it.each([
+    [{ attendanceEnabled: true }],
+    [{ attendanceBranchQrEnabled: true }],
+    [{ attendanceBranchQrEnabled: false }],
+  ])("refuses a manager's %j outright, outside the agent matrix's admin-only list", async (change) => {
+    caller("manager", MANAGER)
+    const response = await updateSettings(put({ ...change, maxPhotosPerVisit: 12 }))
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ code: "MTM_ATTENDANCE_ADMIN_REQUIRED" })
+    expect(prisma.mtmSetting.upsert).not.toHaveBeenCalled()
   })
 
   it("continues ignoring older protected switches when a manager saves an allowed setting", async () => {

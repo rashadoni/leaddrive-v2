@@ -7,6 +7,13 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 MODE="upload"
 FORCE_RETENTION_TIER=""
 OWNER_RECIPIENT=""
+SCRATCH_TEMPLATE_ARG=""
+if [ "${1:-}" = --scratch-template ]; then
+  [[ "${2:-}" =~ ^leaddrive_restore_template_[1-9][0-9]{0,19}_[0-9a-f]{12}$ ]] || exit 2
+  SCRATCH_TEMPLATE_ARG="$2"
+  shift 2
+fi
+readonly SCRATCH_TEMPLATE_ARG
 if [ "${1:-}" = "--local-canary" ] && [ "$#" -eq 1 ]; then
   MODE="local-canary"
 elif [ "${1:-}" = "--commission-monthly" ] && [ "$#" -eq 1 ]; then
@@ -32,6 +39,14 @@ if [ -f "$BACKUP_ENV_FILE" ]; then
   set +a
 fi
 
+# Only the admitted controller's argument may select a native template. Never
+# accept a stale/environment-file override; offline owner workbenches use their
+# independently bootstrapped default template1.
+unset VERIFY_PGTEMPLATE
+if [ -n "$SCRATCH_TEMPLATE_ARG" ]; then
+  export VERIFY_PGTEMPLATE="$SCRATCH_TEMPLATE_ARG"
+fi
+
 # Explicit owner invocation only: encrypted candidate under a separate public
 # recipient, with no change to canonical policy, private keys, or schedules.
 if [ -n "$OWNER_RECIPIENT" ]; then
@@ -53,6 +68,19 @@ log() {
 fatal() {
   printf '[postgres-backup] ERROR: %s\n' "$*" >&2
   exit 1
+}
+
+assert_native_source_contract() {
+  [ -n "$SCRATCH_TEMPLATE_ARG" ] || return 0
+  local sql proof
+  [ -f "$SCRIPT_DIR/native-scratch-template.mjs" ] && [ ! -L "$SCRIPT_DIR/native-scratch-template.mjs" ] \
+    || fatal "native source compatibility helper is unavailable"
+  sql="$(node "$SCRIPT_DIR/native-scratch-template.mjs" --source-contract-sql)" \
+    || fatal "native source compatibility plan refused"
+  proof="$(PGOPTIONS='-c search_path=pg_catalog,pg_temp -c default_transaction_read_only=on -c statement_timeout=10000' \
+    psql -X -w -qAt -v ON_ERROR_STOP=1 -c "$sql")" \
+    || fatal "native source compatibility query failed"
+  [ "$proof" = 1 ] || fatal "source extension/locale contract changed across recovery capture"
 }
 
 require_env() {
@@ -329,6 +357,7 @@ DUMP_LIST="$WORK_DIR/database.list"
 MANIFEST_FILE="$WORK_DIR/manifest.env"
 
 SNAPSHOT_SESSION_OUTPUT="$WORK_DIR/source-snapshot-session.tsv"
+assert_native_source_contract
 log "exporting one read-only MVCC snapshot for both source canary and pg_dump"
 {
   printf '%s\n' \
@@ -592,6 +621,7 @@ capture_migration_ledger "$MIGRATION_LEDGER_AFTER_FILE"
 cmp -s -- "$MIGRATION_LEDGER_FILE" "$MIGRATION_LEDGER_AFTER_FILE" \
   || fatal "Prisma migration ledger changed while the recovery point was being captured"
 rm -f -- "$MIGRATION_LEDGER_AFTER_FILE"
+assert_native_source_contract
 
 kill "$SNAPSHOT_HOLDER_PID" >/dev/null 2>&1 || true
 wait "$SNAPSHOT_HOLDER_PID" >/dev/null 2>&1 || true

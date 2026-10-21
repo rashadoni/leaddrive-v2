@@ -84,7 +84,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       customer: { select: { id: true, name: true, address: true, city: true, latitude: true, longitude: true, geofenceRadius: true } },
       contact: { select: { id: true, displayName: true, type: true, specialtyName: true } },
       participants: {
-        select: { agentId: true, role: true, joinedAt: true, leftAt: true },
+        select: { agentId: true, role: true, joinedAt: true, leftAt: true, jointSessionId: true },
       },
       // «Адрес на проверке»: the visit was checked in from the place its agent reported as the customer's real one.
       locationRequest: { select: { id: true, status: true } },
@@ -146,6 +146,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         agent: primaryAgentVisible ? visit.agent : null,
         primaryAgentHidden: !primaryAgentVisible,
         canMutate: canMutateMtmVisit(actor, visit.agentId),
+        // «Совместный»: the agent marked it as made together with his manager.
+        joint: (visit.participants ?? []).some((participant) => Boolean(participant.jointSessionId)),
       }
     })
 

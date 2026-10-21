@@ -53,6 +53,7 @@ import {
 } from "@/lib/mtm/visit-review"
 import { VisitReviewPanel, visitStatusClasses, type ReviewedVisitFacts } from "./visit-review-panel"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
+import { JointVisitMark } from "@/components/mtm/visit-evaluation-views"
 import { VisitWorkspace } from "./visit-workspace"
 import { RemindAgentButton, useLeftOpenSince, useMinuteClock, useOpenForText } from "./visit-left-open"
 import { isMtmVisitLeftOpen, MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES } from "@/lib/mtm/visit-left-open"
@@ -60,6 +61,8 @@ import { isMtmVisitLeftOpen, MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES } from "@/lib/m
 type MtmVisitRow = {
   id: string
   canMutate?: boolean
+  /** The agent said his manager was on this visit with him. */
+  joint?: boolean
   agentId?: string | null
   customerId?: string | null
   status: "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED" | string
@@ -952,7 +955,10 @@ export default function MtmVisitsPage() {
                           </Link>
                           <p className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground">{visit.customer?.address || t("noAddress")}</p>
                         </td>
-                        <td className="px-4 py-3 text-foreground">{visit.agent?.name || t("unknownAgent")}</td>
+                        <td className="px-4 py-3 text-foreground">
+                          {visit.agent?.name || t("unknownAgent")}
+                          {visit.joint ? <span className="mt-0.5 block"><JointVisitMark /></span> : null}
+                        </td>
                         <td className="px-4 py-3">{statusBadge(visit)}</td>
                         <td className="px-4 py-3">
                           <p className="font-medium text-foreground">{formattedDate(visit.checkInAt)}</p>
@@ -990,6 +996,7 @@ export default function MtmVisitsPage() {
                         <div>
                           <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><UserRound className="h-3.5 w-3.5" aria-hidden="true" />{t("colAgent")}</dt>
                           <dd className="mt-1 text-sm font-medium text-foreground">{visit.agent?.name || t("unknownAgent")}</dd>
+                          {visit.joint ? <dd className="mt-0.5"><JointVisitMark /></dd> : null}
                         </div>
                         <div>
                           <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Clock className="h-3.5 w-3.5" aria-hidden="true" />{t("colCheckIn")}</dt>

@@ -70,7 +70,9 @@ export async function GET(req: NextRequest) {
  * fact, not a login/heartbeat fact: only an accepted coordinate from an
  * active workday may make an agent appear online on the manager map. Keeping
  * this endpoint write-free prevents a tablet left on a desk from pretending
- * that its owner is in the field.
+ * that its owner is in the field. The one exception is a declared break, when
+ * no coordinate is accepted at all: the app's own poll keeps its presence
+ * then, and nothing else (src/lib/mtm/break-presence.ts).
  */
 export const POST = withMobileRls(async (req, auth) => {
   void req

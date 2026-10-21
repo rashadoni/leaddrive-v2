@@ -14,6 +14,7 @@ import {
   type AgentPermissionId,
 } from "@/lib/mtm/agent-permissions"
 import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
+import { mayUseAttendanceSelf } from "@/lib/mtm/attendance-employee-contract"
 import { canManageFieldMasterData } from "@/lib/mtm/field-scope"
 import { mobileCapabilities } from "@/lib/mtm/mobile-capabilities"
 import {
@@ -122,6 +123,19 @@ describe("agent permission registry", () => {
  */
 type Fact = { check?: () => boolean; file?: string; contains?: string }
 
+/** What every HR attendance row stands on: no own attendance for the role
+ * AGENT, in the contract and in the one guard of every own door, and no
+ * attendance marks on its phone. */
+const HR_ACCOUNTING_EXCLUDES_AGENT: Fact[] = [
+  { check: () => !mayUseAttendanceSelf("AGENT", true, true) && mayUseAttendanceSelf("EMPLOYEE", true, true) },
+  {
+    file: "src/lib/mtm/attendance-self-access.ts",
+    contains: 'if (self.role === "AGENT") throw new AttendanceRequestError("MTM_ATTENDANCE_SELF_REQUIRED", 403)',
+  },
+  { file: "src/lib/mtm/attendance-self-access.ts", contains: 'return agent?.attendanceExcluded === true || agent?.role === "AGENT"' },
+  { file: "src/app/api/v1/mtm/mobile/bootstrap/route.ts", contains: 'const attendanceMarks = attendanceSelf && auth.role !== "AGENT"' },
+]
+
 const FACTS: Partial<Record<AgentPermissionId, Fact[]>> = {
   workdayOwn: [{
     // Only the agent moves their own working day; a manager cannot close it for them.
@@ -138,11 +152,11 @@ const FACTS: Partial<Record<AgentPermissionId, Fact[]>> = {
     },
     {
       file: "src/app/api/v2/mtm/mobile/route-field/workday-return/route.ts",
-      contains: 'await requireAttendanceSelf(prisma,{organizationId:auth.orgId,agentId:auth.agentId,role:auth.role},"attendanceWorkday")',
+      contains: 'await requireAttendanceSelf(prisma,{organizationId:auth.orgId,agentId:auth.agentId,role:auth.role})',
     },
     {
       file: "src/lib/mtm/workday-return.ts",
-      contains: 'await requireAttendanceSelf(tx,self,"attendanceWorkday")',
+      contains: 'await requireAttendanceSelf(tx,self)',
     },
     {
       file: "src/lib/mtm/workday-return.ts",
@@ -157,6 +171,47 @@ const FACTS: Partial<Record<AgentPermissionId, Fact[]>> = {
   locationTeam: [
     { check: () => !mobileCapabilities("AGENT").includes("TEAM_READ") },
     { file: "src/app/api/v1/mtm/locations/route.ts", contains: 'if (!actor || actor.role === "AGENT") {' },
+  ],
+  // HR attendance is for the employees HR keeps; a field agent is outside HR
+  // accounting (owner, 2026-10-14 for the day; 2026-10-20: «у полевого агента
+  // всё кадровое убрать совсем»), whatever the Attendance switch says. Each row
+  // names the door that refuses the agent, the check its own day skips, and the
+  // bootstrap key that tells the phone no — the office shell reads the same key.
+  attendanceWorkday: [
+    ...HR_ACCOUNTING_EXCLUDES_AGENT,
+    { file: "src/app/api/v1/mtm/mobile/bootstrap/route.ts", contains: "attendanceWorkday: attendanceMarks," },
+    { file: "src/app/api/v1/mtm/mobile/bootstrap/route.ts", contains: "...(attendanceMarks ? { attendanceMarkVersion: 1 } : {})," },
+    // An agent's "Start day" is the field session: sync never runs its day as an attendance mark.
+    { file: "src/app/api/v1/mtm/mobile/sync/push/route.ts", contains: 'if (auth.role !== "AGENT" && hasSyncCapability(auth, "personnel")' },
+    { file: "src/app/api/v1/mtm/mobile/sync/push/route.ts", contains: 'const excludedFieldWorkday = auth.role === "AGENT"' },
+  ],
+  attendanceLocation: [
+    ...HR_ACCOUNTING_EXCLUDES_AGENT,
+    { file: "src/app/api/v1/mtm/mobile/bootstrap/route.ts", contains: "attendanceLocation: attendanceMarks," },
+    { file: "src/lib/mtm/attendance-location-store.ts", contains: "await lockAttendanceRequests(tx,self)\n    await requireAttendanceSelf(tx,self)" },
+    { file: "src/lib/mtm/attendance-location-store.ts", contains: "if (!await readAttendanceFeature(tx,self.organizationId) || await isAttendanceMarkExempt(tx,self)) return null" },
+  ],
+  attendanceBranchQr: [
+    ...HR_ACCOUNTING_EXCLUDES_AGENT,
+    { file: "src/app/api/v1/mtm/mobile/bootstrap/route.ts", contains: "? { attendanceBranchQr: attendanceMarks } : {}" },
+    { file: "src/app/api/v1/mtm/mobile/bootstrap/route.ts", contains: "...(attendanceMarks && settings.attendanceBranchQrEnabled === true ? { attendanceBranchQrVersion: 1 } : {})," },
+    { file: "src/lib/mtm/attendance-qr-store.ts", contains: "if (!await readAttendanceFeature(tx, scope.organizationId) || await isAttendanceMarkExempt(tx, scope)) return" },
+  ],
+  attendanceInstallation: [
+    ...HR_ACCOUNTING_EXCLUDES_AGENT,
+    { file: "src/app/api/v1/mtm/mobile/bootstrap/route.ts", contains: "attendanceInstallation: attendanceMarks," },
+    { file: "src/lib/mtm/attendance-installation-store.ts", contains: "await lockAttendanceRequests(tx, self)\n  await requireAttendanceSelf(tx, self)" },
+    // Nor does the agent's phone need the approval to start its field day.
+    { file: "src/lib/mtm/attendance-installation-policy.ts", contains: "if (!await readAttendanceFeature(tx, scope.organizationId) || await isAttendanceMarkExempt(tx, scope)) return" },
+  ],
+  // Leave, absence and time correction. One guard in front of every own
+  // request, its documents and the list; the phone is not told it may.
+  attendanceRequests: [
+    ...HR_ACCOUNTING_EXCLUDES_AGENT,
+    { file: "src/lib/mtm/attendance-request-store.ts", contains: "const timezone = await requireAttendanceSelf(db, self)" },
+    { file: "src/app/api/v2/mtm/mobile/route-field/attendance/requests/route.ts", contains: "await requireAttendanceSelf(prisma, self)" },
+    { file: "src/app/api/v2/mtm/mobile/route-field/attendance/attachments/route.ts", contains: "await requireAttendanceSelf(prisma, self)" },
+    { file: "src/app/api/v1/mtm/mobile/bootstrap/route.ts", contains: "attendanceRequests: attendanceSelf," },
   ],
   routeViewOwn: [{
     check: () => canViewMtmRoute(agent, { primaryAgentId: "agent-1" })
@@ -292,27 +347,32 @@ describe("switch rows are enforced where the agent asks", () => {
 
   it("covers every switch row", () => {
     expect(AGENT_SWITCH_ROWS.map((row) => row.id).sort()).toEqual([
-      "attendanceBranchQr",
-      "attendanceInstallation",
-      "attendanceLocation",
-      "attendanceRequests",
-      "attendanceWorkday",
       "checkInOutsideZone",
       "contactChangeRequest", "contactCreateRequest", "customerCreateRequest", "customerLocationRequest",
       "taskSelfCreate", "taskSelfRecurring", "teamSchedule",
     ])
   })
 
-  it("uses the one attendance switch in the request writer, with no separate permission level", () => {
-    const row = AGENT_SWITCH_ROWS.find((candidate) => candidate.id === "attendanceRequests")
-    expect(row?.setting).toBe("attendanceEnabled")
-    expect(source("src/lib/mtm/attendance-self-access.ts")).toContain('agentPermissionEnabled({ attendanceEnabled:')
-    expect(source("src/lib/mtm/attendance-self-access.ts")).toContain('"attendanceRequests"')
+  // The Attendance switch once stood in five rows here, and let agents file
+  // leave too (2026-10-14, option «а»). A field agent is outside HR accounting
+  // (2026-10-14 for the day, 2026-10-20 for the rest) and the server refuses
+  // it whatever the switch says, so a switch in these rows would be decorative.
+  it("gives a field agent no HR attendance, and offers no switch that would change nothing", () => {
+    const attendanceRows = ["attendanceWorkday", "attendanceLocation", "attendanceBranchQr", "attendanceInstallation", "attendanceRequests"]
+    expect(AGENT_PERMISSION_ROWS.filter((row) => attendanceRows.includes(row.id)).map((row) => [row.id, row.kind]))
+      .toEqual(attendanceRows.map((id) => [id, "never"]))
+    expect(Object.keys(agentPermissionStates({ attendanceEnabled: true, attendanceBranchQrEnabled: true } as never)).filter((id) => id.startsWith("attendance"))).toEqual([])
+    expect(AGENT_PERMISSION_SETTING_KEYS as readonly string[]).not.toContain("attendanceEnabled")
+    expect(AGENT_PERMISSION_SETTING_KEYS as readonly string[]).not.toContain("attendanceBranchQrEnabled")
+    expect(source("src/lib/mtm/attendance-self-access.ts")).not.toContain("agentPermissionEnabled")
   })
 
-  it("uses the same attendance switch for installation requests and requires own access in the writer", () => {
-    expect(AGENT_SWITCH_ROWS.find(row => row.id === "attendanceInstallation")?.setting).toBe("attendanceEnabled")
-    expect(source("src/lib/mtm/attendance-installation-store.ts")).toContain('await requireAttendanceSelf(tx, self, "attendanceInstallation")')
+  // The switches themselves are not deleted: they turn Attendance and the
+  // branch QR on for office employees, from Personnel and the QR screen.
+  it("keeps the Attendance switches as stored settings of their own screens", () => {
+    expect(MTM_SETTING_DEFAULTS).toMatchObject({ attendanceEnabled: false, attendanceBranchQrEnabled: false })
+    expect(source("src/components/mtm/attendance-feature-switch.tsx")).toContain("JSON.stringify({ attendanceEnabled: next })")
+    expect(source("src/components/mtm/attendance-qr-display.tsx")).toContain("JSON.stringify({ attendanceBranchQrEnabled: !directory.enabled })")
   })
 
   // Publishing one's own routes is not a switch: one tick on the agent's card

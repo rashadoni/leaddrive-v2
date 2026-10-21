@@ -7,6 +7,7 @@ import { mtmTaskScopeWhere } from "@/lib/mtm/task-access"
 import { canViewMtmVisitAtCheckIn, historicalVisitCandidateWhere } from "@/lib/mtm/visit-scope"
 import { effectiveGeofenceRadius, isOwnVisitExecution } from "@/lib/mtm/visit-review"
 import { isValidTimezone } from "@/lib/timezone"
+import { jointManagerOf, readVisitEvaluationScores, visitEvaluationAverage } from "@/lib/mtm/joint-visit"
 
 const OPEN_TASK_STATUSES = ["PENDING", "IN_PROGRESS", "OVERDUE"] as const
 const REVIEW_PHOTO_LIMIT = 30
@@ -67,7 +68,27 @@ export const GET = withRouteFieldRlsAuth("read", async (
         contact: { select: { id: true, displayName: true } },
         route: { select: { id: true, name: true, date: true } },
         routePoint: { select: { id: true, orderIndex: true } },
-        participants: { select: { agentId: true, role: true, joinedAt: true, leftAt: true } },
+        participants: {
+          select: {
+            agentId: true,
+            role: true,
+            joinedAt: true,
+            leftAt: true,
+            jointSessionId: true,
+            agent: { select: { id: true, name: true } },
+          },
+        },
+        // The manager's rating on a joint visit; never shown to an agent.
+        evaluations: {
+          orderBy: { updatedAt: "desc" },
+          select: {
+            scores: true,
+            comment: true,
+            createdAt: true,
+            updatedAt: true,
+            evaluator: { select: { id: true, name: true } },
+          },
+        },
         requirementSnapshot: {
           select: { requirements: { select: { id: true, actionKey: true, mode: true, minCount: true } } },
         },
@@ -136,8 +157,30 @@ export const GET = withRouteFieldRlsAuth("read", async (
       }),
     ])
 
-    const { participants: _authorizationEvidence, _count: counts, ...publicVisit } = visit
+    const { participants: _authorizationEvidence, evaluations, _count: counts, ...publicVisit } = visit
     void _authorizationEvidence
+    // «Совместный визит с руководителем»: the agent said his manager was on
+    // this visit. What the manager rated is the office's, never the agent's
+    // («агент оценку не видит», owner 2026-10-20).
+    const jointManager = jointManagerOf(visit.participants)
+    const jointVisit = jointManager
+      ? {
+          manager: jointManager,
+          evaluations: actor.role === "AGENT"
+            ? []
+            : (evaluations ?? []).map((evaluation: { scores: unknown; comment: string | null; createdAt: Date; updatedAt: Date; evaluator: { id: string; name: string } }) => {
+                const scores = readVisitEvaluationScores(evaluation.scores)
+                return {
+                  evaluator: evaluation.evaluator,
+                  scores,
+                  average: visitEvaluationAverage(scores),
+                  comment: evaluation.comment,
+                  createdAt: evaluation.createdAt,
+                  updatedAt: evaluation.updatedAt,
+                }
+              }),
+        }
+      : null
     const primaryAgentVisible = isAgentInRouteScope(actor, visit.agentId)
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
 
@@ -154,6 +197,7 @@ export const GET = withRouteFieldRlsAuth("read", async (
           route: primaryAgentVisible ? visit.route : null,
           routePoint: primaryAgentVisible ? visit.routePoint : null,
           photoCount: counts?.photos ?? visit.photos.length,
+          jointVisit,
         },
         geofenceRadius: effectiveGeofenceRadius(visit.customer.geofenceRadius, settings.geofenceRadius),
         openTasks: { count: openTaskCount, items: openTasks },

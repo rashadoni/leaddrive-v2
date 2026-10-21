@@ -100,6 +100,7 @@ import {
   isLiveMapPositionVisible,
   liveMapIdentityKey,
   liveMapRouteCacheScopeKey,
+  mtmAppPresenceSeconds,
   parseMtmLiveMapContract,
   presentMtmDashboardAgent,
 } from "@/lib/mtm-types"
@@ -372,8 +373,8 @@ export default function MtmMapPage() {
       if (!referencePoint) return presented
       // With a point picked on the map every row says how far its employee is
       // from it — measured only from a position the map itself would draw. A
-      // workday that is closed, a signal gone stale: no marker, and no place
-      // among «the nearest».
+      // workday that is closed, a break, a signal gone stale: no live marker,
+      // and no place among «the nearest».
       const drawn = hasRenderableLivePosition(presented.freshness, presented.workdayState, contract?.workforceEnabled !== false)
       return { ...presented, distanceMeters: drawn ? rosterDistanceToPoint(presented, referencePoint) : null }
     }),
@@ -656,11 +657,17 @@ export default function MtmMapPage() {
       rosterSnapshotRef.current = nextSnapshot
       setRosterSnapshot(nextSnapshot)
       // «След»: one more position per employee, from this answer and no other
-      // source — and only a position the map itself would draw at this moment.
+      // source — and only a position the map itself would draw at this moment,
+      // as the list presents it. Somebody on a break has his tail cut there,
+      // with what he was last seen at, and only a position recorded after
+      // that starts the next one (live-map-trails.ts).
+      const answeredAt = Date.parse(nextContract.generatedAt)
+      const presentedAgents = nextAgents.map((agent) => presentMtmDashboardAgent(agent, nextContract.freshnessThresholds, answeredAt))
       setTrails((current) => extendLiveMapTrails(
         current,
-        nextAgents.filter((agent) => hasRenderableLivePosition(agent.freshness, agent.workdayState, nextContract.workforceEnabled)),
-        Date.parse(nextContract.generatedAt),
+        presentedAgents.filter((agent) => hasRenderableLivePosition(agent.freshness, agent.workdayState, nextContract.workforceEnabled)),
+        answeredAt,
+        presentedAgents.filter((agent) => agent.workdayState === "PAUSED"),
       ))
       setFreshnessNow(Date.parse(nextContract.generatedAt))
       setLoadError(null)
@@ -735,8 +742,10 @@ export default function MtmMapPage() {
             recordedAt + contract.freshnessThresholds.onlineSeconds * 1_000 + 1,
             recordedAt + contract.freshnessThresholds.delayedSeconds * 1_000 + 1,
           ] : []),
+          // The moment «В сети» lapses — later for somebody on a break,
+          // whom the app's bell alone keeps present (mtmAppPresenceSeconds).
           ...(agent.isOnline && Number.isFinite(lastSeenAt) ? [
-            lastSeenAt + contract.freshnessThresholds.onlineSeconds * 1_000 + 1,
+            lastSeenAt + mtmAppPresenceSeconds(agent.workdayState, contract.freshnessThresholds) * 1_000 + 1,
           ] : []),
         ].filter((boundary) => boundary > now)
       })
@@ -1123,7 +1132,14 @@ export default function MtmMapPage() {
   // the statuses use them (owner, 2026-10-15: «подсказок в модуле очень мало»).
   const freshMinutes = Math.round((contract?.freshnessThresholds.onlineSeconds ?? 300) / 60)
   const delayedMinutes = Math.round((contract?.freshnessThresholds.delayedSeconds ?? 600) / 60)
-  const appPresenceHint = tMap("hint.appPresence", { online: tMap("presence.online"), minutes: freshMinutes })
+  // On a break no GPS point comes, and the app is held present for longer
+  // (mtmAppPresenceSeconds): where that is not the same number of minutes,
+  // the hint says both, or it would describe a rule the page does not apply
+  // to people on a break. A tenant without Workforce has no breaks.
+  const breakPresenceMinutes = Math.round(mtmAppPresenceSeconds("PAUSED", contract?.freshnessThresholds) / 60)
+  const appPresenceHint = contract?.workforceEnabled !== false && breakPresenceMinutes !== freshMinutes
+    ? tMap("hint.appPresenceWithBreak", { online: tMap("presence.online"), minutes: freshMinutes, breakMinutes: breakPresenceMinutes })
+    : tMap("hint.appPresence", { online: tMap("presence.online"), minutes: freshMinutes })
   const gpsFreshnessHint = tMap("hint.gpsFreshness", {
     fresh: tMap("freshness.online"), freshMinutes,
     delayed: tMap("freshness.delayed"), delayedMinutes,
@@ -1332,10 +1348,14 @@ export default function MtmMapPage() {
     const agent = agents.find(a => a.agentId === selectedAgent)
     if (agent?.latitude == null || agent.longitude == null ||
         !Number.isFinite(agent.latitude) || !Number.isFinite(agent.longitude)) return null
+    // Only from where he is: not from the grey point he left before a break,
+    // nor from a phone gone quiet or a closed workday — the same rule as the
+    // distance in the list and the street in the card.
+    if (!hasRenderableLivePosition(agent.freshness, agent.workdayState, workforceEnabled)) return null
     const distMeters = calculateDistance(agent.latitude, agent.longitude, nextStop.latitude, nextStop.longitude)
     const speedKmh = agent.speed != null && mtmSpeedMoving(agent.speed) ? agent.speed : 30 // fallback 30 km/h
     return Math.round((distMeters / 1000) / speedKmh * 3600)
-  }, [selectedAgent, routeStops, agents])
+  }, [selectedAgent, routeStops, agents, workforceEnabled])
   const showRosterLoading = sessionStatus === "loading" || (Boolean(identityKey) && loading && !roster)
 
   const formatVisitOpened = (value: string) => formatDateTime(value, locale, visitOpenedOnAnotherDay(value, contract?.timezone)
@@ -1348,7 +1368,9 @@ export default function MtmMapPage() {
   const renderAgentDetail = (agent: AgentLocation) => {
     const appPresent = agent.isOnline
     const hasFreshGps = agent.freshness === "ONLINE"
-    const speedKmh = mtmSpeedKmh(agent.speed)
+    // A speed belongs to a live position: the last fix before a break may
+    // have been taken at 40 km/h, and he is not driving now.
+    const speedKmh = hasRenderableLivePosition(agent.freshness, agent.workdayState, workforceEnabled) ? mtmSpeedKmh(agent.speed) : null
     const workdayTone = agent.workdayState === "ACTIVE"
       ? "font-medium text-emerald-700 dark:text-emerald-400"
       : agent.workdayState === "PAUSED"

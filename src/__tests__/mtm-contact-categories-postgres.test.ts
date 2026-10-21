@@ -966,6 +966,94 @@ pgDescribe("client categories on a real Postgres", () => {
     })
   })
 
+  // «Тут код агента — чтоб автоматически задавался, последовательно» (owner,
+  // 2026-10-20). Which code is taken is decided by the database's unique index
+  // on the organization and the code: two saves at the same moment draw the
+  // same number, and only Postgres says which of them lost — in a refusal a
+  // mocked Prisma has to be told the shape of.
+  describe("an agent's code given in sequence", () => {
+    const CODES = "org-agent-codes"
+    const asWebAdmin = async () => {
+      const { getSession } = await import("@/lib/api-auth")
+      vi.mocked(getSession).mockResolvedValue({ orgId: CODES, userId: "codes-admin", role: "admin", email: "codes-admin@example.com", name: "Admin" } as never)
+    }
+    const params = (id: string) => ({ params: Promise.resolve({ id }) })
+    const codeOf = async (id: string) => (await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id }, select: { externalCode: true } }))).externalCode
+
+    beforeAll(async () => {
+      await bypass(async () => {
+        await prisma.organization.create({ data: { id: CODES, name: "Fictional code company", slug: "agent-codes-test" } })
+        // Newest last: a manager with AG-007, an agent once typed by hand as NZ-001, the newest agent AG-016.
+        const day = (n: number) => new Date(Date.UTC(2026, 9, n))
+        await prisma.mtmAgent.create({ data: { id: "codes-manager", organizationId: CODES, name: "Fictional Manager", role: "MANAGER", externalCode: "AG-007", createdAt: day(2) } })
+        await prisma.mtmAgent.create({ data: { id: "codes-typed", organizationId: CODES, name: "Fictional Typed", externalCode: "NZ-001", createdAt: day(3) } })
+        await prisma.mtmAgent.create({ data: { id: "codes-newest", organizationId: CODES, name: "Fictional Newest", externalCode: "AG-016", status: "INACTIVE", createdAt: day(19) } })
+        await prisma.mtmAgent.create({ data: { id: "codes-none", organizationId: CODES, name: "Fictional Without Code", createdAt: day(1) } })
+        await prisma.mtmAgent.create({ data: { id: "codes-untouched", organizationId: CODES, name: "Fictional Untouched", createdAt: day(1) } })
+      })
+    })
+
+    afterAll(async () => {
+      const { getSession } = await import("@/lib/api-auth")
+      vi.mocked(getSession).mockResolvedValue(null)
+    })
+
+    it("shows the next code, gives it to a new agent saved without one, and five saved at once get five codes in a row", async () => {
+      await asWebAdmin()
+      const { GET } = await import("@/app/api/v1/mtm/agents/next-code/route")
+      const { POST } = await import("@/app/api/v1/mtm/agents/route")
+      const shown = await GET(new NextRequest("http://localhost:3000/api/v1/mtm/agents/next-code"))
+      expect((await shown.json()).data).toEqual({ code: "AG-017" })
+
+      const first = await POST(send("POST", "/api/v1/mtm/agents", { name: "Fictional First", externalCode: "", role: "AGENT" }))
+      const firstBody = await first.json()
+      expect(first.status, JSON.stringify(firstBody).slice(0, 300)).toBe(201)
+      expect(firstBody.data.externalCode).toBe("AG-017")
+
+      const crowd = await Promise.all([1, 2, 3, 4, 5].map((n) => POST(send("POST", "/api/v1/mtm/agents", { name: `Fictional Crowd ${n}`, role: "AGENT" }))))
+      const bodies = await Promise.all(crowd.map((response) => response.json()))
+      expect(crowd.map((response) => response.status), JSON.stringify(bodies).slice(0, 400)).toEqual([201, 201, 201, 201, 201])
+      expect(bodies.map((body) => body.data.externalCode).sort()).toEqual(["AG-018", "AG-019", "AG-020", "AG-021", "AG-022"])
+    })
+
+    it("keeps a code typed by hand, refuses one another agent holds by name, and the sequence goes on past the typed one", async () => {
+      await asWebAdmin()
+      const { POST } = await import("@/app/api/v1/mtm/agents/route")
+      const typed = await POST(send("POST", "/api/v1/mtm/agents", { name: "Fictional Typed Again", externalCode: "EXT-9" }))
+      expect(typed.status).toBe(201)
+      expect((await typed.json()).data.externalCode).toBe("EXT-9")
+
+      const taken = await POST(send("POST", "/api/v1/mtm/agents", { name: "Fictional Duplicate", externalCode: "AG-007" }))
+      expect(taken.status).toBe(409)
+      expect((await taken.json()).code).toBe("MTM_AGENT_CODE_TAKEN")
+      expect(await bypass(() => prisma.mtmAgent.count({ where: { organizationId: CODES, name: "Fictional Duplicate" } }))).toBe(0)
+
+      const next = await POST(send("POST", "/api/v1/mtm/agents", { name: "Fictional After Typed" }))
+      expect((await next.json()).data.externalCode).toBe("AG-023")
+    })
+
+    it("gives a card without a code the next one when the form saves it, leaves it alone when the field is not sent, and refuses a taken one", async () => {
+      await asWebAdmin()
+      const { PUT } = await import("@/app/api/v1/mtm/agents/[id]/route")
+      const saved = await PUT(put("/api/v1/mtm/agents/codes-none", { name: "Fictional Without Code", externalCode: "" }), params("codes-none"))
+      expect(saved.status).toBe(200)
+      expect(await codeOf("codes-none")).toBe("AG-024")
+
+      await PUT(put("/api/v1/mtm/agents/codes-untouched", { status: "INACTIVE" }), params("codes-untouched"))
+      expect(await codeOf("codes-untouched")).toBeNull()
+
+      // Saved again with its own code, the card keeps it.
+      const again = await PUT(put("/api/v1/mtm/agents/codes-none", { name: "Fictional Renamed", externalCode: "AG-024" }), params("codes-none"))
+      expect(again.status).toBe(200)
+      expect(await codeOf("codes-none")).toBe("AG-024")
+
+      const refused = await PUT(put("/api/v1/mtm/agents/codes-none", { externalCode: "AG-007" }), params("codes-none"))
+      expect(refused.status).toBe(409)
+      expect((await refused.json()).code).toBe("MTM_AGENT_CODE_TAKEN")
+      expect(await codeOf("codes-none")).toBe("AG-024")
+    })
+  })
+
   // «Свои зоны» of the live map (owner, 2026-10-09: «бери почти всё, чего у
   // нас нет»): named areas a manager draws by hand. Two things about them are
   // decided by Postgres, and a mocked Prisma shows neither. The table accepts
@@ -2771,6 +2859,94 @@ pgDescribe("client categories on a real Postgres", () => {
       await tick("ASSIGN", ids.taken, "back")
       expect((await pull()).names).toEqual(["Routeova Kept", "Routeova Never", "Routeova Taken"])
       expect(await card()).toEqual(["Routeova Kept", "Routeova Never", "Routeova Taken"])
+    })
+  })
+
+  // Owner, 2026-10-20: «запросы на нового врача от агента не могу найти, куда
+  // пришло» — the first one had waited twelve days, saved and listed, but nobody
+  // was told it had come.
+  describe("a new-doctor request from the phone", () => {
+    const ids = {} as Record<"agent" | "lead" | "otherLead", string>
+    const submit = async (key: string) => {
+      const { resolveMobileAuth } = await import("@/lib/mobile-auth")
+      vi.mocked(resolveMobileAuth).mockResolvedValue({ agentId: ids.agent, userId: `user-of-${ids.agent}`, orgId: ORG, email: "doctor-agent@example.com", name: "Agent", role: "AGENT" } as never)
+      const { POST } = await import("@/app/api/v2/mtm/mobile/route-field/contact-create-requests/route")
+      const response = await POST(send("POST", "/api/v2/mtm/mobile/route-field/contact-create-requests", {
+        idempotencyKey: key,
+        displayName: "Fictional Newdoctor",
+        specialtyName: "Terapevt",
+        clinicName: "Fictional Request Clinic",
+      }))
+      return { status: response.status, body: await response.json() }
+    }
+    const toldAbout = (requestId: string) => bypass(() => prisma.notification.findMany({
+      where: { organizationId: ORG, entityType: "mtm_contact_create_request", entityId: requestId },
+      orderBy: { userId: "asc" },
+    }))
+    // Fire-and-forget: the answer goes out before the bell rows are written —
+    // wait until the count has stood still for a while.
+    const settle = async (requestId: string) => {
+      let last = -1
+      let still = 0
+      for (let attempt = 0; attempt < 100 && still < 5; attempt++) {
+        const count = (await toldAbout(requestId)).length
+        still = count === last && count > 0 ? still + 1 : 0
+        last = count
+        await new Promise((resolve) => setTimeout(resolve, 40))
+      }
+    }
+
+    beforeAll(async () => {
+      await bypass(async () => {
+        await prisma.user.createMany({
+          data: [
+            { id: "doctor-lead", organizationId: ORG, email: "doctor-lead@example.com", name: "Lead of the agent", passwordHash: "-", role: "member", preferredLanguage: "az" },
+            { id: "doctor-other-lead", organizationId: ORG, email: "doctor-other-lead@example.com", name: "Lead of nobody here", passwordHash: "-", role: "member", preferredLanguage: "ru" },
+            // The company's web administrator, with no MTM card at all.
+            { id: "doctor-web-admin", organizationId: ORG, email: "doctor-web-admin@example.com", name: "Web administrator", passwordHash: "-", role: "admin", preferredLanguage: "en" },
+          ],
+        })
+        ids.lead = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Lead", role: "MANAGER", userId: "doctor-lead" }, select: { id: true } })).id
+        ids.otherLead = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Other Lead", role: "MANAGER", userId: "doctor-other-lead" }, select: { id: true } })).id
+        ids.agent = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Doctor Agent", role: "AGENT", managerId: ids.lead }, select: { id: true } })).id
+      })
+    })
+
+    it("tells his manager and the company's administrators, in their language — not a manager of other people — and only once", async () => {
+      const first = await submit("doctor-request-0001")
+      expect(first.status, JSON.stringify(first.body).slice(0, 300)).toBe(201)
+      const requestId = first.body.data.id as string
+      await settle(requestId)
+      const told = await toldAbout(requestId)
+      const users = told.map((row) => row.userId)
+      expect(users).toContain("doctor-lead")
+      expect(users).not.toContain("doctor-other-lead")
+      // The company's web administrator may decide any request; told in his language.
+      expect(users).toContain("doctor-web-admin")
+      expect(told.find((row) => row.userId === "doctor-web-admin")?.title).toBe("New doctor: an agent asks to add one")
+      expect(told.find((row) => row.userId === "doctor-lead")).toMatchObject({
+        type: "info",
+        isRead: false,
+        title: "Yeni həkim: agent əlavə etməyi xahiş edir",
+        message: "Fictional Doctor Agent «Fictional Newdoctor» həkimini (Fictional Request Clinic) əlavə etməyi xahiş edir. Yoxlayın və təsdiq edin və ya rədd edin.",
+      })
+
+      // The phone repeats the sending: the same request, nobody told twice.
+      const again = await submit("doctor-request-0001")
+      expect(again.body.idempotent).toBe(true)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      expect((await toldAbout(requestId)).length).toBe(told.length)
+    })
+
+    it("counts his manager among the cards whose phone is told — the one without a CRM login too", async () => {
+      const { contactCreateRequestReviewerCards } = await import("@/lib/mtm/contact-create-request-notify")
+      await bypass(() => prisma.mtmAgent.update({ where: { id: ids.lead }, data: { userId: null } }))
+      const cards = await bypass(() => contactCreateRequestReviewerCards({ organizationId: ORG, requestedByAgentId: ids.agent }))
+      const cardIds = cards.map((card) => card.id)
+      expect(cardIds).toContain(ids.lead)
+      expect(cardIds).not.toContain(ids.otherLead)
+      expect(cardIds).not.toContain(ids.agent)
+      await bypass(() => prisma.mtmAgent.update({ where: { id: ids.lead }, data: { userId: "doctor-lead" } }))
     })
   })
 })

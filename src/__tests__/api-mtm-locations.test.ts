@@ -952,8 +952,14 @@ describe("GET /api/v1/mtm/locations", () => {
       const res = await GET(makeReq())
       expect(res.status).toBe(200)
       const json = await res.json()
-      return Object.fromEntries(json.data.agentLocations.map((row: { agentId: string }) => [row.agentId, row])) as Record<string, { fieldStatus: string; stationarySince: string | null }>
+      lastAnswer = json.data
+      return Object.fromEntries(json.data.agentLocations.map((row: { agentId: string }) => [row.agentId, row])) as Record<string, { fieldStatus: string; freshness: string; stationarySince: string | null; workdayPausedSeconds?: number | null; latitude?: number; recordedAt?: string }>
     }
+    let lastAnswer: {
+      contract: { markerCount: number }
+      statusCounts: Record<string, number>
+      freshnessCounts: Record<string, number>
+    } | null = null
     beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW) })
     afterEach(() => { vi.useRealTimers() })
 
@@ -989,6 +995,92 @@ describe("GET /api/v1/mtm/locations", () => {
       )
       expect(byId["went-home"].stationarySince).toBeNull()
       expect(byId["not-started"].stationarySince).toBeNull()
+    })
+
+    // A break is the employee's own time: his last point is where the work
+    // stopped, drawn grey — not a live position anybody stands at (demo clip
+    // «Marşrut & Sahə», owner 2026-10-20). Three minutes into it that point is
+    // still «fresh» by the clock, and the server used to count it as live.
+    it("says nothing on a break, counts no live marker for it, and sends how much break the day has already had", async () => {
+      const onBreak = [{ ...working[0], status: "PAUSED", pausedAt: minutesAgo(3), totalPausedSeconds: 900 }]
+      const resumed = [{ ...working[0], totalPausedSeconds: 1_500 }]
+      const byId = await roster(
+        [agent("on-break", { workdays: onBreak }), agent("stands", { workdays: resumed })],
+        [anchor("on-break"), anchor("stands")],
+      )
+      expect(byId["on-break"].stationarySince).toBeNull()
+      expect(byId.stands.stationarySince).toBe(minutesAgo(42).toISOString())
+      expect(lastAnswer?.contract.markerCount).toBe(1)
+      // The answer says it of him as the page draws him — the last known
+      // point, no live status — and counts him so: every reader of it (an
+      // integration's key too) is told the same as the map, and the counts
+      // agree with the marker count beside them.
+      expect([byId["on-break"].freshness, byId["on-break"].fieldStatus]).toEqual(["STALE", "OFFLINE"])
+      expect([byId["on-break"].latitude, byId["on-break"].recordedAt]).toEqual([point.latitude, NOW.toISOString()])
+      expect([byId.stands.freshness, byId.stands.fieldStatus]).toEqual(["ONLINE", "STOPPED"])
+      expect(lastAnswer?.freshnessCounts).toMatchObject({ online: 1, stale: 1 })
+      expect(lastAnswer?.statusCounts).toMatchObject({ stopped: 1, offline: 1 })
+      expect([byId["on-break"].workdayPausedSeconds, byId.stands.workdayPausedSeconds]).toEqual([900, 1_500])
+      const query = vi.mocked(prisma.mtmAgent.findMany).mock.calls.at(-1)?.[0] as { select: { workdays: { select: Record<string, boolean> } } }
+      expect(query.select.workdays.select).toMatchObject({ totalPausedSeconds: true })
+
+      // A tenant without Workforce keeps no breaks to speak of.
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+        plan: "pro", addons: [], features: ["mtm"], modules: { mtm: true, "workforce-hrm": false },
+      } as never)
+      const routesOnly = await roster([agent("stands", { workdays: resumed })], [anchor("stands")])
+      expect(routesOnly.stands.workdayPausedSeconds).toBeNull()
+    })
+
+    // Back from a break, the phone has not sent a fix yet: the newest point
+    // is still the one he left before the break. Drawn live it would stand
+    // him where he paused, measure him from there, and the first new fix
+    // would draw a line across the break.
+    describe("back from a break, before the first fix after it", () => {
+      const journal = [
+        { workdayId: "wd-back", type: "START", occurredAt: minutesAgo(180), appliedAt: minutesAgo(180) },
+        { workdayId: "wd-back", type: "PAUSE", occurredAt: minutesAgo(20), appliedAt: minutesAgo(20) },
+        { workdayId: "wd-back", type: "RESUME", occurredAt: minutesAgo(2), appliedAt: minutesAgo(2) },
+        { workdayId: "wd-other", type: "PAUSE", occurredAt: minutesAgo(1), appliedAt: minutesAgo(1) },
+      ]
+      // The journal answers the question it is asked — which shifts, which kinds of event.
+      beforeEach(() => {
+        vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockImplementation((async (query: {
+          where: { organizationId: string; workdayId: { in: string[] }; type: { in: string[] } }
+        }) => journal.filter((event) => query.where.organizationId === ORG &&
+          query.where.workdayId.in.includes(event.workdayId) && query.where.type.in.includes(event.type))) as never)
+      })
+      const back = [{ ...working[0], id: "wd-back", totalPausedSeconds: 18 * 60 }]
+      const at = (minutes: number) => ({ locations: [{ ...point, recordedAt: minutesAgo(minutes) }] })
+
+      it("is the last known point until a fix from after the break comes, and live from that fix on", async () => {
+        const before = await roster([agent("back", { workdays: back, ...at(3) })], [anchor("back", { recordedAt: minutesAgo(3) })])
+        expect([before.back.freshness, before.back.fieldStatus, before.back.stationarySince]).toEqual(["STALE", "OFFLINE", null])
+        expect(lastAnswer?.contract.markerCount).toBe(0)
+        expect(lastAnswer?.freshnessCounts).toMatchObject({ online: 0, delayed: 0, stale: 1 })
+
+        // The fix taken the very second he resumed is the first of the new leg.
+        const onTheSecond = await roster([agent("back", { workdays: back, ...at(2) })], [])
+        expect(onTheSecond.back.freshness).toBe("ONLINE")
+        const after = await roster([agent("back", { workdays: back, ...at(1) })], [])
+        expect([after.back.freshness, after.back.fieldStatus]).toEqual(["ONLINE", "STOPPED"])
+        expect(lastAnswer?.contract.markerCount).toBe(1)
+      })
+
+      it("reads the journal only for somebody back from a break, and not at all when nobody is", async () => {
+        const plain = [{ ...working[0], id: "wd-plain", totalPausedSeconds: 0 }]
+        const paused = [{ ...working[0], id: "wd-other", status: "PAUSED", pausedAt: minutesAgo(1), totalPausedSeconds: 0 }]
+        await roster([agent("works", { workdays: plain }), agent("rests", { workdays: paused })], [])
+        expect(prisma.mtmAgentWorkdayEvent.findMany).not.toHaveBeenCalled()
+
+        const byId = await roster([agent("works", { workdays: plain, ...at(3) }), agent("back", { workdays: back, ...at(3) })], [])
+        expect(prisma.mtmAgentWorkdayEvent.findMany).toHaveBeenCalledTimes(1)
+        expect(vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mock.calls[0]?.[0]).toMatchObject({
+          where: { organizationId: ORG, workdayId: { in: ["wd-back"] } },
+        })
+        // A point three minutes old is live for whoever has had no break.
+        expect([byId.works.freshness, byId.back.freshness]).toEqual(["ONLINE", "STALE"])
+      })
     })
 
     it("leaves it out whenever the anchor is not about the point on the map — a missing duration, never a wrong one", async () => {

@@ -23,6 +23,35 @@ GitHub Actions, source control, a ticket or chat.
 
 ## 0. Configure the writer through the protected production route
 
+### Native scratch prerequisite: no private backup or Mac proof
+
+Before requesting a fresh section1 Mac receipt, deliver and execute the
+**Commission production backup** operation `probe-native-scratch` from exact
+current/live `main`, with `expected_main_sha` equal to that full SHA and
+confirmation `CHECK_NATIVE_SCRATCH_TEMPLATE_ON_13_140_132_245`. All recipient,
+custody and evidence fields must be empty. It refuses pending commissioning
+fences, active recovery services, enabled timers or an independently
+commissioned host rather than repairing their state.
+
+This preparatory operation holds the existing four writer-lock inodes plus
+the native maintenance lock, validates the source/target identity and exact
+source extension/locale contract, starts only the previously provisioned
+separate loopback scratch cluster, prepares a fresh empty run/nonce-owned
+template, removes only that template and proves a clean stop. Its server-side
+lifetime is ten minutes (full backup retains its separate four-hour ceiling).
+It compares canonical configuration/credential bytes and source identity/start
+time before/after, without reporting those values. The protected job is
+serialized with deployment and capped at15minutes.
+
+`NATIVE_SCRATCH_PREFLIGHT=passed` means only this empty-template lifecycle ran.
+No customer dump/clone/restore, encryption, B2 call/upload, signed recovery
+receipt, schedule activation, source DDL/restart or Kafka/replay happens.
+Unknown prior template/unit/storage state is retained and must be inspected;
+failure cleanup never acquires a pre-existing template or repairs an old fence.
+A real encrypted backup and owner restore remain separate mandatory stages.
+
+### Configure the existing writer
+
 If the production writer/endpoint pair has not been installed, use the existing
 **Commission production backup** workflow, operation `configure-b2-writer`.
 This operation is separate from creating a backup and from accepting custody.
@@ -288,12 +317,51 @@ Retain owner objects and evidence; do not delete data or weaken Object Lock to
 ## Disposable Mac Linux workbench
 
 `ops/backup/owner-workstation.Dockerfile` pins the multi-platform PostgreSQL
-16.13 base and official age1.3.2 release checksums. Distribution packages are
-resolved at build time. It supports native Apple ARM64; no production keys or
+16.15 bookworm/glibc and Node24 indexes, pgvector0.6.0 upstream commit/archive
+checksum, and official age1.3.2 release checksums. Distribution packages and
+compiler dependencies are resolved at build time; this is not a claim of a
+bit-reproducible final image. The indexes include Apple ARM64, but native ARM
+build/restore remains NOT RUN until actually exercised on the owner's worker.
+No production keys or
 archives are included in the image. The entrypoint refuses network interfaces
 other than loopback and requires separate tmpfs mounts for plaintext and PGDATA.
-The GitHub check builds it and runs **synthetic** PostgreSQL isolation only.
-This is not evidence of a customer-data restore.
+The fresh cluster explicitly uses UTF8/libc C.UTF-8. Before reading restore
+keys, its entrypoint prepares template1 with verifier-owned plpgsql1.0,
+btree_gist1.7, pgcrypto1.3 and vector0.6.0, atomically returns the verifier to
+NOSUPERUSER, closes direct template connections from a separate maintenance
+connection, and proves an actual limited
+role clone. Failed extension installation rolls back the whole privilege and
+extension transaction. Existing private mounts are refused, never acquired.
+
+The narrow `owner-template-checks.yml` check runs even on drafts, without secrets
+or production access. It must prove a FULL synthetic database dump/restore,
+including extension comments, vector index/data and tenant RLS, with strict
+pg_restore errors and the limited verifier. This is not a customer-data restore,
+an independent certificate, or proof that the native production scratch has
+been bootstrapped. The SQL planner is only for a newly initialized networkless
+owner cluster; do not run it against production. Native target admission and
+its separate identity/owned-unit/maintenance locks remain a distinct step.
+
+The native commissioning controller now prepares a separate, run/nonce-owned
+custom template only after its existing fixed PGDATA, source/target system
+identity, held maintenance lock and active unit InvocationID admission. It
+checks the current source's exact four extension/locale contract before any
+dump and the target's actual available versions before creating the template
+from template0 with explicit UTF8/libc C.UTF-8. Extension bootstrap and the
+temporary role privilege are one transaction, returning NOSUPERUSER before
+commit. The custom template is sealed against direct connections and supplied
+to the database worker by an explicit bounded argument, not backup.env.
+
+The unchanged strict full restore, migration/checksum, canary, RLS and optional
+PII checks remain mandatory. Native clones also prove exact extension versions,
+schemas, verifier ownership and locale before and after restoration. Cleanup
+drops only the exact marked template in the same positively identified active
+unit; unknown/pre-existing templates or an expired unit fail closed without a
+restart. The owned server still stops on cleanup refusal, but evidence/fence
+and unknown data remain for inspection. This code being delivered does not
+prove the production target was run, a private archive restored, ARM verified,
+or Kafka admitted. The path-scoped native-scratch-template-checks workflow
+uses only fresh synthetic data on hosted Ubuntu24, never DEV or production.
 
 On the Mac, use a separate Colima profile so existing default workloads are
 unaffected. Check available memory/disk first; do not start if capacity is

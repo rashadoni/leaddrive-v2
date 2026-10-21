@@ -45,6 +45,7 @@ async function actorAndVisibleGroups(auth: {
         },
       },
       products: {
+        where: { deletedAt: null },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         select: { id: true, name: true, isActive: true, documentId: true },
       },

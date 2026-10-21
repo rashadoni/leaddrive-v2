@@ -10,7 +10,7 @@
 import {
   Activity, AlertTriangle, Camera, CheckCircle2, Eye, Flag, Link2, ListChecks, ListPlus, LogIn, LogOut,
   Building2, FileUp, Hexagon, Link2Off, ListMinus, Megaphone, MessageSquare, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
-  Trash2, UserCog, UserMinus, UserPlus, type LucideIcon,
+  Star, Trash2, UserCog, UserMinus, UserPlus, UsersRound, type LucideIcon,
 } from "lucide-react"
 
 import { formatDate } from "@/lib/format-date"
@@ -96,6 +96,9 @@ const META: Record<string, ActionMeta> = {
   ORGANIZATION_BULK_UNASSIGN: { icon: UserMinus, tone: "amber" },
   FIELD_ASSIGNMENT_UPSERT: { icon: UserCog,   tone: "sky" },
   FIELD_PRODUCT_PRESENTATION_UPLOAD: { icon: FileUp, tone: "purple" },
+  // 2026-10-21: «Sil» on a presentation, and «Yadda saxla» on who sees the chosen ones.
+  FIELD_PRODUCT_DELETE: { icon: Trash2, tone: "red" },
+  FIELD_PRODUCT_VIEWERS_UPDATE: { icon: UserCog, tone: "sky" },
   ORDER_CREATE:        { icon: ShoppingCart,  tone: "emerald" },
   // 2026-10-10: zones a manager draws by hand on the live map («Свои зоны»).
   // Named from their first day, so the journal never reads «Действие» for them.
@@ -107,6 +110,11 @@ const META: Record<string, ActionMeta> = {
   // about the employee (agentId), so his managers see it in the journal.
   LOCATION_SHARE_LINK_CREATE: { icon: Link2,  tone: "violet" },
   LOCATION_SHARE_LINK_REVOKE: { icon: Link2Off, tone: "amber" },
+  // 2026-10-20: joint visit — a manager in the field with one agent, and his
+  // rating of the agent's work on a visit (the rating itself is not journalled).
+  JOINT_VISIT_START:   { icon: UsersRound,    tone: "teal" },
+  JOINT_VISIT_END:     { icon: Flag,          tone: "slate" },
+  VISIT_EVALUATION_SAVE: { icon: Star,        tone: "violet" },
 }
 
 /**
@@ -208,6 +216,14 @@ export function activityDataSummary(
     }
     case "FIELD_PRODUCT_PRESENTATION_UPLOAD":
       return typeof data.title === "string" && data.title.trim() ? data.title.trim() : null
+    case "FIELD_PRODUCT_DELETE":
+      return typeof data.name === "string" && data.name.trim() ? data.name.trim() : null
+    case "FIELD_PRODUCT_VIEWERS_UPDATE": {
+      const names = Array.isArray(data.productNames)
+        ? data.productNames.filter((name): name is string => typeof name === "string" && name.trim() !== "")
+        : []
+      return names.length ? names.join(", ") : null
+    }
     // Which zone: its name as the change left it (a removal keeps the name).
     case "MAP_ZONE_CREATE":
     case "MAP_ZONE_UPDATE":

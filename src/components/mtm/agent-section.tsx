@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { AlertCircle, ArrowLeft, History, Info, ListFilter, MapPinned, Pencil, Search, UserPlus, UsersRound } from "lucide-react"
+import { AlertCircle, ArrowLeft, History, Info, ListFilter, MapPinned, Pencil, Search, Star, UserPlus, UsersRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Hint } from "@/components/hint"
 import { MtmContactExplorer, type MtmContactExplorerAgentScope } from "@/components/mtm/contact-explorer"
@@ -13,6 +13,7 @@ import { MtmAgentForm, type MtmAgentFormData } from "@/components/mtm/agent-form
 import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
+import { MtmAgentEvaluations, useAgentEvaluations } from "@/components/mtm/visit-evaluation-views"
 
 type SectionAgent = MtmAgentFormData & {
   id: string
@@ -43,6 +44,7 @@ type SectionView = MtmContactExplorerAgentScope["view"]
  */
 export function MtmAgentSection({ agentId }: { agentId: string }) {
   const t = useTranslations("mtmAgentSection")
+  const tj = useTranslations("mtmJointVisit")
   const ta = useTranslations("mtmAgents")
   const ts = useTranslations("mtmStatus")
   const explainError = useMtmApiError()
@@ -50,6 +52,8 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const view: SectionView = searchParams.get("tab") === "attach" ? "candidates" : "assigned"
+  // «Оценки руководителя» (joint visits, owner-approved mockup 2026-10-20).
+  const ratingsOpen = searchParams.get("tab") === "ratings"
   const [forbidden, setForbidden] = useState(false)
   // Someone who may only look gets the list: the picker exists to assign.
   const attachBy: "place" | "list" = searchParams.get("find") === "list" || forbidden ? "list" : "place"
@@ -59,6 +63,8 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
   const [error, setError] = useState("")
   const [assignedTotal, setAssignedTotal] = useState<number | null>(null)
   const [changes, setChanges] = useState(0)
+  // Only a field agent is rated: he is the one a manager goes to visits with.
+  const evaluations = useAgentEvaluations(agentId, agent?.role === "AGENT")
 
   useEffect(() => {
     const controller = new AbortController()
@@ -99,10 +105,13 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
     const query = params.toString()
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
   }
-  const openView = (next: SectionView) => {
+  const openView = (next: SectionView | "ratings") => {
     const params = new URLSearchParams(searchParams.toString())
     if (next === "candidates") params.set("tab", "attach")
-    else {
+    else if (next === "ratings") {
+      params.set("tab", "ratings")
+      params.delete("find")
+    } else {
       params.delete("tab")
       params.delete("find")
     }
@@ -192,7 +201,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
 
       <div role="tablist" aria-label={t("tabs")} className={MTM_TAB_ROW}>
         <Hint text={t("hint.sectionAssigned")}>
-          <button type="button" role="tab" aria-selected={view === "assigned"} data-testid="mtm-agent-tab-assigned" className={tabClass(view === "assigned")} onClick={() => openView("assigned")}>
+          <button type="button" role="tab" aria-selected={view === "assigned" && !ratingsOpen} data-testid="mtm-agent-tab-assigned" className={tabClass(view === "assigned" && !ratingsOpen)} onClick={() => openView("assigned")}>
             <UsersRound className="h-4 w-4" aria-hidden="true" />
             {assignedTotal === null ? t("tabAssigned") : t("tabAssignedCount", { count: assignedTotal })}
           </button>
@@ -203,9 +212,19 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
             {t("tabAttach")}
           </button>
         </Hint>
+        {agent.role === "AGENT" ? (
+          <Hint text={tj("tabHint")}>
+            <button type="button" role="tab" aria-selected={ratingsOpen} data-testid="mtm-agent-tab-ratings" className={tabClass(ratingsOpen)} onClick={() => openView("ratings")}>
+              <Star className="h-4 w-4" aria-hidden="true" />
+              {evaluations.data ? tj("tabCount", { count: evaluations.data.evaluated }) : tj("tab")}
+            </button>
+          </Hint>
+        ) : null}
       </div>
 
-      {view === "candidates" && !canReceiveClients ? (
+      {ratingsOpen && agent.role === "AGENT" ? (
+        <MtmAgentEvaluations state={evaluations} />
+      ) : view === "candidates" && !canReceiveClients ? (
         <div className="flex items-start gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-4 text-sm" data-testid="mtm-agent-attach-unavailable">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <div>

@@ -596,6 +596,32 @@ jobs:
           MTM_MANAGER_MESSAGES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_MANAGER_MESSAGES_DB_GATE: required
 
+      - name: MTM joint visit database gate
+        # Same gate as in pr-checks: a joint visit is the manager's session plus
+        # the agent's own «yes»; only such a visit is rated, and the rated agent
+        # never reads the rating (see the test's header).
+        run: npx vitest run src/__tests__/mtm-joint-visit-postgres.test.ts
+        env:
+          MTM_JOINT_VISIT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_JOINT_VISIT_DB_GATE: required
+
+      - name: MTM task notice database gate
+        # Same gate as in pr-checks: a task given to an agent reaches his bell,
+        # a self-made or refused one tells nobody (see the test's header).
+        run: npx vitest run src/__tests__/mtm-task-notice-postgres.test.ts
+        env:
+          MTM_TASK_NOTICE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_TASK_NOTICE_DB_GATE: required
+
+      - name: MTM presentation viewers database gate
+        # Same gate as in pr-checks: a phone gets only the presentations its
+        # agent is listed on, and a deleted one leaves every phone while its
+        # showings stay (see the test's header).
+        run: npx vitest run src/__tests__/mtm-product-viewers-postgres.test.ts
+        env:
+          MTM_PRODUCT_VIEWERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_PRODUCT_VIEWERS_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:

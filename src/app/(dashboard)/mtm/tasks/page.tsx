@@ -14,7 +14,6 @@ import {
   ChevronRight,
   CalendarOff,
   ClipboardList,
-  Plus,
   RefreshCw,
   UserRound,
   X,
@@ -24,7 +23,8 @@ import { HelpButton } from "@/components/help/help-button"
 import { MtmFilterBar, MtmFilterReset, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { PageDescription } from "@/components/page-description"
 import { mtmTaskDueFormat } from "@/lib/mtm/task-due"
-import { MtmTaskForm, type TaskAgentOption, type TaskGroupOption } from "@/components/mtm/task-form"
+import { type TaskAgentOption, type TaskGroupOption } from "@/components/mtm/task-form"
+import { MtmTaskQuickAdd, type TaskRecipient } from "@/components/mtm/task-quick-add"
 import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
@@ -60,7 +60,7 @@ type TaskListData = {
   page: number
   limit: number
   filters: {
-    agents: TaskAgentOption[]
+    agents: TaskRecipient[]
     teams: TeamOption[]
     taskGroups: TaskGroupOption[]
     taskGroupCatalogAvailable: boolean
@@ -128,7 +128,6 @@ export default function MtmTasksPage() {
   const [data, setData] = useState<TaskListData | null>(null)
   const [phase, setPhase] = useState<LoadPhase>("loading")
   const [error, setError] = useState("")
-  const [formOpen, setFormOpen] = useState(false)
   const [searchInput, setSearchInput] = useState(searchParams.get("search") || "")
   const [search, setSearch] = useState(searchParams.get("search") || "")
   const [status, setStatus] = useState(searchParams.get("status") || DEFAULT_TASK_STATUS)
@@ -317,7 +316,6 @@ export default function MtmTasksPage() {
   // The badge on «More filters» counts only what is inside that panel.
   const panelFilters = [agentId, teamId].filter(Boolean).length
   const canCreate = capability(data?.capabilities || {}, "canCreate", "CREATE")
-  const canCreateRecurring = capability(data?.capabilities || {}, "canCreateRecurring", "CREATE_RECURRING")
   const canBulk = capability(data?.capabilities || {}, "canBulkReassign", "BULK_REASSIGN")
 
   return (
@@ -327,16 +325,18 @@ export default function MtmTasksPage() {
           <PageDescription icon={ClipboardList} title={t("title")} />
           <HelpButton slug="mtm-tasks" variant="label" />
         </div>
-        <div className="flex flex-wrap gap-2">
-          {canCreate ? (
-            <Hint text={t("hint.add")}>
-              <Button type="button" className="min-h-11" onClick={() => setFormOpen(true)}>
-                <Plus className="h-4 w-4" />{t("add")}
-              </Button>
-            </Hint>
-          ) : null}
-        </div>
       </header>
+      {/* Owner 2026-10-20: «добавить задачу слишком длинный процесс… максимально
+          облегчи». One line — whom, what, which day — instead of the dialog. */}
+      {canCreate ? (
+        <MtmTaskQuickAdd
+          agents={data?.filters.agents || []}
+          timezone={data?.timezone || "UTC"}
+          orgId={orgId ? String(orgId) : undefined}
+          defaultAgentId={agentId || undefined}
+          onCreated={load}
+        />
+      ) : null}
 
       {/* Owner 2026-09-27: filters in one row. Team and employee — the filters
           a manager uses most — sat behind «Ещё фильтры». */}
@@ -421,7 +421,7 @@ export default function MtmTasksPage() {
           {phase === "loading" && !data ? (
             <div className="space-y-3" role="status"><div className="h-14 animate-pulse rounded-lg bg-muted/60 motion-reduce:animate-none" />{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-lg bg-muted/40 motion-reduce:animate-none" />)}<span className="sr-only">{t("loading")}</span></div>
           ) : !pageTasks.length && !undatedTasks.length ? (
-            <StatePanel icon={ClipboardList} title={activeFilters ? t("noResults") : t("empty")} hint={activeFilters ? t("noResultsHint") : t("emptyHint")} action={activeFilters ? <Button type="button" variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button> : canCreate ? <Button type="button" className="min-h-11" onClick={() => setFormOpen(true)}><Plus className="h-4 w-4" />{t("add")}</Button> : undefined} />
+            <StatePanel icon={ClipboardList} title={activeFilters ? t("noResults") : t("empty")} hint={activeFilters ? t("noResultsHint") : t("emptyHint")} action={activeFilters ? <Button type="button" variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button> : undefined} />
           ) : (
             <>
               {undatedTasks.length ? (
@@ -479,7 +479,6 @@ export default function MtmTasksPage() {
         </>
       )}
 
-      <MtmTaskForm open={formOpen} onOpenChange={setFormOpen} onSaved={load} orgId={orgId ? String(orgId) : undefined} agentOptions={data?.filters.agents || []} taskGroupOptions={data?.filters.taskGroups || []} taskGroupCatalogAvailable={Boolean(data?.filters.taskGroupCatalogAvailable)} timezone={data?.timezone || "UTC"} canCreateRecurring={canCreateRecurring} />
     </div>
   )
 }

@@ -2,12 +2,15 @@
 /**
  * The «Products and presentations» screen (/mtm/products), as a manager uses
  * it. Owner, 2026-10-15: «этот раздел не очень понятен… нужно подтянуть
- * интуитивность и интерактивность». The new look was shown to him as a
- * picture first («Да, делай»).
+ * интуитивность и интерактивность». Owner, 2026-10-21: «нет удаления
+ * презентации и ещё нет выбора презентации… я хочу выбрать несколько
+ * презентаций и указать, для какого агента будут видны… и нет сохранения».
+ * Both looks were shown to him as a picture first.
  *
  * What is asked here is what the screen sends and says, through the requests
- * it makes — a tick is saved at once, a file is checked before it is sent, a
- * group says what it lacks.
+ * it makes — nothing leaves before «Save», «Save» sends only what changes, a
+ * deletion names the presentation and keeps its showings, a file is checked
+ * before it is sent, a group says what it lacks.
  */
 import { readFileSync } from "node:fs"
 import { act, createElement, type ComponentProps } from "react"
@@ -34,12 +37,20 @@ const AGENTS = [
 ]
 const member = (agentId: string, role: "AGENT" | "MANAGER") => ({ agentId, role, agent: AGENTS.find((agent) => agent.id === agentId)! })
 
-type State = { groups: Array<Record<string, unknown>>; products: Array<Record<string, unknown>> }
+type ProductRow = Record<string, unknown> & { id: string; groupId: string; viewerAgentIds: string[]; _count: { presentationSessions: number } }
+type State = { groups: Array<Record<string, unknown>>; products: ProductRow[]; deletedShowings: Record<string, number> }
 let state: State
 let calls: Array<{ method: string; url: string; body: unknown }>
 let putStatus = 200
+let deleteStatus = 200
 let groupPostStatus = 201
-let putGate: Promise<void> = Promise.resolve()
+
+const deck = (id: string, name: string, viewerAgentIds: string[], showings = 0, groupId = "gastro"): ProductRow => ({
+  id, groupId, name, description: null, presentationVersion: id === "forlaks" ? "3" : null, isActive: true,
+  document: { id: `doc-${id}`, fileName: `${name}.pdf`, mimeType: "application/pdf", sizeBytes: 984_261, deletedAt: null },
+  viewerAgentIds,
+  _count: { presentationSessions: showings },
+})
 
 function fixtures(): State {
   return {
@@ -48,12 +59,12 @@ function fixtures(): State {
       { id: "kardio", parentId: null, name: "Kardio", description: null, sortOrder: 1, isActive: true, canManage: false, members: [], products: [] },
     ],
     products: [
-      {
-        id: "forlaks", groupId: "gastro", name: "Forlaks", description: null, presentationVersion: "3", isActive: true,
-        document: { id: "doc-1", fileName: "Forlaks prezentasiya.pdf", mimeType: "application/pdf", sizeBytes: 984_261, deletedAt: null },
-        _count: { presentationSessions: 2 },
-      },
+      deck("forlaks", "Forlaks", ["a1", "a2"], 2),
+      deck("gastal", "Gastal", ["a2"]),
+      deck("mezim", "Mezim", []),
+      deck("kardil", "Kardil", ["a3"], 0, "kardio"),
     ],
+    deletedShowings: { gastro: 3 },
   }
 }
 
@@ -65,15 +76,21 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
   const body = typeof init?.body === "string" ? JSON.parse(init.body) : init?.body instanceof FormData ? Object.fromEntries(init.body.entries()) : undefined
   calls.push({ method, url, body })
   if (method === "GET" && url.startsWith("/api/v1/mtm/product-groups")) return json({ success: true, data: { groups: state.groups } })
-  if (method === "GET" && url.startsWith("/api/v1/mtm/products")) return json({ success: true, data: { products: state.products } })
+  if (method === "GET" && url.startsWith("/api/v1/mtm/products")) return json({ success: true, data: { products: state.products, deletedShowings: state.deletedShowings } })
   if (method === "GET" && url.startsWith("/api/v1/mtm/agents")) return json({ success: true, data: { agents: AGENTS } })
-  if (method === "PUT" && url.endsWith("/members")) {
-    await putGate
+  if (method === "PUT" && url === "/api/v1/mtm/products/viewers") {
     if (putStatus !== 200) return json({ error: "nope" }, putStatus)
-    const groupId = url.split("/").at(-2)
-    const members = (body as { members: Array<{ agentId: string; role: "AGENT" | "MANAGER" }> }).members
-    state.groups = state.groups.map((group) => group.id === groupId ? { ...group, members: members.map((entry) => member(entry.agentId, entry.role)) } : group)
-    return json({ success: true })
+    const sent = body as { productIds: string[]; add: string[]; remove: string[] }
+    state.products = state.products.map((product) => sent.productIds.includes(product.id)
+      ? { ...product, viewerAgentIds: [...product.viewerAgentIds.filter((id) => !sent.remove.includes(id)), ...sent.add.filter((id) => !product.viewerAgentIds.includes(id))] }
+      : product)
+    return json({ success: true, data: { products: state.products.filter((product) => sent.productIds.includes(product.id)).map((product) => ({ id: product.id, viewerAgentIds: product.viewerAgentIds })) } })
+  }
+  if (method === "DELETE" && url.startsWith("/api/v1/mtm/products/")) {
+    if (deleteStatus !== 200) return json({ error: "Group is outside your scope" }, deleteStatus)
+    const id = url.split("/").at(-1)
+    state.products = state.products.filter((product) => product.id !== id)
+    return json({ success: true, data: { id } })
   }
   if (method === "POST" && url === "/api/v1/mtm/product-groups") {
     if (groupPostStatus !== 201) return json({ error: "A group with this name already exists here", code: "MTM_PRODUCT_GROUP_NAME_TAKEN" }, groupPostStatus)
@@ -87,9 +104,10 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
     state.products = [...state.products, {
       id: "new-product", groupId: sent.groupId, name: sent.name, description: null, presentationVersion: sent.presentationVersion, isActive: true,
       document: { id: sent.documentId, fileName: "Omez_2026.pdf", mimeType: "application/pdf", sizeBytes: 2048, deletedAt: null },
+      viewerAgentIds: [],
       _count: { presentationSessions: 0 },
     }]
-    return json({ success: true, data: {} }, 201)
+    return json({ success: true, data: { id: "new-product" } }, 201)
   }
   return json({ error: "unexpected" }, 500)
 })
@@ -115,7 +133,13 @@ const byTestId = (id: string) => {
 }
 const text = () => container.textContent ?? ""
 const checkbox = (agentId: string) => byTestId(`mtm-product-agent-${agentId}`).querySelector("input") as HTMLInputElement
-const puts = () => calls.filter((call) => call.method === "PUT")
+const choose = (productId: string) => byTestId(`mtm-product-choose-${productId}`) as HTMLInputElement
+const writes = () => calls.filter((call) => call.method !== "GET")
+const button = (label: string) => {
+  const found = [...container.querySelectorAll("button")].find((candidate) => candidate.textContent?.trim() === label)
+  if (!found) throw new Error(`no button «${label}»`)
+  return found as HTMLButtonElement
+}
 
 async function click(element: HTMLElement) {
   await act(async () => { element.click() })
@@ -141,8 +165,8 @@ beforeEach(() => {
   state = fixtures()
   calls = []
   putStatus = 200
+  deleteStatus = 200
   groupPostStatus = 201
-  putGate = Promise.resolve()
   vi.stubGlobal("fetch", fetchMock)
   container = document.createElement("div")
   document.body.append(container)
@@ -157,83 +181,148 @@ afterEach(async () => {
 })
 
 describe("the product catalog screen", () => {
-  it("says for every group whether an agent will see it, and lays the chosen one out as three steps", async () => {
+  it("says for every group what it lacks, and under each presentation who sees it", async () => {
     await mount()
 
-    expect(byTestId("mtm-product-group-gastro").textContent).toContain(T.readiness.READY)
-    expect(byTestId("mtm-product-group-kardio").textContent).toContain(T.readiness.NO_PRESENTATIONS)
-    expect(byTestId("mtm-product-group-readiness").textContent).toContain(T.readiness.READY)
+    expect(byTestId("mtm-product-group-gastro").textContent).toContain("1 презентацию никто не видит")
+    expect(byTestId("mtm-product-group-kardio").textContent).toContain(T.readiness.READY)
+    expect(byTestId("mtm-product-seen-forlaks").textContent).toBe("Видят: Agent One, Agent Two")
+    expect(byTestId("mtm-product-seen-mezim").textContent).toBe(T.seenByNobody)
     const presentations = byTestId("mtm-product-step-presentations").textContent ?? ""
-    expect(presentations).toContain("Forlaks")
     expect(presentations).toContain("v3")
     expect(presentations).toContain("Показана 2 раза")
     const download = byTestId("mtm-product-forlaks").querySelector("a") as HTMLAnchorElement
     expect(download.getAttribute("href")).toBe("/api/v1/mtm/products/forlaks/presentation")
-    expect(byTestId("mtm-product-step-agents").textContent).toContain("1 из 3")
-    expect(byTestId("mtm-product-step-visit").textContent).toContain(T.visitReady)
+    // Nothing chosen: «Who sees it» tells what each agent sees, and has nothing to tick.
+    expect(byTestId("mtm-product-step-agents").textContent).toContain(T.nothingChosen)
+    expect(byTestId("mtm-product-agent-a1").textContent).toContain("Видит: Forlaks")
+    expect(byTestId("mtm-product-agent-a3").textContent).toContain(T.agentGroupSeesNothing)
+    expect(byTestId("mtm-product-agent-a1").querySelector("input")).toBeNull()
+    expect(container.querySelector('[data-testid="mtm-product-save-bar"]')).toBeNull()
     // The manager is a member, not one of the agents to tick.
     expect(container.querySelector('[data-testid="mtm-product-agent-m1"]')).toBeNull()
+    // The showings of a deleted presentation still count on the visit step: 2 + 3.
+    expect(byTestId("mtm-product-step-visit").textContent).toContain("5")
   })
 
-  it("saves a tick at once, keeps the group's managers, and has no save button to forget", async () => {
+  it("sends nothing before «Save», then gives the ticked agent every chosen presentation", async () => {
     await mount()
 
-    await click(checkbox("a2"))
+    await click(choose("forlaks"))
+    await click(choose("gastal"))
+    expect(byTestId("mtm-product-chosen").textContent).toBe("Выбрано: 2 презентации — Forlaks, Gastal")
+    // Agent One sees Forlaks only: half-ticked, and says which.
+    expect(checkbox("a1").indeterminate).toBe(true)
+    expect(byTestId("mtm-product-agent-a1").textContent).toContain("Сейчас только Forlaks")
+    expect(checkbox("a2").checked).toBe(true)
+    expect(button(T.save).disabled).toBe(true)
 
-    expect(puts()).toEqual([{
+    await click(checkbox("a1"))
+    expect(writes()).toEqual([])
+    expect(checkbox("a1").checked).toBe(true)
+    expect(byTestId("mtm-product-agent-a1").textContent).toContain("Сейчас только Forlaks → будет видеть все")
+    expect(byTestId("mtm-product-save-bar").textContent).toContain("1 изменение не сохранено")
+
+    await click(button(T.save))
+
+    expect(writes()).toEqual([{
       method: "PUT",
-      url: "/api/v1/mtm/product-groups/gastro/members",
-      body: { members: [{ agentId: "m1", role: "MANAGER" }, { agentId: "a1", role: "AGENT" }, { agentId: "a2", role: "AGENT" }] },
+      url: "/api/v1/mtm/products/viewers",
+      body: { productIds: ["forlaks", "gastal"], add: ["a1"], remove: [] },
     }])
-    expect(byTestId("mtm-product-step-agents").textContent).toContain(T.saved)
-    expect(byTestId("mtm-product-step-agents").textContent).toContain("2 из 3")
-    expect(container.querySelectorAll("button").length).toBeGreaterThan(0)
-    expect(text()).not.toContain("Сохранить агентов")
+    expect(byTestId("mtm-product-seen-gastal").textContent).toBe("Видят: Agent One, Agent Two")
+    expect(byTestId("mtm-product-save-bar").textContent).toContain(T.noChanges)
+    expect(text()).toContain("Сохранено: кто видит «Forlaks», «Gastal».")
   })
 
-  it("writes quick ticks one after another, so the last list is the one that stays", async () => {
+  it("leaves a half-ticked agent nobody touched as he was, and takes everything from one unticked", async () => {
     await mount()
-    let open!: () => void
-    putGate = new Promise((resolve) => { open = resolve })
+    await click(choose("forlaks"))
+    await click(choose("gastal"))
 
     await click(checkbox("a2"))
     await click(checkbox("a3"))
-    await click(checkbox("a1"))
-    // The first save is still on its way; nothing else has been sent behind it.
-    expect(puts()).toHaveLength(1)
+    await click(button(T.save))
 
-    await act(async () => open())
-    await flush()
-
-    expect(puts().map((call) => (call.body as { members: Array<{ agentId: string }> }).members.map((entry) => entry.agentId))).toEqual([
-      ["m1", "a1", "a2"],
-      ["m1", "a1", "a2", "a3"],
-      ["m1", "a2", "a3"],
-    ])
-    expect(checkbox("a1").checked).toBe(false)
-    expect(checkbox("a3").checked).toBe(true)
+    // Agent One sees only Forlaks and was not touched: he is in neither list.
+    expect(writes().map((call) => call.body)).toEqual([{ productIds: ["forlaks", "gastal"], add: ["a3"], remove: ["a2"] }])
+    expect(byTestId("mtm-product-seen-forlaks").textContent).toBe("Видят: Agent One, Agent Three")
   })
 
-  it("ticks everybody with one save", async () => {
+  it("puts the ticks back on «Cancel», and a tick back where it was is no change", async () => {
     await mount()
+    await click(choose("mezim"))
+
+    await click(checkbox("a1"))
+    await click(checkbox("a1"))
+    expect(byTestId("mtm-product-save-bar").textContent).toContain(T.noChanges)
 
     await click(byTestId("mtm-product-agents-all"))
-
-    expect(puts()).toHaveLength(1)
-    expect((puts()[0].body as { members: Array<{ agentId: string }> }).members.map((entry) => entry.agentId)).toEqual(["m1", "a1", "a2", "a3"])
+    expect(byTestId("mtm-product-save-bar").textContent).toContain("3 изменения не сохранены")
+    await click(byTestId("mtm-product-viewers-discard"))
+    expect(checkbox("a1").checked).toBe(false)
+    expect(writes()).toEqual([])
   })
 
-  it("shows what the server holds when a tick could not be saved", async () => {
+  it("keeps the ticks when «Save» fails, and sends them again", async () => {
     await mount()
+    await click(choose("mezim"))
+    await click(checkbox("a3"))
     putStatus = 500
 
-    await click(checkbox("a2"))
+    await click(button(T.save))
+    expect(byTestId("mtm-product-save-bar").textContent).toContain(T.saveFailedViewers)
+    expect(checkbox("a3").checked).toBe(true)
 
-    expect(byTestId("mtm-product-step-agents").textContent).toContain(T.saveFailedAgents)
-    expect(checkbox("a2").checked).toBe(false)
+    putStatus = 200
+    await click(button(T.save))
+    expect(writes().map((call) => call.body)).toEqual([
+      { productIds: ["mezim"], add: ["a3"], remove: [] },
+      { productIds: ["mezim"], add: ["a3"], remove: [] },
+    ])
+    expect(byTestId("mtm-product-seen-mezim").textContent).toBe("Видят: Agent Three")
   })
 
-  it("refuses a file that is not a deck before sending it, and offers the file's name for a deck", async () => {
+  it("asks before another group drops ticks not saved", async () => {
+    await mount()
+    await click(choose("mezim"))
+    await click(checkbox("a3"))
+
+    await click(byTestId("mtm-product-group-kardio"))
+    expect(container.querySelector("h2")?.textContent).toBe("Gastro")
+    expect(text()).toContain(T.leaveTitle)
+
+    await click(button(T.leaveConfirm))
+    expect(container.querySelector("h2")?.textContent).toBe("Kardio")
+    expect(writes()).toEqual([])
+  })
+
+  it("deletes a presentation only after a question that names it, and keeps its showings counted", async () => {
+    await mount()
+
+    await click(byTestId("mtm-product-delete-forlaks"))
+    expect(text()).toContain("Удалить «Forlaks»?")
+    expect(text()).toContain("2 показа остаются в истории визитов")
+    expect(writes()).toEqual([])
+
+    deleteStatus = 403
+    await click(button(T.deleteConfirm))
+    expect(text()).toContain(T.deleteFailed)
+    expect(container.querySelector('[data-testid="mtm-product-forlaks"]')).not.toBeNull()
+
+    deleteStatus = 200
+    await click(button(T.deleteConfirm))
+    expect(writes().map((call) => `${call.method} ${call.url}`)).toEqual([
+      "DELETE /api/v1/mtm/products/forlaks",
+      "DELETE /api/v1/mtm/products/forlaks",
+    ])
+    expect(container.querySelector('[data-testid="mtm-product-forlaks"]')).toBeNull()
+    expect(text()).toContain("Презентация «Forlaks» удалена. Её показы остались в истории визитов.")
+    // 3 earlier deleted + Forlaks's 2.
+    expect(byTestId("mtm-product-step-visit").textContent).toContain("5")
+  })
+
+  it("refuses a file that is not a deck before sending it, and chooses the new deck for «Who sees it»", async () => {
     await mount()
 
     await chooseFile(new File(["x"], "photo.jpg", { type: "image/jpeg" }))
@@ -252,8 +341,9 @@ describe("the product catalog screen", () => {
     expect(calls.find((call) => call.method === "POST" && call.url === "/api/v1/mtm/products")?.body).toEqual({
       groupId: "gastro", name: "Omez", presentationVersion: null, documentId: "doc-new",
     })
-    expect(text()).toContain("Презентация «Omez» добавлена")
-    expect(byTestId("mtm-product-step-presentations").textContent).toContain("Omez")
+    expect(text()).toContain("Презентация «Omez» добавлена и выбрана")
+    expect(choose("new-product").checked).toBe(true)
+    expect(byTestId("mtm-product-chosen").textContent).toBe("Выбрано: 1 презентация — Omez")
   })
 
   it("creates a subgroup from the chosen group, and says so when the name is taken", async () => {
@@ -276,9 +366,8 @@ describe("the product catalog screen", () => {
     // The new group is the one on screen, and it is a subgroup of «Gastro».
     expect(container.querySelector("h2")?.textContent).toBe("Kids")
     expect(byTestId("mtm-product-group-new-group").getAttribute("style")).toContain("padding-left: 30px")
-    // The agents of «Gastro» get it already: ticked there, shown here.
-    expect(byTestId("mtm-product-agent-a1").textContent).toContain("Получает через «Gastro»")
-    expect(checkbox("a1").disabled).toBe(true)
+    // It hands nobody anything by itself: who sees is chosen on its presentations.
+    expect(byTestId("mtm-product-group-readiness").textContent).toContain(T.readiness.NO_PRESENTATIONS)
   })
 
   it("lets a group the user does not manage be read, not changed", async () => {
@@ -288,7 +377,9 @@ describe("the product catalog screen", () => {
 
     expect(container.querySelector('[data-testid="mtm-product-dropzone"]')).toBeNull()
     expect(container.querySelector('[data-testid="mtm-product-subgroup-new"]')).toBeNull()
-    expect(checkbox("a2").disabled).toBe(true)
+    expect(container.querySelector('[data-testid="mtm-product-choose-kardil"]')).toBeNull()
+    expect(container.querySelector('[data-testid="mtm-product-delete-kardil"]')).toBeNull()
+    expect(byTestId("mtm-product-agent-a3").textContent).toContain("Видит: Kardil")
     expect(byTestId("mtm-product-step-presentations").textContent).toContain(T.readOnlyHint)
   })
 })

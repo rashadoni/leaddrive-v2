@@ -17,6 +17,7 @@ import {
   MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
   MTM_LOCATION_REQUEST_NOTIFICATION_URL,
 } from "@/lib/mtm/customer-location-request-notification"
+import { MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_ENTITY, MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_URL } from "@/lib/mtm/contact-create-request-notification"
 
 /** Derive a click-through URL from the entity type + id. */
 function deriveNotificationUrl(entityType?: string, entityId?: string): string {
@@ -45,6 +46,8 @@ function deriveNotificationUrl(entityType?: string, entityId?: string): string {
     case MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY: return MTM_ATTENDANCE_RISK_NOTIFICATION_URL
     case MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY: return MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL
     case MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY: return MTM_LOCATION_REQUEST_NOTIFICATION_URL
+    // «Yeni həkim»: decided in the queue above the clients list.
+    case MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_ENTITY: return MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_URL
     case "survey":  return `/surveys`
     case "loyalty": return `/loyalty/dashboard`
     default:        return "/notifications"

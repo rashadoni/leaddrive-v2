@@ -175,6 +175,7 @@ export interface MtmPrismaMock {
   mtmProductGroup: ModelMock
   mtmProductGroupMember: ModelMock
   mtmProduct: ModelMock
+  mtmProductViewer: ModelMock
   mtmPresentationSession: ModelMock
   mtmHrmRequest: ModelMock
   mtmRoute: ModelMock
@@ -278,6 +279,8 @@ export interface MtmPrismaMock {
   mtmOnboarding: ModelMock
   mtmCustomerCreateRequest: ModelMock
   mtmCustomerLocationRequest: ModelMock
+  mtmJointFieldSession: ModelMock
+  mtmVisitEvaluation: ModelMock
   mtmContactCreateRequest: ModelMock
   mtmDeviceToken: ModelMock
   mtmMapZone: ModelMock
@@ -388,6 +391,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmProductGroup: makeModel(),
     mtmProductGroupMember: makeModel(),
     mtmProduct: makeModel(),
+    mtmProductViewer: makeModel(),
     mtmPresentationSession: makeModel(),
     mtmHrmRequest: makeModel(),
     mtmRoute: makeModel(),
@@ -489,6 +493,8 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmOnboarding: makeModel(),
     mtmCustomerCreateRequest: makeModel(),
     mtmCustomerLocationRequest: makeModel(),
+    mtmJointFieldSession: makeModel(),
+    mtmVisitEvaluation: makeModel(),
     mtmContactCreateRequest: makeModel(),
     mtmDeviceToken: makeModel(),
     mtmMapZone: makeModel(),

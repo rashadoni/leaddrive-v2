@@ -1,12 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState, type DragEvent, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import Link from "next/link"
 import {
   AlertTriangle, ArrowRight, Check, CheckCircle2, Download, FileText, FolderOpen, FolderPlus, Loader2, PackageOpen,
-  Presentation, Search, Stethoscope, UploadCloud, Users, X,
+  Presentation, Search, Stethoscope, Trash2, UploadCloud, Users, X,
 } from "lucide-react"
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Hint, HintValue } from "@/components/hint"
 import { HOME_ICON, HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { Button } from "@/components/ui/button"
@@ -15,31 +16,35 @@ import { formatFileSize } from "@/lib/format-file-size"
 import { MAX_MOBILE_DOCUMENT_BYTES } from "@/lib/mtm/mobile-document-limits"
 import {
   PRESENTATION_ACCEPT,
-  agentsWhoSeeProductGroup,
   presentationKind,
   productGroupAncestry,
   productGroupReadiness,
   productGroupShowings,
   productGroupTree,
+  productGroupViewers,
   productNameFromFileName,
   productPresentationReady,
+  productsNobodySees,
+  viewerChanges,
+  viewerState,
   type ProductGroupReadiness,
+  type ViewerState,
 } from "@/lib/mtm/product-catalog-view"
 import { cn } from "@/lib/utils"
 
 /**
  * «Products and presentations» (/mtm/products): the decks agents open on a
- * visit and show the doctor, sorted into groups, and who gets which group in
+ * visit and show the doctor, sorted into groups, and who sees which one in
  * the app.
  *
- * Owner, 2026-10-15, looking at it: «этот раздел не очень понятен… нужно
- * подтянуть интуитивность и интерактивность». It opened on a form to create a
- * group, listed the groups flat, and under the chosen one stacked three boxes —
- * agents with a separate save button, a browser file field, the products as
- * grey lines — with nothing saying what a group is for or whether an agent
- * would ever see the file. Now the chosen group reads as the three steps it
- * takes: its presentations, its agents (each tick saved at once), and what
- * happens on a visit. Every group in the list says whether it is ready.
+ * Owner, 2026-10-15: «этот раздел не очень понятен… нужно подтянуть
+ * интуитивность и интерактивность» — so the chosen group reads as three steps.
+ * Owner, 2026-10-21, on that screen: «тут нет удаления презентации и ещё нет
+ * выбора презентации… я хочу выбрать несколько презентаций и указать, для
+ * какого агента будут видны… и нет сохранения». The mockup he approved
+ * («давай»): tick presentations → tick in «Who sees it» → «Save»; nothing
+ * changes before «Save»; «Delete» on each presentation asks by its name and
+ * keeps its showings in the visit history.
  */
 
 type Agent = { id: string; name: string; role: string; status: string }
@@ -63,6 +68,7 @@ type Product = {
   presentationVersion: string | null
   isActive: boolean
   document: { id: string; fileName: string; mimeType?: string; sizeBytes: number; deletedAt: string | null } | null
+  viewerAgentIds: string[]
   _count: { presentationSessions: number }
 }
 type Draft = { file: File; name: string; version: string }
@@ -72,6 +78,7 @@ const CARD = "rounded-2xl border border-zinc-200 bg-card text-card-foreground sh
 
 const READINESS_TONE: Record<ProductGroupReadiness, HomeTone> = {
   READY: "green",
+  PARTLY: "amber",
   NO_PRESENTATIONS: "amber",
   NO_AGENTS: "amber",
 }
@@ -86,6 +93,7 @@ export function MtmProductCatalog() {
   const locale = useLocale()
   const [groups, setGroups] = useState<ProductGroup[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [deletedShowings, setDeletedShowings] = useState<Record<string, number>>({})
   const [agents, setAgents] = useState<Agent[]>([])
   const [selectedGroupId, setSelectedGroupId] = useState("")
   const [loading, setLoading] = useState(true)
@@ -104,8 +112,12 @@ export function MtmProductCatalog() {
   const [fileFieldKey, setFileFieldKey] = useState(0)
 
   const [agentQuery, setAgentQuery] = useState("")
-  const [memberSave, setMemberSave] = useState<SaveState>("idle")
-  const saveChain = useRef<Promise<void>>(Promise.resolve())
+  // The presentations ticked on the left, and the ticks in «Who sees it» not saved yet.
+  const [chosenIds, setChosenIds] = useState<Set<string>>(() => new Set())
+  const [pending, setPending] = useState<Map<string, boolean>>(() => new Map())
+  const [viewerSave, setViewerSave] = useState<SaveState>("idle")
+  const [deleting, setDeleting] = useState<Product | null>(null)
+  const [leavingFor, setLeavingFor] = useState<string | null>(null)
 
   const load = useCallback(async (select?: string) => {
     setLoadError("")
@@ -123,7 +135,11 @@ export function MtmProductCatalog() {
       if (!groupsResponse.ok || !productsResponse.ok || !agentsResponse.ok) throw new Error()
       const nextGroups = (groupsBody?.data?.groups ?? []) as ProductGroup[]
       setGroups(nextGroups)
-      setProducts((productsBody?.data?.products ?? []) as Product[])
+      setProducts(((productsBody?.data?.products ?? []) as Product[]).map((product) => ({
+        ...product,
+        viewerAgentIds: Array.isArray(product.viewerAgentIds) ? product.viewerAgentIds : [],
+      })))
+      setDeletedShowings((productsBody?.data?.deletedShowings ?? {}) as Record<string, number>)
       setAgents(((agentsBody?.data?.agents ?? []) as Agent[]).filter((agent) => agent.status === "ACTIVE"))
       setSelectedGroupId((current) => {
         const wanted = select ?? current
@@ -149,15 +165,30 @@ export function MtmProductCatalog() {
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? null
   const fieldAgents = useMemo(() => agents.filter((agent) => agent.role === "AGENT"), [agents])
   const groupProducts = useMemo(() => products.filter((product) => product.groupId === selectedGroupId), [products, selectedGroupId])
+  const chosen = useMemo(() => groupProducts.filter((product) => chosenIds.has(product.id)), [groupProducts, chosenIds])
+  const changes = useMemo(() => viewerChanges(chosen, pending), [chosen, pending])
+  const changeCount = changes.add.length + changes.remove.length
   const canCreateRoot = groups.length === 0 || groups.some((group) => group.canManage)
 
-  // A new group, a file being chosen, a search — all belong to the group on screen.
+  // A new group, a file being chosen, a search, a choice — all belong to the group on screen.
   useEffect(() => {
     setDraft(null)
     setDraftError("")
     setAgentQuery("")
-    setMemberSave("idle")
+    setChosenIds(new Set())
+    setPending(new Map())
+    setViewerSave("idle")
   }, [selectedGroupId])
+
+  /** Another group, unless ticks not saved would be lost without a word. */
+  const openGroup = (groupId: string) => {
+    if (groupId === selectedGroupId) return
+    if (changeCount > 0) {
+      setLeavingFor(groupId)
+      return
+    }
+    setSelectedGroupId(groupId)
+  }
 
   const openGroupForm = (parentId: string) => {
     setGroupError("")
@@ -192,49 +223,79 @@ export function MtmProductCatalog() {
     }
   }
 
-  /**
-   * A tick is saved at once. Saves are written one after another, each with
-   * the whole list as it stood after its tick, so the last one is what stays.
-   */
-  const writeAgents = (group: ProductGroup, agentIds: Set<string>) => {
-    if (!group.canManage) return
-    const members: GroupMember[] = [
-      ...group.members.filter((member) => member.role === "MANAGER"),
-      ...fieldAgents.filter((agent) => agentIds.has(agent.id)).map((agent) => ({ agentId: agent.id, role: "AGENT" as const, agent })),
-    ]
-    setGroups((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, members } : candidate))
-    setMemberSave("saving")
-    const body = JSON.stringify({ members: members.map((member) => ({ agentId: member.agentId, role: member.role })) })
-    saveChain.current = saveChain.current.then(async () => {
-      const response = await fetch(`/api/v1/mtm/product-groups/${group.id}/members`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body,
-      }).catch(() => null)
-      if (response?.ok) {
-        setMemberSave("saved")
-        return
-      }
-      setMemberSave("failed")
-      // What the server holds is what the screen shows.
-      await load()
+  const toggleChosen = (productId: string, on: boolean) => {
+    setChosenIds((current) => {
+      const next = new Set(current)
+      if (on) next.add(productId)
+      else next.delete(productId)
+      return next
     })
   }
 
-  const agentIdsOf = (group: ProductGroup) =>
-    new Set(group.members.filter((member) => member.role === "AGENT").map((member) => member.agentId))
-
-  const toggleAgent = (agent: Agent, on: boolean) => {
-    if (!selectedGroup) return
-    const agentIds = agentIdsOf(selectedGroup)
-    if (on) agentIds.add(agent.id)
-    else agentIds.delete(agent.id)
-    writeAgents(selectedGroup, agentIds)
+  /**
+   * A tick in «Who sees it» is held until «Save». Ticking an agent who sees
+   * the chosen presentations only partly gives him all of them; unticking takes
+   * them all away; a tick that lands back on what is saved is no change.
+   */
+  const setAgentPending = (agentId: string, on: boolean) => {
+    setViewerSave("idle")
+    setPending((current) => {
+      const next = new Map(current)
+      const saved = viewerState(chosen, agentId)
+      if ((on && saved === "all") || (!on && saved === "none")) next.delete(agentId)
+      else next.set(agentId, on)
+      return next
+    })
   }
 
-  const setAllAgents = (on: boolean) => {
-    if (!selectedGroup) return
-    writeAgents(selectedGroup, on ? new Set(fieldAgents.map((agent) => agent.id)) : new Set())
+  const setAllAgentsPending = (on: boolean) => {
+    setViewerSave("idle")
+    setPending(() => {
+      const next = new Map<string, boolean>()
+      for (const agent of fieldAgents) {
+        const saved = viewerState(chosen, agent.id)
+        if ((on && saved !== "all") || (!on && saved !== "none")) next.set(agent.id, on)
+      }
+      return next
+    })
+  }
+
+  const saveViewers = async () => {
+    if (!selectedGroup?.canManage || chosen.length === 0 || changeCount === 0) return
+    setViewerSave("saving")
+    const response = await fetch("/api/v1/mtm/products/viewers", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productIds: chosen.map((product) => product.id), add: changes.add, remove: changes.remove }),
+    }).catch(() => null)
+    const body = await response?.json().catch(() => null)
+    const saved = Array.isArray(body?.data?.products) ? body.data.products as Array<{ id: string; viewerAgentIds: string[] }> : null
+    if (!response?.ok || !saved) {
+      // The ticks stay as they were set: pressing «Save» again sends them again.
+      setViewerSave("failed")
+      return
+    }
+    const byId = new Map(saved.map((product) => [product.id, product.viewerAgentIds]))
+    setProducts((current) => current.map((product) => byId.has(product.id) ? { ...product, viewerAgentIds: byId.get(product.id)! } : product))
+    setPending(new Map())
+    setViewerSave("saved")
+    setNotice(t("savedViewers", { names: chosen.map((product) => `«${product.name}»`).join(", ") }))
+  }
+
+  const deleteProduct = async (product: Product) => {
+    const response = await fetch(`/api/v1/mtm/products/${product.id}`, { method: "DELETE" }).catch(() => null)
+    if (!response?.ok) throw new Error(t("deleteFailed"))
+    setProducts((current) => current.filter((candidate) => candidate.id !== product.id))
+    setDeletedShowings((current) => ({
+      ...current,
+      [product.groupId]: (current[product.groupId] ?? 0) + product._count.presentationSessions,
+    }))
+    setChosenIds((current) => {
+      const next = new Set(current)
+      next.delete(product.id)
+      return next
+    })
+    setNotice(t("deleted", { name: product.name }))
   }
 
   const chooseFile = (file: File | null | undefined) => {
@@ -287,11 +348,18 @@ export function MtmProductCatalog() {
           documentId: uploadJson.data.document.id,
         }),
       })
+      if (productResponse.status === 409) throw new Error(t("productNameTaken"))
       if (!productResponse.ok) throw new Error(await errorText(productResponse, t("saveFailed")))
+      const productJson = await productResponse.json().catch(() => null)
       setDraft(null)
       setFileFieldKey((key) => key + 1)
       setNotice(t("productCreated", { name }))
       await load()
+      // The new presentation is the one chosen: «Who sees it» is about it at once.
+      if (typeof productJson?.data?.id === "string") {
+        setChosenIds(new Set([productJson.data.id]))
+        setPending(new Map())
+      }
     } catch (error) {
       setDraftError(error instanceof Error && error.message ? error.message : t("saveFailed"))
     } finally {
@@ -365,10 +433,9 @@ export function MtmProductCatalog() {
             ) : null}
             <ul className="p-2" aria-label={t("groups")}>
               {tree.map(({ group, depth }) => {
-                const readiness = productGroupReadiness(groups, products, group.id)
+                const readiness = productGroupReadiness(products, group.id)
                 const selected = group.id === selectedGroupId
                 const productCount = products.filter((product) => product.groupId === group.id).length
-                const { own, inherited } = agentsWhoSeeProductGroup(groups, group.id)
                 return (
                   <li key={group.id}>
                     <Hint text={t("hint.group")} side="right">
@@ -376,7 +443,7 @@ export function MtmProductCatalog() {
                       type="button"
                       aria-current={selected ? "true" : undefined}
                       data-testid={`mtm-product-group-${group.id}`}
-                      onClick={() => setSelectedGroupId(group.id)}
+                      onClick={() => openGroup(group.id)}
                       style={{ paddingLeft: `${12 + depth * 18}px` }}
                       className={cn(
                         "flex min-h-14 w-full items-center gap-3 rounded-xl py-2.5 pr-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
@@ -387,10 +454,15 @@ export function MtmProductCatalog() {
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{group.name}</span>
                         <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                          {t("groupSummary", { products: productCount, agents: own.size + inherited.size })}
+                          {t("groupSummary", { products: productCount, agents: productGroupViewers(products, group.id).size })}
                         </span>
+                        {readiness === "PARTLY" ? (
+                          <HomePill tone="amber" className="mt-1 text-[11px]">{t("readiness.PARTLY", { count: productsNobodySees(products, group.id).length })}</HomePill>
+                        ) : null}
                       </span>
-                      <HomePill tone={READINESS_TONE[readiness]} className="text-[11px]">{t(`readiness.${readiness}`)}</HomePill>
+                      {readiness !== "PARTLY" ? (
+                        <HomePill tone={READINESS_TONE[readiness]} className="text-[11px]">{t(`readiness.${readiness}`)}</HomePill>
+                      ) : null}
                     </button>
                     </Hint>
                   </li>
@@ -405,13 +477,23 @@ export function MtmProductCatalog() {
               group={selectedGroup}
               groups={groups}
               products={products}
+              deletedShowings={deletedShowings}
               groupProducts={groupProducts}
               fieldAgents={fieldAgents}
               agentQuery={agentQuery}
               onAgentQuery={setAgentQuery}
-              memberSave={memberSave}
-              onToggleAgent={toggleAgent}
-              onSetAllAgents={setAllAgents}
+              chosen={chosen}
+              chosenIds={chosenIds}
+              onChoose={toggleChosen}
+              onChooseAll={(on) => setChosenIds(on ? new Set(groupProducts.map((product) => product.id)) : new Set())}
+              pending={pending}
+              changeCount={changeCount}
+              viewerSave={viewerSave}
+              onAgent={setAgentPending}
+              onAllAgents={setAllAgentsPending}
+              onSave={() => void saveViewers()}
+              onDiscard={() => { setPending(new Map()); setViewerSave("idle") }}
+              onDelete={setDeleting}
               onNewSubgroup={() => openGroupForm(selectedGroup.id)}
               draft={draft}
               draftBusy={draftBusy}
@@ -428,6 +510,26 @@ export function MtmProductCatalog() {
           ) : null}
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleting != null}
+        onOpenChange={(open) => { if (!open) setDeleting(null) }}
+        onConfirm={() => deleting ? deleteProduct(deleting) : Promise.resolve()}
+        title={deleting ? t("deleteTitle", { name: deleting.name }) : undefined}
+        description={deleting ? t("deleteText", { count: deleting._count.presentationSessions }) : undefined}
+        confirmLabel={t("deleteConfirm")}
+        loadingLabel={t("deleting")}
+        icon={<Trash2 className="h-5 w-5 text-destructive" aria-hidden="true" />}
+      />
+      <ConfirmDialog
+        open={leavingFor != null}
+        onOpenChange={(open) => { if (!open) setLeavingFor(null) }}
+        onConfirm={async () => { if (leavingFor) setSelectedGroupId(leavingFor) }}
+        title={t("leaveTitle")}
+        description={t("leaveText")}
+        confirmLabel={t("leaveConfirm")}
+        confirmVariant="default"
+      />
     </div>
   )
 }
@@ -446,7 +548,7 @@ function StepBadge({ n, done }: { n: number; done: boolean }) {
   )
 }
 
-function StepCard({ testId, n, done, title, titleHint, badge, children, footer }: {
+function StepCard({ testId, n, done, title, titleHint, badge, children, footer, footerClassName }: {
   testId: string
   n: number
   done: boolean
@@ -455,31 +557,48 @@ function StepCard({ testId, n, done, title, titleHint, badge, children, footer }
   badge?: ReactNode
   children: ReactNode
   footer?: ReactNode
+  footerClassName?: string
 }) {
   return (
     <section data-testid={testId} className={cn(CARD, "flex min-w-0 flex-col")}>
       <header className="flex items-center gap-3 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
         <StepBadge n={n} done={done} />
         <HintValue text={titleHint} className="min-w-0 truncate text-[15px] font-semibold">{title}</HintValue>
-        {badge ? <span className="ml-auto">{badge}</span> : null}
+        {badge ? <span className="ml-auto flex items-center gap-2">{badge}</span> : null}
       </header>
       <div className="flex flex-1 flex-col gap-3 p-4">{children}</div>
-      {footer ? <div className="border-t border-zinc-100 px-4 py-2.5 text-xs dark:border-zinc-800">{footer}</div> : null}
+      {footer ? <div className={cn("rounded-b-2xl border-t border-zinc-100 px-4 py-2.5 text-xs dark:border-zinc-800", footerClassName)}>{footer}</div> : null}
     </section>
   )
+}
+
+/** The names of these agents, in the order of the agents list; cards no longer active are left out. */
+function agentNames(agentIds: string[], fieldAgents: Agent[]): string[] {
+  const ids = new Set(agentIds)
+  return fieldAgents.filter((agent) => ids.has(agent.id)).map((agent) => agent.name)
 }
 
 function GroupDetail(props: {
   group: ProductGroup
   groups: ProductGroup[]
   products: Product[]
+  deletedShowings: Record<string, number>
   groupProducts: Product[]
   fieldAgents: Agent[]
   agentQuery: string
   onAgentQuery: (query: string) => void
-  memberSave: SaveState
-  onToggleAgent: (agent: Agent, on: boolean) => void
-  onSetAllAgents: (on: boolean) => void
+  chosen: Product[]
+  chosenIds: Set<string>
+  onChoose: (productId: string, on: boolean) => void
+  onChooseAll: (on: boolean) => void
+  pending: Map<string, boolean>
+  changeCount: number
+  viewerSave: SaveState
+  onAgent: (agentId: string, on: boolean) => void
+  onAllAgents: (on: boolean) => void
+  onSave: () => void
+  onDiscard: () => void
+  onDelete: (product: Product) => void
   onNewSubgroup: () => void
   draft: Draft | null
   draftBusy: boolean
@@ -495,19 +614,17 @@ function GroupDetail(props: {
 }) {
   const t = useTranslations("mtmProductCatalog")
   const locale = useLocale()
-  const { group, groups, products, groupProducts, fieldAgents, draft } = props
-  const readiness = productGroupReadiness(groups, products, group.id)
-  const ancestry = productGroupAncestry(groups, group.id)
-  const parents = ancestry.slice(1).reverse()
+  const { group, groups, products, groupProducts, fieldAgents, draft, chosen, pending } = props
+  const readiness = productGroupReadiness(products, group.id)
+  const parents = productGroupAncestry(groups, group.id).slice(1).reverse()
   const managers = group.members.filter((member) => member.role === "MANAGER")
-  const { own, inherited } = agentsWhoSeeProductGroup(groups, group.id)
-  const inheritedFrom = (agentId: string) => ancestry.slice(1).find((ancestor) =>
-    ancestor.members.some((member) => member.role === "AGENT" && member.agentId === agentId))?.name
+  const viewers = productGroupViewers(products, group.id)
   const readyProducts = groupProducts.filter(productPresentationReady)
-  const showings = productGroupShowings(products, group.id)
+  const showings = productGroupShowings(products, group.id, props.deletedShowings)
   const query = props.agentQuery.trim().toLocaleLowerCase(locale)
   const shownAgents = query ? fieldAgents.filter((agent) => agent.name.toLocaleLowerCase(locale).includes(query)) : fieldAgents
-  const readOnlyHint = group.canManage ? null : t("hint.lockedGroup")
+  const editing = group.canManage && chosen.length > 0
+  const allChosen = groupProducts.length > 0 && chosen.length === groupProducts.length
 
   return (
     <div className="min-w-0 space-y-4" data-testid="mtm-product-group-detail">
@@ -522,7 +639,7 @@ function GroupDetail(props: {
               <span tabIndex={0} data-testid="mtm-product-group-readiness" className="outline-none">
                 <HomePill tone={READINESS_TONE[readiness]}>
                   {readiness === "READY" ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />}
-                  {t(`readiness.${readiness}`)}
+                  {t(`readiness.${readiness}`, { count: productsNobodySees(products, group.id).length })}
                 </HomePill>
               </span>
             </Hint>
@@ -549,20 +666,50 @@ function GroupDetail(props: {
           done={readyProducts.length > 0}
           title={t("stepPresentations")}
           titleHint={t("stepPresentationsHint")}
-          badge={<HomePill tone="zinc">{groupProducts.length}</HomePill>}
+          badge={(
+            <>
+              <HomePill tone="zinc">{groupProducts.length}</HomePill>
+              {group.canManage && groupProducts.length > 1 ? (
+                allChosen
+                  ? <Button size="sm" variant="ghost" onClick={() => props.onChooseAll(false)} data-testid="mtm-product-choose-none">{t("chooseNone")}</Button>
+                  : <Button size="sm" variant="outline" onClick={() => props.onChooseAll(true)} data-testid="mtm-product-choose-all">{t("chooseAll")}</Button>
+              ) : null}
+            </>
+          )}
         >
           {groupProducts.length ? (
             <ul className="space-y-2">
               {groupProducts.map((product) => {
                 const kind = product.document ? presentationKind(product.document) : null
                 const ready = productPresentationReady(product)
+                const isChosen = props.chosenIds.has(product.id)
+                const seenBy = agentNames(product.viewerAgentIds, fieldAgents)
                 return (
-                  <li key={product.id} data-testid={`mtm-product-${product.id}`} className="flex items-center gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
+                  <li
+                    key={product.id}
+                    data-testid={`mtm-product-${product.id}`}
+                    className={cn(
+                      "flex flex-wrap items-center gap-3 rounded-xl border p-3 transition-colors",
+                      isChosen ? "border-foreground" : "border-zinc-200 dark:border-zinc-700",
+                    )}
+                  >
+                    {group.canManage ? (
+                      <Hint text={t("chooseHint")}>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 shrink-0 cursor-pointer accent-[hsl(var(--primary))]"
+                          checked={isChosen}
+                          aria-label={product.name}
+                          data-testid={`mtm-product-choose-${product.id}`}
+                          onChange={(event) => props.onChoose(product.id, event.target.checked)}
+                        />
+                      </Hint>
+                    ) : null}
                     <span className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold",
+                      "flex h-10 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold",
                       kind === "PPT" ? "text-orange-700 dark:text-orange-300" : "text-rose-700 dark:text-rose-300",
                     )}>{kind ?? <FileText className="h-4 w-4" aria-hidden="true" />}</span>
-                    <span className="min-w-0 flex-1">
+                    <span className="min-w-[11rem] flex-1">
                       <span className="flex items-center gap-2">
                         <span className="truncate font-medium">{product.name}</span>
                         {product.presentationVersion ? <HomePill tone="zinc">v{product.presentationVersion.replace(/^v/i, "")}</HomePill> : null}
@@ -578,18 +725,35 @@ function GroupDetail(props: {
                       <HintValue text={t("hint.openedCount")} className="mt-1 inline-block text-xs font-medium text-foreground">
                         {t("showings", { count: product._count.presentationSessions })}
                       </HintValue>
+                      <span data-testid={`mtm-product-seen-${product.id}`} className={cn("mt-1 block text-xs", seenBy.length ? "text-foreground" : "font-medium text-amber-700 dark:text-amber-300")}>
+                        {seenBy.length ? t("seenBy", { names: seenBy.join(", ") }) : t("seenByNobody")}
+                      </span>
                     </span>
-                    {ready ? (
-                      <Hint text={t("downloadHint")}>
-                        <a
-                          href={`/api/v1/mtm/products/${product.id}/presentation`}
-                          download={product.document?.fileName}
-                          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 px-3 text-xs font-medium transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
-                        >
-                          <Download className="h-3.5 w-3.5" aria-hidden="true" />{t("download")}
-                        </a>
-                      </Hint>
-                    ) : null}
+                    <span className="ml-auto flex shrink-0 flex-wrap justify-end gap-2">
+                      {ready ? (
+                        <Hint text={t("downloadHint")}>
+                          <a
+                            href={`/api/v1/mtm/products/${product.id}/presentation`}
+                            download={product.document?.fileName}
+                            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 px-3 text-xs font-medium transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
+                          >
+                            <Download className="h-3.5 w-3.5" aria-hidden="true" />{t("download")}
+                          </a>
+                        </Hint>
+                      ) : null}
+                      {group.canManage ? (
+                        <Hint text={t("deleteHint")}>
+                          <button
+                            type="button"
+                            data-testid={`mtm-product-delete-${product.id}`}
+                            onClick={() => props.onDelete(product)}
+                            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-red-200 px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />{t("delete")}
+                          </button>
+                        </Hint>
+                      ) : null}
+                    </span>
                   </li>
                 )
               })}
@@ -659,13 +823,27 @@ function GroupDetail(props: {
         <StepCard
           testId="mtm-product-step-agents"
           n={2}
-          done={own.size + inherited.size > 0}
+          done={readiness === "READY"}
           title={t("stepAgents")}
           titleHint={t("stepAgentsHint")}
-          badge={<HomePill tone="zinc">{t("agentsOf", { count: own.size + inherited.size, total: fieldAgents.length })}</HomePill>}
-          footer={<MemberSaveLine state={props.memberSave} canManage={group.canManage} />}
+          badge={<HomePill tone="zinc">{t("agentsOf", { count: viewers.size, total: fieldAgents.length })}</HomePill>}
+          footer={group.canManage && chosen.length > 0 ? (
+            <SaveBar
+              changeCount={props.changeCount}
+              state={props.viewerSave}
+              onSave={props.onSave}
+              onDiscard={props.onDiscard}
+            />
+          ) : group.canManage ? null : <span className="text-muted-foreground">{t("readOnlyHint")}</span>}
+          footerClassName={props.changeCount > 0 ? "border-t-2 border-t-orange-400 dark:border-t-orange-500" : undefined}
         >
-          <p className="text-xs text-muted-foreground">{t("assignedAgentsHint", { name: group.name })}</p>
+          <p className="text-sm" data-testid="mtm-product-chosen">
+            {editing
+              ? t("chosen", { count: chosen.length, names: chosen.map((product) => product.name).join(", ") })
+              : group.canManage && groupProducts.length > 0
+                ? <span className="text-muted-foreground">{t("nothingChosen")}</span>
+                : null}
+          </p>
           {fieldAgents.length > 8 ? (
             <label className="relative block">
               <span className="sr-only">{t("agentSearch")}</span>
@@ -673,10 +851,10 @@ function GroupDetail(props: {
               <Input value={props.agentQuery} onChange={(event) => props.onAgentQuery(event.target.value)} placeholder={t("agentSearch")} className="pl-9" />
             </label>
           ) : null}
-          {group.canManage && fieldAgents.length > 1 ? (
+          {editing && fieldAgents.length > 1 ? (
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => props.onSetAllAgents(true)} data-testid="mtm-product-agents-all">{t("selectAll")}</Button>
-              <Button size="sm" variant="ghost" onClick={() => props.onSetAllAgents(false)}>{t("selectNone")}</Button>
+              <Button size="sm" variant="outline" onClick={() => props.onAllAgents(true)} data-testid="mtm-product-agents-all">{t("selectAll")}</Button>
+              <Button size="sm" variant="ghost" onClick={() => props.onAllAgents(false)} data-testid="mtm-product-agents-none">{t("selectNone")}</Button>
             </div>
           ) : null}
           {fieldAgents.length === 0 ? (
@@ -686,38 +864,15 @@ function GroupDetail(props: {
             </p>
           ) : (
             <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
-              {shownAgents.map((agent) => {
-                const checked = own.has(agent.id)
-                const viaParent = inherited.has(agent.id) ? inheritedFrom(agent.id) : undefined
-                const row = (
-                  <label
-                    data-testid={`mtm-product-agent-${agent.id}`}
-                    className={cn(
-                      "flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors",
-                      checked || viaParent ? "border-foreground" : "border-zinc-200 dark:border-zinc-700",
-                      group.canManage && !viaParent ? "cursor-pointer hover:border-primary/60" : "cursor-default",
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-[hsl(var(--primary))]"
-                      checked={checked || Boolean(viaParent)}
-                      disabled={!group.canManage || Boolean(viaParent)}
-                      onChange={(event) => props.onToggleAgent(agent, event.target.checked)}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{agent.name}</span>
-                      {viaParent ? <span className="block truncate text-xs text-muted-foreground">{t("viaParent", { name: viaParent })}</span> : null}
-                    </span>
-                  </label>
-                )
-                return (
-                  <li key={agent.id}>
-                    {viaParent ? <Hint text={t("viaParentHint", { name: viaParent })}>{row}</Hint>
-                      : readOnlyHint ? <Hint text={readOnlyHint}>{row}</Hint> : row}
-                  </li>
-                )
-              })}
+              {shownAgents.map((agent) => editing ? (
+                <li key={agent.id}>
+                  <AgentChoice agent={agent} chosen={chosen} pending={pending.get(agent.id)} onChange={(on) => props.onAgent(agent.id, on)} />
+                </li>
+              ) : (
+                <li key={agent.id}>
+                  <AgentSummary agent={agent} groupProducts={groupProducts} />
+                </li>
+              ))}
             </ul>
           )}
         </StepCard>
@@ -742,13 +897,108 @@ function GroupDetail(props: {
   )
 }
 
-function MemberSaveLine({ state, canManage }: { state: SaveState; canManage: boolean }) {
+/**
+ * One agent in «Who sees it» while presentations are chosen: what he sees of
+ * them now, and — once ticked or unticked — what he will see after «Save».
+ */
+function AgentChoice({ agent, chosen, pending, onChange }: {
+  agent: Agent
+  chosen: Product[]
+  pending: boolean | undefined
+  onChange: (on: boolean) => void
+}) {
   const t = useTranslations("mtmProductCatalog")
-  if (!canManage) return <span className="text-muted-foreground">{t("readOnlyHint")}</span>
-  if (state === "saving") return <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />{t("saving")}</span>
-  if (state === "saved") return <span role="status" className="inline-flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-300"><Check className="h-3.5 w-3.5" aria-hidden="true" />{t("saved")}</span>
-  if (state === "failed") return <span role="alert" className="font-medium text-red-700 dark:text-red-300">{t("saveFailedAgents")}</span>
-  return <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Users className="h-3.5 w-3.5" aria-hidden="true" />{t("autosaveHint")}</span>
+  const saved = viewerState(chosen, agent.id)
+  const shown: ViewerState = pending === undefined ? saved : pending ? "all" : "none"
+  const count = chosen.length
+  const now = saved === "all"
+    ? t("agentSeesAll", { count })
+    : saved === "some"
+      ? t("agentSeesSome", { names: chosen.filter((product) => product.viewerAgentIds.includes(agent.id)).map((product) => product.name).join(", ") })
+      : t("agentSeesNone", { count })
+  const after = pending === undefined ? null : pending ? t("agentWillSee", { count }) : t("agentWillNotSee", { count })
+  return (
+    <Hint text={t("hint.chooseAgent")}>
+      <label
+        data-testid={`mtm-product-agent-${agent.id}`}
+        className={cn(
+          "flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors hover:border-primary/60",
+          shown === "none" ? "border-zinc-200 dark:border-zinc-700" : "border-foreground",
+        )}
+      >
+        <input
+          type="checkbox"
+          className="h-4 w-4 shrink-0 accent-[hsl(var(--primary))]"
+          checked={shown === "all"}
+          ref={(element) => { if (element) element.indeterminate = shown === "some" }}
+          onChange={() => onChange(shown !== "all")}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">{agent.name}</span>
+          <span className="block truncate text-xs text-muted-foreground">{after ? `${now} → ${after}` : now}</span>
+        </span>
+        {after ? <HomePill tone="amber" className="shrink-0 text-[11px]">{t("changed")}</HomePill> : null}
+      </label>
+    </Hint>
+  )
+}
+
+/** One agent in «Who sees it» while nothing is chosen: which of the group's presentations he sees. */
+function AgentSummary({ agent, groupProducts }: { agent: Agent; groupProducts: Product[] }) {
+  const t = useTranslations("mtmProductCatalog")
+  const seen = groupProducts.filter((product) => product.viewerAgentIds.includes(agent.id)).map((product) => product.name)
+  return (
+    <div
+      data-testid={`mtm-product-agent-${agent.id}`}
+      className={cn(
+        "flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-sm",
+        seen.length ? "border-foreground" : "border-zinc-200 dark:border-zinc-700",
+      )}
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium">{agent.name}</span>
+        <span className="block truncate text-xs text-muted-foreground">
+          {seen.length ? t("agentGroupSees", { names: seen.join(", ") }) : t("agentGroupSeesNothing")}
+        </span>
+      </span>
+    </div>
+  )
+}
+
+/** «Save» and what it will do — nothing changes for an agent before it is pressed. */
+function SaveBar({ changeCount, state, onSave, onDiscard }: {
+  changeCount: number
+  state: SaveState
+  onSave: () => void
+  onDiscard: () => void
+}) {
+  const t = useTranslations("mtmProductCatalog")
+  const dirty = changeCount > 0
+  const saving = state === "saving"
+  return (
+    <div className="flex flex-wrap items-center gap-2" data-testid="mtm-product-save-bar">
+      <span className="min-w-0 flex-1 text-[13px]">
+        {state === "failed" ? (
+          <span role="alert" className="font-medium text-red-700 dark:text-red-300">{t("saveFailedViewers")}</span>
+        ) : dirty ? (
+          <span className="font-medium text-orange-800 dark:text-orange-200">{t("unsaved", { count: changeCount })}</span>
+        ) : (
+          <span className="text-muted-foreground">{t("noChanges")}</span>
+        )}
+      </span>
+      {dirty ? (
+        <Hint text={t("discardHint")}>
+          <Button size="sm" variant="ghost" onClick={onDiscard} disabled={saving} data-testid="mtm-product-viewers-discard">{t("discard")}</Button>
+        </Hint>
+      ) : null}
+      <Hint text={dirty ? t("saveHint") : t("saveNothingHint")} wrap={!dirty || saving}>
+        <Button onClick={onSave} disabled={!dirty || saving} data-testid="mtm-product-viewers-save">
+          {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Check aria-hidden="true" />}
+          {saving ? t("savingViewers") : t("save")}
+        </Button>
+      </Hint>
+    </div>
+  )
 }
 
 function GroupForm({ tree, form, busy, error, onChange, onCancel, onCreate }: {

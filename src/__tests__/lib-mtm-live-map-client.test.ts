@@ -8,6 +8,9 @@ import {
   liveMapRouteCacheScopeKey,
   isLiveMapAgentPositionVisible,
   isLiveMapPositionVisible,
+  isMtmPositionHeldByBreak,
+  MTM_BREAK_APP_PRESENCE_SECONDS,
+  mtmFreshnessAcrossBreak,
   parseMtmLiveMapContract,
   presentMtmDashboardAgent,
   presentMtmGpsFreshness,
@@ -191,11 +194,94 @@ describe("SWM-12 local GPS freshness aging", () => {
     expect(isLiveMapPositionVisible("NO_LOCATION")).toBe(false)
   })
 
-  it("keeps the final coordinate out of live mode after the workday ends", () => {
+  it("keeps the final coordinate out of live mode after the workday ends — and during a break", () => {
     expect(isLiveMapAgentPositionVisible("ONLINE", "ACTIVE")).toBe(true)
-    expect(isLiveMapAgentPositionVisible("DELAYED", "PAUSED")).toBe(true)
+    expect(isLiveMapAgentPositionVisible("DELAYED", "ACTIVE")).toBe(true)
+    expect(isLiveMapAgentPositionVisible("ONLINE", "PAUSED")).toBe(false)
     expect(isLiveMapAgentPositionVisible("ONLINE", "CLOSED")).toBe(false)
     expect(isLiveMapAgentPositionVisible("ONLINE", "NOT_STARTED")).toBe(false)
+  })
+})
+
+// The demo clip «Marşrut & Sahə» (owner, 2026-10-20: «как в ролике»): the agent
+// on a break is the grey point he left before it, «GPS aktiv deyil», from the
+// first second — production used to keep him a live marker while that point
+// was fresh, ten minutes by default.
+describe("an employee on a break, as the live map presents him", () => {
+  const recordedAt = "2026-08-01T12:00:00.000Z"
+  const recordedAtMs = Date.parse(recordedAt)
+  const thresholds = CONTRACT.freshnessThresholds
+  const onBreak: MtmDashboardAgent = {
+    ...agent("employee-1", 40.4, 49.8),
+    fieldStatus: "STOPPED",
+    routeCompletion: 50,
+    locationState: "AVAILABLE",
+    lastSeenAt: recordedAt,
+    workdayState: "PAUSED",
+    workdayPausedAt: "2026-08-01T12:01:00.000Z",
+    stationarySince: "2026-08-01T11:40:00.000Z",
+  }
+
+  it("is the last known point from the first second: grey, no live status, no «стоит N минут»", () => {
+    // Thirty seconds after his last point, a signal any working agent would call fresh.
+    const shown = presentMtmDashboardAgent(onBreak, thresholds, recordedAtMs + 30_000)
+    expect(shown).toMatchObject({ freshness: "STALE", fieldStatus: "OFFLINE", workdayState: "PAUSED", stationarySince: null })
+    // The point itself stays: it is where the work stopped, drawn grey.
+    expect([shown.latitude, shown.longitude, shown.recordedAt]).toEqual([40.4, 49.8, recordedAt])
+    expect(isLiveMapAgentPositionVisible(shown.freshness, shown.workdayState)).toBe(false)
+    // The same agent at work, the same instant: live.
+    const working = presentMtmDashboardAgent({ ...onBreak, workdayState: "ACTIVE", workdayPausedAt: null }, thresholds, recordedAtMs + 30_000)
+    expect(working).toMatchObject({ freshness: "ONLINE", fieldStatus: "STOPPED", stationarySince: onBreak.stationarySince })
+  })
+
+  it("never invents a point for somebody who has none", () => {
+    const shown = presentMtmDashboardAgent({ ...onBreak, freshness: "NO_LOCATION", latitude: undefined, longitude: undefined, recordedAt: undefined, stationarySince: undefined }, thresholds, recordedAtMs)
+    expect(shown.freshness).toBe("NO_LOCATION")
+    expect(shown).not.toHaveProperty("stationarySince", null)
+  })
+
+  it("keeps what the app itself said: presence is not GPS", () => {
+    expect(presentMtmDashboardAgent(onBreak, thresholds, recordedAtMs + 60_000).isOnline).toBe(true)
+    expect(presentMtmDashboardAgent(onBreak, thresholds, recordedAtMs + 300_001).isOnline).toBe(false)
+  })
+
+  // On a break the app's only sign is the bell's poll every two minutes; an
+  // organization whose «fresh» is a minute would see it blink on and off
+  // (verification of 2026-10-20).
+  it("counts the app present on a break between two of its polls, whatever the organization's «fresh»", () => {
+    const strict = { onlineSeconds: 60, delayedSeconds: 600 }
+    const heard = (secondsAgo: number) => recordedAtMs + secondsAgo * 1_000
+    for (const secondsAgo of [30, 110, 150, MTM_BREAK_APP_PRESENCE_SECONDS]) {
+      expect(presentMtmDashboardAgent(onBreak, strict, heard(secondsAgo)).isOnline, `${secondsAgo} s`).toBe(true)
+    }
+    expect(presentMtmDashboardAgent(onBreak, strict, heard(MTM_BREAK_APP_PRESENCE_SECONDS + 1)).isOnline).toBe(false)
+    // At work the organization's own limit stands: there GPS says it.
+    const working = { ...onBreak, workdayState: "ACTIVE" as const, workdayPausedAt: null }
+    expect(presentMtmDashboardAgent(working, strict, heard(59)).isOnline).toBe(true)
+    expect(presentMtmDashboardAgent(working, strict, heard(110)).isOnline).toBe(false)
+    // An app the server does not call online is not made so by the window.
+    expect(presentMtmDashboardAgent({ ...onBreak, isOnline: false }, strict, heard(30)).isOnline).toBe(false)
+  })
+})
+
+describe("a coordinate a break holds back", () => {
+  const recordedAt = "2026-08-01T12:00:00.000Z"
+  it("is every coordinate of somebody on a break, and one from before his latest break once he is back", () => {
+    expect(isMtmPositionHeldByBreak({ workdayState: "PAUSED", recordedAt })).toBe(true)
+    expect(isMtmPositionHeldByBreak({ workdayState: "ACTIVE", recordedAt, lastBreakEndedAt: "2026-08-01T12:00:01.000Z" })).toBe(true)
+    // The fix taken the very second he resumed is the first of the new leg.
+    expect(isMtmPositionHeldByBreak({ workdayState: "ACTIVE", recordedAt, lastBreakEndedAt: recordedAt })).toBe(false)
+    expect(isMtmPositionHeldByBreak({ workdayState: "ACTIVE", recordedAt, lastBreakEndedAt: "2026-08-01T11:59:59.000Z" })).toBe(false)
+    expect(isMtmPositionHeldByBreak({ workdayState: "ACTIVE", recordedAt, lastBreakEndedAt: null })).toBe(false)
+    // A closed or unstarted day is the workday's own rule, not the break's.
+    expect(isMtmPositionHeldByBreak({ workdayState: "CLOSED", recordedAt, lastBreakEndedAt: "2026-08-01T13:00:00.000Z" })).toBe(false)
+    expect(isMtmPositionHeldByBreak({ workdayState: "ACTIVE", recordedAt: null, lastBreakEndedAt: recordedAt })).toBe(false)
+  })
+
+  it("is shown as the last known point, and no coordinate stays none", () => {
+    expect((["ONLINE", "DELAYED", "STALE"] as const).map((freshness) => mtmFreshnessAcrossBreak(freshness, true))).toEqual(["STALE", "STALE", "STALE"])
+    expect(mtmFreshnessAcrossBreak("NO_LOCATION", true)).toBe("NO_LOCATION")
+    expect(mtmFreshnessAcrossBreak("ONLINE", false)).toBe("ONLINE")
   })
 })
 

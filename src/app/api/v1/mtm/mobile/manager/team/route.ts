@@ -6,6 +6,7 @@ import { resolveAgentScope } from "@/lib/mtm/territory-scope"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
+import { agentsReachableByPush } from "@/lib/mtm/agent-task-glance"
 
 /** Published routes: a draft is nobody's plan yet, a cancelled one nobody's any more. */
 const ROUTE_TODAY_STATUSES = ["PLANNED", "IN_PROGRESS", "COMPLETED", "INCOMPLETE"] as const
@@ -119,6 +120,8 @@ export const GET = withMobileRls(async (req, auth) => {
         if (currentDateKey(visit.checkInAt, timezone) < todayKey) openVisitSince.set(visit.agentId, visit.checkInAt.toISOString())
       }
     }
+    // «Дать задачу» says before sending whether the pop-up reaches the phone.
+    const reachable = await agentsReachableByPush(prisma, auth.orgId, agents.map((agent) => agent.id))
     return NextResponse.json({
       success: true,
       data: {
@@ -129,6 +132,7 @@ export const GET = withMobileRls(async (req, auth) => {
           return {
             ...agent,
             workday: canReadWorkforceTeam ? workdayOfToday(workdays) : null,
+            pushReady: reachable.has(agent.id),
             ...(canReadRouteTeam
               ? { routeToday: routeToday.get(agent.id) ?? null, openVisitSince: openVisitSince.get(agent.id) ?? null }
               : {}),
