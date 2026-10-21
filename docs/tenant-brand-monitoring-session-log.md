@@ -31,3 +31,11 @@
 - NOT RUN: authenticated browser verification. No running application or authenticated browser session is attached to this task worktree; API/state behavior was verified with targeted tests. No visual screenshot claim is made.
 - No push, PR, merge, deployment or production mutation performed. Task-owned source/tests and this append-only journal are being saved in the accompanying checkpoint commit.
 - Final stopping point: implementation and targeted checks complete; release checks and production delivery remain pending. Next action: obtain active-task authorization to push the branch/open a PR, run required CI/build gates, then release through reviewed main and verify production if authorized.
+
+## 2026-10-21 — Release authorized and resumed
+
+- User replied `добей` to the explicit question asking to send the change to CI and release it. This authorizes this task's branch push, PR, verified merge and normal production deployment. The earlier statements that release authorization is pending are superseded.
+- Resumed in the recorded worktree/branch at implementation checkpoint `a23a94df4`. Re-ran `codex-project-context`, confirmed clean state, origin and registered target, and read `docs/DELIVERY-ARCHITECTURE.md`.
+- Refreshed and merged current `origin/main` (`8f0833c60`) into the task branch without conflicts. The intervening main change concerns the unrelated MTM client picker; all five task-owned paths remain the complete PR scope.
+- Confirmed the release-facing change with the owner in chat: Brand Monitoring appears in the tenant capability panel with grant, disable and re-enable controls. The owner's `добей` is the go-ahead on that already-presented change; no repeated approval is required.
+- Next: publish draft PR, mark ready after confirming final head, wait for all five required successful checks, merge only the checked head, follow the normal deployment workflow and verify live build SHA and health.
