@@ -15909,6 +15909,8 @@
       "domain": "Domen",
       "modules": "Modullar",
       "activeModules": "Aktiv modullar",
+    "brandMonitoring": "Brend monitorinqi",
+    "fieldTools": "Əlavə sahə alətləri",
       "modulesCount": "{total} moduldan {count} aktivdir",
       "hiddenCategories": "Gizlənmiş kateqoriyalar:",
       "enableAllInGroup": "«{group}» bölməsindəki bütün modulları aktivləşdir",

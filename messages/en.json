@@ -15913,6 +15913,8 @@
       "domain": "Domain",
       "modules": "Modules",
       "activeModules": "Active Modules",
+    "brandMonitoring": "Brand Monitoring",
+    "fieldTools": "Additional field tools",
       "modulesCount": "{count} of {total} modules enabled",
       "hiddenCategories": "Hidden categories:",
       "enableAllInGroup": "Enable all modules in {group}",

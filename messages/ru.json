@@ -15913,6 +15913,8 @@
       "domain": "Домен",
       "modules": "Модули",
       "activeModules": "Активные модули",
+    "brandMonitoring": "Бренд-мониторинг",
+    "fieldTools": "Дополнительные полевые инструменты",
       "modulesCount": "{count} из {total} модулей включено",
       "hiddenCategories": "Скрытые категории:",
       "enableAllInGroup": "Включить все модули раздела «{group}»",
