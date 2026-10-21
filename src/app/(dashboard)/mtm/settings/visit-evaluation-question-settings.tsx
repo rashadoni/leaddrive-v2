@@ -222,7 +222,7 @@ export function VisitEvaluationQuestionSettings({
             const { question, index } = row
             const isEditing = editing?.id === question.id
             return (
-              <li key={question.id} className={cn(isEditing && "bg-orange-50/60 dark:bg-orange-950/20")} data-testid={`visit-evaluation-question-${question.id}`}>
+              <li key={question.id} className={cn(isEditing && "bg-muted/50")} data-testid={`visit-evaluation-question-${question.id}`}>
                 {/* On a narrow screen the two buttons go under the name, to the right. */}
                 <div className="flex flex-wrap items-center gap-1 py-1.5">
                   <Hint wrap text={t("hint.evalQuestionMoveUp")}>
@@ -267,7 +267,7 @@ export function VisitEvaluationQuestionSettings({
             )
           })}
           {editing?.isNew ? (
-            <li className="bg-orange-50/60 dark:bg-orange-950/20" data-testid="visit-evaluation-question-new">
+            <li className="bg-muted/50" data-testid="visit-evaluation-question-new">
               <div className="flex items-center gap-1 py-1.5 pl-[4.75rem]">
                 <span className="text-sm font-medium">{t("evalQuestionAdding")}</span>
               </div>
