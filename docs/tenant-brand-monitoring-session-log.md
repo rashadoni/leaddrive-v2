@@ -55,3 +55,10 @@
 - Re-fetched main before merge: it remained `8f0833c60`; no intervening change required conflict resolution.
 - Merged PR #967 using an expected-head-SHA guard. GitHub confirmed merge commit `d73f9c23be9b9107db98c34866706be11668b92e`.
 - Current stopping point: merged; production build/deploy and live SHA/health verification remain pending. Next action: follow the merge-triggered normal deployment workflow; no direct server deployment or bypass is permitted.
+
+## 2026-10-21 — Production workflow running
+
+- Normal merge-triggered release: https://github.com/rashadoni/leaddrive-v2/actions/runs/39560154512 for `d73f9c23be9b9107db98c34866706be11668b92e`.
+- Release initially queued behind existing GitHub work. Both jobs are now running: `Production build & publish artifact` (119089189586) and `Quality & security gates` (119089189847).
+- Build reached `Build Next.js standalone`; quality checks passed their integration/database stages and reached `Unit tests vs baseline (BLOCKING)`.
+- Current state: waiting for build and checks, then the protected deployment and public smoke. Production success has not yet been claimed.
