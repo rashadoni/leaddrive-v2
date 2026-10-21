@@ -247,16 +247,16 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     expect(await tenant(organizationId, () => prisma.mtmAgent.findUnique({ where: { id: agentId } }))).toMatchObject({ attendanceIncludedFrom: null })
   }, 180_000)
 
-  it("reads all 300 employees without provisioning writes or credential disclosure, and has no invented past absences", async () => {
+  it("keeps 300 CRM identities out of Personnel except explicitly enrolled staff, without rewriting facts", async () => {
     await tenant(automaticOrg, async () => {
       const before = [await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count(), await prisma.user.count()]
       const directory = await store.readAttendanceEmployees(automaticAdmin)
       // The existing field agent keeps its card but is not HR attendance: its
       // day belongs to the field manager (owner, 2026-10-14).
-      expect(directory.employees).toHaveLength(299)
+      expect(directory.employees.map(employee => employee.id)).toEqual(["automatic-manual"])
       expect(directory.employees.some(employee => employee.id === "automatic-field")).toBe(false)
       expect(directory.users.every(user => !user.eligible)).toBe(true)
-      expect(directory.employees.find(employee => employee.id === automaticAgentId)).toMatchObject({ included: true, participationVersion: null, includedFrom: expect.any(String), history: [] })
+      expect(directory.employees.find(employee => employee.id === automaticAgentId)).toBeUndefined()
       expect(JSON.stringify(directory)).not.toMatch(/@example\.invalid|fixture-only|retained-.*-password/)
       expect([await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count(), await prisma.user.count()]).toEqual(before)
       const projection = await report.readMtmAttendanceReport({ organizationId: automaticOrg, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: "2020-01-01", to: "2020-01-02", employeeId: automaticAgentId, form: "ALL" } })
@@ -292,7 +292,8 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       expect(await prisma.user.findUnique({ where: { id: "automatic-user-010" } })).toMatchObject({ isActive: true, role: "sales", passwordHash: "automatic-fixture-only" })
       await expect(self.requireAttendanceSelf(prisma, { organizationId: automaticOrg, agentId: automaticAgentId, role: "EMPLOYEE" })).rejects.toMatchObject({ status: 403 })
       const directory = await store.readAttendanceEmployees(automaticAdmin)
-      expect(directory.employees.find(employee => employee.id === automaticAgentId)).toMatchObject({ included: false, participationVersion: excludedEventId })
+      // Excluding a CRM-only identity does not turn it into an HR employee.
+      expect(directory.employees.find(employee => employee.id === automaticAgentId)).toBeUndefined()
     })
     await expect(tenant(automaticOrg, () => store.setAttendanceParticipation(automaticAdmin, { ...input, included: true }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_PARTICIPATION_REPLAY_MISMATCH" })
     await expect(tenant(automaticOrg, () => store.setAttendanceParticipation(automaticAdmin, { ...input, clientRequestId: randomUUID(), included: true }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_PARTICIPATION_CHANGED" })
@@ -465,6 +466,28 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
 
   // Owner, 2026-10-15: HR adds office staff in Personnel → Employees, apart from
   // MTM agents; the person is a CRM user (counts against the plan) who sees no module.
+  it("keeps an explicitly created employee with incomplete details even when excluded or granted a CRM admin role", async () => {
+    const { createAttendanceEmployee } = await import("@/lib/mtm/attendance-employee-create")
+    const created = await tenant(automaticOrg, () => createAttendanceEmployee(automaticAdmin, {
+      name: "Fictional explicitly added employee", phone: "+994509991901",
+    }))
+    await tenant(automaticOrg, async () => {
+      // A person's role is independent of their explicit personnel enrollment.
+      await prisma.user.update({ where: { id: created.userId }, data: { role: "admin" } })
+      const entry = (await store.readAttendanceEmployees(automaticAdmin)).employees.find(row => row.id === created.agentId)
+      expect(entry).toMatchObject({ position: null, included: true, history: [], includedFrom: expect.any(String) })
+      const exclusion = await store.setAttendanceParticipation(automaticAdmin, {
+        clientRequestId: randomUUID(), agentId: created.agentId, included: false, previousEventId: null,
+      })
+      const before = [await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count()]
+      const directory = await store.readAttendanceEmployees(automaticAdmin)
+      expect(directory.employees.find(row => row.id === created.agentId)).toMatchObject({ included: false, participationVersion: exclusion.eventId })
+      const crmOnly = await prisma.mtmAgent.findFirstOrThrow({ where: { userId: automaticAdminId } })
+      expect(directory.employees.some(row => row.id === crmOnly.id)).toBe(false)
+      expect([await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count()]).toEqual(before)
+    })
+  })
+
   it("adds an office employee from Personnel: one hidden-module CRM user and one EMPLOYEE card", async () => {
     const create = await import("@/lib/mtm/attendance-employee-create")
     const bcrypt = (await import("bcryptjs")).default

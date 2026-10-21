@@ -89,11 +89,19 @@ export async function seedFixture() {
     await admin.mtmAgent.create({ data: { organizationId: organization.id, userId: users[name].id, name: users[name].name, email: users[name].email, role, teamId: team.id } })
   }
   for (const org of [organization, foreignOrganization]) await admin.mtmSetting.create({ data: { organizationId: org.id, key: 'attendanceEnabled', value: true } })
-  // A user created after activation must also appear without manual enrollment.
+  // Technical cards still exist for CRM logins. Personnel lists only the
+  // explicitly added staff below; admin/hr/outside remain CRM-only controls.
   for (let index = 0; index < 52; index++) await admin.user.create({ data: { organizationId: organization.id, name: `Fixture roster ${String(index).padStart(2, '0')}`, email: `roster-${index}-${slug}@example.invalid`, passwordHash, role: 'sales' } })
   const agents = {}
   for (const [name, user] of Object.entries(users)) agents[name] = await admin.mtmAgent.findFirstOrThrow({ where: { organizationId: user.organizationId, userId: user.id } })
   await admin.mtmAgent.update({ where: { id: agents.employee.id }, data: { teamId: team.id } })
+  const personnel = await admin.mtmAgent.findMany({ where: { organizationId: organization.id,
+    OR: [{ id: { in: [agents.employee.id, agents.manager.id] } }, { name: { startsWith: 'Fixture roster ' } }] }, select: { id: true, userId: true } })
+  assert.equal(personnel.length, 54)
+  await admin.mtmAuditLog.createMany({ data: personnel.map(card => ({ organizationId: organization.id,
+    actorUserId: users.admin.id, agentId: card.id, entity: 'agent', entityId: card.id,
+    action: 'MTM_ATTENDANCE_EMPLOYEE_CREATED', metadataKind: 'mtm_attendance_employment',
+    newData: { userId: card.userId, fixtureOnly: true, hireDate: null } })) })
   // Read grants do not confer a reviewer role; exercise grant/revoke via HTTP.
   assert.equal(agents.employee.role, 'EMPLOYEE')
   assert.equal(agents.field.role, 'AGENT')

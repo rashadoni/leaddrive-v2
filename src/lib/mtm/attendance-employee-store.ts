@@ -58,10 +58,20 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const users = await tx.user.findMany({ where: { organizationId, isActive: true, anonymizedAt: null }, select: { id: true, name: true, phone: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
-    const cards = await tx.mtmAgent.findMany({ where: { organizationId }, select: { id: true, name: true, phone: true, position: true, managerId: true, userId: true, role: true, status: true, attendanceParticipant: true, attendanceExcluded: true, attendanceIncludedFrom: true, teamId: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
+    const cards = await tx.mtmAgent.findMany({ where: { organizationId }, select: { id: true, name: true, phone: true, position: true, managerId: true, userId: true, role: true, status: true, attendanceParticipant: true, attendanceExcluded: true, attendanceIncludedFrom: true, teamId: true, team: { select: { name: true } },
+      auditLogs: { where: { organizationId, metadataKind: "mtm_attendance_employment", OR: [
+        { action: { in: ["MTM_ATTENDANCE_EMPLOYEE_CREATED", "MTM_ATTENDANCE_EMPLOYEE_ENROLLED"] } },
+        { action: "MTM_ATTENDANCE_EMPLOYMENT_RECORDED", newData: { path: ["kind"], equals: "HIRE" } },
+      ] }, select: { id: true }, take: 1 },
+    }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
     const teams = await tx.mtmTeam.findMany({ where: { organizationId }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
     if (users.length > 1000 || cards.length > 1000 || teams.length > 1000) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_TOO_LARGE", 422)
-    const tracked = cards.filter(isAttendanceTrackedCard)
+    // A CRM login receives a technical attendance card automatically; it is
+    // not an HR enrollment. Keep pre-automation manual staff and explicit HR
+    // additions, including staff excluded from tracking or later dismissed.
+    // Neither the user's CRM role nor a missing job title proves membership.
+    const tracked = cards.filter(card => isAttendanceTrackedCard(card)
+      && (card.attendanceIncludedFrom === null || card.auditLogs.length > 0))
     const events = await history(tx, organizationId, tracked.map(card => card.id))
     const participation = await readAttendanceParticipationHistory(tx, organizationId, tracked.map(card => card.id))
     const latestParticipation = new Map(participation.map(event => [event.agentId, event.id]))
