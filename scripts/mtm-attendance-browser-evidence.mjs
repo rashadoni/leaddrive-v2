@@ -40,6 +40,7 @@ const destinations = {
 const personnelHrefs = ['/mtm/attendance', '/mtm/attendance/timesheet', '/mtm/attendance/people', '/mtm/attendance/reports', '/mtm/attendance/settings']
 const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-toggle-refresh-hide', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
 caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal', 'browser-branch-lost-acknowledgement-retry', 'browser-catalogue-competing-tabs', 'browser-private-document-download-and-permissions')
+caseNames.push('employee-explanations-authentication')
 const manifest = {
   version: 1, status: 'RUNNING', headSha: head, workflowSha: process.env.GITHUB_SHA,
   runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
@@ -352,6 +353,18 @@ try {
     await request(mobiles.field, '/api/v1/mtm/mobile/bootstrap')
     await api('admin', '/employees/participation', { method: 'POST', body: { ...input, clientRequestId: randomUUID(), included: true, previousEventId: result.eventId } })
     assert.equal((await api('admin', '/employees')).employees.find(row => row.id === before.id).included, true)
+  })
+  await run('employee-explanations-authentication', 'authenticated-http', async () => {
+    const before = await mobile('employee', '/explanations')
+    assert.equal(before.today, today)
+    assert.ok(Array.isArray(before.items) && Array.isArray(before.candidates))
+    const rejected = await mobile('employee', '/explanations', {
+      method: 'POST', body: { date: date(-1), kind: 'ABSENT', text: '' }, status: 400, raw: true,
+    })
+    assert.equal((await rejected.json()).code, 'MTM_ATTENDANCE_EXPLANATION_INVALID')
+    assert.deepEqual(await mobile('employee', '/explanations'), before)
+    await mobile('field', '/explanations', { status: 403 })
+    return { realOfficeJwt: true, ownRead: true, invalidAnswerRejectedWithoutWrite: true, fieldAgentDenied: true }
   })
   await run('employment-history', 'authenticated-http+database', async () => {
     const base = { agentId: fixture.agents.outside.id, reason: 'Fictional employment history', previousEventId: null }
