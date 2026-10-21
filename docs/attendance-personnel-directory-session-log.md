@@ -26,3 +26,25 @@
 
 - Пользователь ответил на точный состав изменения: «Да, выпустить после всех проверок». Разрешены публикация этой ветки/PR, устранение найденных ошибок, merge только после полных зелёных CI/DB/browser gates и штатный GitHub Actions deploy с post-deploy проверкой. Повторное разрешение на этот состав не требуется.
 - Продолжаем из checkpoint44c0edcab. Следующий шаг: push отдельнойветки, draftPR, готовностькпроверке послефинальнойсверкиscope, затемCI. Canonical checkout ипрежниеworktrees не меняются.
+
+## 2026-10-21 — PR опубликован и проверки запущены
+
+- Ветка опубликована, PR https://github.com/rashadoni/leaddrive-v2/pull/974 создан draft и затем переведён в ready после сверки девяти task-owned файлов. Проверяемый head: `48f954fd7d5299c0a4e2c34eb9c6831fdc42799b`.
+- Полные PR checks: run `39652501133`; authenticated attendance browser/DB: run `39652501061`. Проверки выполняются на GitHub-hosted Linux; локальный тяжёлый запуск не используется. Все обязательные checks и реальный attendance E2E должны завершиться успешно до merge.
+- Повторно сверены root/branch/origin, актуальные AGENTS.md, DELIVERY-ARCHITECTURE, registry и DEPLOYMENT: штатная цепочка PR → main → GitHub Actions → `13.140.132.245:/opt/leaddrive-v2`. Разрешение пользователя действует; новый вопрос о выпуске не требуется.
+
+## 2026-10-21 — промежуточные результаты CI
+
+- В PR checks `39652501133` этап MTM attendance database gate завершён SUCCESS, как и MTM workday return. Это реальный PostgreSQL прогон, включающий изменённый employees regression suite. Браузерный прогон ещё выполняется.
+- Required typecheck job `119404572999` завершён SUCCESS по действующему baseline gate: 64 gated pairs совпадают с baseline, новых defect-shaped ошибок нет. Это не чистый `tsc`: compiler exit 2, всего 1332 существующих диагностик. Политика не ослаблялась; сборка проверяется отдельным CI job. Runner policy и secret scan также SUCCESS.
+
+- На 18:40 UTC: десять из тринадцати последних workflow завершились SUCCESS; ещё выполняются PR checks (общий unit baseline), Attendance authenticated E2E и HRM exact-head production build. HRM tenant UI/database job уже SUCCESS. Выпуск/merge ещё не выполнялись.
+
+## 2026-10-21 — все PR gates завершены, PR974 merged
+
+- Все13 последних PR workflow завершились SUCCESS на head `48f954fd7d5299c0a4e2c34eb9c6831fdc42799b`; пять required contexts проверены как SUCCESS от github-actions. Старые cancelled draft runs не использованы как доказательство.
+- PostgreSQL attendance:10 suites /184 tests PASS, включая32 employees tests. Полный unit baseline gate PASS:18 ранее известных failing files, без новых; это не чистый прогон всего репозитория.
+- Authenticated E2E run `39652501061`:65 PASS,0 FAIL,5 явно NOT RUN (physical APK permissions, external delivery, camera/offline replay, overnight soak, exhaustive combinations). Эти отдельные сценарии не требуются для правки roster и не выдаются за выполненные. Состав списка, исключение CRM-only и поиск подтверждены реальным HTTP/DB/browser. Исходно54 HR сотрудника; после явного HIRE контрольного outside —55.
+- Exact-head production build/HRM UI run `39652500908` SUCCESS:1041 pages generated. Просмотрен реальный снимок `employees-ru.png` из E2E artifact12371151377, сохранённый в `/mnt/HC_Volume_106454338/codex-alt-data/tmp/attendance-personnel-974-e2e`. Это тестовая компания, не визуальное доказательство Zeytun.
+- За время CI main продвинулся до `cb86d7ea0c43e05ee214e70c09ce27fd53662e85` (PR973 голосовой бюджет демо). Проверен diff: с нашей правкой не пересекается, изменения release workflow только в комментариях. Правила branch protection сохранены.
+- По ранее полученному разрешению PR974 merged штатным GitHub merge с expected head: merge SHA `de44f2a3325dbdc9a89e5fe14b266010cd84dff4`. Следующее действие: дождаться штатного deploy и проверить ping/build-info на зарегистрированном production.
