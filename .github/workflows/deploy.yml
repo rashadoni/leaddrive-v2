@@ -850,6 +850,22 @@ jobs:
             exit 1
           fi
 
+      - name: Checkout the build-worker trace patch of this workflow's commit
+        # A recovery-bootstrap-resume build checks out an older main commit,
+        # which may predate scripts/ci/patch-next-build-worker-trace.mjs. The
+        # patch belongs to the workflow running the build (github.sha, the
+        # main head this dispatch was admitted from), not to the commit being
+        # built; every main commit since the 2026-09-09 baseline pins next
+        # 16.2.11, so it applies to any admitted resume target. Taken before
+        # any repository code runs, and without a persisted credential.
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .workflow-build-patch
+          persist-credentials: false
+          sparse-checkout: scripts/ci/patch-next-build-worker-trace.mjs
+          sparse-checkout-cone-mode: false
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -880,6 +896,18 @@ jobs:
           printf 'export const DEPLOY_SHA = "%s"\nexport const BUILT_AT = "%s"\n' \
             "$DEPLOY_TARGET_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/generated/build-sha.ts
           cat src/generated/build-sha.ts
+
+      - name: Keep Next build-worker trace events out of IPC
+        # The build worker returns each compiler's result as one JSON string;
+        # the server's debug trace events alone reached 349M of V8's 536.9M
+        # character limit and the build hung (2026-10-21). See the script.
+        # Patches ./node_modules (the commit being built) with the copy above.
+        run: node .workflow-build-patch/scripts/ci/patch-next-build-worker-trace.mjs
+
+      - name: Remove the trace patch checkout before the build
+        # The artifact is built from the target commit's tree alone (Tailwind,
+        # for one, scans every file that git does not ignore).
+        run: rm -rf .workflow-build-patch
 
       - name: Build Next.js standalone
         # @serwist requires webpack for sw.js. Next compiles server, edge and
