@@ -48,3 +48,9 @@
 - Exact-head production build/HRM UI run `39652500908` SUCCESS:1041 pages generated. Просмотрен реальный снимок `employees-ru.png` из E2E artifact12371151377, сохранённый в `/mnt/HC_Volume_106454338/codex-alt-data/tmp/attendance-personnel-974-e2e`. Это тестовая компания, не визуальное доказательство Zeytun.
 - За время CI main продвинулся до `cb86d7ea0c43e05ee214e70c09ce27fd53662e85` (PR973 голосовой бюджет демо). Проверен diff: с нашей правкой не пересекается, изменения release workflow только в комментариях. Правила branch protection сохранены.
 - По ранее полученному разрешению PR974 merged штатным GitHub merge с expected head: merge SHA `de44f2a3325dbdc9a89e5fe14b266010cd84dff4`. Следующее действие: дождаться штатного deploy и проверить ping/build-info на зарегистрированном production.
+
+## 2026-10-21 — штатный production workflow выполняется
+
+- Deploy run `39655768277` относится к merge SHA `de44f2a3325dbdc9a89e5fe14b266010cd84dff4`. Родители merge проверены: текущий main `cb86d7ea0` и проверенный head `48f954fd7`; чужие изменения сохранены. Сборка ждала штатную очередь предыдущего run39653976118 и началась к18:56UTC. Прямого deploy/копирования не было.
+- Подготовлен read-only post-deploy smoke на существующей строго проверенной fictional phone company через `https://app.leaddrivecrm.org`: до выпуска GET employees возвращает2 технических CRM identity, у обеих есть automatic inclusion date и нет employment events. Sanitized before receipt сохранён приватно как `personnel-roster-before.json`; credentials/cookies в журнал не копируются. После совпадения build-info проверяем исчезновение этих CRM-only записей и сохранение mobile bootstrap access.
+- До полного окончания deploy результат не объявляется выпущенным; рабочие пользовательские/кадровые данные не изменяются.
