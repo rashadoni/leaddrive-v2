@@ -373,9 +373,19 @@ log "restored Prisma migration ledger proof passed"
 awk -F '\t' '
   NR == 1 { if ($1 != "SCHEMA" || $2 != "prisma/schema.prisma" || $3 !~ /^[0-9a-f]{64}$/) bad=1; next }
   NR == 2 { if ($1 != "MIGRATION_LOCK" || $2 != "prisma/migrations/migration_lock.toml" || $3 !~ /^[0-9a-f]{64}$/) bad=1; next }
+  $1 == "LEDGER_EXCEPTION" {
+    if (NF != 4 || !migrations || $2 !~ /^[0-9]{8,14}_[A-Za-z0-9_]+$/ \
+        || $3 !~ /^([0-9a-f]{64}|manual-[0-9]{8,14})$/ \
+        || (previous_exception != "" && previous_exception >= $2)) bad=1
+    else if ($4 == "applied-not-in-code") { if ($2 in contract) bad=1 }
+    else if ($4 == "checksum-differs") { if (!($2 in contract) || contract[$2] == $3) bad=1 }
+    else bad=1
+    previous_exception=$2; next
+  }
+  previous_exception != "" { bad=1; next }
   $1 != "MIGRATION" || $2 !~ /^[0-9]{8,14}_[A-Za-z0-9_]+$/ || $3 !~ /^[0-9a-f]{64}$/ { bad=1; next }
   seen[$2]++ { bad=1 }
-  { if (previous != "" && previous >= $2) bad=1; previous=$2; migrations++ }
+  { if (previous != "" && previous >= $2) bad=1; previous=$2; contract[$2]=$3; migrations++ }
   END { if (NR < 3 || migrations < 1 || bad) exit 1 }
 ' "$SOURCE_DB_CONTRACT" || fatal "recovery DB contract manifest is malformed"
 awk -F '\t' '$1 == "MIGRATION" { print $2 "\t" $3 }' \
@@ -395,6 +405,33 @@ SQL
 tail -n +2 "$RESTORED_APPLIED_MIGRATIONS" >"$RESTORED_APPLIED_MIGRATIONS.rows"
 mv -- "$RESTORED_APPLIED_MIGRATIONS.rows" "$RESTORED_APPLIED_MIGRATIONS"
 LC_ALL=C sort -o "$RESTORED_APPLIED_MIGRATIONS" "$RESTORED_APPLIED_MIGRATIONS"
+# BEGIN reviewed migration ledger exceptions
+# Byte-identical in postgres-backup.sh and postgres-restore-canary.sh
+# (migration-ledger-exceptions.test.mjs). A ledger row equal in name AND
+# checksum to a LEDGER_EXCEPTION of the recovery DB contract is accounted for:
+# applied-not-in-code drops out, checksum-differs takes the repository
+# checksum. Anything else passes through unchanged to the exact prefix check.
+apply_reviewed_ledger_exceptions() {
+  awk -F '\t' -v OFS='\t' '
+    FNR == NR {
+      if ($1 == "MIGRATION") contract[$2] = $3
+      else if ($1 == "LEDGER_EXCEPTION") exception[$2 "\t" $3] = $4
+      next
+    }
+    ($1 "\t" $2) in exception {
+      if (exception[$1 "\t" $2] == "applied-not-in-code") next
+      if (exception[$1 "\t" $2] == "checksum-differs") { print $1, contract[$1]; next }
+    }
+    { print }
+  ' "$1" "$2"
+}
+# END reviewed migration ledger exceptions
+apply_reviewed_ledger_exceptions "$SOURCE_DB_CONTRACT" "$RESTORED_APPLIED_MIGRATIONS" \
+  >"$RESTORED_APPLIED_MIGRATIONS.reviewed" || fatal "cannot apply reviewed migration ledger exceptions"
+if ! cmp -s -- "$RESTORED_APPLIED_MIGRATIONS" "$RESTORED_APPLIED_MIGRATIONS.reviewed"; then
+  log "restored ledger matched reviewed exceptions of the recovery DB contract"
+fi
+mv -- "$RESTORED_APPLIED_MIGRATIONS.reviewed" "$RESTORED_APPLIED_MIGRATIONS"
 awk -F '\t' '
   NF != 2 || $1 !~ /^[0-9]{8,14}_[A-Za-z0-9_]+$/ || $2 !~ /^[0-9a-f]{64}$/ { bad=1 }
   seen[$1]++ { bad=1 }
