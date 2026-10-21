@@ -212,10 +212,17 @@ target aborts the release; retired targets are never accepted or migrated.
   536.9M at the measured commit — headroom, not a cure). The script refuses
   any Next other than 16.2.x and any file where the line is not there exactly
   once — after a Next upgrade, re-read the worker code and update it.
-  `scripts/ci/test-event-platform-assets.mjs` fails CI for a cold build without
-  the patch step; `src/__tests__/ci-patch-next-build-worker-trace.test.ts` tests
-  the script on copies of the installed Next files. Never run it on a shared
-  development `node_modules`.
+  `scripts/ci/test-event-platform-assets.mjs` fails CI for a cold build whose
+  patch step is missing, has its own `if:`, may fail (`continue-on-error`,
+  `|| true`, anything else on its run line), follows a reinstall, runs in
+  another directory, or comes from a checkout other than the workflow's own
+  commit. That last one matters for `deploy.yml`: a recovery-bootstrap-resume
+  builds an older main commit that may predate the script, so the build job
+  takes the script from `github.sha` in a sparse side checkout.
+  `src/__tests__/ci-patch-next-build-worker-trace.test.ts` tests the script on
+  copies of the installed Next files. The script refuses to run outside GitHub
+  Actions unless given `--allow-local`: on a development box `node_modules/next`
+  is shared by every worktree, so never pass it there.
 - PM2 runs `.next/standalone/server.js` via `/tmp/start-leaddrive.sh`
 - Start script reads `/etc/leaddrive/app.env`; `/opt/leaddrive-v2/.env` is only
   a compatibility symlink during the controlled transition.
