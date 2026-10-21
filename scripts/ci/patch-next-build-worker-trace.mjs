@@ -36,7 +36,13 @@
  * changes occurs exactly once, and the worker still uses that flag the way
  * described above. A second run says "already patched" and exits 0.
  *
- *   node scripts/ci/patch-next-build-worker-trace.mjs [project-root]
+ *   node scripts/ci/patch-next-build-worker-trace.mjs [--allow-local] [project-root]
+ *
+ * It also refuses outside GitHub Actions (GITHUB_ACTIONS !== "true") unless
+ * --allow-local is given: on a development box node_modules/next is often a
+ * symlink shared by every worktree, and one manual run would patch all of
+ * them. Pass the flag only for a node_modules that belongs to that one
+ * project, such as the copies the test builds.
  *
  * The project root defaults to the current directory: Next is resolved from
  * there, not from this script's own checkout, so a workflow can patch a
@@ -102,7 +108,20 @@ function occurrences(text, needle) {
   return count
 }
 
-const root = path.resolve(process.argv[2] ?? process.cwd())
+const ALLOW_LOCAL = "--allow-local"
+const args = process.argv.slice(2)
+const positional = args.filter((arg) => arg !== ALLOW_LOCAL)
+if (positional.length > 1 || positional.some((arg) => arg.startsWith("-"))) {
+  refuse(`usage: node scripts/ci/patch-next-build-worker-trace.mjs [${ALLOW_LOCAL}] [project-root] (got: ${args.join(" ")})`)
+}
+if (process.env.GITHUB_ACTIONS !== "true" && !args.includes(ALLOW_LOCAL)) {
+  refuse(
+    "refusing to patch node_modules outside GitHub Actions (GITHUB_ACTIONS is not \"true\"). " +
+      "On a development box node_modules/next may be shared by every worktree, and this would " +
+      `change all of their builds. Pass ${ALLOW_LOCAL} only for a node_modules that belongs to this one project.`,
+  )
+}
+const root = path.resolve(positional[0] ?? process.cwd())
 let packageJson
 try {
   packageJson = createRequire(path.join(root, "package.json")).resolve("next/package.json")

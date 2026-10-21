@@ -8,7 +8,8 @@
  * The patch edits node_modules, so it is tested on COPIES of the installed
  * Next files, never on the installed ones: that it changes exactly the one
  * line, says so again without changing anything, and refuses — changing
- * nothing — on a Next it was not written for. The last case checks behaviour,
+ * nothing — on a Next it was not written for, or outside GitHub Actions
+ * without --allow-local (the copies pass that flag). The last case checks behaviour,
  * not text: with the value the patched launcher passes, the installed Next
  * trace module keeps no spans for the worker to send back.
  */
@@ -61,9 +62,14 @@ function project(options: { version?: string; edit?: Partial<Record<string, (sou
   }
 }
 
-function patch(root: string, cwd = ROOT) {
-  const args = cwd === root ? [SCRIPT] : [SCRIPT, root]
-  const result = spawnSync(process.execPath, args, { cwd, encoding: "utf8" })
+// Outside GitHub Actions unless a case sets it: the flag, not the CI runner
+// these tests may happen to run on, is what lets the script touch a copy.
+const LOCAL_ENV: NodeJS.ProcessEnv = { ...process.env }
+delete LOCAL_ENV.GITHUB_ACTIONS
+function patch(root: string, cwd = ROOT, options: { flags?: string[]; env?: NodeJS.ProcessEnv } = {}) {
+  const flags = options.flags ?? ["--allow-local"]
+  const args = cwd === root ? [SCRIPT, ...flags] : [SCRIPT, ...flags, root]
+  const result = spawnSync(process.execPath, args, { cwd, encoding: "utf8", env: { ...LOCAL_ENV, ...options.env } })
   return { status: result.status, out: `${result.stdout}${result.stderr}` }
 }
 
@@ -127,6 +133,35 @@ describe("patch-next-build-worker-trace", () => {
     expect(run.status, run.out).toBe(0)
     expect(run.out).toContain(copy.file(LAUNCHER))
     expect(copy.read(LAUNCHER)).toContain("shouldSaveTraceEvents: false")
+  })
+
+  it.each([undefined, "false", "1"])("refuses outside GitHub Actions (GITHUB_ACTIONS=%s) without --allow-local and changes nothing", (value) => {
+    const copy = project()
+    const before = sha256(copy.file(LAUNCHER))
+    const run = patch(copy.root, ROOT, { flags: [], env: value === undefined ? {} : { GITHUB_ACTIONS: value } })
+    expect(run.status, run.out).toBe(1)
+    expect(run.out).toContain("::error::")
+    expect(run.out).toContain("outside GitHub Actions")
+    expect(run.out).toContain("--allow-local")
+    expect(sha256(copy.file(LAUNCHER))).toBe(before)
+  })
+
+  it("runs in GitHub Actions without the flag", () => {
+    const copy = project()
+    const run = patch(copy.root, ROOT, { flags: [], env: { GITHUB_ACTIONS: "true" } })
+    expect(run.status, run.out).toBe(0)
+    expect(copy.read(LAUNCHER)).toContain("shouldSaveTraceEvents: false")
+  })
+
+  it("refuses an unknown option or a second project root and changes nothing", () => {
+    const copy = project()
+    const before = sha256(copy.file(LAUNCHER))
+    for (const flags of [["--allow-locale"], ["--allow-local", copy.root]]) {
+      const run = patch(copy.root, ROOT, { flags })
+      expect(run.status, run.out).toBe(1)
+      expect(run.out).toContain("usage:")
+    }
+    expect(sha256(copy.file(LAUNCHER))).toBe(before)
   })
 
   it.each(["16.3.0", "16.1.7", "17.0.0", "15.5.4"])("refuses Next %s and changes nothing", (version) => {
