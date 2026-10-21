@@ -62,3 +62,15 @@
 - Release initially queued behind existing GitHub work. Both jobs are now running: `Production build & publish artifact` (119089189586) and `Quality & security gates` (119089189847).
 - Build reached `Build Next.js standalone`; quality checks passed their integration/database stages and reached `Unit tests vs baseline (BLOCKING)`.
 - Current state: waiting for build and checks, then the protected deployment and public smoke. Production success has not yet been claimed.
+
+## 2026-10-21 — Released and verified
+
+- Production workflow https://github.com/rashadoni/leaddrive-v2/actions/runs/39560154512 completed with conclusion `success` for exact merge SHA `d73f9c23be9b9107db98c34866706be11668b92e`.
+- Production build, quality/security gates, deployment with post-deploy smoke, and artifact-retention cleanup all succeeded. The previous NOT RUN production-build status is superseded by this successful hosted build.
+- Deployment job 119099299550 passed atomic installation, tenant-isolation verification, scheduler checks, the public database-path ping, exact revision validation, and login/CSS/JavaScript smoke.
+- Independently verified BOTH `app.leaddrivecrm.org` and `brandprotection.leaddrivecrm.org`: ping HTTP 200 with `ok: true`; public build-info `artifactSha` exactly `d73f9c23be9b9107db98c34866706be11668b92e` (builtAt `2026-10-21T07:26:20Z`).
+- Independently verified main app login and its hashed CSS/JavaScript assets return HTTP 200. A Python HTTP transport first received 403; the same public checks succeeded using curl, matching the release workflow's transport.
+- Unauthenticated admin capability access is blocked by middleware with HTTP 307 to the same site's `/login?callbackUrl=...`. Confirmed redirect target after the initial smoke expected a route-level 401/403; no tenant data was returned or modified.
+- NOT RUN: interactive authenticated browser verification of the tenant card, because this task has no authenticated administrator browser session. Functional grant/disable/re-enable and tenant self-grant rejection were verified in tests; no screenshot/UI-observation claim is made.
+- Final result: Brand Monitoring is released in the tenant capability panel. Existing `social` entitlements are reused, with superadmin grant/disable/re-enable. No production tenant configuration or customer data was manually changed during validation.
+- Final stopping point: requested implementation, CI, merge, deployment and public verification are complete. Next action: no engineering step is pending; the owner can refresh the tenant card and use Brand Monitoring's Approve/Enable control for the desired client.
