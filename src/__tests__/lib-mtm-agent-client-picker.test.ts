@@ -97,4 +97,23 @@ describe("the agent's client picker", () => {
     expect(picker.assignedHere).toBe(1)
     expect(buildAgentClientPicker(ROWS, { ...none, specialties: ["terapevt"] }, null).assignedHere).toBe(0)
   })
+
+  // Owner, 2026-10-21: «я не заметил категории клиентов… нужно добавить в фильтр».
+  it("offers every class the tenant grades with as a fourth step, «0» included, and narrows the doctors by it", () => {
+    const terapevt = { ...none, specialties: ["Terapevt"] }
+    // Of the five therapists, one is VIP and four are B; the tenant grades A, B, C, VIP.
+    expect(buildAgentClientPicker(ROWS, terapevt, null, ["A", "B", "C", "VIP"]).classes).toEqual([
+      { value: "A", label: "A", count: 0 },
+      { value: "B", label: "B", count: 4 },
+      { value: "C", label: "C", count: 0 },
+      { value: "VIP", label: "VIP", count: 1 },
+    ])
+    const vip = buildAgentClientPicker(ROWS, { ...terapevt, classes: ["VIP"] }, null, ["A", "B", "C", "VIP"])
+    expect(vip.contacts.map(contact => contact.name)).toEqual(["Fictional Babayev"])
+    expect(vip.matching).toBe(1)
+    // The class step counts what the place left, not what the class itself leaves.
+    expect(vip.classes.find(option => option.value === "B")?.count).toBe(4)
+    // A class a doctor still holds though the tenant no longer offers it comes after the tenant's own.
+    expect(buildAgentClientPicker(ROWS, terapevt, null, ["A", "B"]).classes.map(option => option.value)).toEqual(["A", "B", "VIP"])
+  })
 })
