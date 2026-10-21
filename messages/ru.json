@@ -15682,6 +15682,8 @@
     "clientsStepCity": "Город",
     "clientsStepDistrict": "Район",
     "clientsAll": "Все",
+    "clientsChoose": "Выберите",
+    "clientsDoctorsCount": "{count, plural, one {# врач} few {# врача} many {# врачей} other {# врача}}",
     "clientsNotStated": "Не указан",
     "clientsPickSpecialtyFirst": "Выберите специальность — появятся город, район и список врачей.",
     "clientsLoading": "Загружаем врачей…",
