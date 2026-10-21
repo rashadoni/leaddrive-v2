@@ -2,19 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
-import { Check, ChevronDown, ChevronRight, Info, Loader2, Minus } from "lucide-react"
+import { Building2, Check, ChevronDown, ChevronRight, Info, Loader2 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Hint } from "@/components/hint"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { AgentDoctorResult } from "@/lib/mtm/assign-agent-doctors"
-import { PICKER_NONE, type AgentClientPicker, type PickerOption } from "@/lib/mtm/agent-client-picker"
+import type { AgentClientPicker, PickerOption } from "@/lib/mtm/agent-client-picker"
 
 /**
  * «Клиенты» tab of an agent's card (owner, 2026-10-16): specialty → city →
- * district, then the doctors that match, grouped by institution and all ticked;
- * a whole institution or a single doctor can be left out. What is ticked is
+ * district, then the doctors that match, all ticked; any of them can be left
+ * out. One row a doctor — his name and class first, then where he works
+ * (owner, 2026-10-20: the institutions with «11/11» it listed before hid the
+ * doctors themselves, «тут только сами клиники и учреждения»). What is ticked is
  * handed to the card, which assigns it after saving the agent — through the
  * same preview → apply as «Клиенты → Закрепить». The view was shown to the
  * owner as a picture first («да, делай»). The agent's own page offers the same
@@ -36,7 +38,8 @@ type PickerData = AgentClientPicker & { asOf: string }
  */
 export type AgentClientChoice = { contactIds: string[]; removeIds?: string[]; asOf: string | null; listed?: boolean }
 
-const DOCTORS_SHOWN_IN_GROUP = 4
+/** Rows drawn at once; the rest one press away. All of them are ticked either way. */
+const DOCTORS_PAGE = 100
 
 /** The words of `mtmForms`, as the card and the page both hold them. */
 type FormWords = (key: string, values?: Record<string, number | string>) => string
@@ -59,18 +62,16 @@ export function doctorChangesLabel(t: FormWords, add: number, remove: number, pr
   return add === 0 ? t("saveAndRemove", { count: remove }) : t("saveAssignAndRemove", { add, remove })
 }
 
-function TickBox({ state }: { state: "on" | "off" | "some" }) {
+function TickBox({ state }: { state: "on" | "off" }) {
   return (
     <span
       aria-hidden="true"
       className={cn(
         "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2",
-        state === "on" && "border-primary bg-primary text-primary-foreground",
-        state === "some" && "border-primary bg-background text-primary",
-        state === "off" && "border-zinc-300 bg-background dark:border-zinc-600",
+        state === "on" ? "border-primary bg-primary text-primary-foreground" : "border-zinc-300 bg-background dark:border-zinc-600",
       )}
     >
-      {state === "on" ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : state === "some" ? <Minus className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+      {state === "on" ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
     </span>
   )
 }
@@ -155,8 +156,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   const [problem, setProblem] = useState<string | null>(null)
   /** Untick means «leave out» for a new doctor and «take off» for the agent's own. */
   const [unticked, setUnticked] = useState<Set<string>>(new Set())
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [showAll, setShowAll] = useState<Set<string>>(new Set())
+  const [shownCount, setShownCount] = useState(DOCTORS_PAGE)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -194,10 +194,10 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   // Nothing is listed, nor ticked, before a specialty is chosen: a card opened
   // and closed again must not take every doctor of the company along.
   const chosenFirstStep = selection.specialties.length > 0
-  const groups = useMemo(() => (chosenFirstStep ? data?.groups ?? [] : []), [chosenFirstStep, data])
-  const listedIds = useMemo(() => groups.flatMap(group => group.contacts.map(contact => contact.id)), [groups])
-  const chosen = useMemo(() => groups.flatMap(group => group.contacts.filter(contact => !contact.assignedHere && !unticked.has(contact.id)).map(contact => contact.id)), [groups, unticked])
-  const takenOff = useMemo(() => groups.flatMap(group => group.contacts.filter(contact => contact.assignedHere && unticked.has(contact.id)).map(contact => contact.id)), [groups, unticked])
+  const contacts = useMemo(() => (chosenFirstStep ? data?.contacts ?? [] : []), [chosenFirstStep, data])
+  const listedIds = useMemo(() => contacts.map(contact => contact.id), [contacts])
+  const chosen = useMemo(() => contacts.filter(contact => !contact.assignedHere && !unticked.has(contact.id)).map(contact => contact.id), [contacts, unticked])
+  const takenOff = useMemo(() => contacts.filter(contact => contact.assignedHere && unticked.has(contact.id)).map(contact => contact.id), [contacts, unticked])
   const chosenKey = chosen.join(",")
   const takenOffKey = takenOff.join(",")
 
@@ -208,6 +208,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   }, [chosenKey, takenOffKey, data?.asOf, chosenFirstStep])
 
   const setStep = (step: keyof Selection, values: string[]) => {
+    setShownCount(DOCTORS_PAGE)
     setSelection(current => step === "specialties"
       ? { specialties: values, cities: [], districts: [] }
       : step === "cities" ? { ...current, cities: values, districts: [] } : { ...current, districts: values })
@@ -220,12 +221,8 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
     }
     return next
   })
-  const flip = (set: Set<string>, key: string) => {
-    const next = new Set(set)
-    if (next.has(key)) next.delete(key)
-    else next.add(key)
-    return next
-  }
+  const shown = contacts.slice(0, shownCount)
+  const hidden = contacts.length - shown.length
 
   return (
     <div className="space-y-4" data-testid="agent-client-picker">
@@ -248,13 +245,13 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
         </p>
       ) : loading && !data ? (
         <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />{t("clientsLoading")}</p>
-      ) : groups.length === 0 ? (
+      ) : contacts.length === 0 ? (
         <p className="rounded-xl border border-dashed px-3 py-6 text-sm text-muted-foreground" data-testid="agent-clients-empty">{t("clientsEmpty")}</p>
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid="agent-clients-summary">
             <span className={cn(loading && "opacity-60")}>
-              <strong>{t("clientsFound", { count: data?.matching ?? 0, groups: groups.length })}</strong>
+              <strong>{t("clientsFound", { count: data?.matching ?? 0, groups: data?.institutions ?? 0 })}</strong>
               {" · "}{t("clientsChecked", { count: chosen.length })}
               {takenOff.length > 0 ? <span className="font-semibold text-red-600 dark:text-red-400" data-testid="agent-clients-taken-off">{" · "}{t("clientsWillRemove", { count: takenOff.length })}</span> : null}
               {(data?.assignedHere ?? 0) > 0 ? <span className="text-muted-foreground">{" · "}{t("clientsAlreadyHereCount", { count: data?.assignedHere ?? 0 })}</span> : null}
@@ -265,86 +262,67 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
             </span>
           </div>
 
-          <div className="space-y-2">
-            {groups.map(group => {
-              const key = group.institution?.id ?? PICKER_NONE
-              const ids = group.contacts.map(contact => contact.id)
-              const on = ids.filter(id => !unticked.has(id)).length
-              const state = on === ids.length ? "on" : on === 0 ? "off" : "some"
-              const open = expanded.has(key)
-              const shown = showAll.has(key) ? group.contacts : group.contacts.slice(0, DOCTORS_SHOWN_IN_GROUP)
+          <div className="divide-y overflow-hidden rounded-xl border" data-testid="agent-clients-list">
+            {shown.map(contact => {
+              const off = unticked.has(contact.id)
+              const where = [contact.place.district ?? contact.place.city, contact.place.address].filter(Boolean).join(" · ")
               return (
-                <div key={key} className="overflow-hidden rounded-xl border" data-testid="agent-clients-group">
-                  <div className="flex items-center gap-3 px-3 py-2.5">
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={state === "some" ? "mixed" : state === "on"}
-                      aria-label={group.institution?.name ?? t("clientsNoInstitution")}
-                      onClick={() => toggle(ids, state !== "on")}
-                      className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      data-testid="agent-clients-group-tick"
-                    >
-                      <TickBox state={state} />
-                    </button>
-                    <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setExpanded(current => flip(current, key))} aria-expanded={open}>
-                      <span className="block truncate text-sm font-medium">{group.institution?.name ?? t("clientsNoInstitution")}</span>
-                      {group.institution ? (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {[group.institution.district ?? group.institution.city, group.institution.address].filter(Boolean).join(" · ")}
+                <div key={contact.id} className="flex items-center gap-3 px-3 py-2.5" data-testid="agent-clients-doctor">
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={!off}
+                    aria-label={contact.name}
+                    onClick={() => toggle([contact.id], off)}
+                    className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-testid="agent-clients-doctor-tick"
+                  >
+                    <TickBox state={off ? "off" : "on"} />
+                  </button>
+                  {/* The words tick too: a bigger target than the box. */}
+                  <div className={cn("min-w-0 flex-1 cursor-pointer", off && "text-muted-foreground")} onClick={() => toggle([contact.id], off)}>
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className={cn("truncate text-sm font-semibold", off && "line-through")}>{contact.name}</span>
+                      {contact.category ? (
+                        <span className="shrink-0 rounded-full border border-zinc-200 px-2 py-px text-[11px] font-semibold dark:border-zinc-700" data-testid="agent-clients-doctor-class">
+                          {t("clientsClass", { category: contact.category })}
                         </span>
                       ) : null}
-                    </button>
-                    <span className="shrink-0 text-xs font-semibold tabular-nums text-zinc-600 dark:text-zinc-300">{t("clientsOfCount", { on, total: group.contacts.length })}</span>
-                    <button type="button" onClick={() => setExpanded(current => flip(current, key))} aria-label={group.institution?.name ?? t("clientsNoInstitution")} aria-expanded={open} className="shrink-0 text-muted-foreground">
-                      <ChevronDown className={cn("h-4 w-4 transition-transform", !open && "-rotate-90")} aria-hidden="true" />
-                    </button>
-                  </div>
-                  {open ? (
-                    <div className="border-t bg-muted/30">
-                      {shown.map(contact => {
-                        const off = unticked.has(contact.id)
-                        return (
-                          <div key={contact.id} className={cn("flex items-center gap-3 border-b px-3 py-2 pl-11 text-sm last:border-b-0", off && "text-muted-foreground")} data-testid="agent-clients-doctor">
-                            <button
-                              type="button"
-                              role="checkbox"
-                              aria-checked={!off}
-                              aria-label={contact.name}
-                              onClick={() => toggle([contact.id], off)}
-                              className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            >
-                              <TickBox state={off ? "off" : "on"} />
-                            </button>
-                            <span className="min-w-0 flex-1 truncate">
-                              <span className={cn(off && "line-through")}>{contact.name}</span>
-                              {contact.specialty ? <span className="ml-1.5 text-xs text-muted-foreground">{contact.specialty}</span> : null}
-                            </span>
-                            {contact.assignedHere && off ? (
-                              <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
-                            ) : contact.assignedHere ? (
-                              <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
-                            ) : contact.agents.length > 0 ? (
-                              <Hint text={t("clientsAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") })}>
-                                <span tabIndex={0} className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
-                                  {t("clientsAlsoWith", { name: contact.agents[0].name, more: contact.agents.length - 1 })}
-                                </span>
-                              </Hint>
-                            ) : null}
-                          </div>
-                        )
-                      })}
-                      {group.contacts.length > shown.length ? (
-                        <button type="button" className="px-11 py-2 text-xs font-semibold text-primary hover:underline" onClick={() => setShowAll(current => flip(current, key))}>
-                          {t("clientsMore", { count: group.contacts.length - shown.length })}
-                        </button>
-                      ) : null}
+                      {contact.specialty ? <span className="shrink-0 text-xs text-muted-foreground">{contact.specialty}</span> : null}
                     </div>
+                    <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" data-testid="agent-clients-doctor-place">
+                      <Building2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      <span className="truncate">
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">{contact.place.institution?.name ?? t("clientsNoInstitution")}</span>
+                        {where ? ` · ${where}` : null}
+                      </span>
+                    </div>
+                  </div>
+                  {contact.assignedHere && off ? (
+                    <span className="shrink-0 text-[11px] font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
+                  ) : contact.assignedHere ? (
+                    <span className="shrink-0 rounded-full border border-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
+                  ) : contact.agents.length > 0 ? (
+                    <Hint text={t("clientsAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") })}>
+                      <span tabIndex={0} className="shrink-0 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+                        {t("clientsAlsoWith", { name: contact.agents[0].name, more: contact.agents.length - 1 })}
+                      </span>
+                    </Hint>
                   ) : null}
                 </div>
               )
             })}
           </div>
+          {hidden > 0 ? (
+            <button
+              type="button"
+              className="w-full rounded-xl border px-3 py-2.5 text-sm font-semibold text-primary hover:bg-muted/40"
+              onClick={() => setShownCount(count => count + DOCTORS_PAGE)}
+              data-testid="agent-clients-show-more"
+            >
+              {hidden > DOCTORS_PAGE ? t("clientsShowMore", { count: DOCTORS_PAGE, left: hidden }) : t("clientsShowRest", { count: hidden })}
+            </button>
+          ) : null}
 
           <p className="flex items-start gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
