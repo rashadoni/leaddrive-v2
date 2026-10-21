@@ -39,3 +39,19 @@
 - Refreshed and merged current `origin/main` (`8f0833c60`) into the task branch without conflicts. The intervening main change concerns the unrelated MTM client picker; all five task-owned paths remain the complete PR scope.
 - Confirmed the release-facing change with the owner in chat: Brand Monitoring appears in the tenant capability panel with grant, disable and re-enable controls. The owner's `добей` is the go-ahead on that already-presented change; no repeated approval is required.
 - Next: publish draft PR, mark ready after confirming final head, wait for all five required successful checks, merge only the checked head, follow the normal deployment workflow and verify live build SHA and health.
+
+## 2026-10-21 — PR published, CI in progress
+
+- Published and attached PR https://github.com/rashadoni/leaddrive-v2/pull/967. Opened as draft, then marked ready after GitHub confirmed head `013a17c44529e242da1b0cc6d62bad6a885801a0` and the intended five-file scope.
+- Verified main protection requires `pr-scope`, `static-checks`, `typecheck`, `runner-policy`, `scan`, all bound to GitHub Actions app 15368; administrator enforcement remains enabled. No gate has been changed or bypassed.
+- Required PR workflow: https://github.com/rashadoni/leaddrive-v2/actions/runs/39557627015. The cancelled initial draft run is superseded by the ready-for-review run.
+- Pre-release public health: `/api/v1/ping` returned `{"ok":true}`; build-info identified the existing production artifact `db471dc389cdb5cd44ed03c61a165caa3627fbf6`.
+- Current state: waiting for the complete required CI result on the published PR head. No production mutation yet.
+
+## 2026-10-21 — Required gates passed and PR merged
+
+- All five required checks succeeded on exact PR head `013a17c44529e242da1b0cc6d62bad6a885801a0`, all reported by GitHub Actions app 15368: `pr-scope` (119081014853), `static-checks` (119082451261), `typecheck` (119082451256), `runner-policy` (119080943801), and `scan` (119080943677).
+- Full repository test-baseline and compiler gates are now PASS, superseding their earlier NOT RUN status. No gate was skipped to merge. Non-required completed checks had no failures; the optional HRM build was still running at merge time.
+- Re-fetched main before merge: it remained `8f0833c60`; no intervening change required conflict resolution.
+- Merged PR #967 using an expected-head-SHA guard. GitHub confirmed merge commit `d73f9c23be9b9107db98c34866706be11668b92e`.
+- Current stopping point: merged; production build/deploy and live SHA/health verification remain pending. Next action: follow the merge-triggered normal deployment workflow; no direct server deployment or bypass is permitted.
