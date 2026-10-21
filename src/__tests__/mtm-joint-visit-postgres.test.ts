@@ -6,8 +6,10 @@
  * What is asked is what the tables hold, refused requests included: a mocked
  * Prisma answers the scope and session queries with whatever the test hands
  * it, so it cannot show that a manager reaches no agent outside his team, that
- * an agent's «yes» without the manager's session writes nothing, or that a
- * rating never reaches the rated agent («агент оценку не видит»).
+ * an agent's «yes» without the manager's session writes nothing, that a
+ * rating never reaches the rated agent («агент оценку не видит»), or that a
+ * rating keeps the questions it was given against when the company edits its
+ * list (owner, 2026-10-21) — and that one company's list is not another's.
  *
  * The stand-ins: who is calling (the mobile token, the web session) and the
  * tenant's plan, nothing else.
@@ -27,6 +29,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { MTM_VISIT_EVALUATION_ORIGINAL_QUESTIONS } from "@/lib/mtm/visit-evaluation-questions"
 
 const adminUrl = process.env.MTM_JOINT_VISIT_TEST_DATABASE_URL
 if (!adminUrl && process.env.MTM_JOINT_VISIT_DB_GATE === "required") {
@@ -85,6 +88,8 @@ const OTHER_TEAM = "agent-joint-other-team"
 const LEFT = "agent-joint-left"
 const OTHER_COMPANY = "agent-joint-other-company"
 const CUSTOMER = "customer-joint"
+const ABROAD_MANAGER = "agent-joint-abroad-manager"
+const ORIGINAL_IDS = ["PREPARATION", "RAPPORT", "NEEDS", "PRESENTATION", "OBJECTIONS", "CLOSING"]
 const CUSTOMER_AT = { latitude: 40.4093, longitude: 49.8671 }
 
 function prismaCli(args: string[], env: NodeJS.ProcessEnv, input?: string) {
@@ -124,6 +129,11 @@ function jointVisitConstraints(): string[] {
   if (statements.some((statement) => !statement) || !sql.includes(`CHECK ("managerAgentId" <> "agentId")`) || !sql.includes(`CHECK (jsonb_typeof("scores") = 'object')`)) {
     throw new Error("joint visit constraints not found in their migration")
   }
+  // A rating's own list of questions is a list (20261026090000).
+  const questions = readFileSync(path.join(ROOT, "prisma/migrations/20261026090000_mtm_visit_evaluation_questions/migration.sql"), "utf8")
+    .match(/ALTER TABLE "mtm_visit_evaluations"\s+ADD CONSTRAINT "mtm_visit_evaluations_questions_check"[^;]*;/)?.[0]
+  if (!questions) throw new Error("the questions constraint was not found in its migration")
+  statements.push(questions)
   return statements as string[]
 }
 
@@ -141,6 +151,7 @@ pgDescribe("joint visit on a real Postgres", () => {
   let review!: typeof import("@/app/api/v1/mtm/visits/[id]/review/route").GET
   let visitList!: typeof import("@/app/api/v1/mtm/visits/route").GET
   let agentRatings!: typeof import("@/app/api/v1/mtm/agents/[id]/evaluations/route").GET
+  let settingsRoute!: typeof import("@/app/api/v1/mtm/settings/route")
   let sequence = 0
 
   beforeAll(async () => {
@@ -163,6 +174,7 @@ pgDescribe("joint visit on a real Postgres", () => {
     review = (await import("@/app/api/v1/mtm/visits/[id]/review/route")).GET
     visitList = (await import("@/app/api/v1/mtm/visits/route")).GET
     agentRatings = (await import("@/app/api/v1/mtm/agents/[id]/evaluations/route")).GET
+    settingsRoute = await import("@/app/api/v1/mtm/settings/route")
 
     await bypass(async () => {
       for (const id of [ORG, OTHER_ORG]) {
@@ -215,9 +227,9 @@ pgDescribe("joint visit on a real Postgres", () => {
     }
   }
 
-  function browserOf(userId: string) {
+  function browserOf(userId: string, role = "member", orgId = ORG) {
     caller.current = null
-    browser.current = { orgId: ORG, userId, role: "member", email: `${userId}@example.test`, name: userId, principalType: "session" }
+    browser.current = { orgId, userId, role, email: `${userId}@example.test`, name: userId, principalType: "session" }
   }
 
   async function call(handler: (req: NextRequest, ctx?: never) => Promise<Response>, url: string, method = "GET", body?: unknown, ctx?: unknown) {
@@ -354,10 +366,16 @@ pgDescribe("joint visit on a real Postgres", () => {
     const refused = await call(evaluate, `${BASE}/mobile/manager/visits/${unbacked.id}/evaluation`, "PUT", { scores: { PREPARATION: 4 } }, params(unbacked.id))
     expect([refused.status, refused.body.code]).toEqual([404, "MTM_VISIT_EVALUATION_NOT_JOINT"])
 
-    for (const bad of [{ scores: {} }, { scores: { PREPARATION: 6 } }, { scores: { PREPARATION: 0 } }, { scores: { CHARM: 5 } }, { scores: { NEEDS: 3.5 } }]) {
+    for (const bad of [{ scores: {} }, { scores: { PREPARATION: 6 } }, { scores: { PREPARATION: 0 } }, { scores: { NEEDS: 3.5 } }]) {
       const invalid = await call(evaluate, `${BASE}/mobile/manager/visits/${together.id}/evaluation`, "PUT", bad, params(together.id))
       expect({ bad, status: invalid.status }).toEqual({ bad, status: 400 })
     }
+    // A point the company does not ask is refused, with its list as it is.
+    const unknown = await call(evaluate, `${BASE}/mobile/manager/visits/${together.id}/evaluation`, "PUT", { scores: { CHARM: 5, NEEDS: 3 } }, params(together.id))
+    expect([unknown.status, unknown.body.code]).toEqual([409, "MTM_VISIT_EVALUATION_QUESTIONS_CHANGED"])
+    expect(unknown.body.data.questions.map((question: { id: string }) => question.id))
+      .toEqual(["PREPARATION", "RAPPORT", "NEEDS", "PRESENTATION", "OBJECTIONS", "CLOSING"])
+    expect(await bypass(() => prisma.mtmVisitEvaluation.count({ where: { visitId: together.id } }))).toBe(0)
 
     const first = await call(evaluate, `${BASE}/mobile/manager/visits/${together.id}/evaluation`, "PUT", {
       scores: { PREPARATION: 4, RAPPORT: 5, NEEDS: 3 },
@@ -464,5 +482,153 @@ pgDescribe("joint visit on a real Postgres", () => {
     // Each new session tells its agent; nobody else is written to.
     const told = await bypass(() => prisma.mtmNotification.findMany({ where: { organizationId: ORG }, select: { agentId: true } }))
     expect(told.map((row: { agentId: string }) => row.agentId).sort()).toEqual([AYSEL, ELVIN, ELVIN].sort())
+  })
+
+  type Question = { id: string; labels: { az: string; ru: string; en: string } }
+  const ids = (questions: Question[]) => questions.map((question) => question.id)
+  const original = (id: string) => MTM_VISIT_EVALUATION_ORIGINAL_QUESTIONS.find((question) => question.id === id)!
+  const SAMPLES = "q-samples"
+
+  async function storedQuestions(visitId: string): Promise<unknown> {
+    return (await bypass(() => prisma.mtmVisitEvaluation.findFirst({ where: { visitId }, select: { questions: true } })))?.questions
+  }
+
+  async function reviewOf(visitId: string) {
+    browserOf("user-joint-manager")
+    const view = await call(review, `${BASE}/visits/${visitId}/review`, "GET", undefined, params(visitId))
+    expect(view.status).toBe(200)
+    return view.body.data.visit.jointVisit.evaluations[0] as { questions: Question[]; scores: Record<string, number>; average: number | null }
+  }
+
+  async function saveQuestions(questions: unknown) {
+    browserOf("user-joint-manager", "admin")
+    return call(settingsRoute.PUT, `${BASE}/settings`, "PUT", { visitEvaluationQuestions: questions })
+  }
+
+  it("rates by the company's own list, and every rating keeps the questions it was given against", async () => {
+    // The rating given above was given against the six everybody had, and says so.
+    const earlier = (await bypass(() => prisma.mtmVisitEvaluation.findFirst({ where: { organizationId: ORG }, select: { visitId: true } })))!.visitId
+    expect(ids(await storedQuestions(earlier) as Question[])).toEqual(ORIGINAL_IDS)
+
+    phoneOf(MANAGER, "SUPERVISOR")
+    expect((await call(joint.POST, `${BASE}/mobile/manager/joint-visit`, "POST", { agentId: ELVIN })).status).toBe(201)
+    // A rating from before the lists: no list of its own, and a score for a
+    // question the company is about to delete.
+    const legacy = await checkIn(ELVIN, { jointManagerId: MANAGER, checkInAt: new Date(Date.now() - 60_000).toISOString() })
+    expect(legacy.op.serverData.joint).toEqual({ managerId: MANAGER, accepted: true })
+    await bypass(() => prisma.mtmVisitEvaluation.create({
+      data: { organizationId: ORG, visitId: legacy.id, agentId: ELVIN, evaluatorAgentId: MANAGER, scores: { OBJECTIONS: 3, PREPARATION: 2 } },
+    }))
+    const fresh = await checkIn(ELVIN, { jointManagerId: MANAGER })
+
+    // A list that does not read is refused and changes nothing.
+    for (const bad of [[], [{ id: "A", labels: { ru: "x" } }, { id: "A", labels: { ru: "y" } }], [{ id: "B", labels: { ru: "" } }], [{ id: "C", labels: { ru: "x".repeat(81) } }]]) {
+      const refused = await saveQuestions(bad)
+      expect({ bad, status: refused.status, code: refused.body.code }).toEqual({ bad, status: 400, code: "MTM_VISIT_EVALUATION_QUESTIONS_INVALID" })
+    }
+    expect(await bypass(() => prisma.mtmSetting.count({ where: { organizationId: ORG, key: "visitEvaluationQuestions" } }))).toBe(0)
+
+    // The company renames the first question, deletes OBJECTIONS and adds one,
+    // written in Russian only.
+    const renamed = { id: "PREPARATION", labels: { az: "Hazırlıq və materiallar", ru: "Подготовка: план визита и материалы", en: "Preparation and materials" } }
+    const v2 = [renamed, original("RAPPORT"), original("NEEDS"), original("PRESENTATION"), original("CLOSING"), { id: SAMPLES, labels: { az: "", ru: "Работа с образцами", en: "" } }]
+    expect((await saveQuestions(v2)).status).toBe(200)
+    const samples = { id: SAMPLES, labels: { az: "Работа с образцами", ru: "Работа с образцами", en: "Работа с образцами" } }
+    const v2Stored = [...v2.slice(0, 5), samples]
+    const settings = await call(settingsRoute.GET, `${BASE}/settings`)
+    expect(settings.body.data.visitEvaluationQuestions).toEqual(v2Stored)
+
+    // The manager's phone asks that list, in that order.
+    phoneOf(MANAGER, "SUPERVISOR")
+    const state = await call(joint.GET, `${BASE}/mobile/manager/joint-visit`)
+    expect(state.body.data.questions).toEqual(v2Stored)
+    expect(state.body.data.criteria).toEqual(ids(v2Stored))
+    type Listed = { id: string; evaluation: { questions: Question[]; scores: Record<string, number>; average: number | null } }
+    const listed = new Map<string, Listed>(state.body.data.visits.map((visit: Listed) => [visit.id, visit]))
+    // …and shows the old rating by the questions it was given against.
+    expect(ids(listed.get(legacy.id)!.evaluation.questions)).toEqual(ORIGINAL_IDS)
+    expect(listed.get(legacy.id)!.evaluation).toMatchObject({ scores: { OBJECTIONS: 3, PREPARATION: 2 }, average: 2.5 })
+
+    // A deleted question is refused for a new rating, and nothing is written.
+    const deleted = await call(evaluate, `${BASE}/mobile/manager/visits/${fresh.id}/evaluation`, "PUT", { scores: { OBJECTIONS: 4, RAPPORT: 5 } }, params(fresh.id))
+    expect([deleted.status, deleted.body.code]).toEqual([409, "MTM_VISIT_EVALUATION_QUESTIONS_CHANGED"])
+    expect(deleted.body.data.questions).toEqual(v2Stored)
+    expect(await bypass(() => prisma.mtmVisitEvaluation.count({ where: { visitId: fresh.id } }))).toBe(0)
+
+    const rated = await call(evaluate, `${BASE}/mobile/manager/visits/${fresh.id}/evaluation`, "PUT", { scores: { [SAMPLES]: 4, PREPARATION: 5 } }, params(fresh.id))
+    expect(rated.status).toBe(200)
+    expect(rated.body.data.evaluation).toMatchObject({ scores: { [SAMPLES]: 4, PREPARATION: 5 }, average: 4.5, questions: v2Stored })
+    expect(await storedQuestions(fresh.id)).toEqual(v2Stored)
+
+    // The list changes again: the new question renamed, PREPARATION deleted.
+    const v3 = [original("RAPPORT"), original("NEEDS"), original("PRESENTATION"), original("CLOSING"), { id: SAMPLES, labels: { az: "Nümunələr", ru: "Образцы и памятки", en: "Samples" } }]
+    expect((await saveQuestions(v3)).status).toBe(200)
+
+    // No rating moved: each is read off its own list, in its own words.
+    expect(await storedQuestions(fresh.id)).toEqual(v2Stored)
+    const freshView = await reviewOf(fresh.id)
+    expect(freshView).toMatchObject({ questions: v2Stored, scores: { [SAMPLES]: 4, PREPARATION: 5 }, average: 4.5 })
+    const legacyView = await reviewOf(legacy.id)
+    expect(legacyView.questions).toEqual(MTM_VISIT_EVALUATION_ORIGINAL_QUESTIONS)
+    expect(legacyView.questions[0].labels.ru).toBe("Подготовка к визиту")
+    expect(legacyView).toMatchObject({ scores: { OBJECTIONS: 3, PREPARATION: 2 }, average: 2.5 })
+    expect((await reviewOf(earlier)).questions).toEqual(MTM_VISIT_EVALUATION_ORIGINAL_QUESTIONS)
+
+    // The agent's page: today's questions in today's words, then the deleted
+    // ones still rated in the period, in the words of their latest rating.
+    browserOf("user-joint-manager")
+    const ratings = await call(agentRatings, `${BASE}/agents/${ELVIN}/evaluations`, "GET", undefined, params(ELVIN))
+    expect(ratings.status).toBe(200)
+    const lines = ratings.body.data.criteria as Array<{ key: string; labels: Question["labels"]; asked: boolean; count: number; average: number | null }>
+    expect(lines.map((line) => [line.key, line.asked])).toEqual([
+      ["RAPPORT", true], ["NEEDS", true], ["PRESENTATION", true], ["CLOSING", true], [SAMPLES, true],
+      ["PREPARATION", false], ["OBJECTIONS", false],
+    ])
+    const line = (key: string) => lines.find((candidate) => candidate.key === key)!
+    expect(line(SAMPLES)).toMatchObject({ labels: v3[4].labels, count: 1, average: 4 })
+    expect(line("PREPARATION")).toMatchObject({ labels: renamed.labels, count: 3, average: 4 })
+    expect(line("OBJECTIONS")).toMatchObject({ labels: original("OBJECTIONS").labels, count: 1, average: 3 })
+  })
+
+  it("keeps one company's questions out of another's", async () => {
+    // The other company never edited its list: it sees the six, not this one's.
+    browserOf("user-abroad", "admin", OTHER_ORG)
+    const theirs = await call(settingsRoute.GET, `${BASE}/settings`)
+    expect(ids(theirs.body.data.visitEvaluationQuestions)).toEqual(ORIGINAL_IDS)
+
+    const now = new Date()
+    await bypass(async () => {
+      await prisma.mtmAgent.create({ data: { id: ABROAD_MANAGER, organizationId: OTHER_ORG, name: "Abroad Manager", role: "SUPERVISOR", teamId: "team-joint-abroad" } })
+      await prisma.mtmCustomer.create({ data: { id: "customer-joint-abroad", organizationId: OTHER_ORG, name: "Abroad Clinic", ...CUSTOMER_AT } })
+      const session = await prisma.mtmJointFieldSession.create({ data: { organizationId: OTHER_ORG, managerAgentId: ABROAD_MANAGER, agentId: OTHER_COMPANY, startedAt: now } })
+      await prisma.mtmVisit.create({
+        data: { id: "visit-joint-abroad", organizationId: OTHER_ORG, agentId: OTHER_COMPANY, customerId: "customer-joint-abroad", status: "CHECKED_OUT", checkInAt: now, checkOutAt: now },
+      })
+      await prisma.mtmVisitParticipant.create({
+        data: { organizationId: OTHER_ORG, visitId: "visit-joint-abroad", agentId: ABROAD_MANAGER, role: "OBSERVER", joinedAt: now, jointSessionId: session.id },
+      })
+    })
+    browser.current = null
+    caller.current = {
+      orgId: OTHER_ORG,
+      agentId: ABROAD_MANAGER,
+      userId: "",
+      role: "SUPERVISOR",
+      email: "abroad@example.test",
+      name: "Abroad Manager",
+      tenantCapabilities: { routeField: true, workforceHrm: true },
+    }
+    const state = await call(joint.GET, `${BASE}/mobile/manager/joint-visit`)
+    expect(state.status).toBe(200)
+    expect(ids(state.body.data.questions)).toEqual(ORIGINAL_IDS)
+    expect(JSON.stringify(state.body)).not.toMatch(/q-samples|образцами|Образцы/)
+
+    const foreign = await call(evaluate, `${BASE}/mobile/manager/visits/visit-joint-abroad/evaluation`, "PUT", { scores: { [SAMPLES]: 4 } }, params("visit-joint-abroad"))
+    expect([foreign.status, foreign.body.code]).toEqual([409, "MTM_VISIT_EVALUATION_QUESTIONS_CHANGED"])
+    expect(ids(foreign.body.data.questions)).toEqual(ORIGINAL_IDS)
+
+    const own = await call(evaluate, `${BASE}/mobile/manager/visits/visit-joint-abroad/evaluation`, "PUT", { scores: { OBJECTIONS: 4 } }, params("visit-joint-abroad"))
+    expect(own.status).toBe(200)
+    expect(ids(await storedQuestions("visit-joint-abroad") as Question[])).toEqual(ORIGINAL_IDS)
   })
 })

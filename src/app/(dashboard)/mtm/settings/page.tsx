@@ -22,8 +22,10 @@ import { ContactCardSettings } from "./contact-card-settings"
 import { ContactDictionarySettings } from "./contact-dictionary-settings"
 import { OrganizationAttributePackageSettings } from "./organization-attribute-package-settings"
 import { RouteTargetTypeSettings } from "./route-target-type-settings"
+import { VisitEvaluationQuestionSettings } from "./visit-evaluation-question-settings"
 import { COMMON_TIMEZONES } from "@/lib/timezone"
 import type { MtmRouteTargetType } from "@/lib/mtm/route-target-types"
+import type { MtmVisitEvaluationQuestion } from "@/lib/mtm/visit-evaluation-questions"
 import { CoveragePolicyAdmin } from "@/components/mtm/coverage-policy-admin"
 import { KpiPolicyAdmin } from "@/components/mtm/kpi-policy-admin"
 import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
@@ -36,7 +38,7 @@ import {
   type MtmSettingFieldError,
 } from "@/lib/mtm/settings-validation"
 
-type SettingValue = string | number | boolean | string[] | MtmRouteTargetType[] | null | undefined
+type SettingValue = string | number | boolean | string[] | MtmRouteTargetType[] | MtmVisitEvaluationQuestion[] | null | undefined
 type SettingsMap = Record<string, SettingValue>
 type UnitKey = "unitSeconds" | "unitMinutes" | "unitMeters" | "unitHour" | "unitPhotos"
 
@@ -519,7 +521,7 @@ export default function MtmSettingsPage() {
   // Which tab holds a setting. A change or a mistake in a tab that is not
   // open must not be invisible: its tab carries a mark, and a refused save
   // opens the tab with the first mistake instead of pointing at nothing.
-  const tabByKey = new Map<string, SettingsTab>([["routeTargetTypes", "routes"]])
+  const tabByKey = new Map<string, SettingsTab>([["routeTargetTypes", "routes"], ["visitEvaluationQuestions", "visit"]])
   for (const group of [...settingGroups, { ...advancedGroup, tab: "admin" as const }]) {
     if (!group.tab) continue
     for (const item of group.items) {
@@ -753,6 +755,16 @@ export default function MtmSettingsPage() {
               key={visitPolicyEditorKey}
               legacyPhotoRequired={loaded.photoRequired === true}
               aside={groupsOf("visit").map((group) => renderGroup(group, "half", "flex-1"))}
+            />
+          ) : null}
+
+          {/* What a manager rates on a joint visit (owner, 2026-10-21): the
+              whole width under the visit rules, saved with «Сохранить». */}
+          {name === "visit" ? (
+            <VisitEvaluationQuestionSettings
+              value={settings.visitEvaluationQuestions}
+              saved={loaded.visitEvaluationQuestions}
+              onChange={(value) => updateSetting("visitEvaluationQuestions", value)}
             />
           ) : null}
 

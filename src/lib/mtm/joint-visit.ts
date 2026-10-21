@@ -3,10 +3,13 @@ import type { Prisma, PrismaClient } from "@prisma/client"
 import { addDateKeyDays, currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
 import { isValidMtmAgentRole, resolveAgentScope } from "@/lib/mtm/territory-scope"
 import {
-  MTM_VISIT_EVALUATION_CRITERIA,
-  type MtmVisitEvaluationCriterion,
+  MTM_VISIT_EVALUATION_QUESTION_MAX_COUNT,
+  readVisitEvaluationQuestionSnapshot,
+  readVisitEvaluationScores,
+  visitEvaluationAverage,
+  type MtmVisitEvaluationQuestion,
   type MtmVisitEvaluationScores,
-} from "@/lib/mtm/visit-evaluation-criteria"
+} from "@/lib/mtm/visit-evaluation-questions"
 
 /**
  * Joint visit — a manager in the field with one agent (owner, 2026-10-20:
@@ -20,23 +23,58 @@ import {
  *    визит — вместе с руководителем?». A «yes» rides the offline check-in and
  *    writes the manager as an OBSERVER participant pointing at the session.
  *    The session alone makes no visit joint: the agent says which were.
- * 3. The manager rates only such a visit: six criteria, 1..5 each, a skipped
- *    criterion did not happen; a comment. From the check-in until the end of
- *    the next organization-local day.
+ * 3. The manager rates only such a visit: the company's questions
+ *    (visit-evaluation-questions.ts; six until it edits them), 1..5 each, a
+ *    skipped question did not come up; a comment. From the check-in until the
+ *    end of the next organization-local day. Each rating keeps the list it was
+ *    given against.
  *
  * The agent never reads a rating («агент оценку не видит»).
  */
 
-export { MTM_VISIT_EVALUATION_CRITERIA }
-export type { MtmVisitEvaluationCriterion, MtmVisitEvaluationScores }
+export { readVisitEvaluationScores, visitEvaluationAverage }
+export type { MtmVisitEvaluationQuestion, MtmVisitEvaluationScores }
 
 export const MTM_VISIT_EVALUATION_COMMENT_MAX = 2000
 
+/**
+ * The shape of a rating: question id → 1..5. Whether those ids are questions
+ * the company asks today is the next check (visitEvaluationScoresAgainst):
+ * it needs the company's list.
+ */
 export const VisitEvaluationInputSchema = z.object({
-  scores: z.partialRecord(z.enum(MTM_VISIT_EVALUATION_CRITERIA), z.number().int().min(1).max(5))
-    .refine((scores) => Object.keys(scores).length > 0, { message: "Rate at least one point" }),
+  scores: z.record(z.string().min(1).max(40), z.number().int().min(1).max(5))
+    .refine((scores) => Object.keys(scores).length > 0, { message: "Rate at least one point" })
+    .refine((scores) => Object.keys(scores).length <= MTM_VISIT_EVALUATION_QUESTION_MAX_COUNT, { message: "Too many points" }),
   comment: z.string().max(MTM_VISIT_EVALUATION_COMMENT_MAX).optional().nullable(),
 }).strict()
+
+/**
+ * The scores of a new rating against the company's list of today. A question
+ * the company no longer asks — deleted after the phone loaded the sheet, or
+ * never its own — refuses the whole rating rather than losing the score the
+ * manager gave: he is told the list changed and rates again.
+ */
+export function visitEvaluationScoresAgainst(
+  scores: Record<string, number>,
+  questions: readonly MtmVisitEvaluationQuestion[],
+): { ok: true; scores: MtmVisitEvaluationScores } | { ok: false; unknown: string[] } {
+  const asked = new Set(questions.map((question) => question.id))
+  const unknown = Object.keys(scores).filter((id) => !asked.has(id))
+  if (unknown.length) return { ok: false, unknown }
+  return { ok: true, scores: readVisitEvaluationScores(scores, questions) }
+}
+
+/** A stored rating as every screen shows it: its own list, its scores on that list, their mean. */
+export function storedVisitEvaluation(row: { scores: unknown; questions: unknown }): {
+  questions: MtmVisitEvaluationQuestion[]
+  scores: MtmVisitEvaluationScores
+  average: number | null
+} {
+  const questions = readVisitEvaluationQuestionSnapshot(row.questions)
+  const scores = readVisitEvaluationScores(row.scores, questions)
+  return { questions, scores, average: visitEvaluationAverage(scores) }
+}
 
 /** A phone's clock and the server's disagree by this much without anyone lying. */
 const CLOCK_SLACK_MS = 5 * 60_000
@@ -67,24 +105,6 @@ export function jointSessionCovers(session: SessionTimes, at: Date, timezone: st
 /** The last instant a rating can be given or changed: the end of the day after the check-in. */
 export function visitEvaluationDeadline(checkInAt: Date, timezone: string): Date {
   return localDateKeyToUtc(addDateKeyDays(currentDateKey(checkInAt, timezone), 2), timezone)
-}
-
-/** Only the known criteria with a 1..5 integer; anything else in a stored row is ignored. */
-export function readVisitEvaluationScores(value: unknown): MtmVisitEvaluationScores {
-  const scores: MtmVisitEvaluationScores = {}
-  if (!value || typeof value !== "object" || Array.isArray(value)) return scores
-  for (const key of MTM_VISIT_EVALUATION_CRITERIA) {
-    const score = (value as Record<string, unknown>)[key]
-    if (typeof score === "number" && Number.isInteger(score) && score >= 1 && score <= 5) scores[key] = score
-  }
-  return scores
-}
-
-/** The mean of the rated criteria, to one decimal; null when none is rated. */
-export function visitEvaluationAverage(scores: MtmVisitEvaluationScores): number | null {
-  const values = MTM_VISIT_EVALUATION_CRITERIA.map((key) => scores[key]).filter((score): score is number => typeof score === "number")
-  if (!values.length) return null
-  return Math.round((values.reduce((sum, score) => sum + score, 0) / values.length) * 10) / 10
 }
 
 type Db = PrismaClient | Prisma.TransactionClient

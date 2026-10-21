@@ -9,11 +9,11 @@ import { writeMtmAudit } from "@/lib/mtm-audit"
 import {
   MTM_VISIT_EVALUATION_COMMENT_MAX,
   VisitEvaluationInputSchema,
-  readVisitEvaluationScores,
-  visitEvaluationAverage,
+  storedVisitEvaluation,
   visitEvaluationDeadline,
+  visitEvaluationScoresAgainst,
 } from "@/lib/mtm/joint-visit"
-import { organizationTimezone } from "@/lib/mtm/joint-visit-manager"
+import { organizationJointVisitSettings } from "@/lib/mtm/joint-visit-manager"
 
 function refuse(status: number, code: string, error: string) {
   return NextResponse.json({ success: false, error, code }, { status })
@@ -26,6 +26,11 @@ function refuse(status: number, code: string, error: string) {
  * Only on a visit the agent himself marked as joint with this manager, only
  * while its agent is in his team, and only until the end of the day after the
  * check-in. Saving again replaces his rating; it stays one row per manager.
+ *
+ * The points are the company's questions of today (MTM setting
+ * `visitEvaluationQuestions`): a score for a question it no longer asks
+ * refuses the save with the list as it is now, and the saved row keeps a copy
+ * of that list — a later edit of the questions changes no rating given.
  */
 export const PUT = withMobileRls(async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const forbidden = requireMobileCapability(auth, "TEAM_READ")
@@ -56,12 +61,21 @@ export const PUT = withMobileRls(async (req, auth, { params }: { params: Promise
     if (visit.agentId === auth.agentId || (scope.agentIds && !scope.agentIds.includes(visit.agentId))) {
       return refuse(404, "MTM_VISIT_EVALUATION_NOT_JOINT", "The agent did not mark this visit as joint with you")
     }
-    const timezone = await organizationTimezone(auth.orgId)
+    const { timezone, questions } = await organizationJointVisitSettings(auth.orgId)
     if (Date.now() >= visitEvaluationDeadline(visit.checkInAt, timezone).getTime()) {
       return refuse(409, "MTM_VISIT_EVALUATION_CLOSED", "The rating of this visit can no longer be changed")
     }
 
-    const scores = readVisitEvaluationScores(parsed.data.scores)
+    const checked = visitEvaluationScoresAgainst(parsed.data.scores, questions)
+    if (!checked.ok) {
+      return NextResponse.json({
+        success: false,
+        error: "The company's evaluation questions have changed",
+        code: "MTM_VISIT_EVALUATION_QUESTIONS_CHANGED",
+        data: { questions },
+      }, { status: 409 })
+    }
+    const scores = checked.scores
     const comment = parsed.data.comment
       ? sanitizeOperationalText(parsed.data.comment, MTM_VISIT_EVALUATION_COMMENT_MAX) || null
       : null
@@ -73,10 +87,11 @@ export const PUT = withMobileRls(async (req, auth, { params }: { params: Promise
         agentId: visit.agentId,
         evaluatorAgentId: auth.agentId,
         scores: scores as Prisma.InputJsonObject,
+        questions: questions as unknown as Prisma.InputJsonArray,
         comment,
       },
-      update: { scores: scores as Prisma.InputJsonObject, comment },
-      select: { id: true, scores: true, comment: true, createdAt: true, updatedAt: true },
+      update: { scores: scores as Prisma.InputJsonObject, questions: questions as unknown as Prisma.InputJsonArray, comment },
+      select: { id: true, scores: true, questions: true, comment: true, createdAt: true, updatedAt: true },
     })
 
     // The journal says that a rating was given, not what it was: the rated
@@ -92,13 +107,14 @@ export const PUT = withMobileRls(async (req, auth, { params }: { params: Promise
       req,
     }).catch((error) => console.warn("[MTM/mobile/manager/visits/[id]/evaluation PUT] audit failed", error))
 
-    const savedScores = readVisitEvaluationScores(saved.scores)
+    const stored = storedVisitEvaluation(saved)
     return NextResponse.json({
       success: true,
       data: {
         evaluation: {
-          scores: savedScores,
-          average: visitEvaluationAverage(savedScores),
+          scores: stored.scores,
+          questions: stored.questions,
+          average: stored.average,
           comment: saved.comment,
           updatedAt: saved.updatedAt.toISOString(),
         },

@@ -6,12 +6,22 @@ import { useLocale, useTranslations } from "next-intl"
 import { AlertCircle, UsersRound } from "lucide-react"
 import { Hint } from "@/components/hint"
 import { formatDateTime } from "@/lib/format-date"
-import { MTM_VISIT_EVALUATION_CRITERIA, type MtmVisitEvaluationScores } from "@/lib/mtm/visit-evaluation-criteria"
+import {
+  MTM_VISIT_EVALUATION_ORIGINAL_QUESTIONS,
+  visitEvaluationQuestionLabel,
+  type MtmVisitEvaluationQuestion,
+  type MtmVisitEvaluationQuestionLabels,
+  type MtmVisitEvaluationScores,
+} from "@/lib/mtm/visit-evaluation-questions"
 
 /*
  * Joint visit in the office's MTM (owner-approved mockup, 2026-10-20): the
  * manager's rating on a visit card, and «Оценки руководителя» on the agent's
  * page. Both are for the office; an agent never reads a rating.
+ *
+ * A rating is shown by the questions it was given against (its own list, in
+ * its own words), never by the company's list of today: renaming or deleting
+ * a question in «Parametrlər» changes no rating already given.
  */
 
 type Translator = (key: string, values?: Record<string, string | number>) => string
@@ -20,6 +30,8 @@ export interface JointVisitReview {
   manager: { id: string; name: string | null }
   evaluations: Array<{
     evaluator: { id: string; name: string }
+    /** The questions this rating was given against; absent from a server older than the lists. */
+    questions?: MtmVisitEvaluationQuestion[]
     scores: MtmVisitEvaluationScores
     average: number | null
     comment: string | null
@@ -34,7 +46,14 @@ export interface AgentEvaluationsSummary {
   jointVisits: number
   evaluated: number
   average: number | null
-  criteria: Array<{ key: string; count: number; average: number | null }>
+  criteria: Array<{
+    key: string
+    labels?: MtmVisitEvaluationQuestionLabels
+    /** False for a question the company no longer asks, shown while a rating in the period has it. */
+    asked?: boolean
+    count: number
+    average: number | null
+  }>
   recent: Array<{
     visitId: string
     checkInAt: string
@@ -121,11 +140,11 @@ export function JointVisitReviewBlock({ jointVisit, timezone }: { jointVisit: Jo
             <BigScore value={evaluation.average} t={t} />
           </div>
           <dl className="mt-2">
-            {MTM_VISIT_EVALUATION_CRITERIA.map((key) => {
-              const score = evaluation.scores[key]
+            {(evaluation.questions?.length ? evaluation.questions : MTM_VISIT_EVALUATION_ORIGINAL_QUESTIONS).map((question) => {
+              const score = evaluation.scores[question.id]
               return (
-                <div key={key} className="grid grid-cols-[1fr_auto_1.75rem] items-center gap-3 py-1 text-sm">
-                  <dt className="text-foreground">{t(`criteria.${key}`)}</dt>
+                <div key={question.id} className="grid grid-cols-[1fr_auto_1.75rem] items-center gap-3 py-1 text-sm" data-testid={`mtm-visit-evaluation-question-${question.id}`}>
+                  <dt className="text-foreground">{visitEvaluationQuestionLabel(question, locale)}</dt>
                   {typeof score === "number" ? (
                     <>
                       <dd><ScoreDots value={score} label={t("scoreLabel", { score: scoreText(score) })} /></dd>
@@ -194,6 +213,11 @@ export function MtmAgentEvaluations({ state }: { state: ReturnType<typeof useAge
   const lowest = rated.length >= 2 ? Math.min(...rated.map((criterion) => criterion.average ?? 5)) : null
   const weakest = lowest !== null && rated.filter((criterion) => criterion.average === lowest).length === 1 ? lowest : null
   const day = (value: string) => formatDateTime(value, locale, { day: "numeric", month: "short", timeZone: data.timezone }) || "—"
+  // A server older than the lists sends bare ids: those are the original six.
+  const criterionLabel = (criterion: AgentEvaluationsSummary["criteria"][number]) => {
+    const labels = criterion.labels ?? MTM_VISIT_EVALUATION_ORIGINAL_QUESTIONS.find((question) => question.id === criterion.key)?.labels
+    return labels ? visitEvaluationQuestionLabel({ labels }, locale) : criterion.key
+  }
 
   if (data.evaluated === 0) {
     return (
@@ -220,10 +244,16 @@ export function MtmAgentEvaluations({ state }: { state: ReturnType<typeof useAge
         <dl className="mt-3 grid gap-x-8 lg:grid-cols-2">
           {data.criteria.map((criterion) => {
             const isWeakest = weakest !== null && criterion.average === weakest
+            const label = criterionLabel(criterion)
             return (
               <div key={criterion.key} className="grid grid-cols-[1fr_auto_2.25rem] items-center gap-3 py-1.5 text-sm" data-testid={`mtm-agent-evaluation-${criterion.key}`}>
                 <dt className={isWeakest ? "font-semibold text-amber-700 dark:text-amber-300" : "text-foreground"}>
-                  {isWeakest ? t("weakest", { label: t(`criteria.${criterion.key}`) }) : t(`criteria.${criterion.key}`)}
+                  {isWeakest ? t("weakest", { label }) : label}
+                  {criterion.asked === false ? (
+                    <Hint text={t("noLongerAskedHint")}>
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">· {t("noLongerAsked")}</span>
+                    </Hint>
+                  ) : null}
                 </dt>
                 {criterion.average !== null ? (
                   <>
