@@ -16,7 +16,8 @@
  * resolves it via `useTranslations("nav")`, exactly like the sidebar.
  */
 import { navItems, NAV_GROUP_ORDER, type NavItem } from "./nav-items"
-import type { ModuleId } from "./modules"
+import { withRequiredModules, type ModuleId } from "./modules"
+import { EDITABLE_TENANT_CAPABILITIES, type EditableTenantCapability, type TenantEditorCapabilities } from "./tenant-editor-entitlements"
 import { isCrmCapabilityAvailable } from "./crm-product-availability"
 import {
   entitlementKeysForCapability,
@@ -113,24 +114,9 @@ export function clearAllModules(features: readonly string[]): string[] {
   return features.filter((f) => !TOGGLEABLE_MODULE_SET.has(f))
 }
 
-/* ── capability-gated areas ───────────────────────────────────────────────
- *
- * Some sidebar areas are gated by a tenant CAPABILITY rather than a group
- * module: `capability` for areas that have no group module at all (HRM), and
- * `tenantCapability` for a capability layered inside a historical group module
- * (Route & Field). Neither appears in `SIDEBAR_SECTIONS`, and that exclusion is
- * deliberate — a Workforce grant must not be mistaken for an MTM module
- * toggle, and the tests above lock that separation.
- *
- * The consequence, though, was that the superadmin tenant editor offered no
- * way to turn HRM on or off at all: the whole group simply had no control
- * anywhere, which is what the owner ran into. So the areas are catalogued
- * here, separately, for a separate card in that editor.
- *
- * What a toggle writes is the capability's own entitlement key, the same
- * string `resolveTenantCapability` reads out of the tenant's modules/features —
- * so this grants exactly what the capability system already understands, and
- * invents no parallel vocabulary.
+/* Capability-specific catalog retained for callers that need entitlement ids.
+ * The tenant editor uses TENANT_MODULE_SECTIONS below to present both gate
+ * types together without conflating their independent permissions.
  */
 
 export interface AdminCapabilityCatalogItem {
@@ -197,4 +183,62 @@ export function enableCapability(features: readonly string[], capabilityId: stri
 export function disableCapability(features: readonly string[], capabilityId: string): string[] {
   const keys = new Set(entitlementKeysForCapabilityId(capabilityId))
   return features.filter((feature) => !keys.has(feature))
+}
+
+export type TenantModuleControl =
+  | { kind: "module"; id: ModuleId }
+  | { kind: "capability"; id: EditableTenantCapability }
+
+export interface TenantModuleSection {
+  group: string
+  controls: TenantModuleControl[]
+  items: { control: TenantModuleControl; tKey: string; href: string }[]
+}
+
+/** One presentation list; a capability takes precedence over its legacy module. */
+export const TENANT_MODULE_SECTIONS: TenantModuleSection[] = NAV_GROUP_ORDER.map((group) => {
+  const items = navItems.filter((item) => item.group === group).flatMap((item) => {
+    const capability = capabilityOf(item)
+    let control: TenantModuleControl
+    if (capability) {
+      const id = EDITABLE_TENANT_CAPABILITIES.find((id) => id === capability)
+      if (!id || !isCrmCapabilityAvailable(id)) return []
+      control = { kind: "capability", id }
+    } else if (item.module) {
+      control = { kind: "module", id: item.module }
+    } else return []
+    return [{ control, tKey: item.tKey, href: item.href }]
+  })
+  return { group, items, controls: [...new Map(items.map(({ control }) => [control.id, control])).values()] }
+}).filter((section) => section.items.length > 0)
+
+export const TENANT_MODULE_CONTROLS = [...new Map(
+  TENANT_MODULE_SECTIONS.flatMap((section) => section.controls).map((control) => [control.id, control]),
+).values()]
+
+export interface TenantModuleSelection {
+  features: string[]
+  capabilities: TenantEditorCapabilities
+}
+
+export function isTenantModuleSelected(selection: TenantModuleSelection, control: TenantModuleControl): boolean {
+  return control.kind === "capability" ? selection.capabilities[control.id] : selection.features.includes(control.id)
+}
+
+export function setTenantModuleSelection(
+  selection: TenantModuleSelection,
+  controls: readonly TenantModuleControl[],
+  enabled: boolean,
+): TenantModuleSelection {
+  const modules = new Set(controls.filter((control) => control.kind === "module").map((control) => control.id))
+  const capabilities = { ...selection.capabilities }
+  for (const control of controls) {
+    if (control.kind === "capability") capabilities[control.id] = enabled
+  }
+  return {
+    features: withRequiredModules(enabled
+      ? [...selection.features, ...modules]
+      : selection.features.filter((feature) => !modules.has(feature as ModuleId))),
+    capabilities,
+  }
 }
