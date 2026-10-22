@@ -2,7 +2,7 @@ import path from "node:path"
 import { randomBytes } from "node:crypto"
 import { mkdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises"
 import sharp from "sharp"
-import { decodeTenantFileBytes } from "@/lib/crypto/tenant-file-encryption"
+import { decodeTenantFileBytes, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import type { MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
 
 /**
@@ -199,7 +199,8 @@ export async function resolveDiskMtmPhotoThumbnail(input: {
     pending = withRenderSlot(async () => {
       const originalBytes = decodeTenantFileBytes(input.organizationId, await readFile(input.originalPath))
       const bytes = await decodeThumbnail(originalBytes, input.width)
-      if (bytes) await writeCacheAtomically(cachePath, bytes)
+      // The cache is as sensitive as the photo: it is sealed like the original.
+      if (bytes) await writeCacheAtomically(cachePath, sealTenantFile(input.organizationId, bytes))
       else rememberUndecodable(failureKey)
       return bytes
     }).finally(() => inflight.delete(cachePath))

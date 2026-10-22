@@ -7,7 +7,7 @@
  * subdir policy, and path validation form the serving boundary.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest, NextResponse } from "next/server"
 
 vi.mock("fs/promises", () => ({
@@ -51,7 +51,6 @@ import { GET } from "@/app/api/v1/uploads/[...path]/route"
 import { stat, readFile } from "fs/promises"
 import { createReadStream } from "fs"
 import { Readable } from "stream"
-import { resetMasterKekCache } from "@/lib/crypto/tenant-pii-encryption"
 import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import { orgHasModule, requireSessionAuth } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
@@ -574,15 +573,6 @@ describe("GET /api/v1/uploads/[...path]", () => {
 
 describe("encrypted files at rest", () => {
   const PLAIN = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(70_000, 7)])
-
-  beforeEach(() => {
-    process.env.TENANT_PII_MASTER_KEY = "0123456789abcdef".repeat(4) // gitleaks:allow — synthetic test key
-    resetMasterKekCache()
-  })
-  afterEach(() => {
-    delete process.env.TENANT_PII_MASTER_KEY
-    resetMasterKekCache()
-  })
 
   function storedOnDisk(bytes: Buffer) {
     vi.mocked(stat).mockResolvedValue({ isFile: () => true, size: bytes.byteLength } as never)

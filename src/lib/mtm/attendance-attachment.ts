@@ -7,7 +7,7 @@ import sharp from "sharp"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { resolveRuntimePaths } from "@/lib/runtime-paths"
-import { decodeTenantFileBytes } from "@/lib/crypto/tenant-file-encryption"
+import { decodeTenantFileBytes, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import { AttendanceRequestDetailsSchema, AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { lockAttendanceRequests, requireAttendanceSelf, type AttendanceSelf } from "@/lib/mtm/attendance-request-store"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
@@ -54,7 +54,7 @@ export async function uploadAttendanceDocument(self: AttendanceSelf, raw: unknow
     const key = randomBytes(24).toString("hex")
     const location = attendanceAttachmentPath(key)
     await mkdir(path.dirname(location), { recursive: true, mode: 0o700 })
-    await writeFile(location, prepared.bytes, { flag: "wx", mode: 0o600 })
+    await writeFile(location, sealTenantFile(self.organizationId, prepared.bytes), { flag: "wx", mode: 0o600 })
     // On an ambiguous commit response preserve this private file: deleting it
     // could break an already committed request. No URL exists without a DB row.
     const record = await db.mtmAttendanceAttachment.create({ data: {

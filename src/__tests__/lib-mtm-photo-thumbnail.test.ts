@@ -3,8 +3,7 @@ import os from "node:os"
 import path from "node:path"
 import sharp from "sharp"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { resetMasterKekCache } from "@/lib/crypto/tenant-pii-encryption"
-import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
+import { decodeTenantFileBytes, isTenantFileEnvelope, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import {
   mtmPhotoThumbnailUrl,
   parseMtmPhotoThumbnailWidth,
@@ -108,13 +107,9 @@ describe("resolveDiskMtmPhotoThumbnail", () => {
   })
   afterEach(async () => {
     await rm(root, { recursive: true, force: true })
-    delete process.env.TENANT_PII_MASTER_KEY
-    resetMasterKekCache()
   })
 
   it("renders from a tenant-encrypted original and reads an encrypted cache entry", async () => {
-    process.env.TENANT_PII_MASTER_KEY = "0123456789abcdef".repeat(4) // gitleaks:allow — synthetic test key
-    resetMasterKekCache()
     await writeFile(originalPath, sealTenantFile(ORG, await jpeg(1600, 1200)))
 
     const first = await resolveDiskMtmPhotoThumbnail({ organizationId: ORG, uploadsRoot: root, originalPath, fileName, width: 480, ifNoneMatch: null })
@@ -145,7 +140,10 @@ describe("resolveDiskMtmPhotoThumbnail", () => {
     const first = await resolveDiskMtmPhotoThumbnail(request)
     expect(first.kind).toBe("ok")
     const cachePath = mtmPhotoThumbnailCachePath(root, fileName, 480)
-    const cached = await readFile(cachePath)
+    // The cache is sealed like the original; decoded, it is exactly what was served.
+    const stored = await readFile(cachePath)
+    expect(isTenantFileEnvelope(stored)).toBe(true)
+    const cached = decodeTenantFileBytes(ORG, stored)
     expect(first.kind === "ok" && first.bytes.equals(cached)).toBe(true)
     expect((await sharp(cached).metadata()).width).toBe(480)
 
