@@ -1471,8 +1471,8 @@ async function handleAiAutoReply(
   }
 
   // Captured before any ticket work this turn — syncWhatsAppExchangeToTicket only appends to a
-  // ticket created EARLIER than this, so a ticket created during this same turn (whose snapshot
-  // already holds this exchange) is never double-appended.
+  // ticket created EARLIER than this. A ticket created this turn receives its first bot reply
+  // separately, only after the provider accepts the send.
   const turnStart = new Date()
   // The SUPPORT agent's prompt customizes Da Vinci. Must filter by agentType="support" — a bare
   // newest-active findFirst would grab the omnichannel **inbox** persona (e.g. "Gobustone" + its
@@ -1829,8 +1829,9 @@ async function handleAiAutoReply(
       console.log(`[WA AI] Reply drafted (${gateDecision.reason}) for ${sanitizeLog(waPhone)} — awaiting operator review`)
       return
     }
-    // Handle escalation — create ticket from WhatsApp chat
-    // Include this prepared reply for first-turn escalation; persist it only after delivery.
+    // Handle escalation — create ticket from WhatsApp chat. The prepared reply counts toward
+    // first-turn escalation, but enters the ticket's transcript only after the provider accepts it.
+    let createdTicketSnapshot: { id: string; beforeReply: string; afterReply: string } | null = null
     const messageCount = await prisma.aiChatMessage.count({ where: { sessionId: session.id } }) + 1
     // Guard 2: don't create a second ticket for the same WhatsApp number within
     // 1 hour of the previous one. Scope by `sourceMeta.phone` (the canonical WA
@@ -1909,16 +1910,18 @@ async function handleAiAutoReply(
         // ticketUrgency may be "normal" (not a policy tier); normalize the
         // stored priority so the SLA cron's increase_priority can't downgrade it.
         const normalizedPriority = normalizeTicketPriority(ticketUrgency)
+        const descriptionHead = [
+          WHATSAPP_CHAT_DESCRIPTION_HEAD,
+          `Клиент: ${senderName} (+${waPhone})`,
+          `Категория: ${ticketCategoryResolved} · Срочность: ${ticketUrgency}`,
+          `Триггеры: ${reasons.join(", ") || "—"}`,
+        ]
+        const description = chatTicketDescription(descriptionHead, chatMessages)
         const ticket = await createTicketWithAssignment({
           organizationId,
           ticketNumberPrefix: "DV",
           subject,
-          description: chatTicketDescription([
-            WHATSAPP_CHAT_DESCRIPTION_HEAD,
-            `Клиент: ${senderName} (+${waPhone})`,
-            `Категория: ${ticketCategoryResolved} · Срочность: ${ticketUrgency}`,
-            `Триггеры: ${reasons.join(", ") || "—"}`,
-          ], chatMessages),
+          description,
           priority: normalizedPriority,
           initialStatus: "open",
           category: ticketCategoryResolved,
@@ -1934,6 +1937,11 @@ async function handleAiAutoReply(
           requesterExternalId: contactId || waPhone,
           requesterMeta: { source: "whatsapp", urgency: ticketUrgency, reasons },
         })
+        createdTicketSnapshot = {
+          id: ticket.id,
+          beforeReply: description,
+          afterReply: chatTicketDescription(descriptionHead, [...chatMessages, { role: "assistant", content: aiReply }]),
+        }
 
         // Attach complaint metadata so the ticket shows up in /complaints registry.
         // Risk level + responsible department are filled asynchronously by the Haiku classifier.
@@ -2002,20 +2010,36 @@ async function handleAiAutoReply(
     if (result.success) {
       await prisma.aiChatMessage.create({ data: { sessionId: session.id, role: "assistant", content: aiReply } })
       await prisma.aiChatSession.update({ where: { id: session.id }, data: { messagesCount: { increment: 2 } } })
+      if (createdTicketSnapshot) {
+        const snapshot = createdTicketSnapshot
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+          // Preserve an operator's concurrent edit; the accepted reply is still a comment.
+          await tx.ticket.updateMany({
+            where: { id: snapshot.id, organizationId, description: snapshot.beforeReply },
+            data: { description: snapshot.afterReply },
+          })
+          await tx.ticketComment.create({
+            data: { ticketId: snapshot.id, comment: `[Da Vinci Bot] ${aiReply}`, isInternal: false },
+          })
+        }).catch((err: unknown) => console.error("[WA AI] accepted reply ticket sync failed:", err))
+      }
     }
 
     console.log(`[WA AI] Reply to ${sanitizeLog(waPhone)}: ${sanitizeLog(aiReply.slice(0, 80))}... | ${result.success ? "OK" : sanitizeLog(String(result.error))}`)
 
     // Keep an already-open ticket's thread in sync: append this customer message + the bot reply
     // so an agent working the ticket sees the ongoing conversation (the creation-time snapshot is
-    // otherwise stale). No-op when this turn just created the ticket (createdAt >= turnStart).
-    await syncWhatsAppExchangeToTicket({
-      orgId: organizationId,
-      phone: waPhone,
-      before: turnStart,
-      customerMessage: opts.customerMessageAlreadyTicketed ? null : userMessage,
-      botReply: result.success ? aiReply : null,
-    })
+    // otherwise stale). A new ticket was synchronized directly above; do not copy its reply
+    // into an older ticket for the same customer as well.
+    if (!createdTicketSnapshot) {
+      await syncWhatsAppExchangeToTicket({
+        orgId: organizationId,
+        phone: waPhone,
+        before: turnStart,
+        customerMessage: opts.customerMessageAlreadyTicketed ? null : userMessage,
+        botReply: result.success ? aiReply : null,
+      })
+    }
   } catch (err: unknown) {
     console.error(`[WA AI] Claude API error:`, err instanceof Error ? err.message : String(err))
   }
