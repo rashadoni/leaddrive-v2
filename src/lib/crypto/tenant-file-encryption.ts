@@ -264,7 +264,7 @@ export async function openTenantFileStream(
 ): Promise<{ size: number; encrypted: boolean; stream: Readable }> {
   const source = createReadStream(filePath, { highWaterMark: 64 * 1024 })
   const iterator = source[Symbol.asyncIterator]() as AsyncIterator<Buffer>
-  let head = Buffer.alloc(0)
+  let head: Buffer = Buffer.alloc(0)
   try {
     while (head.byteLength < TENANT_FILE_MAX_HEADER_BYTES) {
       const next = await iterator.next()
