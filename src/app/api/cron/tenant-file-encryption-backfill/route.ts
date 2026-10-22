@@ -41,18 +41,19 @@ const HARD_CAP = 5000
 // design and stay plain (see tenant-file-readers-guard.test.ts).
 const PATH_ENCODED_SUBDIRS = ["inbox", "web-chat", "whatsapp", "telegram", "contract-images", "avatars", "mtm-invoices"] as const
 
+// The exported prisma client is untyped here, so rows are typed at the call.
 function ownersBy<T extends { organizationId: string }>(key: (row: T) => string) {
-  return (rows: T[]) => new Map(rows.map((row) => [key(row), row.organizationId]))
+  return (rows: T[]) => new Map<string, string>(rows.map((row) => [key(row), row.organizationId]))
 }
 
 function locations(): TenantFileLocation[] {
   const photoUrl = (name: string) => `/uploads/mtm-photos/${name}`
   const photoOwners = async (names: string[]) => {
-    const rows = await prisma.mtmPhoto.findMany({
+    const rows: Array<{ url: string; organizationId: string }> = await prisma.mtmPhoto.findMany({
       where: { url: { in: names.map(photoUrl) } },
       select: { url: true, organizationId: true },
     })
-    return new Map(rows.map((row) => [row.url.slice(photoUrl("").length), row.organizationId]))
+    return new Map<string, string>(rows.map((row) => [row.url.slice(photoUrl("").length), row.organizationId]))
   }
   const photosDirectory = runtimePublicUploadDirectory("mtm-photos")
 

@@ -26,7 +26,7 @@ const ORG_B = "cmorgbbbbbbbbbbbbbbbbbbbb"
 let root: string
 const original = new Map<string, Buffer>()
 
-async function put(relative: string, bytes = randomBytes(70_000)) {
+async function put(relative: string, bytes: Buffer = randomBytes(70_000)) {
   const full = path.join(root, relative)
   await mkdir(path.dirname(full), { recursive: true })
   await writeFile(full, bytes)
