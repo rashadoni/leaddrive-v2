@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
+// This route only uses the transaction enum; its DB boundary is mocked below.
+vi.mock("@prisma/client", () => ({ Prisma: { TransactionIsolationLevel: { ReadCommitted: "ReadCommitted" } } }))
+
 const mocks = vi.hoisted(() => ({
   callLogFindFirst: vi.fn(),
   callLogUpdateMany: vi.fn(),
@@ -87,6 +90,7 @@ function unclaimedCall(ringingForMs: number, overrides: Record<string, unknown> 
 
 function stationLine(settings: Record<string, unknown>) {
   mocks.channelConfigFindMany.mockResolvedValue([{
+    id: "line-1",
     settings: {
       provider: "asterisk",
       voiceAgentEnabled: true,
@@ -236,6 +240,7 @@ describe("PBX inbound browser readiness", () => {
         callMode: "human",
         status: "ringing",
         endedAt: null,
+        AND: [{ OR: [{ channelConfigId: null }, { channelConfigId: "line-1" }] }],
         OR: [
           { browserAnswerClaimToken: null },
           { browserAnswerClaimExpiresAt: null },
@@ -244,6 +249,7 @@ describe("PBX inbound browser readiness", () => {
       }),
       data: {
         callMode: "ai",
+        channelConfigId: "line-1",
         status: "answering",
         userId: null,
         claimedByUserId: null,

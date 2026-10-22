@@ -10,18 +10,25 @@ import { readInboundAnswerPolicy, type InboundAnswerPolicy } from "@/lib/voip/in
  * then speaks come from one place. Must run inside the tenant's RLS scope.
  */
 export async function loadInboundAnswerPolicy(organizationId: string): Promise<InboundAnswerPolicy> {
+  return (await loadInboundAnswerSelection(organizationId)).policy
+}
+
+/** Keep the selected line with its policy; the call must retain this identity
+ * when it is handed to AI, rather than guessing the newest line during search. */
+export async function loadInboundAnswerSelection(organizationId: string): Promise<{
+  channelConfigId: string | null; policy: InboundAnswerPolicy
+}> {
   const configs = await prisma.channelConfig.findMany({
     where: { organizationId, channelType: "voip", isActive: true },
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-    select: { settings: true },
+    select: { id: true, settings: true },
   })
   const asterisk = configs
-    .map((config: { settings: unknown }) => config.settings)
-    .filter((settings: unknown) => (
-      Boolean(settings)
-      && typeof settings === "object"
-      && (settings as Record<string, unknown>).provider === "asterisk"
+    .filter((config: { id: string; settings: unknown }) => (
+      Boolean(config.settings)
+      && typeof config.settings === "object"
+      && (config.settings as Record<string, unknown>).provider === "asterisk"
     )) as Record<string, unknown>[]
-  const chosen = asterisk.find((settings) => settings.voiceAgentEnabled === true) ?? asterisk[0]
-  return readInboundAnswerPolicy(chosen)
+  const chosen = asterisk.find((config) => (config.settings as Record<string, unknown>).voiceAgentEnabled === true) ?? asterisk[0]
+  return { channelConfigId: typeof chosen?.id === "string" ? chosen.id : null, policy: readInboundAnswerPolicy(chosen?.settings) }
 }
