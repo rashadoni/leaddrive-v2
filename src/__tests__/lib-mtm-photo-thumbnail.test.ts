@@ -113,7 +113,7 @@ describe("resolveDiskMtmPhotoThumbnail", () => {
   })
 
   it("renders from a tenant-encrypted original and reads an encrypted cache entry", async () => {
-    process.env.TENANT_PII_MASTER_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    process.env.TENANT_PII_MASTER_KEY = "0123456789abcdef".repeat(4) // gitleaks:allow — synthetic test key
     resetMasterKekCache()
     await writeFile(originalPath, sealTenantFile(ORG, await jpeg(1600, 1200)))
 

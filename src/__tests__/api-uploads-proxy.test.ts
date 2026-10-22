@@ -576,7 +576,7 @@ describe("encrypted files at rest", () => {
   const PLAIN = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(70_000, 7)])
 
   beforeEach(() => {
-    process.env.TENANT_PII_MASTER_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    process.env.TENANT_PII_MASTER_KEY = "0123456789abcdef".repeat(4) // gitleaks:allow — synthetic test key
     resetMasterKekCache()
   })
   afterEach(() => {

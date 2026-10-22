@@ -17,8 +17,9 @@ import {
   sealTenantFile,
 } from "@/lib/crypto/tenant-file-encryption"
 
-const TEST_KEK = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-const ALT_KEK = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+// Synthetic 32-byte keys, built rather than written out so they never look like a committed secret.
+const TEST_KEK = "0123456789abcdef".repeat(4) // gitleaks:allow — synthetic test key
+const ALT_KEK = "fedcba9876543210".repeat(4) // gitleaks:allow — synthetic test key
 const ORG = "cmorgaaaaaaaaaaaaaaaaaaaa"
 const OTHER_ORG = "cmorgbbbbbbbbbbbbbbbbbbbb"
 const CHUNK = 4096
