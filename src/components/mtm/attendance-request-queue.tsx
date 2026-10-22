@@ -129,7 +129,7 @@ export function MtmAttendanceRequestQueue() {
         <Button className="min-h-11" variant="outline" onClick={() => void load()} disabled={busy}>{t("requestsRefresh")}</Button>
       </div>
       {message && <p role="status" className="py-3 text-sm">{message}</p>}
-      {loadedAt && <p className="pb-3 text-xs text-muted-foreground" data-testid="attendance-requests-freshness">{t("requestsLoadedAt", { time: createDateFormatter(locale, { timeStyle: "short" }).format(new Date(loadedAt)) })}</p>}
+      {loadedAt && <p className="pb-3 text-xs text-muted-foreground" data-testid="attendance-requests-freshness">{t("requestsLoadedAt", { time: createDateFormatter(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(loadedAt)) })}</p>}
       {!busy && !message && items.length === 0 && <p className="py-8 text-sm text-muted-foreground">{t("requestsEmpty")}</p>}
       <ul className="divide-y divide-border">
         {items.map((item) => <li key={item.id} className="py-4" data-testid={`attendance-request-${item.id}`}>
