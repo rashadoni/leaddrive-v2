@@ -69,7 +69,7 @@
     "bullmq": "^5.76.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "csv-parse": "^6.2.1",
+    "csv-parse": "^7.0.2",
     "d3-force": "^3.0.0",
     "date-fns": "^4.1.0",
     "exceljs": "^4.4.0",
