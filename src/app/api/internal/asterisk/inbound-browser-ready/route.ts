@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { INBOUND_BROWSER_CLAIM_LEASE_MS } from "@/lib/voip/browser-softphone"
 import { shouldAiAnswer } from "@/lib/voip/inbound-answer"
-import { loadInboundAnswerPolicy } from "@/lib/voip/inbound-answer-config"
+import { loadInboundAnswerSelection } from "@/lib/voip/inbound-answer-config"
 
 export const dynamic = "force-dynamic"
 
@@ -51,6 +51,7 @@ async function routeToAi(params: {
   organizationId: string
   callLogId: string
   callId: string
+  channelConfigId: string
   now: Date
 }): Promise<boolean> {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -65,6 +66,7 @@ async function routeToAi(params: {
         callSid: params.callId,
         status: "ringing",
         endedAt: null,
+        AND: [{ OR: [{ channelConfigId: null }, { channelConfigId: params.channelConfigId }] }],
         OR: [
           { browserAnswerClaimToken: null },
           { browserAnswerClaimExpiresAt: null },
@@ -73,6 +75,7 @@ async function routeToAi(params: {
       },
       data: {
         callMode: "ai",
+        channelConfigId: params.channelConfigId,
         status: "answering",
         userId: null,
         claimedByUserId: null,
@@ -174,18 +177,19 @@ export async function POST(request: NextRequest) {
 
     if (!hasLiveBrowserClaim) {
       if (call.status !== "ringing") return NextResponse.json({ ready: false })
-      const policy = await runWithTenant(organizationId, () => loadInboundAnswerPolicy(organizationId))
+      const { policy, channelConfigId } = await runWithTenant(organizationId, () => loadInboundAnswerSelection(organizationId))
       const aiNow = shouldAiAnswer({
         policy,
         ringingSince: call.startedAt ?? call.createdAt,
         now,
         hasLiveBrowserClaim,
       })
-      if (!aiNow) return NextResponse.json({ ready: false })
+      if (!aiNow || !channelConfigId) return NextResponse.json({ ready: false })
       const routed = await runWithTenant(organizationId, () => routeToAi({
         organizationId,
         callLogId: call.id,
         callId: call.providerCallId as string,
+        channelConfigId,
         now,
       }))
       // Losing the CAS means a salesperson claimed it in the same instant;

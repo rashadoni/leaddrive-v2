@@ -1049,6 +1049,33 @@ describe("middleware", async () => {
     expect(res.headers.get("location")).toContain("/login")
   })
 
+  it("lets the exact pharmacy pilot route reach bearer auth without a session", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(true)
+    const req = makeReq({
+      pathname: "/api/internal/voice-agent/pharmacy-inbound",
+      method: "POST",
+      auth: null,
+      headers: { "x-real-ip": "7.7.7.7" },
+    })
+    const res = await authMiddleware(req)
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+    expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe(
+      "webhook:voice-agent-runtime:7.7.7.7",
+    )
+  })
+
+  it("keeps paths adjacent to the pharmacy pilot route behind a session", async () => {
+    const req = makeReq({
+      pathname: "/api/internal/voice-agent/pharmacy-inbound/debug",
+      method: "POST",
+      auth: null,
+    })
+    const res = await authMiddleware(req)
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("/login")
+  })
+
   it("lets only the exact no-call control-plane probe reach bearer auth", async () => {
     vi.mocked(checkRateLimit).mockReturnValue(true)
     const req = makeReq({
