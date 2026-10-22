@@ -206,3 +206,21 @@
 6. После пробы восстановить точные сохранённые поля AAC с проверкой актуальной версии, не затирая параллельные изменения пользователя. Убедиться в восстановлении правил runtime; состояние очередей возвращать только после проверки отсутствия непредвиденных запусков. Не создавать заказ/резерв/платёж в ходе этой проверки.
 
 Ни один пункт переключения/возврата в этой фазе не выполнен: текущие настройки прочитаны, предложения подготовлены, рабочая линия остаётся в прежнем состоянии.
+
+## Изолированная проверка настоящего SQL loader
+
+`scripts/check-zeytun-call-loader-sql.mjs` выполняет SQL из текущего `zeytun-call-loader.ts` на PGlite 0.5.11 (PostgreSQL 18.6). База создаётся только в памяти; DATABASE_URL, credentials, реальные клиенты и production не читаются. Зависимости устанавливаются отдельно от application package.json/lock. Три нужных исходника компилируются во временную папку, которая удаляется после проверки. Транзакции и parameterized queries использованы по [официальному API PGlite](https://pglite.dev/docs/api).
+
+Воспроизводимый запуск из корня task worktree, Node 20; сначала проверить доступную память и disk/pressure, выполнять только одну адресную проверку:
+
+```bash
+zeytun_sql_tooling=$(mktemp -d /tmp/zeytun-sql-tools.XXXXXX)
+npm install --prefix "$zeytun_sql_tooling" --save-exact --ignore-scripts --no-audit --no-fund --legacy-peer-deps @electric-sql/pglite@0.5.11 typescript@5.9.3 zod@4.4.3
+TZ=UTC NODE_OPTIONS=--max-old-space-size=1024 ZEYTUN_SQL_TOOLING_DIR="$zeytun_sql_tooling" node scripts/check-zeytun-call-loader-sql.mjs
+```
+
+Проверяется роль NOSUPERUSER/NOBYPASSRLS с SELECT-only доступом, принудительный RLS и политика `app.org_id`/`app.rls_bypass` на пяти tenant-таблицах. Два tenant имеют одинаковый providerCallId; правильный звонок доступен только для заданной области. Проверяются: transaction-local сброс внешнего bypass, возврат внешнего контекста после commit/rollback, отсутствие credentials/transcript в проекции, некорректные/деактивированные связи, неоднозначный callId, строгий boolean AI flag, телефон, возраст/закрытие звонка, лид для исходящего звонка, повторное чтение изменений, parameterized tenant и маскирование ошибки прав без retry.
+
+**Результат 22 октября:** 20/20 PASS, 3405 ms включая инициализацию/подготовку, max RSS 1 106 048 KiB. Это одно измерение адресной проверки, не нагрузочный SLA. Первый положительный случай выявил особенность тестового драйвера: `timestamp without time zone` интерпретировался в часовом поясе процесса, создавая сдвиг в два часа. Fixture теперь явно требует `TZ=UTC`; production loader и его запрет принимать слишком старый звонок не менялись.
+
+Границы проверки: минимальная синтетическая схема содержит только нужные столбцы; внешние ключи и уникальность providerCallId намеренно не создаются для проверки повреждённых/старых записей. Это не исполнение всех production migrations. PGlite adapter не имитирует Prisma extension, connection pool, maxWait/transaction timeout или конкурентное закрытие звонка между процессами; проверены значения SQL timeout settings, а не их срабатывание по времени. Реальные Prisma/date semantics, production schema/RLS и PBX остаются **NOT RUN** до восстановления доступа. Script transpileModule не заменяет TypeScript typecheck. В обычный Vitest/CI этот opt-in runner пока не включён.
