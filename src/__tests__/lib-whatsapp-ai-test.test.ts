@@ -66,11 +66,13 @@ describe("recipient-bound WhatsApp AI test", () => {
   })
   it("fails closed on malformed, expired and exhausted runs even with channel-wide AI enabled", async () => {
     for (const value of [null, {}, { ...run(), maxAttempts: 4 }, { ...run(), expiresAt: "bad" }, { ...run(), expiresAt: new Date(0).toISOString() }, { ...run(), attemptsUsed: 3 }]) {
-      settings.whatsappAiTest = value as ReturnType<typeof run>
-      settings.replyMode = "ai"
-      const operation = vi.fn()
-      await withWhatsAppAiPolicy(binding, settings, operation)
-      expect(operation).not.toHaveBeenCalled()
+      for (const mode of ["agent", "ai"]) {
+        settings.whatsappAiTest = value as ReturnType<typeof run>
+        settings.replyMode = mode
+        const operation = vi.fn()
+        await withWhatsAppAiPolicy(binding, settings, operation)
+        expect(operation).not.toHaveBeenCalled()
+      }
     }
     expect(hasWhatsAppAiTest(settings)).toBe(true)
   })
@@ -83,6 +85,16 @@ describe("recipient-bound WhatsApp AI test", () => {
     expect(await claimWhatsAppAiTest(binding)).toBeNull()
     expect(aiTestView(settings)?.active).toBe(false)
     expect(settings.unrelatedSetting).toEqual({ keep: true })
+  })
+  it("consumes a failed native generation and never makes a fourth attempt", async () => {
+    arm()
+    const operation = vi.fn(async () => { throw new Error("provider unavailable") })
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await expect(withWhatsAppAiPolicy(binding, settings, operation)).rejects.toThrow("provider unavailable")
+    }
+    await withWhatsAppAiPolicy(binding, settings, operation)
+    expect(operation).toHaveBeenCalledTimes(3)
+    expect(settings.whatsappAiTest!.attemptsUsed).toBe(3)
   })
   it("does not overwrite a concurrent settings change when starting or stopping", async () => {
     db.channelConfig.updateMany.mockImplementation(async () => { settings.unrelatedSetting = "concurrent"; return { count: 0 } })
