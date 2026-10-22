@@ -16,9 +16,9 @@ import { createHash, createHmac, timingSafeEqual } from "crypto"
 import { normalizeTicketPriority } from "@/lib/sla-resolver"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
 import { matchInboundLeadId } from "@/lib/inbound-lead-match"
-import { aiReplyEnabled } from "@/lib/inbox/reply-mode"
 import { calculateAiCost, checkConversationAiLimits, resolveAiModel } from "@/lib/ai/budget"
-import { withWhatsAppAiReplyGuard, whatsappAiHistory } from "@/lib/inbox/whatsapp-ai-reply-guard"
+import { whatsappAiHistory } from "@/lib/inbox/whatsapp-ai-reply-guard"
+import { withWhatsAppAiPolicy } from "@/lib/inbox/whatsapp-ai-test"
 import { isWhatsAppOptOut, recordWhatsAppOptOut, recordWhatsAppConversationOptOut } from "@/lib/inbox/whatsapp-opt-out"
 import { getSupportAgentConfig } from "@/lib/ai/support-agent"
 import { isSupportAiEnabled } from "@/lib/ai/support-feature"
@@ -1405,18 +1405,17 @@ async function processMessages(
     }
 
     // Da Vinci Auto-Reply: only for text messages, and only when a rule didn't own it.
-    // Y2b — per-channel replyMode off-switch. WhatsApp's AI is default-ON (existing behavior on
-    // all live tenant channels), so we gate on `!== "agent"` against the RAW value (no "agent"
-    // coercion): unset/"ai" → Da Vinci runs (no regression); an explicit "agent" turns it OFF.
-    const waReplyMode = (channelConfig.settings as { replyMode?: string } | null)?.replyMode
-    if (msg.type === "text" && text.trim() && !botOwned && aiReplyEnabled(waReplyMode, true)) {
+    // Preserve the legacy mode policy, with a fail-closed recipient-bound test override.
+    if (msg.type === "text" && text.trim() && !botOwned && convId) {
       try {
-        await withWhatsAppAiReplyGuard(orgId, convId, async (stillOwned) => handleAiAutoReply(orgId, waId, text, contactId, leadId, senderName, ticketCompanyId, {
+        await withWhatsAppAiPolicy({ organizationId: orgId, channelConfigId: channelConfig.id, conversationId: convId, phone: waId }, channelConfig.settings,
+          async (stillOwned, aiTestRunId) => handleAiAutoReply(orgId, waId, text, contactId, leadId, senderName, ticketCompanyId, {
           customerMessageAlreadyTicketed: inboundTicket.commentAdded,
           conversationId: convId,
           channelSettings: channelConfig.settings,
           channelConfigId: channelConfig.id,
           stillOwned,
+          aiTestRunId,
         }))
       } catch (err) {
         console.error(`[WA Webhook] Da Vinci auto-reply error:`, err)
@@ -1461,10 +1460,11 @@ async function handleAiAutoReply(
   leadId: string | undefined,
   senderName: string,
   contactCompanyId: string | null = null,
-  opts: { customerMessageAlreadyTicketed?: boolean; conversationId?: string | null; channelSettings?: unknown; channelConfigId?: string | null; stillOwned: () => Promise<boolean> },
+  opts: { customerMessageAlreadyTicketed?: boolean; conversationId?: string | null; channelSettings?: unknown; channelConfigId?: string | null; stillOwned: () => Promise<boolean>; aiTestRunId?: string },
 ) {
   // Support AI predates this switch, so the shared helper preserves the legacy
   // default (ON) and stops here only after an administrator explicitly opts out.
+  if (!(await opts.stillOwned())) return
   if (!(await isSupportAiEnabled(organizationId))) {
     console.log("[WA AI] Support AI disabled — skipping auto-reply")
     return
@@ -1612,6 +1612,7 @@ async function handleAiAutoReply(
       content: typeof m.content === "string" ? piiMasker.mask(m.content) : m.content,
     }))
 
+    if (!(await opts.stillOwned())) return
     const startTime = Date.now()
     const response = await client.messages.create({
       model,
@@ -2001,6 +2002,7 @@ async function handleAiAutoReply(
       extraMetadata: {
         autoReply: true,
         aiAutoReply: true,
+        ...(opts.aiTestRunId ? { aiTestRunId: opts.aiTestRunId } : {}),
         ...(scored.ok ? { aiQuality: scored.score } : {}),
         ...(daVinciLogId ? { aiLogId: daVinciLogId } : {}),
       },
