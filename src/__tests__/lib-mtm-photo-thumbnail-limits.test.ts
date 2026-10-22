@@ -84,7 +84,7 @@ describe("thumbnail render queue", () => {
     const originalPath = path.join(root, "mtm-photos", "busy.jpg")
     await writeFile(originalPath, Buffer.from("camera original"))
     const result = await resolveDiskMtmPhotoThumbnail({
-      uploadsRoot: root, originalPath, fileName: "busy.jpg", width: 480, ifNoneMatch: null,
+      organizationId: "cmorglimitsaaaaaaaaaaaaaa", uploadsRoot: root, originalPath, fileName: "busy.jpg", width: 480, ifNoneMatch: null,
     })
     expect(result).toEqual({ kind: "busy", retryAfterSeconds: 2 })
     expect(readFile).not.toHaveBeenCalled()
@@ -102,7 +102,7 @@ describe("thumbnail render queue", () => {
     const originalPath = path.join(root, "mtm-photos", "queued.jpg")
     await writeFile(originalPath, Buffer.from("camera original"))
     const queued = resolveDiskMtmPhotoThumbnail({
-      uploadsRoot: root, originalPath, fileName: "queued.jpg", width: 480, ifNoneMatch: null,
+      organizationId: "cmorglimitsaaaaaaaaaaaaaa", uploadsRoot: root, originalPath, fileName: "queued.jpg", width: 480, ifNoneMatch: null,
     })
     await vi.waitFor(() => expect(mtmPhotoThumbnailRenderStateForTests().queued).toBe(1))
     expect(readFile).not.toHaveBeenCalled()
@@ -119,7 +119,7 @@ describe("undecodable negative cache", () => {
     sharpControl.mode = "fail"
     const originalPath = path.join(root, "mtm-photos", "legacy.heic")
     await writeFile(originalPath, Buffer.from("legacy heic bytes"))
-    const request = { uploadsRoot: root, originalPath, fileName: "legacy.heic", width: 480 as const, ifNoneMatch: null }
+    const request = { organizationId: "cmorglimitsaaaaaaaaaaaaaa", uploadsRoot: root, originalPath, fileName: "legacy.heic", width: 480 as const, ifNoneMatch: null }
 
     expect(await resolveDiskMtmPhotoThumbnail(request)).toEqual({ kind: "undecodable" })
     expect(sharpControl.calls).toBe(1)
@@ -135,7 +135,7 @@ describe("undecodable negative cache", () => {
     sharpControl.mode = "fail"
     const originalPath = path.join(root, "mtm-photos", "replaced.jpg")
     await writeFile(originalPath, Buffer.from("truncated"))
-    const request = { uploadsRoot: root, originalPath, fileName: "replaced.jpg", width: 480 as const, ifNoneMatch: null }
+    const request = { organizationId: "cmorglimitsaaaaaaaaaaaaaa", uploadsRoot: root, originalPath, fileName: "replaced.jpg", width: 480 as const, ifNoneMatch: null }
     expect((await resolveDiskMtmPhotoThumbnail(request)).kind).toBe("undecodable")
 
     await writeFile(originalPath, Buffer.from("a complete replacement file"))

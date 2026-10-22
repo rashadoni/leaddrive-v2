@@ -29,18 +29,25 @@ export const POST = withInboxSessionWrite(async (req, { orgId }, { params }: { p
       : { error: result.error, deliveryUnknown: result.deliveryUnknown, attemptId: result.attemptId }, { status: result.statusCode })
   }
 
+  if (conv.platform === "whatsapp") {
+    if (typeof text !== "string" || !text.trim()) {
+      return NextResponse.json({ error: "Text is required" }, { status: 400 })
+    }
+    const { sendConversationReply } = await import("@/lib/inbox/send-conversation-reply")
+    const result = await sendConversationReply({ organizationId: orgId, channel: "whatsapp", to: conv.externalId,
+      body: text, conversationId: conv.id, channelConfigId: conv.channelConfigId,
+      contactId: conv.contactId, leadId: conv.leadId })
+    return NextResponse.json(result.success ? { success: true, data: result.data }
+      : { error: result.error }, { status: result.statusCode })
+  }
+
   const channel = conv.channelConfigId
     ? await prisma.channelConfig.findFirst({ where: { id: conv.channelConfigId } })
     : null
 
   let sent = false
 
-  if (conv.platform === "whatsapp" && channel) {
-    const { sendWhatsAppMessage } = await import("@/lib/whatsapp")
-    sent = await sendWhatsAppMessage({ to: conv.externalId, message: text, organizationId: orgId, channelConfigId: channel.id })
-      .then(r => r.success)
-      .catch(() => false)
-  } else if (conv.platform === "telegram" && channel) {
+  if (conv.platform === "telegram" && channel) {
     const token = channel.botToken
     const chatId = conv.externalId
     if (token) {

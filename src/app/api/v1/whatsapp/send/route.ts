@@ -3,9 +3,11 @@ import { z } from "zod"
 import { sendWhatsAppMessage, sendWhatsAppTemplate } from "@/lib/whatsapp"
 import { sanitizeOwnedRefs } from "@/lib/verify-owned-refs"
 import { withRls } from "@/lib/with-rls"
+import { selectWhatsAppSettingsChannel } from "@/lib/channels/whatsapp-settings-channel"
 
 const sendSchema = z.object({
   to: z.string().min(1, "Phone number is required"),
+  channelConfigId: z.string().trim().min(1).optional(),
   message: z.string().optional(),
   templateName: z.string().optional(),
   languageCode: z.string().optional(),
@@ -25,6 +27,13 @@ export const POST = withRls(async (req, { orgId }) => {
   }
 
   const { to, message, templateName, languageCode, variables, contactId: rawContactId, leadId: rawLeadId } = parsed.data
+  if (!message && !templateName) {
+    return NextResponse.json({ error: "Message or templateName is required" }, { status: 400 })
+  }
+
+  const selection = await selectWhatsAppSettingsChannel(orgId, parsed.data.channelConfigId)
+  if (!selection.id) return NextResponse.json({ success: false, error: selection.error }, { status: selection.error === "whatsapp_channel_required" ? 409 : 404 })
+
   // Drop any lead/contact id that isn't in this org (forged/cross-tenant ref guard).
   const { contactId, leadId } = await sanitizeOwnedRefs(orgId, { contactId: rawContactId, leadId: rawLeadId })
 
@@ -35,6 +44,7 @@ export const POST = withRls(async (req, { orgId }) => {
       languageCode,
       variables,
       organizationId: orgId,
+      channelConfigId: selection.id,
       contactId,
       leadId,
     })
@@ -49,6 +59,7 @@ export const POST = withRls(async (req, { orgId }) => {
     to,
     message,
     organizationId: orgId,
+    channelConfigId: selection.id,
     contactId,
     leadId,
   })

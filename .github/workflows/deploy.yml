@@ -508,8 +508,8 @@ jobs:
       - name: Demo assistant voice budget database gate
         # Same gate as in pr-checks: the guide's voice minutes are claimed
         # atomically before Google is asked, so requests arriving together
-        # cannot overspend a demo's ten minutes or the day's 300 (see the
-        # test's header).
+        # cannot overspend a person's twenty minutes (across all their demos)
+        # or the day's 300 (see the test's header).
         run: npx vitest run src/__tests__/demo-assistant-voice-postgres.test.ts
         env:
           DEMO_ASSISTANT_VOICE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test

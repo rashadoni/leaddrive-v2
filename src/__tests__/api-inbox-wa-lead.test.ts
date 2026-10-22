@@ -28,7 +28,7 @@ vi.mock("@/lib/api-auth", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     contact: { findFirst: vi.fn(async () => null), updateMany: vi.fn(async () => ({ count: 0 })) },
-    channelConfig: { findFirst: vi.fn(async () => null) },
+    channelConfig: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => [{ id: "wa_default" }]) },
     channelMessage: {
       create: vi.fn(async () => ({ id: "m1" })),
       update: vi.fn(async () => ({ id: "m1" })),
@@ -38,7 +38,7 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: vi.fn(async ({ where }: any) => {
         const conv = conversations[where.id]
         return conv && conv.organizationId === where.organizationId && where.platform === "whatsapp"
-          ? { channelConfigId: conv.channelConfigId }
+          ? { externalId: "+994501112233", channelConfigId: conv.channelConfigId }
           : null
       }),
       updateMany: vi.fn(async () => ({ count: 1 })),
@@ -61,6 +61,7 @@ vi.mock("@/lib/verify-owned-refs", () => ({
 }))
 
 import { POST } from "@/app/api/v1/inbox/route"
+import { prisma } from "@/lib/prisma"
 
 const makeReq = (body: any) =>
   new NextRequest("https://example.com/api/v1/inbox", {
@@ -98,9 +99,17 @@ describe("POST /api/v1/inbox — WhatsApp answers from the conversation's number
     expect(waCalls[0].to).toBe("+994501112233")
   })
 
-  it("keeps the workspace's number for a send with no conversation", async () => {
+  it("binds the sole active workspace number for a send with no conversation", async () => {
     await POST(makeReq({ to: "+994501112233", body: "salam", channel: "whatsapp" }))
-    expect(waCalls[0].channelConfigId ?? null).toBeNull()
+    expect(waCalls[0].channelConfigId).toBe("wa_default")
+  })
+
+  it("rejects an unbound two-number reply without choosing the first number", async () => {
+    vi.mocked(prisma.channelConfig.findMany).mockResolvedValueOnce([{ id: "A" }, { id: "B" }] as never)
+    const response = await POST(makeReq({ to: "+994501112233", body: "salam", channel: "whatsapp" }))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ error: "whatsapp_reply_channel_mismatch" })
+    expect(waCalls).toEqual([])
   })
 
   it("never takes the channel of another workspace's conversation", async () => {

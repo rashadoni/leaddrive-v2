@@ -4,6 +4,7 @@ import path from "node:path"
 import { prisma } from "@/lib/prisma"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
 import { validateUploadBytes } from "@/lib/upload-security"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 export const TICKET_ATTACHMENT_MAX_FILE_SIZE = 10 * 1024 * 1024
 export const TICKET_ATTACHMENT_MAX_FILES = 50
@@ -71,7 +72,7 @@ export async function storeTicketAttachment(input: {
   await mkdir(uploadDirectory, { recursive: true })
   const fileName = `${crypto.randomBytes(16).toString("hex")}${extension}`
   const writtenPath = path.join(uploadDirectory, fileName)
-  await writeFile(writtenPath, buffer, { flag: "wx" })
+  await writeFile(writtenPath, sealTenantFile(input.organizationId, buffer), { flag: "wx" })
 
   try {
     return await prisma.ticketAttachment.create({

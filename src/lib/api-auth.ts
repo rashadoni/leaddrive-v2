@@ -7,6 +7,7 @@ import { isMtmApiPath } from "./mtm/mobile-api-path"
 import { isMtmWebOnlyPath } from "./mtm-web-only"
 import { checkPermission, resolveModuleFromPath, methodToAction, PERMISSION_MODULE_TO_MODULE_ID, type Role, type Module, type Action } from "./permissions"
 import { hasModule, moduleRecordFromOrgFields, type ModuleId, MODULE_REGISTRY } from "./modules"
+import { customerPhonePrivacyEnabled } from "./customer-phone-privacy"
 import { effectiveHiddenModules, hideableIdForGateModule } from "./user-module-access"
 import { getMobileAuth, resolveMobileAuth } from "./mobile-auth"
 import crypto from "crypto"
@@ -88,15 +89,15 @@ async function loadOrgContext(orgId: string): Promise<{ isActive: boolean; plan:
  * errors fail closed because this check is part of authentication, not an
  * optional feature gate.
  */
-async function organizationIsActiveFresh(orgId: string): Promise<boolean> {
+async function organizationSecurityFresh(orgId: string) {
   try {
     const organization = await runWithRlsBypass(() => prisma.organization.findUnique({
       where: { id: orgId },
-      select: { isActive: true },
+      select: { isActive: true, settings: true },
     }))
-    return organization?.isActive === true
+    return { active: organization?.isActive === true, phonePrivacy: customerPhonePrivacyEnabled(organization?.settings) }
   } catch {
-    return false
+    return { active: false, phonePrivacy: false }
   }
 }
 
@@ -189,6 +190,9 @@ export interface AuthResult {
    * is exactly what it was before this field existed.
    */
   hiddenModules?: string[]
+  /** Fresh server-side organization policy. Never copied from JWT/client claims.
+   * Absent means the default, unrestricted policy for legacy internal fixtures. */
+  hideCustomerPhoneForOperators?: boolean
 }
 
 function sessionHiddenModules(role: Role, stored: unknown): { hiddenModules?: string[] } {
@@ -250,9 +254,9 @@ async function resolveCookieSession(): Promise<CookieSessionResolution> {
     }
 
     if (session.role !== "superadmin") {
-      if (!(await organizationIsActiveFresh(session.orgId))) {
-        return { denial: "inactive_organization" }
-      }
+      const security = await organizationSecurityFresh(session.orgId)
+      if (!security.active) return { denial: "inactive_organization" }
+      if (security.phonePrivacy) session.hideCustomerPhoneForOperators = true
     }
 
     return { session }
@@ -540,7 +544,7 @@ export async function requireAuth(
       // RLS: org-status check runs before tenant context is entered — bypass-wrapped.
       const org = await runWithRlsBypass(() => prisma.organization.findUnique({
         where: { id: session.orgId },
-        select: { isActive: true, plan: true, addons: true, features: true, modules: true },
+        select: { isActive: true, plan: true, addons: true, features: true, modules: true, settings: true },
       }))
       const isActive = org?.isActive === true
       const plan = org?.plan || "starter"
@@ -554,6 +558,7 @@ export async function requireAuth(
       if (!isActive) {
         return NextResponse.json({ error: "Organization is deactivated. Contact your administrator." }, { status: 403 })
       }
+      if (customerPhonePrivacyEnabled(org?.settings)) session.hideCustomerPhoneForOperators = true
       orgContext = { plan, addons, modules }
     } catch {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

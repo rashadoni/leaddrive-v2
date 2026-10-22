@@ -150,9 +150,18 @@ export function useWhatsAppEmbeddedSignup({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, ...picked }),
       })
-      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; channelId?: string; displayPhoneNumber?: string | null; error?: string }
-      if (!res.ok || !json.ok || !json.channelId) {
-        setStatus({ kind: "error", message: json.error || failedMessage })
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean
+        channelId?: string
+        displayPhoneNumber?: string | null
+        registration?: string
+        registrationError?: string
+        error?: string
+      }
+      // Older servers returned ok:true even when registration failed. Only a confirmed registration
+      // can close the form or refresh the catalog as a successful connection.
+      if (!res.ok || !json.ok || !json.channelId || !["registered", "already_connected"].includes(json.registration || "")) {
+        setStatus({ kind: "error", message: json.error || json.registrationError || failedMessage })
         return
       }
       const number = json.displayPhoneNumber || picked.phoneNumberId

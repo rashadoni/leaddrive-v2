@@ -12,9 +12,10 @@ import { checkVoiceBudget, DEMO_ASSISTANT_VOICE_LIMITS, type DemoVoiceBudgetRefu
  * Every paid voice call — an answer spoken, a question heard — is CLAIMED
  * before Google is asked: one row in `demo_access_events` carrying the seconds
  * it may cost. Claims are decided one at a time for all demos together, under
- * one advisory lock, against both ceilings (this demo's ten minutes, every
- * demo's 300 a day), so requests arriving together cannot each see the same
- * room and all go out. Only then is Google called, outside the lock. A spoken
+ * one advisory lock, against both ceilings (the person's twenty minutes,
+ * every demo's 300 a day), so requests arriving together — from one demo, or
+ * from two demos of the same person — cannot each see the same room and all
+ * go out. Only then is Google called, outside the lock. A spoken
  * answer's claim is an estimate; once the audio is there the row records its
  * real length instead, lower or higher, because that is what Google billed and
  * what the next claim must see. A failed call keeps its claim, because Google
@@ -23,10 +24,15 @@ import { checkVoiceBudget, DEMO_ASSISTANT_VOICE_LIMITS, type DemoVoiceBudgetRefu
  * The rows hold seconds and an outcome, nothing else: never the question, the
  * answer, or the audio.
  *
- * `demo_access_events` is under FORCE RLS behind the system bypass. A sum
- * taken outside `runWithRlsBypass` reads no rows and would mean «nothing
- * spent» — `demo-assistant-voice-postgres.test.ts` runs this against a role
- * that cannot bypass RLS to show it.
+ * The person is the address the demo was requested from
+ * (`DemoRequest.emailNormalized`, voice-policy.ts): their spend is the sum
+ * over every grant of every request from it, read inside the lock, so a
+ * claim from one of their demos sees what the others just claimed.
+ *
+ * `demo_access_events`, `demo_grants` and `demo_requests` are under FORCE RLS
+ * behind the system bypass. A sum taken outside `runWithRlsBypass` reads no
+ * rows and would mean «nothing spent» — `demo-assistant-voice-postgres.test.ts`
+ * runs this against a role that cannot bypass RLS to show it.
  */
 
 const VOICED = "ASSISTANT_VOICED"
@@ -70,8 +76,9 @@ function secondsOf(metadata: unknown): number {
 }
 
 /**
- * Claims `seconds` for one voice call, or says which ceiling it would cross.
- * `answerId` is required to speak: an answer is spoken at most once.
+ * Claims `seconds` for one voice call of `grantId`'s demo, or says which
+ * ceiling it would cross: its person's or the day's. `answerId` is required
+ * to speak: an answer is spoken at most once.
  */
 export async function claimDemoVoiceSeconds(params: {
   grantId: string
@@ -94,21 +101,29 @@ export async function claimDemoVoiceSeconds(params: {
         const already = await tx.demoAccessEvent.findUnique({ where: { id: demoVoicedEventId(params.answerId!) }, select: { id: true } })
         if (already) return { ok: false as const, refusal: "already_voiced" as const }
       }
+      // Whose voice this is: every grant on a request from the same address.
+      const grant = await tx.demoGrant.findUnique({ where: { id: params.grantId }, select: { request: { select: { emailNormalized: true } } } })
+      if (!grant) throw new Error("claimDemoVoiceSeconds: no such grant")
+      const personGrants = await tx.demoGrant.findMany({
+        where: { request: { emailNormalized: grant.request.emailNormalized } },
+        select: { id: true },
+      })
+      const person = new Set([params.grantId, ...personGrants.map((row) => row.id)])
       // Model queries, not raw SQL: Prisma binds the window as the column's
       // own UTC timestamp, where a raw Date would be shifted by the session's
       // time zone (Europe/Berlin on prod).
       const rows = await tx.demoAccessEvent.findMany({
-        where: { eventType: { in: [VOICED, HEARD] }, OR: [{ grantId: params.grantId }, { occurredAt: { gt: since } }] },
+        where: { eventType: { in: [VOICED, HEARD] }, OR: [{ grantId: { in: [...person] } }, { occurredAt: { gt: since } }] },
         select: { grantId: true, occurredAt: true, metadata: true },
       })
-      let demo = 0
+      let personSpent = 0
       let day = 0
       for (const row of rows) {
         const spent = secondsOf(row.metadata)
-        if (row.grantId === params.grantId) demo += spent
+        if (person.has(row.grantId)) personSpent += spent
         if (row.occurredAt > since) day += spent
       }
-      const budget = checkVoiceBudget({ demo, day }, seconds, params.limits ?? DEMO_ASSISTANT_VOICE_LIMITS)
+      const budget = checkVoiceBudget({ person: personSpent, day }, seconds, params.limits ?? DEMO_ASSISTANT_VOICE_LIMITS)
       if (!budget.ok) return budget
       const metadata = { seconds, outcome: "claimed" }
       const created = await tx.demoAccessEvent.create({
@@ -128,7 +143,7 @@ export type DemoVoiceOutcome = "voiced" | "heard" | "silent" | "failed"
  * What became of a claim. A spoken answer records the audio's real length,
  * shorter or longer than claimed: shorter gives the rest back, longer is spend
  * Google billed all the same, and a ledger that left it out would let the
- * ceilings drift above ten minutes a demo. A failed call keeps its claim.
+ * ceilings drift above twenty minutes a person. A failed call keeps its claim.
  */
 export async function settleDemoVoiceSeconds(claim: { eventId: string; seconds: number }, outcome: DemoVoiceOutcome, usedSeconds?: number): Promise<void> {
   const seconds = usedSeconds === undefined || outcome === "failed"

@@ -234,7 +234,27 @@ BEGIN
       COALESCE(c.relacl, pg_catalog.acldefault('r', c.relowner))
     ) acl
    WHERE c.oid = 'public.event_platform_cutover_gates'::regclass
-     AND acl.grantee <> c.relowner;
+     AND acl.grantee <> c.relowner
+     -- The one accepted exception: plain SELECT for the read-only backup role
+     -- (BYPASSRLS, not superuser, pinned to read-only transactions), without
+     -- which pg_dump cannot copy the database. 20261028090000 grants it.
+     AND NOT (
+       acl.privilege_type = 'SELECT'
+       AND NOT acl.is_grantable
+       AND EXISTS (
+         SELECT 1
+           FROM pg_catalog.pg_roles r
+          WHERE r.oid = acl.grantee
+            AND r.rolbypassrls
+            AND NOT r.rolsuper
+            AND EXISTS (
+              SELECT 1
+                FROM pg_catalog.pg_db_role_setting s
+               WHERE s.setrole = r.oid
+                 AND 'default_transaction_read_only=on' = ANY (s.setconfig)
+            )
+       )
+     );
   IF mismatch_count <> 0 THEN
     RAISE EXCEPTION 'event-platform postcondition: cutover-gate evidence is granted outside its migration-role owner';
   END IF;

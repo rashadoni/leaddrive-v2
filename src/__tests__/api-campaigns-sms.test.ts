@@ -17,6 +17,7 @@ type TestCampaign = {
   id: string
   organizationId?: string
   type: string
+  status?: string
   name: string
   subject?: string | null
   recipientMode?: string
@@ -105,7 +106,8 @@ const attributionUpdates: Array<{ ids: string[]; campaignId: string }> = []
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     campaign: {
-      findFirst: vi.fn(async () => state.campaign),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+      findFirst: vi.fn(async () => state.campaign ? { status: "draft", ...state.campaign } : null),
       update: vi.fn(async () => state.campaign),
     },
     contact: {

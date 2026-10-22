@@ -59,6 +59,9 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     sql(scratch!.adminDb, foundation.slice(foundation.indexOf("-- Tenant data ships fail-closed."), foundation.indexOf("-- A migration runner may own new tables")))
     for (const migration of ["20260828224500_workforce_h3_legacy_fact_guard", "20260828230000_workforce_direct_correction_contract"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
     sql(scratch!.adminDb, readFileSync("scripts/rls/enable-batch-5.sql", "utf8"))
+    // Departments (2026-10-22): the table's tenant policy, exactly as its migration writes it.
+    const departments = readFileSync("prisma/migrations/20261029090000_mtm_departments/migration.sql", "utf8")
+    sql(scratch!.adminDb, departments.slice(departments.indexOf('ALTER TABLE "mtm_departments" ENABLE'), departments.indexOf('ALTER TABLE "mtm_teams"')))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}";`)
     prisma = (await import("@/lib/prisma")).prisma
     ;({ runWithTenant: tenant, runWithRlsBypass: bypass } = await import("@/lib/rls-context"))
@@ -247,16 +250,16 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     expect(await tenant(organizationId, () => prisma.mtmAgent.findUnique({ where: { id: agentId } }))).toMatchObject({ attendanceIncludedFrom: null })
   }, 180_000)
 
-  it("reads all 300 employees without provisioning writes or credential disclosure, and has no invented past absences", async () => {
+  it("keeps 300 CRM identities out of Personnel except explicitly enrolled staff, without rewriting facts", async () => {
     await tenant(automaticOrg, async () => {
       const before = [await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count(), await prisma.user.count()]
       const directory = await store.readAttendanceEmployees(automaticAdmin)
       // The existing field agent keeps its card but is not HR attendance: its
       // day belongs to the field manager (owner, 2026-10-14).
-      expect(directory.employees).toHaveLength(299)
+      expect(directory.employees.map(employee => employee.id)).toEqual(["automatic-manual"])
       expect(directory.employees.some(employee => employee.id === "automatic-field")).toBe(false)
       expect(directory.users.every(user => !user.eligible)).toBe(true)
-      expect(directory.employees.find(employee => employee.id === automaticAgentId)).toMatchObject({ included: true, participationVersion: null, includedFrom: expect.any(String), history: [] })
+      expect(directory.employees.find(employee => employee.id === automaticAgentId)).toBeUndefined()
       expect(JSON.stringify(directory)).not.toMatch(/@example\.invalid|fixture-only|retained-.*-password/)
       expect([await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count(), await prisma.user.count()]).toEqual(before)
       const projection = await report.readMtmAttendanceReport({ organizationId: automaticOrg, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: "2020-01-01", to: "2020-01-02", employeeId: automaticAgentId, form: "ALL" } })
@@ -292,7 +295,8 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       expect(await prisma.user.findUnique({ where: { id: "automatic-user-010" } })).toMatchObject({ isActive: true, role: "sales", passwordHash: "automatic-fixture-only" })
       await expect(self.requireAttendanceSelf(prisma, { organizationId: automaticOrg, agentId: automaticAgentId, role: "EMPLOYEE" })).rejects.toMatchObject({ status: 403 })
       const directory = await store.readAttendanceEmployees(automaticAdmin)
-      expect(directory.employees.find(employee => employee.id === automaticAgentId)).toMatchObject({ included: false, participationVersion: excludedEventId })
+      // Excluding a CRM-only identity does not turn it into an HR employee.
+      expect(directory.employees.find(employee => employee.id === automaticAgentId)).toBeUndefined()
     })
     await expect(tenant(automaticOrg, () => store.setAttendanceParticipation(automaticAdmin, { ...input, included: true }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_PARTICIPATION_REPLAY_MISMATCH" })
     await expect(tenant(automaticOrg, () => store.setAttendanceParticipation(automaticAdmin, { ...input, clientRequestId: randomUUID(), included: true }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_PARTICIPATION_CHANGED" })
@@ -465,6 +469,28 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
 
   // Owner, 2026-10-15: HR adds office staff in Personnel → Employees, apart from
   // MTM agents; the person is a CRM user (counts against the plan) who sees no module.
+  it("keeps an explicitly created employee with incomplete details even when excluded or granted a CRM admin role", async () => {
+    const { createAttendanceEmployee } = await import("@/lib/mtm/attendance-employee-create")
+    const created = await tenant(automaticOrg, () => createAttendanceEmployee(automaticAdmin, {
+      name: "Fictional explicitly added employee", phone: "+994509991901",
+    }))
+    await tenant(automaticOrg, async () => {
+      // A person's role is independent of their explicit personnel enrollment.
+      await prisma.user.update({ where: { id: created.userId }, data: { role: "admin" } })
+      const entry = (await store.readAttendanceEmployees(automaticAdmin)).employees.find(row => row.id === created.agentId)
+      expect(entry).toMatchObject({ position: null, included: true, history: [], includedFrom: expect.any(String) })
+      const exclusion = await store.setAttendanceParticipation(automaticAdmin, {
+        clientRequestId: randomUUID(), agentId: created.agentId, included: false, previousEventId: null,
+      })
+      const before = [await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count()]
+      const directory = await store.readAttendanceEmployees(automaticAdmin)
+      expect(directory.employees.find(row => row.id === created.agentId)).toMatchObject({ included: false, participationVersion: exclusion.eventId })
+      const crmOnly = await prisma.mtmAgent.findFirstOrThrow({ where: { userId: automaticAdminId } })
+      expect(directory.employees.some(row => row.id === crmOnly.id)).toBe(false)
+      expect([await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count()]).toEqual(before)
+    })
+  })
+
   it("adds an office employee from Personnel: one hidden-module CRM user and one EMPLOYEE card", async () => {
     const create = await import("@/lib/mtm/attendance-employee-create")
     const bcrypt = (await import("bcryptjs")).default
@@ -560,6 +586,8 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     const before = await tenant(automaticOrg, () => store.readAttendanceEmployee(automaticAdmin, created.agentId))
     expect(before.employee).toMatchObject({ name: "Fictional page hire", phone: "+994550007788", email: null, loginEditable: true, history: [] })
     expect(before.month).toMatchObject({ workedDays: 0, absentCount: expect.any(Number) })
+    expect(before.preparation).toMatchObject({ login: "AVAILABLE", branch: null, installations: { required: false, approved: 0, pending: 0 } })
+    expect(await tenant(automaticOrg, () => prisma.mtmAgentWorkday.count({ where: { organizationId: automaticOrg, agentId: created.agentId } }))).toBe(0)
     const teamId = before.teams[0]?.id ?? null
     const input = { name: "Fictional page renamed", phone: "+994 55 000 66 55", email: "Page.Renamed@example.invalid", position: "Fictional clerk", teamId, managerId: null, hireDate: "2026-09-01" }
     await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, created.agentId, input))
@@ -676,6 +704,52 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     const result = await tenant(automaticOrg, () => report.readMtmAttendanceReport({ organizationId: automaticOrg, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null },
       query: { from: today, to: today, employeeId: created.agentId, form: "ALL" } }))
     expect(result.rows.map(row => row.employeePosition)).toEqual(["Fictional senior cashier"])
+  })
+
+  // Owner, 2026-10-22: «тут есть отдел, но нет департамента». A department sits
+  // above a section; its head belongs to it without a section.
+  it("keeps a department above the section, reused by name and closed to other tenants", async () => {
+    const create = await import("@/lib/mtm/attendance-employee-create")
+    const head = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional IT head", phone: "+994550007701", newDepartmentName: "Fictional IT department" }))
+    const unit = (agentId: string) => tenant(automaticOrg, () => prisma.mtmAgent.findUniqueOrThrow({ where: { id: agentId }, select: { departmentId: true, teamId: true, department: { select: { name: true } } } }))
+    const headUnit = await unit(head.agentId)
+    expect(headUnit).toMatchObject({ teamId: null, department: { name: "Fictional IT department" } })
+
+    // Typed again in another case it is the same department; a new section is created inside it.
+    const support = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional support clerk", phone: "+994550007702",
+      newDepartmentName: "fictional it DEPARTMENT", newTeamName: "Fictional helpdesk" }))
+    const supportUnit = await unit(support.agentId)
+    expect(supportUnit.departmentId).toBe(headUnit.departmentId)
+    expect(await tenant(automaticOrg, () => prisma.mtmDepartment.count())).toBe(1)
+    expect(await tenant(automaticOrg, () => prisma.mtmTeam.findUniqueOrThrow({ where: { id: supportUnit.teamId! }, select: { name: true, departmentId: true } })))
+      .toEqual({ name: "Fictional helpdesk", departmentId: headUnit.departmentId })
+
+    // A section outside any department joins the one it is picked under.
+    const loose = await bypass(() => prisma.mtmTeam.create({ data: { organizationId: automaticOrg, name: "Fictional loose section" }, select: { id: true } }))
+    const page = { name: "Fictional IT head", position: null, managerId: null }
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, head.agentId, { ...page, departmentId: headUnit.departmentId, teamId: loose.id }))
+    expect(await unit(head.agentId)).toMatchObject({ departmentId: headUnit.departmentId, teamId: loose.id })
+    expect(await tenant(automaticOrg, () => prisma.mtmTeam.findUniqueOrThrow({ where: { id: loose.id }, select: { departmentId: true } }))).toEqual({ departmentId: headUnit.departmentId })
+    // A tab opened before departments sends none: the card keeps its department.
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, head.agentId, { ...page, teamId: null }))
+    expect(await unit(head.agentId)).toMatchObject({ departmentId: headUnit.departmentId, teamId: null })
+
+    // A section of one department is refused under another, and nothing changes.
+    const other = await bypass(() => prisma.mtmDepartment.create({ data: { organizationId: automaticOrg, name: "Fictional finance department" }, select: { id: true } }))
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, support.agentId, { ...page, name: "Fictional support clerk", departmentId: other.id, teamId: supportUnit.teamId })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_SECTION_ELSEWHERE" })
+    expect(await unit(support.agentId)).toMatchObject({ departmentId: headUnit.departmentId, teamId: supportUnit.teamId })
+    // Someone else's department id is not found from this tenant.
+    const foreign = await bypass(() => prisma.mtmDepartment.create({ data: { organizationId, name: "Fictional foreign department" }, select: { id: true } }))
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, head.agentId, { ...page, departmentId: foreign.id, teamId: null })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_TEAM_CHANGED" })
+
+    const directory = await tenant(automaticOrg, () => store.readAttendanceEmployees(automaticAdmin))
+    expect(directory.departments.map(department => department.name).sort()).toEqual(["Fictional IT department", "Fictional finance department"])
+    expect(directory.employees.find(row => row.id === support.agentId)).toMatchObject({ departmentName: "Fictional IT department", teamName: "Fictional helpdesk" })
+    expect((await tenant(automaticOrg, () => store.readAttendanceEmployee(automaticAdmin, head.agentId))).employee).toMatchObject({ departmentId: headUnit.departmentId, departmentName: "Fictional IT department" })
+    // Row-level security: each tenant sees only its own departments.
+    expect(await tenant(organizationId, () => prisma.mtmDepartment.findMany({ select: { name: true } }))).toEqual([{ name: "Fictional foreign department" }])
   })
 
   // Owner, 2026-10-15: Today shows an administrator what is left to set up; each

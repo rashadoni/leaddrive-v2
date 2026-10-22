@@ -18,11 +18,13 @@ const PAGE_SIZE = 50
 type Employee = AttendanceEmployeeDirectory["employees"][number]
 type Participation = "ALL" | "INCLUDED" | "EXCLUDED" | "DISMISSED"
 const NO_DEPARTMENT = "none"
+/** The filter names a department as `dep:<id>`, a section by its own id. */
+const DEPARTMENT_FILTER = "dep:"
 
 /**
  * Personnel → Employees (owner, 2026-10-16: «просил редактируемыми сделать
  * сотрудников… будет неудобно использовать, когда список будет больше 200»).
- * The list finds a person — by name, position, department or phone — and says
+ * The list finds a person — by name, position, department, section or phone — and says
  * where they are today; «Edit» opens their own page. Search, filters and page
  * live in the address, so «back» from the employee returns to the same list.
  */
@@ -66,10 +68,11 @@ export function MtmAttendanceEmployees() {
   useEffect(() => { if (`?${query}` !== `?${params.toString()}`) router.replace(`${pathname}?${query}`, { scroll: false }) }, [query, params, pathname, router])
 
   const needle = search.trim().toLocaleLowerCase(locale), digits = search.replace(/\D/g, "")
-  const matches = (employee: Employee) => !needle || [employee.name, employee.position, employee.teamName].some(value => value?.toLocaleLowerCase(locale).includes(needle))
+  const matches = (employee: Employee) => !needle || [employee.name, employee.position, employee.departmentName, employee.teamName].some(value => value?.toLocaleLowerCase(locale).includes(needle))
     || (digits.length >= 3 && (employee.phone ?? "").replace(/\D/g, "").includes(digits))
   const employees = (directory?.employees ?? []).filter(employee => matches(employee)
-    && (!department || (department === NO_DEPARTMENT ? !employee.teamId : employee.teamId === department))
+    && (!department || (department === NO_DEPARTMENT ? !employee.teamId && !employee.departmentId
+      : department.startsWith(DEPARTMENT_FILTER) ? employee.departmentId === department.slice(DEPARTMENT_FILTER.length) : employee.teamId === department))
     // Dismissed people (2026-10-16) leave the list; their own filter brings them back.
     && (participation === "DISMISSED" ? employee.status !== "ACTIVE" : employee.status === "ACTIVE" && (participation === "ALL" || employee.included === (participation === "INCLUDED"))))
   const pages = Math.max(1, Math.ceil(employees.length / PAGE_SIZE)), currentPage = Math.min(page, pages - 1)
@@ -96,7 +99,7 @@ export function MtmAttendanceEmployees() {
 
   return <div className="space-y-5" data-testid="attendance-employees">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{t("employeesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("employeesIntro")}</p></div>{!denied && <div className="flex flex-wrap items-start gap-2">
-      <MtmAttendanceAddEmployee disabled={loading || !directory} teams={directory?.teams ?? []} onAdded={(name, phone) => { void load().then(() => setAdded({ name, phone })) }} />
+      <MtmAttendanceAddEmployee disabled={loading || !directory} teams={directory?.teams ?? []} departments={directory?.departments ?? []} onAdded={(name, phone) => { void load().then(() => setAdded({ name, phone })) }} />
       <Button variant="outline" className="min-h-11 rounded-full" disabled={loading} onClick={() => void load()}>{t("employeesRefresh")}</Button></div>}</div>
     {added && <p role="status" className="max-w-prose rounded-xl border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-4 text-sm" data-testid="attendance-employee-added">{p("addEmployeeDone", added)}</p>}
     {loading && !directory && <p role="status" className="text-sm text-muted-foreground">{t("employeesLoading")}</p>}
@@ -106,16 +109,20 @@ export function MtmAttendanceEmployees() {
         <div className="space-y-1.5"><label htmlFor="employee-search" className="text-sm font-medium">{p("employeesSearchLabel")}</label>
           <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input id="employee-search" className="min-h-11 pl-9" type="search" placeholder={p("employeesSearchPlaceholder")} value={search} onChange={event => { setSearch(event.target.value); reset() }} /></div></div>
-        <div className="space-y-1.5"><label htmlFor="employee-department" className="text-sm font-medium">{p("employeeCardDepartment")}</label>
+        <div className="space-y-1.5"><label htmlFor="employee-department" className="text-sm font-medium">{p(directory.departments?.length ? "employeesColUnit" : "employeeCardDepartment")}</label>
           <select id="employee-department" className={SELECT} value={department} onChange={event => { setDepartment(event.target.value); reset() }}>
-            <option value="">{t("reportAllTeams")}</option>{directory.teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}<option value={NO_DEPARTMENT}>{t("employeesNoTeam")}</option></select></div>
+            <option value="">{t("reportAllTeams")}</option>
+            {directory.departments?.length ? <optgroup label={p("employeeCardDepartament")}>{directory.departments.map(unit => <option key={unit.id} value={`${DEPARTMENT_FILTER}${unit.id}`}>{unit.name}</option>)}</optgroup> : null}
+            {directory.departments?.length ? <optgroup label={p("employeeCardDepartment")}>{directory.teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}</optgroup>
+              : directory.teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
+            <option value={NO_DEPARTMENT}>{t("employeesNoTeam")}</option></select></div>
         <div className="space-y-1.5"><label htmlFor="employee-participation" className="text-sm font-medium">{t("employeesParticipationFilter")}</label>
           <select id="employee-participation" className={SELECT} value={participation} onChange={event => { setParticipation(event.target.value as Participation); reset() }}>
             <option value="ALL">{t("employeesFilterAll")}</option><option value="INCLUDED">{t("employeesFilterIncluded")}</option><option value="EXCLUDED">{t("employeesFilterExcluded")}</option><option value="DISMISSED">{p("employeesFilterDismissed")}</option></select></div>
       </div>
       <p className="text-sm text-muted-foreground" role="status">{t("employeesParticipationCounts", { total: active.length, included: includedCount, excluded: active.length - includedCount })}</p>
       {employees.length ? <div className="overflow-x-auto"><table className="w-full table-fixed text-left text-sm">
-        <thead className="hidden md:table-header-group"><tr className="border-b text-xs text-muted-foreground"><th className="w-[46%] px-3 py-2 font-medium">{p("employeesColEmployee")}</th><th className="px-3 py-2 font-medium">{p("employeeCardDepartment")}</th><th className="px-3 py-2 font-medium">{p("employeesColToday")}</th><th className="w-36 px-3 py-2"><span className="sr-only">{p("employeeEdit")}</span></th></tr></thead>
+        <thead className="hidden md:table-header-group"><tr className="border-b text-xs text-muted-foreground"><th className="w-[46%] px-3 py-2 font-medium">{p("employeesColEmployee")}</th><th className="px-3 py-2 font-medium">{p(directory.departments?.length ? "employeesColUnit" : "employeeCardDepartment")}</th><th className="px-3 py-2 font-medium">{p("employeesColToday")}</th><th className="w-36 px-3 py-2"><span className="sr-only">{p("employeeEdit")}</span></th></tr></thead>
         <tbody className="block md:table-row-group">{employees.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map(employee => {
           const href = `/mtm/attendance/people/${encodeURIComponent(employee.id)}?back=${back}`, [todayText, tone] = today(employee)
           const initials = employee.name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]!.toUpperCase()).join("")
@@ -123,7 +130,9 @@ export function MtmAttendanceEmployees() {
             <td className="md:px-3 md:py-3"><Link href={href} prefetch={false} className="group flex min-w-0 items-center gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary" aria-hidden="true">{initials}</span>
               <span className="min-w-0"><strong className="block truncate group-hover:underline">{employee.name}</strong><span className="block truncate text-xs text-muted-foreground">{detailLine(employee)}</span></span></Link></td>
-            <td className="col-span-2 text-muted-foreground md:px-3 md:py-3">{employee.teamName ?? t("employeesNoTeam")}</td>
+            <td className="col-span-2 text-muted-foreground md:px-3 md:py-3">{employee.departmentName
+              ? <><span className="block truncate text-foreground">{employee.departmentName}</span>{employee.teamName ? <span className="block truncate text-xs">{employee.teamName}</span> : null}</>
+              : employee.teamName ?? t("employeesNoTeam")}</td>
             <td className="md:px-3 md:py-3"><HomePill tone={tone}>{todayText}</HomePill></td>
             <td className="row-start-1 col-start-2 text-right md:px-3 md:py-3"><Button asChild variant="outline" className="min-h-10 rounded-full">
               <Link href={href} prefetch={false} aria-label={p("employeeEditNamed", { name: employee.name })}><IdCard className="mr-2 h-4 w-4" aria-hidden="true" />{p("employeeEdit")}</Link></Button></td>

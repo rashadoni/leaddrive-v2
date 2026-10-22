@@ -71,6 +71,12 @@ const INFO_LABEL = "leaddrive-tenant-pii-v1"
  */
 const WORKFORCE_EVIDENCE_HMAC_INFO = "leaddrive-workforce-evidence-hmac-v1"
 
+/**
+ * Distinct from the column DEK so that file envelopes and PII columns never
+ * share a key, even though both are derived from the same master KEK.
+ */
+const TENANT_FILE_INFO = "leaddrive-tenant-file-v1"
+
 const ENV_VAR = "TENANT_PII_MASTER_KEY"
 
 /* ─── Master KEK load (the slice-3 vault-swap choke point) ──────── */
@@ -152,6 +158,25 @@ export function deriveTenantWorkforceEvidenceHmacKey(orgId: string): Buffer {
     loadMasterKek(),
     Buffer.from(orgId, "utf8"),
     WORKFORCE_EVIDENCE_HMAC_INFO,
+    KEY_BYTES,
+  ))
+}
+
+/**
+ * Tenant key for uploaded-file envelopes (`src/lib/crypto/tenant-file-encryption.ts`).
+ * The envelope derives a per-file key from it with a random salt, so this key
+ * itself never encrypts bytes directly. Uncached for the same reason as the
+ * Workforce evidence key; HKDF costs ~20 µs, far below one file read.
+ */
+export function deriveTenantFileEncryptionKey(orgId: string): Buffer {
+  if (typeof orgId !== "string" || orgId.length === 0) {
+    throw new Error("deriveTenantFileEncryptionKey: orgId required")
+  }
+  return Buffer.from(hkdfSync(
+    "sha256",
+    loadMasterKek(),
+    Buffer.from(orgId, "utf8"),
+    TENANT_FILE_INFO,
     KEY_BYTES,
   ))
 }

@@ -17,6 +17,7 @@ import {
   type Action,
 } from "./permissions"
 import { runWithTenant, runWithRlsBypass } from "./rls-context"
+import { withCustomerPhonePrivacy } from "./customer-phone-privacy"
 import { runWithAuditActor } from "./audit-actor-context"
 
 /** What withRls hands the wrapped handler: the resolved tenant + (when present)
@@ -143,7 +144,7 @@ export function withRls<C = unknown>(
     if (denied) return denied
 
     const rls = resolved
-    return runWithAuditActor(rls.session ?? {}, () => runWithTenant(rls.orgId, () => handler(req, rls, ctx as C)))
+    return runWithAuditActor(rls.session ?? {}, () => runWithTenant(rls.orgId, () => withCustomerPhonePrivacy(req, rls.orgId, rls.session, () => handler(req, rls, ctx as C))))
   }
 
   return wrapped as WrappedRouteHandler<C>
@@ -196,7 +197,7 @@ export function withRlsAuth<C = unknown>(
     if (isAuthError(auth)) return auth
     // The audit writer names the office user behind this request (see audit-actor-context).
     const resolved = auth as AuthResult
-    return runWithAuditActor(resolved, () => runWithTenant(resolved.orgId, () => handler(req, resolved, ctx as C)))
+    return runWithAuditActor(resolved, () => runWithTenant(resolved.orgId, () => withCustomerPhonePrivacy(req, resolved.orgId, resolved, () => handler(req, resolved, ctx as C))))
   }
 
   return wrapped as WrappedRouteHandler<C>
@@ -222,7 +223,7 @@ export function withRlsSessionAuth<C = unknown>(
     }
     if (isAuthError(session)) return session
     const resolved = session as AuthResult
-    return runWithAuditActor(resolved, () => runWithTenant(resolved.orgId, () => handler(req, resolved, ctx as C)))
+    return runWithAuditActor(resolved, () => runWithTenant(resolved.orgId, () => withCustomerPhonePrivacy(req, resolved.orgId, resolved, () => handler(req, resolved, ctx as C))))
   }
 
   return wrapped as WrappedRouteHandler<C>

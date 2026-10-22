@@ -6,17 +6,19 @@ vi.mock("@/lib/whatsapp", () => ({
   sendWhatsAppTemplate: vi.fn(),
   sendWhatsAppMessage: vi.fn(),
 }))
+vi.mock("@/lib/prisma", () => ({ prisma: { channelConfig: { findFirst: vi.fn(), findMany: vi.fn() } } }))
 // sanitizeOwnedRefs is unit-tested separately; here it passes refs through so we
 // assert the route's threading, not the ownership lookup.
 vi.mock("@/lib/verify-owned-refs", () => ({
-  sanitizeOwnedRefs: vi.fn(async (_org: string, r: any) => ({ leadId: r.leadId || undefined, contactId: r.contactId || undefined })),
+  sanitizeOwnedRefs: vi.fn(async (_org: string, r: { leadId?: string; contactId?: string }) => ({ leadId: r.leadId || undefined, contactId: r.contactId || undefined })),
 }))
 
 import { POST } from "@/app/api/v1/whatsapp/send/route"
 import { getOrgId } from "@/lib/api-auth"
 import { sendWhatsAppTemplate } from "@/lib/whatsapp"
+import { prisma } from "@/lib/prisma"
 
-const makeReq = (body: any) =>
+const makeReq = (body: unknown) =>
   new NextRequest("http://localhost:3000/api/v1/whatsapp/send", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -26,8 +28,9 @@ const makeReq = (body: any) =>
 describe("POST /api/v1/whatsapp/send — lead linkage (Slice 3b)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([{ id: "wa-1" }] as never)
     vi.mocked(getOrgId).mockResolvedValue("org-1")
-    vi.mocked(sendWhatsAppTemplate).mockResolvedValue({ success: true, messageId: "wamid.1" } as any)
+    vi.mocked(sendWhatsAppTemplate).mockResolvedValue({ success: true, messageId: "wamid.1" })
   })
 
   it("threads leadId from the request body to sendWhatsAppTemplate", async () => {
@@ -46,7 +49,7 @@ describe("POST /api/v1/whatsapp/send — lead linkage (Slice 3b)", () => {
   })
 
   it("returns 401 without orgId", async () => {
-    vi.mocked(getOrgId).mockResolvedValue(null as any)
+    vi.mocked(getOrgId).mockResolvedValue(null)
     const res = await POST(makeReq({ to: "+994501112233", templateName: "welcome", leadId: "lead-9" }))
     expect(res.status).toBe(401)
   })

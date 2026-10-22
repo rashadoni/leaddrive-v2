@@ -126,6 +126,7 @@ model Organization {
   // MTM (Mobile Team Management) relations
   mtmRegions                          MtmRegion[]
   mtmTeams                            MtmTeam[]
+  mtmDepartments                      MtmDepartment[]
   mtmAgents                           MtmAgent[]
   mtmCustomers                        MtmCustomer[]
   mtmRoutes                           MtmRoute[]
@@ -2724,6 +2725,7 @@ model Campaign {
   updatedAt         DateTime          @updatedAt
   deals             Deal[]
   variants          CampaignVariant[]
+  whatsappDeliveries WhatsAppCampaignDelivery[]
 
   // C9 Marketing Attribution
   campaignTouchpoints CampaignTouchpoint[]
@@ -2735,8 +2737,37 @@ model Campaign {
   orchestrationRuns      CampaignOrchestrationRun[]
   orchestratedDeliveries OrchestratedDelivery[]
 
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@map("campaigns")
+}
+
+// Durable recipient-level WhatsApp dispatch. Ambiguous delivery is never auto-retried.
+model WhatsAppCampaignDelivery {
+  id              String   @id @default(cuid())
+  organizationId  String
+  campaignId      String
+  campaign        Campaign @relation(fields: [campaignId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "whatsapp_campaign_delivery_campaign_fkey")
+  channelConfigId String
+  recipientPhone  String
+  contactId       String?
+  leadId          String?
+  payload         Json
+  status          String   @default("pending")
+  attempts        Int      @default(0)
+  nextAttemptAt   DateTime @default(now())
+  claimedAt       DateTime?
+  acceptedAt      DateTime?
+  externalId      String?
+  errorCode       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([campaignId, recipientPhone], map: "wa_delivery_campaign_recipient_key")
+  @@index([status, nextAttemptAt])
+  @@index([organizationId, campaignId, status], map: "wa_delivery_org_campaign_status_idx")
+  @@index([organizationId, externalId])
+  @@map("whatsapp_campaign_deliveries")
 }
 
 model CampaignVariant {
@@ -3385,7 +3416,7 @@ model WhatsAppTemplate {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  @@unique([organizationId, name, language])
+  @@unique([organizationId, channelConfigId, name, language], map: "whatsapp_templates_org_channel_name_language_key")
   @@index([organizationId, status])
   @@index([channelConfigId])
   @@map("whatsapp_templates")
@@ -5756,6 +5787,10 @@ model MtmTeam {
   name           String
   code           String?
   isActive       Boolean      @default(true)
+  /// Personnel: the department this section (şöbə) belongs to. NULL = a section
+  /// outside any department, as every team was before 2026-10-22.
+  departmentId   String?
+  department     MtmDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -5775,7 +5810,27 @@ model MtmTeam {
   @@index([organizationId])
   @@index([organizationId, regionId])
   @@index([regionId])
+  @@index([departmentId])
   @@map("mtm_teams")
+}
+
+/// Personnel: a department (departament) — the level above a section (şöbə, an
+/// MtmTeam). Owner, 2026-10-22: «тут есть отдел, но нет департамента». A person
+/// may belong to a department without a section (its head, for one).
+model MtmDepartment {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  teams  MtmTeam[]
+  agents MtmAgent[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId])
+  @@map("mtm_departments")
 }
 
 // MTM Agent — field agents linked to CRM users
@@ -5832,6 +5887,10 @@ model MtmAgent {
   mapColor       String?
   teamId         String?
   team           MtmTeam?       @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  /// Personnel: the person's department. With a section it is the section's
+  /// department; without one it is where the person sits (a department head).
+  departmentId   String?
+  department     MtmDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   managerId      String?
   manager        MtmAgent?      @relation("AgentManager", fields: [managerId], references: [id])
   subordinates   MtmAgent[]     @relation("AgentManager")
@@ -5937,6 +5996,7 @@ model MtmAgent {
   @@index([userId])
   @@index([managerId])
   @@index([teamId])
+  @@index([departmentId])
   @@map("mtm_agents")
 }
 
@@ -9082,7 +9142,8 @@ model WorkforceWorkdayScheduleSnapshot {
   policySnapshot   WorkforcePolicySnapshot  @relation("WorkforceSchedulePolicySnapshot", fields: [organizationId, policySnapshotId], references: [organizationId, id], onDelete: Restrict)
   shiftSnapshotId  String
   shiftSnapshot    WorkforceShiftSnapshot   @relation("WorkforceScheduleShiftSnapshot", fields: [organizationId, shiftSnapshotId], references: [organizationId, id], onDelete: Restrict)
-  schemaVersion    Int                      @default(1)
+  /// 2 since 20260830130000 (team membership in calendarSnapshot); 1 is legacy.
+  schemaVersion    Int                      @default(2)
   calendarState    String                   @db.VarChar(48)
   calendarSnapshot Json
   segments         Json
@@ -13316,15 +13377,19 @@ model LoyaltyTransaction {
    * When expiresAt < now() AND expiredAt IS NULL, the daily cron
    * emits an `expire` LoyaltyTransaction and stamps expiredAt.
    * Migration: 20260525220000_d8_loyalty_expiry_cron
+   * TIMESTAMPTZ in the database (that migration), unlike the other DateTime
+   * columns. Declared here so a generated migration never converts it: the
+   * conversion runs in the session time zone (Europe/Berlin on production)
+   * and would shift every stored instant by the offset.
    */
-  expiresAt        DateTime?
+  expiresAt        DateTime?           @db.Timestamptz(6)
   /**
    * Stamped by the loyalty-expiry cron after it emits the corresponding
    * `expire` transaction for this earn row. Prevents double-expiry on
    * repeated cron runs. Set in the same $transaction as the expire row.
    * Migration: 20260525220000_d8_loyalty_expiry_cron
    */
-  expiredAt        DateTime?
+  expiredAt        DateTime?           @db.Timestamptz(6)
   /// Reverse side of LoyaltyRedemption.transaction (a 'redeem' txn ↔ its fulfilment record).
   redemptions      LoyaltyRedemption[]
 
@@ -15929,8 +15994,11 @@ model MeterReading {
   /// Quality flag (DB CHECK): raw | validated | flagged
   quality             String         @default("raw")
   /// Self-referential FK — corrected source ⇒ supersedesReadingId set.
+  /// RESTRICT, as 20260518130000_energy_utilities created it: readings are an
+  /// append-only audit trail, so a corrected reading cannot be deleted from
+  /// under its correction.
   supersedesReadingId String?
-  supersedes          MeterReading?  @relation("MeterReadingCorrection", fields: [supersedesReadingId], references: [id])
+  supersedes          MeterReading?  @relation("MeterReadingCorrection", fields: [supersedesReadingId], references: [id], onDelete: Restrict)
   correctedBy         MeterReading[] @relation("MeterReadingCorrection")
   metadata            Json           @default("{}")
   createdAt           DateTime       @default(now())

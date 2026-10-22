@@ -6,6 +6,7 @@ import path from "path"
 import crypto from "crypto"
 import { validateUploadBytes } from "@/lib/upload-security"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = [
@@ -79,7 +80,7 @@ export const POST = withRls(async (req, { orgId }, { params }: { params: Promise
     if (contentError) {
       return NextResponse.json({ error: contentError }, { status: 400 })
     }
-    await writeFile(path.join(uploadDir, uniqueName), buffer)
+    await writeFile(path.join(uploadDir, uniqueName), sealTenantFile(orgId, buffer))
 
     const record = await prisma.contractFile.create({
       data: {
