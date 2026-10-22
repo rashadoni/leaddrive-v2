@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, type Prisma } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 const fixture = vi.hoisted(() => ({ prisma: null as unknown as PrismaClient }))
 vi.mock("@/lib/prisma", () => ({ get prisma() { return fixture.prisma } }))
@@ -16,11 +16,11 @@ const localDescribe = url ? describe : describe.skip
 localDescribe("WhatsApp AI test real PostgreSQL JSON CAS", () => {
   let admin: PrismaClient
   beforeAll(async () => {
-    admin = new PrismaClient({ datasources: { db: { url: url! } } })
+    admin = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url: url! } } })
     await admin.$executeRawUnsafe(`CREATE SCHEMA "${schema}"`)
     const scoped = new URL(url!)
     scoped.searchParams.set("schema", schema)
-    fixture.prisma = new PrismaClient({ datasources: { db: { url: scoped.toString() } } })
+    fixture.prisma = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url: scoped.toString() } } })
     await fixture.prisma.$executeRawUnsafe(`CREATE TABLE channel_configs (id text PRIMARY KEY, "organizationId" text, "channelType" text, "isActive" boolean, settings jsonb, "updatedAt" timestamp DEFAULT now())`)
     await fixture.prisma.$executeRawUnsafe(`CREATE TABLE social_conversations (id text PRIMARY KEY, "organizationId" text, "channelConfigId" text, platform text, "deletedAt" timestamp, "externalId" text, status text, "assignedTo" text, metadata jsonb, "contactId" text)`)
     await fixture.prisma.$executeRawUnsafe(`INSERT INTO channel_configs (id,"organizationId","channelType","isActive",settings) VALUES ('channel-test','org-test','whatsapp',true,'{"replyMode":"agent","unrelatedSetting":{"keep":true}}')`)
