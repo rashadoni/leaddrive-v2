@@ -37,6 +37,7 @@ export type AttendanceEmployeeToday = { status: "STARTED" | "PAUSED" | "COMPLETE
 export type AttendanceEmploymentHistoryItem = { id: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; at: string; byName: string | null }
 export type AttendanceEmployeeDetail = {
   timezone: string; today: string
+  preparation?: import("@/lib/mtm/attendance-employee-preparation").AttendanceEmployeePreparation
   employee: { id: string; name: string; phone: string | null; email: string | null; role: string; status: string; loginEditable: boolean
     /** The CRM role behind the card; Personnel removes only its own office employees. */
     crmRole?: string | null

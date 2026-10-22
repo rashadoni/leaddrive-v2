@@ -508,11 +508,17 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   await expect(tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,{...decision,reason:" "}))).rejects.toMatchObject({status:400})
   const outcomes=await Promise.all([0,1].map(()=>tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,decision))))
   expect(outcomes.map(result=>result.idempotent).sort()).toEqual([false,true]);expect(outcomes[0].id).toBe(outcomes[1].id)
+  const { readAttendanceEmployeePreparation } = await import("@/lib/mtm/attendance-employee-preparation")
+  const preparation = () => tenant(ORG, () => prisma.$transaction(tx => readAttendanceEmployeePreparation(tx,
+    { organizationId: ORG, agentId: identity.agentId, date: new Date().toISOString().slice(0,10) },
+    { status: "ACTIVE", phone: "+994550000000", user: { isActive: true, phone: null } }, new Date())))
+  expect((await preparation()).installations).toMatchObject({ approved: 1, pending: 0 })
   const revoke={requestId:randomUUID(),action:"REVOKE",reason:"Fictional phone replaced"}
   await expect(tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,{...revoke,requestId:decision.requestId}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_INSTALLATION_IDEMPOTENCY_MISMATCH"})
   await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,revoke));expect(await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,revoke))).toMatchObject({idempotent:true})
   expect(await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,request))).toMatchObject({requestId:request.requestId,state:"REVOKED",canRequest:true,revocation:{reason:revoke.reason}})
   const next={requestId:randomUUID()};expect(await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,next))).toMatchObject({requestId:next.requestId,state:"PENDING"})
+  expect((await preparation()).installations).toMatchObject({ approved: 0, pending: 1 })
   expect((await tenant(ORG,()=>installations.readOwnAttendanceInstallation(self(),INSTALLATION))).requestId).toBe(next.requestId)
   expect(await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,request))).toMatchObject({requestId:request.requestId,state:"REVOKED"})
   expect(await tenant(ORG,()=>prisma.$executeRaw`UPDATE mtm_attendance_installation_decisions SET reason='changed' WHERE id=${outcomes[0].id}`)).toBe(0)

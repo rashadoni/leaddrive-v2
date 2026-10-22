@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { MtmAttendanceEmployeeRemove } from "@/components/mtm/attendance-employee-remove"
 import { MtmAttendanceDepartmentField, departmentPayload, type DepartmentValue } from "@/components/mtm/attendance-department-field"
+import { MtmAttendanceEmployeePreparation } from "@/components/mtm/attendance-employee-preparation"
 import { createDateFormatter, formatTime } from "@/lib/format-date"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
@@ -158,6 +159,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
         </Section>
       </div>
     </form>
+    <MtmAttendanceEmployeePreparation detail={detail} />
     <div className="grid items-stretch gap-5 lg:grid-cols-2">
       <Section title={p("sectionMonth")} icon={<CalendarDays className="h-4 w-4" />} testId="employee-section-month">
         {month ? <>
@@ -165,7 +167,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
           <dl className="grid grid-cols-2 gap-3">{tiles.map(([label, value]) => <div key={label} className="rounded-xl bg-muted/50 p-3"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{value}</dd></div>)}</dl>
           <Link href={`/mtm/attendance/timesheet?date=${month.to}&employeeId=${encodeURIComponent(agentId)}`} prefetch={false} className="text-sm font-semibold text-primary hover:underline">{p("monthOpenTimesheet")} →</Link>
         </> : <p className="text-sm text-muted-foreground">{p("monthUnavailable")}</p>}
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+        <div id="employee-participation" className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           <span className="text-sm"><span className="block font-medium">{t("employeesParticipation")}</span><span className="text-xs text-muted-foreground">{p("employeeParticipationHint")}</span></span>
           <Button type="button" variant="ghost" role="switch" aria-checked={employee.included} aria-label={t("employeesParticipationNamed", { name: employee.name })} disabled={busy} className="min-h-11 gap-2 px-0 hover:bg-transparent" onClick={toggleParticipation}>
             <span aria-hidden="true" className={`flex h-6 w-10 shrink-0 items-center rounded-full p-0.5 ${employee.included ? "justify-end bg-primary" : "justify-start bg-zinc-400 dark:bg-zinc-600"}`}><span className="h-5 w-5 rounded-full bg-white" /></span>{t(employee.included ? "employeesIncluded" : "employeesExcluded")}

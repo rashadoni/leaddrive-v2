@@ -66,6 +66,33 @@ function capture(locale: string, variant = "") {
 }
 
 describe("actual attendance review queue", () => {
+  it.each(["ru", "az", "en"] as const)("shows correction source and overnight proposal without changing a decision in %s", async locale => {
+    const correction = request(2, { startDate: "2026-10-12", endDate: "2026-10-13", details: { ...fixture()[1].details, startTime: "22:00", endTime: "07:00", correctionBasis: { kind: "WORKDAY", facts: {
+      id: "workday-fixture", workDate: "2026-10-12", status: "STARTED", startedAt: "2026-10-12T18:30:00Z", completedAt: null, pausedAt: null, totalPausedSeconds: 0,
+    } } } })
+    fetchMock.mockImplementation(async () => response([correction]))
+    await render(locale); await click("requestsOpen", row(2))
+    const comparison = container.querySelector('[data-testid="attendance-correction-comparison"]')!
+    expect(comparison.textContent).toContain(translation("correctionBefore"))
+    expect(comparison.textContent).toContain(translation("correctionNoFinish"))
+    expect(comparison.textContent).toContain("2026-10-12 22:00 — 2026-10-13 07:00")
+    expect(comparison.textContent).toContain("Asia/Baku")
+    expect(comparison.querySelector('a')?.getAttribute('href')).toBe('/mtm/attendance/timesheet?date=2026-10-12&employeeId=demo-agent-2')
+    expect(container.querySelector('[data-testid="attendance-requests-freshness"]')).not.toBeNull()
+    expect(writes()).toHaveLength(0)
+    capture(locale, "correction")
+  })
+  it('distinguishes a missing workday from an old request without saved facts', async () => {
+    await render(); await click("requestsOpen", row(2))
+    expect(row(2).textContent).toContain(translation("correctionNoDay"))
+    const legacy = fixture()[1]; delete legacy.details.correctionBasis
+    fetchMock.mockResolvedValueOnce(response([legacy])); await click("requestsRefresh"); await click("requestsOpen", row(2))
+    expect(row(2).textContent).toContain(translation("correctionBasisUnavailable"))
+    expect(row(2).textContent).not.toContain(translation("correctionNoDay"))
+    fetchMock.mockRejectedValueOnce(new Error("offline")); await click("requestsRefresh")
+    expect(container.querySelector('[data-testid="attendance-requests-freshness"]')).toBeNull()
+    expect(container.textContent).toContain(translation("requestsLoadError"))
+  })
   it("opens only the authorized linked request with the decided-history filter", async () => {
     window.history.replaceState({}, "", `/mtm/attendance/requests?requestId=${id(1)}`)
     fetchMock.mockImplementation(async () => response([{ ...request(), status: "APPROVED", decidedAt: version }]))
