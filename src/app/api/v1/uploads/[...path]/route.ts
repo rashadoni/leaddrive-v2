@@ -21,7 +21,6 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { stat } from "fs/promises"
-import { createReadStream } from "fs"
 import { Readable } from "stream"
 import path from "path"
 import { prisma } from "@/lib/prisma"
@@ -50,6 +49,7 @@ import { readCommittedMtmMediaObject, toMtmReservedMediaObject } from "@/lib/mtm
 import { mtmMediaObjectStorageSelect } from "@/lib/mtm/media-object-select"
 import { mtmPhotoFieldScopeWhere, resolveMtmFieldScope } from "@/lib/mtm/field-access"
 import { runtimePublicUploadsRoot } from "@/lib/runtime-paths"
+import { openTenantFileStream } from "@/lib/crypto/tenant-file-encryption"
 import { parseMtmPhotoThumbnailWidth, type MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
 import {
   etagMatches,
@@ -142,7 +142,7 @@ function dispositionFor(filename: string): string {
 
 async function serveUploadFile(
   parts: readonly string[],
-  access: { public: boolean; principal: string },
+  access: { public: boolean; principal: string; organizationId: string | null },
 ): Promise<NextResponse> {
   // Recheck the lexical policy at the last boundary before path.resolve. Both
   // public and authenticated dispatchers call this helper, and neither is
@@ -187,11 +187,22 @@ async function serveUploadFile(
     )
   }
 
+  // Encrypted files are decrypted record by record under the tenant this
+  // request was authorized for; another tenant's envelope fails here, before
+  // any header or byte is sent. Legacy plain files stream through unchanged.
+  let opened: Awaited<ReturnType<typeof openTenantFileStream>>
+  try {
+    opened = await openTenantFileStream(access.organizationId, filePath, fileStat.size)
+  } catch {
+    await releasePublicConcurrencySlot(slot)
+    return NextResponse.json({ error: "Failed to open file" }, { status: 500 })
+  }
+
   const filename = parts.at(-1) ?? "download"
   const extension = filename.split(".").pop()?.toLowerCase() || ""
   const headers: Record<string, string> = {
     "Content-Type": mimeFor(filename),
-    "Content-Length": String(fileStat.size),
+    "Content-Length": String(opened.size),
     "Content-Disposition": dispositionFor(filename),
     "X-Content-Type-Options": "nosniff",
     "Cross-Origin-Resource-Policy": access.public ? "cross-origin" : "same-origin",
@@ -220,16 +231,11 @@ async function serveUploadFile(
     headers["X-Frame-Options"] = "DENY"
   }
 
-  let fileStream: ReturnType<typeof createReadStream>
-  try {
-    fileStream = createReadStream(filePath, { highWaterMark: 64 * 1024 })
-  } catch {
-    await releasePublicConcurrencySlot(slot)
-    return NextResponse.json({ error: "Failed to open file" }, { status: 500 })
-  }
-  // Node's file stream applies backpressure through the Web stream adapter;
-  // no file-sized Buffer is materialized. Close fires on EOF, error, or client
-  // cancellation. The Redis lease is the final safety net for abrupt crashes.
+  // The file stream applies backpressure through the Web stream adapter; no
+  // file-sized Buffer is materialized, encrypted or not. Close fires on EOF,
+  // error, or client cancellation. The Redis lease is the final safety net
+  // for abrupt crashes.
+  const fileStream = opened.stream
   fileStream.once("close", () => {
     void releasePublicConcurrencySlot(slot)
   })
@@ -293,6 +299,7 @@ async function serveMtmDiskPhotoThumbnail(input: {
   parts: readonly string[]
   width: MtmPhotoThumbnailWidth
   principal: string
+  organizationId: string
   ifNoneMatch: string | null
 }): Promise<NextResponse> {
   const { parts } = input
@@ -318,6 +325,7 @@ async function serveMtmDiskPhotoThumbnail(input: {
   let result
   try {
     result = await resolveDiskMtmPhotoThumbnail({
+      organizationId: input.organizationId,
       uploadsRoot,
       originalPath,
       fileName: parts[1],
@@ -332,7 +340,7 @@ async function serveMtmDiskPhotoThumbnail(input: {
   if (result.kind === "busy") return thumbnailBusy(result.retryAfterSeconds)
   if (result.kind === "not-modified") return thumbnailNotModified(result.etag)
   if (result.kind === "ok") return thumbnailResponse(parts[1], input.width, result.bytes, result.etag)
-  return serveUploadFile(parts, { public: false, principal: input.principal })
+  return serveUploadFile(parts, { public: false, principal: input.principal, organizationId: input.organizationId })
 }
 
 /**
@@ -555,6 +563,7 @@ const authenticatedGET = withRlsSessionAuth(async (req, auth, { params }: RouteC
         parts,
         width: thumbnailWidth,
         principal: `${auth.orgId}:${auth.userId}`,
+        organizationId: auth.orgId,
         ifNoneMatch,
       })
     }
@@ -608,6 +617,8 @@ const authenticatedGET = withRlsSessionAuth(async (req, auth, { params }: RouteC
   return serveUploadFile(parts, {
     public: false,
     principal: `${auth.orgId}:${auth.userId}`,
+    // Every private branch above has tied the path to this tenant.
+    organizationId: auth.orgId,
   })
 })
 
@@ -646,5 +657,7 @@ export async function GET(req: NextRequest, context: RouteContext): Promise<Resp
     )
   }
 
-  return serveUploadFile(parts, { public: true, principal })
+  // Public names are re-encoded email images and logos, never encrypted: no
+  // tenant is named, so an envelope here is refused rather than decrypted.
+  return serveUploadFile(parts, { public: true, principal, organizationId: null })
 }
