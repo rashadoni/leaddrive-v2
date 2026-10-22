@@ -20622,7 +20622,15 @@
     "reportAbsenceKindsTitleHint": "Days for each kind of absence.",
     "reportTeamTitle": "Departments compared",
     "reportTeamTitleHint": "One row per department; people without a department get their own row.",
-    "reportN1tTitle": "Timesheet for accounting (N-1t)"
+    "reportN1tTitle": "Timesheet for accounting (N-1t)",
+    "requestsLoadedAt": "List loaded at {time}. Refresh to see later changes.",
+    "correctionBefore": "When submitted",
+    "correctionProposed": "Employee proposes",
+    "correctionNoFinish": "departure not recorded",
+    "correctionNoDay": "No workday was recorded",
+    "correctionBasisUnavailable": "This request has no saved original facts",
+    "correctionSnapshotHint": "Company time zone: {timezone}. These facts reflect submission time. Open the timesheet for the current state; the decision stays in history.",
+    "correctionOpenTimesheet": "Open day in timesheet"
   },
   "mtmReports": {
     "hint": {
@@ -30297,6 +30305,33 @@
         "todo": "Nobody has marked in the app in the last 30 days",
         "done": "Marking in the app: {count} of {total}"
       }
+    },
+    "preparation": {
+      "title": "Employee preparation",
+      "hint": "Settings for {date}. These are configuration facts, not confirmation that the phone works.",
+      "login": "App sign-in",
+      "loginAVAILABLE": "The account is active and a phone number or email is present. Verify the first sign-in on the device.",
+      "loginACCOUNT_MISSING": "No linked account. Check the employee’s access.",
+      "loginINACTIVE": "The account or employee card is inactive.",
+      "loginCONTACT_MISSING": "No sign-in phone number or email is set.",
+      "participation": "Attendance participation",
+      "included": "The employee is included in time tracking.",
+      "excluded": "The employee is excluded from time tracking.",
+      "schedule": "Schedule for this date",
+      "scheduleSHIFT": "A shift schedule has been published for this employee.",
+      "scheduleCOMPANY": "A published company schedule applies.",
+      "scheduleDEFAULT": "The initial schedule applies. HR needs to verify the working hours.",
+      "branch": "Primary branch",
+      "branchActive": "Assigned: {name}.",
+      "branchInactive": "The assigned branch “{name}” is inactive.",
+      "branchMissing": "Not assigned. Set it if the employee belongs to a specific branch.",
+      "phone": "Phone approval",
+      "approvalRequired": "Approval is required. Currently approved installations: {count}.",
+      "approvalOptional": "Approval is optional. Currently approved installations: {count}.",
+      "pending": "Awaiting a decision: {count}.",
+      "open": "Open",
+      "invitation": "Give the employee the company sign-in address and instructions for installing the separate app. Invitation delivery is not confirmed automatically here.",
+      "noFakeMark": "Verify first sign-in and access for the current phone in the app. Do not create a fictional arrival to complete preparation."
     }
   },
   "fieldAppDownload": {

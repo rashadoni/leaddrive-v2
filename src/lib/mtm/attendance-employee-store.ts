@@ -18,6 +18,7 @@ import { resolveAttendanceReviewerScope } from "@/lib/mtm/attendance-request-dec
 import { ATTENDANCE_FEATURE_SETTING_KEY } from "@/lib/mtm/attendance-feature"
 import { managerAssignmentCreatesCycle } from "@/lib/mtm/agent-administration"
 import { agentHistory } from "@/lib/mtm/agent-deletion"
+import { readAttendanceEmployeePreparation } from "@/lib/mtm/attendance-employee-preparation"
 
 type EmploymentRow = { id: string; agentId: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; effectiveAt: Date; recordedByUserId: string; recordedDate: string | null }
 function employmentDate(event: EmploymentRow, timezone: string) {
@@ -275,7 +276,7 @@ export async function readAttendanceEmployee(actor: AttendanceReviewer, agentId:
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const card = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, ...ATTENDANCE_TRACKED_CARD_WHERE },
       select: { id: true, name: true, phone: true, email: true, role: true, status: true, position: true, teamId: true, managerId: true, attendanceExcluded: true, team: { select: { name: true } },
-        user: { select: { id: true, name: true, phone: true, email: true, role: true } } } })
+        user: { select: { id: true, name: true, phone: true, email: true, role: true, isActive: true } } } })
     if (!card) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
     const [teams, managerCards, events, participation] = await Promise.all([
       tx.mtmTeam.findMany({ where: { organizationId }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1000 }),
@@ -299,7 +300,8 @@ export async function readAttendanceEmployee(actor: AttendanceReviewer, agentId:
       if (!(error instanceof Error) || !error.message.startsWith("MTM_ATTENDANCE_")) throw error
     }
     const marks = await todayMarks(tx, organizationId, [agentId], today)
-    return { timezone, today, teams, managers: managerCards.map(manager => ({ id: manager.id, name: manager.name, position: manager.position ?? null })), month,
+    const preparation = await readAttendanceEmployeePreparation(tx, { organizationId, agentId, date: today }, card, now)
+    return { timezone, today, teams, preparation, managers: managerCards.map(manager => ({ id: manager.id, name: manager.name, position: manager.position ?? null })), month,
       employee: { id: card.id, name: card.user?.name ?? card.name, phone: card.phone ?? card.user?.phone ?? null, email: realEmail(card.email) ?? realEmail(card.user?.email),
         role: card.role, status: card.status, crmRole: card.user?.role ?? null, loginEditable: !card.user || !LOGIN_LOCKED_ROLES.has(card.user.role),
         position: card.position ?? null, teamId: card.teamId, teamName: card.team?.name ?? null, managerId: card.managerId,

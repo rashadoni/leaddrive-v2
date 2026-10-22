@@ -20618,7 +20618,15 @@
     "reportAbsenceKindsTitleHint": "Hər iştirak etməmə növü üzrə günlər.",
     "reportTeamTitle": "Şöbələrin müqayisəsi",
     "reportTeamTitleHint": "Hər şöbəyə bir sətir; şöbəsi olmayanlar ayrıca sətirdə.",
-    "reportN1tTitle": "Mühasibatlıq üçün tabel (N-1t)"
+    "reportN1tTitle": "Mühasibatlıq üçün tabel (N-1t)",
+    "requestsLoadedAt": "Siyahı saat {time}-da yüklənib. Sonrakı dəyişikliklər yeniləmədən sonra görünəcək.",
+    "correctionBefore": "Müraciət verilən zaman",
+    "correctionProposed": "Əməkdaşın təklifi",
+    "correctionNoFinish": "gediş qeyd edilməyib",
+    "correctionNoDay": "İş günü qeydə alınmayıb",
+    "correctionBasisUnavailable": "Bu müraciətdə ilkin məlumat saxlanılmayıb",
+    "correctionSnapshotHint": "Şirkətin saat qurşağı: {timezone}. Bunlar müraciət anındakı məlumatlardır. Cari vəziyyət üçün tabeli açın; qərar tarixçədə saxlanılacaq.",
+    "correctionOpenTimesheet": "Günü tabeldə aç"
   },
   "mtmReports": {
     "hint": {
@@ -30293,6 +30301,33 @@
         "todo": "Son 30 gündə tətbiqdə heç kim qeyd olunmayıb",
         "done": "Tətbiqdə qeyd olunur: {total} nəfərdən {count}"
       }
+    },
+    "preparation": {
+      "title": "Əməkdaşın işə hazırlığı",
+      "hint": "{date} tarixinə olan parametrlər. Bu, telefonun işlədiyinin təsdiqi deyil, məlumatların yoxlanmasıdır.",
+      "login": "Tətbiqə giriş",
+      "loginAVAILABLE": "Hesab aktivdir, telefon və ya e-poçt göstərilib. İlk giriş cihazda yoxlanmalıdır.",
+      "loginACCOUNT_MISSING": "Əlaqəli hesab yoxdur. Əməkdaşın girişini yoxlayın.",
+      "loginINACTIVE": "Hesab və ya əməkdaş kartı aktiv deyil.",
+      "loginCONTACT_MISSING": "Giriş üçün telefon və ya e-poçt göstərilməyib.",
+      "participation": "Uçotda iştirak",
+      "included": "Əməkdaş iş vaxtının uçotuna daxildir.",
+      "excluded": "Əməkdaş iş vaxtının uçotundan çıxarılıb.",
+      "schedule": "Bu tarix üçün qrafik",
+      "scheduleSHIFT": "Əməkdaş üçün növbə qrafiki dərc edilib.",
+      "scheduleCOMPANY": "Dərc edilmiş şirkət qrafiki qüvvədədir.",
+      "scheduleDEFAULT": "İlkin qrafik istifadə olunur. Kadrlar iş saatlarını yoxlamalıdır.",
+      "branch": "Əsas filial",
+      "branchActive": "Təyin edilib: {name}.",
+      "branchInactive": "Təyin edilmiş «{name}» filialı aktiv deyil.",
+      "branchMissing": "Təyin edilməyib. Əməkdaş konkret filiala bağlıdırsa, onu göstərin.",
+      "phone": "Telefonun icazəsi",
+      "approvalRequired": "Təsdiq tələb olunur. Qüvvədə olan təsdiqlənmiş quraşdırmalar: {count}.",
+      "approvalOptional": "Təsdiq məcburi deyil. Qüvvədə olan təsdiqlənmiş quraşdırmalar: {count}.",
+      "pending": "Qərar gözləyənlər: {count}.",
+      "open": "Aç",
+      "invitation": "Əməkdaşa giriş üçün şirkət ünvanını və ayrıca tətbiqin quraşdırma təlimatını verin. Dəvətin çatdırılması burada avtomatik təsdiqlənmir.",
+      "noFakeMark": "İlk giriş və cari telefonun icazəsi tətbiqdə yoxlanılır. Hazırlığı tamamlamaq üçün saxta gəliş yaratmayın."
     }
   },
   "fieldAppDownload": {

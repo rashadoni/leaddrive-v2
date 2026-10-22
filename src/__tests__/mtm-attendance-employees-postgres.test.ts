@@ -583,6 +583,8 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     const before = await tenant(automaticOrg, () => store.readAttendanceEmployee(automaticAdmin, created.agentId))
     expect(before.employee).toMatchObject({ name: "Fictional page hire", phone: "+994550007788", email: null, loginEditable: true, history: [] })
     expect(before.month).toMatchObject({ workedDays: 0, absentCount: expect.any(Number) })
+    expect(before.preparation).toMatchObject({ login: "AVAILABLE", branch: null, installations: { required: false, approved: 0, pending: 0 } })
+    expect(await tenant(automaticOrg, () => prisma.mtmAgentWorkday.count({ where: { organizationId: automaticOrg, agentId: created.agentId } }))).toBe(0)
     const teamId = before.teams[0]?.id ?? null
     const input = { name: "Fictional page renamed", phone: "+994 55 000 66 55", email: "Page.Renamed@example.invalid", position: "Fictional clerk", teamId, managerId: null, hireDate: "2026-09-01" }
     await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, created.agentId, input))

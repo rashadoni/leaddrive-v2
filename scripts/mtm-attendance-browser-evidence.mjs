@@ -259,6 +259,13 @@ try {
     assert.equal(await fixture.admin.mtmAgentWorkdayEvent.count({ where: { workdayId } }), 4)
     await assert.rejects(() => fixture.admin.mtmAgentWorkday.update({ where: { id: workdayId }, data: { completedAt: new Date() } }))
     state.workdayId = workdayId
+    const marks = await mobile('employee', `/marks?workdayId=${encodeURIComponent(workdayId)}`)
+    assert.deepEqual(marks.items.map(item => item.action), ['START', 'PAUSE', 'RESUME', 'FINISH'])
+    assert.ok(marks.items.every(item => item.location.coordinates === null && item.qr === null))
+    assert.ok(!/installationId|requestHash|nonceFingerprint/.test(JSON.stringify(marks)))
+    state.ownMarks = marks
+    await mobile('employee', `/marks?workdayId=${randomUUID()}`, { status: 404 })
+    await mobile('field', `/marks?workdayId=${encodeURIComponent(workdayId)}`, { status: 403 })
     return { transitions: 4, exactOperationRetries: 4, persistedEvents: 4 }
   })
   await run('report-scope-exports', 'authenticated-http', async () => {
@@ -424,6 +431,13 @@ try {
     for (const status of ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']) await api('admin', `/requests?status=${status}`)
     state.uiApprove = await submit('ANNUAL_LEAVE', 23)
     state.uiReject = await submit('SICK_LEAVE', 24)
+    const time = instant => new Intl.DateTimeFormat('en-GB', { timeZone: state.ownMarks.timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(instant))
+    const end = new Date(Date.parse(state.ownMarks.items.at(-1).claimedAt) + 60000)
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: state.ownMarks.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(end)
+    const part = key => parts.find(item => item.type === key).value
+    const correction = { clientRequestId: randomUUID(), kind: 'TIME_CORRECTION', unit: 'HOURS', startDate: state.ownMarks.workDate, endDate: `${part('year')}-${part('month')}-${part('day')}`,
+      startTime: time(state.ownMarks.items[0].claimedAt), endTime: time(end), reason: 'Fictional browser correction context', attachmentIds: [] }
+    state.uiCorrection = (await mobile('employee', '/requests', { method: 'POST', body: correction, status: 201 })).request
     const own = await mobile('employee', '/requests')
     assert.ok(own.items.some(row => row.id === cancelled.id && row.status === 'CANCELLED'))
     return { submitReplay: true, reviewerScope: true, approveRejectRevokeCancel: true }
@@ -640,6 +654,10 @@ try {
     await poll(async () => new URL(page.url()).searchParams.get('q') === 'Fixture roster 00', 'Search kept in the address')
     await row.getByRole('link', { name: pt('employeeEditNamed').replace('{name}', 'Fixture roster 00'), exact: true }).click()
     await page.getByTestId('attendance-employee-page').waitFor()
+    await page.getByTestId('employee-preparation').waitFor()
+    assert.ok((await page.getByTestId('employee-preparation').innerText()).includes(pt('preparation.noFakeMark')))
+    assert.equal(await page.getByTestId('employee-preparation-phone').count(), 1)
+    await page.getByTestId('employee-preparation').screenshot({ path: `${output}/employee-preparation.png` })
     const toggle = page.getByRole('switch')
     assert.equal(await toggle.getAttribute('aria-checked'), 'true')
     await clickResponse(toggle, `${apiRoot}/employees/participation`)
@@ -653,7 +671,7 @@ try {
     assert.equal(await row.count(), 0)
     await page.locator('#employee-participation').selectOption('ALL')
     assert.equal((await rosterCard('Fixture roster 00')).role, 'EMPLOYEE')
-    return { pagination: true, search: true, inclusionFilter: true, switchRoundTrip: true, employeePageAndBack: true }
+    return { pagination: true, search: true, inclusionFilter: true, switchRoundTrip: true, employeePageAndBack: true, employeePreparation: true }
   })
   await run('browser-branch-create-edit-archive-cancel', 'browser-action+database-backed-http', async () => {
     await readyPage('branches')
@@ -693,6 +711,21 @@ try {
     const own = await mobile('employee', '/requests')
     assert.equal(own.items.find(item => item.id === state.uiApprove.id).status, 'CANCELLED')
     assert.equal(own.items.find(item => item.id === state.uiReject.id).status, 'REJECTED')
+    row = page.getByTestId(`attendance-request-${state.uiCorrection.id}`)
+    await button('requestsOpen', row).click()
+    const comparison = row.getByTestId('attendance-correction-comparison')
+    await comparison.waitFor()
+    assert.ok((await comparison.innerText()).includes(t('correctionBefore')))
+    assert.ok((await comparison.innerText()).includes(t('correctionProposed')))
+    assert.equal(await comparison.locator('a').getAttribute('href'), `/mtm/attendance/timesheet?date=${state.ownMarks.workDate}&employeeId=${fixture.agents.employee.id}`)
+    await page.getByTestId('attendance-requests-freshness').waitFor()
+    await comparison.screenshot({ path: `${output}/correction-comparison.png` })
+    await row.locator('textarea').fill('Fictional correction rejected with context')
+    await clickResponse(button('requestsReject', row), `${apiRoot}/requests/${state.uiCorrection.id}/decision`)
+    const correctionResult = (await mobile('employee', '/requests')).items.find(item => item.id === state.uiCorrection.id)
+    assert.equal(correctionResult.status, 'REJECTED')
+    assert.equal(correctionResult.decisionNote, 'Fictional correction rejected with context')
+    return { correctionComparison: true, correctionDecisionReturnedToEmployee: true }
   })
   await run('browser-qr-toggle-refresh-hide', 'browser-action+database-backed-http', async () => {
     assert.ok(state.branch)
