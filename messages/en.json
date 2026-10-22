@@ -25996,7 +25996,10 @@
     "legacyNotificationHint": "Until you save these choices, existing automatic notifications may still send plain text during an active chat. Save to apply which notifications are off.",
     "categories": {"marketing": "Offers and marketing", "utility": "Service updates", "authentication": "Verification codes"},
     "ticketStatusNames": {"new": "New request", "open": "Open", "in_progress": "In progress", "waiting": "Waiting for a response", "resolved": "Resolved", "closed": "Closed", "escalated": "Escalated to a specialist"},
-    "numberCheckFailed": "Could not verify the business number. Ask your connection administrator to check its Meta access."
+    "numberCheckFailed": "Could not verify the business number. Ask your connection administrator to check its Meta access.",
+    "templatesNotLoaded": "Templates not loaded",
+    "templatesAccessNextStep": "Resolve the access issue above to load templates.",
+    "templateChoicesUnavailable": "Notification choices become available after approved templates are loaded."
   },
   "quotes": {
     "title": "Quotes",

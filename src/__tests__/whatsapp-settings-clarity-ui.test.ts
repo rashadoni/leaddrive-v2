@@ -161,6 +161,7 @@ describe("WhatsApp settings — understandable and channel-bound interactions", 
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url.includes("/validate")) return response({ ok: true, verifiedName: "Sample business", displayPhoneNumber: "+10000000000" })
       if (url.includes("/templates?") && init?.method === "POST") return response({ success: false, error: "(#200) You do not have permission to access this field." }, 403)
+      if (url.includes("/templates?")) return response({ success: true, data: [], meta: { hasConfig: true } })
       return defaultFetch(url, init)
     })
     await mount()
@@ -170,6 +171,9 @@ describe("WhatsApp settings — understandable and channel-bound interactions", 
     expect(container.textContent).toContain("Sample business")
     expect(container.textContent).toContain("Meta has not allowed this connection to read templates")
     expect(container.textContent).toContain("successful phone check does not confirm template access")
+    expect(container.textContent).toContain("Templates not loaded")
+    expect(container.textContent).not.toContain("No templates yet")
+    expect(container.textContent?.match(/successful phone check does not confirm template access/g)).toHaveLength(1)
     expect(button("Submit to Meta").disabled).toBe(true)
   })
 })

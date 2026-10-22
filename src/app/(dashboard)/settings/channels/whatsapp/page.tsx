@@ -631,9 +631,9 @@ export default function WhatsAppSettingsPage() {
           <p className="text-sm text-red-700 dark:text-red-300">{loadError}</p>
         ) : templates.length === 0 ? (
           <div className="text-center py-10 border border-zinc-200 dark:border-zinc-700 rounded-lg">
-            <p className="text-sm text-muted-foreground">{tw("noTemplates")}</p>
+            <p className="text-sm font-medium">{tw(syncMessage?.permissionDenied ? "templatesNotLoaded" : "noTemplates")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {tw(syncMessage?.permissionDenied ? "templateAccessHelp" : meta?.hasConfig ? "createTemplatesHint" : "autoNotifNoConfig")}
+              {tw(syncMessage?.permissionDenied ? "templatesAccessNextStep" : meta?.hasConfig ? "createTemplatesHint" : "autoNotifNoConfig")}
             </p>
           </div>
         ) : (
@@ -744,7 +744,7 @@ export default function WhatsAppSettingsPage() {
           </div>
         )}
 
-        {syncMessage?.permissionDenied && <p className="text-sm text-red-700 dark:text-red-300">{tw("templateAccessHelp")}</p>}
+        {syncMessage?.permissionDenied && <p className="text-sm text-red-700 dark:text-red-300">{tw("templatesAccessNextStep")}</p>}
         {createTemplateMsg && feedback(createTemplateMsg)}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -846,7 +846,7 @@ export default function WhatsAppSettingsPage() {
         {!loading && !loadError && meta?.hasConfig && approvedTemplates.length === 0 && (
           <div className="space-y-2 rounded-lg bg-muted p-3 text-sm">
             <p className="font-medium">{tw("noApprovedTitle")}</p>
-            <p className="max-w-prose">{tw(syncMessage?.permissionDenied ? "templateAccessHelp" : "noApprovedTemplates")}</p>
+            <p className="max-w-prose">{tw(syncMessage?.permissionDenied ? "templateChoicesUnavailable" : "noApprovedTemplates")}</p>
             <a href="#wa-templates" className="inline-block text-primary underline underline-offset-4">{tw("reviewTemplates")}</a>
           </div>
         )}

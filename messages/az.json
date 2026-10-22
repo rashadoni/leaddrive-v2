@@ -25992,7 +25992,10 @@
     "legacyNotificationHint": "Bu seçimləri saxlayanadək mövcud avtomatik bildirişlər aktiv yazışma zamanı adi mətn göndərə bilər. Hansı bildirişlərin söndürüləcəyini tətbiq etmək üçün seçiminizi saxlayın.",
     "categories": {"marketing": "Təkliflər və reklam", "utility": "Xidmət bildirişləri", "authentication": "Təsdiq kodları"},
     "ticketStatusNames": {"new": "Yeni müraciət", "open": "Açıq", "in_progress": "İcradadır", "waiting": "Cavab gözləyir", "resolved": "Həll olunub", "closed": "Bağlanıb", "escalated": "Mütəxəssisə ötürülüb"},
-    "numberCheckFailed": "Biznes nömrəsini yoxlamaq alınmadı. Bağlantı administratorundan Meta girişini yoxlamağı xahiş edin."
+    "numberCheckFailed": "Biznes nömrəsini yoxlamaq alınmadı. Bağlantı administratorundan Meta girişini yoxlamağı xahiş edin.",
+    "templatesNotLoaded": "Şablonlar yüklənməyib",
+    "templatesAccessNextStep": "Şablonları yükləmək üçün yuxarıdakı giriş problemini həll edin.",
+    "templateChoicesUnavailable": "Təsdiqlənmiş şablonlar yükləndikdən sonra bildiriş seçimi mümkün olacaq."
   },
   "quotes": {
     "title": "Kommersiya təklifləri",
