@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
-import { resolveWhatsAppConfig } from "@/lib/whatsapp"
+import { resolveWhatsAppCampaignConfig } from "@/lib/campaigns/whatsapp-config"
 import { getTruthyString, isObjectRecord, parseWhatsAppTemplateConfig } from "@/lib/campaigns/social-broadcast"
 
 const WHATSAPP_SESSION_WINDOW_HOURS = 23
@@ -112,6 +112,8 @@ async function contactWhereForPreview(orgId: string, input: EligibilityInput): P
     where.id = { in: input.recipientIds }
   }
 
+  if (input.recipientMode === "source" && !input.recipientSource) return null
+  if (input.recipientMode === "segment" && !input.segmentId) return null
   if (input.recipientMode === "source" && input.recipientSource) {
     where.source = input.recipientSource
   }
@@ -121,7 +123,8 @@ async function contactWhereForPreview(orgId: string, input: EligibilityInput): P
       where: { id: input.segmentId, organizationId: orgId },
       select: { conditions: true },
     })
-    if (isObjectRecord(segment?.conditions)) addCommonSegmentConditions(where, segment.conditions, input.type)
+    if (!segment || !isObjectRecord(segment.conditions)) return null
+    addCommonSegmentConditions(where, segment.conditions, input.type)
   }
 
   return where
@@ -189,7 +192,7 @@ async function resolveWhatsAppSessionPhones(orgId: string, channelConfigId: stri
 async function previewWhatsApp(orgId: string, input: EligibilityInput) {
   const [{ contacts, leads }, providerConfig] = await Promise.all([
     loadPreviewAudience(orgId, input),
-    resolveWhatsAppConfig(orgId).catch(() => null),
+    resolveWhatsAppCampaignConfig(orgId, input.flowData).catch(() => null),
   ])
 
   const optedOut = contacts.filter(isOptedOut).length
@@ -226,7 +229,7 @@ async function previewWhatsApp(orgId: string, input: EligibilityInput) {
   const requiresTemplate = attemptPhones.length - sessionWindow
   const templateApproved = Boolean(approvedTemplate)
   const providerConfigured = Boolean(providerConfig)
-  const sendableBeforeProvider = sessionWindow + (templateApproved ? requiresTemplate : 0)
+  const sendableBeforeProvider = templateConfig?.name && !templateApproved ? 0 : sessionWindow + (templateApproved ? requiresTemplate : 0)
   const eligible = providerConfigured && reachablePhones.length <= WHATSAPP_BATCH_CAP ? sendableBeforeProvider : 0
   const totalAudience = contacts.length + leads.length
   const batchCap = Math.max(0, reachablePhones.length - WHATSAPP_BATCH_CAP)

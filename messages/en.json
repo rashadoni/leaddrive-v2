@@ -3666,6 +3666,8 @@
     "versionsDownloadPdf": "Download PDF"
   },
   "campaigns": {
+    "whatsappSender": "Sending WhatsApp channel",
+    "whatsappSelectSender": "Select the business number",
     "title": "Campaigns",
     "subtitle": "Create Email/SMS campaigns and review provider-backed WhatsApp/Telegram broadcasts",
     "newCampaign": "New Campaign",
@@ -4263,6 +4265,7 @@
     "analyticsBasedOnLatest": "Based on the latest {count} invoices (of {total})"
   },
   "inbox": {
+    "whatsappChannelMismatch": "This customer’s latest WhatsApp message belongs to a different business number. Replying here is blocked to avoid sending from the wrong number. Ask an administrator to check the conversation’s channel.",
     "title": "Inbox",
     "subtitle": "Omni-Channel — all channels in one place",
     "newMessage": "New Message",

@@ -204,6 +204,9 @@ async function updateCampaignProgress(orgId: string, campaignId: string) {
     })
     const active = (counts.pending || 0) + (counts.sending || 0)
     await tx.campaign.updateMany({
+      where: { id: campaignId, organizationId: orgId, status: "cancelled" }, data: { totalSent },
+    })
+    await tx.campaign.updateMany({
       where: { id: campaignId, organizationId: orgId, status: { in: ["sending", "sent", "failed"] } },
       data: { totalSent, ...(active === 0 ? { status: totalSent ? "sent" : "failed" } : {}) },
     })

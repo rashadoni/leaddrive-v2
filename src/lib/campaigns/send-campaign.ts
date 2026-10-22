@@ -1,9 +1,9 @@
+import { resolveWhatsAppCampaignConfig } from "./whatsapp-config"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { sendEmail, renderTemplate } from "@/lib/email"
 import { sendSms, isSmsConfigured } from "@/lib/sms"
 import { withSignedRedirect } from "@/lib/tracking-link"
-import { resolveWhatsAppConfig } from "@/lib/whatsapp"
 import { enqueueWhatsAppCampaign, normalizeCampaignPhone, type WhatsAppDispatchRecipient, type WhatsAppDispatchPayload } from "@/lib/campaigns/whatsapp-dispatch"
 import { sendTelegramText } from "@/lib/telegram"
 import { createNotification } from "@/lib/notifications"
@@ -654,11 +654,11 @@ async function sendEmailCampaign({
 }
 
 async function prepareWhatsAppCampaign({ orgId, campaign }: CampaignSendContext): Promise<CampaignPrepareResult> {
-  const config = await resolveWhatsAppConfig(orgId)
+  const config = await resolveWhatsAppCampaignConfig(orgId, campaign.flowData)
   if (!config) {
     return {
       response: sendResult(
-        { error: "WhatsApp provider not configured. Go to Settings → Channels → WhatsApp first." },
+        { error: "WhatsApp provider not configured or sender not selected. Select an active sending channel; configure it in Settings → Channels → WhatsApp." },
         { status: 422 },
       ),
     }
@@ -685,7 +685,7 @@ async function prepareWhatsAppCampaign({ orgId, campaign }: CampaignSendContext)
     } else if (stored.headerType && stored.headerType !== "TEXT") {
       return { response: sendResult({ error: "This template header is not supported by campaigns. Select a text, image, video or document template." }, { status: 422 }) }
     }
-    if (Array.isArray(stored.buttonsJson) && stored.buttonsJson.some((button: { type?: string; url?: string }) => button.type === "COPY_CODE" || /{{/.test(button.url || ""))) {
+    if (Array.isArray(stored.buttons) && stored.buttons.some((button: unknown) => isObjectRecord(button) && (button.type === "COPY_CODE" || /{{/.test(getTruthyString(button.url) || ""))))) {
       return { response: sendResult({ error: "This template needs dynamic button values. Select a template with static buttons." }, { status: 422 }) }
     }
     const variables = template.variables

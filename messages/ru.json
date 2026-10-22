@@ -3666,6 +3666,8 @@
     "versionsDownloadPdf": "Скачать PDF"
   },
   "campaigns": {
+    "whatsappSender": "Канал WhatsApp для отправки",
+    "whatsappSelectSender": "Выберите рабочий номер",
     "title": "Кампании",
     "subtitle": "Создавайте email/SMS кампании и проверяйте WhatsApp/Telegram рассылки через подключённых провайдеров",
     "newCampaign": "Новая кампания",
@@ -4263,6 +4265,7 @@
     "analyticsBasedOnLatest": "По последним {count} счетам (всего {total})"
   },
   "inbox": {
+    "whatsappChannelMismatch": "Последнее сообщение WhatsApp этого клиента связано с другим рабочим номером. Ответ здесь заблокирован, чтобы не отправить его с неверного номера. Попросите администратора проверить канал беседы.",
     "title": "Входящие",
     "subtitle": "Omni-Channel — все каналы в одном месте",
     "newMessage": "Новое сообщение",

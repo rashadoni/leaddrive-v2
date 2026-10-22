@@ -261,5 +261,6 @@ describe("durable WhatsApp campaign delivery", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(db.deliveries.map(row => row.status)).toEqual(["accepted", "skipped"])
     expect(db.campaigns[0].status).toBe("cancelled")
+    expect(db.campaigns[0].totalSent).toBe(1)
   })
 })

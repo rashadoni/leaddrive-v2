@@ -7,7 +7,9 @@ No separate subscription product or new customer-facing top-level menu is create
 ## Campaigns
 
 Starting a draft snapshots a normalized, deduplicated audience and its rendered
-message/template in one transaction. The existing scheduled-campaign cron drains
+message/template in one transaction and binds it to
+the sender selected in the campaign form. A legacy draft can infer a sender only
+when the tenant has exactly one active WhatsApp channel. The existing scheduled-campaign cron drains
 the durable recipient queue in bounded batches. An interrupted worker never blindly
 replays an in-flight request. Explicit throughput rejections can retry three times;
 timeouts, provider 5xx and missing provider IDs remain **unknown** until a receipt

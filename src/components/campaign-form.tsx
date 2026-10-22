@@ -39,6 +39,7 @@ interface Template {
 }
 
 interface WhatsAppTemplate {
+  channelConfigId: string
   headerType?: string | null
   headerText?: string | null
   id: string
@@ -208,6 +209,8 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
   const [selectedWhatsAppTemplateKey, setSelectedWhatsAppTemplateKey] = useState("")
   const [whatsAppHeaderValue, setWhatsAppHeaderValue] = useState("")
   const [whatsAppTemplateVariables, setWhatsAppTemplateVariables] = useState<Record<string, string>>({})
+  const [whatsAppChannels, setWhatsAppChannels] = useState<Array<{ id: string; configName: string; displayName: string | null }>>([])
+  const [whatsAppChannelId, setWhatsAppChannelId] = useState("")
   const [socialPreview, setSocialPreview] = useState<SocialEligibilityPreview | null>(null)
   const [socialPreviewLoading, setSocialPreviewLoading] = useState(false)
   const [segments, setSegments] = useState<Segment[]>([])
@@ -241,6 +244,9 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
       }).then(r => r.json()).then(j => {
         if (j.success) setTemplates(j.data?.templates || j.data || [])
       }).catch(() => {}).finally(() => setTemplatesLoaded(true))
+
+      fetch("/api/v1/campaigns/whatsapp-channels", { headers: { "x-organization-id": String(orgId) } })
+        .then(r => r.json()).then(j => { if (j.success) setWhatsAppChannels(j.data || []) }).catch(() => setWhatsAppChannels([]))
 
       fetch("/api/v1/whatsapp/templates?status=APPROVED", {
         headers: { "x-organization-id": String(orgId) },
@@ -297,6 +303,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
       )
       setWhatsAppTemplateVariables(savedWhatsAppTemplate?.variables || {})
       const existingFlow = initialData?.flowData
+      setWhatsAppChannelId(isObjectRecord(existingFlow) && typeof existingFlow.whatsappChannelConfigId === "string" ? existingFlow.whatsappChannelConfigId : "")
       const existingTemplate = isObjectRecord(existingFlow) && isObjectRecord(existingFlow.whatsappTemplate) ? existingFlow.whatsappTemplate : null
       setWhatsAppHeaderValue(typeof existingTemplate?.headerValue === "string" ? existingTemplate.headerValue : "")
       // Restore recipient mode from saved campaign
@@ -351,13 +358,18 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
     return contacts
   }, [contacts, form.type])
 
+  useEffect(() => {
+    if (open && whatsAppChannels.length === 1) setWhatsAppChannelId(current => current || whatsAppChannels[0].id)
+  }, [open, whatsAppChannels])
+  const senderTemplates = useMemo(() => whatsAppTemplates.filter(template => template.channelConfigId === whatsAppChannelId), [whatsAppTemplates, whatsAppChannelId])
+
   const selectedWhatsAppTemplate = useMemo(() => {
     if (!selectedWhatsAppTemplateKey) return null
     const [name, language] = selectedWhatsAppTemplateKey.split("::")
-    return whatsAppTemplates.find((template) => whatsAppTemplateKey(template) === selectedWhatsAppTemplateKey)
-      || whatsAppTemplates.find((template) => template.name === name && (!language || template.language === language))
+    return senderTemplates.find((template) => whatsAppTemplateKey(template) === selectedWhatsAppTemplateKey)
+      || senderTemplates.find((template) => template.name === name && (!language || template.language === language))
       || null
-  }, [selectedWhatsAppTemplateKey, whatsAppTemplates])
+  }, [selectedWhatsAppTemplateKey, senderTemplates])
 
   const selectedContactsKey = useMemo(() => Array.from(selectedContacts).sort().join(","), [selectedContacts])
 
@@ -365,7 +377,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
     if (form.type !== "whatsapp") return undefined
     const [keyName, keyLanguage] = selectedWhatsAppTemplateKey.split("::")
     const templateName = selectedWhatsAppTemplate?.name || keyName
-    if (!templateName) return undefined
+    if (!templateName) return { whatsappChannelConfigId: whatsAppChannelId }
     const variables = Object.fromEntries(
       Object.entries(whatsAppTemplateVariables)
         .filter(([, value]) => value.trim())
@@ -373,6 +385,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
     )
 
     return {
+      whatsappChannelConfigId: whatsAppChannelId,
       whatsappTemplate: {
         name: templateName,
         languageCode: selectedWhatsAppTemplate?.language || keyLanguage || undefined,
@@ -380,7 +393,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
         ...(whatsAppHeaderValue.trim() ? { headerValue: whatsAppHeaderValue.trim() } : {}),
       },
     }
-  }, [form.type, selectedWhatsAppTemplate, selectedWhatsAppTemplateKey, whatsAppTemplateVariables, whatsAppHeaderValue])
+  }, [form.type, selectedWhatsAppTemplate, selectedWhatsAppTemplateKey, whatsAppTemplateVariables, whatsAppHeaderValue, whatsAppChannelId])
 
   useEffect(() => {
     if (!open || form.type !== "whatsapp") return
@@ -757,13 +770,18 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
                   </>
                 ) : form.type === "whatsapp" ? (
                   <>
+                    <Label htmlFor="whatsapp-sender" className="text-xs text-muted-foreground">{t("whatsappSender")}</Label>
+                    <Select id="whatsapp-sender" value={whatsAppChannelId} onChange={event => { setWhatsAppChannelId(event.target.value); setSelectedWhatsAppTemplateKey(""); setWhatsAppHeaderValue("") }}>
+                      <option value="">{t("whatsappSelectSender")}</option>
+                      {whatsAppChannels.map(channel => <option key={channel.id} value={channel.id}>{channel.configName || channel.displayName || channel.id}</option>)}
+                    </Select>
                     <Label className="text-xs text-muted-foreground">{t("whatsappTemplate")}</Label>
                     <Select
                       value={selectedWhatsAppTemplateKey}
                       onChange={(e) => { setSelectedWhatsAppTemplateKey(e.target.value); setWhatsAppHeaderValue("") }}
                     >
                       <option value="">{whatsAppTemplatesLoaded ? t("whatsappNoTemplate") : tc("loading")}</option>
-                      {whatsAppTemplates.map(template => (
+                      {senderTemplates.map(template => (
                         <option key={template.id} value={whatsAppTemplateKey(template)}>
                           {template.name} · {template.language}
                         </option>

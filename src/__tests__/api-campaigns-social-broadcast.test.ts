@@ -63,24 +63,6 @@ type FindArgs = {
   where?: Record<string, unknown>
 }
 
-type WhatsAppTextCall = {
-  to: string
-  body: string
-  organizationId: string
-  contactId?: string
-  leadId?: string
-}
-
-type WhatsAppTemplateCall = {
-  to: string
-  templateName: string
-  languageCode?: string
-  variables?: Record<string, string> | string[]
-  organizationId: string
-  contactId?: string
-  leadId?: string
-}
-
 type TelegramTextCall = {
   organizationId: string
   to: string
@@ -185,6 +167,7 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: vi.fn(async () => null),
     },
     channelConfig: {
+      findMany: vi.fn(async () => [{ id: "wa_cfg_1" }]),
       findFirst: channelConfigFindFirst,
     },
     channelMessage: {

@@ -3666,6 +3666,8 @@
     "versionsDownloadPdf": "PDF yüklə"
   },
   "campaigns": {
+    "whatsappSender": "Göndərən WhatsApp kanalı",
+    "whatsappSelectSender": "Biznes nömrəsini seçin",
     "title": "Kampaniyalar",
     "subtitle": "Email/SMS kampaniyaları yaradın və provayderlə işləyən WhatsApp/Telegram broadcast-larını yoxlayın",
     "newCampaign": "Yeni kampaniya",
@@ -4263,6 +4265,7 @@
     "analyticsBasedOnLatest": "Son {count} faktura üzrə (cəmi {total})"
   },
   "inbox": {
+    "whatsappChannelMismatch": "Bu müştərinin son WhatsApp mesajı başqa biznes nömrəsinə aiddir. Yanlış nömrədən göndərilməməsi üçün burada cavab bloklanıb. Administratora söhbətin kanalını yoxlamağı xahiş edin.",
     "title": "Gələn qutusu",
     "subtitle": "Omni-Channel — bütün kanallar bir yerdə",
     "newMessage": "Yeni mesaj",
