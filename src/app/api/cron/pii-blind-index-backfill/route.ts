@@ -35,6 +35,7 @@ import {
   type ComplianceRecordType,
 } from "@/lib/audit/compliance-audit"
 import { runWithRlsBypass } from "@/lib/rls-context"
+import { isTenantPiiMasterKeyConfigured } from "@/lib/crypto/tenant-pii-encryption"
 
 const DEFAULT_MAX_PER_ENTITY = 200
 const HARD_CAP = 1000
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
   const cronError = requireCronAuth(req)
   if (cronError) return cronError
 
-  if (!process.env.TENANT_PII_MASTER_KEY) {
+  if (!isTenantPiiMasterKeyConfigured()) {
     // softDecryptForTenant would still happily return raw plaintext as
     // a fallback — but blindIndexForTenant requires the key, so without
     // it every backfill write would error inside the loop. Fail fast.
