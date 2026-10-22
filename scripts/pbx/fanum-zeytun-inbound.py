@@ -24,6 +24,21 @@ class ZeytunNoRedirect(urllib.request.HTTPRedirectHandler):
 
 class ZeytunInboundBridge:
     NAME = "search_pharmacy_catalog"
+    # Owner, 2026-10-23: ~99% of these calls are Azerbaijani. Without a hint
+    # the provider re-detects the language of every short phone turn; measured
+    # against the live API on 8 kHz mu-law audio, two-word Azerbaijani turns
+    # came back as Japanese, Korean, Spanish or Italian. Pinned per session,
+    # so a replacement session after recovery gets the same hint. Explicit
+    # language switching is still handled by the core's language policy.
+    TRANSCRIPTION_LANGUAGES = ("az-AZ",)
+    # Order words only: units, forms and packaging. Medicine names are left
+    # out on purpose: a hard-coded list here would drift from the catalog.
+    TRANSCRIPTION_VOCABULARY = (
+        "qutu", "ədəd", "ampula", "flakon", "şam", "tablet", "həb", "kapsul", "sirop",
+        "suspenziya", "damcı", "sprey", "məlhəm", "krem", "gel", "toz", "paket", "blister",
+        "şpris", "məhlul", "milliqram", "mikroqram", "millilitr", "qram", "beynəlxalq vahid",
+        "film örtüklü",
+    )
 
     def __init__(self, runtime_url, token, call_id, request=None, clock=None, announce_answered=None):
         parsed = urllib.parse.urlsplit(runtime_url)
@@ -112,6 +127,12 @@ class ZeytunInboundBridge:
                     "barcode": "Exact barcode supplied by caller.",
                     "externalId": "Exact product UUID returned by an earlier lookup.",
                 }.items()}}}]}]
+
+    def transcription(self):
+        # Fields of AudioTranscriptionConfig (ai.google.dev/api/live); accepted
+        # by gemini-3.1-flash-live-preview and gemini-3.8-live on 2026-10-23.
+        return {"languageCodes": list(self.TRANSCRIPTION_LANGUAGES),
+                "customVocabulary": list(self.TRANSCRIPTION_VOCABULARY)}
 
     @staticmethod
     def query(args):
