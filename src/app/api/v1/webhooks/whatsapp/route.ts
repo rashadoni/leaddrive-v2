@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
+import { publishWhatsAppIntegrationEvent } from "@/lib/integrations/whatsapp-events"
 import { prisma } from "@/lib/prisma"
 import { alreadyIngested, isDuplicateInsert } from "@/lib/social/meta-inbound-idempotency"
 import { sendWhatsAppMessage, resolveWhatsAppConfig } from "@/lib/whatsapp"
@@ -1274,6 +1275,11 @@ async function processMessages(
       console.error("[WA Webhook] SocialConversation link failed:", e)
     }
 
+    if (messageId) await publishWhatsAppIntegrationEvent(orgId, {
+      id: messageId, channelConfigId: channelConfig.id, direction: "inbound", status: "received",
+      contactId, leadId, conversationId: convId,
+    })
+
     // Update lastContactAt
     if (contactId) {
       await prisma.contact.updateMany({
@@ -2048,7 +2054,7 @@ async function handleStatusUpdate(
   const owner = await runWithRlsBypass(() =>
     prisma.channelMessage.findFirst({
       where: { organizationId, externalId: waMessageId, direction: "outbound" },
-      select: { organizationId: true },
+      select: { organizationId: true, channelConfigId: true, contactId: true, leadId: true, conversationId: true },
     })
   ).catch(() => null)
 
@@ -2064,6 +2070,11 @@ async function handleStatusUpdate(
         data: { status: mappedStatus },
       })
     ).catch(() => {})
+    if (owner.channelConfigId) await runWithTenant(owner.organizationId, () => publishWhatsAppIntegrationEvent(owner.organizationId, {
+      id: waMessageId, channelConfigId: owner.channelConfigId, direction: "outbound",
+      status: mappedStatus as "sent" | "delivered" | "read" | "failed",
+      contactId: owner.contactId, leadId: owner.leadId, conversationId: owner.conversationId,
+    }))
   }
 
   if (newStatus === "failed") {

@@ -1,3 +1,4 @@
+vi.mock("@/lib/integrations/whatsapp-events", () => ({ publishWhatsAppIntegrationEvent: vi.fn().mockResolvedValue(undefined) }))
 /**
  * The WhatsApp webhook and the demo's live thread
  * (src/lib/demo-center/demo-whatsapp-agent.ts). A message the demo's agent
@@ -243,6 +244,15 @@ describe("a message of the demo's live thread", () => {
 
   beforeEach(() => {
     ticketHook.mockResolvedValue({ ticketId: null, ticketNumber: null, created: false, commentAdded: false, reopened: false })
+  })
+
+  it("publishes a persisted inbound identity without phone or message content", async () => {
+    await POST(req(textMessage("private customer content")))
+    const { publishWhatsAppIntegrationEvent } = await import("@/lib/integrations/whatsapp-events")
+    expect(publishWhatsAppIntegrationEvent).toHaveBeenCalledWith("org_1", expect.objectContaining({ id: "wamid.in1", direction: "inbound", status: "received" }))
+    const payload = JSON.stringify(vi.mocked(publishWhatsAppIntegrationEvent).mock.calls)
+    expect(payload).not.toContain("994501234567")
+    expect(payload).not.toContain("private customer content")
   })
 
   it.each([{ terminal: true }, { terminal: false, handledReply: true }])("yields to a terminal or confirmed flow reply %j but still files the inbound", async (flowResult) => {

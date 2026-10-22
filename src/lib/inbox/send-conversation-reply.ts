@@ -308,6 +308,7 @@ async function finalizeChatwootDelivery(
 export async function sendConversationReply(opts: SendConversationReplyOptions): Promise<SendConversationReplyResult> {
   const { organizationId: orgId, channel, to, body, subject, contactId, leadId, conversationId, channelConfigId, attachment } = opts
   let status = "delivered"
+  let whatsAppMessageId: string | undefined
   let errorMsg = ""
   let resolvedChatId: string | undefined
   let deliveryUnknown = false
@@ -378,7 +379,8 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
             organizationId: orgId,
             channelConfigId,
           })
-          status = result.success ? "delivered" : "failed"
+          status = result.success ? "sent" : "failed"
+          whatsAppMessageId = result.messageId
           if (!result.success) errorMsg = result.error || "WhatsApp media send failed"
           break
         }
@@ -396,11 +398,13 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
           ...(conversationId ? { skipLog: true } : {}),
         })
         if (!result.success) return { success: false, statusCode: 500, error: result.error || "WhatsApp send failed" }
+        status = "sent"
+        whatsAppMessageId = result.messageId
         if (!conversationId) {
           if (contactId) {
             await prisma.contact.updateMany({ where: { id: contactId, organizationId: orgId }, data: { lastContactAt: new Date() } }).catch(() => {})
           }
-          return { success: true, statusCode: 201, data: { id: "wa-sent", status: "delivered" } }
+          return { success: true, statusCode: 201, data: { id: "wa-sent", status: "sent" } }
         }
         break
       }
@@ -583,6 +587,7 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
         mediaUrl: attachment?.url,
         messageType: attachment ? (isImageMime(attachment.mime) ? "image" : "document") : undefined,
         status,
+        externalId: whatsAppMessageId,
         contactId: contactId || undefined,
         leadId: leadId || undefined,
         conversationId: conversationId || undefined,
@@ -600,10 +605,10 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
       }).catch((error) => console.error("[inbox ensure email/sms]", error))
     }
 
-    if (contactId && status === "delivered") {
+    if (contactId && (status === "delivered" || status === "sent")) {
       await prisma.contact.updateMany({ where: { id: contactId, organizationId: orgId }, data: { lastContactAt: new Date() } }).catch(() => {})
     }
-    if (conversationId && status === "delivered") {
+    if (conversationId && (status === "delivered" || status === "sent")) {
       await prisma.socialConversation.updateMany({
         where: { id: conversationId, organizationId: orgId },
         data: { lastMessage: body, lastMessageAt: new Date() },

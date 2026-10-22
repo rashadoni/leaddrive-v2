@@ -6,6 +6,7 @@ type TestRole = "admin" | "support" | "ticketing" | "viewer"
 const state = vi.hoisted(() => ({
   role: "support" as TestRole,
   hasBrowserSession: true,
+  phonePrivacy: false,
   sanitizeOwnedRefs: vi.fn(),
   findConversation: vi.fn(),
   sendConversationReply: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("@/lib/with-rls", () => ({
       orgId: "org-1",
       userId: "operator-1",
       role: state.role,
+      hideCustomerPhoneForOperators: state.phonePrivacy,
       email: "operator@example.test",
       name: "Inbox Operator",
     }, ctx)
@@ -67,6 +69,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   state.role = "support"
   state.hasBrowserSession = true
+  state.phonePrivacy = false
   state.sanitizeOwnedRefs.mockResolvedValue({ conversationId: "conv-1" })
   state.findConversation.mockResolvedValue({ externalId: "cw-server-bound", channelConfigId: "cfg-1" })
   state.sendConversationReply.mockResolvedValue({
@@ -171,4 +174,28 @@ describe("POST /api/v1/inbox operator authorization", () => {
     expect(response.status).toBe(404)
     expect(state.sendConversationReply).not.toHaveBeenCalled()
   })
+})
+
+describe("WhatsApp replies use a stored tenant recipient", () => {
+  it("accepts a masked browser to but sends to the conversation's phone", async () => {
+    state.sanitizeOwnedRefs.mockResolvedValue({ conversationId: "conv-1", contactId: "contact-1" })
+    state.findConversation.mockResolvedValue({ externalId: "994501234567", channelConfigId: "wa-2" })
+    const res = await POST(request({ channel: "whatsapp", to: "••••••••" }))
+    expect(res.status).toBe(201)
+    expect(state.findConversation).toHaveBeenCalledWith({ where: { id: "conv-1", organizationId: "org-1", platform: "whatsapp", deletedAt: null }, select: { externalId: true, channelConfigId: true } })
+    expect(state.sendConversationReply).toHaveBeenCalledWith(expect.objectContaining({ to: "994501234567", channelConfigId: "wa-2", conversationId: "conv-1" }))
+  })
+  it("never falls back to client to when the tenant conversation disappears", async () => {
+    state.findConversation.mockResolvedValue(null)
+    expect((await POST(request({ channel: "whatsapp", to: "994501234567" }))).status).toBe(404)
+    expect(state.sendConversationReply).not.toHaveBeenCalled()
+  })
+})
+
+
+it("requires a tenant conversation for a phone-restricted WhatsApp operator", async () => {
+  state.phonePrivacy = true
+  state.sanitizeOwnedRefs.mockResolvedValue({})
+  expect((await POST(request({ channel: "whatsapp", to: "994501234567", conversationId: undefined }))).status).toBe(400)
+  expect(state.sendConversationReply).not.toHaveBeenCalled()
 })

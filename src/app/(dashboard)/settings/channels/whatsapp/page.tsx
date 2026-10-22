@@ -15,6 +15,7 @@ import {
   MessageCircle, CheckCircle2, AlertTriangle, RefreshCw, FileText,
   ExternalLink, Copy, Check, ChevronDown, ChevronUp, Bell, Save, Send,
 } from "lucide-react"
+import { CustomerPhonePrivacy } from "@/components/settings/customer-phone-privacy"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
@@ -332,6 +333,8 @@ export default function WhatsAppSettingsPage() {
       </div>
 
       {/* Validate credentials */}
+      <CustomerPhonePrivacy />
+
       <Card className="p-6 space-y-3" data-tour-id="whatsapp-settings-credentials">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>

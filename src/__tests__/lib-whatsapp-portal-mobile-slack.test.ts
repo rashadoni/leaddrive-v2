@@ -191,7 +191,7 @@ describe("whatsapp: sendWhatsAppMessage", () => {
     })
     db.channelMessage.create.mockResolvedValue({})
 
-    const result = await sendWhatsAppMessage({ to: "bad", message: "test", organizationId: "org-1" })
+    const result = await sendWhatsAppMessage({ to: "994501234567", message: "test", organizationId: "org-1" })
     expect(result.success).toBe(false)
     expect(result.error).toBe("Invalid phone")
   })

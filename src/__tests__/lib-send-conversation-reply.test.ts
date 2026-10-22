@@ -501,3 +501,19 @@ describe("native TikTok transport boundary", () => {
     expect(mocks.sendNative).not.toHaveBeenCalled()
   })
 })
+
+describe("WhatsApp provider acceptance and receipts", () => {
+  it.each([false, true])("stores only sent and the provider receipt id (media=%s)", async media => {
+    const { sendWhatsAppMessage, sendWhatsAppMedia } = await import("@/lib/whatsapp")
+    vi.mocked(sendWhatsAppMessage).mockResolvedValue({ success: true, messageId: "wamid.receipt" })
+    vi.mocked(sendWhatsAppMedia).mockResolvedValue({ success: true, messageId: "wamid.receipt" })
+    mocks.createMessage.mockImplementation(async ({ data }) => ({ id: "msg-1", ...data }))
+    const result = await send({ channel: "whatsapp", to: "994501234567", deliveryIdempotency: undefined,
+      ...(media ? { attachment: { buffer: Buffer.from("x"), mime: "image/png", filename: "a.png", url: "/uploads/a.png" } } : {}) })
+    expect(result.success).toBe(true)
+    expect(mocks.createMessage).toHaveBeenCalledWith({ data: expect.objectContaining({
+      status: "sent", externalId: "wamid.receipt", conversationId: "conv-1", channelConfigId: "cfg-1",
+    }) })
+    expect(mocks.updateConversation).toHaveBeenCalled()
+  })
+})

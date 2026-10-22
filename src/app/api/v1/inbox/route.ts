@@ -1,3 +1,4 @@
+import { isPhoneRestrictedPrincipal } from "@/lib/customer-phone-privacy"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -834,6 +835,10 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
     return NextResponse.json({ error: "Conversation not found" }, { status: 404 })
   }
   const conversationId = owned.conversationId
+  if (channel === "whatsapp" && authSession.hideCustomerPhoneForOperators === true
+    && isPhoneRestrictedPrincipal(authSession) && !conversationId) {
+    return NextResponse.json({ error: "Open a customer conversation before replying" }, { status: 400 })
+  }
   const leadId = owned.leadId
 
   // For TikTok (Chatwoot), Facebook, Instagram and VK the transport recipient
@@ -864,16 +869,17 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
     replyTo = boundConversation.externalId
     boundChannelConfigId = boundConversation.channelConfigId
   } else if (channel === "whatsapp" && conversationId) {
-    // WhatsApp keeps the composer's `to` (the customer's phone), but answers from the number the
-    // conversation came in on: a workspace can hold several numbers (Embedded Signup makes that routine),
-    // and without the channel the transport picked the workspace's first one — a number the customer
-    // never wrote to, outside its 24h window, so Meta refused the reply. A send with no conversation
-    // (a phone typed into a new thread) keeps the workspace's number.
+    // The recipient and sending number are server-owned. A masked browser value
+    // (or a forged phone) must never redirect a reply away from this conversation.
     const boundConversation = await prisma.socialConversation.findFirst({
       where: { id: conversationId, organizationId: orgId, platform: "whatsapp", deletedAt: null },
-      select: { channelConfigId: true },
+      select: { externalId: true, channelConfigId: true },
     })
-    boundChannelConfigId = boundConversation?.channelConfigId ?? null
+    if (!boundConversation) {
+      return NextResponse.json({ error: "Conversation not found" }, { status: 404 })
+    }
+    replyTo = boundConversation.externalId
+    boundChannelConfigId = boundConversation.channelConfigId
   }
 
   // Web-chat reply: single-source — write a WebChatMessage(agent) into the session (the visitor's

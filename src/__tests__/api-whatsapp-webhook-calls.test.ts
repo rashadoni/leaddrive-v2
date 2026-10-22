@@ -1,3 +1,4 @@
+vi.mock("@/lib/integrations/whatsapp-events", () => ({ publishWhatsAppIntegrationEvent: vi.fn().mockResolvedValue(undefined) }))
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest"
 import type { NextRequest } from "next/server"
 import { createHmac } from "crypto"
@@ -515,7 +516,8 @@ describe("WhatsApp Calling webhook", () => {
 
   it("scopes message delivery status updates to the verified WhatsApp tenant", async () => {
     const findMessage = prisma.channelMessage.findFirst as unknown as Mock
-    findMessage.mockResolvedValue({ organizationId: "org_1" })
+    findMessage.mockResolvedValue({ organizationId: "org_1", channelConfigId: "channel_1", conversationId: "conv_1", contactId: "contact_1", leadId: null })
+    vi.mocked(prisma.channelMessage.updateMany).mockResolvedValue({ count: 1 })
     const body = messagesPayload({
       ...baseValue,
       statuses: [{
@@ -530,6 +532,10 @@ describe("WhatsApp Calling webhook", () => {
     const res = await POST(req(body))
 
     expect(res.status).toBe(200)
+    const { publishWhatsAppIntegrationEvent } = await import("@/lib/integrations/whatsapp-events")
+    expect(publishWhatsAppIntegrationEvent).toHaveBeenCalledWith("org_1", {
+      id: "wamid.outbound", channelConfigId: "channel_1", direction: "outbound", status: "delivered", conversationId: "conv_1", contactId: "contact_1", leadId: null,
+    })
     expect(recordCampaignStatus).toHaveBeenCalledWith("org_1", "wamid.outbound", "delivered", "campaign:delivery-1")
     expect(prisma.channelMessage.findFirst).toHaveBeenCalledWith({
       where: {
@@ -537,7 +543,7 @@ describe("WhatsApp Calling webhook", () => {
         externalId: "wamid.outbound",
         direction: "outbound",
       },
-      select: { organizationId: true },
+      select: { organizationId: true, channelConfigId: true, contactId: true, leadId: true, conversationId: true },
     })
     expect(prisma.channelMessage.updateMany).toHaveBeenCalledWith({
       where: {

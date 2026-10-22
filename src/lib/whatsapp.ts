@@ -514,17 +514,21 @@ export async function listApprovedTemplates(
 async function insideSessionWindow(
   organizationId: string,
   toPhone: string,
+  channelConfigId: string,
 ): Promise<boolean> {
-  const clean = toPhone.replace(/[^0-9]/g, "").slice(-10)
+  const clean = toPhone.replace(/[^0-9]/g, "")
+  if (!clean) return false
   const inbound = await prisma.channelMessage
     .findFirst({
       where: {
         organizationId,
+        channelConfigId,
         direction: "inbound",
         channelType: "whatsapp",
         OR: [
-          { from: { contains: clean } },
-          { metadata: { path: ["waPhone"], string_contains: clean } as any },
+          { from: { in: [clean, `+${clean}`] } },
+          { metadata: { path: ["waPhone"], equals: clean } },
+          { metadata: { path: ["waPhone"], equals: `+${clean}` } },
         ],
       },
       orderBy: { createdAt: "desc" },
@@ -534,7 +538,7 @@ async function insideSessionWindow(
 
   if (!inbound) return false
   const hours = (Date.now() - inbound.createdAt.getTime()) / (1000 * 60 * 60)
-  return hours < SESSION_WINDOW_HOURS
+  return hours >= 0 && hours < SESSION_WINDOW_HOURS
 }
 
 /**
@@ -581,7 +585,7 @@ export async function sendWhatsAppText({
   }
 
   const cleanPhone = to.replace(/[\s\-\(\)]/g, "").replace(/^\+/, "")
-  const windowOk = await insideSessionWindow(organizationId, cleanPhone)
+  const windowOk = await insideSessionWindow(organizationId, cleanPhone, config.id)
   if (!windowOk) {
     return {
       success: false,
@@ -614,7 +618,7 @@ export async function sendWhatsAppText({
     }
 
     const messageId = data?.messages?.[0]?.id
-    if (!skipLog) await logMessage(organizationId, config, cleanPhone, body, "delivered", contactId, { waMessageId: messageId }, leadId)
+    if (!skipLog) await logMessage(organizationId, config, cleanPhone, body, "sent", contactId, { waMessageId: messageId }, leadId)
     return { success: true, messageId }
   } catch (err: any) {
     const msg = err?.message || "network error"
@@ -722,7 +726,7 @@ export async function sendWhatsAppTemplate({
     }
 
     const messageId = data?.messages?.[0]?.id
-    await logMessage(organizationId, config, cleanPhone, `[template:${templateName}]`, "delivered", contactId, {
+    await logMessage(organizationId, config, cleanPhone, `[template:${templateName}]`, "sent", contactId, {
       waMessageId: messageId, template: templateName, language: lang,
     }, leadId)
     return { success: true, messageId }
@@ -823,7 +827,7 @@ export async function sendWhatsAppMessage({
         return { success: false, error: err }
       }
       const messageId = data?.messages?.[0]?.id
-      if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "delivered", contactId, { waMessageId: messageId, ...(extraMetadata ?? {}) }, leadId, conversationId)
+      if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "sent", contactId, { waMessageId: messageId, ...(extraMetadata ?? {}) }, leadId, conversationId)
       return { success: true, messageId }
     } catch (err: any) {
       const msg = err?.message || "network error"
@@ -1237,7 +1241,7 @@ async function logMessage(
   config: WhatsAppConfig,
   to: string,
   body: string,
-  status: "delivered" | "failed",
+  status: "sent" | "failed",
   contactId: string | undefined,
   extraMeta: Record<string, any>,
   leadId?: string,

@@ -58,7 +58,7 @@ beforeEach(() => {
 describe("sending WhatsApp from the conversation's number", () => {
   it("records native AI replies against their conversation so AI caps can count them", async () => {
     await sendWhatsAppMessage({ to: "994501234567", message: "answer", organizationId: "org_1", channelConfigId: "wa_new", conversationId: "conversation-1", forceText: true, extraMetadata: { autoReply: true, aiAutoReply: true } })
-    expect(db.logged).toEqual([expect.objectContaining({ conversationId: "conversation-1", organizationId: "org_1", metadata: expect.objectContaining({ aiAutoReply: true }) })])
+    expect(db.logged).toEqual([expect.objectContaining({ conversationId: "conversation-1", organizationId: "org_1", status: "sent", metadata: expect.objectContaining({ aiAutoReply: true }) })])
   })
 
   it("answers from the number the conversation came in on (forced text — the auto-reply path)", async () => {
@@ -71,6 +71,7 @@ describe("sending WhatsApp from the conversation's number", () => {
   it("answers from the number the conversation came in on (window-checked text — the inbox path)", async () => {
     await sendWhatsAppMessage({ to: "994501234567", message: "Salam", organizationId: "org_1", channelConfigId: "wa_new" })
     expect(calls.map((c) => [new URL(c.url).pathname.split("/").at(-2), c.auth])).toEqual([["222", "Bearer TOKEN_NEW"]])
+    expect(db.logged[0].status).toBe("sent")
   })
 
   it("sends media from that number too, upload and message alike", async () => {
@@ -93,5 +94,26 @@ describe("sending WhatsApp from the conversation's number", () => {
     db.rows.push({ id: "wa_foreign", organizationId: "org_2", channelType: "whatsapp", isActive: true, phoneNumberId: "999", accessToken: "TOKEN_FOREIGN" })
     await sendWhatsAppMessage({ to: "994501234567", message: "x", organizationId: "org_1", forceText: true, channelConfigId: "wa_foreign" })
     expect(calls.map((c) => c.auth)).toEqual(["Bearer TOKEN_OLD"])
+  })
+})
+
+describe("the customer-service window belongs to the exact customer and business number", () => {
+  it("never borrows an inbound window from another business number or matching phone suffix", async () => {
+    const { prisma } = await import("@/lib/prisma")
+    vi.mocked(prisma.channelMessage.findFirst).mockImplementation(async (query) => {
+      const where = query?.where as { channelConfigId?: string; OR?: { from?: { in?: string[]; contains?: string } }[] }
+      // A different channel received a customer with the same last ten digits.
+      const unrelated = { channelConfigId: "wa_old", from: "1994501234567" }
+      if (where.channelConfigId === unrelated.channelConfigId && where.OR?.[0]?.from?.in?.includes(unrelated.from)) return { createdAt: new Date() } as never
+      return null
+    })
+    const result = await sendWhatsAppMessage({ to: "+994501234567", message: "hello", organizationId: "org_1", channelConfigId: "wa_new" })
+    expect(result.success).toBe(false)
+    expect(calls).toEqual([])
+    expect(prisma.channelMessage.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ channelConfigId: "wa_new", OR: [
+      { from: { in: ["994501234567", "+994501234567"] } },
+      { metadata: { path: ["waPhone"], equals: "994501234567" } },
+      { metadata: { path: ["waPhone"], equals: "+994501234567" } },
+    ] }) }))
   })
 })
