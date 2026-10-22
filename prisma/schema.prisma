@@ -126,6 +126,7 @@ model Organization {
   // MTM (Mobile Team Management) relations
   mtmRegions                          MtmRegion[]
   mtmTeams                            MtmTeam[]
+  mtmDepartments                      MtmDepartment[]
   mtmAgents                           MtmAgent[]
   mtmCustomers                        MtmCustomer[]
   mtmRoutes                           MtmRoute[]
@@ -5786,6 +5787,10 @@ model MtmTeam {
   name           String
   code           String?
   isActive       Boolean      @default(true)
+  /// Personnel: the department this section (şöbə) belongs to. NULL = a section
+  /// outside any department, as every team was before 2026-10-22.
+  departmentId   String?
+  department     MtmDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -5805,7 +5810,27 @@ model MtmTeam {
   @@index([organizationId])
   @@index([organizationId, regionId])
   @@index([regionId])
+  @@index([departmentId])
   @@map("mtm_teams")
+}
+
+/// Personnel: a department (departament) — the level above a section (şöbə, an
+/// MtmTeam). Owner, 2026-10-22: «тут есть отдел, но нет департамента». A person
+/// may belong to a department without a section (its head, for one).
+model MtmDepartment {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  teams  MtmTeam[]
+  agents MtmAgent[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId])
+  @@map("mtm_departments")
 }
 
 // MTM Agent — field agents linked to CRM users
@@ -5862,6 +5887,10 @@ model MtmAgent {
   mapColor       String?
   teamId         String?
   team           MtmTeam?       @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  /// Personnel: the person's department. With a section it is the section's
+  /// department; without one it is where the person sits (a department head).
+  departmentId   String?
+  department     MtmDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   managerId      String?
   manager        MtmAgent?      @relation("AgentManager", fields: [managerId], references: [id])
   subordinates   MtmAgent[]     @relation("AgentManager")
@@ -5967,6 +5996,7 @@ model MtmAgent {
   @@index([userId])
   @@index([managerId])
   @@index([teamId])
+  @@index([departmentId])
   @@map("mtm_agents")
 }
 

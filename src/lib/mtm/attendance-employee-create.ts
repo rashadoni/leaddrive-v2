@@ -7,7 +7,7 @@ import { passwordPolicyError } from "@/lib/password-policy"
 import { USER_HIDEABLE_MODULE_IDS, parseHiddenModulesInput } from "@/lib/user-module-access"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
-import { recordAttendanceInitialHire, requireAttendanceEmployeeAdmin, resolveAttendanceDepartment } from "@/lib/mtm/attendance-employee-store"
+import { recordAttendanceInitialHire, requireAttendanceEmployeeAdmin, resolveAttendanceUnit } from "@/lib/mtm/attendance-employee-store"
 import { ATTENDANCE_EMPLOYEE_POSITION_MAX, OFFICE_EMPLOYEE_CRM_ROLE } from "@/lib/mtm/attendance-employee-contract"
 import { isDateKey } from "@/lib/mtm/mobile-week"
 import { findPhoneOwner } from "@/lib/mtm/mobile-login-phone"
@@ -43,17 +43,19 @@ export const AttendanceEmployeeCreateSchema = z.object({
   email: z.union([z.literal("").transform(() => null), z.string().trim().toLowerCase().max(320).email(), z.null()]).optional(),
   // A tab opened before 2026-10-15 still sends the password HR typed; it is honoured.
   password: z.union([z.literal("").transform(() => undefined), z.string().max(72)]).optional(),
-  // The card: job title, department and hire date, all optional (filled later in the card).
+  // The card: job title, department, section and hire date, all optional (filled later in the card).
   position: z.string().trim().max(ATTENDANCE_EMPLOYEE_POSITION_MAX).transform(value => value || null).nullable().optional(),
   teamId: z.string().trim().min(1).max(191).nullable().optional(),
   newTeamName: z.string().trim().min(1).max(120).optional(),
+  departmentId: z.string().trim().min(1).max(191).nullable().optional(),
+  newDepartmentName: z.string().trim().min(1).max(120).optional(),
   hireDate: z.union([z.literal("").transform(() => null), z.string().refine(isDateKey), z.null()]).optional(),
-}).strict().refine(input => !(input.newTeamName && input.teamId), { path: ["teamId"] })
+}).strict().refine(input => !(input.newTeamName && input.teamId) && !(input.newDepartmentName && input.departmentId), { path: ["teamId"] })
 
 export async function createAttendanceEmployee(actor: AttendanceReviewer, raw: unknown) {
   const parsed = AttendanceEmployeeCreateSchema.safeParse(raw)
   if (!parsed.success) throw new AttendanceRequestError(parsed.error.issues.some(issue => issue.path[0] === "phone") ? "MTM_ATTENDANCE_EMPLOYEE_PHONE_INVALID" : "MTM_ATTENDANCE_EMPLOYEE_INVALID", 400)
-  const { name, phone, password, position = null, teamId = null, newTeamName, hireDate = null } = parsed.data
+  const { name, phone, password, position = null, teamId = null, newTeamName, departmentId = null, newDepartmentName, hireDate = null } = parsed.data
   const email = parsed.data.email ?? null
   if (password !== undefined && passwordPolicyError(password)) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_PASSWORD_WEAK", 400)
   const organizationId = actor.organizationId
@@ -81,13 +83,13 @@ export async function createAttendanceEmployee(actor: AttendanceReviewer, raw: u
     // must not show.
     const card = await tx.mtmAgent.findFirst({ where: { organizationId, userId: user.id }, select: { id: true } })
     const agentId = card?.id ?? randomUUID()
-    const department = await resolveAttendanceDepartment(tx, organizationId, { teamId, newTeamName })
+    const unit = await resolveAttendanceUnit(tx, organizationId, { teamId, newTeamName, departmentId, newDepartmentName })
     if (!card) await tx.mtmAgent.create({ data: { id: agentId, organizationId, userId: user.id, name, email, phone, role: "EMPLOYEE", status: "ACTIVE",
-      attendanceParticipant: true, canPlanOwnRoutes: false, canSelfPublishRoutes: false, position, teamId: department } })
-    else await tx.mtmAgent.update({ where: { organizationId, id: agentId }, data: { phone, ...(email ? {} : { email: null }), ...(position || department ? { position, teamId: department } : {}) } })
+      attendanceParticipant: true, canPlanOwnRoutes: false, canSelfPublishRoutes: false, position, ...unit } })
+    else await tx.mtmAgent.update({ where: { organizationId, id: agentId }, data: { phone, ...(email ? {} : { email: null }), ...(position || unit.teamId || unit.departmentId ? { position, ...unit } : {}) } })
     if (hireDate) await recordAttendanceInitialHire(tx, actor, agentId, hireDate, timezone)
     await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId, entity: "agent", entityId: agentId,
-      action: "MTM_ATTENDANCE_EMPLOYEE_CREATED", metadataKind: "mtm_attendance_employment", newData: { userId: user.id, position, teamId: department, hireDate } } })
+      action: "MTM_ATTENDANCE_EMPLOYEE_CREATED", metadataKind: "mtm_attendance_employment", newData: { userId: user.id, position, ...unit, hireDate } } })
     return { userId: user.id, agentId, name: user.name, email: hasRealEmail(user.email) ? user.email : null, phone }
   }, { timeout: 15_000 })
 

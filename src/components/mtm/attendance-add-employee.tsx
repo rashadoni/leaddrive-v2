@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl"
 import { MessageCircle, UserPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MtmAttendanceDepartmentField, departmentPayload, type DepartmentValue } from "@/components/mtm/attendance-department-field"
-import { ATTENDANCE_EMPLOYEE_POSITION_MAX } from "@/lib/mtm/attendance-employee-contract"
+import { MtmAttendanceDepartmentField, departmentPayload, emptyDepartmentValue, type DepartmentValue } from "@/components/mtm/attendance-department-field"
+import { ATTENDANCE_EMPLOYEE_POSITION_MAX, type AttendanceDepartment, type AttendanceSection } from "@/lib/mtm/attendance-employee-contract"
 
 const ENDPOINT = "/api/v1/mtm/attendance/employees/new"
 const ERRORS: Record<string, string> = {
@@ -15,9 +15,10 @@ const ERRORS: Record<string, string> = {
   MTM_ATTENDANCE_EMPLOYEE_PHONE_INVALID: "addEmployeePhoneInvalid",
   MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN: "addEmployeePhoneTaken",
   MTM_ATTENDANCE_EMPLOYEE_USER_LIMIT: "addEmployeeUserLimit",
+  MTM_ATTENDANCE_EMPLOYEE_SECTION_ELSEWHERE: "employeeSectionElsewhere",
 }
 type Form = { name: string; phone: string; email: string; position: string; department: DepartmentValue; hireDate: string }
-const empty: Form = { name: "", phone: "+994", email: "", position: "", department: { teamId: "", newTeamName: "" }, hireDate: "" }
+const empty: Form = { name: "", phone: "+994", email: "", position: "", department: emptyDepartmentValue(), hireDate: "" }
 /** What the server accepts: «+», a country code, at most 15 digits; spaces and dashes are fine. */
 const internationalPhone = (value: string) => /^\+[1-9]\d{6,14}$/.test(value.replace(/[\s\-()]/g, ""))
 
@@ -28,7 +29,7 @@ const internationalPhone = (value: string) => /^\+[1-9]\d{6,14}$/.test(value.rep
  * WhatsApp and sets their own (owner: «чтоб сами назначали, а кадровик не
  * занимался этой рутиной»). In the CRM they see nothing (every module hidden).
  */
-export function MtmAttendanceAddEmployee({ disabled, teams, onAdded }: { disabled: boolean; teams: ReadonlyArray<{ id: string; name: string }>; onAdded: (name: string, phone: string) => void }) {
+export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded }: { disabled: boolean; teams: ReadonlyArray<AttendanceSection>; departments: ReadonlyArray<AttendanceDepartment>; onAdded: (name: string, phone: string) => void }) {
   const p = useTranslations("personnel")
   const [open, setOpen] = useState(false), [form, setForm] = useState<Form>(empty)
   const [saving, setSaving] = useState(false), [error, setError] = useState<string | null>(null)
@@ -64,8 +65,8 @@ export function MtmAttendanceAddEmployee({ disabled, teams, onAdded }: { disable
     <div className="grid gap-4 md:grid-cols-2">
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeeName")}</span><Input required maxLength={200} className="min-h-11" autoComplete="off" value={form.name} onChange={event => set("name")(event.target.value)} /></label>
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeePhone")}</span><Input required type="tel" inputMode="tel" placeholder="+994501234567" maxLength={24} className="min-h-11" autoComplete="off" value={form.phone} onChange={event => set("phone")(event.target.value)} data-testid="attendance-add-employee-phone" /></label>
+      <MtmAttendanceDepartmentField id="add-employee-department" teams={teams} departments={departments} value={form.department} onChange={set("department")} />
       <label className="space-y-2 text-sm font-medium"><span>{p("employeeCardPosition")}</span><Input maxLength={ATTENDANCE_EMPLOYEE_POSITION_MAX} className="min-h-11" autoComplete="off" placeholder={p("employeeCardPositionPlaceholder")} value={form.position} onChange={event => set("position")(event.target.value)} /></label>
-      <MtmAttendanceDepartmentField id="add-employee-department" teams={teams} value={form.department} onChange={set("department")} />
       <label className="space-y-2 text-sm font-medium"><span>{p("employeeCardHired")}</span><Input type="date" className="min-h-11" value={form.hireDate} onChange={event => set("hireDate")(event.target.value)} />
         <span className="block text-xs font-normal text-muted-foreground">{p("addEmployeeHireHint")}</span></label>
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeeEmail")}</span><Input type="email" maxLength={320} className="min-h-11" autoComplete="off" value={form.email} onChange={event => set("email")(event.target.value)} /></label>

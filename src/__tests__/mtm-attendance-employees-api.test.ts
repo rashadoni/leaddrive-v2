@@ -22,7 +22,7 @@ beforeEach(() => {
   vi.mocked(resolveMtmRouteActor).mockResolvedValue({ role: "ADMIN", agentId: null, scopedAgentIds: null })
   vi.mocked(requireTenantCapabilityAccessResponse).mockResolvedValue(null)
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }] as never)
-  vi.mocked(store.readAttendanceEmployees).mockResolvedValue({ users: [], teams: [], managers: [], employees: [], timezone: "Asia/Baku" })
+  vi.mocked(store.readAttendanceEmployees).mockResolvedValue({ users: [], teams: [], departments: [], managers: [], employees: [], timezone: "Asia/Baku" })
   vi.mocked(store.enrollAttendanceEmployee).mockResolvedValue({ agentId: "employee-id", idempotent: false })
   vi.mocked(store.recordAttendanceEmployment).mockResolvedValue({ eventId: "event-id", idempotent: false })
   vi.mocked(store.setAttendanceParticipation).mockResolvedValue({ eventId: "participation-id", idempotent: false })
