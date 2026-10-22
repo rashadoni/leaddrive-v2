@@ -908,7 +908,7 @@ describe("PUT /api/v1/journeys/:id", () => {
   it.each([{ steps: [] }, { steps: [{ stepType: "wait", stepOrder: 0, config: { days: 1, unit: "minutes" } }] }])(
     "saves a steps-only replacement without treating an empty parent update as missing",
     async ({ steps }) => {
-      vi.mocked(prisma.journey.updateMany).mockImplementation(async (args) => ({
+      vi.mocked(prisma.journey.updateMany).mockImplementation(async (args: { data: Record<string, unknown> }) => ({
         count: Object.keys(args.data).length > 0 ? 1 : 0,
       }))
       vi.mocked(prisma.journey.findFirst).mockResolvedValue({ id: "j1", steps } as never)
