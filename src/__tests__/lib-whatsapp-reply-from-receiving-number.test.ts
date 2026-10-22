@@ -56,6 +56,11 @@ beforeEach(() => {
 })
 
 describe("sending WhatsApp from the conversation's number", () => {
+  it("records native AI replies against their conversation so AI caps can count them", async () => {
+    await sendWhatsAppMessage({ to: "994501234567", message: "answer", organizationId: "org_1", channelConfigId: "wa_new", conversationId: "conversation-1", forceText: true, extraMetadata: { autoReply: true, aiAutoReply: true } })
+    expect(db.logged).toEqual([expect.objectContaining({ conversationId: "conversation-1", organizationId: "org_1", metadata: expect.objectContaining({ aiAutoReply: true }) })])
+  })
+
   it("answers from the number the conversation came in on (forced text — the auto-reply path)", async () => {
     const r = await sendWhatsAppMessage({ to: "+994501234567", message: "Salam", organizationId: "org_1", forceText: true, channelConfigId: "wa_new" })
     expect(r.success).toBe(true)

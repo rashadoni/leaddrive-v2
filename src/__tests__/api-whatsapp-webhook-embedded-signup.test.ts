@@ -22,6 +22,9 @@ const state = vi.hoisted(() => ({
   messageLookups: [] as string[],
 }))
 
+const recordCampaignStatus = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock("@/lib/campaigns/whatsapp-dispatch", () => ({ recordWhatsAppCampaignStatus: recordCampaignStatus }))
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     organization: { findUnique: vi.fn(async ({ where }: Row) => (where.slug === "leaddrive" ? { id: "org_leaddrive" } : null)) },
@@ -112,6 +115,7 @@ describe("WhatsApp webhook — Embedded Signup numbers behind the shared callbac
     const body = statusFor("444555666")
     expect((await POST(req(body, sign(body, SHARED)))).status).toBe(200)
     expect(state.messageLookups).toEqual(["org_customer"])
+    expect(recordCampaignStatus).toHaveBeenCalledWith("org_customer", expect.any(String), "delivered", undefined)
   })
 
   it("still routes LeadDrive's own number to LeadDrive", async () => {

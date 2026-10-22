@@ -99,7 +99,15 @@ vi.mock("@/lib/prisma", () => ({
     },
     socialConversation: {
       upsert: vi.fn(async () => ({ id: "sc_wa" })),
+      findFirst: vi.fn(async () => ({ assignedTo: null, status: "open", metadata: { existing: true } })),
+      updateMany: vi.fn(async () => ({ count: 1 })),
     },
+    aiChatSession: { findFirst: vi.fn(async () => null), create: vi.fn(async () => ({ id: "session-1", messagesCount: 0 })), update: vi.fn(async () => ({})) },
+    aiChatMessage: { create: vi.fn(async () => ({})), findMany: vi.fn(async () => []), count: vi.fn(async () => 1) },
+    aiInteractionLog: { create: vi.fn(async () => ({ id: "ai-log-1" })) },
+    kbArticle: { findMany: vi.fn(async () => []) },
+    ticket: { findFirst: vi.fn(async () => null) },
+    channelPreference: { upsert: vi.fn(async () => ({})) },
     contact: {
       findFirst: vi.fn(async () => (db.contactId ? { id: db.contactId } : null)),
       findMany: vi.fn(async () => (db.contactId ? [{ id: db.contactId, companyId: null }] : [])),
@@ -132,7 +140,19 @@ vi.mock("@/lib/sanitize", () => ({
   sanitizeForPrompt: vi.fn((s: string) => s),
   sanitizeLog: vi.fn((s: string) => s),
 }))
-vi.mock("@/lib/ai/anthropic-client", () => ({ getAnthropicClient: vi.fn() }))
+const modelCall = vi.hoisted(() => vi.fn())
+const budgetCheck = vi.hoisted(() => vi.fn(async () => ({ allowed: true })))
+vi.mock("@/lib/ai/anthropic-client", () => ({ getAnthropicClient: () => ({ messages: { create: modelCall } }) }))
+vi.mock("@/lib/ai/budget", async () => ({
+  ...await vi.importActual<typeof import("@/lib/ai/budget")>("@/lib/ai/budget"),
+  checkAiBudget: budgetCheck,
+  checkConversationAiLimits: vi.fn(async () => ({ allowed: true, limits: { maxOutputTokens: 1024 } })),
+}))
+vi.mock("@/lib/social/ai-autoreply", () => ({
+  claimConversationAiReply: vi.fn(async () => ({ claimed: true, token: "claim-1" })),
+  releaseConversationAiReplyClaim: vi.fn(async () => {}),
+}))
+vi.mock("@/lib/ai/response-scorer", () => ({ scoreAiResponse: vi.fn(async () => ({ ok: false })), qualityMetadata: () => undefined }))
 vi.mock("@/lib/ai/pii-masker", () => ({ PiiMasker: class { mask(s: string) { return s } unmask(s: string) { return s } } }))
 vi.mock("@/lib/complaint-ai", () => ({ enrichComplaintInBackground: vi.fn() }))
 vi.mock("@/lib/ticket-reopen", () => ({ reopenTicketForCustomerReply: vi.fn() }))
@@ -144,7 +164,7 @@ const botReplyHook = vi.hoisted(() => vi.fn(async () => true))
 vi.mock("@/lib/inbox/ticket-sync", () => ({ syncWhatsAppExchangeToTicket: vi.fn(), appendWhatsAppBotReplyToTicket: botReplyHook }))
 vi.mock("@/lib/inbox/complaint-register", () => ({ ensureComplaintRegistered: vi.fn(), notifyComplaintRegistered: vi.fn() }))
 vi.mock("@/lib/auto-assign", () => ({ autoAssignTicket: vi.fn() }))
-vi.mock("@/lib/social/notify-recipients", () => ({ notifyConversationRecipients: vi.fn() }))
+vi.mock("@/lib/social/notify-recipients", () => ({ notifyConversationRecipients: vi.fn(async () => {}) }))
 // What this file is about: the demo's agent takes its own threads' messages
 // before tickets, the rule bot and the support AI ever see them.
 const demoHook = vi.hoisted(() => vi.fn())
@@ -160,6 +180,12 @@ vi.mock("@/lib/rls-context", () => ({
   runWithRlsBypass: (fn: MockTenantCallback) => fn(),
 }))
 
+import { prisma } from "@/lib/prisma"
+import { emitConversationIngestEvents } from "@/lib/inbox/conversation-events"
+import { aiReplyEnabled } from "@/lib/inbox/reply-mode"
+import { getSupportAgentConfig } from "@/lib/ai/support-agent"
+import { sendWhatsAppMessage } from "@/lib/whatsapp"
+import { maybeAutoReply, chatbotTookOwnership } from "@/lib/chatbot-autoreply"
 import { POST } from "@/app/api/v1/webhooks/whatsapp/route"
 
 const BASE = "https://app.leaddrivecrm.org/api/v1/webhooks/whatsapp?t=acme"
@@ -219,6 +245,25 @@ describe("a message of the demo's live thread", () => {
     ticketHook.mockResolvedValue({ ticketId: null, ticketNumber: null, created: false, commentAdded: false, reopened: false })
   })
 
+  it.each([{ terminal: true }, { terminal: false, handledReply: true }])("yields to a terminal or confirmed flow reply %j but still files the inbound", async (flowResult) => {
+    vi.mocked(emitConversationIngestEvents).mockResolvedValueOnce(flowResult as never)
+    await POST(req(textMessage("Salam")))
+    expect(prisma.channelMessage.create).toHaveBeenCalled()
+    expect(ticketHook).toHaveBeenCalledTimes(1)
+    expect(demoHook).not.toHaveBeenCalled()
+    expect(maybeAutoReply).not.toHaveBeenCalled()
+  })
+
+  it.each(["STOP", "unsubscribe", "ОТПИСКА"])("records %s without calling flow, demo, ticket or rules", async (text) => {
+    await POST(req(textMessage(text)))
+    expect(prisma.channelPreference.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: expect.objectContaining({ isOptedIn: false }) }))
+    expect(prisma.socialConversation.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { metadata: { existing: true, whatsappOptedOut: true } } }))
+    expect(emitConversationIngestEvents).not.toHaveBeenCalled()
+    expect(demoHook).not.toHaveBeenCalled()
+    expect(ticketHook).not.toHaveBeenCalled()
+    expect(maybeAutoReply).not.toHaveBeenCalled()
+  })
+
   it("is stored, handed to the demo's agent, and goes no further", async () => {
     demoHook.mockResolvedValue({ handled: true, action: "answered" })
     const res = await POST(req(textMessage("Salam! Kod: LD-1A2B3C")))
@@ -265,5 +310,52 @@ describe("a message of the demo's live thread", () => {
     expect(demoMediaHook).toHaveBeenCalledTimes(1)
     expect(demoHook).not.toHaveBeenCalled()
     expect(ticketHook).not.toHaveBeenCalled()
+  })
+})
+
+
+describe("native WhatsApp support AI", () => {
+  const inbound = () => req(messagesPayload({ ...baseValue, messages: [{ id: "wamid.ai1", from: "994501234567", type: "text", text: { body: "Current question" } }] }))
+  beforeEach(() => {
+    process.env.ANTHROPIC_API_KEY = "test-only"
+    demoHook.mockResolvedValue({ handled: false })
+    ticketHook.mockResolvedValue({ ticketId: null, created: false, commentAdded: false, reopened: false })
+    vi.mocked(aiReplyEnabled).mockReturnValue(true)
+    vi.mocked(chatbotTookOwnership).mockReturnValue(false)
+    vi.mocked(getSupportAgentConfig).mockResolvedValue({ model: "claude-sonnet-4-6" } as never)
+    vi.mocked(sendWhatsAppMessage).mockResolvedValue({ success: true, messageId: "wamid.out1" })
+    budgetCheck.mockResolvedValue({ allowed: true })
+    modelCall.mockResolvedValue({ content: [{ type: "text", text: "Salam!" }], usage: { input_tokens: 1000, output_tokens: 100 } })
+  })
+  afterEach(() => {
+    delete process.env.ANTHROPIC_API_KEY
+    vi.mocked(aiReplyEnabled).mockReturnValue(false)
+    vi.mocked(chatbotTookOwnership).mockReturnValue(true)
+  })
+  it("uses the latest history window, prices the configured model and links its reply to the conversation", async () => {
+    vi.mocked(prisma.aiChatMessage.findMany).mockResolvedValueOnce([
+      { role: "user", content: "Current question" }, { role: "user", content: "Stale unanswered question" },
+      { role: "assistant", content: "Previous answer" }, { role: "user", content: "Previous question" },
+    ] as never)
+    await POST(inbound())
+    expect(prisma.aiChatMessage.findMany).toHaveBeenCalledWith(expect.objectContaining({ orderBy: { createdAt: "desc" }, take: 20 }))
+    expect(modelCall).toHaveBeenCalledWith(expect.objectContaining({ messages: [
+      { role: "user", content: "Previous question" }, { role: "assistant", content: "Previous answer" }, { role: "user", content: "Current question" },
+    ] }))
+    expect(prisma.aiInteractionLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ model: "claude-sonnet-4-6", costUsd: 0.0045 }) }))
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(expect.objectContaining({ conversationId: "sc_wa", channelConfigId: "cfg_wa", extraMetadata: expect.objectContaining({ aiAutoReply: true }) }))
+    expect(prisma.aiChatMessage.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ role: "assistant", content: "Salam!" }) }))
+  })
+  it("does not call the model or send after daily budget exhaustion", async () => {
+    budgetCheck.mockResolvedValue({ allowed: false })
+    await POST(inbound())
+    expect(modelCall).not.toHaveBeenCalled()
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled()
+  })
+  it("does not save a failed reply as delivered assistant history", async () => {
+    vi.mocked(sendWhatsAppMessage).mockResolvedValue({ success: false, error: "rejected" })
+    await POST(inbound())
+    expect(sendWhatsAppMessage).toHaveBeenCalled()
+    expect(prisma.aiChatMessage.create).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ role: "assistant" }) }))
   })
 })

@@ -752,6 +752,7 @@ export async function sendWhatsAppMessage({
   skipLog,
   extraMetadata,
   channelConfigId,
+  conversationId,
 }: {
   to: string
   message: string
@@ -772,6 +773,8 @@ export async function sendWhatsAppMessage({
   extraMetadata?: Record<string, unknown>
   /** The conversation's channel — the number to answer from (see resolveSendingConfig). */
   channelConfigId?: string | null
+  /** Native AI replies must participate in conversation caps and the inbox thread. */
+  conversationId?: string | null
 }) {
   if (!organizationId) {
     return { success: false, error: "organizationId required" }
@@ -816,15 +819,15 @@ export async function sendWhatsAppMessage({
       const data = await res.json()
       if (!res.ok) {
         const err = data?.error?.message || `HTTP ${res.status}`
-        if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "failed", contactId, { error: err, ...(extraMetadata ?? {}) }, leadId)
+        if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "failed", contactId, { error: err, ...(extraMetadata ?? {}) }, leadId, conversationId)
         return { success: false, error: err }
       }
       const messageId = data?.messages?.[0]?.id
-      if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "delivered", contactId, { waMessageId: messageId, ...(extraMetadata ?? {}) }, leadId)
+      if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "delivered", contactId, { waMessageId: messageId, ...(extraMetadata ?? {}) }, leadId, conversationId)
       return { success: true, messageId }
     } catch (err: any) {
       const msg = err?.message || "network error"
-      if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "failed", contactId, { error: msg, ...(extraMetadata ?? {}) }, leadId)
+      if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "failed", contactId, { error: msg, ...(extraMetadata ?? {}) }, leadId, conversationId)
       return { success: false, error: msg }
     }
   }
@@ -1238,6 +1241,7 @@ async function logMessage(
   contactId: string | undefined,
   extraMeta: Record<string, any>,
   leadId?: string,
+  conversationId?: string | null,
 ) {
   try {
     await prisma.channelMessage.create({
@@ -1254,6 +1258,7 @@ async function logMessage(
         metadata: { channel: "whatsapp", ...extraMeta },
         contactId,
         leadId,
+        conversationId,
       },
     })
   } catch { /* logging failure must not break the send flow */ }

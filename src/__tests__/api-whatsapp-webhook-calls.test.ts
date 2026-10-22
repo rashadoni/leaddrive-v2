@@ -23,6 +23,9 @@ type MockFindFirstArgs = { where?: Record<string, unknown> & { OR?: Array<{ phon
 type MockWriteArgs = { data: Record<string, unknown> }
 type MockTenantCallback = () => unknown
 
+const recordCampaignStatus = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock("@/lib/campaigns/whatsapp-dispatch", () => ({ recordWhatsAppCampaignStatus: recordCampaignStatus }))
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     organization: {
@@ -518,6 +521,7 @@ describe("WhatsApp Calling webhook", () => {
       statuses: [{
         id: "wamid.outbound",
         status: "delivered",
+        biz_opaque_callback_data: "campaign:delivery-1",
         timestamp: "1749197000",
         recipient_id: "994501234567",
       }],
@@ -526,6 +530,7 @@ describe("WhatsApp Calling webhook", () => {
     const res = await POST(req(body))
 
     expect(res.status).toBe(200)
+    expect(recordCampaignStatus).toHaveBeenCalledWith("org_1", "wamid.outbound", "delivered", "campaign:delivery-1")
     expect(prisma.channelMessage.findFirst).toHaveBeenCalledWith({
       where: {
         organizationId: "org_1",
