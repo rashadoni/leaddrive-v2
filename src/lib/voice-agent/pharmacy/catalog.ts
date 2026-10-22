@@ -8,6 +8,7 @@ import {
   type PharmacyProduct,
   type PharmacyProductRequest,
 } from "./contracts"
+import { PharmacyNameSearch } from "./name-search"
 
 export type PharmacyCandidate = Omit<PharmacyProduct, "organizationId" | "approvedAliases">
 type ResolutionBase = {
@@ -33,13 +34,6 @@ function candidate(product: PharmacyProduct): PharmacyCandidate {
   }
 }
 
-function trigrams(text: string): Set<string> {
-  const characters = Array.from(`  ${text} `)
-  const result = new Set<string>()
-  for (let i = 0; i + 2 < characters.length; i++) result.add(characters.slice(i, i + 3).join(""))
-  return result
-}
-
 /**
  * Offline/pilot index of one complete canonical snapshot. Build once per sync,
  * not once per utterance. No DB, network, price, stock or order side effects.
@@ -52,8 +46,7 @@ export class PharmacyCatalog {
   private readonly expiresAt: number
   private readonly products = new Map<string, PharmacyProduct>()
   private readonly names = new Map<string, Set<string>>()
-  private readonly postings = new Map<string, Set<string>>()
-  private readonly termSizes = new Map<string, number>()
+  private readonly search = new PharmacyNameSearch()
 
   constructor(input: unknown) {
     const parsed = pharmacyCatalogSnapshotSchema.safeParse(input)
@@ -70,6 +63,7 @@ export class PharmacyCatalog {
       }
       this.products.set(product.externalId, product)
       for (const rawName of [product.name, ...product.approvedAliases]) {
+        this.search.add(product.externalId, rawName)
         const name = normalizePharmacyLabel(rawName)
         const existing = this.names.get(name)
         if (existing) {
@@ -77,13 +71,6 @@ export class PharmacyCatalog {
           continue
         }
         this.names.set(name, new Set([product.externalId]))
-        const grams = trigrams(name)
-        this.termSizes.set(name, grams.size)
-        for (const gram of grams) {
-          const terms = this.postings.get(gram) ?? new Set<string>()
-          terms.add(name)
-          this.postings.set(gram, terms)
-        }
       }
     }
   }
@@ -172,20 +159,6 @@ export class PharmacyCatalog {
   }
 
   private similar(name: string): PharmacyProduct[] {
-    if (Array.from(name).length < 3) return []
-    const grams = trigrams(name)
-    const counts = new Map<string, number>()
-    for (const gram of grams) {
-      for (const term of this.postings.get(gram) ?? []) counts.set(term, (counts.get(term) ?? 0) + 1)
-    }
-    const scores = new Map<string, number>()
-    for (const [term, count] of counts) {
-      // Discovery only. This threshold is never an identity/approval gate.
-      const score = 2 * count / (grams.size + this.termSizes.get(term)!)
-      if (score < 0.3) continue
-      for (const id of this.names.get(term)!) scores.set(id, Math.max(scores.get(id) ?? 0, score))
-    }
-    return [...scores].sort(([a, left], [b, right]) => right - left || a.localeCompare(b))
-      .map(([id]) => this.products.get(id)!)
+    return this.search.find(name).map((id) => this.products.get(id)!)
   }
 }
