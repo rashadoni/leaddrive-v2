@@ -27557,6 +27557,7 @@
     "attachments": "Вложения",
     "noAttachments": "Вложений нет",
     "deleteFolderConfirm": "Удалить эту папку? Её диалоги станут без папки.",
+    "statusRead": "Прочитано",
     "statusDelivered": "Доставлено",
     "statusFailed": "Не доставлено",
     "statusDeliveryUnknown": "Доставка не подтверждена — проверьте Chatwoot перед повтором",

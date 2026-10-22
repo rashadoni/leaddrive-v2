@@ -27553,6 +27553,7 @@
     "attachments": "Qoşmalar",
     "noAttachments": "Qoşma yoxdur",
     "deleteFolderConfirm": "Bu qovluq silinsin? Söhbətləri qovluqdan çıxarılacaq.",
+    "statusRead": "Oxunub",
     "statusDelivered": "Çatdırıldı",
     "statusFailed": "Çatdırılmadı",
     "statusDeliveryUnknown": "Çatdırılma təsdiqlənməyib — təkrarlamazdan əvvəl Chatwoot-u yoxlayın",

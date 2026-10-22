@@ -27557,6 +27557,7 @@
     "attachments": "Attachments",
     "noAttachments": "No attachments",
     "deleteFolderConfirm": "Delete this folder? Its conversations will be unfiled.",
+    "statusRead": "Read",
     "statusDelivered": "Delivered",
     "statusFailed": "Not delivered",
     "statusDeliveryUnknown": "Delivery not confirmed — check Chatwoot before retrying",

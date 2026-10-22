@@ -42,6 +42,7 @@ import { WhatsAppCallControls } from "@/components/inbox/whatsapp-call-controls"
 import { WhatsAppOutboundCallControl } from "@/components/inbox/whatsapp-outbound-call-control"
 import { AiDraftPanel } from "@/components/inbox/ai-draft-panel"
 import { AiDebugDrawer } from "@/components/inbox/ai-debug-drawer"
+import { MessageDeliveryStatus } from "@/components/inbox/message-delivery-status"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -449,6 +450,7 @@ export default function InboxV2Page() {
     const c = conversations.find((x) => x.socialConversationId === id)
     if (c) {
       setSelected(c.webChatSessionId || c.socialConversationId || c.contactId || c.messages[0]?.id || "")
+      setReplyChannel(c.lastChannel || "email")
       if (new URLSearchParams(window.location.search).get("tab") === "calls") setThreadTab("calls")
     }
   }, [loading, conversations])
@@ -2673,12 +2675,18 @@ export default function InboxV2Page() {
                         <span>·</span>
                         <span>{new Date(m.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
                         {out && (
-                          <span
-                            title={deliveryUnknown ? t("statusDeliveryUnknown") : m.status === "delivered" ? t("statusDelivered") : m.status === "failed" ? t("statusFailed") : m.status === "sent" ? (locale === "ru" ? "Отправлено" : locale === "az" ? "Göndərilib" : "Sent") : t("statusSending")}
-                            className={cn(deliveryUnknown ? "text-amber-500" : m.status === "delivered" ? "text-emerald-500" : m.status === "failed" ? "text-red-500" : "")}
-                          >
-                            {deliveryUnknown ? "⚠" : m.status === "delivered" ? "✓✓" : m.status === "failed" ? "✕" : m.status === "sent" ? "✓" : "⏳"}
-                          </span>
+                          <MessageDeliveryStatus
+                            status={m.status}
+                            deliveryUnknown={deliveryUnknown}
+                            labels={{
+                              unknown: t("statusDeliveryUnknown"),
+                              read: t("statusRead"),
+                              delivered: t("statusDelivered"),
+                              failed: t("statusFailed"),
+                              sent: locale === "ru" ? "Отправлено" : locale === "az" ? "Göndərilib" : "Sent",
+                              sending: t("statusSending"),
+                            }}
+                          />
                         )}
                       </div>
                     </div>
