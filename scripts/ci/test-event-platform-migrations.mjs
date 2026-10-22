@@ -199,6 +199,33 @@ try {
   }
   // Re-running is a no-op, as on production where the grants were revoked by hand first.
   executeFile(migratorUrl, "prisma/migrations/20261026090000_backup_role_read_only_projections/migration.sql")
+
+  // pg_dump needs SELECT on the owner-only cutover gate (production backup
+  // 2026-10-22 stopped there). 20261028090000 grants exactly that to the
+  // read-only backup role, and the deploy postcondition accepts nothing more.
+  executeFile(migratorUrl, "prisma/migrations/20261028090000_backup_role_reads_cutover_gate/migration.sql")
+  const [gate] = await probeAdmin.$queryRawUnsafe(`
+    SELECT has_table_privilege('backup_reader_probe', 'public.event_platform_cutover_gates', 'SELECT') AS backup_reads,
+           has_table_privilege('backup_reader_probe', 'public.event_platform_cutover_gates', 'INSERT') AS backup_inserts,
+           has_table_privilege('event_app', 'public.event_platform_cutover_gates', 'SELECT') AS app_reads
+  `)
+  if (gate.backup_reads !== true || gate.backup_inserts !== false || gate.app_reads !== false) {
+    throw new Error(`cutover gate access is not backup-read-only: ${JSON.stringify(gate)}`)
+  }
+  executeFile(migratorUrl, "scripts/event-platform-postconditions.sql")
+  for (const [label, grant, revoke] of [
+    ["backup role write", "GRANT INSERT ON TABLE event_platform_cutover_gates TO backup_reader_probe", "REVOKE INSERT ON TABLE event_platform_cutover_gates FROM backup_reader_probe"],
+    ["grantable backup read", "GRANT SELECT ON TABLE event_platform_cutover_gates TO backup_reader_probe WITH GRANT OPTION", "REVOKE GRANT OPTION FOR SELECT ON TABLE event_platform_cutover_gates FROM backup_reader_probe"],
+    ["application read", "GRANT SELECT ON TABLE event_platform_cutover_gates TO event_app", "REVOKE SELECT ON TABLE event_platform_cutover_gates FROM event_app"],
+    ["public read", "GRANT SELECT ON TABLE event_platform_cutover_gates TO PUBLIC", "REVOKE SELECT ON TABLE event_platform_cutover_gates FROM PUBLIC"],
+  ]) {
+    executeSql(migratorUrl, grant, `grant ${label}`)
+    expectExecutionRejected(`postcondition accepts ${label}`, () => {
+      executeFile(migratorUrl, "scripts/event-platform-postconditions.sql")
+    })
+    executeSql(migratorUrl, revoke, `revoke ${label}`)
+  }
+  executeFile(migratorUrl, "prisma/migrations/20261028090000_backup_role_reads_cutover_gate/migration.sql")
 } finally {
   await probeAdmin.$disconnect()
 }
