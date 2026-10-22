@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { MtmAttendanceEmployeeRemove } from "@/components/mtm/attendance-employee-remove"
-import { MtmAttendanceDepartmentField, departmentPayload, type DepartmentValue } from "@/components/mtm/attendance-department-field"
+import { MtmAttendanceDepartmentField, departmentPayload, emptyDepartmentValue, type DepartmentValue } from "@/components/mtm/attendance-department-field"
 import { MtmAttendanceEmployeePreparation } from "@/components/mtm/attendance-employee-preparation"
 import { createDateFormatter, formatTime } from "@/lib/format-date"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
@@ -20,13 +20,13 @@ const SELECT = "min-h-11 w-full min-w-0 rounded-md border border-input bg-backgr
 const SAVE_ERRORS: Record<string, string> = {
   MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN: "addEmployeeEmailTaken", MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN: "addEmployeePhoneTaken",
   MTM_ATTENDANCE_EMPLOYEE_PHONE_INVALID: "addEmployeePhoneInvalid", MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED: "employeeLoginLocked",
-  MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID: "employeeManagerInvalid",
+  MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID: "employeeManagerInvalid", MTM_ATTENDANCE_EMPLOYEE_SECTION_ELSEWHERE: "employeeSectionElsewhere",
 }
 type Employee = AttendanceEmployeeDetail["employee"]
 type Form = { name: string; phone: string; email: string; position: string; department: DepartmentValue; managerId: string; hireDate: string }
 type Change = { kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; reason: string }
 const formOf = (employee: Employee): Form => ({ name: employee.name, phone: employee.phone ?? "", email: employee.email ?? "", position: employee.position ?? "",
-  department: { teamId: employee.teamId ?? "", newTeamName: "" }, managerId: employee.managerId ?? "", hireDate: "" })
+  department: emptyDepartmentValue(employee.departmentId, employee.teamId), managerId: employee.managerId ?? "", hireDate: "" })
 const nextKind = (history: Employee["history"]): Change["kind"] => !history.length ? "HIRE" : history.at(-1)!.kind === "TERMINATION" ? "REHIRE" : "TERMINATION"
 
 function Section({ title, icon, children, testId }: { title: string; icon: ReactNode; children: ReactNode; testId: string }) {
@@ -128,7 +128,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4"><span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary" aria-hidden="true">{initials}</span>
           <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{p("employeeCardHeading")}</p><h1 className="break-words text-2xl font-semibold tracking-tight">{employee.name}</h1>
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">{[employee.position, employee.teamName].filter(Boolean).join(" · ") || mtmStatusLabel(statusText, "role", employee.role)}
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">{[employee.position, employee.departmentName, employee.teamName].filter(Boolean).join(" · ") || mtmStatusLabel(statusText, "role", employee.role)}
               <HomePill tone={todayTone}>{today}</HomePill></p></div></div>
         <div className="flex flex-wrap items-center gap-3">{saved ? <span role="status" className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{p(saved)}</span> : null}
           <Button type="submit" className="min-h-11 rounded-full px-6" disabled={busy}>{p(busy ? "employeeCardSaving" : "employeeSave")}</Button></div>
@@ -145,7 +145,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
         <Section title={p("sectionWork")} icon={<BriefcaseBusiness className="h-4 w-4" />} testId="employee-section-work">
           <Field id="employee-position" label={p("employeeCardPosition")} missing={!form.position.trim()}>
             <Input id="employee-position" maxLength={ATTENDANCE_EMPLOYEE_POSITION_MAX} className="min-h-11" placeholder={p("employeeCardPositionPlaceholder")} value={form.position} onChange={event => set("position")(event.target.value)} /></Field>
-          <MtmAttendanceDepartmentField id="employee-department" teams={detail.teams} value={form.department} onChange={set("department")} />
+          <MtmAttendanceDepartmentField id="employee-department" teams={detail.teams} departments={detail.departments ?? []} value={form.department} onChange={set("department")} />
           <Field id="employee-manager" label={p("employeeCardManager")} hint={p("employeeCardManagerHint")}>
             <select id="employee-manager" className={SELECT} value={form.managerId} onChange={event => set("managerId")(event.target.value)}>
               <option value="">{p("employeeCardNoManager")}</option>

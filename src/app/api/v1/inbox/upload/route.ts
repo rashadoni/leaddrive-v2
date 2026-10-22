@@ -5,6 +5,7 @@ import crypto from "crypto"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 /**
  * Inbox attachment upload (media SEND, Slice 3). An authed agent picks a file in the composer;
@@ -70,7 +71,7 @@ export const POST = withInboxSessionWrite(async (req, { orgId }) => {
 
   const rootDir = path.join(runtimePublicUploadDirectory("inbox"), orgId)
   await mkdir(rootDir, { recursive: true })
-  await writeFile(path.join(rootDir, storedName), buffer)
+  await writeFile(path.join(rootDir, storedName), sealTenantFile(orgId, buffer))
 
   const url = `/${path.posix.join(baseDir, storedName)}`
   return NextResponse.json(

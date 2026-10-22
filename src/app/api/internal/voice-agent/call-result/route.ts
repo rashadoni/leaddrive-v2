@@ -20,6 +20,7 @@ import { isDemoPlacedCall } from "@/lib/demo-center/call-prompt"
 import { recordDemoPromptApplied } from "@/lib/demo-center/call-prompt-match"
 import { recordUnansweredCallback } from "@/lib/voice-agent/callback-fallback-task"
 import type { ConversationInsight } from "@/lib/conversation-intel/types"
+import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
 
 export const dynamic = "force-dynamic"
 
@@ -762,7 +763,7 @@ async function recordInboundAiResult(params: {
   }
   const call = await runWithTenant(organizationId, () => prisma.callLog.findFirst({
     where: scope,
-    select: { id: true, transcription: true, conversationOutcome: true },
+    select: { id: true, transcription: true, conversationOutcome: true, consentAudit: true },
   }))
   if (!call) return null
 
@@ -792,6 +793,9 @@ async function recordInboundAiResult(params: {
     }
   }
 
+  if (isPharmacyInboundPreview(call.consentAudit, params.callId)) {
+    return NextResponse.json({ success: true, analysisStatus: "test_preview" })
+  }
   if (!customerSpoke) {
     return NextResponse.json({ success: true, analysisStatus: "not_applicable" })
   }
@@ -1141,6 +1145,9 @@ export async function POST(request: NextRequest) {
   // Provider/session terminal state is durable before any optional model call.
   // An unanswered call or an agent-only transcript is not a customer
   // conversation and must not be sent for sales analysis.
+  if (isPharmacyInboundPreview(call.consentAudit, parsed.data.callId)) {
+    return NextResponse.json({ success: true, analysisStatus: "test_preview" })
+  }
   if (!wasAnswered || !customerSpoke) {
     // If the call that just rang out was itself the automatic callback, the
     // machine is done — one dial was the whole budget — and the broken

@@ -275,6 +275,7 @@ export interface MtmPrismaMock {
   // Region/team hierarchy (M4-5)
   mtmRegion: ModelMock
   mtmTeam: ModelMock
+  mtmDepartment: ModelMock
   // Onboarding (M5+)
   mtmOnboarding: ModelMock
   mtmCustomerCreateRequest: ModelMock
@@ -490,6 +491,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     workforceTimesheetApproval: makeModel(),
     mtmRegion: makeModel(),
     mtmTeam: makeModel(),
+    mtmDepartment: makeModel(),
     mtmOnboarding: makeModel(),
     mtmCustomerCreateRequest: makeModel(),
     mtmCustomerLocationRequest: makeModel(),

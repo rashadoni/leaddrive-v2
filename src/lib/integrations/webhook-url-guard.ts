@@ -649,13 +649,14 @@ async function requestOutboundHttp(
   responsePolicy: {
     hardMaxResponseBytes: number
     responseBodyMode: "text" | "bytes"
+    hardMaxTimeoutMs?: number
   },
 ): Promise<OutboundWebhookResponse> {
   const timeoutMs = boundedInteger(
     options.timeoutMs,
     DEFAULT_REQUEST_TIMEOUT_MS,
     1,
-    60_000,
+    responsePolicy.hardMaxTimeoutMs ?? 60_000,
   )
   const maxRedirects = boundedInteger(
     options.maxRedirects,
@@ -844,6 +845,34 @@ export async function downloadOutboundResource(
     ok: response.ok,
     status: response.status,
     url: response.url,
+    redirects: response.redirects,
+    ...(response.headers === undefined ? {} : { headers: response.headers }),
+    bodyBytes: response.bodyBytes ?? new Uint8Array(),
+  }
+}
+
+/** Bounded POST query for integrations returning large resources (e.g. 1C).
+ * Keeps the GET downloader unchanged; credentials must never follow redirects.
+ * Background queries may explicitly request up to five minutes. The default
+ * timeout and the webhook/GET caps are unchanged; never call this in a voice turn.
+ */
+export async function postOutboundResource(
+  rawUrl: string,
+  options: OutboundResourceDownloadOptions & { body: string | Uint8Array; maxBodyBytes?: number },
+): Promise<OutboundResourceDownloadResponse> {
+  const response = await requestOutboundHttp(rawUrl, {
+    ...options,
+    method: "POST",
+    maxRedirects: 0,
+    maxBodyBytes: options.maxBodyBytes ?? 4096,
+    maxResponseBytes: options.maxResponseBytes ?? HARD_MAX_RESOURCE_BYTES,
+  }, {
+    hardMaxResponseBytes: HARD_MAX_RESOURCE_BYTES,
+    responseBodyMode: "bytes",
+    hardMaxTimeoutMs: 300_000,
+  })
+  return {
+    ok: response.ok, status: response.status, url: response.url,
     redirects: response.redirects,
     ...(response.headers === undefined ? {} : { headers: response.headers }),
     bodyBytes: response.bodyBytes ?? new Uint8Array(),
