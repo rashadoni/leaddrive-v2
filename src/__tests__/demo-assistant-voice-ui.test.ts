@@ -400,7 +400,7 @@ describe("«Səslə soruşun»", () => {
   })
 
   it("shows the server's refusal, and once the voice minutes are spent the button gives way to the note", async () => {
-    transcribeReply = { status: 429, body: { success: false, code: "demo_budget", error: "Bu demo üçün 10 dəqiqəlik səs limiti doldu." } }
+    transcribeReply = { status: 429, body: { success: false, code: "demo_budget", error: DEMO_VOICE_REFUSAL_TEXT.demo_budget } }
     await renderPlayer()
     await consentAndListen()
     speakFor(1)

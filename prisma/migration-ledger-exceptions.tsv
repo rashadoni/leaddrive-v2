@@ -1,0 +1,26 @@
+# Reviewed differences between production's _prisma_migrations and this
+# repository. The backup refuses a ledger that is not an exact
+# checksum-matching prefix of prisma/migrations; these rows are the only
+# deviations it accepts, and only byte for byte (name AND applied checksum).
+# Any new drift still stops the backup. The rows are copied into the recovery
+# DB contract by scripts/backup/hash-recovery-db-contract.sh, so every backup
+# and restore receipt is bound to exactly this list.
+#
+# Read from production 13.140.132.245 on 2026-10-21 (owner-operated backup
+# run 39667114027 stopped at SCHEMA_POLICY). History before the 2026-09-09
+# public baseline is gone, so when the files changed cannot be recovered.
+# The production schema was compared with prisma/schema.prisma the same night:
+# none of these rows leaves an object the code does not know about, except that
+# kb_embeddings.embedding is nullable on production while the migration and the
+# schema say NOT NULL.
+#
+# Never add a row to get a backup through: find out what happened first.
+#
+# migration_name<TAB>applied_checksum<TAB>kind<TAB>what production shows
+20260330120000_add_vat_fields_to_bill	3f6dd5bf1b52069bbf3b48b0ea6de4221704688a016ef10987d4d0558c581504	applied-not-in-code	marked applied by hand (0 steps, prisma migrate resolve); the file is not in the repository
+20260331200000_add_commission_fields	382dc400e4b1422143ba7256a9e9c3c32fd7c8a9d57e738c8adcdcc65416d2f5	applied-not-in-code	executed 2026-03-31, file later removed; no object with these names remains
+20260331210000_add_contact_role_types	9ef81c99da314ca35c8849eca921f2d536332f1a94c07dc7356d2534a95ba868	applied-not-in-code	executed 2026-03-31, file later removed; no object with these names remains
+20260411120000_add_tenant_fields	0de7925747e80148c5f2dab22e604da31ddb136e160742a1f43f64c09379559b	checksum-differs	failed, then marked applied by hand; file rewritten later; all its columns exist as the file creates them
+20260415070000_add_kb_embeddings	137fbb073bff81f823e7ac8a229da1b259d53542ada2babecfdf5efd0d44e818	checksum-differs	executed, file changed later; embedding is nullable on production, NOT NULL in the file
+20260424000000_ai_shadow_pending_uniq_index	manual-20260424000000	checksum-differs	ledger row inserted by hand; the partial unique index matches the file
+20260518120000_health	879e264d5ae99608e08400dcc1bf7b5e9c75ec884f22909f748db049e519b772	checksum-differs	failed, then marked applied by hand; file rewritten later; all five tables exist

@@ -9077,7 +9077,8 @@ model WorkforceWorkdayScheduleSnapshot {
   policySnapshot   WorkforcePolicySnapshot  @relation("WorkforceSchedulePolicySnapshot", fields: [organizationId, policySnapshotId], references: [organizationId, id], onDelete: Restrict)
   shiftSnapshotId  String
   shiftSnapshot    WorkforceShiftSnapshot   @relation("WorkforceScheduleShiftSnapshot", fields: [organizationId, shiftSnapshotId], references: [organizationId, id], onDelete: Restrict)
-  schemaVersion    Int                      @default(1)
+  /// 2 since 20260830130000 (team membership in calendarSnapshot); 1 is legacy.
+  schemaVersion    Int                      @default(2)
   calendarState    String                   @db.VarChar(48)
   calendarSnapshot Json
   segments         Json
@@ -13311,15 +13312,19 @@ model LoyaltyTransaction {
    * When expiresAt < now() AND expiredAt IS NULL, the daily cron
    * emits an `expire` LoyaltyTransaction and stamps expiredAt.
    * Migration: 20260525220000_d8_loyalty_expiry_cron
+   * TIMESTAMPTZ in the database (that migration), unlike the other DateTime
+   * columns. Declared here so a generated migration never converts it: the
+   * conversion runs in the session time zone (Europe/Berlin on production)
+   * and would shift every stored instant by the offset.
    */
-  expiresAt        DateTime?
+  expiresAt        DateTime?           @db.Timestamptz(6)
   /**
    * Stamped by the loyalty-expiry cron after it emits the corresponding
    * `expire` transaction for this earn row. Prevents double-expiry on
    * repeated cron runs. Set in the same $transaction as the expire row.
    * Migration: 20260525220000_d8_loyalty_expiry_cron
    */
-  expiredAt        DateTime?
+  expiredAt        DateTime?           @db.Timestamptz(6)
   /// Reverse side of LoyaltyRedemption.transaction (a 'redeem' txn ↔ its fulfilment record).
   redemptions      LoyaltyRedemption[]
 
@@ -15924,8 +15929,11 @@ model MeterReading {
   /// Quality flag (DB CHECK): raw | validated | flagged
   quality             String         @default("raw")
   /// Self-referential FK — corrected source ⇒ supersedesReadingId set.
+  /// RESTRICT, as 20260518130000_energy_utilities created it: readings are an
+  /// append-only audit trail, so a corrected reading cannot be deleted from
+  /// under its correction.
   supersedesReadingId String?
-  supersedes          MeterReading?  @relation("MeterReadingCorrection", fields: [supersedesReadingId], references: [id])
+  supersedes          MeterReading?  @relation("MeterReadingCorrection", fields: [supersedesReadingId], references: [id], onDelete: Restrict)
   correctedBy         MeterReading[] @relation("MeterReadingCorrection")
   metadata            Json           @default("{}")
   createdAt           DateTime       @default(now())

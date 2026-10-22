@@ -56,8 +56,17 @@ unexpected="$(
   exit 1
 }
 
+# Reviewed production ledger deviations (prisma/migration-ledger-exceptions.tsv).
+# They become part of the contract, so its digest binds every receipt to them.
+EXCEPTIONS="$ROOT/prisma/migration-ledger-exceptions.tsv"
+[ ! -L "$EXCEPTIONS" ] || {
+  printf 'migration ledger exceptions file is symlinked\n' >&2
+  exit 1
+}
+
 emit_manifest() {
   local relative_path migration_name digest
+  local -A migration_digest=()
   digest="$(sha256sum "$SCHEMA" | awk '{print $1}')"
   printf 'SCHEMA\tprisma/schema.prisma\t%s\n' "$digest"
   digest="$(sha256sum "$LOCK_FILE" | awk '{print $1}')"
@@ -66,11 +75,50 @@ emit_manifest() {
     migration_name="${relative_path#prisma/migrations/}"
     migration_name="${migration_name%/migration.sql}"
     digest="$(sha256sum "$ROOT/$relative_path" | awk '{print $1}')"
+    migration_digest["$migration_name"]="$digest"
     printf 'MIGRATION\t%s\t%s\n' "$migration_name" "$digest"
   done
+  [ -e "$EXCEPTIONS" ] || return 0
+  [ -f "$EXCEPTIONS" ] || {
+    printf 'migration ledger exceptions path is not a regular file\n' >&2
+    return 1
+  }
+  local line name checksum kind reason extra previous=""
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in ''|'#'*) continue ;; esac
+    IFS=$'\t' read -r name checksum kind reason extra <<<"$line"
+    [[ "$name" =~ ^[0-9]{8,14}_[A-Za-z0-9_]+$ ]] \
+      && [[ "$checksum" =~ ^([0-9a-f]{64}|manual-[0-9]{8,14})$ ]] \
+      && [ -n "$reason" ] && [ -z "${extra:-}" ] \
+      && { [ -z "$previous" ] || [[ "$previous" < "$name" ]]; } || {
+      printf 'malformed, duplicate or unsorted migration ledger exception: %s\n' "$name" >&2
+      return 1
+    }
+    case "$kind" in
+      applied-not-in-code)
+        [ -z "${migration_digest[$name]:-}" ] || {
+          printf 'ledger exception %s claims a migration the repository has\n' "$name" >&2
+          return 1
+        }
+        ;;
+      checksum-differs)
+        [ -n "${migration_digest[$name]:-}" ] && [ "${migration_digest[$name]}" != "$checksum" ] || {
+          printf 'ledger exception %s does not differ from a repository migration\n' "$name" >&2
+          return 1
+        }
+        ;;
+      *)
+        printf 'unknown migration ledger exception kind for %s\n' "$name" >&2
+        return 1
+        ;;
+    esac
+    printf 'LEDGER_EXCEPTION\t%s\t%s\t%s\n' "$name" "$checksum" "$kind"
+    previous="$name"
+  done <"$EXCEPTIONS"
 }
 
+MANIFEST="$(emit_manifest)" || exit 1
 case "$MODE" in
-  manifest) emit_manifest ;;
-  digest) emit_manifest | sha256sum | awk '{print $1}' ;;
+  manifest) printf '%s\n' "$MANIFEST" ;;
+  digest) printf '%s\n' "$MANIFEST" | sha256sum | awk '{print $1}' ;;
 esac
