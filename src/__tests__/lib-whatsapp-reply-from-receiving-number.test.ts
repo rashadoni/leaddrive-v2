@@ -100,7 +100,7 @@ describe("sending WhatsApp from the conversation's number", () => {
 describe("the customer-service window belongs to the exact customer and business number", () => {
   it("never borrows an inbound window from another business number or matching phone suffix", async () => {
     const { prisma } = await import("@/lib/prisma")
-    vi.mocked(prisma.channelMessage.findFirst).mockImplementation(async (query) => {
+    vi.mocked(prisma.channelMessage.findFirst).mockImplementation(async (query: { where?: unknown } | undefined) => {
       const where = query?.where as { channelConfigId?: string; OR?: { from?: { in?: string[]; contains?: string } }[] }
       // A different channel received a customer with the same last ten digits.
       const unrelated = { channelConfigId: "wa_old", from: "1994501234567" }

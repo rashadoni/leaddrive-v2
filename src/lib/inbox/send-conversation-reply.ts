@@ -16,6 +16,7 @@ import { resolveChannelConnection } from "@/lib/channels/platform-connections"
 import { sendNativeMessagingReply } from "@/lib/tiktok-messaging/send"
 import { TIKTOK_MESSAGING_PROVIDER } from "@/lib/tiktok-messaging/config"
 import { resolveReplyRoute } from "@/lib/channels/reply-routing"
+import { checkWhatsAppReplyChannel, WHATSAPP_REPLY_CHANNEL_MISMATCH } from "@/lib/inbox/whatsapp-reply-channel"
 
 export type ConversationReplyChannel =
   | "email"
@@ -306,7 +307,8 @@ async function finalizeChatwootDelivery(
 
 /** Shared outbound pipeline for the inbox composer and conversation automation actions. */
 export async function sendConversationReply(opts: SendConversationReplyOptions): Promise<SendConversationReplyResult> {
-  const { organizationId: orgId, channel, to, body, subject, contactId, leadId, conversationId, channelConfigId, attachment } = opts
+  const { organizationId: orgId, channel, to, body, subject, contactId, leadId, conversationId, attachment } = opts
+  let { channelConfigId } = opts
   let status = "delivered"
   let whatsAppMessageId: string | undefined
   let errorMsg = ""
@@ -369,6 +371,9 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
       }
 
       case "whatsapp": {
+        const binding = await checkWhatsAppReplyChannel({ organizationId: orgId, to, channelConfigId })
+        if (!binding.allowed) return { success: false, statusCode: 409, error: WHATSAPP_REPLY_CHANNEL_MISMATCH }
+        channelConfigId = binding.channelConfigId
         if (attachment) {
           const result = await sendWhatsAppMedia({
             to,

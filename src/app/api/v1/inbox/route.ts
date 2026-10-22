@@ -11,6 +11,7 @@ import { sendConversationReply } from "@/lib/inbox/send-conversation-reply"
 import { PAGE_SIZE } from "@/lib/constants"
 import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import { markMarketingContacted } from "@/lib/inbox/customer-stage"
+import { whatsappThreadReplyBinding } from "@/lib/inbox/whatsapp-reply-channel"
 
 export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
   const { searchParams } = new URL(req.url)
@@ -254,12 +255,12 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       .map((t: any) => ({
         ...t,
         channels: Array.from(t.channels),
-        // Option-D — derive the persisted conversation id from the thread's own
-        // messages. This does NOT change grouping (resolveKey is unchanged), so
-        // the legacy /inbox threads stay byte-identical; we only annotate them.
-        // (A contact merged from multiple SocialConversations surfaces the most
-        // recent one — messages are newest-first.)
-        socialConversationId: t.messages.find((m: any) => m.conversationId)?.conversationId ?? null,
+        ...whatsappThreadReplyBinding(t.messages),
+        // Messages are newest-first. A WhatsApp thread may contain an unbound
+        // message from B followed by a canonical conversation from A; do not
+        // expose A as the reply target for that merged contact thread.
+        socialConversationId: t.lastChannel === "whatsapp" && whatsappThreadReplyBinding(t.messages).whatsappReplyBlocked
+          ? null : t.messages.find((m: any) => m.conversationId)?.conversationId ?? null,
       }))
       .sort((a: any, b: any) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
 
