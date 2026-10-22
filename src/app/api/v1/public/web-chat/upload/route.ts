@@ -8,6 +8,7 @@ import { buildWidgetCorsHeaders, isOriginAllowed } from "@/lib/widget-cors"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { validateUploadBytes } from "@/lib/upload-security"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 const ALLOWED_MIME = new Set([
@@ -106,7 +107,7 @@ export async function POST(req: NextRequest) {
   const baseDir = path.join("uploads", "web-chat", session.organizationId)
   const uploadDir = path.join(runtimePublicUploadDirectory("web-chat"), session.organizationId)
   await mkdir(uploadDir, { recursive: true })
-  await writeFile(path.join(uploadDir, storedName), buffer)
+  await writeFile(path.join(uploadDir, storedName), sealTenantFile(session.organizationId, buffer))
 
   const publicUrl = `/${path.posix.join(baseDir, storedName)}`
 

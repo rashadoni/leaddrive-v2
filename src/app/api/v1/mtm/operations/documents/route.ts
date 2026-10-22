@@ -14,6 +14,7 @@ import {
 } from "@/lib/mtm/mobile-document"
 import { isAgentInRouteScope, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { withMtmRlsAuth } from "@/lib/with-mtm-rls-auth"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 function forbidden() {
   return NextResponse.json({ error: "Forbidden", code: "MTM_OPERATIONS_SCOPE_DENIED" }, { status: 403 })
@@ -82,7 +83,7 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
     const storageKey = createMobileDocumentStorageKey()
     storagePath = resolveMobileDocumentStoragePath(storageKey)
     await mkdir(mobileDocumentStorageRoot(), { recursive: true })
-    await writeFile(storagePath, bytes, { flag: "wx" })
+    await writeFile(storagePath, sealTenantFile(auth.orgId, bytes), { flag: "wx" })
 
     const document = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const created = await tx.mtmDocument.create({
