@@ -112,6 +112,19 @@ function loadMasterKek(): Buffer {
 }
 
 /**
+ * True when the master KEK loads. For preflight checks in jobs that would
+ * otherwise fail on every row; it never reveals the key or why it failed.
+ */
+export function isTenantPiiMasterKeyConfigured(): boolean {
+  try {
+    loadMasterKek()
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Test-only: clear the cached KEK so a fresh env var read happens.
  * Production code should never call this.
  */
