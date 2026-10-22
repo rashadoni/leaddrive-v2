@@ -49,13 +49,15 @@ class ZeytunInboundBridge:
         self.active = False
 
     def _request(self, body):
-        return self._post_json(self.url, body)
+        # The first session also builds the pinned catalog once. Keep that
+        # cold start separate from the short deadline for spoken lookups.
+        return self._post_json(self.url, body, timeout=5 if body.get("action") == "session" else 2)
 
-    def _post_json(self, url, body):
+    def _post_json(self, url, body, timeout=2):
         req = urllib.request.Request(url,
             data=json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
             headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"}, method="POST")
-        with urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=2) as response:
+        with urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout) as response:
             raw = response.read(32769)
             if len(raw) > 32768:
                 raise ZeytunPilotUnavailable("pilot_response_too_large")

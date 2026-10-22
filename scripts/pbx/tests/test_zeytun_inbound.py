@@ -5,6 +5,7 @@ from pathlib import Path
 import threading
 import time
 import unittest
+from unittest.mock import patch
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -175,6 +176,27 @@ class TransportTests(unittest.TestCase):
             with self.assertRaises(bridge_module.ZeytunPilotUnavailable):
                 bridge_module.ZeytunInboundBridge(url, "t" * 48, CALL)
         self.assertIsNone(bridge_module.ZeytunNoRedirect().redirect_request(None, None, 302, "", {}, "https://other.example"))
+
+    def test_cold_session_deadline_does_not_extend_search_or_answer_ack(self):
+        observed = []
+
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, limit):
+                observed.append(("read", limit))
+                return b'{"success":true}'
+
+        def open_request(request, timeout):
+            observed.append(("open", request.full_url, timeout))
+            return Response()
+
+        with patch.object(bridge_module.urllib.request, "build_opener", return_value=SimpleNamespace(open=open_request)):
+            self.bridge._request({"action": "session", "callId": CALL})
+            self.bridge._request({"action": "search", "callId": CALL, "query": {"text": "Medicine"}})
+            self.assertTrue(self.bridge._announce_answered())
+        self.assertEqual([row[2] for row in observed if row[0] == "open"], [5, 2, 2])
+        self.assertEqual([row[1] for row in observed if row[0] == "read"], [32769] * 3)
 
     def test_missing_identity_or_quote_flags_reject_entire_result(self):
         for field in ["customerVerified", "canQuote", "canSubmitTo1c", "canResolveIdentity", "requiresOperatorReview"]:
