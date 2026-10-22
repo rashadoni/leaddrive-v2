@@ -2,7 +2,7 @@ import path from "node:path"
 import { randomBytes } from "node:crypto"
 import { mkdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises"
 import sharp from "sharp"
-import { decodeTenantFileBytes, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
+import { openTenantFileBytes, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import type { MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
 
 /**
@@ -182,7 +182,7 @@ export async function resolveDiskMtmPhotoThumbnail(input: {
   try {
     const cached = await stat(cachePath)
     if (cached.isFile() && cached.size > 0 && cached.mtimeMs >= original.mtimeMs) {
-      return { kind: "ok", etag, bytes: decodeTenantFileBytes(input.organizationId, await readFile(cachePath)) }
+      return { kind: "ok", etag, bytes: await openTenantFileBytes(input.organizationId, await readFile(cachePath)) }
     }
   } catch {
     // Cache miss or unreadable cache entry — generate below.
@@ -197,7 +197,7 @@ export async function resolveDiskMtmPhotoThumbnail(input: {
     // The render slot is taken BEFORE the original is read: a queued request
     // must not hold megabytes of camera bytes while it waits.
     pending = withRenderSlot(async () => {
-      const originalBytes = decodeTenantFileBytes(input.organizationId, await readFile(input.originalPath))
+      const originalBytes = await openTenantFileBytes(input.organizationId, await readFile(input.originalPath))
       const bytes = await decodeThumbnail(originalBytes, input.width)
       // The cache is as sensitive as the photo: it is sealed like the original.
       if (bytes) await writeCacheAtomically(cachePath, sealTenantFile(input.organizationId, bytes))

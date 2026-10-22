@@ -18,77 +18,15 @@
  *
  * The response carries counts only — no names, paths or tenants.
  */
-import path from "node:path"
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
 import { requireCronAuth } from "@/lib/cron-auth"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { isTenantPiiMasterKeyConfigured } from "@/lib/crypto/tenant-pii-encryption"
-import {
-  ownedFileLocation,
-  pathEncodedLocation,
-  sealLegacyTenantFiles,
-  type TenantFileLocation,
-} from "@/lib/crypto/tenant-file-backfill"
-import { runtimePrivateUploadDirectory, runtimePublicUploadDirectory } from "@/lib/runtime-paths"
-import { mobileDocumentStorageRoot } from "@/lib/mtm/mobile-document"
-import { MTM_PHOTO_THUMBNAIL_DIR } from "@/lib/mtm/photo-thumbnail-server"
+import { sealLegacyTenantFiles } from "@/lib/crypto/tenant-file-backfill"
+import { tenantFileLocations } from "@/lib/crypto/tenant-file-locations"
 
 const DEFAULT_LIMIT = 500
 const HARD_CAP = 5000
-
-// Customer files only. Logos, email images and social logos are public by
-// design and stay plain (see tenant-file-readers-guard.test.ts).
-const PATH_ENCODED_SUBDIRS = ["inbox", "web-chat", "whatsapp", "telegram", "contract-images", "avatars", "mtm-invoices"] as const
-
-// The exported prisma client is untyped here, so rows are typed at the call.
-function ownersBy<T extends { organizationId: string }>(key: (row: T) => string) {
-  return (rows: T[]) => new Map<string, string>(rows.map((row) => [key(row), row.organizationId]))
-}
-
-function locations(): TenantFileLocation[] {
-  const photoUrl = (name: string) => `/uploads/mtm-photos/${name}`
-  const photoOwners = async (names: string[]) => {
-    const rows: Array<{ url: string; organizationId: string }> = await prisma.mtmPhoto.findMany({
-      where: { url: { in: names.map(photoUrl) } },
-      select: { url: true, organizationId: true },
-    })
-    return new Map<string, string>(rows.map((row) => [row.url.slice(photoUrl("").length), row.organizationId]))
-  }
-  const photosDirectory = runtimePublicUploadDirectory("mtm-photos")
-
-  return [
-    ...PATH_ENCODED_SUBDIRS.map((subdir) => pathEncodedLocation(subdir, runtimePublicUploadDirectory(subdir))),
-    ownedFileLocation("mtm-photos", photosDirectory, photoOwners),
-    // `.thumbs/<photo file>.w<width>.webp` belongs to its photo's tenant.
-    ownedFileLocation(
-      "mtm-photo-thumbnails",
-      path.join(photosDirectory, MTM_PHOTO_THUMBNAIL_DIR),
-      photoOwners,
-      (fileName) => /^(.+)\.w\d+\.webp$/.exec(fileName)?.[1] ?? null,
-    ),
-    ownedFileLocation("contracts", runtimePublicUploadDirectory("contracts"), async (names) =>
-      ownersBy<{ fileName: string; organizationId: string }>((row) => row.fileName)(
-        await prisma.contractFile.findMany({ where: { fileName: { in: names } }, select: { fileName: true, organizationId: true } }),
-      )),
-    ownedFileLocation("tasks", runtimePublicUploadDirectory("tasks"), async (names) =>
-      ownersBy<{ fileName: string; organizationId: string }>((row) => row.fileName)(
-        await prisma.taskAttachment.findMany({ where: { fileName: { in: names } }, select: { fileName: true, organizationId: true } }),
-      )),
-    ownedFileLocation("tickets", runtimePublicUploadDirectory("tickets"), async (names) =>
-      ownersBy<{ fileName: string; organizationId: string }>((row) => row.fileName)(
-        await prisma.ticketAttachment.findMany({ where: { fileName: { in: names } }, select: { fileName: true, organizationId: true } }),
-      )),
-    ownedFileLocation("mtm-documents", mobileDocumentStorageRoot(), async (names) =>
-      ownersBy<{ storageKey: string; organizationId: string }>((row) => row.storageKey)(
-        await prisma.mtmDocument.findMany({ where: { storageKey: { in: names } }, select: { storageKey: true, organizationId: true } }),
-      )),
-    ownedFileLocation("mtm-attendance", runtimePrivateUploadDirectory("mtm-attendance"), async (names) =>
-      ownersBy<{ storageKey: string; organizationId: string }>((row) => row.storageKey)(
-        await prisma.mtmAttendanceAttachment.findMany({ where: { storageKey: { in: names } }, select: { storageKey: true, organizationId: true } }),
-      )),
-  ]
-}
 
 function parseLimit(raw: string | null): number {
   if (!raw) return DEFAULT_LIMIT
@@ -112,7 +50,7 @@ export async function POST(req: NextRequest) {
   const limit = parseLimit(url.searchParams.get("limit"))
 
   try {
-    const report = await sealLegacyTenantFiles(locations(), { limit, dryRun })
+    const report = await sealLegacyTenantFiles(tenantFileLocations(), { limit, dryRun })
     return NextResponse.json({ success: true, data: { ...report, limit } })
   } catch (error) {
     console.error("[cron/tenant-file-encryption-backfill] error:", error instanceof Error ? error.message : "unknown")

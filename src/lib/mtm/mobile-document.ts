@@ -1,7 +1,7 @@
 import crypto from "node:crypto"
 import path from "node:path"
 import { resolveRuntimePaths } from "@/lib/runtime-paths"
-import { decodeTenantFileBytes } from "@/lib/crypto/tenant-file-encryption"
+import { openTenantFileBytes } from "@/lib/crypto/tenant-file-encryption"
 import { MAX_MOBILE_DOCUMENT_BYTES } from "@/lib/mtm/mobile-document-limits"
 
 export { MAX_MOBILE_DOCUMENT_BYTES }
@@ -126,14 +126,14 @@ export function resolveMobileDocumentStoragePath(storageKey: string): string {
  * envelope that does not open under this tenant. Legacy plain files pass
  * through. Callers still compare the result with the recorded plain size.
  */
-export function storedMobileDocumentBytes(
+export async function storedMobileDocumentBytes(
   organizationId: string,
   file: { isFile: boolean; size: number },
   stored: Buffer,
-): Buffer | null {
+): Promise<Buffer | null> {
   if (!file.isFile || file.size !== stored.byteLength) return null
   try {
-    return decodeTenantFileBytes(organizationId, stored)
+    return await openTenantFileBytes(organizationId, stored)
   } catch {
     return null
   }

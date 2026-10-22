@@ -68,6 +68,7 @@ model Organization {
   // complianceAuditLogs — intentionally absent. See ComplianceAuditLog:
   // the compliance trail is not owned by the organization and survives it.
   tenantMasterKeys      TenantMasterKey[]
+  tenantDataKeys        TenantDataKey[]
   accountGradeConfig    AccountGradeConfig?
   intentSignalConfig    IntentSignalConfig?
   leaderboardConfig     LeaderboardConfig?
@@ -1015,6 +1016,30 @@ model TenantMasterKey {
   @@index([organizationId], map: "tenant_master_keys_org_active_idx")
   @@index([organizationId, version], map: "tenant_master_keys_org_version_idx")
   @@map("tenant_master_keys")
+}
+
+// Stage 2b of PII encryption (owner 2026-10-22, "вариант 3"): each
+// organization's own RANDOM data key, wrapped by the master key
+// (`src/lib/crypto/tenant-data-keys.ts`). Not `tenant_master_keys`: that
+// table's trigger forbids DELETE, and deleting an organization's rows here is
+// how its data is destroyed (crypto-shredding, owner-operated, later).
+// FORCE RLS, `tenant_isolation` policy (migration 20261030090000).
+model TenantDataKey {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// 1, 2, … — a v2 column value and a "d<version>" file envelope name it.
+  version        Int
+  /// base64( IV(12) | AES-256-GCM(data key) | tag(16) ), AAD orgId|version|masterKeyId.
+  wrappedKey     String
+  /// Which master key wrapped it (`tenantMasterKeyId()`), so a rewrap can find old rows.
+  masterKeyId    String
+  createdAt      DateTime     @default(now())
+  /// Set when a newer version takes over writes; the key keeps reading.
+  retiredAt      DateTime?
+
+  @@unique([organizationId, version])
+  @@map("tenant_data_keys")
 }
 
 // C5 Account Engagement slice-2 — per-tenant grade-component weights.

@@ -5,7 +5,10 @@ import {
   decodeTenantFileBytes,
   isTenantFileEnvelope,
   sealTenantFile,
+  tenantFileKeyId,
+  TENANT_FILE_MAX_HEADER_BYTES,
 } from "@/lib/crypto/tenant-file-encryption"
+import { ensureTenantDataKeys } from "@/lib/crypto/tenant-data-keys"
 import { isSafeOrganizationPathSegment } from "@/lib/upload-path-policy"
 
 /**
@@ -126,7 +129,21 @@ export function ownedFileLocation(
   }
 }
 
-async function replaceWithEnvelope(filePath: string, organizationId: string, plain: Buffer): Promise<void> {
+/**
+ * Load the organization's data key so the envelope is written under it
+ * ("d<N>"). When it cannot be loaded the file is still sealed, under the
+ * derived key ("t1"), and the data key sweep picks it up later.
+ */
+async function loadDataKey(organizationId: string): Promise<boolean> {
+  try {
+    await ensureTenantDataKeys(organizationId)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function replaceWithEnvelope(filePath: string, organizationId: string, plain: Buffer): Promise<Buffer> {
   const sealed = sealTenantFile(organizationId, plain)
   // Never replace a file with something that does not open back to it.
   if (!decodeTenantFileBytes(organizationId, sealed).equals(plain)) throw new Error("seal round-trip mismatch")
@@ -148,6 +165,7 @@ async function replaceWithEnvelope(filePath: string, organizationId: string, pla
     await unlink(temp).catch(() => undefined)
     throw error
   }
+  return sealed
 }
 
 /**
@@ -195,6 +213,7 @@ export async function sealLegacyTenantFiles(
         continue
       }
       try {
+        await loadDataKey(candidate.organizationId)
         await replaceWithEnvelope(candidate.path, candidate.organizationId, stored)
         counts.sealed += 1
       } catch {
@@ -208,4 +227,103 @@ export async function sealLegacyTenantFiles(
     }
   }
   return report
+}
+
+export type TenantFileRekeyCounts = {
+  scanned: number
+  /** Envelopes rewritten from "t1" to the organization's data key. */
+  rekeyed: number
+  /** Envelopes already under a data key. */
+  onDataKey: number
+  /** Plain files: the sealing backfill's job, not this one. */
+  plain: number
+  ownerUnknown: number
+  keyUnavailable: number
+  failed: number
+}
+
+export type TenantFileRekeyReport = {
+  dryRun: boolean
+  hasMore: boolean
+  totals: TenantFileRekeyCounts
+  /** "t1" envelopes left after this run, per organization. */
+  derivedKeyFilesByOrganization: Record<string, number>
+}
+
+async function readHead(filePath: string): Promise<Buffer> {
+  const handle = await open(filePath, "r")
+  try {
+    const head = Buffer.alloc(TENANT_FILE_MAX_HEADER_BYTES)
+    const { bytesRead } = await handle.read(head, 0, head.byteLength, 0)
+    return head.subarray(0, bytesRead)
+  } finally {
+    await handle.close()
+  }
+}
+
+/**
+ * Re-seals up to `limit` envelopes written under the derived key ("t1") with
+ * the organization's stored data key ("d<N>"), with the same atomic,
+ * verified replacement as the sealing backfill. `dryRun` only counts, reading
+ * file headers. The report carries counts only — per organization, no names
+ * or paths.
+ */
+export async function rekeyTenantFiles(
+  locations: readonly TenantFileLocation[],
+  options: { limit: number; dryRun: boolean },
+): Promise<TenantFileRekeyReport> {
+  const totals: TenantFileRekeyCounts = {
+    scanned: 0, rekeyed: 0, onDataKey: 0, plain: 0, ownerUnknown: 0, keyUnavailable: 0, failed: 0,
+  }
+  const remaining: Record<string, number> = {}
+  const leave = (organizationId: string) => { remaining[organizationId] = (remaining[organizationId] ?? 0) + 1 }
+  let hasMore = false
+  let budget = options.limit
+  for (const location of locations) {
+    for (const candidate of await location.list()) {
+      totals.scanned += 1
+      let keyId: string | null
+      try {
+        const head = await readHead(candidate.path)
+        if (!isTenantFileEnvelope(head)) {
+          totals.plain += 1
+          continue
+        }
+        keyId = tenantFileKeyId(head)
+      } catch {
+        totals.failed += 1
+        continue
+      }
+      if (keyId !== "t1") {
+        if (keyId) totals.onDataKey += 1
+        else totals.failed += 1
+        continue
+      }
+      if (!candidate.organizationId) {
+        totals.ownerUnknown += 1
+        continue
+      }
+      if (options.dryRun || budget <= 0) {
+        if (!options.dryRun) hasMore = true
+        leave(candidate.organizationId)
+        continue
+      }
+      budget -= 1
+      if (!(await loadDataKey(candidate.organizationId))) {
+        totals.keyUnavailable += 1
+        leave(candidate.organizationId)
+        continue
+      }
+      try {
+        const plain = decodeTenantFileBytes(candidate.organizationId, await readFile(candidate.path))
+        const sealed = await replaceWithEnvelope(candidate.path, candidate.organizationId, plain)
+        if (tenantFileKeyId(sealed) === "t1") throw new Error("data key not used")
+        totals.rekeyed += 1
+      } catch {
+        totals.failed += 1
+        leave(candidate.organizationId)
+      }
+    }
+  }
+  return { dryRun: options.dryRun, hasMore, totals, derivedKeyFilesByOrganization: remaining }
 }

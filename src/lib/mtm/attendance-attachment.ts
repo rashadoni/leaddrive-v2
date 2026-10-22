@@ -7,7 +7,7 @@ import sharp from "sharp"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { resolveRuntimePaths } from "@/lib/runtime-paths"
-import { decodeTenantFileBytes, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
+import { openTenantFileBytes, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import { AttendanceRequestDetailsSchema, AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { lockAttendanceRequests, requireAttendanceSelf, type AttendanceSelf } from "@/lib/mtm/attendance-request-store"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
@@ -89,7 +89,7 @@ export async function readAttendanceDocument(reader: Reader, id: string) {
       // The on-disk size of an encrypted file exceeds the plain size by the
       // envelope overhead (header + 16 bytes per 64 KiB), never by a megabyte.
       if (!stat.isFile() || stat.size > MAX_ATTENDANCE_ATTACHMENT_BYTES + 1024 * 1024) throw new Error("size")
-      const bytes = decodeTenantFileBytes(reader.organizationId, await file.readFile())
+      const bytes = await openTenantFileBytes(reader.organizationId, await file.readFile())
       if (bytes.byteLength !== record.sizeBytes || sha256(bytes) !== record.checksumSha256) throw new Error("checksum")
       return { bytes, mimeType: record.mimeType }
     } finally { await file.close() }

@@ -22,12 +22,15 @@
  *   reason; direct rlsStorage.run users must `async () => await ...`.
  */
 import { AsyncLocalStorage } from "node:async_hooks"
+import { tenantDataKeyRingNeedsRefresh } from "./crypto/tenant-data-key-cache"
 
 export interface RlsContext {
   orgId?: string
   bypass?: boolean
   /** set by the $transaction override so the per-op wrap passes through inside a tx */
   inTx?: boolean
+  /** set while `tenant-data-keys.ts` loads a key ring, so its own queries do not preload again */
+  tenantDataKeyLoad?: boolean
 }
 
 // PROD INCIDENT 2026-06-11: Next standalone duplicates this module into ~85
@@ -44,6 +47,23 @@ export const rlsStorage: AsyncLocalStorage<RlsContext> =
 
 export function getRlsContext(): RlsContext | undefined {
   return rlsStorage.getStore()
+}
+
+/**
+ * Load the organization's data key ring (`src/lib/crypto/tenant-data-keys.ts`)
+ * before tenant code runs, so the synchronous PII column API can write v2 and
+ * read what was written under it. A Map lookup when the ring is fresh; the
+ * module is imported lazily because it imports the Prisma client, which
+ * imports this file. Never throws: a failed load leaves writes on v1.
+ */
+async function preloadTenantDataKeysFor(orgId: string): Promise<void> {
+  if (!tenantDataKeyRingNeedsRefresh(orgId) || rlsStorage.getStore()?.tenantDataKeyLoad) return
+  try {
+    const { preloadTenantDataKeys } = await import("./crypto/tenant-data-keys")
+    await preloadTenantDataKeys(orgId)
+  } catch {
+    // preloadTenantDataKeys logs its own failures; an import failure leaves v1.
+  }
 }
 
 /**
@@ -69,7 +89,11 @@ export function runWithTenant(orgId: string, fn: () => unknown): Promise<unknown
   if (!orgId || typeof orgId !== "string") {
     throw new Error("runWithTenant: orgId must be a non-empty string")
   }
-  return rlsStorage.run({ orgId }, async () => await fn())
+  const preload = !rlsStorage.getStore()?.tenantDataKeyLoad
+  return rlsStorage.run({ orgId }, async () => {
+    if (preload) await preloadTenantDataKeysFor(orgId)
+    return await fn()
+  })
 }
 
 /**

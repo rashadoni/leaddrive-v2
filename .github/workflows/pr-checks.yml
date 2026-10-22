@@ -548,6 +548,17 @@ jobs:
           MTM_PRODUCT_VIEWERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_PRODUCT_VIEWERS_DB_GATE: required
 
+      - name: Tenant data keys database gate
+        # PII encryption stage 2b (2026-10-22): each organization's own random
+        # data key, wrapped by the master key, as an application role without
+        # BYPASSRLS sees it: one key per organization even under a race, FORCE
+        # RLS on the key table, the sweep moving v1 values and t1 files to the
+        # data key unchanged, and deleted key rows leaving v2 data unreadable.
+        run: npx vitest run src/__tests__/tenant-data-keys-postgres.test.ts
+        env:
+          TENANT_DATA_KEYS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          TENANT_DATA_KEYS_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:

@@ -622,6 +622,14 @@ jobs:
           MTM_PRODUCT_VIEWERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_PRODUCT_VIEWERS_DB_GATE: required
 
+      - name: Tenant data keys database gate
+        # Same gate as in pr-checks: one data key per organization, FORCE RLS
+        # on the key table, and the v1 → v2 sweep (see the test's header).
+        run: npx vitest run src/__tests__/tenant-data-keys-postgres.test.ts
+        env:
+          TENANT_DATA_KEYS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          TENANT_DATA_KEYS_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:
