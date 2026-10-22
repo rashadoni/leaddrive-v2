@@ -124,6 +124,18 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   const before=rows[0].branchRevisionId
   const edited=await tenant(ORG,()=>branches.saveAttendanceBranch(admin,{requestId:randomUUID(),branchId,expectedRevisionId:branchRevisionId,name:"Moved fictional branch",address:"Demo Road 24",latitude:41,longitude:50,radiusMeters:150,active:true}));branchRevisionId=edited.branch.revisionId
   expect((await evidence())[0].branchRevisionId).toBe(before)
+  const { readOwnAttendanceMarks } = await import("@/lib/mtm/attendance-own-marks")
+  const ownDay = String(op.data.id)
+  const own = await tenant(ORG, () => readOwnAttendanceMarks(self(), ownDay))
+  expect(own.items).toHaveLength(1)
+  expect(own.items[0]).toMatchObject({ eventId: rows[0].eventId, claimedAt: at.toISOString(), serverReceivedAt: rows[0].serverReceivedAt.toISOString(),
+    location: { state: "INSIDE", coordinates: { latitude: 40.4, longitude: 49.85 }, branchName: "Fictional branch", distanceMeters: 0 } })
+  expect(JSON.stringify(own)).not.toMatch(/installationId|consentId|redactedRequestHash|Moved fictional/)
+  await expect(tenant(OTHER, () => readOwnAttendanceMarks({ ...self(), organizationId: OTHER }, ownDay))).rejects.toMatchObject({ status: 403 })
+  const owner = identity.agentId
+  await employee()
+  await expect(tenant(ORG, () => readOwnAttendanceMarks(self(), ownDay))).rejects.toMatchObject({ status: 404 })
+  identity.agentId = owner
   const { readMtmAttendanceReport } = await import("@/lib/mtm/attendance-report-store")
   const workday = await tenant(ORG, () => prisma.mtmAgentWorkday.findFirstOrThrow({where:{agentId:identity.agentId},select:{workDate:true}}))
   const date = workday.workDate.toISOString().slice(0,10)
@@ -568,6 +580,10 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
     owners.push(await employee());const op=operation("START",randomUUID(),new Date(),undefined,{version:1,token:issued.token})
     const first=await send(op);expect(first.body.results).toMatchObject([{status:"ok",serverData:{attendanceQr:{state:"VERIFIED",branch:{id:branchId}}}}])
     const receipt=first.body.results[0].serverData.attendanceQr
+    const { readOwnAttendanceMarks } = await import("@/lib/mtm/attendance-own-marks")
+    const personal = await tenant(ORG, () => readOwnAttendanceMarks(self(), String(op.data.id)))
+    expect(personal.items[0].qr).toEqual({ state: "VERIFIED", branchName: receipt.branch.name })
+    expect(JSON.stringify(personal)).not.toMatch(/mtmq1\.|nonceFingerprint|installationId/)
     const {readMtmAttendanceReport}=await import("@/lib/mtm/attendance-report-store")
     const day=await tenant(ORG,()=>prisma.mtmAgentWorkday.findFirstOrThrow({where:{agentId:identity.agentId},select:{workDate:true}})),date=day.workDate.toISOString().slice(0,10)
     const report=await tenant(ORG,()=>readMtmAttendanceReport({organizationId:ORG,actor:{role:"ADMIN",agentId:null,scopedAgentIds:null},query:{from:date,to:date,form:"ALL",employeeId:identity.agentId},now:new Date()}))

@@ -74,3 +74,21 @@
 - Исходный тестовый аккаунт, сеть и разрешения восстановлены; обе тестовые истории и10заявок сохранены. Mobile evidence checkpoint91cfa78 опубликован в существующей draftPR196, без mobile main merge или публичного выпуска. Полный журнал: /mnt/HC_Volume_106454338/codex-alt-data/worktrees/mtm-attendance-standalone/docs/attendance-standalone-session-log.md. Отчёт: /mnt/HC_Volume_106454338/codex-alt-data/worktrees/mtm-attendance-standalone/docs/evidence/attendance-fresh-day-full-cycle-20261022.json.
 - Прежняя точка ожидания наступления реальной даты закрыта этим выполнением. Реальный GPS на площадке и24hphysicalsoak остаются NOT RUN; положительная короткая последовательность не подменяет эти проверки.
 - Итог кадровой задачи: исправление выпущено PR974, штатный deploy и функциональный production smoke PASS. Последнее действие: сохранены результаты отдельной физической приёмки. Точная остановка: серверный release завершён, дополнительного deploy для журнала не требуется. Следующее действие: отдельная проверка геолокации после наличия реальной площадки и утверждённой политики; текущий выпуск от неё не зависит.
+
+
+## 2026-10-22 — развитие по утверждённому плану T01/T02/T17/T03/T06/T04
+
+- Пользователь поручил начать работу и сохранять план. Полныйbacklogисамокритикасохраненывmobileworktree docs/attendance-standalone-session-log.md. T02/T03перваяреализацияужеcheckpoint e05307b/5a924d2,целевые66/79проверокPASS; новыйruntimeнеустановлен,старый1019продолжает24hтест.
+- CRMпродолжаетсявэтомrecordedworktree/branch codex/attendance-personnel-directory,originrashadoni/leaddrive-v2. ПрочитаныAGENTS/DEPLOYMENT/clientsregistry,подтверждён13.140.132.245:/opt/leaddrive-v2,Actionsmain. Чистоедеревосодержалотолько5локальныхcheckpointдокументацииповерхпрошлоговыпуска. Выполненобычныйmergeактуальногоorigin/main96c08c4e6,безконфликтов;чужиеизменениянепереписывались.
+- Safety-laneпланT17:узкийGETсобственныхотметок,scopedtenant+employee+workday,explicitDTO,историческийGPSтолькопосвоимSTART/FINISH;breakprivacy,действующиеpermissionsиexactAPIallowlist. Толькоread,безновыхтаблиц,безгеолокационныхизмерений. Проверкиauth/другойtenant/чужойдень/выключенныйдоступ/неизвестныйGPS/ошибки/приватныйcacheконтроль.
+- T06:доработатьсуществующийToday/очередь,свежестьданныхиконтексткоррекции;T04использоватьсуществующиенастройкиикарточкуготовности. Необъявлятьпустые/неполученныеданныеготовностьюилипрогулом.
+- Разрешениенаproductionвыпускпрежнегоrosterfixнепереноситсяавтоматическиновымсервернымфункциям. Сначалаполнаяреализация/проверки/конкретныйобзор;новыйdeployневыполнялся.
+
+
+### 2026-10-22 — T17, собственные отметки сотрудника
+
+- Начат согласованный этап развития по запросу «начинай работу, запиши план». Полный backlog T01–T17 и порядок находятся в docs/attendance-standalone-session-log.md рабочего дерева mtm-attendance-standalone. Здесь серверная часть T17/T06/T04.
+- История согласована с origin/main 96c08c4e6 обычным merge f51566db3 без конфликтов; прежние записи и checkpoint сохранены. Routing: эта папка attendance-personnel-directory, codex/attendance-personnel-directory, origin rashadoni/leaddrive-v2, production 13.140.132.245:/opt/leaddrive-v2, выпуск через reviewed main / GitHub Actions.
+- T17: новый read-only GET /api/v2/mtm/mobile/route-field/attendance/marks?workdayId=... возвращает только свои исторические START/FINISH GPS/QR, времена и текущие количества кадровых проверок. Сначала requireAttendanceSelf, затем scoped day и tenant-scoped joins; no-store, private error, лимит 64, RepeatableRead. Секреты, установка, чужие сведения и GPS перерывов не выдаются.
+- 3 узких suites / 58 tests PASS. Добавлены настоящие PostgreSQL assertions в существующий location-postgres suite: неизменяемое название филиала, собственные координаты, чужой сотрудник/tenant, QR без токена. PostgreSQL / полный TS / build / browser E2E NOT RUN: тяжёлые проверки должны выполняться в CI. Новые миграции не требуются. Production не менялся.
+- Далее T06: существующая очередь получает контекст коррекции и время загрузки. Затем T04: фактическая подготовка сотрудника, с явными неизвестными данными.
