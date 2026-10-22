@@ -926,7 +926,7 @@ export default function WhatsAppSettingsPage() {
           <summary className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{tw("notificationVariablesTitle")}</summary>
           <p className="mt-2 max-w-prose">{tw("notificationVariablesHelp")}</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {["ticketNumber", "status", "agentName"].map((variable) => <code key={variable} className="rounded bg-muted px-2 py-1 text-xs">{`{{${variable}}}`}</code>)}
+            {["ticketNumber"].map((variable) => <code key={variable} className="rounded bg-muted px-2 py-1 text-xs">{`{{${variable}}}`}</code>)}
           </div>
         </details>
         <div className="flex flex-wrap items-center gap-3 border-t pt-4">
