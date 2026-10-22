@@ -20,6 +20,7 @@ import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
+import { formatDate } from "@/lib/format-date"
 
 type Template = {
   id: string
@@ -370,7 +371,10 @@ export default function WhatsAppSettingsPage() {
         headers: orgId ? { "x-organization-id": String(orgId) } : {},
       })
       const result = await res.json()
-      if (isCurrent()) setValidateResult(result)
+      if (!isCurrent()) return
+      setValidateResult(result)
+      // Read the server's persisted check time instead of keeping stale metadata.
+      if (res.ok && result.ok) await fetchTemplates()
     } catch (e) {
       if (!isCurrent()) return
       setValidateResult({ ok: false, error: e instanceof Error ? e.message : "network error" })
@@ -520,15 +524,22 @@ export default function WhatsAppSettingsPage() {
   function formatRelative(iso: string | null): string {
     if (!iso) return tc("never")
     const diff = Date.now() - new Date(iso).getTime()
+    if (!Number.isFinite(diff)) return tc("never")
     const m = Math.floor(diff / 60000)
     if (m < 1) return tc("justNow")
+    const h = Math.floor(m / 60)
+    const d = Math.floor(h / 24)
+    if (d >= 30) return formatDate(iso, locale)
+    // Browser ICU builds without AZ relative-time data may output '-3 h'.
+    if (locale.toLowerCase().startsWith("az")) {
+      if (m < 60) return tw("relativeMinutesAgo", { count: m })
+      if (h < 24) return tw("relativeHoursAgo", { count: h })
+      return tw("relativeDaysAgo", { count: d })
+    }
     const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" })
     if (m < 60) return rtf.format(-m, "minute")
-    const h = Math.floor(m / 60)
     if (h < 24) return rtf.format(-h, "hour")
-    const d = Math.floor(h / 24)
-    if (d < 30) return rtf.format(-d, "day")
-    return new Date(iso).toLocaleDateString(locale)
+    return rtf.format(-d, "day")
   }
 
   return (
