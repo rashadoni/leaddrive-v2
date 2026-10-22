@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-const { mockRequestOutboundWebhook } = vi.hoisted(() => ({
+const { mockRequestOutboundWebhook, mockSendWhatsAppTemplate } = vi.hoisted(() => ({
   mockRequestOutboundWebhook: vi.fn(),
+  mockSendWhatsAppTemplate: vi.fn(),
 }))
 
 /**
@@ -11,6 +12,14 @@ const { mockRequestOutboundWebhook } = vi.hoisted(() => ({
  * provider-error reporting.
  */
 
+type JourneyWhatsAppConfig = {
+  id: string
+  organizationId: string
+  channelType: string
+  isActive: boolean
+  settings: { whatsappJourneyDefaultTemplate?: string }
+}
+
 const state: {
   smsCalls: any[]
   sendSmsResult: { success: boolean; messageId?: string; error?: string }
@@ -19,6 +28,8 @@ const state: {
   journey: any
   organizationActive: boolean
   sendSmsBarrier: Promise<void> | null
+  whatsappConfigs: JourneyWhatsAppConfig[]
+  whatsappInboundChannels: string[]
 } = {
   smsCalls: [],
   sendSmsResult: { success: true, messageId: "sm_1" },
@@ -27,6 +38,8 @@ const state: {
   journey: null,
   organizationActive: true,
   sendSmsBarrier: null,
+  whatsappConfigs: [],
+  whatsappInboundChannels: [],
 }
 
 vi.mock("@/lib/sms", () => ({
@@ -36,6 +49,8 @@ vi.mock("@/lib/sms", () => ({
     return state.sendSmsResult
   }),
 }))
+
+vi.mock("@/lib/whatsapp", () => ({ sendWhatsAppTemplate: mockSendWhatsAppTemplate }))
 
 vi.mock("@/lib/email", () => ({
   sendEmail: vi.fn(async () => ({ success: true })),
@@ -93,7 +108,13 @@ vi.mock("@/lib/prisma", () => ({
       create: vi.fn(async () => ({ id: "t_1" })),
     },
     channelConfig: {
-      findFirst: vi.fn(async () => null),
+      findFirst: vi.fn(async ({ where }: { where: Partial<JourneyWhatsAppConfig> }) =>
+        state.whatsappConfigs.find((channel) => Object.entries(where).every(([key, value]) => channel[key as keyof JourneyWhatsAppConfig] === value)) || null),
+      findMany: vi.fn(async ({ where, take }: { where: Partial<JourneyWhatsAppConfig>; take?: number }) =>
+        state.whatsappConfigs.filter((channel) => Object.entries(where).every(([key, value]) => channel[key as keyof JourneyWhatsAppConfig] === value)).slice(0, take)),
+    },
+    channelMessage: {
+      findMany: vi.fn(async () => state.whatsappInboundChannels.map((channelConfigId) => ({ channelConfigId }))),
     },
   },
 }))
@@ -140,7 +161,10 @@ beforeEach(() => {
   state.sendSmsResult = { success: true, messageId: "sm_1" }
   state.organizationActive = true
   state.sendSmsBarrier = null
+  state.whatsappConfigs = []
+  state.whatsappInboundChannels = []
   vi.clearAllMocks()
+  mockSendWhatsAppTemplate.mockResolvedValue({ success: true, messageId: "wa_1" })
   mockRequestOutboundWebhook.mockResolvedValue({
     ok: true,
     status: 204,
@@ -307,5 +331,96 @@ describe("journey-engine — webhook step", () => {
         nextActionAt: null,
       }),
     }))
+  })
+})
+
+
+/** Runs the real journey engine and channel selector through enrollment claiming,
+ * step execution and completion; only the final provider boundary is mocked. */
+describe("journey-engine — WhatsApp step sender and saved notification choices", () => {
+  function setupWhatsApp(config: Record<string, string> = {}) {
+    setupBase({ phone: "+994501234567" })
+    state.journey.steps[0].stepType = "send_whatsapp"
+    state.journey.steps[0].config = config
+    state.whatsappConfigs = [
+      { id: "wa_a", organizationId: "org_1", channelType: "whatsapp", isActive: true, settings: { whatsappJourneyDefaultTemplate: "office_a_default" } },
+      { id: "wa_b", organizationId: "org_1", channelType: "whatsapp", isActive: true, settings: { whatsappJourneyDefaultTemplate: "office_b_default" } },
+    ]
+  }
+
+  function expectCompletedWithoutSend(result: Awaited<ReturnType<typeof processEnrollmentStep>>) {
+    expect(result.status).toBe("completed")
+    expect(mockSendWhatsAppTemplate).not.toHaveBeenCalled()
+    expect(sendSms).not.toHaveBeenCalled()
+    expect(state.enrollment).toMatchObject({ status: "completed", currentStepId: null, processingToken: null })
+  }
+
+  it("passes the explicitly selected sender, template and language through the actual step", async () => {
+    setupWhatsApp({ channelConfigId: "wa_b", templateName: "step_update", languageCode: "az" })
+    state.whatsappInboundChannels = ["wa_a"]
+
+    const result = await processEnrollmentStep("enr_1", "org_1")
+
+    expect(result.status).toBe("completed")
+    expect(result.message).toContain("WhatsApp sent")
+    expect(mockSendWhatsAppTemplate).toHaveBeenCalledTimes(1)
+    expect(mockSendWhatsAppTemplate).toHaveBeenCalledWith(expect.objectContaining({
+      organizationId: "org_1", channelConfigId: "wa_b", to: "+994501234567",
+      templateName: "step_update", languageCode: "az", variables: expect.objectContaining({ "1": "Ali" }),
+    }))
+    expect(state.enrollment).toMatchObject({ status: "completed", processingToken: null })
+  })
+
+  it("uses the receiving sender's default, never another active number's template", async () => {
+    setupWhatsApp()
+    state.whatsappInboundChannels = ["wa_b"]
+
+    const result = await processEnrollmentStep("enr_1", "org_1")
+
+    expect(result.message).toContain("WhatsApp sent")
+    expect(mockSendWhatsAppTemplate).toHaveBeenCalledTimes(1)
+    expect(mockSendWhatsAppTemplate).toHaveBeenCalledWith(expect.objectContaining({
+      channelConfigId: "wa_b", templateName: "office_b_default", organizationId: "org_1",
+    }))
+  })
+
+  it("does not send when the selected sender's default was explicitly turned off", async () => {
+    setupWhatsApp({ channelConfigId: "wa_b" })
+    state.whatsappConfigs[1].settings.whatsappJourneyDefaultTemplate = ""
+
+    const result = await processEnrollmentStep("enr_1", "org_1")
+
+    expectCompletedWithoutSend(result)
+    expect(result.message).toContain("no template configured")
+  })
+
+  it("still honors an explicit step template when only the default is turned off", async () => {
+    setupWhatsApp({ channelConfigId: "wa_b", templateName: "explicit_step_message" })
+    state.whatsappConfigs[1].settings.whatsappJourneyDefaultTemplate = ""
+
+    await processEnrollmentStep("enr_1", "org_1")
+
+    expect(mockSendWhatsAppTemplate).toHaveBeenCalledWith(expect.objectContaining({ channelConfigId: "wa_b", templateName: "explicit_step_message" }))
+  })
+
+  it("does not send when the customer has written to two business numbers and none was chosen", async () => {
+    setupWhatsApp({ templateName: "shared_name" })
+    state.whatsappInboundChannels = ["wa_a", "wa_b"]
+
+    const result = await processEnrollmentStep("enr_1", "org_1")
+
+    expectCompletedWithoutSend(result)
+    expect(result.message).toContain("choose an active business number")
+  })
+
+  it.each(["disabled", "foreign"] as const)("rejects a %s explicit sender without falling back to the active workspace number", async (reason) => {
+    setupWhatsApp({ channelConfigId: "wa_b", templateName: "shared_name" })
+    if (reason === "disabled") state.whatsappConfigs[1].isActive = false
+    else state.whatsappConfigs[1].organizationId = "other_org"
+
+    const result = await processEnrollmentStep("enr_1", "org_1")
+
+    expectCompletedWithoutSend(result)
+    expect(result.message).toContain("choose an active business number")
   })
 })
