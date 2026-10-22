@@ -685,7 +685,11 @@ async function prepareWhatsAppCampaign({ orgId, campaign }: CampaignSendContext)
     } else if (stored.headerType && stored.headerType !== "TEXT") {
       return { response: sendResult({ error: "This template header is not supported by campaigns. Select a text, image, video or document template." }, { status: 422 }) }
     }
-    if (Array.isArray(stored.buttons) && stored.buttons.some((button: unknown) => isObjectRecord(button) && (button.type === "COPY_CODE" || /{{/.test(getTruthyString(button.url) || ""))))) {
+    const needsButtonParameters = Array.isArray(stored.buttons) && stored.buttons.some((button: unknown) => {
+      if (!isObjectRecord(button)) return false
+      return button.type === "COPY_CODE" || String(button.url || "").includes("{{")
+    })
+    if (needsButtonParameters) {
       return { response: sendResult({ error: "This template needs dynamic button values. Select a template with static buttons." }, { status: 422 }) }
     }
     const variables = template.variables
