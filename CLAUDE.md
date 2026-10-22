@@ -91,6 +91,15 @@
   от ephemeral GitHub-hosted Linux runner и не собирает приложение из checkout.
   `scripts/server-build-deploy.sh` также отключён и намеренно завершается с
   ошибкой.
+- **Главный ключ PII (`TENANT_PII_MASTER_KEY`) живёт только в
+  `/etc/leaddrive/app.env`** (root, 0600; копия — в бэкапе секретов и на Маке
+  владельца). Деплой перед `pm2 start` убирает его из окружения и передаёт
+  процессу `TENANT_PII_MASTER_KEY_FILE` — путь к этому файлу; приложение читает
+  ключ само (`readMasterKeyHex` в `src/lib/crypto/tenant-pii-encryption.ts`).
+  Поэтому ключа нет ни в дампе PM2, ни в дочерних процессах. Проверять наличие
+  ключа — `isTenantPiiMasterKeyConfigured()`, а не `process.env`. Не добавлять
+  ключ в `ecosystem.config.cjs` и в `pm2 … --update-env` из шелла, куда загружен
+  весь app.env.
 - Приложение — PWA: после деплоя пользователи могут видеть старый UI из кэша
   service worker'а — это не баг деплоя (лечится жёстким обновлением).
 - Шаги «Verify … scheduler» дёргают на проде `cron-trigger.sh`. У него локальный

@@ -7,8 +7,10 @@
  * level master KEK.
  *
  * Trust model (slice-2 interim):
- *   • Master KEK: env var `TENANT_PII_MASTER_KEY` (32 bytes, hex).
- *     Set per environment via secret manager. NEVER committed.
+ *   • Master KEK: `TENANT_PII_MASTER_KEY` (32 bytes, hex). Production keeps
+ *     it only in the root-only env file and points the process at that file
+ *     with `TENANT_PII_MASTER_KEY_FILE` (see `readMasterKeyHex`); tests and
+ *     CI set the variable directly. NEVER committed.
  *   • Per-tenant DEK: HKDF-SHA256(KEK, salt=orgId, info=INFO_LABEL)
  *     → 32-byte key. Deterministic — same orgId always derives the
  *     same DEK from the same KEK. No DB storage in slice-2.
@@ -48,6 +50,7 @@
  *     R2/R7/R8 column-by-column rollout.
  */
 import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes } from "crypto"
+import { readFileSync } from "fs"
 
 /* ─── Constants ──────────────────────────────────────────────────── */
 
@@ -72,22 +75,57 @@ const INFO_LABEL = "leaddrive-tenant-pii-v1"
 const WORKFORCE_EVIDENCE_HMAC_INFO = "leaddrive-workforce-evidence-hmac-v1"
 
 const ENV_VAR = "TENANT_PII_MASTER_KEY"
+const FILE_ENV_VAR = "TENANT_PII_MASTER_KEY_FILE"
 
 /* ─── Master KEK load (the slice-3 vault-swap choke point) ──────── */
 
 let cachedMasterKek: Buffer | null = null
 
+/** The single `NAME=value` line for `name` in an env-format file (same rules as the deploy's loader). */
+function readUniqueEnvFileValue(file: string, name: string): string | undefined {
+  let match: string | undefined
+  for (const rawLine of readFileSync(file, "utf8").split(/\r?\n/)) {
+    let line = rawLine.trim()
+    if (!line || line.startsWith("#")) continue
+    if (line.startsWith("export ")) line = line.slice(7).trim()
+    const parsed = /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line)
+    if (!parsed || parsed[1] !== name) continue
+    if (match !== undefined) throw new Error(`${FILE_ENV_VAR}: ${name} appears more than once`)
+    let value = parsed[2].trim()
+    if (value.length >= 2 && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))) {
+      value = value.slice(1, -1)
+    }
+    match = value
+  }
+  return match
+}
+
 /**
- * Load the master KEK. Single choke point for the slice-3 swap
- * from env-var → NamedCredentials vault. Cached across calls
- * (KEK doesn't change within a process); use `resetMasterKekCache()`
- * in tests.
+ * The KEK as hex. In production the process environment carries only
+ * `TENANT_PII_MASTER_KEY_FILE`, the root-only env file the key already lives
+ * in: the key itself is then absent from PM2's saved dump and from every child
+ * process. A variable set alongside must name the same key.
+ */
+function readMasterKeyHex(): string | undefined {
+  const file = process.env[FILE_ENV_VAR]?.trim()
+  const direct = process.env[ENV_VAR]
+  if (!file) return direct
+  const fromFile = readUniqueEnvFileValue(file, ENV_VAR)
+  if (!fromFile) throw new Error(`${FILE_ENV_VAR} names a file without ${ENV_VAR}.`)
+  if (direct && direct !== fromFile) throw new Error(`${ENV_VAR} and ${FILE_ENV_VAR} name different keys.`)
+  return fromFile
+}
+
+/**
+ * Load the master KEK. Single choke point for where the key comes from.
+ * Cached across calls (KEK doesn't change within a process); use
+ * `resetMasterKekCache()` in tests.
  *
- * Throws if `TENANT_PII_MASTER_KEY` is missing or malformed.
+ * Throws if the key is missing or malformed, or the two sources disagree.
  */
 function loadMasterKek(): Buffer {
   if (cachedMasterKek) return cachedMasterKek
-  const raw = process.env[ENV_VAR]
+  const raw = readMasterKeyHex()
   if (!raw) {
     throw new Error(
       `${ENV_VAR} is not set. Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`,
@@ -103,6 +141,19 @@ function loadMasterKek(): Buffer {
   }
   cachedMasterKek = Buffer.from(raw, "hex")
   return cachedMasterKek
+}
+
+/**
+ * True when the master KEK loads. For preflight checks in jobs that would
+ * otherwise fail on every row; it never reveals the key or why it failed.
+ */
+export function isTenantPiiMasterKeyConfigured(): boolean {
+  try {
+    loadMasterKek()
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**

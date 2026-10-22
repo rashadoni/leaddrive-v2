@@ -8996,6 +8996,15 @@ fi
 
 PM2_CONFIG="$APP_DIR/.next/standalone/ecosystem.config.cjs"
 [ -f "$PM2_CONFIG" ] || fatal "PM2 configuration is missing from the standalone artifact"
+# The PII master key reaches the app through the root-only env file it already
+# lives in, never through the process environment: PM2 would persist it in its
+# reboot dump and every child process would inherit it. The app reads the file
+# itself (src/lib/crypto/tenant-pii-encryption.ts). Handoff recovery reloads
+# the env file, so an older artifact still receives the variable it expects.
+TENANT_PII_MASTER_KEY_FILE="$(realpath -e -- "$APP_ENV_SOURCE_FILE")" \
+  || fatal "cannot resolve the env file that holds TENANT_PII_MASTER_KEY"
+export TENANT_PII_MASTER_KEY_FILE
+unset TENANT_PII_MASTER_KEY
 pm2 start "$PM2_CONFIG" 2>/dev/null || {
   log "FATAL: PM2 start failed"
   exit 1
