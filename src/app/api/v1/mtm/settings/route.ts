@@ -16,6 +16,7 @@ import { coerceMtmContactHiddenFields, isMtmContactSwitchableField } from "@/lib
 import { parseMtmContactSpecialties } from "@/lib/mtm/contact-specialties"
 import { parseMtmContactClasses } from "@/lib/mtm/contact-classes"
 import { parseMtmRouteTargetTypes } from "@/lib/mtm/route-target-types"
+import { parseMtmVisitEvaluationQuestions } from "@/lib/mtm/visit-evaluation-questions"
 import { mtmSettingValuesEqual, validateMtmSettingChanges } from "@/lib/mtm/settings-validation"
 import { AGENT_PERMISSION_ADMIN_ONLY_KEYS } from "@/lib/mtm/agent-permissions"
 import { locationShareLinkAliveWhere } from "@/lib/mtm/location-share-link"
@@ -155,6 +156,13 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
         return NextResponse.json({ error: targetTypes.error }, { status: 400 })
       }
       body.routeTargetTypes = targetTypes.data
+    }
+    if (body.visitEvaluationQuestions !== undefined) {
+      const questions = parseMtmVisitEvaluationQuestions(body.visitEvaluationQuestions)
+      if (!questions.success) {
+        return NextResponse.json({ error: questions.error, code: "MTM_VISIT_EVALUATION_QUESTIONS_INVALID", key: "visitEvaluationQuestions" }, { status: 400 })
+      }
+      body.visitEvaluationQuestions = questions.data
     }
     if (body.timezone !== undefined && !isValidTimezone(body.timezone)) {
       return NextResponse.json({ error: "Invalid IANA timezone" }, { status: 400 })

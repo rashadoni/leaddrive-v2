@@ -7350,10 +7350,15 @@ model MtmVisitEvaluation {
   agent            MtmAgent     @relation("MtmVisitEvaluationAgent", fields: [organizationId, agentId], references: [organizationId, id], onDelete: Cascade)
   evaluatorAgentId String
   evaluator        MtmAgent     @relation("MtmVisitEvaluationEvaluator", fields: [organizationId, evaluatorAgentId], references: [organizationId, id], onDelete: Cascade)
-  /// `{ PREPARATION: 4, … }` — the rated criteria only, each 1..5
-  /// (MTM_VISIT_EVALUATION_CRITERIA). A criterion that did not happen on the
-  /// visit is absent, not zero.
+  /// `{ PREPARATION: 4, … }` — the rated questions only, each 1..5, keyed by
+  /// the ids of `questions`. A question that did not come up on the visit is
+  /// absent, not zero.
   scores           Json
+  /// The company's list of questions this rating was given against, ids and
+  /// texts (`[{ id, labels: { az, ru, en } }]`, src/lib/mtm/visit-evaluation-questions.ts).
+  /// Null on a rating from before the lists: it was given against the
+  /// original six (MTM_VISIT_EVALUATION_ORIGINAL_QUESTIONS).
+  questions        Json?
   comment          String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt

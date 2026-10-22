@@ -18,6 +18,11 @@ import {
   MTM_ROUTE_TARGET_TYPE_DEFAULTS,
   type MtmRouteTargetType,
 } from "@/lib/mtm/route-target-types"
+import {
+  coerceMtmVisitEvaluationQuestions,
+  MTM_VISIT_EVALUATION_QUESTION_DEFAULTS,
+  type MtmVisitEvaluationQuestion,
+} from "@/lib/mtm/visit-evaluation-questions"
 
 // F-11: replaces scattered magic numbers in locations/route.ts and mobile/location/route.ts.
 // Defaults match the historical hardcoded values so behavior is identical for orgs
@@ -165,6 +170,12 @@ export const MTM_SETTING_DEFAULTS = {
   // tenant uses, see contact-classes.ts. A client keeps a class the tenant
   // later stops offering; only the choices change.
   contactClasses: MTM_CONTACT_CLASS_DEFAULTS,
+  // What a manager rates on a joint visit, in this order (owner, 2026-10-21:
+  // «в параметрах MTM»). Starts as the six questions everybody had; the
+  // company adds, renames, reorders and deletes. Read when a rating is saved
+  // and sent to the manager's phone; every rating keeps its own copy, so an
+  // edit here changes no rating already given (visit-evaluation-questions.ts).
+  visitEvaluationQuestions: MTM_VISIT_EVALUATION_QUESTION_DEFAULTS,
   // Additive rollout guard: existing tenants may already have weekend routes.
   // Once enabled, create/update APIs reject dates whose effective calendar day
   // does not allow route planning.
@@ -202,8 +213,9 @@ type InferredMtmSettingsShape = {
   -readonly [K in keyof typeof MTM_SETTING_DEFAULTS]: WidenSetting<typeof MTM_SETTING_DEFAULTS[K]>
 }
 
-export type MtmSettingsShape = Omit<InferredMtmSettingsShape, "routeTargetTypes"> & {
+export type MtmSettingsShape = Omit<InferredMtmSettingsShape, "routeTargetTypes" | "visitEvaluationQuestions"> & {
   routeTargetTypes: MtmRouteTargetType[]
+  visitEvaluationQuestions: MtmVisitEvaluationQuestion[]
 }
 
 function coerce<K extends keyof MtmSettingsShape>(
@@ -234,6 +246,9 @@ function coerce<K extends keyof MtmSettingsShape>(
     }
     if (key === "contactClasses") {
       return coerceMtmContactClasses(raw) as MtmSettingsShape[K]
+    }
+    if (key === "visitEvaluationQuestions") {
+      return coerceMtmVisitEvaluationQuestions(raw) as MtmSettingsShape[K]
     }
     return (Array.isArray(raw) ? raw : fallback) as MtmSettingsShape[K]
   }

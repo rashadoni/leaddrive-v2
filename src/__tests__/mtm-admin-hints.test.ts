@@ -18,7 +18,7 @@ const blanks = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((match) =>
 const used = (files: string[]) => new Set(files.flatMap((file) => [...readFileSync(file, "utf8").matchAll(/"hint\.(\w+)"/g)].map((match) => match[1])))
 
 describe.each([
-  ["mtmSettingsPage.hint", ["src/app/(dashboard)/mtm/settings/route-target-type-settings.tsx"]],
+  ["mtmSettingsPage.hint", ["src/app/(dashboard)/mtm/settings/route-target-type-settings.tsx", "src/app/(dashboard)/mtm/settings/visit-evaluation-question-settings.tsx"]],
   ["mtmVisitPolicies.hint", ["src/app/(dashboard)/mtm/settings/visit-action-switches.tsx", "src/app/(dashboard)/mtm/settings/visit-policy-settings.tsx"]],
   ["mtmAccess.hint", ["src/components/mtm/access-panel.tsx", "src/components/mtm/agent-permission-matrix.tsx"]],
 ] as const)("the hints of %s", (path, files) => {
