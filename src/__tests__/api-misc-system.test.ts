@@ -22,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({
     quote: { updateMany: vi.fn() },
     webTrackingConfig: { findUnique: vi.fn() },
     deal: { findFirst: vi.fn() },
+    channelConfig: { findFirst: vi.fn(), findMany: vi.fn() },
   },
 }))
 
@@ -90,6 +91,7 @@ function params(id: string) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([{ id: "wa-1" }] as never)
   vi.mocked(prisma.$transaction).mockImplementation(async (callback: unknown) => {
     if (typeof callback !== "function") throw new TypeError("Expected transaction callback")
     return callback({

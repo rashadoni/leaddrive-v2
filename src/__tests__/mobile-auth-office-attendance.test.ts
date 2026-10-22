@@ -41,7 +41,7 @@ describe("office attendance fresh mobile access", () => {
     ["DELETE", "/requests/00000000-0000-4000-8000-000000000001"],
     ["GET", "/attachments/00000000-0000-4000-8000-000000000001"],
     ["GET", "/location-consent"], ["POST", "/location-consent"], ["GET", "/installation"], ["POST", "/installation"],
-    ["GET", "/explanations"], ["POST", "/explanations"],
+    ["GET", "/explanations"], ["POST", "/explanations"], ["GET", "/marks"],
   ])("admits the new own attendance endpoint %s %s with fresh office credentials", async (method, suffix) => {
     expect((await resolveMobileAuth(request(`/api/v2/mtm/mobile/route-field/attendance${suffix}`, method)))?.role).toBe("EMPLOYEE")
     expect(await resolveMobileAuth(request(`/api/v1/mtm/mobile/attendance${suffix}`, method))).toBeNull()

@@ -37,6 +37,7 @@ export type AttendanceEmployeeToday = { status: "STARTED" | "PAUSED" | "COMPLETE
 export type AttendanceEmploymentHistoryItem = { id: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; at: string; byName: string | null }
 export type AttendanceEmployeeDetail = {
   timezone: string; today: string
+  preparation?: import("@/lib/mtm/attendance-employee-preparation").AttendanceEmployeePreparation
   employee: { id: string; name: string; phone: string | null; email: string | null; role: string; status: string; loginEditable: boolean
     /** The CRM role behind the card; Personnel removes only its own office employees. */
     crmRole?: string | null
@@ -77,6 +78,7 @@ export function mayUseAttendanceSelf(role: string, attendanceEnabled: boolean, p
 /** Exact allowlist is applied by fresh mobile authentication, including dual
  * web/mobile transports that don't use withMobileRls. Unknown paths deny. */
 export function officeAttendanceMobilePath(method: string, path: string) {
+  if (method === "GET" && path === "/api/v2/mtm/mobile/route-field/attendance/marks") return true
   if ((method === "GET" || method === "POST") && path === "/api/v2/mtm/mobile/route-field/attendance/explanations") return true
   if (method === "POST" && path === "/api/v2/mtm/mobile/route-field/workday-return") return true
   if ((method === "GET" || method === "POST") && ["/api/v2/mtm/mobile/route-field/attendance/location-consent", "/api/v2/mtm/mobile/route-field/attendance/installation"].includes(path)) return true

@@ -43,6 +43,21 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 
 // Owner, 2026-10-16: «просил редактируемыми сделать сотрудников»; the card under a long list meant scrolling.
 describe("Personnel → employee page", () => {
+  it("shows actual preparation gaps and optional approval without inventing a delivered invitation or arrival", async () => {
+    detail.preparation = { checkedAt: "2026-10-16T06:00:00Z", date: detail.today, login: "CONTACT_MISSING", schedule: "DEFAULT", branch: null, installations: { required: false, approved: 0, pending: 1 } }
+    detail.employee.included = false
+    await render()
+    const preparation = container.querySelector('[data-testid="employee-preparation"]')!
+    expect(preparation.textContent).toContain(p("preparation.loginCONTACT_MISSING"))
+    expect(preparation.textContent).toContain(p("preparation.scheduleDEFAULT"))
+    expect(preparation.textContent).toContain(p("preparation.approvalOptional", { count: 0 }))
+    expect(preparation.textContent).toContain(p("preparation.pending", { count: 1 }))
+    expect(preparation.textContent).toContain(p("preparation.excluded"))
+    expect(preparation.textContent).toContain(p("preparation.invitation"))
+    expect(preparation.querySelector('a[href="#employee-phone"]')).not.toBeNull()
+    expect(container.querySelector('#employee-participation')).not.toBeNull()
+    expect(posts()).toHaveLength(0)
+  })
   it("shows the person, how they sign in, their work, this month and the history, with a way back to the same list", async () => {
     await render()
     expect(container.querySelector('[data-testid="attendance-employee-back"]')!.getAttribute("href")).toBe(BACK)

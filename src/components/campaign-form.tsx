@@ -39,6 +39,9 @@ interface Template {
 }
 
 interface WhatsAppTemplate {
+  channelConfigId: string
+  headerType?: string | null
+  headerText?: string | null
   id: string
   name: string
   language: string
@@ -188,7 +191,8 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
 
   const isEdit = !!initialData?.id
   const [editingSent, setEditingSent] = useState(false)
-  const isSent = initialData?.status === "sent" && !editingSent
+  const lockedWhatsApp = initialData?.type === "whatsapp" && !!initialData.status && !["draft", "scheduled"].includes(initialData.status)
+  const isSent = lockedWhatsApp || (initialData?.status === "sent" && !editingSent)
   const [form, setForm] = useState<CampaignFormData>({
     name: "", description: "", type: "email", status: "draft",
     subject: "", templateId: "", segmentId: "", scheduledAt: "",
@@ -203,7 +207,10 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
   const [whatsAppTemplates, setWhatsAppTemplates] = useState<WhatsAppTemplate[]>([])
   const [whatsAppTemplatesLoaded, setWhatsAppTemplatesLoaded] = useState(false)
   const [selectedWhatsAppTemplateKey, setSelectedWhatsAppTemplateKey] = useState("")
+  const [whatsAppHeaderValue, setWhatsAppHeaderValue] = useState("")
   const [whatsAppTemplateVariables, setWhatsAppTemplateVariables] = useState<Record<string, string>>({})
+  const [whatsAppChannels, setWhatsAppChannels] = useState<Array<{ id: string; configName: string; displayName: string | null }>>([])
+  const [whatsAppChannelId, setWhatsAppChannelId] = useState("")
   const [socialPreview, setSocialPreview] = useState<SocialEligibilityPreview | null>(null)
   const [socialPreviewLoading, setSocialPreviewLoading] = useState(false)
   const [segments, setSegments] = useState<Segment[]>([])
@@ -237,6 +244,9 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
       }).then(r => r.json()).then(j => {
         if (j.success) setTemplates(j.data?.templates || j.data || [])
       }).catch(() => {}).finally(() => setTemplatesLoaded(true))
+
+      fetch("/api/v1/campaigns/whatsapp-channels", { headers: { "x-organization-id": String(orgId) } })
+        .then(r => r.json()).then(j => { if (j.success) setWhatsAppChannels(j.data || []) }).catch(() => setWhatsAppChannels([]))
 
       fetch("/api/v1/whatsapp/templates?status=APPROVED", {
         headers: { "x-organization-id": String(orgId) },
@@ -292,6 +302,10 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
           : ""
       )
       setWhatsAppTemplateVariables(savedWhatsAppTemplate?.variables || {})
+      const existingFlow = initialData?.flowData
+      setWhatsAppChannelId(isObjectRecord(existingFlow) && typeof existingFlow.whatsappChannelConfigId === "string" ? existingFlow.whatsappChannelConfigId : "")
+      const existingTemplate = isObjectRecord(existingFlow) && isObjectRecord(existingFlow.whatsappTemplate) ? existingFlow.whatsappTemplate : null
+      setWhatsAppHeaderValue(typeof existingTemplate?.headerValue === "string" ? existingTemplate.headerValue : "")
       // Restore recipient mode from saved campaign
       const savedMode = (initialData?.recipientMode as RecipientMode) || (initialData?.segmentId ? "segment" : "all")
       setRecipientMode(savedMode)
@@ -344,13 +358,18 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
     return contacts
   }, [contacts, form.type])
 
+  useEffect(() => {
+    if (open && whatsAppChannels.length === 1) setWhatsAppChannelId(current => current || whatsAppChannels[0].id)
+  }, [open, whatsAppChannels])
+  const senderTemplates = useMemo(() => whatsAppTemplates.filter(template => template.channelConfigId === whatsAppChannelId), [whatsAppTemplates, whatsAppChannelId])
+
   const selectedWhatsAppTemplate = useMemo(() => {
     if (!selectedWhatsAppTemplateKey) return null
     const [name, language] = selectedWhatsAppTemplateKey.split("::")
-    return whatsAppTemplates.find((template) => whatsAppTemplateKey(template) === selectedWhatsAppTemplateKey)
-      || whatsAppTemplates.find((template) => template.name === name && (!language || template.language === language))
+    return senderTemplates.find((template) => whatsAppTemplateKey(template) === selectedWhatsAppTemplateKey)
+      || senderTemplates.find((template) => template.name === name && (!language || template.language === language))
       || null
-  }, [selectedWhatsAppTemplateKey, whatsAppTemplates])
+  }, [selectedWhatsAppTemplateKey, senderTemplates])
 
   const selectedContactsKey = useMemo(() => Array.from(selectedContacts).sort().join(","), [selectedContacts])
 
@@ -358,7 +377,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
     if (form.type !== "whatsapp") return undefined
     const [keyName, keyLanguage] = selectedWhatsAppTemplateKey.split("::")
     const templateName = selectedWhatsAppTemplate?.name || keyName
-    if (!templateName) return undefined
+    if (!templateName) return { whatsappChannelConfigId: whatsAppChannelId }
     const variables = Object.fromEntries(
       Object.entries(whatsAppTemplateVariables)
         .filter(([, value]) => value.trim())
@@ -366,13 +385,15 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
     )
 
     return {
+      whatsappChannelConfigId: whatsAppChannelId,
       whatsappTemplate: {
         name: templateName,
         languageCode: selectedWhatsAppTemplate?.language || keyLanguage || undefined,
         ...(Object.keys(variables).length > 0 ? { variables } : {}),
+        ...(whatsAppHeaderValue.trim() ? { headerValue: whatsAppHeaderValue.trim() } : {}),
       },
     }
-  }, [form.type, selectedWhatsAppTemplate, selectedWhatsAppTemplateKey, whatsAppTemplateVariables])
+  }, [form.type, selectedWhatsAppTemplate, selectedWhatsAppTemplateKey, whatsAppTemplateVariables, whatsAppHeaderValue, whatsAppChannelId])
 
   useEffect(() => {
     if (!open || form.type !== "whatsapp") return
@@ -668,13 +689,13 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
           <div className="flex items-center gap-2 w-full">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tc("close")}</Button>
             <div className="flex-1" />
-            <Button type="button" variant="outline" onClick={() => {
+            <Button type="button" variant="outline" disabled={lockedWhatsApp} onClick={() => {
               setEditingSent(true)
               setForm(f => ({ ...f, status: "draft" }))
             }}>
               {tc("edit")}
             </Button>
-            {onSend && (
+            {onSend && !lockedWhatsApp && (
               <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={onSend}>
                 <Send className="h-3.5 w-3.5" /> {t("sendCampaign")}
               </Button>
@@ -749,13 +770,18 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
                   </>
                 ) : form.type === "whatsapp" ? (
                   <>
+                    <Label htmlFor="whatsapp-sender" className="text-xs text-muted-foreground">{t("whatsappSender")}</Label>
+                    <Select id="whatsapp-sender" value={whatsAppChannelId} onChange={event => { setWhatsAppChannelId(event.target.value); setSelectedWhatsAppTemplateKey(""); setWhatsAppHeaderValue("") }}>
+                      <option value="">{t("whatsappSelectSender")}</option>
+                      {whatsAppChannels.map(channel => <option key={channel.id} value={channel.id}>{channel.configName || channel.displayName || channel.id}</option>)}
+                    </Select>
                     <Label className="text-xs text-muted-foreground">{t("whatsappTemplate")}</Label>
                     <Select
                       value={selectedWhatsAppTemplateKey}
-                      onChange={(e) => setSelectedWhatsAppTemplateKey(e.target.value)}
+                      onChange={(e) => { setSelectedWhatsAppTemplateKey(e.target.value); setWhatsAppHeaderValue("") }}
                     >
                       <option value="">{whatsAppTemplatesLoaded ? t("whatsappNoTemplate") : tc("loading")}</option>
-                      {whatsAppTemplates.map(template => (
+                      {senderTemplates.map(template => (
                         <option key={template.id} value={whatsAppTemplateKey(template)}>
                           {template.name} · {template.language}
                         </option>
@@ -783,6 +809,13 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
                     <p className="text-xs text-muted-foreground mt-1 max-h-20 overflow-y-auto">{selectedWhatsAppTemplate.bodyText}</p>
                   )}
                 </div>
+                {(["IMAGE", "VIDEO", "DOCUMENT"].includes(selectedWhatsAppTemplate.headerType || "") || /{{/.test(selectedWhatsAppTemplate.headerText || "")) && (
+                  <div className="space-y-1">
+                    <Label htmlFor="whatsapp-header-value">{selectedWhatsAppTemplate.headerType === "TEXT" ? t("templateHeaderText") : t("templateHeaderMedia")}</Label>
+                    <Input id="whatsapp-header-value" value={whatsAppHeaderValue} onChange={event => setWhatsAppHeaderValue(event.target.value)} placeholder={selectedWhatsAppTemplate.headerType === "TEXT" ? "{{client_name}}" : "https://…"} />
+                    {selectedWhatsAppTemplate.headerType !== "TEXT" && <p className="text-xs text-muted-foreground">{t("templateHeaderMediaHint")}</p>}
+                  </div>
+                )}
                 {(selectedWhatsAppTemplate.variables || []).length > 0 && (
                   <div className="grid grid-cols-2 gap-3">
                     {(selectedWhatsAppTemplate.variables || []).map(variable => (

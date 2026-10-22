@@ -11,6 +11,7 @@ import { createNotification } from "@/lib/notifications"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
 import { sendConversationReply, type ConversationReplyChannel } from "@/lib/inbox/send-conversation-reply"
 import { claimConversationAiReply, generateChannelAiReply, releaseConversationAiReplyClaim } from "@/lib/social/ai-autoreply"
+import { checkConversationAiLimits } from "@/lib/ai/budget"
 import { readAiReplyPolicy, decideAiReplyAction } from "@/lib/inbox/ai-reply-gate"
 import { saveConversationAiDraft } from "@/lib/inbox/ai-draft"
 import { routeConversation } from "@/lib/inbox/conversation-routing"
@@ -53,7 +54,7 @@ export const CONVERSATION_ACTION_TYPES: ConversationActionType[] = [
   "business_hours_gate",
 ]
 
-const AI_REPLY_CHANNELS = new Set(["facebook", "instagram", "telegram", "vkontakte", "tiktok"])
+const AI_REPLY_CHANNELS = new Set(["whatsapp", "facebook", "instagram", "telegram", "vkontakte", "tiktok"])
 const REPLY_CHANNELS = new Set(["email", "telegram", "sms", "whatsapp", "tiktok", "facebook", "instagram", "vkontakte"])
 
 function metadataString(metadata: Record<string, unknown> | null, key: string): string | null {
@@ -564,6 +565,11 @@ export async function executeConversationAction(
         // flow send cannot clear a newer webhook/flow claim.
         const claim = await claimConversationAiReply({ organizationId: orgId, conversationId: cid, holdMs: AI_FLOW_CLAIM_MS })
         if (!claim.claimed) return { ok: false, action: action.type, error: "cooldown" }
+        const caps = await checkConversationAiLimits({ orgId, conversationId: cid, contactId: ctx.conversation.contactId })
+        if (!caps.allowed) {
+          await releaseConversationAiReplyClaim({ organizationId: orgId, conversationId: cid, token: claim.token })
+          return { ok: false, action: action.type, error: caps.reason || "ai_limit" }
+        }
         // #4: defer persisting the assistant turn until AFTER a confirmed send.
         const generated = await generateChannelAiReply({
           orgId,
@@ -572,6 +578,7 @@ export async function executeConversationAction(
           userMessage: String(config.userMessage ?? ctx.conversation.lastMessage).trim(),
           senderName: ctx.conversation.contactName,
           contactId: ctx.conversation.contactId,
+          conversationId: cid,
           persistAssistant: false,
         })
         if (!generated.reply) {
@@ -617,6 +624,16 @@ export async function executeConversationAction(
             await releaseConversationAiReplyClaim({ organizationId: orgId, conversationId: cid, token: claim.token })
             return { ok: false, action: action.type, error: "drafted" }
           }
+        }
+        // A slow generation can outlive its lease. An old worker may send only
+        // if it still owns the token and the conversation remains unassigned.
+        const renewed = await prisma.socialConversation.updateMany({
+          where: { id: cid, organizationId: orgId, assignedTo: null, status: "open", aiReplyClaimToken: claim.token },
+          data: { aiReplyClaimedUntil: new Date(Date.now() + AI_FLOW_CLAIM_MS) },
+        })
+        if (renewed.count !== 1) {
+          await releaseConversationAiReplyClaim({ organizationId: orgId, conversationId: cid, token: claim.token })
+          return { ok: false, action: action.type, error: "stale_claim" }
         }
         const sent = await sendConversationReply({
           organizationId: orgId,

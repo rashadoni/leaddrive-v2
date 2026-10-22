@@ -85,6 +85,7 @@ const ENTITY_PLURAL_MAP: Record<string, string> = {
   ticket: "tickets",
   task: "tasks",
   campaign: "campaigns",
+  whatsapp: "inbox",
 }
 
 /**

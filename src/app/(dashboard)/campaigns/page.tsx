@@ -134,6 +134,13 @@ export default function CampaignsPage() {
         }
         return
       }
+      if (typeof json.data?.queued === "number") {
+        toast.success(t("queuedRecipients", { count: json.data.queued }))
+        setShowForm(false)
+        setEditData(undefined)
+        fetchCampaigns()
+        return
+      }
       const skipped = Number(json.data?.skipped || 0)
       const errors = Array.isArray(json.data?.errors) ? json.data.errors.filter(Boolean) : []
       const sentMessage = skipped > 0
