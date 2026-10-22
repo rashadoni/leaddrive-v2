@@ -3823,7 +3823,29 @@
     "flowDelete": "Удалить",
     "flowSaving": "Сохранение...",
     "flowSave": "Сохранить",
-    "flowPreviewMode": "Режим просмотра"
+    "flowPreviewMode": "Режим просмотра",
+    "queuedRecipients": "В очередь добавлено {count} сообщений WhatsApp. Ход доставки доступен в кампании.",
+    "whatsappDeliveryTitle": "Доставка WhatsApp",
+    "delivery_pending": "В очереди",
+    "delivery_sending": "Отправляется",
+    "delivery_accepted": "Принято Meta",
+    "delivery_delivered": "Доставлено",
+    "delivery_read": "Прочитано",
+    "delivery_failed": "Ошибка",
+    "delivery_unknown": "Исход неизвестен",
+    "delivery_skipped": "Пропущено",
+    "whatsappDeliveryHint": "Для каждого получателя показан текущий статус. Принятие Meta не означает доставку. Подтверждения поступают через webhook WhatsApp.",
+    "whatsappUnknownHint": "Исход некоторых запросов неизвестен. Они не будут отправлены повторно автоматически. Перед новой кампанией проверьте телефон получателя или сведения о доставке Meta.",
+    "cancelDispatchConfirm": "Остановить сообщения в очереди? Уже отправленный в Meta запрос отозвать нельзя.",
+    "cancelPendingMessages": "Остановить очередь",
+    "templateHeaderText": "Текст заголовка шаблона",
+    "templateHeaderMedia": "Ссылка на файл заголовка",
+    "templateHeaderMediaHint": "Публичная HTTPS-ссылка на изображение, видео или PDF. Meta должна иметь доступ к файлу в момент отправки сообщения из очереди.",
+    "deliveryRecipients": "Получатели",
+    "deliveryStatusFilter": "Статус",
+    "deliveryAllStatuses": "Все статусы",
+    "deliveryRecipient": "Номер получателя",
+    "deliveryProviderIssue": "Проверьте подключение номера и настройки шаблона."
   },
   "offers": {
     "title": "Предложения",
@@ -25929,7 +25951,8 @@
     "templateHeaderLabel": "Заголовок",
     "templateBodyLabel": "Текст",
     "templateFooterLabel": "Футер",
-    "metaTemplateIdLabel": "ID шаблона Meta"
+    "metaTemplateIdLabel": "ID шаблона Meta",
+    "phonePrivacy": {"title": "Защита номеров клиентов", "description": "Скрывайте номера клиентов от операторов в CRM и переписке. Администраторы сохраняют доступ.", "label": "Скрывать номера от операторов", "scope": "Действует во всём пространстве. Выгрузки CRM для операторов блокируются. Существующие API-интеграции сохраняют разрешённый доступ. Номера внутри загруженных файлов и изображений не скрываются.", "save": "Сохранить", "saving": "Сохранение…", "error": "Не удалось загрузить или сохранить настройку. Повторите попытку."}
   },
   "quotes": {
     "title": "Коммерческие предложения",

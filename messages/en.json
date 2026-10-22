@@ -3823,7 +3823,29 @@
     "flowDelete": "Delete",
     "flowSaving": "Saving...",
     "flowSave": "Save Flow",
-    "flowPreviewMode": "Preview Mode"
+    "flowPreviewMode": "Preview Mode",
+    "queuedRecipients": "Queued {count} WhatsApp messages. Delivery progress is available in the campaign.",
+    "whatsappDeliveryTitle": "WhatsApp delivery",
+    "delivery_pending": "Queued",
+    "delivery_sending": "Sending",
+    "delivery_accepted": "Accepted by Meta",
+    "delivery_delivered": "Delivered",
+    "delivery_read": "Read",
+    "delivery_failed": "Failed",
+    "delivery_unknown": "Outcome unknown",
+    "delivery_skipped": "Skipped",
+    "whatsappDeliveryHint": "Each recipient appears in one current state. Meta acceptance does not confirm delivery. Status updates arrive through WhatsApp webhooks.",
+    "whatsappUnknownHint": "Some requests have an unknown outcome. They will not be resent automatically; check the receiving phone or Meta delivery records before creating another campaign.",
+    "cancelDispatchConfirm": "Stop pending messages? A request already sent to Meta cannot be recalled.",
+    "cancelPendingMessages": "Stop pending messages",
+    "templateHeaderText": "Template header text",
+    "templateHeaderMedia": "Template header media URL",
+    "templateHeaderMediaHint": "A public HTTPS link to the image, video or PDF. Meta must be able to fetch it when the queued message is sent.",
+    "deliveryRecipients": "Recipients",
+    "deliveryStatusFilter": "Status",
+    "deliveryAllStatuses": "All statuses",
+    "deliveryRecipient": "Recipient phone",
+    "deliveryProviderIssue": "Check the sending channel and template settings."
   },
   "offers": {
     "title": "Offers",
@@ -25929,7 +25951,8 @@
     "templateHeaderLabel": "Header",
     "templateBodyLabel": "Body",
     "templateFooterLabel": "Footer",
-    "metaTemplateIdLabel": "Meta template ID"
+    "metaTemplateIdLabel": "Meta template ID",
+    "phonePrivacy": {"title": "Customer phone privacy", "description": "Hide customer phone numbers from operators in CRM responses and conversations. Administrators keep access.", "label": "Hide phone numbers from operators", "scope": "Applies across this workspace. CRM exports for operators are blocked while enabled. Existing scoped API integrations keep their access. Numbers inside uploaded files or images are not redacted.", "save": "Save", "saving": "Saving…", "error": "Could not load or save the setting. Try again."}
   },
   "quotes": {
     "title": "Quotes",

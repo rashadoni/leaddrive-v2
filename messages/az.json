@@ -3823,7 +3823,29 @@
     "flowDelete": "Sil",
     "flowSaving": "Saxlanılır...",
     "flowSave": "Axını saxla",
-    "flowPreviewMode": "Önizləmə rejimi"
+    "flowPreviewMode": "Önizləmə rejimi",
+    "queuedRecipients": "{count} WhatsApp mesajı növbəyə əlavə edildi. Çatdırılmanı kampaniyada izləyə bilərsiniz.",
+    "whatsappDeliveryTitle": "WhatsApp çatdırılması",
+    "delivery_pending": "Növbədə",
+    "delivery_sending": "Göndərilir",
+    "delivery_accepted": "Meta qəbul edib",
+    "delivery_delivered": "Çatdırılıb",
+    "delivery_read": "Oxunub",
+    "delivery_failed": "Xəta",
+    "delivery_unknown": "Nəticə məlum deyil",
+    "delivery_skipped": "Buraxılıb",
+    "whatsappDeliveryHint": "Hər alıcı üçün cari status göstərilir. Meta tərəfindən qəbul çatdırılma demək deyil. Təsdiqlər WhatsApp webhook vasitəsilə gəlir.",
+    "whatsappUnknownHint": "Bəzi sorğuların nəticəsi məlum deyil. Onlar avtomatik təkrar göndərilməyəcək. Yeni kampaniyadan əvvəl alıcının telefonunu və ya Meta çatdırılma qeydlərini yoxlayın.",
+    "cancelDispatchConfirm": "Növbədəki mesajlar dayandırılsın? Meta-ya göndərilmiş sorğunu geri çağırmaq olmur.",
+    "cancelPendingMessages": "Növbəni dayandır",
+    "templateHeaderText": "Şablon başlığının mətni",
+    "templateHeaderMedia": "Şablon başlığının media keçidi",
+    "templateHeaderMediaHint": "Şəkil, video və ya PDF üçün açıq HTTPS keçidi. Növbədəki mesaj göndəriləndə Meta fayla daxil ola bilməlidir.",
+    "deliveryRecipients": "Alıcılar",
+    "deliveryStatusFilter": "Status",
+    "deliveryAllStatuses": "Bütün statuslar",
+    "deliveryRecipient": "Alıcının nömrəsi",
+    "deliveryProviderIssue": "Göndərən nömrənin bağlantısını və şablon ayarlarını yoxlayın."
   },
   "offers": {
     "title": "Təkliflər",
@@ -25925,7 +25947,8 @@
     "templateHeaderLabel": "Başlıq",
     "templateBodyLabel": "Mətn",
     "templateFooterLabel": "Futer",
-    "metaTemplateIdLabel": "Meta şablon ID-si"
+    "metaTemplateIdLabel": "Meta şablon ID-si",
+    "phonePrivacy": {"title": "Müştəri nömrələrinin məxfiliyi", "description": "CRM və yazışmalarda müştəri telefon nömrələrini operatorlardan gizlədin. Administratorların girişi saxlanılır.", "label": "Telefon nömrələrini operatorlardan gizlət", "scope": "Bütün iş sahəsinə aiddir. Operatorlar üçün CRM ixracı bloklanır. Mövcud API inteqrasiyaları icazəli girişi saxlayır. Yüklənmiş fayl və şəkillərin daxilindəki nömrələr gizlədilmir.", "save": "Yadda saxla", "saving": "Yadda saxlanılır…", "error": "Parametri yükləmək və ya saxlamaq mümkün olmadı. Yenidən cəhd edin."}
   },
   "quotes": {
     "title": "Kommersiya təklifləri",

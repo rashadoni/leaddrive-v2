@@ -5,6 +5,7 @@ type TestCampaign = {
   id: string
   organizationId: string
   type: string
+  status?: string
   name: string
   subject?: string | null
   recipientMode?: string
@@ -55,6 +56,7 @@ type TestWhatsAppTemplate = {
   name: string
   language: string
   status: string
+  variables?: string[]
 }
 
 type FindArgs = {
@@ -86,6 +88,9 @@ type TelegramTextCall = {
   channelConfigId?: string | null
   preferExplicitTo?: boolean
 }
+
+const enqueueWhatsAppCampaign = vi.hoisted(() => vi.fn(async (_org, _campaign, _channel, recipients) => recipients.length))
+vi.mock("@/lib/campaigns/whatsapp-dispatch", async (original) => ({ ...await original<typeof import("@/lib/campaigns/whatsapp-dispatch")>(), enqueueWhatsAppCampaign }))
 
 const campaignFindFirst = vi.hoisted(() => vi.fn())
 const campaignUpdate = vi.hoisted(() => vi.fn())
@@ -160,6 +165,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     campaign: {
       findFirst: campaignFindFirst,
+      updateMany: vi.fn(async () => ({ count: 1 })),
       update: campaignUpdate,
     },
     contact: {
@@ -242,7 +248,7 @@ beforeEach(() => {
   state.telegramConfig = { id: "tg_cfg_1", botToken: "bot-token" }
   state.whatsAppTemplate = null
 
-  campaignFindFirst.mockImplementation(async () => state.campaign)
+  campaignFindFirst.mockImplementation(async () => state.campaign ? { status: "draft", ...state.campaign } : null)
   campaignUpdate.mockImplementation(async () => state.campaign)
   contactFindMany.mockImplementation(async ({ where }: FindArgs = {}) => {
     let rows = [...state.contacts]
@@ -273,7 +279,7 @@ beforeEach(() => {
 })
 
 describe("POST /api/v1/campaigns/[id]/send — WhatsApp + Telegram broadcasts", () => {
-  it("sends WhatsApp free-text broadcasts to opted-in contacts with phones", async () => {
+  it("queues WhatsApp broadcasts without claiming provider delivery", async () => {
     state.campaign = {
       id: "c1",
       organizationId: "org_1",
@@ -288,19 +294,15 @@ describe("POST /api/v1/campaigns/[id]/send — WhatsApp + Telegram broadcasts", 
     const res = await SEND_POST(makeReq(), { params: Promise.resolve({ id: "c1" }) })
     const body = await res.json()
 
-    expect(res.status).toBe(200)
-    expect(body.data).toMatchObject({ channel: "whatsapp", sent: 1, total: 1, textSent: 1, templateSent: 0 })
-    expect(sendWhatsAppText).toHaveBeenCalledWith({
-      to: "+994501112233",
-      body: "Hi Aysel",
-      organizationId: "org_1",
-      contactId: "ct_1",
-    } satisfies WhatsAppTextCall)
+    expect(res.status).toBe(202)
+    expect(body.data).toMatchObject({ channel: "whatsapp", queued: 1, sent: 0, total: 1 })
+    expect(enqueueWhatsAppCampaign).toHaveBeenCalledWith("org_1", "c1", "wa_cfg_1", [{ phone: "994501112233", contactId: "ct_1", payload: { body: "Hi Aysel" } }])
+    expect(sendWhatsAppText).not.toHaveBeenCalled()
     expect(sendWhatsAppTemplate).not.toHaveBeenCalled()
-    expect(trackContactEvent).toHaveBeenCalledWith("org_1", "ct_1", "whatsapp_sent", expect.objectContaining({ campaignId: "c1", mode: "text" }))
+    expect(trackContactEvent).not.toHaveBeenCalled()
   })
 
-  it("falls back to the configured WhatsApp template outside the 24h window", async () => {
+  it("snapshots an approved personalized WhatsApp template for the worker", async () => {
     sendWhatsAppText.mockResolvedValue({ success: false, error: "outside_window_no_template" })
     state.campaign = {
       id: "c1",
@@ -319,19 +321,16 @@ describe("POST /api/v1/campaigns/[id]/send — WhatsApp + Telegram broadcasts", 
     }
     state.contacts = [{ id: "ct_1", fullName: "Leyla", phone: "+994507778899", email: "l@example.com" }]
 
+    state.whatsAppTemplate = { id: "tpl", name: "promo_update", language: "en_US", status: "APPROVED", variables: ["customer", "campaign"] }
     const res = await SEND_POST(makeReq(), { params: Promise.resolve({ id: "c1" }) })
     const body = await res.json()
 
-    expect(res.status).toBe(200)
-    expect(body.data).toMatchObject({ channel: "whatsapp", sent: 1, total: 1, textSent: 0, templateSent: 1 })
-    expect(sendWhatsAppTemplate).toHaveBeenCalledWith({
-      to: "+994507778899",
-      templateName: "promo_update",
-      languageCode: "en_US",
-      variables: { customer: "Leyla", campaign: "Template promo" },
-      organizationId: "org_1",
-      contactId: "ct_1",
-    } satisfies WhatsAppTemplateCall)
+    expect(res.status).toBe(202)
+    expect(body.data).toMatchObject({ channel: "whatsapp", queued: 1, sent: 0, total: 1 })
+    expect(enqueueWhatsAppCampaign).toHaveBeenCalledWith("org_1", "c1", "wa_cfg_1", [expect.objectContaining({ phone: "994507778899", contactId: "ct_1", payload: expect.objectContaining({ template: {
+      name: "promo_update", language: "en_US", parameters: [{ type: "text", text: "Leyla", parameter_name: "customer" }, { type: "text", text: "Template promo", parameter_name: "campaign" }],
+    } }) })])
+    expect(sendWhatsAppTemplate).not.toHaveBeenCalled()
   })
 
   it("returns 422 before recipient resolution when WhatsApp is not configured", async () => {

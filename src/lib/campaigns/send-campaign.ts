@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { sendEmail, renderTemplate } from "@/lib/email"
 import { sendSms, isSmsConfigured } from "@/lib/sms"
 import { withSignedRedirect } from "@/lib/tracking-link"
-import { resolveWhatsAppConfig, sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp"
+import { resolveWhatsAppConfig } from "@/lib/whatsapp"
+import { enqueueWhatsAppCampaign, normalizeCampaignPhone, type WhatsAppDispatchRecipient, type WhatsAppDispatchPayload } from "@/lib/campaigns/whatsapp-dispatch"
 import { sendTelegramText } from "@/lib/telegram"
 import { createNotification } from "@/lib/notifications"
 import { trackContactEvent } from "@/lib/contact-events"
@@ -94,6 +95,8 @@ type CampaignPreparedPayload = {
   smsBody?: string
   messageBody?: string
   whatsAppTemplate?: WhatsAppTemplateConfig | null
+  whatsAppChannelConfigId?: string
+  whatsAppTemplateSpec?: { language: string; variables: string[]; header?: NonNullable<WhatsAppDispatchPayload["template"]>["header"] }
   telegramChannelConfigId?: string | null
 }
 
@@ -661,16 +664,46 @@ async function prepareWhatsAppCampaign({ orgId, campaign }: CampaignSendContext)
     }
   }
 
-  return {
-    prepared: {
-      messageBody: campaign.subject || campaign.name,
-      whatsAppTemplate: parseWhatsAppTemplateConfig(campaign.flowData),
-    },
+  const template = parseWhatsAppTemplateConfig(campaign.flowData)
+  let spec: CampaignPreparedPayload["whatsAppTemplateSpec"]
+  if (template) {
+    const stored = await prisma.whatsAppTemplate.findFirst({ where: {
+      organizationId: orgId, channelConfigId: config.id, name: template.name, status: "APPROVED",
+      ...(template.languageCode ? { language: template.languageCode } : {}),
+    } })
+    if (!stored) return { response: sendResult({ error: "Sync and select an approved WhatsApp template for the sending number." }, { status: 422 }) }
+    let header: NonNullable<WhatsAppDispatchPayload["template"]>["header"]
+    const headerKey = stored.headerText?.match(/{{\s*([\w]+)\s*}}/)?.[1]
+    if (stored.headerType === "TEXT" && headerKey) {
+      if (!template.headerValue?.trim() || template.headerValue.length > 60) return { response: sendResult({ error: "Enter the template header value (up to 60 characters)." }, { status: 422 }) }
+      header = { type: "text", text: template.headerValue, ...(/^\d+$/.test(headerKey) ? {} : { parameter_name: headerKey }) }
+    } else if (["IMAGE", "VIDEO", "DOCUMENT"].includes(stored.headerType || "")) {
+      let url: URL
+      try { url = new URL(template.headerValue || "") } catch { return { response: sendResult({ error: "Enter a public HTTPS media URL for the template header." }, { status: 422 }) } }
+      if (url.protocol !== "https:" || url.username || url.password) return { response: sendResult({ error: "The template media URL must use HTTPS without credentials." }, { status: 422 }) }
+      header = { type: stored.headerType.toLowerCase() as "image" | "video" | "document", link: url.toString() }
+    } else if (stored.headerType && stored.headerType !== "TEXT") {
+      return { response: sendResult({ error: "This template header is not supported by campaigns. Select a text, image, video or document template." }, { status: 422 }) }
+    }
+    if (Array.isArray(stored.buttonsJson) && stored.buttonsJson.some((button: { type?: string; url?: string }) => button.type === "COPY_CODE" || /{{/.test(button.url || ""))) {
+      return { response: sendResult({ error: "This template needs dynamic button values. Select a template with static buttons." }, { status: 422 }) }
+    }
+    const variables = template.variables
+    if ((stored.variables || []).some((key: string, index: number) => !String(Array.isArray(variables) ? variables[index] ?? "" : variables?.[key] ?? "").trim())) {
+      return { response: sendResult({ error: "Fill all WhatsApp template variables before sending." }, { status: 422 }) }
+    }
+    spec = { language: stored.language, variables: stored.variables || [], header }
   }
+  return { prepared: {
+    messageBody: campaign.subject || campaign.name, whatsAppTemplate: template,
+    whatsAppChannelConfigId: config.id, whatsAppTemplateSpec: spec,
+  } }
 }
 
 async function resolveWhatsAppRecipients({ campaign, orgId }: CampaignSendContext): Promise<CampaignRecipientResult> {
   const mode = campaign.recipientMode || "all"
+  if (mode === "segment" && !campaign.segmentId) return { response: sendResult({ error: "Select a segment" }, { status: 400 }) }
+  if (mode === "source" && !campaign.recipientSource) return { response: sendResult({ error: "Select a recipient source" }, { status: 400 }) }
   const contactBaseWhere = {
     organizationId: orgId,
     phone: { not: null },
@@ -691,6 +724,7 @@ async function resolveWhatsAppRecipients({ campaign, orgId }: CampaignSendContex
     const segment = await prisma.contactSegment.findFirst({
       where: { id: campaign.segmentId, organizationId: orgId },
     })
+    if (!segment || !isObjectRecord(segment.conditions)) return { response: sendResult({ error: "Recipient segment is unavailable" }, { status: 422 }) }
     const where: Prisma.ContactWhereInput = { ...contactBaseWhere }
     if (isObjectRecord(segment?.conditions)) addCommonSegmentConditions(where, segment.conditions, "whatsapp")
 
@@ -747,109 +781,32 @@ async function resolveWhatsAppRecipients({ campaign, orgId }: CampaignSendContex
   }
 }
 
-async function sendWhatsAppCampaign({
-  campaign,
-  orgId,
-  prepared,
-  recipients,
-}: CampaignSendContext & { prepared: CampaignPreparedPayload; recipients: CampaignRecipient[] }): Promise<CampaignSendResult> {
-  const bodyTemplate = prepared.messageBody || campaign.subject || campaign.name
+async function sendWhatsAppCampaign({ campaign, orgId, prepared, recipients }: CampaignSendContext & {
+  prepared: CampaignPreparedPayload; recipients: CampaignRecipient[]
+}): Promise<CampaignSendResult> {
   const template = prepared.whatsAppTemplate
-  let sent = 0
-  let skipped = 0
-  let textSent = 0
-  let templateSent = 0
-  const errors: string[] = []
-
-  for (const recipient of recipients) {
-    if (!recipient.whatsAppTo) {
-      skipped++
-      continue
-    }
-
-    const body = renderCampaignText(bodyTemplate, campaign, recipient)
-    const idFields = recipient.kind === "lead" ? { leadId: recipient.id } : { contactId: recipient.id }
-    const textResult = await sendWhatsAppText({
-      to: recipient.whatsAppTo,
-      body,
-      organizationId: orgId,
-      ...idFields,
-    })
-
-    if (textResult.success) {
-      sent++
-      textSent++
-      if (recipient.kind !== "lead") {
-        trackContactEvent(orgId, recipient.id, "whatsapp_sent", {
-          campaignId: campaign.id,
-          messageId: textResult.messageId,
-          mode: "text",
-        }).catch(() => {})
-      }
-      continue
-    }
-
-    if (textResult.error === "outside_window_no_template" && template?.name) {
-      const templateResult = await sendWhatsAppTemplate({
-        to: recipient.whatsAppTo,
-        templateName: template.name,
-        languageCode: template.languageCode,
-        variables: renderWhatsAppTemplateVariables(template.variables, campaign, recipient),
-        organizationId: orgId,
-        ...idFields,
-      })
-      if (templateResult.success) {
-        sent++
-        templateSent++
-        if (recipient.kind !== "lead") {
-          trackContactEvent(orgId, recipient.id, "whatsapp_sent", {
-            campaignId: campaign.id,
-            messageId: templateResult.messageId,
-            mode: "template",
-            templateName: template.name,
-          }).catch(() => {})
-        }
-      } else {
-        skipped++
-        if (errors.length < 3) errors.push(`${recipient.whatsAppTo}: ${templateResult.error || "WhatsApp template send failed"}`)
-      }
-      continue
-    }
-
-    skipped++
-    if (errors.length < 3) {
-      errors.push(
-        textResult.error === "outside_window_no_template"
-          ? `${recipient.whatsAppTo}: outside 24h window and no template configured`
-          : `${recipient.whatsAppTo}: ${textResult.error || "WhatsApp send failed"}`,
-      )
-    }
-  }
-
-  await prisma.campaign.update({
-    where: { id: campaign.id },
-    data: {
-      status: sent > 0 ? "sent" : "draft",
-      sentAt: sent > 0 ? new Date() : undefined,
-      totalSent: sent,
-      totalRecipients: recipients.length,
-    },
+  const spec = prepared.whatsAppTemplateSpec
+  const audience: WhatsAppDispatchRecipient[] = recipients.flatMap(recipient => {
+    const phone = normalizeCampaignPhone(recipient.whatsAppTo)
+    if (!phone) return []
+    const variables = template && renderWhatsAppTemplateVariables(template.variables, campaign, recipient)
+    return [{ phone, ...(recipient.kind === "lead" ? { leadId: recipient.id } : { contactId: recipient.id }),
+      payload: {
+        body: renderCampaignText(prepared.messageBody || campaign.name, campaign, recipient),
+        ...(template && spec ? { template: {
+          name: template.name, language: spec.language,
+          ...(spec.header ? { header: spec.header.type === "text" ? { ...spec.header, text: renderCampaignText(spec.header.text, campaign, recipient) } : spec.header } : {}),
+          parameters: spec.variables.map((key, index) => ({
+            type: "text" as const,
+            text: String(Array.isArray(variables) ? variables[index] ?? "" : variables?.[key] ?? ""),
+            ...(/^\d+$/.test(key) ? {} : { parameter_name: key }),
+          })),
+        } } : {}),
+      },
+    }]
   })
-
-  createNotification({
-    organizationId: orgId,
-    userId: "",
-    type: sent > 0 ? "success" : "warning",
-    title: `WhatsApp campaign sent: ${campaign.name}`,
-    message: `${sent} / ${recipients.length} WhatsApp messages delivered`,
-    entityType: "campaign",
-    entityId: campaign.id,
-  }).catch(() => {})
-
-  return sendResult({
-    success: sent > 0,
-    data: { sent, total: recipients.length, skipped, errors, channel: "whatsapp", textSent, templateSent },
-  })
+  const total = await enqueueWhatsAppCampaign(orgId, campaign.id, prepared.whatsAppChannelConfigId!, audience)
+  return sendResult({ success: true, data: { queued: total, total, sent: 0, channel: "whatsapp" } }, { status: 202 })
 }
 
 async function prepareTelegramCampaign({ orgId, campaign }: CampaignSendContext): Promise<CampaignPrepareResult> {
@@ -1063,7 +1020,7 @@ const smsCampaignAdapter: CampaignChannelAdapter = {
 
 const whatsAppCampaignAdapter: CampaignChannelAdapter = {
   channel: "whatsapp",
-  maxBatchSize: 500,
+  maxBatchSize: 50_000,
   prepare: prepareWhatsAppCampaign,
   resolveRecipients: resolveWhatsAppRecipients,
   send: sendWhatsAppCampaign,
@@ -1121,14 +1078,29 @@ export async function sendCampaign(campaign: CampaignRecord, orgId: string): Pro
     if ("response" in recipientResult) return { ...recipientResult.response, reachedSend: false }
 
     prepared = preparedResult.prepared
-    recipients = recipientResult.recipients.length > adapter.maxBatchSize
-      ? recipientResult.recipients.slice(0, adapter.maxBatchSize)
-      : recipientResult.recipients
+    if (recipientResult.recipients.length > adapter.maxBatchSize) {
+      return { ...sendResult({ error: `Campaign exceeds the ${adapter.maxBatchSize} recipient limit. Narrow the audience; no messages were sent.` }, { status: 422 }), reachedSend: false }
+    }
+    recipients = recipientResult.recipients
+    if (!recipients.length || (adapter.channel === "whatsapp" && !recipients.some(r => normalizeCampaignPhone(r.whatsAppTo)))) {
+      return { ...sendResult({ error: "No eligible recipients" }, { status: 422 }), reachedSend: false }
+    }
   } catch (e) {
     console.error("[campaigns/send] failed before sending:", e)
     return { ...sendResult({ error: "Internal server error" }, { status: 500 }), reachedSend: false }
   }
 
+  if (adapter.channel === "whatsapp") {
+    try {
+      return { ...await adapter.send({ ...ctx, prepared, recipients }), reachedSend: true }
+    } catch {
+      // A disconnected transaction response may still have committed. Reconcile
+      // the durable ledger before returning the campaign to an editable state.
+      const queued = await prisma.whatsAppCampaignDelivery.count({ where: { organizationId: orgId, campaignId: campaign.id } })
+      if (queued) return { ...sendResult({ success: true, data: { queued, total: queued, sent: 0, channel: "whatsapp" } }, { status: 202 }), reachedSend: true }
+      return { ...sendResult({ error: "Could not queue this campaign. No messages were sent." }, { status: 500 }), reachedSend: false }
+    }
+  }
   const result = await adapter.send({ ...ctx, prepared, recipients })
   return { ...result, reachedSend: true }
 }

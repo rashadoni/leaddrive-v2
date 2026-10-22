@@ -2724,6 +2724,7 @@ model Campaign {
   updatedAt         DateTime          @updatedAt
   deals             Deal[]
   variants          CampaignVariant[]
+  whatsappDeliveries WhatsAppCampaignDelivery[]
 
   // C9 Marketing Attribution
   campaignTouchpoints CampaignTouchpoint[]
@@ -2735,8 +2736,37 @@ model Campaign {
   orchestrationRuns      CampaignOrchestrationRun[]
   orchestratedDeliveries OrchestratedDelivery[]
 
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@map("campaigns")
+}
+
+// Durable recipient-level WhatsApp dispatch. Ambiguous delivery is never auto-retried.
+model WhatsAppCampaignDelivery {
+  id              String   @id @default(cuid())
+  organizationId  String
+  campaignId      String
+  campaign        Campaign @relation(fields: [campaignId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "whatsapp_campaign_delivery_campaign_fkey")
+  channelConfigId String
+  recipientPhone  String
+  contactId       String?
+  leadId          String?
+  payload         Json
+  status          String   @default("pending")
+  attempts        Int      @default(0)
+  nextAttemptAt   DateTime @default(now())
+  claimedAt       DateTime?
+  acceptedAt      DateTime?
+  externalId      String?
+  errorCode       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([campaignId, recipientPhone], map: "wa_delivery_campaign_recipient_key")
+  @@index([status, nextAttemptAt])
+  @@index([organizationId, campaignId, status], map: "wa_delivery_org_campaign_status_idx")
+  @@index([organizationId, externalId])
+  @@map("whatsapp_campaign_deliveries")
 }
 
 model CampaignVariant {

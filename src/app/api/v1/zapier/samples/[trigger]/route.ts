@@ -19,6 +19,8 @@ import { ZAPIER_TRIGGER_KEYS } from "@/lib/zapier-triggers"
 
 /** Static fallback samples — used when no real data exists in the org yet. */
 const STATIC_SAMPLES: Record<string, Record<string, unknown>> = {
+  "whatsapp.message_received": { id: "wamid_sample:received", messageId: "wamid_sample", channelConfigId: "channel_sample", direction: "inbound", status: "received", contactId: "contact_sample", leadId: null, conversationId: "conversation_sample", timestamp: "2026-10-22T09:00:00.000Z" },
+  "whatsapp.message_status": { id: "wamid_sample:delivered", messageId: "wamid_sample", channelConfigId: "channel_sample", direction: "outbound", status: "delivered", contactId: "contact_sample", leadId: null, conversationId: "conversation_sample", timestamp: "2026-10-22T09:00:00.000Z" },
   "lead.created": {
     id: "lead_sample_001",
     contactName: "Sample Lead",

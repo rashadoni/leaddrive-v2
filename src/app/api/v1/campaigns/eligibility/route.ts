@@ -7,7 +7,7 @@ import { resolveWhatsAppConfig } from "@/lib/whatsapp"
 import { getTruthyString, isObjectRecord, parseWhatsAppTemplateConfig } from "@/lib/campaigns/social-broadcast"
 
 const WHATSAPP_SESSION_WINDOW_HOURS = 23
-const WHATSAPP_BATCH_CAP = 500
+const WHATSAPP_BATCH_CAP = 50_000
 const TELEGRAM_BATCH_CAP = 1000
 
 const eligibilitySchema = z.object({
@@ -69,9 +69,8 @@ function getDateValue(value: unknown): Date | null {
 }
 
 function cleanPhone(value: string | null | undefined): string | null {
-  const digits = String(value || "").replace(/[^0-9]/g, "")
-  if (digits.length < 6) return null
-  return digits.slice(-10)
+  const phone = (value || "").replace(/[\s()+.-]/g, "").replace(/^00/, "")
+  return /^[1-9]\d{6,14}$/.test(phone) ? phone : null
 }
 
 function extractTelegramChatId(metadata: unknown): string | null {
@@ -165,38 +164,23 @@ function isOptedOut(contact: PreviewContact): boolean {
   return contact.channelPreferences.some((pref) => pref.isOptedIn === false)
 }
 
-function metadataDigits(value: unknown): string {
-  try {
-    return JSON.stringify(value)?.replace(/[^0-9]/g, "") || ""
-  } catch {
-    return ""
-  }
-}
-
-async function resolveWhatsAppSessionPhones(orgId: string, phones: string[]): Promise<Set<string>> {
+async function resolveWhatsAppSessionPhones(orgId: string, channelConfigId: string | undefined, phones: string[]): Promise<Set<string>> {
+  if (!channelConfigId) return new Set()
   const cleanPhones = Array.from(new Set(phones.map(cleanPhone).filter((phone): phone is string => Boolean(phone)))).slice(0, WHATSAPP_BATCH_CAP)
-  if (cleanPhones.length === 0) return new Set()
-
-  const since = new Date(Date.now() - WHATSAPP_SESSION_WINDOW_HOURS * 60 * 60 * 1000)
-  const inbound = await prisma.channelMessage.findMany({
-    where: {
-      organizationId: orgId,
-      direction: "inbound",
-      channelType: "whatsapp",
-      createdAt: { gte: since },
-      OR: cleanPhones.flatMap((phone) => [
-        { from: { contains: phone } },
-        { metadata: { path: ["waPhone"], string_contains: phone } as Prisma.JsonFilter },
-      ]),
-    },
-    select: { from: true, metadata: true },
-  })
-
   const inWindow = new Set<string>()
-  for (const message of inbound) {
-    const haystack = `${cleanPhone(message.from) || ""} ${metadataDigits(message.metadata)}`
-    for (const phone of cleanPhones) {
-      if (haystack.includes(phone)) inWindow.add(phone)
+  const since = new Date(Date.now() - WHATSAPP_SESSION_WINDOW_HOURS * 60 * 60 * 1000)
+  for (let offset = 0; offset < cleanPhones.length; offset += 250) {
+    const batch = cleanPhones.slice(offset, offset + 250)
+    const inbound = await prisma.channelMessage.findMany({
+      where: { organizationId: orgId, channelConfigId, direction: "inbound", channelType: "whatsapp", createdAt: { gte: since },
+        OR: batch.flatMap(phone => [{ from: phone }, { from: `+${phone}` }, { metadata: { path: ["waPhone"], equals: phone } as Prisma.JsonFilter }]),
+      }, select: { from: true, metadata: true },
+    })
+    for (const message of inbound) {
+      const phone = cleanPhone(message.from)
+      const metadataPhone = isObjectRecord(message.metadata) ? cleanPhone(getTruthyString(message.metadata.waPhone)) : null
+      if (phone && batch.includes(phone)) inWindow.add(phone)
+      if (metadataPhone && batch.includes(metadataPhone)) inWindow.add(metadataPhone)
     }
   }
   return inWindow
@@ -214,16 +198,17 @@ async function previewWhatsApp(orgId: string, input: EligibilityInput) {
   const reachableContacts = optedInContacts.filter((contact) => Boolean(contact.phone))
   const leadMissingPhone = leads.filter((lead) => !lead.phoneWhatsApp && !lead.phone).length
   const reachableLeads = leads.filter((lead) => Boolean(lead.phoneWhatsApp || lead.phone))
-  const reachablePhones = [
+  const reachablePhones = Array.from(new Set([
     ...reachableContacts.map((contact) => contact.phone).filter((phone): phone is string => Boolean(phone)),
     ...reachableLeads.map((lead) => lead.phoneWhatsApp || lead.phone).filter((phone): phone is string => Boolean(phone)),
-  ]
+  ].map(cleanPhone).filter((phone): phone is string => Boolean(phone))))
 
   const templateConfig = parseWhatsAppTemplateConfig(input.flowData)
   const approvedTemplate = templateConfig?.name
     ? await prisma.whatsAppTemplate.findFirst({
         where: {
           organizationId: orgId,
+          channelConfigId: providerConfig?.id || "__missing__",
           name: templateConfig.name,
           status: "APPROVED",
           ...(templateConfig.languageCode ? { language: templateConfig.languageCode } : {}),
@@ -233,7 +218,7 @@ async function previewWhatsApp(orgId: string, input: EligibilityInput) {
     : null
 
   const attemptPhones = reachablePhones.slice(0, WHATSAPP_BATCH_CAP)
-  const inWindow = await resolveWhatsAppSessionPhones(orgId, attemptPhones)
+  const inWindow = await resolveWhatsAppSessionPhones(orgId, providerConfig?.id, attemptPhones)
   const sessionWindow = attemptPhones.filter((phone) => {
     const clean = cleanPhone(phone)
     return clean ? inWindow.has(clean) : false
@@ -242,7 +227,7 @@ async function previewWhatsApp(orgId: string, input: EligibilityInput) {
   const templateApproved = Boolean(approvedTemplate)
   const providerConfigured = Boolean(providerConfig)
   const sendableBeforeProvider = sessionWindow + (templateApproved ? requiresTemplate : 0)
-  const eligible = providerConfigured ? sendableBeforeProvider : 0
+  const eligible = providerConfigured && reachablePhones.length <= WHATSAPP_BATCH_CAP ? sendableBeforeProvider : 0
   const totalAudience = contacts.length + leads.length
   const batchCap = Math.max(0, reachablePhones.length - WHATSAPP_BATCH_CAP)
   const reasons: PreviewReason[] = []
