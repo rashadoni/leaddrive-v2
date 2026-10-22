@@ -2,30 +2,11 @@ import { describe, expect, it, vi } from "vitest"
 
 import { PharmacyCatalog } from "@/lib/voice-agent/pharmacy/catalog"
 import { ZeytunAvailableBalances, ZEYTUN_BALANCES_MAX_BYTES } from "@/lib/voice-agent/pharmacy/zeytun-available-balances"
-import { readZeytunAvailableBalances } from "@/lib/voice-agent/pharmacy/zeytun-balance-client"
-import { downloadOutboundResource, type OutboundResourceDownloadResponse } from "@/lib/integrations/webhook-url-guard"
+import { readZeytunAvailableBalances, zeytunBalanceScopeKey } from "@/lib/voice-agent/pharmacy/zeytun-balance-client"
+import { postOutboundResource, type OutboundResourceDownloadResponse } from "@/lib/integrations/webhook-url-guard"
 
-// Synthetic wire-format fixture. Never copy the tenant's commercial export here.
-const guid = "11111111-2222-4333-8444-555555555555"
-const secondGuid = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
-const context = { organizationId: "tenant-test", observedAt: "2026-10-22T08:00:00Z", source: "attachment" as const }
-function row() {
-  return {
-    Номенклатура: {
-      Наименование: "Тестмедин 500 мг №20 (таблетки) (Тестовый завод)", НаименованиеАз: "Testmedin 500 mq №20",
-      Guid: guid, Номер: "SN-TEST-001", БазоваяЕдиницаИзмерения: "шт ", КолУпак: 20,
-      Психотропное: false, Сильнодействующее: false, Дефектура: false,
-      РеферентныйПрепарат: false, РекламнаяАкция: true,
-      ДействительноС: "00010101", ДействительноДо: "00010101", Купи: 10, Получи: 1,
-      ВидНоменклатуры: { Наименование: "Таблетки", Guid: guid },
-      ОтделениеСклада: { Наименование: "Тестовый отдел", Guid: guid },
-      ФармакологическиеНаименования: { Наименование: "", Guid: "00000000-0000-0000-0000-000000000000" },
-      МассивШтрихкодов: [{ ТипШтрихкода: "EAN13", Штрихкод: "0012345678905" }],
-    },
-    Количество: 12.5, Цена: 1.2345,
-  }
-}
-function payload(rows: unknown[] = [row()]) { return JSON.stringify({ code: 0, message: "success", data: { goods: rows } }) }
+import { guid, secondGuid, context, row, payload } from "./fixtures/zeytun-balances"
+
 function readOne(feed: ZeytunAvailableBalances) { return feed.search("tenant-test", { externalId: guid }).candidates[0] }
 
 describe("Zeytun AvailableBalances import", () => {
@@ -139,7 +120,7 @@ describe("Zeytun discovery is never SKU approval", () => {
   })
 })
 
-const config = { organizationId: "tenant-test", endpoint: "https://inventory.example/AvailableBalances", username: "test-user", password: "test-only-password" }
+const config = { organizationId: "tenant-test", endpoint: "https://inventory.example/AvailableBalances", username: "test-user", password: "test-only-password", request: { GUID: guid, METRO: false, Warehouse: secondGuid } }
 function response(overrides: Partial<OutboundResourceDownloadResponse> = {}): OutboundResourceDownloadResponse {
   return { ok: true, status: 200, url: config.endpoint, redirects: 0, bodyBytes: Buffer.from(payload()), ...overrides }
 }
@@ -151,10 +132,28 @@ describe("bounded AvailableBalances reader", () => {
     expect(feed.summary("tenant-test").source).toBe("live")
     expect(download).toHaveBeenCalledTimes(1)
     expect(download).toHaveBeenCalledWith(config.endpoint, expect.objectContaining({
-      allowHttp: false, allowedHosts: ["inventory.example"], maxRedirects: 0, timeoutMs: 30_000,
+      allowHttp: false, allowedHosts: ["inventory.example"], maxRedirects: 0, timeoutMs: 60_000,
+      body: JSON.stringify(config.request), maxBodyBytes: 4096,
       maxResponseBytes: ZEYTUN_BALANCES_MAX_BYTES,
       headers: expect.objectContaining({ Authorization: `Basic ${Buffer.from("test-user:test-only-password").toString("base64")}` }),
     }))
+  })
+  it("binds caches to tenant, endpoint, account and every request field, but not the password", () => {
+    const key = zeytunBalanceScopeKey(config)
+    for (const changed of [
+      { ...config, organizationId: "other" }, { ...config, username: "other" },
+      { ...config, endpoint: "https://other.example/AvailableBalances" },
+      ...["GUID", "Warehouse"].map((field) => ({ ...config, request: { ...config.request, [field]: "99999999-2222-4333-8444-555555555555" } })),
+      { ...config, request: { ...config.request, METRO: true } },
+    ]) expect(zeytunBalanceScopeKey(changed)).not.toBe(key)
+    expect(zeytunBalanceScopeKey({ ...config, password: "rotated" })).toBe(key)
+  })
+  it("requires the exact request contract before sending credentials", async () => {
+    const download = vi.fn()
+    for (const request of [undefined, {}, { ...config.request, Guid: guid }, { ...config.request, METRO: "false" }, { ...config.request, Warehouse: "bad" }]) {
+      await expect(readZeytunAvailableBalances({ ...config, request }, download)).rejects.toThrow("invalid_configuration")
+    }
+    expect(download).not.toHaveBeenCalled()
   })
   it("requires a server opt-in for HTTP before sending any credentials", async () => {
     const download = vi.fn().mockResolvedValue(response())
@@ -187,15 +186,15 @@ describe("bounded AvailableBalances reader", () => {
   })
   it("actually enforces the shared transport's private-address and redirect fences", async () => {
     const transport = vi.fn()
-    await expect(readZeytunAvailableBalances(config, (url, options) => downloadOutboundResource(url, {
+    await expect(readZeytunAvailableBalances(config, (url, options) => postOutboundResource(url, {
       ...options, resolver: async () => [{ address: "127.0.0.1", family: 4 }], transport,
     }))).rejects.toThrow("upstream_unavailable")
     expect(transport).not.toHaveBeenCalled()
     transport.mockResolvedValue({ status: 302, location: "https://elsewhere.example/secret" })
-    await expect(readZeytunAvailableBalances(config, (url, options) => downloadOutboundResource(url, {
+    await expect(readZeytunAvailableBalances(config, (url, options) => postOutboundResource(url, {
       ...options, resolver: async () => [{ address: "8.8.8.8", family: 4 }], transport,
     }))).rejects.toThrow("upstream_unavailable")
     expect(transport).toHaveBeenCalledTimes(1)
-    expect(transport.mock.calls[0][1].method).toBe("GET")
+    expect(transport.mock.calls[0][1].method).toBe("POST")
   })
 })

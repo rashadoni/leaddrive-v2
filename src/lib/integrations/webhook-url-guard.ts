@@ -850,6 +850,31 @@ export async function downloadOutboundResource(
   }
 }
 
+/** Bounded POST query for integrations returning large resources (e.g. 1C).
+ * Keeps the GET downloader unchanged; credentials must never follow redirects.
+ */
+export async function postOutboundResource(
+  rawUrl: string,
+  options: OutboundResourceDownloadOptions & { body: string | Uint8Array; maxBodyBytes?: number },
+): Promise<OutboundResourceDownloadResponse> {
+  const response = await requestOutboundHttp(rawUrl, {
+    ...options,
+    method: "POST",
+    maxRedirects: 0,
+    maxBodyBytes: options.maxBodyBytes ?? 4096,
+    maxResponseBytes: options.maxResponseBytes ?? HARD_MAX_RESOURCE_BYTES,
+  }, {
+    hardMaxResponseBytes: HARD_MAX_RESOURCE_BYTES,
+    responseBodyMode: "bytes",
+  })
+  return {
+    ok: response.ok, status: response.status, url: response.url,
+    redirects: response.redirects,
+    ...(response.headers === undefined ? {} : { headers: response.headers }),
+    bodyBytes: response.bodyBytes ?? new Uint8Array(),
+  }
+}
+
 /**
  * Provider-specific synchronous guard used by Slack and Teams settings.
  * Provider host allowlists make DNS rebinding ineffective for reaching an
