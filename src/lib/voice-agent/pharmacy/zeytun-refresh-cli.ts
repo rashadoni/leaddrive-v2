@@ -5,6 +5,8 @@ import { setTimeout } from "node:timers/promises"
 
 import { ZeytunBalanceCache } from "./zeytun-balance-cache"
 import { parseZeytunBalanceConfig, zeytunBalanceScopeKey } from "./zeytun-balance-client"
+import { ZeytunClientsCache } from "./zeytun-clients-cache"
+import { parseZeytunClientsConfig, zeytunClientsScopeKey } from "./zeytun-clients-client"
 import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
 
 /** Explicit operator entrypoint; compile as CommonJS, never import in a route.
@@ -15,6 +17,8 @@ async function main() {
   const mode = process.argv[2]
   const configPath = process.env.ZEYTUN_CONFIG_FILE
   const directory = process.env.ZEYTUN_CACHE_DIR
+  const kind = process.env.ZEYTUN_FEED_KIND ?? "balances"
+  if (!["balances", "clients"].includes(kind)) throw new Error("invalid_configuration")
   if (!["--once", "--watch", "--status"].includes(mode) || !configPath || !isAbsolute(configPath) || !directory) throw new Error("invalid_configuration")
   const file = await open(configPath, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
   let input: unknown
@@ -26,8 +30,13 @@ async function main() {
     if (bytesRead !== bytes.length) throw new Error("invalid_configuration")
     input = JSON.parse(bytes.toString("utf8"))
   } finally { await file.close() }
-  const config = parseZeytunBalanceConfig(input)
-  const cache = new ZeytunBalanceCache(config, new ZeytunSnapshotStore(directory, config.organizationId, zeytunBalanceScopeKey(config)))
+  const cache = kind === "clients" ? (() => {
+    const config = parseZeytunClientsConfig(input)
+    return new ZeytunClientsCache(config, new ZeytunSnapshotStore(directory, config.organizationId, zeytunClientsScopeKey(config)))
+  })() : (() => {
+    const config = parseZeytunBalanceConfig(input)
+    return new ZeytunBalanceCache(config, new ZeytunSnapshotStore(directory, config.organizationId, zeytunBalanceScopeKey(config)))
+  })()
   await cache.restore()
   if (mode === "--status") {
     console.log(JSON.stringify(cache.status()))

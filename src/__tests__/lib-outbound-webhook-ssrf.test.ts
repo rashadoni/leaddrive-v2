@@ -111,6 +111,19 @@ describe("validateOutboundWebhookUrl", () => {
 })
 
 describe("requestOutboundWebhook redirects", () => {
+  it("allows five minutes only for an explicitly slow POST resource query", async () => {
+    const transport = vi.fn<OutboundWebhookTransport>().mockResolvedValue({ status: 200, bodyBytes: new Uint8Array() })
+    await postOutboundResource("https://8.8.8.8/query", { body: "{}", timeoutMs: 999_999, transport })
+    expect(transport.mock.calls[0][1].timeoutMs).toBeGreaterThan(299_000)
+    expect(transport.mock.calls[0][1].timeoutMs).toBeLessThanOrEqual(300_000)
+    for (const run of [requestOutboundWebhook, downloadOutboundResource]) {
+      await run("https://8.8.8.8/query", { timeoutMs: 999_999, transport })
+      expect(transport.mock.lastCall![1].timeoutMs).toBeLessThanOrEqual(60_000)
+    }
+    await postOutboundResource("https://8.8.8.8/query", { body: "{}", transport })
+    expect(transport.mock.lastCall![1].timeoutMs).toBeLessThanOrEqual(60_000)
+  })
+
   it("allows a bounded large POST response without changing the webhook or GET defaults", async () => {
     const bodyBytes = new Uint8Array(1024 * 1024 + 1)
     const transport = vi.fn<OutboundWebhookTransport>().mockResolvedValue({ status: 200, bodyBytes })

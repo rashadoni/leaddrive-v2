@@ -6,6 +6,7 @@ import { zeytunBalanceQuerySchema } from "./zeytun-available-balances"
 import type { ZeytunBalanceCache } from "./zeytun-balance-cache"
 import { validateZeytunCallContext, type ZeytunCallLookup } from "./zeytun-call-context"
 import type { ZeytunCustomerBindings } from "./zeytun-customer-bindings"
+import type { ZeytunClientsDirectory } from "./zeytun-clients-directory"
 
 const configSchema = z.strictObject({
   enabled: z.boolean(), organizationId: z.string().min(1).max(128), channelConfigId: z.string().min(1).max(128),
@@ -46,6 +47,8 @@ export type ZeytunVoiceSearchDependencies = {
   loadCall: (lookup: ZeytunCallLookup) => Promise<unknown>
   /** Return the latest reviewed version, so revocations take effect next query. */
   getBindings: () => ZeytunCustomerBindings | null
+  /** Latest validated ListClients snapshot; preloaded outside the voice turn. */
+  getClients: () => ZeytunClientsDirectory | null
   clock?: () => number
 }
 
@@ -109,6 +112,8 @@ export function createZeytunVoiceSearchHandler(input: unknown, dependencies: Zey
         // No fallback to the one configured pharmacy, and no on-demand download.
         return unavailable()
       }
+      const sourceCheck = dependencies.getClients()?.checkBinding(config.organizationId, binding.counterpartyGuid, call.call.targetPhoneE164, clock())
+      if (!sourceCheck?.consistent) return respond({ status: "customer_review_required", candidates: [], ...restrictions })
       const result = dependencies.cache.search(config.organizationId, source.scopeKey, query)
       return respond({
         status: result.status, candidateCount: result.candidateCount,

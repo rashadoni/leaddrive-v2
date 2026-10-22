@@ -8,9 +8,11 @@ import { ZeytunBalanceCache } from "@/lib/voice-agent/pharmacy/zeytun-balance-ca
 import { zeytunBalanceScopeKey } from "@/lib/voice-agent/pharmacy/zeytun-balance-client"
 import { validateZeytunCallContext } from "@/lib/voice-agent/pharmacy/zeytun-call-context"
 import { ZeytunCustomerBindings } from "@/lib/voice-agent/pharmacy/zeytun-customer-bindings"
+import { ZeytunClientsDirectory } from "@/lib/voice-agent/pharmacy/zeytun-clients-directory"
 import { ZeytunSnapshotStore } from "@/lib/voice-agent/pharmacy/zeytun-snapshot-store"
 import { createZeytunVoiceSearchHandler, ZEYTUN_VOICE_SEARCH_TOOL } from "@/lib/voice-agent/pharmacy/zeytun-voice-search"
 import { guid, secondGuid, row, payload } from "./fixtures/zeytun-balances"
+import { clientRow, clientsXml, clientContext, otherClientGuid } from "./fixtures/zeytun-clients"
 
 const stamp = "2026-10-22T12:00:00.000Z"
 const initialTime = Date.parse(stamp)
@@ -130,12 +132,14 @@ describe("voice search HTTP boundary", () => {
   let now: number
   let trustedCall: unknown
   let bindings: ZeytunCustomerBindings | null
+  let clients: ZeytunClientsDirectory | null
   let cache: ZeytunBalanceCache
   const loadCall = vi.fn(async (_lookup: unknown): Promise<unknown> => trustedCall)
   const upstream = vi.fn(async () => { throw new Error("no network allowed") })
   let handler: (request: Request) => Promise<Response>
   beforeEach(async () => {
     now = initialTime; trustedCall = context(); bindings = new ZeytunCustomerBindings(directory())
+    clients = new ZeytunClientsDirectory(clientsXml(), clientContext)
     loadCall.mockReset(); loadCall.mockImplementation(async () => trustedCall); upstream.mockClear()
     root = await mkdtemp(join(tmpdir(), "zeytun-search-test-"))
     const disk = new ZeytunSnapshotStore(root, source.organizationId, zeytunBalanceScopeKey(source))
@@ -146,7 +150,7 @@ describe("voice search HTTP boundary", () => {
     await disk.save({ payload: bytes, context: feedContext, version: feed.summary(source.organizationId).version })
     cache = new ZeytunBalanceCache(source, disk, upstream, () => now)
     await cache.restore()
-    handler = createZeytunVoiceSearchHandler(config, { cache, loadCall, getBindings: () => bindings, clock: () => now })
+    handler = createZeytunVoiceSearchHandler(config, { cache, loadCall, getBindings: () => bindings, getClients: () => clients, clock: () => now })
   })
   afterEach(async () => { expect(upstream).not.toHaveBeenCalled(); await rm(root, { recursive: true, force: true }) })
   function request(body: unknown = { callId, query: { text: "Тестмедин" } }, overrides: RequestInit = {}) {
@@ -214,6 +218,19 @@ describe("voice search HTTP boundary", () => {
     expect((await handler(request())).status).toBe(403)
     expect(search).toHaveBeenCalledTimes(1)
   })
+  it("rechecks the full 1C directory even when only one shared-phone CRM binding was reviewed", async () => {
+    const search = vi.spyOn(cache, "search")
+    expect((await (await handler(request())).json()).status).toBe("candidates_only")
+    clients = new ZeytunClientsDirectory(clientsXml([clientRow(), clientRow({ GUIDE: otherClientGuid })]), clientContext)
+    expect((await (await handler(request())).json()).status).toBe("customer_review_required")
+    clients = null
+    expect((await (await handler(request())).json()).status).toBe("customer_review_required")
+    clients = new ZeytunClientsDirectory(clientsXml(), { ...clientContext, observedAt: "2026-10-21T12:00:00.000Z" })
+    expect((await (await handler(request())).json()).status).toBe("customer_review_required")
+    clients = new ZeytunClientsDirectory(clientsXml([clientRow({ Phone: "994500000002" })]), clientContext)
+    expect((await (await handler(request())).json()).status).toBe("customer_review_required")
+    expect(search).toHaveBeenCalledTimes(1)
+  })
   it("never falls back to the configured pharmacy when another customer is bound", async () => {
     const search = vi.spyOn(cache, "search")
     const data = directory(); data.bindings[0].counterpartyGuid = secondGuid; bindings = new ZeytunCustomerBindings(data)
@@ -227,7 +244,7 @@ describe("voice search HTTP boundary", () => {
     loadCall.mockRejectedValueOnce(new Error(source.password))
     expect(await (await handler(request())).text()).not.toContain(source.password)
     for (const input of [{ ...config, enabled: false }, { ...config, runtimeToken: "" }, { ...config, organizationId: "other" }]) {
-      const disabled = createZeytunVoiceSearchHandler(input, { cache, loadCall, getBindings: () => bindings })
+      const disabled = createZeytunVoiceSearchHandler(input, { cache, loadCall, getBindings: () => bindings, getClients: () => clients })
       expect((await disabled(request())).status).toBe(503)
     }
     expect(loadCall).toHaveBeenCalledTimes(1)
