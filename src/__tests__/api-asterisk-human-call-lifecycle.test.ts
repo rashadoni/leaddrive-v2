@@ -2,6 +2,10 @@ import { Prisma } from "@prisma/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
+vi.mock("@prisma/client", async () => ({ Prisma: {
+  ...await import("@prisma/client/runtime/library"), TransactionIsolationLevel: { ReadCommitted: "ReadCommitted" },
+} }))
+
 const mocks = vi.hoisted(() => ({
   callLogFindFirst: vi.fn(),
   callLogCreate: vi.fn(),
@@ -278,6 +282,17 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
     expect(response.status).toBe(409)
     expect(mocks.callLogCreate).not.toHaveBeenCalled()
     expect(mocks.callEventCreate).not.toHaveBeenCalled()
+  })
+
+  it("accepts a media answer observation for an AI inbound call before the AGI spool drains", async () => {
+    mocks.callLogFindFirst.mockResolvedValue(baseCall({ callMode: "ai", direction: "inbound", status: "answering" }))
+    const response = await POST(request(answeredPayload()))
+    await expect(response.json()).resolves.toEqual({ success: true, result: "applied" })
+    expect(mocks.callLogUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ providerCallId: callId, providerOutcome: null, endedAt: null }),
+      data: { status: "in-progress", wasAnswered: true },
+    }))
+    expect(mocks.callEventCreate).toHaveBeenCalledTimes(1)
   })
 
   it("strictly binds an answer observation to one ordinary Asterisk call", async () => {

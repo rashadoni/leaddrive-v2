@@ -2,6 +2,10 @@ import { Prisma } from "@prisma/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
+// Real Prisma error classes, without generating the complete application DB
+// client just to exercise this mocked database/notification boundary.
+vi.mock("@prisma/client", async () => ({ Prisma: await import("@prisma/client/runtime/library") }))
+
 const mocks = vi.hoisted(() => ({
   maybePlaceCallback: vi.fn(async () => ({ decision: { callback: false, reason: "no_break_evidence" }, placement: null })),
   recordUnansweredCallback: vi.fn(async () => ({ created: false, reason: "not-a-callback" })),
@@ -19,7 +23,9 @@ const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
   analyzeVoiceCall: vi.fn(),
   fallbackPostCallAnalysis: vi.fn(),
+  recordCallCommitment: vi.fn(async () => ({ created: false, reason: "no-assignee" })),
 }))
+vi.mock("@/lib/commitments/record-call-commitment", () => ({ recordCallCommitment: mocks.recordCallCommitment }))
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -1048,6 +1054,22 @@ describe("POST /api/internal/voice-agent/call-result", () => {
       expect(mocks.voiceCallSessionUpdateMany).not.toHaveBeenCalled()
     })
 
+    it("stores an owner pharmacy rehearsal without sales analysis or callbacks", async () => {
+      mocks.findCallLog.mockResolvedValue({
+        id: "inbound-call-1", transcription: null, conversationOutcome: null,
+        consentAudit: { pharmacyInboundPreview: { version: 1, grantId: "test-grant", providerCallId: callId } },
+      })
+      const response = await POST(request({ callId, durationSeconds: 40,
+        turns: [{ role: "customer", text: "Test medicine, two packs." }] }))
+      await expect(response.json()).resolves.toEqual({ success: true, analysisStatus: "test_preview" })
+      expect(mocks.callLogUpdateMany).toHaveBeenCalledTimes(1)
+      expect(mocks.callLogUpdateMany.mock.calls[0][0].data.transcription).toContain("Test medicine")
+      expect(mocks.analyzeVoiceCall).not.toHaveBeenCalled()
+      expect(mocks.callEventCreateMany).not.toHaveBeenCalled()
+      expect(mocks.recordCallCommitment).not.toHaveBeenCalled()
+      expect(mocks.maybePlaceCallback).not.toHaveBeenCalled()
+    })
+
     it("does not analyse a call in which the customer never spoke", async () => {
       const response = await POST(request({
         callId,
@@ -1079,6 +1101,18 @@ describe("POST /api/internal/voice-agent/call-result", () => {
       expect(response.status).toBe(409)
       expect(mocks.analyzeVoiceCall).not.toHaveBeenCalled()
     })
+  })
+
+  it("also excludes a durably marked rehearsal if a dispatcher session is present", async () => {
+    const session = matchingSession()
+    mocks.findSession.mockResolvedValue({ ...session, callLog: { ...session.callLog,
+      consentAudit: { pharmacyInboundPreview: { version: 1, grantId: "test-grant", providerCallId: callId } },
+    } })
+    const response = await POST(request(connectedPayload()))
+    await expect(response.json()).resolves.toEqual({ success: true, analysisStatus: "test_preview" })
+    expect(mocks.analyzeVoiceCall).not.toHaveBeenCalled()
+    expect(mocks.recordCallCommitment).not.toHaveBeenCalled()
+    expect(mocks.maybePlaceCallback).not.toHaveBeenCalled()
   })
 
   it("stores the media-level end evidence the PBX reports", async () => {

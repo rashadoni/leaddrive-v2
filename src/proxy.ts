@@ -161,6 +161,7 @@ const VOICE_AGENT_CALL_CONTINUATION_PATH = "/api/internal/voice-agent/call-conti
 const VOICE_AGENT_INTERNAL_PATHS = new Set([
   "/api/internal/voice-agent/control-plane-test",
   "/api/internal/voice-agent/maintenance-attestation",
+  "/api/internal/voice-agent/pharmacy-inbound",
   VOICE_AGENT_RUNTIME_CONFIG_PATH,
   VOICE_AGENT_CALL_RESULT_PATH,
   VOICE_AGENT_CALL_SOURCE_PATH,
