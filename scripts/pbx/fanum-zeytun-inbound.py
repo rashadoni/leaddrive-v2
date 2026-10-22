@@ -25,7 +25,7 @@ class ZeytunNoRedirect(urllib.request.HTTPRedirectHandler):
 class ZeytunInboundBridge:
     NAME = "search_pharmacy_catalog"
 
-    def __init__(self, runtime_url, token, call_id, request=None, clock=None):
+    def __init__(self, runtime_url, token, call_id, request=None, clock=None, announce_answered=None):
         parsed = urllib.parse.urlsplit(runtime_url)
         if (parsed.scheme != "https" or parsed.hostname != "app.leaddrivecrm.org"
                 or parsed.port not in (None, 443) or parsed.username or parsed.password
@@ -34,10 +34,13 @@ class ZeytunInboundBridge:
             raise ZeytunPilotUnavailable("pilot_transport_unavailable")
         self.url = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc,
             "/api/internal/voice-agent/pharmacy-inbound", "", ""))
+        self.lifecycle_url = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc,
+            "/api/internal/asterisk/call-lifecycle", "", ""))
         self.call_id = str(uuid.UUID(call_id))
         self.token = token
         self.clock = clock or time.time
         self.request = request or self._request
+        self.announce_answered = announce_answered or self._announce_answered
         self.lock = threading.Lock()
         self.pending = {}
         self.workers = threading.BoundedSemaphore(2)
@@ -46,7 +49,10 @@ class ZeytunInboundBridge:
         self.active = False
 
     def _request(self, body):
-        req = urllib.request.Request(self.url,
+        return self._post_json(self.url, body)
+
+    def _post_json(self, url, body):
+        req = urllib.request.Request(url,
             data=json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
             headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"}, method="POST")
         with urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=2) as response:
@@ -55,11 +61,27 @@ class ZeytunInboundBridge:
                 raise ZeytunPilotUnavailable("pilot_response_too_large")
             return json.loads(raw)
 
+    def _announce_answered(self):
+        # This bridge is opened only after accepting the call's AudioSocket.
+        # Report that actual media observation; do not wait for the 10s AGI
+        # spool timer and do not change Answer-to-AudioSocket dialplan timing.
+        body = {"eventId": str(uuid.uuid5(uuid.NAMESPACE_URL, "zeytun-inbound-media:" + self.call_id)),
+                "callId": self.call_id, "state": "answered",
+                "occurredAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self.clock()))}
+        result = self._post_json(self.lifecycle_url, body)
+        return isinstance(result, dict) and result.get("success") is True
+
     def open(self):
         try:
             value = self.request({"action": "session", "callId": self.call_id})
             if value == {"enabled": False}:
                 return None
+            if value == {"enabled": False, "status": "awaiting_answered"}:
+                if not self.announce_answered():
+                    raise ValueError()
+                # Exactly one new authorization after the lifecycle ACK. A
+                # closed/revoked/still-unanswered call stops; no AAC fallback.
+                value = self.request({"action": "session", "callId": self.call_id})
             if not isinstance(value, dict) or value.get("enabled") is not True or value.get("variant") != "pharmacy_inbound_preview":
                 raise ValueError()
             prompt, opening, seconds = value.get("prompt"), value.get("opening"), value.get("maxSeconds")

@@ -135,6 +135,33 @@ class TransportTests(unittest.TestCase):
         self.bridge.request = lambda _: {"enabled": False, "error": "pilot_unavailable"}
         with self.assertRaises(bridge_module.ZeytunPilotUnavailable): self.bridge.open()
 
+    def test_answered_spool_delay_uses_one_media_observation_then_reauthorizes(self):
+        announced, sessions = [], []
+        replies = iter([{"enabled": False, "status": "awaiting_answered"},
+            {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules", "opening": "Test greeting", "maxSeconds": 60}])
+        self.bridge.request = lambda body: sessions.append(body) or next(replies)
+        self.bridge._post_json = lambda url, body: announced.append((url, body)) or {"success": True}
+        self.assertEqual(self.bridge.open()["opening"], "Test greeting")
+        self.assertEqual(len(sessions), 2)
+        self.assertEqual(len(announced), 1)
+        url, body = announced[0]
+        self.assertEqual(url, "https://app.leaddrivecrm.org/api/internal/asterisk/call-lifecycle")
+        self.assertEqual(body["callId"], CALL)
+        self.assertEqual(body["state"], "answered")
+        self.assertEqual(set(body), {"eventId", "callId", "state", "occurredAt"})
+
+    def test_failed_answer_ack_and_revocation_never_fall_back_to_aac_or_loop(self):
+        pending = {"enabled": False, "status": "awaiting_answered"}
+        for after in [pending, {"enabled": False}, {"enabled": False, "error": "pilot_unavailable"}]:
+            replies, announced = iter([pending, after]), []
+            self.bridge.request = lambda _: next(replies)
+            self.bridge.announce_answered = lambda: announced.append(True) or True
+            with self.assertRaises(bridge_module.ZeytunPilotUnavailable): self.bridge.open()
+            self.assertEqual(len(announced), 1)
+        self.bridge.request = lambda _: pending
+        self.bridge.announce_answered = lambda: False
+        with self.assertRaises(bridge_module.ZeytunPilotUnavailable): self.bridge.open()
+
     def test_transport_errors_are_masked(self):
         def broken(_): raise ValueError("private password")
         self.bridge.request = broken

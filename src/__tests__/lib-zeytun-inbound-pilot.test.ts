@@ -65,6 +65,24 @@ describe("single-call inbound owner rehearsal", () => {
     await expect((await f.handle(request())).json()).resolves.toEqual({ enabled: false })
     expect(f.dependencies.loadCatalog).not.toHaveBeenCalled()
   })
+  it("waits for a real answered observation before granting any prompt, search or claim", async () => {
+    const f = fixture()
+    f.dependencies.loadCall.mockResolvedValue({ ...call, status: "answering", wasAnswered: false })
+    await expect((await f.handle(request())).json()).resolves.toEqual({ enabled: false, status: "awaiting_answered" })
+    expect(f.dependencies.claim).not.toHaveBeenCalled()
+    expect(f.dependencies.loadCatalog).not.toHaveBeenCalled()
+    expect((await f.handle(search())).status).toBe(403)
+    f.dependencies.loadCall.mockResolvedValue(call)
+    expect(await (await f.handle(request())).json()).toMatchObject({ enabled: true })
+  })
+  it("never requests an answered report for a wrong line, expired or revoked permit", async () => {
+    const f = fixture()
+    f.dependencies.loadCall.mockResolvedValue({ ...call, status: "answering", wasAnswered: false, channelConfigId: "wrong" })
+    expect((await f.handle(request())).status).toBe(403)
+    f.dependencies.loadCall.mockResolvedValue({ ...call, status: "answering", wasAnswered: false })
+    f.dependencies.loadConfig.mockResolvedValueOnce(config).mockResolvedValue(null)
+    expect((await f.handle(request())).status).toBe(403)
+  })
   it.each([
     { status: "answering" }, { wasAnswered: false }, { callMode: "human" }, { direction: "outbound" },
     { endedAt: "2026-10-22T12:00:01Z" }, { channelConfigId: "wrong" }, { organizationId: "other" },

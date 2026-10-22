@@ -24,6 +24,7 @@ const callSchema = z.strictObject({
   targetPhoneE164: z.string(),
 })
 export type InboundPilotCall = z.infer<typeof callSchema>
+const awaitingAnswerSchema = callSchema.extend({ status: z.literal("answering"), wasAnswered: z.literal(false) })
 export type InboundPilotCatalog = {
   organizationId: string; scopeKey: string; version: string; observedAt: string; source: "live" | "attachment"
   search: (query: z.infer<typeof zeytunBalanceQuerySchema>) => {
@@ -67,14 +68,15 @@ function internationalNumber(value: unknown) {
   const digits = compact.startsWith("+") ? compact.slice(1) : compact
   return /^[1-9]\d{7,14}$/.test(digits) ? `+${digits}` : null
 }
-function eligibleCall(raw: unknown, config: InboundPilotConfig, callId: string, now: number) {
-  const parsed = callSchema.safeParse(raw)
-  if (!parsed.success) return null
-  const call = parsed.data
+function matchingCallIdentity(call: Omit<InboundPilotCall, "status" | "wasAnswered">, config: InboundPilotConfig, callId: string, now: number) {
   return call.organizationId === config.organizationId && call.channelConfigId === config.channelConfigId &&
     call.providerCallId === callId && call.targetPhoneE164 === config.testPhoneE164 &&
     internationalNumber(call.fromNumber) === config.testPhoneE164 &&
-    Date.parse(call.startedAt) >= Date.parse(config.issuedAt) && Date.parse(call.startedAt) <= now ? call : null
+    Date.parse(call.startedAt) >= Date.parse(config.issuedAt) && Date.parse(call.startedAt) <= now
+}
+function eligibleCall(raw: unknown, config: InboundPilotConfig, callId: string, now: number) {
+  const parsed = callSchema.safeParse(raw)
+  return parsed.success && matchingCallIdentity(parsed.data, config, callId, now) ? parsed.data : null
 }
 
 /** Inbound-only owner rehearsal. No CRM subject lookup: shared phone numbers
@@ -109,6 +111,16 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       const rawCall = await dependencies.loadCall(config, input.callId)
       const call = eligibleCall(rawCall, config, input.callId, clock())
       if (!call) {
+        const waiting = awaitingAnswerSchema.safeParse(rawCall)
+        if (input.action === "session" && waiting.success && matchingCallIdentity(waiting.data, config, input.callId, clock())) {
+          const latest = inboundPilotConfigSchema.safeParse(await dependencies.loadConfig())
+          if (!latest.success || inboundPilotDigest(latest.data) !== inboundPilotDigest(config) || !active(config, clock())) return denied()
+          // The AGI persists answered locally before AudioSocket; its spool may
+          // drain later. Ask the already-connected PBX media handler to report
+          // its observation through the existing lifecycle endpoint. No prompt,
+          // claim, catalog or invented answered state is granted here.
+          return searchResponse({ enabled: false, status: "awaiting_answered" })
+        }
         // A known test participant must never fall through to AAC when the
         // answered/AI proof is missing. Unrelated callers retain normal routing.
         const fields = rawCall as { fromNumber?: unknown; targetPhoneE164?: unknown } | null
