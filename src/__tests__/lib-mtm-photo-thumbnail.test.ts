@@ -107,13 +107,9 @@ describe("resolveDiskMtmPhotoThumbnail", () => {
   })
   afterEach(async () => {
     await rm(root, { recursive: true, force: true })
-    delete process.env.TENANT_PII_MASTER_KEY
-    resetMasterKekCache()
   })
 
   it("renders from a tenant-encrypted original and reads an encrypted cache entry", async () => {
-    process.env.TENANT_PII_MASTER_KEY = "0123456789abcdef".repeat(4) // gitleaks:allow — synthetic test key
-    resetMasterKekCache()
     await writeFile(originalPath, sealTenantFile(ORG, await jpeg(1600, 1200)))
 
     const first = await resolveDiskMtmPhotoThumbnail({ organizationId: ORG, uploadsRoot: root, originalPath, fileName, width: 480, ifNoneMatch: null })

@@ -7,7 +7,7 @@
  * subdir policy, and path validation form the serving boundary.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest, NextResponse } from "next/server"
 
 vi.mock("fs/promises", () => ({
