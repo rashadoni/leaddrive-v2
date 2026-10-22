@@ -216,6 +216,23 @@ describe("GET /api/v1/inbox", () => {
       .toMatchObject({ contactId: null, contactName: "New customer", messageCount: 1 })
   })
 
+  it.each(["A", "B"])("does not borrow canonical A when the latest WhatsApp message is on %s", async latestChannel => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG_ID)
+    const common = { organizationId: ORG_ID, channelType: "whatsapp", contactId: "c1", from: "994501234567",
+      to: "business", body: "Hi", status: "received", direction: "inbound", metadata: { waPhone: "994501234567" } }
+    vi.mocked(prisma.channelMessage.findMany).mockResolvedValue([
+      { ...common, id: "latest", channelConfigId: latestChannel, conversationId: null, createdAt: new Date("2026-10-22T12:00:00Z") },
+      { ...common, id: "older", channelConfigId: "A", conversationId: "sc-A", createdAt: new Date("2026-10-22T11:00:00Z") },
+    ] as never)
+    vi.mocked(prisma.contact.findMany).mockResolvedValue([{ id: "c1", fullName: "Customer", phone: "994501234567", phones: [], email: null }] as never)
+    vi.mocked(prisma.socialConversation.findMany).mockResolvedValue([])
+    const res = await GET_INBOX(makeRequest("http://localhost:3000/api/v1/inbox"))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const convo = body.data.conversations.find((item: { contactId: string }) => item.contactId === "c1")
+    expect(convo).toMatchObject({ whatsappReplyBlocked: latestChannel === "B", socialConversationId: latestChannel === "B" ? null : "sc-A" })
+  })
+
   // Option-D slice-1: threads backed by a SocialConversation row surface its
   // status / assignment / snooze, fetched org-scoped.
   it("surfaces SocialConversation status/assignee/snooze for a thread with a conversationId", async () => {

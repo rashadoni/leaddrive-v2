@@ -1,3 +1,4 @@
+import { isPhoneRestrictedPrincipal } from "@/lib/customer-phone-privacy"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -10,6 +11,7 @@ import { sendConversationReply } from "@/lib/inbox/send-conversation-reply"
 import { PAGE_SIZE } from "@/lib/constants"
 import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import { markMarketingContacted } from "@/lib/inbox/customer-stage"
+import { whatsappThreadReplyBinding } from "@/lib/inbox/whatsapp-reply-channel"
 
 export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
   const { searchParams } = new URL(req.url)
@@ -253,12 +255,12 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       .map((t: any) => ({
         ...t,
         channels: Array.from(t.channels),
-        // Option-D — derive the persisted conversation id from the thread's own
-        // messages. This does NOT change grouping (resolveKey is unchanged), so
-        // the legacy /inbox threads stay byte-identical; we only annotate them.
-        // (A contact merged from multiple SocialConversations surfaces the most
-        // recent one — messages are newest-first.)
-        socialConversationId: t.messages.find((m: any) => m.conversationId)?.conversationId ?? null,
+        ...whatsappThreadReplyBinding(t.messages),
+        // Messages are newest-first. A WhatsApp thread may contain an unbound
+        // message from B followed by a canonical conversation from A; do not
+        // expose A as the reply target for that merged contact thread.
+        socialConversationId: t.lastChannel === "whatsapp" && whatsappThreadReplyBinding(t.messages).whatsappReplyBlocked
+          ? null : t.messages.find((m: any) => m.conversationId)?.conversationId ?? null,
       }))
       .sort((a: any, b: any) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
 
@@ -834,6 +836,10 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
     return NextResponse.json({ error: "Conversation not found" }, { status: 404 })
   }
   const conversationId = owned.conversationId
+  if (channel === "whatsapp" && authSession.hideCustomerPhoneForOperators === true
+    && isPhoneRestrictedPrincipal(authSession) && !conversationId) {
+    return NextResponse.json({ error: "Open a customer conversation before replying" }, { status: 400 })
+  }
   const leadId = owned.leadId
 
   // For TikTok (Chatwoot), Facebook, Instagram and VK the transport recipient
@@ -864,16 +870,17 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
     replyTo = boundConversation.externalId
     boundChannelConfigId = boundConversation.channelConfigId
   } else if (channel === "whatsapp" && conversationId) {
-    // WhatsApp keeps the composer's `to` (the customer's phone), but answers from the number the
-    // conversation came in on: a workspace can hold several numbers (Embedded Signup makes that routine),
-    // and without the channel the transport picked the workspace's first one — a number the customer
-    // never wrote to, outside its 24h window, so Meta refused the reply. A send with no conversation
-    // (a phone typed into a new thread) keeps the workspace's number.
+    // The recipient and sending number are server-owned. A masked browser value
+    // (or a forged phone) must never redirect a reply away from this conversation.
     const boundConversation = await prisma.socialConversation.findFirst({
       where: { id: conversationId, organizationId: orgId, platform: "whatsapp", deletedAt: null },
-      select: { channelConfigId: true },
+      select: { externalId: true, channelConfigId: true },
     })
-    boundChannelConfigId = boundConversation?.channelConfigId ?? null
+    if (!boundConversation) {
+      return NextResponse.json({ error: "Conversation not found" }, { status: 404 })
+    }
+    replyTo = boundConversation.externalId
+    boundChannelConfigId = boundConversation.channelConfigId
   }
 
   // Web-chat reply: single-source — write a WebChatMessage(agent) into the session (the visitor's

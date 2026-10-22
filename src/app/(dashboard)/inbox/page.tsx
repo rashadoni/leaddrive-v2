@@ -1514,6 +1514,10 @@ export default function InboxV2Page() {
   const handleSend = async () => {
     if (sendDeliveryUnknown || (!replyText.trim() && !attachment) || !selectedConvo || composerTab !== "reply") return
     const convo = selectedConvo
+    if (replyChannel === "whatsapp" && convo.whatsappReplyBlocked) {
+      setSendError(t("whatsappChannelMismatch"))
+      return
+    }
     let tgChatId = convo.telegramChatId
     if (!tgChatId && replyChannel === "telegram") {
       for (const m of convo.messages) {
@@ -1580,7 +1584,8 @@ export default function InboxV2Page() {
         // Don't silently clear — surface WHY nothing sent. WhatsApp's 24h-window rule
         // returns "outside_window_no_template"; tokens/config errors come through too.
         const code = json.error || `HTTP ${res.status}`
-        setSendError(code === "outside_window_no_template" ? t("sendWindowClosed") : t("sendFailed", { error: code }))
+        setSendError(code === "whatsapp_reply_channel_mismatch" ? t("whatsappChannelMismatch")
+          : code === "outside_window_no_template" ? t("sendWindowClosed") : t("sendFailed", { error: code }))
         if (json.deliveryUnknown === false && nativeTikTokReplyTarget(convo.messages)) {
           sendOperationRef.current = null
         }
@@ -2720,6 +2725,11 @@ export default function InboxV2Page() {
                 ))}
               </div>
               <div className="p-3 pt-2">
+                {composerTab === "reply" && replyChannel === "whatsapp" && selectedConvo.whatsappReplyBlocked && (
+                  <div role="alert" className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                    {t("whatsappChannelMismatch")}
+                  </div>
+                )}
                 {sendError && (
                   <div className={cn(
                     "mb-2 flex items-start gap-2 rounded-md border px-3 py-2 text-xs",
@@ -2934,7 +2944,7 @@ export default function InboxV2Page() {
                       size="icon"
                       className={cn("h-9 w-9 shrink-0", composerTab === "note" && "bg-amber-500 hover:bg-amber-600 text-white")}
                       onClick={() => (composerTab === "note" ? addNote(replyText) : handleSend())}
-                      disabled={composerTab === "note" ? (noteSaving || !replyText.trim()) : (sending || sendDeliveryUnknown || (!replyText.trim() && !attachment))}
+                      disabled={composerTab === "note" ? (noteSaving || !replyText.trim()) : (sending || sendDeliveryUnknown || (replyChannel === "whatsapp" && selectedConvo.whatsappReplyBlocked) || (!replyText.trim() && !attachment))}
                     >
                       {(composerTab === "note" ? noteSaving : sending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </Button>

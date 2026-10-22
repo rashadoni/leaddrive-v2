@@ -1735,7 +1735,7 @@ function ChannelsPageInner() {
   }
 
   const sendTestWhatsApp = async () => {
-    if (!testPhone) return
+    if (!testPhone || !testChannelId) return
     setTestSending(true)
     setTestResult(null)
     try {
@@ -1747,6 +1747,7 @@ function ChannelsPageInner() {
         },
         body: JSON.stringify({
           to: testPhone,
+          channelConfigId: testChannelId,
           templateName: testTemplateName.trim() || "hello_world",
           languageCode: testLanguageCode.trim() || "en_US",
         }),

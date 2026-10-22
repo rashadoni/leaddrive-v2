@@ -1,3 +1,4 @@
+vi.mock("@/lib/integrations/whatsapp-events", () => ({ publishWhatsAppIntegrationEvent: vi.fn().mockResolvedValue(undefined) }))
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import type { NextRequest } from "next/server"
 import { createHmac } from "crypto"
@@ -21,6 +22,9 @@ const state = vi.hoisted(() => ({
   configs: [] as Row[],
   messageLookups: [] as string[],
 }))
+
+const recordCampaignStatus = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock("@/lib/campaigns/whatsapp-dispatch", () => ({ recordWhatsAppCampaignStatus: recordCampaignStatus }))
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -112,6 +116,7 @@ describe("WhatsApp webhook — Embedded Signup numbers behind the shared callbac
     const body = statusFor("444555666")
     expect((await POST(req(body, sign(body, SHARED)))).status).toBe(200)
     expect(state.messageLookups).toEqual(["org_customer"])
+    expect(recordCampaignStatus).toHaveBeenCalledWith("org_customer", expect.any(String), "delivered", undefined)
   })
 
   it("still routes LeadDrive's own number to LeadDrive", async () => {

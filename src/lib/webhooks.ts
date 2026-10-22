@@ -26,6 +26,8 @@ export type WebhookEvent =
   | "company.created"
   | "company.updated"
   | "campaign.sent"
+  | "whatsapp.message_received"
+  | "whatsapp.message_status"
 
 interface WebhookPayload {
   event: string
@@ -60,6 +62,7 @@ async function hasValidCreatorAtDispatch(
   provenance: string,
   createdByApiKeyId: string | null,
   orgId: string,
+  event: string,
 ): Promise<boolean> {
   if (provenance === "legacy_unclassified") return false
   if (provenance === "generic") return createdByApiKeyId === null
@@ -81,8 +84,9 @@ async function hasValidCreatorAtDispatch(
           { expiresAt: { gt: now } },
         ],
       },
-      select: { id: true },
+      select: { id: true, scopes: true },
     })
+    if (event.startsWith("whatsapp.")) return creator !== null && Array.isArray(creator.scopes) && creator.scopes.some((scope: string) => scope === "read:inbox" || scope === "write:inbox")
     return creator !== null
   } catch (error) {
     console.error(`[Webhooks] Creator key check failed for ${createdByApiKeyId}:`, error)
@@ -190,7 +194,7 @@ async function dispatchSingleWebhook(
       console.warn(`[Webhooks] Stopping delivery for inactive organization ${payload.organizationId}`)
       return
     }
-    if (!await hasValidCreatorAtDispatch(provenance, createdByApiKeyId, payload.organizationId)) {
+    if (!await hasValidCreatorAtDispatch(provenance, createdByApiKeyId, payload.organizationId, payload.event)) {
       console.warn("[Webhooks] Skipping delivery: webhook provenance or creator API key is invalid")
       return
     }

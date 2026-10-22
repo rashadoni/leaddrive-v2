@@ -130,6 +130,7 @@ type ApiChannel = {
   channelType: string
   configName: string
   pageId?: string | null
+  phoneNumberId?: string | null
   isActive: boolean
   settings?: Record<string, unknown> | null
   hasAccessToken?: boolean
@@ -221,6 +222,30 @@ describe("Channel catalog — what the screen claims about a Meta channel", () =
     expect(connectedBadge("facebook")?.textContent).toContain("Connected")
     expect(brokenBadge("facebook")).toBeNull()
     expect(activeCount()).toContain("1 active")
+  })
+
+  it("sends a WhatsApp test from the selected row when two business numbers exist", async () => {
+    await renderCatalog([
+      { id: "wa-a", channelType: "whatsapp", configName: "Number A", phoneNumberId: "111", isActive: true, hasAccessToken: true },
+      { id: "wa-b", channelType: "whatsapp", configName: "Number B", phoneNumberId: "222", isActive: true, hasAccessToken: true },
+    ])
+    const testButton = row("wa-b")?.querySelector<HTMLButtonElement>('button[title="Test message"]')
+    expect(testButton).not.toBeNull()
+    await act(async () => testButton!.click())
+    const input = container.querySelector<HTMLInputElement>("#whatsapp-test-phone")!
+    expect(input).not.toBeNull()
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "+994501234567")
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+    const send = [...container.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === "Send")!
+    expect(send.disabled).toBe(false)
+    await act(async () => send.click())
+    const request = vi.mocked(fetch).mock.calls.find(([url]) => url === "/api/v1/whatsapp/test")
+    expect(request).toBeDefined()
+    expect(JSON.parse(String(request![1]?.body))).toEqual({
+      to: "+994501234567", channelConfigId: "wa-b", templateName: "hello_world", languageCode: "en_US",
+    })
   })
 
   it("does NOT call a bare saved row connected, and keeps the way back into OAuth", async () => {

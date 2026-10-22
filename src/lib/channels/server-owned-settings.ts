@@ -51,8 +51,11 @@ const SERVER_OWNED_SETTING_KEYS_BY_TYPE: Readonly<Record<string, readonly string
   whatsapp: [
     // api/v1/whatsapp/notification-settings
     "whatsappTicketStatusTemplates",
+    "whatsappTicketStatusTemplateLanguages",
     "whatsappSurveyTemplate",
+    "whatsappSurveyTemplateLanguage",
     "whatsappJourneyDefaultTemplate",
+    "whatsappJourneyDefaultTemplateLanguage",
     // api/v1/social/whatsapp-group-settings writes the nested key; lib/social/whatsapp-group-delivery still falls
     // back to the four flat ones older rows carry.
     "socialLeadGroup",

@@ -43,6 +43,7 @@ interface TeamsConfig {
 }
 
 const WEBHOOK_EVENTS = [
+  "whatsapp.message_received", "whatsapp.message_status",
   "contact.created", "contact.updated", "contact.deleted",
   "deal.created", "deal.updated", "deal.stage_changed",
   "lead.created", "lead.updated",
@@ -54,7 +55,7 @@ type Loc = "en" | "ru" | "az"
 const LOCAL_COPY: Record<Loc, Record<string, string>> = {
   en: {
     webhookIntro: "Use webhooks when another system needs to react to CRM changes. LeadDrive will POST selected events to your URL.",
-    webhookUrlHint: "Use an HTTPS endpoint you control. Zapier, Make, n8n, or your own backend can receive this.",
+    webhookUrlHint: "Use an HTTPS endpoint you control. Zapier, Make, Pabbly, n8n, or your backend can receive this. For Google Sheets, connect the webhook to a spreadsheet action in your automation service.",
     webhookEventsHint: "Select only the events the receiver needs. Fewer events means fewer accidental automations.",
     noWebhooksHint: "Start here for custom channels, Zapier, Make, n8n, or any system that needs CRM events.",
     noSlackHint: "Paste a Slack incoming webhook URL to send contract and CRM alerts into a channel.",
@@ -66,7 +67,7 @@ const LOCAL_COPY: Record<Loc, Record<string, string>> = {
   },
   ru: {
     webhookIntro: "Используйте вебхуки, когда внешняя система должна реагировать на изменения в CRM. LeadDrive отправит выбранные события POST-запросом на ваш URL.",
-    webhookUrlHint: "Укажите HTTPS-адрес, которым вы управляете. Это может быть Zapier, Make, n8n или ваш сервер.",
+    webhookUrlHint: "Укажите HTTPS-адрес, которым вы управляете. Это может быть Zapier, Make, Pabbly, n8n или ваш сервер. Для Google Sheets свяжите webhook с действием записи строки в сервисе автоматизации.",
     webhookEventsHint: "Выберите только события, которые реально нужны получателю. Так меньше риск случайных автоматизаций.",
     noWebhooksHint: "Начните здесь для кастомных каналов, Zapier, Make, n8n или любой системы, которой нужны события из CRM.",
     noSlackHint: "Вставьте входящий webhook URL Slack, чтобы отправлять договорные и CRM-уведомления в канал.",
@@ -78,7 +79,7 @@ const LOCAL_COPY: Record<Loc, Record<string, string>> = {
   },
   az: {
     webhookIntro: "Xarici sistem CRM dəyişikliklərinə reaksiya verməlidirsə vebhuklardan istifadə edin. LeadDrive seçilmiş hadisələri URL-inizə POST edəcək.",
-    webhookUrlHint: "İdarə etdiyiniz HTTPS ünvanını yazın. Zapier, Make, n8n və ya öz serveriniz ola bilər.",
+    webhookUrlHint: "İdarə etdiyiniz HTTPS ünvanını yazın. Zapier, Make, Pabbly, n8n və ya öz serveriniz ola bilər. Google Sheets üçün webhook-u avtomatlaşdırma xidmətində sətir əlavə etmə əməliyyatına qoşun.",
     webhookEventsHint: "Yalnız qəbul edən sistemə lazım olan hadisələri seçin. Az hadisə daha az təsadüfi avtomatizasiya deməkdir.",
     noWebhooksHint: "Fərdi kanallar, Zapier, Make, n8n və ya CRM hadisələrinə ehtiyacı olan istənilən sistem üçün buradan başlayın.",
     noSlackHint: "Müqavilə və CRM bildirişlərini kanala göndərmək üçün Slack incoming webhook URL yerləşdirin.",

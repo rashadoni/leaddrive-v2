@@ -4,6 +4,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
  * E1.1a — Conversation Automation Engine action executor.
  * Each action: happy path + tenant-guard + the guard/not-found branches.
  */
+const checkAiCaps = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/ai/budget", () => ({ checkConversationAiLimits: checkAiCaps }))
+
 const updateMany = vi.hoisted(() => vi.fn())
 const socialConversationFindFirst = vi.hoisted(() => vi.fn())
 // A2 — the ai_reply gate loads the channel's reply policy; null = gating off (send).
@@ -76,6 +79,7 @@ const baseCtx = (): ConversationActionContext => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  checkAiCaps.mockResolvedValue({ allowed: true })
   updateMany.mockResolvedValue({ count: 1 })
   socialConversationFindFirst.mockResolvedValue({
     assignedTo: null,
@@ -335,6 +339,31 @@ describe("menu", () => {
 })
 
 describe("ai_reply", () => {
+  it("never sends from a stale lease after slow generation", async () => {
+    updateMany.mockResolvedValue({ count: 0 })
+    const result = await executeConversationAction({ type: "ai_reply" }, baseCtx())
+    expect(result).toEqual({ ok: false, action: "ai_reply", error: "stale_claim" })
+    expect(sendReply).not.toHaveBeenCalled()
+    expect(releaseAiReply).toHaveBeenCalledWith({ organizationId: "org_1", conversationId: "c_1", token: "claim_tok_1" })
+  })
+
+  it("supports WhatsApp flows with conversation context and metered attribution", async () => {
+    const result = await executeConversationAction({ type: "ai_reply" }, baseCtx())
+    expect(result.ok).toBe(true)
+    expect(generateAiReply).toHaveBeenCalledWith(expect.objectContaining({ channel: "whatsapp", conversationId: "c_1", persistAssistant: false }))
+    expect(sendReply).toHaveBeenCalledWith(expect.objectContaining({ channel: "whatsapp", conversationId: "c_1", extraMetadata: expect.objectContaining({ aiAutoReply: true }) }))
+  })
+
+  it("enforces conversation and contact reply caps before generation and releases the claim", async () => {
+    checkAiCaps.mockResolvedValue({ allowed: false, reason: "conversation_cap" })
+    const r = await executeConversationAction({ type: "ai_reply" }, baseCtx())
+    expect(r).toEqual({ ok: false, action: "ai_reply", error: "conversation_cap" })
+    expect(checkAiCaps).toHaveBeenCalledWith({ orgId: "org_1", conversationId: "c_1", contactId: "ct_1" })
+    expect(generateAiReply).not.toHaveBeenCalled()
+    expect(sendReply).not.toHaveBeenCalled()
+    expect(releaseAiReply).toHaveBeenCalledWith({ organizationId: "org_1", conversationId: "c_1", token: "claim_tok_1" })
+  })
+
   it("does not generate or send when a human owns the conversation", async () => {
     const ctx = baseCtx()
     ctx.conversation.platform = "facebook"
@@ -382,7 +411,9 @@ describe("ai_reply", () => {
   })
 
   it("rejects unsupported AI channels before consuming aiReplyClaimedAt", async () => {
-    const r = await executeConversationAction({ type: "ai_reply" }, baseCtx())
+    const ctx = baseCtx()
+    ctx.conversation.platform = "email"
+    const r = await executeConversationAction({ type: "ai_reply" }, ctx)
     expect(r).toEqual({ ok: false, action: "ai_reply", error: "unsupported_channel" })
     expect(claimAiReply).not.toHaveBeenCalled()
   })

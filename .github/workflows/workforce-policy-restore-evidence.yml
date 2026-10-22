@@ -158,7 +158,17 @@ jobs:
         # The before/after proof above must keep its historical schema. The
         # following current-client API/browser tests need current columns too.
         # Refuse any destructive schema change; preserve canonical SQL guards.
-        run: DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema prisma/schema.prisma --skip-generate
+        run: |
+          # Campaign id is already a primary key. Add its redundant tenant key
+          # explicitly on the seeded fixture; schema push otherwise requires a
+          # blanket data-loss override for any new unique index on a nonempty
+          # table. Keep the destructive-change refusal below intact.
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE UNIQUE INDEX IF NOT EXISTS "campaigns_id_organizationId_key" ON "campaigns"("id", "organizationId");'
+          # Apply the real template identity migration after the historical
+          # proof. It preserves rows and replaces the stricter old unique key;
+          # schema push must still refuse any other unreviewed destructive change.
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f prisma/migrations/20261028091000_whatsapp_template_channel_identity/migration.sql
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema prisma/schema.prisma --skip-generate
       - name: Execute mandatory real PostgreSQL restore concurrency and rollback tests
         run: npx vitest run src/__tests__/lib-workforce-policy-restore-postgres.test.ts --maxWorkers=1
       - name: Install Chromium on hosted Ubuntu
