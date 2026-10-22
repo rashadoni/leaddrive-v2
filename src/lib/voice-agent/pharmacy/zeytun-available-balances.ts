@@ -44,7 +44,7 @@ const contextSchema = z.strictObject({
   source: z.enum(["attachment", "live"]),
 })
 export type ZeytunBalancesContext = z.infer<typeof contextSchema>
-const querySchema = z.strictObject({
+export const zeytunBalanceQuerySchema = z.strictObject({
   text: text.min(1).max(240).optional(),
   externalId: productGuid.optional(),
   itemCode: text.min(1).optional(),
@@ -151,7 +151,7 @@ export class ZeytunAvailableBalances {
 
   search(organizationId: string, query: unknown) {
     this.assertScope(organizationId)
-    const parsed = querySchema.safeParse(query)
+    const parsed = zeytunBalanceQuerySchema.safeParse(query)
     if (!parsed.success) throw new PharmacyOrderError("invalid_request")
     const request = parsed.data
     let ids: string[]

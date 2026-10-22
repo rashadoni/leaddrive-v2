@@ -67,6 +67,13 @@ export class ZeytunBalanceCache {
     }
   }
 
+  /** Server-only identity for call binding; no endpoint/account/password.
+   * Never pass this descriptor through a model-facing tool response.
+   */
+  scope() {
+    return { organizationId: this.config.organizationId, scopeKey: this.scopeKey, request: structuredClone(this.config.request) }
+  }
+
   /** Scope must come from authenticated call/customer binding, not model args. */
   search(organizationId: string, scopeKey: string, query: unknown) {
     if (organizationId !== this.config.organizationId || scopeKey !== this.scopeKey) throw new PharmacyOrderError("tenant_mismatch")
