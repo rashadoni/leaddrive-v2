@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises"
 import path from "path"
 import { runtimePublicUploadsRoot } from "@/lib/runtime-paths"
+import { decodeTenantFileBytes } from "@/lib/crypto/tenant-file-encryption"
 
 /**
  * Secure read of an inbox attachment the composer previously uploaded via POST /api/v1/inbox/upload
@@ -48,7 +49,8 @@ export async function readInboxAttachment(
     // ..%2F backstop — even with the regex, re-assert containment like the proxy does.
     if (!filePath.startsWith(uploadsRoot + path.sep)) return null
 
-    const buffer = await readFile(filePath)
+    // Decoded under the session's tenant; another tenant's envelope throws → null.
+    const buffer = decodeTenantFileBytes(organizationId, await readFile(filePath))
     const ext = path.extname(filename).slice(1).toLowerCase()
     const mime = MIME_BY_EXT[ext] || "application/octet-stream"
     return { buffer, filename, mime }
