@@ -56,8 +56,19 @@ type ValidateResult = {
   error?: string
 }
 
-function selectValue(event: React.ChangeEvent<HTMLSelectElement>) {
-  return event.target.value
+function templateChoiceValue(name: string, language: string) {
+  return name ? JSON.stringify([name, language]) : ""
+}
+
+function readTemplateChoice(value: string): [string, string] | null {
+  if (!value) return ["", ""]
+  try {
+    const pair: unknown = JSON.parse(value)
+    return Array.isArray(pair) && pair.length === 2 && pair.every((part) => typeof part === "string")
+      ? [pair[0], pair[1]] : null
+  } catch {
+    return null
+  }
 }
 
 type Loc = "en" | "ru" | "az"
@@ -148,8 +159,11 @@ export default function WhatsAppSettingsPage() {
   // Notification template settings (per-status ticket, survey, journey default)
   const [ticketStatuses, setTicketStatuses] = useState<string[]>([])
   const [statusTemplates, setStatusTemplates] = useState<Record<string, string>>({})
+  const [statusTemplateLanguages, setStatusTemplateLanguages] = useState<Record<string, string>>({})
   const [surveyTemplate, setSurveyTemplate] = useState("")
+  const [surveyTemplateLanguage, setSurveyTemplateLanguage] = useState("")
   const [journeyTemplate, setJourneyTemplate] = useState("")
+  const [journeyTemplateLanguage, setJourneyTemplateLanguage] = useState("")
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsMsg, setSettingsMsg] = useState<Feedback | null>(null)
   const [settingsLoaded, setSettingsLoaded] = useState(false)
@@ -186,8 +200,11 @@ export default function WhatsAppSettingsPage() {
     setSavingSettings(false)
     setTicketStatuses([])
     setStatusTemplates({})
+    setStatusTemplateLanguages({})
     setSurveyTemplate("")
+    setSurveyTemplateLanguage("")
     setJourneyTemplate("")
+    setJourneyTemplateLanguage("")
     setTemplateDraft({ ...(DEFAULT_TEMPLATE_DRAFTS[(locale as Loc) || "en"] ?? DEFAULT_TEMPLATE_DRAFTS.en) })
   }, [locale])
 
@@ -275,8 +292,11 @@ export default function WhatsAppSettingsPage() {
       if (json.success) {
         setTicketStatuses(json.ticketStatuses || [])
         setStatusTemplates(json.data?.whatsappTicketStatusTemplates || {})
+        setStatusTemplateLanguages(json.data?.whatsappTicketStatusTemplateLanguages || {})
         setSurveyTemplate(json.data?.whatsappSurveyTemplate || "")
+        setSurveyTemplateLanguage(json.data?.whatsappSurveyTemplateLanguage || "")
         setJourneyTemplate(json.data?.whatsappJourneyDefaultTemplate || "")
+        setJourneyTemplateLanguage(json.data?.whatsappJourneyDefaultTemplateLanguage || "")
         setLegacyFallbackEnabled(Boolean(json.legacyFallbackEnabled))
         setSettingsLoaded(true)
         setSettingsDirty(false)
@@ -314,8 +334,11 @@ export default function WhatsAppSettingsPage() {
         },
         body: JSON.stringify({
           whatsappTicketStatusTemplates: statusTemplates,
+          whatsappTicketStatusTemplateLanguages: statusTemplateLanguages,
           whatsappSurveyTemplate: surveyTemplate,
+          whatsappSurveyTemplateLanguage: surveyTemplateLanguage,
           whatsappJourneyDefaultTemplate: journeyTemplate,
+          whatsappJourneyDefaultTemplateLanguage: journeyTemplateLanguage,
         }),
       })
       const json = await res.json()
@@ -455,14 +478,16 @@ export default function WhatsAppSettingsPage() {
     AUTHENTICATION: tw("categories.authentication"),
   }
 
-  function templateOptions(value: string) {
+  function templateOptions(name: string, language: string) {
     return <>
       <option value="">{tw("noSend")}</option>
-      {value && !approvedTemplates.some((template) => template.name === value) && (
-        <option value={value}>{tw("savedTemplateUnavailable", { name: value })}</option>
+      {name && !language ? (
+        <option value={templateChoiceValue(name, "")}>{tw("savedTemplateLanguageUnknown", { name })}</option>
+      ) : name && !approvedTemplates.some((template) => template.name === name && template.language === language) && (
+        <option value={templateChoiceValue(name, language)}>{tw("savedTemplateUnavailable", { name: `${name} (${language})` })}</option>
       )}
       {approvedTemplates.map((template) => (
-        <option key={template.id} value={template.name}>{template.name} ({template.language})</option>
+        <option key={template.id} value={templateChoiceValue(template.name, template.language)}>{template.name} ({template.language})</option>
       ))}
     </>
   }
@@ -865,14 +890,22 @@ export default function WhatsAppSettingsPage() {
                 <Label htmlFor={`wa-status-${status}`} className="text-sm">{ticketStatusLabels[status] || status}</Label>
                 <Select
                   id={`wa-status-${status}`}
-                  value={statusTemplates[status] || ""}
+                  value={templateChoiceValue(statusTemplates[status] || "", statusTemplateLanguages[status] || "")}
                   onChange={(e) => {
-                    const v = selectValue(e)
+                    const choice = readTemplateChoice(e.target.value)
+                    if (!choice) return
+                    const [name, language] = choice
                     setSettingsDirty(true)
                     setSettingsMsg(null)
                     setStatusTemplates(prev => {
                       const next = { ...prev }
-                      if (v) next[status] = v
+                      if (name) next[status] = name
+                      else delete next[status]
+                      return next
+                    })
+                    setStatusTemplateLanguages(prev => {
+                      const next = { ...prev }
+                      if (language) next[status] = language
                       else delete next[status]
                       return next
                     })
@@ -880,7 +913,7 @@ export default function WhatsAppSettingsPage() {
                   disabled={!canEditNotifications || (approvedTemplates.length === 0 && !statusTemplates[status])}
                   className="text-sm"
                 >
-                  {templateOptions(statusTemplates[status] || "")}
+                  {templateOptions(statusTemplates[status] || "", statusTemplateLanguages[status] || "")}
                 </Select>
               </div>
             ))}
@@ -896,12 +929,17 @@ export default function WhatsAppSettingsPage() {
             </p>
             <Select
               id="wa-survey-template"
-              value={surveyTemplate}
-              onChange={(e) => { setSurveyTemplate(selectValue(e)); setSettingsDirty(true); setSettingsMsg(null) }}
+              value={templateChoiceValue(surveyTemplate, surveyTemplateLanguage)}
+              onChange={(e) => {
+                const choice = readTemplateChoice(e.target.value)
+                if (!choice) return
+                setSurveyTemplate(choice[0]); setSurveyTemplateLanguage(choice[1])
+                setSettingsDirty(true); setSettingsMsg(null)
+              }}
               disabled={!canEditNotifications || (approvedTemplates.length === 0 && !surveyTemplate)}
               className="text-sm"
             >
-              {templateOptions(surveyTemplate)}
+              {templateOptions(surveyTemplate, surveyTemplateLanguage)}
             </Select>
           </div>
 
@@ -912,12 +950,17 @@ export default function WhatsAppSettingsPage() {
             </p>
             <Select
               id="wa-journey-template"
-              value={journeyTemplate}
-              onChange={(e) => { setJourneyTemplate(selectValue(e)); setSettingsDirty(true); setSettingsMsg(null) }}
+              value={templateChoiceValue(journeyTemplate, journeyTemplateLanguage)}
+              onChange={(e) => {
+                const choice = readTemplateChoice(e.target.value)
+                if (!choice) return
+                setJourneyTemplate(choice[0]); setJourneyTemplateLanguage(choice[1])
+                setSettingsDirty(true); setSettingsMsg(null)
+              }}
               disabled={!canEditNotifications || (approvedTemplates.length === 0 && !journeyTemplate)}
               className="text-sm"
             >
-              {templateOptions(journeyTemplate)}
+              {templateOptions(journeyTemplate, journeyTemplateLanguage)}
             </Select>
           </div>
         </div>

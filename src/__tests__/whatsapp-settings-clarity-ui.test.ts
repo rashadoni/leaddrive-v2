@@ -41,6 +41,7 @@ const templateData = (channel: string) => response({
   meta: { hasConfig: true, displayName: channel, lastValidatedAt: null, lastTemplateSyncAt: null },
 })
 const notificationData = (legacy = false, value = "") => response({ success: true, ticketStatuses: ["new", "in_progress"], legacyFallbackEnabled: legacy, data: { whatsappTicketStatusTemplates: value ? { new: value } : {}, whatsappSurveyTemplate: "", whatsappJourneyDefaultTemplate: "" } })
+const choice = (name: string, language = "") => name ? JSON.stringify([name, language]) : ""
 
 async function flush() {
   await act(async () => { for (let i = 0; i < 12; i++) await Promise.resolve() })
@@ -105,28 +106,41 @@ describe("WhatsApp settings — understandable and channel-bound interactions", 
 
   it("ignores a slow response for the previous sender", async () => {
     let resolveA!: (value: ReturnType<typeof response>) => void
+    let resolveSettingsA!: (value: ReturnType<typeof response>) => void
     const defaultFetch = fetchMock.getMockImplementation()!
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url.includes("/templates?") && url.includes("sender-a")) return new Promise((resolve) => { resolveA = resolve })
+      if (url.includes("/notification-settings?") && url.includes("sender-a")) return new Promise((resolve) => { resolveSettingsA = resolve })
       return defaultFetch(url, init)
     })
     await mount()
     await select("wa-selected-channel", "sender-a")
     await select("wa-selected-channel", "sender-b")
     await act(async () => resolveA(templateData("sender-a")))
+    await act(async () => resolveSettingsA(response({ success: true, ticketStatuses: ["new"], data: {
+      whatsappTicketStatusTemplates: { new: "sender-a_update" }, whatsappTicketStatusTemplateLanguages: { new: "ru" },
+      whatsappSurveyTemplate: "sender-a_update", whatsappSurveyTemplateLanguage: "ru",
+      whatsappJourneyDefaultTemplate: "sender-a_update", whatsappJourneyDefaultTemplateLanguage: "az",
+    } })))
     await flush()
     expect(container.textContent).toContain("sender-b_update")
     expect(container.textContent).not.toContain("sender-a_update")
+    for (const id of ["wa-status-new", "wa-survey-template", "wa-journey-template"]) {
+      expect(container.querySelector<HTMLSelectElement>(`#${id}`)!.value).toBe("")
+    }
   })
 
   it("keeps saved unavailable choices visible and asks before discarding edits on a sender switch", async () => {
     const defaultFetch = fetchMock.getMockImplementation()!
-    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => url.includes("/notification-settings") ? notificationData(false, "old_template") : defaultFetch(url, init))
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => url.includes("/notification-settings")
+      ? response({ success: true, ticketStatuses: ["new"], data: {
+        whatsappTicketStatusTemplates: { new: "old_template" }, whatsappTicketStatusTemplateLanguages: { new: "ru" },
+      } }) : defaultFetch(url, init))
     await mount()
     await select("wa-selected-channel", "sender-a")
     const status = container.querySelector<HTMLSelectElement>("#wa-status-new")!
-    expect(status.value).toBe("old_template")
-    expect(status.selectedOptions[0].textContent).toContain("saved, currently unavailable")
+    expect(status.value).toBe(choice("old_template", "ru"))
+    expect(status.selectedOptions[0].textContent).toContain("old_template (ru) — saved, currently unavailable")
     await select("wa-status-new", "")
     await select("wa-selected-channel", "sender-b")
     expect(container.querySelector<HTMLSelectElement>("#wa-selected-channel")!.value).toBe("sender-a")
@@ -154,9 +168,78 @@ describe("WhatsApp settings — understandable and channel-bound interactions", 
     await click("Save notifications")
     const saved = fetchMock.mock.calls.find(([, init]) => init?.method === "PUT")!
     expect(saved[0]).toBe("/api/v1/whatsapp/notification-settings?channelConfigId=sender-b")
-    expect(JSON.parse(saved[1]!.body as string)).toEqual({ whatsappTicketStatusTemplates: {}, whatsappSurveyTemplate: "", whatsappJourneyDefaultTemplate: "" })
+    expect(JSON.parse(saved[1]!.body as string)).toEqual({
+      whatsappTicketStatusTemplates: {}, whatsappTicketStatusTemplateLanguages: {},
+      whatsappSurveyTemplate: "", whatsappSurveyTemplateLanguage: "",
+      whatsappJourneyDefaultTemplate: "", whatsappJourneyDefaultTemplateLanguage: "",
+    })
     expect(container.textContent).toContain("Notification choices saved")
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/send"))).toBe(false)
+  })
+
+  it("preserves legacy choices and roundtrips the chosen RU/AZ version without confusing the same template name", async () => {
+    let savedSettings = {
+      whatsappTicketStatusTemplates: { new: "welcome" },
+      whatsappTicketStatusTemplateLanguages: {} as Record<string, string>,
+      whatsappSurveyTemplate: "welcome", whatsappSurveyTemplateLanguage: "",
+      whatsappJourneyDefaultTemplate: "welcome", whatsappJourneyDefaultTemplateLanguage: "",
+    }
+    const defaultFetch = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes("sender-a") && url.includes("/templates?")) return response({ success: true,
+        data: ["az", "ru"].map(language => ({ id: `welcome-${language}`, name: "welcome", language,
+          status: "APPROVED", category: "UTILITY", bodyText: "Your request is ready.", variables: [], buttons: null })),
+        meta: { hasConfig: true },
+      })
+      if (url.includes("sender-a") && url.includes("/notification-settings?")) {
+        if (init?.method === "PUT") savedSettings = JSON.parse(String(init.body)) as typeof savedSettings
+        return response({ success: true, ticketStatuses: ["new"], data: savedSettings })
+      }
+      return defaultFetch(url, init)
+    })
+    await mount()
+    await select("wa-selected-channel", "sender-a")
+    const selects = ["wa-status-new", "wa-survey-template", "wa-journey-template"]
+    for (const id of selects) {
+      const element = container.querySelector<HTMLSelectElement>(`#${id}`)!
+      expect(element.value).toBe(choice("welcome"))
+      expect(element.selectedOptions[0].textContent).toContain("saved without a language")
+      expect([...element.options].filter(option => option.textContent === "welcome (ru)").map(option => option.value)).toEqual([choice("welcome", "ru")])
+      expect([...element.options].filter(option => option.textContent === "welcome (az)").map(option => option.value)).toEqual([choice("welcome", "az")])
+    }
+    await click("Save notifications")
+    expect(savedSettings.whatsappTicketStatusTemplateLanguages).toEqual({})
+    expect(savedSettings.whatsappSurveyTemplateLanguage).toBe("")
+    expect(savedSettings.whatsappJourneyDefaultTemplateLanguage).toBe("")
+
+    await select("wa-status-new", choice("welcome", "ru"))
+    await select("wa-survey-template", choice("welcome", "az"))
+    await select("wa-journey-template", choice("welcome", "ru"))
+    await click("Save notifications")
+    expect(savedSettings).toEqual({
+      whatsappTicketStatusTemplates: { new: "welcome" }, whatsappTicketStatusTemplateLanguages: { new: "ru" },
+      whatsappSurveyTemplate: "welcome", whatsappSurveyTemplateLanguage: "az",
+      whatsappJourneyDefaultTemplate: "welcome", whatsappJourneyDefaultTemplateLanguage: "ru",
+    })
+
+    // A language-only edit is unsaved work even when the template name is unchanged.
+    await select("wa-status-new", choice("welcome", "az"))
+    await select("wa-selected-channel", "sender-b")
+    expect(container.querySelector<HTMLSelectElement>("#wa-selected-channel")!.value).toBe("sender-a")
+    await click("Discard and switch")
+    for (const id of selects) expect(container.querySelector<HTMLSelectElement>(`#${id}`)!.value).toBe("")
+    await select("wa-selected-channel", "sender-a")
+    expect(container.querySelector<HTMLSelectElement>("#wa-status-new")!.value).toBe(choice("welcome", "ru"))
+    expect(container.querySelector<HTMLSelectElement>("#wa-survey-template")!.value).toBe(choice("welcome", "az"))
+    expect(container.querySelector<HTMLSelectElement>("#wa-journey-template")!.value).toBe(choice("welcome", "ru"))
+
+    for (const id of selects) await select(id, "")
+    await click("Save notifications")
+    expect(savedSettings).toEqual({
+      whatsappTicketStatusTemplates: {}, whatsappTicketStatusTemplateLanguages: {},
+      whatsappSurveyTemplate: "", whatsappSurveyTemplateLanguage: "",
+      whatsappJourneyDefaultTemplate: "", whatsappJourneyDefaultTemplateLanguage: "",
+    })
   })
 
   it("distinguishes a verified phone from denied template access", async () => {

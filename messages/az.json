@@ -25971,6 +25971,7 @@
     "notificationVariablesTitle": "Müraciət nömrəsi necə doldurulur",
     "notificationVariablesHelp": "LeadDrive müraciət nömrəsini əlavə edir. Uyğun şablonu hazırlayarkən bu sahə adından istifadə edin:",
     "savedTemplateUnavailable": "{name} — saxlanılıb, hazırda əlçatan deyil",
+    "savedTemplateLanguageUnknown": "{name} — dil seçilmədən saxlanılıb; versiyanı seçin",
     "saveNotifications": "Bildirişləri saxla",
     "unsavedChanges": "Saxlanmamış dəyişikliklər var.",
     "notificationSaveHint": "Saxlama növbəti hadisələrə tətbiq olunur və indi mesaj göndərmir.",

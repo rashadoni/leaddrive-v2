@@ -25975,6 +25975,7 @@
     "notificationVariablesTitle": "Как подставляется номер обращения",
     "notificationVariablesHelp": "LeadDrive подставляет номер обращения. При подготовке соответствующего шаблона используйте это название поля:",
     "savedTemplateUnavailable": "{name} — сохранён, сейчас недоступен",
+    "savedTemplateLanguageUnknown": "{name} — сохранён без языка; выберите версию",
     "saveNotifications": "Сохранить уведомления",
     "unsavedChanges": "Есть несохранённые изменения.",
     "notificationSaveHint": "Сохранение действует на следующие события и не отправляет сообщение сейчас.",

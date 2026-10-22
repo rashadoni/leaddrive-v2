@@ -25975,6 +25975,7 @@
     "notificationVariablesTitle": "How the ticket number is filled in",
     "notificationVariablesHelp": "LeadDrive fills in the ticket number. Use this field name when preparing a matching template:",
     "savedTemplateUnavailable": "{name} — saved, currently unavailable",
+    "savedTemplateLanguageUnknown": "{name} — saved without a language; choose a version",
     "saveNotifications": "Save notifications",
     "unsavedChanges": "You have unsaved changes.",
     "notificationSaveHint": "Saving applies these choices to future events. It does not send a message now.",
