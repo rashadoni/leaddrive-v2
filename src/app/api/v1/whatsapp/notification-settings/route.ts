@@ -1,5 +1,7 @@
+import { selectWhatsAppSettingsChannel } from "@/lib/channels/whatsapp-settings-channel"
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { withRls } from "@/lib/with-rls"
 
@@ -31,10 +33,13 @@ const putSchema = z.object({
   whatsappJourneyDefaultTemplate: z.string().optional(),
 })
 
-export const GET = withRls(async (_req, { orgId }) => {
+export const GET = withRls(async (req, { orgId }) => {
+  const selection = await selectWhatsAppSettingsChannel(orgId, new URL(req.url).searchParams.get("channelConfigId"))
+  if (!selection.id) return NextResponse.json({ success: false, error: selection.error }, { status: selection.error === "whatsapp_channel_required" ? 409 : 404 })
+
 
   const cfg = await prisma.channelConfig.findFirst({
-    where: { organizationId: orgId, channelType: "whatsapp", isActive: true },
+    where: { id: selection.id, organizationId: orgId, channelType: "whatsapp", isActive: true },
     select: { id: true, settings: true },
   })
 
@@ -46,7 +51,7 @@ export const GET = withRls(async (_req, { orgId }) => {
     }, { status: 404 })
   }
 
-  const s = (cfg.settings as any) || {}
+  const s = (cfg.settings as Record<string, unknown> | null) || {}
   return NextResponse.json({
     success: true,
     data: {
@@ -55,10 +60,14 @@ export const GET = withRls(async (_req, { orgId }) => {
       whatsappJourneyDefaultTemplate: s.whatsappJourneyDefaultTemplate || "",
     },
     ticketStatuses: TICKET_STATUSES,
+    legacyFallbackEnabled: !Object.hasOwn(s, "whatsappTicketStatusTemplates") || !Object.hasOwn(s, "whatsappSurveyTemplate"),
   })
 })
 
 export const PUT = withRls(async (req, { orgId }) => {
+  const selection = await selectWhatsAppSettingsChannel(orgId, new URL(req.url).searchParams.get("channelConfigId"))
+  if (!selection.id) return NextResponse.json({ success: false, error: selection.error }, { status: selection.error === "whatsapp_channel_required" ? 409 : 404 })
+
 
   const body = await req.json().catch(() => null)
   const parsed = putSchema.safeParse(body)
@@ -67,46 +76,38 @@ export const PUT = withRls(async (req, { orgId }) => {
   }
 
   const cfg = await prisma.channelConfig.findFirst({
-    where: { organizationId: orgId, channelType: "whatsapp", isActive: true },
+    where: { id: selection.id, organizationId: orgId, channelType: "whatsapp", isActive: true },
     select: { id: true, settings: true },
   })
   if (!cfg) {
     return NextResponse.json({ error: "WhatsApp not configured" }, { status: 404 })
   }
 
-  // Drop empty values so the settings blob doesn't accumulate noise. If the
-  // user cleared a dropdown, we actually *remove* the key — the runtime
-  // treats "missing" and "empty string" the same (silently skip), but a
-  // smaller JSON is nicer to read in SQL and in UI later.
-  const patch: Record<string, any> = {}
+  // A blank selection is persisted as an explicit opt-out from this automatic
+  // notification. An absent key belongs to legacy configuration.
+  const patch: Record<string, Prisma.InputJsonValue> = {}
 
   if (parsed.data.whatsappTicketStatusTemplates !== undefined) {
     const cleaned: Record<string, string> = {}
     for (const [k, v] of Object.entries(parsed.data.whatsappTicketStatusTemplates)) {
-      if (v && TICKET_STATUSES.includes(k as any)) cleaned[k] = v
+      if (v && TICKET_STATUSES.includes(k as typeof TICKET_STATUSES[number])) cleaned[k] = v
     }
     patch.whatsappTicketStatusTemplates = cleaned
   }
 
   if (parsed.data.whatsappSurveyTemplate !== undefined) {
-    patch.whatsappSurveyTemplate = parsed.data.whatsappSurveyTemplate || null
+    patch.whatsappSurveyTemplate = parsed.data.whatsappSurveyTemplate || ""
   }
 
   if (parsed.data.whatsappJourneyDefaultTemplate !== undefined) {
-    patch.whatsappJourneyDefaultTemplate = parsed.data.whatsappJourneyDefaultTemplate || null
+    patch.whatsappJourneyDefaultTemplate = parsed.data.whatsappJourneyDefaultTemplate || ""
   }
 
-  const existing = (cfg.settings as any) || {}
+  const existing = (cfg.settings as Prisma.InputJsonObject | null) || {}
   const merged = { ...existing, ...patch }
 
-  // Null values: drop them from the final object so we don't persist dead keys.
-  for (const [k, v] of Object.entries(merged)) {
-    if (v === null || v === "") delete merged[k]
-  }
-  // Empty map also drops.
-  if (merged.whatsappTicketStatusTemplates && Object.keys(merged.whatsappTicketStatusTemplates).length === 0) {
-    delete merged.whatsappTicketStatusTemplates
-  }
+  // Empty values are intentional "do not send" choices, distinct from legacy
+  // settings that predate notification configuration. Preserve them.
 
   await prisma.channelConfig.update({
     where: { id: cfg.id },

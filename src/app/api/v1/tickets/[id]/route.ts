@@ -1,3 +1,4 @@
+import { selectWhatsAppAutomationChannel } from "@/lib/channels/whatsapp-settings-channel"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma, logAudit } from "@/lib/prisma"
@@ -39,6 +40,7 @@ import { systemCommentText } from "@/lib/ticketing/chat-transcript"
 type WhatsAppStatusNotificationResult = { surveyHandled: boolean } | undefined
 type WhatsAppTicketStatusSettings = {
   whatsappTicketStatusTemplates?: Record<string, string>
+  whatsappSurveyTemplate?: string
 }
 type ChannelMessageMetadata = {
   waPhone?: unknown
@@ -425,16 +427,19 @@ export const PUT = withRlsAuth("tickets", "write", async (req: NextRequest, auth
           locale: customer.locale,
         })
         if (closureRequest.channel === "whatsapp" && closureRequest.recipient) {
-          sendWhatsAppMessage({
-            to: closureRequest.recipient,
+          const closureRecipient = closureRequest.recipient
+          const confirmationUrl = closureRequest.confirmationUrl
+          selectWhatsAppAutomationChannel(orgId, closureRecipient).then(selection => selection.id ? sendWhatsAppMessage({
+            to: closureRecipient,
             organizationId: orgId,
+            channelConfigId: selection.id,
             contactId: updated.contactId || undefined,
             message: closureRequestWhatsAppText(customer.locale, {
               ticketNumber: updated.ticketNumber,
-              confirmationUrl: closureRequest.confirmationUrl,
+              confirmationUrl,
             }),
             forceText: true,
-          }).catch(err => console.error("[ticket-closure] whatsapp request failed:", err))
+          }) : undefined).catch(err => console.error("[ticket-closure] whatsapp request failed:", err))
         } else if (closureRequest.recipient && closureRequest.recipient.includes("@")) {
           sendTicketClosureEmail({
             to: closureRequest.recipient,
@@ -588,15 +593,6 @@ async function sendWhatsAppStatusNotification(
   ticket: { id: string; ticketNumber: string | null; description: string | null; contactId: string | null; tags: string[] },
   newStatus: string,
 ): Promise<WhatsAppStatusNotificationResult> {
-  // Resolve tenant's configured template mapping from ChannelConfig.settings.
-  const waConfig = await prisma.channelConfig.findFirst({
-    where: { organizationId: orgId, channelType: "whatsapp", isActive: true },
-    select: { settings: true },
-  })
-  const settings = waConfig?.settings as WhatsAppTicketStatusSettings | null | undefined
-  const tmplMap = settings?.whatsappTicketStatusTemplates || {}
-  const templateName: string | undefined = tmplMap[newStatus]
-
   const ticketNumber = ticket.ticketNumber || ticket.id.slice(0, 8)
 
   // Extract phone — same heuristics as before.
@@ -627,6 +623,21 @@ async function sendWhatsAppStatusNotification(
     return
   }
 
+  const selection = await selectWhatsAppAutomationChannel(orgId, waPhone)
+  if (!selection.id) return
+  // Resolve tenant's configured template mapping from ChannelConfig.settings.
+  const waConfig = await prisma.channelConfig.findFirst({
+    where: { id: selection.id, organizationId: orgId, channelType: "whatsapp", isActive: true },
+    select: { settings: true },
+  })
+  const settings = waConfig?.settings as WhatsAppTicketStatusSettings | null | undefined
+  const tmplMap = settings?.whatsappTicketStatusTemplates || {}
+  const templateName: string | undefined = tmplMap[newStatus]
+
+  // Saving an empty dropdown explicitly disables this notification. Older
+  // tenants with no settings key retain their existing session-text fallback.
+  if (settings && Object.hasOwn(settings, "whatsappTicketStatusTemplates") && !templateName) return
+
   // When the ticket transitions into "resolved" and the tenant has an
   // active survey wired to afterTicketResolve, merge the survey invite
   // into this same WhatsApp message. Customer gets ONE message with
@@ -636,7 +647,10 @@ async function sendWhatsAppStatusNotification(
   // for this ticket to avoid duplicates.
   let surveyAppendix = ""
   let surveyHandled = false
-  if (newStatus === "resolved") {
+  // Only legacy session-text notifications can embed a survey. A status
+  // template has no survey link; configured survey templates (or explicit
+  // off) belong to the standalone survey sender and must not be bypassed.
+  if (newStatus === "resolved" && !templateName && !Object.hasOwn(settings || {}, "whatsappSurveyTemplate")) {
     const activeSurvey = await prisma.survey.findFirst({
       where: { organizationId: orgId, status: "active" },
       select: { id: true, name: true, publicSlug: true, triggers: true },
@@ -674,6 +688,7 @@ async function sendWhatsAppStatusNotification(
         templateName,
         templateVariables: { "1": ticketNumber, ticketNumber },
         organizationId: orgId,
+        channelConfigId: selection.id,
         contactId: ticket.contactId || undefined,
       })
     : fallbackWithSurvey
@@ -681,6 +696,7 @@ async function sendWhatsAppStatusNotification(
         to: waPhone,
         message: fallbackWithSurvey,
         organizationId: orgId,
+        channelConfigId: selection.id,
         contactId: ticket.contactId || undefined,
       })
     : { success: false, error: "no-template-no-fallback" }

@@ -494,12 +494,13 @@ export async function sendWhatsAppCallAction({
  */
 export async function listApprovedTemplates(
   organizationId: string,
-  opts: { language?: string; category?: string } = {},
+  opts: { language?: string; category?: string; channelConfigId?: string } = {},
 ) {
   return prisma.whatsAppTemplate.findMany({
     where: {
       organizationId,
       status: "APPROVED",
+      ...(opts.channelConfigId ? { channelConfigId: opts.channelConfigId } : {}),
       ...(opts.language ? { language: opts.language } : {}),
       ...(opts.category ? { category: opts.category } : {}),
     },
@@ -541,16 +542,10 @@ async function insideSessionWindow(
   return hours >= 0 && hours < SESSION_WINDOW_HOURS
 }
 
-/**
- * The number a message goes out from. The conversation's channel names it; without one — or when that
- * row is gone or switched off — the workspace's WhatsApp number answers, as it always did. A workspace
- * with two numbers (routine since Embedded Signup, lib/whatsapp-embedded-signup) otherwise answered a
- * customer from the number they never wrote to: outside that number's 24h window, so Meta refused it.
- */
+/** A named sender is authoritative: a missing/disabled channel must never switch numbers. */
 async function resolveSendingConfig(organizationId: string, channelConfigId?: string | null) {
   if (channelConfigId) {
-    const own = await resolveWhatsAppConfig(organizationId, { channelConfigId })
-    if (own) return own
+    return resolveWhatsAppConfig(organizationId, { channelConfigId })
   }
   return resolveWhatsAppConfig(organizationId)
 }
@@ -667,6 +662,7 @@ export async function sendWhatsAppTemplate({
     where: {
       organizationId,
       name: templateName,
+      channelConfigId: config.id,
       status: "APPROVED",
       ...(languageCode ? { language: languageCode } : {}),
     },
@@ -917,12 +913,12 @@ export async function sendWhatsAppMedia({
 //
 // Fetches approved templates from Graph API and upserts them into the
 // whatsapp_templates table. Called from the admin UI "Sync" button.
-export async function syncTemplatesFromMeta(organizationId: string): Promise<{
+export async function syncTemplatesFromMeta(organizationId: string, opts: { channelConfigId?: string } = {}): Promise<{
   success: boolean
   synced: number
   error?: string
 }> {
-  const config = await resolveWhatsAppConfig(organizationId)
+  const config = await resolveWhatsAppConfig(organizationId, opts)
   if (!config) {
     return { success: false, synced: 0, error: "WhatsApp not configured" }
   }
@@ -948,8 +944,9 @@ export async function syncTemplatesFromMeta(organizationId: string): Promise<{
 
         await prisma.whatsAppTemplate.upsert({
           where: {
-            organizationId_name_language: {
+            organizationId_channelConfigId_name_language: {
               organizationId,
+              channelConfigId: config.id,
               name: t.name,
               language: t.language,
             },
@@ -1011,6 +1008,7 @@ function extractPositionalTemplateVariables(bodyText: string): string[] {
 export async function createWhatsAppTemplateInMeta(
   organizationId: string,
   input: CreateWhatsAppTemplateInput,
+  opts: { channelConfigId?: string } = {},
 ): Promise<{
   success: boolean
   status?: number
@@ -1025,7 +1023,7 @@ export async function createWhatsAppTemplateInMeta(
   error?: string
   data?: Record<string, unknown>
 }> {
-  const config = await resolveWhatsAppConfig(organizationId)
+  const config = await resolveWhatsAppConfig(organizationId, opts)
   if (!config) {
     return { success: false, error: "WhatsApp not configured" }
   }
@@ -1098,8 +1096,9 @@ export async function createWhatsAppTemplateInMeta(
 
     const template = await prisma.whatsAppTemplate.upsert({
       where: {
-        organizationId_name_language: {
+        organizationId_channelConfigId_name_language: {
           organizationId,
+          channelConfigId: config.id,
           name,
           language,
         },
@@ -1208,8 +1207,9 @@ function extractTemplateParts(components: any[]): {
 // ─── Validate credentials ────────────────────────────────────────────
 export async function validateWhatsAppCredentials(
   organizationId: string,
+  opts: { channelConfigId?: string } = {},
 ): Promise<{ ok: boolean; verifiedName?: string; displayPhoneNumber?: string; error?: string }> {
-  const config = await resolveWhatsAppConfig(organizationId)
+  const config = await resolveWhatsAppConfig(organizationId, opts)
   if (!config) return { ok: false, error: "WhatsApp not configured" }
 
   try {

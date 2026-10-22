@@ -3415,7 +3415,7 @@ model WhatsAppTemplate {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  @@unique([organizationId, name, language])
+  @@unique([organizationId, channelConfigId, name, language], map: "whatsapp_templates_org_channel_name_language_key")
   @@index([organizationId, status])
   @@index([channelConfigId])
   @@map("whatsapp_templates")

@@ -82,18 +82,18 @@ describe("sending WhatsApp from the conversation's number", () => {
     ])
   })
 
-  it("keeps the workspace's number when no channel is named, or the named one is gone", async () => {
+  it("keeps the legacy default only when no channel is named; never switches an explicit sender", async () => {
     await sendWhatsAppMessage({ to: "994501234567", message: "a", organizationId: "org_1", forceText: true })
     await sendWhatsAppMessage({ to: "994501234567", message: "b", organizationId: "org_1", forceText: true, channelConfigId: "wa_deleted" })
     db.rows[1].isActive = false
     await sendWhatsAppMessage({ to: "994501234567", message: "c", organizationId: "org_1", forceText: true, channelConfigId: "wa_new" })
-    expect(calls.map((c) => c.auth)).toEqual(["Bearer TOKEN_OLD", "Bearer TOKEN_OLD", "Bearer TOKEN_OLD"])
+    expect(calls.map((c) => c.auth)).toEqual(["Bearer TOKEN_OLD"])
   })
 
   it("never borrows another workspace's channel", async () => {
     db.rows.push({ id: "wa_foreign", organizationId: "org_2", channelType: "whatsapp", isActive: true, phoneNumberId: "999", accessToken: "TOKEN_FOREIGN" })
     await sendWhatsAppMessage({ to: "994501234567", message: "x", organizationId: "org_1", forceText: true, channelConfigId: "wa_foreign" })
-    expect(calls.map((c) => c.auth)).toEqual(["Bearer TOKEN_OLD"])
+    expect(calls).toEqual([])
   })
 })
 

@@ -1,3 +1,4 @@
+import { selectWhatsAppAutomationChannel } from "@/lib/channels/whatsapp-settings-channel"
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/email"
 import { sendSms } from "@/lib/sms"
@@ -78,11 +79,17 @@ export async function sendSurveyInvite({
       // Without a template, fall back to plain text inside the 23h session
       // window — the library itself blocks free-form text outside the
       // window, so this is safe (no policy violation).
+      const selection = await selectWhatsAppAutomationChannel(organizationId, phone)
+      if (!selection.id) return { ok: false, error: selection.error || "WhatsApp not configured" }
       const waConfig = await prisma.channelConfig.findFirst({
-        where: { organizationId, channelType: "whatsapp", isActive: true },
+        where: { id: selection.id, organizationId, channelType: "whatsapp", isActive: true },
         select: { settings: true },
       })
-      const templateName = (waConfig?.settings as any)?.whatsappSurveyTemplate
+      const settings = waConfig?.settings as Record<string, unknown> | null
+      const templateName = typeof settings?.whatsappSurveyTemplate === "string" ? settings.whatsappSurveyTemplate : ""
+      if (settings && Object.hasOwn(settings, "whatsappSurveyTemplate") && !templateName) {
+        return { ok: false, error: "WhatsApp survey notifications disabled" }
+      }
       const { sendWhatsAppMessage } = await import("@/lib/whatsapp")
 
       const fallbackText = `${survey.name}\n${link}`
@@ -99,12 +106,14 @@ export async function sendSurveyInvite({
               survey_link: link,
             },
             organizationId,
+            channelConfigId: selection.id,
             contactId: contactId || undefined,
           })
         : await sendWhatsAppMessage({
             to: phone,
             message: fallbackText,
             organizationId,
+            channelConfigId: selection.id,
             contactId: contactId || undefined,
           })
 

@@ -1,3 +1,4 @@
+import { selectWhatsAppAutomationChannel } from "@/lib/channels/whatsapp-settings-channel"
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/email"
 import { sendSms } from "@/lib/sms"
@@ -513,8 +514,14 @@ async function processClaimedEnrollmentStep(
           result = { stepId: currentStep.id, stepType: "send_whatsapp", status: "completed", message: `WhatsApp skipped (no phone)` }
           break
         }
+        const selection = await selectWhatsAppAutomationChannel(orgId, recipientPhone,
+          typeof config.channelConfigId === "string" ? config.channelConfigId : undefined)
+        if (!selection.id) {
+          result = { stepId: currentStep.id, stepType: "send_whatsapp", status: "completed", message: "WhatsApp skipped: choose an active business number" }
+          break
+        }
         const waChannel = await prisma.channelConfig.findFirst({
-          where: { organizationId: orgId, channelType: "whatsapp", isActive: true },
+          where: { id: selection.id, organizationId: orgId, channelType: "whatsapp", isActive: true },
         })
         const configTemplate = (config as any).templateName as string | undefined
         const settingsTemplate = (waChannel?.settings as any)?.whatsappJourneyDefaultTemplate as string | undefined
@@ -544,6 +551,7 @@ async function processClaimedEnrollmentStep(
               due_date: invoiceDueDate || "-",
             },
             organizationId: orgId,
+            channelConfigId: selection.id,
           })
           if (waRes.success) {
             result = { stepId: currentStep.id, stepType: "send_whatsapp", status: "completed", message: `WhatsApp sent to ${recipientPhone}: ${waRes.messageId}` }

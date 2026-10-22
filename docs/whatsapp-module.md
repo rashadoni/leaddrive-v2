@@ -83,3 +83,39 @@ main and verify the exact artifact SHA before testing real delivery and AI repli
 
 Meta partner status, immunity from WhatsApp bans, unlimited usage and seven-day
 staff support are not software features established by this change.
+
+
+## Connection-specific settings and notification choices
+
+The WhatsApp settings page lists active business numbers explicitly. A workspace
+with two numbers must choose one before syncing/creating templates, checking the
+connection, or editing notification mappings. Reads and writes bind that choice
+to the authenticated tenant; a missing or disabled number never selects another
+number as a fallback. Template name/language uniqueness now includes the channel,
+so synchronizing identical template names on two numbers preserves both records.
+
+Saved empty notification selections mean **do not send**. Existing configurations
+without these keys retain their previous session-text behavior until an admin
+saves the choices; the page displays this legacy behavior. Ticket/survey/journey
+notifications resolve the sole business number in the recipient's inbound history
+(or the sole active number if there is no history); ambiguous routing skips the
+send. Explicit journey channel selections remain authoritative.
+
+Ticket-closure confirmations also follow the recipient's unambiguous business
+number. A status template does not claim to contain a survey link: the standalone
+survey sender remains responsible for its configured template or explicit off.
+Only legacy plain-text status messages can embed the legacy survey invitation.
+Status-template variables currently bind the ticket number; they do not invent
+status or agent-name values. The saved status/survey mappings identify templates
+by name, while campaign and journey steps can specify an explicit language.
+
+A successful phone check does not establish template-management permission. The
+page separates connection checks, cached template loading, Meta synchronization,
+and notification saving, including permission-denied and stale-response handling.
+No provider credentials or permissions are changed by these UI improvements.
+
+The template-identity migration preserves existing rows and changes a unique
+index. If an old build is restored after this migration, its old template upsert
+key is incompatible: prefer a forward fix. Restoring the old index first requires
+checking for names shared across channels; do not delete template rows to force
+rollback compatibility.
