@@ -77,7 +77,48 @@ describe("explicit WhatsApp settings channel", () => {
     vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ ...row, settings: { replyMode: "ai", whatsappSurveyTemplate: "old" } } as never)
     const res = await save(req("notification-settings?channelConfigId=wa_b", "PUT", { whatsappTicketStatusTemplates: {}, whatsappSurveyTemplate: "", whatsappJourneyDefaultTemplate: "" }))
     expect(res.status).toBe(200)
-    expect(prisma.channelConfig.update).toHaveBeenCalledWith({ where: { id: "wa_b" }, data: { settings: { replyMode: "ai", whatsappTicketStatusTemplates: {}, whatsappSurveyTemplate: "", whatsappJourneyDefaultTemplate: "" } } })
+    expect(prisma.channelConfig.update).toHaveBeenCalledWith({ where: { id: "wa_b" }, data: { settings: { replyMode: "ai", whatsappTicketStatusTemplates: {}, whatsappTicketStatusTemplateLanguages: {}, whatsappSurveyTemplate: "", whatsappSurveyTemplateLanguage: "", whatsappJourneyDefaultTemplate: "", whatsappJourneyDefaultTemplateLanguage: "" } } })
+  })
+  it("round-trips the selected language for status, survey and journey templates", async () => {
+    const selection = {
+      whatsappTicketStatusTemplates: { open: "welcome" }, whatsappTicketStatusTemplateLanguages: { open: "ru" },
+      whatsappSurveyTemplate: "welcome", whatsappSurveyTemplateLanguage: "az",
+      whatsappJourneyDefaultTemplate: "welcome", whatsappJourneyDefaultTemplateLanguage: "ru",
+    }
+    const response = await save(req("notification-settings?channelConfigId=wa_b", "PUT", selection))
+    expect(response.status).toBe(200)
+    const persisted = vi.mocked(prisma.channelConfig.update).mock.calls[0][0].data.settings
+    expect(persisted).toEqual(selection)
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ ...row, settings: persisted } as never)
+    expect((await (await settings(req("notification-settings?channelConfigId=wa_b"))).json()).data).toEqual(selection)
+  })
+  it.each([false, true])("preserves language only for unchanged names in a legacy PUT (change=%s)", async (change) => {
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ ...row, settings: {
+      whatsappTicketStatusTemplates: { open: "welcome" }, whatsappTicketStatusTemplateLanguages: { open: "ru" },
+      whatsappSurveyTemplate: "welcome", whatsappSurveyTemplateLanguage: "ru",
+      whatsappJourneyDefaultTemplate: "welcome", whatsappJourneyDefaultTemplateLanguage: "ru",
+    } } as never)
+    const name = change ? "another_template" : "welcome"
+    await save(req("notification-settings?channelConfigId=wa_b", "PUT", {
+      whatsappTicketStatusTemplates: { open: name }, whatsappSurveyTemplate: name, whatsappJourneyDefaultTemplate: name,
+    }))
+    expect(vi.mocked(prisma.channelConfig.update).mock.calls[0][0].data.settings).toMatchObject({
+      whatsappTicketStatusTemplateLanguages: change ? {} : { open: "ru" },
+      whatsappSurveyTemplateLanguage: change ? "" : "ru", whatsappJourneyDefaultTemplateLanguage: change ? "" : "ru",
+    })
+  })
+  it("clears stale language when notifications are turned off", async () => {
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ ...row, settings: {
+      whatsappTicketStatusTemplates: { open: "welcome" }, whatsappTicketStatusTemplateLanguages: { open: "ru" },
+      whatsappSurveyTemplate: "welcome", whatsappSurveyTemplateLanguage: "ru",
+      whatsappJourneyDefaultTemplate: "welcome", whatsappJourneyDefaultTemplateLanguage: "ru",
+    } } as never)
+    await save(req("notification-settings?channelConfigId=wa_b", "PUT", {
+      whatsappTicketStatusTemplates: {}, whatsappSurveyTemplate: "", whatsappJourneyDefaultTemplate: "",
+    }))
+    expect(vi.mocked(prisma.channelConfig.update).mock.calls[0][0].data.settings).toMatchObject({
+      whatsappTicketStatusTemplateLanguages: {}, whatsappSurveyTemplateLanguage: "", whatsappJourneyDefaultTemplateLanguage: "",
+    })
   })
   it("exposes the legacy plain-text fallback instead of calling it disabled", async () => {
     expect((await (await settings(req("notification-settings?channelConfigId=wa_b"))).json()).legacyFallbackEnabled).toBe(true)

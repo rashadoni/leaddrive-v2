@@ -523,9 +523,13 @@ async function processClaimedEnrollmentStep(
         const waChannel = await prisma.channelConfig.findFirst({
           where: { id: selection.id, organizationId: orgId, channelType: "whatsapp", isActive: true },
         })
-        const configTemplate = (config as any).templateName as string | undefined
-        const settingsTemplate = (waChannel?.settings as any)?.whatsappJourneyDefaultTemplate as string | undefined
+        const waSettings = waChannel?.settings as Record<string, unknown> | null
+        const configTemplate = typeof config.templateName === "string" ? config.templateName : undefined
+        const settingsTemplate = typeof waSettings?.whatsappJourneyDefaultTemplate === "string" ? waSettings.whatsappJourneyDefaultTemplate : undefined
         const templateName = configTemplate || settingsTemplate
+        const stepLanguage = typeof config.languageCode === "string" ? config.languageCode : undefined
+        const defaultLanguage = typeof waSettings?.whatsappJourneyDefaultTemplateLanguage === "string" ? waSettings.whatsappJourneyDefaultTemplateLanguage : undefined
+        const languageCode = stepLanguage || (!configTemplate ? defaultLanguage : undefined)
         if (!templateName) {
           result = { stepId: currentStep.id, stepType: "send_whatsapp", status: "completed", message: `WhatsApp skipped (no template configured; set step.config.templateName or ChannelConfig.settings.whatsappJourneyDefaultTemplate)` }
           break
@@ -537,7 +541,7 @@ async function processClaimedEnrollmentStep(
           const waRes = await sendWhatsAppTemplate({
             to: recipientPhone,
             templateName,
-            languageCode: (config as any).languageCode,
+            languageCode: languageCode || undefined,
             variables: {
               "1": recipientName || recipientPhone,
               "2": invoiceNumber || "-",

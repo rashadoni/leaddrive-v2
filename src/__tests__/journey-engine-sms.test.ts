@@ -17,7 +17,7 @@ type JourneyWhatsAppConfig = {
   organizationId: string
   channelType: string
   isActive: boolean
-  settings: { whatsappJourneyDefaultTemplate?: string }
+  settings: { whatsappJourneyDefaultTemplate?: string; whatsappJourneyDefaultTemplateLanguage?: string }
 }
 
 const state: {
@@ -344,7 +344,7 @@ describe("journey-engine — WhatsApp step sender and saved notification choices
     state.journey.steps[0].config = config
     state.whatsappConfigs = [
       { id: "wa_a", organizationId: "org_1", channelType: "whatsapp", isActive: true, settings: { whatsappJourneyDefaultTemplate: "office_a_default" } },
-      { id: "wa_b", organizationId: "org_1", channelType: "whatsapp", isActive: true, settings: { whatsappJourneyDefaultTemplate: "office_b_default" } },
+      { id: "wa_b", organizationId: "org_1", channelType: "whatsapp", isActive: true, settings: { whatsappJourneyDefaultTemplate: "office_b_default", whatsappJourneyDefaultTemplateLanguage: "ru" } },
     ]
   }
 
@@ -380,8 +380,20 @@ describe("journey-engine — WhatsApp step sender and saved notification choices
     expect(result.message).toContain("WhatsApp sent")
     expect(mockSendWhatsAppTemplate).toHaveBeenCalledTimes(1)
     expect(mockSendWhatsAppTemplate).toHaveBeenCalledWith(expect.objectContaining({
-      channelConfigId: "wa_b", templateName: "office_b_default", organizationId: "org_1",
+      channelConfigId: "wa_b", templateName: "office_b_default", languageCode: "ru", organizationId: "org_1",
     }))
+  })
+
+  it("allows a step language to override the saved default language", async () => {
+    setupWhatsApp({ channelConfigId: "wa_b", languageCode: "az" })
+    await processEnrollmentStep("enr_1", "org_1")
+    expect(mockSendWhatsAppTemplate).toHaveBeenCalledWith(expect.objectContaining({ templateName: "office_b_default", languageCode: "az" }))
+  })
+
+  it("does not borrow a different default template's language for an explicit step template", async () => {
+    setupWhatsApp({ channelConfigId: "wa_b", templateName: "step_template" })
+    await processEnrollmentStep("enr_1", "org_1")
+    expect(mockSendWhatsAppTemplate).toHaveBeenCalledWith(expect.objectContaining({ templateName: "step_template", languageCode: undefined }))
   })
 
   it("does not send when the selected sender's default was explicitly turned off", async () => {

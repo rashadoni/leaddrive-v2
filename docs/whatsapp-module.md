@@ -106,8 +106,12 @@ number. A status template does not claim to contain a survey link: the standalon
 survey sender remains responsible for its configured template or explicit off.
 Only legacy plain-text status messages can embed the legacy survey invitation.
 Status-template variables currently bind the ticket number; they do not invent
-status or agent-name values. The saved status/survey mappings identify templates
-by name, while campaign and journey steps can specify an explicit language.
+status or agent-name values. Status, survey and default journey selections save
+both template name and language; same-name AZ/RU variants remain distinct. Legacy
+name-only selections stay visible without silently choosing a language. Changing
+an old name without a language clears its stale language. An explicit journey
+step language overrides the default, and an explicit step template never borrows
+a different default template's language.
 
 A successful phone check does not establish template-management permission. The
 page separates connection checks, cached template loading, Meta synchronization,

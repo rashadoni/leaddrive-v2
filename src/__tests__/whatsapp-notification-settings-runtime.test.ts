@@ -25,9 +25,9 @@ describe("saved WhatsApp notification choices", () => {
     expect(prisma.survey.update).not.toHaveBeenCalled()
   })
   it("sends the selected template from the business number that received the customer", async () => {
-    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ id: "wa_b", settings: { whatsappSurveyTemplate: "survey_b" } } as never)
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ id: "wa_b", settings: { whatsappSurveyTemplate: "survey_b", whatsappSurveyTemplateLanguage: "ru" } } as never)
     expect(await sendSurveyInvite(input)).toEqual({ ok: true })
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith(expect.objectContaining({ channelConfigId: "wa_b", templateName: "survey_b", organizationId: "org_1" }))
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(expect.objectContaining({ channelConfigId: "wa_b", templateName: "survey_b", templateLanguage: "ru", organizationId: "org_1" }))
   })
   it("preserves legacy session-text behavior until the owner saves new choices", async () => {
     expect(await sendSurveyInvite(input)).toEqual({ ok: true })

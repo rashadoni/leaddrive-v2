@@ -99,6 +99,7 @@ export async function sendSurveyInvite({
             to: phone,
             message: `[template:${templateName}]`,
             templateName,
+            templateLanguage: typeof settings?.whatsappSurveyTemplateLanguage === "string" ? settings.whatsappSurveyTemplateLanguage || undefined : undefined,
             templateVariables: {
               "1": survey.name,
               "2": link,

@@ -822,12 +822,12 @@ describe("WhatsApp ticket notification choices", () => {
     vi.mocked(prisma.ticket.findFirst).mockResolvedValueOnce(original as never).mockResolvedValueOnce({ ...original, status: "in_progress" } as never)
     vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 } as never)
     vi.mocked(prisma.channelMessage.findMany).mockResolvedValue([{ channelConfigId: "wa_b" }] as never)
-    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ id: "wa_b", settings: { whatsappTicketStatusTemplates: off ? {} : { in_progress: "progress_b" } } } as never)
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ id: "wa_b", settings: { whatsappTicketStatusTemplates: off ? {} : { in_progress: "progress_b" }, whatsappTicketStatusTemplateLanguages: { in_progress: "ru" } } } as never)
     const res = await PUT(makeRequest("http://localhost/api/v1/tickets/tkwa", { method: "PUT", body: JSON.stringify({ status: "in_progress" }) }), makeParams("tkwa"))
     expect(res.status).toBe(200)
     await vi.waitFor(() => expect(prisma.channelConfig.findFirst).toHaveBeenCalledWith(expect.objectContaining({ select: { settings: true } })))
     if (off) expect(sendWhatsAppMessage).not.toHaveBeenCalled()
-    else await vi.waitFor(() => expect(sendWhatsAppMessage).toHaveBeenCalledWith(expect.objectContaining({ channelConfigId: "wa_b", templateName: "progress_b" })))
+    else await vi.waitFor(() => expect(sendWhatsAppMessage).toHaveBeenCalledWith(expect.objectContaining({ channelConfigId: "wa_b", templateName: "progress_b", templateLanguage: "ru" })))
   })
 
   it.each([

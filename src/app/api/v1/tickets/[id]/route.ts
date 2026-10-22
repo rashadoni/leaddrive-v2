@@ -40,6 +40,7 @@ import { systemCommentText } from "@/lib/ticketing/chat-transcript"
 type WhatsAppStatusNotificationResult = { surveyHandled: boolean } | undefined
 type WhatsAppTicketStatusSettings = {
   whatsappTicketStatusTemplates?: Record<string, string>
+  whatsappTicketStatusTemplateLanguages?: Record<string, string>
   whatsappSurveyTemplate?: string
 }
 type ChannelMessageMetadata = {
@@ -686,6 +687,7 @@ async function sendWhatsAppStatusNotification(
         to: waPhone,
         message: `[template:${templateName}]`,
         templateName,
+        templateLanguage: settings?.whatsappTicketStatusTemplateLanguages?.[newStatus] || undefined,
         templateVariables: { "1": ticketNumber, ticketNumber },
         organizationId: orgId,
         channelConfigId: selection.id,
