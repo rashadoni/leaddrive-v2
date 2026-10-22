@@ -7,7 +7,7 @@
  * subdir policy, and path validation form the serving boundary.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { NextRequest, NextResponse } from "next/server"
 
 vi.mock("fs/promises", () => ({
@@ -51,6 +51,8 @@ import { GET } from "@/app/api/v1/uploads/[...path]/route"
 import { stat, readFile } from "fs/promises"
 import { createReadStream } from "fs"
 import { Readable } from "stream"
+import { resetMasterKekCache } from "@/lib/crypto/tenant-pii-encryption"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import { orgHasModule, requireSessionAuth } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { resetMtmFieldScopeMemo } from "@/lib/mtm/field-access"
@@ -567,5 +569,58 @@ describe("GET /api/v1/uploads/[...path]", () => {
       const res = await GET(req(), pp(["mtm-photos", "weird.bin"]))
       expect(res.headers.get("content-disposition")).toMatch(/^attachment; filename="weird\.bin"$/)
     })
+  })
+})
+
+describe("encrypted files at rest", () => {
+  const PLAIN = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(70_000, 7)])
+
+  beforeEach(() => {
+    process.env.TENANT_PII_MASTER_KEY = "0123456789abcdef".repeat(4) // gitleaks:allow — synthetic test key
+    resetMasterKekCache()
+  })
+  afterEach(() => {
+    delete process.env.TENANT_PII_MASTER_KEY
+    resetMasterKekCache()
+  })
+
+  function storedOnDisk(bytes: Buffer) {
+    vi.mocked(stat).mockResolvedValue({ isFile: () => true, size: bytes.byteLength } as never)
+    // Small reads prove the header is assembled across several disk chunks.
+    const pieces = Array.from({ length: Math.ceil(bytes.byteLength / 25) }, (_, i) => bytes.subarray(i * 25, i * 25 + 25))
+    vi.mocked(createReadStream).mockReturnValue(Readable.from(pieces) as never)
+  }
+
+  it("serves the plain bytes and plain length of a file encrypted for the caller's tenant", async () => {
+    storedOnDisk(sealTenantFile(AUTH_OK.orgId, PLAIN))
+
+    const res = await GET(req(), pp(["mtm-photos", "sealed.jpg"]))
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get("content-length")).toBe(String(PLAIN.byteLength))
+    expect(Buffer.from(await res.arrayBuffer()).equals(PLAIN)).toBe(true)
+    await vi.waitFor(() => expect(releasePublicConcurrencySlot).toHaveBeenCalledOnce())
+  })
+
+  it("refuses a file encrypted for another tenant without sending its bytes", async () => {
+    storedOnDisk(sealTenantFile("org-2", PLAIN))
+
+    const res = await GET(req(), pp(["contracts", "sealed.pdf"]))
+
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: "Failed to open file" })
+    expect(releasePublicConcurrencySlot).toHaveBeenCalledOnce()
+  })
+
+  it("never decrypts on the anonymous public path", async () => {
+    vi.mocked(requireSessionAuth).mockResolvedValueOnce(
+      NextResponse.json({ error: "Unauthorized" }, { status: 401 }) as never,
+    )
+    storedOnDisk(sealTenantFile("org-1", PLAIN))
+
+    const res = await GET(req(), pp(["email-images", "org-1", `img-${"a".repeat(32)}.png`]))
+
+    expect(res.status).toBe(500)
+    expect(requireSessionAuth).not.toHaveBeenCalled()
   })
 })

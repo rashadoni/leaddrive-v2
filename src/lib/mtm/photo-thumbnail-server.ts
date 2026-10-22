@@ -2,6 +2,7 @@ import path from "node:path"
 import { randomBytes } from "node:crypto"
 import { mkdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises"
 import sharp from "sharp"
+import { decodeTenantFileBytes } from "@/lib/crypto/tenant-file-encryption"
 import type { MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
 
 /**
@@ -11,10 +12,12 @@ import type { MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
  *
  * Disk-backed photos: the thumbnail is generated on first request and cached
  * next to the original as `mtm-photos/.thumbs/<file>.w<width>.webp`. Originals
- * are never modified or removed. A cache entry older than its original is
- * regenerated. The `.thumbs` directory is not reachable through the proxy:
- * the proxy resolves `mtm-photos/<name>` against `MtmPhoto.url`, and no photo
- * row is named `.thumbs`.
+ * are never modified or removed. Both may be tenant-encrypted envelopes
+ * (`tenant-file-encryption.ts`); reads decode them under the authorized
+ * tenant. A cache entry older than its original is regenerated. The `.thumbs`
+ * directory is not reachable through the proxy: the proxy resolves
+ * `mtm-photos/<name>` against `MtmPhoto.url`, and no photo row is named
+ * `.thumbs`.
  *
  * Object-backed photos are encrypted at rest in object storage; their
  * thumbnails are rendered in memory and never written to local disk.
@@ -156,6 +159,8 @@ export type DiskThumbnailResult =
  * the already-validated canonical path of the authorized original.
  */
 export async function resolveDiskMtmPhotoThumbnail(input: {
+  /** The tenant the caller authorized the original for. */
+  organizationId: string
   uploadsRoot: string
   originalPath: string
   fileName: string
@@ -177,10 +182,10 @@ export async function resolveDiskMtmPhotoThumbnail(input: {
   try {
     const cached = await stat(cachePath)
     if (cached.isFile() && cached.size > 0 && cached.mtimeMs >= original.mtimeMs) {
-      return { kind: "ok", etag, bytes: await readFile(cachePath) }
+      return { kind: "ok", etag, bytes: decodeTenantFileBytes(input.organizationId, await readFile(cachePath)) }
     }
   } catch {
-    // Cache miss — generate below.
+    // Cache miss or unreadable cache entry — generate below.
   }
 
   if (original.size > MAX_INPUT_BYTES) return { kind: "undecodable" }
@@ -192,7 +197,8 @@ export async function resolveDiskMtmPhotoThumbnail(input: {
     // The render slot is taken BEFORE the original is read: a queued request
     // must not hold megabytes of camera bytes while it waits.
     pending = withRenderSlot(async () => {
-      const bytes = await decodeThumbnail(await readFile(input.originalPath), input.width)
+      const originalBytes = decodeTenantFileBytes(input.organizationId, await readFile(input.originalPath))
+      const bytes = await decodeThumbnail(originalBytes, input.width)
       if (bytes) await writeCacheAtomically(cachePath, bytes)
       else rememberUndecodable(failureKey)
       return bytes

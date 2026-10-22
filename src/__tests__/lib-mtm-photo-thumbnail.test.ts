@@ -3,6 +3,8 @@ import os from "node:os"
 import path from "node:path"
 import sharp from "sharp"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { resetMasterKekCache } from "@/lib/crypto/tenant-pii-encryption"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import {
   mtmPhotoThumbnailUrl,
   parseMtmPhotoThumbnailWidth,
@@ -92,6 +94,8 @@ describe("renderMtmPhotoThumbnail", () => {
   })
 })
 
+const ORG = "cmorgthumbnailaaaaaaaaaaa"
+
 describe("resolveDiskMtmPhotoThumbnail", () => {
   let root: string
   let originalPath: string
@@ -104,6 +108,28 @@ describe("resolveDiskMtmPhotoThumbnail", () => {
   })
   afterEach(async () => {
     await rm(root, { recursive: true, force: true })
+    delete process.env.TENANT_PII_MASTER_KEY
+    resetMasterKekCache()
+  })
+
+  it("renders from a tenant-encrypted original and reads an encrypted cache entry", async () => {
+    process.env.TENANT_PII_MASTER_KEY = "0123456789abcdef".repeat(4) // gitleaks:allow — synthetic test key
+    resetMasterKekCache()
+    await writeFile(originalPath, sealTenantFile(ORG, await jpeg(1600, 1200)))
+
+    const first = await resolveDiskMtmPhotoThumbnail({ organizationId: ORG, uploadsRoot: root, originalPath, fileName, width: 480, ifNoneMatch: null })
+    expect(first.kind).toBe("ok")
+    expect(first.kind === "ok" && (await sharp(first.bytes).metadata()).width).toBe(480)
+
+    const cachePath = mtmPhotoThumbnailCachePath(root, fileName, 480)
+    await writeFile(cachePath, sealTenantFile(ORG, Buffer.from("encrypted-cache-marker")))
+    const second = await resolveDiskMtmPhotoThumbnail({ organizationId: ORG, uploadsRoot: root, originalPath, fileName, width: 480, ifNoneMatch: null })
+    expect(second.kind === "ok" && second.bytes.toString()).toBe("encrypted-cache-marker")
+
+    // Another tenant cannot render this photo, even holding a path to it.
+    await rm(cachePath)
+    expect(await resolveDiskMtmPhotoThumbnail({ organizationId: "cmorgotheraaaaaaaaaaaaaaa", uploadsRoot: root, originalPath, fileName, width: 240, ifNoneMatch: null }))
+      .toEqual({ kind: "missing" })
   })
 
   it("keeps the cache next to the original, under .thumbs", () => {
@@ -114,7 +140,7 @@ describe("resolveDiskMtmPhotoThumbnail", () => {
   it("generates on the first request, caches, and serves the cache afterwards without touching the original", async () => {
     const original = await jpeg(1600, 1200)
     await writeFile(originalPath, original)
-    const request = { uploadsRoot: root, originalPath, fileName, width: 480 as const, ifNoneMatch: null }
+    const request = { organizationId: ORG, uploadsRoot: root, originalPath, fileName, width: 480 as const, ifNoneMatch: null }
 
     const first = await resolveDiskMtmPhotoThumbnail(request)
     expect(first.kind).toBe("ok")
@@ -136,7 +162,7 @@ describe("resolveDiskMtmPhotoThumbnail", () => {
   it("answers If-None-Match with not-modified before reading any bytes", async () => {
     await writeFile(originalPath, await jpeg(600, 400))
     const etag = diskMtmPhotoThumbnailEtag(await stat(originalPath), 240)
-    const result = await resolveDiskMtmPhotoThumbnail({ uploadsRoot: root, originalPath, fileName, width: 240, ifNoneMatch: etag })
+    const result = await resolveDiskMtmPhotoThumbnail({ organizationId: ORG, uploadsRoot: root, originalPath, fileName, width: 240, ifNoneMatch: etag })
     expect(result).toEqual({ kind: "not-modified", etag })
     await expect(stat(mtmPhotoThumbnailCachePath(root, fileName, 240))).rejects.toThrow()
   })
@@ -149,17 +175,17 @@ describe("resolveDiskMtmPhotoThumbnail", () => {
     const old = new Date(Date.now() - 60_000)
     await utimes(cachePath, old, old)
 
-    const result = await resolveDiskMtmPhotoThumbnail({ uploadsRoot: root, originalPath, fileName, width: 480, ifNoneMatch: null })
+    const result = await resolveDiskMtmPhotoThumbnail({ organizationId: ORG, uploadsRoot: root, originalPath, fileName, width: 480, ifNoneMatch: null })
     expect(result.kind).toBe("ok")
     expect(result.kind === "ok" && result.bytes.toString()).not.toBe("stale")
   })
 
   it("reports a missing original and an undecodable one distinctly, writing no cache", async () => {
-    expect(await resolveDiskMtmPhotoThumbnail({ uploadsRoot: root, originalPath, fileName, width: 480, ifNoneMatch: null }))
+    expect(await resolveDiskMtmPhotoThumbnail({ organizationId: ORG, uploadsRoot: root, originalPath, fileName, width: 480, ifNoneMatch: null }))
       .toEqual({ kind: "missing" })
 
     await writeFile(originalPath, Buffer.from("legacy heic bytes"))
-    expect(await resolveDiskMtmPhotoThumbnail({ uploadsRoot: root, originalPath, fileName, width: 480, ifNoneMatch: null }))
+    expect(await resolveDiskMtmPhotoThumbnail({ organizationId: ORG, uploadsRoot: root, originalPath, fileName, width: 480, ifNoneMatch: null }))
       .toEqual({ kind: "undecodable" })
     await expect(stat(mtmPhotoThumbnailCachePath(root, fileName, 480))).rejects.toThrow()
   })
