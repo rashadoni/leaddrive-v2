@@ -657,6 +657,7 @@ try {
     await page.getByTestId('employee-preparation').waitFor()
     assert.ok((await page.getByTestId('employee-preparation').innerText()).includes(pt('preparation.noFakeMark')))
     assert.equal(await page.getByTestId('employee-preparation-phone').count(), 1)
+    await page.getByTestId('employee-preparation').screenshot({ path: `${output}/employee-preparation.png` })
     const toggle = page.getByRole('switch')
     assert.equal(await toggle.getAttribute('aria-checked'), 'true')
     await clickResponse(toggle, `${apiRoot}/employees/participation`)
@@ -670,7 +671,7 @@ try {
     assert.equal(await row.count(), 0)
     await page.locator('#employee-participation').selectOption('ALL')
     assert.equal((await rosterCard('Fixture roster 00')).role, 'EMPLOYEE')
-    return { pagination: true, search: true, inclusionFilter: true, switchRoundTrip: true, employeePageAndBack: true }
+    return { pagination: true, search: true, inclusionFilter: true, switchRoundTrip: true, employeePageAndBack: true, employeePreparation: true }
   })
   await run('browser-branch-create-edit-archive-cancel', 'browser-action+database-backed-http', async () => {
     await readyPage('branches')
@@ -718,11 +719,13 @@ try {
     assert.ok((await comparison.innerText()).includes(t('correctionProposed')))
     assert.equal(await comparison.locator('a').getAttribute('href'), `/mtm/attendance/timesheet?date=${state.ownMarks.workDate}&employeeId=${fixture.agents.employee.id}`)
     await page.getByTestId('attendance-requests-freshness').waitFor()
+    await comparison.screenshot({ path: `${output}/correction-comparison.png` })
     await row.locator('textarea').fill('Fictional correction rejected with context')
     await clickResponse(button('requestsReject', row), `${apiRoot}/requests/${state.uiCorrection.id}/decision`)
     const correctionResult = (await mobile('employee', '/requests')).items.find(item => item.id === state.uiCorrection.id)
     assert.equal(correctionResult.status, 'REJECTED')
     assert.equal(correctionResult.decisionNote, 'Fictional correction rejected with context')
+    return { correctionComparison: true, correctionDecisionReturnedToEmployee: true }
   })
   await run('browser-qr-toggle-refresh-hide', 'browser-action+database-backed-http', async () => {
     assert.ok(state.branch)
