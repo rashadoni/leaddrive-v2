@@ -23,8 +23,8 @@ function req(path: string, method = "GET", body?: unknown) {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([{ id: "wa_a" }, { id: "wa_b" }] as never)
-  vi.mocked(prisma.channelConfig.findFirst).mockImplementation(async (query) => {
-    const where = query?.where as { id?: string; organizationId?: string }
+  vi.mocked(prisma.channelConfig.findFirst).mockImplementation(async (query: unknown) => {
+    const where = (query as { where?: { id?: string; organizationId?: string } })?.where
     return where?.id === "wa_b" && where.organizationId === "org_1" ? row as never : null
   })
   vi.mocked(prisma.channelMessage.findMany).mockResolvedValue([])

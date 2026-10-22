@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, createElement, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest"
 import en from "../../messages/en.json"
 
 const translations = new Map<string, ReturnType<typeof translateNamespace>>()
@@ -49,7 +49,7 @@ async function flush() {
 describe("WhatsApp settings — understandable and channel-bound interactions", () => {
   let root: Root
   let container: HTMLDivElement
-  let fetchMock: ReturnType<typeof vi.fn>
+  let fetchMock: Mock<(input: string, init?: RequestInit) => Promise<ReturnType<typeof response>>>
 
   beforeEach(() => {
     container = document.createElement("div")
