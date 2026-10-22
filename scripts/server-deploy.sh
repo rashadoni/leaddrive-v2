@@ -9001,7 +9001,7 @@ PM2_CONFIG="$APP_DIR/.next/standalone/ecosystem.config.cjs"
 # reboot dump and every child process would inherit it. The app reads the file
 # itself (src/lib/crypto/tenant-pii-encryption.ts). Handoff recovery reloads
 # the env file, so an older artifact still receives the variable it expects.
-TENANT_PII_MASTER_KEY_FILE="$(realpath -e -- "$APP_ENV_SOURCE_FILE")" \
+TENANT_PII_MASTER_KEY_FILE="$(realpath -e -- "$APP_ENV_FILE")" \
   || fatal "cannot resolve the env file that holds TENANT_PII_MASTER_KEY"
 export TENANT_PII_MASTER_KEY_FILE
 unset TENANT_PII_MASTER_KEY
@@ -9078,6 +9078,21 @@ for i in 1 2 3 4 5; do
 
   [ "$i" -lt 5 ] && sleep 8
 done
+
+# The app reads the PII master key from its env file, not from its process
+# environment (Step 5). /login and /api/v1/ping never touch the key, so a
+# process that cannot read it would pass every check above and then fail on
+# every encrypted field. Require the probe to say the key loaded from the file.
+if [ "$HEALTHY" = true ]; then
+  PII_KEY_STATUS="$(curl -s --max-time 10 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" \
+    "$HEALTH_URL/api/cron/pii-key-check" 2>/dev/null || true)"
+  if [ "$PII_KEY_STATUS" = '{"ok":true,"source":"file"}' ]; then
+    log "PII master key: loaded from its env file"
+  else
+    log "PII master key probe failed: ${PII_KEY_STATUS:-no response}"
+    HEALTHY=false
+  fi
+fi
 
 # ── Step 7: Rollback if unhealthy ──────────────────────────
 if [ "$HEALTHY" = false ]; then

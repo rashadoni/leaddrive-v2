@@ -105,12 +105,22 @@ describe("deploy hands PM2 the file, not the key", () => {
     expect(mainStart).toBeGreaterThan(0)
     expect(preamble).toContain("export TENANT_PII_MASTER_KEY_FILE")
     expect(preamble).toContain("unset TENANT_PII_MASTER_KEY")
-    expect(preamble).toContain('realpath -e -- "$APP_ENV_SOURCE_FILE"')
+    expect(preamble).toContain('realpath -e -- "$APP_ENV_FILE"')
   })
 
   it("still validates the key in the env file before anything starts", () => {
     expect(deploy.indexOf("require_env TENANT_PII_MASTER_KEY")).toBeGreaterThan(0)
     expect(deploy.indexOf("require_env TENANT_PII_MASTER_KEY")).toBeLessThan(mainStart)
+  })
+
+  it("rolls back unless the new process says the key loaded from the file", () => {
+    const probe = deploy.indexOf("/api/cron/pii-key-check")
+    const rollbackDecision = deploy.indexOf('if [ "$HEALTHY" = false ]; then', probe)
+    expect(probe).toBeGreaterThan(mainStart)
+    expect(rollbackDecision).toBeGreaterThan(probe)
+    const block = deploy.slice(deploy.lastIndexOf('if [ "$HEALTHY" = true ]; then', probe), rollbackDecision)
+    expect(block).toContain(`'{"ok":true,"source":"file"}'`)
+    expect(block).toContain("HEALTHY=false")
   })
 
   it("handoff recovery reloads the env file, so an older artifact still gets the variable", () => {
@@ -119,5 +129,43 @@ describe("deploy hands PM2 the file, not the key", () => {
     expect(rollbackStart).toBeGreaterThan(0)
     expect(reload).toBeGreaterThan(0)
     expect(deploy.slice(reload, rollbackStart)).not.toContain("unset TENANT_PII_MASTER_KEY")
+  })
+})
+
+describe("POST /api/cron/pii-key-check", () => {
+  async function probe(secret: string | null = "cron-secret") {
+    const { POST } = await import("@/app/api/cron/pii-key-check/route")
+    const { NextRequest } = await import("next/server")
+    return POST(new NextRequest("http://localhost/api/cron/pii-key-check", {
+      method: "POST",
+      headers: secret ? { "x-cron-secret": secret } : {},
+    }))
+  }
+
+  beforeEach(() => {
+    process.env.CRON_SECRET = "cron-secret"
+  })
+
+  it("answers exactly what the deploy requires when the key comes from the file", async () => {
+    process.env.TENANT_PII_MASTER_KEY_FILE = await envFile(`TENANT_PII_MASTER_KEY=${KEY}\n`)
+    const response = await probe()
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('{"ok":true,"source":"file"}')
+  })
+
+  it("tells the deploy when the key still sits in the environment or does not load", async () => {
+    process.env.TENANT_PII_MASTER_KEY = KEY
+    expect(await (await probe()).json()).toEqual({ ok: true, source: "environment" })
+
+    delete process.env.TENANT_PII_MASTER_KEY
+    resetMasterKekCache()
+    process.env.TENANT_PII_MASTER_KEY_FILE = await envFile("NEXTAUTH_SECRET=y\n")
+    expect(await (await probe()).json()).toEqual({ ok: false, source: "file" })
+  })
+
+  it("needs the cron secret and never returns the key", async () => {
+    process.env.TENANT_PII_MASTER_KEY = KEY
+    expect((await probe(null)).status).toBe(401)
+    expect(await (await probe()).text()).not.toContain(KEY)
   })
 })
