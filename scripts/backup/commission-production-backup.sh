@@ -20,6 +20,10 @@ OFFLINE_OPERATOR="${10:-}"
 EXPECTED_CANDIDATE_SHA256="${11:-}"
 REMOTE_INPUT_STAGE="${12:-}"
 OWNER_RECIPIENT="${13:-}"
+# Earlier main the owner key receipt / candidate is bound to. The workflow has
+# already proved it is an ancestor of WORKFLOW_SHA with byte-identical recovery
+# code (scripts/backup/evidence-main-window.sh); empty means WORKFLOW_SHA.
+EVIDENCE_MAIN_SHA="${14:-}"
 
 BACKUP_ENV_FILE="/etc/leaddrive/backup.env"
 BACKUP_SERVICE="leaddrive-postgres-backup.service"
@@ -354,6 +358,14 @@ exec 9>"$COMMISSION_LOCK"
 flock -n 9 || fatal "another backup commissioning operation is active"
 
 [[ "$WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]] || fatal "workflow SHA is invalid"
+[ -n "$EVIDENCE_MAIN_SHA" ] || EVIDENCE_MAIN_SHA="$WORKFLOW_SHA"
+[[ "$EVIDENCE_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]] || fatal "evidence main SHA is invalid"
+if [ "$EVIDENCE_MAIN_SHA" != "$WORKFLOW_SHA" ]; then
+  case "$OPERATION" in
+    run-owner-backup|certify-owner-restore) ;;
+    *) fatal "only owner operations accept evidence bound to an earlier main" ;;
+  esac
+fi
 [[ "$WORKFLOW_ACTOR" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,78}$ ]] \
   || fatal "workflow actor is invalid"
 [[ "$WORKFLOW_RUN_ID" =~ ^[0-9]{1,20}$ ]] || fatal "workflow run id is invalid"
@@ -1903,7 +1915,7 @@ verify_signed_evidence() {
     && [ "$(read_unique_value_from "$evidence_file" EVIDENCE_REF)" = "$EVIDENCE_REF" ] \
     && [ "$(read_unique_value_from "$evidence_file" OFFLINE_OPERATOR)" = "$OFFLINE_OPERATOR" ] \
     && [ "$(read_unique_value_from "$evidence_file" VERIFIED_AT_UTC)" = "$EVIDENCE_AT_UTC" ] \
-    && [ "$(read_unique_value_from "$evidence_file" REVIEWED_MAIN_SHA)" = "$WORKFLOW_SHA" ] \
+    && [ "$(read_unique_value_from "$evidence_file" REVIEWED_MAIN_SHA)" = "$EVIDENCE_MAIN_SHA" ] \
     || fatal "signed offline evidence does not match the commissioned operation"
   verified_epoch="$(date -u -d "$EVIDENCE_AT_UTC" '+%s' 2>/dev/null)" \
     || fatal "signed evidence timestamp is invalid"
@@ -4190,7 +4202,7 @@ verify_owner_key_proof() {
     || fatal "owner key verifier differs from reviewed code"
   node "$verifier" verify "$REMOTE_INPUT_STAGE/owner-key.env" \
     "$REMOTE_INPUT_STAGE/owner-key.env.sig" "$INCOMING_ALLOWED_SIGNERS" \
-    "$EXPECTED_RECIPIENT_SHA256" "$WORKFLOW_SHA" "$WORKFLOW_ACTOR" >/dev/null \
+    "$EXPECTED_RECIPIENT_SHA256" "$EVIDENCE_MAIN_SHA" "$WORKFLOW_ACTOR" >/dev/null \
     || fatal "owner key-readability signature/proof did not verify"
   [ "$(read_unique_value_from "$REMOTE_INPUT_STAGE/owner-key.env" VERIFIED_AT_UTC)" = "$EVIDENCE_AT_UTC" ] \
     || fatal "owner key proof time differs from workflow input"
@@ -4208,7 +4220,7 @@ certify_owner_restore() {
   candidate_file="$(find_candidate_by_digest "$EXPECTED_CANDIDATE_SHA256")"
   [ "$(read_unique_value_from "$candidate_file" FORMAT_VERSION)" = 2 ] \
     && [ "$(read_unique_value_from "$candidate_file" RECOVERY_SCOPE)" = owner-operated-data-only ] \
-    && [ "$(read_unique_value_from "$candidate_file" WORKFLOW_SHA)" = "$WORKFLOW_SHA" ] \
+    && [ "$(read_unique_value_from "$candidate_file" WORKFLOW_SHA)" = "$EVIDENCE_MAIN_SHA" ] \
     && [ "$(read_unique_value_from "$candidate_file" CREATED_BY)" = "$WORKFLOW_ACTOR" ] \
     && [ "$(read_unique_value_from "$candidate_file" RECIPIENT_SHA256)" = "$EXPECTED_RECIPIENT_SHA256" ] \
     || fatal "owner candidate does not bind this actor/main/recipient"
@@ -4234,7 +4246,8 @@ certify_owner_restore() {
     "SIGNED_EVIDENCE_SHA256=$SIGNED_EVIDENCE_SHA256" \
     "SIGNED_SIGNATURE_SHA256=$SIGNED_SIGNATURE_SHA256" \
     "ALLOWED_SIGNERS_SHA256=$ALLOWED_SIGNERS_SHA256" \
-    "REVIEWED_MAIN_SHA=$WORKFLOW_SHA" "OWNER_OPERATOR=$WORKFLOW_ACTOR" \
+    "REVIEWED_MAIN_SHA=$WORKFLOW_SHA" "CANDIDATE_MAIN_SHA=$EVIDENCE_MAIN_SHA" \
+    "OWNER_OPERATOR=$WORKFLOW_ACTOR" \
     "RECORDED_AT_UTC=$recorded_at" "WORKFLOW_RUN_ID=$WORKFLOW_RUN_ID" >"$MARKER_STAGE"
   chmod 0600 "$MARKER_STAGE"
   sync -f -- "$MARKER_STAGE" "$RESTORE_DIR"

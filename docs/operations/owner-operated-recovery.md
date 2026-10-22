@@ -254,6 +254,22 @@ Output type `owner-archive-restore` is signed in the distinct
 bundle only. Measure actual snapshot and restore times; key-canary success is
 not a substitute for this real data restore.
 
+### Evidence from an earlier main
+
+Main moves several times an hour, and every step used to demand the SHA of
+the step before it. `owner-recovery-proof.yml` now takes an optional
+`evidence_main_sha`: the earlier main the key receipt (for `run-owner-backup`)
+or the candidate (for `certify-owner-restore`) is bound to. The run itself is
+still pinned to the exact current main and live artifact; the earlier SHA is
+accepted only if `scripts/backup/evidence-main-window.sh` proves it is an
+ancestor with byte-identical `scripts/backup`, `ops/backup`, `ops/systemd`,
+`.github/actions` and this workflow. Any change there invalidates earlier
+evidence and the step must be repeated on the current main. Other operations
+keep the exact-run binding. The owner receipt records both SHAs
+(`REVIEWED_MAIN_SHA` of the certifying run, `CANDIDATE_MAIN_SHA` of the
+candidate). Restore on the owner workstation always uses the candidate's own
+`WORKFLOW_SHA` checkout.
+
 ## 4. Record the owner technical result
 
 Dispatch the same exact-main workflow, operation `certify-owner-restore`:

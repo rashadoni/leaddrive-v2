@@ -22,6 +22,10 @@ on:
         description: "Exact current 40-character main SHA"
         required: true
         type: string
+      evidence_main_sha:
+        description: "Earlier main SHA the owner key receipt (backup) or candidate (certification) is bound to; empty = this run's SHA. Accepted only if recovery code is unchanged since then"
+        required: false
+        type: string
       confirmation:
         description: "Exact owner-operation confirmation phrase from the runbook"
         required: true
@@ -91,6 +95,7 @@ jobs:
           IN_OFFLINE_OPERATOR: ${{ inputs.offline_operator }}
           IN_CANDIDATE_SHA256: ${{ inputs.candidate_sha256 }}
           IN_OFFLINE_EVIDENCE_BUNDLE: ${{ inputs.offline_evidence_bundle_base64 }}
+          IN_EVIDENCE_MAIN_SHA: ${{ inputs.evidence_main_sha }}
         run: |
           set -euo pipefail
           [ "$GITHUB_REF" = refs/heads/main ] || exit 1
@@ -98,6 +103,18 @@ jobs:
           git fetch --no-tags --depth=1 origin refs/heads/main
           CURRENT_MAIN_SHA="$(git rev-parse FETCH_HEAD)"
           [ "$GITHUB_SHA" = "$CURRENT_MAIN_SHA" ] && [ "$EXPECTED_MAIN_SHA" = "$CURRENT_MAIN_SHA" ] || exit 1
+          # Evidence produced on an earlier main stays usable only while the
+          # recovery code is byte-identical (scripts/backup/evidence-main-window.sh).
+          EVIDENCE_MAIN_SHA="${IN_EVIDENCE_MAIN_SHA:-$GITHUB_SHA}"
+          [[ "$EVIDENCE_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          if [ "$EVIDENCE_MAIN_SHA" != "$GITHUB_SHA" ]; then
+            git fetch --no-tags --depth=400 origin refs/heads/main
+            bash scripts/backup/evidence-main-window.sh "$EVIDENCE_MAIN_SHA" "$GITHUB_SHA" || {
+              echo "::error::Evidence main SHA is not an unchanged-recovery-code ancestor of this main"
+              exit 1
+            }
+          fi
+          printf 'EVIDENCE_MAIN_SHA=%s\n' "$EVIDENCE_MAIN_SHA" >>"$GITHUB_ENV"
           case "$IN_OPERATION" in
             run-owner-backup)
               [ "$IN_CONFIRMATION" = CREATE_OWNER_BACKUP_ON_13_140_132_245 ] || exit 1
@@ -186,7 +203,7 @@ jobs:
           chmod 0600 "$STAGE_DIR/owner-key.env" "$STAGE_DIR/owner-key.env.sig"
           node scripts/backup/owner-key-proof.mjs verify \
             "$STAGE_DIR/owner-key.env" "$STAGE_DIR/owner-key.env.sig" \
-            "$STAGE_DIR/allowed_signers" "$RECIPIENT_SHA256" "$GITHUB_SHA" "$GITHUB_ACTOR"
+            "$STAGE_DIR/allowed_signers" "$RECIPIENT_SHA256" "$EVIDENCE_MAIN_SHA" "$GITHUB_ACTOR"
           install -m 0600 scripts/backup/owner-key-proof.mjs "$STAGE_DIR/owner-key-proof.mjs"
           for FILE in owner-key.env owner-key.env.sig owner-key-proof.mjs; do
             scp -i ~/.ssh/deploy_key "$STAGE_DIR/$FILE" \
@@ -261,7 +278,8 @@ jobs:
             "$OPERATION" "$CONFIRMATION" "$EXPECTED_MAIN_SHA" \
             "$GITHUB_ACTOR" "$GITHUB_RUN_ID" "$RECIPIENT_SHA256" \
             "$KEY_ATTESTATION" "$EVIDENCE_REF" "$EVIDENCE_AT" \
-            "$OFFLINE_OPERATOR" "$CANDIDATE_SHA256" "$REMOTE_STAGE_DIR" "$OWNER_RECIPIENT"; do
+            "$OFFLINE_OPERATOR" "$CANDIDATE_SHA256" "$REMOTE_STAGE_DIR" "$OWNER_RECIPIENT" \
+            "$EVIDENCE_MAIN_SHA"; do
             printf -v QUOTED_ARG '%q' "$ARG"
             REMOTE_COMMAND+=" $QUOTED_ARG"
           done

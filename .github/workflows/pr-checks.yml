@@ -270,6 +270,7 @@ jobs:
           node --test scripts/backup/native-scratch-preflight.test.mjs
           node --test scripts/backup/owner-template.test.mjs
           node --test scripts/backup/migration-ledger-exceptions.test.mjs
+          node --test scripts/backup/evidence-main-window.test.mjs
           node --test .github/scripts/test-inspect-backup-compatibility.mjs
 
       - name: Event-platform migration and database invariant gate
