@@ -3,11 +3,14 @@ import { act, createElement, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest"
 import en from "../../messages/en.json"
+import az from "../../messages/az.json"
 
+const localeState = vi.hoisted(() => ({ value: "en" as "en" | "az" }))
+const messages = { en, az }
 const translations = new Map<string, ReturnType<typeof translateNamespace>>()
 function translateNamespace(namespace: string) {
   const translate = (key: string, values?: Record<string, unknown>): string => {
-    let result: unknown = (en as Record<string, unknown>)[namespace]
+    let result: unknown = (messages[localeState.value] as Record<string, unknown>)[namespace]
     for (const part of key.split(".")) result = (result as Record<string, unknown>)?.[part]
     return String(result ?? key).replace(/\{(\w+)\}/g, (match, name: string) => String(values?.[name] ?? match))
   }
@@ -15,7 +18,7 @@ function translateNamespace(namespace: string) {
   return translate
 }
 vi.mock("next-intl", () => ({
-  useLocale: () => "en",
+  useLocale: () => localeState.value,
   useTranslations: (namespace: string) => {
     if (!translations.has(namespace)) translations.set(namespace, translateNamespace(namespace))
     return translations.get(namespace)
@@ -53,6 +56,7 @@ describe("WhatsApp settings — understandable and channel-bound interactions", 
   let fetchMock: Mock<(input: string, init?: RequestInit) => Promise<ReturnType<typeof response>>>
 
   beforeEach(() => {
+    localeState.value = "en"
     container = document.createElement("div")
     document.body.append(container)
     root = createRoot(container)
@@ -70,6 +74,7 @@ describe("WhatsApp settings — understandable and channel-bound interactions", 
     await act(async () => root.unmount())
     container.remove()
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   async function mount() { await act(async () => root.render(createElement(WhatsAppSettingsPage))); await flush() }
@@ -261,5 +266,47 @@ describe("WhatsApp settings — understandable and channel-bound interactions", 
     expect(container.textContent).not.toContain("No templates yet")
     expect(container.textContent?.match(/successful phone check does not confirm template access/g)).toHaveLength(1)
     expect(button("Submit to Meta").disabled).toBe(true)
+  })
+
+  it("refreshes the selected connection's last check time after a successful repeat check", async () => {
+    const now = Date.parse("2026-10-22T13:00:00.000Z")
+    vi.spyOn(Date, "now").mockReturnValue(now)
+    let checked = false
+    const defaultFetch = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes("/validate?")) {
+        checked = true
+        return response({ ok: true, verifiedName: "Sample business" })
+      }
+      if (url.includes("/templates?") && !init?.method) return response({ success: true, data: [], meta: {
+        hasConfig: true, displayName: "Main office", lastValidatedAt: new Date(checked ? now : now - 3 * 3600000).toISOString(),
+      } })
+      return defaultFetch(url, init)
+    })
+    await mount()
+    await select("wa-selected-channel", "sender-a")
+    expect(container.querySelector("#wa-connection")!.textContent).toContain("3 hours ago")
+    await click("Check number")
+    expect(container.querySelector("#wa-connection")!.textContent).toContain("Last verified: Just now")
+    expect(fetchMock.mock.calls.filter(([url, init]) => url === "/api/v1/whatsapp/templates?status=all&channelConfigId=sender-a" && !init?.method)).toHaveLength(2)
+    expect(fetchMock.mock.calls.some(([url]) => url.includes("/send"))).toBe(false)
+  })
+
+  it("shows readable Azerbaijani elapsed time even when the runtime lacks AZ relative-time data", async () => {
+    localeState.value = "az"
+    const now = Date.parse("2026-10-22T13:00:00.000Z")
+    vi.spyOn(Date, "now").mockReturnValue(now)
+    // Some deployed Chrome/ICU builds fall back to the root locale's '-3 h'.
+    vi.spyOn(Intl, "RelativeTimeFormat").mockImplementation(function () {
+      return { format: (value: number, unit: string) => `${value} ${unit[0]}` } as Intl.RelativeTimeFormat
+    })
+    const defaultFetch = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => url.includes("/templates?") ? response({ success: true, data: [], meta: {
+      hasConfig: true, lastValidatedAt: new Date(now - 3 * 3600000).toISOString(),
+    } }) : defaultFetch(url, init))
+    await mount()
+    await select("wa-selected-channel", "sender-a")
+    expect(container.querySelector("#wa-connection")!.textContent).toContain("Son yoxlama: 3 saat əvvəl")
+    expect(container.querySelector("#wa-connection")!.textContent).not.toContain("-3 h")
   })
 })
