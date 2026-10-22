@@ -34,6 +34,9 @@ interface JourneyStep {
   statsCompleted: number
 }
 
+type EditableJourneyStep = Pick<JourneyStep, "stepType" | "config"> &
+  Partial<Pick<JourneyStep, "statsEntered" | "statsCompleted">>
+
 interface Journey {
   id: string
   name: string
@@ -67,7 +70,13 @@ function getStepSummary(step: { stepType: string; config: any }, t: (key: string
   const c = step.config || {}
   switch (step.stepType) {
     case "send_email": return c.subject ? t("summarySubject", { subject: c.subject }) : t("summaryNoSubject")
-    case "wait": return t("summaryWait", { days: c.days || 1 })
+    case "wait": {
+      const summaryKey = c.unit === "minutes" ? "summaryWaitMinutes"
+        : c.unit === "hours" ? "summaryWaitHours"
+        : c.unit === "weeks" ? "summaryWaitWeeks"
+        : "summaryWaitDays"
+      return t(summaryKey, { count: c.days || 1 })
+    }
     case "condition": {
       const scenario = conditionScenarios.find(s => s.id === c._scenario)
       if (scenario && scenario.id !== "custom") return t(scenario.labelKey)
@@ -217,7 +226,7 @@ export default function JourneysPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteName, setDeleteName] = useState("")
   const [stepsJourney, setStepsJourney] = useState<Journey | null>(null)
-  const [steps, setSteps] = useState<{ stepType: string; config: any }[]>([])
+  const [steps, setSteps] = useState<EditableJourneyStep[]>([])
   const [savingSteps, setSavingSteps] = useState(false)
   const [addStepOpen, setAddStepOpen] = useState(false)
   const [flowView, setFlowView] = useState(false)
@@ -306,9 +315,9 @@ export default function JourneysPage() {
 
   function openSteps(journey: Journey) {
     setStepsJourney(journey)
-    const existingSteps = (journey.steps || [])
+    const existingSteps = [...(journey.steps || [])]
       .sort((a, b) => a.stepOrder - b.stepOrder)
-      .map(s => ({ stepType: s.stepType, config: s.config || {} }))
+      .map(s => ({ stepType: s.stepType, config: s.config || {}, statsEntered: s.statsEntered, statsCompleted: s.statsCompleted }))
     setSteps(existingSteps)
   }
 
@@ -699,7 +708,7 @@ export default function JourneysPage() {
                       </div>
                       {summary && <p className="text-xs text-muted-foreground">{summary}</p>}
                       <p className="text-[11px] text-muted-foreground mt-1">
-                        {t("entered")}: {(step as any).statsEntered || 0} · {t("passed")}: {(step as any).statsCompleted || 0}
+                        {t("entered")}: {step.statsEntered ?? 0} · {t("passed")}: {step.statsCompleted ?? 0}
                       </p>
                     </div>
                   </div>
@@ -824,6 +833,7 @@ export default function JourneysPage() {
                     onChange={e => setNewStepConfig((c: any) => ({ ...c, unit: e.target.value }))}
                     className="flex-1"
                   >
+                    <option value="minutes">{t("unitMinutes")}</option>
                     <option value="hours">{t("unitHours")}</option>
                     <option value="days">{t("unitDays")}</option>
                     <option value="weeks">{t("unitWeeks")}</option>
