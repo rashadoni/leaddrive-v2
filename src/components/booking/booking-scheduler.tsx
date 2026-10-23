@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import type { DaySlots } from "@/lib/booking/availability"
+import { formatDate, formatTime } from "@/lib/format-date"
+import { timezoneOffsetLabel } from "@/lib/timezone"
 
 export interface PublicBookingPage {
   orgName: string
@@ -50,16 +52,22 @@ export type BookResult =
 
 const INTL: Record<string, string> = { az: "az-AZ", ru: "ru-RU", en: "en-GB" }
 
+/**
+ * Dates go through src/lib/format-date.ts: browsers whose ICU has no
+ * Azerbaijani data print "M10 26, Mon" and "Azerbaijan Standard Time" — seen
+ * on prod on the first live run of this page.
+ */
 export function useBookingFormat(timezone: string) {
   const locale = INTL[useLocale()] ?? "az-AZ"
+  const t = useTranslations("booking")
   return useMemo(() => ({
-    time: (iso: string) => new Intl.DateTimeFormat(locale, { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso)),
-    day: (date: string) => new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00Z`)),
-    longDay: (iso: string) => new Intl.DateTimeFormat(locale, { timeZone: timezone, weekday: "long", day: "numeric", month: "long" }).format(new Date(iso)),
-    /** "Azərbaycan Standart Vaxtı" rather than "Asia/Baku". */
-    zone: () => new Intl.DateTimeFormat(locale, { timeZone: timezone, timeZoneName: "long" })
-      .formatToParts(new Date()).find((part) => part.type === "timeZoneName")?.value ?? timezone,
-  }), [locale, timezone])
+    time: (iso: string) => formatTime(iso, locale, { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false }),
+    day: (date: string) => formatDate(`${date}T12:00:00Z`, locale, { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }),
+    longDay: (iso: string) => formatDate(iso, locale, { timeZone: timezone, weekday: "long", day: "numeric", month: "long" }),
+    zone: () => timezone === "Asia/Baku"
+      ? t("zoneBaku")
+      : `${timezone.split("/").pop()?.replace(/_/g, " ") ?? timezone} (${timezoneOffsetLabel(timezone)})`,
+  }), [locale, timezone, t])
 }
 
 function LocationIcon({ type }: { type: PublicBookingPage["locationType"] }) {

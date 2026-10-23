@@ -30526,6 +30526,7 @@
     "chooseDay": "Choose a day",
     "chooseTime": "Choose a time",
     "freeCount": "{count, plural, one {# free time} other {# free times}}",
+    "zoneBaku": "Baku time",
     "timezoneNote": "Times are {zone}.",
     "noSlotsTitle": "No free time right now",
     "noSlotsDesc": "All times are taken. Please check again later or call us.",

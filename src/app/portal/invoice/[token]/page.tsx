@@ -14,6 +14,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { useParams, useSearchParams } from "next/navigation"
 import { CheckCircle2, CircleAlert, Clock, CreditCard, Loader2, Lock, RefreshCw, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { formatDate } from "@/lib/format-date"
 
 interface PublicInvoice {
   sellerName: string
@@ -101,7 +102,9 @@ function PublicInvoice() {
   }
 
   const money = (value: number) => value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  const date = (value: string | null) => (value ? new Date(value).toLocaleDateString(locale) : "—")
+  // format-date renders Azerbaijani without the browser's ICU data, which
+  // some builds lack (they print "2026-10-23").
+  const date = (value: string | null) => (value ? formatDate(value, locale, { day: "2-digit", month: "2-digit", year: "numeric" }) : "—")
 
   return (
     <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:py-12">
