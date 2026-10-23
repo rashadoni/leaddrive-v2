@@ -27,6 +27,7 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { PageHeader } from "@/components/page-header"
+import { ReviewerAccessPanel } from "@/components/settings/reviewer-access-panel"
 import { navItems, orgFromSession } from "@/lib/nav-items"
 import {
   roleIgnoresModuleMask,
@@ -1406,6 +1407,8 @@ export default function UsersSettingsPage() {
           <DataTable<User> data={users} columns={columns} searchKey="name" searchPlaceholder={tu("searchPlaceholder")} />
         </div>
       )}
+
+      <ReviewerAccessPanel />
 
       <UserFormDialog
         open={showForm}

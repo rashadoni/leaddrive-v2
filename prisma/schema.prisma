@@ -69,6 +69,7 @@ model Organization {
   // the compliance trail is not owned by the organization and survives it.
   tenantMasterKeys      TenantMasterKey[]
   tenantDataKeys        TenantDataKey[]
+  reviewerAccessGrants  ReviewerAccessGrant[]
   accountGradeConfig    AccountGradeConfig?
   intentSignalConfig    IntentSignalConfig?
   leaderboardConfig     LeaderboardConfig?
@@ -795,6 +796,7 @@ model User {
 
   // Phase 7 P0 #3 Compliance audit log
   complianceAuditLogs ComplianceAuditLog[] @relation("ComplianceAuditUser")
+  reviewerAccessGrant ReviewerAccessGrant? @relation("ReviewerAccessGrantUser")
 
   // A12 Revenue Intelligence — actor on stage transitions + captured snapshots
   pipelineStageTransitions PipelineStageTransition[]
@@ -1040,6 +1042,29 @@ model TenantDataKey {
 
   @@unique([organizationId, version])
   @@map("tenant_data_keys")
+}
+
+// Temporary read-only access for an outside reviewer under NDA
+// (src/lib/reviewer-access.ts). One row per reviewer login (role `reviewer`):
+// what was granted, why, by whom and until when. Expired or revoked rows stay
+// as the record of the grant; the reads themselves are in compliance_audit_log.
+model ReviewerAccessGrant {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId          String       @unique
+  user            User         @relation("ReviewerAccessGrantUser", fields: [userId], references: [id], onDelete: Cascade)
+  /// Group-modules the reviewer may read (UserHideableId values).
+  modules         String[]
+  reason          String
+  expiresAt       DateTime
+  grantedByUserId String?
+  createdAt       DateTime     @default(now())
+  revokedAt       DateTime?
+  revokedByUserId String?
+
+  @@index([organizationId, expiresAt])
+  @@map("reviewer_access_grants")
 }
 
 // C5 Account Engagement slice-2 — per-tenant grade-component weights.

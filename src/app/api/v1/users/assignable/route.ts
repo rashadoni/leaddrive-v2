@@ -33,7 +33,8 @@ export const GET = withRlsAuth("tasks", "read", async (req, authResult) => {
       where: {
         organizationId: orgId,
         isActive: true,
-        ...(requestedRole ? { role: requestedRole } : {}),
+        // An outside reviewer is never an assignee.
+        ...(requestedRole ? { role: requestedRole } : { role: { not: "reviewer" } }),
       },
       select: { id: true, name: true, email: true, avatar: true },
       orderBy: { name: "asc" },
