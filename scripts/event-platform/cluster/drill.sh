@@ -40,12 +40,18 @@ for line in "${nodes[@]}"; do
   read -r name site role <<<"$line"
   if [ "$role" = broker ]; then brokers+=("$name"); else controllers+=("$name"); fi
 done
-site_of() { for line in "${nodes[@]}"; do read -r n s _ <<<"$line"; [ "$n" = "$1" ] && echo "$s"; done; }
-nodes_at() { for line in "${nodes[@]}"; do read -r n s _ <<<"$line"; [ "$s" = "$1" ] && echo "$n"; done; }
+site_of() { for line in "${nodes[@]}"; do read -r n s _ <<<"$line"; if [ "$n" = "$1" ]; then echo "$s"; fi; done; }
+nodes_at() { for line in "${nodes[@]}"; do read -r n s _ <<<"$line"; if [ "$s" = "$1" ]; then echo "$n"; fi; done; }
 bootstrap_mtls="$(printf '%s:9094,' "${brokers[@]}")"; bootstrap_mtls="${bootstrap_mtls%,}"
 bootstrap_scram="$(printf '%s:9092,' "${brokers[@]}")"; bootstrap_scram="${bootstrap_scram%,}"
 
 cleanup() {
+  local status=$?
+  if [ "$status" -ne 0 ]; then
+    for name in $(docker ps -a --filter "label=$project" --format '{{.Names}}' | grep '^kafka-'); do
+      printf -- '--- last log lines of %s\n' "$name"; docker logs --tail 60 "$name" 2>&1 | grep -v '^\s*at ' || true
+    done
+  fi
   docker ps -aq --filter "label=$project" | xargs -r docker rm -f >/dev/null 2>&1 || true
   docker volume ls -q --filter "label=$project" | xargs -r docker volume rm >/dev/null 2>&1 || true
   docker network rm "$net" >/dev/null 2>&1 || true
