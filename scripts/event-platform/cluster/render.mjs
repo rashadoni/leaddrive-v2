@@ -158,7 +158,9 @@ export function renderCluster({ topology, catalog, clusterName, inventory, heapS
     files[`${dir}/kafka.env`] = properties([
       ['CLUSTER_ID', inventory.clusterId],
       ['KAFKA_HEAP_OPTS', `-Xms${heap}m -Xmx${heap}m`],
-      ['LOG_DIR', '/var/lib/kafka/logs'],
+      // The image declares /var/lib/kafka/data as a volume owned by its own
+      // appuser; process logs stay off it (stdout is captured by Docker).
+      ['LOG_DIR', '/tmp/kafka-logs'],
     ])
     files[`${dir}/compose.yml`] = renderCompose(host.name)
   }
@@ -306,7 +308,7 @@ services:
     volumes:
       - ./server.properties:/etc/kafka/server.properties:ro
       - /etc/leaddrive-kafka/tls:/etc/kafka/tls:ro
-      - /var/lib/leaddrive-kafka:/var/lib/kafka
+      - /var/lib/leaddrive-kafka:/var/lib/kafka/data
     ulimits:
       nofile: 100000
     logging:

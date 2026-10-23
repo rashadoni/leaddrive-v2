@@ -107,7 +107,7 @@ start_node() {
     --env-file "$work/rendered/$name/kafka.env" --memory 1g --user "$uid:$uid" \
     -v "$work/rendered/$name/server.properties:/etc/kafka/server.properties:ro" \
     -v "$work/pki/issued/$name:/etc/kafka/tls:ro" \
-    -v "$project-$name:/var/lib/kafka" \
+    -v "$project-$name:/var/lib/kafka/data" \
     --entrypoint /bin/bash "$image" -ec \
     '/opt/kafka/bin/kafka-storage.sh format --ignore-formatted -t "$CLUSTER_ID" -c /etc/kafka/server.properties && exec /opt/kafka/bin/kafka-server-start.sh /etc/kafka/server.properties' >/dev/null
 }
@@ -122,12 +122,17 @@ kafka() {
 }
 admin() { local tool="$1"; shift; kafka "$tool" --bootstrap-server "$bootstrap_mtls" --command-config /client/admin.properties "$@"; }
 wait_until() {
-  # wait_until WHAT TRIES FUNCTION ARGS...
+  # wait_until WHAT TRIES FUNCTION ARGS... (fails at once if a node container has exited)
   local what="$1" tries="$2"; shift 2
-  for _ in $(seq "$tries"); do "$@" >/dev/null 2>&1 && return 0; sleep 3; done
+  for _ in $(seq "$tries"); do
+    "$@" >/dev/null 2>&1 && return 0
+    exited="$(docker ps -a --filter "label=$project" --filter status=exited --format '{{.Names}}' | grep '^kafka-' || true)"
+    [ -z "$exited" ] || [ -n "${ALLOW_STOPPED:-}" ] || fail "node container exited while waiting for $what: $exited"
+    sleep 3
+  done
   fail "timed out waiting for $what"
 }
-admin_lists_topics() { KAFKA_TIMEOUT=30 admin kafka-topics.sh --list; }
+admin_lists_topics() { KAFKA_TIMEOUT=15 admin kafka-topics.sh --list; }
 no_under_replicated() { local out; out="$(KAFKA_TIMEOUT=60 admin kafka-topics.sh --describe --under-replicated-partitions)" && [ -z "$out" ]; }
 three_brokers_serve() { [ "$(KAFKA_TIMEOUT=60 admin kafka-broker-api-versions.sh | grep -c '(id: 10[1-3] rack:')" = 3 ]; }
 
