@@ -114,8 +114,82 @@ class TransportTests(unittest.TestCase):
             self.assertEqual(candidate["itemCode"], "TEST-1")
         self.assertNotIn("listPrice", self.bridge.safe_result(result())["candidates"][0])
 
+    def total_call(self, lines, key="total-1"):
+        return {"toolCall": {"functionCalls": [{"id": key, "name": "calculate_order_total", "args": {"lines": lines}}]}}
+
+    def priced(self, external_id=CALL, amount="1.33", per="qutu"):
+        data = result()
+        data["candidates"][0]["externalId"] = external_id
+        data["candidates"][0]["listPrice"] = {"amount": amount, "currency": "AZN", "per": per,
+                                              "asOf": "2026-10-22T11:14:56.587Z"}
+        return self.bridge.safe_result(data)
+
+    def test_order_total_is_exact_and_only_from_prices_this_call_returned(self):
+        other = "dddddddd-1111-4111-8111-111111111111"
+        self.priced(CALL, "1.33", "qutu")
+        self.priced(other, "4.54", "ədəd")
+        self.assertTrue(self.handle(self.total_call([
+            {"externalId": CALL, "quantity": 15, "unit": "qutu"},
+            {"externalId": other, "quantity": 30, "unit": "ədəd"},
+        ])))
+        body = self.sent[-1]["toolResponse"]["functionResponses"][0]
+        self.assertEqual(body["name"], "calculate_order_total")
+        # 15 x 1.33 + 30 x 4.54 = 19.95 + 136.20, in decimals, not floats.
+        self.assertEqual(body["response"]["total"], "156.15")
+        self.assertEqual([line["lineTotal"] for line in body["response"]["lines"]], ["19.95", "136.20"])
+        self.assertTrue(body["response"]["complete"])
+        self.assertEqual(self.requests[-1]["action"], "session")  # no network for a total
+
+    def test_order_total_names_lines_it_cannot_price_instead_of_guessing(self):
+        self.priced(CALL, "4.54", "ədəd")
+        self.handle(self.total_call([
+            {"externalId": CALL, "quantity": 3, "unit": "qutu"},
+            {"externalId": "eeeeeeee-1111-4111-8111-111111111111", "quantity": 5, "unit": "qutu"},
+        ]))
+        response = self.sent[-1]["toolResponse"]["functionResponses"][0]["response"]
+        self.assertEqual(response["total"], "0.00")
+        self.assertFalse(response["complete"])
+        self.assertEqual([item["reason"] for item in response["notIncluded"]],
+                         ["unit_differs_from_price_unit", "no_price_in_this_call"])
+
+    def test_order_total_rejects_fractional_or_malformed_lines(self):
+        self.priced(CALL)
+        for lines in [[{"externalId": CALL, "quantity": 1.5, "unit": "qutu"}],
+                      [{"externalId": CALL, "quantity": 0, "unit": "qutu"}],
+                      [{"externalId": CALL, "quantity": 2}], []]:
+            self.sent.clear()
+            self.handle(self.total_call(lines, key=f"bad-{len(self.bridge.seen)}"))
+            self.assertEqual(self.sent[-1]["toolResponse"]["functionResponses"][0]["response"], {"status": "invalid_request"})
+
+    def test_closing_sentence_travels_with_the_session_only_when_well_formed(self):
+        def bridge_with(closing):
+            def request(body):
+                return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                        "opening": "Test greeting", "maxSeconds": 60, "closing": closing}
+            return bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now)
+        self.assertEqual(bridge_with("Sağ olun, xoş günlər!").open()["closing"], "Sağ olun, xoş günlər!")
+        self.assertIsNone(self.bridge.open()["closing"])  # older CRM: no closing, call still opens
+        for bad in [42, "", "x" * 121]:
+            with self.assertRaises(bridge_module.ZeytunPilotUnavailable):
+                bridge_with(bad).open()
+
     def test_agent_voice_is_pinned_to_azerbaijani(self):
         self.assertEqual(self.bridge.speech_language(), "az-AZ")
+        self.assertIsNone(self.bridge.speech_voice())
+
+    def test_crm_may_choose_a_known_voice_and_unpin_the_language(self):
+        def opened(extra):
+            def request(body):
+                return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                        "opening": "Test greeting", "maxSeconds": 60, **extra}
+            bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now)
+            bridge.open()
+            return bridge
+        chosen = opened({"voice": "Kore", "pinSpeechLanguage": False})
+        self.assertEqual((chosen.speech_voice(), chosen.speech_language()), ("Kore", None))
+        # An unknown voice name never reaches the provider; only an explicit false unpins.
+        unknown = opened({"voice": "Kore'); drop", "pinSpeechLanguage": "no"})
+        self.assertEqual((unknown.speech_voice(), unknown.speech_language()), (None, "az-AZ"))
 
     def test_bad_args_never_start_network(self):
         for index, args in enumerate([{}, {"text": "x", "customerGuid": CALL}, {"url": "http://bad.test"},
@@ -264,6 +338,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn("ZEYTUN_INBOUND_PILOT_ENABLED", start)
         self.assertIn("instruction_for_call()", start)
         self.assertIn("self.pharmacy_preview = True", start)
+        self.assertIn("self.closing_keys = tuple(", start)
         self.assertNotIn("self.is_demo_call = True", start)
 
         # Execute the exact patched setup/send functions, without importing the
@@ -281,14 +356,18 @@ class ArtifactTests(unittest.TestCase):
         self.assertNotIn("languageCode", setup["setup"]["generationConfig"]["speechConfig"])
         obj.pharmacy_bridge = SimpleNamespace(tools=lambda: ["synthetic-declaration"],
                                               transcription=lambda: {"languageCodes": ["az-AZ"]},
-                                              speech_language=lambda: "az-AZ")
+                                              speech_language=lambda: "az-AZ", speech_voice=lambda: None)
         pharmacy = globals_["_setup_event"](obj)["setup"]
         self.assertEqual(pharmacy["tools"], ["synthetic-declaration"])
         self.assertEqual(pharmacy["inputAudioTranscription"], {"languageCodes": ["az-AZ"]})
         self.assertEqual(pharmacy["generationConfig"]["speechConfig"]["languageCode"], "az-AZ")
-        # The chosen voice stays the station's own.
+        # Without a CRM choice the voice stays the station's own.
         self.assertEqual(pharmacy["generationConfig"]["speechConfig"]["voiceConfig"],
                          setup["setup"]["generationConfig"]["speechConfig"]["voiceConfig"])
+        obj.pharmacy_bridge.speech_voice, obj.pharmacy_bridge.speech_language = (lambda: "Kore"), (lambda: None)
+        chosen = globals_["_setup_event"](obj)["setup"]["generationConfig"]["speechConfig"]
+        self.assertEqual(chosen["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"], "Kore")
+        self.assertNotIn("languageCode", chosen)
         # Every replacement session is built by the same method, so recovery
         # cannot silently fall back to per-turn language detection.
         self.assertEqual(globals_["_setup_event"](obj, "resume-handle")["setup"]["inputAudioTranscription"],

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { createInboundPilotHandler, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
+import { createInboundPilotHandler, ZEYTUN_INBOUND_CLOSING, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
 
 const now = Date.parse("2026-10-22T12:00:00Z"), token = "t".repeat(48)
@@ -44,6 +44,8 @@ describe("single-call inbound owner rehearsal", () => {
     // opening over 500 characters, and the call then never gets the pilot.
     expect(ZEYTUN_INBOUND_PROMPT.length).toBeLessThanOrEqual(4000)
     expect(ZEYTUN_INBOUND_OPENING.length).toBeLessThanOrEqual(500)
+    expect(ZEYTUN_INBOUND_CLOSING.length).toBeGreaterThanOrEqual(3)
+    expect(ZEYTUN_INBOUND_CLOSING.length).toBeLessThanOrEqual(120)
   })
 
   it("opens an answered inbound test using complete international digits and no CRM subject", async () => {
@@ -52,6 +54,10 @@ describe("single-call inbound owner rehearsal", () => {
     expect(body).toMatchObject({ enabled: true, variant: "pharmacy_inbound_preview", maxSeconds: 300 })
     expect(body.opening).toContain("sınaq")
     expect(body.prompt).toContain("NOT an authenticated pharmacy")
+    // The station hangs up on this exact sentence; the prompt must ask for the same one.
+    expect(body.closing).toBe(ZEYTUN_INBOUND_CLOSING)
+    expect(body).toMatchObject({ voice: null, pinSpeechLanguage: true })
+    expect(body.prompt).toContain(`"${ZEYTUN_INBOUND_CLOSING}"`)
     expect(f.dependencies.claim).toHaveBeenCalledOnce()
     expect(f.dependencies.loadCall).toHaveBeenCalledTimes(2)
     expect(response.headers.get("cache-control")).toBe("no-store")

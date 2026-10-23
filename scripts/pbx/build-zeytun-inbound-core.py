@@ -35,12 +35,17 @@ def build(source, bridge):
             self.instruction = demo_instruction("", pilot["prompt"])
             self.crm_opening_text = pilot["opening"]
             self.crm_max_seconds = pilot["maxSeconds"]
+            if pilot.get("closing"):
+                # The station hangs up once this closing has played in full,
+                # as on demo calls; without it the call ran to its ceiling.
+                folded = closing_words(pilot["closing"]).replace(" ", "")
+                self.closing_keys = tuple(dict.fromkeys([folded, folded.replace("ə", "e")]))
             self.is_callback = False
             fetched, continuation_box, continuation_thread = True, {}, None
         else:
 '''
     text = text[:start] + pilot + "".join("    " + line if line.strip() else line for line in normal.splitlines(True)) + text[end:]
-    replace('        return {"setup": setup}\n', '        if self.pharmacy_preview:\n            setup["tools"] = self.pharmacy_bridge.tools()\n            setup["inputAudioTranscription"] = self.pharmacy_bridge.transcription()\n            setup["generationConfig"]["speechConfig"]["languageCode"] = self.pharmacy_bridge.speech_language()\n        return {"setup": setup}\n')
+    replace('        return {"setup": setup}\n', '        if self.pharmacy_preview:\n            setup["tools"] = self.pharmacy_bridge.tools()\n            setup["inputAudioTranscription"] = self.pharmacy_bridge.transcription()\n            language, voice = self.pharmacy_bridge.speech_language(), self.pharmacy_bridge.speech_voice()\n            if language:\n                setup["generationConfig"]["speechConfig"]["languageCode"] = language\n            if voice:\n                setup["generationConfig"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] = voice\n        return {"setup": setup}\n')
     method = '''    def _send_pharmacy_result(self, active_ws, expected_epoch, payload):
         with self.gemini_event_lock:
             with self.state_lock:

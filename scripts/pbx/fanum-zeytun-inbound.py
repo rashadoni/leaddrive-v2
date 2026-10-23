@@ -4,6 +4,7 @@ Embedded into a hash-pinned voice core by build-zeytun-inbound-core.py. No
 credential/catalog logging; no 1C calls; every lookup reauthorizes at the CRM.
 Protocol: https://ai.google.dev/api/live and /gemini-api/docs/live-api/tools.
 """
+from decimal import Decimal
 import json
 import re
 import threading
@@ -25,6 +26,10 @@ class ZeytunNoRedirect(urllib.request.HTTPRedirectHandler):
 
 class ZeytunInboundBridge:
     NAME = "search_pharmacy_catalog"
+    # Owner, 2026-10-23: the agent must total the order ("не может цены
+    # группировать"). The model does no arithmetic: this tool multiplies the
+    # list prices this call already returned, exactly, on the station.
+    TOTAL_NAME = "calculate_order_total"
     # Owner, 2026-10-23: ~99% of these calls are Azerbaijani. Without a hint
     # the provider re-detects the language of every short phone turn; measured
     # against the live API on 8 kHz mu-law audio, two-word Azerbaijani turns
@@ -37,6 +42,16 @@ class ZeytunInboundBridge:
     # Unpinned, the provider picks the spoken language and accent per turn.
     # Accepted by gemini-3.8-live (voice Sulafat) on 2026-10-23.
     SPEECH_LANGUAGE = "az-AZ"
+    # Owner, 2026-10-23, of Sulafat with the pin: "голос ужасный, акцент
+    # провинциальный". The CRM may name another prebuilt voice and turn the
+    # spoken-language pin off for this pilot, so choosing by ear needs no
+    # station install. Anything outside this list keeps the station's voice.
+    VOICES = frozenset({
+        "Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Aoede", "Callirrhoe", "Autonoe",
+        "Enceladus", "Iapetus", "Umbriel", "Algieba", "Despina", "Erinome", "Algenib", "Rasalgethi",
+        "Laomedeia", "Achernar", "Alnilam", "Schedar", "Gacrux", "Pulcherrima", "Achird",
+        "Zubenelgenubi", "Vindemiatrix", "Sadachbia", "Sadaltager", "Sulafat",
+    })
     # Order words only: units, forms and packaging. Medicine names are left
     # out on purpose: a hard-coded list here would drift from the catalog.
     TRANSCRIPTION_VOCABULARY = (
@@ -68,6 +83,10 @@ class ZeytunInboundBridge:
         self.seen = set()
         self.expires = 0
         self.active = False
+        self.prices = {}
+        self.closing = None
+        self.voice = None
+        self.pin_language = True
 
     def _request(self, body):
         # The first session also builds the pinned catalog once. Keep that
@@ -114,9 +133,16 @@ class ZeytunInboundBridge:
                 raise ValueError()
             # Server's ceiling is bounded again locally; the core counts it from
             # AudioSocket connect. Never parse a model-supplied expiry or URL.
+            closing = value.get("closing")
+            if closing is not None and (not isinstance(closing, str) or not 3 <= len(closing) <= 120):
+                raise ValueError()
+            voice, pin = value.get("voice"), value.get("pinSpeechLanguage")
             self.expires = self.clock() + seconds
             self.active = True
-            return {"prompt": prompt, "opening": opening, "maxSeconds": seconds}
+            self.closing = closing
+            self.voice = voice if voice in self.VOICES else None
+            self.pin_language = pin is not False
+            return {"prompt": prompt, "opening": opening, "maxSeconds": seconds, "closing": closing}
         except Exception:
             raise ZeytunPilotUnavailable("pilot_session_unavailable") from None
 
@@ -132,7 +158,14 @@ class ZeytunInboundBridge:
                     "itemCode": "Exact item code supplied by caller.",
                     "barcode": "Exact barcode supplied by caller.",
                     "externalId": "Exact product UUID returned by an earlier lookup.",
-                }.items()}}}]}]
+                }.items()}}},
+            {"name": self.TOTAL_NAME,
+             "description": "Exact total of the order lines whose product an earlier lookup in THIS call returned with listPrice. Give each line's externalId and the quantity in that listPrice's unit. Read back only what this returns.",
+             "parameters": {"type": "OBJECT", "properties": {"lines": {"type": "ARRAY", "items": {"type": "OBJECT",
+                 "properties": {"externalId": {"type": "STRING", "description": "Product UUID from an earlier lookup."},
+                                "quantity": {"type": "INTEGER", "description": "Whole number of units, in listPrice.per."},
+                                "unit": {"type": "STRING", "description": "The unit of that quantity: qutu, ədəd, flakon, ..."}},
+                 "required": ["externalId", "quantity", "unit"]}}}, "required": ["lines"]}}]}]
 
     def transcription(self):
         # Fields of AudioTranscriptionConfig (ai.google.dev/api/live); accepted
@@ -141,7 +174,10 @@ class ZeytunInboundBridge:
                 "customVocabulary": list(self.TRANSCRIPTION_VOCABULARY)}
 
     def speech_language(self):
-        return self.SPEECH_LANGUAGE
+        return self.SPEECH_LANGUAGE if self.pin_language else None
+
+    def speech_voice(self):
+        return self.voice
 
     @staticmethod
     def query(args):
@@ -192,6 +228,9 @@ class ZeytunInboundBridge:
             price = self.list_price(item.get("listPrice"))
             if price is not None:
                 projected["listPrice"] = price
+                with self.lock:
+                    if len(self.prices) < 256:
+                        self.prices[projected["externalId"]] = (Decimal(price["amount"]), price["per"])
             result["candidates"].append({**projected, "identityVerified": False})
         return result
 
@@ -209,6 +248,36 @@ class ZeytunInboundBridge:
                 or not isinstance(as_of, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T[0-9:.]{8,15}Z", as_of)):
             return None
         return {"amount": amount, "currency": currency, "per": per, "asOf": as_of}
+
+    def order_total(self, args):
+        """Exact sum on the station; a line without a price returned in this
+        call, or in another unit, is named and left out, never guessed."""
+        lines = args.get("lines") if isinstance(args, dict) and set(args) == {"lines"} else None
+        if not isinstance(lines, list) or not 1 <= len(lines) <= 30:
+            return {"status": "invalid_request"}
+        total, priced, skipped = Decimal("0"), [], []
+        for line in lines:
+            if not isinstance(line, dict) or set(line) != {"externalId", "quantity", "unit"}:
+                return {"status": "invalid_request"}
+            key, quantity, unit = line["externalId"], line["quantity"], line["unit"]
+            if isinstance(quantity, float) and quantity.is_integer():
+                quantity = int(quantity)
+            if (not isinstance(key, str) or not isinstance(unit, str) or type(quantity) is not int
+                    or not 1 <= quantity <= 100000):
+                return {"status": "invalid_request"}
+            with self.lock:
+                known = self.prices.get(key)
+            if known is None:
+                skipped.append({"externalId": key, "reason": "no_price_in_this_call"})
+            elif unit.strip().lower() != known[1]:
+                skipped.append({"externalId": key, "reason": "unit_differs_from_price_unit", "priceUnit": known[1]})
+            else:
+                amount = (known[0] * quantity).quantize(Decimal("0.01"))
+                total += amount
+                priced.append({"externalId": key, "quantity": quantity, "unit": known[1],
+                               "unitPrice": str(known[0]), "lineTotal": str(amount)})
+        return {"status": "total", "currency": "AZN", "total": str(total.quantize(Decimal("0.01"))),
+                "lines": priced, "notIncluded": skipped, "complete": not skipped}
 
     def handle(self, event, send, current):
         """Network work never runs on the audio/event thread. send also fences
@@ -235,8 +304,19 @@ class ZeytunInboundBridge:
             if not isinstance(call, dict):
                 raise ZeytunPilotUnavailable("invalid_tool_call")
             key, name = call.get("id"), call.get("name")
-            if not isinstance(key, str) or not 1 <= len(key) <= 128 or name != self.NAME:
+            if not isinstance(key, str) or not 1 <= len(key) <= 128 or name not in (self.NAME, self.TOTAL_NAME):
                 raise ZeytunPilotUnavailable("invalid_tool_call")
+            if name == self.TOTAL_NAME:
+                with self.lock:
+                    repeated = key in self.seen or key in self.pending
+                    if len(self.seen) < 128:
+                        self.seen.add(key)
+                    expired = not self.active or self.clock() >= self.expires
+                body = ({"status": "duplicate_request"} if repeated else {"status": "pilot_expired"} if expired
+                        else self.order_total(call.get("args")))
+                if current():
+                    send({"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}})
+                continue
             args = self.query(call.get("args"))
             response = lambda body, key=key: {"toolResponse": {"functionResponses": [{"id": key, "name": self.NAME, "response": body}]}}
             error = None
