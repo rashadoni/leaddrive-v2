@@ -102,12 +102,15 @@ docker network create --label "$project" "$net" >/dev/null
 start_node() {
   local name="$1"
   docker volume create --label "$project" "$project-$name" >/dev/null
+  # nocopy below keeps Docker from copying the image's appuser-owned data
+  # directory (and its ownership) into the volume; production bind-mounts a
+  # host directory owned by the Kafka uid instead.
   docker run --rm --label "$project" --user 0 -v "$project-$name:/d" --entrypoint /bin/chown "$image" "$uid:$uid" /d
   docker run -d --name "$name" --hostname "$name" --network "$net" --label "$project" \
     --env-file "$work/rendered/$name/kafka.env" --memory 1g --user "$uid:$uid" \
     -v "$work/rendered/$name/server.properties:/etc/kafka/server.properties:ro" \
     -v "$work/pki/issued/$name:/etc/kafka/tls:ro" \
-    -v "$project-$name:/var/lib/kafka/data" \
+    --mount "type=volume,src=$project-$name,dst=/var/lib/kafka/data,volume-nocopy=true" \
     --entrypoint /bin/bash "$image" -ec \
     '/opt/kafka/bin/kafka-storage.sh format --ignore-formatted -t "$CLUSTER_ID" -c /etc/kafka/server.properties && exec /opt/kafka/bin/kafka-server-start.sh /etc/kafka/server.properties' >/dev/null
 }

@@ -129,6 +129,9 @@ export function renderCluster({ topology, catalog, clusterName, inventory, heapS
         ['listeners', `CONTROLLER://${address}:${PORTS.controller}`],
         ['listener.security.protocol.map', 'CONTROLLER:SSL'],
         ['ssl.client.auth', 'required'],
+        // Topic-creation defaults move to the controller role in Kafka 5.0.
+        ['default.replication.factor', rf],
+        ['num.partitions', '1'],
       )
     } else {
       entries.push(
