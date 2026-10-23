@@ -99,3 +99,13 @@ test('heap follows the plan and scales down only for the disposable drill', () =
   assert.match(drill['kafka-p-broker-eu/kafka.env'], /-Xmx512m/)
   assert.match(drill['kafka-p-ctrl-gra/kafka.env'], /-Xmx256m/)
 })
+
+test('a broker that is not delivered yet can be left out, a controller cannot', () => {
+  const inventory = inventoryFor('primary')
+  delete inventory.hosts['kafka-p-broker-gra']
+  const files = renderCluster({ topology, catalog, clusterName: 'primary', inventory, pendingBrokers: ['kafka-p-broker-gra'] })
+  assert.ok(!files['kafka-p-broker-gra/server.properties'])
+  assert.ok(files['kafka-p-broker-eu/server.properties'])
+  assert.match(parse(files['kafka-p-broker-eu/server.properties'])['super.users'], /User:kafka-p-broker-gra/, 'the pending broker is already trusted for when it joins')
+  assert.throws(() => renderCluster({ topology, catalog, clusterName: 'primary', inventory: inventoryFor('primary'), pendingBrokers: ['kafka-p-ctrl-gra'] }), /only brokers/)
+})

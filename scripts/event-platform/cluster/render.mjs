@@ -102,7 +102,10 @@ function commonSecurity(superUsers) {
   ]
 }
 
-export function renderCluster({ topology, catalog, clusterName, inventory, heapScale = 1 }) {
+// pendingBrokers: brokers not delivered yet. They are skipped (and can join
+// later with their own node id); controllers are never optional because the
+// quorum voter set is fixed at format time.
+export function renderCluster({ topology, catalog, clusterName, inventory, heapScale = 1, pendingBrokers = [] }) {
   const cluster = topology.clusters.find((c) => c.name === clusterName)
   if (!cluster) throw new Error(`unknown cluster ${clusterName}`)
   if (!/^[A-Za-z0-9_-]{22}$/.test(inventory.clusterId ?? '')) throw new Error('inventory.clusterId must be a 22-character Kafka cluster id')
@@ -115,7 +118,10 @@ export function renderCluster({ topology, catalog, clusterName, inventory, heapS
   const minIsr = catalog.defaults.config['min.insync.replicas']
   const files = {}
 
-  for (const host of [...controllers, ...brokers]) {
+  for (const name of pendingBrokers) {
+    if (!brokers.some((h) => h.name === name)) throw new Error(`${name} is not a broker of ${clusterName}; only brokers may be pending`)
+  }
+  for (const host of [...controllers, ...brokers.filter((h) => !pendingBrokers.includes(h.name))]) {
     const address = addressOf(inventory, host.name)
     const isController = host.roles.includes('controller')
     const planHeap = isController ? CONTROLLER_HEAP_MB : BROKER_HEAP_MB[host.plan]

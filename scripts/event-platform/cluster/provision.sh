@@ -77,8 +77,11 @@ case "${1:-}" in
       const c = m.loadTopology().clusters.find((x) => x.name === process.argv[1])
       for (const h of c.hosts) if (h.roles.includes("broker") || h.roles.includes("controller")) console.log(h.name)' "$cluster")
     for name in "${nodes[@]}"; do
-      address="$(js 'const h = JSON.parse(process.argv[2]).hosts[process.argv[1]]; if (!h?.address) process.exit(1); console.log(h.address)' "$name" "$(cat "$inventory")")" \
-        || die "$name has not been bootstrapped"
+      address="$(js 'const h = JSON.parse(process.argv[2]).hosts[process.argv[1]]; if (!h?.address) process.exit(1); console.log(h.address)' "$name" "$(cat "$inventory")")" || {
+        # Controllers must all exist; a broker may join later.
+        [[ ",$(member_role "$name")," == *",broker,"* ]] && { echo "skip certificate for pending $name"; continue; }
+        die "$name has not been bootstrapped"
+      }
       [ -d "$pki/issued/$name" ] || bash "$here/pki.sh" issue "$pki" "$name" "$name" "$address"
     done
     [ -d "$pki/issued/kafka-admin" ] || bash "$here/pki.sh" issue "$pki" kafka-admin kafka-admin
@@ -86,8 +89,11 @@ case "${1:-}" in
       import("node:fs").then(({ readFileSync, writeFileSync }) => {
         const [file, cluster, out] = process.argv.slice(1)
         const inv = JSON.parse(readFileSync(file, "utf8"))
+        const c = m.loadTopology().clusters.find((x) => x.name === cluster)
+        const pendingBrokers = c.hosts.filter((h) => h.roles.includes("broker") && !inv.hosts[h.name]?.address).map((h) => h.name)
+        if (pendingBrokers.length) console.error(`brokers not delivered yet, left out: ${pendingBrokers.join(", ")}`)
         const files = m.renderCluster({ topology: m.loadTopology(), catalog: m.loadCatalog(), clusterName: cluster,
-          inventory: { clusterId: inv.clusters[cluster].clusterId, hosts: inv.hosts } })
+          inventory: { clusterId: inv.clusters[cluster].clusterId, hosts: inv.hosts }, pendingBrokers })
         writeFileSync(out, JSON.stringify(files))
       })' "$inventory" "$cluster" "$state/rendered-$cluster.json"
     rm -rf "$state/rendered/$cluster"; mkdir -p "$state/rendered/$cluster"
@@ -137,7 +143,7 @@ case "${1:-}" in
     bootstrap="$(js '
       const [cluster, inv] = [process.argv[1], JSON.parse(process.argv[2])]
       const c = m.loadTopology().clusters.find((x) => x.name === cluster)
-      console.log(c.hosts.filter((h) => h.roles.includes("broker")).map((h) => `${inv.hosts[h.name].address}:${m.PORTS.replication}`).join(","))' "$cluster" "$(cat "$inventory")")"
+      console.log(c.hosts.filter((h) => h.roles.includes("broker") && inv.hosts[h.name]?.address).map((h) => `${inv.hosts[h.name].address}:${m.PORTS.replication}`).join(","))' "$cluster" "$(cat "$inventory")")"
     image="$(js 'console.log(m.KAFKA_IMAGE)')"
     admin_dir="$state/pki-$cluster/issued/kafka-admin"
     # The admin key exists on the broker only for this command, in tmpfs.
@@ -172,7 +178,8 @@ case "${1:-}" in
       for port in 9092 9093 9094 8080 8083 5432; do
         if timeout 4 bash -c ">/dev/tcp/$ip/$port" 2>/dev/null; then echo "OPEN on public address: $name $ip:$port"; status=1; fi
       done
-      handshakes="$(on "$name" 'now=$(date +%s); wg show wg0 latest-handshakes | awk -v now="$now" "{ if (\$2 == 0 || now - \$2 > 180) stale++ } END { print NR, stale + 0 }"')" \
+      # </dev/null: ssh would otherwise swallow the rest of this loop's input.
+      handshakes="$(on "$name" </dev/null 'now=$(date +%s); wg show wg0 latest-handshakes | awk -v now="$now" "{ if (\$2 == 0 || now - \$2 > 180) stale++ } END { print NR, stale + 0 }"')" \
         || { echo "tunnel down on $name"; status=1; continue; }
       echo "$name: public Kafka ports closed; tunnel peers/stale: $handshakes"
     done < <(js '
