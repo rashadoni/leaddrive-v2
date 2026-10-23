@@ -46,6 +46,7 @@ const ERROR_KEYS: Record<string, string> = {
   NO_ENCRYPTION_KEY: "errNoKey",
   CONSENT_REQUIRED: "errConsent",
   INVALID_PIXEL: "errInvalidPixel",
+  NO_PIXEL_ACCESS: "errNoPixelAccess",
   TEST_CODE_REQUIRED: "errTestCode",
 }
 
@@ -53,7 +54,7 @@ export function MetaDestinationCard({
   view, onSave, onTest,
 }: {
   view: DestinationView | null
-  onSave: (input: DestinationSave) => Promise<{ ok: true; view: DestinationView } | { ok: false; code?: string }>
+  onSave: (input: DestinationSave) => Promise<{ ok: true; view: DestinationView } | { ok: false; code?: string; reason?: string }>
   onTest: () => Promise<{ ok: boolean; code?: string; reason?: string }>
 }) {
   const t = useTranslations("adConversions")
@@ -83,7 +84,9 @@ export function MetaDestinationCard({
     })
     setBusy(null)
     if (!result.ok) {
-      setMessage({ type: "error", text: t(ERROR_KEYS[result.code ?? ""] ?? "errGeneric", { provider }) })
+      // Meta's own words after ours: «Missing Permission» or «Invalid OAuth access token» tells the owner where to look.
+      const text = t(ERROR_KEYS[result.code ?? ""] ?? "errGeneric", { provider })
+      setMessage({ type: "error", text: result.reason ? `${text} ${provider}: «${result.reason}»` : text })
       return
     }
     setCurrent(result.view)
@@ -105,7 +108,12 @@ export function MetaDestinationCard({
     : current.isActive
       ? { text: t("statusOn"), tone: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500" }
       : { text: t("statusOff"), tone: "text-muted-foreground", dot: "bg-muted-foreground" }
-  const canSave = /^\d{5,25}$/.test(publicId.trim()) && (secret.length > 0 || Boolean(current?.hasSecret)) && (sendLeads || sendWins) && consent
+  // What still stops saving, first missing first — the button's hint names it.
+  const missing = !/^\d{5,25}$/.test(publicId.trim()) ? t("errInvalidPixel")
+    : !(secret.length > 0 || current?.hasSecret) ? t("missingToken")
+      : !(sendLeads || sendWins) ? t("missingEvent")
+        : !consent ? t("errConsent") : null
+  const canSave = missing === null
 
   return (
     <Card data-testid="ad-destination-meta">
@@ -170,7 +178,7 @@ export function MetaDestinationCard({
           </p>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          <Hint text={consent ? t("saveHint") : t("errConsent")} wrap>
+          <Hint text={missing ?? t("saveHint")} wrap>
             <Button onClick={() => void save(true)} disabled={!canSave || busy !== null}>
               {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
               {busy === "save" ? t("saving") : t("save")}

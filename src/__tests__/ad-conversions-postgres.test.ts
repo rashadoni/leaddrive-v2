@@ -3,7 +3,9 @@
  * click, the click travels to the deal on conversion, and the cron sends the
  * lead and the won deal once each — never without the consent statement.
  *
- * Stood in for: Meta's Graph API (`fetch`). Everything on our side is real —
+ * Stood in for: Meta's Graph API (`fetch`), answering as it did live on
+ * 2026-10-23 to a token generated in Events Manager — it may send events but
+ * not read the pixel. Everything on our side is real —
  * the public lead route, the conversion command, the stage vocabulary, the
  * worker and its outbox table with its unique key and CHECKs.
  *
@@ -88,10 +90,17 @@ async function fakeMeta(input: RequestInfo | URL, init?: RequestInit): Promise<R
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
   const denied = json(400, { error: { message: "Invalid OAuth access token - Cannot parse access token", code: 190 } })
   if ((init?.method ?? "GET") === "GET") {
-    return url.searchParams.get("access_token") === TOKEN ? json(200, { id: PIXEL, name: "Shop pixel" }) : denied
+    return url.searchParams.get("access_token") === TOKEN ? json(400, { error: { message: "(#100) Missing Permission", code: 100 } }) : denied
   }
   const body = JSON.parse(String(init?.body))
   if (body.access_token !== TOKEN) return denied
+  if (!url.pathname.endsWith(`/${PIXEL}/events`)) {
+    return json(400, { error: { message: "Unsupported post request. Object with ID 'x' does not exist, cannot be loaded due to missing permissions", code: 100, error_subcode: 33 } })
+  }
+  // "If any event_time is more than 7 days in the past, we return an error for the entire request and process no events."
+  if ((body.data as { event_time: number }[]).some((event) => event.event_time < Date.now() / 1000 - 7 * 24 * 3600)) {
+    return json(400, { error: { message: "Invalid parameter", code: 100, error_subcode: 2804003, error_user_msg: "The timestamp for this event is too far in the past." } })
+  }
   if (meta.fail) return json(400, { error: { message: meta.fail, code: 100 } })
   meta.batches.push(body.data)
   meta.testCodes.push(body.test_event_code)
@@ -184,13 +193,24 @@ pgDescribe("ad conversions to Meta on a real Postgres", () => {
     return bypass(() => prisma.lead.findFirstOrThrow({ where: { organizationId: ORG, contactName: name } }))
   }
 
-  it("refuses to turn sending on without the consent statement, or with a token Meta rejects", async () => {
+  it("refuses to turn sending on without the consent statement, with a token Meta rejects, or for a pixel the token cannot send to", async () => {
     const noConsent = await connect({ consent: false })
     const badToken = await connect({ secret: "wrong" })
+    const otherPixel = await connect({ publicId: "999999999999999" })
 
     expect([noConsent.status, (await noConsent.json()).code]).toEqual([400, "CONSENT_REQUIRED"])
     expect([badToken.status, (await badToken.json()).code]).toEqual([400, "INVALID_KEY"])
+    expect([otherPixel.status, (await otherPixel.json()).code]).toEqual([400, "NO_PIXEL_ACCESS"])
     expect(await destination()).toBeNull()
+  })
+
+  it("accepts a token that may send but not read the pixel, and the check records no event", async () => {
+    const res = await connect()
+
+    expect(res.status, await res.clone().text()).toBe(200)
+    expect((await destination())?.isActive).toBe(true)
+    expect(sentEvents()).toEqual([])
+    await bypass(() => prisma.adConversionDestination.deleteMany({ where: { organizationId: ORG } }))
   })
 
   it("the database refuses an active destination without consent", async () => {

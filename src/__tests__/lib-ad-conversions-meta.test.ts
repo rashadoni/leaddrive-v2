@@ -3,8 +3,8 @@
  * the action source, and a form's attribution read without trusting it.
  */
 import { createHash } from "crypto"
-import { describe, expect, it } from "vitest"
-import { buildMetaEvent, normaliseEmail, normalisePhone } from "@/lib/ad-conversions/meta"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { buildMetaEvent, checkMetaToken, normaliseEmail, normalisePhone } from "@/lib/ad-conversions/meta"
 import { readAttribution } from "@/lib/ad-conversions/attribution"
 import { isInboundLead } from "@/lib/ad-conversions/worker"
 
@@ -84,5 +84,30 @@ describe("which leads count as an ad's doing", () => {
     for (const source of ["cold_call", "referral", "exhibition", "tiktok", "import", null]) {
       expect(isInboundLead({ source, adAttribution: null })).toBe(false)
     }
+  })
+})
+
+describe("checking a token before saving it", () => {
+  afterEach(() => vi.unstubAllGlobals())
+  const answer = (status: number, body: unknown) => vi.fn(async () => new Response(JSON.stringify(body), { status }))
+
+  it("accepts Meta refusing the eight-day-old probe event, and sends nothing else", async () => {
+    const fetch = answer(400, { error: { message: "Invalid parameter", code: 100, error_subcode: 2804003 } })
+    vi.stubGlobal("fetch", fetch)
+    const now = new Date("2026-10-23T10:00:00Z")
+    await expect(checkMetaToken("1581265437366855", "token", now)).resolves.toBeUndefined()
+    const sent = JSON.parse(String((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body))
+    expect(sent.data).toHaveLength(1)
+    expect(sent.data[0].event_time).toBe(now.getTime() / 1000 - 8 * 24 * 3600)
+    expect(sent).not.toHaveProperty("test_event_code")
+  })
+
+  it("refuses a token Meta cannot parse, and one without access to the pixel", async () => {
+    vi.stubGlobal("fetch", answer(400, { error: { message: "Invalid OAuth access token - Cannot parse access token", code: 190 } }))
+    await expect(checkMetaToken("1", "bad")).rejects.toMatchObject({ code: 190 })
+    vi.stubGlobal("fetch", answer(400, { error: { message: "(#100) Missing Permission", code: 100 } }))
+    await expect(checkMetaToken("1", "other")).rejects.toMatchObject({ code: 100 })
+    vi.stubGlobal("fetch", answer(400, { error: { message: "Unsupported post request.", code: 100, error_subcode: 33 } }))
+    await expect(checkMetaToken("1", "other")).rejects.toMatchObject({ subcode: 33 })
   })
 })

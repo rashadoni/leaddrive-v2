@@ -11,8 +11,10 @@
  *    "+" — `advertising-studio/pii-hasher.ts` keeps the "+", which Meta does
  *    not want, so the normalisation lives here.
  *  - `currency` must be ISO 4217; AZN is.
- *  - A wrong token answers code 190; the pixel read below is how a token is
- *    checked before it is saved.
+ *  - A wrong token answers code 190. The token Events Manager generates may
+ *    only send events: reading the pixel answers "(#100) Missing Permission"
+ *    for a working token (seen live 2026-10-23), so `checkMetaToken` checks a
+ *    token by sending, not by reading.
  */
 import { createHash } from "crypto"
 import type { AdAttribution } from "./attribution"
@@ -99,7 +101,7 @@ export function buildMetaEvent(subject: ConversionSubject): Record<string, unkno
 }
 
 export class MetaApiError extends Error {
-  constructor(message: string, readonly code: number | string) {
+  constructor(message: string, readonly code: number | string, readonly subcode?: number) {
     super(message)
     this.name = "MetaApiError"
   }
@@ -113,17 +115,48 @@ async function graph(path: string, init: RequestInit): Promise<Record<string, un
     throw new MetaApiError(error instanceof Error ? error.message : "Meta is unreachable", "network")
   }
   const body = (await response.json().catch(() => null)) as Record<string, unknown> | null
-  const error = body?.error as { message?: string; code?: number; error_user_msg?: string } | undefined
+  const error = body?.error as { message?: string; code?: number; error_subcode?: number; error_user_msg?: string } | undefined
   if (!response.ok || error) {
-    throw new MetaApiError(error?.error_user_msg || error?.message || `HTTP ${response.status}`, error?.code ?? response.status)
+    throw new MetaApiError(error?.error_user_msg || error?.message || `HTTP ${response.status}`, error?.code ?? response.status, error?.error_subcode)
   }
   return body ?? {}
 }
 
-/** Check that the token can see the pixel. Throws MetaApiError otherwise. */
-export async function verifyMetaPixel(pixelId: string, accessToken: string): Promise<{ name: string }> {
-  const body = await graph(`/${encodeURIComponent(pixelId)}?fields=id,name&access_token=${encodeURIComponent(accessToken)}`, { method: "GET" })
-  return { name: typeof body.name === "string" ? body.name : pixelId }
+/**
+ * Meta refused the token itself (190, 102) or its access to this pixel (10,
+ * 200–299, an unreadable object, a missing permission) — as opposed to
+ * refusing the events in the request.
+ */
+export function metaAccessRefusal(error: MetaApiError): "token" | "pixel" | null {
+  if (error.code === 190 || error.code === 102) return "token"
+  if (typeof error.code !== "number") return null
+  if (error.code === 10 || (error.code >= 200 && error.code < 300)) return "pixel"
+  if (error.code === 100 && (error.subcode === 33 || /permission|does not exist|cannot be loaded/i.test(error.message))) return "pixel"
+  return null
+}
+
+/**
+ * Check that the token may send events to this pixel, without recording one:
+ * the request carries a single event eight days old, and "if any event_time
+ * is more than 7 days in the past, we return an error for the entire request
+ * and process no events". Meta checks the token and its access to the pixel
+ * before the events, so an access refusal is the answer that means no; the
+ * event's own refusal means the token works. Throws MetaApiError on no, or
+ * when Meta cannot be reached.
+ */
+export async function checkMetaToken(pixelId: string, accessToken: string, now = new Date()): Promise<void> {
+  const probe = {
+    event_name: "Lead",
+    event_time: Math.floor(now.getTime() / 1000) - 8 * 24 * 3600,
+    event_id: `leaddrive:token-check:${now.getTime()}`,
+    action_source: "other",
+    user_data: { em: [sha256("token-check@leaddrivecrm.org")] },
+  }
+  try {
+    await sendMetaEvents({ pixelId, accessToken, events: [probe] })
+  } catch (error) {
+    if (error instanceof MetaApiError && (error.code === "network" || metaAccessRefusal(error))) throw error
+  }
 }
 
 /** Send up to 1000 events in one request. Returns how many Meta received. */
