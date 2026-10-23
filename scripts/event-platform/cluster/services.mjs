@@ -1,0 +1,163 @@
+// Kafka Connect (Debezium) and Schema Registry (Apicurio, KafkaSQL storage) on
+// the connect/registry hosts of topology.v1.json, plus the service identities
+// and least-privilege ACLs every client of the cluster gets.
+//
+// Nothing here holds a secret. SCRAM passwords live in per-host
+// *.secret.env files that provision.sh writes from the operator's store.
+import { PORTS, addressOf } from './render.mjs'
+
+export const CONNECT_IMAGE = 'ghcr.io/rashadoni/debezium-connect:3.7.0.Final-8107474c18d5@sha256:8107474c18d56317c007dd930f2782c9636198a895144a0c1dddd6d6a7536d6e'
+export const REGISTRY_IMAGE = 'apicurio/apicurio-registry:3.3.0@sha256:25b302bc1ecf53cb01bda4f39749f175c94f3f6d27dcc57123d25714e4a0b117'
+export const CONNECT_REST_PORT = 8083
+export const REGISTRY_PORT = 8080
+
+export const PRINCIPALS = Object.freeze({
+  connect: 'ld-connect',
+  registry: 'ld-registry',
+  fundWorker: 'ld-fund-worker',
+})
+
+export function connectGroup(env) { return `ld-${env}-connect` }
+
+// Topics the platform itself needs besides the domain catalog. Connect's
+// internal topics are compacted; the registry journal is the registry's only
+// storage, so it is never deleted by retention.
+export function infraTopics(env) {
+  const compact = { 'cleanup.policy': 'compact', 'min.insync.replicas': '2', 'unclean.leader.election.enable': 'false' }
+  const forever = { 'cleanup.policy': 'delete', 'retention.ms': '-1', 'retention.bytes': '-1', 'min.insync.replicas': '2', 'unclean.leader.election.enable': 'false' }
+  return [
+    { name: `ld.${env}.connect.config`, partitions: 1, replicationFactor: 3, config: compact },
+    { name: `ld.${env}.connect.offset`, partitions: 3, replicationFactor: 3, config: compact },
+    { name: `ld.${env}.connect.status`, partitions: 1, replicationFactor: 3, config: compact },
+    { name: `ld.${env}.registry.journal`, partitions: 1, replicationFactor: 3, config: forever },
+    { name: `ld.${env}.registry.snapshots`, partitions: 1, replicationFactor: 3, config: forever },
+  ]
+}
+
+// Each binding is the argument list for one `kafka-acls.sh --add` call.
+export function aclBindings(env, catalogTopics) {
+  const allow = (principal, ops, resource, pattern = 'literal') => [
+    '--allow-principal', `User:${principal}`, ...ops.flatMap((op) => ['--operation', op]),
+    ...resource, '--resource-pattern-type', pattern,
+  ]
+  const events = catalogTopics.filter((t) => t.name.endsWith('.events.v1')).map((t) => t.name)
+  const financeEvents = `ld.${env}.finance.events.v1`
+  if (!events.includes(financeEvents)) throw new Error(`catalog has no ${financeEvents}`)
+  return [
+    // Debezium writes routed outbox records to events topics only.
+    ...events.map((topic) => allow(PRINCIPALS.connect, ['Write', 'Describe'], ['--topic', topic])),
+    allow(PRINCIPALS.connect, ['IdempotentWrite'], ['--cluster']),
+    allow(PRINCIPALS.connect, ['Read', 'Write', 'Describe', 'DescribeConfigs'], ['--topic', `ld.${env}.connect.`], 'prefixed'),
+    allow(PRINCIPALS.connect, ['Read'], ['--group', connectGroup(env)]),
+    // The registry reads and writes only its own journal and snapshots. Its
+    // KafkaSQL consumer uses a generated group id per instance.
+    allow(PRINCIPALS.registry, ['Read', 'Write', 'Describe', 'DescribeConfigs'], ['--topic', `ld.${env}.registry.`], 'prefixed'),
+    allow(PRINCIPALS.registry, ['IdempotentWrite'], ['--cluster']),
+    allow(PRINCIPALS.registry, ['Read'], ['--group', '*']),
+    // The Fund shadow worker only consumes Finance events.
+    allow(PRINCIPALS.fundWorker, ['Read', 'Describe'], ['--topic', financeEvents]),
+    allow(PRINCIPALS.fundWorker, ['Read'], ['--group', `ld.${env}.fund-shadow.`], 'prefixed'),
+  ]
+}
+
+function env(entries) {
+  return `${entries.map(([k, v]) => `${k}=${v}`).join('\n')}\n`
+}
+
+const clientSecurity = (prefix) => [
+  [`${prefix}SECURITY_PROTOCOL`, 'SASL_SSL'],
+  [`${prefix}SASL_MECHANISM`, 'SCRAM-SHA-512'],
+  [`${prefix}SSL_TRUSTSTORE_TYPE`, 'PEM'],
+  [`${prefix}SSL_TRUSTSTORE_LOCATION`, '/etc/kafka/tls/ca.pem'],
+  [`${prefix}SSL_ENDPOINT_IDENTIFICATION_ALGORITHM`, 'https'],
+  [`${prefix}SSL_ENABLED_PROTOCOLS`, 'TLSv1.3'],
+]
+
+export function scramJaas(user, password) {
+  if (!/^[a-z][a-z0-9-]*$/.test(user)) throw new Error('bad SCRAM user')
+  if (!/^[A-Za-z0-9]{24,}$/.test(password)) throw new Error('SCRAM password must be >= 24 alphanumeric characters')
+  return `org.apache.kafka.common.security.scram.ScramLoginModule required username="${user}" password="${password}";`
+}
+
+// Secret env files, rendered only on the operator workstation at push time.
+export function connectSecretEnv(password) {
+  const jaas = scramJaas(PRINCIPALS.connect, password)
+  return env([['CONNECT_SASL_JAAS_CONFIG', jaas], ['CONNECT_PRODUCER_SASL_JAAS_CONFIG', jaas], ['CONNECT_CONSUMER_SASL_JAAS_CONFIG', jaas]])
+}
+export function registrySecretEnv(password) {
+  return env([['APICURIO_KAFKA_COMMON_SASL_JAAS_CONFIG', scramJaas(PRINCIPALS.registry, password)]])
+}
+
+export function renderServiceHost({ topology, inventory, clusterName, envName, hostName, heap = { connect: 1024, registry: 512 } }) {
+  if (!/^[a-z][a-z0-9]*$/.test(envName)) throw new Error(`environment slug must match [a-z][a-z0-9]*: ${envName}`)
+  const cluster = topology.clusters.find((c) => c.name === clusterName)
+  const host = cluster?.hosts.find((h) => h.name === hostName)
+  if (!host?.roles.includes('connect') || !host.roles.includes('registry')) throw new Error(`${hostName} is not a connect/registry host of ${clusterName}`)
+  const address = addressOf(inventory, hostName)
+  const bootstrap = cluster.hosts
+    .filter((h) => h.roles.includes('broker') && inventory.hosts?.[h.name]?.address)
+    .map((h) => `${addressOf(inventory, h.name)}:${PORTS.client}`).join(',')
+  if (!bootstrap) throw new Error('no delivered broker to bootstrap from')
+
+  const connect = env([
+    ['BOOTSTRAP_SERVERS', bootstrap],
+    ['GROUP_ID', connectGroup(envName)],
+    ['CONFIG_STORAGE_TOPIC', `ld.${envName}.connect.config`],
+    ['OFFSET_STORAGE_TOPIC', `ld.${envName}.connect.offset`],
+    ['STATUS_STORAGE_TOPIC', `ld.${envName}.connect.status`],
+    ['CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR', '3'],
+    ['CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR', '3'],
+    ['CONNECT_STATUS_STORAGE_REPLICATION_FACTOR', '3'],
+    ['CONNECT_OFFSET_STORAGE_PARTITIONS', '3'],
+    ['CONNECT_STATUS_STORAGE_PARTITIONS', '1'],
+    ['CONNECT_TOPIC_CREATION_ENABLE', 'false'],
+    ['CONNECT_PRODUCER_ACKS', 'all'],
+    ['CONNECT_PRODUCER_ENABLE_IDEMPOTENCE', 'true'],
+    ['KEY_CONVERTER', 'org.apache.kafka.connect.storage.StringConverter'],
+    ['VALUE_CONVERTER', 'org.apache.kafka.connect.storage.StringConverter'],
+    ['REST_HOST_NAME', address],
+    ['REST_PORT', String(CONNECT_REST_PORT)],
+    ['ADVERTISED_HOST_NAME', address],
+    ['ADVERTISED_PORT', String(CONNECT_REST_PORT)],
+    ['OFFSET_FLUSH_INTERVAL_MS', '1000'],
+    ['HEAP_OPTS', `-Xms${heap.connect}m -Xmx${heap.connect}m`],
+    ...clientSecurity('CONNECT_'),
+    ...clientSecurity('CONNECT_PRODUCER_'),
+    ...clientSecurity('CONNECT_CONSUMER_'),
+  ])
+  const registry = env([
+    ['APICURIO_STORAGE_KIND', 'kafkasql'],
+    ['APICURIO_KAFKASQL_BOOTSTRAP_SERVERS', bootstrap],
+    ['APICURIO_KAFKASQL_TOPIC', `ld.${envName}.registry.journal`],
+    ['APICURIO_KAFKASQL_SNAPSHOTS_TOPIC', `ld.${envName}.registry.snapshots`],
+    ['APICURIO_KAFKASQL_TOPIC_AUTO_CREATE', 'false'],
+    ['APICURIO_KAFKA_COMMON_BOOTSTRAP_SERVERS', bootstrap],
+    ...clientSecurity('APICURIO_KAFKA_COMMON_'),
+    ['QUARKUS_HTTP_HOST', address],
+    ['QUARKUS_HTTP_PORT', String(REGISTRY_PORT)],
+    ['QUARKUS_OTEL_SDK_DISABLED', 'true'],
+    ['JAVA_TOOL_OPTIONS', `-Xms${Math.min(256, heap.registry)}m -Xmx${heap.registry}m`],
+  ])
+  const compose = `# Rendered by scripts/event-platform/cluster/services.mjs — do not edit on the host.
+services:
+  connect:
+    image: ${CONNECT_IMAGE}
+    container_name: ${hostName}-connect
+    network_mode: host
+    restart: unless-stopped
+    env_file: [connect.env, connect.secret.env]
+    volumes:
+      - /etc/leaddrive-kafka/tls/ca.pem:/etc/kafka/tls/ca.pem:ro
+    logging: { driver: json-file, options: { max-size: 50m, max-file: "5" } }
+  registry:
+    image: ${REGISTRY_IMAGE}
+    container_name: ${hostName}-registry
+    network_mode: host
+    restart: unless-stopped
+    env_file: [registry.env, registry.secret.env]
+    volumes:
+      - /etc/leaddrive-kafka/tls/ca.pem:/etc/kafka/tls/ca.pem:ro
+    logging: { driver: json-file, options: { max-size: 50m, max-file: "5" } }
+`
+  return { 'connect.env': connect, 'registry.env': registry, 'compose.yml': compose }
+}

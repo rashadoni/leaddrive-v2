@@ -99,6 +99,7 @@ test('heap follows the plan and scales down only for the disposable drill', () =
   const drill = renderCluster({ topology, catalog, clusterName: 'primary', inventory: inventoryFor('primary'), heapScale: 0.125 })
   assert.match(drill['kafka-p-broker-eu/kafka.env'], /-Xmx512m/)
   assert.match(drill['kafka-p-ctrl-gra/kafka.env'], /-Xmx256m/)
+  assert.match(drill['kafka-p-broker-gra/kafka.env'], /-Xmx512m/, 'brokers never go below 512 MB, even in the drill')
 })
 
 test('a broker that is not delivered yet can be left out, a controller cannot', () => {

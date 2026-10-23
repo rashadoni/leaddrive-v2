@@ -75,7 +75,7 @@ export function nodeIds(cluster) {
   return ids
 }
 
-function addressOf(inventory, name) {
+export function addressOf(inventory, name) {
   const address = inventory.hosts?.[name]?.address
   if (typeof address !== 'string' || !/^[a-z0-9][a-z0-9.-]*$/.test(address)) {
     throw new Error(`inventory has no usable address for ${name}`)
@@ -126,7 +126,10 @@ export function renderCluster({ topology, catalog, clusterName, inventory, heapS
     const isController = host.roles.includes('controller')
     const planHeap = isController ? CONTROLLER_HEAP_MB : BROKER_HEAP_MB[host.plan]
     if (!planHeap) throw new Error(`${host.name}: no broker heap defined for plan ${host.plan}`)
-    const heap = Math.max(256, Math.round((planHeap * heapScale) / 64) * 64)
+    // A broker below 512 MB falls out of ISR under the full catalog (drill
+    // 39979802272: a 256 MB broker lagged, and one site loss then left
+    // partitions with a single in-sync replica).
+    const heap = Math.max(isController ? 256 : 512, Math.round((planHeap * heapScale) / 64) * 64)
     const entries = [
       ['process.roles', isController ? 'controller' : 'broker'],
       ['node.id', ids.get(host.name)],
@@ -191,6 +194,8 @@ export const OVERLAY_RULES = [
   { port: PORTS.replication, on: 'broker', from: ['broker'], sameCluster: true },
   { port: PORTS.controller, on: 'controller', from: ['controller', 'broker'], sameCluster: true },
   { port: 8080, on: 'registry', from: ['connect', 'monitoring', SOURCE_ROLE] },
+  // Distributed Connect workers forward REST calls to the group leader.
+  { port: 8083, on: 'connect', from: ['connect'], sameCluster: true },
   { port: 5432, on: SOURCE_ROLE, from: ['connect'] },
   { port: 9100, on: '*', from: ['monitoring'] },
   { port: 7071, on: '*', from: ['monitoring'] },

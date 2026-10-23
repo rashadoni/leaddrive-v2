@@ -50,7 +50,7 @@ bootstrap_scram="$(printf '%s:9092,' "${brokers[@]}")"; bootstrap_scram="${boots
 cleanup() {
   local status=$?
   if [ "$status" -ne 0 ]; then
-    for name in $(docker ps -a --filter "label=$project" --format '{{.Names}}' | grep '^kafka-'); do
+    for name in $(docker ps -a --filter "label=$project" --format '{{.Names}}' | grep -E '^(kafka-|ld-drill-)'); do
       printf -- '--- last log lines of %s\n' "$name"; docker logs --tail 60 "$name" 2>&1 | grep -v '^\s*at ' || true
     done
   fi
@@ -273,5 +273,134 @@ wait_until "three brokers after restart" 20 three_brokers_serve
 produce connect.properties "$finance_events" 10 4 >"$work/after-restart.jsonl" 2>/dev/null || true
 [ "$(acked_values <"$work/after-restart.jsonl" | wc -l)" = 10 ] || fail "SCRAM producer failed after restart"
 expect_write_refused "fund worker writing events after restart" fund.properties "$finance_events" 3 9
+
+step "Platform topics and every service ACL from the policy"
+services="$repo/scripts/event-platform/cluster/services.mjs"
+node --input-type=module -e "
+  import { infraTopics } from '$services'
+  for (const t of infraTopics('$env')) console.log([t.name, t.partitions, t.replicationFactor, Object.entries(t.config).map(([k, v]) => k + '=' + v).join(',')].join('\t'))
+" >"$work/infra-topics.tsv"
+sudo install -o 1000 -g 1000 -m 0644 "$work/infra-topics.tsv" "$work/client/infra-topics.tsv"
+docker run --rm --network "$net" --label "$project" --user 1000:1000 -e KAFKA_HEAP_OPTS='-Xms64m -Xmx256m' \
+  -v "$work/client:/client:ro" --entrypoint /bin/bash "$image" -ec '
+    while IFS=$'"'"'\t'"'"' read -r name partitions rf config; do
+      args=(); IFS=, read -ra kv <<<"$config"; for c in "${kv[@]}"; do args+=(--config "$c"); done
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$0" --command-config /client/admin.properties \
+        --create --if-not-exists --topic "$name" --partitions "$partitions" --replication-factor "$rf" "${args[@]}" >/dev/null
+    done </client/infra-topics.tsv' "$bootstrap_mtls"
+password[ld-registry]="$(openssl rand -hex 24)"
+admin kafka-configs.sh --alter --entity-type users --entity-name ld-registry \
+  --add-config "SCRAM-SHA-512=[iterations=8192,password=${password[ld-registry]}]" >/dev/null
+node --input-type=module -e "
+  import { aclBindings } from '$services'
+  import { expandCatalog, loadCatalog } from '$repo/scripts/event-platform/cluster/render.mjs'
+  for (const args of aclBindings('$env', expandCatalog(loadCatalog(), '$env'))) console.log(JSON.stringify(args))
+" >"$work/acls.jsonl"
+while read -r line; do
+  mapfile -t acl < <(node -e 'for (const a of JSON.parse(process.argv[1])) console.log(a)' "$line")
+  admin kafka-acls.sh --add "${acl[@]}" >/dev/null
+done <"$work/acls.jsonl"
+echo "$(wc -l <"$work/acls.jsonl") ACL bindings applied from services.mjs"
+
+step "PostgreSQL source with TLS and an INSERT-only outbox publication"
+pg=ld-drill-postgres
+bash "$pki" issue "$work/pki" "$pg" "$pg"
+mkdir -p "$work/pgtls"
+awk '/BEGIN PRIVATE KEY/,/END PRIVATE KEY/' "$work/pki/issued/$pg/node.pem" >"$work/pgtls/server.key"
+awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' "$work/pki/issued/$pg/node.pem" >"$work/pgtls/server.crt"
+sudo chown -R 70:70 "$work/pgtls"; sudo chmod 0600 "$work/pgtls/server.key"
+pg_password="$(openssl rand -hex 16)"; cdc_password="$(openssl rand -hex 16)"
+docker run -d --name "$pg" --hostname "$pg" --network "$net" --label "$project" \
+  -e POSTGRES_PASSWORD="$pg_password" -e POSTGRES_DB=leaddrive -v "$work/pgtls:/tls:ro" \
+  postgres:16.13-alpine@sha256:4941ef97aaa2633ce9808f7766f8b8d746dd039ce8c51ca6da185c3dc63ab579 \
+  -c wal_level=logical -c max_replication_slots=4 -c max_wal_senders=4 -c max_slot_wal_keep_size=256MB \
+  -c ssl=on -c ssl_cert_file=/tls/server.crt -c ssl_key_file=/tls/server.key >/dev/null
+pg_ready() { docker exec "$pg" pg_isready -U postgres -d leaddrive >/dev/null 2>&1; }
+wait_until "PostgreSQL" 40 pg_ready
+# Logical replication connections need their own pg_hba line; TLS is mandatory for it.
+docker exec "$pg" sh -c 'echo "hostssl replication leaddrive_event_cdc all scram-sha-256" >>"$PGDATA/pg_hba.conf"'
+docker exec "$pg" psql -qU postgres -c 'SELECT pg_reload_conf()' >/dev/null
+outbox_row() { # outbox_row N -> one INSERT for a finance event of tenant A or B
+  local n="$1" org="org-$(( $1 % 2 ))" key="org-$(( $1 % 2 )):fund:fund-1"
+  printf "INSERT INTO public.event_outbox VALUES (gen_random_uuid(), '%s', gen_random_uuid(), 'finance.fund-transaction-recorded.v1', 'leaddrive.domain.finance.v1', '%s', jsonb_build_object('aggregateversion', %d, 'n', %d), md5('%d'), now());\n" "$org" "$key" "$n" "$n" "$n"
+}
+{
+  cat <<SQL
+CREATE TABLE public.event_outbox (
+  id uuid PRIMARY KEY, "organizationId" text NOT NULL, "eventId" uuid NOT NULL, "eventType" text NOT NULL,
+  topic text NOT NULL, "partitionKey" text NOT NULL, envelope jsonb NOT NULL, "payloadHash" text NOT NULL,
+  "createdAt" timestamptz NOT NULL);
+CREATE ROLE leaddrive_event_cdc LOGIN REPLICATION PASSWORD '$cdc_password';
+GRANT SELECT ON public.event_outbox TO leaddrive_event_cdc;
+CREATE PUBLICATION leaddrive_event_outbox FOR TABLE public.event_outbox WITH (publish = 'insert');
+SQL
+  for n in 1 2 3; do outbox_row "$n"; done
+} | docker exec -i "$pg" psql -v ON_ERROR_STOP=1 -qU postgres -d leaddrive >/dev/null
+
+step "Debezium Connect worker and Apicurio Registry over SCRAM/TLS"
+inventory_services="$work/inventory-services.json"
+node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({ hosts: {
+  'kafka-p-broker-eu': { address: 'kafka-p-broker-eu' }, 'kafka-p-broker-uk': { address: 'kafka-p-broker-uk' },
+  'kafka-p-broker-gra': { address: 'kafka-p-broker-gra' }, 'kafka-p-connect-eu': { address: 'kafka-p-connect-eu' } } }))" "$inventory_services"
+mkdir -p "$work/svc"
+node --input-type=module -e "
+  import { readFileSync, writeFileSync } from 'node:fs'
+  import { renderServiceHost, connectSecretEnv, registrySecretEnv } from '$services'
+  import { loadTopology } from '$repo/scripts/event-platform/cluster/render.mjs'
+  const files = renderServiceHost({ topology: loadTopology(), inventory: JSON.parse(readFileSync('$inventory_services', 'utf8')),
+    clusterName: 'primary', envName: '$env', hostName: 'kafka-p-connect-eu', heap: { connect: 512, registry: 256 } })
+  for (const [k, v] of Object.entries(files)) writeFileSync('$work/svc/' + k, v)
+  writeFileSync('$work/svc/connect.secret.env', connectSecretEnv('${password[ld-connect]}'))
+  writeFileSync('$work/svc/registry.secret.env', registrySecretEnv('${password[ld-registry]}'))
+"
+docker run -d --name kafka-p-connect-eu --hostname kafka-p-connect-eu --network "$net" --label "$project" --memory 1g \
+  --env-file "$work/svc/connect.env" --env-file "$work/svc/connect.secret.env" \
+  -v "$work/client/ca.pem:/etc/kafka/tls/ca.pem:ro" \
+  ghcr.io/rashadoni/debezium-connect:3.7.0.Final-8107474c18d5@sha256:8107474c18d56317c007dd930f2782c9636198a895144a0c1dddd6d6a7536d6e >/dev/null
+# One host name cannot belong to two containers here; production binds both to the host's overlay address.
+docker run -d --name kafka-p-connect-eu-registry --network "$net" --label "$project" --memory 768m \
+  --env-file "$work/svc/registry.env" --env-file "$work/svc/registry.secret.env" -e QUARKUS_HTTP_HOST=0.0.0.0 \
+  -v "$work/client/ca.pem:/etc/kafka/tls/ca.pem:ro" \
+  apicurio/apicurio-registry:3.3.0@sha256:25b302bc1ecf53cb01bda4f39749f175c94f3f6d27dcc57123d25714e4a0b117 >/dev/null
+connect_up() { docker exec kafka-p-connect-eu curl -fsS http://kafka-p-connect-eu:8083/connectors >/dev/null; }
+registry_up() { docker exec kafka-p-connect-eu curl -fsS http://kafka-p-connect-eu-registry:8080/apis/registry/v3/system/info >/dev/null; }
+wait_until "Connect REST against the secured cluster" 60 connect_up
+wait_until "Registry on KafkaSQL storage" 60 registry_up
+
+step "Outbox rows flow PostgreSQL -> Debezium -> Kafka with keys and headers"
+node -e '
+  const t = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+  const s = JSON.stringify(t).replaceAll("__ENV__", process.argv[2]).replaceAll("__PGHOST__", "ld-drill-postgres")
+    .replaceAll("__PGDATABASE__", "leaddrive").replaceAll("__SECRET_FROM_PROVIDER__", process.argv[3])
+    .replaceAll("__PG_SSL_ROOT_CERT_PATH__", "/etc/kafka/tls/ca.pem")
+  if (/__[A-Z_]+__/.test(s)) throw new Error("unresolved placeholder in connector")
+  process.stdout.write(s)
+' "$repo/ops/event-platform/debezium/event-outbox-connector.template.json" "$env" "$cdc_password" >"$work/connector.json"
+docker exec -i kafka-p-connect-eu curl -fsS -X POST -H 'Content-Type: application/json' --data @- \
+  http://kafka-p-connect-eu:8083/connectors <"$work/connector.json" >/dev/null || fail "connector registration rejected"
+connector_running() { docker exec kafka-p-connect-eu curl -fsS "http://kafka-p-connect-eu:8083/connectors/leaddrive-event-outbox-$env/status" | grep -q '"tasks":\[{"id":0,"state":"RUNNING"'; }
+wait_until "connector task RUNNING" 30 connector_running
+for n in 4 5 6; do outbox_row "$n"; done | docker exec -i "$pg" psql -v ON_ERROR_STOP=1 -qU postgres -d leaddrive >/dev/null
+sleep 10
+KAFKA_TIMEOUT=90 kafka kafka-console-consumer.sh --bootstrap-server "$bootstrap_scram" --consumer.config /client/fund.properties \
+  --topic "$finance_events" --group "ld.$env.fund-shadow.cdc" --from-beginning --timeout-ms 20000 \
+  --property print.key=true --property print.headers=true 2>/dev/null | grep '"aggregateversion"' >"$work/cdc.txt" || true
+[ "$(wc -l <"$work/cdc.txt")" = 6 ] || { cat "$work/cdc.txt"; fail "expected 6 outbox events in Kafka (3 snapshot + 3 streamed), got $(wc -l <"$work/cdc.txt")"; }
+grep -q 'eventtype:finance.fund-transaction-recorded.v1' "$work/cdc.txt" || fail "eventtype header missing"
+grep -q 'organizationid:org-1' "$work/cdc.txt" || fail "organizationid header missing"
+grep -Eq '(^|[[:space:]])org-0:fund:fund-1[[:space:]]' "$work/cdc.txt" || fail "partition key is not the outbox partitionKey"
+echo "6/6 outbox rows (3 snapshot, 3 streamed) arrived over SCRAM/TLS from a verify-full PostgreSQL source, with key and headers"
+
+step "Registry keeps schemas in Kafka across a restart"
+schema='{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["amount"],"properties":{"amount":{"type":"string"}}}'
+body="$(node -e 'console.log(JSON.stringify({ artifactId: "fund-transaction-recorded", artifactType: "JSON", firstVersion: { content: { content: process.argv[1], contentType: "application/json" } } }))' "$schema")"
+printf '%s' "$body" | docker exec -i kafka-p-connect-eu curl -fsS -X POST -H 'Content-Type: application/json' --data @- \
+  "http://kafka-p-connect-eu-registry:8080/apis/registry/v3/groups/drill/artifacts" >/dev/null || fail "registry rejected the schema"
+docker restart kafka-p-connect-eu-registry >/dev/null
+wait_until "Registry after restart" 60 registry_up
+fetched="$(docker exec kafka-p-connect-eu curl -fsS "http://kafka-p-connect-eu-registry:8080/apis/registry/v3/groups/drill/artifacts/fund-transaction-recorded/versions/branch=latest/content")" \
+  || fail "schema lost after registry restart"
+grep -q '"amount"' <<<"$fetched" || fail "schema content changed after restart"
+echo "schema registered, registry restarted, schema read back from the KafkaSQL journal"
 
 step "DRILL PASSED"
