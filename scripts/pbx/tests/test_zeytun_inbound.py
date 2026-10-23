@@ -88,6 +88,18 @@ class TransportTests(unittest.TestCase):
         self.assertNotIn("not-for-model", str(response))
         self.assertEqual(self.requests[-1], {"action": "search", "callId": CALL, "query": {"text": "Medicine"}})
 
+    def test_transcription_pins_azerbaijani_with_order_vocabulary_only(self):
+        config = self.bridge.transcription()
+        self.assertEqual(set(config), {"languageCodes", "customVocabulary"})
+        self.assertEqual(config["languageCodes"], ["az-AZ"])
+        vocabulary = config["customVocabulary"]
+        self.assertTrue({"qutu", "ədəd", "ampula", "şam", "tablet", "milliqram"} <= set(vocabulary))
+        self.assertEqual(len(vocabulary), len(set(vocabulary)))
+        self.assertTrue(all(isinstance(word, str) and 0 < len(word) <= 32 for word in vocabulary))
+        # A fresh list per session: one call cannot mutate the next call's hint.
+        config["customVocabulary"].append("mutated")
+        self.assertNotIn("mutated", self.bridge.transcription()["customVocabulary"])
+
     def test_bad_args_never_start_network(self):
         for index, args in enumerate([{}, {"text": "x", "customerGuid": CALL}, {"url": "http://bad.test"},
                 {"text": "x" * 241}, {"text": 1}, {"externalId": "bad"}]):
@@ -246,9 +258,18 @@ class ArtifactTests(unittest.TestCase):
         obj = SimpleNamespace(instruction="test", pharmacy_preview=False)
         setup = globals_["_setup_event"](obj)
         self.assertNotIn("tools", setup["setup"])
+        # Ordinary AAC calls keep provider language detection untouched.
+        self.assertEqual(setup["setup"]["inputAudioTranscription"], {})
         obj.pharmacy_preview = True
-        obj.pharmacy_bridge = SimpleNamespace(tools=lambda: ["synthetic-declaration"])
-        self.assertEqual(globals_["_setup_event"](obj)["setup"]["tools"], ["synthetic-declaration"])
+        obj.pharmacy_bridge = SimpleNamespace(tools=lambda: ["synthetic-declaration"],
+                                              transcription=lambda: {"languageCodes": ["az-AZ"]})
+        pharmacy = globals_["_setup_event"](obj)["setup"]
+        self.assertEqual(pharmacy["tools"], ["synthetic-declaration"])
+        self.assertEqual(pharmacy["inputAudioTranscription"], {"languageCodes": ["az-AZ"]})
+        # Every replacement session is built by the same method, so recovery
+        # cannot silently fall back to per-turn language detection.
+        self.assertEqual(globals_["_setup_event"](obj, "resume-handle")["setup"]["inputAudioTranscription"],
+                         {"languageCodes": ["az-AZ"]})
         ws, received = object(), []
         obj.gemini_event_lock = threading.RLock(); obj.state_lock = threading.Lock()
         obj.closed = False; obj.hangup_started = False; obj.ws = ws; obj.gemini_ws_epoch = 2
