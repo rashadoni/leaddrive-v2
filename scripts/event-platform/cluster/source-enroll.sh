@@ -121,7 +121,8 @@ EOF
     [ -s "$sql" ] || die "prepare-cdc.sql not found"
     IFS= read -r password || die "password expected on stdin"
     [[ "$password" =~ ^[A-Za-z0-9]{32,}$ ]] || die "password must be >= 32 alphanumeric characters"
-    sudo -u postgres psql -X -v ON_ERROR_STOP=1 -v DBNAME="$dbname" -d "$dbname" -f "$sql" >/dev/null
+    # root reads the file (it may live in a root-only directory); postgres runs it.
+    sudo -u postgres psql -X -v ON_ERROR_STOP=1 -v DBNAME="$dbname" -d "$dbname" <"$sql" >/dev/null
     # The password reaches PostgreSQL through stdin and is hashed there (scram).
     printf "SET log_statement = 'none';\nALTER ROLE leaddrive_event_cdc PASSWORD '%s';\n" "$password" | psql_su -d "$dbname" -q >/dev/null
     echo "CDC role, RLS policy and publication prepared; password set"
