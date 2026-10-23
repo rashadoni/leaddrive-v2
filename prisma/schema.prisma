@@ -1023,7 +1023,7 @@ model TenantMasterKey {
 // (`src/lib/crypto/tenant-data-keys.ts`). Not `tenant_master_keys`: that
 // table's trigger forbids DELETE, and deleting an organization's rows here is
 // how its data is destroyed (crypto-shredding, owner-operated, later).
-// FORCE RLS, `tenant_isolation` policy (migration 20261030090000).
+// FORCE RLS, `tenant_isolation` policy (migration 20261030100000).
 model TenantDataKey {
   id             String       @id @default(cuid())
   organizationId String

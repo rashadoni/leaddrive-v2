@@ -54,7 +54,7 @@ const scratch = vi.hoisted(() => {
 
 const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
-const MIGRATION = path.join(ROOT, "prisma/migrations/20261030090000_tenant_data_keys/migration.sql")
+const MIGRATION = path.join(ROOT, "prisma/migrations/20261030100000_tenant_data_keys/migration.sql")
 
 const ORG = "org-data-keys"
 const OTHER = "org-data-keys-other"
