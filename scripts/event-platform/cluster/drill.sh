@@ -51,7 +51,8 @@ cleanup() {
   local status=$?
   if [ "$status" -ne 0 ]; then
     for name in $(docker ps -a --filter "label=$project" --format '{{.Names}}' | grep -E '^(kafka-|ld-drill-)'); do
-      printf -- '--- last log lines of %s\n' "$name"; docker logs --tail 60 "$name" 2>&1 | grep -v '^\s*at ' || true
+      printf -- '--- errors of %s\n' "$name"; docker logs "$name" 2>&1 | grep -E 'ERROR|FATAL|Caused by|Exception:' | grep -v '^\s*at ' | tail -25 || true
+      printf -- '--- last log lines of %s\n' "$name"; docker logs --tail 15 "$name" 2>&1 | grep -v '^\s*at ' || true
     done
   fi
   docker ps -aq --filter "label=$project" | xargs -r docker rm -f >/dev/null 2>&1 || true
