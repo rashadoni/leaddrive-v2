@@ -101,6 +101,16 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
     })
     if (!existing) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
+    // An outside reviewer's login is governed by its grant (end date, sections,
+    // journal) in /api/v1/reviewer-access. Editing it here could turn a 30-day
+    // read-only access into a permanent account, so this screen does not.
+    if (existing.role === "reviewer") {
+      return NextResponse.json(
+        { error: "Reviewer access is managed in the reviewer panel", code: "REVIEWER_MANAGED_ELSEWHERE" },
+        { status: 409 },
+      )
+    }
+
     // Validate role — but only when it actually CHANGES, so editing other
     // fields (phone, name, 2FA resets) never fails for a user who already holds
     // an extended/custom role. Only enforce-able roles may be newly assigned;

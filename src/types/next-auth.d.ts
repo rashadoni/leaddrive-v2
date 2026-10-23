@@ -26,6 +26,8 @@ declare module "next-auth" {
       plan: string
       /** Group-modules an admin hid from this user; empty for admins. */
       hiddenModules?: string[]
+      /** End of an outside reviewer's grant (ISO); absent for everyone else. */
+      reviewerAccessUntil?: string
     }
   }
 }
@@ -39,5 +41,7 @@ declare module "next-auth/jwt" {
     plan?: string
     /** Opaque HMAC of the current DB credential/session epoch. */
     sessionFingerprint?: string
+    /** End of an outside reviewer's grant (ISO); absent for everyone else. */
+    reviewerAccessUntil?: string
   }
 }

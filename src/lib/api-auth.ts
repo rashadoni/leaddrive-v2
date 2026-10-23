@@ -12,6 +12,7 @@ import { customerPhonePrivacyEnabled } from "./customer-phone-privacy"
 import { effectiveHiddenModules, hideableIdForGateModule } from "./user-module-access"
 import { getMobileAuth, resolveMobileAuth } from "./mobile-auth"
 import crypto from "crypto"
+import { recordReviewerRead } from "./audit/reviewer-read-log"
 
 /**
  * Enter the tenant context for the rest of this request and load the
@@ -281,8 +282,7 @@ async function resolveCookieSession(): Promise<CookieSessionResolution> {
  * SECURITY: Always uses organizationId from the authenticated session JWT,
  * never trusts the x-organization-id header directly (prevents tenant bypass).
  */
-export async function getSession(_req: NextRequest): Promise<AuthResult | null> {
-  void _req
+export async function getSession(req: NextRequest): Promise<AuthResult | null> {
   const resolved = await resolveCookieSession()
   if (!resolved.session) return null
 
@@ -292,6 +292,7 @@ export async function getSession(_req: NextRequest): Promise<AuthResult | null> 
   // RLS policies would fail-closed and return zero rows on that path. Mirrors the
   // entry getOrgId/requireAuth already do; enterTenantContext refuses empty orgId.
   await enterTenant(resolved.session.orgId)
+  recordReviewerRead(req, resolved.session)
   return resolved.session
 }
 
@@ -324,6 +325,7 @@ export async function requireSessionAuth(req: NextRequest): Promise<AuthResult |
   }
 
   await enterTenant(resolved.session.orgId)
+  recordReviewerRead(req, resolved.session)
   return resolved.session
 }
 
@@ -629,6 +631,7 @@ export async function requireAuth(
   // returns without entering a context (fail-closed). Superadmin sessions enter
   // their own org here; requireSuperAdmin upgrades to bypass right after.
   await enterTenant(session.orgId)
+  recordReviewerRead(req, session)
   return session
 }
 
