@@ -21,6 +21,7 @@ import { createNotification } from "@/lib/notifications"
 import { sendEmail } from "@/lib/email"
 import { createCalendarEvent, deleteCalendarEvent, listBusyIntervals } from "@/lib/google-calendar"
 import { formatInTimezone, isValidTimezone } from "@/lib/timezone"
+import type { AdAttribution } from "@/lib/ad-conversions/attribution"
 import {
   computeSlots,
   defaultWeeklyHours,
@@ -162,6 +163,8 @@ export interface BookingInput {
   phone: string
   email?: string | null
   note?: string | null
+  /** Where the customer came from (src/lib/ad-conversions/attribution.ts). */
+  attribution?: AdAttribution | null
 }
 
 export type CreateBookingResult =
@@ -281,6 +284,7 @@ async function afterBooking(
         status: "new",
         assignedTo: host.id,
         notes: input.note || null,
+        adAttribution: input.attribution ? (input.attribution as Prisma.InputJsonValue) : undefined,
       },
     })
     links.leadId = lead.id

@@ -294,6 +294,7 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   "settings_lead-rules": "config",
   "settings_web-to-lead": "config",
   settings_booking: "config",
+  "settings_ad-conversions": "config",
   "settings_intake-forms": "config",
   "settings_approval-rules": "config",
   "settings_approval-delegates": "config",

@@ -287,6 +287,9 @@ export async function convertLeadToDealCommand(
         probability: conversionStage?.probability ?? 25,
         customerNeed: lead.interest || lead.notes || null,
         assignedTo: lead.assignedTo || userId,
+        // The ad click travels with the sale: a won deal is reported to the
+        // organization's ad platform with it (src/lib/ad-conversions/worker.ts).
+        ...(lead.adAttribution ? { metadata: { adAttribution: lead.adAttribution, sourceLeadId: lead.id } as Prisma.InputJsonValue } : {}),
       },
     })
     const convertedLead = await tx.lead.findFirst({

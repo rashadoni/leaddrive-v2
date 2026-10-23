@@ -8,6 +8,7 @@ import { CircleAlert, Loader2 } from "lucide-react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { BookingScheduler, type BookResult, type BookingRequest, type PublicBookingPage } from "@/components/booking/booking-scheduler"
 import type { DaySlots } from "@/lib/booking/availability"
+import { collectAdAttribution } from "@/lib/ad-conversions/collect"
 
 async function fetchBookingPage(slug: string): Promise<{ page: PublicBookingPage; days: DaySlots[] } | null> {
   try {
@@ -44,7 +45,7 @@ export default function PublicBookingPage() {
       const response = await fetch(`/api/v1/public/booking/${encodeURIComponent(slug)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
+        body: JSON.stringify({ ...request, attribution: collectAdAttribution() }),
       })
       const body = await response.json().catch(() => ({}))
       if (response.ok && body.success) return { ok: true, booking: body.data }

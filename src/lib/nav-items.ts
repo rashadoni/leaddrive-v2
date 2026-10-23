@@ -14,6 +14,7 @@ import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "@/lib/t
 import { checkPermission, type Role } from "@/lib/permissions"
 import { isMtmNavigationItemActive } from "@/lib/mtm/navigation"
 import {
+  Megaphone,
   CalendarCheck,
   LayoutDashboard, Building2, Users, Handshake, UserPlus,
   CheckSquare, FileText, FileSpreadsheet, Calculator, Brain,
@@ -254,6 +255,7 @@ export const navItems: NavItem[] = [
   // Attribution model is the ENGINE that computes Campaign ROI's attributed
   // revenue — keep the two adjacent so they read as configure-model → see-result.
   { module: "marketing", href: "/attribution/models", icon: ChartPie, tKey: "attributionModels", group: "Marketing" },
+  { module: "marketing", href: "/settings/ad-conversions", icon: Megaphone, tKey: "adConversions", group: "Marketing" },
   { module: "marketing", href: "/campaign-roi", icon: TrendingUp, tKey: "campaignRoi", group: "Marketing" },
   { module: "marketing", href: "/ai-scoring", icon: Target, tKey: "aiScoring", group: "Marketing" },
   { module: "marketing", href: "/journeys", icon: Workflow, tKey: "journeys", group: "Marketing" },

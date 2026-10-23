@@ -13,6 +13,7 @@ import {
   type PublicActionReservation,
 } from "@/lib/public-abuse-guard"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
+import { readAttribution } from "@/lib/ad-conversions/attribution"
 
 const LEAD_IP_LIMIT = { maxRequests: 10, windowSeconds: 60 }
 const LEAD_TENANT_LIMIT = { maxRequests: 100, windowSeconds: 60 * 60 }
@@ -88,6 +89,9 @@ const WebLeadSchema = z.object({
   org_slug: z.string().trim().min(1).max(200),
   // Hidden field emitted by the CRM's embed snippet. Humans never fill it.
   website: z.string().max(500).optional(),
+  // Ad click ids, cookies and UTM tags the snippet gathers; validated field
+  // by field in readAttribution, never a reason to refuse the lead.
+  attribution: z.unknown().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -164,6 +168,7 @@ export async function POST(request: NextRequest) {
         status: "new",
         priority: "medium",
         notes: data.message,
+        adAttribution: readAttribution(data.attribution, { userAgent: request.headers.get("user-agent") }) ?? undefined,
       },
     })
     // The durable side effect now exists. Keep the dedup reservation even if a

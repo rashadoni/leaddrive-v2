@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { runWithTenant } from "@/lib/rls-context"
 import { createBooking, findBookingPageBySlug, publicBookingView } from "@/lib/booking/book"
+import { readAttribution } from "@/lib/ad-conversions/attribution"
 
 const bookSchema = z.object({
   startsAt: z.string().max(40).refine((value) => !Number.isNaN(Date.parse(value)), "Invalid time"),
@@ -16,6 +17,8 @@ const bookSchema = z.object({
   note: z.string().trim().max(1000).optional(),
   // Left empty by people; filled by form-filling bots.
   website: z.string().max(200).optional(),
+  // Ad click ids and UTM tags from the page address (src/lib/ad-conversions).
+  attribution: z.unknown().optional(),
 })
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
@@ -47,6 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
       phone: parsed.data.phone,
       email: parsed.data.email || null,
       note: parsed.data.note || null,
+      attribution: readAttribution(parsed.data.attribution, { userAgent: req.headers.get("user-agent") }),
     }))
     if (result.ok) return NextResponse.json({ success: true, data: result.booking }, { status: 201 })
     if (result.reason === "not_found") return NextResponse.json({ error: "Not found" }, { status: 404 })

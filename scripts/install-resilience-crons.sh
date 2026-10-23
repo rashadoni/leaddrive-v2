@@ -65,6 +65,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/mtm-demo-pulse/ { next }
   /cron-trigger\.sh \/api\/cron\/sla-escalation/ { next }
   /cron-trigger\.sh \/api\/cron\/ticket-closure-requests/ { next }
+  /cron-trigger\.sh \/api\/cron\/ad-conversions/ { next }
   /cron-trigger\.sh \/api\/cron\/kapitalbank-reconcile/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?renewal-alerts([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?contract-approval-escalations([ ?]|$)/ { next }
@@ -144,6 +145,10 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # bank about open card orders, the longest-waiting first, a bounded number
   # per tick; recording is a conditional claim, so overlaps record once.
   printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/kapitalbank-reconcile >> $LOG 2>&1"
+  # New leads and won deals to the organizations' Meta pixels. Meta refuses a
+  # whole batch holding an event older than 7 days, so this runs often; each
+  # record is queued once (unique per destination, event and record).
+  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/ad-conversions >> $LOG 2>&1"
   # The demo organization's field day (owner decision 2026-09-22). A no-op for
   # every tenant without the hand-set `mtm-demo-pulse` flag; keyed writes make
   # a repeated or late tick harmless, and the endpoint holds its own lease.
