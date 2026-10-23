@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { expandCatalog, loadCatalog, loadTopology } from './render.mjs'
-import { PRINCIPALS, aclBindings, connectSecretEnv, infraTopics, registrySecretEnv, renderServiceHost } from './services.mjs'
+import { readFileSync } from 'node:fs'
+import { PRINCIPALS, aclBindings, connectSecretEnv, infraTopics, registrySecretEnv, renderServiceHost, renderSourceConnector } from './services.mjs'
 
 const topology = loadTopology()
 const topics = expandCatalog(loadCatalog(), 'prod')
@@ -60,4 +61,23 @@ test('secret env files refuse weak passwords', () => {
   assert.throws(() => connectSecretEnv('short'), /24/)
   assert.throws(() => registrySecretEnv('has"quote-and-is-long-enough-123'), /alphanumeric/)
   assert.match(connectSecretEnv('a'.repeat(32)), /^CONNECT_PRODUCER_SASL_JAAS_CONFIG=.*username="ld-connect"/m)
+})
+
+test('Connect reaches the source by its certificate name over the overlay and keeps the password out of the config topic', () => {
+  const inventory = { hosts: { 'kafka-p-broker-eu': { address: '10.88.0.10' }, 'kafka-p-connect-eu': { address: '10.88.0.16' } } }
+  const source = { tlsName: topology.sourceHost.postgresTlsName, address: '10.88.0.26', dbname: topology.sourceHost.database }
+  const files = renderServiceHost({ topology, inventory, clusterName: 'primary', envName: 'prod', hostName: 'kafka-p-connect-eu', source })
+  assert.match(files['compose.yml'], /- "vmi3554743\.contaboserver\.net:10\.88\.0\.26"/)
+  assert.match(files['compose.yml'], /source-postgres\.pem:\/etc\/kafka\/tls\/source-postgres\.pem:ro/)
+  assert.match(files['connect.env'], /^CONNECT_CONFIG_PROVIDERS_FILE_CLASS=org\.apache\.kafka\.common\.config\.provider\.FileConfigProvider$/m)
+  assert.throws(() => renderServiceHost({ topology, inventory, clusterName: 'primary', envName: 'prod', hostName: 'kafka-p-connect-eu', source: { ...source, address: '13.140.132.245' } }), /overlay/)
+
+  const template = JSON.parse(readFileSync(new URL('../../../ops/event-platform/debezium/event-outbox-connector.template.json', import.meta.url), 'utf8'))
+  const connector = renderSourceConnector({ template, envName: 'prod', source })
+  assert.equal(connector.name, 'leaddrive-event-outbox-prod')
+  assert.equal(connector.config['database.hostname'], 'vmi3554743.contaboserver.net')
+  assert.equal(connector.config['database.dbname'], 'leaddrive_v2')
+  assert.equal(connector.config['database.password'], '${file:/etc/kafka/secrets/cdc.properties:password}')
+  assert.equal(connector.config['slot.name'], 'leaddrive_event_outbox_prod')
+  assert.equal(connector.config['transforms.outbox.route.topic.replacement'], 'ld.prod.$1.events.v1')
 })

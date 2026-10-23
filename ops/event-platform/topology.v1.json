@@ -9,7 +9,9 @@
   },
   "sourceHost": {
     "name": "leaddrive-prod",
-    "site": "contabo-eu"
+    "site": "contabo-eu",
+    "postgresTlsName": "vmi3554743.contaboserver.net",
+    "database": "leaddrive_v2"
   },
   "sites": [
     { "id": "contabo-eu", "provider": "contabo", "orderRegion": "European Union", "location": "Hub Europe, Lauterbourg FR (confirm after order)" },

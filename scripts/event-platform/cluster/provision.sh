@@ -229,8 +229,12 @@ case "${1:-}" in
       import { loadTopology } from '$here/render.mjs'
       import { renderServiceHost, connectSecretEnv, registrySecretEnv } from '$here/services.mjs'
       const [inventoryFile, cluster, env, name, dir, state] = process.argv.slice(1)
-      const files = renderServiceHost({ topology: loadTopology(), inventory: JSON.parse(readFileSync(inventoryFile, 'utf8')),
-        clusterName: cluster, envName: env, hostName: name })
+      const topology = loadTopology(), inv = JSON.parse(readFileSync(inventoryFile, 'utf8'))
+      const src = inv.hosts[topology.sourceHost.name]
+      const source = process.env.LD_WITH_SOURCE === '1' && src?.address
+        ? { tlsName: topology.sourceHost.postgresTlsName, address: src.address } : undefined
+      if (process.env.LD_WITH_SOURCE === '1' && !source) throw new Error('source host is not enrolled in the inventory')
+      const files = renderServiceHost({ topology, inventory: inv, clusterName: cluster, envName: env, hostName: name, source })
       for (const [file, content] of Object.entries(files)) writeFileSync(dir + '/' + file, content)
       const secret = (u) => readFileSync(state + '/secrets/' + env + '-' + u, 'utf8').trim()
       writeFileSync(dir + '/connect.secret.env', connectSecretEnv(secret('ld-connect')), { mode: 0o600 })
@@ -242,6 +246,101 @@ case "${1:-}" in
     copy "$name" 0644 root:root "$state/pki-$cluster/ca.pem" /etc/leaddrive-kafka/tls/ca.pem
     on "$name" 'docker compose -f /etc/leaddrive-kafka/services/compose.yml up -d --remove-orphans'
     echo "pushed services to $name"
+    ;;
+
+  enroll-source)
+    # provision.sh enroll-source PHASE [PUBLIC_IP]: drive source-enroll.sh on the
+    # production web/PostgreSQL host. Phases: prepare PUBLIC_IP | network |
+    # postgres-config | restart | cdc-role | status. Only with the owner's window.
+    phase="${2:-}"
+    src_key="${LD_SOURCE_SSH_KEY:-$HOME/.ssh/leaddrive_prod_2026_09_09}"
+    src_name="$(js 'console.log(m.loadTopology().sourceHost.name)')"
+    if [ "$phase" = prepare ]; then
+      ip="${3:-}"; [[ "$ip" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || die "prepare needs the source PUBLIC_IP"
+    else
+      ip="$(public_of "$src_name")" || die "source not enrolled; run prepare first"
+    fi
+    on_src() { ssh -i "$src_key" -o IdentitiesOnly=yes -o ControlMaster=no -o ControlPath=none -o BatchMode=yes -o ConnectTimeout=15 "root@$ip" "$@"; }
+    on_src 'install -d -m 0700 /root/ld-source-enroll'
+    on_src 'install -m 0700 /dev/stdin /root/ld-source-enroll/source-enroll.sh' <"$here/source-enroll.sh"
+    overlay_env() {
+      js '
+        const inv = JSON.parse(process.argv[1]); const t = m.loadTopology()
+        const connect = t.clusters.flatMap((c) => c.hosts).filter((h) => h.roles.includes("connect") && inv.hosts[h.name]?.address)
+        console.log(`OVERLAY_ADDR=${inv.hosts[t.sourceHost.name].address} CONNECT_ADDRS=${connect.map((h) => inv.hosts[h.name].address).join(",")} DBNAME=${t.sourceHost.database}`)' "$(cat "$inventory")"
+    }
+    case "$phase" in
+      prepare)
+        out="$(on_src 'bash /root/ld-source-enroll/source-enroll.sh prepare')"
+        key="$(grep -E '^WG_PUBLIC_KEY=' <<<"$out" | tail -1 | cut -d= -f2-)"
+        [[ "$key" =~ ^[A-Za-z0-9+/]{43}=$ ]] || die "prepare did not report a WireGuard key"
+        js '
+          import("node:fs").then(({ readFileSync, writeFileSync }) => {
+            const [file, ip, key] = process.argv.slice(1)
+            const inv = JSON.parse(readFileSync(file, "utf8")); const t = m.loadTopology()
+            const index = m.meshMembers(t).findIndex((x) => x.name === t.sourceHost.name)
+            inv.hosts[t.sourceHost.name] = { address: `10.88.0.${10 + index}`, publicAddress: ip, wgPublicKey: key }
+            writeFileSync(file, JSON.stringify(inv, null, 2) + "\n")
+          })' "$inventory" "$ip" "$key"
+        echo "source prepared; tunnel key recorded" ;;
+      network)
+        node "$here/render.mjs" network --inventory "$inventory" --out "$state/rendered/network" >/dev/null
+        net="$state/rendered/network/$src_name"
+        on_src 'install -d -m 0700 /root/ld-source-enroll/net'
+        for f in wg0.conf nftables.conf ufw.sh; do on_src "install -m 0600 /dev/stdin /root/ld-source-enroll/net/$f" <"$net/$f"; done
+        on_src 'bash /root/ld-source-enroll/source-enroll.sh network /root/ld-source-enroll/net'
+        # Every Kafka host learns the new peer and its firewall rules.
+        mapfile -t members < <(js '
+          const inv = JSON.parse(process.argv[1]); const t = m.loadTopology()
+          for (const h of m.meshMembers(t)) if (inv.hosts[h.name] && h.name !== t.sourceHost.name) console.log(h.name)' "$(cat "$inventory")")
+        for name in "${members[@]}"; do "$0" push "$name" | tail -1; sleep 10; done ;;
+      postgres-config|restart|status)
+        on_src "$(overlay_env) bash /root/ld-source-enroll/source-enroll.sh $phase" ;;
+      cdc-role)
+        secret="$state/secrets/prod-leaddrive_event_cdc"
+        [ -s "$secret" ] || { mkdir -p "$state/secrets"; openssl rand -hex 24 >"$secret"; chmod 0600 "$secret"; }
+        on_src 'install -m 0600 /dev/stdin /root/ld-source-enroll/prepare-cdc.sql' <"$repo/ops/event-platform/postgres/prepare-cdc.sql"
+        on_src "$(overlay_env) REPO_SQL=/root/ld-source-enroll/prepare-cdc.sql bash /root/ld-source-enroll/source-enroll.sh cdc-role" <"$secret" ;;
+      *) die "unknown phase $phase" ;;
+    esac
+    ;;
+
+  register-connector)
+    # provision.sh register-connector ENV: give both Connect hosts the source
+    # certificate, the CDC password file and the source host mapping, then
+    # create or update the outbox connector through the first Connect host.
+    env="${2:-}"
+    src_name="$(js 'console.log(m.loadTopology().sourceHost.name)')"
+    src_ip="$(public_of "$src_name")" || die "source not enrolled"
+    src_key="${LD_SOURCE_SSH_KEY:-$HOME/.ssh/leaddrive_prod_2026_09_09}"
+    secret="$state/secrets/prod-leaddrive_event_cdc"; [ -s "$secret" ] || die "no CDC password; run enroll-source cdc-role"
+    cert="$(mktemp)"; ssh -i "$src_key" -o IdentitiesOnly=yes -o ControlMaster=no -o ControlPath=none -o BatchMode=yes "root@$src_ip" \
+      'cat "$(sudo -u postgres psql -XAtc "show ssl_cert_file")"' >"$cert"
+    openssl x509 -in "$cert" -noout >/dev/null 2>&1 || die "could not read the source server certificate"
+    mapfile -t connect_hosts < <(js '
+      const inv = JSON.parse(process.argv[1])
+      for (const c of m.loadTopology().clusters) for (const h of c.hosts) if (h.roles.includes("connect") && inv.hosts[h.name]?.address) console.log(h.name)' "$(cat "$inventory")")
+    for name in "${connect_hosts[@]}"; do
+      copy "$name" 0644 root:root "$cert" /etc/leaddrive-kafka/tls/source-postgres.pem
+      on "$name" 'install -d -m 0700 /etc/leaddrive-kafka/services/secrets'
+      printf 'password=%s\n' "$(cat "$secret")" | on "$name" 'install -m 0644 /dev/stdin /etc/leaddrive-kafka/services/secrets/cdc.properties'
+      LD_WITH_SOURCE=1 "$0" push-services "$name" "$env" | tail -1
+    done
+    rm -f "$cert"
+    first="${connect_hosts[0]}"
+    rest="$(js 'console.log(JSON.parse(process.argv[2]).hosts[process.argv[1]].address)' "$first" "$(cat "$inventory")")"
+    node --input-type=module -e "
+      import { readFileSync } from 'node:fs'
+      import { loadTopology } from '$here/render.mjs'
+      import { renderSourceConnector } from '$here/services.mjs'
+      const t = loadTopology()
+      const c = renderSourceConnector({ template: JSON.parse(readFileSync('$repo/ops/event-platform/debezium/event-outbox-connector.template.json', 'utf8')),
+        envName: '$env', source: { tlsName: t.sourceHost.postgresTlsName, dbname: t.sourceHost.database } })
+      process.stdout.write(JSON.stringify(c.config))
+    " | on "$first" "for i in \$(seq 30); do curl -fsS -m 5 http://$rest:8083/ >/dev/null && break; sleep 3; done
+      curl -fsS -X PUT -H 'Content-Type: application/json' --data @- http://$rest:8083/connectors/leaddrive-event-outbox-$env/config >/dev/null
+      sleep 15; curl -fsS http://$rest:8083/connectors/leaddrive-event-outbox-$env/status"
+    echo
     ;;
 
   verify)
