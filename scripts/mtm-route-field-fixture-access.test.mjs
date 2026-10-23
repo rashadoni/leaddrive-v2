@@ -90,6 +90,47 @@ test('the remote stdin protocol accepts its two revision arguments but refuses a
   assert.equal(run.status, 1)
   assert.deepEqual(JSON.parse(run.stdout), { version: 1, status: 'FAIL', code: 'RF_ACCESS_ROOT_REQUIRED' })
 })
+test('the complete root stdin protocol reads the deployed standalone marker and emits only ciphertext', () => {
+  // Model the actual standalone artifact layout rather than accepting any
+  // revision pathname requested by the controller. No real root files are read.
+  const prelude = `
+import mockIo from 'node:fs';
+import protocolAssert from 'node:assert/strict';
+process.getuid = () => 0;
+const mockFiles = new Map([
+  ['/opt/leaddrive-v2/.next/standalone/.deploy-sha', { data: ${JSON.stringify(artifact + '\n')}, mode: 0o100644, ino: 1 }],
+  ['/var/lib/leaddrive-route-field-acceptance/credential.json', { data: ${JSON.stringify(JSON.stringify(input))}, mode: 0o100600, ino: 2 }],
+]);
+const metadata = file => ({ uid: 0, nlink: 1, dev: 1, ino: file.ino, mode: file.mode,
+  size: Buffer.byteLength(file.data), isFile: () => true, isSymbolicLink: () => false });
+const descriptors = new Map(); let nextDescriptor = 20; let revisionReads = 0; let publicChecks = 0;
+mockIo.lstatSync = pathname => {
+  if (pathname === '/var/lib/leaddrive-route-field-acceptance') return { uid: 0, mode: 0o40700,
+    isDirectory: () => true, isSymbolicLink: () => false };
+  protocolAssert.ok(mockFiles.has(pathname), 'controller attempted an unregistered root path');
+  return metadata(mockFiles.get(pathname));
+};
+mockIo.openSync = pathname => { const fd = ++nextDescriptor; descriptors.set(fd, mockFiles.get(pathname)); return fd };
+mockIo.fstatSync = fd => metadata(descriptors.get(fd));
+mockIo.readSync = (fd, buffer) => { const file = descriptors.get(fd); const data = Buffer.from(file.data);
+  if (file.ino === 1) revisionReads++; data.copy(buffer); return data.length };
+mockIo.closeSync = fd => descriptors.delete(fd);
+globalThis.fetch = async (url, options) => {
+  protocolAssert.equal(url, 'https://app.leaddrivecrm.org/api/v1/public/build-info');
+  protocolAssert.equal(options.redirect, 'error'); publicChecks++;
+  return { ok: true, json: async () => ({ artifactSha: ${JSON.stringify(artifact)} }) };
+};
+`;
+  const source = readFileSync(new URL('./mtm-route-field-fixture-access.mjs', import.meta.url), 'utf8')
+  const run = spawnSync(process.execPath, ['--input-type=module', '-', '--seal-fixture-access', main, artifact], {
+    input: prelude + source + '\nprotocolAssert.equal(revisionReads, 2); protocolAssert.equal(publicChecks, 2); protocolAssert.equal(descriptors.size, 0);',
+    encoding: 'utf8', timeout: 5000,
+  })
+  assert.equal(run.status, 0, run.stderr)
+  const envelope = validateEnvelope(JSON.parse(run.stdout), main, artifact)
+  assert.equal(envelope.status, 'PASS')
+  assert.equal(run.stdout.includes(input.password), false)
+})
 test('the public validator CLI never echoes a plaintext credential supplied as raw output', () => {
   const run = spawnSync(process.execPath, [new URL('./mtm-route-field-fixture-access.mjs', import.meta.url).pathname,
     '--validate-envelope', main, artifact], { input: JSON.stringify(input), encoding: 'utf8', timeout: 5000 })

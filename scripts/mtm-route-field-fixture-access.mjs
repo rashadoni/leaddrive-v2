@@ -11,7 +11,7 @@ export const MARKER = 'route-field-native-acceptance:fictional:v1'
 export const PUBLIC_RECIPIENT_PEM = "-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAi3CBn3SXvKzfa+hUoMRG\nzMffp1f1fnQPdt5vbJjw/rUsr3z11AwphB15gbGaHzi9V2X5l+VMoawzaHDuL5u3\nlMs8MFoWIIgBxC3GocRppZCtoL0XAmaUC7nPSSy46RdURaoxhnJ7avmyzZrXwB8O\nTItUpKyF9Ld1AOnwY0g/5sMJAhe+cquW10ER8Z4zZSjAbZXhNIhsl6tDm9gX0Br4\nAlFDg0FPqgJCUlh3BX+wUJt0QlQqK+Xne40vKGLsJ4TF9brLrNfTyJj7OWgpVn8+\nb8uBlmUYteXKh8zHDWZfTDS3t8A57RzpXn/Ln83B10vgu/U1VAmugqWUBLf4AQwE\ncGDIy7NG/ut5Ljj83VQXdvaU846fgjIyHh1LQoFrR7581ttrFiRvs7OsVcLuT5CG\nz5zrNJCKTNvh7cq+/jSOjjgkQaEFrBdMWrczkD3c4Tx+0drDfwshCcHGButyb4M7\n6FnvyEdjFK7jnKewa8grJoNfXcapIXG3fzWh3kVwD7Poyg7ZKAeMhPqxvmryWRwm\nx5G9chPPFvvvU4SeT3tV6OnYIh8iElf5JKApPbYU2JMzC6Dj8JozCCHLC32c7rCf\n5lB0ojMhpqPmQf3gsFJr1zUm7JUNzSmpVuCZJp5IlZnR9nHIvhs7CovFw254eCzG\naZH0w5M9htDo9MzkggcALT8CAwEAAQ==\n-----END PUBLIC KEY-----\n"
 export const RECIPIENT_SHA256 = '0868f7cd28ea50a26b22e1cfcf2c60aaf883a6ff7e8b1c6e80032064fe372d4d'
 const STATE = '/var/lib/leaddrive-route-field-acceptance'
-const REVISION = '/opt/leaddrive-v2/.deploy-sha'
+const REVISION = '/opt/leaddrive-v2/.next/standalone/.deploy-sha'
 const PUBLIC_BUILD = 'https://app.leaddrivecrm.org/api/v1/public/build-info'
 const CODES = new Set(['RF_ACCESS_FAILED', 'RF_ACCESS_REVISION_REFUSED', 'RF_ACCESS_FILE_UNSAFE',
   'RF_ACCESS_CREDENTIAL_REFUSED', 'RF_ACCESS_RECIPIENT_REFUSED', 'RF_ACCESS_ENVELOPE_REFUSED', 'RF_ACCESS_ROOT_REQUIRED'])
