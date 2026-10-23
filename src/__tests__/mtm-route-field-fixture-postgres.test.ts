@@ -5,7 +5,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { randomBytes } from "node:crypto"
 import { spawnSync } from "node:child_process"
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, type Prisma } from "@prisma/client"
 import { RF, RF_AGENTS, RF_CUSTOMERS, prepareRouteFieldFixture, readRouteFieldFixture } from "../../scripts/mtm-route-field-fixture"
 
 const target = process.env.RF_FIXTURE_TEST_DATABASE_URL
@@ -24,7 +24,7 @@ describe.skipIf(!target)("Route & Field fixture on real PostgreSQL", () => {
   beforeAll(async () => {
     const url = new URL(target!)
     url.searchParams.set("schema", schema)
-    db = new PrismaClient({ datasources: { db: { url: url.toString() } } })
+    db = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url: url.toString() } } })
     await db.$executeRawUnsafe(`CREATE SCHEMA "${schema}"`)
     schemaCreated = true
     // The full CRM schema contains Unsupported("vector(512)"). Keep the

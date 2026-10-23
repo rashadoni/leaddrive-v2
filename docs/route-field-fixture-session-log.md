@@ -40,3 +40,11 @@
 - Exact-head cb4eee770 verify-controller39939248251/job120366328495 retained FAIL at afterAll cleanup, despite all7 assertions/tests PASS (5 unit+2 real PostgreSQL). Full-schema create, fixture insertion, repeat preservation and ownership collision refusal did execute successfully. Failure was PostgreSQL53200/max_locks_per_transaction while dropping the entire large schema in one command. No production action.
 - Cleanup now enumerates tables only from the successfully created random owned schema and drops each with an independent autocommit before removing that schema/its remaining owned types. Identifiers are escaped; DB disconnect runs in finally; no error is ignored. The same hosted integration gate must pass cleanup before merge. PostgreSQL server settings and production are untouched.
 - App PR198 merged green at a60e0f278d950412a442f494ad2308a0cddda3d7. Main BuildAndroid39939576454 also PASS with package/keystore/publication skipped: no new APK for these tests.
+
+
+## 2026-10-23T11:22:25.898309+00:00 — required static gate diagnosed and fixed
+
+- Exact head443519315 PR checks39940341652/job120372094009 retained FAIL:20 failing files,18 accepted by the existing baseline,2 newly failing. No merge/deploy/fixture operation. Typecheck and isolated controller7-test gate PASS.
+- Own PostgreSQL test now constructs PrismaClient<Prisma.PrismaClientOptions>, preserving the existing memory guard. The unrelated report UI failure reproduced in a targeted run (19 PASS/1 FAIL): fake animation timers did not wait for the first real route response. Its harness now awaits the captured real route promises before checking the table; all existing value assertions remain unchanged. No baseline/gate/runtime code was weakened or changed.
+- Added cancel-in-progress concurrency only to fixture verification, as required for a new PR workflow; the operational production lock still never cancels an in-flight operation.
+- Current-tree targeted Vitest:3 files/30 tests PASS (report20, memory guard5, fixture unit5). Runner policy79 workflows PASS, fixture YAML/separate concurrency parse PASS, git diff --check PASS. Full CI and real PostgreSQL rerun NOT RUN on this head until GitHub finishes; no heavy local verification. Next: publish checkpoint, inspect all exact-head hosted gates, merge only green, then use supported main deploy and fixture workflow.

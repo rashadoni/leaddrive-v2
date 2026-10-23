@@ -23,6 +23,9 @@ jobs:
   verify-controller:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    concurrency:
+      group: route-field-fixture-verify-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
     env:
       DATABASE_URL: postgresql://postgres:fixture-only@127.0.0.1:5432/postgres
     services:
