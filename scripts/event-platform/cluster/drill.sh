@@ -61,7 +61,7 @@ bash "$pki" init "$work/intruder"
 bash "$pki" issue "$work/intruder" kafka-admin kafka-admin
 node -e "
   const hosts = {}
-  for (const l of process.argv.slice(2)) hosts[l.split(' ')[0]] = { address: l.split(' ')[0] }
+  for (const l of process.argv.slice(1)) hosts[l.split(' ')[0]] = { address: l.split(' ')[0] }
   require('fs').writeFileSync('$work/inventory.json', JSON.stringify({ clusterId: '$cluster_id', hosts }))
 " "${nodes[@]}"
 node "$repo/scripts/event-platform/cluster/render.mjs" --cluster primary --inventory "$work/inventory.json" --out "$work/rendered" --heap-scale 0.125
