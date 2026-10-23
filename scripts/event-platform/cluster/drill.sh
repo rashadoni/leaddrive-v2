@@ -65,6 +65,7 @@ pki="$repo/scripts/event-platform/cluster/pki.sh"
 bash "$pki" init "$work/pki"
 for line in "${nodes[@]}"; do read -r name _ _ <<<"$line"; bash "$pki" issue "$work/pki" "$name" "$name"; done
 bash "$pki" issue "$work/pki" kafka-admin kafka-admin
+bash "$pki" issue "$work/pki" ld-drill-postgres ld-drill-postgres
 bash "$pki" init "$work/intruder"
 bash "$pki" issue "$work/intruder" kafka-admin kafka-admin
 node -e "
@@ -304,10 +305,10 @@ echo "$(wc -l <"$work/acls.jsonl") ACL bindings applied from services.mjs"
 
 step "PostgreSQL source with TLS and an INSERT-only outbox publication"
 pg=ld-drill-postgres
-bash "$pki" issue "$work/pki" "$pg" "$pg"
 mkdir -p "$work/pgtls"
-awk '/BEGIN PRIVATE KEY/,/END PRIVATE KEY/' "$work/pki/issued/$pg/node.pem" >"$work/pgtls/server.key"
-awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' "$work/pki/issued/$pg/node.pem" >"$work/pgtls/server.crt"
+# issued/ belongs to the Kafka uid by now; read the PostgreSQL pair as root.
+sudo cat "$work/pki/issued/$pg/node.pem" | awk '/BEGIN PRIVATE KEY/,/END PRIVATE KEY/' >"$work/pgtls/server.key"
+sudo cat "$work/pki/issued/$pg/node.pem" | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' >"$work/pgtls/server.crt"
 sudo chown -R 70:70 "$work/pgtls"; sudo chmod 0600 "$work/pgtls/server.key"
 pg_password="$(openssl rand -hex 16)"; cdc_password="$(openssl rand -hex 16)"
 docker run -d --name "$pg" --hostname "$pg" --network "$net" --label "$project" \
