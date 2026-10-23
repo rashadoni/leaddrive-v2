@@ -100,6 +100,20 @@ class TransportTests(unittest.TestCase):
         config["customVocabulary"].append("mutated")
         self.assertNotIn("mutated", self.bridge.transcription()["customVocabulary"])
 
+    def test_list_price_passes_only_in_its_exact_shape(self):
+        good = {"amount": "1.33", "currency": "AZN", "per": "qutu", "asOf": "2026-10-22T11:14:56.587Z"}
+        data = result(); data["candidates"][0]["listPrice"] = dict(good)
+        self.assertEqual(self.bridge.safe_result(data)["candidates"][0]["listPrice"], good)
+        for bad in [{**good, "amount": "1,33"}, {**good, "amount": "0"}, {**good, "amount": 1.33},
+                    {**good, "currency": "USD"}, {**good, "per": "тюб"}, {**good, "asOf": "yesterday"},
+                    {**good, "stock": 100}, "1.33", None]:
+            data = result(); data["candidates"][0]["listPrice"] = bad
+            candidate = self.bridge.safe_result(data)["candidates"][0]
+            # A malformed price is dropped, the product itself stays.
+            self.assertNotIn("listPrice", candidate, bad)
+            self.assertEqual(candidate["itemCode"], "TEST-1")
+        self.assertNotIn("listPrice", self.bridge.safe_result(result())["candidates"][0])
+
     def test_agent_voice_is_pinned_to_azerbaijani(self):
         self.assertEqual(self.bridge.speech_language(), "az-AZ")
 
