@@ -29,23 +29,23 @@ test('every member peers with every other member and never carries its private k
 test('Kafka hosts drop by default and open each port only to the roles that need it', () => {
   const broker = render('kafka-p-broker-eu')['nftables.conf']
   assert.match(broker, /policy drop;/)
-  assert.deepEqual(acceptsOn(broker, 9094).sort(), ['kafka-p-broker-uk', 'kafka-p-broker-de'].map(overlay).sort())
+  assert.deepEqual(acceptsOn(broker, 9094).sort(), ['kafka-p-broker-uk', 'kafka-p-broker-gra'].map(overlay).sort())
   const clients = acceptsOn(broker, 9092)
   for (const name of ['kafka-p-connect-eu', 'kafka-p-connect-uk', 'kafka-d-mirror', 'kafka-monitor', 'leaddrive-prod']) assert.ok(clients.includes(overlay(name)), name)
   for (const name of ['kafka-p-ctrl-uk', 'kafka-d-broker-1', 'kafka-p-broker-uk']) assert.ok(!clients.includes(overlay(name)), name)
   assert.equal(acceptsOn(broker, 9093).length, 0, 'brokers do not listen as controllers')
   assert.equal(acceptsOn(broker, 5432).length, 0)
 
-  const controller = render('kafka-p-ctrl-de')['nftables.conf']
+  const controller = render('kafka-p-ctrl-gra')['nftables.conf']
   assert.deepEqual(acceptsOn(controller, 9093).sort(),
-    ['kafka-p-ctrl-eu', 'kafka-p-ctrl-uk', 'kafka-p-broker-eu', 'kafka-p-broker-uk', 'kafka-p-broker-de'].map(overlay).sort(),
+    ['kafka-p-ctrl-eu', 'kafka-p-ctrl-uk', 'kafka-p-broker-eu', 'kafka-p-broker-uk', 'kafka-p-broker-gra'].map(overlay).sort(),
     'controller port is open only to the same cluster')
   assert.equal(acceptsOn(controller, 9092).length, 0)
 
   const dr = render('kafka-d-ctrl-1')['nftables.conf']
   assert.ok(!acceptsOn(dr, 9093).includes(overlay('kafka-p-broker-eu')), 'primary brokers cannot reach DR controllers')
 
-  for (const name of ['kafka-p-broker-eu', 'kafka-p-ctrl-de', 'kafka-p-connect-uk']) {
+  for (const name of ['kafka-p-broker-eu', 'kafka-p-ctrl-gra', 'kafka-p-connect-uk']) {
     assert.deepEqual(acceptsOn(render(name)['nftables.conf'], 9100), [overlay('kafka-monitor')])
   }
   assert.match(broker, /udp dport 51820 ip saddr \{ [^}]*192\.0\.2\./)
@@ -68,12 +68,12 @@ test('the production host keeps its public services and only confines the overla
 
 test('inventory errors are refused instead of rendered', () => {
   const bad = structuredClone(inventory)
-  bad.hosts['kafka-p-broker-de'].wgPublicKey = 'not-a-key'
+  bad.hosts['kafka-p-broker-gra'].wgPublicKey = 'not-a-key'
   assert.throws(() => renderHostNetwork({ topology, inventory: bad, hostName: 'kafka-p-broker-eu' }), /wgPublicKey/)
   const dup = structuredClone(inventory)
-  dup.hosts['kafka-p-broker-de'].address = dup.hosts['kafka-p-broker-eu'].address
+  dup.hosts['kafka-p-broker-gra'].address = dup.hosts['kafka-p-broker-eu'].address
   assert.throws(() => renderHostNetwork({ topology, inventory: dup, hostName: 'kafka-p-broker-eu' }), /unique/)
   const publicOverlay = structuredClone(inventory)
-  publicOverlay.hosts['kafka-p-broker-de'].address = '203.0.113.5'
+  publicOverlay.hosts['kafka-p-broker-gra'].address = '203.0.113.5'
   assert.throws(() => renderHostNetwork({ topology, inventory: publicOverlay, hostName: 'kafka-p-broker-eu' }), /10\.x/)
 })

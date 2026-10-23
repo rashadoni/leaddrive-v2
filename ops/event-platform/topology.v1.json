@@ -14,8 +14,8 @@
   "sites": [
     { "id": "contabo-eu", "provider": "contabo", "orderRegion": "European Union", "location": "Hub Europe, Lauterbourg FR (confirm after order)" },
     { "id": "contabo-uk", "provider": "contabo", "orderRegion": "United Kingdom", "location": "Portsmouth GB" },
-    { "id": "ovh-de", "provider": "ovhcloud", "orderRegion": "Frankfurt", "location": "Frankfurt DE" },
-    { "id": "ovh-pl", "provider": "ovhcloud", "orderRegion": "Warsaw", "location": "Warsaw PL" }
+    { "id": "ovh-gra", "provider": "ovhcloud", "orderRegion": "Europe (France - Gravelines)", "location": "Gravelines FR" },
+    { "id": "dr-eu", "provider": "undecided", "orderRegion": "to be chosen before ordering step 2", "location": "EU, outside the three primary sites" }
   ],
   "clusters": [
     {
@@ -24,10 +24,10 @@
       "hosts": [
         { "name": "kafka-p-broker-eu", "site": "contabo-eu", "roles": ["broker"], "plan": "Cloud VPS 20" },
         { "name": "kafka-p-broker-uk", "site": "contabo-uk", "roles": ["broker"], "plan": "Cloud VPS 20" },
-        { "name": "kafka-p-broker-de", "site": "ovh-de", "roles": ["broker"], "plan": "VPS-2" },
+        { "name": "kafka-p-broker-gra", "site": "ovh-gra", "roles": ["broker"], "plan": "VPS-2" },
         { "name": "kafka-p-ctrl-eu", "site": "contabo-eu", "roles": ["controller"], "plan": "Cloud VPS 10" },
         { "name": "kafka-p-ctrl-uk", "site": "contabo-uk", "roles": ["controller"], "plan": "Cloud VPS 10" },
-        { "name": "kafka-p-ctrl-de", "site": "ovh-de", "roles": ["controller"], "plan": "VPS-1" },
+        { "name": "kafka-p-ctrl-gra", "site": "ovh-gra", "roles": ["controller"], "plan": "VPS-1" },
         { "name": "kafka-p-connect-eu", "site": "contabo-eu", "roles": ["connect", "registry"], "plan": "Cloud VPS 10" },
         { "name": "kafka-p-connect-uk", "site": "contabo-uk", "roles": ["connect", "registry"], "plan": "Cloud VPS 10" }
       ]
@@ -36,18 +36,18 @@
       "name": "dr",
       "purpose": "mirror",
       "hosts": [
-        { "name": "kafka-d-broker-1", "site": "ovh-pl", "roles": ["broker"], "plan": "VPS-2" },
-        { "name": "kafka-d-broker-2", "site": "ovh-pl", "roles": ["broker"], "plan": "VPS-2" },
-        { "name": "kafka-d-broker-3", "site": "ovh-pl", "roles": ["broker"], "plan": "VPS-2" },
-        { "name": "kafka-d-ctrl-1", "site": "ovh-pl", "roles": ["controller"], "plan": "VPS-1" },
-        { "name": "kafka-d-ctrl-2", "site": "ovh-pl", "roles": ["controller"], "plan": "VPS-1" },
-        { "name": "kafka-d-ctrl-3", "site": "ovh-pl", "roles": ["controller"], "plan": "VPS-1" },
-        { "name": "kafka-d-mirror", "site": "ovh-pl", "roles": ["mirror"], "plan": "VPS-1" }
+        { "name": "kafka-d-broker-1", "site": "dr-eu", "roles": ["broker"], "plan": "VPS-2" },
+        { "name": "kafka-d-broker-2", "site": "dr-eu", "roles": ["broker"], "plan": "VPS-2" },
+        { "name": "kafka-d-broker-3", "site": "dr-eu", "roles": ["broker"], "plan": "VPS-2" },
+        { "name": "kafka-d-ctrl-1", "site": "dr-eu", "roles": ["controller"], "plan": "VPS-1" },
+        { "name": "kafka-d-ctrl-2", "site": "dr-eu", "roles": ["controller"], "plan": "VPS-1" },
+        { "name": "kafka-d-ctrl-3", "site": "dr-eu", "roles": ["controller"], "plan": "VPS-1" },
+        { "name": "kafka-d-mirror", "site": "dr-eu", "roles": ["mirror"], "plan": "VPS-1" }
       ]
     }
   ],
   "monitoring": [
-    { "name": "kafka-monitor", "site": "ovh-pl", "roles": ["monitoring"], "plan": "VPS-1" }
+    { "name": "kafka-monitor", "site": "dr-eu", "roles": ["monitoring"], "plan": "VPS-1" }
   ],
   "network": {
     "overlay": "wireguard",

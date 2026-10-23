@@ -444,3 +444,16 @@ One runner is one failure domain: this proves configuration and Kafka
 behaviour, not the independence of the real sites, which the live site-loss
 drill on ordered hosts must show. Connect/Debezium, Registry, the DR mirror and
 monitoring are the next slices; ordering step 1 (primary 8 hosts) is now open.
+
+### Ordering correction — 2026-10-23
+
+The owner's order pages show OVHcloud's current VPS line in Europe only in
+Gravelines (France); Frankfurt and Warsaw are not offered for it. The third
+primary site is therefore OVHcloud Gravelines (`ovh-gra`), a different provider
+about 550 km from the Contabo Hub Europe source site. The DR site is
+`dr-eu`, provider still undecided: it must be outside all three primary sites
+and is chosen before ordering step 2. Contabo shows prices including 18% VAT
+for this account (Cloud VPS 6 with NVMe, monthly: EUR9.74; Cloud VPS 4:
+EUR6.49; United Kingdom +EUR1.89/month), with no setup fee on monthly terms.
+Contabo's order form has no SSH-key field: keys are added in the Control Panel
+and the image is reinstalled with the key before bootstrap.

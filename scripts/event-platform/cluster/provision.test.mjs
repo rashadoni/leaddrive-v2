@@ -29,20 +29,20 @@ test('render builds certs bound to overlay addresses, node files and the mesh fr
     assert.match(inventory.clusters.primary.clusterId, /^[A-Za-z0-9_-]{22}$/)
     assert.equal(statSync(path.join(state, 'pki-primary/ca.key')).mode & 0o777, 0o600)
     const cert = spawnSync('openssl', ['x509', '-noout', '-ext', 'subjectAltName', '-in',
-      path.join(state, 'pki-primary/issued/kafka-p-broker-de/node.pem')], { encoding: 'utf8' })
-    assert.match(cert.stdout, new RegExp(`IP Address:${hosts['kafka-p-broker-de'].address.replaceAll('.', '\\.')}`))
-    const props = readFileSync(path.join(state, 'rendered/primary/kafka-p-broker-de/server.properties'), 'utf8')
-    assert.match(props, new RegExp(`^listeners=CLIENT://${hosts['kafka-p-broker-de'].address.replaceAll('.', '\\.')}:9092,`, 'm'))
-    assert.match(props, /^broker\.rack=ovh-de$/m)
+      path.join(state, 'pki-primary/issued/kafka-p-broker-gra/node.pem')], { encoding: 'utf8' })
+    assert.match(cert.stdout, new RegExp(`IP Address:${hosts['kafka-p-broker-gra'].address.replaceAll('.', '\\.')}`))
+    const props = readFileSync(path.join(state, 'rendered/primary/kafka-p-broker-gra/server.properties'), 'utf8')
+    assert.match(props, new RegExp(`^listeners=CLIENT://${hosts['kafka-p-broker-gra'].address.replaceAll('.', '\\.')}:9092,`, 'm'))
+    assert.match(props, /^broker\.rack=ovh-gra$/m)
     for (const name of ['kafka-p-broker-eu', 'kafka-p-connect-uk', 'kafka-monitor', 'kafka-d-mirror']) {
       assert.ok(existsSync(path.join(state, `rendered/network/${name}/nftables.conf`)), name)
     }
     assert.ok(!existsSync(path.join(state, 'rendered/network/leaddrive-prod')), 'production host is absent until it is enrolled')
 
     // A second render keeps the CA, the cluster id and the issued certificates.
-    const before = readFileSync(path.join(state, 'pki-primary/issued/kafka-p-broker-de/node.pem'), 'utf8')
+    const before = readFileSync(path.join(state, 'pki-primary/issued/kafka-p-broker-gra/node.pem'), 'utf8')
     assert.equal(spawnSync('bash', [script, 'render', 'primary'], { env, encoding: 'utf8' }).status, 0)
-    assert.equal(readFileSync(path.join(state, 'pki-primary/issued/kafka-p-broker-de/node.pem'), 'utf8'), before)
+    assert.equal(readFileSync(path.join(state, 'pki-primary/issued/kafka-p-broker-gra/node.pem'), 'utf8'), before)
     assert.equal(JSON.parse(readFileSync(path.join(state, 'inventory.json'), 'utf8')).clusters.primary.clusterId, inventory.clusters.primary.clusterId)
 
     const refused = spawnSync('bash', [script, 'bootstrap', 'leaddrive-prod', '192.0.2.1'], { env, encoding: 'utf8' })

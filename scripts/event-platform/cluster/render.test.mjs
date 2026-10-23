@@ -40,7 +40,7 @@ test('every broker and controller gets mTLS, a deny-by-default authorizer and it
   const cluster = topology.clusters.find((c) => c.name === 'primary')
   const ids = nodeIds(cluster)
   const voters = parse(files['kafka-p-ctrl-eu/server.properties'])['controller.quorum.voters']
-  assert.equal(voters, 'kafka-p-ctrl-eu:9093'.replace(/^/, '1@') + ',2@kafka-p-ctrl-uk:9093,3@kafka-p-ctrl-de:9093')
+  assert.equal(voters, 'kafka-p-ctrl-eu:9093'.replace(/^/, '1@') + ',2@kafka-p-ctrl-uk:9093,3@kafka-p-ctrl-gra:9093')
 
   for (const host of cluster.hosts.filter((h) => h.roles.includes('broker') || h.roles.includes('controller'))) {
     const props = parse(files[`${host.name}/server.properties`])
@@ -81,18 +81,18 @@ test('DR cluster renders as its own quorum and the inventory is validated', () =
     '1@kafka-d-ctrl-1:9093,2@kafka-d-ctrl-2:9093,3@kafka-d-ctrl-3:9093')
   assert.throws(() => renderCluster({ topology, catalog, clusterName: 'primary', inventory: { clusterId: 'short', hosts: {} } }), /clusterId/)
   const missing = inventoryFor('primary')
-  delete missing.hosts['kafka-p-broker-de']
-  assert.throws(() => renderCluster({ topology, catalog, clusterName: 'primary', inventory: missing }), /kafka-p-broker-de/)
+  delete missing.hosts['kafka-p-broker-gra']
+  assert.throws(() => renderCluster({ topology, catalog, clusterName: 'primary', inventory: missing }), /kafka-p-broker-gra/)
   const injected = inventoryFor('primary')
-  injected.hosts['kafka-p-broker-de'].address = 'x\nallow.everyone.if.no.acl.found=true'
+  injected.hosts['kafka-p-broker-gra'].address = 'x\nallow.everyone.if.no.acl.found=true'
   assert.throws(() => renderCluster({ topology, catalog, clusterName: 'primary', inventory: injected }), /usable address/)
 })
 
 test('heap follows the plan and scales down only for the disposable drill', () => {
   const full = renderCluster({ topology, catalog, clusterName: 'primary', inventory: inventoryFor('primary') })
   assert.match(full['kafka-p-broker-eu/kafka.env'], /-Xmx4096m/)
-  assert.match(full['kafka-p-ctrl-de/kafka.env'], /-Xmx1024m/)
+  assert.match(full['kafka-p-ctrl-gra/kafka.env'], /-Xmx1024m/)
   const drill = renderCluster({ topology, catalog, clusterName: 'primary', inventory: inventoryFor('primary'), heapScale: 0.125 })
   assert.match(drill['kafka-p-broker-eu/kafka.env'], /-Xmx512m/)
-  assert.match(drill['kafka-p-ctrl-de/kafka.env'], /-Xmx256m/)
+  assert.match(drill['kafka-p-ctrl-gra/kafka.env'], /-Xmx256m/)
 })
