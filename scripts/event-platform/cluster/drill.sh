@@ -80,7 +80,7 @@ printf 'security.protocol=PLAINTEXT\n' >"$work/client/plaintext.properties"
 scram_client() {
   printf 'security.protocol=SASL_SSL\nsasl.mechanism=SCRAM-SHA-512\nssl.truststore.type=PEM\nssl.truststore.location=/client/ca.pem\n'
   printf 'sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username="%s" password="%s";\n' "$1" "$2"
-  printf 'acks=all\nenable.idempotence=true\n'
+  printf 'acks=all\nenable.idempotence=true\nretries=2147483647\nmax.in.flight.requests.per.connection=5\n'
 }
 scram_client ld-connect "${password[ld-connect]}" >"$work/client/connect.properties"
 scram_client ld-fund-worker "${password[ld-fund-worker]}" >"$work/client/fund.properties"
@@ -177,7 +177,7 @@ expect_refused() {
     printf '%s\n' "$out" | tail -5
     fail "$label was accepted"
   fi
-  echo "refused as expected: $label (exit $status)"
+  echo "refused as expected: $label (exit $status): $(grep -Eo -m1 ".{0,80}($refusal).{0,60}" <<<"$out" || echo 'no response before timeout')"
 }
 expect_refused "plaintext client" kafka kafka-topics.sh --bootstrap-server "$bootstrap_scram" --command-config /client/plaintext.properties --list
 expect_refused "certificate from a foreign CA" kafka kafka-topics.sh --bootstrap-server "$bootstrap_mtls" --command-config /client/intruder.properties --list
@@ -200,8 +200,8 @@ expect_write_refused() {
   local label="$1" out; shift
   out="$(KAFKA_TIMEOUT=60 produce "$@" 2>&1 || true)"
   [ -z "$(acked_values <<<"$out")" ] || fail "$label: records were acknowledged"
-  grep -Eq "$refusal|producer_send_error|NotEnoughReplicas" <<<"$out" || { printf '%s\n' "$out" | tail -5; fail "$label: no refusal seen"; }
-  echo "refused as expected: $label"
+  grep -Eq "$refusal|producer_send_error|NotEnoughReplicas" <<<"$out" || { printf '%s\n' "$out" | grep -v '^\s*at ' | tail -15; fail "$label: no refusal seen"; }
+  echo "refused as expected: $label: $(grep -Eo -m1 ".{0,80}($refusal|NotEnoughReplicas).{0,60}" <<<"$out" || echo producer_send_error)"
 }
 expect_write_refused "connect identity writing to replay" connect.properties "$finance_replay" 3 9
 expect_write_refused "fund worker identity writing events" fund.properties "$finance_events" 3 9
