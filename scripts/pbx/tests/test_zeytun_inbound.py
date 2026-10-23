@@ -1,5 +1,6 @@
 import ast
 import importlib.util
+import json
 import os
 from pathlib import Path
 import threading
@@ -305,6 +306,195 @@ class TransportTests(unittest.TestCase):
         for field in ["customerVerified", "canQuote", "canSubmitTo1c", "canResolveIdentity", "requiresOperatorReview"]:
             data = result(); del data[field]
             self.assertEqual(self.bridge.safe_result(data)["candidates"], [])
+
+
+class FakeTts:
+    def __init__(self, fail=None, chunks=2):
+        self.texts, self.fail, self.chunks = [], fail, chunks
+
+    def stream(self, text, on_pcm, keep_going):
+        self.texts.append(text)
+        if self.fail:
+            raise self.fail
+        for _ in range(self.chunks):
+            if not keep_going():
+                return
+            on_pcm(b"\x01\x00" * 480)
+
+
+class SpeechRelayTests(unittest.TestCase):
+    MODEL_AUDIO = {"inlineData": {"mimeType": "audio/pcm;rate=24000", "data": "AQABAA=="}}
+
+    def setUp(self):
+        self.injected, self.speak, self.live = [], True, True
+        self.lock = threading.Lock()
+
+    def tearDown(self):
+        self.live = False
+
+    def relay(self, tts):
+        def inject(event):
+            with self.lock:
+                self.injected.append(event)
+        relay = bridge_module.ZeytunSpeechRelay(tts, inject, lambda: self.speak, lambda: self.live)
+        relay.TAIL_GRACE_SECONDS = 0.05
+        return relay
+
+    def wait_for(self, predicate, seconds=3):
+        until = time.monotonic() + seconds
+        while time.monotonic() < until:
+            with self.lock:
+                if predicate(list(self.injected)):
+                    return True
+            time.sleep(0.01)
+        return False
+
+    @staticmethod
+    def content(text=None, audio=False, **flags):
+        content = dict(flags)
+        if audio:
+            content["modelTurn"] = {"parts": [dict(SpeechRelayTests.MODEL_AUDIO)]}
+        if text is not None:
+            content["outputTranscription"] = {"text": text}
+        return {"serverContent": content}
+
+    def kinds(self):
+        with self.lock:
+            events = list(self.injected)
+        out = []
+        for event in events:
+            content = event["serverContent"]
+            self.assertTrue(event.get(bridge_module.ZeytunSpeechRelay.MARK))
+            if "modelTurn" in content:
+                out.append(("audio", content.get("outputTranscription", {}).get("text")))
+            for key in ("generationComplete", "turnComplete"):
+                if content.get(key):
+                    out.append((key, None))
+        return out
+
+    def test_model_audio_is_withheld_and_its_text_is_spoken_before_the_held_boundaries(self):
+        tts = FakeTts()
+        relay = self.relay(tts)
+        self.assertTrue(relay.filter(self.content("Salam! Buyurun, ", audio=True)))
+        self.assertTrue(relay.filter(self.content("hansı dərmanları sifariş etmək istərdiniz? ", audio=True)))
+        event = self.content(generationComplete=True)
+        self.assertTrue(relay.filter(event))  # held, nothing reaches the core yet
+        self.assertTrue(relay.filter(self.content(turnComplete=True)))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(tts.texts, ["Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz?"])
+        self.assertEqual(self.kinds(), [("audio", "Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz? "),
+                                        ("audio", None), ("generationComplete", None), ("turnComplete", None)])
+        # The provider's own audio never reached the core.
+        self.assertNotIn("AQABAA==", json.dumps(self.injected))
+
+    def test_caller_input_and_other_fields_still_reach_the_core_at_once(self):
+        relay = self.relay(FakeTts())
+        event = {"serverContent": {"inputTranscription": {"text": "Salam"}}}
+        self.assertFalse(relay.filter(event))
+        self.assertEqual(event["serverContent"], {"inputTranscription": {"text": "Salam"}})
+        self.assertFalse(relay.filter({"sessionResumptionUpdate": {"newHandle": "h"}}))
+
+    def test_synthetic_events_pass_straight_to_the_core(self):
+        relay = self.relay(FakeTts())
+        event = {"serverContent": {"turnComplete": True}, bridge_module.ZeytunSpeechRelay.MARK: True}
+        self.assertFalse(relay.filter(event))
+        self.assertNotIn(bridge_module.ZeytunSpeechRelay.MARK, event)
+
+    def test_interrupted_generation_stops_and_its_boundaries_go_out_with_the_interrupt(self):
+        tts = FakeTts()
+        relay = self.relay(tts)
+        relay.TAIL_GRACE_SECONDS = 1.0
+        relay.filter(self.content("Bir az gözləyin, kataloqda yoxlayıram, ", audio=True))
+        relay.filter(self.content(generationComplete=True))
+        event = self.content(interrupted=True)
+        self.assertFalse(relay.filter(event))
+        self.assertTrue(event["serverContent"].get("generationComplete"))
+        time.sleep(0.2)
+        self.assertEqual(tts.texts, [])
+        with self.lock:
+            self.assertEqual(self.injected, [])  # the boundary went out once, with the interrupt
+
+    def test_barge_in_cancels_and_the_rest_of_that_generation_is_dropped(self):
+        tts = FakeTts(chunks=1)
+        relay = self.relay(tts)
+        relay.filter(self.content("Parasetamol beş yüz milliqram Sopharma, on qutu qeyd etdim. ", audio=True))
+        self.assertTrue(self.wait_for(lambda events: len(events) >= 1))
+        self.speak = False  # the core is discarding: the caller talks over the agent
+        relay.filter(self.content("Başqa nə əlavə edək, zəhmət olmasa deyin? ", audio=True))
+        time.sleep(0.3)
+        self.assertEqual(len(tts.texts), 1)
+        self.speak = True
+        event = self.content(turnComplete=True)
+        self.assertFalse(relay.filter(event))  # the core gets its boundary directly
+        self.assertTrue(event["serverContent"].get("turnComplete"))
+
+    def test_tts_failure_before_any_audio_plays_the_model_itself(self):
+        relay = self.relay(FakeTts(fail=OSError("down")))
+        relay.filter(self.content("Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz? ", audio=True))
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        content = self.injected[0]["serverContent"]
+        self.assertEqual(content["modelTurn"]["parts"], [self.MODEL_AUDIO])
+        self.assertIn("istərdiniz", content["outputTranscription"]["text"])
+
+    def test_a_transcript_tail_after_turn_complete_belongs_to_that_turn(self):
+        tts = FakeTts()
+        relay = self.relay(tts)
+        relay.TAIL_GRACE_SECONDS = 0.3
+        relay.filter(self.content("Siyahınızda on beş qutu Parasetamol", audio=True))
+        relay.filter(self.content(turnComplete=True))
+        relay.filter(self.content(" var."))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(tts.texts, ["Siyahınızda on beş qutu Parasetamol var."])
+
+    def test_a_new_socket_drops_what_was_queued_for_the_old_one(self):
+        tts = FakeTts()
+        relay = self.relay(tts)
+        relay.filter(self.content("Köhnə cavab, artıq lazım deyil", audio=True), epoch=1)
+        relay.filter(self.content("Yeni sessiya cavabı, zəhmət olmasa təkrar deyin.", audio=True), epoch=2)
+        relay.filter(self.content(turnComplete=True), epoch=2)
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(tts.texts, ["Yeni sessiya cavabı, zəhmət olmasa təkrar deyin."])
+
+    def test_amounts_are_read_as_manat_and_qepik(self):
+        self.assertEqual(bridge_module.zeytun_speakable_text("Qiyməti 1.33 manatdır."), "Qiyməti 1 manat 33 qəpikdir.")
+        self.assertEqual(bridge_module.zeytun_speakable_text("Cəmi 264.79 manat."), "Cəmi 264 manat 79 qəpik.")
+        self.assertEqual(bridge_module.zeytun_speakable_text("12.5 manat"), "12 manat 50 qəpik")
+        self.assertEqual(bridge_module.zeytun_speakable_text("1,3 manatdan"), "1,3 manatdan")
+
+    def test_tts_stream_parses_server_sent_audio_and_stops_when_told(self):
+        lines = [b"data: " + json.dumps({"candidates": [{"content": {"parts": [{"inlineData": {
+            "mimeType": "audio/L16;codec=pcm;rate=24000", "data": "AQABAA=="}}]}}]}).encode() + b"\n"] * 3
+
+        class Response(list):
+            def __enter__(self): return self
+            def __exit__(self, *exc): return False
+        seen, keep = [], [True]
+        tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat",
+                                            opener=lambda req, timeout: Response(lines))
+        def on_pcm(pcm):
+            seen.append(pcm)
+            keep[0] = False
+        tts.stream("Salam", on_pcm, lambda: keep[0])
+        self.assertEqual(seen, [b"\x01\x00\x01\x00"])
+        with self.assertRaises(bridge_module.ZeytunPilotUnavailable):
+            bridge_module.ZeytunGeminiTts("k" * 39, "gemini-2.5-pro-preview-tts", "Sulafat")
+
+    def test_session_switches_the_relay_on_only_for_a_known_model_and_voice(self):
+        def opened(extra):
+            def request(body):
+                return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                        "opening": "Test greeting", "maxSeconds": 60, **extra}
+            bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: 100)
+            bridge.open()
+            return bridge
+        noop = dict(inject=lambda e: None, speakable=lambda: True, alive=lambda: False)
+        self.assertIsNone(opened({}).speech_relay("k", **noop))
+        self.assertIsNone(opened({"speech": {"engine": "tts", "model": "other", "voice": "Sulafat"}}).speech_relay("k", **noop))
+        on = opened({"speech": {"engine": "tts", "model": "gemini-3.8-flash-tts", "voice": "Sulafat"}})
+        relay = on.speech_relay("k" * 39, tts=FakeTts(), **noop)
+        self.assertIsNotNone(relay)
+        self.assertIs(on.speech_relay("k" * 39, **noop), relay)  # one per call
 
 
 class ArtifactTests(unittest.TestCase):

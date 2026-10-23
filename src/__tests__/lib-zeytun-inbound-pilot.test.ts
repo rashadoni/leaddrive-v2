@@ -56,8 +56,9 @@ describe("single-call inbound owner rehearsal", () => {
     expect(body.prompt).toContain("NOT an authenticated pharmacy")
     // The station hangs up on this exact sentence; the prompt must ask for the same one.
     expect(body.closing).toBe(ZEYTUN_INBOUND_CLOSING)
-    // The station accepts only its known voice names; an unknown one would keep the station voice.
-    expect(body).toMatchObject({ voice: "Iapetus", pinSpeechLanguage: false })
+    // The station re-voices the agent with this TTS; it accepts only a model and voice it knows.
+    expect(body).toMatchObject({ voice: null, pinSpeechLanguage: false,
+      speech: { engine: "tts", model: "gemini-3.8-flash-tts", voice: "Sulafat" } })
     expect(body.prompt).toContain(`"${ZEYTUN_INBOUND_CLOSING}"`)
     expect(f.dependencies.claim).toHaveBeenCalledOnce()
     expect(f.dependencies.loadCall).toHaveBeenCalledTimes(2)
