@@ -413,3 +413,34 @@ Ordering happens in two steps, each only after the preceding gate passes:
 PostgreSQL `wal_level=logical` needs a planned restart of the production
 database and stays a separately requested window. Fund remains the first
 canary; other domains follow the existing A7 order.
+
+### Install automation and disposable drills — 2026-10-23
+
+`scripts/event-platform/cluster/` renders and installs the plan above:
+`render.mjs` (node configs, WireGuard mesh, per-role nftables, ufw rules for
+the source host), `pki.sh` (per-cluster CA; CN = Kafka principal),
+`host-bootstrap.sh` and `provision.sh` (operator workflow; inventory, CA and
+public addresses stay on the operator workstation, never in Git).
+
+[Drill 39937668732](https://github.com/rashadoni/leaddrive-v2/actions/runs/39937668732)
+ran the exact rendered production files (uid 10001, TLS 1.3, mTLS between
+nodes, SCRAM clients) on one disposable runner:
+
+- network namespaces with the real kernel WireGuard/nftables: 18 of 18
+  allow/deny expectations, including Kafka/Connect/PostgreSQL closed on public
+  addresses and per-role overlay ports;
+- six nodes (3 controllers, 3 brokers): plaintext, foreign CA, missing client
+  certificate, wrong SCRAM password, topic creation, foreign group, writes to
+  replay and writes by a read-only identity all refused with Kafka's own
+  authorization/authentication errors;
+- 86 catalog topics / 1416 partitions created; finance events RF3, minISR 2,
+  unclean election off, 90-day retention, three distinct replicas per partition;
+- one site stopped mid-write: 4000/4000 acks=all records acknowledged, controller
+  quorum kept a leader; second site stopped: no record acknowledged; after
+  recovery all 5000 acknowledged records present with no duplicates; cold
+  restart kept topics, ACLs and credentials.
+
+One runner is one failure domain: this proves configuration and Kafka
+behaviour, not the independence of the real sites, which the live site-loss
+drill on ordered hosts must show. Connect/Debezium, Registry, the DR mirror and
+monitoring are the next slices; ordering step 1 (primary 8 hosts) is now open.
