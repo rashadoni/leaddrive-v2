@@ -29,8 +29,24 @@ export type InboundPilotCatalog = {
   organizationId: string; scopeKey: string; version: string; observedAt: string; source: "live" | "attachment"
   search: (query: z.infer<typeof zeytunBalanceQuerySchema>) => {
     status: string; candidateCount: number
-    candidates: Array<{ externalId: string; itemCode: string; name: string; nameAz: string | null }>
+    candidates: Array<{ externalId: string; itemCode: string; name: string; nameAz: string | null
+      priceAsReported?: unknown; baseUnitAsReported?: unknown }>
   }
+}
+// 1C base units as the caller would say them. A unit missing here (tube,
+// kilogram, ...) gets no spoken price rather than a guessed word for it.
+const SPOKEN_UNITS: Record<string, string> = {
+  "шт": "ədəd", "ədəd": "ədəd", "упак": "qutu", "флак": "flakon", "ампула": "ampula",
+  "blister": "blister", "şpris": "şpris", "пара": "cüt",
+}
+/** The feed's price for one base unit. Owner, 2026-10-23: one price for all
+ * of Zeytun's pharmacies and it is final ("это цена для аптек конечная"), so it
+ * may be read to the caller. It is a list price, never a total or an offer. */
+function listPrice(item: { priceAsReported?: unknown; baseUnitAsReported?: unknown }, asOf: string) {
+  const amount = item.priceAsReported, unit = item.baseUnitAsReported
+  if (typeof amount !== "string" || !/^\d{1,7}(?:\.\d{1,4})?$/.test(amount) || !/[1-9]/.test(amount)) return null
+  const per = typeof unit === "string" ? SPOKEN_UNITS[unit.trim().toLowerCase()] : undefined
+  return per ? { amount, currency: "AZN", per, asOf } : null
 }
 export type InboundPilotDependencies = {
   loadConfig: () => Promise<unknown | null>
@@ -53,8 +69,8 @@ Never guess a product. If you did not clearly hear a name, ask the caller to rep
 When several names are similar, ask only the distinguishing detail still missing: strength, form, pack size, manufacturer or item code. A name match alone does not verify these details. If the caller already gave a detail, do not ask for it again. If the lookup returns only one matching item, do not ask about other manufacturers. If the caller asks which manufacturers or variants exist, name up to three from the latest lookup result: name, form and manufacturer only.
 Keep each quantity in the unit the caller said: qutu (box), ədəd (piece), ampula, flakon. Never turn boxes into pieces or pieces into boxes. A correction such as "not 10, 15 boxes" replaces the old number and keeps the unit; it is not added to the old quantity. Do not change milligrams, millilitres, pack size or units by assumption.
 Acknowledge a clear line naturally and move on; do not request yes/no approval after every line. Keep unresolved products for a person instead of choosing the nearest name.
-If lookup fails, tell the caller you cannot verify that item and retain their wording for review. Never claim to have saved an order, reserved stock, confirmed a price or sent anything to 1C.
-Prices, stock, delivery and payment: say once, briefly, that this test call cannot confirm them, and continue the list. Never say that a manager or anyone else will call back, check, confirm or send anything. No medical advice, health warnings, therapeutic substitution or dosage recommendation: say this call only takes the order list.
+If lookup fails, tell the caller you cannot verify that item and retain their wording for review. Never claim to have saved an order, reserved stock, agreed a price or sent anything to 1C.
+Price: only when the caller asks, and only for a product already narrowed to one lookup candidate. If that candidate has listPrice, say amount in manat per its unit (per qutu, per ədəd, ...) and that it is Zeytun's price list of that date. Read the amount exactly; never multiply by the quantity, never total the list, never round, never offer a discount. Without listPrice, say you cannot confirm the price in this call. Stock, delivery and payment: say once, briefly, that this test call cannot confirm them, and continue the list. Never say that a manager or anyone else will call back, check, confirm or send anything. No medical advice, health warnings, therapeutic substitution or dosage recommendation: say this call only takes the order list.
 At the end read the complete preliminary list ONCE, with quantities in the caller's units and unresolved details, and ask for corrections once. Explain that this is a test list, not an accepted commercial order. Do not promise a callback or delivery.`
 const bodySchema = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("session"), callId: z.uuid() }),
@@ -154,8 +170,11 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       const result = catalog.search(input.query)
       return searchResponse({ status: result.status, mode: "owner_inbound_preview", customerVerified: false,
         candidateCount: result.candidateCount, needsNarrowing: result.candidateCount > 1,
-        candidates: result.candidates.slice(0, 5).map(item => ({ externalId: item.externalId,
-          itemCode: item.itemCode, name: item.name, nameAz: item.nameAz, identityVerified: false })),
+        candidates: result.candidates.slice(0, 5).map(item => {
+          const price = listPrice(item, catalog.observedAt)
+          return { externalId: item.externalId, itemCode: item.itemCode, name: item.name, nameAz: item.nameAz,
+            identityVerified: false, ...(price ? { listPrice: price } : {}) }
+        }),
         catalog: { version: catalog.version, observedAt: catalog.observedAt, sourceGeneratedAt: null, coverage: "unverified" },
         ...searchRestrictions })
     } catch { return searchResponse({ enabled: false, error: "pilot_unavailable", candidates: [], ...searchRestrictions }, 503) }

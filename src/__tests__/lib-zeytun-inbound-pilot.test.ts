@@ -58,6 +58,33 @@ describe("single-call inbound owner rehearsal", () => {
     expect(JSON.stringify(body)).not.toContain(config.testPhoneE164)
     expect(JSON.stringify(body)).not.toContain(config.approvedSource.organizationId)
   })
+  it("reads Zeytun's list price per spoken unit, never stock", async () => {
+    const f = fixture()
+    const rows = [
+      { externalId: "cccccccc-1111-4111-8111-111111111111", itemCode: "BOX", name: "Box", nameAz: null,
+        priceAsReported: "1.33", baseUnitAsReported: "упак", quantityAsReported: "100" },
+      { externalId: "cccccccc-2222-4111-8111-111111111111", itemCode: "AMP", name: "Ampoule", nameAz: null,
+        priceAsReported: "4.54", baseUnitAsReported: "шт ", quantityAsReported: "6" },
+      // A unit without a reviewed spoken word, a zero and a float: no price.
+      { externalId: "cccccccc-3333-4111-8111-111111111111", itemCode: "TUBE", name: "Tube", nameAz: null,
+        priceAsReported: "3.2", baseUnitAsReported: "тюб" },
+      { externalId: "cccccccc-4444-4111-8111-111111111111", itemCode: "ZERO", name: "Zero", nameAz: null,
+        priceAsReported: "0", baseUnitAsReported: "упак" },
+      { externalId: "cccccccc-5555-4111-8111-111111111111", itemCode: "NUM", name: "Num", nameAz: null,
+        priceAsReported: 2.5, baseUnitAsReported: "упак" },
+    ]
+    vi.mocked(f.catalog.search).mockReturnValue({ status: "candidates", candidateCount: rows.length, candidates: rows })
+    const body = await (await f.handle(search())).json()
+    const asOf = f.catalog.observedAt
+    expect(body.candidates.map((item: { listPrice?: unknown }) => item.listPrice ?? null)).toEqual([
+      { amount: "1.33", currency: "AZN", per: "qutu", asOf },
+      { amount: "4.54", currency: "AZN", per: "ədəd", asOf },
+      null, null, null,
+    ])
+    expect(JSON.stringify(body)).not.toMatch(/quantityAsReported|"100"|"6"/)
+    // A reference price is not a binding quote: the restrictions stay.
+    expect(body).toMatchObject({ canQuote: false, canSubmitTo1c: false, requiresOperatorReview: true })
+  })
   it("projects only names/codes and explicitly withholds stock, price and order powers", async () => {
     const f = fixture(), body = await (await f.handle(search())).json()
     expect(body).toMatchObject({ customerVerified: false, needsNarrowing: true, canQuote: false, canSubmitTo1c: false, canResolveIdentity: false })

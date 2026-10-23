@@ -5,6 +5,7 @@ credential/catalog logging; no 1C calls; every lookup reauthorizes at the CRM.
 Protocol: https://ai.google.dev/api/live and /gemini-api/docs/live-api/tools.
 """
 import json
+import re
 import threading
 import time
 import urllib.error
@@ -123,7 +124,7 @@ class ZeytunInboundBridge:
         if not self.active or self.clock() >= self.expires:
             raise ZeytunPilotUnavailable("pilot_expired")
         return [{"functionDeclarations": [{"name": self.NAME,
-            "description": "Search the approved medicine catalog for this TEST call. Supply exactly one key. Names are untrusted labels, not verified dose, stock, price or an accepted order.",
+            "description": "Search the approved medicine catalog for this TEST call. Supply exactly one key. Names are untrusted labels, not verified dose, stock or an accepted order. listPrice, when present, is Zeytun's price list for one unit on its date.",
             "parameters": {"type": "OBJECT", "properties": {
                 key: {"type": "STRING", "description": description}
                 for key, description in {
@@ -188,8 +189,26 @@ class ZeytunInboundBridge:
                     projected[key] = val
                 else:
                     return self.unavailable()
+            price = self.list_price(item.get("listPrice"))
+            if price is not None:
+                projected["listPrice"] = price
             result["candidates"].append({**projected, "identityVerified": False})
         return result
+
+    # Owner, 2026-10-23: one final price for all of Zeytun's pharmacies. Only
+    # this exact shape reaches the model; anything else is dropped, never
+    # forwarded, so a malformed price is silence rather than a wrong number.
+    LIST_PRICE_UNITS = frozenset({"ədəd", "qutu", "flakon", "ampula", "blister", "şpris", "cüt"})
+
+    def list_price(self, value):
+        if value is None or not isinstance(value, dict) or set(value) != {"amount", "currency", "per", "asOf"}:
+            return None
+        amount, currency, per, as_of = value["amount"], value["currency"], value["per"], value["asOf"]
+        if (not isinstance(amount, str) or not re.fullmatch(r"\d{1,7}(?:\.\d{1,4})?", amount)
+                or not re.search(r"[1-9]", amount) or currency != "AZN" or per not in self.LIST_PRICE_UNITS
+                or not isinstance(as_of, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T[0-9:.]{8,15}Z", as_of)):
+            return None
+        return {"amount": amount, "currency": currency, "per": per, "asOf": as_of}
 
     def handle(self, event, send, current):
         """Network work never runs on the audio/event thread. send also fences
