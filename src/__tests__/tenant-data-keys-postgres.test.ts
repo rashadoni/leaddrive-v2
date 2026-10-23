@@ -24,8 +24,8 @@
  */
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { homedir, tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
@@ -89,6 +89,7 @@ function schemaWithoutEmbeddings(): string {
   let createdDb = false
   let createdRole = false
   let runtimeDir = ""
+  let logDir = ""
 
   beforeAll(async () => {
     sql(adminUrl!, `CREATE ROLE "${scratch!.role}" LOGIN PASSWORD 'data-key-fixture-only' NOSUPERUSER NOBYPASSRLS`)
@@ -100,9 +101,11 @@ function schemaWithoutEmbeddings(): string {
     sql(scratch!.adminDb, `DROP TABLE "tenant_data_keys";\n${readFileSync(MIGRATION, "utf8")}`)
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
 
-    runtimeDir = mkdtempSync(path.join(tmpdir(), "tenant-data-keys-runtime-"))
+    // The real external-runtime guard rejects /tmp, as it should in production.
+    runtimeDir = mkdtempSync(path.join(homedir(), ".tenant-data-keys-runtime-test-"))
     process.env.LEADDRIVE_RUNTIME_DIR = runtimeDir
-    process.env.LEADDRIVE_LOG_DIR = mkdtempSync(path.join(tmpdir(), "tenant-data-keys-logs-"))
+    logDir = mkdtempSync(path.join(homedir(), ".tenant-data-keys-logs-test-"))
+    process.env.LEADDRIVE_LOG_DIR = logDir
 
     prisma = (await import("@/lib/prisma")).prisma
     rls = await import("@/lib/rls-context")
@@ -121,6 +124,7 @@ function schemaWithoutEmbeddings(): string {
 
   afterAll(async () => {
     await prisma?.$disconnect()
+    for (const directory of [runtimeDir, logDir]) if (directory) rmSync(directory, { recursive: true, force: true })
     if (createdDb) sql(adminUrl!, `DROP DATABASE "${scratch!.name}" WITH (FORCE)`)
     if (createdRole) sql(adminUrl!, `DROP ROLE "${scratch!.role}"`)
   }, 60_000)
