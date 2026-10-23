@@ -27,7 +27,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:fixture-only@127.0.0.1:5432/postgres
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/pgvector/pgvector:pg16
         env:
           POSTGRES_PASSWORD: fixture-only
         ports: [5432:5432]

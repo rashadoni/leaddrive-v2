@@ -18,22 +18,29 @@ if (target) {
 const schema = "rf_native_fixture_" + randomBytes(8).toString("hex")
 const hash = "$2b$12$" + "x".repeat(53)
 let db: PrismaClient
+let schemaCreated = false
 
 describe.skipIf(!target)("Route & Field fixture on real PostgreSQL", () => {
   beforeAll(async () => {
     const url = new URL(target!)
     url.searchParams.set("schema", schema)
+    db = new PrismaClient({ datasources: { db: { url: url.toString() } } })
+    await db.$executeRawUnsafe(`CREATE SCHEMA "${schema}"`)
+    schemaCreated = true
+    // The full CRM schema contains Unsupported("vector(512)"). Keep the
+    // extension in this owned schema so Prisma's isolated search_path finds
+    // the type; never move or reuse an extension from another schema.
+    await db.$executeRawUnsafe(`CREATE EXTENSION vector WITH SCHEMA "${schema}"`)
     const pushed = spawnSync(process.execPath, ["node_modules/prisma/build/index.js", "db", "push", "--skip-generate", "--schema", "prisma/schema.prisma"],
       { env: { ...process.env, DATABASE_URL: url.toString(), DIRECT_URL: url.toString() }, encoding: "utf8", timeout: 120000 })
     if (pushed.status !== 0) throw new Error("RF_FIXTURE_TEST_SCHEMA_FAILED")
-    db = new PrismaClient({ datasources: { db: { url: url.toString() } } })
   }, 150000)
 
   afterAll(async () => {
     if (!db) return
     // Only the random schema created by this test can be removed.
     if (!/^rf_native_fixture_[a-f0-9]{16}$/.test(schema)) throw new Error("RF_FIXTURE_TEST_CLEANUP_REFUSED")
-    await db.$executeRawUnsafe(`DROP SCHEMA "${schema}" CASCADE`)
+    if (schemaCreated) await db.$executeRawUnsafe(`DROP SCHEMA "${schema}" CASCADE`)
     await db.$disconnect()
   })
 

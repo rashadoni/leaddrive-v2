@@ -26,3 +26,10 @@
 - Five physical Maestro journeys and actual CRM-site task creation/execution/manager acceptance PASS. The single reserved task is COMPLETED/version4/ACCEPTED with one creation/start/completion/review and original completion facts preserved. Phone remains manager/Team. Broader fixture acceptance not yet run.
 - Production/main independently advanced to8eb9cdf18e74d222b9a0edd081c5ef92b5dd9ef2; both public build-info domains agree. Read-only fetch confirms active origin/main and no diff to deployment registry/docs or task review component/route from this branch base. This task has performed no production mutation.
 - Next: push dedicated fixture branch/open PR, inspect targeted PostgreSQL gate plus all repository required checks, resolve failures, merge green reviewed source, wait for the exact SHA-bound deploy, then dispatch the owned fictional fixture workflow against current deployed/main SHA. Do not run its controller from an unpublished worktree.
+
+
+## 2026-10-23T14:27:29.192958+04:00 — first hosted fixture gate FAIL diagnosed
+
+- PR1003 head3d9874427 verify-controller39938320051/job120363261317 FAIL. Unit5 PASS, real-schema tests could not initialize: PostgreSQL logged type vector does not exist for the full CRM schema. This original FAIL is retained; no merge/deploy/fixture execution occurred. Required static/typecheck still running at poll.
+- Switched this CI service from plain PostgreSQL16 to the same mirrored pgvector/pg16 image used by the required repository gate. The integration setup now creates its random owned schema and installs vector there before Prisma db push, so the type is visible in its isolated search_path. Cleanup drops only a schema successfully created by this run, not a colliding/pre-existing name. No production schema/data change.
+- Workflow parse/manual-only production admission still PASS. Real PostgreSQL rerun belongs to hosted CI; not reproduced with a full database locally under the workload contract. Next: push this targeted fix and inspect the new exact-head gate before merging.
