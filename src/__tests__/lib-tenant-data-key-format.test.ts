@@ -35,6 +35,7 @@ import {
   TenantDataKeyUnavailableError,
   TENANT_DATA_KEY_USABLE_MS,
 } from "@/lib/crypto/tenant-data-key-cache"
+import { runWithTenant } from "@/lib/rls-context"
 import {
   decodeTenantFileBytes,
   openTenantFileBytes,
@@ -216,5 +217,22 @@ describe("file envelopes", () => {
     const sealed = sealTenantFile(ORG, bytes)
     forgetTenantDataKeyRings(ORG)
     expect(() => decodeTenantFileBytes(ORG, sealed)).toThrow(TenantDataKeyUnavailableError)
+  })
+})
+
+describe("runWithTenant", () => {
+  // Fire-and-forget callers (`logAudit`, the public form's view counter) rely on
+  // the callback starting at once; only a due key load may delay it.
+  it("starts its callback synchronously when no key load is due", () => {
+    let started = 0
+    loadRing(ORG, { 1: generateTenantDataKey() })
+    void runWithTenant(ORG, () => { started += 1 })
+    expect(started).toBe(1)
+
+    forgetTenantDataKeyRings()
+    delete process.env.TENANT_PII_MASTER_KEY
+    resetMasterKekCache()
+    void runWithTenant(ORG, () => { started += 1 })
+    expect(started).toBe(2)
   })
 })

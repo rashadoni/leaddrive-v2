@@ -36,15 +36,15 @@ import {
 } from "@/lib/crypto/tenant-pii-encryption"
 import {
   cachedTenantDataKeyRing,
+  forgetTenantDataKeyRings,
+  recordTenantDataKeyLoad,
   storeTenantDataKeyRing,
+  tenantDataKeyPreloadDue,
   tenantDataKeyRingNeedsRefresh,
   TenantDataKeyUnavailableError,
   type TenantDataKeyMaterial,
   type TenantDataKeyRing,
 } from "@/lib/crypto/tenant-data-key-cache"
-
-/** After a failed load, entries skip the database for this long. */
-const RETRY_AFTER_FAILURE_MS = 30_000
 
 type StoredKey = {
   version: number
@@ -55,12 +55,9 @@ type StoredKey = {
 
 const globalForLoads = globalThis as unknown as {
   __tenantDataKeyLoads?: Map<string, Promise<TenantDataKeyRing>>
-  __tenantDataKeyFailures?: Map<string, number>
 }
 const inflight: Map<string, Promise<TenantDataKeyRing>> =
   globalForLoads.__tenantDataKeyLoads ?? (globalForLoads.__tenantDataKeyLoads = new Map())
-const failures: Map<string, number> =
-  globalForLoads.__tenantDataKeyFailures ?? (globalForLoads.__tenantDataKeyFailures = new Map())
 
 function readKeys(orgId: string): Promise<StoredKey[]> {
   return prisma.tenantDataKey.findMany({
@@ -129,9 +126,9 @@ export async function ensureTenantDataKeys(orgId: string): Promise<void> {
   }
   try {
     storeTenantDataKeyRing(orgId, await load)
-    failures.delete(orgId)
+    recordTenantDataKeyLoad(orgId, false)
   } catch (error) {
-    failures.set(orgId, Date.now())
+    recordTenantDataKeyLoad(orgId, true)
     // A ring loaded earlier stays usable until it ages out.
     if (cachedTenantDataKeyRing(orgId)) return
     throw error
@@ -145,9 +142,7 @@ export async function ensureTenantDataKeys(orgId: string): Promise<void> {
 export async function preloadTenantDataKeys(orgId: string): Promise<void> {
   try {
     if (typeof orgId !== "string" || orgId.length === 0) return
-    if (!tenantDataKeyRingNeedsRefresh(orgId)) return
-    const failedAt = failures.get(orgId)
-    if (failedAt !== undefined && Date.now() - failedAt < RETRY_AFTER_FAILURE_MS) return
+    if (!tenantDataKeyPreloadDue(orgId)) return
     if (!isTenantPiiMasterKeyConfigured()) return
     await ensureTenantDataKeys(orgId)
   } catch {
@@ -155,7 +150,7 @@ export async function preloadTenantDataKeys(orgId: string): Promise<void> {
   }
 }
 
-/** Tests only: forget recorded failures so the next entry loads at once. */
+/** Tests only: a fresh process — no rings in memory, no recorded failures. */
 export function resetTenantDataKeyLoadState(): void {
-  failures.clear()
+  forgetTenantDataKeyRings()
 }

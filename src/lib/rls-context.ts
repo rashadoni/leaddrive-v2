@@ -22,7 +22,8 @@
  *   reason; direct rlsStorage.run users must `async () => await ...`.
  */
 import { AsyncLocalStorage } from "node:async_hooks"
-import { tenantDataKeyRingNeedsRefresh } from "./crypto/tenant-data-key-cache"
+import { tenantDataKeyPreloadDue } from "./crypto/tenant-data-key-cache"
+import { isTenantPiiMasterKeyConfigured } from "./crypto/tenant-pii-encryption"
 
 export interface RlsContext {
   orgId?: string
@@ -50,14 +51,25 @@ export function getRlsContext(): RlsContext | undefined {
 }
 
 /**
- * Load the organization's data key ring (`src/lib/crypto/tenant-data-keys.ts`)
- * before tenant code runs, so the synchronous PII column API can write v2 and
- * read what was written under it. A Map lookup when the ring is fresh; the
- * module is imported lazily because it imports the Prisma client, which
+ * Whether `runWithTenant` must load the organization's data key ring
+ * (`src/lib/crypto/tenant-data-keys.ts`) before its callback, so the
+ * synchronous PII column API can write v2 and read what was written under it.
+ * Synchronous: when false — ring fresh, no master key, a load just failed, or
+ * we are inside a load — the callback starts at once, as it always did.
+ */
+function tenantDataKeyPreloadNeeded(orgId: string): boolean {
+  try {
+    return !rlsStorage.getStore()?.tenantDataKeyLoad && tenantDataKeyPreloadDue(orgId) && isTenantPiiMasterKeyConfigured()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The module is imported lazily because it imports the Prisma client, which
  * imports this file. Never throws: a failed load leaves writes on v1.
  */
 async function preloadTenantDataKeysFor(orgId: string): Promise<void> {
-  if (!tenantDataKeyRingNeedsRefresh(orgId) || rlsStorage.getStore()?.tenantDataKeyLoad) return
   try {
     const { preloadTenantDataKeys } = await import("./crypto/tenant-data-keys")
     await preloadTenantDataKeys(orgId)
@@ -89,9 +101,9 @@ export function runWithTenant(orgId: string, fn: () => unknown): Promise<unknown
   if (!orgId || typeof orgId !== "string") {
     throw new Error("runWithTenant: orgId must be a non-empty string")
   }
-  const preload = !rlsStorage.getStore()?.tenantDataKeyLoad
+  if (!tenantDataKeyPreloadNeeded(orgId)) return rlsStorage.run({ orgId }, async () => await fn())
   return rlsStorage.run({ orgId }, async () => {
-    if (preload) await preloadTenantDataKeysFor(orgId)
+    await preloadTenantDataKeysFor(orgId)
     return await fn()
   })
 }

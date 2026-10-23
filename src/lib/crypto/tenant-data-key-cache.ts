@@ -52,9 +52,34 @@ export class TenantDataKeyUnavailableError extends Error {
   }
 }
 
-const globalForKeys = globalThis as unknown as { __tenantDataKeyRings?: Map<string, TenantDataKeyRing> }
+/** After a failed load, tenant entries skip the database for this long. */
+export const TENANT_DATA_KEY_RETRY_AFTER_FAILURE_MS = 30_000
+
+const globalForKeys = globalThis as unknown as {
+  __tenantDataKeyRings?: Map<string, TenantDataKeyRing>
+  __tenantDataKeyFailures?: Map<string, number>
+}
 const rings: Map<string, TenantDataKeyRing> =
   globalForKeys.__tenantDataKeyRings ?? (globalForKeys.__tenantDataKeyRings = new Map())
+const failures: Map<string, number> =
+  globalForKeys.__tenantDataKeyFailures ?? (globalForKeys.__tenantDataKeyFailures = new Map())
+
+export function recordTenantDataKeyLoad(orgId: string, failed: boolean): void {
+  if (failed) failures.set(orgId, Date.now())
+  else failures.delete(orgId)
+}
+
+/**
+ * Whether a tenant entry should wait for a key load: the ring is missing or
+ * stale, and no load failed in the last 30 seconds. Synchronous on purpose —
+ * `runWithTenant` starts its callback at once when this is false, as it always
+ * did, so fire-and-forget callers (`logAudit`, view counters) are unaffected.
+ */
+export function tenantDataKeyPreloadDue(orgId: string, now = Date.now()): boolean {
+  if (!tenantDataKeyRingNeedsRefresh(orgId, now)) return false
+  const failedAt = failures.get(orgId)
+  return failedAt === undefined || now - failedAt >= TENANT_DATA_KEY_RETRY_AFTER_FAILURE_MS
+}
 
 /** The organization's ring while it may still be used, else null. */
 export function cachedTenantDataKeyRing(orgId: string, now = Date.now()): TenantDataKeyRing | null {
@@ -110,8 +135,13 @@ export function currentTenantDataKey(orgId: string): { version: number; material
   return material ? { version: ring.current, material } : null
 }
 
-/** Tests only: forget one organization's ring, or all of them. */
+/** Tests only: forget one organization's ring (or all of them) and any recorded failures. */
 export function forgetTenantDataKeyRings(orgId?: string): void {
-  if (orgId === undefined) rings.clear()
-  else rings.delete(orgId)
+  if (orgId === undefined) {
+    rings.clear()
+    failures.clear()
+  } else {
+    rings.delete(orgId)
+    failures.delete(orgId)
+  }
 }
