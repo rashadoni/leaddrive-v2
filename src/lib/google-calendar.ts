@@ -96,3 +96,29 @@ export async function listCalendarEvents(userId: string, timeMin: string, timeMa
 
   return result.data.items ?? []
 }
+
+/**
+ * Busy time on the user's primary calendar between two instants (free/busy,
+ * so no event details are read). Null when the user has no calendar
+ * connected — the caller treats that as "nothing known", not as an error.
+ */
+export async function listBusyIntervals(userId: string, timeMin: string, timeMax: string): Promise<{ start: Date; end: Date }[] | null> {
+  let calendar
+  try {
+    calendar = await getGoogleCalendarClient(userId)
+  } catch {
+    return null
+  }
+  const result = await calendar.freebusy.query({
+    requestBody: { timeMin, timeMax, items: [{ id: "primary" }] },
+  })
+  const busy = result.data.calendars?.primary?.busy ?? []
+  return busy
+    .filter((item) => item.start && item.end)
+    .map((item) => ({ start: new Date(item.start as string), end: new Date(item.end as string) }))
+}
+
+export async function deleteCalendarEvent(userId: string, eventId: string): Promise<void> {
+  const calendar = await getGoogleCalendarClient(userId)
+  await calendar.events.delete({ calendarId: "primary", eventId })
+}

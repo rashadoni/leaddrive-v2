@@ -69,6 +69,8 @@ model Organization {
   // the compliance trail is not owned by the organization and survives it.
   tenantMasterKeys      TenantMasterKey[]
   tenantDataKeys        TenantDataKey[]
+  bookingPages          BookingPage[]
+  bookings              Booking[]
   accountGradeConfig    AccountGradeConfig?
   intentSignalConfig    IntentSignalConfig?
   leaderboardConfig     LeaderboardConfig?
@@ -22898,4 +22900,70 @@ model MtmAttendanceReminderNotice {
   @@index([organizationId, recipientUserId, workDate], map: "mtm_reminder_user_date")
   @@index([organizationId, recipientAgentId, workDate], map: "mtm_reminder_agent_date")
   @@map("mtm_attendance_reminder_notices")
+}
+
+/// A link where a customer picks a free time with someone from the
+/// organization (/book/<slug>). Free time is computed by
+/// src/lib/booking/availability.ts from `weekly` minus the hosts' bookings
+/// and, when connected, their Google Calendar.
+model BookingPage {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Public path segment; unique across organizations because the URL carries no tenant.
+  slug             String       @unique
+  title            String
+  description      String?
+  durationMinutes  Int          @default(30)
+  bufferMinutes    Int          @default(0)
+  minNoticeMinutes Int          @default(120)
+  maxDaysAhead     Int          @default(14)
+  /// office | phone | online
+  locationType     String       @default("office")
+  locationText     String?
+  /// Users who take these meetings; a booking goes to one of them.
+  hostIds          String[]
+  /// { "0".."6": [{ start: "HH:mm", end: "HH:mm" }] } on the organization's clock, 0 = Sunday.
+  weekly           Json
+  isActive         Boolean      @default(true)
+  createdBy        String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  bookings Booking[]
+
+  @@index([organizationId])
+  @@map("booking_pages")
+}
+
+/// One meeting a customer booked. Two confirmed bookings of one host never
+/// start at the same moment (partial unique index in the migration), and the
+/// booking transaction holds a per-host lock while it checks for overlap.
+model Booking {
+  id              String      @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingPageId   String
+  bookingPage     BookingPage @relation(fields: [bookingPageId], references: [id], onDelete: Cascade)
+  hostUserId      String
+  startsAt        DateTime
+  endsAt          DateTime
+  name            String
+  phone           String
+  email           String?
+  note            String?
+  /// confirmed | cancelled
+  status          String      @default("confirmed")
+  /// sha256 of the token in the customer's cancel link.
+  cancelTokenHash String      @unique
+  leadId          String?
+  taskId          String?
+  googleEventId   String?
+  cancelledAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([organizationId, hostUserId, startsAt])
+  @@index([bookingPageId, startsAt])
+  @@map("bookings")
 }

@@ -14,6 +14,7 @@ import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "@/lib/t
 import { checkPermission, type Role } from "@/lib/permissions"
 import { isMtmNavigationItemActive } from "@/lib/mtm/navigation"
 import {
+  CalendarCheck,
   LayoutDashboard, Building2, Users, Handshake, UserPlus,
   CheckSquare, FileText, FileSpreadsheet, Calculator, Brain,
   Ticket, BookOpen, BarChart3, Mail, MessageSquare, MessageCircle, Zap,
@@ -208,6 +209,7 @@ export const navItems: NavItem[] = [
   { module: "sales", href: "/settings/territories", icon: MapPin, tKey: "territories", group: "Sales" },
   { module: "sales", href: "/settings/lead-rules", icon: Filter, tKey: "leadRules", group: "Sales" },
   { module: "sales", href: "/settings/web-to-lead", icon: Globe, tKey: "webToLead", group: "Sales" },
+  { module: "sales", href: "/settings/booking", icon: CalendarCheck, tKey: "onlineBooking", group: "Sales" },
   { module: "contracts", href: "/contracts", icon: FileText, tKey: "contracts", group: "Contracts Control" },
   { module: "contracts", href: "/contracts/lifecycle", icon: RefreshCw, tKey: "contractLifecycle", group: "Contracts Control" },
   { module: "contracts", href: "/contracts/templates", icon: Library, tKey: "contractTemplatesNav", group: "Contracts Control" },
