@@ -213,6 +213,7 @@ const GRANTED_THROUGH_REVIEW_APP: GraphPage[] = [
 ]
 
 beforeEach(() => {
+  for (const key of ["APP_ID", "APP_SECRET", "LOGIN_CONFIG_ID", "VERIFY_TOKEN"]) delete process.env[`FACEBOOK_MESSENGER_${key}`]
   vi.unstubAllGlobals()
   graphCalls = []
   mem.compileOrganizationSourceRoutePlans.mockReset()
@@ -326,5 +327,40 @@ describe("instagram callback, pinned to the app under review", () => {
 
     expect(url.searchParams.get("connected")).toBe("instagram")
     expect(graphCalls.filter((u) => u.includes("/subscribed_apps"))).toEqual([])
+  })
+})
+
+
+describe("approved shared Messenger callback", () => {
+  function enableProvider() {
+    process.env.FACEBOOK_MESSENGER_APP_ID = "APP_APPROVED"
+    process.env.FACEBOOK_MESSENGER_APP_SECRET = "provider-secret"
+    process.env.FACEBOOK_MESSENGER_LOGIN_CONFIG_ID = "CONFIG_APPROVED"
+    process.env.FACEBOOK_MESSENGER_VERIFY_TOKEN = "provider-verify"
+  }
+  it("wires a live inbox without changing monitoring or asking for Instagram data", async () => {
+    enableProvider()
+    const before = structuredClone(mem.db.socialAccount)
+    stubFacebookGraph([{ id: "PAGE_NEW_CLIENT", name: "New client", access_token: "CLIENT_TOKEN", instagram_business_account: { id: "UNREQUESTED_IG" } }])
+    const url = landing(await fbCallback(callbackReq("facebook", signState({ ret: "channels-facebook", messengerAppId: "APP_APPROVED" }))))
+    expect(url.searchParams.get("connected")).toBe("facebook")
+    expect(url.searchParams.get("ig")).toBe("0")
+    expect(graphCalls.some(u => u.includes("client_id=APP_APPROVED&"))).toBe(true)
+    expect(graphCalls.find(u => u.includes("/me/accounts"))).not.toContain("instagram_business_account")
+    expect(graphCalls.some(u => u.endsWith("/PAGE_NEW_CLIENT/subscribed_apps"))).toBe(true)
+    const channel = mem.db.channelConfig.find(r => r.pageId === "PAGE_NEW_CLIENT")
+    expect(channel?.isActive).toBe(true)
+    expect(channel?.settings?.appReviewOnly).not.toBe(true)
+    expect(channel?.settings?.inboxSubscribed).toBe(true)
+    expect(mem.db.channelConfig.some(r => r.pageId === "UNREQUESTED_IG")).toBe(false)
+    expect(mem.db.socialAccount).toEqual(before)
+    expect(mem.compileOrganizationSourceRoutePlans).not.toHaveBeenCalled()
+  })
+  it("rejects a removed/changed shared provider before exchanging the code", async () => {
+    enableProvider()
+    stubFacebookGraph([])
+    const url = landing(await fbCallback(callbackReq("facebook", signState({ ret: "channels-facebook", messengerAppId: "DIFFERENT_APP" }))))
+    expect(url.searchParams.get("error")).toBe("not_configured")
+    expect(graphCalls).toEqual([])
   })
 })

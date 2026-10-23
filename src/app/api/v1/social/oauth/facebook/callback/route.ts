@@ -6,6 +6,7 @@ import { ensureInboxChannelForPage } from "@/lib/social/inbox-channel"
 import { getOrgId } from "@/lib/api-auth"
 import { runWithTenant } from "@/lib/rls-context"
 import { getTenantMetaApp, getPinnedMetaApp } from "@/lib/social/tenant-meta-app"
+import { getSharedMessengerApp } from "@/lib/social/shared-messenger-app"
 import { enumerateGrantedPages } from "@/lib/social/meta-granted-assets"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
 import { compileOrganizationSourceRoutePlans } from "@/lib/social/source-route-plan"
@@ -112,6 +113,7 @@ export async function GET(req: NextRequest) {
     ts: number
     ret?: string
     app?: string
+    messengerAppId?: string
     channelId?: unknown
   }
   // First point where the payload is HMAC-verified, so this is the first place `ret` may be trusted.
@@ -153,9 +155,13 @@ export async function GET(req: NextRequest) {
   // retyped since. Every redirect below carries it, so a failed connect lands the user back on their
   // own channel rather than on some other row of the workspace.
   const originChannelId = await resolveOAuthReturnChannel(payload.orgId, ret, payload.channelId)
-  const tenantApp = pinnedApp ? null : await getTenantMetaApp(payload.orgId)
-  const appId = pinnedApp?.appId || tenantApp?.appId || process.env.FACEBOOK_APP_ID
-  const appSecret = pinnedApp?.appSecret || tenantApp?.appSecret || process.env.FACEBOOK_APP_SECRET
+  const messenger = payload.messengerAppId ? getSharedMessengerApp() : null
+  if (payload.messengerAppId && (payload.app || ret !== "channels-facebook" || !messenger?.ready || messenger.appId !== payload.messengerAppId)) {
+    return redirectError(req, "not_configured", ret, originChannelId)
+  }
+  const tenantApp = pinnedApp || messenger ? null : await getTenantMetaApp(payload.orgId)
+  const appId = pinnedApp?.appId || messenger?.appId || tenantApp?.appId || process.env.FACEBOOK_APP_ID
+  const appSecret = pinnedApp?.appSecret || messenger?.appSecret || tenantApp?.appSecret || process.env.FACEBOOK_APP_SECRET
   const redirectUri = process.env.FACEBOOK_REDIRECT_URI
   if (!appId || !appSecret || !redirectUri) return redirectError(req, "not_configured", ret, originChannelId)
 
@@ -181,7 +187,7 @@ export async function GET(req: NextRequest) {
 
   // 3) list admined pages (each comes with its own long-lived page token)
   const pagesRes = await fetch(
-    `${GRAPH}/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}`,
+    `${GRAPH}/me/accounts?fields=${messenger ? "id,name,access_token" : "id,name,access_token,instagram_business_account{id,username}"}`,
     graphBearerInit(longJson.access_token),
   )
   if (!pagesRes.ok) {
@@ -203,7 +209,7 @@ export async function GET(req: NextRequest) {
   // `target_ids` name the granting entities per permission. So ask that, then fetch each Page by id.
   let grantDiagnostic = ""
   if (pages.length === 0) {
-    const granted = await enumerateGrantedPages(GRAPH, appId, appSecret, longJson.access_token)
+    const granted = await enumerateGrantedPages(GRAPH, appId, appSecret, longJson.access_token, !messenger)
     if (granted.pages.length > 0) {
       console.log(`[facebook-oauth] /me/accounts empty; business-login grant resolved ${granted.pages.length} page(s)`)
       pages = granted.pages
@@ -252,7 +258,7 @@ export async function GET(req: NextRequest) {
   const staged = Boolean(pinnedApp)
 
   for (const page of pages) {
-    if (!staged) {
+    if (!staged && !messenger) {
       const encryptedPageToken = encryptToken(page.access_token, `oauth:facebook:${page.id}`)
       await prisma.socialAccount.upsert({
         where: {
@@ -283,10 +289,10 @@ export async function GET(req: NextRequest) {
     const pageChannel = await ensureInboxChannelForPage(payload.orgId, "facebook", page.id, page.name, page.access_token, { staged })
     if (returnCardType === "facebook" && pageChannel.channelId) wiredForReturnCard.push(pageChannel.channelId)
 
-    const ig = page.instagram_business_account
+    const ig = messenger ? undefined : page.instagram_business_account
     if (ig) {
       const igHandle = (ig as { username?: string }).username || ig.id
-      if (!staged) {
+      if (!staged && !messenger) {
         // Instagram reuses the Page access token for Graph API calls.
         const encryptedIg = encryptToken(page.access_token, `oauth:instagram:${ig.id}`)
         await prisma.socialAccount.upsert({
@@ -321,7 +327,7 @@ export async function GET(req: NextRequest) {
   // Recompiling is not a no-op: besides re-reading SocialAccount it resets every monitoring source's
   // failure count and circuit breaker (lib/social/source-route-plan). A staged connect changed none of
   // its inputs, so it leaves live monitoring state alone.
-  if (!staged) await compileOrganizationSourceRoutePlans(payload.orgId)
+  if (!staged && !messenger) await compileOrganizationSourceRoutePlans(payload.orgId)
 
   const res = NextResponse.redirect(
     publicUrl(req, oauthReturnUrl(

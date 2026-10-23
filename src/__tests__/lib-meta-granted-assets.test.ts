@@ -152,3 +152,11 @@ describe("enumerateGrantedPages", () => {
     expect(r.grantedScopes).toContain("business_management")
   })
 })
+
+it("enumerates Messenger-only grants without requesting Instagram fields", async () => {
+  jsonOnce({ data: { granular_scopes: [{ scope: "pages_messaging", target_ids: ["P1"] }] } })
+  jsonOnce({ id: "P1", name: "Client Page", access_token: "PAGE_TOKEN" })
+  const result = await enumerateGrantedPages(GRAPH, "APP", "SECRET", "USER_TOKEN", false)
+  expect(result.pages.map(page => page.id)).toEqual(["P1"])
+  expect(fetchMock.mock.calls[1][0]).toBe(`${GRAPH}/P1?fields=id,name,access_token`)
+})
