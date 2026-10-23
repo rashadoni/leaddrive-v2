@@ -1,13 +1,6 @@
 # Run the station's built voice core against the real Gemini APIs with a fake
 # AudioSocket peer instead of Asterisk. CRM calls are stubbed; no phone call,
 # no CRM write. Prints the core's LD_LATENCY lines and what the peer heard.
-#
-# Needs a Gemini key in GEMINI_API_KEY, so it runs where one already lives
-# (the production CRM host), never in CI:
-#   python3 zeytun-core-harness.py <built core> <seconds> <prompt file>
-# HARNESS_TTS=0 keeps the model's own voice; HARNESS_BREAK_TTS=1 points the
-# TTS at a missing model to prove the fallback. Added after a station call on
-# 2026-10-23 stayed silent with the TTS voice while this harness spoke.
 import importlib.util, os, socket, struct, sys, threading, time, uuid, audioop
 
 core_path, seconds = sys.argv[1], float(sys.argv[2])
@@ -55,12 +48,25 @@ def reader():
         if kind == 0x10 and payload:
             heard.append((time.monotonic() - started, audioop.rms(payload, 2), payload))
 
+SCRIPT = []
+if os.environ.get("HARNESS_SCRIPT"):
+    import json as _json
+    for at, path in _json.load(open(os.environ["HARNESS_SCRIPT"])):
+        SCRIPT.append((float(at), open(path, "rb").read()))
+
 def writer():
     peer.sendall(core.packet(0x01, uuid.uuid4().bytes))
     silence = b"\x00\x00" * 160
-    end = time.monotonic() + seconds
+    begin = time.monotonic(); end = begin + seconds
+    queue_audio = b""
+    pending = list(SCRIPT)
     while time.monotonic() < end:
-        peer.sendall(core.packet(0x10, silence))
+        now = time.monotonic() - begin
+        while pending and pending[0][0] <= now:
+            queue_audio += pending.pop(0)[1]
+            print("HARNESS caller speaks at %.1f" % now, flush=True)
+        frame, queue_audio = (queue_audio[:320], queue_audio[320:]) if queue_audio else (silence, b"")
+        peer.sendall(core.packet(0x10, frame.ljust(320, b"\x00")))
         time.sleep(0.02)
     peer.sendall(core.packet(0x00))
 

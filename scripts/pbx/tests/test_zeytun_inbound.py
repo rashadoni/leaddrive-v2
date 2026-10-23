@@ -1,4 +1,5 @@
 import ast
+import base64
 import importlib.util
 import json
 import os
@@ -383,8 +384,10 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertTrue(relay.filter(self.content(turnComplete=True)))
         self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
         self.assertEqual(tts.texts, ["Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz?"])
+        # Two TTS chunks, then the clip's tail silence, then the held boundaries.
         self.assertEqual(self.kinds(), [("audio", "Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz? "),
-                                        ("audio", None), ("generationComplete", None), ("turnComplete", None)])
+                                        ("audio", None), ("audio", None),
+                                        ("generationComplete", None), ("turnComplete", None)])
         # The provider's own audio never reached the core.
         self.assertNotIn("AQABAA==", json.dumps(self.injected))
 
@@ -466,6 +469,62 @@ class SpeechRelayTests(unittest.TestCase):
         event = self.content(" gözləyin.", audio=True)
         self.assertFalse(relay.filter(event))
         self.assertIn("modelTurn", event["serverContent"])
+
+    def test_a_turn_is_at_most_two_tts_requests(self):
+        # Per-sentence requests hit the station key's rate limit (HTTP 429).
+        tts = FakeTts()
+        relay = self.relay(tts)
+        relay.filter(self.content("Siyahınızda on beş qutu Parasetamol 500 mq Sopharma var. ", audio=True))
+        relay.filter(self.content("Qiyməti bir qutu üçün bir manat otuz üç qəpikdir. ", audio=True))
+        relay.filter(self.content("Seftriakson otuz ədəd Rotexmedica. Başqa nə əlavə edək?", audio=True))
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(tts.texts, ["Siyahınızda on beş qutu Parasetamol 500 mq Sopharma var.",
+            "Qiyməti bir qutu üçün bir manat otuz üç qəpikdir. Seftriakson otuz ədəd Rotexmedica. Başqa nə əlavə edək?"])
+
+    def test_each_clip_gets_air_before_and_after_and_a_soft_start(self):
+        relay = self.relay(FakeTts(chunks=1))
+        relay.filter(self.content("Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz? ", audio=True))
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        audio = [base64.b64decode(e["serverContent"]["modelTurn"]["parts"][0]["inlineData"]["data"])
+                 for e in self.injected if "modelTurn" in e["serverContent"]]
+        lead = 2 * 24 * relay.LEAD_SILENCE_MS
+        self.assertEqual(audio[0][:lead], b"\x00" * lead)  # air before the voice
+        self.assertEqual(audio[0][lead:lead + 2], b"\x00\x00")  # the fade starts from zero
+        self.assertEqual(audio[-1], b"\x00" * (2 * 24 * relay.TAIL_SILENCE_MS))  # air after it
+
+    def test_withheld_model_audio_keeps_the_core_watchdog_fed(self):
+        # 2026-10-23: after a barge-in the 2 s watchdog saw no line audio and
+        # replaced a healthy session twice; model audio proves it is alive.
+        fed = []
+        relay = bridge_module.ZeytunSpeechRelay(FakeTts(), lambda e: None, lambda: True, lambda: self.live,
+                                                progress=lambda: fed.append(time.monotonic()))
+        for _ in range(5):
+            relay.filter(self.content(audio=True))
+        self.assertEqual(len(fed), 1)  # throttled
+        relay.progress_at -= relay.PROGRESS_EVERY_SECONDS
+        relay.filter(self.content(audio=True))
+        self.assertEqual(len(fed), 2)
+
+    def test_a_turn_starting_during_recovery_is_the_model_voice_untouched(self):
+        recovering = [True]
+        tts = FakeTts()
+        relay = bridge_module.ZeytunSpeechRelay(tts, lambda e: self.injected.append(e), lambda: True,
+                                                lambda: self.live, recovering=lambda: recovering[0])
+        first = self.content("Bağışlayın, son cümləni təkrar edərsiniz?", audio=True)
+        self.assertFalse(relay.filter(first))
+        self.assertIn("modelTurn", first["serverContent"])
+        self.assertIn("outputTranscription", first["serverContent"])
+        recovering[0] = False  # the rest of that turn still passes untouched
+        rest = self.content(" Eşidirəm.", audio=True, turnComplete=True)
+        self.assertFalse(relay.filter(rest))
+        self.assertTrue(rest["serverContent"].get("turnComplete"))
+        # The next turn is voiced by the TTS again, and nothing is stuck.
+        relay.filter(self.content("Növbəti preparat hansıdır, zəhmət olmasa deyin? ", audio=True))
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(tts.texts, ["Növbəti preparat hansıdır, zəhmət olmasa deyin?"])
 
     def tts_with_lines(self, lines, error=None):
         class Response(list):

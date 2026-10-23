@@ -4,6 +4,7 @@ Embedded into a hash-pinned voice core by build-zeytun-inbound-core.py. No
 credential/catalog logging; no 1C calls; every lookup reauthorizes at the CRM.
 Protocol: https://ai.google.dev/api/live and /gemini-api/docs/live-api/tools.
 """
+import array
 import base64
 from decimal import Decimal
 import json
@@ -122,14 +123,34 @@ class ZeytunSpeechRelay:
     """
     MARK = "zeytunTtsRelay"
     MIN_CHARS = 40
+    # Each TTS clip starts and ends right on the voice; back to back on an
+    # 8 kHz line the first and last sounds were swallowed (owner, 2026-10-23:
+    # «слово обрывается, или начало, или конец»). Air before and after a
+    # clip, and a short fade-in against the click of a hard start.
+    LEAD_SILENCE_MS = 80
+    TAIL_SILENCE_MS = 160
+    FADE_IN_MS = 15
     TAIL_GRACE_SECONDS = 0.4  # output transcription may trail its generation
     # Whatever stalls the TTS path, a turn the model has spoken is never left
     # silent for longer than this: the caller then hears the model itself.
     SILENCE_LIMIT_SECONDS = 5.0
     FALLBACK = object()
 
-    def __init__(self, tts, inject, speakable, alive, room=None, log=None, clock=time.monotonic):
+    # The core's resume-progress watchdog counts only audio written to the
+    # line, and allows 2 s after a barge-in; withheld model audio plus the TTS
+    # delay outlasted it and tore a healthy session down twice in one call
+    # (2026-10-23, reproduced on the harness). Model audio arriving here is
+    # proof the session lives, so it re-arms that watchdog (at most this often).
+    PROGRESS_EVERY_SECONDS = 0.5
+
+    def __init__(self, tts, inject, speakable, alive, room=None, log=None, clock=time.monotonic,
+                 progress=None, recovering=None):
         self.tts, self.inject, self.speakable, self.alive = tts, inject, speakable, alive
+        self.progress = progress or (lambda: None)
+        # While the core waits for a replacement session's first audio (2.5 s),
+        # a TTS delay would fail the recovery: such a turn keeps the model voice.
+        self.recovering = recovering or (lambda: False)
+        self.progress_at = None
         self.room = room or (lambda: True)
         self.log = log or (lambda status, **fields: None)
         self.clock = clock
@@ -142,11 +163,14 @@ class ZeytunSpeechRelay:
     @staticmethod
     def _new_turn():
         return {"buffer": "", "pieces": [], "original": [], "held": [], "done_at": None, "created": time.monotonic(),
-                "final_taken": False, "finished": False, "cancelled": False,
+                "final_taken": False, "finished": False, "cancelled": False, "made": 0,
                 "passthrough": False, "spoken": False}
 
     def _split_locked(self, turn):
-        while True:
+        # Only the first sentence goes out alone (it sets the reply's delay);
+        # the rest of the turn is one request. Per-sentence requests hit the
+        # station key's TTS rate limit (HTTP 429, 2026-10-23 call: 13 requests).
+        while not turn["made"]:
             text, cut = turn["buffer"], None
             for match in re.finditer(r"[.!?…](?:\s|$)", text):
                 if match.end() >= self.MIN_CHARS:
@@ -157,6 +181,7 @@ class ZeytunSpeechRelay:
             piece, turn["buffer"] = text[:cut].strip(), text[cut:]
             if piece:
                 turn["pieces"].append(piece)
+                turn["made"] += 1
 
     def _cancel_all_locked(self, generation_over=False):
         for queued in self.turns:
@@ -189,8 +214,21 @@ class ZeytunSpeechRelay:
                     last["finished"] = True
                     self.lock.notify_all()
                 return False
-            audio = []
+            starts_turn = last is None or last["finished"]
             model_turn = content.get("modelTurn")
+            speaks = (isinstance(model_turn, dict) and any(isinstance(p, dict) and isinstance(p.get("inlineData"), dict)
+                      for p in model_turn.get("parts") or [])) or isinstance(content.get("outputTranscription"), dict)
+            if starts_turn and speaks and self.recovering():
+                # A replacement session must be heard within 2.5 s; the TTS delay
+                # would fail it, so this whole turn is the model's own voice.
+                turn = self._new_turn()
+                turn["passthrough"] = True
+                turn["finished"] = content.get("turnComplete") is True
+                self.turns.append(turn)
+                self.log("tts_passthrough", reason="recovery")
+                self.lock.notify_all()
+                return False
+            audio = []
             if isinstance(model_turn, dict) and isinstance(model_turn.get("parts"), list):
                 keep = []
                 for part in model_turn["parts"]:
@@ -203,6 +241,11 @@ class ZeytunSpeechRelay:
             output = content.pop("outputTranscription", None)
             text = output.get("text") if isinstance(output, dict) else None
             text = text if isinstance(text, str) else ""
+            if audio and (last is None or not last["passthrough"]):
+                now = self.clock()
+                if self.progress_at is None or now - self.progress_at >= self.PROGRESS_EVERY_SECONDS:
+                    self.progress_at = now
+                    self.progress()
             turn = last
             if turn is not None and turn["finished"]:
                 # A transcript tail just after turnComplete still belongs to it.
@@ -212,6 +255,7 @@ class ZeytunSpeechRelay:
             if turn is None and (audio or text.strip()):
                 turn = self._new_turn()
                 self.turns.append(turn)
+
             if turn is None:
                 return not content
             if not turn["cancelled"]:
@@ -235,6 +279,19 @@ class ZeytunSpeechRelay:
                 turn["held"] = []
             self.lock.notify_all()
             return not content
+
+    @staticmethod
+    def _silence(ms):
+        return b"\x00\x00" * (24 * ms)
+
+    @classmethod
+    def _fade_in(cls, pcm):
+        samples = array.array("h")
+        samples.frombytes(pcm[: len(pcm) - len(pcm) % 2])
+        ramp = min(len(samples), 24 * cls.FADE_IN_MS)
+        for i in range(ramp):
+            samples[i] = int(samples[i] * i / ramp)
+        return samples.tobytes() + pcm[len(samples) * 2:]
 
     def _emit(self, content):
         self.inject({"serverContent": content, self.MARK: True})
@@ -261,7 +318,7 @@ class ZeytunSpeechRelay:
                 return None
             if not turn["cancelled"] and not self.speakable():
                 self._cancel_all_locked()
-            if turn["cancelled"]:
+            if turn["cancelled"] or turn["passthrough"]:
                 return None
             if (not turn["spoken"] and turn["original"]
                     and time.monotonic() - turn["created"] >= self.SILENCE_LIMIT_SECONDS):
@@ -295,6 +352,8 @@ class ZeytunSpeechRelay:
                     with self.lock:
                         self._cancel_all_locked()
                     return
+                if not heard[0]:
+                    pcm = self._silence(self.LEAD_SILENCE_MS) + self._fade_in(pcm)
                 content = {"modelTurn": {"parts": [{"inlineData": {
                     "mimeType": "audio/pcm;rate=24000", "data": base64.b64encode(pcm).decode("ascii")}}]}}
                 if not heard[0]:
@@ -320,6 +379,9 @@ class ZeytunSpeechRelay:
                 with self.lock:
                     self._cancel_all_locked()
                 break
+            if heard[0] and not turn["cancelled"] and self.speakable():
+                self._emit({"modelTurn": {"parts": [{"inlineData": {"mimeType": "audio/pcm;rate=24000",
+                    "data": base64.b64encode(self._silence(self.TAIL_SILENCE_MS)).decode("ascii")}}]}})
             if turn["final_taken"]:
                 break
         # This turn's audio is queued: the core gets its boundaries once the
@@ -516,13 +578,15 @@ class ZeytunInboundBridge:
     def speech_voice(self):
         return self.voice
 
-    def speech_relay(self, key, inject, speakable, alive, room=None, log=None, tts=None):
+    def speech_relay(self, key, inject, speakable, alive, room=None, log=None, tts=None,
+                     progress=None, recovering=None):
         """The call's TTS relay, created once; None while the model speaks itself."""
         if self.tts_model is None:
             return None
         if self.relay is None:
             engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice)
-            self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log)
+            self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log,
+                                           progress=progress, recovering=recovering)
         return self.relay
 
     @staticmethod

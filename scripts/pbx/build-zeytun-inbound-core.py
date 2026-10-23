@@ -71,7 +71,12 @@ def build(source, bridge):
                 speakable=lambda: not (self.closed or self.hangup_started or self.discarding_response),
                 alive=lambda: not self.closed,
                 room=lambda: self.output_queue.qsize() < GEMINI_LIVE_AUDIO_QUEUE_FRAMES * 4 // 5,
-                log=lambda status, **fields: latency("zeytun_tts", self.call_id, status=status, **fields))
+                log=lambda status, **fields: latency("zeytun_tts", self.call_id, status=status, **fields),
+                # Model audio proves the session lives: re-arm a pending watchdog.
+                progress=lambda: ((self._pause_resume_progress_for_speech(), self._resume_progress_after_speech())
+                                  if self.resume_progress_pending and not self.resume_progress_waiting_for_speech else None),
+                recovering=lambda: bool(self.reconnecting or self.fresh_recovery_waiting_for_audio
+                                        or self.fresh_recovery_input_fenced))
             if relay is not None and relay.filter(event, epoch):
                 return
         self._accept_resumption_update(event)
