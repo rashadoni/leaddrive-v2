@@ -70,6 +70,8 @@ model Organization {
   tenantMasterKeys      TenantMasterKey[]
   tenantDataKeys        TenantDataKey[]
   bookingPages          BookingPage[]
+  adConversionDestinations AdConversionDestination[]
+  adConversionEvents       AdConversionEvent[]
   bookings              Booking[]
   reviewerAccessGrants  ReviewerAccessGrant[]
   accountGradeConfig    AccountGradeConfig?
@@ -1490,6 +1492,11 @@ model Lead {
   pipelineId             String?
   pipeline               Pipeline?        @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
   convertedAt            DateTime?
+  /// Where the person came from when the lead was captured: ad click ids
+  /// (fbclid/fbc, fbp, gclid), GA client id, UTM tags, landing page and the
+  /// browser's user agent. Read by src/lib/ad-conversions/*; copied to the
+  /// deal's metadata when the lead is converted.
+  adAttribution          Json?
   lastScoredAt           DateTime?
   createdAt              DateTime         @default(now())
   updatedAt              DateTime         @updatedAt
@@ -22991,4 +22998,68 @@ model Booking {
   @@index([organizationId, hostUserId, startsAt])
   @@index([bookingPageId, startsAt])
   @@map("bookings")
+}
+
+/// An ad platform the organization sends conversions to (today: Meta
+/// Conversions API). The access token is stored only as tenant-bound
+/// ciphertext. Nothing is sent until `consentConfirmedAt` is set — the
+/// organization's statement that its forms collect consent to share data
+/// with advertising platforms.
+model AdConversionDestination {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// meta
+  platform           String
+  /// Meta pixel (dataset) id.
+  publicId           String
+  secretCiphertext   String
+  testEventCode      String?
+  sendLeads          Boolean      @default(true)
+  sendWins           Boolean      @default(true)
+  isActive           Boolean      @default(false)
+  consentConfirmedAt DateTime?
+  consentConfirmedBy String?
+  /// Events are sent only for leads and wins after this moment — turning a
+  /// destination on never floods it with history.
+  activatedAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  events AdConversionEvent[]
+
+  @@unique([organizationId, platform])
+  @@map("ad_conversion_destinations")
+}
+
+/// One conversion to send, sent or not sent — the outbox and its history.
+/// (destination, event, record) is unique, so a lead or a win is sent once.
+model AdConversionEvent {
+  id             String                  @id @default(cuid())
+  organizationId String
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  destinationId  String
+  destination    AdConversionDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  /// lead | purchase
+  eventName      String
+  /// lead | deal
+  entityType     String
+  entityId       String
+  /// When it happened (lead captured, deal won).
+  eventTime      DateTime
+  /// pending | sent | failed | skipped
+  status         String                  @default("pending")
+  attempts       Int                     @default(0)
+  /// Why it was skipped (skip_*) or the platform's last error.
+  reason         String?
+  /// What the settings page shows in its list: a name, or a deal and its amount.
+  recordLabel    String
+  sentAt         DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@unique([destinationId, eventName, entityId])
+  @@index([organizationId, status])
+  @@index([destinationId, createdAt])
+  @@map("ad_conversion_events")
 }

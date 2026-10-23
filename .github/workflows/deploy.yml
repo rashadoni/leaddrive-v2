@@ -471,6 +471,14 @@ jobs:
           FINANCE_BILL_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           FINANCE_BILL_PAYMENT_DB_GATE: required
 
+      - name: Ad conversions database gate
+        # Same gate as in pr-checks: conversions to Meta only with consent,
+        # once each (see the test's header).
+        run: npx vitest run src/__tests__/ad-conversions-postgres.test.ts
+        env:
+          AD_CONVERSIONS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          AD_CONVERSIONS_DB_GATE: required
+
       - name: Online booking database gate
         # Same gate as in pr-checks: one meeting per host per time, by the real
         # booking transaction (see the test's header).

@@ -149,6 +149,17 @@ export default function WebToLeadPage() {
   <button type="submit">${escapeHtml(submitText)}</button>
 </form>
 <script>
+function leadDriveAttribution() {
+  var out = {}, p = new URLSearchParams(location.search);
+  [["fbclid","fbclid"],["gclid","gclid"],["utm_source","utmSource"],["utm_medium","utmMedium"],["utm_campaign","utmCampaign"],["utm_content","utmContent"],["utm_term","utmTerm"]].forEach(function (k) { var v = p.get(k[0]); if (v) out[k[1]] = v; });
+  var c = function (n) { var m = document.cookie.match(new RegExp("(?:^|; )" + n + "=([^;]*)")); return m ? m[1] : null; };
+  if (c("_fbp")) out.fbp = c("_fbp");
+  if (c("_fbc")) out.fbc = c("_fbc");
+  var ga = (c("_ga") || "").match(/^GA\\d\\.\\d\\.(\\d+\\.\\d+)$/);
+  if (ga) out.gaClientId = ga[1];
+  out.pageUrl = location.href.split("#")[0];
+  return out;
+}
 async function submitLeadDriveForm(e) {
   e.preventDefault();
   const f = e.target;
@@ -157,7 +168,8 @@ async function submitLeadDriveForm(e) {
     email: f.email.value,${showPhone ? "\n    phone: f.phone?.value || ''," : ""}${showCompany ? "\n    company: f.company?.value || ''," : ""}${showMessage ? "\n    message: f.message?.value || ''," : ""}
     website: f.website?.value || '',
     source: "web_form",
-    org_slug: "${escapeHtml(embedOrgSlug)}"
+    org_slug: "${escapeHtml(embedOrgSlug)}",
+    attribution: leadDriveAttribution()
   };
   try {
     const r = await fetch("${apiEndpoint}", {
