@@ -361,6 +361,17 @@ jobs:
           FINANCE_BILL_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           FINANCE_BILL_PAYMENT_DB_GATE: required
 
+      - name: Invoice card payment database gate
+        # Paying a customer invoice by card through Kapital Bank (the bank is a
+        # stand-in, everything on our side is real). What a mocked Prisma
+        # cannot show: the return page, a second tab and the reconcile cron at
+        # once must record the payment once, and the STATUS in the bank's
+        # return link must never record money by itself.
+        run: npx vitest run src/__tests__/invoice-card-payment-postgres.test.ts
+        env:
+          INVOICE_CARD_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          INVOICE_CARD_PAYMENT_DB_GATE: required
+
       - name: Demo WhatsApp ticket database gate
         # The demo's real Service Desk ticket (opened on the prospect's own
         # press) is read back for the demo page only through the sales
