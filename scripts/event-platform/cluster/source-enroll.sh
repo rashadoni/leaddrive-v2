@@ -135,7 +135,7 @@ select 'cdc_role='||count(*) from pg_roles where rolname='leaddrive_event_cdc';
 select 'publication='||count(*) from pg_publication where pubname='leaddrive_event_outbox';
 select 'slots='||coalesce(string_agg(slot_name||':'||active, ','), 'none') from pg_replication_slots;
 SQL
-    wg show wg0 latest-handshakes 2>/dev/null | wc -l | sed 's/^/tunnel peers=/'
+    printf 'tunnel peers=%s\n' "$( { wg show wg0 latest-handshakes 2>/dev/null || true; } | wc -l)"
     ;;
 
   *) sed -n '2,16p' "$0"; exit 2 ;;
