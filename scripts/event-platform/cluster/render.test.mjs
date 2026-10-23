@@ -80,6 +80,7 @@ test('DR cluster renders as its own quorum and the inventory is validated', () =
   assert.equal(parse(files['kafka-d-ctrl-1/server.properties'])['controller.quorum.voters'],
     '1@kafka-d-ctrl-1:9093,2@kafka-d-ctrl-2:9093,3@kafka-d-ctrl-3:9093')
   assert.throws(() => renderCluster({ topology, catalog, clusterName: 'primary', inventory: { clusterId: 'short', hosts: {} } }), /clusterId/)
+  assert.throws(() => renderCluster({ topology, catalog, clusterName: 'primary', inventory: { ...inventoryFor('primary'), clusterId: '-bCdEfGhIjKlMnOpQrStUv' } }), /not starting with/)
   const missing = inventoryFor('primary')
   delete missing.hosts['kafka-p-broker-gra']
   assert.throws(() => renderCluster({ topology, catalog, clusterName: 'primary', inventory: missing }), /kafka-p-broker-gra/)

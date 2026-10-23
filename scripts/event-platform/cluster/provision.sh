@@ -70,7 +70,7 @@ case "${1:-}" in
         const [file, cluster] = process.argv.slice(1)
         const inv = JSON.parse(readFileSync(file, "utf8"))
         inv.clusters[cluster] ??= { clusterId: require_id() }
-        function require_id() { return Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64url").slice(0, 22) }
+        function require_id() { for (;;) { const id = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64url").slice(0, 22); if (!id.startsWith("-")) return id } }
         writeFileSync(file, JSON.stringify(inv, null, 2) + "\n")
       })' "$inventory" "$cluster"
     mapfile -t nodes < <(js '

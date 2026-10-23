@@ -25,7 +25,8 @@ project="ld-kafka-drill-${GITHUB_RUN_ID:-local}"
 net="$project"
 image="$(node -e "import('$repo/scripts/event-platform/cluster/render.mjs').then(m => console.log(m.KAFKA_IMAGE))")"
 uid="$(node -e "import('$repo/scripts/event-platform/cluster/render.mjs').then(m => console.log(m.KAFKA_UID))")"
-cluster_id="$(openssl rand -base64 16 | tr '+/' '-_' | cut -c1-22)"
+# Like Kafka's Uuid.randomUuid(): never start with "-", which CLIs read as an option.
+cluster_id="-"; while [ "${cluster_id#-}" != "$cluster_id" ]; do cluster_id="$(openssl rand -base64 16 | tr '+/' '-_' | cut -c1-22)"; done
 env=drill
 step() { printf '\n=== %s\n' "$*"; }
 fail() { printf 'DRILL FAILED: %s\n' "$*" >&2; exit 1; }
@@ -112,7 +113,7 @@ start_node() {
     -v "$work/pki/issued/$name:/etc/kafka/tls:ro" \
     --mount "type=volume,src=$project-$name,dst=/var/lib/kafka/data,volume-nocopy=true" \
     --entrypoint /bin/bash "$image" -ec \
-    '/opt/kafka/bin/kafka-storage.sh format --ignore-formatted -t "$CLUSTER_ID" -c /etc/kafka/server.properties && exec /opt/kafka/bin/kafka-server-start.sh /etc/kafka/server.properties' >/dev/null
+    '/opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id="$CLUSTER_ID" -c /etc/kafka/server.properties && exec /opt/kafka/bin/kafka-server-start.sh /etc/kafka/server.properties' >/dev/null
 }
 for name in "${controllers[@]}" "${brokers[@]}"; do start_node "$name"; done
 

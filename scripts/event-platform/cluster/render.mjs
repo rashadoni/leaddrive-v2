@@ -108,7 +108,7 @@ function commonSecurity(superUsers) {
 export function renderCluster({ topology, catalog, clusterName, inventory, heapScale = 1, pendingBrokers = [] }) {
   const cluster = topology.clusters.find((c) => c.name === clusterName)
   if (!cluster) throw new Error(`unknown cluster ${clusterName}`)
-  if (!/^[A-Za-z0-9_-]{22}$/.test(inventory.clusterId ?? '')) throw new Error('inventory.clusterId must be a 22-character Kafka cluster id')
+  if (!/^[A-Za-z0-9_][A-Za-z0-9_-]{21}$/.test(inventory.clusterId ?? '')) throw new Error('inventory.clusterId must be a 22-character Kafka cluster id not starting with "-"')
   const ids = nodeIds(cluster)
   const controllers = cluster.hosts.filter((h) => h.roles.includes('controller'))
   const brokers = cluster.hosts.filter((h) => h.roles.includes('broker'))
@@ -317,7 +317,7 @@ services:
     entrypoint: ["/bin/bash", "-ec"]
     command:
       - >-
-        /opt/kafka/bin/kafka-storage.sh format --ignore-formatted -t "$$CLUSTER_ID" -c /etc/kafka/server.properties &&
+        /opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id="$$CLUSTER_ID" -c /etc/kafka/server.properties &&
         exec /opt/kafka/bin/kafka-server-start.sh /etc/kafka/server.properties
     volumes:
       - ./server.properties:/etc/kafka/server.properties:ro
