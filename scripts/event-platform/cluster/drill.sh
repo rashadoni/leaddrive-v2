@@ -389,8 +389,11 @@ node -e '
 ' "$repo/ops/event-platform/debezium/event-outbox-connector.template.json" "$env" "$cdc_password" >"$work/connector.json"
 docker exec -i kafka-p-connect-eu curl -fsS -X POST -H 'Content-Type: application/json' --data @- \
   http://kafka-p-connect-eu:8083/connectors <"$work/connector.json" >/dev/null || fail "connector registration rejected"
-connector_running() { docker exec kafka-p-connect-eu curl -fsS "http://kafka-p-connect-eu:8083/connectors/leaddrive-event-outbox-$env/status" | grep -q '"tasks":\[{"id":0,"state":"RUNNING"'; }
-wait_until "connector task RUNNING" 30 connector_running
+connector_status() { docker exec kafka-p-connect-eu curl -fsS "http://kafka-p-connect-eu:8083/connectors/leaddrive-event-outbox-$env/status"; }
+# Connector and its single task both report RUNNING.
+connector_running() { [ "$(connector_status | grep -o '"state" *: *"RUNNING"' | wc -l)" -ge 2 ]; }
+for _ in $(seq 40); do connector_running && break; sleep 3; done
+connector_running || { connector_status | cut -c1-1500; echo; fail "connector task is not RUNNING"; }
 for n in 4 5 6; do outbox_row "$n"; done | docker exec -i "$pg" psql -v ON_ERROR_STOP=1 -qU postgres -d leaddrive >/dev/null
 sleep 10
 KAFKA_TIMEOUT=90 kafka kafka-console-consumer.sh --bootstrap-server "$bootstrap_scram" --consumer.config /client/fund.properties \

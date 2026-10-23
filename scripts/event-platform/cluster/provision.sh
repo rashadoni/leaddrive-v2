@@ -215,6 +215,35 @@ case "${1:-}" in
       -e KAFKA_HEAP_OPTS='-Xms64m -Xmx512m' --entrypoint /bin/bash $image /client/apply.sh $bootstrap"
     ;;
 
+  push-services)
+    # provision.sh push-services NAME ENV: Debezium Connect + Apicurio Registry
+    # on a connect/registry host. Requires apply-catalog for ENV first (topics,
+    # identities); secrets go only into 0600 *.secret.env files on the host.
+    name="${2:-}"; env="${3:-}"
+    cluster="$(js 'const c = m.loadTopology().clusters.find((x) => x.hosts.some((h) => h.name === process.argv[1] && h.roles.includes("connect"))); if (!c) process.exit(1); console.log(c.name)' "$name")" \
+      || die "$name is not a connect/registry host"
+    for user in ld-connect ld-registry; do [ -s "$state/secrets/$env-$user" ] || die "no $env-$user secret; run apply-catalog first"; done
+    out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT
+    node --input-type=module -e "
+      import { readFileSync, writeFileSync } from 'node:fs'
+      import { loadTopology } from '$here/render.mjs'
+      import { renderServiceHost, connectSecretEnv, registrySecretEnv } from '$here/services.mjs'
+      const [inventoryFile, cluster, env, name, dir, state] = process.argv.slice(1)
+      const files = renderServiceHost({ topology: loadTopology(), inventory: JSON.parse(readFileSync(inventoryFile, 'utf8')),
+        clusterName: cluster, envName: env, hostName: name })
+      for (const [file, content] of Object.entries(files)) writeFileSync(dir + '/' + file, content)
+      const secret = (u) => readFileSync(state + '/secrets/' + env + '-' + u, 'utf8').trim()
+      writeFileSync(dir + '/connect.secret.env', connectSecretEnv(secret('ld-connect')), { mode: 0o600 })
+      writeFileSync(dir + '/registry.secret.env', registrySecretEnv(secret('ld-registry')), { mode: 0o600 })
+    " "$inventory" "$cluster" "$env" "$name" "$out" "$state"
+    on "$name" 'install -d -m 0750 /etc/leaddrive-kafka/services'
+    for f in compose.yml connect.env registry.env; do copy "$name" 0644 root:root "$out/$f" "/etc/leaddrive-kafka/services/$f"; done
+    for f in connect.secret.env registry.secret.env; do copy "$name" 0600 root:root "$out/$f" "/etc/leaddrive-kafka/services/$f"; done
+    copy "$name" 0644 root:root "$state/pki-$cluster/ca.pem" /etc/leaddrive-kafka/tls/ca.pem
+    on "$name" 'docker compose -f /etc/leaddrive-kafka/services/compose.yml up -d --remove-orphans'
+    echo "pushed services to $name"
+    ;;
+
   verify)
     status=0
     while read -r name roles; do
