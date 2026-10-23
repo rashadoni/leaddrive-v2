@@ -419,6 +419,10 @@ class ZeytunInboundBridge:
     # группировать"). The model does no arithmetic: this tool multiplies the
     # list prices this call already returned, exactly, on the station.
     TOTAL_NAME = "calculate_order_total"
+    # Owner, 2026-10-24: «делай карточку заказа и сообщение менеджеру». The
+    # agreed list goes to the CRM, which resolves and prices it against the
+    # catalog itself; the model's words only name the lines.
+    SAVE_NAME = "save_order_list"
     # Owner, 2026-10-23: ~99% of these calls are Azerbaijani. Without a hint
     # the provider re-detects the language of every short phone turn; measured
     # against the live API on 8 kHz mu-law audio, two-word Azerbaijani turns
@@ -483,7 +487,8 @@ class ZeytunInboundBridge:
     def _request(self, body):
         # The first session also builds the pinned catalog once. Keep that
         # cold start separate from the short deadline for spoken lookups.
-        return self._post_json(self.url, body, timeout=5 if body.get("action") == "session" else 2)
+        action = body.get("action")
+        return self._post_json(self.url, body, timeout=5 if action == "session" else 4 if action == "order" else 2)
 
     def _post_json(self, url, body, timeout=2):
         req = urllib.request.Request(url,
@@ -564,7 +569,15 @@ class ZeytunInboundBridge:
                  "properties": {"externalId": {"type": "STRING", "description": "Product UUID from an earlier lookup."},
                                 "quantity": {"type": "INTEGER", "description": "Whole number of units, in listPrice.per."},
                                 "unit": {"type": "STRING", "description": "The unit of that quantity: qutu, ədəd, flakon, ..."}},
-                 "required": ["externalId", "quantity", "unit"]}}}, "required": ["lines"]}}]}]
+                 "required": ["externalId", "quantity", "unit"]}}}, "required": ["lines"]}},
+            {"name": self.SAVE_NAME,
+             "description": "Record the final list the caller agreed to, for Zeytun's manager to check. Call once after the caller agrees, again only if they change it. Include every line, resolved or not. Returns orderNumber when saved.",
+             "parameters": {"type": "OBJECT", "properties": {"lines": {"type": "ARRAY", "items": {"type": "OBJECT",
+                 "properties": {"externalId": {"type": "STRING", "description": "Product UUID from an earlier lookup; omit when the product was not resolved."},
+                                "quantity": {"type": "INTEGER", "description": "Whole number, in the unit the caller said."},
+                                "unit": {"type": "STRING", "description": "The caller's unit: qutu, ədəd, flakon, ampula, ..."},
+                                "spoken": {"type": "STRING", "description": "The caller's own words for this line, at most 160 characters."}},
+                 "required": ["quantity", "unit", "spoken"]}}}, "required": ["lines"]}}]}]
 
     def transcription(self):
         # Fields of AudioTranscriptionConfig (ai.google.dev/api/live); accepted
@@ -689,6 +702,54 @@ class ZeytunInboundBridge:
         return {"status": "total", "currency": "AZN", "total": str(total.quantize(Decimal("0.01"))),
                 "lines": priced, "notIncluded": skipped, "complete": not skipped}
 
+    @staticmethod
+    def order_lines(args):
+        """The save call's lines exactly as the CRM accepts them, or None."""
+        lines = args.get("lines") if isinstance(args, dict) and set(args) == {"lines"} else None
+        if not isinstance(lines, list) or not 1 <= len(lines) <= 30:
+            return None
+        result = []
+        for line in lines:
+            if not isinstance(line, dict) or not {"quantity", "unit", "spoken"} <= set(line) <= {"externalId", "quantity", "unit", "spoken"}:
+                return None
+            quantity, unit, spoken = line["quantity"], line["unit"], line["spoken"]
+            if isinstance(quantity, float) and quantity.is_integer():
+                quantity = int(quantity)
+            if (type(quantity) is not int or not 1 <= quantity <= 100000 or not isinstance(unit, str)
+                    or not 1 <= len(unit.strip()) <= 24 or not isinstance(spoken, str) or not 1 <= len(spoken.strip()) <= 160):
+                return None
+            item = {"quantity": quantity, "unit": unit.strip(), "spoken": spoken.strip()}
+            key = line.get("externalId")
+            if key is not None:
+                try:
+                    if not isinstance(key, str) or str(uuid.UUID(key)) != key.lower():
+                        return None
+                except ValueError:
+                    return None
+                item["externalId"] = key.lower()
+            result.append(item)
+        return result
+
+    @staticmethod
+    def safe_saved(value):
+        """Only the fields the model may read back; anything else is "not saved"."""
+        if not isinstance(value, dict):
+            return {"status": "not_saved"}
+        number = value.get("orderNumber")
+        if not isinstance(number, str) or not re.fullmatch(r"TS-\d{1,9}", number):
+            return {"status": "not_saved"}
+        if value.get("status") == "already_reviewed":
+            return {"status": "already_reviewed", "orderNumber": number}
+        total, notes = value.get("total"), {}
+        if value.get("status") != "saved" or not isinstance(total, str) or not re.fullmatch(r"\d{1,12}\.\d{2}", total):
+            return {"status": "not_saved"}
+        for key in ("notFound", "unpriced"):
+            items = value.get(key)
+            if not isinstance(items, list) or len(items) > 30 or not all(isinstance(i, str) and len(i) <= 160 for i in items):
+                return {"status": "not_saved"}
+            notes[key] = items
+        return {"status": "saved", "orderNumber": number, "total": total, "currency": "AZN", **notes}
+
     def handle(self, event, send, current):
         """Network work never runs on the audio/event thread. send also fences
         the actual websocket/epoch under the core's existing recovery lock.
@@ -714,7 +775,7 @@ class ZeytunInboundBridge:
             if not isinstance(call, dict):
                 raise ZeytunPilotUnavailable("invalid_tool_call")
             key, name = call.get("id"), call.get("name")
-            if not isinstance(key, str) or not 1 <= len(key) <= 128 or name not in (self.NAME, self.TOTAL_NAME):
+            if not isinstance(key, str) or not 1 <= len(key) <= 128 or name not in (self.NAME, self.TOTAL_NAME, self.SAVE_NAME):
                 raise ZeytunPilotUnavailable("invalid_tool_call")
             if name == self.TOTAL_NAME:
                 with self.lock:
@@ -727,8 +788,9 @@ class ZeytunInboundBridge:
                 if current():
                     send({"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}})
                 continue
-            args = self.query(call.get("args"))
-            response = lambda body, key=key: {"toolResponse": {"functionResponses": [{"id": key, "name": self.NAME, "response": body}]}}
+            saving = name == self.SAVE_NAME
+            args = self.order_lines(call.get("args")) if saving else self.query(call.get("args"))
+            response = lambda body, key=key, name=name: {"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}}
             error = None
             with self.lock:
                 if key in self.pending:
@@ -748,13 +810,16 @@ class ZeytunInboundBridge:
                     self.pending[key] = marker
             if error is not None:
                 if current():
-                    send(response(self.unavailable(error)))
+                    send(response({"status": "not_saved", "reason": error} if saving else self.unavailable(error)))
                 continue
-            def work(key=key, marker=marker, args=args, response=response):
+            def work(key=key, marker=marker, args=args, response=response, saving=saving):
                 try:
-                    result = self.safe_result(self.request({"action": "search", "callId": self.call_id, "query": args}))
+                    if saving:
+                        result = self.safe_saved(self.request({"action": "order", "callId": self.call_id, "lines": args}))
+                    else:
+                        result = self.safe_result(self.request({"action": "search", "callId": self.call_id, "query": args}))
                 except Exception:
-                    result = self.unavailable()
+                    result = {"status": "not_saved"} if saving else self.unavailable()
                 # The core's send callback serializes this final check/send with
                 # cancellation, interruption, hangup and websocket replacement.
                 def deliver():
@@ -774,7 +839,7 @@ class ZeytunInboundBridge:
                             self.pending.pop(key, None)
                     self.workers.release()
             try:
-                threading.Thread(target=work, name="zeytun-catalog-lookup", daemon=True).start()
+                threading.Thread(target=work, name="zeytun-order-save" if saving else "zeytun-catalog-lookup", daemon=True).start()
             except Exception:
                 with self.lock:
                     self.pending.pop(key, None)

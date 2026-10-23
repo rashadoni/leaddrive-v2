@@ -479,6 +479,14 @@ jobs:
           AD_CONVERSIONS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           AD_CONVERSIONS_DB_GATE: required
 
+      - name: Pharmacy phone orders database gate
+        # Same gate as in pr-checks: a call's order list, its numbering and the
+        # manager's card under FORCE row-level security (see the test's header).
+        run: npx vitest run src/__tests__/pharmacy-phone-orders-postgres.test.ts
+        env:
+          PHARMACY_PHONE_ORDERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          PHARMACY_PHONE_ORDERS_DB_GATE: required
+
       - name: Online booking database gate
         # Same gate as in pr-checks: one meeting per host per time, by the real
         # booking transaction (see the test's header).

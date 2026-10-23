@@ -6,6 +6,8 @@ import { ZeytunAvailableBalances } from "./zeytun-available-balances"
 import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
 import { inboundPilotDigest, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies } from "./zeytun-inbound-pilot"
 import type { ZeytunCallDatabase } from "./zeytun-call-loader"
+import { savePhoneOrderFromCall } from "./phone-orders"
+import type { PrismaClient } from "@prisma/client"
 
 /** Tiny operator grant/claim reads; the catalog is parsed once, with no 1C I/O. */
 async function readPrivate(path: string, limit = 8192): Promise<unknown> {
@@ -23,6 +25,8 @@ async function readPrivate(path: string, limit = 8192): Promise<unknown> {
 }
 export function createInboundPilotHost(options: {
   configFile: string; snapshotDirectory: string; runtimeOrganizationId: string; database: ZeytunCallDatabase
+  /** The application client the phone orders are written with (tenant RLS). */
+  orders?: PrismaClient
 }): InboundPilotDependencies {
   let catalog: { key: string; value: ReturnType<InboundPilotDependencies["loadCatalog"]> } | null = null
   const claimPath = (config: InboundPilotConfig) => join(dirname(options.configFile), `inbound-${config.id}.claim`)
@@ -98,6 +102,15 @@ export function createInboundPilotHost(options: {
       return value
     },
     isClaimed,
+    ...(options.orders ? {
+      // The pilot's caller is the owner's test participant: the order is
+      // marked a test call and names no pharmacy (shared numbers in 1C cannot
+      // identify one). The number is the grant's, which the call matched.
+      saveOrder: (config, call, catalog, lines) => savePhoneOrderFromCall(options.orders!, {
+        organizationId: config.orderOrganizationId, providerCallId: call.providerCallId, callStartedAt: call.startedAt,
+        callerPhoneE164: config.testPhoneE164, identification: "test_call", catalog, lines,
+      }),
+    } satisfies Pick<InboundPilotDependencies, "saveOrder"> : {}),
     async claim(config, call) {
       if (config.organizationId !== options.runtimeOrganizationId) return false
       // Parent permissions are checked by loadConfig before a claim. Exclusive
