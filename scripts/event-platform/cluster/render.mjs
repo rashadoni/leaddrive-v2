@@ -250,7 +250,18 @@ ${accepts.join('\n')}
   }
 }
 `
-    return { 'wg0.conf': wg, 'nftables.conf': nft }
+    // ufw (already active on that host) filters the same packets, so it must
+    // admit the tunnel and the CDC port too. PostgreSQL itself must listen
+    // only on loopback and this overlay address.
+    const cdcSources = peers.filter((q) => q.roles.includes('connect')).map((q) => q.address)
+    const ufw = [
+      '#!/usr/bin/env bash',
+      '# Rendered by scripts/event-platform/cluster/render.mjs — idempotent ufw rules for the source host.',
+      'set -euo pipefail',
+      ...peers.map((q) => `ufw allow proto udp from ${q.publicAddress} to any port ${WIREGUARD_PORT} comment 'ld-kafka wg ${q.name}'`),
+      ...cdcSources.map((a) => `ufw allow in on wg0 proto tcp from ${a} to ${me.address} port 5432 comment 'ld-kafka cdc'`),
+    ].join('\n') + '\n'
+    return { 'wg0.conf': wg, 'nftables.conf': nft, 'ufw.sh': ufw }
   }
   const nft = `#!/usr/sbin/nft -f
 # Rendered by scripts/event-platform/cluster/render.mjs — do not edit on the host.

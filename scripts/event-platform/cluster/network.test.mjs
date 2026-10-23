@@ -58,6 +58,12 @@ test('the production host keeps its public services and only confines the overla
   assert.deepEqual(acceptsOn(nft, 5432).sort(), ['kafka-p-connect-eu', 'kafka-p-connect-uk'].map(overlay).sort())
   assert.match(nft, /udp dport 51820 drop/)
   assert.match(nft, /iifname "wg0" drop\n  \}/)
+  const ufw = render('leaddrive-prod')['ufw.sh']
+  assert.equal((ufw.match(/port 51820 comment/g) ?? []).length, members.length - 1)
+  assert.deepEqual([...ufw.matchAll(/from (\S+) to \S+ port 5432/g)].map((m) => m[1]).sort(),
+    ['kafka-p-connect-eu', 'kafka-p-connect-uk'].map(overlay).sort())
+  assert.doesNotMatch(ufw, /ufw (reset|disable|default)/)
+  assert.ok(!render('kafka-p-broker-eu')['ufw.sh'], 'Kafka hosts use nftables only')
 })
 
 test('inventory errors are refused instead of rendered', () => {

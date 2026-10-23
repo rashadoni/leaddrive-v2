@@ -56,15 +56,18 @@ for m in "${members[@]}"; do
   ip netns exec "$n" nft -f "$work/net/$m/nftables.conf" || fail "nftables rejected on $m"
 done
 
-listen() { # listen MEMBER PORT...
-  for port in "${@:2}"; do
-    ip netns exec "$(ns "$1")" bash -c "exec -a ldn-listener nc -lk $port >/dev/null 2>&1" &
+listen() { # listen MEMBER PORT... (PORT may be ADDRESS:PORT)
+  for spec in "${@:2}"; do
+    local bind="${spec%:*}" port="${spec##*:}"
+    [ "$bind" = "$spec" ] && bind=""
+    ip netns exec "$(ns "$1")" bash -c "exec -a ldn-listener nc -lk $bind $port >/dev/null 2>&1" &
   done
 }
 listen kafka-p-broker-eu 22 9092 9094 9100
 listen kafka-p-ctrl-eu 22 9093
 listen kafka-p-connect-eu 22 8083
-listen leaddrive-prod 22 443 5432
+# PostgreSQL listens on loopback and its overlay address only (listen_addresses).
+listen leaddrive-prod 22 443 "${overlay[leaddrive-prod]}:5432" "127.0.0.1:5432"
 sleep 2
 
 # Let the tunnels handshake once.
@@ -94,7 +97,8 @@ check deny  outsider           "$(p kafka-p-broker-eu)" 9092 "outsider -> broker
 check deny  outsider           "$(p kafka-p-broker-eu)" 9094 "outsider -> broker replication port"
 check deny  outsider           "$(p kafka-p-ctrl-eu)"   9093 "outsider -> controller port"
 check deny  outsider           "$(p kafka-p-connect-eu)" 8083 "outsider -> Connect REST"
-check deny  outsider           "$(p leaddrive-prod)"    5432 "outsider -> PostgreSQL"
+check deny  outsider           "$(p leaddrive-prod)"    5432 "outsider -> PostgreSQL on the public address"
+check deny  outsider           "$(o leaddrive-prod)"    5432 "non-member -> PostgreSQL overlay address"
 check allow outsider           "$(p kafka-p-broker-eu)" 22   "SSH stays reachable for operators"
 check allow outsider           "$(p leaddrive-prod)"    443  "production keeps its public HTTPS"
 echo "NETWORK DRILL PASSED"
