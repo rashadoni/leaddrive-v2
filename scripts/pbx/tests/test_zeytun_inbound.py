@@ -6,6 +6,7 @@ from pathlib import Path
 import threading
 import time
 import unittest
+import urllib.error
 from unittest.mock import patch
 from types import SimpleNamespace
 
@@ -436,6 +437,55 @@ class SpeechRelayTests(unittest.TestCase):
         content = self.injected[0]["serverContent"]
         self.assertEqual(content["modelTurn"]["parts"], [self.MODEL_AUDIO])
         self.assertIn("istərdiniz", content["outputTranscription"]["text"])
+
+    def test_a_tts_that_answers_without_audio_falls_back_to_the_model_voice(self):
+        # Station call 2026-10-23: no TTS audio and no error meant 16 s of silence.
+        class Silent(FakeTts):
+            def stream(self, text, on_pcm, keep_going):
+                self.texts.append(text)
+                raise bridge_module.ZeytunPilotUnavailable("tts_no_audio")
+        logs = []
+        relay = bridge_module.ZeytunSpeechRelay(Silent(), lambda e: self.injected.append(e), lambda: True,
+                                                lambda: self.live, log=lambda status, **f: logs.append((status, f)))
+        relay.TAIL_GRACE_SECONDS = 0.05
+        relay.filter(self.content("Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz? ", audio=True))
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(self.injected[0]["serverContent"]["modelTurn"]["parts"], [self.MODEL_AUDIO])
+        self.assertIn(("tts_fallback", {"reason": "tts_no_audio"}), logs)
+
+    def test_a_turn_never_stays_silent_past_the_limit(self):
+        # Model audio but no sentence (or a hung TTS): the model is heard.
+        relay = self.relay(FakeTts())
+        relay.SILENCE_LIMIT_SECONDS = 0.2
+        relay.TAIL_GRACE_SECONDS = 5.0
+        relay.filter(self.content("Bir az", audio=True))
+        self.assertTrue(self.wait_for(lambda events: any("modelTurn" in e["serverContent"] for e in events)))
+        self.assertEqual(self.injected[0]["serverContent"]["modelTurn"]["parts"], [self.MODEL_AUDIO])
+        # Later audio of that turn now goes straight to the core.
+        event = self.content(" gözləyin.", audio=True)
+        self.assertFalse(relay.filter(event))
+        self.assertIn("modelTurn", event["serverContent"])
+
+    def tts_with_lines(self, lines, error=None):
+        class Response(list):
+            def __enter__(self): return self
+            def __exit__(self, *exc): return False
+        def opener(req, timeout):
+            self.assertLessEqual(timeout, 4)
+            if error:
+                raise error
+            return Response(lines)
+        return bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat", opener=opener)
+
+    def test_tts_refusals_are_failures_with_a_reason_never_silence(self):
+        error_line = b"data: " + json.dumps({"error": {"code": 403, "message": "denied"}}).encode() + b"\n"
+        cases = [([error_line], None, "tts_stream_error_403"), ([b"data: {}\n"], None, "tts_no_audio"),
+                 ([], urllib.error.HTTPError("u", 404, "nf", {}, None), "tts_http_404")]
+        for lines, error, reason in cases:
+            with self.assertRaises(bridge_module.ZeytunPilotUnavailable) as raised:
+                self.tts_with_lines(lines, error).stream("Salam", lambda pcm: None, lambda: True)
+            self.assertEqual(str(raised.exception), reason)
 
     def test_a_transcript_tail_after_turn_complete_belongs_to_that_turn(self):
         tts = FakeTts()

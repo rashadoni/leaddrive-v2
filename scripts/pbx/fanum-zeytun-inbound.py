@@ -50,6 +50,9 @@ class ZeytunGeminiTts:
     2026-10-23: the style prefix became the first 3.5 s of the sample).
     """
     MODELS = frozenset({"gemini-3.8-flash-tts"})
+    # First audio arrives in ~0.7 s; a turn waiting longer than this falls
+    # back to the model's own voice rather than leave the line silent.
+    TIMEOUT_SECONDS = 4
 
     def __init__(self, key, model, voice, opener=None):
         if not key or model not in self.MODELS or voice not in ZeytunInboundBridge.VOICES:
@@ -66,7 +69,11 @@ class ZeytunGeminiTts:
         req = urllib.request.Request(self.url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
                                      headers={"Content-Type": "application/json"}, method="POST")
         produced = 0
-        with self.open(req, 10) as response:
+        try:
+            response = self.open(req, self.TIMEOUT_SECONDS)
+        except urllib.error.HTTPError as error:
+            raise ZeytunPilotUnavailable("tts_http_%d" % error.code) from None
+        with response:
             for raw in response:
                 if not keep_going():
                     return produced
@@ -74,6 +81,11 @@ class ZeytunGeminiTts:
                 if not line.startswith("data:"):
                     continue
                 payload = json.loads(line[5:])
+                if isinstance(payload, dict) and payload.get("error"):
+                    # Google can report a refusal inside a 200 stream; without
+                    # this the turn stayed silent (station call, 2026-10-23).
+                    code = (payload.get("error") or {}).get("code") if isinstance(payload.get("error"), dict) else None
+                    raise ZeytunPilotUnavailable("tts_stream_error_%s" % (code if isinstance(code, int) else "unknown"))
                 for candidate in payload.get("candidates") or []:
                     for part in (candidate.get("content") or {}).get("parts") or []:
                         inline = part.get("inlineData") if isinstance(part, dict) else None
@@ -87,6 +99,8 @@ class ZeytunGeminiTts:
                             raise ZeytunPilotUnavailable("tts_audio_format")
                         produced += len(pcm)
                         on_pcm(pcm)
+        if not produced and keep_going():
+            raise ZeytunPilotUnavailable("tts_no_audio")
         return produced
 
 
@@ -109,6 +123,10 @@ class ZeytunSpeechRelay:
     MARK = "zeytunTtsRelay"
     MIN_CHARS = 40
     TAIL_GRACE_SECONDS = 0.4  # output transcription may trail its generation
+    # Whatever stalls the TTS path, a turn the model has spoken is never left
+    # silent for longer than this: the caller then hears the model itself.
+    SILENCE_LIMIT_SECONDS = 5.0
+    FALLBACK = object()
 
     def __init__(self, tts, inject, speakable, alive, room=None, log=None, clock=time.monotonic):
         self.tts, self.inject, self.speakable, self.alive = tts, inject, speakable, alive
@@ -123,7 +141,7 @@ class ZeytunSpeechRelay:
 
     @staticmethod
     def _new_turn():
-        return {"buffer": "", "pieces": [], "original": [], "held": [], "done_at": None,
+        return {"buffer": "", "pieces": [], "original": [], "held": [], "done_at": None, "created": time.monotonic(),
                 "final_taken": False, "finished": False, "cancelled": False,
                 "passthrough": False, "spoken": False}
 
@@ -245,6 +263,9 @@ class ZeytunSpeechRelay:
                 self._cancel_all_locked()
             if turn["cancelled"]:
                 return None
+            if (not turn["spoken"] and turn["original"]
+                    and time.monotonic() - turn["created"] >= self.SILENCE_LIMIT_SECONDS):
+                return self.FALLBACK
             if turn["pieces"]:
                 return turn["pieces"].pop(0)
             if turn["done_at"] is not None and self.clock() - turn["done_at"] >= self.TAIL_GRACE_SECONDS:
@@ -259,7 +280,13 @@ class ZeytunSpeechRelay:
                 piece = self._next_piece_locked(turn)
             if piece is None:
                 break
+            if piece is self.FALLBACK:
+                self._fallback(turn, "tts_wait_timeout")
+                return
             heard = [False]
+            asked = time.monotonic()
+            if not turn["spoken"]:
+                self.log("tts_request", chars=len(piece))
 
             def on_pcm(pcm, piece=piece):
                 while not self.room() and self.speakable() and not turn["cancelled"]:
@@ -273,6 +300,8 @@ class ZeytunSpeechRelay:
                 if not heard[0]:
                     content["outputTranscription"] = {"text": piece + " "}
                     heard[0] = True
+                    if not turn["spoken"]:
+                        self.log("tts_first_audio", ms=round((time.monotonic() - asked) * 1000))
                 self._emit(content)
                 turn["spoken"] = True
 
@@ -280,12 +309,14 @@ class ZeytunSpeechRelay:
                 self.tts.stream(zeytun_speakable_text(piece), on_pcm,
                                 lambda: not turn["cancelled"] and self.speakable())
             except Exception as error:
+                # Our own codes say why (tts_http_403, tts_no_audio, ...); never a body.
+                reason = str(error) if isinstance(error, ZeytunPilotUnavailable) else type(error).__name__
                 if not turn["spoken"]:
                     with self.lock:
                         turn["pieces"].insert(0, piece)
-                    self._fallback(turn, type(error).__name__)
+                    self._fallback(turn, reason)
                     return
-                self.log("tts_failed_mid_turn", reason=type(error).__name__)
+                self.log("tts_failed_mid_turn", reason=reason)
                 with self.lock:
                     self._cancel_all_locked()
                 break
