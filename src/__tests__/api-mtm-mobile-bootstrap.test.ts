@@ -76,6 +76,22 @@ const v2Request = () => new NextRequest("http://localhost:3000/api/v1/mtm/mobile
 })
 
 describe("GET /api/v1/mtm/mobile/bootstrap", () => {
+  it("issues offline drafts only for the authenticated agent and supplied installation", async () => {
+    const response = await GET(v2Request())
+    expect(response.status).toBe(200)
+    const { data } = await response.json()
+    expect(data.offlineGrant).toMatchObject({ version: 1, kind: "LOCAL_FIELD_DRAFTS", tenantId: ORG, principalId: AGENT, deviceId: "device-1" })
+    expect(Date.parse(data.offlineGrant.expiresAt) - Date.parse(data.offlineGrant.issuedAt)).toBe(7 * 24 * 60 * 60 * 1000)
+  })
+  it("does not issue an installation-independent offline grant to an older client", async () => {
+    expect((await (await GET(request())).json()).data.offlineGrant).toBeNull()
+  })
+  it("does not grant offline drafts after the authenticated entitlement was withdrawn", async () => {
+    const auth = mobileAuth("AGENT")
+    auth.tenantCapabilities!.routeField = false
+    vi.mocked(resolveMobileAuth).mockResolvedValue(auth)
+    expect((await (await GET(v2Request())).json()).data.offlineGrant).toBeNull()
+  })
   it.each(["AGENT", "EMPLOYEE"])("hides attendance for excluded %s without granting field access", async role => {
     vi.mocked(resolveMobileAuth).mockResolvedValue(mobileAuth(role))
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role, attendanceParticipant: true, attendanceExcluded: true, name: "Fictional employee", canPlanOwnRoutes: true } as never)

@@ -14,6 +14,7 @@ import { cartoBasemapsApiKey } from "@/lib/carto-basemap"
 import { basemapProviderFromEnv } from "@/lib/mtm/basemap-provider"
 import { routeTargetTypesForPlanning } from "@/lib/mtm/route-target-types"
 import { buildMtmMobileCapabilityManifest } from "@/lib/mtm/mobile-capability-manifest"
+import { buildMtmMobileOfflineGrant } from "@/lib/mtm/mobile-offline-grant"
 import {
   MTM_MOBILE_SYNC_V2_ROUTE_STREAM,
   MTM_MOBILE_SYNC_V2_ROUTE_OFFLINE_HORIZON_DAYS,
@@ -560,6 +561,10 @@ export const GET = withMobileRls(async (req, auth) => {
           },
         } : { horizon: "ACTIVE_FIELD_SCOPE", scopeVersion: null, configVersion: null },
         serverTime: now.toISOString(),
+        // Explicit bounded permission to retain this installation's already
+        // admitted field UI/drafts during transport failure. Missing on old
+        // servers means no offline admission; it never authorizes a push.
+        offlineGrant: buildMtmMobileOfflineGrant({ manifest, deviceId, now }),
         // Additive v1 field. Older APKs ignore it; newer APKs use it to avoid
         // disabled endpoints before the corresponding mutation is attempted.
         manifest,
