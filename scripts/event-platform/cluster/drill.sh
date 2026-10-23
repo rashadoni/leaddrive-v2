@@ -55,6 +55,12 @@ cleanup() {
       printf -- '--- last log lines of %s\n' "$name"; docker logs --tail 15 "$name" 2>&1 | grep -v '^\s*at ' || true
     done
   fi
+  if [ "$status" -ne 0 ]; then
+    for name in "${brokers[@]}"; do
+      printf -- '--- authorization denials on %s\n' "$name"
+      docker exec "$name" sh -c 'cat /tmp/kafka-logs/kafka-authorizer.log 2>/dev/null' | grep -i denied | sed -E 's/.*(Principal = [^ ]+).*(operation = [A-Za-z]+).*(resource = [^ ]+).*/\1 \2 \3/' | sort | uniq -c | tail -15 || true
+    done
+  fi
   docker ps -aq --filter "label=$project" | xargs -r docker rm -f >/dev/null 2>&1 || true
   docker volume ls -q --filter "label=$project" | xargs -r docker volume rm >/dev/null 2>&1 || true
   docker network rm "$net" >/dev/null 2>&1 || true
