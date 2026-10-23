@@ -359,3 +359,57 @@ protection work can progress without activating Kafka or buying a cluster.
 Current no-install/no-production-WAL-slot-consumer-offset-replay/no-merge-deploy
 and no-spend limits remain in force. This is a scoped priority clarification,
 not permission to bypass recovery/operator evidence or activate a repair.
+
+## Owner decision: self-managed Kafka on Contabo + OVHcloud — 2026-10-23
+
+This supersedes the 2026-10-19 pause on hosting selection. The owner compared
+Confluent Cloud with self-managed servers for the full catalog and chose
+self-managed («Да, делай Kafka на своих серверах Contabo по полной схеме»).
+The contract in this file and in architecture §13 is unchanged: three failure
+domains, separate KRaft roles, private listeners, a mirrored DR cluster and a
+>=400-day immutable archive. Nothing is ordered or activated by this note.
+
+**Why not Confluent.** Basic is billed by elastic units of 30 partitions and 20
+client connections (first unit free, then USD0.14/unit-hour, about USD100 per
+month). The catalog's 1416 partitions need about 48 units, close to the Basic
+maximum of 50 and 1500 partitions; Basic is also one zone and offers no
+cluster mirroring. Standard (250 partitions per unit, USD0.75/unit-hour) is
+about USD3300/month for the primary cluster alone. Source:
+[cluster types](https://docs.confluent.io/cloud/current/clusters/cluster-types.html),
+[pricing](https://www.confluent.io/confluent-cloud/pricing/).
+
+**Why two providers.** The source host and this dev box both geolocate to
+Contabo Hub Europe (Lauterbourg FR). Contabo's ordering offers one European
+Union region and one United Kingdom region, so Contabo alone gives two
+European failure domains. The third primary domain and the DR cluster are on
+OVHcloud (Frankfurt, Warsaw); the owner excluded Hetzner on 2026-10-19.
+
+The machine-readable plan is [`topology.v1.json`](../../ops/event-platform/topology.v1.json);
+`scripts/event-platform/topology.test.mjs` (pr-checks) rejects a plan that
+loses min.insync.replicas or controller quorum on one site loss, puts a DR host
+on a primary site, colocates broker and controller roles, uses the web host,
+exposes a public listener, or records addresses/credentials before hosts exist.
+
+| Cluster / site | Hosts | Example plan |
+|---|---|---|
+| Primary, Contabo EU | broker, controller, Connect+Registry | VPS 20, VPS 10, VPS 10 |
+| Primary, Contabo UK | broker, controller, Connect+Registry | VPS 20, VPS 10, VPS 10 |
+| Primary, OVHcloud Frankfurt | broker, controller | VPS-2, VPS-1 |
+| DR, OVHcloud Warsaw | 3 brokers, 3 controllers, mirror worker | 3 x VPS-2, 4 x VPS-1 |
+| Monitoring, OVHcloud Warsaw | alerting outside the production site | VPS-1 |
+
+Estimated monthly cost from third-party price trackers after the 2026 price
+increases (not a quote): primary about EUR57, DR about EUR51, monitoring about
+EUR6, archive about EUR2, **about EUR115/month for 16 hosts**, before setup fees
+and location surcharges seen at checkout. Load is small (whole-database mean WAL
+about 3 KB/s), so disk and CPU are sized for headroom, not throughput.
+
+Ordering happens in two steps, each only after the preceding gate passes:
+
+1. Primary 8 hosts — after the install automation passes a disposable
+   multi-node drill in GitHub CI (TLS, ACL negatives, one-site loss).
+2. DR 7 hosts + monitoring — after the primary passes its live site-loss drill.
+
+PostgreSQL `wal_level=logical` needs a planned restart of the production
+database and stays a separately requested window. Fund remains the first
+canary; other domains follow the existing A7 order.
