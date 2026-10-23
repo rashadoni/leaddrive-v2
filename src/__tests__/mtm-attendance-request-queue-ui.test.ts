@@ -21,7 +21,8 @@ function request(index = 1, patch: Partial<AttendanceReviewItem> = {}): Attendan
     startDate: "2026-10-15", endDate: "2026-10-15", reason: "Демонстрационная заявка: запись к врачу на два часа.",
     submittedAt: version, decisionNote: null, decidedAt: null, cancelledAt: null, version,
     details: { version: 1, kind: "HOURLY_ABSENCE", unit: "HOURS", startTime: "10:00", endTime: "12:00", timezone: "Asia/Baku", dayKind: dayKinds.find(kind => kind.key === "HOURLY_ABSENCE")!, attachmentIds: [id(200)] },
-    employeeName: "Aylin Demo", teamName: "Demo North", reviewerName: null, ...patch,
+    employeeName: "Aylin Demo", teamName: "Demo North", reviewerName: null,
+    approval: { twoStep: false, awaiting: null, manager: null, passesToHr: false }, canDecide: true, ...patch,
   }
 }
 const fixture = () => [request(), request(2, { employeeName: "Murad Demo", reason: "Демонстрационная заявка: забыта отметка ухода.", startDate: "2026-10-12", endDate: "2026-10-12",
@@ -146,6 +147,36 @@ describe("actual attendance review queue", () => {
     expect(JSON.parse(String(writes()[0][1]?.body))).toEqual({ decision: "REJECTED", version, note: "Нужна другая дата" })
     expect(row()).toBeNull(); expect(container.textContent).toContain(translation("requestsSaved"))
   })
+  // Two-step approval (owner, 2026-10-21): «сначала руководитель, потом HR».
+  it("two-step approval: the manager passes on, sees what waits for HR without buttons, and HR sees who approved", async () => {
+    const atHr = request(2, { employeeName: "Murad Demo", approval: { twoStep: true, awaiting: "HR", manager: { name: "Togrul Demo", at: version, note: "Не возражаю" }, passesToHr: false }, canDecide: false })
+    const atManager = request(1, { approval: { twoStep: true, awaiting: "MANAGER", manager: null, passesToHr: true }, canDecide: true })
+    fetchMock.mockImplementation(async () => response([atManager, atHr]))
+    await render()
+    expect(row(1).textContent).toContain(translation("requestsAwaitingManager"))
+    expect(row(2).textContent).toContain(translation("requestsAwaitingHr"))
+    await click("requestsOpen", row(2))
+    expect(row(2).textContent).toContain(translation("requestsHrDecides"))
+    expect(row(2).querySelector('[data-testid="attendance-request-manager-approval"]')?.textContent).toContain("Не возражаю")
+    expect(row(2).querySelector("textarea")).toBeNull()
+    capture("ru", "two-step-manager-waiting")
+    await click("requestsClose", row(2)); await click("requestsOpen", row(1))
+    expect(button("requestsApprove")).toBeUndefined()
+    fetchMock.mockImplementationOnce(async () => new Response(JSON.stringify({ success: true, data: { request: atManager, passedToHr: true } })))
+    fetchMock.mockImplementationOnce(async () => response([{ ...atManager, approval: { ...atHr.approval }, canDecide: false }, atHr]))
+    await click("requestsPassToHr")
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(writes()).toHaveLength(1)
+    expect(container.textContent).toContain(translation("requestsPassedToHr"))
+    expect(row(1).textContent).toContain(translation("requestsAwaitingHr"))
+    // HR: the manager's approval is shown and the decision is a plain approve.
+    fetchMock.mockImplementation(async () => response([{ ...atHr, canDecide: true }]))
+    await click("requestsRefresh"); await click("requestsOpen", row(2))
+    expect(row(2).textContent).toContain(translation("requestsManagerApproved").replace("{name}", "Togrul Demo").split(",")[0])
+    expect(button("requestsApprove")).toBeDefined()
+    capture("ru", "two-step-hr")
+  })
+
   it("approves without a note and prevents a second click while the first response is pending", async () => {
     await render(); await click("requestsOpen", row())
     let resolve!: (response: Response) => void

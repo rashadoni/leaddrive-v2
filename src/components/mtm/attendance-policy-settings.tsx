@@ -26,6 +26,7 @@ export const ATTENDANCE_POLICY_ITEMS: Record<AttendancePolicyCard, readonly Item
     { key: "attendanceManagerAlertsEnabled", labelKey: "lblAttendanceManagerAlerts", hintKey: "hintAttendanceManagerAlerts", type: "boolean" },
   ],
   approval: [
+    { key: "attendanceTwoStepApproval", labelKey: "lblAttendanceTwoStepApproval", hintKey: "hintAttendanceTwoStepApproval", type: "boolean" },
     { key: "attendanceAutoCloseForgottenDay", labelKey: "lblAttendanceAutoCloseForgottenDay", hintKey: "hintAttendanceAutoCloseForgottenDay", type: "boolean" },
   ],
   checks: [

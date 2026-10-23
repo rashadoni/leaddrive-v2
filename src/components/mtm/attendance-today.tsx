@@ -130,7 +130,8 @@ export function MtmAttendanceToday() {
         loadedAt: new Date().toISOString(), canManage: rulesBody.data?.canManageRules === true,
         // Viewing attendance and deciding requests are separate rights: a
         // refused queue hides the card instead of failing the screen.
-        requests: requests.ok && requestsBody?.success === true && Array.isArray(requestsBody.data?.items) ? requestsBody.data.items : null,
+        // With two-step approval a manager's card keeps only what is still theirs to decide.
+        requests: requests.ok && requestsBody?.success === true && Array.isArray(requestsBody.data?.items) ? (requestsBody.data.items as AttendanceReviewItem[]).filter(item => item.canDecide !== false) : null,
         risks: risks.ok && Array.isArray(risksBody?.data?.items) ? risksBody.data.items : null,
         explanations: explanationItems,
       })
@@ -158,7 +159,7 @@ export function MtmAttendanceToday() {
       const body = await readJson(response)
       if (response.ok && body?.success === true) {
         setData(current => current && current.requests ? { ...current, requests: current.requests.filter(row => row.id !== item.id) } : current)
-        setRejecting(null); setReason(""); setMessage(t("decisionSaved"))
+        setRejecting(null); setReason(""); setMessage(t(body.data?.passedToHr === true ? "passedToHr" : "decisionSaved"))
       } else {
         // Someone else decided or the request changed: show the current queue.
         setMessage(t(response.status === 409 ? "decisionChanged" : "decisionFailed"))
@@ -269,9 +270,11 @@ export function MtmAttendanceToday() {
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.employeeName}</p>
                   <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground"><HomePill tone="blue">{kind}</HomePill>{period}
                     {item.details.attachmentIds.length ? <a href={`/api/v1/mtm/attendance/attachments/${encodeURIComponent(item.details.attachmentIds[0])}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" aria-hidden="true" />{t("document")}</a> : null}</p>
-                  {item.reason ? <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.reason}</p> : null}</div>
+                  {item.reason ? <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.reason}</p> : null}
+                  {item.approval?.manager ? <p className="mt-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400" data-testid="attendance-today-manager-approved">{t("managerApprovedBy", { name: item.approval.manager.name ?? "—" })}</p>
+                    : item.approval?.awaiting === "MANAGER" && !item.approval.passesToHr ? <p className="mt-0.5 text-xs text-muted-foreground" data-testid="attendance-today-awaiting-manager">{t("awaitingManager")}</p> : null}</div>
                 {rejecting !== item.id ? <div className="flex shrink-0 gap-2">
-                  <Button size="sm" variant="outline" className="min-h-9 border-emerald-600 text-emerald-700 dark:border-emerald-500 dark:text-emerald-300" disabled={busyId !== null} onClick={() => void decide(item, "APPROVED")}>{t("approve")}</Button>
+                  <Button size="sm" variant="outline" className="min-h-9 border-emerald-600 text-emerald-700 dark:border-emerald-500 dark:text-emerald-300" disabled={busyId !== null} onClick={() => void decide(item, "APPROVED")}>{t(item.approval?.passesToHr ? "passToHr" : "approve")}</Button>
                   <Button size="sm" variant="outline" className="min-h-9 text-rose-700 dark:text-rose-300" disabled={busyId !== null} onClick={() => { setRejecting(item.id); setReason("") }}>{t("reject")}</Button>
                 </div> : null}
               </div>

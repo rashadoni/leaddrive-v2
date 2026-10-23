@@ -214,6 +214,18 @@ describe("mobile manager mixed workforce boundaries", () => {
     expect(listAttendanceRequestsForReview).toHaveBeenCalledWith({ organizationId: "org-1", userId: "user-togrul", principalType: "session" }, { status: "PENDING" })
   })
 
+  it("leaves out a request this manager already passed to HR under two-step approval (owner, 2026-10-21)", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ userId: "user-togrul" } as never)
+    vi.mocked(listAttendanceRequestsForReview).mockResolvedValue({ items: [
+      { id: "11111111-1111-4111-8111-111111111111", employeeName: "Aygün", canDecide: true },
+      { id: "22222222-2222-4222-8222-222222222222", employeeName: "Nigar", canDecide: false },
+    ], nextCursor: null } as never)
+    const body = await (await approvalsGet(request("approvals"))).json()
+    expect(body.data.counts.attendance).toBe(1)
+    expect(body.data.attendance).toEqual([expect.objectContaining({ employeeName: "Aygün" })])
+  })
+
   it("shows no Personnel requests to a manager card without a CRM login, and still answers", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ userId: null } as never)
