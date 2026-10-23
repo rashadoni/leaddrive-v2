@@ -16,6 +16,7 @@ import { SESSION_EXPIRED_CODE } from "@/lib/session-expired"
 import { isWithdrawnCrmPath } from "@/lib/crm-product-availability"
 import { redactOpaquePathSegments } from "@/lib/opaque-path-redaction"
 import { demoAssistantVoiceEnabled } from "@/lib/demo-center/assistant-voice-switch"
+import { REVIEWER_ROLE, reviewerRequestDenial, reviewerUploadScope } from "@/lib/reviewer-access"
 
 type SessionModuleGateUser = {
   role?: string
@@ -1012,6 +1013,37 @@ const authMiddleware = auth(async (req) => {
   const ADMIN_ONLY_SETTINGS = ["/settings/roles", "/settings/security", "/settings/billing"]
   if (ADMIN_ONLY_SETTINGS.some((p) => pathname === p || pathname.startsWith(p + "/")) && role !== "admin" && role !== "superadmin") {
     return withCspHeaders(NextResponse.redirect(new URL("/", req.url)), nonce)
+  }
+
+  // An outside reviewer under NDA (src/lib/reviewer-access.ts): read-only, no
+  // settings, no users, no journal, no export, and nothing after the end date —
+  // decided here from the token, before any route runs. The module gates below
+  // still apply on top: the sections the admin did not tick arrive hidden.
+  if (role === REVIEWER_ROLE) {
+    const denial = reviewerRequestDenial({
+      pathname,
+      method: req.method,
+      accessUntil: session?.user?.reviewerAccessUntil,
+    })
+    const uploadScope = denial ? null : reviewerUploadScope(pathname)
+    const uploadModule = uploadScope ? (PERMISSION_MODULE_TO_MODULE_ID[uploadScope] ?? uploadScope) as ModuleId : null
+    const uploadBlocked = Boolean(uploadModule && uploadModule in MODULE_REGISTRY && sessionModuleBlocked(session?.user, uploadModule))
+    if (denial === "expired") {
+      return withCspHeaders(
+        pathname.startsWith("/api/")
+          ? NextResponse.json({ error: "Unauthorized", code: SESSION_EXPIRED_CODE }, { status: 401 })
+          : NextResponse.redirect(new URL("/login", req.url)),
+        nonce,
+      )
+    }
+    if (denial === "forbidden" || uploadBlocked) {
+      return withCspHeaders(
+        pathname.startsWith("/api/") || pathname.startsWith("/uploads/")
+          ? NextResponse.json({ error: "Forbidden", message: "Not available to a reviewer" }, { status: 403 })
+          : NextResponse.redirect(new URL("/", req.url)),
+        nonce,
+      )
+    }
   }
 
   // Module gating for API routes: block requests to a module the tenant hasn't

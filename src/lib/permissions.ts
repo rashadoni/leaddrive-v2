@@ -1,6 +1,6 @@
 import { LEGACY_MODULE_MAP, type ModuleId } from "./modules"
 
-export type Role = "superadmin" | "admin" | "manager" | "sales" | "support" | "ticketing" | "viewer"
+export type Role = "superadmin" | "admin" | "manager" | "sales" | "support" | "ticketing" | "viewer" | "reviewer"
 export type Action = "read" | "write" | "delete" | "export" | "admin"
 export type Module =
   | "companies" | "contacts" | "deals" | "leads" | "tasks"
@@ -557,7 +557,24 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, Action[]>> = {
   viewer: {
     "*": ["read"],
   },
+  // Outside reviewer under NDA (src/lib/reviewer-access.ts): reads what the
+  // admin ticked, for a limited time. The wildcard is narrowed in
+  // checkPermission: never a closed scope, never anything but `read`.
+  reviewer: {
+    "*": ["read"],
+  },
 }
+
+/**
+ * Scopes a reviewer never reads, whatever was ticked: tenant administration,
+ * the people list, the audit journal and the social-legal contour.
+ */
+export const REVIEWER_CLOSED_SCOPES: ReadonlySet<string> = new Set<Module>([
+  "settings",
+  "users",
+  "audit",
+  "social-legal",
+])
 
 /**
  * Map API route paths to module names for automatic permission resolution.
@@ -973,6 +990,9 @@ export function methodToAction(method: string): Action {
 export function checkPermission(role: Role, module: Module | string, action: Action): boolean {
   const perms = ROLE_PERMISSIONS[role]
   if (!perms) return false
+  // A reviewer only reads, and never a closed scope — checked before the
+  // wildcard so no route can widen it by naming a module.
+  if (role === "reviewer" && (action !== "read" || REVIEWER_CLOSED_SCOPES.has(module))) return false
   // Wildcard roles (admin, viewer)
   if (perms["*"]?.includes(action)) return true
   // Module-specific
@@ -1060,4 +1080,4 @@ export const ALL_MODULES: { id: Module; group: string }[] = [
 ]
 
 export const ALL_ACTIONS: Action[] = ["read", "write", "delete", "export", "admin"]
-export const ALL_ROLES: Role[] = ["superadmin", "admin", "manager", "sales", "support", "ticketing", "viewer"]
+export const ALL_ROLES: Role[] = ["superadmin", "admin", "manager", "sales", "support", "ticketing", "viewer", "reviewer"]

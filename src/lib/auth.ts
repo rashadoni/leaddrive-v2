@@ -22,8 +22,25 @@ import { readTenantLandingPath } from "./tenant-landing"
 import { applyVerifiedTwoFactorSessionUpdate } from "./two-factor-nonce"
 import { requiresTwoFactorSetup, resolveTwoFactorMethod } from "./two-factor-policy"
 import { checkRateLimit, hashForRateLimit, RATE_LIMIT_CONFIG } from "./rate-limit"
+import { REVIEWER_ROLE, reviewerAccessOpen } from "./reviewer-grant"
 
 const AUTH_SECRET = requireAuthSecret()
+
+/**
+ * `undefined` for everyone but a reviewer. For a reviewer: the end of their
+ * grant as an ISO string while it is open (the proxy reads it without a DB
+ * round-trip), or `false` when the grant is missing, revoked or past its end
+ * date — the caller then refuses the token. Read fresh, under bypass, because
+ * this runs before any tenant context exists.
+ */
+async function reviewerAccessUntilFor(user: { id: string; role: string }): Promise<string | false | undefined> {
+  if (user.role !== REVIEWER_ROLE) return undefined
+  const grant = await runWithRlsBypass(() => prisma.reviewerAccessGrant.findUnique({
+    where: { userId: user.id },
+    select: { expiresAt: true, revokedAt: true },
+  }))
+  return reviewerAccessOpen(grant) ? new Date(grant!.expiresAt).toISOString() : false
+}
 
 /**
  * RLS: NextAuth's PrismaAdapter queries users/accounts/sessions during OAuth
@@ -295,6 +312,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (dbUser.role !== "superadmin" && dbUser.organization?.isActive !== true) {
           return null
         }
+        // An outside reviewer signs in only while their grant is open.
+        const reviewerAccessUntil = await reviewerAccessUntilFor(dbUser)
+        if (reviewerAccessUntil === false) return null
+        token.reviewerAccessUntil = reviewerAccessUntil ?? undefined
         // Exact, opaque credential epoch. This is intentionally derived from
         // the DB password state instead of JWT `iat` (seconds precision), so
         // a password change and a token issue in the same second cannot race.
@@ -419,6 +440,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (freshUser.role !== "superadmin" && freshUser.organization?.isActive !== true) {
             return null
           }
+          // A reviewer's session ends with their grant: at the end date, or the
+          // moment an admin closes it, whichever comes first.
+          const freshReviewerAccessUntil = await reviewerAccessUntilFor(freshUser)
+          if (freshReviewerAccessUntil === false) return null
+          token.reviewerAccessUntil = freshReviewerAccessUntil ?? undefined
           const currentSessionFingerprint = createSessionFingerprint({
             principalId: freshUser.id,
             passwordHash: freshUser.passwordHash,
@@ -522,6 +548,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           modules: (token.modules as Record<string, boolean>) || undefined,
           hiddenModules: (token.hiddenModules as string[] | undefined) || [],
           landingPath: (token.landingPath as string | undefined) || undefined,
+          reviewerAccessUntil: (token.reviewerAccessUntil as string | undefined) || undefined,
           needs2fa: token.needs2fa as boolean | undefined,
           twoFactorMethod: token.twoFactorMethod as "totp" | "sms" | undefined,
           needsSetup2fa: token.needsSetup2fa as boolean | undefined,

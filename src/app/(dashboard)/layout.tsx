@@ -31,6 +31,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { HelpVideoLauncher } from "@/components/help/help-video-launcher"
 import { PharmacyPromotionOutboxSync } from "@/components/mtm/pharmacy-promotion-outbox-sync"
 import { dashboardAssistantVisibility } from "@/lib/dashboard-assistant-visibility"
+import { ReviewerWatermark } from "@/components/reviewer-watermark"
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -165,6 +166,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <TooltipProvider delayDuration={200}>
           <LauncherPrefsProvider>
           <DashboardWallpaper />
+          <ReviewerWatermark />
           <div className="relative z-[2] flex h-screen min-w-0">
             {/* Portal target for the voice control's status line: inside this
                 stacking context so in-place dialogs (z-[60]) still cover it.
