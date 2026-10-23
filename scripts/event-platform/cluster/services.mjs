@@ -29,6 +29,9 @@ export function infraTopics(env) {
     { name: `ld.${env}.connect.config`, partitions: 1, replicationFactor: 3, config: compact },
     { name: `ld.${env}.connect.offset`, partitions: 3, replicationFactor: 3, config: compact },
     { name: `ld.${env}.connect.status`, partitions: 1, replicationFactor: 3, config: compact },
+    // Debezium heartbeats (see slotHeartbeat); only the latest one matters.
+    { name: heartbeatTopic(env), partitions: 1, replicationFactor: 3,
+      config: { 'cleanup.policy': 'delete', 'retention.ms': '86400000', 'min.insync.replicas': '2', 'unclean.leader.election.enable': 'false' } },
     { name: `ld.${env}.registry.journal`, partitions: 1, replicationFactor: 3, config: forever },
     { name: `ld.${env}.registry.snapshots`, partitions: 1, replicationFactor: 3, config: forever },
     // Change notifications the registry publishes (artifact created, etc.).
@@ -181,6 +184,18 @@ ${source ? `      - /etc/leaddrive-kafka/tls/source-postgres.pem:/etc/kafka/tls/
   return { 'connect.env': connect, 'registry.env': registry, 'compose.yml': compose }
 }
 
+// The outbox is quiet most of the time while the rest of the database writes
+// ~0.3 GB of WAL a day. Debezium confirms a position to the slot only after it
+// emits a record, so without heartbeats the slot keeps every byte of WAL since
+// the last outbox row (seen on production 2026-10-23: confirmed_flush_lsn stood
+// still while the server moved on). A heartbeat record carries the latest
+// position the server reported and lets Connect commit it. The topic sits under
+// the connect prefix that ld-connect may already write.
+export function heartbeatTopic(env) { return `ld.${env}.connect.heartbeat.ld.${env}.cdc-source` }
+export function slotHeartbeat(env) {
+  return { 'heartbeat.interval.ms': '60000', 'topic.heartbeat.prefix': `ld.${env}.connect.heartbeat` }
+}
+
 // Debezium outbox connector for one environment, from the reviewed template.
 // The password stays a FileConfigProvider reference.
 export function renderSourceConnector({ template, envName, source }) {
@@ -195,6 +210,7 @@ export function renderSourceConnector({ template, envName, source }) {
   for (const [token, value] of Object.entries(replacements)) text = text.replaceAll(token, value)
   if (/__[A-Z_]+__/.test(text)) throw new Error('unresolved placeholder in connector template')
   const connector = JSON.parse(text)
+  Object.assign(connector.config, slotHeartbeat(envName))
   if (connector.config['database.sslmode'] !== 'verify-full') throw new Error('connector must use sslmode=verify-full')
   return connector
 }
