@@ -53,6 +53,7 @@ import {
 import { DEFAULT_CURRENCY, CURRENCY_SYMBOLS } from "@/lib/constants"
 import { HelpButton } from "@/components/help/help-button"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
+import { InvoicePayLinkButton } from "@/components/invoices/invoice-pay-link-button"
 
 // ---------- Types ----------
 
@@ -887,6 +888,7 @@ export default function InvoiceDetailPage() {
             <Send className="h-4 w-4 mr-1" />
             {t("send")}
           </Button>
+          <InvoicePayLinkButton invoiceId={invoiceId} refreshKey={invoice?.balanceDue} />
           <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(true)}>
             <Download className="h-4 w-4 mr-1" />
             {t("downloadPdf")}

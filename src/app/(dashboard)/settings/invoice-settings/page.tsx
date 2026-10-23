@@ -16,6 +16,7 @@ import { DEFAULT_CURRENCY, CURRENCY_SYMBOLS } from "@/lib/constants"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { OnlinePaymentSettingsCard } from "@/components/invoices/online-payment-settings-card"
 
 type Loc = "en" | "ru" | "az"
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
@@ -590,6 +591,8 @@ export default function InvoiceSettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <OnlinePaymentSettingsCard />
 
       {/* Signer */}
       <Card>

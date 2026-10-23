@@ -12858,7 +12858,9 @@ model PaymentProvider {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   /**
-   * "stripe" | "paypal" | "yookassa" | "robokassa" (CHECK-enforced).
+   * "stripe" | "paypal" | "yookassa" | "robokassa" | "kapitalbank"
+   * (CHECK-enforced). A kapitalbank row keeps its password encrypted
+   * (src/lib/payments/kapitalbank/config.ts).
    */
   type           String
   name           String

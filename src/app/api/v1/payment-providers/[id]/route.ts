@@ -105,10 +105,18 @@ export const PATCH = withRlsAuth("payments", "write", async (req, auth, context:
   // Load existing to merge mode + credentials for vault guard
   const existing = await prisma.paymentProvider.findFirst({
     where: { id, organizationId: orgId },
-    select: { isTestMode: true, credentials: true },
+    select: { type: true, isTestMode: true, credentials: true },
   })
   if (!existing) {
     return NextResponse.json({ error: "Provider not found" }, { status: 404 })
+  }
+  if (existing.type === "kapitalbank") {
+    // Its password is stored only as tenant-bound ciphertext, which this
+    // generic route does not write.
+    return NextResponse.json(
+      { error: "Kapital Bank is configured in the invoice settings", code: "CONFIGURED_ELSEWHERE" },
+      { status: 400 },
+    )
   }
 
   const data: {

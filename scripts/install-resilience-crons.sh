@@ -65,6 +65,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/mtm-demo-pulse/ { next }
   /cron-trigger\.sh \/api\/cron\/sla-escalation/ { next }
   /cron-trigger\.sh \/api\/cron\/ticket-closure-requests/ { next }
+  /cron-trigger\.sh \/api\/cron\/kapitalbank-reconcile/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?renewal-alerts([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?contract-approval-escalations([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?contract-milestone-reminders([ ?]|$)/ { next }
@@ -138,6 +139,11 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # send racing the cron still deliver it once. Every minute, because the
   # promise to the user is "at the chosen time".
   printf '%s\n' "* * * * * $TRIGGER /api/cron/campaign-scheduled-send >> $LOG 2>&1"
+  # Kapital Bank has no server-to-server callback: a customer who paid and
+  # closed the tab on the bank's page never returns to tell us. This asks the
+  # bank about open card orders, the longest-waiting first, a bounded number
+  # per tick; recording is a conditional claim, so overlaps record once.
+  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/kapitalbank-reconcile >> $LOG 2>&1"
   # The demo organization's field day (owner decision 2026-09-22). A no-op for
   # every tenant without the hand-set `mtm-demo-pulse` flag; keyed writes make
   # a repeated or late tick harmless, and the endpoint holds its own lease.

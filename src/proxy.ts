@@ -659,13 +659,15 @@ const authMiddleware = auth(async (req) => {
     // the language of the manager who made it. Whoever opens it has no account
     // and usually no language cookie, and would otherwise always read Russian.
     // So does the ticket-closure link a customer gets by WhatsApp or e-mail: it
-    // is the language that customer is written to in.
+    // is the language that customer is written to in. An invoice link carries
+    // the invoice's document language.
     // The field app's download page (/field) is a link handed to clients'
     // agents; its AZ · RU · EN switch is `?lang=` too.
     const fieldAppPage = matchesPublicPath(pathname, "/field")
     const linkLocaleQuery = pathname.startsWith("/legal/")
       || pathname.startsWith("/share/location/")
       || pathname.startsWith("/ticket-closure/")
+      || pathname.startsWith("/portal/invoice/")
       || fieldAppPage
       ? req.nextUrl.searchParams.get("lang")
       : null

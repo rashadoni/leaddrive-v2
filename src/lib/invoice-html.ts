@@ -275,12 +275,20 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<string, { greeting: string; body: s
 export type EmailTemplateFields = { greeting?: string; body?: string; closing?: string; note?: string }
 
 /** Email body templates by language — supports custom templates from settings */
+function escapeHtmlAttribute(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}
+
 export function getEmailTemplate(
   lang: string,
-  data: { orgName: string; invoiceNumber: string; total: string; currency: string; dueDate: string; customMessage?: string },
+  data: {
+    orgName: string; invoiceNumber: string; total: string; currency: string; dueDate: string; customMessage?: string
+    /** The invoice page with a card-payment button; only when the invoice can be paid online. */
+    payUrl?: string
+  },
   customTemplates?: Record<string, EmailTemplateFields>
 ): { subject: string; html: string } {
-  const { orgName, invoiceNumber, total, currency, dueDate, customMessage } = data
+  const { orgName, invoiceNumber, total, currency, dueDate, customMessage, payUrl } = data
   const vars: Record<string, string> = { orgName, invoiceNumber, total, currency, dueDate }
 
   const subjectTemplates: Record<string, string> = {
@@ -316,6 +324,7 @@ export function getEmailTemplate(
       <br>
       <strong style="font-size: 24px; letter-spacing: 0.5px;">${total} ${currency}</strong>
     </div>
+    ${payUrl ? `<p style="text-align: center; margin: 0 0 20px;"><a href="${escapeHtmlAttribute(payUrl)}" style="display: inline-block; background: #0f766e; color: white; text-decoration: none; font-size: 15px; font-weight: 600; padding: 12px 28px; border-radius: 6px;">${lang === 'ru' ? 'Оплатить картой' : lang === 'en' ? 'Pay by card' : 'Kartla ödə'}</a></p>` : ''}
     <p style="font-size: 13px; color: #666; margin: 16px 0 8px;">📎 ${closing}</p>
     <hr style="border: none; border-top: 1px solid #e0f2f1; margin: 16px 0;">
     <p style="font-size: 12px; color: #999; margin: 0;">${note}</p>

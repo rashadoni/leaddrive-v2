@@ -44,7 +44,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const [user, setUser] = useState<PortalUser | null>(null)
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(false)
   const [supportAiEnabled, setSupportAiEnabled] = useState(false)
-  const isPublicPage = PUBLIC_PORTAL_PATHS.has(pathname)
+  // An invoice link (/portal/invoice/<token>) is opened by a customer with no
+  // portal account; the token is its credential.
+  const isPublicPage = PUBLIC_PORTAL_PATHS.has(pathname) || pathname.startsWith("/portal/invoice/")
 
   useEffect(() => {
     if (isPublicPage) return
