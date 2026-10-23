@@ -1,7 +1,7 @@
 /**
  * Save the Meta destination. Turning sending on needs the consent statement
- * («my forms collect consent») and a token that can read the pixel — checked
- * with Meta before anything is stored.
+ * («my forms collect consent») and a token that may send to the pixel —
+ * checked with Meta before anything is stored.
  */
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
@@ -13,7 +13,7 @@ import {
   metaDestinationView,
   saveMetaDestination,
 } from "@/lib/ad-conversions/destination"
-import { MetaApiError, verifyMetaPixel } from "@/lib/ad-conversions/meta"
+import { checkMetaToken, MetaApiError, metaAccessRefusal } from "@/lib/ad-conversions/meta"
 
 const saveSchema = z.object({
   publicId: z.string().trim().regex(/^\d{5,25}$/, "INVALID_PIXEL"),
@@ -42,13 +42,14 @@ export const PUT = withRlsAuth("settings", "write", async (req: NextRequest, aut
 
   if (input.isActive) {
     try {
-      await verifyMetaPixel(input.publicId, token)
+      await checkMetaToken(input.publicId, token)
     } catch (error) {
-      const network = error instanceof MetaApiError && error.code === "network"
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Meta refused", code: network ? "UNREACHABLE" : "INVALID_KEY" },
-        { status: network ? 502 : 400 },
-      )
+      const reason = error instanceof Error ? error.message : "Meta refused"
+      if (error instanceof MetaApiError && error.code === "network") {
+        return NextResponse.json({ error: reason, code: "UNREACHABLE" }, { status: 502 })
+      }
+      const refused = error instanceof MetaApiError ? metaAccessRefusal(error) : null
+      return NextResponse.json({ error: reason, reason, code: refused === "pixel" ? "NO_PIXEL_ACCESS" : "INVALID_KEY" }, { status: 400 })
     }
   }
 

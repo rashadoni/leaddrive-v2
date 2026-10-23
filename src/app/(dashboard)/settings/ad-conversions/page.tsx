@@ -59,7 +59,7 @@ export default function AdConversionsPage() {
       body: JSON.stringify(input),
     }).catch(() => null)
     const body = await response?.json().catch(() => null)
-    if (!response?.ok || !body?.success) return { ok: false as const, code: body?.code as string | undefined }
+    if (!response?.ok || !body?.success) return { ok: false as const, code: body?.code as string | undefined, reason: body?.reason as string | undefined }
     return { ok: true as const, view: body.data as DestinationView }
   }
 

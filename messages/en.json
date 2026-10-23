@@ -30727,6 +30727,9 @@
     "errTestCode": "Enter the test event code from Events Manager first.",
     "skip_too_old": "Older than Meta accepts (7 days).",
     "skip_gone": "The lead or deal was deleted.",
+    "missingToken": "Paste the access token first.",
+    "missingEvent": "Tick at least one event to send.",
+    "errNoPixelAccess": "This token cannot send to this pixel: generate it in the settings of the same pixel.",
     "lastSentAt": "Last sent {time}"
   }
 }
