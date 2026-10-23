@@ -31,6 +31,9 @@ export function infraTopics(env) {
     { name: `ld.${env}.connect.status`, partitions: 1, replicationFactor: 3, config: compact },
     { name: `ld.${env}.registry.journal`, partitions: 1, replicationFactor: 3, config: forever },
     { name: `ld.${env}.registry.snapshots`, partitions: 1, replicationFactor: 3, config: forever },
+    // Change notifications the registry publishes (artifact created, etc.).
+    { name: `ld.${env}.registry.events`, partitions: 1, replicationFactor: 3,
+      config: { 'cleanup.policy': 'delete', 'retention.ms': '604800000', 'min.insync.replicas': '2', 'unclean.leader.election.enable': 'false' } },
   ]
 }
 
@@ -131,6 +134,8 @@ export function renderServiceHost({ topology, inventory, clusterName, envName, h
     ['APICURIO_KAFKASQL_TOPIC', `ld.${envName}.registry.journal`],
     ['APICURIO_KAFKASQL_SNAPSHOTS_TOPIC', `ld.${envName}.registry.snapshots`],
     ['APICURIO_KAFKASQL_TOPIC_AUTO_CREATE', 'false'],
+    // Default is "registry-events", outside the registry's ACL prefix.
+    ['APICURIO_EVENTS_KAFKA_TOPIC', `ld.${envName}.registry.events`],
     ['APICURIO_KAFKA_COMMON_BOOTSTRAP_SERVERS', bootstrap],
     ...clientSecurity('APICURIO_KAFKA_COMMON_'),
     ['QUARKUS_HTTP_HOST', address],

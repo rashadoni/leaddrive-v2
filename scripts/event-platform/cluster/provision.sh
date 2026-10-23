@@ -170,6 +170,51 @@ case "${1:-}" in
     done < <(node "$here/render.mjs" topics "$env")
     ;;
 
+  apply-catalog)
+    # provision.sh apply-catalog CLUSTER ENV: topics (catalog + platform), SCRAM
+    # identities and ACLs in one session on one broker. Idempotent. Service
+    # passwords are generated once into $state/secrets (0600) and reused.
+    cluster="${2:-}"; env="${3:-}"
+    [[ "$env" =~ ^[a-z][a-z0-9]*$ ]] || die "ENV must match [a-z][a-z0-9]*"
+    broker="$(js 'const c = m.loadTopology().clusters.find((x) => x.name === process.argv[1]); if (!c) process.exit(1); console.log(c.hosts.find((h) => h.roles.includes("broker")).name)' "$cluster")" \
+      || die "unknown cluster $cluster"
+    bootstrap="$(js '
+      const [cluster, inv] = [process.argv[1], JSON.parse(process.argv[2])]
+      const c = m.loadTopology().clusters.find((x) => x.name === cluster)
+      console.log(c.hosts.filter((h) => h.roles.includes("broker") && inv.hosts[h.name]?.address).map((h) => `${inv.hosts[h.name].address}:${m.PORTS.replication}`).join(","))' "$cluster" "$(cat "$inventory")")"
+    image="$(js 'console.log(m.KAFKA_IMAGE)')"
+    mkdir -p "$state/secrets"
+    bundle="$(mktemp -d)"; trap 'rm -rf "$bundle"' EXIT
+    node --input-type=module -e "
+      import { writeFileSync } from 'node:fs'
+      import { expandCatalog, loadCatalog } from '$here/render.mjs'
+      import { infraTopics, aclBindings, PRINCIPALS } from '$here/services.mjs'
+      const env = process.argv[1], out = process.argv[2]
+      const catalog = expandCatalog(loadCatalog(), env)
+      const tsv = (t) => [t.name, t.partitions, t.replicationFactor, Object.entries(t.config).map(([k, v]) => k + '=' + v).join(',')].join('\t')
+      writeFileSync(out + '/topics.tsv', [...catalog, ...infraTopics(env)].map(tsv).join('\n') + '\n')
+      writeFileSync(out + '/acls.txt', aclBindings(env, catalog).map((a) => a.join(' ')).join('\n') + '\n')
+      writeFileSync(out + '/users.txt', Object.values(PRINCIPALS).join('\n') + '\n')
+    " "$env" "$bundle"
+    : >"$bundle/scram.txt"
+    while read -r user; do
+      secret="$state/secrets/$env-$user"
+      [ -s "$secret" ] || openssl rand -hex 24 >"$secret"
+      chmod 0600 "$secret"
+      printf '%s %s\n' "$user" "$(cat "$secret")" >>"$bundle/scram.txt"
+    done <"$bundle/users.txt"
+    admin_dir="$state/pki-$cluster/issued/kafka-admin"
+    on "$broker" 'install -d -m 0700 /run/ld-kafka-admin'
+    copy "$broker" 0600 root:root "$admin_dir/node.pem" /run/ld-kafka-admin/node.pem
+    copy "$broker" 0644 root:root "$admin_dir/ca.pem" /run/ld-kafka-admin/ca.pem
+    printf 'security.protocol=SSL\nssl.keystore.type=PEM\nssl.keystore.location=/client/node.pem\nssl.truststore.type=PEM\nssl.truststore.location=/client/ca.pem\n' \
+      | on "$broker" 'install -m 0600 /dev/stdin /run/ld-kafka-admin/admin.properties'
+    for f in topics.tsv acls.txt scram.txt; do copy "$broker" 0600 root:root "$bundle/$f" "/run/ld-kafka-admin/$f"; done
+    copy "$broker" 0700 root:root "$here/apply-catalog-remote.sh" /run/ld-kafka-admin/apply.sh
+    on "$broker" "trap 'rm -rf /run/ld-kafka-admin' EXIT; docker run --rm --network host --user 0 -v /run/ld-kafka-admin:/client:ro \
+      -e KAFKA_HEAP_OPTS='-Xms64m -Xmx512m' --entrypoint /bin/bash $image /client/apply.sh $bootstrap"
+    ;;
+
   verify)
     status=0
     while read -r name roles; do

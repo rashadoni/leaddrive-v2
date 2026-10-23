@@ -49,6 +49,9 @@ test('Connect and Registry talk to delivered brokers over SCRAM/TLS and listen o
   assert.match(files['connect.env'], /^CONNECT_TOPIC_CREATION_ENABLE=false$/m)
   assert.match(files['registry.env'], /^APICURIO_KAFKA_COMMON_SECURITY_PROTOCOL=SASL_SSL$/m)
   assert.match(files['registry.env'], /^QUARKUS_HTTP_HOST=10\.88\.0\.16$/m)
+  for (const topic of files['registry.env'].match(/^APICURIO_(KAFKASQL_TOPIC|KAFKASQL_SNAPSHOTS_TOPIC|EVENTS_KAFKA_TOPIC)=(.*)$/gm)) {
+    assert.match(topic, /=ld\.prod\.registry\./, `${topic} must sit under the registry ACL prefix`)
+  }
   for (const f of Object.values(files)) assert.doesNotMatch(f, /password=|JAAS_CONFIG/i, 'no secret in rendered files')
   assert.throws(() => renderServiceHost({ topology, inventory, clusterName: 'primary', envName: 'prod', hostName: 'kafka-p-broker-eu' }), /not a connect/)
 })
