@@ -58,6 +58,7 @@ function statePayload(res: Response): Record<string, unknown> {
 }
 
 beforeEach(() => {
+  for (const key of ["APP_ID", "APP_SECRET", "LOGIN_CONFIG_ID", "VERIFY_TOKEN"]) delete process.env[`FACEBOOK_MESSENGER_${key}`]
   findFirst.mockReset()
   findMany.mockReset()
   count.mockReset()
@@ -177,5 +178,37 @@ describe("instagram/start with ?app=", () => {
   it("refuses a Facebook-Login row on the Instagram-Login surface", async () => {
     findFirst.mockResolvedValue({ ...IG_STAGED, channelType: "facebook", settings: { appReviewOnly: true } })
     expect((await igStart(igReq("?app=cfg_ig"))).status).toBe(400)
+  })
+})
+
+
+describe("approved shared Messenger provider", () => {
+  function enableProvider() {
+    process.env.FACEBOOK_MESSENGER_APP_ID = "APP_APPROVED"
+    process.env.FACEBOOK_MESSENGER_APP_SECRET = "provider-secret"
+    process.env.FACEBOOK_MESSENGER_LOGIN_CONFIG_ID = "CONFIG_APPROVED"
+    process.env.FACEBOOK_MESSENGER_VERIFY_TOKEN = "provider-verify"
+  }
+  it("a new client gets the approved business-login configuration and a signed provider binding", async () => {
+    enableProvider()
+    const res = await fbStart(fbReq("?from=channels-facebook"))
+    const params = new URL(res.headers.get("location")!).searchParams
+    expect(params.get("client_id")).toBe("APP_APPROVED")
+    expect(params.get("config_id")).toBe("CONFIG_APPROVED")
+    expect(params.get("scope")).toBeNull()
+    expect(statePayload(res).messengerAppId).toBe("APP_APPROVED")
+  })
+  it("does not redirect to the legacy app if provider configuration is incomplete", async () => {
+    enableProvider()
+    delete process.env.FACEBOOK_MESSENGER_APP_SECRET
+    const res = await fbStart(fbReq("?from=channels-facebook"))
+    expect(res.status).toBe(503)
+    expect(res.headers.get("location")).toBeNull()
+  })
+  it("monitoring and tenant-owned apps retain their own app", async () => {
+    enableProvider()
+    expect(new URL((await fbStart(fbReq(""))).headers.get("location")!).searchParams.get("client_id")).toBe("1276226757359622")
+    findMany.mockResolvedValue([{ ...STAGED, appId: "TENANT_APP", settings: {} }])
+    expect(new URL((await fbStart(fbReq("?from=channels-facebook"))).headers.get("location")!).searchParams.get("client_id")).toBe("TENANT_APP")
   })
 })

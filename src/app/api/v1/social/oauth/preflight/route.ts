@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { getSharedMessengerApp, SHARED_MESSENGER_WEBHOOK_PATH } from "@/lib/social/shared-messenger-app"
 import { APP_URL } from "@/lib/domains"
 import { withSocialConnectAuth } from "@/lib/social/oauth-access"
 import {
@@ -97,14 +98,16 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
     (r) => r.channelType === "instagram" && isIgLogin(r.settings) && r.isActive && r.verifyToken,
   )
 
-  const facebook: SurfaceReport = {
-    appId: pinnedFb?.appId || tenantFb?.appId || process.env.FACEBOOK_APP_ID || null,
-    source: pinnedFb ? "pinned" : tenantFb ? "tenant" : process.env.FACEBOOK_APP_ID ? "env" : "none",
-    hasAppSecret: Boolean(pinnedFb?.appSecret || tenantFb?.appSecret || process.env.FACEBOOK_APP_SECRET),
-    hasVerifyToken: Boolean(pinnedFb?.hasVerifyToken || fbWebhookRow?.verifyToken || process.env.FACEBOOK_VERIFY_TOKEN),
+  const messenger = !pinnedFb && !tenantFb ? getSharedMessengerApp() : null
+  const facebook: SurfaceReport & { loginConfigId?: string; ready?: boolean } = {
+    appId: pinnedFb?.appId || tenantFb?.appId || messenger?.appId || process.env.FACEBOOK_APP_ID || null,
+    source: pinnedFb ? "pinned" : tenantFb ? "tenant" : messenger || process.env.FACEBOOK_APP_ID ? "env" : "none",
+    hasAppSecret: messenger ? Boolean(messenger.appSecret) : Boolean(pinnedFb?.appSecret || tenantFb?.appSecret || process.env.FACEBOOK_APP_SECRET),
+    hasVerifyToken: messenger ? Boolean(messenger.verifyToken) : Boolean(pinnedFb?.hasVerifyToken || fbWebhookRow?.verifyToken || process.env.FACEBOOK_VERIFY_TOKEN),
     oauthRedirectUri: process.env.FACEBOOK_REDIRECT_URI || null,
-    webhookCallbackUrl: tenantWebhook("/api/v1/webhooks/facebook"),
-    webhookVerifyTokenSource: pinnedFb?.hasVerifyToken || fbWebhookRow?.verifyToken
+    webhookCallbackUrl: messenger ? `${APP_URL}${SHARED_MESSENGER_WEBHOOK_PATH}` : tenantWebhook("/api/v1/webhooks/facebook"),
+    ...(messenger ? { loginConfigId: messenger.loginConfigId, ready: messenger.ready } : {}),
+    webhookVerifyTokenSource: messenger ? (messenger.verifyToken ? "env" : "none") : pinnedFb?.hasVerifyToken || fbWebhookRow?.verifyToken
       ? "tenant-config"
       : process.env.FACEBOOK_VERIFY_TOKEN ? "env" : "none",
   }
