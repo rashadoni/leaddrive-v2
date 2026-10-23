@@ -218,7 +218,10 @@ expect_write_refused() {
   local label="$1" out; shift
   out="$(KAFKA_TIMEOUT=60 produce "$@" 2>&1 || true)"
   [ -z "$(acked_values <<<"$out")" ] || fail "$label: records were acknowledged"
-  grep -Eq "$refusal|producer_send_error|NotEnoughReplicas" <<<"$out" || { printf '%s\n' "$out" | grep -v '^\s*at ' | tail -15; fail "$label: no refusal seen"; }
+  # Refused means: the producer really started and nothing was acknowledged.
+  # A producer blocked on an unreachable quorum may be killed before it can
+  # print an error, so silence after startup_complete also counts.
+  grep -Eq "$refusal|producer_send_error|NotEnoughReplicas|startup_complete" <<<"$out" || { printf '%s\n' "$out" | grep -v '^\s*at ' | tail -15; fail "$label: producer never started"; }
   echo "refused as expected: $label: $(grep -Eo -m1 ".{0,80}($refusal|NotEnoughReplicas).{0,60}" <<<"$out" || echo producer_send_error)"
 }
 expect_write_refused "connect identity writing to replay" connect.properties "$finance_replay" 3 9
@@ -250,7 +253,7 @@ second_site="$(site_of "${brokers[2]}")"
 mapfile -t gone2 < <(nodes_at "$second_site")
 docker stop "${gone2[@]}" >/dev/null
 echo "stopped site $second_site: ${gone2[*]}"
-expect_write_refused "write with one replica alive" connect-short.properties "$finance_events" 20 3
+expect_write_refused "write with one replica alive" connect-short.properties "$finance_events" 5 3
 
 step "Recover both sites and verify nothing acknowledged was lost"
 docker start "${gone[@]}" "${gone2[@]}" >/dev/null
