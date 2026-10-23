@@ -333,14 +333,13 @@ docker exec "$pg" sh -c 'echo "hostssl replication leaddrive_event_cdc all scram
 docker exec "$pg" psql -qU postgres -c 'SELECT pg_reload_conf()' >/dev/null
 outbox_row() { # outbox_row N -> one INSERT for a finance event of tenant A or B
   local n="$1" org="org-$(( $1 % 2 ))" key="org-$(( $1 % 2 )):fund:fund-1"
-  printf "INSERT INTO public.event_outbox VALUES (gen_random_uuid(), '%s', gen_random_uuid(), 'finance.fund-transaction-recorded.v1', 'leaddrive.domain.finance.v1', '%s', jsonb_build_object('aggregateversion', %d, 'n', %d), md5('%d'), now());\n" "$org" "$key" "$n" "$n" "$n"
+  printf "INSERT INTO \"event_outbox\" (\"organizationId\", \"eventId\", \"eventType\", topic, \"partitionKey\", envelope, \"payloadHash\") VALUES ('%s', gen_random_uuid(), 'finance.fund-transaction-recorded.v1', 'leaddrive.domain.finance.v1', '%s', jsonb_build_object('aggregateversion', %d, 'n', %d), encode(sha256(convert_to('%d', 'UTF8')), 'hex'));\n" "$org" "$key" "$n" "$n" "$n"
 }
 {
+  # The exact table definition from the foundation migration: column types
+  # decide how Debezium encodes each field (TIMESTAMP(3) -> INT64 for EventRouter).
+  awk '/CREATE TABLE "event_outbox"/,/\);/' "$repo/prisma/migrations/20260901090000_event_platform_foundation/migration.sql"
   cat <<SQL
-CREATE TABLE public.event_outbox (
-  id uuid PRIMARY KEY, "organizationId" text NOT NULL, "eventId" uuid NOT NULL, "eventType" text NOT NULL,
-  topic text NOT NULL, "partitionKey" text NOT NULL, envelope jsonb NOT NULL, "payloadHash" text NOT NULL,
-  "createdAt" timestamptz NOT NULL);
 CREATE ROLE leaddrive_event_cdc LOGIN REPLICATION PASSWORD '$cdc_password';
 GRANT SELECT ON public.event_outbox TO leaddrive_event_cdc;
 CREATE PUBLICATION leaddrive_event_outbox FOR TABLE public.event_outbox WITH (publish = 'insert');
