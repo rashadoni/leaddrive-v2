@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises"
 import path from "path"
 import { runtimePublicUploadsRoot } from "@/lib/runtime-paths"
-import { decodeTenantFileBytes } from "@/lib/crypto/tenant-file-encryption"
+import { openTenantFileBytes } from "@/lib/crypto/tenant-file-encryption"
 
 /**
  * Secure read of an inbox attachment the composer previously uploaded via POST /api/v1/inbox/upload
@@ -50,7 +50,7 @@ export async function readInboxAttachment(
     if (!filePath.startsWith(uploadsRoot + path.sep)) return null
 
     // Decoded under the session's tenant; another tenant's envelope throws → null.
-    const buffer = decodeTenantFileBytes(organizationId, await readFile(filePath))
+    const buffer = await openTenantFileBytes(organizationId, await readFile(filePath))
     const ext = path.extname(filename).slice(1).toLowerCase()
     const mime = MIME_BY_EXT[ext] || "application/octet-stream"
     return { buffer, filename, mime }

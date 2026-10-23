@@ -2,6 +2,11 @@ import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:cr
 import { createReadStream } from "fs"
 import { Readable } from "stream"
 import { deriveTenantFileEncryptionKey } from "@/lib/crypto/tenant-pii-encryption"
+import {
+  currentTenantDataKey,
+  tenantDataKeyForRead,
+  tenantDataKeyRingNeedsRefresh,
+} from "@/lib/crypto/tenant-data-key-cache"
 
 /**
  * Encryption at rest for uploaded files (chat media, contract/task/ticket
@@ -13,9 +18,11 @@ import { deriveTenantFileEncryptionKey } from "@/lib/crypto/tenant-pii-encryptio
  *   then one record per chunk: AES-256-GCM ciphertext | tag(16)
  *
  * • Key: per-file key = HKDF-SHA256(tenant file key, salt, info + orgId). The
- *   tenant file key comes from `keyId`; "t1" is the HKDF-derived key of
- *   `TENANT_PII_MASTER_KEY`. A future stored/wrapped tenant key gets a new id
- *   and old envelopes keep reading under theirs.
+ *   tenant file key comes from `keyId`: "t1" is the HKDF-derived key of
+ *   `TENANT_PII_MASTER_KEY`; "d<N>" is derived from version N of the
+ *   organization's stored data key (`tenant_data_keys`, stage 2b). New
+ *   envelopes take "d<N>" when that key is loaded in this process and "t1"
+ *   otherwise; both keep reading.
  * • Nonce: 7 zero bytes | chunk index (u32) | last-chunk flag. A fresh random
  *   salt makes every file's key unique, so the counter nonce never repeats
  *   under one key.
@@ -34,7 +41,8 @@ import { deriveTenantFileEncryptionKey } from "@/lib/crypto/tenant-pii-encryptio
 
 const MAGIC = Buffer.from("LDFE", "ascii")
 const FORMAT_VERSION = 1
-const CURRENT_KEY_ID = "t1"
+const DERIVED_KEY_ID = "t1"
+const DATA_KEY_ID = /^d([1-9][0-9]{0,8})$/
 const DEFAULT_CHUNK_BYTES = 64 * 1024
 const MIN_CHUNK_BYTES = 4 * 1024
 const MAX_CHUNK_BYTES = 4 * 1024 * 1024
@@ -70,19 +78,57 @@ function recordCountFor(plaintextBytes: number, chunkBytes: number): number {
   return Math.max(1, Math.ceil(plaintextBytes / chunkBytes))
 }
 
+/** The data key version an envelope's key id names, or null for "t1" and unknown ids. */
+function dataKeyVersionOf(keyId: string): number | null {
+  const match = DATA_KEY_ID.exec(keyId)
+  return match ? Number(match[1]) : null
+}
+
+/**
+ * The tenant key of an envelope. A "d<N>" envelope whose data key is not
+ * loaded throws `TenantDataKeyUnavailableError` — use the async readers
+ * (`openTenantFileBytes`, `openTenantFileStream`), which load it first.
+ */
 function tenantKeyFor(orgId: string, keyId: string): Buffer {
-  if (keyId === CURRENT_KEY_ID) return deriveTenantFileEncryptionKey(orgId)
+  if (keyId === DERIVED_KEY_ID) return deriveTenantFileEncryptionKey(orgId)
+  const version = dataKeyVersionOf(keyId)
+  if (version !== null) {
+    const material = tenantDataKeyForRead(orgId, version)
+    if (material) return material.file
+  }
   throw new TenantFileIntegrityError()
 }
 
-function fileKeyFor(orgId: string, header: Pick<TenantFileHeader, "keyId" | "salt">): Buffer {
+/** Load the organization's data keys when this envelope needs one that is not in memory. */
+async function loadKeyFor(orgId: string, keyId: string): Promise<void> {
+  if (dataKeyVersionOf(keyId) === null || !tenantDataKeyRingNeedsRefresh(orgId)) return
+  // Lazy: the key service imports the Prisma client, which this module otherwise never needs.
+  const { ensureTenantDataKeys } = await import("@/lib/crypto/tenant-data-keys")
+  await ensureTenantDataKeys(orgId)
+}
+
+/** Key id of a stored envelope ("t1", "d1", …), or null for a plain legacy file. */
+export function tenantFileKeyId(stored: Buffer): string | null {
+  if (!isTenantFileEnvelope(stored)) return null
+  try {
+    return parseHeader(stored).keyId
+  } catch {
+    return null
+  }
+}
+
+function fileKeyFrom(tenantKey: Buffer, orgId: string, salt: Buffer): Buffer {
   return Buffer.from(hkdfSync(
     "sha256",
-    tenantKeyFor(orgId, header.keyId),
-    header.salt,
+    tenantKey,
+    salt,
     Buffer.from(`${FILE_KEY_INFO}\0${orgId}`, "utf8"),
     32,
   ))
+}
+
+function fileKeyFor(orgId: string, header: Pick<TenantFileHeader, "keyId" | "salt">): Buffer {
+  return fileKeyFrom(tenantKeyFor(orgId, header.keyId), orgId, header.salt)
 }
 
 function nonceFor(index: number, last: boolean): Buffer {
@@ -167,9 +213,11 @@ export function sealTenantFile(
     throw new RangeError("sealTenantFile: chunkBytes out of range")
   }
   const salt = randomBytes(SALT_BYTES)
-  const headerBytes = buildHeader(CURRENT_KEY_ID, chunkBytes, plaintext.byteLength, salt)
+  const dataKey = currentTenantDataKey(orgId)
+  const keyId = dataKey ? `d${dataKey.version}` : DERIVED_KEY_ID
+  const headerBytes = buildHeader(keyId, chunkBytes, plaintext.byteLength, salt)
   const header = parseHeader(headerBytes)
-  const key = fileKeyFor(orgId, header)
+  const key = dataKey ? fileKeyFrom(dataKey.material.file, orgId, header.salt) : fileKeyFor(orgId, header)
   const parts: Buffer[] = [headerBytes]
   for (let index = 0; index < header.recordCount; index += 1) {
     const start = index * chunkBytes
@@ -190,6 +238,9 @@ export function sealTenantFile(
  * Plain bytes of a stored file: decrypts an envelope, passes a legacy plain
  * file through. `orgId` is the tenant the caller has already authorized; an
  * envelope written for another tenant fails rather than decrypting.
+ *
+ * Synchronous: a "d<N>" envelope needs the organization's data key already in
+ * memory. Readers use `openTenantFileBytes`, which loads it.
  */
 export function decodeTenantFileBytes(orgId: string | null | undefined, stored: Buffer): Buffer {
   if (!isTenantFileEnvelope(stored)) return stored
@@ -205,6 +256,18 @@ export function decodeTenantFileBytes(orgId: string | null | undefined, stored: 
     offset += recordLength
   }
   return Buffer.concat(parts)
+}
+
+/**
+ * `decodeTenantFileBytes` for readers: loads the organization's data key
+ * first when the envelope was written under one.
+ */
+export async function openTenantFileBytes(orgId: string | null | undefined, stored: Buffer): Promise<Buffer> {
+  if (orgId) {
+    const keyId = tenantFileKeyId(stored)
+    if (keyId) await loadKeyFor(orgId, keyId)
+  }
+  return decodeTenantFileBytes(orgId, stored)
 }
 
 async function* decryptRecords(
@@ -281,6 +344,7 @@ export async function openTenantFileStream(
     if (!orgId) throw new TenantFileIntegrityError("TENANT_FILE_TENANT_REQUIRED")
     const header = parseHeader(head)
     if (storedBytes !== header.encryptedBytes) throw new TenantFileIntegrityError()
+    await loadKeyFor(orgId, header.keyId)
     // Open the first record now: a wrong tenant or key fails its tag here,
     // before the caller has sent a status or a single header.
     const records = decryptRecords(orgId, header, head, iterator)

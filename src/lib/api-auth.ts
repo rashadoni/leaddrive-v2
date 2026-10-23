@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "./auth"
 import { prisma } from "./prisma"
 import { runWithRlsBypass, enterTenantContext } from "./rls-context"
+import { preloadTenantDataKeys } from "./crypto/tenant-data-keys"
 import { isMtmApiPath } from "./mtm/mobile-api-path"
 import { isMtmWebOnlyPath } from "./mtm-web-only"
 import { checkPermission, resolveModuleFromPath, methodToAction, PERMISSION_MODULE_TO_MODULE_ID, type Role, type Module, type Action } from "./permissions"
@@ -11,6 +12,16 @@ import { customerPhonePrivacyEnabled } from "./customer-phone-privacy"
 import { effectiveHiddenModules, hideableIdForGateModule } from "./user-module-access"
 import { getMobileAuth, resolveMobileAuth } from "./mobile-auth"
 import crypto from "crypto"
+
+/**
+ * Enter the tenant context for the rest of this request and load the
+ * organization's data key ring (`src/lib/crypto/tenant-data-keys.ts`), so the
+ * route's synchronous PII column reads and writes find it. The preload never
+ * throws; it is a Map lookup while the ring is fresh.
+ */
+async function enterTenant(orgId: string): Promise<void> {
+  if (enterTenantContext(orgId)) await preloadTenantDataKeys(orgId)
+}
 
 // In-memory cache for org status + module access checks
 const orgCache = new Map<string, { checkedAt: number; isActive: boolean; plan: string; addons: string[]; modules: Record<string, boolean> }>()
@@ -280,7 +291,7 @@ export async function getSession(_req: NextRequest): Promise<AuthResult | null> 
   // (e.g. `session?.orgId || await getOrgId(req)`), so without this the Postgres
   // RLS policies would fail-closed and return zero rows on that path. Mirrors the
   // entry getOrgId/requireAuth already do; enterTenantContext refuses empty orgId.
-  enterTenantContext(resolved.session.orgId)
+  await enterTenant(resolved.session.orgId)
   return resolved.session
 }
 
@@ -312,7 +323,7 @@ export async function requireSessionAuth(req: NextRequest): Promise<AuthResult |
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  enterTenantContext(resolved.session.orgId)
+  await enterTenant(resolved.session.orgId)
   return resolved.session
 }
 
@@ -391,7 +402,7 @@ async function getApiKeyAuth(req: NextRequest): Promise<ApiKeyAuthResult | null>
 export async function getOrgId(req: NextRequest): Promise<string | null> {
   const session = await getSession(req)
   if (session?.orgId) {
-    enterTenantContext(session.orgId)
+    await enterTenant(session.orgId)
     return session.orgId
   }
 
@@ -404,7 +415,7 @@ export async function getOrgId(req: NextRequest): Promise<string | null> {
   if (isMtmApiPath(pathname) && !isMtmWebOnlyPath(pathname)) {
     const mobileAuth = await resolveMobileAuth(req)
     if (mobileAuth?.orgId) {
-      enterTenantContext(mobileAuth.orgId)
+      await enterTenant(mobileAuth.orgId)
       return mobileAuth.orgId
     }
   } else {
@@ -432,7 +443,7 @@ export async function getOrgId(req: NextRequest): Promise<string | null> {
   }
   if (!apiKeyHasModule(apiKeyAuth, resolvedModule)) return null
 
-  enterTenantContext(apiKeyAuth.orgId)
+  await enterTenant(apiKeyAuth.orgId)
   return apiKeyAuth.orgId
 }
 
@@ -497,7 +508,7 @@ export async function requireAuth(
       if (!(await tenantBindingOk(req, apiKeyAuth.orgId))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 })
       }
-      enterTenantContext(apiKeyAuth.orgId)
+      await enterTenant(apiKeyAuth.orgId)
       return apiKeyAuth
     }
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -617,7 +628,7 @@ export async function requireAuth(
   // last statement before the single success return — every 401/403 gate above
   // returns without entering a context (fail-closed). Superadmin sessions enter
   // their own org here; requireSuperAdmin upgrades to bypass right after.
-  enterTenantContext(session.orgId)
+  await enterTenant(session.orgId)
   return session
 }
 

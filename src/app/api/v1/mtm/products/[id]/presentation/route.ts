@@ -69,7 +69,7 @@ export const GET = withRouteFieldWebRlsAuth<RouteContext>("read", async (_req, a
       const [fileStat, storedBytes] = await Promise.all([stat(filePath), readFile(filePath)])
       // An encrypted file is larger on disk than the recorded plain size, so the
       // plain size is compared after decoding.
-      const plainBytes = storedMobileDocumentBytes(auth.orgId, { isFile: fileStat.isFile(), size: fileStat.size }, storedBytes)
+      const plainBytes = await storedMobileDocumentBytes(auth.orgId, { isFile: fileStat.isFile(), size: fileStat.size }, storedBytes)
       if (!plainBytes || plainBytes.byteLength !== document.sizeBytes) {
         return NextResponse.json({ error: "Presentation file is unavailable", code: "MTM_PRODUCT_PRESENTATION_UNAVAILABLE" }, { status: 410 })
       }

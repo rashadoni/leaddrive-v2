@@ -44,6 +44,7 @@ import {
   blindIndexForTenant,
   softDecryptForTenant,
 } from "./tenant-pii-encryption"
+import { preloadTenantDataKeys } from "./tenant-data-keys"
 
 export type BackfillTable =
   | "citizens"
@@ -164,6 +165,8 @@ export async function runBlindIndexBackfill(
         let skippedEmpty = 0
         const updatedByOrg: Record<string, number> = {}
         for (const row of rows) {
+          // A v2 value needs the organization's data key in memory.
+          await preloadTenantDataKeys(row.organizationId)
           const plaintext = softDecryptForTenant(
             row.organizationId,
             row.plain,
