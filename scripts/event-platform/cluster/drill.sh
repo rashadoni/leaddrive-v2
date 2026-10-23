@@ -409,10 +409,13 @@ schema='{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object
 body="$(node -e 'console.log(JSON.stringify({ artifactId: "fund-transaction-recorded", artifactType: "JSON", firstVersion: { content: { content: process.argv[1], contentType: "application/json" } } }))' "$schema")"
 printf '%s' "$body" | docker exec -i kafka-p-connect-eu curl -fsS -X POST -H 'Content-Type: application/json' --data @- \
   "http://kafka-p-connect-eu-registry:8080/apis/registry/v3/groups/drill/artifacts" >/dev/null || fail "registry rejected the schema"
+schema_content() { docker exec kafka-p-connect-eu curl -fsS "http://kafka-p-connect-eu-registry:8080/apis/registry/v3/groups/drill/artifacts/fund-transaction-recorded/versions/branch=latest/content"; }
+wait_until "schema readable before restart" 20 schema_content
 docker restart kafka-p-connect-eu-registry >/dev/null
 wait_until "Registry after restart" 60 registry_up
-fetched="$(docker exec kafka-p-connect-eu curl -fsS "http://kafka-p-connect-eu-registry:8080/apis/registry/v3/groups/drill/artifacts/fund-transaction-recorded/versions/branch=latest/content")" \
-  || fail "schema lost after registry restart"
+# The HTTP endpoint answers before KafkaSQL has replayed its journal.
+for _ in $(seq 30); do schema_content >/dev/null 2>&1 && break; sleep 3; done
+fetched="$(schema_content)" || fail "schema lost after registry restart"
 grep -q '"amount"' <<<"$fetched" || fail "schema content changed after restart"
 echo "schema registered, registry restarted, schema read back from the KafkaSQL journal"
 
