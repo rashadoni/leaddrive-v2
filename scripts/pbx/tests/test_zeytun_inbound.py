@@ -1,4 +1,5 @@
 import ast
+import base64
 import importlib.util
 import json
 import os
@@ -383,8 +384,10 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertTrue(relay.filter(self.content(turnComplete=True)))
         self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
         self.assertEqual(tts.texts, ["Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz?"])
+        # Two TTS chunks, then the clip's tail silence, then the held boundaries.
         self.assertEqual(self.kinds(), [("audio", "Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz? "),
-                                        ("audio", None), ("generationComplete", None), ("turnComplete", None)])
+                                        ("audio", None), ("audio", None),
+                                        ("generationComplete", None), ("turnComplete", None)])
         # The provider's own audio never reached the core.
         self.assertNotIn("AQABAA==", json.dumps(self.injected))
 
@@ -466,6 +469,30 @@ class SpeechRelayTests(unittest.TestCase):
         event = self.content(" gözləyin.", audio=True)
         self.assertFalse(relay.filter(event))
         self.assertIn("modelTurn", event["serverContent"])
+
+    def test_a_turn_is_at_most_two_tts_requests(self):
+        # Per-sentence requests hit the station key's rate limit (HTTP 429).
+        tts = FakeTts()
+        relay = self.relay(tts)
+        relay.filter(self.content("Siyahınızda on beş qutu Parasetamol 500 mq Sopharma var. ", audio=True))
+        relay.filter(self.content("Qiyməti bir qutu üçün bir manat otuz üç qəpikdir. ", audio=True))
+        relay.filter(self.content("Seftriakson otuz ədəd Rotexmedica. Başqa nə əlavə edək?", audio=True))
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(tts.texts, ["Siyahınızda on beş qutu Parasetamol 500 mq Sopharma var.",
+            "Qiyməti bir qutu üçün bir manat otuz üç qəpikdir. Seftriakson otuz ədəd Rotexmedica. Başqa nə əlavə edək?"])
+
+    def test_each_clip_gets_air_before_and_after_and_a_soft_start(self):
+        relay = self.relay(FakeTts(chunks=1))
+        relay.filter(self.content("Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz? ", audio=True))
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        audio = [base64.b64decode(e["serverContent"]["modelTurn"]["parts"][0]["inlineData"]["data"])
+                 for e in self.injected if "modelTurn" in e["serverContent"]]
+        lead = 2 * 24 * relay.LEAD_SILENCE_MS
+        self.assertEqual(audio[0][:lead], b"\x00" * lead)  # air before the voice
+        self.assertEqual(audio[0][lead:lead + 2], b"\x00\x00")  # the fade starts from zero
+        self.assertEqual(audio[-1], b"\x00" * (2 * 24 * relay.TAIL_SILENCE_MS))  # air after it
 
     def test_withheld_model_audio_keeps_the_core_watchdog_fed(self):
         # 2026-10-23: after a barge-in the 2 s watchdog saw no line audio and

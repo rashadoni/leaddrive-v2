@@ -4,6 +4,7 @@ Embedded into a hash-pinned voice core by build-zeytun-inbound-core.py. No
 credential/catalog logging; no 1C calls; every lookup reauthorizes at the CRM.
 Protocol: https://ai.google.dev/api/live and /gemini-api/docs/live-api/tools.
 """
+import array
 import base64
 from decimal import Decimal
 import json
@@ -122,6 +123,13 @@ class ZeytunSpeechRelay:
     """
     MARK = "zeytunTtsRelay"
     MIN_CHARS = 40
+    # Each TTS clip starts and ends right on the voice; back to back on an
+    # 8 kHz line the first and last sounds were swallowed (owner, 2026-10-23:
+    # «слово обрывается, или начало, или конец»). Air before and after a
+    # clip, and a short fade-in against the click of a hard start.
+    LEAD_SILENCE_MS = 80
+    TAIL_SILENCE_MS = 160
+    FADE_IN_MS = 15
     TAIL_GRACE_SECONDS = 0.4  # output transcription may trail its generation
     # Whatever stalls the TTS path, a turn the model has spoken is never left
     # silent for longer than this: the caller then hears the model itself.
@@ -155,11 +163,14 @@ class ZeytunSpeechRelay:
     @staticmethod
     def _new_turn():
         return {"buffer": "", "pieces": [], "original": [], "held": [], "done_at": None, "created": time.monotonic(),
-                "final_taken": False, "finished": False, "cancelled": False,
+                "final_taken": False, "finished": False, "cancelled": False, "made": 0,
                 "passthrough": False, "spoken": False}
 
     def _split_locked(self, turn):
-        while True:
+        # Only the first sentence goes out alone (it sets the reply's delay);
+        # the rest of the turn is one request. Per-sentence requests hit the
+        # station key's TTS rate limit (HTTP 429, 2026-10-23 call: 13 requests).
+        while not turn["made"]:
             text, cut = turn["buffer"], None
             for match in re.finditer(r"[.!?…](?:\s|$)", text):
                 if match.end() >= self.MIN_CHARS:
@@ -170,6 +181,7 @@ class ZeytunSpeechRelay:
             piece, turn["buffer"] = text[:cut].strip(), text[cut:]
             if piece:
                 turn["pieces"].append(piece)
+                turn["made"] += 1
 
     def _cancel_all_locked(self, generation_over=False):
         for queued in self.turns:
@@ -268,6 +280,19 @@ class ZeytunSpeechRelay:
             self.lock.notify_all()
             return not content
 
+    @staticmethod
+    def _silence(ms):
+        return b"\x00\x00" * (24 * ms)
+
+    @classmethod
+    def _fade_in(cls, pcm):
+        samples = array.array("h")
+        samples.frombytes(pcm[: len(pcm) - len(pcm) % 2])
+        ramp = min(len(samples), 24 * cls.FADE_IN_MS)
+        for i in range(ramp):
+            samples[i] = int(samples[i] * i / ramp)
+        return samples.tobytes() + pcm[len(samples) * 2:]
+
     def _emit(self, content):
         self.inject({"serverContent": content, self.MARK: True})
 
@@ -327,6 +352,8 @@ class ZeytunSpeechRelay:
                     with self.lock:
                         self._cancel_all_locked()
                     return
+                if not heard[0]:
+                    pcm = self._silence(self.LEAD_SILENCE_MS) + self._fade_in(pcm)
                 content = {"modelTurn": {"parts": [{"inlineData": {
                     "mimeType": "audio/pcm;rate=24000", "data": base64.b64encode(pcm).decode("ascii")}}]}}
                 if not heard[0]:
@@ -352,6 +379,9 @@ class ZeytunSpeechRelay:
                 with self.lock:
                     self._cancel_all_locked()
                 break
+            if heard[0] and not turn["cancelled"] and self.speakable():
+                self._emit({"modelTurn": {"parts": [{"inlineData": {"mimeType": "audio/pcm;rate=24000",
+                    "data": base64.b64encode(self._silence(self.TAIL_SILENCE_MS)).decode("ascii")}}]}})
             if turn["final_taken"]:
                 break
         # This turn's audio is queued: the core gets its boundaries once the
