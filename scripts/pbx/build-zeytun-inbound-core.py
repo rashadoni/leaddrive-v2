@@ -65,6 +65,15 @@ def build(source, bridge):
             send = lambda payload: self._send_pharmacy_result(active_ws, epoch, payload)
             if self.pharmacy_bridge.handle(event, send, current):
                 return
+            relay = self.pharmacy_bridge.speech_relay(
+                GEMINI_KEY,
+                inject=lambda value: self._handle_gemini_event(value, self.ws),
+                speakable=lambda: not (self.closed or self.hangup_started or self.discarding_response),
+                alive=lambda: not self.closed,
+                room=lambda: self.output_queue.qsize() < GEMINI_LIVE_AUDIO_QUEUE_FRAMES * 4 // 5,
+                log=lambda status, **fields: latency("zeytun_tts", self.call_id, status=status, **fields))
+            if relay is not None and relay.filter(event, epoch):
+                return
         self._accept_resumption_update(event)
         if "goAway" in event:'''
     replace(anchor, replacement)

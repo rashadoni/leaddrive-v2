@@ -4,6 +4,7 @@ Embedded into a hash-pinned voice core by build-zeytun-inbound-core.py. No
 credential/catalog logging; no 1C calls; every lookup reauthorizes at the CRM.
 Protocol: https://ai.google.dev/api/live and /gemini-api/docs/live-api/tools.
 """
+import base64
 from decimal import Decimal
 import json
 import re
@@ -22,6 +23,301 @@ class ZeytunPilotUnavailable(Exception):
 class ZeytunNoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
+
+
+def zeytun_speakable_text(text):
+    """What the TTS reads: "1.33 manatdır" as "1 manat 33 qəpikdir".
+
+    The Live model says amounts in words but its transcript writes digits,
+    and the TTS reads that transcript. Only the predicate suffix is carried
+    over; any other suffix keeps the amount as it was written.
+    """
+    def money(match):
+        whole, cents, suffix = match.group(1), match.group(2), match.group(3)
+        cents = cents if len(cents) == 2 else cents + "0"
+        if suffix and not re.fullmatch(r"d[ıiuü]r", suffix):
+            return match.group(0)
+        if cents == "00":
+            return whole + " manat" + suffix
+        return whole + " manat " + str(int(cents)) + " qəpik" + ("dir" if suffix else "")
+    return re.sub(r"\b(\d+)[.,](\d{1,2})\s*(?:manat|AZN)(\w*)", money, text)
+
+
+class ZeytunGeminiTts:
+    """Streaming gemini TTS for one call: plain text in, PCM16 24 kHz out.
+
+    Plain text only - an instruction in the request is read aloud (measured
+    2026-10-23: the style prefix became the first 3.5 s of the sample).
+    """
+    MODELS = frozenset({"gemini-3.8-flash-tts"})
+
+    def __init__(self, key, model, voice, opener=None):
+        if not key or model not in self.MODELS or voice not in ZeytunInboundBridge.VOICES:
+            raise ZeytunPilotUnavailable("tts_unavailable")
+        self.url = ("https://generativelanguage.googleapis.com/v1beta/models/" + model
+                    + ":streamGenerateContent?alt=sse&key=" + urllib.parse.quote(key, safe=""))
+        self.voice = voice
+        self.open = opener or (lambda req, timeout: urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout))
+
+    def stream(self, text, on_pcm, keep_going):
+        body = {"contents": [{"role": "user", "parts": [{"text": text}]}],
+                "generationConfig": {"responseModalities": ["AUDIO"],
+                                     "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": self.voice}}}}}
+        req = urllib.request.Request(self.url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        produced = 0
+        with self.open(req, 10) as response:
+            for raw in response:
+                if not keep_going():
+                    return produced
+                line = raw.decode("utf-8", "replace").strip()
+                if not line.startswith("data:"):
+                    continue
+                payload = json.loads(line[5:])
+                for candidate in payload.get("candidates") or []:
+                    for part in (candidate.get("content") or {}).get("parts") or []:
+                        inline = part.get("inlineData") if isinstance(part, dict) else None
+                        if not isinstance(inline, dict) or not inline.get("data"):
+                            continue
+                        mime = str(inline.get("mimeType") or "").lower().replace(" ", "")
+                        if "rate=" in mime and "rate=24000" not in mime:
+                            raise ZeytunPilotUnavailable("tts_audio_format")
+                        pcm = base64.b64decode(inline["data"], validate=True)
+                        if len(pcm) % 2:
+                            raise ZeytunPilotUnavailable("tts_audio_format")
+                        produced += len(pcm)
+                        on_pcm(pcm)
+        return produced
+
+
+class ZeytunSpeechRelay:
+    """Re-voices the Live model's answers through a TTS voice the owner chose.
+
+    gemini-3.8-live cannot answer in TEXT (1007, 2026-10-23), so the model
+    still speaks; its audio is withheld and its own output transcription is
+    read by the TTS instead. Synthetic events carry that audio and text into
+    the core's ordinary handler, so playback, barge-in, the transcript, the
+    farewell hang-up and recovery see a normal Gemini turn. A turn's
+    generationComplete/turnComplete are held until its new audio is queued.
+    If the TTS fails before any of a turn is heard, the caller hears the
+    model's own audio for that turn instead of silence.
+
+    One turn is one provider generation: it ends at its turnComplete or at
+    interrupted, so audio still streaming from a cancelled generation is
+    dropped rather than spoken as a new answer.
+    """
+    MARK = "zeytunTtsRelay"
+    MIN_CHARS = 40
+    TAIL_GRACE_SECONDS = 0.4  # output transcription may trail its generation
+
+    def __init__(self, tts, inject, speakable, alive, room=None, log=None, clock=time.monotonic):
+        self.tts, self.inject, self.speakable, self.alive = tts, inject, speakable, alive
+        self.room = room or (lambda: True)
+        self.log = log or (lambda status, **fields: None)
+        self.clock = clock
+        self.lock = threading.Condition()
+        self.turns = []
+        self.epoch = None
+        self.worker = threading.Thread(target=self._run, name="zeytun-tts", daemon=True)
+        self.worker.start()
+
+    @staticmethod
+    def _new_turn():
+        return {"buffer": "", "pieces": [], "original": [], "held": [], "done_at": None,
+                "final_taken": False, "finished": False, "cancelled": False,
+                "passthrough": False, "spoken": False}
+
+    def _split_locked(self, turn):
+        while True:
+            text, cut = turn["buffer"], None
+            for match in re.finditer(r"[.!?…](?:\s|$)", text):
+                if match.end() >= self.MIN_CHARS:
+                    cut = match.end()
+                    break
+            if cut is None:
+                return
+            piece, turn["buffer"] = text[:cut].strip(), text[cut:]
+            if piece:
+                turn["pieces"].append(piece)
+
+    def _cancel_all_locked(self, generation_over=False):
+        for queued in self.turns:
+            queued["cancelled"] = True
+            if generation_over:
+                queued["finished"] = True
+        self.lock.notify_all()
+
+    def filter(self, event, epoch=None):
+        """Rewrites one provider event in place; True when nothing is left for the core."""
+        if event.pop(self.MARK, False):
+            return False
+        content = event.get("serverContent")
+        if not isinstance(content, dict):
+            return False
+        with self.lock:
+            if epoch != self.epoch:
+                # A replacement socket: nothing queued for the old one is owed.
+                self._cancel_all_locked(generation_over=True)
+                self.epoch = epoch
+            if content.get("interrupted") is True:
+                self._cancel_all_locked(generation_over=True)
+                for queued in self.turns:
+                    for key in queued["held"]:
+                        content[key] = True  # the dropped generation's boundaries, in order
+                    queued["held"] = []
+            last = self.turns[-1] if self.turns else None
+            if last is not None and last["passthrough"] and not last["finished"]:
+                if content.get("turnComplete") is True:
+                    last["finished"] = True
+                    self.lock.notify_all()
+                return False
+            audio = []
+            model_turn = content.get("modelTurn")
+            if isinstance(model_turn, dict) and isinstance(model_turn.get("parts"), list):
+                keep = []
+                for part in model_turn["parts"]:
+                    inline = part.get("inlineData") if isinstance(part, dict) else None
+                    (audio if isinstance(inline, dict) and inline.get("data") else keep).append(part)
+                if keep:
+                    model_turn["parts"] = keep
+                else:
+                    content.pop("modelTurn")
+            output = content.pop("outputTranscription", None)
+            text = output.get("text") if isinstance(output, dict) else None
+            text = text if isinstance(text, str) else ""
+            turn = last
+            if turn is not None and turn["finished"]:
+                # A transcript tail just after turnComplete still belongs to it.
+                late = (not audio and text.strip() and not turn["cancelled"] and not turn["final_taken"]
+                        and turn["done_at"] is not None and self.clock() - turn["done_at"] < self.TAIL_GRACE_SECONDS)
+                turn = turn if late else None
+            if turn is None and (audio or text.strip()):
+                turn = self._new_turn()
+                self.turns.append(turn)
+            if turn is None:
+                return not content
+            if not turn["cancelled"]:
+                turn["original"].extend(audio)
+                turn["buffer"] += text
+                self._split_locked(turn)
+            for key in ("generationComplete", "turnComplete"):
+                if content.get(key) is not True:
+                    continue
+                if key == "turnComplete":
+                    turn["finished"] = True
+                if turn["done_at"] is None:
+                    turn["done_at"] = self.clock()
+                if turn["cancelled"]:
+                    continue  # nothing of it is spoken any more: the core gets it now
+                content.pop(key)
+                turn["held"].append(key)
+            if turn["cancelled"] and turn["held"]:
+                for key in turn["held"]:
+                    content[key] = True  # boundaries held before the cancel
+                turn["held"] = []
+            self.lock.notify_all()
+            return not content
+
+    def _emit(self, content):
+        self.inject({"serverContent": content, self.MARK: True})
+
+    def _run(self):
+        while self.alive():
+            with self.lock:
+                if not self.turns:
+                    self.lock.wait(0.5)
+                    continue
+                turn = self.turns[0]
+            self._speak(turn)
+            with self.lock:
+                # Keep the generation until the provider ends it, so its
+                # stragglers are recognised as belonging to it.
+                while not turn["finished"] and self.alive():
+                    self.lock.wait(0.5)
+                if self.turns and self.turns[0] is turn:
+                    self.turns.pop(0)
+
+    def _next_piece_locked(self, turn):
+        while True:
+            if not self.alive():
+                return None
+            if not turn["cancelled"] and not self.speakable():
+                self._cancel_all_locked()
+            if turn["cancelled"]:
+                return None
+            if turn["pieces"]:
+                return turn["pieces"].pop(0)
+            if turn["done_at"] is not None and self.clock() - turn["done_at"] >= self.TAIL_GRACE_SECONDS:
+                turn["final_taken"] = True
+                piece, turn["buffer"] = turn["buffer"].strip(), ""
+                return piece or None
+            self.lock.wait(0.1 if turn["done_at"] is not None else 0.5)
+
+    def _speak(self, turn):
+        while True:
+            with self.lock:
+                piece = self._next_piece_locked(turn)
+            if piece is None:
+                break
+            heard = [False]
+
+            def on_pcm(pcm, piece=piece):
+                while not self.room() and self.speakable() and not turn["cancelled"]:
+                    time.sleep(0.05)
+                if turn["cancelled"] or not self.speakable():
+                    with self.lock:
+                        self._cancel_all_locked()
+                    return
+                content = {"modelTurn": {"parts": [{"inlineData": {
+                    "mimeType": "audio/pcm;rate=24000", "data": base64.b64encode(pcm).decode("ascii")}}]}}
+                if not heard[0]:
+                    content["outputTranscription"] = {"text": piece + " "}
+                    heard[0] = True
+                self._emit(content)
+                turn["spoken"] = True
+
+            try:
+                self.tts.stream(zeytun_speakable_text(piece), on_pcm,
+                                lambda: not turn["cancelled"] and self.speakable())
+            except Exception as error:
+                if not turn["spoken"]:
+                    with self.lock:
+                        turn["pieces"].insert(0, piece)
+                    self._fallback(turn, type(error).__name__)
+                    return
+                self.log("tts_failed_mid_turn", reason=type(error).__name__)
+                with self.lock:
+                    self._cancel_all_locked()
+                break
+            if turn["final_taken"]:
+                break
+        # This turn's audio is queued: the core gets its boundaries once the
+        # provider has sent them (a cancelled turn's boundaries go via filter).
+        with self.lock:
+            while not turn["finished"] and not turn["cancelled"] and self.alive():
+                self.lock.wait(0.5)
+            held, turn["held"] = turn["held"], []
+        for key in held:
+            self._emit({key: True})
+
+    def _fallback(self, turn, reason):
+        # Nothing of the TTS was heard: the caller hears the model instead.
+        with self.lock:
+            turn["passthrough"] = True
+            original, turn["original"] = turn["original"], []
+            text = (" ".join(turn["pieces"]) + " " + turn["buffer"]).strip()
+            turn["pieces"], turn["buffer"] = [], ""
+            held, turn["held"] = turn["held"], []
+        self.log("tts_fallback", reason=reason)
+        content = {}
+        if original:
+            content["modelTurn"] = {"parts": original}
+        if text:
+            content["outputTranscription"] = {"text": text}
+        for key in held:
+            content[key] = True
+        if content:
+            self._emit(content)
 
 
 class ZeytunInboundBridge:
@@ -87,6 +383,9 @@ class ZeytunInboundBridge:
         self.closing = None
         self.voice = None
         self.pin_language = True
+        self.tts_voice = None
+        self.tts_model = None
+        self.relay = None
 
     def _request(self, body):
         # The first session also builds the pinned catalog once. Keep that
@@ -142,6 +441,13 @@ class ZeytunInboundBridge:
             self.closing = closing
             self.voice = voice if voice in self.VOICES else None
             self.pin_language = pin is not False
+            # Owner, 2026-10-23: "эту ставь" - the gemini-3.8-flash-tts voice.
+            # Only a known model and voice switch the relay on; anything else
+            # keeps the model's own voice, never a guessed one.
+            speech = value.get("speech")
+            if (isinstance(speech, dict) and speech.get("engine") == "tts"
+                    and speech.get("model") in ZeytunGeminiTts.MODELS and speech.get("voice") in self.VOICES):
+                self.tts_model, self.tts_voice = speech["model"], speech["voice"]
             return {"prompt": prompt, "opening": opening, "maxSeconds": seconds, "closing": closing}
         except Exception:
             raise ZeytunPilotUnavailable("pilot_session_unavailable") from None
@@ -178,6 +484,15 @@ class ZeytunInboundBridge:
 
     def speech_voice(self):
         return self.voice
+
+    def speech_relay(self, key, inject, speakable, alive, room=None, log=None, tts=None):
+        """The call's TTS relay, created once; None while the model speaks itself."""
+        if self.tts_model is None:
+            return None
+        if self.relay is None:
+            engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice)
+            self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log)
+        return self.relay
 
     @staticmethod
     def query(args):
