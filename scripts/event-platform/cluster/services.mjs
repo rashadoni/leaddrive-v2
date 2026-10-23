@@ -91,12 +91,18 @@ export function registrySecretEnv(password) {
   return env([['APICURIO_KAFKA_COMMON_SASL_JAAS_CONFIG', scramJaas(PRINCIPALS.registry, password)]])
 }
 
-export function renderServiceHost({ topology, inventory, clusterName, envName, hostName, heap = { connect: 1024, registry: 512 } }) {
+// source: { tlsName, address } maps the source PostgreSQL's certificate name to
+// its overlay address inside the Connect container, so verify-full checks the
+// certificate the source already serves.
+export function renderServiceHost({ topology, inventory, clusterName, envName, hostName, heap = { connect: 1024, registry: 512 }, source }) {
   if (!/^[a-z][a-z0-9]*$/.test(envName)) throw new Error(`environment slug must match [a-z][a-z0-9]*: ${envName}`)
   const cluster = topology.clusters.find((c) => c.name === clusterName)
   const host = cluster?.hosts.find((h) => h.name === hostName)
   if (!host?.roles.includes('connect') || !host.roles.includes('registry')) throw new Error(`${hostName} is not a connect/registry host of ${clusterName}`)
   const address = addressOf(inventory, hostName)
+  if (source && (!/^[a-z0-9][a-z0-9.-]*\.[a-z]+$/.test(source.tlsName ?? '') || !/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(source.address ?? ''))) {
+    throw new Error('source needs the certificate host name and its 10.x overlay address')
+  }
   const bootstrap = cluster.hosts
     .filter((h) => h.roles.includes('broker') && inventory.hosts?.[h.name]?.address)
     .map((h) => `${addressOf(inventory, h.name)}:${PORTS.client}`).join(',')
@@ -124,6 +130,10 @@ export function renderServiceHost({ topology, inventory, clusterName, envName, h
     ['ADVERTISED_PORT', String(CONNECT_REST_PORT)],
     ['OFFSET_FLUSH_INTERVAL_MS', '1000'],
     ['HEAP_OPTS', `-Xms${heap.connect}m -Xmx${heap.connect}m`],
+    // The CDC database password is read from a mounted file at task start and
+    // never stored in the Connect config topic.
+    ['CONNECT_CONFIG_PROVIDERS', 'file'],
+    ['CONNECT_CONFIG_PROVIDERS_FILE_CLASS', 'org.apache.kafka.common.config.provider.FileConfigProvider'],
     ...clientSecurity('CONNECT_'),
     ...clientSecurity('CONNECT_PRODUCER_'),
     ...clientSecurity('CONNECT_CONSUMER_'),
@@ -153,7 +163,11 @@ services:
     env_file: [connect.env, connect.secret.env]
     volumes:
       - /etc/leaddrive-kafka/tls/ca.pem:/etc/kafka/tls/ca.pem:ro
-    logging: { driver: json-file, options: { max-size: 50m, max-file: "5" } }
+${source ? `      - /etc/leaddrive-kafka/tls/source-postgres.pem:/etc/kafka/tls/source-postgres.pem:ro
+      - /etc/leaddrive-kafka/services/secrets/cdc.properties:/etc/kafka/secrets/cdc.properties:ro
+    extra_hosts:
+      - "${source.tlsName}:${source.address}"
+` : ''}    logging: { driver: json-file, options: { max-size: 50m, max-file: "5" } }
   registry:
     image: ${REGISTRY_IMAGE}
     container_name: ${hostName}-registry
@@ -165,4 +179,22 @@ services:
     logging: { driver: json-file, options: { max-size: 50m, max-file: "5" } }
 `
   return { 'connect.env': connect, 'registry.env': registry, 'compose.yml': compose }
+}
+
+// Debezium outbox connector for one environment, from the reviewed template.
+// The password stays a FileConfigProvider reference.
+export function renderSourceConnector({ template, envName, source }) {
+  const replacements = {
+    __ENV__: envName,
+    __PGHOST__: source.tlsName,
+    __PGDATABASE__: source.dbname,
+    __SECRET_FROM_PROVIDER__: '${file:/etc/kafka/secrets/cdc.properties:password}',
+    __PG_SSL_ROOT_CERT_PATH__: '/etc/kafka/tls/source-postgres.pem',
+  }
+  let text = JSON.stringify(template)
+  for (const [token, value] of Object.entries(replacements)) text = text.replaceAll(token, value)
+  if (/__[A-Z_]+__/.test(text)) throw new Error('unresolved placeholder in connector template')
+  const connector = JSON.parse(text)
+  if (connector.config['database.sslmode'] !== 'verify-full') throw new Error('connector must use sslmode=verify-full')
+  return connector
 }

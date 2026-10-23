@@ -52,3 +52,15 @@ jobs:
           for c in $(docker ps -a --format '{{.Names}}' | grep '^kafka-p-'); do
             echo "::group::$c"; docker logs --tail 200 "$c" 2>&1; echo "::endgroup::"
           done
+
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      LD_KAFKA_DRILL_DISPOSABLE: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Source enrolment drill (PostgreSQL 16, snakeoil-pinned backups, CDC admission)
+        run: sudo --preserve-env=LD_KAFKA_DRILL_DISPOSABLE bash scripts/event-platform/cluster/source-drill.sh
