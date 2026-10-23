@@ -146,6 +146,12 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       if (raw === null) return input.action === "session" ? searchResponse({ enabled: false }) : denied()
       const config = inboundPilotConfigSchema.parse(raw)
       if (!active(config, clock())) return input.action === "session" ? searchResponse({ enabled: false }) : denied()
+      // Start the catalog for this grant now, before the call is proven: the
+      // answered session that needs it allows the station 5 s, and building
+      // the 14 MB snapshot on that request took longer on 2026-10-23 (nginx
+      // 499, silent call). loadCatalog keeps one promise per grant, so this
+      // only moves the work earlier; nothing of it reaches this response.
+      void dependencies.loadCatalog(config).catch(() => undefined)
       const rawCall = await dependencies.loadCall(config, input.callId)
       const call = eligibleCall(rawCall, config, input.callId, clock())
       if (!call) {
