@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { createInboundPilotHandler, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
+import { createInboundPilotHandler, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
 
 const now = Date.parse("2026-10-22T12:00:00Z"), token = "t".repeat(48)
@@ -39,6 +39,13 @@ function request(body: unknown = { action: "session", callId: call.providerCallI
 const search = () => request({ action: "search", callId: call.providerCallId, query: { text: "Medicine" } })
 
 describe("single-call inbound owner rehearsal", () => {
+  it("keeps the rehearsal texts inside the PBX bridge limits", () => {
+    // scripts/pbx/fanum-zeytun-inbound.py refuses a prompt over 4000 or an
+    // opening over 500 characters, and the call then never gets the pilot.
+    expect(ZEYTUN_INBOUND_PROMPT.length).toBeLessThanOrEqual(4000)
+    expect(ZEYTUN_INBOUND_OPENING.length).toBeLessThanOrEqual(500)
+  })
+
   it("opens an answered inbound test using complete international digits and no CRM subject", async () => {
     const f = fixture(), response = await f.handle(request()), body = await response.json()
     expect(response.status).toBe(200)

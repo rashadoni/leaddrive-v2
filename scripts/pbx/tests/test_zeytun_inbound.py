@@ -100,6 +100,9 @@ class TransportTests(unittest.TestCase):
         config["customVocabulary"].append("mutated")
         self.assertNotIn("mutated", self.bridge.transcription()["customVocabulary"])
 
+    def test_agent_voice_is_pinned_to_azerbaijani(self):
+        self.assertEqual(self.bridge.speech_language(), "az-AZ")
+
     def test_bad_args_never_start_network(self):
         for index, args in enumerate([{}, {"text": "x", "customerGuid": CALL}, {"url": "http://bad.test"},
                 {"text": "x" * 241}, {"text": 1}, {"externalId": "bad"}]):
@@ -261,11 +264,17 @@ class ArtifactTests(unittest.TestCase):
         # Ordinary AAC calls keep provider language detection untouched.
         self.assertEqual(setup["setup"]["inputAudioTranscription"], {})
         obj.pharmacy_preview = True
+        self.assertNotIn("languageCode", setup["setup"]["generationConfig"]["speechConfig"])
         obj.pharmacy_bridge = SimpleNamespace(tools=lambda: ["synthetic-declaration"],
-                                              transcription=lambda: {"languageCodes": ["az-AZ"]})
+                                              transcription=lambda: {"languageCodes": ["az-AZ"]},
+                                              speech_language=lambda: "az-AZ")
         pharmacy = globals_["_setup_event"](obj)["setup"]
         self.assertEqual(pharmacy["tools"], ["synthetic-declaration"])
         self.assertEqual(pharmacy["inputAudioTranscription"], {"languageCodes": ["az-AZ"]})
+        self.assertEqual(pharmacy["generationConfig"]["speechConfig"]["languageCode"], "az-AZ")
+        # The chosen voice stays the station's own.
+        self.assertEqual(pharmacy["generationConfig"]["speechConfig"]["voiceConfig"],
+                         setup["setup"]["generationConfig"]["speechConfig"]["voiceConfig"])
         # Every replacement session is built by the same method, so recovery
         # cannot silently fall back to per-turn language detection.
         self.assertEqual(globals_["_setup_event"](obj, "resume-handle")["setup"]["inputAudioTranscription"],
