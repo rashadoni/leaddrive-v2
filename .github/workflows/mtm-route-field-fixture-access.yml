@@ -1,0 +1,105 @@
+name: Deliver encrypted Route Field fixture access
+
+on:
+  pull_request:
+    paths:
+      - "scripts/mtm-route-field-fixture-access.mjs"
+      - "scripts/mtm-route-field-fixture-access.test.mjs"
+      - ".github/workflows/mtm-route-field-fixture-access.yml"
+  workflow_dispatch:
+    inputs:
+      expected_main_sha:
+        description: "Exact reviewed current main containing this read-only controller"
+        type: string
+        required: true
+      expected_deployed_sha:
+        description: "Exact currently deployed application SHA; no app deployment is performed"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-access:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    concurrency:
+      group: route-field-fixture-access-verify-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test recipient encryption, context binding, privacy and unsafe-file refusal
+        run: node --test scripts/mtm-route-field-fixture-access.test.mjs
+
+  deliver-encrypted-access:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: verify-access
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+      - name: Require the reviewed current main after acquiring the production lock
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          [ "$EXPECTED_MAIN_SHA" = "$GITHUB_SHA" ]
+          [ "$EXPECTED_MAIN_SHA" = "$(git rev-parse FETCH_HEAD)" ]
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Read only the fixed fictional credential and seal it to the pinned task recipient
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          [ "$SERVER_HOST" = 13.140.132.245 ] && [ "$SERVER_USER" = root ]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          RAW_OUTPUT="$(mktemp)"
+          trap 'rm -f "$RAW_OUTPUT"' EXIT
+          mkdir -p evidence
+          set +e
+          ssh -T -o ConnectTimeout=10 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+            "$SERVER_USER@$SERVER_HOST" \
+            "node --input-type=module - --seal-fixture-access '$EXPECTED_MAIN_SHA' '$EXPECTED_DEPLOYED_SHA'" \
+            < scripts/mtm-route-field-fixture-access.mjs > "$RAW_OUTPUT" 2>/dev/null
+          REMOTE_STATUS=$?
+          set -e
+          node scripts/mtm-route-field-fixture-access.mjs --validate-envelope "$EXPECTED_MAIN_SHA" "$EXPECTED_DEPLOYED_SHA" \
+            < "$RAW_OUTPUT" > evidence/route-field-fixture-access.json
+          [ "$REMOTE_STATUS" -eq 0 ]
+          node -e 'if (require("./evidence/route-field-fixture-access.json").status !== "PASS") process.exit(1)'
+      - name: Retain only encrypted access, never a plaintext credential
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: route-field-fixture-access-${{ github.run_id }}
+          path: evidence/route-field-fixture-access.json
+          retention-days: 1
+          if-no-files-found: ignore
