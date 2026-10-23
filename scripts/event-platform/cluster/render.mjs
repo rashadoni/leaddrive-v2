@@ -161,6 +161,116 @@ export function renderCluster({ topology, catalog, clusterName, inventory, heapS
   return files
 }
 
+export const WIREGUARD_PORT = 51820
+export const SOURCE_ROLE = 'source'
+// Overlay ports and the roles allowed to open them. Everything else on the
+// overlay, and every Kafka/Connect/Registry port on the public interface, is
+// dropped. Operators administer over SSH on the host itself.
+export const OVERLAY_RULES = [
+  { port: PORTS.client, on: 'broker', from: ['connect', 'mirror', 'monitoring', SOURCE_ROLE] },
+  { port: PORTS.replication, on: 'broker', from: ['broker'], sameCluster: true },
+  { port: PORTS.controller, on: 'controller', from: ['controller', 'broker'], sameCluster: true },
+  { port: 8080, on: 'registry', from: ['connect', 'monitoring', SOURCE_ROLE] },
+  { port: 5432, on: SOURCE_ROLE, from: ['connect'] },
+  { port: 9100, on: '*', from: ['monitoring'] },
+  { port: 7071, on: '*', from: ['monitoring'] },
+]
+
+// All hosts of every cluster, monitoring and the source host, with roles.
+export function meshMembers(topology) {
+  return [
+    ...topology.clusters.flatMap((c) => c.hosts.map((h) => ({ ...h, cluster: c.name }))),
+    ...topology.monitoring,
+    { name: topology.sourceHost.name, site: topology.sourceHost.site, roles: [SOURCE_ROLE] },
+  ]
+}
+
+function meshEntry(inventory, name) {
+  const entry = inventory.hosts?.[name] ?? {}
+  addressOf(inventory, name)
+  if (!/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(entry.address)) throw new Error(`${name}: overlay address must be a 10.x IPv4 address`)
+  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(entry.publicAddress ?? '')) throw new Error(`${name}: publicAddress must be an IPv4 address`)
+  if (!/^[A-Za-z0-9+/]{43}=$/.test(entry.wgPublicKey ?? '')) throw new Error(`${name}: wgPublicKey must be a WireGuard public key`)
+  return entry
+}
+
+// wg0.conf and an nftables ruleset for one mesh member. The private key stays
+// on the host (/etc/wireguard/ld-kafka.key) and is loaded by PostUp.
+export function renderHostNetwork({ topology, inventory, hostName }) {
+  const members = meshMembers(topology).filter((m) => inventory.hosts?.[m.name])
+  const self = members.find((m) => m.name === hostName)
+  if (!self) throw new Error(`${hostName} is not a mesh member in the inventory`)
+  const me = meshEntry(inventory, hostName)
+  const peers = members.filter((m) => m.name !== hostName).map((m) => ({ ...m, ...meshEntry(inventory, m.name) }))
+  const overlays = new Set(members.map((m) => meshEntry(inventory, m.name).address))
+  if (overlays.size !== members.length) throw new Error('overlay addresses must be unique')
+
+  const wg = [
+    '# Rendered by scripts/event-platform/cluster/render.mjs — do not edit on the host.',
+    '[Interface]',
+    `Address = ${me.address}/24`,
+    `ListenPort = ${WIREGUARD_PORT}`,
+    'PostUp = wg set %i private-key /etc/wireguard/ld-kafka.key',
+    ...peers.flatMap((p) => [
+      '',
+      `# ${p.name} (${p.site})`,
+      '[Peer]',
+      `PublicKey = ${p.wgPublicKey}`,
+      `AllowedIPs = ${p.address}/32`,
+      `Endpoint = ${p.publicAddress}:${WIREGUARD_PORT}`,
+      'PersistentKeepalive = 25',
+    ]),
+  ].join('\n') + '\n'
+
+  const accepts = []
+  for (const rule of OVERLAY_RULES) {
+    if (rule.on !== '*' && !self.roles.includes(rule.on)) continue
+    const sources = peers
+      .filter((p) => p.roles.some((r) => rule.from.includes(r)))
+      .filter((p) => !rule.sameCluster || p.cluster === self.cluster)
+      .map((p) => p.address)
+    if (sources.length) accepts.push(`    iifname "wg0" ip saddr { ${sources.join(', ')} } tcp dport ${rule.port} accept`)
+  }
+  const peerPublic = peers.map((p) => p.publicAddress)
+  if (self.roles.includes(SOURCE_ROLE)) {
+    // The production web/PostgreSQL host keeps its own firewall and public
+    // services; this table only confines the overlay and the tunnel port.
+    const nft = `#!/usr/sbin/nft -f
+# Rendered by scripts/event-platform/cluster/render.mjs — do not edit on the host.
+table inet ld_kafka
+delete table inet ld_kafka
+table inet ld_kafka {
+  chain input {
+    type filter hook input priority 0; policy accept;
+    udp dport ${WIREGUARD_PORT} ip saddr { ${peerPublic.join(', ')} } accept
+    udp dport ${WIREGUARD_PORT} drop
+    iifname "wg0" ct state established,related accept
+${accepts.join('\n')}
+    iifname "wg0" drop
+  }
+}
+`
+    return { 'wg0.conf': wg, 'nftables.conf': nft }
+  }
+  const nft = `#!/usr/sbin/nft -f
+# Rendered by scripts/event-platform/cluster/render.mjs — do not edit on the host.
+table inet ld_kafka
+delete table inet ld_kafka
+table inet ld_kafka {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    iif "lo" accept
+    ct state established,related accept
+    ct state invalid drop
+    ip protocol icmp accept
+    ip6 nexthdr ipv6-icmp accept
+    tcp dport 22 accept
+${peerPublic.length ? `    udp dport ${WIREGUARD_PORT} ip saddr { ${peerPublic.join(', ')} } accept\n` : ''}${accepts.join('\n')}${accepts.length ? '\n' : ''}  }
+}
+`
+  return { 'wg0.conf': wg, 'nftables.conf': nft }
+}
+
 // Production unit: host networking so listeners bind only to the WireGuard
 // address in server.properties; storage is formatted once and never re-formatted.
 function renderCompose(name) {
@@ -207,6 +317,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url) && process.argv[2] === 't
     const config = Object.entries(topic.config).map(([k, v]) => `${k}=${v}`).join(',')
     console.log([topic.name, topic.partitions, topic.replicationFactor, config].join('\t'))
   }
+} else if (process.argv[1] === fileURLToPath(import.meta.url) && process.argv[2] === 'network') {
+  // render.mjs network --inventory FILE --out DIR -> DIR/<host>/{wg0.conf,nftables.conf} for every member in the inventory
+  const args = parseArgs(process.argv.slice(3))
+  const topology = loadTopology()
+  const inventory = JSON.parse(readFileSync(args.inventory, 'utf8'))
+  for (const member of meshMembers(topology).filter((m) => inventory.hosts?.[m.name])) {
+    for (const [file, content] of Object.entries(renderHostNetwork({ topology, inventory, hostName: member.name }))) {
+      mkdirSync(path.join(args.out, member.name), { recursive: true })
+      writeFileSync(path.join(args.out, member.name, file), content, { mode: 0o644 })
+    }
+  }
+  console.log(`rendered network for ${Object.keys(inventory.hosts).length} inventory hosts`)
 } else if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2))
   for (const required of ['cluster', 'inventory', 'out']) if (!args[required]) throw new Error(`--${required} is required`)

@@ -35,7 +35,12 @@ jobs:
         with:
           node-version: 22
       - name: Topology and renderer unit tests
-        run: node --test scripts/event-platform/topology.test.mjs scripts/event-platform/cluster/render.test.mjs
+        run: node --test scripts/event-platform/topology.test.mjs scripts/event-platform/cluster/render.test.mjs scripts/event-platform/cluster/network.test.mjs
+      - name: WireGuard mesh and firewall drill
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq wireguard-tools nftables netcat-openbsd >/dev/null
+          sudo --preserve-env=LD_KAFKA_DRILL_DISPOSABLE env "PATH=$PATH" bash scripts/event-platform/cluster/network-drill.sh
       - name: Six-node cluster drill
         run: |
           set -o pipefail
