@@ -21,9 +21,10 @@ export const ADMIN_PRINCIPAL = 'kafka-admin'
 // Kafka runs as a dedicated uid that no login account on the host has (cloud
 // images give uid 1000 to their default user). It owns only the data tree.
 export const KAFKA_UID = 10001
-// Broker heap by plan RAM (12 GB -> 4 GB, 8 GB -> 3 GB); the rest of the host
-// is page cache. Controllers keep only metadata and get 1 GB on any plan.
-const BROKER_HEAP_MB = { 'Cloud VPS 6': 4096, 'Cloud VPS 4': 3072, 'VPS-2': 3072 }
+// Broker heap by plan RAM (12 GB -> 4 GB, 8 GB -> 3 GB, 4 GB -> 1.5 GB); the
+// rest of the host is page cache. Controllers keep only metadata and get 1 GB.
+// VPS-1 is a stopgap broker until OVHcloud has VPS-2 stock in Europe again.
+const BROKER_HEAP_MB = { 'Cloud VPS 6': 4096, 'Cloud VPS 4': 3072, 'VPS-2': 3072, 'VPS-1': 1536 }
 const CONTROLLER_HEAP_MB = 1024
 
 export function loadTopology() {
