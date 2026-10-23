@@ -39,6 +39,9 @@ export const MTM_SETTING_DEFAULTS = {
   // «Закрыть день» approved without the manager (owner, 2026-10-18); only a
   // forgotten day's close with its start untouched — see attendance-auto-close.ts.
   attendanceAutoCloseForgottenDay: false,
+  // Requests approved in two steps, the manager then HR (owner, 2026-10-21);
+  // see attendance-approval-chain.ts.
+  attendanceTwoStepApproval: false,
   // Reliable outside fixes remain accepted and flagged unless the admin opts in.
   attendanceRejectOutsideBranch: false,
   attendanceAllowSharedInstallations: false,

@@ -75,7 +75,11 @@ export function MtmAttendanceRequestQueue() {
       })
       const body = await response.json().catch(() => null)
       if (controller.signal.aborted) return
-      if (response.ok && body?.success === true && body.data?.request) {
+      if (response.ok && body?.success === true && body.data?.request && body.data.passedToHr === true) {
+        // Two-step approval: still pending, now HR's — read the queue as it stands.
+        writing.current = false
+        if (await load()) setMessage(t("requestsPassedToHr"))
+      } else if (response.ok && body?.success === true && body.data?.request) {
         const result = body.data.request
         setItems((previous) => previous.flatMap((row) => row.id !== current.id ? [row] : status === "ALL" ? [{ ...row, ...result }] : []))
         setSelected(null); setNote(""); setMessage(t("requestsSaved"))
@@ -140,7 +144,7 @@ export function MtmAttendanceRequestQueue() {
               {item.details.kind === "HR_RECORD" && <p className="text-xs font-medium text-muted-foreground">{t("hrRecordingCard")}</p>}
               <p className="text-xs text-muted-foreground">{t("requestsSubmitted", { date: stamp(item.submittedAt, item.details.timezone) })}</p>
             </div>
-            <HomePill tone={item.status === "PENDING" ? "amber" : item.status === "APPROVED" ? "green" : "zinc"}>{t(LABELS[item.status])}</HomePill>
+            <HomePill tone={item.status === "PENDING" ? "amber" : item.status === "APPROVED" ? "green" : "zinc"}>{item.approval?.awaiting === "HR" ? t("requestsAwaitingHr") : item.approval?.awaiting === "MANAGER" ? t("requestsAwaitingManager") : t(LABELS[item.status])}</HomePill>
             <Button className="min-h-11" variant="outline" disabled={busy} aria-expanded={item.id === selected} aria-controls={`attendance-request-details-${item.id}`} onClick={() => { setSelected(item.id === selected ? null : item.id); setNote(""); setRevoking(false) }}>{t(item.id === selected ? "requestsClose" : "requestsOpen")}</Button>
           </div>
           {item.id === selected && <div id={`attendance-request-details-${item.id}`} className="mt-4 space-y-4 rounded-lg bg-muted/40 p-4">
@@ -158,6 +162,8 @@ export function MtmAttendanceRequestQueue() {
             <div><h3 className="text-sm font-semibold">{t("requestsReason")}</h3><p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.reason}</p></div>
             {item.details.attachmentIds.length > 0 && <div><h3 className="text-sm font-semibold">{t("requestsDocuments")}</h3><div className="mt-2 flex flex-wrap gap-3">{item.details.attachmentIds.map((id, index) => <a key={id} href={`/api/v1/mtm/attendance/attachments/${encodeURIComponent(id)}`} className="inline-flex min-h-11 items-center text-sm text-primary underline" target="_blank" rel="noopener noreferrer">{t("requestsDocument", { number: index + 1 })}</a>)}</div></div>}
             {item.decisionNote && <p className="whitespace-pre-wrap break-words text-sm">{item.decisionNote}</p>}
+            {item.approval?.manager && <div data-testid="attendance-request-manager-approval"><p className="text-xs text-muted-foreground">{t("requestsManagerApproved", { name: item.approval.manager.name ?? "—", date: stamp(item.approval.manager.at, item.details.timezone) })}</p>
+              {item.approval.manager.note && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.approval.manager.note}</p>}</div>}
             {item.decidedAt && <p className="text-xs text-muted-foreground">{t("requestsDecision", { name: item.reviewerName ?? "—", date: stamp(item.decidedAt, item.details.timezone) })}</p>}
             {item.cancellation && <div className="space-y-2 border-t border-border pt-4" data-testid="attendance-cancellation-history"><h3 className="text-sm font-semibold">{t("revocationHistory")}</h3><p className="text-xs text-muted-foreground">{t("revocationBy", { name: item.cancellation.byName ?? "—", date: stamp(item.cancellation.at, item.details.timezone) })}</p><p className="whitespace-pre-wrap break-words text-sm">{item.cancellation.reason}</p></div>}
             {canRevokeAttendanceLeave(item) && (revoking ? <div className="space-y-4">
@@ -165,8 +171,9 @@ export function MtmAttendanceRequestQueue() {
               <label className="block text-sm font-medium">{t("revocationReason")}<textarea className="mt-2 min-h-24 w-full rounded-lg border bg-background p-3 font-normal" value={note} maxLength={1000} disabled={busy || unknown} onChange={(event) => setNote(event.target.value)} /></label><p className="text-xs text-muted-foreground">{t("revocationHint")}</p>
               <div className="flex flex-wrap gap-3"><Button className="min-h-11 max-w-full whitespace-normal" variant="outline" onClick={() => void revoke()} disabled={busy || unknown || note.trim().length < 3}>{t(busy ? "requestsSaving" : "revocationConfirm")}</Button><Button className="min-h-11 max-w-full whitespace-normal" variant="outline" disabled={busy} onClick={() => { setRevoking(false); setNote("") }}>{t("revocationKeep")}</Button></div>
             </div> : <Button className="min-h-11 max-w-full whitespace-normal" variant="outline" disabled={busy || unknown} onClick={() => { setRevoking(true); setNote("") }}>{t("revocationOpen")}</Button>)}
-            {item.status === "PENDING" && <><label className="block text-sm font-medium">{t("requestsNote")}<textarea className="mt-2 min-h-24 w-full rounded-lg border bg-background p-3 font-normal" value={note} maxLength={1000} disabled={busy || unknown} onChange={(event) => setNote(event.target.value)} /></label><p className="text-xs text-muted-foreground">{t("requestsNoteHint")}</p>
-              <div className="flex flex-wrap gap-3"><Button className="min-h-11" onClick={() => void decide("APPROVED")} disabled={busy || unknown}>{t(busy ? "requestsSaving" : "requestsApprove")}</Button><Button className="min-h-11" variant="outline" onClick={() => void decide("REJECTED")} disabled={busy || unknown || note.trim().length < 3}>{t("requestsReject")}</Button></div></>}
+            {item.status === "PENDING" && item.canDecide === false && <p className="text-sm text-muted-foreground">{t("requestsHrDecides")}</p>}
+            {item.status === "PENDING" && item.canDecide !== false && <><label className="block text-sm font-medium">{t("requestsNote")}<textarea className="mt-2 min-h-24 w-full rounded-lg border bg-background p-3 font-normal" value={note} maxLength={1000} disabled={busy || unknown} onChange={(event) => setNote(event.target.value)} /></label><p className="text-xs text-muted-foreground">{t("requestsNoteHint")}</p>
+              <div className="flex flex-wrap gap-3"><Button className="min-h-11" onClick={() => void decide("APPROVED")} disabled={busy || unknown}>{t(busy ? "requestsSaving" : item.approval?.passesToHr ? "requestsPassToHr" : "requestsApprove")}</Button><Button className="min-h-11" variant="outline" onClick={() => void decide("REJECTED")} disabled={busy || unknown || note.trim().length < 3}>{t("requestsReject")}</Button></div></>}
           </div>}
         </li>)}
       </ul>
