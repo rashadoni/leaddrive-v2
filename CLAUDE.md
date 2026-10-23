@@ -92,8 +92,13 @@
   `scripts/server-build-deploy.sh` также отключён и намеренно завершается с
   ошибкой.
 - **Главный ключ PII (`TENANT_PII_MASTER_KEY`) живёт только в
-  `/etc/leaddrive/app.env`** (root, 0600; копия — в бэкапе секретов и на Маке
-  владельца). Деплой перед `pm2 start` убирает его из окружения и передаёт
+  `/etc/leaddrive/app.env`** (root, 0600). Его копия — только в ежедневном
+  бэкапе `/var/backups/leaddrive/etc-leaddrive-*.tgz.age`, зашифрованном
+  age-ключом владельца: закрытая часть есть только на его Маке, без неё ключ и
+  дампы `*.dump.age` не открыть (скрипт на хосте `/usr/local/sbin/leaddrive-backup.sh`,
+  с 2026-10-23). Не шифровать бэкапы получателем `BACKUP_AGE_RECIPIENT` из
+  `backup.env`: его закрытый ключ лежит на dev-боксе, рядом с копиями бэкапов.
+  Деплой перед `pm2 start` убирает ключ из окружения и передаёт
   процессу `TENANT_PII_MASTER_KEY_FILE` — путь к этому файлу; приложение читает
   ключ само (`readMasterKeyHex` в `src/lib/crypto/tenant-pii-encryption.ts`).
   Поэтому ключа нет ни в дампе PM2, ни в дочерних процессах. После старта
