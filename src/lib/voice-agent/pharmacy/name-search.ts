@@ -30,6 +30,15 @@ function editDistance(left: string[], right: string[], limit: number): number {
   return previous[right.length]
 }
 
+// Recognizers write the same sound with different letters: "Moshpa" and
+// "Noşpa", "Ketenal", "Ushag" and "uşaq". Spelling slack is measured on this
+// folded form, where Azerbaijani letters and their digraphs are one letter.
+function foldSpelling(word: string): string[] {
+  return Array.from(word.replace(/sh/gu, "ş").replace(/ch/gu, "ç").replace(/gh/gu, "ğ")
+    .replace(/[şç]/gu, (ch) => (ch === "ş" ? "s" : "c")).replace(/ğ/gu, "g").replace(/ı/gu, "i")
+    .replace(/ö/gu, "o").replace(/ü/gu, "u").replace(/ə/gu, "e"))
+}
+
 // Spoken names arrive through speech recognition: "Ketanol" for Ketonal,
 // "Noşpa" for No-şpa. Short words get no slack, they collide too easily.
 function spellingSlack(length: number): number {
@@ -41,7 +50,7 @@ export class PharmacyNameSearch {
   private readonly terms = new Map<string, Set<string>>()
   private readonly postings = new Map<string, Set<string>>()
   private readonly sizes = new Map<string, number>()
-  private readonly words = new Map<string, { grams: Set<string>; letters: string[] }>()
+  private readonly words = new Map<string, { grams: Set<string>; letters: string[]; folded: string[] }>()
   private readonly ids = new Set<string>()
   private readonly fullLabels = new Set<string>()
 
@@ -57,7 +66,7 @@ export class PharmacyNameSearch {
       // Word entries improve discovery; they NEVER become approved aliases.
       for (const word of pharmacyWords(name)) {
         labels.add(word)
-        if (!this.words.has(word)) this.words.set(word, { grams: trigrams(word), letters: Array.from(word) })
+        if (!this.words.has(word)) this.words.set(word, { grams: trigrams(word), letters: Array.from(word), folded: foldSpelling(word) })
       }
     }
     for (const label of labels) {
@@ -107,14 +116,15 @@ export class PharmacyNameSearch {
   }
 
   private matchWord(word: string): Map<string, number> {
-    const grams = trigrams(word), letters = Array.from(word), slack = spellingSlack(letters.length)
+    const grams = trigrams(word), letters = Array.from(word), folded = foldSpelling(word)
+    const slack = spellingSlack(folded.length)
     const result = new Map<string, number>()
     for (const [label, entry] of this.words) {
       let score = dice(grams, entry.grams)
-      const limit = Math.min(slack, spellingSlack(entry.letters.length))
-      if (score < 0.5 && limit > 0) {
-        const distance = editDistance(letters, entry.letters, limit)
-        if (distance <= limit) score = Math.max(score, 1 - distance / Math.max(letters.length, entry.letters.length))
+      const limit = Math.min(slack, spellingSlack(entry.folded.length))
+      if (score < 0.5) {
+        const distance = editDistance(folded, entry.folded, limit)
+        if (distance <= limit) score = Math.max(score, 1 - distance / Math.max(folded.length, entry.folded.length))
       }
       if (score < 0.5) continue
       // Between equally close spellings prefer the shared beginning and the

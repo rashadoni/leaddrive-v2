@@ -50,6 +50,12 @@ describe("PharmacyNameSearch word ranking for spoken requests", () => {
     expect(search().find("Diklofenak şam 100 mq")[0]).toBe("diklofenak-sam")
   })
 
+  it("treats Azerbaijani letters and their Latin digraphs as one sound", () => {
+    // 2026-10-23 live call: "No-şpa" was transcribed "Moshpa", "Ketonal" "Ketenal".
+    expect(search().find("Moshpa ampula")[0]).toBe("nospa-amp")
+    expect(search().find("Ketenal").slice(0, 2).sort()).toEqual(["ketonal-amp", "ketonal-krem"])
+  })
+
   it("gives short words no spelling slack", () => {
     // "gel" must not reach "gal", "bel", ... by one edit.
     expect(search().find("Diklofenak gel")[0]).toBe("diklofenak-gel")
