@@ -92,6 +92,8 @@ test('heap follows the plan and scales down only for the disposable drill', () =
   const full = renderCluster({ topology, catalog, clusterName: 'primary', inventory: inventoryFor('primary') })
   assert.match(full['kafka-p-broker-eu/kafka.env'], /-Xmx4096m/)
   assert.match(full['kafka-p-ctrl-gra/kafka.env'], /-Xmx1024m/)
+  assert.match(full['kafka-p-broker-uk/kafka.env'], /-Xmx3072m/, 'an 8 GB broker keeps 5 GB for page cache')
+  assert.match(full['kafka-p-ctrl-eu/kafka.env'], /-Xmx1024m/, 'controllers get 1 GB whatever the plan')
   const drill = renderCluster({ topology, catalog, clusterName: 'primary', inventory: inventoryFor('primary'), heapScale: 0.125 })
   assert.match(drill['kafka-p-broker-eu/kafka.env'], /-Xmx512m/)
   assert.match(drill['kafka-p-ctrl-gra/kafka.env'], /-Xmx256m/)

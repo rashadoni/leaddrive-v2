@@ -21,8 +21,10 @@ export const ADMIN_PRINCIPAL = 'kafka-admin'
 // Kafka runs as a dedicated uid that no login account on the host has (cloud
 // images give uid 1000 to their default user). It owns only the data tree.
 export const KAFKA_UID = 10001
-// Heap per example plan; the rest of the host's memory is page cache.
-const HEAP_MB = { 'Cloud VPS 20': 4096, 'VPS-2': 3072, 'Cloud VPS 10': 1024, 'VPS-1': 1024 }
+// Broker heap by plan RAM (12 GB -> 4 GB, 8 GB -> 3 GB); the rest of the host
+// is page cache. Controllers keep only metadata and get 1 GB on any plan.
+const BROKER_HEAP_MB = { 'Cloud VPS 6': 4096, 'Cloud VPS 4': 3072, 'VPS-2': 3072 }
+const CONTROLLER_HEAP_MB = 1024
 
 export function loadTopology() {
   return JSON.parse(readFileSync(path.join(root, 'ops/event-platform/topology.v1.json'), 'utf8'))
@@ -115,7 +117,9 @@ export function renderCluster({ topology, catalog, clusterName, inventory, heapS
   for (const host of [...controllers, ...brokers]) {
     const address = addressOf(inventory, host.name)
     const isController = host.roles.includes('controller')
-    const heap = Math.max(256, Math.round(((HEAP_MB[host.plan] ?? 1024) * heapScale) / 64) * 64)
+    const planHeap = isController ? CONTROLLER_HEAP_MB : BROKER_HEAP_MB[host.plan]
+    if (!planHeap) throw new Error(`${host.name}: no broker heap defined for plan ${host.plan}`)
+    const heap = Math.max(256, Math.round((planHeap * heapScale) / 64) * 64)
     const entries = [
       ['process.roles', isController ? 'controller' : 'broker'],
       ['node.id', ids.get(host.name)],

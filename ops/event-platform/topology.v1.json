@@ -22,14 +22,14 @@
       "name": "primary",
       "purpose": "active",
       "hosts": [
-        { "name": "kafka-p-broker-eu", "site": "contabo-eu", "roles": ["broker"], "plan": "Cloud VPS 20" },
-        { "name": "kafka-p-broker-uk", "site": "contabo-uk", "roles": ["broker"], "plan": "Cloud VPS 20" },
+        { "name": "kafka-p-broker-eu", "site": "contabo-eu", "roles": ["broker"], "plan": "Cloud VPS 6" },
+        { "name": "kafka-p-broker-uk", "site": "contabo-uk", "roles": ["broker"], "plan": "Cloud VPS 4" },
         { "name": "kafka-p-broker-gra", "site": "ovh-gra", "roles": ["broker"], "plan": "VPS-2" },
-        { "name": "kafka-p-ctrl-eu", "site": "contabo-eu", "roles": ["controller"], "plan": "Cloud VPS 10" },
-        { "name": "kafka-p-ctrl-uk", "site": "contabo-uk", "roles": ["controller"], "plan": "Cloud VPS 10" },
+        { "name": "kafka-p-ctrl-eu", "site": "contabo-eu", "roles": ["controller"], "plan": "Cloud VPS 4" },
+        { "name": "kafka-p-ctrl-uk", "site": "contabo-uk", "roles": ["controller"], "plan": "Cloud VPS 4" },
         { "name": "kafka-p-ctrl-gra", "site": "ovh-gra", "roles": ["controller"], "plan": "VPS-1" },
-        { "name": "kafka-p-connect-eu", "site": "contabo-eu", "roles": ["connect", "registry"], "plan": "Cloud VPS 10" },
-        { "name": "kafka-p-connect-uk", "site": "contabo-uk", "roles": ["connect", "registry"], "plan": "Cloud VPS 10" }
+        { "name": "kafka-p-connect-eu", "site": "contabo-eu", "roles": ["connect", "registry"], "plan": "Cloud VPS 4" },
+        { "name": "kafka-p-connect-uk", "site": "contabo-uk", "roles": ["connect", "registry"], "plan": "Cloud VPS 4" }
       ]
     },
     {
