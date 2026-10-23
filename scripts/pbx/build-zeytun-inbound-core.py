@@ -40,7 +40,7 @@ def build(source, bridge):
         else:
 '''
     text = text[:start] + pilot + "".join("    " + line if line.strip() else line for line in normal.splitlines(True)) + text[end:]
-    replace('        return {"setup": setup}\n', '        if self.pharmacy_preview:\n            setup["tools"] = self.pharmacy_bridge.tools()\n            setup["inputAudioTranscription"] = self.pharmacy_bridge.transcription()\n        return {"setup": setup}\n')
+    replace('        return {"setup": setup}\n', '        if self.pharmacy_preview:\n            setup["tools"] = self.pharmacy_bridge.tools()\n            setup["inputAudioTranscription"] = self.pharmacy_bridge.transcription()\n            setup["generationConfig"]["speechConfig"]["languageCode"] = self.pharmacy_bridge.speech_language()\n        return {"setup": setup}\n')
     method = '''    def _send_pharmacy_result(self, active_ws, expected_epoch, payload):
         with self.gemini_event_lock:
             with self.state_lock:

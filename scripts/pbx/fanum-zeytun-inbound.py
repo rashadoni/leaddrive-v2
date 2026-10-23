@@ -31,6 +31,11 @@ class ZeytunInboundBridge:
     # so a replacement session after recovery gets the same hint. Explicit
     # language switching is still handled by the core's language policy.
     TRANSCRIPTION_LANGUAGES = ("az-AZ",)
+    # The agent's own voice, 2026-10-23 call: one provider session, no
+    # recovery, yet the voice changed after a turn transcribed as Turkish.
+    # Unpinned, the provider picks the spoken language and accent per turn.
+    # Accepted by gemini-3.8-live (voice Sulafat) on 2026-10-23.
+    SPEECH_LANGUAGE = "az-AZ"
     # Order words only: units, forms and packaging. Medicine names are left
     # out on purpose: a hard-coded list here would drift from the catalog.
     TRANSCRIPTION_VOCABULARY = (
@@ -133,6 +138,9 @@ class ZeytunInboundBridge:
         # by gemini-3.1-flash-live-preview and gemini-3.8-live on 2026-10-23.
         return {"languageCodes": list(self.TRANSCRIPTION_LANGUAGES),
                 "customVocabulary": list(self.TRANSCRIPTION_VOCABULARY)}
+
+    def speech_language(self):
+        return self.SPEECH_LANGUAGE
 
     @staticmethod
     def query(args):
