@@ -30723,6 +30723,9 @@
     "errTestCode": "Əvvəlcə Events Manager-dən test hadisə kodunu daxil edin.",
     "skip_too_old": "Meta-nın qəbul etdiyindən köhnədir (7 gün).",
     "skip_gone": "Lid və ya sövdələşmə silinib.",
+    "missingToken": "Əvvəlcə giriş tokenini yapışdırın.",
+    "missingEvent": "Göndərmək üçün ən azı bir hadisə seçin.",
+    "errNoPixelAccess": "Bu token bu pikselə göndərə bilmir: onu həmin pikselin ayarlarında yaradın.",
     "lastSentAt": "Son göndərmə {time}"
   }
 }

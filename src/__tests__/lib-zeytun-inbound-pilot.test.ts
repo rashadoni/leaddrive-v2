@@ -105,14 +105,29 @@ describe("single-call inbound owner rehearsal", () => {
     const f = fixture()
     f.dependencies.loadCall.mockResolvedValue({ ...call, fromNumber: "+994500000002", targetPhoneE164: "+994500000002" })
     await expect((await f.handle(request())).json()).resolves.toEqual({ enabled: false })
-    expect(f.dependencies.loadCatalog).not.toHaveBeenCalled()
+    // The grant's catalog may be warmed, but nothing of it or of the pilot is given.
+    expect(f.dependencies.claim).not.toHaveBeenCalled()
+  })
+  it("starts the grant's catalog on the first session request, before the answered one needs it", async () => {
+    // 2026-10-23: building the catalog on the answered request outlasted the
+    // station's 5 s and the call stayed silent (nginx 499).
+    const f = fixture()
+    f.dependencies.loadCall.mockResolvedValue({ ...call, fromNumber: "+994500000002", targetPhoneE164: "+994500000002" })
+    await f.handle(request())
+    expect(f.dependencies.loadCatalog).toHaveBeenCalledOnce()
+    // A failing warm-up never changes the answer.
+    const g = fixture()
+    g.dependencies.loadCatalog.mockRejectedValue(new Error("snapshot_unavailable"))
+    g.dependencies.loadCall.mockResolvedValue({ ...call, fromNumber: "+994500000002", targetPhoneE164: "+994500000002" })
+    await expect((await g.handle(request())).json()).resolves.toEqual({ enabled: false })
   })
   it("waits for a real answered observation before granting any prompt, search or claim", async () => {
     const f = fixture()
     f.dependencies.loadCall.mockResolvedValue({ ...call, status: "answering", wasAnswered: false })
     await expect((await f.handle(request())).json()).resolves.toEqual({ enabled: false, status: "awaiting_answered" })
     expect(f.dependencies.claim).not.toHaveBeenCalled()
-    expect(f.dependencies.loadCatalog).not.toHaveBeenCalled()
+    // The catalog is warmed here so the answered request is fast; no prompt,
+    // search result or claim is given before the answer is observed.
     expect((await f.handle(search())).status).toBe(403)
     f.dependencies.loadCall.mockResolvedValue(call)
     expect(await (await f.handle(request())).json()).toMatchObject({ enabled: true })
