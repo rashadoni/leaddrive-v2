@@ -1,0 +1,49 @@
+name: Event platform cluster drill
+
+# Disposable six-node drill of the rendered production Kafka configuration:
+# TLS/mTLS/SCRAM refusals, least-privilege ACLs, the full topic catalog,
+# one-site loss, two-site refusal, lossless recovery and cold restart.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'scripts/event-platform/cluster/**'
+      - 'ops/event-platform/topology.v1.json'
+      - 'ops/event-platform/topics.v1.json'
+      - '.github/workflows/event-platform-cluster-drill.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: event-platform-cluster-drill-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drill:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      LD_KAFKA_DRILL_DISPOSABLE: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Topology and renderer unit tests
+        run: node --test scripts/event-platform/topology.test.mjs scripts/event-platform/cluster/render.test.mjs
+      - name: Six-node cluster drill
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/kafka-drill"
+          LD_KAFKA_DRILL_WORK="$RUNNER_TEMP/kafka-drill" bash scripts/event-platform/cluster/drill.sh 2>&1 | tee "$RUNNER_TEMP/drill.log"
+      - name: Node logs on failure
+        if: failure()
+        run: |
+          for c in $(docker ps -a --format '{{.Names}}' | grep '^kafka-p-'); do
+            echo "::group::$c"; docker logs --tail 200 "$c" 2>&1; echo "::endgroup::"
+          done
