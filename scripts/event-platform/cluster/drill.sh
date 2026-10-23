@@ -94,7 +94,7 @@ scram_client() {
 scram_client ld-connect "${password[ld-connect]}" >"$work/client/connect.properties"
 scram_client ld-fund-worker "${password[ld-fund-worker]}" >"$work/client/fund.properties"
 scram_client ld-connect "wrong-${password[ld-connect]}" >"$work/client/wrongpass.properties"
-{ cat "$work/client/connect.properties"; printf 'delivery.timeout.ms=20000\nrequest.timeout.ms=10000\nmax.block.ms=20000\n'; } >"$work/client/connect-short.properties"
+{ cat "$work/client/connect.properties"; printf 'delivery.timeout.ms=20000\nrequest.timeout.ms=10000\nmax.block.ms=5000\n'; } >"$work/client/connect-short.properties"
 # Nodes run as the production Kafka uid; client tools as the image's appuser.
 sudo chown -R "$uid:$uid" "$work/pki/issued" "$work/rendered"
 sudo chown -R 1000:1000 "$work/client"
@@ -123,7 +123,7 @@ kafka() {
   local tool="$1"; shift
   docker run --rm --network "$net" --label "$project" --user 1000:1000 \
     -e KAFKA_HEAP_OPTS='-Xms64m -Xmx256m' -v "$work/client:/client:ro" \
-    --entrypoint /bin/bash "$image" -c 'exec timeout "$0" /opt/kafka/bin/"$@"' "${KAFKA_TIMEOUT:-120}" "$tool" "$@"
+    --entrypoint /bin/bash "$image" -c 'exec timeout -k 10 "$0" /opt/kafka/bin/"$@"' "${KAFKA_TIMEOUT:-120}" "$tool" "$@"
 }
 admin() { local tool="$1"; shift; kafka "$tool" --bootstrap-server "$bootstrap_mtls" --command-config /client/admin.properties "$@"; }
 wait_until() {

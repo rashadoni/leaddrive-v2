@@ -24,7 +24,7 @@ concurrency:
 jobs:
   drill:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 45
     env:
       LD_KAFKA_DRILL_DISPOSABLE: '1'
     steps:
