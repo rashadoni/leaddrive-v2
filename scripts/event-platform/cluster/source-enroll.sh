@@ -103,7 +103,8 @@ EOF
     install -d -m 0700 /var/backups/leaddrive-pre-cdc
     sudo -u postgres pg_dump -Fc -d "$dbname" >"/var/backups/leaddrive-pre-cdc/$dbname-$stamp.dump"
     chmod 0600 "/var/backups/leaddrive-pre-cdc/$dbname-$stamp.dump"
-    sudo -u postgres pg_restore -l "/var/backups/leaddrive-pre-cdc/$dbname-$stamp.dump" >/dev/null || die "safety dump unreadable"
+    # The dump is root-only; list it as root.
+    pg_restore -l "/var/backups/leaddrive-pre-cdc/$dbname-$stamp.dump" >/dev/null || die "safety dump unreadable"
     echo "safety dump: /var/backups/leaddrive-pre-cdc/$dbname-$stamp.dump ($(du -h "/var/backups/leaddrive-pre-cdc/$dbname-$stamp.dump" | cut -f1))"
     start=$(date +%s%N)
     systemctl restart "postgresql@$pg_version-main"
