@@ -18,6 +18,9 @@ const root = fileURLToPath(new URL('../../../', import.meta.url))
 export const KAFKA_IMAGE = 'apache/kafka:4.3.1@sha256:ccd1314e47ec76909e01f86308b4dcf2064f19f7c89759234322314b0e319e26'
 export const PORTS = { client: 9092, controller: 9093, replication: 9094 }
 export const ADMIN_PRINCIPAL = 'kafka-admin'
+// Kafka runs as a dedicated uid that no login account on the host has (cloud
+// images give uid 1000 to their default user). It owns only the data tree.
+export const KAFKA_UID = 10001
 // Heap per example plan; the rest of the host's memory is page cache.
 const HEAP_MB = { 'Cloud VPS 20': 4096, 'VPS-2': 3072, 'Cloud VPS 10': 1024, 'VPS-1': 1024 }
 
@@ -155,6 +158,7 @@ export function renderCluster({ topology, catalog, clusterName, inventory, heapS
     files[`${dir}/kafka.env`] = properties([
       ['CLUSTER_ID', inventory.clusterId],
       ['KAFKA_HEAP_OPTS', `-Xms${heap}m -Xmx${heap}m`],
+      ['LOG_DIR', '/var/lib/kafka/logs'],
     ])
     files[`${dir}/compose.yml`] = renderCompose(host.name)
   }
@@ -293,7 +297,7 @@ services:
     network_mode: host
     restart: unless-stopped
     env_file: kafka.env
-    user: "1000:1000"
+    user: "${KAFKA_UID}:${KAFKA_UID}"
     entrypoint: ["/bin/bash", "-ec"]
     command:
       - >-
@@ -302,7 +306,7 @@ services:
     volumes:
       - ./server.properties:/etc/kafka/server.properties:ro
       - /etc/leaddrive-kafka/tls:/etc/kafka/tls:ro
-      - /var/lib/leaddrive-kafka:/var/lib/kafka/data
+      - /var/lib/leaddrive-kafka:/var/lib/kafka
     ulimits:
       nofile: 100000
     logging:

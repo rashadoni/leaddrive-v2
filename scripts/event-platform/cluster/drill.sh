@@ -24,6 +24,7 @@ work="${LD_KAFKA_DRILL_WORK:-$(mktemp -d)}"
 project="ld-kafka-drill-${GITHUB_RUN_ID:-local}"
 net="$project"
 image="$(node -e "import('$repo/scripts/event-platform/cluster/render.mjs').then(m => console.log(m.KAFKA_IMAGE))")"
+uid="$(node -e "import('$repo/scripts/event-platform/cluster/render.mjs').then(m => console.log(m.KAFKA_UID))")"
 cluster_id="$(openssl rand -base64 16 | tr '+/' '-_' | cut -c1-22)"
 env=drill
 step() { printf '\n=== %s\n' "$*"; }
@@ -92,20 +93,21 @@ scram_client ld-connect "${password[ld-connect]}" >"$work/client/connect.propert
 scram_client ld-fund-worker "${password[ld-fund-worker]}" >"$work/client/fund.properties"
 scram_client ld-connect "wrong-${password[ld-connect]}" >"$work/client/wrongpass.properties"
 { cat "$work/client/connect.properties"; printf 'delivery.timeout.ms=20000\nrequest.timeout.ms=10000\nmax.block.ms=20000\n'; } >"$work/client/connect-short.properties"
-# Containers run as uid 1000 (appuser); the runner user is not uid 1000.
-sudo chown -R 1000:1000 "$work/pki/issued" "$work/client" "$work/rendered"
+# Nodes run as the production Kafka uid; client tools as the image's appuser.
+sudo chown -R "$uid:$uid" "$work/pki/issued" "$work/rendered"
+sudo chown -R 1000:1000 "$work/client"
 
 step "Start three controllers and three brokers"
 docker network create --label "$project" "$net" >/dev/null
 start_node() {
   local name="$1"
   docker volume create --label "$project" "$project-$name" >/dev/null
-  docker run --rm --label "$project" --user 0 -v "$project-$name:/d" --entrypoint /bin/chown "$image" 1000:1000 /d
+  docker run --rm --label "$project" --user 0 -v "$project-$name:/d" --entrypoint /bin/chown "$image" "$uid:$uid" /d
   docker run -d --name "$name" --hostname "$name" --network "$net" --label "$project" \
-    --env-file "$work/rendered/$name/kafka.env" --memory 1g --user 1000:1000 \
+    --env-file "$work/rendered/$name/kafka.env" --memory 1g --user "$uid:$uid" \
     -v "$work/rendered/$name/server.properties:/etc/kafka/server.properties:ro" \
     -v "$work/pki/issued/$name:/etc/kafka/tls:ro" \
-    -v "$project-$name:/var/lib/kafka/data" \
+    -v "$project-$name:/var/lib/kafka" \
     --entrypoint /bin/bash "$image" -ec \
     '/opt/kafka/bin/kafka-storage.sh format --ignore-formatted -t "$CLUSTER_ID" -c /etc/kafka/server.properties && exec /opt/kafka/bin/kafka-server-start.sh /etc/kafka/server.properties' >/dev/null
 }
