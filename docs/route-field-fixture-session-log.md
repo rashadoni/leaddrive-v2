@@ -33,3 +33,10 @@
 - PR1003 head3d9874427 verify-controller39938320051/job120363261317 FAIL. Unit5 PASS, real-schema tests could not initialize: PostgreSQL logged type vector does not exist for the full CRM schema. This original FAIL is retained; no merge/deploy/fixture execution occurred. Required static/typecheck still running at poll.
 - Switched this CI service from plain PostgreSQL16 to the same mirrored pgvector/pg16 image used by the required repository gate. The integration setup now creates its random owned schema and installs vector there before Prisma db push, so the type is visible in its isolated search_path. Cleanup drops only a schema successfully created by this run, not a colliding/pre-existing name. No production schema/data change.
 - Workflow parse/manual-only production admission still PASS. Real PostgreSQL rerun belongs to hosted CI; not reproduced with a full database locally under the workload contract. Next: push this targeted fix and inspect the new exact-head gate before merging.
+
+
+## 2026-10-23T14:36:39.221814+04:00 — seven hosted checks pass; cleanup lock limit fixed
+
+- Exact-head cb4eee770 verify-controller39939248251/job120366328495 retained FAIL at afterAll cleanup, despite all7 assertions/tests PASS (5 unit+2 real PostgreSQL). Full-schema create, fixture insertion, repeat preservation and ownership collision refusal did execute successfully. Failure was PostgreSQL53200/max_locks_per_transaction while dropping the entire large schema in one command. No production action.
+- Cleanup now enumerates tables only from the successfully created random owned schema and drops each with an independent autocommit before removing that schema/its remaining owned types. Identifiers are escaped; DB disconnect runs in finally; no error is ignored. The same hosted integration gate must pass cleanup before merge. PostgreSQL server settings and production are untouched.
+- App PR198 merged green at a60e0f278d950412a442f494ad2308a0cddda3d7. Main BuildAndroid39939576454 also PASS with package/keystore/publication skipped: no new APK for these tests.

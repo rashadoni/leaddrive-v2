@@ -40,8 +40,19 @@ describe.skipIf(!target)("Route & Field fixture on real PostgreSQL", () => {
     if (!db) return
     // Only the random schema created by this test can be removed.
     if (!/^rf_native_fixture_[a-f0-9]{16}$/.test(schema)) throw new Error("RF_FIXTURE_TEST_CLEANUP_REFUSED")
-    if (schemaCreated) await db.$executeRawUnsafe(`DROP SCHEMA "${schema}" CASCADE`)
-    await db.$disconnect()
+    try {
+      if (schemaCreated) {
+        // One DROP SCHEMA takes locks for every CRM table/index/constraint
+        // together and exceeds a stock PostgreSQL lock table. Each DROP TABLE
+        // commits separately, releasing those locks before the next table.
+        const tables = await db.$queryRaw<Array<{ tablename: string }>>`
+          SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = ${schema}`
+        for (const { tablename } of tables) {
+          await db.$executeRawUnsafe(`DROP TABLE "${schema}"."${tablename.replace(/"/g, '""')}" CASCADE`)
+        }
+        await db.$executeRawUnsafe(`DROP SCHEMA "${schema}" CASCADE`)
+      }
+    } finally { await db.$disconnect() }
   })
 
   it("creates isolated team/customer scope and preserves legitimate fixture changes on repeat", async () => {
