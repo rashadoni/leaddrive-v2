@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { IdentityRegistryError } from "./contract.js"
 import type { RegistryClient } from "./registry.js"
 import { readVerifiedIdentityMobileClaims, type IdentitySessionKeyResolver } from "./mobile-session.js"
 import { authorizeIdentityMobileSession, type IdentityMobileApplication, type IdentityMobileState } from "./mobile-session-contract.js"
@@ -37,7 +38,7 @@ export async function resolveIdentityMobileSession(client: RegistryClient, token
       await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY")
       await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '5s'")
       await tx.$queryRaw`SELECT set_config('app.org_id', ${claims.organizationId}, true), set_config('app.rls_bypass', 'off', true)`
-      if (!await transactionGuard(tx, claims.organizationId)) return null
+      if (!await transactionGuard(tx, claims.organizationId)) throw new IdentityRegistryError("IDENTITY_SESSION_CONTEXT_INVALID")
       const scope = { organizationId: claims.organizationId, userId: claims.sub }
       const appScope = { ...scope, application }
       const [company, person, account, claim, grant, membership] = await Promise.all([
@@ -61,7 +62,8 @@ export async function resolveIdentityMobileSession(client: RegistryClient, token
         binding: { ...binding, status: "REVIEWED" }, actor, license: { application, enabled: policy.licensed } }
       // End-of-read DB wall time, not a stale request timestamp or JWT clock.
       const now = await transactionGuard(tx, claims.organizationId)
-      return now ? authorizeIdentityMobileSession(claims, application, state, now) : null
+      if (!now) throw new IdentityRegistryError("IDENTITY_SESSION_CONTEXT_INVALID")
+      return authorizeIdentityMobileSession(claims, application, state, now)
     }, { isolationLevel: "RepeatableRead", timeout: 10_000, maxWait: 5_000 })
   } catch { return null }
 }

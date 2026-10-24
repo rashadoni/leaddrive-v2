@@ -32,6 +32,10 @@ export async function checkIdentityResolver({ admin, writer, build, actor, userI
     assert.deepEqual(guard, { isolation: "repeatable read", ro: "on", org, bypass: "off" })
     assert.equal(organizationId, org); assert.ok(["TIME", "ROUTE_FIELD"].includes(application)); policyCalls++
     if (policyMode === "error") throw new Error("synthetic-private-policy-error-not-for-output")
+    if (policyMode === "readwrite") {
+      await tx.$executeRawUnsafe("SET TRANSACTION READ WRITE")
+      await tx.$executeRawUnsafe('UPDATE identity_accounts SET version=version+1 WHERE "organizationId"=$1 AND "userId"=$2', org, userId)
+    }
     if (policyMode === "write") await tx.$executeRawUnsafe('UPDATE identity_accounts SET version=version+1 WHERE "organizationId"=$1 AND "userId"=$2', org, userId)
     if (policyMode === "bypass") await tx.$queryRawUnsafe("SELECT set_config('app.rls_bypass','on',true)")
     return { identityEnabled: policyMode !== "disabled", licensed: policyMode !== "time-unlicensed" || application !== "TIME" }
@@ -63,6 +67,8 @@ export async function checkIdentityResolver({ admin, writer, build, actor, userI
   policyMode = "disabled"; assert.equal(await auth(timeToken), null)
   policyMode = "error"; assert.equal(await auth(timeToken), null)
   policyMode = "write"; assert.equal(await auth(timeToken), null)
+  assert.equal((await admin.identityAccount.findUniqueOrThrow({ where: accountKey })).version, accountVersion)
+  policyMode = "readwrite"; assert.equal(await auth(timeToken), null)
   assert.equal((await admin.identityAccount.findUniqueOrThrow({ where: accountKey })).version, accountVersion)
   policyMode = "bypass"; assert.equal(await auth(timeToken), null)
   policyMode = "enabled"
