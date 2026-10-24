@@ -1,0 +1,155 @@
+name: Booking release preflight
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/booking-release-preflight.yml
+      - scripts/booking/inspect-production.*
+      - scripts/event-platform/inspect-production.sh
+      - .github/actions/assert-production-environment-protection/**
+      - .github/actions/setup-production-ssh/**
+  workflow_dispatch:
+    inputs:
+      expected_main_sha:
+        description: Exact current main SHA containing the reviewed inspector
+        required: true
+        type: string
+      expected_artifact_sha:
+        description: Exact currently deployed artifact SHA, independently checked through public build-info
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: booking_preflight_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-preflight-only
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U postgres -d booking_preflight_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate exact dispatch revision before inspection
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_ARTIFACT_SHA: ${{ inputs.expected_artifact_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_ARTIFACT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [ "$GITHUB_SHA" = "$EXPECTED_MAIN_SHA" ]
+      - name: Check sanitized output and actual SQL on disposable PostgreSQL
+        env:
+          CI: 'true'
+          BOOKING_PREFLIGHT_TEST_DATABASE_URL: postgresql://postgres:isolated-preflight-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/booking_preflight_test
+        run: |
+          set -euo pipefail
+          node --check scripts/booking/inspect-production.mjs
+          node --test scripts/booking/inspect-production.test.mjs
+          node scripts/ci/check-github-runner-policy.mjs
+          git diff --check
+
+  production-inventory:
+    needs: source-validation
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Initialize finite failure evidence
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/booking-preflight"
+          printf '{"version":1,"status":"ERROR","productionObserved":false,"code":"INSPECTION_NOT_STARTED"}\n' \
+            > "$RUNNER_TEMP/booking-preflight/result.json"
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Require protected production route
+        uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+      - name: Bind inspector to current main
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_ARTIFACT_SHA: ${{ inputs.expected_artifact_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_ARTIFACT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [ "$GITHUB_SHA" = "$EXPECTED_MAIN_SHA" ]
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          [ "$GITHUB_SHA" = "$(git rev-parse FETCH_HEAD)" ]
+      - name: Setup existing pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Collect bounded read-only aggregates and retain only allowlisted output
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_ARTIFACT_SHA: ${{ inputs.expected_artifact_sha }}
+          PRODUCTION_SSH_HOST: ${{ secrets.SERVER_HOST }}
+          PRODUCTION_SSH_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          directory="$RUNNER_TEMP/booking-preflight"
+          set +e
+          output="$(node scripts/booking/inspect-production.mjs --emit-remote "$EXPECTED_ARTIFACT_SHA" \
+            | timeout 70s ssh -T -o ConnectTimeout=10 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+                "$PRODUCTION_SSH_USER@$PRODUCTION_SSH_HOST" bash -s 2>/dev/null)"
+          transport_status=$?
+          printf '%s' "$output" \
+            | node scripts/booking/inspect-production.mjs --validate-output \
+                "$EXPECTED_MAIN_SHA" "$EXPECTED_ARTIFACT_SHA" "$transport_status" > "$directory/sanitized-result.json"
+          validation_status=$?
+          set -e
+          test -s "$directory/sanitized-result.json"
+          cp "$directory/sanitized-result.json" "$directory/result.json"
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          if [ "$GITHUB_SHA" != "$(git rev-parse FETCH_HEAD)" ]; then
+            printf '{"version":1,"status":"ERROR","productionObserved":false,"code":"MAIN_CHANGED"}\n' > "$directory/result.json"
+            exit 1
+          fi
+          [ "$transport_status" -eq 0 ] && [ "$validation_status" -eq 0 ]
+      - name: Preserve sanitized success, conflict or failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: booking-preflight-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/booking-preflight/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove ephemeral SSH material
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts ~/.ssh/config
