@@ -352,3 +352,25 @@ apply the fresh app policy. Six tests use the real jsonwebtoken library for
 round trips, signature/key tampering, legacy-key separation, unsafe headers,
 app/tenant/CRM/setup refusal, current revocation and expiry. No live key or JWT
 session is issued by the application until the future login composition exists.
+
+
+### Reviewed actor ownership and independent membership plans
+
+`IdentityActorBinding` is a permanent administrator-reviewed mapping from one
+historical tenant actor to one person. Composite FKs bind the staged account,
+existing actor and reviewer; SQL refuses UPDATE/DELETE/TRUNCATE. The service
+requires an explicit review reference, current unambiguous same-person legacy
+link, active subject/actor and account revision. It never adopts by phone/email
+or creates/changes the legacy actor/User. Corrections require a separate reviewed
+reconciliation; ordinary registration cannot transfer an actor's history/queue.
+
+`IdentityApplicationMembership` plans each mobile app separately, referencing
+both that person's reviewed binding and existing app grant. Member changes
+advance only its membership version and the account write-CAS revision, with
+atomic immutable audit bound to the grant revision. The credential epoch and
+sibling grant/membership stay unchanged. Re-enable advances the version again;
+old tokens cannot revive. Revocation remains possible when the person is
+inactive or its legacy link changed; enabling requires the current active link.
+Both services reject already-authoritative accounts, remain unused by routes,
+and cannot enable current HR/CRM/Field access. Before rollout, implement the
+fresh resolver, app-specific storage/sync/lifecycle and reviewed tenant migration.

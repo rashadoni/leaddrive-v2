@@ -187,7 +187,7 @@ CREATE TABLE identity_events (
     AND "proofExpiresAt" > "createdAt" AND "proofExpiresAt" <= "createdAt" + interval '10 minutes')),
   CHECK (action <> 'PHONE_PROOF_REJECTED' OR ("proofAttempt" IS NOT NULL AND "proofOutcome" IS NOT NULL)),
   CHECK (action <> 'ACTOR_BINDING_REVIEWED' OR ("actorId" IS NOT NULL AND "reviewReference" IS NOT NULL)),
-  CHECK (action <> 'MEMBERSHIP_CHANGED' OR (application IS NOT NULL AND application IN ('TIME','ROUTE_FIELD') AND "actorId" IS NOT NULL AND "membershipStatus" IS NOT NULL AND "membershipVersion" IS NOT NULL)),
+  CHECK (action <> 'MEMBERSHIP_CHANGED' OR (application IS NOT NULL AND application IN ('TIME','ROUTE_FIELD') AND "actorId" IS NOT NULL AND "membershipStatus" IS NOT NULL AND "membershipVersion" IS NOT NULL AND "grantVersion" IS NOT NULL)),
   CHECK (action <> 'CREDENTIAL_STAGED' OR "claimId" IS NOT NULL),
   CHECK (action <> 'PHONE_CONFIRMED' OR ("claimId" IS NOT NULL AND "normalizedPhone" IS NOT NULL)),
   CHECK (action <> 'PHONE_RESERVED' OR ("normalizedPhone" IS NOT NULL AND "reservationId" IS NOT NULL AND length("reservationId") > 0 AND "reservationExpiresAt" IS NOT NULL AND "reservationExpiresAt" > "createdAt" AND "reservationExpiresAt" <= "createdAt" + interval '15 minutes')),
