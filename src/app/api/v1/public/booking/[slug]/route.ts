@@ -4,22 +4,13 @@
  * chose to publish. Rate limits come from the proxy (/api/v1/public/*).
  */
 import { NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
+import { bookSchema } from "@/lib/booking/booking-input"
 import { runWithTenant } from "@/lib/rls-context"
 import { createBooking, findBookingPageBySlug, publicBookingView } from "@/lib/booking/book"
+import { BookingCommandError } from "@/lib/booking/command-error"
+import { IdempotencyConflictError } from "@/lib/event-platform/errors"
 import { readAttribution } from "@/lib/ad-conversions/attribution"
 
-const bookSchema = z.object({
-  startsAt: z.string().max(40).refine((value) => !Number.isNaN(Date.parse(value)), "Invalid time"),
-  name: z.string().trim().min(2).max(120),
-  phone: z.string().trim().regex(/^\+?[\d\s()-]{7,24}$/, "Invalid phone"),
-  email: z.string().trim().email().max(200).optional().or(z.literal("")),
-  note: z.string().trim().max(1000).optional(),
-  // Left empty by people; filled by form-filling bots.
-  website: z.string().max(200).optional(),
-  // Ad click ids and UTM tags from the page address (src/lib/ad-conversions).
-  attribution: z.unknown().optional(),
-})
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -30,14 +21,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     if (!view) return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json({ success: true, data: view }, { headers: { "Cache-Control": "no-store" } })
   } catch (e) {
-    console.error("[public/booking] view failed", e)
+    if (e instanceof BookingCommandError) return NextResponse.json({ code: e.code }, { status: e.status })
+    console.error("[public/booking] view failed", { code: "BOOKING_READ_FAILED" })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const found = await findBookingPageBySlug(slug)
+  const found = await findBookingPageBySlug(slug, true)
   if (!found) return NextResponse.json({ error: "Not found" }, { status: 404 })
   const parsed = bookSchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message, code: "INVALID" }, { status: 400 })
@@ -45,6 +37,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   try {
     const result = await runWithTenant(found.orgId, () => createBooking(found.orgId, found.pageId, {
+      locale: parsed.data.locale,
+      idempotencyKey: parsed.data.idempotencyKey,
+      recoverySecret: parsed.data.recoverySecret,
       startsAt: parsed.data.startsAt,
       name: parsed.data.name,
       phone: parsed.data.phone,
@@ -56,7 +51,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     if (result.reason === "not_found") return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json({ error: "This time is taken", code: "TAKEN" }, { status: 409 })
   } catch (e) {
-    console.error("[public/booking] book failed", e)
+    if (e instanceof BookingCommandError) return NextResponse.json({ code: e.code }, { status: e.status })
+    if (e instanceof IdempotencyConflictError) return NextResponse.json({ code: "IDEMPOTENCY_CONFLICT" }, { status: 409 })
+    console.error("[public/booking] book failed", { code: "BOOKING_COMMAND_FAILED" })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
