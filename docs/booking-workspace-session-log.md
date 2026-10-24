@@ -325,3 +325,13 @@
   восстановить штатную возможность read-only inventory, проверить старые данные,
   подготовить совместимый rollback/cutover; только затем допускать релиз по
   документированному main → GitHub Actions маршруту.
+
+## 2026-10-24 — Продолжение подготовки выпуска по «начинай»
+
+- Пользователь поручил продолжить с сохранённой точки без промежуточных согласований.
+- Штатный SSH повторно отклонён по publickey; credential/authorized_keys изменения не выполнялись. Public build-info подтверждает работающий artifactSha `64356065f3878a547bdd5fa87cbf9f789f1f92a2`, а не feature source.
+- Для получения inventory без выкладки feature создан отдельный clean-main worktree `/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-booking-release-preflight-20261024`, branch `codex/booking-release-preflight-20261024`, PR https://github.com/rashadoni/leaddrive-v2/pull/1024 (прикреплён к чату).
+- Инструмент использует существующий protected Actions SSH route, exact source/deployed SHA, read-only libpq/SQL, timeouts, allowlisted aggregate evidence и проверку неотфильтрованной RLS identity. Нет изменения данных/провайдерских отправок.
+- CI source-validation `40092136260` на `303b6905c525bfb726e5b2307dae8a0f477cecfd`: 8/8 PASS, включая SQL на disposable PostgreSQL16, конфликты и реальный запрет INSERT в read-only transaction. Первоначальная ошибка подключения fixture исправлена, gate не ослаблен.
+- Full required checks PR #1024 ещё выполняются; инструмент пока не в main и inventory не запускался. PR #1023 остаётся draft/NO-GO, feature source и его exact-SHA CI не менялись.
+- Подробный append-only журнал продолжения: `docs/booking-release-preflight-session-log.md` в новом worktree. План A/B: `docs/booking-release-cutover-plan.md`; это план, не реализованный cutover/controller или готовый rollback artifact.
