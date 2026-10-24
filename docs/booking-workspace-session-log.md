@@ -407,3 +407,11 @@
 - Дополнительный Workforce restore evidence оказался красным на обоих heads при подготовке disposable schema, до API/browser тестов. Причина подтверждена log job `120910614123`: Prisma требует blanket data-loss override для новых redundant composite unique keys `(organizationId,id)` у booking_pages/bookings на непустом fixture.
 - Override не добавляется. По существующему campaign-fixture образцу две redundant uniqueness гарантии (id уже primary key) создаются явно только в disposable runtime alignment после исторического before/after proof. Настоящие production миграции, guard, base-row receipts и последующий Prisma refusal gate сохраняются.
 - Требуется новый полный exact-source CI и успешный дополнительный restore evidence. Предыдущие зелёные результаты относятся к прежним SHA; за новый PASS не выдаются.
+
+## 2026-10-24 16:30 UTC — Full baseline выявил два integration contract расхождения
+
+- A `40108730548` и B `40108740060` завершили source build, typecheck, 22 application PostgreSQL и все отдельные DB gates успешно, но final unit-baseline FAIL: 20 failing files против прежних 18. Новые: cron-trigger-lock-contention и nav-items. Baseline не меняется.
+- Normal booking post-deploy proof ошибочно имел implicit success dependency: сбой соседнего smoke пропустил бы его. Условие приведено к существующему `!cancelled() && deploy_atomic.outcome == success && normal`, так что каждый smoke независимо собирает evidence, а общий job остаётся красным при любой ошибке.
+- Переводы намеренно содержат обе immutable phase подписи. Nav coverage теперь требует ровно один правильный активный booking entry и ровно единственную inactive-phase подпись среди orphan keys; любые прочие orphan/missing keys всё ещё отвергаются. Само production меню и права этим не меняются.
+- Дополнительный restore evidence уже PASS на обеих версиях после безопасного fixture alignment. Требуется повтор полного exact-source CI после этих узких исправлений; предыдущие source SHA не выдаются за новые зелёные.
+- После исправления проверен весь найденный узкий набор workflow/navigation contract tests: 201/201 PASS в 20 файлах, один worker. Scoped ESLint, runner policy, YAML parse и diff PASS. Полный suite/build локально не запускались по host contract.
