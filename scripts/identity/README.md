@@ -374,3 +374,25 @@ inactive or its legacy link changed; enabling requires the current active link.
 Both services reject already-authoritative accounts, remain unused by routes,
 and cannot enable current HR/CRM/Field access. Before rollout, implement the
 fresh resolver, app-specific storage/sync/lifecycle and reviewed tenant migration.
+
+
+### Fresh authoritative session resolution, still inactive
+
+`mobile-session-resolver.ts` verifies the real JWT/profile before opening a
+business transaction, then loads the actual account/claim/grant/membership/
+reviewed binding/current actor and person under READ ONLY/REPEATABLE READ.
+RLS org/bypass and transaction modes are checked before reads and again after
+the fixed tenant-policy callback. End-of-read database wall time enforces
+expiry. Missing/inactive/staged/foreign state or any key/DB/policy error denies;
+there is no cache or legacy fallback. No passwords or raw phones are selected.
+
+The tenant-policy callback is a required trusted server dependency, never
+request data or a default license. It must read the actual rollout and app
+entitlement/settings through this transaction. Current routes do not call the
+resolver. A business write must recheck current rights in its own transaction;
+this snapshot is not a privilege lock held across a later write. The hosted
+fixture checks actual RLS/readonly modes including inherited bypass setup,
+no DB access for invalid JWTs, failed/mutating policy refusal, independent app
+revocation, membership reactivation, common credential epoch and stale actor
+link. This is a synthetic post-auth fixture, not a public password-login test
+or production entitlement audit.

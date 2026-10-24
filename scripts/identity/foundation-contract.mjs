@@ -19,7 +19,16 @@ const receipt = { status: "FAIL", sourceSha: null, productionObserved: false, ch
 let phase = "ADMISSION", admin, writer
 
 async function expectDatabaseError(work, code) {
-  await assert.rejects(work, error => error?.meta?.code === code || (code === "23505" && error?.code === "P2002") || (code === "23503" && error?.code === "P2003"))
+  let observed
+  try {
+    await assert.rejects(work, error => {
+      observed = error?.meta?.code ?? error?.code
+      return error?.meta?.code === code || (code === "23505" && error?.code === "P2002") || (code === "23503" && error?.code === "P2003")
+    })
+  } catch (error) {
+    if (typeof observed === "string" && /^(P[0-9]{4}|[0-9]{5})$/.test(observed)) error.observedDatabaseErrorCode = observed
+    throw error
+  }
 }
 
 async function main() {
@@ -347,14 +356,16 @@ async function main() {
     receipt.checks.push("reviewed_actor_binding_is_tenant_scoped_immutable_and_not_transferred_to_another_person")
 
     phase = "INDEPENDENT_MEMBERSHIP_STORAGE"
+    await expectDatabaseError(() => admin.identityApplicationMembership.create({ data: { organizationId: A, userId: actor.userId, actorId: binding.actorId, application: "TIME" } }), "23503")
     for (const [application, role] of [["TIME", "EMPLOYEE"], ["ROUTE_FIELD", "AGENT"]]) {
       await admin.identityApplicationGrant.create({ data: { organizationId: A, userId: binding.userId, application, role, status: "ACTIVE" } })
       await admin.identityApplicationMembership.create({ data: { organizationId: A, userId: binding.userId, actorId: binding.actorId, application, status: "ACTIVE" } })
     }
     assert.equal(await admin.identityApplicationMembership.count({ where: { organizationId: A, userId: binding.userId } }), 2)
-    await expectDatabaseError(() => admin.identityApplicationMembership.create({ data: { organizationId: A, userId: actor.userId, actorId: binding.actorId, application: "TIME" } }), "23503")
+    phase = "MEMBERSHIP_STORAGE_APP_AND_VERSION_LIMITS"
     await expectDatabaseError(() => admin.$executeRawUnsafe('INSERT INTO identity_application_memberships ("organizationId","userId",application,"actorId","updatedAt") VALUES ($1,$2,\'CRM\',$3,now())', A, binding.userId, binding.actorId), "23514")
     await expectDatabaseError(() => admin.$executeRawUnsafe('UPDATE identity_application_memberships SET version = 0 WHERE "userId" = $1', binding.userId), "23514")
+    phase = "MEMBERSHIP_STORAGE_BINDING_TRUNCATE_REFUSAL"
     await expectDatabaseError(() => admin.$executeRawUnsafe('TRUNCATE identity_actor_bindings CASCADE'), "23514")
     assert.equal(await admin.identityApplicationMembership.count({ where: { organizationId: A, userId: binding.userId } }), 2)
     receipt.checks.push("independent_mobile_memberships_require_tenant_person_binding_and_existing_grant")
@@ -393,6 +404,8 @@ async function main() {
     receipt.failedPhase = phase
     // Fixed error identifiers only; never print Prisma payloads, codes or phones.
     const safeCode = error?.meta?.code ?? error?.code
+    const observed = error?.observedDatabaseErrorCode
+    if (typeof observed === "string" && /^(P[0-9]{4}|[0-9]{5})$/.test(observed)) receipt.observedDatabaseErrorCode = observed
     if (typeof safeCode === "string" && /^(P[0-9]{4}|[0-9]{5}|ERR_ASSERTION|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND)$/.test(safeCode)) receipt.errorCode = safeCode
     process.exitCode = 1
   } finally {

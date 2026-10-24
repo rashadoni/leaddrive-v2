@@ -63,7 +63,7 @@ jobs:
           IDENTITY_CONTRACT_RECEIPT: ${{ runner.temp }}/identity-snapshot-contract.json
       - name: Focused identity types and independent application unit checks
         run: |
-          npx tsc src/lib/identity/contract.ts src/lib/identity/registry.ts src/lib/identity/phone-proof.ts src/lib/identity/phone-proof-registry.ts src/lib/identity/credential-setup.ts src/lib/identity/phone-proof-dispatch.ts src/lib/identity/mobile-session-contract.ts src/lib/identity/mobile-session.ts src/lib/identity/membership-registry.ts --strict --esModuleInterop --skipLibCheck --target ES2022 --module NodeNext --moduleResolution NodeNext --types node --outDir "$RUNNER_TEMP/identity-foundation"
+          npx tsc src/lib/identity/contract.ts src/lib/identity/registry.ts src/lib/identity/phone-proof.ts src/lib/identity/phone-proof-registry.ts src/lib/identity/credential-setup.ts src/lib/identity/phone-proof-dispatch.ts src/lib/identity/mobile-session-contract.ts src/lib/identity/mobile-session.ts src/lib/identity/membership-registry.ts src/lib/identity/mobile-session-resolver.ts --strict --esModuleInterop --skipLibCheck --target ES2022 --module NodeNext --moduleResolution NodeNext --types node --outDir "$RUNNER_TEMP/identity-foundation"
           # Compiled Node modules live outside the checkout. Resolve only the
           # exact lockfile-installed dependencies, including runtime bcrypt.
           ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/identity-foundation/node_modules"

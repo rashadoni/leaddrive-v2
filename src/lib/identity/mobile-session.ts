@@ -1,10 +1,12 @@
 import { hkdfSync, randomUUID } from "node:crypto"
 import jwt from "jsonwebtoken"
 import { IdentityRegistryError } from "./contract.js"
-import { authorizeIdentityMobileSession, IDENTITY_MOBILE_AUDIENCES, IDENTITY_MOBILE_ISSUER,
+import { parseIdentityMobileClaims, authorizeIdentityMobileSession, IDENTITY_MOBILE_AUDIENCES, IDENTITY_MOBILE_ISSUER,
   type IdentityMobileApplication, type IdentityMobileClaims, type IdentityMobileState } from "./mobile-session-contract.js"
 
 export type IdentitySessionSigningKey = { purpose: "IDENTITY_MOBILE_SESSION"; id: string; material: Uint8Array }
+declare const identityClaimsVerified: unique symbol
+export type VerifiedIdentityMobileClaims = IdentityMobileClaims & { readonly [identityClaimsVerified]: true }
 export type IdentitySessionKeyResolver = (keyId: string) => IdentitySessionSigningKey | null
 const TYPE = "leaddrive-mobile+jwt", PURPOSE = "leaddrive:identity:mobile-session:v1"
 function validKeyId(value: unknown): value is string {
@@ -41,8 +43,8 @@ export function issueIdentityMobileSession(state: IdentityMobileState, applicati
  * resolver. Unverified kid is only an allowlisted key-ring lookup hint: no URL,
  * file, DB query or algorithm can be selected by an incoming header.
  */
-export function verifyIdentityMobileSession(token: string, application: IdentityMobileApplication, state: IdentityMobileState,
-  resolve: IdentitySessionKeyResolver, now: Date) {
+export function readVerifiedIdentityMobileClaims(token: string, application: IdentityMobileApplication,
+  resolve: IdentitySessionKeyResolver, now: Date): VerifiedIdentityMobileClaims | null {
   try {
     if (typeof token !== "string" || token.length < 1 || token.length > 4096 || !["TIME", "ROUTE_FIELD"].includes(application)
       || !(now instanceof Date) || !Number.isFinite(now.valueOf())) return null
@@ -55,6 +57,12 @@ export function verifyIdentityMobileSession(token: string, application: Identity
     if (!key || key.id !== header.kid) return null
     const claims = withSigningKey(key, derived => jwt.verify(token, derived, { algorithms: ["HS256"], issuer: IDENTITY_MOBILE_ISSUER,
       audience: IDENTITY_MOBILE_AUDIENCES[application], clockTimestamp: Math.floor(now.valueOf() / 1000), clockTolerance: 0 }))
-    return authorizeIdentityMobileSession(claims, application, state, now)
+    return parseIdentityMobileClaims(claims, application, now) as VerifiedIdentityMobileClaims | null
   } catch { return null }
+}
+
+export function verifyIdentityMobileSession(token: string, application: IdentityMobileApplication, state: IdentityMobileState,
+  resolve: IdentitySessionKeyResolver, now: Date) {
+  const claims = readVerifiedIdentityMobileClaims(token, application, resolve, now)
+  return claims ? authorizeIdentityMobileSession(claims, application, state, now) : null
 }

@@ -27,14 +27,8 @@ const unix = (value: unknown): value is number => typeof value === "number" && N
 const roleAllowed = (app: IdentityMobileApplication, role: string | null): role is string => typeof role === "string"
   && (app === "TIME" ? ["EMPLOYEE", "REVIEWER"] : ["ADMIN", "MANAGER", "SUPERVISOR", "AGENT"]).includes(role)
 
-/**
- * Authorization policy only: claims MUST first pass a real JWT verifier with
- * a dedicated identity signing key, pinned issuer/algorithm and exact audience.
- * Do not reuse JWT_SECRET, accept a body/header as verified claims, or fall
- * back to legacy auth on refusal. No current login/route calls this contract.
- * The expected app is owned by the server route; CRM is never admitted here.
- */
-export function authorizeIdentityMobileSession(raw: unknown, expectedApp: IdentityMobileApplication, state: IdentityMobileState, now: Date) {
+/** Shape/time/scope parsing only; this does NOT verify a signature. */
+export function parseIdentityMobileClaims(raw: unknown, expectedApp: IdentityMobileApplication, now: Date): IdentityMobileClaims | null {
   if (!["TIME", "ROUTE_FIELD"].includes(expectedApp) || !raw || typeof raw !== "object" || Array.isArray(raw)
     || Object.keys(raw).length !== NAMES.length || NAMES.some(name => !Object.hasOwn(raw, name))
     || !(now instanceof Date) || !Number.isFinite(now.valueOf())) return null
@@ -47,6 +41,19 @@ export function authorizeIdentityMobileSession(raw: unknown, expectedApp: Identi
     assertIdentityScope(claims.organizationId, claims.sub)
     for (const id of [claims.actorId, claims.phoneClaimId, claims.jti]) assertIdentityRequestId(id)
   } catch { return null }
+  return claims
+}
+
+/**
+ * Authorization policy only: claims MUST first pass a real JWT verifier with
+ * a dedicated identity signing key, pinned issuer/algorithm and exact audience.
+ * Do not reuse JWT_SECRET, accept a body/header as verified claims, or fall
+ * back to legacy auth on refusal. No current login/route calls this contract.
+ * The expected app is owned by the server route; CRM is never admitted here.
+ */
+export function authorizeIdentityMobileSession(raw: unknown, expectedApp: IdentityMobileApplication, state: IdentityMobileState, now: Date) {
+  const claims = parseIdentityMobileClaims(raw, expectedApp, now)
+  if (!claims) return null
   if (!state || !state.company || !state.person || !state.account || !state.license) return null
   const { company, person, account, claim, grant, membership, binding, actor, license } = state
   if (company.id !== claims.organizationId || company.isActive !== true || company.identityMobileEnabled !== true

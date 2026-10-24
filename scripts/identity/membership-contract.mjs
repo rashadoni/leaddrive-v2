@@ -1,5 +1,6 @@
 /** Runs only within the already-admitted disposable foundation database. */
 import assert from "node:assert/strict"
+import { checkIdentityResolver } from "./mobile-session-resolver-contract.mjs"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
@@ -113,4 +114,5 @@ export async function checkMembershipTransactions({ admin, writer, failing, acto
   await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: org, userId: base.userId } }, data: { passwordHash: "synthetic-existing-credential-fixture", cutoverAt: new Date() } })
   await assert.rejects(member(writer, actor, { ...revoke, expectedAccountVersion: 12, expectedMembershipVersion: 6, requestId: "membership-after-cutover" }), /IDENTITY_ALREADY_AUTHORITATIVE/)
   checks.push("relinked_actor_never_transfers_history_revocation_remains_possible_and_staging_refuses_cutover")
+  await checkIdentityResolver({ admin, writer, build, actor, userId: base.userId, actorId: base.actorId, otherUserId: rollback.userId, checks, phase })
 }
