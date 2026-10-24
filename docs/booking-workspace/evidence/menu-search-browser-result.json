@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "status": "PASS_COMPONENT_UI",
+  "observedAt": "2026-10-24T16:45:37.285Z",
+  "component": "real AppLauncher and LauncherPrefsProvider",
+  "phase": "workspace",
+  "locale": "ru",
+  "session": "synthetic admin org",
+  "api": "preferences intercepted locally",
+  "checks": [
+    "old label finds exactly one current destination",
+    "parent-driven reopen resets search",
+    "new label and Enter navigate to /meetings",
+    "keyboard reopen uses fresh open state and empty search",
+    "390px mobile result remains readable without horizontal overflow"
+  ],
+  "errors": [],
+  "external": [],
+  "sizes": {
+    "width": 390,
+    "document": 390,
+    "dialog": [
+      {
+        "width": 365,
+        "scroll": 365
+      }
+    ]
+  },
+  "notProven": [
+    "authenticated production UI",
+    "full app browser E2E",
+    "provider delivery"
+  ]
+}
