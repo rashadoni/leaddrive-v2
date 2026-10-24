@@ -79,7 +79,10 @@ if (process.env.CI === 'true' && !dbUrl) throw new Error('BOOKING_PREFLIGHT_TEST
 test('actual SQL against isolated Postgres: conflicts, missing projections and write rejection', {skip: !dbUrl}, () => {
   const parsed = new URL(dbUrl);
   assert.ok(['127.0.0.1','localhost'].includes(parsed.hostname), 'fixture accepts only owned loopback PostgreSQL');
-  const env = {...process.env, PGDATABASE: dbUrl, PGOPTIONS: '-c statement_timeout=10s -c lock_timeout=2s'};
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('PG')));
+  Object.assign(env, {PGHOST: parsed.hostname, PGPORT: parsed.port || '5432',
+    PGUSER: decodeURIComponent(parsed.username), PGPASSWORD: decodeURIComponent(parsed.password),
+    PGDATABASE: decodeURIComponent(parsed.pathname.slice(1)), PGOPTIONS: '-c statement_timeout=10s -c lock_timeout=2s'});
   const psql = sql => spawnSync('psql', ['-X', '-qAt', '-v', 'ON_ERROR_STOP=1'], { input: sql, env, encoding: 'utf8', timeout: 20000 });
   // This database is owned exclusively by the disposable service in this workflow.
   const setup = psql(`CREATE TABLE users(id text, "organizationId" text);
