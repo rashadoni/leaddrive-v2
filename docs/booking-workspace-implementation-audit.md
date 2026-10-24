@@ -24,7 +24,7 @@
   `40094028286` SUCCESS, ping/build-info PASS. Backend A/B не выкладывался.
 - Полный GO для B возможен только после проверенного, реально выложенного A и
   сохранённого exact immutable A artifact. Marker сам по себе не является proof.
-  Подробный протокол: `../booking-release-cutover-plan.md`.
+  Подробный протокол: `booking-release-cutover-plan.md`.
 - Действующая production recovery configuration — **plain**, как показал deploy
   log. Encrypted/offline commissioning не активна; нормальный маршрут это явно
   допускает. Полная disaster-recovery certification и production fault injection
