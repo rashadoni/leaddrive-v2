@@ -64,6 +64,9 @@ jobs:
       - name: Focused identity types and independent application unit checks
         run: |
           npx tsc src/lib/identity/contract.ts src/lib/identity/registry.ts src/lib/identity/phone-proof.ts src/lib/identity/phone-proof-registry.ts src/lib/identity/credential-setup.ts src/lib/identity/phone-proof-dispatch.ts src/lib/identity/mobile-session-contract.ts --strict --esModuleInterop --skipLibCheck --target ES2022 --module NodeNext --moduleResolution NodeNext --types node --outDir "$RUNNER_TEMP/identity-foundation"
+          # Compiled Node modules live outside the checkout. Resolve only the
+          # exact lockfile-installed dependencies, including runtime bcrypt.
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/identity-foundation/node_modules"
           VITEST_MAX_WORKERS=1 npx vitest run src/lib/identity/contract.test.ts src/lib/identity/phone-proof.test.ts src/lib/identity/credential-setup.test.ts src/lib/identity/phone-proof-dispatch.test.ts src/lib/identity/mobile-session-contract.test.ts src/__tests__/rls-bypass-classifier.test.ts
       - name: Actual additive identity migration, tenant isolation and phone races
         run: node scripts/identity/foundation-contract.mjs

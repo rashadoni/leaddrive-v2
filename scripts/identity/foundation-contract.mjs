@@ -364,7 +364,7 @@ async function main() {
     receipt.failedPhase = phase
     // Fixed error identifiers only; never print Prisma payloads, codes or phones.
     const safeCode = error?.meta?.code ?? error?.code
-    if (typeof safeCode === "string" && /^(P[0-9]{4}|[0-9]{5}|ERR_ASSERTION)$/.test(safeCode)) receipt.errorCode = safeCode
+    if (typeof safeCode === "string" && /^(P[0-9]{4}|[0-9]{5}|ERR_ASSERTION|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND)$/.test(safeCode)) receipt.errorCode = safeCode
     process.exitCode = 1
   } finally {
     await writer?.$disconnect().catch(() => {})

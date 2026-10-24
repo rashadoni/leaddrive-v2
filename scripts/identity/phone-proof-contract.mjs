@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs"
 import { passwordPolicyError } from "../password-policy.mjs"
 
 export async function checkPhoneProofTransactions({ admin, writer, failing, actor, other, build, checks, phase }) {
+  phase("PROOF_TRANSACTION_MODULE_IMPORTS")
   const { stageIdentityAccount, reserveStagedIdentityPhone } = await import(pathToFileURL(resolve(build, "registry.js")).href)
   const { issueStagedPhoneProof: issue, consumeStagedPhoneProof: consume, cancelStagedPhoneReservation: cancel,
     expireStagedPhoneProofs: expire, claimStagedPhoneProofDelivery: lease, recordStagedPhoneProofDelivery: record,
