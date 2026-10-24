@@ -101,7 +101,11 @@ export async function drainBookingEffects(orgId: string, limit = 20, deadline = 
       }
       if (effect.effectType === "booking.calendar" && payload.bindingId) {
         const binding = await tx.bookingIntegrationBinding.findFirst({ where: { id: payload.bindingId, organizationId: orgId, bookingId: row.id } })
-        if (binding?.state === "reconciliation_required" || binding?.accountId === "unavailable") {
+        // Provider-result uncertainty is released by the existing reviewed
+        // outbox protocol above. A missing credential identity is a separate
+        // blocker and must never be silently rebound to a current account.
+        const credential = binding && binding.accountId !== "unavailable" ? await tx.account.findFirst({ where: { id: binding.accountId, userId: binding.hostUserId, provider: { in: ["google-calendar", "google"] } }, select: { id: true } }) : null
+        if (binding && !credential) {
           await finish(tx, claimed, "reconciliation_required", { reason: "calendar_identity_unverified" })
           return { done: true as const }
         }
