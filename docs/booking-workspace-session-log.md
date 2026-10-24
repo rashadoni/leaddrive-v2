@@ -379,6 +379,14 @@
 - Actual log инструментального deploy подтверждает plain recovery mode; encrypted/offline commissioning не активна. Существующая политика normal releases не менялась, сертификат полной DR не заявляется.
 - Новый аудит и protocol описывают фактический code path; I-05 до hosted acceptance и реального A artifact ещё не закрывается. Следующие действия: checkpoint/push A, PR с production-build gate; проверить результаты; подготовить B как смену immutable UI phase с тем же backend.
 
+## 2026-10-24 — Подготовлен B поверх compatibility backend A
+
+- Backend A опубликован в PR https://github.com/rashadoni/leaddrive-v2/pull/1026, source `d7235866e3bb8b489883738c888763afc7e8af1b`; production-build label включён. Hosted gates ещё выполняются.
+- За время подготовки в main другим task уже принят #1025 (Time download). Текущий main `6a755bb2329d2f4ff9a1cc9dc2bf5b7900507376` объединён в A без удаления/переписывания чужих изменений. Неизменны origin, registered production и Actions release path.
+- Исходная feature branch продолжена fast-forward к A с сохранением всех checkpoint commits; B меняет только `src/lib/booking/release-phase.json` на workspace и дополняет этот журнал. Backend, schema, migrations и marker storage contract A/B одинаковы.
+- Новый label nav.bookingWorkspace действительно содержит «Встречи и запись»; navDesc и voice keys синхронизированы с immutable phase. В A старый редактор доступен администратору, B открывает согласованный workspace сотрудникам/координаторам с own/team access.
+- PR #1023 становится stage B и остаётся зависимым от #1026: сначала нужны зелёные exact-source checks и actual immutable A artifact с успешным production smoke, затем включение B. Старый writer не используется после canonical данных/активации.
+
 ## 2026-10-24 15:03 UTC — Первая hosted проверка A выявила гонку тестового writer
 
 - Run `40104161255`, source `d7235866e3bb8b489883738c888763afc7e8af1b`: typecheck PASS; static-checks FAIL в новом Node PostgreSQL acceptance, до application booking suite. Baseline не менялся, красный gate не обходится.
@@ -408,6 +416,16 @@
 - Override не добавляется. По существующему campaign-fixture образцу две redundant uniqueness гарантии (id уже primary key) создаются явно только в disposable runtime alignment после исторического before/after proof. Настоящие production миграции, guard, base-row receipts и последующий Prisma refusal gate сохраняются.
 - Требуется новый полный exact-source CI и успешный дополнительный restore evidence. Предыдущие зелёные результаты относятся к прежним SHA; за новый PASS не выдаются.
 
+## 2026-10-24 16:13 UTC — Текущие A/B gates и свежая inventory сохранены без изменения CI head
+
+- Remote sources A `1f589578a912631b9fb1f8ca3dd4ff2ff2b0d210` (#1026), B `4cbdab6b7c16259e99dfdc36f5dca08c0e5607b4` (#1023). B относительно A меняет только immutable phase JSON и прежнюю запись журнала; backend и migrations идентичны.
+- Required PR runs A `40108730548`, B `40108740060`: typecheck и actual Online booking database gate PASS на обоих; production standalone A PASS, B ещё in progress. Общие static-checks ещё выполняются, поэтому merge не сделан. Source-validation/secret/runner checks также перечитываются перед merge.
+- Исправленный дополнительный Workforce restore evidence PASS на обоих: A `40108730621` / job `120915771571`, B `40108740132` / job `120915798666`. Исторический migration proof, real PostgreSQL restore tests, авторизованный API и rendered browser evidence выполнены; blanket data-loss override не добавлен.
+- Fresh inventory `40110215470`, artifact `12566352184`, digest `sha256:c944f10e78bb37dc5941ba87753453ec324e3d5cbfb36c19eb6cf1349c85f1fe`: наблюдение `2026-10-24T16:10:30.904Z`, exact current main/deployed `6a755bb2329d2f4ff9a1cc9dc2bf5b7900507376`. По-прежнему 2 Booking; все checked violations 0; btree_gist установлен, read-only/unfiltered true. Копия сохранена новым evidence file, старые не перезаписаны.
+- Baseline public GET страницы `/book/leaddrive-test-yazilis` и её public API: HTTP 200/200, bodies discarded, без бронирований и provider sends.
+- Уточнение времени предыдущего заголовка «15:51 UTC»: source-fix checkpoint фактически сделан около 15:49 UTC. Старый заголовок сохраняется как история.
+- Этот docs/evidence-only checkpoint остаётся локальным: remote A/B heads и их текущие CI не перезаписываются/не перезапускаются. При merge B проверять remote `4cbdab6b7...`, а не последующий локальный journal commit.
+- Точная текущая остановка: ожидание оставшихся полных CI/build результатов, production всё ещё `6a755bb...`; backend A/B ещё не installed. Следующее действие: после зелёных пяти required checks и build принять A **merge commit**, штатно выложить и сохранить проверенный immutable A artifact; только после этого принять/выложить B.
 ## 2026-10-24 16:30 UTC — Full baseline выявил два integration contract расхождения
 
 - A `40108730548` и B `40108740060` завершили source build, typecheck, 22 application PostgreSQL и все отдельные DB gates успешно, но final unit-baseline FAIL: 20 failing files против прежних 18. Новые: cron-trigger-lock-contention и nav-items. Baseline не меняется.
@@ -416,6 +434,10 @@
 - Дополнительный restore evidence уже PASS на обеих версиях после безопасного fixture alignment. Требуется повтор полного exact-source CI после этих узких исправлений; предыдущие source SHA не выдаются за новые зелёные.
 - После исправления проверен весь найденный узкий набор workflow/navigation contract tests: 201/201 PASS в 20 файлах, один worker. Scoped ESLint, runner policy, YAML parse и diff PASS. Полный suite/build локально не запускались по host contract.
 
+## 2026-10-24 16:32 UTC — Исправления baseline включены в B
+
+- Journal-only merge conflict разрешён сохранением обеих append-only записей (16:13, затем 16:30); исходный текст истории не удалялся.
+- Superseded: локальный checkpoint `39e35a810` теперь публикуется в составе нового B merge, поэтому новый source B будет отличаться от A только phase flag и docs/evidence. Предыдущий remote `4cbdab6b7...` больше не является кандидатом после push; новый head требуется проверить заново.
 ## 2026-10-24 16:38 UTC — Закрывается исходный сценарий поиска раздела
 
 - Сверка согласованного требования «находить по старому и новому названию» выявила UI-пробел: sidebar/Cmd+K/launcher искали текущую подпись, и «Онлайн-запись» не находила новое «Встречи и запись».
@@ -424,3 +446,10 @@
 - Это исправление исходной findability задачи; новая функциональная область не добавляется. Требуется новый source CI/build из-за client search компонентов; baseline и guards сохраняются.
 - Discovery/navigation/access + deploy contract: 84/84 PASS в 3 целевых файлах. i18n parity 28630 keys PASS. Scoped lint нашёл прежнюю render-time ref mutation в уже затронутом AppLauncher; обновление ref перенесено в useEffect, подписка/клавиатурное действие сохранены. Lint повторяется без исключения правила.
 - Повтор lint после ref fix выявил прежний synchronous query reset effect того же компонента. Query reset перенесён в guarded prop-change state adjustment до commit, чтобы при открытии не отображались прежние результаты; без async обхода lint или ослабления правил.
+
+## 2026-10-24 16:47 UTC — Реальная browser-проверка поиска и режима B
+
+- A source `a299c6458` включает translated search aliases и lint-safe launcher lifecycle. B получил тот же код с сохранением workspace phase; единственный journal conflict разрешён сохранением обеих append-only записей. Backend/schema одинаковы.
+- На реальном AppLauncher/LauncherPrefsProvider в изолированном Vite: оба названия находят один правильный пункт; Enter записывает переход `/meetings`; открытие из parent и по клавиатуре очищает поиск; 1440/390px без overflow; JS/console errors 0, external requests 0. Preferences API перехвачен локально, реальные CRM-данные не запрашивались/не менялись.
+- Evidence: `menu-search-browser-result.json`, `menu-search-desktop.png`, `menu-search-mobile.png`; observed `2026-10-24T16:45:37.285Z`. Скриншоты просмотрены. Task-owned preview process остановлен по проверенному PID/command path.
+- Это component UI proof, не authenticated production E2E. Source B после checkpoint/push требует полного exact-head CI. Предыдущий `2d11a88d9...` superseded; production по-прежнему `6a755bb...`, ни A, ни B не выпущены.
