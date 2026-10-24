@@ -57,3 +57,19 @@ Prepared implementation is reviewable. Asked one authorization for this newly re
 
 
 2026-10-24T13:22:55.120858+00:00 — user authorization received: «Да, опубликовать и выпустить после проверок» for /time page, separate Time download/latest and in-app updater. Authorized push, hosted CI/build and checked release; public APK remains conditional on outstanding Time acceptance. Proceed autonomously, no repeat permission for this package.
+
+
+## 2026-10-24T13:29:06.050397+00:00 — published exact source and hosted gates
+
+CRM branch head6335af276e5c1792513929a38aba268986621bc7 published as PR1025, attached and ready for review; production-build label added. Exact-head PR checks/build run40098006338 active. Earlier draft/ready runs superseded by label event; skipped drafts are not PASS. Required live main contexts verified: pr-scope/static-checks/typecheck/runner-policy/scan. Registry and deployment docs agree13.140.132.245:/opt/leaddrive-v2 via GitHub Actions. No production mutation yet.
+
+Integrated mobile head74e32574db99d13aa1db5e039b999e2a24764339 published PR201draft. CI40097939448/job120884037882 SUCCESS:291suites2654PASS+1TODO,TypeScriptPASS. Contract40097939421PASS is not emulator execution. RF build40097939406 stillbuilding1808; don't reinstall RF because only Time updater changed. Explicit Time workflow dispatch40097984669/job120884141795 builds QA1046 from exact74e, tests/TS alreadyPASS, Android build/signature/artifact stillpending. PR201description updated/currenthead/draft/unmerged confirmed.
+
+Read-only production baseline tmp/time-app-release-20261024/before-sanitized.json: ping200, build-info cb1c604e274d75cfde10534b94978ce293f8f121, Fieldlatest1795 unchanged; /time307→login and Timelatest404 before deployment. New page and public APK are not yet live. Prepared passive Time in-place upgrade verification: no existing launchApp Maestro flows that impose DENY permissions, no new marks/auth input, preserve all profiles/Field1807/network/display. Old recovery queueEmpty from11:16UTC is historical; fresh app-private queue retention is NOT_PROVEN until appropriate current evidence, never infer from old receipt. Actual updater-offer native branch cannot be proven with release=null; unit tests cover offer logic, real public offer stays a separate gate. Root will execute bounded install only after exact signed artifact is accepted.
+
+
+## 2026-10-24T13:49:22.296040+00:00 — inherited CI fixture failure and reviewed repair
+
+PR1025 exact6335af failed the policy-restore workflow40097951948/job120884044631 before API/browser tests: current base schema already includes whatsapp_templates_org_channel_name_language_key, then fixture unconditionally replays its migration. Same workflow/schema/migration unchanged from basecb1c; independent run40089486693 also fails on the same duplicate index. Existing PR1021 fix0be08ff11901d18f9b57442535baf7c87f7439af was inspected and imported with attribution/cherry-pick -x as0b343655a. It applies the entire real migration only for old-only key, skips new-only key, refuses both/neither; historical migration proof and destructive schema-change refusal remain. Prior fix CI40025402983 passed, but this integrated candidate requires fresh gates. No production deploy or /time APK promotion.
+
+Task UI user steering: user dislikes accordion/link appearance in Route & Field. Root inspected actual phone1807 Tasks and one existing closed task without business actions; preparing native interaction proposal while /time gates continue.
