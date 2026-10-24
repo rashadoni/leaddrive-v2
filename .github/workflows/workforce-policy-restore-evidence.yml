@@ -167,7 +167,15 @@ jobs:
           # Apply the real template identity migration after the historical
           # proof. It preserves rows and replaces the stricter old unique key;
           # schema push must still refuse any other unreviewed destructive change.
-          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f prisma/migrations/20261028091000_whatsapp_template_channel_identity/migration.sql
+          # A base that already ships the migration was pushed from a schema
+          # that has the new key and lacks the old one, so the migration does
+          # not fit that database: skip it there, apply it to older bases.
+          template_identity=prisma/migrations/20261028091000_whatsapp_template_channel_identity/migration.sql
+          if git cat-file -e "$WF_POLICY_RESTORE_BASE_SHA:$template_identity" 2>/dev/null; then
+            echo "Base $WF_POLICY_RESTORE_BASE_SHA already contains $template_identity; its schema push created the key."
+          else
+            psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f "$template_identity"
+          fi
           DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema prisma/schema.prisma --skip-generate
       - name: Execute mandatory real PostgreSQL restore concurrency and rollback tests
         run: npx vitest run src/__tests__/lib-workforce-policy-restore-postgres.test.ts --maxWorkers=1
