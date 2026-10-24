@@ -400,3 +400,10 @@
 - Artifact `12564134205`, digest `sha256:bda5c31e1f9c44548c17d2920b0b5af63d14bf83eaac852692ef3530d49d26db`; allowlisted копия сохранена отдельным `production-inventory-20261024-1524.json`, прежнее наблюдение не перезаписывается.
 - Audit выявил отсутствие общей concurrency у нового inspector workflow. Добавлена отмена obsolete synthetic PR runs; operational dispatch имеет уникальную группу и прежнюю production-deploy сериализацию, поэтому не отменяет действующую production проверку/выкладку. Production данные и controller admission этим не меняются.
 - Следующее действие: полный hosted CI на финальном source A/B; затем verified immutable A до активации B.
+
+## 2026-10-24 15:51 UTC — 22/22 booking PostgreSQL PASS; исправляется смежный fixture
+
+- Sources A `43f7046fa6428d879ade240a646e486bfa4e796f`, B `1549643479ad02fcf33de90391ae5719ccb842c9`: реальные Online booking database gate PASS на обоих, в том числе восстановленная legacy insert/delete совместимость и отрицательные positive/delete обходы; typecheck PASS на обоих. Production standalone A PASS; B ещё собирается. Общие static checks продолжаются.
+- Дополнительный Workforce restore evidence оказался красным на обоих heads при подготовке disposable schema, до API/browser тестов. Причина подтверждена log job `120910614123`: Prisma требует blanket data-loss override для новых redundant composite unique keys `(organizationId,id)` у booking_pages/bookings на непустом fixture.
+- Override не добавляется. По существующему campaign-fixture образцу две redundant uniqueness гарантии (id уже primary key) создаются явно только в disposable runtime alignment после исторического before/after proof. Настоящие production миграции, guard, base-row receipts и последующий Prisma refusal gate сохраняются.
+- Требуется новый полный exact-source CI и успешный дополнительный restore evidence. Предыдущие зелёные результаты относятся к прежним SHA; за новый PASS не выдаются.

@@ -176,6 +176,10 @@ jobs:
             1:0) echo "Base schema already carries 20261028091000_whatsapp_template_channel_identity" ;;
             *) echo "::error::Unexpected whatsapp_templates unique keys (new:old = $template_keys)"; exit 1 ;;
           esac
+          # Booking ids are already global primary keys. Add their redundant
+          # tenant keys explicitly on this seeded disposable fixture too. Do
+          # not accept Prisma's blanket data-loss override for schema alignment.
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE UNIQUE INDEX IF NOT EXISTS "booking_pages_org_id_key" ON "booking_pages"("organizationId", "id"); CREATE UNIQUE INDEX IF NOT EXISTS "bookings_org_id_key" ON "bookings"("organizationId", "id");'
           DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema prisma/schema.prisma --skip-generate
       - name: Execute mandatory real PostgreSQL restore concurrency and rollback tests
         run: npx vitest run src/__tests__/lib-workforce-policy-restore-postgres.test.ts --maxWorkers=1
