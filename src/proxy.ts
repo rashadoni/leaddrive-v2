@@ -87,7 +87,7 @@ function isPersonnelApiPath(pathname: string): boolean {
 // click redirects are loaded by unauthenticated recipients (email clients, SMS).
 // Without this, the auth middleware 307→/login and open/click/attribution silently
 // under-count. The routes themselves are RLS-context-wrapped (runWithRlsBypass).
-const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/", "/share/location/", "/field", "/book/"]
+const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/", "/share/location/", "/field", "/time", "/book/"]
 const publicExactPaths = new Set(["/manifest.json", "/sw.js", "/unsubscribe"])
 
 /**
@@ -662,15 +662,14 @@ const authMiddleware = auth(async (req) => {
     // So does the ticket-closure link a customer gets by WhatsApp or e-mail: it
     // is the language that customer is written to in. An invoice link carries
     // the invoice's document language.
-    // The field app's download page (/field) is a link handed to clients'
-    // agents; its AZ · RU · EN switch is `?lang=` too.
-    const fieldAppPage = matchesPublicPath(pathname, "/field")
+    // The app download pages are public links with an AZ · RU · EN switch.
+    const appDownloadPage = matchesPublicPath(pathname, "/field") || matchesPublicPath(pathname, "/time")
     const linkLocaleQuery = pathname.startsWith("/legal/")
       || pathname.startsWith("/share/location/")
       || pathname.startsWith("/ticket-closure/")
       || pathname.startsWith("/portal/invoice/")
       || pathname.startsWith("/book/")
-      || fieldAppPage
+      || appDownloadPage
       ? req.nextUrl.searchParams.get("lang")
       : null
     // The guided demo exists in exactly one language — the scenario's — so it
@@ -689,8 +688,8 @@ const authMiddleware = auth(async (req) => {
       ?? (linkLocaleQuery === "en" || linkLocaleQuery === "ru" || linkLocaleQuery === "az"
         ? linkLocaleQuery
         // An agent opening the link for the first time has no language cookie;
-        // the field app is used in Azerbaijan, so the page starts in Azerbaijani.
-        : localeCookie ?? (fieldAppPage ? "az" : undefined))
+        // these apps are used in Azerbaijan, so their pages start in Azerbaijani.
+        : localeCookie ?? (appDownloadPage ? "az" : undefined))
     if (publicLocale) {
       requestHeaders.set("x-locale", publicLocale)
     }

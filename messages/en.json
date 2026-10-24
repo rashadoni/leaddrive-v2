@@ -30847,5 +30847,24 @@
     "missingEvent": "Tick at least one event to send.",
     "errNoPixelAccess": "This token cannot send to this pixel: generate it in the settings of the same pixel.",
     "lastSentAt": "Last sent {time}"
+  },
+  "timeAppDownload": {
+    "pageTitle": "LeadDrive Time for Android",
+    "eyebrow": "LeadDrive Time",
+    "title": "Your working day, in one app",
+    "lead": "Record attendance and view your personal requests and replies with your company account.",
+    "languageLabel": "Page language",
+    "download": "Download Time for Android",
+    "version": "Version {version} · {date}",
+    "unavailable": "A public Time release is not available yet. Your administrator will share this link when it is ready.",
+    "stepsTitle": "How to install",
+    "step1": "When a release is available, download the Time APK using the button above.",
+    "step2": "Open the downloaded file. If Android asks, allow installation from the browser you used.",
+    "step3": "Confirm installation in Android, then open LeadDrive Time and sign in with your company account.",
+    "step4": "Update the existing Time app. Do not uninstall it or clear its data.",
+    "updatesTitle": "When an update is ready",
+    "updates": "Time offers a new version when you open it. Choose Later to keep working. If your older version does not offer updates yet, download the update from this page. Confirm installation in Android.",
+    "playNote": "For a copy installed from Google Play, update through Google Play. This page provides the separate Time APK.",
+    "privacy": "Privacy policy"
   }
 }
