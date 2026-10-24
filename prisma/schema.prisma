@@ -644,6 +644,8 @@ model PlanRequest {
 }
 
 model User {
+  identityAccount IdentityAccount?
+  identityActions IdentityEvent[] @relation("IdentityEventActor")
   attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceReminderNotices MtmAttendanceReminderNotice[]
   attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
@@ -840,6 +842,104 @@ model User {
 /// recently-used modules); `data` is a forward-compat bucket so future
 /// per-user UI state lands here instead of spawning more tables. Org-scoped
 /// via `organizationId` for tenant-bound cleanup, keyed 1-1 on `userId`.
+/// Additive, inactive identity registry. No legacy login reads these tables.
+/// A reviewed cutover and verified phone/credential migration are separate steps.
+model IdentityAccount {
+  organizationId  String
+  userId          String
+  user            User @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  version         Int @default(1)
+  credentialEpoch Int @default(1)
+  passwordHash    String?
+  cutoverAt       DateTime? @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+  phoneClaim      IdentityPhoneClaim?
+  reservations    IdentityPhoneReservation[]
+  grants          IdentityApplicationGrant[]
+  events          IdentityEvent[]
+
+  @@id([organizationId, userId])
+  @@map("identity_accounts")
+}
+
+/// One person may hold CRM, TIME and ROUTE_FIELD independently.
+/// The SQL CHECKs restrict applications/status and require an explicit active role.
+model IdentityApplicationGrant {
+  organizationId String
+  userId         String
+  application    String @db.VarChar(16)
+  status         String @default("REVOKED") @db.VarChar(16)
+  role           String? @db.VarChar(50)
+  version        Int @default(1)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  account        IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([organizationId, userId, application])
+  @@map("identity_application_grants")
+}
+
+/// Only confirmed current assignments live here. Reservations never grant login.
+/// A replacement gets a new claim ID; history remains in immutable IdentityEvent.
+model IdentityPhoneClaim {
+  id              String @id @default(uuid())
+  organizationId  String
+  userId          String
+  normalizedPhone String @db.VarChar(16)
+  accountVersion  Int
+  verifiedAt      DateTime @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  account         IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizationId, normalizedPhone])
+  @@unique([organizationId, userId])
+  @@map("identity_phone_claims")
+}
+
+model IdentityPhoneReservation {
+  id                     String @id @default(uuid())
+  organizationId         String
+  userId                 String
+  normalizedPhone        String @db.VarChar(16)
+  expectedAccountVersion Int
+  expectedCredentialEpoch Int
+  requestId              String @db.VarChar(128)
+  expiresAt              DateTime @db.Timestamptz(3)
+  createdAt              DateTime @default(now()) @db.Timestamptz(3)
+  account                IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizationId, normalizedPhone])
+  @@unique([organizationId, userId])
+  @@unique([organizationId, requestId])
+  @@index([expiresAt])
+  @@map("identity_phone_reservations")
+}
+
+/// Append-only security receipts. Raw credentials, OTP and session data are absent.
+/// Phone assignment history is private tenant data, never an operational log payload.
+model IdentityEvent {
+  id              String @id @default(uuid())
+  organizationId  String
+  userId          String
+  actorUserId     String
+  requestId       String @db.VarChar(128)
+  requestHash     String @db.VarChar(64)
+  action          String @db.VarChar(40)
+  accountVersion  Int
+  application     String? @db.VarChar(16)
+  normalizedPhone String? @db.VarChar(16)
+  previousClaimId String?
+  claimId         String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  account         IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  actor           User @relation("IdentityEventActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizationId, requestId])
+  @@index([organizationId, userId, createdAt, id])
+  @@map("identity_events")
+}
+
 model UserPreference {
   id             String       @id @default(cuid())
   userId         String       @unique

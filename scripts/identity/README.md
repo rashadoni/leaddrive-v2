@@ -113,3 +113,39 @@ and the reported stale actor phone after a CRM-only number change. The fixture
 uses only columns needed by the exporter: this is not a full migration replay
 or validation of the whole application schema. The receipt is bound to the
 checked-out source commit and contains fixed check names, never private data.
+
+## Additive account and application foundation (stage 1)
+
+`20261103120000_identity_foundation` adds an empty registry linked to the
+existing tenant+User key. A person may have CRM, TIME and ROUTE_FIELD grants
+independently, with one current verified login phone per person and one owner
+per company+phone. The same phone in a different company is a separate identity.
+Reservations are separate, expire within 15 minutes, and cannot authorize login.
+All five new tables use FORCE RLS and composite tenant foreign keys. Security
+receipts are append-only even for a table owner. The migration changes no
+legacy rows, credentials, roles, triggers or application access.
+
+`src/lib/identity/registry.ts` exposes explicit admin-only staging of an existing
+User and a consistent read-only shadow comparison. Staging creates no phone
+claim, credential, CRM access, employee card or app grant. It serializes tenant
+writes before reading current state, rechecks the stored administrator and
+company, rejects ambiguous actor links, binds idempotency to actor+subject, and
+commits its audit receipt atomically. Shadow comparison returns issue codes and
+explicit grant states, never raw numbers or credentials. Neither function is
+called from a current HTTP, login or enrollment path. `authenticationChanged`
+is always false in this stage.
+
+The same hosted gate validates/generates Prisma, compiles the two service files,
+runs the focused Vitest contract, then executes `foundation-contract.mjs`. That
+script admits only the existing fixed synthetic PostgreSQL fixture, applies the
+actual migration with psql, and uses a non-superuser/NOBYPASSRLS writer to
+exercise staging, replay, authorization, transaction rollback, independent
+grants, tenant isolation and concurrent phone uniqueness. Direct fixture grants
+prove the storage contract; they do not prove a finished registration API or
+an authorized production cutover. Its sanitized receipt is SHA-bound alongside
+the original six-check snapshot receipt.
+
+Still required: verified phone/change/OTP service, independent enrollment and
+grant API/UI, audience-specific sessions, offline compatibility, complete schema
+replay/build/E2E/Maestro, tenant reconciliation and separately authorized rollout.
+Do not apply this migration or stage a real tenant as an incidental diagnostic.

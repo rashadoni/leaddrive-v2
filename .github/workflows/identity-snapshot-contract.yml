@@ -7,6 +7,8 @@ on:
       - 'scripts/identity/**'
       - '.github/workflows/identity-snapshot-contract.yml'
       - 'prisma/schema.prisma'
+      - 'prisma/migrations/20261103120000_identity_foundation/**'
+      - 'src/lib/identity/**'
       - 'package-lock.json'
   workflow_dispatch:
 
@@ -50,7 +52,7 @@ jobs:
           node --test scripts/identity/preflight.test.mjs scripts/identity/snapshot.test.mjs scripts/identity/postgres-contract.test.mjs
           git diff --check
       - run: npm ci
-      - run: npx prisma generate
+      - run: npx prisma validate && npx prisma generate
         env:
           DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
       - name: Actual Prisma, PostgreSQL, RLS and concurrent snapshot
@@ -58,11 +60,23 @@ jobs:
         env:
           IDENTITY_CONTRACT_DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
           IDENTITY_CONTRACT_RECEIPT: ${{ runner.temp }}/identity-snapshot-contract.json
+      - name: Focused identity types and independent application unit checks
+        run: |
+          npx tsc src/lib/identity/contract.ts src/lib/identity/registry.ts --strict --skipLibCheck --target ES2022 --module NodeNext --moduleResolution NodeNext --types node --outDir "$RUNNER_TEMP/identity-foundation"
+          VITEST_MAX_WORKERS=1 npx vitest run src/lib/identity/contract.test.ts
+      - name: Actual additive identity migration, tenant isolation and phone races
+        run: node scripts/identity/foundation-contract.mjs
+        env:
+          IDENTITY_CONTRACT_DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
+          IDENTITY_FOUNDATION_BUILD: ${{ runner.temp }}/identity-foundation
+          IDENTITY_FOUNDATION_RECEIPT: ${{ runner.temp }}/identity-foundation-contract.json
       - name: Retain sanitized result
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: identity-snapshot-${{ env.IDENTITY_CONTRACT_HEAD_SHA }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/identity-snapshot-contract.json
+          path: |
+            ${{ runner.temp }}/identity-snapshot-contract.json
+            ${{ runner.temp }}/identity-foundation-contract.json
           if-no-files-found: warn
           retention-days: 14
