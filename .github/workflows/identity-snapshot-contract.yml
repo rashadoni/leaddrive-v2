@@ -35,9 +35,6 @@ jobs:
     env:
       CI: 'true'
       IDENTITY_CONTRACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      IDENTITY_CONTRACT_DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
-      DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
-      IDENTITY_CONTRACT_RECEIPT: ${{ runner.temp }}/identity-snapshot-contract.json
     steps:
       - uses: actions/checkout@v6
         with:
@@ -54,8 +51,13 @@ jobs:
           git diff --check
       - run: npm ci
       - run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
       - name: Actual Prisma, PostgreSQL, RLS and concurrent snapshot
         run: node scripts/identity/postgres-contract.mjs
+        env:
+          IDENTITY_CONTRACT_DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
+          IDENTITY_CONTRACT_RECEIPT: ${{ runner.temp }}/identity-snapshot-contract.json
       - name: Retain sanitized result
         if: always()
         uses: actions/upload-artifact@v4
