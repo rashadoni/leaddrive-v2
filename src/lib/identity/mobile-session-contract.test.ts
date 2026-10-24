@@ -9,7 +9,7 @@ function fixture(app: IdentityMobileApplication = "TIME") {
   const state: IdentityMobileState = { company: { id: scope.organizationId, isActive: true, identityMobileEnabled: true },
     person: { ...scope, isActive: true, anonymizedAt: null }, account: { ...scope, version: 8, credentialEpoch: 3, cutoverAt: new Date("2026-10-24T19:00:00.000Z") },
     claim: { ...scope, id: "claim-a" }, grant: { ...scope, application: app, status: "ACTIVE", role: app === "TIME" ? "EMPLOYEE" : "AGENT", version: 2 },
-    membership: { ...scope, application: app, actorId: "original-actor-a", active: true, version: 1 }, actor: { organizationId: scope.organizationId, userId: scope.userId, id: "original-actor-a", status: "ACTIVE" }, license: { application: app, enabled: true } }
+    membership: { ...scope, application: app, actorId: "original-actor-a", active: true, version: 1 }, binding: { ...scope, actorId: "original-actor-a", status: "REVIEWED" }, actor: { organizationId: scope.organizationId, userId: scope.userId, id: "original-actor-a", status: "ACTIVE" }, license: { application: app, enabled: true } }
   return { claims, state }
 }
 describe("future authoritative mobile session policy, inactive until composed", () => {
@@ -61,7 +61,7 @@ describe("future authoritative mobile session policy, inactive until composed", 
     expect(authorize(field.claims, "ROUTE_FIELD", field.state, now)).toBeNull()
   })
   it("binds every fresh record to the tenant/person and original actor", () => {
-    for (const name of ["person", "account", "claim", "grant", "membership", "actor"] as const) {
+    for (const name of ["person", "account", "claim", "grant", "membership", "binding", "actor"] as const) {
       for (const column of ["organizationId", "userId"] as const) {
         const { claims, state } = fixture(); state[name]![column] = "other"
         expect(authorize(claims, "TIME", state, now)).toBeNull()
@@ -79,6 +79,14 @@ describe("future authoritative mobile session policy, inactive until composed", 
     expect(authorize(claims, "TIME", state, now)).toBeNull()
     state.actor!.userId = "person-a"; state.actor!.status = "INACTIVE"
     expect(authorize(claims, "TIME", state, now)).toBeNull()
+  })
+  it("never adopts historical actor ownership from a newly changed legacy user link", () => {
+    const { claims, state } = fixture()
+    claims.sub = "person-b"
+    for (const row of [state.person, state.account, state.claim!, state.grant!, state.membership!, state.actor!]) row.userId = "person-b"
+    // All current legacy fields point to B; the reviewed original binding is A.
+    expect(authorize(claims, "TIME", state, now)).toBeNull()
+    state.binding = null; expect(authorize(claims, "TIME", state, now)).toBeNull()
   })
   it("revokes a previous credential epoch/phone claim without transferring an actor or granting another app", () => {
     const { claims, state } = fixture()

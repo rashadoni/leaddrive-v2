@@ -10,7 +10,7 @@ function state(app: IdentityMobileApplication = "TIME"): IdentityMobileState {
   return { company: { id: scope.organizationId, isActive: true, identityMobileEnabled: true }, person: { ...scope, isActive: true, anonymizedAt: null },
     account: { ...scope, version: 7, credentialEpoch: 4, cutoverAt: new Date("2026-10-24T19:00:00.000Z") }, claim: { ...scope, id: "claim-a" },
     grant: { ...scope, application: app, status: "ACTIVE", role: app === "TIME" ? "EMPLOYEE" : "AGENT", version: 2 },
-    membership: { ...scope, application: app, actorId: "original-actor-a", active: true, version: 1 }, actor: { ...scope, id: "original-actor-a", status: "ACTIVE" },
+    membership: { ...scope, application: app, actorId: "original-actor-a", active: true, version: 1 }, binding: { ...scope, actorId: "original-actor-a", status: "REVIEWED" }, actor: { ...scope, id: "original-actor-a", status: "ACTIVE" },
     license: { application: app, enabled: true } }
 }
 describe("dedicated identity JWT, unused by current login", () => {

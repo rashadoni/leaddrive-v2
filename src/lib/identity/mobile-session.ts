@@ -27,7 +27,7 @@ function withSigningKey<T>(key: IdentitySessionSigningKey, work: (derived: Buffe
  */
 export function issueIdentityMobileSession(state: IdentityMobileState, application: IdentityMobileApplication, key: IdentitySessionSigningKey, now: Date) {
   if (!["TIME", "ROUTE_FIELD"].includes(application) || !(now instanceof Date) || !Number.isFinite(now.valueOf())
-    || !state?.company || !state.person || !state.account || !state.claim || !state.grant || !state.membership || !state.actor) throw new IdentityRegistryError("IDENTITY_SESSION_FORBIDDEN")
+    || !state?.company || !state.person || !state.account || !state.claim || !state.grant || !state.membership || !state.binding || !state.actor) throw new IdentityRegistryError("IDENTITY_SESSION_FORBIDDEN")
   const iat = Math.floor(now.valueOf() / 1000)
   const claims: IdentityMobileClaims = { version: 1, iss: IDENTITY_MOBILE_ISSUER, aud: IDENTITY_MOBILE_AUDIENCES[application],
     sub: state.person.userId, organizationId: state.company.id, application, actorId: state.actor.id, phoneClaimId: state.claim.id,

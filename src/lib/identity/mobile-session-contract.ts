@@ -17,6 +17,7 @@ export type IdentityMobileState = {
   claim: (Subject & { id: string }) | null;
   grant: (Subject & { application: IdentityMobileApplication; status: string; role: string | null; version: number }) | null;
   membership: (Subject & { application: IdentityMobileApplication; actorId: string; active: boolean; version: number }) | null;
+  binding: (Subject & { actorId: string; status: string }) | null;
   actor: { organizationId: string; userId: string | null; id: string; status: string } | null;
   license: { application: IdentityMobileApplication; enabled: boolean };
 }
@@ -47,7 +48,7 @@ export function authorizeIdentityMobileSession(raw: unknown, expectedApp: Identi
     for (const id of [claims.actorId, claims.phoneClaimId, claims.jti]) assertIdentityRequestId(id)
   } catch { return null }
   if (!state || !state.company || !state.person || !state.account || !state.license) return null
-  const { company, person, account, claim, grant, membership, actor, license } = state
+  const { company, person, account, claim, grant, membership, binding, actor, license } = state
   if (company.id !== claims.organizationId || company.isActive !== true || company.identityMobileEnabled !== true
     || person.isActive !== true || person.anonymizedAt !== null || !integer(account.version)
     || !(account.cutoverAt instanceof Date) || !Number.isFinite(account.cutoverAt.valueOf()) || account.cutoverAt > now
@@ -55,9 +56,10 @@ export function authorizeIdentityMobileSession(raw: unknown, expectedApp: Identi
     || account.credentialEpoch !== claims.credentialEpoch || !claim || claim.id !== claims.phoneClaimId
     || !grant || grant.application !== expectedApp || grant.status !== "ACTIVE" || grant.version !== claims.grantVersion || !roleAllowed(expectedApp, grant.role)
     || !membership || membership.application !== expectedApp || membership.actorId !== claims.actorId || membership.active !== true || membership.version !== claims.membershipVersion
+    || !binding || binding.actorId !== claims.actorId || binding.status !== "REVIEWED"
     || !actor || actor.id !== claims.actorId || actor.status !== "ACTIVE"
     || license.application !== expectedApp || license.enabled !== true) return null
-  if ([person, account, claim, grant, membership, actor].some(row => row.organizationId !== claims.organizationId || row.userId !== claims.sub)) return null
+  if ([person, account, claim, grant, membership, binding, actor].some(row => row.organizationId !== claims.organizationId || row.userId !== claims.sub)) return null
   // account.version is a write-CAS revision, deliberately NOT a session epoch:
   // revoking Field changes it but must not invalidate an unchanged Time grant.
   // Return actorId/app explicitly; adapting to legacy agentId/role is not safe.
