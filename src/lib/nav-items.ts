@@ -1,3 +1,4 @@
+import { BOOKING_WORKSPACE_ENABLED } from "@/lib/booking/release-phase"
 /**
  * Single source of truth for the CRM's main navigation.
  *
@@ -186,7 +187,7 @@ export const navItems: NavItem[] = [
   // sidebar, right after CRM.
   { module: "sales", href: "/leads", icon: UserPlus, tKey: "leads", group: "Sales" },
   { module: "sales", href: "/deals", icon: Handshake, tKey: "deals", group: "Sales" },
-  { module: "sales", href: "/meetings", icon: CalendarCheck, tKey: "onlineBooking", group: "Sales", permissionScope: "bookings" },
+  ...(BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/meetings", icon: CalendarCheck, tKey: "bookingWorkspace", group: "Sales", permissionScope: "bookings" } satisfies NavItem] : []),
   { module: "sales", href: "/quotes", icon: FileBadge, tKey: "quotes", group: "Sales" },
   { module: "sales", href: "/sequences", icon: Zap, tKey: "sequences", group: "Sales" },
   { module: "sales", href: "/forecast", icon: TrendingUp, tKey: "forecast", group: "Sales" },
@@ -211,6 +212,7 @@ export const navItems: NavItem[] = [
   { module: "sales", href: "/settings/territories", icon: MapPin, tKey: "territories", group: "Sales" },
   { module: "sales", href: "/settings/lead-rules", icon: Filter, tKey: "leadRules", group: "Sales" },
   { module: "sales", href: "/settings/web-to-lead", icon: Globe, tKey: "webToLead", group: "Sales" },
+  ...(!BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/settings/booking", icon: CalendarCheck, tKey: "onlineBooking", group: "Sales", permissionScope: "bookings" } satisfies NavItem] : []),
   { module: "contracts", href: "/contracts", icon: FileText, tKey: "contracts", group: "Contracts Control" },
   { module: "contracts", href: "/contracts/lifecycle", icon: RefreshCw, tKey: "contractLifecycle", group: "Contracts Control" },
   { module: "contracts", href: "/contracts/templates", icon: Library, tKey: "contractTemplatesNav", group: "Contracts Control" },

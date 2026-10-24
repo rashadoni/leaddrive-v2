@@ -289,7 +289,8 @@
   },
   "navDesc": {
     "adConversions": "Send leads and won deals to Meta (Facebook and Instagram ads)",
-    "onlineBooking": "Meetings & booking",
+    "onlineBooking": "A link where customers book a free time themselves",
+    "bookingWorkspace": "Meetings & booking",
     "skillRouting": "Agent skills and ticket queues",
     "escalationRules": "SLA breach escalation rules",
     "dashboard": "KPIs and activity overview",
@@ -535,6 +536,7 @@
   "nav": {
     "adConversions": "Ad conversions",
     "onlineBooking": "Online booking",
+    "bookingWorkspace": "Meetings & booking",
     "skillRouting": "Skill Routing",
     "escalationRules": "Escalation Rules",
     "expand": "Expand navigation",

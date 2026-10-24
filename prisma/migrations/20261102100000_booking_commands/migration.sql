@@ -83,12 +83,12 @@ BEGIN
 END;
 $policy$;
 
--- Every task writer, including bulk/AI/import/direct Prisma, observes this ownership boundary.
+-- Expand A protects canonical mirrors; strict B also protects untouched legacy mirrors.
 CREATE FUNCTION booking_managed_task_guard_fn() RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
 BEGIN
   IF current_setting('app.booking_task_writer', true) IS DISTINCT FROM 'on'
      AND EXISTS (SELECT 1 FROM organizations WHERE id = OLD."organizationId")
-     AND EXISTS (SELECT 1 FROM bookings WHERE "organizationId" = OLD."organizationId" AND "taskId" = OLD.id)
+     AND EXISTS (SELECT 1 FROM bookings WHERE "organizationId" = OLD."organizationId" AND "taskId" = OLD.id AND version > 0)
   THEN
     RAISE EXCEPTION 'This task is managed by a booking; update the meeting instead' USING ERRCODE = 'check_violation';
   END IF;
@@ -100,7 +100,7 @@ CREATE TRIGGER booking_managed_task_guard BEFORE UPDATE OR DELETE ON tasks FOR E
 
 -- Validate the final transaction state, not intermediate row versions while a
 -- command appends its event. Existing version=0 rows remain readable; an old
--- writer cannot commit a new reservation or overwrite canonical fields after cutover.
+-- writer cannot overwrite canonical fields. Strict B closes version-zero writes too.
 CREATE FUNCTION booking_event_head_guard_fn() RETURNS TRIGGER
 LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 DECLARE
@@ -112,11 +112,20 @@ BEGIN
     RETURN NULL;
   END IF;
   IF TG_OP = 'DELETE' THEN
+    IF OLD.version = 0 THEN RETURN NULL; END IF;
     RAISE EXCEPTION 'A booking cannot be deleted by an ordinary writer' USING ERRCODE = 'check_violation';
   END IF;
   SELECT * INTO current_booking FROM public.bookings WHERE id = NEW.id AND "organizationId" = NEW."organizationId";
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Booking disappeared before its event guard' USING ERRCODE = 'check_violation';
+  END IF;
+  -- Expand release A permits only never-canonical legacy rows. A positive
+  -- aggregate can never be downgraded back into this compatibility window.
+  IF current_booking.version = 0 THEN
+    IF TG_OP = 'UPDATE' AND OLD.version > 0 THEN
+      RAISE EXCEPTION 'A canonical booking cannot return to legacy version zero' USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NULL;
   END IF;
   SELECT h."currentVersion", e.data INTO head_version, event_data
     FROM public.event_aggregate_heads h JOIN public.domain_events e

@@ -296,6 +296,7 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   // BookingAccess own/team grants must be applied before voice aggregates.
   // Navigation and the guide work; the generic tenant-wide reader is not enabled.
   meetings: "pending",
+  settings_booking: "pending",
   "settings_ad-conversions": "config",
   "settings_intake-forms": "config",
   "settings_approval-rules": "config",

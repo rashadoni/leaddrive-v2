@@ -289,7 +289,8 @@
   },
   "navDesc": {
     "adConversions": "Lidlər və qazanılan sövdələşmələr — Meta-ya (Facebook və Instagram reklamı)",
-    "onlineBooking": "Görüşlər və yazılış",
+    "onlineBooking": "Müştərinin boş vaxta özü yazıldığı link",
+    "bookingWorkspace": "Görüşlər və yazılış",
     "skillRouting": "Agent bacarıqları və bilet növbələri",
     "escalationRules": "SLA pozuntuları üçün eskalasiya qaydaları",
     "dashboard": "KPI və fəaliyyət icmalı",
@@ -535,6 +536,7 @@
   "nav": {
     "adConversions": "Reklam konversiyaları",
     "onlineBooking": "Onlayn yazılış",
+    "bookingWorkspace": "Görüşlər və yazılış",
     "skillRouting": "Bacarıq marşrutu",
     "escalationRules": "Eskalasiya qaydaları",
     "expand": "Naviqasiyanı genişləndir",

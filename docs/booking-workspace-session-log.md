@@ -345,3 +345,18 @@
 - I-01 закрыт для этого наблюдения. Перед фактической миграцией повторяется свежая проверка; результат не означает разрешения изменять/чинить данные.
 - Автоматический deploy инструментального main запущен run `40094028286`; пока checks/build in progress, новой версии приложения на production ещё не подтверждено. Старые customer Booking не изменялись, провайдерские отправки не делались.
 - Следующая фаза: реализовать совместимый backend A с отложенной строгой проверкой legacy writer, admission/rollback защитой и отдельным включением UI B. I-05 остаётся открытым до проверенного кода, а не только плана A/B.
+
+## 2026-10-24 — Начата исполняемая подготовка совместимого backend A
+
+- Новый task-owned worktree `/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-booking-backend-compatibility-20261024`, branch `codex/booking-backend-compatibility-20261024`; объединён с current main `cb1c604e274d75cfde10534b94978ce293f8f121`. Origin/production/release route прежние, canonical checkout не трогается.
+- Уточнение плана A/B: A защищает положительные canonical версии, но сохраняет совместимость version=0 в первоначальном расширении; B отдельной миграцией запрещает legacy writer целиком. Положительную версию нельзя понизить до 0. Новый UI у A скрыт, backend понимает полный контракт B. До применения миграций production обе версии SQL можно разделять; после применения переписывать их нельзя.
+- Admission должен отвергать pre-A retained recovery после расширения схемы, даже если canonicalCount=0 (защита от гонки). Внутренний auto-rollback первого A может вернуть legacy только после остановки нового writer и доказательства отсутствия canonical записей/строгого B guard. После canonical write — только backend A/B, иначе fail-closed.
+- Эти условия ещё реализуются/проверяются. До их PASS I-05 остаётся открыт, пользовательский feature release не разрешён.
+
+## 2026-10-24 — Backend A: разделение схемы и сценариев проверки
+
+- Подготовлены immutable phase `compatibility`, скрытие workspace A с сохранением прежнего редактора страниц записи и навигации. Метка «Встречи и запись» для B вынесена в отдельный ключ nav (предыдущий source менял только navDesc).
+- Expand SQL допускает никогда не канонизированные version=0, защищает положительные версии/их Task mirrors и отвергает downgrade. Строгий B guard пока только CI fixture, не production migration.
+- PostgreSQL acceptance расширен: сначала реальный legacy writer после expand, затем точный B guard и весь контур backend A. Дополнительный rollback-transaction сценарий проверяет невозможность downgrade под реальной A функцией.
+- Написаны pure admission/rollback правила, schema/SHA-bound marker и emitted current-main admission без исполнения исторического controller. Node: 8/8 PASS локально; дополнительный реальный release-state PostgreSQL test NOT RUN на Contabo и включён в hosted gate. Runtime controller/workflow admission ещё подключаются.
+- Инструментальный main `cb1c604e274d75cfde10534b94978ce293f8f121` уже отвечает точным SHA в public build-info и ping={ok:true}; deploy run 40094028286 дошёл до post-deploy smoke (финальный SUCCESS ещё не перечитан). Новый booking backend/UI на production не устанавливался.
