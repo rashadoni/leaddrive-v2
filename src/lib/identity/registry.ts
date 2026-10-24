@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import type { Prisma, PrismaClient } from "@prisma/client"
-import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, compareIdentityShadow, IdentityRegistryError, type IdentityApplication, type IdentityGrantStatus, type StagedApplicationGrantInput } from "./contract.js"
+import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, assertStagedPhoneReservation, compareIdentityShadow, IdentityRegistryError, type IdentityApplication, type IdentityGrantStatus, type StagedApplicationGrantInput, type StagedPhoneReservationInput } from "./contract.js"
 
 type RegistryClient = Pick<PrismaClient, "$transaction">
 export type IdentityActor = { organizationId: string; userId: string }
@@ -109,5 +109,56 @@ export async function planStagedApplicationGrant(client: RegistryClient, actor: 
     await tx.identityEvent.create({ data: { id: randomUUID(), ...accountKey, actorUserId: actor.userId, requestId: input.requestId, requestHash,
       action: "GRANT_CHANGED", accountVersion: version, application: input.application, grantStatus: input.status, grantRole: role, grantVersion: grant.version } })
     return { mode: "SHADOW" as const, accountVersion: version, grantVersion: grant.version, replayed: false, authenticationChanged: false as const }
+  })
+}
+
+/**
+ * Fixed ten-minute preparation for future proof-of-possession enrollment.
+ * No endpoint calls it yet. In particular, it does not issue/accept an OTP,
+ * confirm a phone, replace a legacy phone/password, or activate an app.
+ * Future confirmation must lock and revalidate this same tenant and versions.
+ */
+export async function reserveStagedIdentityPhone(client: RegistryClient, actor: IdentityActor, input: StagedPhoneReservationInput) {
+  assertIdentityScope(actor.organizationId, input.userId)
+  const normalizedPhone = assertStagedPhoneReservation(input)
+  const requestHash = createHash("sha256").update(JSON.stringify([1, "PHONE_RESERVED", actor.organizationId, actor.userId,
+    input.userId, normalizedPhone, input.expectedAccountVersion, input.expectedCredentialEpoch])).digest("hex")
+  return withRegistryTransaction(client, actor, false, async tx => {
+    const [user] = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM users WHERE "organizationId" = ${actor.organizationId} AND id = ${input.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
+    if (!user) throw new IdentityRegistryError("IDENTITY_SUBJECT_UNAVAILABLE")
+    const accountKey = { organizationId: actor.organizationId, userId: input.userId }
+    const account = await tx.identityAccount.findUnique({ where: { organizationId_userId: accountKey }, select: { version: true, credentialEpoch: true, cutoverAt: true } })
+    if (!account) throw new IdentityRegistryError("IDENTITY_STAGE_REQUIRED")
+    if (account.cutoverAt) throw new IdentityRegistryError("IDENTITY_ALREADY_AUTHORITATIVE")
+    // Use the database's current wall clock after the tenant lock, never client time.
+    const [clock] = await tx.$queryRaw<Array<{ now: Date }>>`SELECT clock_timestamp() AS now`
+    const now = clock.now
+    const event = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: actor.organizationId, requestId: input.requestId } },
+      select: { action: true, requestHash: true, accountVersion: true, reservationId: true, reservationExpiresAt: true } })
+    if (event) {
+      if (event.action !== "PHONE_RESERVED" || event.requestHash !== requestHash || !event.reservationId || !event.reservationExpiresAt) throw new IdentityRegistryError("IDENTITY_REQUEST_REUSED")
+      const current = await tx.identityPhoneReservation.findFirst({ where: { ...accountKey, id: event.reservationId }, select: { expiresAt: true, normalizedPhone: true, expectedAccountVersion: true, expectedCredentialEpoch: true } })
+      const status = event.reservationExpiresAt <= now || (current && current.expiresAt <= now) ? "EXPIRED" as const : !current ? "SUPERSEDED" as const
+        : account.version !== input.expectedAccountVersion || account.credentialEpoch !== input.expectedCredentialEpoch
+          || current.normalizedPhone !== normalizedPhone || current.expectedAccountVersion !== input.expectedAccountVersion || current.expectedCredentialEpoch !== input.expectedCredentialEpoch ? "STALE" as const : "RESERVED" as const
+      return { mode: "SHADOW" as const, status, reservationId: event.reservationId, expiresAt: event.reservationExpiresAt.toISOString(), replayed: true, authenticationChanged: false as const }
+    }
+    if (account.version !== input.expectedAccountVersion) throw new IdentityRegistryError("IDENTITY_ACCOUNT_STALE")
+    if (account.credentialEpoch !== input.expectedCredentialEpoch) throw new IdentityRegistryError("IDENTITY_CREDENTIAL_STALE")
+    const claim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId: actor.organizationId, normalizedPhone } }, select: { id: true } })
+    if (claim) throw new IdentityRegistryError("IDENTITY_PHONE_UNAVAILABLE")
+    const actors = await tx.mtmAgent.findMany({ where: { organizationId: actor.organizationId, userId: user.id }, select: { id: true }, take: 2 })
+    if (actors.length > 1) throw new IdentityRegistryError("IDENTITY_LEGACY_LINK_AMBIGUOUS")
+    // Only expired rows blocking this person or number are cleaned; immutable
+    // receipts retain their original deadline. Replaying an old request cannot renew it.
+    await tx.identityPhoneReservation.deleteMany({ where: { organizationId: actor.organizationId, expiresAt: { lte: now }, OR: [{ userId: input.userId }, { normalizedPhone }] } })
+    const busy = await tx.identityPhoneReservation.findFirst({ where: { organizationId: actor.organizationId, OR: [{ userId: input.userId }, { normalizedPhone }] }, select: { id: true } })
+    if (busy) throw new IdentityRegistryError("IDENTITY_PHONE_RESERVATION_BUSY")
+    const expiresAt = new Date(now.valueOf() + 600_000), id = randomUUID()
+    await tx.identityPhoneReservation.create({ data: { id, ...accountKey, normalizedPhone, expectedAccountVersion: account.version,
+      expectedCredentialEpoch: account.credentialEpoch, requestId: input.requestId, createdAt: now, expiresAt } })
+    await tx.identityEvent.create({ data: { id: randomUUID(), ...accountKey, actorUserId: actor.userId, requestId: input.requestId,
+      requestHash, action: "PHONE_RESERVED", accountVersion: account.version, normalizedPhone, reservationId: id, reservationExpiresAt: expiresAt, createdAt: now } })
+    return { mode: "SHADOW" as const, status: "RESERVED" as const, reservationId: id, expiresAt: expiresAt.toISOString(), replayed: false, authenticationChanged: false as const }
   })
 }

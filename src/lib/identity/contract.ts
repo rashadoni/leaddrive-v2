@@ -13,6 +13,14 @@ export type StagedApplicationGrantInput = {
   requestId: string
 }
 
+export type StagedPhoneReservationInput = {
+  userId: string
+  phone: string
+  expectedAccountVersion: number
+  expectedCredentialEpoch: number
+  requestId: string
+}
+
 export class IdentityRegistryError extends Error {
   constructor(readonly code: string) { super(code); this.name = "IdentityRegistryError" }
 }
@@ -95,4 +103,14 @@ export function compareIdentityShadow(input: IdentityShadowInput) {
     issues,
     applications,
   }
+}
+
+/** A pending reservation is never proof of possession or a login identifier. */
+export function assertStagedPhoneReservation(input: StagedPhoneReservationInput): string {
+  assertIdentityRequestId(input.requestId)
+  const phone = normalizeIdentityPhone(input.phone)
+  if (!phone || ![input.expectedAccountVersion, input.expectedCredentialEpoch].every(value => Number.isSafeInteger(value) && value >= 1)) {
+    throw new IdentityRegistryError("IDENTITY_PHONE_RESERVATION_INVALID")
+  }
+  return phone
 }

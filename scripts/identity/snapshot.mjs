@@ -93,8 +93,8 @@ async function main() {
   if (!url || !["postgres:", "postgresql:"].includes(new URL(url).protocol)) fail()
   // No environment-file loading or fallback database route. The operator supplies
   // a deliberately selected connection through the established secret mechanism.
-  const { PrismaClient } = await import("@prisma/client")
-  const client = new PrismaClient({ datasources: { db: { url } }, log: [] })
+  const { makeScriptPrisma } = await import("../_rls.mjs")
+  const client = await makeScriptPrisma({ orgId: scope.organizationId, databaseUrl: url })
   try {
     const snapshot = await collectIdentitySnapshot(client, scope)
     await writePrivateSnapshot(output, snapshot)

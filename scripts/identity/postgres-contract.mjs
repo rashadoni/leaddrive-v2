@@ -31,8 +31,8 @@ async function run() {
     invariant(typeof expected === "string" && /^[0-9a-f]{40}$/.test(expected))
     invariant(execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim() === expected)
     receipt.sourceSha = expected
-    const { PrismaClient } = await import("@prisma/client")
-    admin = new PrismaClient({ datasources: { db: { url: url.href } }, log: [] })
+    const { makeRlsTestPrisma } = await import("../_rls.mjs")
+    admin = makeRlsTestPrisma(url.href)
     phase = "EMPTY_EPHEMERAL_DATABASE"
     const [empty] = await admin.$queryRawUnsafe(`SELECT current_database() AS name,
       to_regclass('public.organizations')::text AS organizations,
@@ -44,7 +44,7 @@ async function run() {
     const readerUrl = new URL(url)
     readerUrl.username = "identity_snapshot_reader"
     readerUrl.password = "identity-contract-reader-only"
-    reader = new PrismaClient({ datasources: { db: { url: readerUrl.href } }, log: [] })
+    reader = makeRlsTestPrisma(readerUrl.href)
 
     phase = "REAL_PRISMA_EXPORT"
     const snapshot = await collectIdentitySnapshot(reader, EXPECTED_SCOPE)

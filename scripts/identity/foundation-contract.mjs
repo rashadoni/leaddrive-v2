@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Only the fixed disposable service prepared by postgres-contract.mjs is admitted. */
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 import { execFileSync } from "node:child_process"
 import { writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
@@ -28,9 +29,9 @@ async function main() {
     receipt.sourceSha = sha
     const build = process.env.IDENTITY_FOUNDATION_BUILD
     assert.equal(typeof build, "string")
-    const { stageIdentityAccount, readIdentityShadow, planStagedApplicationGrant } = await import(pathToFileURL(resolve(build, "registry.js")).href)
-    const { PrismaClient } = await import("@prisma/client")
-    admin = new PrismaClient({ datasources: { db: { url: url.href } }, log: [] })
+    const { stageIdentityAccount, readIdentityShadow, planStagedApplicationGrant, reserveStagedIdentityPhone } = await import(pathToFileURL(resolve(build, "registry.js")).href)
+    const { makeRlsTestPrisma } = await import("../_rls.mjs")
+    admin = makeRlsTestPrisma(url.href)
     phase = "ADMITTED_EXISTING_SYNTHETIC_FIXTURE"
     const orgs = await admin.$queryRawUnsafe("SELECT id FROM organizations ORDER BY id")
     assert.deepEqual(orgs.map(row => row.id), [A, B])
@@ -66,7 +67,7 @@ async function main() {
     await admin.$executeRawUnsafe('CREATE POLICY identity_fixture_company_lock ON organizations FOR UPDATE TO identity_foundation_writer USING (id = current_setting(\'app.org_id\', true)) WITH CHECK (id = current_setting(\'app.org_id\', true))')
     await admin.$executeRawUnsafe(`GRANT SELECT, INSERT, UPDATE, DELETE ON ${TABLES.join(", ")} TO identity_foundation_writer`)
     const writerUrl = new URL(url); writerUrl.username = "identity_foundation_writer"; writerUrl.password = "identity-foundation-writer-only"
-    writer = new PrismaClient({ datasources: { db: { url: writerUrl.href } }, log: [] })
+    writer = makeRlsTestPrisma(writerUrl.href)
 
     phase = "AUTHORIZE_AND_STAGE"
     await assert.rejects(stageIdentityAccount(writer, { organizationId: A, userId: "identity-user-a2" }, { userId: actor.userId, requestId: "manager-denied" }), /IDENTITY_ADMIN_REQUIRED/)
@@ -213,6 +214,84 @@ async function main() {
     assert.ok(!JSON.stringify(withReservation).includes("7777"))
     await expectDatabaseError(() => admin.$executeRawUnsafe('INSERT INTO identity_phone_reservations (id, "organizationId", "userId", "normalizedPhone", "expectedAccountVersion", "expectedCredentialEpoch", "requestId", "createdAt", "expiresAt") VALUES ($1,$2,$3,$4,1,1,$5,$6,$7)', "invalid-reservation-ttl", A, "identity-user-a2", "+994550006666", "reserve-too-long", now, new Date(now.valueOf() + 901_000)), "23514")
     receipt.checks.push("bounded_phone_reservations_are_not_login_claims")
+
+    phase = "CENTRAL_PHONE_RESERVATION_AUTHORIZATION_AND_REPLAY"
+    for (const suffix of [5, 6, 7, 8, 9]) {
+      await admin.$executeRawUnsafe('INSERT INTO users (id, "organizationId", "isActive", role) VALUES ($1,$2,true,$3)', `identity-user-a${suffix}`, A, "viewer")
+      await stageIdentityAccount(writer, actor, { userId: `identity-user-a${suffix}`, requestId: `stage-reservation-a${suffix}` })
+    }
+    const reservation = { userId: "identity-user-a5", phone: "+994 55 000 33 44", expectedAccountVersion: 1, expectedCredentialEpoch: 1, requestId: "reserve-central-a5" }
+    await assert.rejects(reserveStagedIdentityPhone(writer, { organizationId: A, userId: "identity-user-a2" }, reservation), /IDENTITY_ADMIN_REQUIRED/)
+    await assert.rejects(reserveStagedIdentityPhone(writer, actor, { ...reservation, userId: other.userId }), /IDENTITY_SUBJECT_UNAVAILABLE/)
+    await assert.rejects(reserveStagedIdentityPhone(writer, actor, { ...reservation, expectedAccountVersion: 2 }), /IDENTITY_ACCOUNT_STALE/)
+    await assert.rejects(reserveStagedIdentityPhone(writer, actor, { ...reservation, expectedCredentialEpoch: 2 }), /IDENTITY_CREDENTIAL_STALE/)
+    await assert.rejects(reserveStagedIdentityPhone(writer, actor, { ...reservation, phone: PHONE }), /IDENTITY_PHONE_UNAVAILABLE/)
+    const reserved = await reserveStagedIdentityPhone(writer, actor, reservation)
+    assert.equal(reserved.status, "RESERVED"); assert.equal(reserved.mode, "SHADOW"); assert.equal(reserved.authenticationChanged, false)
+    assert.equal(JSON.stringify(reserved).includes("3344"), false)
+    const reservedRow = await admin.identityPhoneReservation.findUnique({ where: { id: reserved.reservationId } })
+    assert.equal(reservedRow.expiresAt - reservedRow.createdAt, 600_000)
+    const reservedEvent = await admin.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: A, requestId: reservation.requestId } } })
+    assert.equal(reservedEvent.reservationId, reserved.reservationId); assert.equal(reservedEvent.reservationExpiresAt.toISOString(), reserved.expiresAt)
+    const phoneReplay = await reserveStagedIdentityPhone(writer, actor, { ...reservation, phone: "+994550003344" })
+    assert.deepEqual(phoneReplay, { ...reserved, replayed: true })
+    await assert.rejects(reserveStagedIdentityPhone(writer, actor, { ...reservation, phone: "+994550003345" }), /IDENTITY_REQUEST_REUSED/)
+    await assert.rejects(reserveStagedIdentityPhone(writer, actor, { ...reservation, requestId: "stage-reservation-a5" }), /IDENTITY_REQUEST_REUSED/)
+    assert.equal(await admin.identityPhoneClaim.count({ where: { organizationId: A, userId: reservation.userId } }), 0)
+    assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: A, userId: reservation.userId } }), 0)
+    assert.equal((await admin.identityAccount.findUnique({ where: { organizationId_userId: { organizationId: A, userId: reservation.userId } } })).version, 1)
+    receipt.checks.push("central_phone_reservation_is_admin_only_version_bound_private_and_not_login")
+
+    phase = "CENTRAL_PHONE_RESERVATION_CONCURRENT_AND_ATOMIC"
+    const simultaneous = [6, 7].map(suffix => ({ ...reservation, userId: `identity-user-a${suffix}`, phone: "+994550004455", requestId: `reserve-race-a${suffix}` }))
+    const reservations = await Promise.allSettled(simultaneous.map(input => reserveStagedIdentityPhone(writer, actor, input)))
+    assert.equal(reservations.filter(row => row.status === "fulfilled").length, 1)
+    assert.equal(reservations.filter(row => row.status === "rejected" && row.reason?.code === "IDENTITY_PHONE_RESERVATION_BUSY").length, 1)
+    await assert.rejects(reserveStagedIdentityPhone(writer, actor, { ...reservation, phone: "+994550004466", requestId: "second-live-number-for-person" }), /IDENTITY_PHONE_RESERVATION_BUSY/)
+    const identical = { ...reservation, userId: "identity-user-a8", phone: "+994550004477", requestId: "reserve-same-race" }
+    const duplicates = await Promise.all([reserveStagedIdentityPhone(writer, actor, identical), reserveStagedIdentityPhone(writer, actor, identical)])
+    assert.deepEqual(duplicates.map(row => row.replayed).sort(), [false, true]); assert.equal(duplicates[0].reservationId, duplicates[1].reservationId)
+    const rollback = { ...reservation, userId: "identity-user-a9", phone: "+994550004488", requestId: "reservation-audit-failure" }
+    await assert.rejects(reserveStagedIdentityPhone(failing, actor, rollback), /SYNTHETIC_AUDIT_FAILURE/)
+    assert.equal(await admin.identityPhoneReservation.count({ where: { requestId: rollback.requestId } }), 0)
+    assert.equal(await admin.identityEvent.count({ where: { requestId: rollback.requestId } }), 0)
+    receipt.checks.push("concurrent_reservations_have_one_owner_and_audit_failure_rolls_back")
+
+    phase = "EXPIRED_RESERVATION_IS_NOT_RENEWED_OR_REBOUND"
+    // Seed a valid historical receipt; never sleep, alter the host clock or
+    // mutate the append-only event. The central service uses actual database time.
+    const historical = { ...rollback, requestId: "historical-expired-phone", phone: "+994550004499" }
+    const past = new Date(Date.now() - 660_000), expired = new Date(past.valueOf() + 600_000), historicalId = "expired-reservation-a9"
+    await admin.identityPhoneReservation.create({ data: { id: historicalId, organizationId: A, userId: historical.userId, normalizedPhone: historical.phone,
+      expectedAccountVersion: 1, expectedCredentialEpoch: 1, requestId: historical.requestId, createdAt: past, expiresAt: expired } })
+    const historicalHash = createHash("sha256").update(JSON.stringify([1, "PHONE_RESERVED", A, actor.userId, historical.userId, historical.phone, 1, 1])).digest("hex")
+    await admin.identityEvent.create({ data: { id: "historical-phone-receipt-a9", organizationId: A, userId: historical.userId, actorUserId: actor.userId,
+      requestId: historical.requestId, requestHash: historicalHash, action: "PHONE_RESERVED", accountVersion: 1, normalizedPhone: historical.phone,
+      reservationId: historicalId, reservationExpiresAt: expired, createdAt: past } })
+    const expiredReplay = await reserveStagedIdentityPhone(writer, actor, historical)
+    assert.equal(expiredReplay.status, "EXPIRED"); assert.equal(expiredReplay.expiresAt, expired.toISOString())
+    await assert.rejects(reserveStagedIdentityPhone(failing, actor, { ...historical, requestId: "expired-cleanup-audit-failure" }), /SYNTHETIC_AUDIT_FAILURE/)
+    assert.equal(await admin.identityPhoneReservation.count({ where: { id: historicalId } }), 1)
+    const replacement = await reserveStagedIdentityPhone(writer, actor, { ...historical, requestId: "fresh-reservation-after-expiry" })
+    assert.equal(replacement.status, "RESERVED"); assert.notEqual(replacement.reservationId, historicalId)
+    assert.equal(await admin.identityPhoneReservation.count({ where: { id: historicalId } }), 0)
+    assert.equal((await reserveStagedIdentityPhone(writer, actor, historical)).status, "EXPIRED")
+    assert.equal(await admin.identityEvent.count({ where: { requestId: historical.requestId } }), 1)
+    await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: A, userId: reservation.userId } }, data: { credentialEpoch: { increment: 1 } } })
+    const staleReplay = await reserveStagedIdentityPhone(writer, actor, reservation)
+    assert.equal(staleReplay.status, "STALE"); assert.equal(staleReplay.expiresAt, reserved.expiresAt)
+    await admin.identityPhoneReservation.delete({ where: { id: reserved.reservationId } })
+    assert.equal((await reserveStagedIdentityPhone(writer, actor, reservation)).status, "SUPERSEDED")
+    assert.equal(await admin.identityPhoneClaim.count({ where: { organizationId: A, userId: historical.userId } }), 0)
+    receipt.checks.push("expired_or_stale_reservation_replay_cannot_extend_ttl_or_claim_a_phone")
+
+    phase = "PHONE_RESERVATION_TENANT_AND_CUTOVER_BOUNDARIES"
+    const otherReserved = await reserveStagedIdentityPhone(writer, other, { ...identical, userId: other.userId, requestId: "other-company-same-reserved-phone" })
+    assert.equal(otherReserved.status, "RESERVED")
+    await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: A, userId: "identity-user-a8" } }, data: { cutoverAt: new Date(), passwordHash: "synthetic-not-a-usable-password" } })
+    await assert.rejects(reserveStagedIdentityPhone(writer, actor, identical), /IDENTITY_ALREADY_AUTHORITATIVE/)
+    await expectDatabaseError(() => admin.$executeRawUnsafe('INSERT INTO identity_events (id,"organizationId","userId","actorUserId","requestId","requestHash",action,"accountVersion","normalizedPhone","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,1,$8,now())', "invalid-reservation-receipt", A, historical.userId, actor.userId, "invalid-reserved-event", "a".repeat(64), "PHONE_RESERVED", "+994550005599"), "23514")
+    receipt.checks.push("reservation_scope_is_tenant_local_and_refuses_live_authoritative_account")
 
     phase = "RLS_AND_IMMUTABILITY"
     for (const table of TABLES) {

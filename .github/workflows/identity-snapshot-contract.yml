@@ -59,15 +59,17 @@ jobs:
         run: node scripts/identity/postgres-contract.mjs
         env:
           IDENTITY_CONTRACT_DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
+          EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
           IDENTITY_CONTRACT_RECEIPT: ${{ runner.temp }}/identity-snapshot-contract.json
       - name: Focused identity types and independent application unit checks
         run: |
           npx tsc src/lib/identity/contract.ts src/lib/identity/registry.ts --strict --skipLibCheck --target ES2022 --module NodeNext --moduleResolution NodeNext --types node --outDir "$RUNNER_TEMP/identity-foundation"
-          VITEST_MAX_WORKERS=1 npx vitest run src/lib/identity/contract.test.ts
+          VITEST_MAX_WORKERS=1 npx vitest run src/lib/identity/contract.test.ts src/__tests__/rls-bypass-classifier.test.ts
       - name: Actual additive identity migration, tenant isolation and phone races
         run: node scripts/identity/foundation-contract.mjs
         env:
           IDENTITY_CONTRACT_DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
+          EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
           IDENTITY_FOUNDATION_BUILD: ${{ runner.temp }}/identity-foundation
           IDENTITY_FOUNDATION_RECEIPT: ${{ runner.temp }}/identity-foundation-contract.json
       - name: Retain sanitized result

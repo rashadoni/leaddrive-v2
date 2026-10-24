@@ -939,6 +939,8 @@ model IdentityEvent {
   grantRole       String? @db.VarChar(50)
   grantVersion    Int?
   normalizedPhone String? @db.VarChar(16)
+  reservationId   String?
+  reservationExpiresAt DateTime? @db.Timestamptz(3)
   previousClaimId String?
   claimId         String?
   createdAt       DateTime @default(now()) @db.Timestamptz(3)

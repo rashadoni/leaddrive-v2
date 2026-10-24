@@ -159,3 +159,36 @@ Still required: verified phone/change/OTP service, independent enrollment and
 grant API/UI, audience-specific sessions, offline compatibility, complete schema
 replay/build/E2E/Maestro, tenant reconciliation and separately authorized rollout.
 Do not apply this migration or stage a real tenant as an incidental diagnostic.
+
+### Pending phone reservations (still inactive)
+
+`reserveStagedIdentityPhone` reserves an explicit international number for ten
+minutes against an already staged tenant+User and its account/credential
+versions. It runs behind the same current-admin/company/subject checks and
+tenant write lock, refuses a current claim or another live reservation, and
+commits the private reservation receipt atomically. The receipt retains its
+reservation ID and original expiry after expired rows are cleaned. Replay does
+not extend the deadline and reports EXPIRED, SUPERSEDED or STALE when needed.
+Responses contain no number or credentials. Phone presentation variants share
+the same canonical idempotent request.
+
+This is a pending shadow record, not evidence that the person possesses the
+number. It sends/accepts no OTP, grants no access and changes no current phone,
+password or legacy record. Live enrollment still requires complete legacy
+reconciliation, proof delivery/consumption, explicit app permissions and the
+reviewed auth cutover. A canonical shadow reservation alone never authorizes
+linking an existing legacy person. No HTTP endpoint calls this function yet.
+
+The hosted foundation contract additionally exercises real concurrent
+reservations/idempotent retries, tenant/version boundaries, atomic rollback,
+and expired/stale/superseded receipt handling. Expiry uses actual PostgreSQL
+wall time; the fixture seeds a valid historical receipt instead of changing the
+clock or weakening the append-only audit trigger.
+
+The executable snapshot exporter creates its connection through the repository's
+`makeScriptPrisma` with an explicit org and database override, then still
+verifies READ ONLY, RepeatableRead, tenant scope and bypass off inside the
+bounded export transaction. CI reader/writer clients use `makeRlsTestPrisma`
+with both the existing strict CI-loopback admission and the exact disposable
+`EVENT_PLATFORM_TEST_DATABASE_URL` fence. Neither client path bypasses the
+repository's script RLS factory or widens the test baseline.

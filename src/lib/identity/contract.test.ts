@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, compareIdentityShadow, normalizeIdentityPhone, type IdentityShadowInput, type StagedApplicationGrantInput } from "./contract"
+import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, assertStagedPhoneReservation, compareIdentityShadow, normalizeIdentityPhone, type IdentityShadowInput, type StagedApplicationGrantInput, type StagedPhoneReservationInput } from "./contract"
 
 const base = (): IdentityShadowInput => ({ account: { version: 1 }, canonicalPhone: "+994550001122", userPhone: "+994 55 000 11 22", agentPhones: ["+994550001122"], grants: [] })
 
@@ -83,5 +83,22 @@ describe("explicit application reconciliation plans", () => {
   })
   it("permits explicit revocation without assigning a new role", () => {
     expect(() => assertStagedApplicationGrant({ ...plan(), status: "REVOKED", role: null, expectedGrantVersion: 3 })).not.toThrow()
+  })
+})
+
+describe("phone reservation is preparation without ownership or login", () => {
+  const reservation = (): StagedPhoneReservationInput => ({ userId: "person-1", phone: "+994 55 000 11 22", expectedAccountVersion: 1, expectedCredentialEpoch: 1, requestId: "reserve-phone" })
+  it("requires an explicit international phone and returns its canonical form", () => {
+    expect(assertStagedPhoneReservation(reservation())).toBe("+994550001122")
+    for (const phone of ["0550001122", "994550001122", "+994550001122x", ""]) expect(() => assertStagedPhoneReservation({ ...reservation(), phone })).toThrow("IDENTITY_PHONE_RESERVATION_INVALID")
+  })
+  it("binds a pending proof to positive account and credential versions", () => {
+    for (const value of [0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(() => assertStagedPhoneReservation({ ...reservation(), expectedAccountVersion: value })).toThrow("IDENTITY_PHONE_RESERVATION_INVALID")
+      expect(() => assertStagedPhoneReservation({ ...reservation(), expectedCredentialEpoch: value })).toThrow("IDENTITY_PHONE_RESERVATION_INVALID")
+    }
+  })
+  it("rejects malformed request keys before persistence", () => {
+    expect(() => assertStagedPhoneReservation({ ...reservation(), requestId: "reserve\n" })).toThrow("IDENTITY_REQUEST_INVALID")
   })
 })
