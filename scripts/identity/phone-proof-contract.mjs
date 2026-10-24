@@ -1,0 +1,207 @@
+/** Only called inside the admitted disposable PostgreSQL foundation fixture. */
+import assert from "node:assert/strict"
+import { resolve } from "node:path"
+import { pathToFileURL } from "node:url"
+
+export async function checkPhoneProofTransactions({ admin, writer, failing, actor, other, build, checks, phase }) {
+  const { stageIdentityAccount, reserveStagedIdentityPhone } = await import(pathToFileURL(resolve(build, "registry.js")).href)
+  const { issueStagedPhoneProof: issue, consumeStagedPhoneProof: consume, cancelStagedPhoneReservation: cancel,
+    expireStagedPhoneProofs: expire, claimStagedPhoneProofDelivery: lease, recordStagedPhoneProofDelivery: record } = await import(pathToFileURL(resolve(build, "phone-proof-registry.js")).href)
+  const { openPhoneProofDelivery } = await import(pathToFileURL(resolve(build, "phone-proof.js")).href)
+  const org = actor.organizationId, key = { id: "synthetic-worker-key", material: new Uint8Array(32).fill(13) }
+  const resolveKey = id => id === key.id ? key : null
+  let counter = 0
+  async function setup(label) {
+    const userId = `proof-user-${label}`, phone = `+9945599${String(++counter).padStart(5, "0")}`
+    await admin.$executeRawUnsafe('INSERT INTO users (id, "organizationId", "isActive", role, phone, "passwordHash") VALUES ($1,$2,true,$3,$4,$5)', userId, org, "viewer", "+994559988777", "legacy-untouched")
+    await stageIdentityAccount(writer, actor, { userId, requestId: `proof-stage-${label}` })
+    const reservation = await reserveStagedIdentityPhone(writer, actor, { userId, phone, expectedAccountVersion: 1, expectedCredentialEpoch: 1, requestId: `proof-reserve-${label}` })
+    const input = { userId, reservationId: reservation.reservationId, expectedAccountVersion: 1, expectedCredentialEpoch: 1, requestId: `proof-issue-${label}` }
+    return { userId, phone, input }
+  }
+  const proofRow = proofId => admin.identityPhoneProof.findUniqueOrThrow({ where: { id: proofId } })
+  const outboxRow = proofId => admin.identityPhoneProofOutbox.findUniqueOrThrow({ where: { organizationId_proofId: { organizationId: org, proofId } } })
+  async function secret(proofId) {
+    const p = await proofRow(proofId)
+    const frozen = { organizationId: p.organizationId, userId: p.userId, reservationId: p.reservationId, challengeId: p.id,
+      normalizedPhone: p.normalizedPhone, accountVersion: p.accountVersion, credentialEpoch: p.credentialEpoch, createdAt: p.createdAt.toISOString(), expiresAt: p.expiresAt.toISOString() }
+    return openPhoneProofDelivery(frozen, p, key, new Date())
+  }
+  const attempt = (proofId, code, requestId) => consume(writer, org, { proofId, code, requestId }, resolveKey)
+  const account = userId => admin.identityAccount.findUniqueOrThrow({ where: { organizationId_userId: { organizationId: org, userId } } })
+
+  phase("PROOF_ISSUE_AUTHORIZATION_AND_ATOMIC_QUEUE")
+  const good = await setup("good")
+  await assert.rejects(issue(writer, { ...actor, userId: "identity-user-a2" }, good.input, key), /IDENTITY_ADMIN_REQUIRED/)
+  await assert.rejects(issue(writer, other, good.input, key), /IDENTITY_SUBJECT_UNAVAILABLE/)
+  await assert.rejects(issue(writer, actor, { ...good.input, expectedCredentialEpoch: 2 }, key), /IDENTITY_PROOF_STALE/)
+  await assert.rejects(issue(writer, actor, { ...good.input, phone: good.phone }, key), /IDENTITY_PROOF_INPUT_INVALID/)
+  const issued = await issue(writer, actor, good.input, key)
+  assert.equal(issued.authenticationChanged, false); assert.equal(issued.status, "PENDING")
+  assert.equal(JSON.stringify(issued).includes(good.phone), false)
+  assert.equal((await outboxRow(issued.proofId)).status, "PENDING")
+  assert.equal((await issue(writer, actor, good.input, key)).replayed, true)
+  await assert.rejects(issue(writer, actor, { ...good.input, requestId: "too-soon-resend" }, key), /IDENTITY_PROOF_RESEND_LATER/)
+  assert.equal(await admin.identityPhoneClaim.count({ where: { organizationId: org, userId: good.userId } }), 0)
+  checks.push("proof_issue_requires_current_admin_versions_and_atomically_queues_only_encrypted_delivery")
+
+  phase("PROOF_ATTEMPT_LIMIT_AND_REPLAY_ORACLE")
+  const bad = await setup("attempts"), badProof = await issue(writer, actor, bad.input, key), correct = await secret(badProof.proofId)
+  const wrong = correct === "000000" ? "111111" : "000000"
+  assert.equal((await attempt(badProof.proofId, wrong, "wrong-first")).status, "INVALID")
+  assert.equal((await attempt(badProof.proofId, wrong, "wrong-first")).replayed, true)
+  await assert.rejects(attempt(badProof.proofId, "not-a-code", "wrong-first"), /IDENTITY_REQUEST_REUSED/)
+  await assert.rejects(attempt(badProof.proofId, correct, "wrong-first"), /IDENTITY_REQUEST_REUSED/)
+  assert.equal((await proofRow(badProof.proofId)).attempts, 1)
+  for (let n = 2; n <= 5; n++) assert.equal((await attempt(badProof.proofId, wrong, `wrong-${n}`)).status, "INVALID")
+  const locked = await proofRow(badProof.proofId)
+  assert.equal(locked.status, "LOCKED"); assert.equal(locked.attempts, 5); assert.equal(locked.deliveryCiphertext, null)
+  assert.equal((await attempt(badProof.proofId, correct, "correct-after-lock")).status, "INVALID")
+  assert.equal((await account(bad.userId)).credentialEpoch, 1)
+  checks.push("wrong_attempts_commit_max_five_and_changed_retry_cannot_become_code_oracle")
+
+  phase("PROOF_DELIVERY_IS_NOT_POSSESSION")
+  const jobs = await Promise.all([lease(writer, org, issued.proofId), lease(writer, org, issued.proofId)])
+  assert.equal(jobs.filter(Boolean).length, 1)
+  const job = jobs.find(Boolean), code = openPhoneProofDelivery(job.context, job.sealed, key, new Date())
+  const sent = { proofId: issued.proofId, leaseToken: job.leaseToken, outcome: "SENT", providerMessageId: "synthetic-provider-receipt" }
+  await assert.rejects(record(writer, org, { ...sent, leaseToken: "00000000-0000-4000-8000-000000000000" }), /IDENTITY_PROOF_DELIVERY_REFUSED/)
+  assert.equal((await record(writer, org, sent)).replayed, false)
+  assert.equal((await record(writer, org, sent)).replayed, true)
+  await assert.rejects(record(writer, org, { ...sent, providerMessageId: "changed-receipt" }), /IDENTITY_REQUEST_REUSED/)
+  assert.equal(await lease(writer, org, issued.proofId), null)
+  assert.equal(await admin.identityPhoneClaim.count({ where: { organizationId: org, userId: good.userId } }), 0)
+  checks.push("delivery_has_one_private_lease_idempotent_capability_receipt_and_never_proves_possession")
+
+  phase("PROOF_CONFIRMATION_ATOMIC_AND_SINGLE_USE")
+  const old = await admin.identityPhoneClaim.create({ data: { organizationId: org, userId: good.userId, normalizedPhone: "+994559988776", accountVersion: 1, verifiedAt: new Date() } })
+  const results = await Promise.all([attempt(issued.proofId, code, "correct-once"), attempt(issued.proofId, code, "correct-once")])
+  assert.equal(results.every(r => r.status === "CONFIRMED"), true)
+  assert.equal(results.filter(r => !r.replayed).length, 1)
+  assert.equal((await attempt(issued.proofId, code, "second-consumption")).status, "INVALID")
+  const confirmed = await proofRow(issued.proofId), changed = await account(good.userId)
+  assert.equal(confirmed.status, "CONFIRMED"); assert.equal(confirmed.deliveryCiphertext, null)
+  assert.equal(changed.version, 2); assert.equal(changed.credentialEpoch, 2); assert.equal(changed.passwordHash, null); assert.equal(changed.cutoverAt, null)
+  const claims = await admin.identityPhoneClaim.findMany({ where: { organizationId: org, userId: good.userId } })
+  assert.equal(claims.length, 1); assert.equal(claims[0].normalizedPhone, good.phone); assert.notEqual(claims[0].id, old.id)
+  assert.equal(await admin.identityPhoneReservation.count({ where: { id: good.input.reservationId } }), 0)
+  const legacy = await admin.$queryRawUnsafe('SELECT phone, "passwordHash", role FROM users WHERE id = $1', good.userId)
+  assert.deepEqual(legacy[0], { phone: "+994559988777", passwordHash: "legacy-untouched", role: "viewer" })
+  assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: org, userId: good.userId } }), 0)
+  assert.equal((await cancel(writer, actor, { userId: good.userId, reservationId: good.input.reservationId, expectedAccountVersion: 2, requestId: "cancel-consumed" })).status, "ABSENT")
+  assert.equal(await admin.identityPhoneClaim.count({ where: { organizationId: org, userId: good.userId } }), 1)
+  checks.push("single_use_confirmation_replaces_claim_and_epochs_atomically_without_legacy_password_role_or_grant_change")
+
+  phase("PROOF_STALE_SCOPE_AND_AUTHORITY")
+  const stale = await setup("stale"), staleProof = await issue(writer, actor, stale.input, key), staleCode = await secret(staleProof.proofId)
+  assert.equal((await consume(writer, other.organizationId, { proofId: staleProof.proofId, code: staleCode, requestId: "cross-tenant-proof" }, resolveKey)).status, "INVALID")
+  await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: org, userId: stale.userId } }, data: { credentialEpoch: 2 } })
+  assert.equal((await attempt(staleProof.proofId, staleCode, "stale-epoch-proof")).status, "INVALID")
+  assert.equal((await proofRow(staleProof.proofId)).status, "SUPERSEDED")
+  const staleVersion = await setup("version"), versionProof = await issue(writer, actor, staleVersion.input, key), versionCode = await secret(versionProof.proofId)
+  await assert.rejects(consume(writer, org, { proofId: versionProof.proofId, code: versionCode, requestId: "missing-server-key" }, () => null), /IDENTITY_PROOF_KEY_UNAVAILABLE/)
+  assert.equal((await proofRow(versionProof.proofId)).attempts, 0)
+  await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: org, userId: staleVersion.userId } }, data: { version: 2 } })
+  assert.equal(await lease(writer, org, versionProof.proofId), null)
+  assert.equal((await attempt(versionProof.proofId, versionCode, "stale-account-version")).status, "INVALID")
+  const revoked = await setup("revoked"), revokedProof = await issue(writer, actor, revoked.input, key), revokedCode = await secret(revokedProof.proofId)
+  await admin.$executeRawUnsafe("UPDATE users SET role = 'manager' WHERE id = $1", actor.userId)
+  try {
+    await assert.rejects(attempt(revokedProof.proofId, revokedCode, "revoked-issuer-consume"), /IDENTITY_PROOF_AUTHORITY_UNAVAILABLE/)
+    await assert.rejects(lease(writer, org, revokedProof.proofId), /IDENTITY_PROOF_AUTHORITY_UNAVAILABLE/)
+  } finally { await admin.$executeRawUnsafe("UPDATE users SET role = 'admin' WHERE id = $1", actor.userId) }
+  await admin.$executeRawUnsafe('UPDATE organizations SET "isActive" = false WHERE id = $1', org)
+  try { await assert.rejects(attempt(revokedProof.proofId, revokedCode, "inactive-company-consume"), /IDENTITY_COMPANY_UNAVAILABLE/) }
+  finally { await admin.$executeRawUnsafe('UPDATE organizations SET "isActive" = true WHERE id = $1', org) }
+  await admin.$executeRawUnsafe('UPDATE users SET "isActive" = false WHERE id = $1', revoked.userId)
+  try { await assert.rejects(attempt(revokedProof.proofId, revokedCode, "inactive-subject-consume"), /IDENTITY_SUBJECT_UNAVAILABLE/) }
+  finally { await admin.$executeRawUnsafe('UPDATE users SET "isActive" = true WHERE id = $1', revoked.userId) }
+  checks.push("proof_consumption_rechecks_tenant_current_epoch_issuer_company_and_subject")
+
+  phase("PROOF_CANCELLATION_AND_LATE_DELIVERY")
+  const cancelled = await setup("cancelled"), cancelledProof = await issue(writer, actor, cancelled.input, key), cancelCode = await secret(cancelledProof.proofId)
+  const cancelJob = await lease(writer, org, cancelledProof.proofId)
+  const cancelInput = { userId: cancelled.userId, reservationId: cancelled.input.reservationId, expectedAccountVersion: 1, requestId: "cancel-pending" }
+  assert.equal((await cancel(writer, actor, cancelInput)).status, "CANCELLED")
+  assert.equal((await cancel(writer, actor, cancelInput)).replayed, true)
+  assert.equal((await attempt(cancelledProof.proofId, cancelCode, "cancelled-code")).status, "INVALID")
+  assert.equal((await record(writer, org, { proofId: cancelledProof.proofId, leaseToken: cancelJob.leaseToken, outcome: "SENT", providerMessageId: "late-synthetic-ack" })).recorded, true)
+  assert.equal((await outboxRow(cancelledProof.proofId)).status, "SUPERSEDED")
+  assert.equal((await outboxRow(cancelledProof.proofId)).outcome, "SENT_AFTER_CLOSE")
+  assert.equal((await proofRow(cancelledProof.proofId)).deliveryCiphertext, null)
+  assert.equal(await lease(writer, org, cancelledProof.proofId), null)
+  assert.equal(await admin.identityPhoneClaim.count({ where: { organizationId: org, userId: cancelled.userId } }), 0)
+  checks.push("explicit_cancellation_scrubs_secret_and_late_delivery_cannot_reopen_or_claim")
+
+  phase("PROOF_UNCERTAIN_SEND_IS_NEVER_RETRIED")
+  const uncertain = await setup("uncertain"), uncertainProof = await issue(writer, actor, uncertain.input, key)
+  const uncertainJob = await lease(writer, org, uncertainProof.proofId)
+  await admin.identityPhoneProofOutbox.update({ where: { organizationId_proofId: { organizationId: org, proofId: uncertainProof.proofId } }, data: { leaseUntil: new Date(Date.now() - 1000) } })
+  assert.equal(await lease(writer, org, uncertainProof.proofId), null)
+  assert.equal((await outboxRow(uncertainProof.proofId)).status, "UNCERTAIN")
+  assert.equal(await lease(writer, org, uncertainProof.proofId), null)
+  await record(writer, org, { proofId: uncertainProof.proofId, leaseToken: uncertainJob.leaseToken, outcome: "UNCERTAIN", providerMessageId: null })
+  assert.equal((await outboxRow(uncertainProof.proofId)).attempts, 1)
+  checks.push("expired_or_ambiguous_delivery_lease_is_not_requeued")
+
+  phase("PROOF_AUDIT_FAILURE_ROLLS_BACK_EVERY_SECURITY_WRITE")
+  const rollback = await setup("rollback")
+  await assert.rejects(issue(failing, actor, rollback.input, key), /SYNTHETIC_AUDIT_FAILURE/)
+  assert.equal(await admin.identityPhoneProof.count({ where: { organizationId: org, userId: rollback.userId } }), 0)
+  const rollbackProof = await issue(writer, actor, rollback.input, key), rollbackCode = await secret(rollbackProof.proofId)
+  const badCode = rollbackCode === "000000" ? "111111" : "000000"
+  await assert.rejects(consume(failing, org, { proofId: rollbackProof.proofId, code: badCode, requestId: "rollback-wrong" }, resolveKey), /SYNTHETIC_AUDIT_FAILURE/)
+  assert.equal((await proofRow(rollbackProof.proofId)).attempts, 0)
+  const rollbackOld = await admin.identityPhoneClaim.create({ data: { organizationId: org, userId: rollback.userId, normalizedPhone: "+994559988775", accountVersion: 1, verifiedAt: new Date() } })
+  await assert.rejects(consume(failing, org, { proofId: rollbackProof.proofId, code: rollbackCode, requestId: "rollback-correct" }, resolveKey), /SYNTHETIC_AUDIT_FAILURE/)
+  assert.equal((await account(rollback.userId)).version, 1)
+  assert.equal((await account(rollback.userId)).credentialEpoch, 1)
+  assert.equal((await proofRow(rollbackProof.proofId)).status, "PENDING")
+  const rollbackClaims = await admin.identityPhoneClaim.findMany({ where: { organizationId: org, userId: rollback.userId } })
+  assert.deepEqual(rollbackClaims.map(row => row.id), [rollbackOld.id])
+  assert.equal(await admin.identityPhoneReservation.count({ where: { id: rollback.input.reservationId } }), 1)
+  await assert.rejects(lease(failing, org, rollbackProof.proofId), /SYNTHETIC_AUDIT_FAILURE/)
+  assert.equal((await outboxRow(rollbackProof.proofId)).attempts, 0)
+  const rollbackJob = await lease(writer, org, rollbackProof.proofId)
+  await assert.rejects(record(failing, org, { proofId: rollbackProof.proofId, leaseToken: rollbackJob.leaseToken, outcome: "SENT", providerMessageId: "rollback-ack" }), /SYNTHETIC_AUDIT_FAILURE/)
+  assert.equal((await outboxRow(rollbackProof.proofId)).status, "LEASED")
+  await assert.rejects(cancel(failing, actor, { userId: rollback.userId, reservationId: rollback.input.reservationId, expectedAccountVersion: 1, requestId: "rollback-cancel" }), /SYNTHETIC_AUDIT_FAILURE/)
+  assert.equal((await proofRow(rollbackProof.proofId)).status, "PENDING")
+  assert.notEqual((await proofRow(rollbackProof.proofId)).deliveryCiphertext, null)
+  checks.push("proof_issue_attempt_confirmation_lease_receipt_and_cancel_all_roll_back_on_audit_failure")
+
+  phase("PROOF_RESEND_SUPERSEDES_AND_CANCEL_CONFIRM_RACE")
+  const resend = await setup("resend"), firstProof = await issue(writer, actor, resend.input, key)
+  await admin.$executeRawUnsafe('UPDATE identity_phone_proofs SET "createdAt" = now() - interval \'2 minutes\', "expiresAt" = now() + interval \'7 minutes\' WHERE id = $1', firstProof.proofId)
+  const secondProof = await issue(writer, actor, { ...resend.input, requestId: "explicit-resend" }, key)
+  assert.notEqual(secondProof.proofId, firstProof.proofId)
+  assert.equal((await proofRow(firstProof.proofId)).status, "SUPERSEDED")
+  assert.equal((await proofRow(firstProof.proofId)).deliveryCiphertext, null)
+  assert.equal((await outboxRow(firstProof.proofId)).status, "SUPERSEDED")
+  const race = await setup("race"), raceProof = await issue(writer, actor, race.input, key), raceCode = await secret(raceProof.proofId)
+  const raced = await Promise.allSettled([
+    attempt(raceProof.proofId, raceCode, "race-confirm"),
+    cancel(writer, actor, { userId: race.userId, reservationId: race.input.reservationId, expectedAccountVersion: 1, requestId: "race-cancel" }),
+  ])
+  const confirmedRace = raced[0].status === "fulfilled" && raced[0].value.status === "CONFIRMED"
+  assert.equal(await admin.identityPhoneClaim.count({ where: { organizationId: org, userId: race.userId } }), confirmedRace ? 1 : 0)
+  assert.equal((await proofRow(raceProof.proofId)).status, confirmedRace ? "CONFIRMED" : "SUPERSEDED")
+  assert.equal(raced[0].status, "fulfilled")
+  if (confirmedRace) { assert.equal(raced[1].status, "rejected"); assert.equal(raced[1].reason.code, "IDENTITY_ACCOUNT_STALE") }
+  else { assert.equal(raced[0].value.status, "INVALID"); assert.equal(raced[1].status, "fulfilled") }
+  checks.push("explicit_resend_supersedes_old_secret_and_confirmation_cancellation_race_has_one_outcome")
+
+  phase("PROOF_EXPIRY_REPLAY_HAS_FIXED_DEADLINE")
+  const expired = await setup("expired"), expiredProof = await issue(writer, actor, expired.input, key), expiredCode = await secret(expiredProof.proofId)
+  await admin.$executeRawUnsafe('UPDATE identity_phone_proofs SET "createdAt" = now() - interval \'11 minutes\', "expiresAt" = now() - interval \'1 minute\' WHERE id = $1', expiredProof.proofId)
+  assert.equal((await attempt(expiredProof.proofId, expiredCode, "expired-consume")).status, "INVALID")
+  assert.equal((await proofRow(expiredProof.proofId)).status, "EXPIRED")
+  assert.equal((await issue(writer, actor, expired.input, key)).expiresAt, expiredProof.expiresAt)
+  const swept = await setup("swept"), sweptProof = await issue(writer, actor, swept.input, key)
+  await admin.$executeRawUnsafe('UPDATE identity_phone_proofs SET "createdAt" = now() - interval \'11 minutes\', "expiresAt" = now() - interval \'1 minute\' WHERE id = $1', sweptProof.proofId)
+  assert.equal((await expire(writer, org, 1)).expired, 1)
+  assert.equal((await proofRow(sweptProof.proofId)).status, "EXPIRED")
+  assert.equal((await proofRow(sweptProof.proofId)).deliveryCiphertext, null)
+  assert.equal((await outboxRow(sweptProof.proofId)).status, "EXPIRED")
+  checks.push("database_expiry_closes_and_scrubs_proof_without_extending_immutable_deadline")
+}

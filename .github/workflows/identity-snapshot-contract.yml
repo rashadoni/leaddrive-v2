@@ -63,7 +63,7 @@ jobs:
           IDENTITY_CONTRACT_RECEIPT: ${{ runner.temp }}/identity-snapshot-contract.json
       - name: Focused identity types and independent application unit checks
         run: |
-          npx tsc src/lib/identity/contract.ts src/lib/identity/registry.ts src/lib/identity/phone-proof.ts --strict --skipLibCheck --target ES2022 --module NodeNext --moduleResolution NodeNext --types node --outDir "$RUNNER_TEMP/identity-foundation"
+          npx tsc src/lib/identity/contract.ts src/lib/identity/registry.ts src/lib/identity/phone-proof.ts src/lib/identity/phone-proof-registry.ts --strict --skipLibCheck --target ES2022 --module NodeNext --moduleResolution NodeNext --types node --outDir "$RUNNER_TEMP/identity-foundation"
           VITEST_MAX_WORKERS=1 npx vitest run src/lib/identity/contract.test.ts src/lib/identity/phone-proof.test.ts src/__tests__/rls-bypass-classifier.test.ts
       - name: Actual additive identity migration, tenant isolation and phone races
         run: node scripts/identity/foundation-contract.mjs

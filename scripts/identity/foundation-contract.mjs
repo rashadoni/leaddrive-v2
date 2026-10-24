@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process"
 import { writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
+import { checkPhoneProofTransactions } from "./phone-proof-contract.mjs"
 import { admitContractTarget } from "./postgres-contract.mjs"
 
 const A = "identity-company-a", B = "identity-company-b"
@@ -330,6 +331,8 @@ async function main() {
     await expectDatabaseError(() => admin.$executeRawUnsafe(`INSERT INTO identity_events (id, "organizationId", "userId", "requestId", "requestHash", action, "accountVersion") VALUES ($1,$2,$3,$4,$5,'ACCOUNT_STAGED',1)`,
       "anonymous-admin-action-refused", A, proofContext.userId, "schema-anonymous-stage", "a".repeat(64)), "23514")
     receipt.checks.push("proof_storage_has_tenant_bindings_state_limits_private_ciphertext_and_scoped_anonymous_audit")
+
+    await checkPhoneProofTransactions({ admin, writer, failing, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
 
     phase = "RLS_AND_IMMUTABILITY"
     for (const table of TABLES) {

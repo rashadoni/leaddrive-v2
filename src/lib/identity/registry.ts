@@ -2,11 +2,11 @@ import { createHash, randomUUID } from "node:crypto"
 import type { Prisma, PrismaClient } from "@prisma/client"
 import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, assertStagedPhoneReservation, compareIdentityShadow, IdentityRegistryError, type IdentityApplication, type IdentityGrantStatus, type StagedApplicationGrantInput, type StagedPhoneReservationInput } from "./contract.js"
 
-type RegistryClient = Pick<PrismaClient, "$transaction">
+export type RegistryClient = Pick<PrismaClient, "$transaction">
 export type IdentityActor = { organizationId: string; userId: string }
 
 /** Callers derive actor from authenticated server context, never a request body. */
-async function withRegistryTransaction<T>(client: RegistryClient, actor: IdentityActor, readOnly: boolean, work: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+export async function withRegistryTransaction<T>(client: RegistryClient, actor: IdentityActor, readOnly: boolean, work: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
   assertIdentityScope(actor.organizationId, actor.userId)
   return client.$transaction(async tx => {
     if (readOnly) await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY")

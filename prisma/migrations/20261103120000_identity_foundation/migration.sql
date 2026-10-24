@@ -86,7 +86,7 @@ CREATE TABLE identity_phone_proofs (
   CHECK ((status = 'CONFIRMED') = ("usedAt" IS NOT NULL)),
   CHECK (status NOT IN ('PENDING','CONFIRMED') OR attempts < 5),
   CHECK (status <> 'LOCKED' OR attempts = 5),
-  CHECK (status <> 'PENDING' OR "deliveryCiphertext" IS NOT NULL),
+  CHECK ((status = 'PENDING') = ("deliveryCiphertext" IS NOT NULL)),
   CHECK ("deliveryCiphertext" IS NULL OR ("deliveryCiphertext" ~ '^v1[.][A-Za-z0-9_-]{1,40}[.][A-Za-z0-9_-]{16}[.][A-Za-z0-9_-]{8}[.][A-Za-z0-9_-]{22}$'
     AND split_part("deliveryCiphertext", '.', 2) = "keyId"))
 );
@@ -124,7 +124,7 @@ CREATE TABLE identity_events (
   "actorUserId" TEXT,
   "requestId" VARCHAR(128) NOT NULL CHECK (length("requestId") > 0),
   "requestHash" VARCHAR(64) NOT NULL CHECK ("requestHash" ~ '^[a-f0-9]{64}$'),
-  action VARCHAR(40) NOT NULL CHECK (action IN ('ACCOUNT_STAGED', 'GRANT_CHANGED', 'PHONE_RESERVED', 'PHONE_CONFIRMED', 'PHONE_RELEASED', 'RESERVATION_EXPIRED', 'PHONE_PROOF_ISSUED', 'PHONE_PROOF_REJECTED', 'PHONE_DELIVERY_LEASED', 'PHONE_DELIVERY_RECORDED')),
+  action VARCHAR(40) NOT NULL CHECK (action IN ('ACCOUNT_STAGED', 'GRANT_CHANGED', 'PHONE_RESERVED', 'PHONE_CONFIRMED', 'PHONE_RELEASED', 'RESERVATION_EXPIRED', 'PHONE_PROOF_ISSUED', 'PHONE_PROOF_REJECTED', 'PHONE_DELIVERY_LEASED', 'PHONE_DELIVERY_RECORDED', 'PHONE_RESERVATION_CANCELLED')),
   "accountVersion" INTEGER NOT NULL CHECK ("accountVersion" > 0),
   application VARCHAR(16) CHECK (application IN ('CRM', 'TIME', 'ROUTE_FIELD')),
   "grantStatus" VARCHAR(16) CHECK ("grantStatus" IN ('ACTIVE', 'REVOKED')),

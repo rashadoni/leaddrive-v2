@@ -209,10 +209,11 @@ worker may decrypt the payload; no endpoint may return it or log the code.
 There is no default key, environment-file load, provider call or plaintext
 secret in receipts. Tests use synthetic keys and actual Node crypto; production
 keys must be server-supplied cryptographic secrets retained for the bounded
-rotation window. The primitive is not an authorization decision or a complete
-OTP service: transactional persistence/delivery, resend/rate/attempt limits,
-single-use consumption, claim assignment and narrow setup tokens are the next
-integration. Existing authentication and the WhatsApp sender remain unchanged.
+rotation window. The primitive is not an authorization decision or an exposed OTP service.
+The internal transaction service described below prepares issuance/consumption;
+HTTP rate limits, provider composition and narrow setup tokens remain required
+before enrollment can use it. Existing authentication and the WhatsApp sender
+remain unchanged.
 
 ### Proof storage and delivery preparation
 
@@ -229,7 +230,7 @@ resent. SENT records provider acknowledgement, never phone possession.
 The new explicit system/rejected-proof audit actions may have no human actor;
 all existing administrator actions still require a non-null actor. This avoids
 attributing an anonymous failed guess to its target User. Ciphertexts are
-scrubbed by the future consumption/expiry service. Storage and crypto are not
+scrubbed by the internal consumption/cancellation/expiry service. Storage and crypto are not
 an exposed OTP API or a running provider worker; no current authentication or
 live sending behavior consumes these tables yet.
 
@@ -237,3 +238,40 @@ Attempt idempotency uses `phoneProofAttemptHash`, a separately HKDF-keyed HMAC
 of the exact context, request ID and submitted text. Never persist an unkeyed
 hash of the small OTP search space. A changed retry must be rejected before
 checking correctness, so a reused failed request cannot become a code oracle.
+
+
+### Internal staged proof transactions
+
+`src/lib/identity/phone-proof-registry.ts` operates only on inactive staged
+accounts (`cutoverAt IS NULL`). It is not imported by current login, personnel
+or mobile routes. Issuance requires the current tenant administrator and a
+live owned reservation with exact account/credential versions. Proof, private
+outbox and immutable audit are committed together; repeated request IDs never
+extend a deadline, and explicit resend has a 60-second cooldown.
+
+Consumption uses the same tenant lock as grant/reservation writers and checks
+current company, subject, issuing administrator, reservation and versions.
+Wrong attempts return normally from the transaction so the counter commits;
+five attempts lock and scrub the proof. An identical attempt request replays
+its immutable receipt; changed text under that request ID is refused before
+checking correctness. Correct current proof atomically replaces only the
+staged claim, increments account and credential epochs, removes the consumed
+reservation, scrubs the proof and appends its receipt. Legacy credentials,
+phones, actor roles, application grants, MFA and current sessions are untouched.
+
+Only a trusted server worker can claim a private delivery item. One CAS lease
+permits one provider attempt; expired/ambiguous leases are never requeued.
+A worker must enforce its short lease deadline before sending, decrypt only
+in memory, never retry an uncertain send, and submit a capability-bound
+receipt. Provider acknowledgement never assigns a phone. Late acknowledgements
+retain provenance after cancellation/confirmation without reopening the proof.
+Explicit cancellation never releases an already confirmed claim.
+
+No provider worker, scheduler or public endpoint is activated. Before exposure,
+compose trusted tenant/key selection, request rate limits, server-owned actor
+context, provider deadline/retry handling and safe error responses. There is
+no default production key or new authentication fallback. The hosted
+foundation contract executes synthetic issue/consume/delivery/cancel races,
+wrong-attempt replay, current authority/version/expiry fences and real
+transaction rollback after injected audit failure. A source change is prepared
+until its own exact-head CI receipt passes; earlier green results do not apply.
