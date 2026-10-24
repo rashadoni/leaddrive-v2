@@ -1,5 +1,36 @@
 # Критический аудит реализации «Встречи и запись»
 
+## Продолжение 2026-10-24: staged release A/B
+
+Ниже сохранён аудит первоначального source `91dd1edc2`. Текущая подготовка A/B
+добавляет исполняемые проверки выпуска; ранний вывод I-01 о недоступной inventory
+**superseded** фактическим protected Actions результатом.
+
+- **I-01 закрыт для наблюдения 12:29 UTC:** 2 Booking, все проверяемые связи
+  корректны; пересечения/дубликаты/неверные интервалы — 0; btree_gist установлен.
+  Evidence: `evidence/production-inventory-20261024.json`, run `40094038543`.
+- **I-05:** подготовлен A/B backend contract, current-main recovery admission,
+  однократный DB mode и rollback proof после PM2 fence и дренирования PostgreSQL.
+  Найденная гонка позднего COMMIT закрыта алгоритмом fresh READ COMMITTED snapshot;
+  actual pending-COMMIT acceptance включён в hosted PostgreSQL gate.
+- A и B имеют одинаковую схему и backend API. B включает строгий mode и UI;
+  rollback A не выключает mode и не удаляет историю. Старые page writers повышают
+  version на DB boundary; известный legacy buffer сохраняется при INSERT.
+- Local: 151/151 targeted unit, 13 pure/controller Node cases, scoped ESLint,
+  event-platform assets, i18n/shell/diff PASS. Node PostgreSQL acceptance и 22-case
+  application PostgreSQL suite ещё требуют actual hosted run на новом source.
+  Production build/full compiler NOT RUN на Contabo по host contract.
+- Production пока имеет только инструментальный main `cb1c604e2`; deploy
+  `40094028286` SUCCESS, ping/build-info PASS. Backend A/B не выкладывался.
+- Полный GO для B возможен только после проверенного, реально выложенного A и
+  сохранённого exact immutable A artifact. Marker сам по себе не является proof.
+  Подробный протокол: `../booking-release-cutover-plan.md`.
+- Действующая production recovery configuration — **plain**, как показал deploy
+  log. Encrypted/offline commissioning не активна; нормальный маршрут это явно
+  допускает. Полная disaster-recovery certification и production fault injection
+  не выполнялись этой задачей и не обозначаются как PASS.
+
+
 Дата: 2026-10-24. Архитектурный разбор сохранён отдельно в
 [booking-workspace-critical-audit.md](booking-workspace-critical-audit.md).
 Этот отчёт проверяет реализацию и явно отделяет доказательства от предположений.

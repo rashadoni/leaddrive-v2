@@ -49,6 +49,16 @@ export function admitRollback(state, target, candidate, firstExpansion, quiesced
     && state.canonicalCount === 0 && !state.enforced) return;
   throw new Error('LEGACY_ROLLBACK_FORBIDDEN');
 }
+export function releaseProof(state, candidate, live, artifactSha) {
+  if (!shaPattern.test(artifactSha ?? '')) throw new Error('INVALID_ARTIFACT_SHA');
+  if (candidate) {
+    if (!live || candidate.artifactSha !== artifactSha || live.artifactSha !== artifactSha
+      || live.phase !== candidate.phase || live.schemaHash !== candidate.schemaHash || !state.expanded
+      || (candidate.phase === 'workspace' && !state.enforced)) throw new Error('BOOKING_RELEASE_NOT_PROVEN');
+  } else if (live || state.expanded) throw new Error('LEGACY_RELEASE_NOT_PROVEN');
+  return {version:1,status:'PASS_BOOKING_RELEASE',artifactSha,phase:candidate?.phase??'legacy',
+    enforced:state.enforced,canonicalCount:state.canonicalCount,readOnly:state.readOnly,rlsUnfiltered:state.rlsUnfiltered};
+}
 // END PURE CONTRACT
 
 export function bookingSchemaHash(schema) {
@@ -89,12 +99,16 @@ function readManifestAt(directory, requireRoot) {
   return parseManifest(raw, sha);
 }
 
-export function emitAdmission(artifactSha, rawManifest) {
+export function emitAdmission(artifactSha, rawManifest, proof = false) {
   const candidate = parseManifest(rawManifest, artifactSha);
   const own = readFileSync(fileURLToPath(import.meta.url), 'utf8');
   const core = own.split('// BEGIN PURE CONTRACT — emitted unchanged by the current-main recovery admission.')[1]
     ?.split('// END PURE CONTRACT')[0]?.replaceAll('export function ', 'function ');
   if (!core) throw new Error('CONTRACT_EMISSION_FAILED');
+  const action = proof
+    ? "if (readFileSync('/opt/leaddrive-v2/.next/standalone/.deploy-sha','utf8').trim() !== " + JSON.stringify(artifactSha) + ") throw new Error('DEPLOYED_SHA_MISMATCH'); console.log(JSON.stringify(releaseProof(state," + JSON.stringify(candidate) + ',predecessor,' + JSON.stringify(artifactSha) + ')));'
+    : 'admitCandidate(state,' + JSON.stringify(candidate) + ",predecessor); console.log('booking_artifact_admission=PASS');";
+
   return helpers() + `
 require_root_file /etc/leaddrive/migration.env 600 || exit 1
 booking_release_url="$(read_static_env_value /etc/leaddrive/migration.env MIGRATION_DATABASE_URL)" || exit 1
@@ -109,8 +123,7 @@ ${readManifestAt.toString()}
 try {
   const state=parseState(process.env.BOOKING_RELEASE_STATE);
   const predecessor=readManifestAt('/opt/leaddrive-v2/.next/standalone',true);
-  admitCandidate(state,${JSON.stringify(candidate)},predecessor);
-  console.log('booking_artifact_admission=PASS');
+  ${action}
 } catch { console.error('booking_artifact_admission=BLOCKED');process.exitCode=1; }
 BOOKING_ADMISSION_JS
 `;
@@ -153,8 +166,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     } else if (mode === '--assert-activated') {
       const candidate = parseManifest(readFileSync(args[0],'utf8'),args[1]);
       if (candidate?.phase === 'workspace' && !getState().enforced) throw new Error('WORKSPACE_NOT_ACTIVATED');
-    } else if (mode === '--emit-admission') {
-      process.stdout.write(emitAdmission(args[0],readFileSync(0,'utf8')));
+    } else if (mode === '--emit-admission' || mode === '--emit-proof') {
+      process.stdout.write(emitAdmission(args[0],readFileSync(0,'utf8'),mode==='--emit-proof'));
     } else if (mode === '--check-admission') {
       const [candidateFile,artifactSha,predecessorDirectory] = args;
       const candidate = parseManifest(readFileSync(candidateFile,'utf8'),artifactSha);

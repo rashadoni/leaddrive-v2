@@ -4,7 +4,7 @@ import { spawnSync, spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { parseManifest, parseState, admitCandidate, admitRollback, emitAdmission, databaseStateScript, bookingSchemaHash, activationSql } from './release-contract.mjs';
+import { parseManifest, parseState, admitCandidate, admitRollback, emitAdmission, databaseStateScript, bookingSchemaHash, activationSql, releaseProof } from './release-contract.mjs';
 
 const sha = 'a'.repeat(40), hash = 'b'.repeat(64);
 const manifest = (phase='compatibility') => ({version:1,contract:'booking-canonical-writer/v1',artifactSha:sha,schemaHash:hash,phase});
@@ -76,6 +76,15 @@ test('only an artifact-bound workspace release can generate a monotonic activati
   assert.throws(()=>activationSql({...manifest('workspace'),artifactSha:"';unsafe"}));
 });
 
+test('post-deploy proof binds the actual artifact, storage and active mode without changing customer data', () => {
+  const expanded = state({expanded:true});
+  assert.equal(releaseProof(expanded,manifest(),manifest(),sha).status,'PASS_BOOKING_RELEASE');
+  assert.throws(()=>releaseProof(expanded,manifest('workspace'),manifest('workspace'),sha));
+  assert.equal(releaseProof(state({expanded:true,enforced:true}),manifest('workspace'),manifest('workspace'),sha).phase,'workspace');
+  assert.throws(()=>releaseProof(expanded,manifest(),{...manifest(),artifactSha:'c'.repeat(40)},sha));
+  assert.throws(()=>releaseProof(state(),manifest(),manifest(),sha));
+});
+
 test('the booking schema contract does not freeze unrelated application schema releases', () => {
   const schema = readFileSync('prisma/schema.prisma','utf8');
   assert.equal(bookingSchemaHash(schema),bookingSchemaHash(schema+'\nmodel UnrelatedFixture {\n id String @id\n}\n'));
@@ -145,6 +154,11 @@ test('emitted current-main admission and state scripts parse and never load hist
   const emitted = emitAdmission(sha,JSON.stringify(manifest('workspace')));
   assert.equal(spawnSync('bash',['-n'],{input:emitted}).status,0);
   assert.equal(spawnSync('bash',['-n'],{input:databaseStateScript()}).status,0);
+  const proof = emitAdmission(sha,JSON.stringify(manifest('workspace')),true);
+  assert.equal(spawnSync('bash',['-n'],{input:proof}).status,0);
+  const proofJs = proof.split("node <<'BOOKING_ADMISSION_JS'\n")[1].split('\nBOOKING_ADMISSION_JS')[0];
+  assert.equal(spawnSync(process.execPath,['--check'],{input:proofJs}).status,0);
+
   assert.match(emitted,/PRE_CANONICAL_RECOVERY_FORBIDDEN/);
   assert.match(emitted,/default_transaction_read_only=on/);
   assert.doesNotMatch(emitted,/require\([^\n]*node_modules/);

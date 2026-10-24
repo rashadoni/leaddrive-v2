@@ -370,3 +370,11 @@
 - Deployment controller проверяет predecessor до live replacement, дренирует/сохраняет пустой PM2 dump перед rollback proof и перед первым стартом writer. Rejected rollback сохраняет candidate bytes, а не перезаписывает их legacy backup. Точный current-main admission исполняется перед retained recovery SCP.
 - Local checks: Node pure/controller cases 12 PASS, PostgreSQL case NOT RUN (hosted gate добавлен); event-platform assets PASS; scoped ESLint PASS; i18n parity 28613 keys PASS; shell syntax/diff PASS. Первые 151 targeted unit выявили 3 phase/navigation расхождения; исправлены настоящие nav/voice registry entries и фазовый контракт теста, повтор этих 15 cases PASS. Полный hosted source gate и production build A/B ещё нужны.
 - Инструментальный deploy `40094028286` final SUCCESS; current production SHA `cb1c604e274d75cfde10534b94978ce293f8f121`, ping PASS. Booking backend A/B пока не deployed.
+
+## 2026-10-24 — Готов source для hosted проверки A
+
+- Все 151 целевых unit cases в 12 файлах повторно PASS на текущей фазе A. Новые pure/controller Node cases: 13 PASS; четырнадцатый actual PostgreSQL case NOT RUN на Contabo и обязателен в hosted checks. Scoped ESLint, Prisma validate (synthetic URL без подключения), event-platform assets, i18n, YAML parse, shell syntax, diff PASS.
+- PostgreSQL scenario теперь проверяет настоящий поздний COMMIT и отказ legacy rollback после ожидания, включая необычный repeatable-read default роли. Отдельные проверки закрывают root activation без SHA, web UPDATE, деактивацию, DELETE/TRUNCATE и повтор включения.
+- Добавлены read-only post-deploy/recovery proofs: live artifact SHA, mode, expanded storage и canonical count. Synthetic customer записи и provider sends для smoke не требуются.
+- Actual log инструментального deploy подтверждает plain recovery mode; encrypted/offline commissioning не активна. Существующая политика normal releases не менялась, сертификат полной DR не заявляется.
+- Новый аудит и protocol описывают фактический code path; I-05 до hosted acceptance и реального A artifact ещё не закрывается. Следующие действия: checkpoint/push A, PR с production-build gate; проверить результаты; подготовить B как смену immutable UI phase с тем же backend.

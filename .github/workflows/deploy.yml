@@ -2152,6 +2152,18 @@ jobs:
                exit 1
              fi'
 
+      - name: Verify booking release with read-only production evidence
+        if: ${{ env.DEPLOYMENT_MODE == 'normal' }}
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          node scripts/booking/release-contract.mjs --emit-proof "$DEPLOY_TARGET_SHA" \
+            < "$RUNNER_TEMP/booking-candidate-contract.json" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+
       - name: Cleanup SSH key
         if: always()
         run: |
@@ -2494,6 +2506,17 @@ jobs:
             | sed -n 's/.*"artifactSha":"\([0-9a-f]\{40\}\)".*/\1/p')
           [ "$LIVE_SHA" = "$EXPECTED_SHA" ]
           REMOTE
+
+      - name: Verify restored booking contract with current-main evidence
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/booking-current-main-admission/scripts/booking/release-contract.mjs" \
+            --emit-proof "$RECOVERY_SHA" < "$RUNNER_TEMP/booking-recovery-contract.json" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
 
       - name: Cleanup SSH key
         if: always()
