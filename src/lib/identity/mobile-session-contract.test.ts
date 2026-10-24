@@ -5,11 +5,11 @@ const now = new Date("2026-10-24T20:00:01.000Z"), issued = Math.floor(now.valueO
 function fixture(app: IdentityMobileApplication = "TIME") {
   const scope = { organizationId: "tenant-a", userId: "person-a" }
   const claims: IdentityMobileClaims = { version: 1, iss: issuer, aud: audience[app], sub: scope.userId, organizationId: scope.organizationId,
-    application: app, actorId: "original-actor-a", phoneClaimId: "claim-a", credentialEpoch: 3, grantVersion: 2, iat: issued, exp: issued + 604800, jti: "session-a" }
+    application: app, actorId: "original-actor-a", phoneClaimId: "claim-a", credentialEpoch: 3, grantVersion: 2, membershipVersion: 1, iat: issued, exp: issued + 604800, jti: "session-a" }
   const state: IdentityMobileState = { company: { id: scope.organizationId, isActive: true, identityMobileEnabled: true },
     person: { ...scope, isActive: true, anonymizedAt: null }, account: { ...scope, version: 8, credentialEpoch: 3, cutoverAt: new Date("2026-10-24T19:00:00.000Z") },
     claim: { ...scope, id: "claim-a" }, grant: { ...scope, application: app, status: "ACTIVE", role: app === "TIME" ? "EMPLOYEE" : "AGENT", version: 2 },
-    membership: { ...scope, application: app, actorId: "original-actor-a", active: true }, license: { application: app, enabled: true } }
+    membership: { ...scope, application: app, actorId: "original-actor-a", active: true, version: 1 }, actor: { organizationId: scope.organizationId, userId: scope.userId, id: "original-actor-a", status: "ACTIVE" }, license: { application: app, enabled: true } }
   return { claims, state }
 }
 describe("future authoritative mobile session policy, inactive until composed", () => {
@@ -61,13 +61,23 @@ describe("future authoritative mobile session policy, inactive until composed", 
     expect(authorize(field.claims, "ROUTE_FIELD", field.state, now)).toBeNull()
   })
   it("binds every fresh record to the tenant/person and original actor", () => {
-    for (const name of ["person", "account", "claim", "grant", "membership"] as const) {
+    for (const name of ["person", "account", "claim", "grant", "membership", "actor"] as const) {
       for (const column of ["organizationId", "userId"] as const) {
         const { claims, state } = fixture(); state[name]![column] = "other"
         expect(authorize(claims, "TIME", state, now)).toBeNull()
       }
     }
     const { claims, state } = fixture(); state.membership!.actorId = "different-actor"
+    expect(authorize(claims, "TIME", state, now)).toBeNull()
+  })
+  it("does not revive a token after membership reactivation or an actor link change", () => {
+    const { claims, state } = fixture()
+    state.membership!.active = false; expect(authorize(claims, "TIME", state, now)).toBeNull()
+    state.membership!.active = true; state.membership!.version++
+    expect(authorize(claims, "TIME", state, now)).toBeNull()
+    state.membership!.version--; state.actor!.userId = null
+    expect(authorize(claims, "TIME", state, now)).toBeNull()
+    state.actor!.userId = "person-a"; state.actor!.status = "INACTIVE"
     expect(authorize(claims, "TIME", state, now)).toBeNull()
   })
   it("revokes a previous credential epoch/phone claim without transferring an actor or granting another app", () => {

@@ -6,7 +6,7 @@ export const IDENTITY_MOBILE_AUDIENCES = { TIME: "leaddrive:time:v1", ROUTE_FIEL
 export type IdentityMobileClaims = {
   version: 1; iss: typeof IDENTITY_MOBILE_ISSUER; aud: string; sub: string; organizationId: string;
   application: IdentityMobileApplication; actorId: string; phoneClaimId: string; credentialEpoch: number;
-  grantVersion: number; iat: number; exp: number; jti: string;
+  grantVersion: number; membershipVersion: number; iat: number; exp: number; jti: string;
 }
 type Subject = { organizationId: string; userId: string }
 /** Fresh server-owned, tenant-scoped state. Never deserialize this from a request. */
@@ -16,10 +16,11 @@ export type IdentityMobileState = {
   account: Subject & { version: number; credentialEpoch: number; cutoverAt: Date | null };
   claim: (Subject & { id: string }) | null;
   grant: (Subject & { application: IdentityMobileApplication; status: string; role: string | null; version: number }) | null;
-  membership: (Subject & { application: IdentityMobileApplication; actorId: string; active: boolean }) | null;
+  membership: (Subject & { application: IdentityMobileApplication; actorId: string; active: boolean; version: number }) | null;
+  actor: { organizationId: string; userId: string | null; id: string; status: string } | null;
   license: { application: IdentityMobileApplication; enabled: boolean };
 }
-const NAMES = ["version", "iss", "aud", "sub", "organizationId", "application", "actorId", "phoneClaimId", "credentialEpoch", "grantVersion", "iat", "exp", "jti"]
+const NAMES = ["version", "iss", "aud", "sub", "organizationId", "application", "actorId", "phoneClaimId", "credentialEpoch", "grantVersion", "membershipVersion", "iat", "exp", "jti"]
 const integer = (value: unknown): value is number => typeof value === "number" && Number.isInteger(value) && value > 0 && value <= 2_147_483_647
 const unix = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value > 0
 const roleAllowed = (app: IdentityMobileApplication, role: string | null): role is string => typeof role === "string"
@@ -38,7 +39,7 @@ export function authorizeIdentityMobileSession(raw: unknown, expectedApp: Identi
     || !(now instanceof Date) || !Number.isFinite(now.valueOf())) return null
   const claims = raw as IdentityMobileClaims
   if (claims.version !== 1 || claims.iss !== IDENTITY_MOBILE_ISSUER || claims.application !== expectedApp
-    || claims.aud !== IDENTITY_MOBILE_AUDIENCES[expectedApp] || !integer(claims.credentialEpoch) || !integer(claims.grantVersion)
+    || claims.aud !== IDENTITY_MOBILE_AUDIENCES[expectedApp] || !integer(claims.credentialEpoch) || !integer(claims.grantVersion) || !integer(claims.membershipVersion)
     || !unix(claims.iat) || !unix(claims.exp) || claims.exp <= claims.iat || claims.exp - claims.iat > 604_800
     || claims.iat * 1000 > now.valueOf() || claims.exp * 1000 <= now.valueOf()) return null
   try {
@@ -46,19 +47,20 @@ export function authorizeIdentityMobileSession(raw: unknown, expectedApp: Identi
     for (const id of [claims.actorId, claims.phoneClaimId, claims.jti]) assertIdentityRequestId(id)
   } catch { return null }
   if (!state || !state.company || !state.person || !state.account || !state.license) return null
-  const { company, person, account, claim, grant, membership, license } = state
+  const { company, person, account, claim, grant, membership, actor, license } = state
   if (company.id !== claims.organizationId || company.isActive !== true || company.identityMobileEnabled !== true
     || person.isActive !== true || person.anonymizedAt !== null || !integer(account.version)
     || !(account.cutoverAt instanceof Date) || !Number.isFinite(account.cutoverAt.valueOf()) || account.cutoverAt > now
     || claims.iat < Math.floor(account.cutoverAt.valueOf() / 1000)
     || account.credentialEpoch !== claims.credentialEpoch || !claim || claim.id !== claims.phoneClaimId
     || !grant || grant.application !== expectedApp || grant.status !== "ACTIVE" || grant.version !== claims.grantVersion || !roleAllowed(expectedApp, grant.role)
-    || !membership || membership.application !== expectedApp || membership.actorId !== claims.actorId || membership.active !== true
+    || !membership || membership.application !== expectedApp || membership.actorId !== claims.actorId || membership.active !== true || membership.version !== claims.membershipVersion
+    || !actor || actor.id !== claims.actorId || actor.status !== "ACTIVE"
     || license.application !== expectedApp || license.enabled !== true) return null
-  if ([person, account, claim, grant, membership].some(row => row.organizationId !== claims.organizationId || row.userId !== claims.sub)) return null
+  if ([person, account, claim, grant, membership, actor].some(row => row.organizationId !== claims.organizationId || row.userId !== claims.sub)) return null
   // account.version is a write-CAS revision, deliberately NOT a session epoch:
   // revoking Field changes it but must not invalidate an unchanged Time grant.
   // Return actorId/app explicitly; adapting to legacy agentId/role is not safe.
   return { organizationId: claims.organizationId, userId: claims.sub, actorId: claims.actorId, application: expectedApp,
-    role: grant.role, grantVersion: grant.version, credentialEpoch: account.credentialEpoch, phoneClaimId: claim.id, sessionId: claims.jti }
+    role: grant.role, grantVersion: grant.version, membershipVersion: membership.version, credentialEpoch: account.credentialEpoch, phoneClaimId: claim.id, sessionId: claims.jti }
 }
