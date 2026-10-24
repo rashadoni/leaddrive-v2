@@ -186,6 +186,12 @@ BEGIN
   END IF;
   SELECT * INTO current_booking FROM public.bookings WHERE id = NEW.id AND "organizationId" = NEW."organizationId";
   IF NOT FOUND THEN
+    -- A legacy transaction may insert/update and delete the same version-zero
+    -- row before this deferred check runs. Every queued positive version still
+    -- fails here, so canonicalize/downgrade/delete cannot use this exception.
+    IF NEW.version = 0 AND (TG_OP = 'INSERT' OR OLD.version = 0)
+       AND NOT COALESCE((SELECT enforced FROM public.booking_workspace_release WHERE id=1), true)
+    THEN RETURN NULL; END IF;
     RAISE EXCEPTION 'Booking disappeared before its event guard' USING ERRCODE = 'check_violation';
   END IF;
   -- Expand release A permits only never-canonical legacy rows. A positive

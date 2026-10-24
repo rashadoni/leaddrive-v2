@@ -178,6 +178,23 @@ pgDescribe("online booking on a real Postgres", () => {
       END $$;
       DELETE FROM bookings WHERE id='expansion-zero-probe';
     `)
+    // Removing a never-canonical row within its transaction is compatible;
+    // visiting any positive version before deletion must still roll back in A.
+    for (const mutations of [
+      `UPDATE bookings SET version=1 WHERE id='legacy-buffer-booking'; DELETE FROM bookings WHERE id='legacy-buffer-booking';`,
+      `UPDATE bookings SET version=1 WHERE id='legacy-buffer-booking'; UPDATE bookings SET version=0 WHERE id='legacy-buffer-booking'; DELETE FROM bookings WHERE id='legacy-buffer-booking';`,
+    ]) {
+      expect(() => prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env,
+        `BEGIN; ${mutations} COMMIT;`)).toThrow(/Booking disappeared|canonical booking cannot|cannot be deleted/i)
+    }
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM bookings WHERE id='legacy-buffer-booking' AND version=0)
+           OR EXISTS (SELECT 1 FROM bookings WHERE id='expansion-zero-probe') THEN
+          RAISE EXCEPTION 'Expand deletion compatibility or canonical rollback failed';
+        END IF;
+      END $$;
+    `)
     // B uses the same schema/functions as A. The single global mode transition
     // is permanent and guarded; it does not require another schema profile.
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env,
