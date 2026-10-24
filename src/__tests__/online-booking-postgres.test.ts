@@ -300,7 +300,7 @@ pgDescribe("online booking on a real Postgres", () => {
       const slug = await newPage()
       const page = await bypass(() => prisma.bookingPage.findUniqueOrThrow({ where: { slug } }))
       const row = await legacyFixture((tx) => tx.booking.create({ data: { organizationId: ORG, bookingPageId: page.id, hostUserId: HOST_A, startsAt: new Date(Date.now() + 86400000), endsAt: new Date(Date.now() + 88200000), name: "Synthetic connection generation", phone: "+994500000008", cancelTokenHash: randomUUID(), googleEventId: "old-generation-event" } }))
-      const binding = await bypass(() => prisma.bookingIntegrationBinding.create({ data: { organizationId: ORG, bookingId: row.id, hostUserId: HOST_A, accountId: previous.id, generation: "legacy", providerEventId: "old-generation-event", desiredVersion: 0, state: "applied" } }))
+      const binding = await bypass(() => prisma.bookingIntegrationBinding.create({ data: { organizationId: ORG, bookingId: row.id, hostUserId: HOST_A, accountId: previous.id, generation: "legacy", providerEventId: "old-generation-event", desiredVersion: 0, state: "synced" } }))
       const current = await bypass(() => prisma.$transaction((tx) => replaceCalendarConnection(tx, ORG, HOST_A, { access_token: "synthetic-new-access", expiry_date: Date.now() + 3600000 }, "verified-new-primary")))
       currentId = current.id
       expect(current.id).not.toBe(previous.id)
@@ -322,9 +322,14 @@ pgDescribe("online booking on a real Postgres", () => {
       const slug = await newPage()
       const page = await bypass(() => prisma.bookingPage.findUniqueOrThrow({ where: { slug } }))
       const row = await legacyFixture((tx) => tx.booking.create({ data: { organizationId: ORG, bookingPageId: page.id, hostUserId: HOST_A, startsAt: new Date("2020-03-01T05:00:00Z"), endsAt: new Date("2020-03-01T05:30:00Z"), name: "Unproven legacy identity", phone: "+994500000009", cancelTokenHash: randomUUID(), googleEventId: "unverified-legacy-event" } }))
+      calendar.update.mockClear(); calendar.insert.mockClear(); calendar.remove.mockClear()
       const response = await actionsPost(json("POST", `/api/v1/bookings/${row.id}/actions`, { operation: "outcome", outcome: "completed", version: 0, notifyCustomer: false, idempotencyKey: randomUUID() }), { params: Promise.resolve({ id: row.id }) })
       expect(response.status, await response.clone().text()).toBe(200)
       expect(await bypass(() => prisma.bookingIntegrationBinding.findFirstOrThrow({ where: { bookingId: row.id } }))).toMatchObject({ accountId: "unavailable", state: "reconciliation_required", providerEventId: "unverified-legacy-event", desiredState: "present" })
+      await bypass(() => drain(ORG, 50))
+      expect(calendar.update).not.toHaveBeenCalled()
+      expect(calendar.insert).not.toHaveBeenCalled()
+      expect(calendar.remove).not.toHaveBeenCalled()
     } finally { await bypass(() => prisma.account.delete({ where: { id: account.id } })) }
   })
 

@@ -99,6 +99,13 @@ export async function drainBookingEffects(orgId: string, limit = 20, deadline = 
         await finish(tx, claimed, "succeeded", { noOp: true, reason: "superseded_before_send" })
         return { done: true as const }
       }
+      if (effect.effectType === "booking.calendar" && payload.bindingId) {
+        const binding = await tx.bookingIntegrationBinding.findFirst({ where: { id: payload.bindingId, organizationId: orgId, bookingId: row.id } })
+        if (binding?.state === "reconciliation_required" || binding?.accountId === "unavailable") {
+          await finish(tx, claimed, "reconciliation_required", { reason: "calendar_identity_unverified" })
+          return { done: true as const }
+        }
+      }
       if (effect.effectType === "booking.project") {
         await project(tx, row)
         await finish(tx, claimed, "succeeded", { localProjection: true })
