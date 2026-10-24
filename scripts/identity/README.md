@@ -96,3 +96,20 @@ Transaction tests use an injected mock client: ordering, parameter binding,
 fail-closed checks and file privacy are covered. Actual PostgreSQL/RLS query
 execution remains a required CI gate before production use. The snapshot is
 limited to identity links and phones, not application grants or HR history.
+
+## Hosted PostgreSQL contract
+
+`.github/workflows/identity-snapshot-contract.yml` runs the unit/file tests and
+then `postgres-contract.mjs` against an isolated PostgreSQL 16 service. The
+contract only admits CI, the loopback host, an explicit port and the fixed
+`identity_snapshot_contract_test` database. It refuses an already populated
+fixture instead of resetting it. The reader role has SELECT only and no RLS
+bypass. No production secret is required or used.
+
+The six database checks cover actual Prisma projection/credential masking,
+missing and foreign tenant contexts, tenant ID/slug mismatch, PostgreSQL's
+READ ONLY write rejection, a consistent snapshot across a concurrent commit,
+and the reported stale actor phone after a CRM-only number change. The fixture
+uses only columns needed by the exporter: this is not a full migration replay
+or validation of the whole application schema. The receipt is bound to the
+checked-out source commit and contains fixed check names, never private data.

@@ -1,0 +1,66 @@
+name: Identity snapshot PostgreSQL contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/identity/**'
+      - '.github/workflows/identity-snapshot-contract.yml'
+      - 'prisma/schema.prisma'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: identity-snapshot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: identity_snapshot_contract_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: identity-contract-admin-only
+        ports: [5432/tcp]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d identity_snapshot_contract_test"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      CI: 'true'
+      IDENTITY_CONTRACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      IDENTITY_CONTRACT_DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
+      DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
+      IDENTITY_CONTRACT_RECEIPT: ${{ runner.temp }}/identity-snapshot-contract.json
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.IDENTITY_CONTRACT_HEAD_SHA }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Bind source and run focused unit checks
+        run: |
+          test "$(git rev-parse HEAD)" = "$IDENTITY_CONTRACT_HEAD_SHA"
+          node scripts/ci/check-github-runner-policy.mjs
+          node --test scripts/identity/preflight.test.mjs scripts/identity/snapshot.test.mjs scripts/identity/postgres-contract.test.mjs
+          git diff --check
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Actual Prisma, PostgreSQL, RLS and concurrent snapshot
+        run: node scripts/identity/postgres-contract.mjs
+      - name: Retain sanitized result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: identity-snapshot-${{ env.IDENTITY_CONTRACT_HEAD_SHA }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/identity-snapshot-contract.json
+          if-no-files-found: warn
+          retention-days: 14
