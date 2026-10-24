@@ -393,3 +393,11 @@
 - Ошибка: тест начинал synchronous polling до завершения передачи SQL фоновому psql. Он не доказывал начало транзакции и не увидел table lock. Добавлены awaited stdin completion, независимая pg_locks readiness и explicit проверка exit status/read-only drain ответа.
 - Production drain дополнительно ограничен current database OID, чтобы одинаковые relation OID в другом DB/clone не давали ложную занятость.
 - Для короткой обратной связи существующий protected preflight workflow дополнен отдельным synthetic release-contract PostgreSQL run на PR paths. Он дополняет full static-checks, не заменяет его; production доступ по-прежнему только explicit main dispatch.
+
+## 2026-10-24 15:23 UTC — PostgreSQL выявил deferred guard legacy deletion
+
+- Быстрые A/B preflight runs `40105790196` / `40105835276`: 8 inspector + 14 release-contract tests PASS, без пропусков; настоящие late-COMMIT, permissions и monotonic mode подтверждены.
+- Full A static run `40105790154` остановился при bootstrap 22 application PostgreSQL cases: deferred INSERT guard не учитывал legacy insert/delete внутри одной транзакции. Это дефект совместимости A, а не повод разнести тест по транзакциям или убрать gate.
+- Добавлено узкое исключение только для исчезнувших never-canonical version-zero row events при выключенном B. Любой queued positive version и любое удаление в strict mode всё ещё отвергается. До B activation добавлены реальные попытки positive/delete и positive/zero/delete с обязательным rollback, плюс проверка сохранности legacy row.
+- Fresh inventory dispatch `40106579218` привязан к фактически выложенному current main `6a755bb2329d2f4ff9a1cc9dc2bf5b7900507376`; Time deploy `40102027380` SUCCESS, build-info exact match. Чужой PR не merged этой задачей.
+- Авторизация сохраняется: согласованный пользователем список UX и поручение довести до конца без промежуточных подтверждений, затем «начинай». Перед выпуском список повторён в чате; новые пользовательские функции сверх согласованного варианта не добавляются. Пять required checks и реальный A artifact до B обязательны.
