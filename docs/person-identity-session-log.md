@@ -304,3 +304,8 @@ Actual-PG helper now imports the real shared password policy and bcrypt and adds
 ### 2026-10-24T23:04:12.908071+00:00 — database fence for confirmed proof effects
 
 Added a partial unique audit index on tenant+proof+action for PHONE_CONFIRMED and CREDENTIAL_STAGED. Each proof may produce only one of each effect, in addition to the service status/version guards; immutable confirmation context cannot become ambiguous for deterministic setup. Added real-PG duplicate insertion refusals under different request IDs to the existing confirmation/credential cases. No guard weakened, no live migration applied. Local syntax/diff PASS; this remains part of the next unpublished credential candidate while8a focused CI generates the client.
+
+
+### 2026-10-24T23:05:11.630841+00:00 — proof transaction gate passed; credential source publishing
+
+Exact8a96c48e2221ef2c344057f44b015d7e90a508b6 focused40140671442/job121011558127 SUCCESS. Retained actual logs verify scoped strict TS,46 Vitest,26 Node,6 snapshot and28 foundation PostgreSQL checks, including all10 new issue/consume/attempt/replay/lease/expiry/race/audit rollback groups. Thus the transactional proof service is now hosted-verified, productionObserved=false. New credential candidate9c5ba1b64+8069f3d7d remains independent and needs its own exact-head52 Vitest/30 foundation gate; no current auth changes or production permission inferred. Next publish/check credential candidate, then complete the remaining API/UI and app-context integration. Time1047 remains RUNNING; do not command its phone while its24h lease is held.
