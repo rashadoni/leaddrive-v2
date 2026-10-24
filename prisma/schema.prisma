@@ -22973,6 +22973,7 @@ model BookingPage {
 
   bookings Booking[]
 
+  @@unique([organizationId, id], map: "booking_pages_org_id_key")
   @@index([organizationId])
   @@map("booking_pages")
 }
@@ -22997,7 +22998,7 @@ model Booking {
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   bookingPageId   String
-  bookingPage     BookingPage @relation(fields: [bookingPageId], references: [id], onDelete: NoAction)
+  bookingPage     BookingPage @relation(fields: [organizationId, bookingPageId], references: [organizationId, id], onDelete: NoAction)
   hostUserId      String
   hostUser User @relation("BookingHost", fields: [organizationId, hostUserId], references: [organizationId, id], onDelete: NoAction)
   startsAt        DateTime

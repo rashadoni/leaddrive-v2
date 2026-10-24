@@ -30706,7 +30706,11 @@
     "actor_employee": "Əməkdaş",
     "actor_customer": "Müştəri",
     "actor_import": "Köhnə yazılışın idxalı",
-    "actor_unknown": "Müəllif saxlanılmayıb"
+    "actor_unknown": "Müəllif saxlanılmayıb",
+    "createFollowUp": "Görüşdən sonrakı tapşırıq",
+    "followUpTitle": "Görüşdən sonra əlaqə: {name}",
+    "followUpSaved": "Tapşırıq yaradıldı. Görüşlə işi davam etdirə bilərsiniz.",
+    "saving": "Yadda saxlanılır…"
   },
   "reviewerAccess": {
     "title": "NDA ilə yoxlayanlar",

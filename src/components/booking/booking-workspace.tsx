@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { BookingPagesPanel } from "./booking-pages-panel"
+import { BookingFollowUp } from "./booking-follow-up"
 import { BookingHistory, type BookingHistoryItem } from "./booking-history"
 import { BookingMeetingActions } from "./booking-meeting-actions"
 import { BookingCreatePanel } from "./booking-create-panel"
@@ -22,6 +23,7 @@ export interface WorkspaceBooking {
   id: string
   version: number
   availableHosts?: { id: string; name: string }[]
+  canCreateFollowUp?: boolean
   canManage?: boolean
   canCorrect?: boolean
   outcomeNote?: string | null
@@ -100,7 +102,8 @@ export function BookingWorkspace() {
   const [page, setPage] = useState("")
   const [search, setSearch] = useState("")
   const [query, setQuery] = useState("")
-  const [instant] = useState(() => new Date().toISOString())
+  const [instant, setInstant] = useState(() => new Date().toISOString())
+  useEffect(() => { const timer = window.setInterval(() => setInstant(new Date().toISOString()), 60_000); return () => window.clearInterval(timer) }, [])
   const timezone = context?.timezone ?? "Asia/Baku"
   const today = dateInputValueInTimezone(instant, timezone)
   const [selectedMonth, setMonth] = useState<string | null>(null)
@@ -149,12 +152,12 @@ export function BookingWorkspace() {
   const calendarQuery = useQuery({
     queryKey: ["booking-calendar", identity, calendarRequest.toString(), revision],
     queryFn: ({ signal }) => readBookingData<{ days: { day: string; count: number }[] }>(`/api/v1/bookings/calendar?${calendarRequest}`, signal),
-    enabled: contextReady && tab === "meetings" && view === "calendar", retry: false,
+    enabled: contextReady && tab === "meetings" && view === "calendar", retry: false, refetchInterval: 60_000, refetchIntervalInBackground: false,
   })
   const detailQuery = useQuery({
     queryKey: ["booking-detail", identity, selectedId, revision],
     queryFn: ({ signal }) => readBookingData<WorkspaceBooking>(`/api/v1/bookings/${encodeURIComponent(selectedId!)}`, signal),
-    enabled: Boolean(selectedId) && contextReady, retry: false,
+    enabled: Boolean(selectedId) && contextReady, retry: false, refetchInterval: 60_000, refetchIntervalInBackground: false,
   })
   const items = listQuery.isError ? [] : listQuery.data?.items ?? []
   const nextCursor = listQuery.data?.nextCursor ?? null
@@ -179,7 +182,7 @@ export function BookingWorkspace() {
     setMonth(value.toISOString().slice(0, 7)); setDay(null); setCursor(null)
   }
 
-  return <main className="space-y-5" data-testid="booking-workspace">
+  return <main className="space-y-5 [&_button]:min-h-11 [&_button]:min-w-11 [&_select]:min-h-11" data-testid="booking-workspace">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div><h1 className="text-2xl font-semibold tracking-tight">{t("workspaceTitle")}</h1><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("workspaceHint")}</p></div>
       <div className="flex flex-wrap gap-2">{context?.pages.some((page) => page.isActive && page.hostIds.length) ? <Button onClick={() => { navigate({ booking: null }); setCreating(true) }}>{t("createMeeting")}</Button> : null}<Button variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }} disabled={loading} aria-label={t("refresh")}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`} />{t("refresh")}</Button></div>
@@ -198,11 +201,11 @@ export function BookingWorkspace() {
       </section>
       <p className="text-xs text-muted-foreground">{t("timezoneNote", { zone: timezone })}</p>
       {view === "calendar" ? <section className="space-y-3" aria-label={t("viewCalendar")} aria-busy={calendarLoading}>
-        <div className="flex items-center gap-3"><Button variant="outline" size="icon" onClick={() => moveMonth(-1)} aria-label={t("previousMonth")}><ChevronLeft className="h-4 w-4" /></Button><Label htmlFor="meeting-month" className="sr-only">{t("viewCalendar")}</Label><Input id="meeting-month" type="month" className="w-auto" value={month} onChange={(event) => { if (event.target.value) { setMonth(event.target.value); setDay(null) } }} /><Button variant="outline" size="icon" onClick={() => moveMonth(1)} aria-label={t("nextMonth")}><ChevronRight className="h-4 w-4" /></Button></div>
+        <div className="flex items-center gap-3"><Button variant="outline" size="icon" onClick={() => moveMonth(-1)} aria-label={t("previousMonth")}><ChevronLeft className="h-4 w-4" /></Button><Label htmlFor="meeting-month" className="sr-only">{t("viewCalendar")}</Label><Input id="meeting-month" type="month" lang={locale} className="w-auto" value={month} onChange={(event) => { if (event.target.value) { setMonth(event.target.value); setDay(null) } }} /><Button variant="outline" size="icon" onClick={() => moveMonth(1)} aria-label={t("nextMonth")}><ChevronRight className="h-4 w-4" /></Button></div>
         {calendarError ? <p role="alert" className="text-sm text-destructive">{t("errLoad")}</p> : <div className="grid grid-cols-7 overflow-hidden rounded-xl border">{grid.days.slice(0, 7).map((value) => <span key={value} className="border-b bg-muted/30 py-2 text-center text-xs font-medium">{formatDate(`${value}T12:00:00Z`, locale, { weekday: "short", timeZone: "UTC" })}</span>)}{grid.days.map((value) => <button type="button" key={value} onClick={() => setDay(value)} aria-pressed={selectedDay === value} className={`min-h-16 border-b p-2 text-left transition-colors hover:bg-muted/50 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:min-h-20 ${selectedDay === value ? "bg-primary/10" : ""} ${value.slice(0, 7) !== month ? "text-muted-foreground" : ""}`}><span className={`text-sm ${value === today ? "font-bold text-primary" : ""}`}>{Number(value.slice(-2))}</span><span className="mt-1 block text-xs sm:text-sm">{calendarLoading ? "…" : counts[value] ? t("dayCount", { count: counts[value] }) : "—"}</span><span className="sr-only">{formatDate(`${value}T12:00:00Z`, locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}</span></button>)}</div>}
         <h2 className="text-lg font-semibold">{date(atMidnight(selectedDay))}</h2>
       </section> : null}
-      {error ? <div role="alert" className="rounded-xl border p-5"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => setRevision((value) => value + 1)}>{t("retry")}</Button></div> : loading && !items.length ? <p role="status" className="py-12 text-center text-muted-foreground">{t("workspaceLoading")}</p> : !items.length ? <div className="rounded-xl border px-5 py-12 text-center"><CalendarCheck className="mx-auto mb-3 h-7 w-7 text-muted-foreground" /><h2 className="font-medium">{t("meetingsEmpty")}</h2><p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">{t(query || host || page || status !== "all" ? "meetingsEmptyFilters" : "meetingsEmptyHint")}</p>{context?.canConfigure ? <Button className="mt-4" variant="outline" onClick={() => navigate({ tab: "pages" })}>{t("workspacePages")}</Button> : null}</div> : <section aria-label={t("workspaceMeetings")} aria-busy={loading} className="divide-y rounded-xl border">
+      {error ? <div role="alert" className="rounded-xl border p-5"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }}>{t("retry")}</Button></div> : loading && !items.length ? <p role="status" className="py-12 text-center text-muted-foreground">{t("workspaceLoading")}</p> : !items.length ? <div className="rounded-xl border px-5 py-12 text-center"><CalendarCheck className="mx-auto mb-3 h-7 w-7 text-muted-foreground" /><h2 className="font-medium">{t("meetingsEmpty")}</h2><p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">{t(query || host || page || status !== "all" ? "meetingsEmptyFilters" : "meetingsEmptyHint")}</p>{context?.canConfigure ? <Button className="mt-4" variant="outline" onClick={() => navigate({ tab: "pages" })}>{t("workspacePages")}</Button> : null}</div> : <section aria-label={t("workspaceMeetings")} aria-busy={loading} className="divide-y rounded-xl border">
         {items.map((item) => <button type="button" key={item.id} className="grid min-h-24 w-full gap-2 p-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[10rem_minmax(0,1fr)_minmax(7rem,auto)] sm:items-center" onClick={() => navigate({ booking: item.id })}>
           <span><span className="block text-sm font-medium">{date(item.startsAt)}</span><span className="text-sm tabular-nums text-muted-foreground">{time(item.startsAt)}–{time(item.endsAt)}</span></span>
           <span className="min-w-0"><span className="block break-words font-medium">{item.name}</span><span className="block break-words text-sm text-muted-foreground">{item.bookingPage.title}</span><span className="mt-1 block text-xs text-muted-foreground">{item.hostName ?? t("hostUnknown")} · {t(`location_${["office", "phone", "online"].includes(item.bookingPage.locationType) ? item.bookingPage.locationType : "office"}`)}</span></span>
@@ -211,18 +214,19 @@ export function BookingWorkspace() {
       </section>}
       <div className="flex flex-wrap items-center justify-between gap-3"><Button variant="ghost" disabled={!cursor || loading} onClick={() => setCursor(null)}>{t("firstPage")}</Button><p className="text-xs text-muted-foreground">{t("shownCount", { count: items.length })}</p><Button variant="outline" disabled={!nextCursor || loading} onClick={() => setCursor(nextCursor)}>{t("nextPage")}</Button></div>
     </>}
-    <Sheet open={creating || Boolean(selectedId)} onOpenChange={(open) => { if (!open) { setCreating(false); navigate({ booking: null }) } }}><SheetContent closeLabel={t("close")} className="w-full overflow-y-auto sm:max-w-xl">
+    <Sheet open={creating || Boolean(selectedId)} onOpenChange={(open) => { if (!open) { setCreating(false); navigate({ booking: null }) } }}><SheetContent closeLabel={t("close")} className="w-full overflow-y-auto sm:max-w-xl [&_button]:min-h-11 [&_button]:min-w-11 [&_input:not([type=checkbox]):not([type=radio])]:min-h-11 [&_select]:min-h-11">
       <SheetHeader><SheetTitle>{creating ? t("createMeeting") : detail?.name ?? t("workspaceDetails")}</SheetTitle><SheetDescription>{creating ? t("createMeetingHint") : detail?.bookingPage.title ?? t("workspaceDetailsHint")}</SheetDescription></SheetHeader>
       {creating && context ? <BookingCreatePanel pages={context.pages.filter((page) => page.isActive && page.hostIds.length)} hosts={context.hosts.filter((host) => host.isActive && host.canReceiveBookings)} timezone={timezone} onSaved={(id) => { setCreating(false); navigate({ booking: id }); setRevision((value) => value + 1) }} /> : detailError ? <p role="alert" className="mt-5">{detailError}</p> : !detail ? <p role="status" className="mt-5">{t("workspaceLoading")}</p> : <div className="mt-6 space-y-6">
         <div className="space-y-1"><p className="text-lg font-semibold">{detailDate(detail.startsAt)}</p><p className="text-lg tabular-nums">{detailTime(detail.startsAt)}–{detailTime(detail.endsAt)}</p><p className="text-sm text-muted-foreground">{detailTimezone}</p><p className="pt-2 text-sm font-medium">{state(detail.status)}</p></div>
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm"><dt className="text-muted-foreground">{t("colHosts")}</dt><dd>{detail.hostName ?? t("hostUnknown")}</dd><dt className="text-muted-foreground">{t("phone")}</dt><dd className="break-all">{detail.phone}</dd>{detail.email ? <><dt className="text-muted-foreground">{t("email")}</dt><dd className="break-all">{detail.email}</dd></> : null}<dt className="text-muted-foreground">{t("fieldLocation")}</dt><dd className="whitespace-pre-wrap break-words">{detail.bookingPage.locationText || t(`location_${detail.bookingPage.locationType}`)}</dd></dl>
         {detail.note ? <section><h3 className="text-sm font-medium">{t("customerNote")}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">{detail.note}</p></section> : null}
-        {context ? <BookingMeetingActions booking={detail} context={context} onSaved={() => setRevision((value) => value + 1)} /> : null}
+        {context ? <BookingMeetingActions key={`${detail.id}:${detail.version}`} booking={detail} context={context} onSaved={() => setRevision((value) => value + 1)} /> : null}
         {detail.outcomeNote ? <section><h3 className="text-sm font-medium">{t("outcomeNote")}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm">{detail.outcomeNote}</p></section> : null}
         {detail.cancellationReason ? <p className="whitespace-pre-wrap break-words text-sm">{detail.cancellationReason}</p> : null}
+        <BookingFollowUp key={detail.id} booking={detail} />
         <BookingHistory booking={detail} timezone={detailTimezone} />
         <section className="space-y-2 border-t pt-4"><h3 className="text-sm font-medium">{t("deliveryTitle")}</h3>
-          {detail.integrations?.length ? detail.integrations.map((item) => <p key={`${item.type}:${item.status}`} className={`text-xs ${item.requiresAttention || item.status === "reconciliation_required" || item.status === "definitely_failed" ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>{t(integrationLabel(item.type))} · {t(item.status === "succeeded" ? "deliveryApplied" : item.requiresAttention || ["reconciliation_required", "definitely_failed"].includes(item.status) ? "deliveryNeedsCheck" : "deliveryPending")} ({item.count})</p>) : <p className="text-xs text-muted-foreground">{t("calendarLinkState", { state: t(detail.calendarLinked ? "calendarLinked" : "calendarNotLinked") })}</p>}
+          {detail.integrations?.length ? detail.integrations.map((item, index) => <p key={`${item.type}:${item.status}:${index}`} className={`text-xs ${item.requiresAttention || item.status === "reconciliation_required" || item.status === "definitely_failed" ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>{t(integrationLabel(item.type))} · {t(item.status === "succeeded" ? "deliveryApplied" : item.requiresAttention || ["reconciliation_required", "definitely_failed"].includes(item.status) ? "deliveryNeedsCheck" : "deliveryPending")} ({item.count})</p>) : <p className="text-xs text-muted-foreground">{t("calendarLinkState", { state: t(detail.calendarLinked ? "calendarLinked" : "calendarNotLinked") })}</p>}
         </section>
         {detail.leadId || detail.taskId ? <div className="flex flex-wrap gap-2 border-t pt-4">{detail.leadId ? <Button variant="outline" size="sm" asChild><a href={`/leads/${encodeURIComponent(detail.leadId)}`}>{t("openLead")}</a></Button> : null}{detail.taskId ? <Button variant="ghost" size="sm" asChild><a href={`/tasks/${encodeURIComponent(detail.taskId)}`}>{t("openTask")}</a></Button> : null}</div> : null}
       </div>}

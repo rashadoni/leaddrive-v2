@@ -22,7 +22,7 @@ export async function getGoogleCalendarClient(userId: string, accountId?: string
       provider: { in: ["google-calendar", "google"] },
       access_token: { not: null },
     },
-    orderBy: { provider: "asc" }, // prefer "google-calendar" (standalone) over "google" (SSO)
+    orderBy: { provider: "desc" }, // prefer "google-calendar" (standalone) over "google" (SSO)
   })
 
   if (!account?.access_token) {
@@ -104,7 +104,7 @@ export async function listCalendarEvents(userId: string, timeMin: string, timeMa
  * connected — the caller treats that as "nothing known", not as an error.
  */
 export async function listBusyIntervals(userId: string, timeMin: string, timeMax: string): Promise<{ start: Date; end: Date }[] | null> {
-  const account = await prisma.account.findFirst({ where: { userId, provider: { in: ["google-calendar", "google"] } }, select: { id: true } })
+  const account = await prisma.account.findFirst({ where: { userId, provider: { in: ["google-calendar", "google"] } }, select: { id: true }, orderBy: { provider: "desc" } })
   if (!account) return null
   const calendar = await getGoogleCalendarClient(userId, account.id)
   const result = await calendar.freebusy.query({

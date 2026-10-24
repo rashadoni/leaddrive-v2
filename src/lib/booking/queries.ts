@@ -34,9 +34,9 @@ export function queryWhere(access: BookingAccess, filters: BookingFilters): Pris
     startsAt: { ...(filters.from ? { gte: new Date(filters.from) } : {}), ...(filters.to ? { lt: new Date(filters.to) } : {}) },
   })
   if (filters.search) {
-    const contains = { contains: filters.search, mode: "insensitive" as const }
+    const contains = { contains: filters.search.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" as const }
     if (access.phoneRestricted && filters.search.replace(/\D/g, "").length >= 7) conditions.push({ id: "__hidden_phone_search__" })
-    conditions.push({ OR: [{ name: contains }, { snapshot: { path: ["title"], string_contains: filters.search, mode: "insensitive" } }, { bookingPage: { title: contains } }, ...(!access.phoneRestricted ? [{ phone: contains }, { email: contains }] : [])] })
+    conditions.push({ OR: [{ name: contains }, { snapshot: { path: ["title"], string_contains: contains.contains, mode: "insensitive" } }, { bookingPage: { title: contains } }, ...(!access.phoneRestricted ? [{ phone: contains }, { email: contains }] : [])] })
   }
   if (filters.cursor) {
     const [instant, id, extra] = filters.cursor.split("~")
@@ -82,7 +82,7 @@ export async function bookingDetail(access: BookingAccess, id: string, role: Rol
   ])
   const canManage = access.writableHostIds === null || access.writableHostIds.includes(row.hostUserId)
   const canCorrect = access.administrator || Boolean(await prisma.bookingCoordinatorGrant.findFirst({ where: { organizationId: access.orgId, coordinatorUserId: access.userId, hostUserId: row.hostUserId, canManage: true } }))
-  return { ...safe, canManage, canCorrect, availableHosts, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, history: events.items, historyNextCursor: events.nextCursor, historyLimited: Boolean(events.nextCursor), integrations: effects.map((effect) => ({ type: effect.effectType, status: effect.status, requiresAttention: effect.lastError !== null, count: effect._count._all })), hostName: host?.name ?? null, hostActive: host?.isActive ?? false, calendarLinked: Boolean(googleEventId),
+  return { ...safe, canCreateFollowUp: canManage && checkPermission(role, "tasks", "write"), canManage, canCorrect, availableHosts, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, history: events.items, historyNextCursor: events.nextCursor, historyLimited: Boolean(events.nextCursor), integrations: effects.map((effect) => ({ type: effect.effectType, status: effect.status, requiresAttention: effect.lastError !== null, count: effect._count._all })), hostName: host?.name ?? null, hostActive: host?.isActive ?? false, calendarLinked: Boolean(googleEventId),
     leadId: checkPermission(role, "leads", "read") ? leadId : null,
     taskId: checkPermission(role, "tasks", "read") ? taskId : null,
   }

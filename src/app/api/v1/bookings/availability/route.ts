@@ -32,12 +32,13 @@ export const GET = withRlsAuth("bookings", "read", async (req: NextRequest, auth
     const busy = f.bookingId ? new Map<string, BusyInterval[]>() : await loadBusyByHost(auth.orgId, hosts.map((host) => host.id), from, to)
     if (f.bookingId) {
       for (const host of hosts) {
-        const external = await bookingCalendarBusy(auth.orgId, host.id, from, to, f.bookingId)
+        const external = await bookingCalendarBusy(auth.orgId, host.id, new Date(from.getTime() - 240 * 60_000), new Date(to.getTime() + 240 * 60_000), f.bookingId)
         const internal = await prisma.booking.findMany({ where: { organizationId: auth.orgId, hostUserId: host.id, status: "confirmed", id: { not: f.bookingId }, startsAt: { lt: new Date(to.getTime() + 240 * 60_000) }, endsAt: { gt: new Date(from.getTime() - 240 * 60_000) } }, select: { startsAt: true, endsAt: true, bufferBefore: true, bufferAfter: true } })
         busy.set(host.id, [...external.intervals, ...internal.map((row) => ({ start: row.startsAt, end: row.endsAt, bufferBeforeMinutes: row.bufferBefore, bufferAfterMinutes: row.bufferAfter }))])
       }
     }
     const days = computeSlots({ rules: bookingRules(page, org.timezone), hostIds: hosts.map((host) => host.id), busyByHost: busy, now: new Date() }).filter((item) => item.date === f.day)
+    if (!days.length && "unavailableHostIds" in busy && (busy.unavailableHostIds as Set<string>).size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
     return NextResponse.json({ success: true, data: { page: { orgName: org.name, title: page.title, description: page.description, durationMinutes: page.durationMinutes, locationType: page.locationType, locationText: page.locationText, hostNames: hosts.map((host) => host.name), timezone: org.timezone }, hosts: hosts.map(({ id, name }) => ({ id, name })), days } }, { headers: { "Cache-Control": "private, no-store" } })
   } catch (error) {
     if (error instanceof BookingCommandError) return NextResponse.json({ code: error.code }, { status: error.status })

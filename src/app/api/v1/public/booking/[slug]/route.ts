@@ -29,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const found = await findBookingPageBySlug(slug)
+  const found = await findBookingPageBySlug(slug, true)
   if (!found) return NextResponse.json({ error: "Not found" }, { status: 404 })
   const parsed = bookSchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message, code: "INVALID" }, { status: 400 })

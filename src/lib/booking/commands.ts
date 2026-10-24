@@ -87,7 +87,7 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
       if (row.status !== "confirmed" || row.startsAt <= now || !preflight || !input.startsAt) throw new BookingCommandError("INVALID_STATE")
       const currentPage = await tx.bookingPage.findFirst({ where: { id: page.id, organizationId: access.orgId } })
       const currentHost = await tx.user.findFirst({ where: bookingHostWhere(access.orgId, [hostId]), select: { id: true } })
-      const account = await tx.account.findFirst({ where: { userId: hostId, provider: { in: ["google-calendar", "google"] } }, select: { id: true }, orderBy: { provider: "asc" } })
+      const account = await tx.account.findFirst({ where: { userId: hostId, provider: { in: ["google-calendar", "google"] } }, select: { id: true }, orderBy: { provider: "desc" } })
       if (!currentPage || currentPage.version !== page.version || Date.now() - preflight.checkedAt > 15000 || account?.id !== (preflight.accountId ?? undefined)) throw new BookingCommandError("AVAILABILITY_CHANGED")
       if (!currentHost || !currentPage.hostIds.includes(hostId)) throw new BookingCommandError("INVALID_HOST", 400)
       const rules = bookingRules(currentPage, timezone)

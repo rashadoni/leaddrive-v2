@@ -385,6 +385,52 @@ pgDescribe("online booking on a real Postgres", () => {
     expect(Number(head.currentVersion)).toBe(once.version)
   })
 
+  it("recovers a committed response after the page closes and keeps the original meeting conditions", async () => {
+    const slug = await newPage({ title: "Original meeting", locationText: "Original address" })
+    const startsAt = await someSlot(slug, 13)
+    const payload = { startsAt, name: "Snapshot client", phone: "+994501000002", idempotencyKey: randomUUID(), recoverySecret: randomUUID() }
+    const first = await pagePost(json("POST", `/api/v1/public/booking/${slug}`, payload), slugParams(slug))
+    expect(first.status).toBe(201)
+    const saved = (await first.json()).data
+    await bypass(() => prisma.bookingPage.update({ where: { slug }, data: { title: "New title", locationText: "New address", isActive: false, version: { increment: 1 } } }))
+    const repeated = await pagePost(json("POST", `/api/v1/public/booking/${slug}`, payload), slugParams(slug))
+    expect(repeated.status).toBe(201)
+    expect((await repeated.json()).data).toEqual(saved)
+    const token = saved.cancelUrl.split("/").at(-1)
+    const details = await cancelGet(json("GET", `/api/v1/public/booking/cancel/${token}`), tokenParams(token))
+    const view = (await details.json()).data
+    expect(view.page.title).toBe("Original meeting")
+    expect(view.page.locationText).toBe("Original address")
+    const newRequest = await pagePost(json("POST", `/api/v1/public/booking/${slug}`, { ...payload, idempotencyKey: randomUUID() }), slugParams(slug))
+    expect(newRequest.status).toBe(404)
+  })
+
+  it("paginates beyond 200 records and counts the entire filtered calendar day", async () => {
+    const slug = await newPage()
+    const page = await bypass(() => prisma.bookingPage.findUniqueOrThrow({ where: { slug } }))
+    const start = new Date("2030-01-15T08:00:00Z")
+    await bypass(() => prisma.booking.createMany({ data: Array.from({ length: 211 }, (_, index) => ({
+      id: `pagination-${index.toString().padStart(4, "0")}`, organizationId: ORG, bookingPageId: page.id, hostUserId: HOST_A,
+      startsAt: start, endsAt: new Date(start.getTime() + 1800000), name: "Calendar pagination client", phone: "+994501000003", status: "cancelled", cancelTokenHash: randomUUID(),
+    })) }))
+    const ids: string[] = []
+    let cursor: string | null = null
+    do {
+      const filter = new URLSearchParams({ page: page.id, limit: "100", ...(cursor ? { cursor } : {}) })
+      const response = await meetingsGet(json("GET", `/api/v1/bookings?${filter}`))
+      expect(response.status).toBe(200)
+      const data = (await response.json()).data
+      ids.push(...data.items.map((row: { id: string }) => row.id)); cursor = data.nextCursor
+    } while (cursor)
+    expect(ids).toHaveLength(211)
+    expect(new Set(ids).size).toBe(211)
+    const calendarGet = (await import("@/app/api/v1/bookings/calendar/route")).GET
+    const filter = new URLSearchParams({ page: page.id, from: "2030-01-15T00:00:00Z", to: "2030-01-16T00:00:00Z" })
+    const response = await calendarGet(json("GET", `/api/v1/bookings/calendar?${filter}`))
+    expect(response.status).toBe(200)
+    expect((await response.json()).data.days).toEqual([{ day: "2030-01-15", count: 211 }])
+  })
+
   it("own and explicit team scope apply to list, forged host filters, details and revoked grants", async () => {
     const slug = await newPage({ hostIds: [HOST_B] })
     const response = await book(slug, await someSlot(slug, 14))

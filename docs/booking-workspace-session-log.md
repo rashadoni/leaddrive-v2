@@ -164,3 +164,39 @@
   memoization; она убрана без отключения правила, финальная проверка идёт.
 - Следующая работа: завершить PG/browser evidence, исправить найденное в
   проверках, checkpoint, затем полный compiler/DB/build на разрешённом CI.
+
+## 2026-10-24 — Завершение интерфейса и проверка в браузере
+
+- Добавлена самостоятельная последующая задача через существующую форму задач
+  поверх карточки. Это сохраняет обязательные поля/настройки организации;
+  задача не становится зеркалом и не меняет Booking.version. Уточнён UX-документ.
+- Исправлены найденные при проверке расхождения: snapshot на странице отмены,
+  восстановление подтверждения после закрытия формы, повторная загрузка context,
+  обновление часов/календаря, сброс редактора после изменения версии встречи.
+- Согласованы поисковые условия списка/календаря; тест PG теперь проверяет
+  211 строк без потерь на пагинации и полный дневной счётчик.
+- Уточнён tenant-aware FK страницы и фиксированный search_path task guard.
+  Исправлен выбор Google account: standalone google-calendar имеет приоритет
+  перед SSO google; внешняя занятость читается с запасом на перерывы у границ дня.
+- Браузер: реальный BookingWorkspace в изолированном Vite harness, mocked API,
+  только синтетические данные. PASS: список, календарь, detail, перенос/отмена/
+  результат, ручная запись, обычная задача, страницы, grants, восстановление
+  после ошибки context; 1440/390px, светлая/тёмная тема, без horizontal overflow
+  и runtime errors. Это component proof, не production/authenticated E2E.
+- Evidence: docs/booking-workspace/evidence/*.png и browser-result.json.
+  Скриншоты desktop detail/mobile calendar просмотрены непосредственно.
+- Последние targeted unit checks: 7 файлов, 146/146 PASS; Prisma validate PASS
+  после composite page FK. Полные compiler/build и реальные PG пока NOT RUN;
+  далее запускаются на GitHub-hosted Linux, не на persistent Contabo host.
+- Root/branch/origin подтверждены codex-project-context; production остаётся
+  13.140.132.245:/opt/leaddrive-v2, релиз только reviewed main → GitHub Actions.
+- Draft PR #1023 создан и прикреплён к чату. Дальше: checkpoint, hosted gates,
+  исправление реальных замечаний и заключительный критический аудит.
+- Финальная UI-проверка также собирает console errors, не только pageerror:
+  обнаружены отсутствовавшие во всех локалях booking.saving; ключ добавлен
+  AZ/RU/EN. Повтор после исправления PASS без console/page errors.
+- Кнопкам раздела/карточки задана минимальная высота 44px; проверены Tab внутри
+  панели и закрытие Escape. Vite остановлен после финального browser run.
+- Последние scoped ESLint, translation parity (28611 keys) и diff whitespace
+  проходят; source code готов к внешним gates. Полный build запрашивается
+  через штатную метку production-build на PR, без запуска на Contabo.

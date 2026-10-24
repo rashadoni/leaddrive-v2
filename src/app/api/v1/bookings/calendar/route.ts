@@ -25,8 +25,8 @@ export const GET = withRlsAuth("bookings", "read", async (req: NextRequest, auth
     // LIKE metacharacters are escaped: search has the same literal semantics as Prisma contains.
     const pattern = `%${f.search.replace(/[\\%_]/g, "\\$&")}%`
     conditions.push(access.phoneRestricted
-      ? Prisma.sql`(b.name ILIKE ${pattern} OR COALESCE(b.snapshot->>'title', p.title) ILIKE ${pattern})`
-      : Prisma.sql`(b.name ILIKE ${pattern} OR COALESCE(b.snapshot->>'title', p.title) ILIKE ${pattern} OR b.phone ILIKE ${pattern} OR b.email ILIKE ${pattern})`)
+      ? Prisma.sql`(b.name ILIKE ${pattern} OR (b.snapshot->>'title' ILIKE ${pattern} OR p.title ILIKE ${pattern}))`
+      : Prisma.sql`(b.name ILIKE ${pattern} OR (b.snapshot->>'title' ILIKE ${pattern} OR p.title ILIKE ${pattern}) OR b.phone ILIKE ${pattern} OR b.email ILIKE ${pattern})`)
   }
   const days = await prisma.$queryRaw<{ day: string; count: number }[]>(Prisma.sql`
     SELECT to_char(b."startsAt" AT TIME ZONE 'UTC' AT TIME ZONE ${context.timezone}, 'YYYY-MM-DD') AS day, count(*)::int AS count

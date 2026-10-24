@@ -6,7 +6,7 @@ import type { BusyInterval } from "./availability"
 
 /** Identity-aware busy checks are required for moves; free/busy intervals cannot be subtracted. */
 export async function bookingCalendarBusy(orgId: string, hostId: string, from: Date, to: Date, bookingId?: string) {
-  const account = await prisma.account.findFirst({ where: { userId: hostId, provider: { in: ["google-calendar", "google"] } }, select: { id: true }, orderBy: { provider: "asc" } })
+  const account = await prisma.account.findFirst({ where: { userId: hostId, provider: { in: ["google-calendar", "google"] } }, select: { id: true }, orderBy: { provider: "desc" } })
   if (!account) return { intervals: [] as BusyInterval[], accountId: null, checkedAt: Date.now() }
   const bindings = bookingId ? await prisma.bookingIntegrationBinding.findMany({ where: { organizationId: orgId, bookingId, hostUserId: hostId, accountId: account.id }, select: { providerEventId: true } }) : []
   const ownIds = new Set(bindings.map((row) => row.providerEventId))

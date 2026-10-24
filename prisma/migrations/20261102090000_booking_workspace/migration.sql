@@ -1,3 +1,5 @@
+BEGIN;
+SET LOCAL lock_timeout = '5s';
 -- Explicit coordinator access. No existing employee is granted team access by migration.
 CREATE TABLE "booking_coordinator_grants" (
   "id" TEXT PRIMARY KEY,
@@ -20,3 +22,5 @@ CREATE POLICY tenant_isolation ON "booking_coordinator_grants"
   WITH CHECK ("organizationId" = current_setting('app.org_id', true) OR current_setting('app.rls_bypass', true) = 'on');
 CREATE INDEX "bookings_org_start_id_idx" ON "bookings"("organizationId", "startsAt", "id");
 CREATE INDEX "bookings_org_host_start_id_idx" ON "bookings"("organizationId", "hostUserId", "startsAt", "id");
+
+COMMIT;

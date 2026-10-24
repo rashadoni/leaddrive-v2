@@ -16,8 +16,9 @@ ALTER TABLE "bookings" DROP CONSTRAINT "bookings_status_check";
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_status_check" CHECK (status IN ('confirmed', 'cancelled', 'completed', 'no_show'));
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_host_org_fkey" FOREIGN KEY ("organizationId", "hostUserId") REFERENCES users("organizationId", id) ON DELETE NO ACTION DEFERRABLE INITIALLY DEFERRED;
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_version_check" CHECK (version >= 0);
+CREATE UNIQUE INDEX "booking_pages_org_id_key" ON booking_pages("organizationId", id);
 ALTER TABLE "bookings" DROP CONSTRAINT "bookings_bookingPageId_fkey";
-ALTER TABLE "bookings" ADD CONSTRAINT "bookings_bookingPageId_fkey" FOREIGN KEY ("bookingPageId") REFERENCES "booking_pages"(id) ON DELETE NO ACTION DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE "bookings" ADD CONSTRAINT "bookings_bookingPageId_fkey" FOREIGN KEY ("organizationId", "bookingPageId") REFERENCES "booking_pages"("organizationId", id) ON DELETE NO ACTION DEFERRABLE INITIALLY DEFERRED;
 CREATE UNIQUE INDEX "bookings_org_id_key" ON bookings("organizationId", id);
 CREATE UNIQUE INDEX "bookings_managed_task_key" ON "bookings"("organizationId", "taskId") WHERE "taskId" IS NOT NULL;
 
@@ -79,7 +80,7 @@ END;
 $policy$;
 
 -- Every task writer, including bulk/AI/import/direct Prisma, observes this ownership boundary.
-CREATE FUNCTION booking_managed_task_guard_fn() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+CREATE FUNCTION booking_managed_task_guard_fn() RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
 BEGIN
   IF current_setting('app.booking_task_writer', true) IS DISTINCT FROM 'on'
      AND EXISTS (SELECT 1 FROM organizations WHERE id = OLD."organizationId")

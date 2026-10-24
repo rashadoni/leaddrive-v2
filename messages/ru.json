@@ -30710,7 +30710,11 @@
     "actor_employee": "Сотрудник",
     "actor_customer": "Клиент",
     "actor_import": "Импорт старой записи",
-    "actor_unknown": "Автор не сохранён"
+    "actor_unknown": "Автор не сохранён",
+    "createFollowUp": "Создать задачу после встречи",
+    "followUpTitle": "Связаться после встречи: {name}",
+    "followUpSaved": "Задача создана. Можно продолжить работу со встречей.",
+    "saving": "Сохранение…"
   },
   "reviewerAccess": {
     "title": "Проверяющие под NDA",

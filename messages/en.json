@@ -30710,7 +30710,11 @@
     "actor_employee": "Employee",
     "actor_customer": "Client",
     "actor_import": "Legacy booking import",
-    "actor_unknown": "Author not recorded"
+    "actor_unknown": "Author not recorded",
+    "createFollowUp": "Create a follow-up task",
+    "followUpTitle": "Follow up after meeting: {name}",
+    "followUpSaved": "Task created. You can continue working with the meeting.",
+    "saving": "Saving…"
   },
   "reviewerAccess": {
     "title": "Reviewers under NDA",

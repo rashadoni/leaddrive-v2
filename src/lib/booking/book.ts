@@ -51,12 +51,12 @@ export function bookingCancelUrl(token: string): string {
 }
 
 /** The organization and page behind a public link; inactive pages are not found. */
-export async function findBookingPageBySlug(slug: string): Promise<{ orgId: string; pageId: string } | null> {
+export async function findBookingPageBySlug(slug: string, includeInactive = false): Promise<{ orgId: string; pageId: string } | null> {
   if (!/^[a-z0-9-]{1,60}$/.test(slug)) return null
   const row = await runWithRlsBypass(() =>
     prisma.bookingPage.findUnique({ where: { slug }, select: { id: true, organizationId: true, isActive: true, organization: { select: { isActive: true, plan: true, addons: true, modules: true, features: true } } } }),
   )
-  return row?.isActive && row.organization.isActive && hasModule({ plan: row.organization.plan, addons: Array.isArray(row.organization.addons) ? row.organization.addons.filter((value): value is string => typeof value === "string") : [], modules: moduleRecordFromOrgFields(row.organization) }, "sales") ? { orgId: row.organizationId, pageId: row.id } : null
+  return row && (row.isActive || includeInactive) && row.organization.isActive && hasModule({ plan: row.organization.plan, addons: Array.isArray(row.organization.addons) ? row.organization.addons.filter((value): value is string => typeof value === "string") : [], modules: moduleRecordFromOrgFields(row.organization) }, "sales") ? { orgId: row.organizationId, pageId: row.id } : null
 }
 
 export async function findBookingByToken(token: string): Promise<{ orgId: string; bookingId: string } | null> {
@@ -116,7 +116,7 @@ export async function loadBusyByHost(orgId: string, hostIds: string[], from: Dat
   for (const booking of bookings) busy.get(booking.hostUserId)?.push({ start: booking.startsAt, end: booking.endsAt, bufferBeforeMinutes: booking.bufferBefore, bufferAfterMinutes: booking.bufferAfter })
   await Promise.all(hostIds.map(async (hostId) => {
     try {
-      const calendar = await listBusyIntervals(hostId, from.toISOString(), to.toISOString())
+      const calendar = await listBusyIntervals(hostId, new Date(from.getTime() - 240 * 60_000).toISOString(), new Date(to.getTime() + 240 * 60_000).toISOString())
       if (calendar) busy.get(hostId)?.push(...calendar)
     } catch {
       busy.unavailableHostIds.add(hostId)
@@ -189,23 +189,24 @@ export async function bookingCancelView(orgId: string, bookingId: string) {
   })
   if (!booking) return null
   const org = await orgContext(orgId)
+  const saved = booking.snapshot && typeof booking.snapshot === "object" && !Array.isArray(booking.snapshot) ? booking.snapshot : null
   const host = await prisma.user.findFirst({ where: { id: booking.hostUserId, organizationId: orgId }, select: { name: true } })
   return {
-    status: booking.status as "confirmed" | "cancelled",
+    status: booking.status as "confirmed" | "cancelled" | "completed" | "no_show",
     startsAt: booking.startsAt.toISOString(),
     endsAt: booking.endsAt.toISOString(),
     hostName: host?.name ?? "",
     past: booking.startsAt.getTime() <= Date.now(),
     bookAgainUrl: bookingPageUrl(booking.bookingPage.slug),
     page: {
-      orgName: org.name,
-      title: booking.bookingPage.title,
-      description: booking.bookingPage.description,
-      durationMinutes: booking.bookingPage.durationMinutes,
-      locationType: booking.bookingPage.locationType as "office" | "phone" | "online",
-      locationText: booking.bookingPage.locationText,
+      orgName: typeof saved?.orgName === "string" ? saved.orgName : org.name,
+      title: typeof saved?.title === "string" ? saved.title : booking.bookingPage.title,
+      description: typeof saved?.description === "string" ? saved.description : saved?.description === null ? null : booking.bookingPage.description,
+      durationMinutes: Math.round((booking.endsAt.getTime() - booking.startsAt.getTime()) / 60000),
+      locationType: (typeof saved?.locationType === "string" ? saved.locationType : booking.bookingPage.locationType) as "office" | "phone" | "online",
+      locationText: typeof saved?.locationText === "string" ? saved.locationText : saved?.locationText === null ? null : booking.bookingPage.locationText,
       hostNames: host ? [host.name] : [],
-      timezone: org.timezone,
+      timezone: typeof saved?.timezone === "string" && isValidTimezone(saved.timezone) ? saved.timezone : org.timezone,
     },
   }
 }

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { bookingPageUrl } from "@/lib/booking/book"
-import { bookingAccess, BOOKING_ROLES } from "@/lib/booking/access"
+import { bookingAccess, bookingHostWhere } from "@/lib/booking/access"
 import { bookingPageSchema, slugTaken } from "@/lib/booking/page-input"
 
 export const GET = withRlsAuth("bookings", "read", async (_req, auth) => {
@@ -17,7 +17,7 @@ export const GET = withRlsAuth("bookings", "read", async (_req, auth) => {
   const orgId = auth.orgId
   const [pages, users, upcoming] = await Promise.all([
     prisma.bookingPage.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "asc" } }),
-    prisma.user.findMany({ where: { organizationId: orgId, isActive: true, role: { in: [...BOOKING_ROLES] } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.user.findMany({ where: bookingHostWhere(orgId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.booking.groupBy({
       by: ["bookingPageId"],
       where: { organizationId: orgId, status: "confirmed", startsAt: { gte: new Date() } },
@@ -46,7 +46,7 @@ export const POST = withRlsAuth("bookings", "write", async (req: NextRequest, au
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message, code: parsed.error.issues[0].message }, { status: 400 })
   const input = parsed.data
   if (await slugTaken(input.slug)) return NextResponse.json({ error: "Slug taken", code: "SLUG_TAKEN" }, { status: 409 })
-  const hostsOk = await prisma.user.count({ where: { organizationId: auth.orgId, id: { in: input.hostIds }, isActive: true, role: { in: [...BOOKING_ROLES] } } })
+  const hostsOk = await prisma.user.count({ where: bookingHostWhere(auth.orgId, input.hostIds) })
   if (hostsOk !== new Set(input.hostIds).size) return NextResponse.json({ error: "Unknown host", code: "HOSTS_REQUIRED" }, { status: 400 })
   try {
     const page = await prisma.bookingPage.create({

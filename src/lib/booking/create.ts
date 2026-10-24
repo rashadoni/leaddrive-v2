@@ -51,7 +51,7 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
     if (busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
     return { ok: false, reason: "taken" }
   }
-  const accounts = await prisma.account.findMany({ where: { userId: { in: slot.hostIds }, provider: { in: ["google-calendar", "google"] } }, select: { id: true, userId: true }, orderBy: { provider: "asc" } })
+  const accounts = await prisma.account.findMany({ where: { userId: { in: slot.hostIds }, provider: { in: ["google-calendar", "google"] } }, select: { id: true, userId: true }, orderBy: { provider: "desc" } })
   const load = await prisma.booking.groupBy({ by: ["hostUserId"], where: { organizationId: orgId, hostUserId: { in: slot.hostIds }, status: "confirmed", startsAt: { gte: now } }, _count: { _all: true } })
   const count = (id: string) => load.find((row) => row.hostUserId === id)?._count._all ?? 0
   const candidates = [...slot.hostIds].sort((a, b) => count(a) - count(b) || page.hostIds.indexOf(a) - page.hostIds.indexOf(b))
@@ -67,7 +67,7 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`booking:${orgId}:${hostId}`}))`
         const currentPage = await tx.bookingPage.findFirst({ where: { id: pageId, organizationId: orgId, isActive: true } })
         const host = await tx.user.findFirst({ where: bookingHostWhere(orgId, [hostId]) })
-        const account = await tx.account.findFirst({ where: { userId: hostId, provider: { in: ["google-calendar", "google"] } }, select: { id: true }, orderBy: { provider: "asc" } })
+        const account = await tx.account.findFirst({ where: { userId: hostId, provider: { in: ["google-calendar", "google"] } }, select: { id: true }, orderBy: { provider: "desc" } })
         if (!currentPage || currentPage.version !== page.version || !currentPage.hostIds.includes(hostId) || Date.now() - checkedAt > 15000 || account?.id !== accounts.find((row) => row.userId === hostId)?.id) throw new BookingCommandError("AVAILABILITY_CHANGED")
         if (!host) throw new BookingCommandError("SLOT_TAKEN")
         if (access && !access.administrator && hostId !== access.userId && !await tx.bookingCoordinatorGrant.findFirst({ where: { organizationId: orgId, coordinatorUserId: access.userId, hostUserId: hostId, canManage: true } })) throw new BookingCommandError("FORBIDDEN", 403)
@@ -78,7 +78,7 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
           cancelTokenHash: hashBookingToken(token), secretId,
           source: access ? "staff" : "public_link", createdBy: access?.userId ?? null,
           bufferBefore: currentPage.bufferMinutes, bufferAfter: currentPage.bufferMinutes,
-          snapshot: { locale: input.locale ?? "az", slug: currentPage.slug, title: currentPage.title, locationType: currentPage.locationType, locationText: currentPage.locationText, timezone: org.timezone, legacyDerived: false },
+          snapshot: { orgName: org.name, description: currentPage.description, locale: input.locale ?? "az", slug: currentPage.slug, title: currentPage.title, locationType: currentPage.locationType, locationText: currentPage.locationText, timezone: org.timezone, legacyDerived: false },
           adAttribution: input.attribution ? input.attribution as Prisma.InputJsonValue : undefined,
         } })
         const event = await appendBookingEvent(tx, row, "created", access?.userId ?? null)
