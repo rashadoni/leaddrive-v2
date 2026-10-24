@@ -6,6 +6,7 @@ import {
 import { SIDEBAR_SECTIONS, TOGGLEABLE_MODULES, countEnabledModules, enableAllModules, clearAllModules } from "@/lib/admin-sidebar-catalog"
 import { MODULE_REGISTRY, type ModuleId } from "@/lib/modules"
 import { canAccessModule } from "@/lib/plan-config"
+import { BOOKING_WORKSPACE_ENABLED } from "@/lib/booking/release-phase"
 
 // Pure permission-gate logic shared by the sidebar, App Launcher, Cmd+K
 // palette, and dashboard Quick Access strip. No mocks — exercises the real
@@ -615,10 +616,15 @@ describe("navDesc coverage (every launcher tile has a hint)", () => {
     expect(missing).toEqual([])
   })
 
-  it("has no orphan descriptions (every navDesc key maps to a nav item)", () => {
+  it("reserves exactly the inactive booking phase description and has no other orphans", () => {
+    // The same translation bundle ships with both immutable release phases.
+    // Exactly one booking destination is live, while both need their copy.
+    const active = BOOKING_WORKSPACE_ENABLED ? "bookingWorkspace" : "onlineBooking"
+    const inactive = BOOKING_WORKSPACE_ENABLED ? "onlineBooking" : "bookingWorkspace"
+    expect(navItems.filter((item) => [active, inactive].includes(item.tKey)).map((item) => item.tKey)).toEqual([active])
     const tKeys = new Set(navItems.map((i) => i.tKey))
     const orphans = Object.keys(en.navDesc ?? {}).filter((k) => !tKeys.has(k))
-    expect(orphans).toEqual([])
+    expect(orphans).toEqual([inactive])
   })
 })
 

@@ -2153,7 +2153,7 @@ jobs:
              fi'
 
       - name: Verify booking release with read-only production evidence
-        if: ${{ env.DEPLOYMENT_MODE == 'normal' }}
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
         env:
           BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
           BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}

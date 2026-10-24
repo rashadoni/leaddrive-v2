@@ -426,3 +426,15 @@
 - Уточнение времени предыдущего заголовка «15:51 UTC»: source-fix checkpoint фактически сделан около 15:49 UTC. Старый заголовок сохраняется как история.
 - Этот docs/evidence-only checkpoint остаётся локальным: remote A/B heads и их текущие CI не перезаписываются/не перезапускаются. При merge B проверять remote `4cbdab6b7...`, а не последующий локальный journal commit.
 - Точная текущая остановка: ожидание оставшихся полных CI/build результатов, production всё ещё `6a755bb...`; backend A/B ещё не installed. Следующее действие: после зелёных пяти required checks и build принять A **merge commit**, штатно выложить и сохранить проверенный immutable A artifact; только после этого принять/выложить B.
+## 2026-10-24 16:30 UTC — Full baseline выявил два integration contract расхождения
+
+- A `40108730548` и B `40108740060` завершили source build, typecheck, 22 application PostgreSQL и все отдельные DB gates успешно, но final unit-baseline FAIL: 20 failing files против прежних 18. Новые: cron-trigger-lock-contention и nav-items. Baseline не меняется.
+- Normal booking post-deploy proof ошибочно имел implicit success dependency: сбой соседнего smoke пропустил бы его. Условие приведено к существующему `!cancelled() && deploy_atomic.outcome == success && normal`, так что каждый smoke независимо собирает evidence, а общий job остаётся красным при любой ошибке.
+- Переводы намеренно содержат обе immutable phase подписи. Nav coverage теперь требует ровно один правильный активный booking entry и ровно единственную inactive-phase подпись среди orphan keys; любые прочие orphan/missing keys всё ещё отвергаются. Само production меню и права этим не меняются.
+- Дополнительный restore evidence уже PASS на обеих версиях после безопасного fixture alignment. Требуется повтор полного exact-source CI после этих узких исправлений; предыдущие source SHA не выдаются за новые зелёные.
+- После исправления проверен весь найденный узкий набор workflow/navigation contract tests: 201/201 PASS в 20 файлах, один worker. Scoped ESLint, runner policy, YAML parse и diff PASS. Полный suite/build локально не запускались по host contract.
+
+## 2026-10-24 16:32 UTC — Исправления baseline включены в B
+
+- Journal-only merge conflict разрешён сохранением обеих append-only записей (16:13, затем 16:30); исходный текст истории не удалялся.
+- Superseded: локальный checkpoint `39e35a810` теперь публикуется в составе нового B merge, поэтому новый source B будет отличаться от A только phase flag и docs/evidence. Предыдущий remote `4cbdab6b7...` больше не является кандидатом после push; новый head требуется проверить заново.
