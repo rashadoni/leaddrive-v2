@@ -191,3 +191,6 @@ Legacy-совместимость имеет явный период и нижн
 
 
 Уточнение lifecycle: mobile claims должны также содержать membershipVersion, а resolver — проверять свежую связь actor.organizationId/userId/status, не только ID в сохранённом membership. Отключение и повторное включение членства увеличивает его монотонную версию; старый токен не оживает. При отключении/повторном включении самой личности будущий централизованный lifecycle writer обязан продвинуть credential epoch. Нельзя получить эту гарантию от одного boolean isActive или от неизменившейся User/MtmAgent связи. Эти проверки пока подготовлены в контракте, не подключены к legacy lifecycle.
+
+
+К контракту подготовлен `mobile-session.ts`: настоящий signer/verifier на существующей jsonwebtoken, отдельный purpose/key без env fallback, дополнительно отделённый HKDF signing material; жёсткие HS256/issuer/одиночный audience/typ и только alg/typ/kid в заголовке. Неизвестный/malicious kid не выбирает URL/файл. Проверка подписи предшествует свежей политике tenant/person/grant/membership/actor. Signer предназначен только для композиции после проверки учётных данных, не для admin lookup или setup-token decode. В действующие login/middleware/routes он не подключён; DB resolver/membership/lifecycle/storage/sync и API/UI остаются обязательными до включения. Новые реальные JWT-тесты пока PREPARED до их точного CI.

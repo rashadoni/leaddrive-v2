@@ -336,3 +336,19 @@ only a write-CAS revision: a sibling grant change must not kill this app's
 unchanged session. The shared credential epoch does revoke both. Output keeps
 actorId/application explicit; adapting it blindly into legacy agentId/role
 would bypass the workday and HR separation still required before cutover.
+
+
+`mobile-session.ts` prepares the missing actual JWT signer/verifier. Both are
+unused by current login/routes. Sign only after real credential authentication
+using freshly resolved authoritative state; an admin lookup or setup token is
+not authentication. Requires a dedicated32-byte identity root with explicit
+purpose; there is no legacy JWT_SECRET/environment fallback. HKDF additionally
+separates JWT MAC material from legacy raw-secret/OTP/setup signatures.
+
+The verifier pins HS256, issuer, exact audience and explicit token type, permits
+only alg/typ/kid headers, validates kid before an allowlisted key-ring lookup,
+and never follows token URLs. Only after signature/expiry validation does it
+apply the fresh app policy. Six tests use the real jsonwebtoken library for
+round trips, signature/key tampering, legacy-key separation, unsafe headers,
+app/tenant/CRM/setup refusal, current revocation and expiry. No live key or JWT
+session is issued by the application until the future login composition exists.
