@@ -30727,5 +30727,24 @@
     "missingEvent": "Göndərmək üçün ən azı bir hadisə seçin.",
     "errNoPixelAccess": "Bu token bu pikselə göndərə bilmir: onu həmin pikselin ayarlarında yaradın.",
     "lastSentAt": "Son göndərmə {time}"
+  },
+  "timeAppDownload": {
+    "pageTitle": "Android üçün LeadDrive Time",
+    "eyebrow": "LeadDrive Time",
+    "title": "İş gününüz bir tətbiqdə",
+    "lead": "Şirkət hesabınızla iş vaxtını qeyd edin, şəxsi müraciətlərinizə və cavablara baxın.",
+    "languageLabel": "Səhifənin dili",
+    "download": "Android üçün Time yüklə",
+    "version": "Versiya {version} · {date}",
+    "unavailable": "Time tətbiqinin ictimai buraxılışı hələ əlçatan deyil. Tətbiq hazır olduqda administrator bu keçidi paylaşacaq.",
+    "stepsTitle": "Necə quraşdırmalı",
+    "step1": "Buraxılış hazır olduqda yuxarıdakı düymə ilə Time APK faylını yükləyin.",
+    "step2": "Yüklənmiş faylı açın. Android istəsə, istifadə etdiyiniz brauzerdən quraşdırmaya icazə verin.",
+    "step3": "Android-də quraşdırmanı təsdiqləyin, sonra LeadDrive Time tətbiqini açıb şirkət hesabınızla daxil olun.",
+    "step4": "Mövcud Time tətbiqinin üzərinə quraşdırın. Tətbiqi silməyin və məlumatlarını təmizləməyin.",
+    "updatesTitle": "Yeniləmə hazır olduqda",
+    "updates": "Time açıldıqda yeni versiyanı təklif edir. «Sonra» seçib işə davam edə bilərsiniz. Köhnə versiya yeniləmə təklif etmirsə, onu bu səhifədən yükləyin. Android-də quraşdırmanı təsdiqləyin.",
+    "playNote": "Tətbiq Google Play-dən quraşdırılıbsa, Google Play vasitəsilə yeniləyin. Bu səhifə ayrıca Time APK faylı üçündür.",
+    "privacy": "Məxfilik siyasəti"
   }
 }
