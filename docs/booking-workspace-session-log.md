@@ -415,3 +415,12 @@
 - Переводы намеренно содержат обе immutable phase подписи. Nav coverage теперь требует ровно один правильный активный booking entry и ровно единственную inactive-phase подпись среди orphan keys; любые прочие orphan/missing keys всё ещё отвергаются. Само production меню и права этим не меняются.
 - Дополнительный restore evidence уже PASS на обеих версиях после безопасного fixture alignment. Требуется повтор полного exact-source CI после этих узких исправлений; предыдущие source SHA не выдаются за новые зелёные.
 - После исправления проверен весь найденный узкий набор workflow/navigation contract tests: 201/201 PASS в 20 файлах, один worker. Scoped ESLint, runner policy, YAML parse и diff PASS. Полный suite/build локально не запускались по host contract.
+
+## 2026-10-24 16:38 UTC — Закрывается исходный сценарий поиска раздела
+
+- Сверка согласованного требования «находить по старому и новому названию» выявила UI-пробел: sidebar/Cmd+K/launcher искали текущую подпись, и «Онлайн-запись» не находила новое «Встречи и запись».
+- Добавлены переведённые search aliases двух booking labels и единый matcher в трёх существующих поисках. Обработка выполняется только после accessibleNavItems: alias не выдаёт доступ и не создаёт второй пункт/устаревшую ссылку. Существующие поиски групп, Support sections и прочие aliases сохранены.
+- Подсказка нового пункта AZ/RU/EN теперь описывает назначение раздела. Unit discovery проверяет оба имени в трёх языках, ровно один правильный текущий URL и отсутствие результата для viewer/reviewer.
+- Это исправление исходной findability задачи; новая функциональная область не добавляется. Требуется новый source CI/build из-за client search компонентов; baseline и guards сохраняются.
+- Discovery/navigation/access + deploy contract: 84/84 PASS в 3 целевых файлах. i18n parity 28630 keys PASS. Scoped lint нашёл прежнюю render-time ref mutation в уже затронутом AppLauncher; обновление ref перенесено в useEffect, подписка/клавиатурное действие сохранены. Lint повторяется без исключения правила.
+- Повтор lint после ref fix выявил прежний synchronous query reset effect того же компонента. Query reset перенесён в guarded prop-change state adjustment до commit, чтобы при открытии не отображались прежние результаты; без async обхода lint или ослабления правил.

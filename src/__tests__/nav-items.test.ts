@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import {
-  accessibleNavItems, navItems, matchNavItem, activeNavBase, groupLauncherStyle, GROUP_LAUNCHER_STYLE, NAV_GROUP_ORDER,
+  accessibleNavItems, navItemMatchesSearch, navItems, matchNavItem, activeNavBase, groupLauncherStyle, GROUP_LAUNCHER_STYLE, NAV_GROUP_ORDER,
 } from "@/lib/nav-items"
 import { SIDEBAR_SECTIONS, TOGGLEABLE_MODULES, countEnabledModules, enableAllModules, clearAllModules } from "@/lib/admin-sidebar-catalog"
 import { MODULE_REGISTRY, type ModuleId } from "@/lib/modules"
@@ -625,6 +625,29 @@ describe("navDesc coverage (every launcher tile has a hint)", () => {
     const tKeys = new Set(navItems.map((i) => i.tKey))
     const orphans = Object.keys(en.navDesc ?? {}).filter((k) => !tKeys.has(k))
     expect(orphans).toEqual([inactive])
+  })
+})
+
+describe("booking menu discovery across the staged release", () => {
+  const expected = BOOKING_WORKSPACE_ENABLED ? "/meetings" : "/settings/booking"
+  for (const locale of ["az", "ru", "en"]) {
+    it(`${locale}: finds one authorized destination by both the old and new name`, () => {
+      const labels = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).nav as Record<string, string>
+      const visible = accessibleNavItems({ plan: "enterprise", role: "admin" })
+      for (const name of [labels.onlineBooking, labels.bookingWorkspace]) {
+        const found = visible.filter((item) => navItemMatchesSearch(item, ` ${name} `, (key) => labels[key]))
+        expect(found.filter((item) => item.permissionScope === "bookings").map((item) => item.href)).toEqual([expected])
+      }
+    })
+  }
+  it("search aliases cannot expose meetings to a role without booking access", () => {
+    const labels = JSON.parse(readFileSync("messages/ru.json", "utf8")).nav as Record<string, string>
+    for (const role of ["viewer", "reviewer"]) {
+      const visible = accessibleNavItems({ plan: "enterprise", role })
+      for (const name of ["ОНЛАЙН-ЗАПИСЬ", "ВСТРЕЧИ И ЗАПИСЬ"]) {
+        expect(visible.filter((item) => item.permissionScope === "bookings" && navItemMatchesSearch(item, name, (key) => labels[key]))).toEqual([])
+      }
+    }
   })
 })
 
