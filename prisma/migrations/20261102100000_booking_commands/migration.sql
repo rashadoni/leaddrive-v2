@@ -12,6 +12,10 @@ ALTER TABLE "bookings"
   ADD COLUMN "cancellationReason" TEXT,
   ADD COLUMN "bufferBefore" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN "bufferAfter" INTEGER NOT NULL DEFAULT 0;
+-- Legacy rows never stored their own buffer. Preserve the currently known
+-- page rule as derived metadata instead of silently resetting it to zero.
+UPDATE bookings b SET "bufferBefore" = p."bufferMinutes", "bufferAfter" = p."bufferMinutes"
+FROM booking_pages p WHERE p.id = b."bookingPageId" AND p."organizationId" = b."organizationId";
 ALTER TABLE "bookings" DROP CONSTRAINT "bookings_status_check";
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_status_check" CHECK (status IN ('confirmed', 'cancelled', 'completed', 'no_show'));
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_host_org_fkey" FOREIGN KEY ("organizationId", "hostUserId") REFERENCES users("organizationId", id) ON DELETE NO ACTION DEFERRABLE INITIALLY DEFERRED;

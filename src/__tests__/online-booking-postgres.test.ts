@@ -129,14 +129,37 @@ pgDescribe("online booking on a real Postgres", () => {
     prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `DROP DATABASE IF EXISTS "${scratch!.name}" WITH (FORCE)`)
     prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `CREATE DATABASE "${scratch!.name}"`)
     prismaCli(["db", "push", "--schema", schemaWithoutEmbeddings(), "--skip-generate", "--accept-data-loss"], { ...process.env, DATABASE_URL: scratch!.url })
-    // Only in this newly created empty scratch DB: replace the booking subset
+    prisma = (await import("@/lib/prisma")).prisma as PrismaClient
+    bypass = (await import("@/lib/rls-context")).runWithRlsBypass
+    await bypass(async () => {
+      for (const id of [ORG, OTHER_ORG]) {
+        await prisma.organization.create({ data: { id, name: `Org ${id}`, slug: id, modules: { crm: true, sales: true, settings: true }, settings: { timezone: "Asia/Baku" } } })
+      }
+      await prisma.user.createMany({
+        data: [
+          { id: HOST_A, organizationId: ORG, email: "a@example.test", name: "Leyla", passwordHash: "-", role: "manager" },
+          { id: HOST_B, organizationId: ORG, email: "b@example.test", name: "Anar", passwordHash: "-", role: "manager" },
+          { id: `user-admin-${ORG}`, organizationId: ORG, email: "admin@example.test", name: "Admin", passwordHash: "-", role: "admin" },
+          { id: `user-admin-${OTHER_ORG}`, organizationId: OTHER_ORG, email: "admin2@example.test", name: "Admin 2", passwordHash: "-", role: "admin" },
+        ],
+      })
+    })
+    // Only in this newly created scratch DB: replace the empty booking subset
     // with its original schema, then apply both actual forward migrations.
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DROP TABLE IF EXISTS booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE;`)
     for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands"]) {
       prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, readFileSync(path.join(ROOT, `prisma/migrations/${migration}/migration.sql`), "utf8"))
+      if (migration === "20261101090000_online_booking") {
+        prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `
+          INSERT INTO booking_pages (id, "organizationId", slug, title, "bufferMinutes", "hostIds", weekly, "updatedAt")
+          VALUES ('legacy-buffer-page', '${ORG}', 'legacy-buffer-test', 'Legacy buffer', 20, ARRAY['${HOST_A}'], '${JSON.stringify(ALL_DAY)}'::jsonb, CURRENT_TIMESTAMP);
+          INSERT INTO bookings (id, "organizationId", "bookingPageId", "hostUserId", "startsAt", "endsAt", name, phone, "cancelTokenHash", "updatedAt")
+          VALUES ('legacy-buffer-booking', '${ORG}', 'legacy-buffer-page', '${HOST_A}', '2035-01-01 08:00:00', '2035-01-01 08:30:00', 'Legacy client', '+994500000006', '${"f".repeat(64)}', CURRENT_TIMESTAMP);
+        `)
+      }
     }
     // Run the actual canonical ledger DDL, including attempt/state/append-only guards.
-    // These tables are dropped only in this newly created scratch database, before fixtures exist.
+    // These tables are dropped only in this scratch database, before canonical events/effects exist.
     const foundation = readFileSync(path.join(ROOT, "prisma/migrations/20260901090000_event_platform_foundation/migration.sql"), "utf8")
     const tables = [...foundation.matchAll(/CREATE TABLE "([^"]+)"/g)].map((match) => `"${match[1]}"`)
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DROP TABLE IF EXISTS ${tables.join(",")} CASCADE;`)
@@ -144,8 +167,6 @@ pgDescribe("online booking on a real Postgres", () => {
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, foundation)
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `ALTER TABLE booking_change_notes ADD CONSTRAINT booking_notes_event_test_fkey FOREIGN KEY ("organizationId", "eventId") REFERENCES domain_events("organizationId", id) ON DELETE CASCADE;`)
 
-    prisma = (await import("@/lib/prisma")).prisma as PrismaClient
-    bypass = (await import("@/lib/rls-context")).runWithRlsBypass
     const pub = await import("@/app/api/v1/public/booking/[slug]/route")
     pageGet = pub.GET
     pagePost = pub.POST
@@ -160,19 +181,7 @@ pgDescribe("online booking on a real Postgres", () => {
     actionsPost = (await import("@/app/api/v1/bookings/[id]/actions/route")).POST
     grantsPut = (await import("@/app/api/v1/bookings/coordinators/route")).PUT
     drain = (await import("@/lib/booking/effect-worker")).drainBookingEffects
-    await bypass(async () => {
-      for (const id of [ORG, OTHER_ORG]) {
-        await prisma.organization.create({ data: { id, name: `Org ${id}`, slug: id, modules: { crm: true, sales: true, settings: true }, settings: { timezone: "Asia/Baku" } } })
-      }
-      await prisma.user.createMany({
-        data: [
-          { id: HOST_A, organizationId: ORG, email: "a@example.test", name: "Leyla", passwordHash: "-", role: "manager" },
-          { id: HOST_B, organizationId: ORG, email: "b@example.test", name: "Anar", passwordHash: "-", role: "manager" },
-          { id: `user-admin-${ORG}`, organizationId: ORG, email: "admin@example.test", name: "Admin", passwordHash: "-", role: "admin" },
-          { id: `user-admin-${OTHER_ORG}`, organizationId: OTHER_ORG, email: "admin2@example.test", name: "Admin 2", passwordHash: "-", role: "admin" },
-        ],
-      })
-    })
+
   }, 300_000)
 
   afterAll(async () => {
@@ -224,6 +233,18 @@ pgDescribe("online booking on a real Postgres", () => {
     const { body } = await view(slug)
     return body.data.days.at(-1).slots[index].startsAt as string
   }
+
+  it("the actual forward migration preserves the known legacy buffer without inventing history", async () => {
+    const row = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: "legacy-buffer-booking" } }))
+    expect(row).toMatchObject({ version: 0, snapshot: null, bufferBefore: 20, bufferAfter: 20 })
+    const { assertBookingInterval } = await import("@/lib/booking/commands")
+    const check = (end: string) => bypass(() => prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`booking:${ORG}:${HOST_A}`}))`
+      return assertBookingInterval(tx, ORG, HOST_A, new Date("2035-01-01T07:10Z"), new Date(end), 0)
+    }))
+    await expect(check("2035-01-01T07:50Z")).rejects.toMatchObject({ code: "SLOT_TAKEN" })
+    await expect(check("2035-01-01T07:40Z")).resolves.toBeUndefined()
+  })
 
   it("shows the page with free times, without saying who is free", async () => {
     const slug = await newPage()
@@ -542,6 +563,24 @@ pgDescribe("online booking on a real Postgres", () => {
     expect(events.map((event) => event.eventType)).toEqual(["sales.booking-imported.v1", "sales.booking-completed.v1"])
   })
 
+  it("recording a past outcome retains the historical calendar binding after reconnecting Google", async () => {
+    const slug = await newPage()
+    const page = await bypass(() => prisma.bookingPage.findUniqueOrThrow({ where: { slug } }))
+    const previous = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "google", providerAccountId: "historical-outcome-account", access_token: "synthetic" } }))
+    const current = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "google-calendar", providerAccountId: "reconnected-outcome-account", access_token: "synthetic" } }))
+    try {
+      const row = await legacyFixture((tx) => tx.booking.create({ data: { organizationId: ORG, bookingPageId: page.id, hostUserId: HOST_A, startsAt: new Date("2020-02-01T05:00:00Z"), endsAt: new Date("2020-02-01T05:30:00Z"), name: "Historical calendar client", phone: "+994500000007", cancelTokenHash: randomUUID(), googleEventId: "historical-outcome-event" } }))
+      const binding = await bypass(() => prisma.bookingIntegrationBinding.create({ data: { organizationId: ORG, bookingId: row.id, hostUserId: HOST_A, accountId: previous.id, generation: "legacy", providerEventId: "historical-outcome-event", desiredVersion: 0, desiredState: "present" } }))
+      const response = await actionsPost(json("POST", `/api/v1/bookings/${row.id}/actions`, { operation: "outcome", outcome: "completed", version: 0, idempotencyKey: randomUUID() }), { params: Promise.resolve({ id: row.id }) })
+      expect(response.status, await response.clone().text()).toBe(200)
+      const after = await bypass(() => prisma.bookingIntegrationBinding.findUniqueOrThrow({ where: { id: binding.id } }))
+      expect(after).toMatchObject({ accountId: previous.id, desiredState: "present", desiredVersion: 2 })
+      expect(await bypass(() => prisma.bookingIntegrationBinding.count({ where: { bookingId: row.id } }))).toBe(1)
+    } finally {
+      await bypass(() => prisma.account.deleteMany({ where: { id: { in: [previous.id, current.id] } } }))
+    }
+  })
+
   it("an unknown calendar create is never retried, while cancellation remains visible and a reviewed reconciliation permits cleanup", async () => {
     const account = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "google-calendar", providerAccountId: "synthetic-booking-account", access_token: "synthetic-test-token" } }))
     calendar.update.mockRejectedValue({ code: 404 })
@@ -570,6 +609,9 @@ pgDescribe("online booking on a real Postgres", () => {
         await tx.effectReconciliation.create({ data: { organizationId: ORG, effectId: effect.id, attemptNumber: effect.attemptCount, decision: "dead", reason: "Provider readback verified the created event; latest cancellation must delete it", evidence: { providerState: "present", synthetic: true } } })
         await tx.effectOutbox.update({ where: { id: effect.id }, data: { status: "dead", completedAt: new Date() } })
       }))
+      // A blocked dependent intent is deferred to the next cron minute. Make
+      // that pending tick due without sleeping or retrying the unknown attempt.
+      await bypass(() => prisma.effectOutbox.updateMany({ where: { organizationId: ORG, effectType: "booking.calendar", status: "pending", payload: { path: ["bookingId"], equals: id } }, data: { availableAt: new Date(0) } }))
       await bypass(() => drain(ORG, 50))
       expect(calendar.insert).toHaveBeenCalledTimes(1)
       expect(calendar.remove).toHaveBeenCalledTimes(1)

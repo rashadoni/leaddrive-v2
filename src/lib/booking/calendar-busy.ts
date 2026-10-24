@@ -1,6 +1,6 @@
 import { bookingDb as prisma } from "./db"
 import { getGoogleCalendarClient } from "@/lib/google-calendar"
-import { localDateTimeToUtc } from "@/lib/timezone"
+import { localDateTimeToUtc, isValidTimezone } from "@/lib/timezone"
 import { BookingCommandError } from "./command-error"
 import type { BusyInterval } from "./availability"
 
@@ -27,8 +27,10 @@ export async function bookingCalendarBusy(orgId: string, hostId: string, from: D
       for (const event of result.data.items ?? []) {
         read++
         if (event.id && ownIds.has(event.id) || event.status === "cancelled" || event.transparency === "transparent") continue
-        const start = event.start?.dateTime ? new Date(event.start.dateTime) : event.start?.date ? localDateTimeToUtc(`${event.start.date}T00:00`, event.start.timeZone || result.data.timeZone || "UTC") : null
-        const end = event.end?.dateTime ? new Date(event.end.dateTime) : event.end?.date ? localDateTimeToUtc(`${event.end.date}T00:00`, event.end.timeZone || result.data.timeZone || "UTC") : null
+        const allDayZone = event.start?.timeZone || event.end?.timeZone || result.data.timeZone
+        if ((event.start?.date || event.end?.date) && !isValidTimezone(allDayZone)) throw new Error("unknown all-day calendar timezone")
+        const start = event.start?.dateTime ? new Date(event.start.dateTime) : event.start?.date ? localDateTimeToUtc(`${event.start.date}T00:00`, allDayZone!) : null
+        const end = event.end?.dateTime ? new Date(event.end.dateTime) : event.end?.date ? localDateTimeToUtc(`${event.end.date}T00:00`, allDayZone!) : null
         if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) throw new Error("unreadable calendar event")
         intervals.push({ start, end })
       }

@@ -241,3 +241,35 @@
   Legacy fixtures явно представляют pre-cutover rows, только в scratch.
 - Эти изменения после первого run ещё не подтверждены им; сохраняется новый
   checkpoint и запускается следующий exact-SHA CI.
+
+## 2026-10-24 — Второй DB-прогон и завершение совместимости
+
+- ebb907b5a / run 40086178208: реальный PG — 18/19 PASS, включая полные forward
+  миграции, deferred Booking/head guard, foreign projection rejection, own/team,
+  concurrent create/replay/cancel/reschedule, legacy import и FORCE RLS.
+- Единственное красное ожидание требовало cleanup сразу после operator decision,
+  хотя заблокированный pending intent отложен до следующей минуты. Тест теперь
+  моделирует наступивший cron tick через availableAt pending intent; UNKNOWN
+  attempt остаётся terminal и не повторяется.
+- Важная поправка миграции: старые buffer поля нельзя сбрасывать в ноль. Новые
+  поля заполняются из текущего известного page.bufferMinutes; это derived
+  legacy metadata, не восстановленная историческая настройка. Тест сохраняет
+  настоящую pre-migration строку и проверяет перерыв после forward upgrade.
+- All-day Google interval без достоверной зоны теперь fail-closed; добавлен
+  тест. Targeted unit: 148/148 PASS. После успешного effect очищается старый
+  transient lastError, чтобы UI не показывал ложное внимание к завершённой работе.
+- Implementation audit прямо фиксирует production NO-GO: нет production inventory
+  из-за штатного SSH publickey denial, а cutover требует совместимого rollback
+  artifact и дренирования старого writer. Эти gates не заменены зелёным UI/build.
+- Текущий source готов к следующему CI checkpoint; ожидание exact-SHA compiler
+  второго run продолжается, чтобы исправить его фактические замечания вместе.
+- Run 40086178208 / ebb907b5a: production build PASS, typecheck gate PASS.
+  Полный compiler log дополнительно просмотрен: diagnostics для booking,
+  book routes, booking-pages и booking tests отсутствуют. Исторический baseline
+  остального проекта не расширялся.
+- Исправлена семантика outcome после Google reconnect: прошедшая completed/
+  no_show встреча сохраняет desired state исторических bindings вместо удаления
+  события из-за нового preferred account. Добавлен настоящий PG-сценарий.
+- Проверки последнего source: scoped ESLint/diff PASS; targeted unit 148/148 PASS.
+  Следующий checkpoint закрывает тест следующего cron tick, legacy buffer,
+  неизвестную all-day timezone, transient error UI и сохранность календарной истории.

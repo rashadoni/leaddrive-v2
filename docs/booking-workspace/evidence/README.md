@@ -8,7 +8,7 @@ Next navigation/session adapters and API responses were substituted.
 The sequential Playwright run covered 1440×1000 and 390×844 viewports,
 light/dark theme, list/calendar/detail, manual creation, move, cancellation,
 outcome, ordinary follow-up task, booking-page tab, coordinator grant,
-keyboard focus containment/Escape and recovery after a context API error.
+history cache isolation across user/privacy changes, keyboard focus containment/Escape and recovery after a context API error.
 No document/dialog horizontal overflow or browser JavaScript/console errors
 remained in the final run. `browser-result.json` records the exercised mutations.
 

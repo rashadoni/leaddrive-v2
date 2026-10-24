@@ -10,7 +10,8 @@ export async function queueBookingEffects(tx: Prisma.TransactionClient, row: Boo
   await ensureLegacyBinding(tx, row)
   const bindings = await tx.bookingIntegrationBinding.findMany({ where: { organizationId: row.organizationId, bookingId: row.id } })
   const active = row.status !== "cancelled"
-  const account = active ? await tx.account.findFirst({ where: { userId: row.hostUserId, provider: { in: ["google-calendar", "google"] } }, select: { id: true, providerAccountId: true }, orderBy: { provider: "desc" } }) : null
+  const outcome = row.status === "completed" || row.status === "no_show"
+  const account = active && !outcome ? await tx.account.findFirst({ where: { userId: row.hostUserId, provider: { in: ["google-calendar", "google"] } }, select: { id: true, providerAccountId: true }, orderBy: { provider: "desc" } }) : null
   let matching = bindings.find((binding) => binding.hostUserId === row.hostUserId && binding.accountId === account?.id && binding.desiredState === "present")
   if (account && !matching && row.status === "confirmed" && row.startsAt > new Date() && row.source !== "legacy") {
     const generation = randomUUID()
@@ -18,7 +19,8 @@ export async function queueBookingEffects(tx: Prisma.TransactionClient, row: Boo
     bindings.push(matching)
   }
   for (const binding of bindings) {
-    const desiredState = active && binding.id === matching?.id ? "present" : "absent"
+    // Recording an outcome must retain historical events even after reconnecting Google.
+    const desiredState = outcome ? binding.desiredState : active && binding.id === matching?.id ? "present" : "absent"
     await tx.bookingIntegrationBinding.update({ where: { id: binding.id }, data: { desiredState, desiredVersion: row.version, ...(binding.state !== "reconciliation_required" ? { state: "pending" } : {}) } })
     await enqueueEffect(tx, { ...common, effectType: "booking.calendar", effectKey: `${binding.id}:${row.version}`, destination: binding.id, payload: { ...payload, bindingId: binding.id } })
   }

@@ -30,7 +30,7 @@ async function finish(tx: Prisma.TransactionClient, effect: Claimed, status: "su
   const current = await tx.effectOutbox.findFirst({ where: { id: effect.id, organizationId: effect.organizationId, status: "leased", leaseToken: effect.leaseToken } })
   if (!current) return false
   await tx.effectAttempt.create({ data: { organizationId: effect.organizationId, effectId: effect.id, attemptNumber: effect.attemptCount, leaseToken: effect.leaseToken, requestId: effect.providerRequestId, outcome: status, completedAt: new Date(), evidence } })
-  await tx.effectOutbox.update({ where: { id: effect.id }, data: { status, leaseToken: null, leaseOwner: null, leaseExpiresAt: null, ...(status === "succeeded" ? { completedAt: new Date(), providerResult: evidence } : { reconciliationAt: new Date(), lastError: "DELIVERY_UNCONFIRMED" }) } })
+  await tx.effectOutbox.update({ where: { id: effect.id }, data: { status, leaseToken: null, leaseOwner: null, leaseExpiresAt: null, ...(status === "succeeded" ? { completedAt: new Date(), providerResult: evidence, lastError: null } : { reconciliationAt: new Date(), lastError: "DELIVERY_UNCONFIRMED" }) } })
   return true
 }
 

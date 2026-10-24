@@ -19,6 +19,10 @@ describe("identity-aware calendar availability", () => {
     expect(result.intervals).toEqual([{ start, end: new Date("2026-11-02T05:30:00Z") }, { start: new Date("2026-11-01T20:00:00Z"), end: new Date("2026-11-02T20:00:00Z") }])
     expect(state.list).toHaveBeenCalledTimes(2)
   })
+  it("fails closed when an all-day interval has no reliable calendar timezone", async () => {
+    state.list.mockResolvedValue({ data: { accessRole: "owner", items: [{ id: "all-day-unknown", start: { date: "2026-11-02" }, end: { date: "2026-11-03" } }] } })
+    await expect(bookingCalendarBusy("org-a", "host", start, end)).rejects.toMatchObject({ code: "CALENDAR_UNAVAILABLE" })
+  })
   it("distinguishes no connection from a broken or unreadable connected calendar", async () => {
     state.account.mockResolvedValueOnce(null)
     expect((await bookingCalendarBusy("org-a", "host", start, end)).accountId).toBeNull()
