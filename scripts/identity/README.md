@@ -14,8 +14,10 @@ node --test scripts/identity/preflight.test.mjs
 The input is sensitive: keep it outside Git, with restricted file permissions.
 No raw password/hash/token, names, emails or extra fields are accepted. An export
 must calculate `hasCredential` as a boolean without exporting its value. A
-non-password sentinel must not count as a usable credential. This tool has no
-exporter yet: do not claim a production audit from synthetic fixtures.
+non-password sentinel must not count as a usable credential. The companion
+`snapshot.mjs` exporter returns only a boolean for bcrypt-shaped credentials;
+it does not verify a password. Do not claim a production audit from synthetic
+fixtures or from mocked transaction tests.
 
 Exact input shape (fictional values):
 
@@ -59,3 +61,38 @@ Exit codes: 0 = no detected conflicts in this supplied snapshot; 2 = review
 required; 1 = invalid/unreadable input. Even exit 0 leaves `productionVerified`
 and `migrationAuthorized` false. Empty input arrays do not prove an empty live
 database. No output from this tool is a release gate by itself.
+
+## Read-only exporter
+
+`snapshot.mjs` requires the project's generated Prisma client and an explicitly
+provided `IDENTITY_AUDIT_DATABASE_URL` through the established secret mechanism.
+It does not load environment files or fall back to `DATABASE_URL`. Before use,
+verify the registered target and obtain authorization for the intended read.
+No production export has been run as part of this implementation.
+
+```sh
+node scripts/identity/snapshot.mjs \
+  --organization-id approved-organization-id \
+  --organization-slug approved-company \
+  --output /private/audit-directory/identity-snapshot.json
+node --test scripts/identity/snapshot.test.mjs
+```
+
+The output directory must already exist outside this worktree, belong to the
+current user and have no group/other permissions (0700). The exporter creates a
+new file with 0600 permissions, refuses overwrite and final symlinks, and prints
+only counts and completion status. A failed file write may leave a private,
+incomplete file; a nonzero exit must never be treated as a valid export.
+
+All reads occur in one bounded repeatable-read transaction, explicitly set to
+READ ONLY before data queries. The exporter sets the tenant RLS context with
+bypass off, verifies those settings, verifies both organization ID and slug,
+and additionally filters each business query by organization ID. It imposes
+statement/lock/transaction timeouts and refuses row/byte overflow. It includes
+inactive rows to preserve historical links and never exports actual credential
+values, names, email, OTP or session data.
+
+Transaction tests use an injected mock client: ordering, parameter binding,
+fail-closed checks and file privacy are covered. Actual PostgreSQL/RLS query
+execution remains a required CI gate before production use. The snapshot is
+limited to identity links and phones, not application grants or HR history.

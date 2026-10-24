@@ -25,3 +25,15 @@
 Результат: требуемая последовательность архитектура→аудит→самокритика→итоговый вариант соблюдена, первый код начат после представления решения. Документы checkpoint c48db1fc7 сохранены до кода. Следующее: read-only exporter согласованного tenant snapshot с устойчивой транзакцией и preview конфликтов; затем additive identity/grant/claim schema и shadow comparison. Перед production переносом нужны реальная инвентаризация, разрешение security rollout и все gates из архитектуры. Точная остановка — offline preflight проверен на синтетических сценариях, ни один рабочий номер/аккаунт/grant не изменён.
 
 Основная приёмка Time остаётся отдельной задачей с текущим controller1046-v2 и deadline25Oct21:01:16Баку. Эта работа не открывала телефон, не меняла APK/permissions/queue/network и не запускала параллельный Maestro.
+
+## 2026-10-24 — продолжение после вопроса «завис?»
+
+В чате прямо уточнено: после предыдущего отчёта реализация находилась на checkpoint, не выполнялась в фоне. Возобновлён следующий записанный шаг. codex-project-context снова подтвердил crm-person-identity / codex/person-identity / rashadoni/leaddrive-v2 и production leaddrive-prod:/opt/leaddrive-v2 с GitHub Actions. Canonical checkout и соседние worktrees не затронуты.
+
+Реализован scripts/identity/snapshot.mjs: явно заданные organizationId+slug и отдельный IDENTITY_AUDIT_DATABASE_URL, одна RepeatableRead READ ONLY транзакция до любых business reads, RLS context tenant/bypass off с проверкой фактических настроек, дополнительный tenant WHERE, bounded limits/timeouts, отказ при mismatch/overflow/неожиданных полях. Password hash вычисляется в БД в boolean bcrypt-shaped presence и не выгружается. Приватный JSON создаётся только вне worktree в own0700 директории новым0600 файлом; overwrite/final symlink запрещены. Ошибки/receipt не содержат URLБД, номеров/ID или путей. Неуспешная запись может оставить приватный incomplete файл; это явно описано, повтор не перезаписывает его.
+
+Добавлены8 focused tests с injected transaction client и реальными временными файлами: mode/RLS ordering, org+slug, cross-tenant rows, overflow/credentials, scoped параметры,0600/no-overwrite/symlink/repository safety, безутечечныйCLI отказ безявногоURL. В сумме node --test scripts/identity/preflight.test.mjs scripts/identity/snapshot.test.mjs:24 PASS/0FAIL,~0.38s. RAM available13819MiB,disk123GB,PSI0; git diff --check PASS. Это mock-транзакционные/файловые проверки, не выполнение SQL в PostgreSQL. Actual PostgreSQL/RLS/Prisma integration, полныйCI, productionexport NOT RUN. Fullbuild/Android/Browser NOT RUN: runtime/схема/UI не менялись. Старый конфликт номера Zeytun пока не устранён и владелец не установлен.
+
+Time monitor прочитан только из файлов:24Oct18:59:43UTC RUNNING/OBSERVED,31HR samples, прежняя earliest25Oct21:01:16Баку. Телефон и активныйcontroller не тронуты.
+
+Точная остановка: exporter+preflight готовы и проверены безproductionconnections; следующий шаг — PostgreSQL integration gate вCI и затем approved read-only snapshot реальной компании перед добавочнойidentity/grant схемой. Push/merge/security rollout этого нового пакета не выполнялись.
