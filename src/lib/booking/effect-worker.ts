@@ -106,7 +106,9 @@ export async function drainBookingEffects(orgId: string, limit = 20, deadline = 
         // blocker and must never be silently rebound to a current account.
         const credential = binding && binding.accountId !== "unavailable" ? await tx.account.findFirst({ where: { id: binding.accountId, userId: binding.hostUserId, provider: { in: ["google-calendar", "google"] } }, select: { id: true } }) : null
         if (binding && !credential) {
-          await finish(tx, claimed, "reconciliation_required", { reason: "calendar_identity_unverified" })
+          if (await finish(tx, claimed, "reconciliation_required", { reason: "calendar_identity_unverified" })) {
+            await tx.bookingIntegrationBinding.update({ where: { id: binding.id }, data: { state: "reconciliation_required" } })
+          }
           return { done: true as const }
         }
       }
