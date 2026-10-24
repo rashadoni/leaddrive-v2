@@ -1,3 +1,4 @@
+import { BOOKING_WORKSPACE_ENABLED } from "@/lib/booking/release-phase"
 import { VOICE_SECTION_KEYS } from "./sections"
 import type { ModuleId } from "@/lib/modules"
 import type { Module } from "@/lib/permissions"
@@ -295,8 +296,7 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   "settings_web-to-lead": "config",
   // BookingAccess own/team grants must be applied before voice aggregates.
   // Navigation and the guide work; the generic tenant-wide reader is not enabled.
-  meetings: "pending",
-  settings_booking: "pending",
+  [BOOKING_WORKSPACE_ENABLED ? "meetings" : "settings_booking"]: "pending",
   "settings_ad-conversions": "config",
   "settings_intake-forms": "config",
   "settings_approval-rules": "config",

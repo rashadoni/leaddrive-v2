@@ -1,3 +1,4 @@
+import { BOOKING_WORKSPACE_ENABLED } from "@/lib/booking/release-phase"
 import { describe, expect, it, vi } from "vitest"
 import { NextResponse } from "next/server"
 import { checkPermission } from "@/lib/permissions"
@@ -52,8 +53,8 @@ describe("meeting workspace access", () => {
   it("provides a single menu destination to operators and hides it from viewers", () => {
     for (const role of ["sales", "manager", "admin"] as const) {
       const items = accessibleNavItems({ plan: "professional", role, modules: { sales: true } })
-      expect(items.filter((item) => item.tKey === "onlineBooking").map((item) => item.href)).toEqual(["/meetings"])
+      expect(items.filter((item) => item.permissionScope === "bookings").map((item) => item.href)).toEqual(BOOKING_WORKSPACE_ENABLED ? ["/meetings"] : role === "admin" ? ["/settings/booking"] : [])
     }
-    expect(accessibleNavItems({ plan: "professional", role: "viewer", modules: { sales: true } }).some((item) => item.href === "/meetings")).toBe(false)
+    expect(accessibleNavItems({ plan: "professional", role: "viewer", modules: { sales: true } }).some((item) => item.permissionScope === "bookings")).toBe(false)
   })
 })

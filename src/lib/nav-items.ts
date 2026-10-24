@@ -212,7 +212,7 @@ export const navItems: NavItem[] = [
   { module: "sales", href: "/settings/territories", icon: MapPin, tKey: "territories", group: "Sales" },
   { module: "sales", href: "/settings/lead-rules", icon: Filter, tKey: "leadRules", group: "Sales" },
   { module: "sales", href: "/settings/web-to-lead", icon: Globe, tKey: "webToLead", group: "Sales" },
-  ...(!BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/settings/booking", icon: CalendarCheck, tKey: "onlineBooking", group: "Sales", permissionScope: "bookings" } satisfies NavItem] : []),
+  ...(!BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/settings/booking", icon: CalendarCheck, tKey: "onlineBooking", group: "Sales", permissionScope: "bookings", allowedRoles: ADMIN_ROLES } satisfies NavItem] : []),
   { module: "contracts", href: "/contracts", icon: FileText, tKey: "contracts", group: "Contracts Control" },
   { module: "contracts", href: "/contracts/lifecycle", icon: RefreshCw, tKey: "contractLifecycle", group: "Contracts Control" },
   { module: "contracts", href: "/contracts/templates", icon: Library, tKey: "contractTemplatesNav", group: "Contracts Control" },

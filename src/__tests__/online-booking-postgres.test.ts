@@ -162,12 +162,27 @@ pgDescribe("online booking on a real Postgres", () => {
     // Then test backend A against the exact future B enforcement contract.
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `
       UPDATE bookings SET name = name WHERE id = 'legacy-buffer-booking';
+      UPDATE booking_pages SET "bufferMinutes"=21 WHERE id='legacy-buffer-page';
+      UPDATE booking_pages SET "bufferMinutes"=20 WHERE id='legacy-buffer-page';
+      DO $$ BEGIN
+        IF (SELECT version FROM booking_pages WHERE id='legacy-buffer-page') <> 2 THEN
+          RAISE EXCEPTION 'Old page writer evaded the expansion version check';
+        END IF;
+      END $$;
       INSERT INTO bookings (id, "organizationId", "bookingPageId", "hostUserId", "startsAt", "endsAt", name, phone, "cancelTokenHash", "updatedAt")
       VALUES ('expansion-zero-probe', '${ORG}', 'legacy-buffer-page', '${HOST_A}', '2035-01-02 08:00:00', '2035-01-02 08:30:00', 'Legacy probe', '+994500000009', '${"a".repeat(64)}', CURRENT_TIMESTAMP);
+      DO $$ BEGIN
+        IF (SELECT "bufferBefore" FROM bookings WHERE id='expansion-zero-probe') <> 20 THEN
+          RAISE EXCEPTION 'Expand legacy writer lost its page buffer';
+        END IF;
+      END $$;
       DELETE FROM bookings WHERE id='expansion-zero-probe';
     `)
+    // B uses the same schema/functions as A. The single global mode transition
+    // is permanent and guarded; it does not require another schema profile.
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env,
-      readFileSync(path.join(ROOT, "scripts/ci/fixtures/booking-enforcement/migration.sql"), "utf8"))
+      "BEGIN; SET LOCAL app.booking_workspace_artifact_sha = '" + "a".repeat(40) + "';\n"
+      + readFileSync(path.join(ROOT, "scripts/booking/activate-workspace.sql"), "utf8") + "\nCOMMIT;")
 
     // Run the actual canonical ledger DDL, including attempt/state/append-only guards.
     // These tables are dropped only in this scratch database, before canonical events/effects exist.
@@ -481,19 +496,9 @@ pgDescribe("online booking on a real Postgres", () => {
     const response = await book(slug, await someSlot(slug, 23))
     const id = (await response.json()).data.id
     const original = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
-    const expansion = readFileSync(path.join(ROOT, "prisma/migrations/20261102100000_booking_commands/migration.sql"), "utf8")
-    const start = expansion.indexOf("CREATE FUNCTION booking_managed_task_guard_fn()")
-    const end = expansion.indexOf("\nCREATE CONSTRAINT TRIGGER booking_event_head_guard", start)
-    const functions = expansion.slice(start, end).replaceAll("CREATE FUNCTION ", "CREATE OR REPLACE FUNCTION ")
-      .replace("CREATE TRIGGER booking_managed_task_guard BEFORE UPDATE OR DELETE ON tasks FOR EACH ROW EXECUTE FUNCTION booking_managed_task_guard_fn();", "")
-    await expect(bypass(() => prisma.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe(functions)
-      await tx.booking.create({ data: { organizationId: ORG, bookingPageId: original.bookingPageId, hostUserId: HOST_A,
-        startsAt: new Date("2038-01-01T08:00Z"), endsAt: new Date("2038-01-01T08:30Z"),
-        name: "Expand-only legacy", phone: "+994501000006", cancelTokenHash: randomUUID() } })
-      await tx.booking.update({ where: { id }, data: { version: 0 } })
-    }))).rejects.toThrow(/canonical booking cannot return to legacy version zero/i)
-    // The failed transaction also rolls back the temporary function replacement.
+    await expect(bypass(() => prisma.booking.update({ where: { id }, data: { version: 0 } })))
+      .rejects.toThrow(/canonical booking cannot return to legacy version zero/i)
+    // The same permanent function guards A and B; activation never relaxes it.
     expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))).version).toBe(original.version)
   })
 

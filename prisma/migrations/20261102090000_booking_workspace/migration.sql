@@ -3,15 +3,15 @@ SET LOCAL lock_timeout = '5s';
 -- Explicit coordinator access. No existing employee is granted team access by migration.
 CREATE TABLE "booking_coordinator_grants" (
   "id" TEXT PRIMARY KEY,
-  "organizationId" TEXT NOT NULL REFERENCES "organizations"("id") ON DELETE CASCADE,
+  "organizationId" TEXT NOT NULL REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   "coordinatorUserId" TEXT NOT NULL,
   "hostUserId" TEXT NOT NULL,
   "canManage" BOOLEAN NOT NULL DEFAULT true,
   "createdBy" TEXT NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "booking_coordinator_grants_coordinator_fkey" FOREIGN KEY ("organizationId", "coordinatorUserId") REFERENCES "users"("organizationId", "id") ON DELETE CASCADE,
-  CONSTRAINT "booking_coordinator_grants_host_fkey" FOREIGN KEY ("organizationId", "hostUserId") REFERENCES "users"("organizationId", "id") ON DELETE CASCADE,
-  CONSTRAINT "booking_coordinator_grants_creator_fkey" FOREIGN KEY ("organizationId", "createdBy") REFERENCES "users"("organizationId", "id")
+  CONSTRAINT "booking_coordinator_grants_coordinator_fkey" FOREIGN KEY ("organizationId", "coordinatorUserId") REFERENCES "users"("organizationId", "id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "booking_coordinator_grants_host_fkey" FOREIGN KEY ("organizationId", "hostUserId") REFERENCES "users"("organizationId", "id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "booking_coordinator_grants_creator_fkey" FOREIGN KEY ("organizationId", "createdBy") REFERENCES "users"("organizationId", "id") ON UPDATE CASCADE
 );
 CREATE UNIQUE INDEX "booking_coordinator_grants_identity_key" ON "booking_coordinator_grants"("organizationId", "coordinatorUserId", "hostUserId");
 CREATE INDEX "booking_coordinator_grants_host_idx" ON "booking_coordinator_grants"("organizationId", "hostUserId");

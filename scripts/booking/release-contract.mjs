@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, lstatSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, lstatSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -34,7 +34,8 @@ export function admitCandidate(state, candidate, predecessor) {
   if (!candidate && state.expanded) throw new Error('PRE_CANONICAL_RECOVERY_FORBIDDEN');
   if (candidate?.phase === 'workspace' && (!state.expanded || !predecessor
     || predecessor.schemaHash !== candidate.schemaHash)) throw new Error('COMPATIBLE_PREDECESSOR_REQUIRED');
-  return { firstExpansion: !state.expanded && candidate?.phase === 'compatibility' };
+  return { firstExpansion: candidate?.phase === 'compatibility' && !predecessor
+    && !state.enforced && state.canonicalCount === 0 };
 }
 
 export function admitRollback(state, target, candidate, firstExpansion, quiesced) {
@@ -50,6 +51,16 @@ export function admitRollback(state, target, candidate, firstExpansion, quiesced
 }
 // END PURE CONTRACT
 
+export function bookingSchemaHash(schema) {
+  const models = ['Booking','BookingPage','BookingCoordinatorGrant','BookingSecret','BookingIntegrationBinding','BookingChangeNote'];
+  const fragments = models.map(name => {
+    const definition = schema.match(new RegExp('^model ' + name + ' \\{[\\s\\S]*?^\\}', 'm'));
+    if (!definition) throw new Error('BOOKING_SCHEMA_MODEL_MISSING');
+    return definition[0];
+  });
+  return createHash('sha256').update(fragments.join('\n')).digest('hex');
+}
+
 function helpers() {
   const text = readFileSync(new URL('../event-platform/inspect-production.sh', import.meta.url), 'utf8');
   const boundary = '\nreport_connection_file_metadata() {';
@@ -57,21 +68,25 @@ function helpers() {
   return text.split(boundary)[0];
 }
 
-export function databaseStateScript() {
+export function databaseStateScript(drained = false) {
   return helpers() + '\nrun_readonly_psql "$BOOKING_RELEASE_DB_URL" 2>/dev/null <<\'BOOKING_STATE_SQL\'\n'
-    + readFileSync(new URL('./release-state.sql', import.meta.url), 'utf8') + 'BOOKING_STATE_SQL\n';
+    + readFileSync(new URL('./release-state.sql', import.meta.url), 'utf8').replace(
+      "SET LOCAL app.booking_release_require_drained = 'off';",
+      "SET LOCAL app.booking_release_require_drained = '" + (drained ? 'on' : 'off') + "';") + 'BOOKING_STATE_SQL\n';
 }
 
 function readManifestAt(directory, requireRoot) {
   const marker = path.join(directory, '.booking-backend-contract.json');
-  if (!existsSync(marker)) return null;
+  try { lstatSync(marker); } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
   for (const file of [directory, marker, path.join(directory,'.deploy-sha')]) {
     const stat = lstatSync(file);
     if (stat.isSymbolicLink() || (requireRoot && (stat.uid !== 0 || stat.gid !== 0 || (stat.mode & 0o022))))
       throw new Error('UNSAFE_BOOKING_ARTIFACT');
   }
   const sha = readFileSync(path.join(directory,'.deploy-sha'), 'utf8').trim();
-  return parseManifest(readFileSync(marker,'utf8'), sha);
+  const raw = readFileSync(marker,'utf8');
+  if (!raw) throw new Error('INVALID_BOOKING_CONTRACT');
+  return parseManifest(raw, sha);
 }
 
 export function emitAdmission(artifactSha, rawManifest) {
@@ -101,11 +116,24 @@ BOOKING_ADMISSION_JS
 `;
 }
 
-function getState() {
-  const result = spawnSync('bash',['-s'], {input: databaseStateScript(), encoding:'utf8', timeout:50000,
-    maxBuffer:8192, env:process.env});
-  if (result.status !== 0) throw new Error('BOOKING_STATE_UNAVAILABLE');
-  return parseState(result.stdout.trim());
+export function activationSql(candidate) {
+  if (!candidate) return '';
+  const validated = parseManifest(JSON.stringify(candidate),candidate.artifactSha);
+  if (validated.phase !== 'workspace') return '';
+  return "BEGIN;\nSET LOCAL lock_timeout = '5s';\nSET LOCAL app.booking_workspace_artifact_sha = '"
+    + validated.artifactSha + "';\n" + readFileSync(new URL('./activate-workspace.sql',import.meta.url),'utf8') + '\nCOMMIT;\n';
+}
+
+function getState(drained = false) {
+  const deadline = Date.now() + (drained ? 15000 : 50000);
+  do {
+    const result = spawnSync('bash',['-s'], {input:databaseStateScript(drained),encoding:'utf8',
+      timeout:Math.max(1,deadline-Date.now()),maxBuffer:8192,env:process.env});
+    if (result.status !== 0) throw new Error('BOOKING_STATE_UNAVAILABLE');
+    if (result.stdout.trim() !== 'BOOKING_WRITERS_BUSY') return parseState(result.stdout.trim());
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,250);
+  } while (Date.now() < deadline);
+  throw new Error('BOOKING_WRITERS_NOT_DRAINED');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -116,14 +144,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       if (!shaPattern.test(artifactSha ?? '')) throw new Error('INVALID_ARTIFACT_SHA');
       const phase = JSON.parse(readFileSync('src/lib/booking/release-phase.json','utf8')).mode;
       if (!['compatibility','workspace'].includes(phase)) throw new Error('INVALID_RELEASE_PHASE');
-      const strict = 'prisma/migrations/20261102110000_booking_workspace_enforcement/migration.sql';
-      if ((phase === 'workspace') !== existsSync(strict)) throw new Error('ENFORCEMENT_PHASE_MISMATCH');
-      if (phase === 'workspace' && !readFileSync(strict).equals(readFileSync('scripts/ci/fixtures/booking-enforcement/migration.sql')))
-        throw new Error('ENFORCEMENT_PROOF_MISMATCH');
-      const schemaHash = createHash('sha256').update(readFileSync('prisma/schema.prisma')).digest('hex');
+      const schemaHash = bookingSchemaHash(readFileSync('prisma/schema.prisma','utf8'));
       writeFileSync(path.join(directory,'.booking-backend-contract.json'),JSON.stringify({
         version:1,contract:'booking-canonical-writer/v1',artifactSha,schemaHash,phase
       })+'\n',{flag:'wx'});
+    } else if (mode === '--activation-sql') {
+      process.stdout.write(activationSql(parseManifest(readFileSync(args[0],'utf8'),args[1])));
+    } else if (mode === '--assert-activated') {
+      const candidate = parseManifest(readFileSync(args[0],'utf8'),args[1]);
+      if (candidate?.phase === 'workspace' && !getState().enforced) throw new Error('WORKSPACE_NOT_ACTIVATED');
     } else if (mode === '--emit-admission') {
       process.stdout.write(emitAdmission(args[0],readFileSync(0,'utf8')));
     } else if (mode === '--check-admission') {
@@ -134,7 +163,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     } else if (mode === '--check-rollback') {
       const [targetDirectory,candidateFile,artifactSha,firstExpansion,quiesced] = args;
       if (![firstExpansion,quiesced].every(v=>v==='true'||v==='false')) throw new Error('INVALID_ROLLBACK_PROOF');
-      admitRollback(getState(),readManifestAt(targetDirectory,true),parseManifest(readFileSync(candidateFile,'utf8'),artifactSha),
+      admitRollback(getState(true),readManifestAt(targetDirectory,true),parseManifest(readFileSync(candidateFile,'utf8'),artifactSha),
         firstExpansion==='true',quiesced==='true');
       process.stdout.write('booking_rollback_admission=PASS\n');
     } else throw new Error('INVALID_ARGUMENTS');
