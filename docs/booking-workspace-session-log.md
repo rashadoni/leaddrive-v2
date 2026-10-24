@@ -378,3 +378,11 @@
 - Добавлены read-only post-deploy/recovery proofs: live artifact SHA, mode, expanded storage и canonical count. Synthetic customer записи и provider sends для smoke не требуются.
 - Actual log инструментального deploy подтверждает plain recovery mode; encrypted/offline commissioning не активна. Существующая политика normal releases не менялась, сертификат полной DR не заявляется.
 - Новый аудит и protocol описывают фактический code path; I-05 до hosted acceptance и реального A artifact ещё не закрывается. Следующие действия: checkpoint/push A, PR с production-build gate; проверить результаты; подготовить B как смену immutable UI phase с тем же backend.
+
+## 2026-10-24 — Подготовлен B поверх compatibility backend A
+
+- Backend A опубликован в PR https://github.com/rashadoni/leaddrive-v2/pull/1026, source `d7235866e3bb8b489883738c888763afc7e8af1b`; production-build label включён. Hosted gates ещё выполняются.
+- За время подготовки в main другим task уже принят #1025 (Time download). Текущий main `6a755bb2329d2f4ff9a1cc9dc2bf5b7900507376` объединён в A без удаления/переписывания чужих изменений. Неизменны origin, registered production и Actions release path.
+- Исходная feature branch продолжена fast-forward к A с сохранением всех checkpoint commits; B меняет только `src/lib/booking/release-phase.json` на workspace и дополняет этот журнал. Backend, schema, migrations и marker storage contract A/B одинаковы.
+- Новый label nav.bookingWorkspace действительно содержит «Встречи и запись»; navDesc и voice keys синхронизированы с immutable phase. В A старый редактор доступен администратору, B открывает согласованный workspace сотрудникам/координаторам с own/team access.
+- PR #1023 становится stage B и остаётся зависимым от #1026: сначала нужны зелёные exact-source checks и actual immutable A artifact с успешным production smoke, затем включение B. Старый writer не используется после canonical данных/активации.
