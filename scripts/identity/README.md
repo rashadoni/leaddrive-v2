@@ -192,3 +192,24 @@ bounded export transaction. CI reader/writer clients use `makeRlsTestPrisma`
 with both the existing strict CI-loopback admission and the exact disposable
 `EVENT_PLATFORM_TEST_DATABASE_URL` fence. Neither client path bypasses the
 repository's script RLS factory or widens the test baseline.
+
+## Phone-possession proof primitive (stage 2 preparation)
+
+`src/lib/identity/phone-proof.ts` prepares a six-digit cryptographic secret,
+a keyed HMAC and an AES-256-GCM delivery payload. MAC and encryption keys are
+derived separately with HKDF, including the configured key ID. The immutable
+context binds purpose, company, User, reservation, challenge, canonical phone,
+account/credential versions and a strict UTC interval no longer than ten
+minutes. Tampered context/key ID, ciphertext/tag or noncanonical encoding is
+refused. Verification uses a constant-time MAC comparison and an explicit
+trusted server/database time, with the exact expiry instant rejected.
+
+Issuance returns only key ID, hash and ciphertext. Only the trusted delivery
+worker may decrypt the payload; no endpoint may return it or log the code.
+There is no default key, environment-file load, provider call or plaintext
+secret in receipts. Tests use synthetic keys and actual Node crypto; production
+keys must be server-supplied cryptographic secrets retained for the bounded
+rotation window. The primitive is not an authorization decision or a complete
+OTP service: transactional persistence/delivery, resend/rate/attempt limits,
+single-use consumption, claim assignment and narrow setup tokens are the next
+integration. Existing authentication and the WhatsApp sender remain unchanged.
