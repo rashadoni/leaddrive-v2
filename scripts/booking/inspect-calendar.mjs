@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { emitRemote, requireSha } from './inspect-production.mjs';
 
-const counts=['hostCount','selectedAccountCount','standaloneCount','ssoCount','noAccountCount','missingAccessTokenCount','expiredCount','expiredWithoutRefreshCount','refreshPresentCount','unknownScopeCount','missingFreeBusyScopeCount'];
+const counts=['hostCount','selectedAccountCount','standaloneCount','ssoCount','noAccountCount','missingAccessTokenCount','expiredCount','expiredWithoutRefreshCount','refreshPresentCount','identityOnlySsoCount','unknownScopeCount','missingFreeBusyScopeCount'];
 const booleans=['pageFound','appAccountSelectAllowed','accountRlsEnabled','accountRlsForced','clientIdConfigured','clientSecretConfigured','readOnly','rlsUnfiltered'];
 export function emitCalendarRemote(sha,slug) {
  requireSha(sha);

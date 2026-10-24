@@ -4,7 +4,7 @@ import {spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {emitCalendarRemote,sanitizeCalendar} from './inspect-calendar.mjs';
 const sha='a'.repeat(40),other='b'.repeat(40);
-const inventory=()=>({hostCount:1,selectedAccountCount:1,standaloneCount:1,ssoCount:0,noAccountCount:0,missingAccessTokenCount:0,expiredCount:0,expiredWithoutRefreshCount:0,refreshPresentCount:1,unknownScopeCount:0,missingFreeBusyScopeCount:0,pageFound:true,appAccountSelectAllowed:true,accountRlsEnabled:false,accountRlsForced:false,clientIdConfigured:true,clientSecretConfigured:true,readOnly:true,rlsUnfiltered:true});
+const inventory=()=>({hostCount:1,selectedAccountCount:1,standaloneCount:1,ssoCount:0,noAccountCount:0,missingAccessTokenCount:0,expiredCount:0,expiredWithoutRefreshCount:0,refreshPresentCount:1,identityOnlySsoCount:0,unknownScopeCount:0,missingFreeBusyScopeCount:0,pageFound:true,appAccountSelectAllowed:true,accountRlsEnabled:false,accountRlsForced:false,clientIdConfigured:true,clientSecretConfigured:true,readOnly:true,rlsUnfiltered:true});
 test('calendar inventory reports facts without certifying provider or accepting private fields',()=>{
  const value=inventory();value.expiredWithoutRefreshCount=1;
  const result=sanitizeCalendar(JSON.stringify(value),sha,other,0);
@@ -44,7 +44,7 @@ test('actual isolated SQL distinguishes missing connection, expired SSO, preferr
  const read=()=>{const result=query(sql);assert.equal(result.status,0,'actual read-only SQL executes');return JSON.parse(result.stdout);};
  let result=read();assert.equal(result.noAccountCount,1);assert.equal(result.appAccountSelectAllowed,false);assert.equal(result.readOnly,true);assert.equal(result.clientSecretConfigured,false);
  assert.equal(query(`INSERT INTO accounts VALUES('sso','calendar-host','google','PRIVATE_TOKEN',NULL,1,'openid email profile');`).status,0);
- result=read();assert.equal(result.ssoCount,1);assert.equal(result.expiredWithoutRefreshCount,1);assert.equal(result.missingFreeBusyScopeCount,1);
+ result=read();assert.equal(result.ssoCount,1);assert.equal(result.identityOnlySsoCount,1);assert.equal(result.expiredWithoutRefreshCount,1);assert.equal(result.missingFreeBusyScopeCount,1);
  assert.equal(query(`INSERT INTO accounts VALUES('standalone','calendar-host','google-calendar','PRIVATE_TOKEN','PRIVATE_REFRESH',2147483647,'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly'); GRANT SELECT ON accounts TO hermes;`).status,0);
  result=read();assert.equal(result.selectedAccountCount,1);assert.equal(result.standaloneCount,1);assert.equal(result.ssoCount,0);assert.equal(result.expiredWithoutRefreshCount,0);assert.equal(result.missingFreeBusyScopeCount,0);assert.equal(result.appAccountSelectAllowed,true);
  assert.doesNotMatch(JSON.stringify(result),/PRIVATE_|calendar-host|calendar-org/);

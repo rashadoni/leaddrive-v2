@@ -277,6 +277,85 @@ pgDescribe("online booking on a real Postgres", () => {
     return body.data.days.at(-1).slots[index].startsAt as string
   }
 
+  it("an expired sign-in-only Google account is not a calendar connection or an effect destination", async () => {
+    const account = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "google", providerAccountId: randomUUID(), access_token: "synthetic-expired", expires_at: 1, scope: "openid email profile" } }))
+    try {
+      const { calendarAccount } = await import("@/lib/google-calendar-account")
+      expect(await bypass(() => calendarAccount(prisma, HOST_A))).toBeNull()
+      const slug = await newPage()
+      const response = await book(slug, await someSlot(slug, 28))
+      expect(response.status, await response.clone().text()).toBe(201)
+      const id = (await response.json()).data.id
+      expect(await bypass(() => prisma.bookingIntegrationBinding.count({ where: { bookingId: id } }))).toBe(0)
+      await bypass(() => drain(ORG, 50))
+    } finally { await bypass(() => prisma.account.delete({ where: { id: account.id } })) }
+  })
+
+  it("fresh consent retires the old immutable credential generation and preserves SSO and historical binding identity", async () => {
+    const { replaceCalendarConnection } = await import("@/lib/google-calendar-connection")
+    const sso = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "google", providerAccountId: randomUUID(), scope: "openid email profile" } }))
+    const previous = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "google-calendar", providerAccountId: randomUUID(), access_token: "synthetic-old", refresh_token: "synthetic-old-refresh" } }))
+    let currentId: string | null = null
+    try {
+      const slug = await newPage()
+      const page = await bypass(() => prisma.bookingPage.findUniqueOrThrow({ where: { slug } }))
+      const row = await legacyFixture((tx) => tx.booking.create({ data: { organizationId: ORG, bookingPageId: page.id, hostUserId: HOST_A, startsAt: new Date(Date.now() + 86400000), endsAt: new Date(Date.now() + 88200000), name: "Synthetic connection generation", phone: "+994500000008", cancelTokenHash: randomUUID(), googleEventId: "old-generation-event" } }))
+      const binding = await bypass(() => prisma.bookingIntegrationBinding.create({ data: { organizationId: ORG, bookingId: row.id, hostUserId: HOST_A, accountId: previous.id, generation: "legacy", providerEventId: "old-generation-event", desiredVersion: 0, state: "synced" } }))
+      const current = await bypass(() => prisma.$transaction((tx) => replaceCalendarConnection(tx, ORG, HOST_A, { access_token: "synthetic-new-access", expiry_date: Date.now() + 3600000 }, "verified-new-primary")))
+      currentId = current.id
+      expect(current.id).not.toBe(previous.id)
+      expect(current.refresh_token).toBeNull()
+      const same = await bypass(() => prisma.$transaction((tx) => replaceCalendarConnection(tx, ORG, HOST_A, { access_token: "synthetic-renewed", refresh_token: "synthetic-new-refresh" }, "verified-new-primary")))
+      const renewed = await bypass(() => prisma.$transaction((tx) => replaceCalendarConnection(tx, ORG, HOST_A, { access_token: "synthetic-renewed-again" }, "verified-new-primary")))
+      expect(same.id).toBe(current.id)
+      expect(renewed.id).toBe(current.id)
+      expect(renewed.refresh_token).toBe("synthetic-new-refresh")
+      expect(await bypass(() => prisma.account.findUnique({ where: { id: previous.id } }))).toBeNull()
+      expect(await bypass(() => prisma.account.findUnique({ where: { id: sso.id } }))).not.toBeNull()
+      expect(await bypass(() => prisma.bookingIntegrationBinding.findUniqueOrThrow({ where: { id: binding.id } }))).toMatchObject({ accountId: previous.id, providerEventId: "old-generation-event", state: "reconciliation_required" })
+    } finally { await bypass(() => prisma.account.deleteMany({ where: { id: { in: [sso.id, previous.id, ...(currentId ? [currentId] : [])] } } })) }
+  })
+
+  it("a legacy event with no recorded credential identity is never assigned to the current calendar", async () => {
+    const account = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "google-calendar", providerAccountId: randomUUID(), access_token: "synthetic-current" } }))
+    try {
+      const slug = await newPage()
+      const page = await bypass(() => prisma.bookingPage.findUniqueOrThrow({ where: { slug } }))
+      const row = await legacyFixture((tx) => tx.booking.create({ data: { organizationId: ORG, bookingPageId: page.id, hostUserId: HOST_A, startsAt: new Date("2020-03-01T05:00:00Z"), endsAt: new Date("2020-03-01T05:30:00Z"), name: "Unproven legacy identity", phone: "+994500000009", cancelTokenHash: randomUUID(), googleEventId: "unverified-legacy-event" } }))
+      calendar.update.mockClear(); calendar.insert.mockClear(); calendar.remove.mockClear()
+      const response = await actionsPost(json("POST", `/api/v1/bookings/${row.id}/actions`, { operation: "outcome", outcome: "completed", version: 0, notifyCustomer: false, idempotencyKey: randomUUID() }), { params: Promise.resolve({ id: row.id }) })
+      expect(response.status, await response.clone().text()).toBe(200)
+      expect(await bypass(() => prisma.bookingIntegrationBinding.findFirstOrThrow({ where: { bookingId: row.id } }))).toMatchObject({ accountId: "unavailable", state: "reconciliation_required", providerEventId: "unverified-legacy-event", desiredState: "present" })
+      await bypass(() => drain(ORG, 50))
+      expect(calendar.update).not.toHaveBeenCalled()
+      expect(calendar.insert).not.toHaveBeenCalled()
+      expect(calendar.remove).not.toHaveBeenCalled()
+    } finally { await bypass(() => prisma.account.delete({ where: { id: account.id } })) }
+  })
+
+  it("a connection changed during availability cannot be adopted as an unchecked booking destination", async () => {
+    const google = await import("@/lib/google-calendar")
+    const { replaceCalendarConnection } = await import("@/lib/google-calendar-connection")
+    const previous = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "google-calendar", providerAccountId: randomUUID(), access_token: "synthetic-old" } }))
+    let currentId: string | null = null
+    try {
+      const slug = await newPage()
+      const startsAt = await someSlot(slug, 30)
+      vi.mocked(google.listBusyIntervals).mockImplementationOnce(async () => {
+        const current = await bypass(() => prisma.$transaction((tx) => replaceCalendarConnection(tx, ORG, HOST_A, { access_token: "synthetic-new-access" }, "verified-other-primary")))
+        currentId = current.id
+        return []
+      })
+      const response = await book(slug, startsAt)
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({ code: "AVAILABILITY_CHANGED" })
+      expect(await bypass(() => prisma.booking.count({ where: { bookingPage: { slug } } }))).toBe(0)
+    } finally {
+      vi.mocked(google.listBusyIntervals).mockResolvedValue(null)
+      await bypass(() => prisma.account.deleteMany({ where: { id: { in: [previous.id, ...(currentId ? [currentId] : [])] } } }))
+    }
+  })
+
   it("the actual forward migration preserves the known legacy buffer without inventing history", async () => {
     const row = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: "legacy-buffer-booking" } }))
     expect(row).toMatchObject({ version: 0, snapshot: null, bufferBefore: 20, bufferAfter: 20 })

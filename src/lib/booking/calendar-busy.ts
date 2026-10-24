@@ -1,3 +1,4 @@
+import { calendarAccount } from "@/lib/google-calendar-account"
 import { bookingDb as prisma } from "./db"
 import { getGoogleCalendarClient } from "@/lib/google-calendar"
 import { localDateTimeToUtc, isValidTimezone } from "@/lib/timezone"
@@ -6,14 +7,11 @@ import type { BusyInterval } from "./availability"
 
 /** Identity-aware busy checks are required for moves; free/busy intervals cannot be subtracted. */
 export async function bookingCalendarBusy(orgId: string, hostId: string, from: Date, to: Date, bookingId?: string) {
-  const account = await prisma.account.findFirst({ where: { userId: hostId, provider: { in: ["google-calendar", "google"] } }, select: { id: true }, orderBy: { provider: "desc" } })
+  const account = await calendarAccount(prisma, hostId)
   if (!account) return { intervals: [] as BusyInterval[], accountId: null, checkedAt: Date.now() }
   const bindings = bookingId ? await prisma.bookingIntegrationBinding.findMany({ where: { organizationId: orgId, bookingId, hostUserId: hostId, accountId: account.id }, select: { providerEventId: true } }) : []
   const ownIds = new Set(bindings.map((row) => row.providerEventId))
-  if (bookingId) {
-    const legacy = await prisma.booking.findFirst({ where: { id: bookingId, organizationId: orgId, hostUserId: hostId }, select: { googleEventId: true } })
-    if (legacy?.googleEventId) ownIds.add(legacy.googleEventId)
-  }
+
   try {
     const calendar = await getGoogleCalendarClient(hostId, account.id)
     let pageToken: string | undefined
