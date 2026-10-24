@@ -1,20 +1,22 @@
+import { calendarAccount } from "@/lib/google-calendar-account"
+import type { Prisma } from "@prisma/client"
+import { disconnectCalendarConnection } from "@/lib/google-calendar-connection"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRls } from "@/lib/with-rls"
 
-export const GET = withRls(async (_req, { orgId, session }) => {
+export const GET = withRls(async (_req, { session }) => {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  // Check for standalone google-calendar first, then SSO google
-  const account = await prisma.account.findFirst({
+  const selected = await calendarAccount(prisma, session.userId)
+  const account = selected ? await prisma.account.findFirst({
     where: {
       userId: session.userId,
-      provider: { in: ["google-calendar", "google"] },
+      id: selected.id,
       access_token: { not: null },
     },
     select: { provider: true, scope: true, expires_at: true, refresh_token: true },
-    orderBy: { provider: "asc" }, // "google-calendar" before "google"
-  })
+  }) : null
 
   // Consider connected only if has refresh_token OR token not expired
   const hasRefreshToken = !!account?.refresh_token
@@ -30,9 +32,7 @@ export const GET = withRls(async (_req, { orgId, session }) => {
 export const DELETE = withRls(async (_req, { orgId, session }) => {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  await prisma.account.deleteMany({
-    where: { userId: session.userId, provider: "google-calendar" },
-  })
+  await prisma.$transaction((tx: Prisma.TransactionClient) => disconnectCalendarConnection(tx, orgId, session.userId))
 
   return NextResponse.json({ success: true })
 })

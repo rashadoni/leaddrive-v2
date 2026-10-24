@@ -1,3 +1,4 @@
+import { calendarAccounts } from "@/lib/google-calendar-account"
 /**
  * Online booking on the server: the public page's data, a booking, a
  * cancellation.
@@ -107,8 +108,10 @@ export async function activeHosts(orgId: string, hostIds: string[]): Promise<{ i
  * connected, their Google Calendar. An unavailable connected calendar blocks
  * automatic reservations for that host until its availability can be checked.
  */
-export async function loadBusyByHost(orgId: string, hostIds: string[], from: Date, to: Date): Promise<Map<string, BusyInterval[]> & { unavailableHostIds: Set<string> }> {
-  const busy = Object.assign(new Map<string, BusyInterval[]>(hostIds.map((id) => [id, []])), { unavailableHostIds: new Set<string>() })
+export async function loadBusyByHost(orgId: string, hostIds: string[], from: Date, to: Date): Promise<Map<string, BusyInterval[]> & { unavailableHostIds: Set<string>; calendarAccountIds: Map<string, string | null> }> {
+  const accounts = await calendarAccounts(prisma, hostIds)
+  const calendarAccountIds = new Map(hostIds.map((id) => [id, accounts.get(id)?.id ?? null]))
+  const busy = Object.assign(new Map<string, BusyInterval[]>(hostIds.map((id) => [id, []])), { unavailableHostIds: new Set<string>(), calendarAccountIds })
   const bookings = await prisma.booking.findMany({
     where: { organizationId: orgId, hostUserId: { in: hostIds }, status: "confirmed", endsAt: { gt: new Date(from.getTime() - 240 * 60_000) }, startsAt: { lt: new Date(to.getTime() + 240 * 60_000) } },
     select: { hostUserId: true, startsAt: true, endsAt: true, bufferBefore: true, bufferAfter: true },
@@ -116,7 +119,7 @@ export async function loadBusyByHost(orgId: string, hostIds: string[], from: Dat
   for (const booking of bookings) busy.get(booking.hostUserId)?.push({ start: booking.startsAt, end: booking.endsAt, bufferBeforeMinutes: booking.bufferBefore, bufferAfterMinutes: booking.bufferAfter })
   await Promise.all(hostIds.map(async (hostId) => {
     try {
-      const calendar = await listBusyIntervals(hostId, new Date(from.getTime() - 240 * 60_000).toISOString(), new Date(to.getTime() + 240 * 60_000).toISOString())
+      const calendar = await listBusyIntervals(hostId, new Date(from.getTime() - 240 * 60_000).toISOString(), new Date(to.getTime() + 240 * 60_000).toISOString(), calendarAccountIds.get(hostId) ?? null)
       if (calendar) busy.get(hostId)?.push(...calendar)
     } catch {
       busy.unavailableHostIds.add(hostId)

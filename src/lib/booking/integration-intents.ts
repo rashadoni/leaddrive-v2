@@ -1,3 +1,4 @@
+import { calendarAccount } from "@/lib/google-calendar-account"
 import { randomUUID } from "node:crypto"
 import type { Booking, Prisma } from "@prisma/client"
 import { enqueueEffect } from "@/lib/event-platform/effects"
@@ -11,7 +12,7 @@ export async function queueBookingEffects(tx: Prisma.TransactionClient, row: Boo
   const bindings = await tx.bookingIntegrationBinding.findMany({ where: { organizationId: row.organizationId, bookingId: row.id } })
   const active = row.status !== "cancelled"
   const outcome = row.status === "completed" || row.status === "no_show"
-  const account = active && !outcome ? await tx.account.findFirst({ where: { userId: row.hostUserId, provider: { in: ["google-calendar", "google"] } }, select: { id: true, providerAccountId: true }, orderBy: { provider: "desc" } }) : null
+  const account = active && !outcome ? await calendarAccount(tx, row.hostUserId) : null
   let matching = bindings.find((binding) => binding.hostUserId === row.hostUserId && binding.accountId === account?.id && binding.desiredState === "present")
   if (account && !matching && row.status === "confirmed" && row.startsAt > new Date() && row.source !== "legacy") {
     const generation = randomUUID()
@@ -35,6 +36,7 @@ export async function ensureLegacyBinding(tx: Prisma.TransactionClient, row: Boo
   if (!row.googleEventId) return
   const existing = await tx.bookingIntegrationBinding.findFirst({ where: { organizationId: row.organizationId, bookingId: row.id, providerEventId: row.googleEventId } })
   if (existing) return
-  const account = await tx.account.findFirst({ where: { userId: row.hostUserId, provider: { in: ["google-calendar", "google"] } }, select: { id: true }, orderBy: { provider: "desc" } })
-  await tx.bookingIntegrationBinding.create({ data: { organizationId: row.organizationId, bookingId: row.id, hostUserId: row.hostUserId, accountId: account?.id ?? "unavailable", generation: "legacy", providerEventId: row.googleEventId, desiredVersion: row.version, desiredState: row.status === "cancelled" ? "absent" : "present" } })
+  // Legacy stores an event ID without the credential/calendar identity. Never
+  // attribute that event to the currently connected account by assumption.
+  await tx.bookingIntegrationBinding.create({ data: { organizationId: row.organizationId, bookingId: row.id, hostUserId: row.hostUserId, accountId: "unavailable", state: "reconciliation_required", generation: "legacy", providerEventId: row.googleEventId, desiredVersion: row.version, desiredState: row.status === "cancelled" ? "absent" : "present" } })
 }

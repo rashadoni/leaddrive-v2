@@ -99,6 +99,19 @@ export async function drainBookingEffects(orgId: string, limit = 20, deadline = 
         await finish(tx, claimed, "succeeded", { noOp: true, reason: "superseded_before_send" })
         return { done: true as const }
       }
+      if (effect.effectType === "booking.calendar" && payload.bindingId) {
+        const binding = await tx.bookingIntegrationBinding.findFirst({ where: { id: payload.bindingId, organizationId: orgId, bookingId: row.id } })
+        // Provider-result uncertainty is released by the existing reviewed
+        // outbox protocol above. A missing credential identity is a separate
+        // blocker and must never be silently rebound to a current account.
+        const credential = binding && binding.accountId !== "unavailable" ? await tx.account.findFirst({ where: { id: binding.accountId, userId: binding.hostUserId, provider: { in: ["google-calendar", "google"] } }, select: { id: true } }) : null
+        if (binding && !credential) {
+          if (await finish(tx, claimed, "reconciliation_required", { reason: "calendar_identity_unverified" })) {
+            await tx.bookingIntegrationBinding.update({ where: { id: binding.id }, data: { state: "reconciliation_required" } })
+          }
+          return { done: true as const }
+        }
+      }
       if (effect.effectType === "booking.project") {
         await project(tx, row)
         await finish(tx, claimed, "succeeded", { localProjection: true })
