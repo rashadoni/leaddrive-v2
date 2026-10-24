@@ -1,3 +1,4 @@
+import type { PrismaClient } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { createInboundPilotHandler } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { createInboundPilotHost } from "@/lib/voice-agent/pharmacy/zeytun-inbound-host"
@@ -12,5 +13,6 @@ const handler = createInboundPilotHandler(process.env.FANUM_VOICE_RUNTIME_TOKEN 
   snapshotDirectory: process.env.ZEYTUN_CACHE_DIR ?? "",
   runtimeOrganizationId: process.env.VOICE_AGENT_ORGANIZATION_ID ?? "",
   database: prisma,
+  orders: prisma as unknown as PrismaClient,
 }))
 export const POST = handler

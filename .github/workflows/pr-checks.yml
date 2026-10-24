@@ -372,6 +372,16 @@ jobs:
           AD_CONVERSIONS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           AD_CONVERSIONS_DB_GATE: required
 
+      - name: Pharmacy phone orders database gate
+        # Phone orders on a real Postgres under the application's role: the
+        # list a call saves, a second save from the same call, eight calls
+        # numbered at once, the manager's card, and one organization never
+        # seeing another's orders.
+        run: npx vitest run src/__tests__/pharmacy-phone-orders-postgres.test.ts
+        env:
+          PHARMACY_PHONE_ORDERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          PHARMACY_PHONE_ORDERS_DB_GATE: required
+
       - name: Online booking database gate
         # Online booking (/book/<slug>) on a real Postgres: eight customers on
         # one time get one meeting, and two overlapping meetings of one host

@@ -56,8 +56,12 @@ class TransportTests(unittest.TestCase):
                     "opening": "Test greeting", "maxSeconds": 60}
             if self.block:
                 self.gate.wait(2)
+            if body["action"] == "order":
+                return self.order_reply
             return result()
 
+        self.order_reply = {"status": "saved", "orderNumber": "TS-1024", "changed": True, "total": "170.40",
+                            "currency": "AZN", "notFound": ["fluimusil üç qutu"], "unpriced": [], "pharmacy": "secret"}
         self.bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now)
         self.bridge.open()
 
@@ -90,6 +94,46 @@ class TransportTests(unittest.TestCase):
         self.assertNotIn("999", str(response))
         self.assertNotIn("not-for-model", str(response))
         self.assertEqual(self.requests[-1], {"action": "search", "callId": CALL, "query": {"text": "Medicine"}})
+
+    def save(self, lines, key="save-1"):
+        self.finished.clear()
+        self.handle({"toolCall": {"functionCalls": [{"id": key, "name": "save_order_list", "args": {"lines": lines}}]}})
+        self.assertTrue(self.finished.wait(2))
+        return self.sent[-1]["toolResponse"]["functionResponses"][0]
+
+    def test_save_sends_the_agreed_lines_and_reads_back_only_the_receipt(self):
+        names = [d["name"] for d in self.bridge.tools()[0]["functionDeclarations"]]
+        self.assertEqual(names, ["search_pharmacy_catalog", "calculate_order_total", "save_order_list"])
+        product = "bbbbbbbb-2222-4222-8222-222222222222"
+        response = self.save([{"externalId": product.upper(), "quantity": 10.0, "unit": " qutu ", "spoken": "noşpa on qutu"},
+                              {"quantity": 3, "unit": "qutu", "spoken": "fluimusil üç qutu"}])
+        self.assertEqual(self.requests[-1], {"action": "order", "callId": CALL, "lines": [
+            {"quantity": 10, "unit": "qutu", "spoken": "noşpa on qutu", "externalId": product},
+            {"quantity": 3, "unit": "qutu", "spoken": "fluimusil üç qutu"}]})
+        self.assertEqual(response["name"], "save_order_list")
+        self.assertEqual(response["response"], {"status": "saved", "orderNumber": "TS-1024", "total": "170.40",
+            "currency": "AZN", "notFound": ["fluimusil üç qutu"], "unpriced": []})
+
+    def test_a_malformed_save_never_reaches_the_crm(self):
+        sent = len(self.requests)
+        for lines in [[], [{"quantity": 0, "unit": "qutu", "spoken": "x"}], [{"quantity": 1, "unit": "qutu"}],
+                      [{"externalId": "not-a-uuid", "quantity": 1, "unit": "qutu", "spoken": "x"}],
+                      [{"quantity": 1, "unit": "qutu", "spoken": "x", "price": "1.00"}],
+                      [{"quantity": 1, "unit": "qutu", "spoken": "x" * 161}]]:
+            response = self.save(lines, key="bad-%d" % len(self.sent))
+            self.assertEqual(response["response"]["status"], "not_saved")
+        self.assertEqual(len(self.requests), sent)
+
+    def test_save_receipt_of_another_shape_is_not_saved(self):
+        for reply in [{"status": "saved", "orderNumber": "1024", "total": "1.00", "notFound": [], "unpriced": []},
+                      {"status": "saved", "orderNumber": "TS-1", "total": "1", "notFound": [], "unpriced": []},
+                      {"status": "orders_disabled"}, {"error": "pilot_unavailable"}, None]:
+            self.order_reply = reply
+            self.assertEqual(self.save([{"quantity": 1, "unit": "qutu", "spoken": "x"}], key="r-%d" % len(self.sent))["response"],
+                             {"status": "not_saved"})
+        self.order_reply = {"status": "already_reviewed", "orderNumber": "TS-7"}
+        self.assertEqual(self.save([{"quantity": 1, "unit": "qutu", "spoken": "x"}], key="done")["response"],
+                         {"status": "already_reviewed", "orderNumber": "TS-7"})
 
     def test_transcription_pins_azerbaijani_with_order_vocabulary_only(self):
         config = self.bridge.transcription()
