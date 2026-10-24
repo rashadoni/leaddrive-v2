@@ -293,3 +293,35 @@
   последними 148/148 booking/notification tests — 205 targeted tests в 12 файлах.
   Scoped lint, JS syntax и diff whitespace PASS. Новый exact-SHA полный run нужен
   после checkpoint этих исправлений; предыдущий красный gate не обходится.
+
+## 2026-10-24 11:40 UTC — Итог реализации и критического аудита
+
+- Финальный проверенный source/remote head:
+  91dd1edc2a3fbe889e42ecc1477760dcdeb645fa.
+- GitHub run 40089486704 / PR checks #3106: pr-scope, static-checks,
+  typecheck и production standalone build PASS. Отдельные runner policy
+  40089486918 и secret scan 40089486797 на том же SHA PASS.
+- Настоящий booking PostgreSQL: 21/21 PASS. Общий unit baseline gate PASS:
+  ровно прежние 18 failing files, новых нет; baseline не менялся.
+- Targeted checks: 148 основной контур + 57 проверки связанных registry/RLS
+  зависимостей = 205/205 PASS в 12 файлах. Финальный compiler log проверен:
+  diagnostics для booking/book routes/booking-pages/tests/_rls отсутствуют.
+- UI fixture browser proof с реальными компонентами PASS; scope и ограничения
+  описаны в evidence/README.md. Production/authenticated E2E, live Google/email/
+  push и production migration NOT RUN; они не подменяются fixture proof.
+- PR #1023 обновлён итоговым описанием и всеми validation references, затем
+  возвращён в draft. Exact source head подтверждён ответом GitHub, не изменён.
+  PR прикреплён к чату. Merge/deploy не выполнялись; production не изменён.
+- Архитектура и реализация подготовлены; implementation audit 17/20 по
+  проверенному UI. Release NO-GO: I-01 — production data inventory не выполнен
+  из-за штатного SSH publickey denial; I-05 — нужен совместимый rollback artifact
+  и проверенный cutover со старого writer. Нельзя выдавать старый main за
+  совместимый rollback или снимать DB guard ради выпуска.
+- Этот завершающий docs-only checkpoint сохраняется в task worktree локально
+  без нового push: source 91dd1edc2 и его зелёные exact-SHA checks остаются
+  неизменными. Финальные результаты также опубликованы в PR body.
+- Точная остановка: проверенный код в draft PR, перед production preflight и
+  подготовкой/согласованием безопасного release cutover. Следующее действие:
+  восстановить штатную возможность read-only inventory, проверить старые данные,
+  подготовить совместимый rollback/cutover; только затем допускать релиз по
+  документированному main → GitHub Actions маршруту.

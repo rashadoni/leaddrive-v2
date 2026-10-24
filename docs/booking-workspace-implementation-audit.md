@@ -116,13 +116,26 @@ Deferred guard намеренно отвергает старый writer без 
 
 ## Доказательства и ограничения
 
-- Targeted unit: **148/148 PASS**, 7 файлов, текущие проверки доступа,
+- Основной targeted unit: **148/148 PASS**, 7 файлов, текущие проверки доступа,
   availability, request identity и notifications.
 - Prisma validate: PASS; scoped ESLint и AZ/RU/EN parity: PASS.
 - Browser component proof: PASS; [результат](booking-workspace/evidence/browser-result.json)
   и [границы проверки](booking-workspace/evidence/README.md).
-- Hosted full compiler, реальный PostgreSQL, build и required checks:
-  первый run `40084671778` на `a5ea772d0`: production build PASS, PostgreSQL/typecheck FAIL. Исправлены UUID cast в worker и контракты nav/attribution/host update; повтор проверит новый SHA. Окончательный результат будет дописан после CI.
+- Финальный source SHA: `91dd1edc2a3fbe889e42ecc1477760dcdeb645fa`.
+  [GitHub run 40089486704](https://github.com/rashadoni/leaddrive-v2/actions/runs/40089486704):
+  pr-scope, static-checks, typecheck и production standalone build — PASS.
+  Отдельные secret scan и runner policy на том же SHA — PASS.
+- Booking PostgreSQL: **21/21 PASS**, включая реальные forward-миграции,
+  pre-migration buffer, CAS/replay, grants/revoke, RLS, command guards,
+  reconnect/outcome и UNKNOWN/reconciliation/cleanup.
+- Общий unit baseline gate: PASS, **ровно 18 прежних красных файлов**, без новых
+  падений и без изменения baseline. Это не утверждение, что весь исторический
+  набор тестов приложения зелёный. Targeted checks: **205/205 PASS**, 12 файлов.
+- Полный compiler завершился; defect gate PASS. В отдельном просмотре его лога
+  нет diagnostics для booking, book routes, booking-pages, booking tests и
+  scripts/_rls. Существующий type baseline остального проекта не расширялся.
+- PR [#1023](https://github.com/rashadoni/leaddrive-v2/pull/1023) оставлен draft
+  после завершения проверок: release NO-GO по I-01/I-05 остаётся в силе.
 - Реальные email/push/Google sends, production migration, полный authenticated
   E2E и нагрузочный тест: NOT RUN. Fixture и provider mocks их не доказывают.
 
