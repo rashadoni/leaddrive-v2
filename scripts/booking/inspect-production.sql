@@ -15,6 +15,7 @@ SELECT json_build_object(
   'btreeGistInstalled', EXISTS(SELECT 1 FROM pg_extension WHERE extname='btree_gist'),
   'extensionCreatePrivilege', has_database_privilege(current_user, current_database(), 'CREATE'),
   'migrationRoleSuperuser', (SELECT rolsuper FROM pg_roles WHERE rolname=current_user),
+  'rlsUnfiltered', (SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname=current_user),
   'readOnly', current_setting('transaction_read_only') = 'on'
 );
 COMMIT;

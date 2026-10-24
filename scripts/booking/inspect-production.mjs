@@ -6,7 +6,7 @@ const countKeys = ['bookingCount', 'invalidHostCount', 'invalidPageCount', 'dupl
   'overlapCount', 'invalidIntervalCount', 'missingTaskCount', 'missingLeadCount',
   'invalidTaskLinkCount', 'invalidLeadLinkCount'];
 const booleanKeys = ['btreeGistAvailable', 'btreeGistInstalled', 'extensionCreatePrivilege',
-  'migrationRoleSuperuser', 'readOnly'];
+  'migrationRoleSuperuser', 'rlsUnfiltered', 'readOnly'];
 const blockingCounts = ['invalidHostCount', 'invalidPageCount', 'duplicateTaskCount', 'overlapCount', 'invalidIntervalCount'];
 
 export function requireSha(sha) {
@@ -44,7 +44,7 @@ export function sanitize(raw, sourceSha, artifactSha, transportExit) {
   if (!value || typeof value !== 'object' || Array.isArray(value)
     || Object.keys(value).length !== countKeys.length + booleanKeys.length
     || countKeys.some(key => !Number.isSafeInteger(value[key]) || value[key] < 0)
-    || booleanKeys.some(key => typeof value[key] !== 'boolean') || !value.readOnly) return failure;
+    || booleanKeys.some(key => typeof value[key] !== 'boolean') || !value.readOnly || !value.rlsUnfiltered) return failure;
   const blocked = blockingCounts.some(key => value[key] !== 0) || !value.btreeGistAvailable
     || (!value.btreeGistInstalled && !value.extensionCreatePrivilege && !value.migrationRoleSuperuser);
   // Reconstruct an allowlisted result: raw provider/SQL errors can never enter evidence.

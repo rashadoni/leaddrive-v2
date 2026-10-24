@@ -9,7 +9,7 @@ const inventory = () => ({ bookingCount: 2, invalidHostCount: 0, invalidPageCoun
   duplicateTaskCount: 0, overlapCount: 0, invalidIntervalCount: 0, missingTaskCount: 1,
   missingLeadCount: 1, invalidTaskLinkCount: 1, invalidLeadLinkCount: 1,
   btreeGistAvailable: true, btreeGistInstalled: false, extensionCreatePrivilege: true,
-  migrationRoleSuperuser: false, readOnly: true });
+  migrationRoleSuperuser: false, rlsUnfiltered: true, readOnly: true });
 const validate = (value, exit = 0) => sanitize(JSON.stringify(value), sourceSha, artifactSha, exit);
 
 test('successful inventory binds both revisions without approving a release or repairing legacy links', () => {
@@ -45,6 +45,7 @@ test('counts, booleans and read-only evidence are strictly typed', () => {
     assert.equal(validate({...inventory(), bookingCount: value}).status, 'ERROR');
   }
   assert.equal(validate({...inventory(), readOnly: false}).status, 'ERROR');
+  assert.equal(validate({...inventory(), rlsUnfiltered: false}).status, 'ERROR');
   assert.equal(validate({...inventory(), btreeGistInstalled: 'true'}).status, 'ERROR');
 });
 
