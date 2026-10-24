@@ -273,3 +273,23 @@
 - Проверки последнего source: scoped ESLint/diff PASS; targeted unit 148/148 PASS.
   Следующий checkpoint закрывает тест следующего cron tick, legacy buffer,
   неизвестную all-day timezone, transient error UI и сохранность календарной истории.
+
+## 2026-10-24 — Полный прогон 6cfcf3c65 и связанные регрессии
+
+- Run 40087646771: production standalone build PASS, typecheck gate PASS,
+  реальный booking PostgreSQL — 21/21 PASS. Все последующие database gates
+  также прошли. Secret scan, runner policy и pr-scope PASS.
+- Общий baseline gate нашёл 4 новых красных файла: module-catalog MAP drift,
+  raw PrismaClient в operator script и два coverage-теста голосового помощника
+  после переименования settings_booking → meetings. Baseline не изменён.
+- Исправлены реальные зависимости: backfill MAP зеркалит permission alias,
+  голосовой справочник описывает новое рабочее место. Voice aggregates явно
+  pending: generic tenant-wide reader не получает обход own/team BookingAccess.
+- Operator script использует общий makeScriptPrisma с явными orgId и operator
+  URL; новая override-возможность запрещает отсутствие tenant scope и не меняет
+  web DATABASE_URL. Отдельный unit proof проверяет connection_limit=1, tenant
+  GUC, отсутствие bypass и неизменность web connection; настоящего подключения нет.
+- Проверены 4 ранее падавших файла + новый scope test: 57/57 PASS. В сумме с
+  последними 148/148 booking/notification tests — 205 targeted tests в 12 файлах.
+  Scoped lint, JS syntax и diff whitespace PASS. Новый exact-SHA полный run нужен
+  после checkpoint этих исправлений; предыдущий красный gate не обходится.

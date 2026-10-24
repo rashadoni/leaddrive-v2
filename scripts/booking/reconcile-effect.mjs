@@ -1,12 +1,12 @@
 // Dedicated operator path for a reviewed provider outcome. No web process receives this credential.
 // node scripts/booking/reconcile-effect.mjs --evidence=/private/receipt.json [--apply]
 import { readFile } from "node:fs/promises"
-import { PrismaClient } from "@prisma/client"
+import { makeScriptPrisma } from "../_rls.mjs"
 const evidencePath = process.argv.find((value) => value.startsWith("--evidence="))?.slice(11)
 if (!evidencePath || !process.env.BOOKING_EFFECT_OPERATOR_DATABASE_URL) throw new Error("Operator database URL and --evidence are required")
 const input = JSON.parse(await readFile(evidencePath, "utf8"))
-if (!input.organizationId || !/^[a-f0-9-]{36}$/.test(input.effectId) || !["retry", "succeeded", "dead"].includes(input.decision) || typeof input.reason !== "string" || input.reason.length < 10 || !input.evidence || typeof input.evidence !== "object") throw new Error("Evidence must identify organization/effect/decision, a reason and provider readback")
-const db = new PrismaClient({ datasources: { db: { url: process.env.BOOKING_EFFECT_OPERATOR_DATABASE_URL } } })
+if (typeof input.organizationId !== "string" || !input.organizationId.trim() || input.organizationId.length > 191 || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(input.effectId) || !["retry", "succeeded", "dead"].includes(input.decision) || typeof input.reason !== "string" || input.reason.length < 10 || !input.evidence || typeof input.evidence !== "object" || Array.isArray(input.evidence) || !Object.keys(input.evidence).length) throw new Error("Evidence must identify organization/effect/decision, a reason and provider readback")
+const db = await makeScriptPrisma({ orgId: input.organizationId, databaseUrl: process.env.BOOKING_EFFECT_OPERATOR_DATABASE_URL })
 try {
   const [identity] = await db.$queryRaw`SELECT current_user AS role`
   if (identity.role !== "leaddrive_effect_operator") throw new Error("This command requires the dedicated leaddrive_effect_operator identity")
