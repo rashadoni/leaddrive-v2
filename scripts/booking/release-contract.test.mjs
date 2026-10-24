@@ -117,7 +117,9 @@ BOOKING_RELEASE_CONTROLLER=reviewed-controller
 BOOKING_RELEASE_CANDIDATE_FILE=reviewed-candidate
 BOOKING_RELEASE_FIRST_EXPANSION=true
 BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED=false
-MIGRATION_DATABASE_URL=synthetic-fixture-only
+MIGRATION_ENV_FILE=synthetic-fixture-env
+load_dotenv_file() { MIGRATION_DATABASE_URL=synthetic-fixture-only; MIGRATION_EXPECTED_DB_ROLE=fixture-role; }
+require_env() { test -n "\${!1:-}"; }
 EXPECTED_DEPLOY_SHA_ARG='${sha}'
 HANDOFF_STARTED=true
 STANDALONE_REPLACED=true
@@ -125,6 +127,7 @@ log() { :; }
 persist_event_platform_pm2_stop_fence() { printf 'stop\\n' >> '${trace}'; }
 node() { printf 'check:%s\\n' "$*" >> '${trace}'; return ${accepted?0:1}; }
 safe_remove_tree() { rm -rf -- "$1"; }
+${deployFunction('with_booking_release_database')}
 ${deployFunction('ensure_booking_rollback_compatible')}
 ${deployFunction('restore_standalone_before_pm2')}
 if restore_standalone_before_pm2; then printf 'accepted'; else printf 'blocked'; fi
@@ -139,6 +142,43 @@ printf ':%s' "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED"
       assert.match(lines[1],/--check-rollback .* true true$/);
     } finally { rmSync(root,{recursive:true,force:true}); }
   }
+});
+
+test('actual booking deploy commands reload credentials after unset without leaking to app children', () => {
+  const source = readFileSync('scripts/server-deploy.sh','utf8');
+  for (const command of ['--check-admission','--check-rollback','--assert-activated']) {
+    const line = source.slice(0,source.indexOf(command)).split('\n').slice(-3).join('\n');
+    assert.match(line,/with_booking_release_database node/);
+  }
+  assert.match(source,/with_booking_release_database npx prisma db execute/);
+  const shell = `set -euo pipefail
+MIGRATION_ENV_FILE=synthetic-fixture-env
+DATABASE_URL=application-fixture
+load_dotenv_file() {
+  [ "$1" = "$MIGRATION_ENV_FILE" ] && [ "$2" = migration ] || return 1
+  MIGRATION_DATABASE_URL=synthetic-fixture-only
+  MIGRATION_EXPECTED_DB_ROLE=fixture-role
+}
+require_env() { test -n "\${!1:-}"; }
+node() { [ "$BOOKING_RELEASE_DB_URL" = synthetic-fixture-only ] && [ "$DATABASE_URL" = synthetic-fixture-only ]; }
+npx() { node; }
+${deployFunction('with_booking_release_database')}
+unset MIGRATION_DATABASE_URL MIGRATION_EXPECTED_DB_ROLE
+with_booking_release_database node reviewed-controller --check-admission
+with_booking_release_database npx prisma db execute
+with_booking_release_database node reviewed-controller --assert-activated
+with_booking_release_database node reviewed-controller --check-rollback
+[ -z "\${MIGRATION_DATABASE_URL+x}" ] && [ -z "\${MIGRATION_EXPECTED_DB_ROLE+x}" ]
+[ -z "\${BOOKING_RELEASE_DB_URL+x}" ] && [ "$DATABASE_URL" = application-fixture ]
+load_dotenv_file() { return 7; }
+if with_booking_release_database node; then exit 81; fi
+load_dotenv_file() { :; }
+if with_booking_release_database node; then exit 82; fi
+printf 'isolated'
+`;
+  const result = spawnSync('bash',['-s'],{input:shell,encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);
+  assert.equal(result.stdout,'isolated');
 });
 
 test('recovery runs current-main admission before any historical artifact is copied to production', () => {
