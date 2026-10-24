@@ -17,8 +17,12 @@ async function withRegistryTransaction<T>(client: RegistryClient, actor: Identit
       // One fixed lock order across all future claim/account writers: tenant first.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'identity-registry:' + actor.organizationId}, 0))`
     }
-    const principal = await tx.user.findFirst({ where: { organizationId: actor.organizationId, id: actor.userId, isActive: true, anonymizedAt: null }, select: { role: true } })
-    const company = await tx.organization.findFirst({ where: { id: actor.organizationId, isActive: true }, select: { id: true } })
+    const principal = readOnly
+      ? await tx.user.findFirst({ where: { organizationId: actor.organizationId, id: actor.userId, isActive: true, anonymizedAt: null }, select: { role: true } })
+      : (await tx.$queryRaw<Array<{ role: string }>>`SELECT role FROM users WHERE "organizationId" = ${actor.organizationId} AND id = ${actor.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`)[0]
+    const company = readOnly
+      ? await tx.organization.findFirst({ where: { id: actor.organizationId, isActive: true }, select: { id: true } })
+      : (await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM organizations WHERE id = ${actor.organizationId} AND "isActive" FOR SHARE`)[0]
     if (!company || !principal || !["admin", "superadmin"].includes(principal.role)) throw new IdentityRegistryError("IDENTITY_ADMIN_REQUIRED")
     return work(tx)
   }, { isolationLevel: readOnly ? "RepeatableRead" : "ReadCommitted", timeout: 15_000, maxWait: 5_000 })
@@ -39,7 +43,7 @@ export async function stageIdentityAccount(client: RegistryClient, actor: Identi
       if (event.requestHash !== requestHash) throw new IdentityRegistryError("IDENTITY_REQUEST_REUSED")
       return { status: "STAGED" as const, accountVersion: event.accountVersion, replayed: true, authenticationChanged: false as const }
     }
-    const user = await tx.user.findFirst({ where: { organizationId: actor.organizationId, id: input.userId, isActive: true, anonymizedAt: null }, select: { id: true } })
+    const [user] = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM users WHERE "organizationId" = ${actor.organizationId} AND id = ${input.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
     if (!user) throw new IdentityRegistryError("IDENTITY_SUBJECT_UNAVAILABLE")
     const agents = await tx.mtmAgent.findMany({ where: { organizationId: actor.organizationId, userId: user.id }, select: { id: true }, take: 2 })
     if (agents.length > 1) throw new IdentityRegistryError("IDENTITY_LEGACY_LINK_AMBIGUOUS")

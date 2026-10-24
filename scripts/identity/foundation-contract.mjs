@@ -44,6 +44,7 @@ async function main() {
     await admin.$executeRawUnsafe('ALTER TABLE organizations ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true')
     await admin.$executeRawUnsafe("UPDATE users SET role = 'admin' WHERE id IN ('identity-user-a', 'identity-user-b')")
     await admin.$executeRawUnsafe('INSERT INTO users (id, "organizationId", "isActive", role) VALUES ($1, $2, true, $3)', "identity-user-a3", A, "viewer")
+    await admin.$executeRawUnsafe('INSERT INTO users (id, "organizationId", "isActive", role) VALUES ($1, $2, true, $3)', "identity-user-a4", A, "viewer")
 
     phase = "ACTUAL_ADDITIVE_MIGRATION"
     execFileSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--file", "prisma/migrations/20261103120000_identity_foundation/migration.sql"], {
@@ -58,6 +59,11 @@ async function main() {
     await admin.$executeRawUnsafe("CREATE ROLE identity_foundation_writer LOGIN PASSWORD 'identity-foundation-writer-only' NOSUPERUSER NOBYPASSRLS")
     await admin.$executeRawUnsafe("GRANT USAGE ON SCHEMA public TO identity_foundation_writer")
     await admin.$executeRawUnsafe("GRANT SELECT ON organizations, users, mtm_agents TO identity_foundation_writer")
+    // SELECT FOR SHARE also applies UPDATE RLS and needs UPDATE privilege.
+    // Restrict the fixture privilege to id; no role/password/phone can be changed.
+    await admin.$executeRawUnsafe('GRANT UPDATE (id) ON users, organizations TO identity_foundation_writer')
+    await admin.$executeRawUnsafe('CREATE POLICY identity_fixture_user_lock ON users FOR UPDATE TO identity_foundation_writer USING ("organizationId" = current_setting(\'app.org_id\', true)) WITH CHECK ("organizationId" = current_setting(\'app.org_id\', true))')
+    await admin.$executeRawUnsafe('CREATE POLICY identity_fixture_company_lock ON organizations FOR UPDATE TO identity_foundation_writer USING (id = current_setting(\'app.org_id\', true)) WITH CHECK (id = current_setting(\'app.org_id\', true))')
     await admin.$executeRawUnsafe(`GRANT SELECT, INSERT, UPDATE, DELETE ON ${TABLES.join(", ")} TO identity_foundation_writer`)
     const writerUrl = new URL(url); writerUrl.username = "identity_foundation_writer"; writerUrl.password = "identity-foundation-writer-only"
     writer = new PrismaClient({ datasources: { db: { url: writerUrl.href } }, log: [] })
@@ -98,6 +104,40 @@ async function main() {
     assert.equal(await admin.identityAccount.count({ where: { userId: "identity-user-a3" } }), 0)
     assert.equal(await admin.identityEvent.count({ where: { requestId: "rollback-a3" } }), 0)
     receipt.checks.push("failed_audit_rolls_back_identity_and_receipt_atomically")
+
+    phase = "AUTHORITY_REVOCATION_SERIALIZES_WITH_WRITE"
+    let enter, release
+    const entered = new Promise(resolve => { enter = resolve })
+    const barrier = new Promise(resolve => { release = resolve })
+    const held = { $transaction: (callback, options) => writer.$transaction(tx => callback(new Proxy(tx, { get(target, property) {
+      if (property === "identityEvent") return new Proxy(target.identityEvent, { get(delegate, method) {
+        if (method === "create") return async (...args) => { enter(); await barrier; return delegate.create(...args) }
+        const value = Reflect.get(delegate, method); return typeof value === "function" ? value.bind(delegate) : value
+      } })
+      const value = Reflect.get(target, property); return typeof value === "function" ? value.bind(target) : value
+    } })), options) }
+    const inFlight = stageIdentityAccount(held, actor, { userId: "identity-user-a4", requestId: "staging-before-revoke" })
+    // Attach rejection handling immediately; a failure must not become unhandled.
+    const stagedFlight = inFlight.then(value => ({ value }), error => ({ error }))
+    await Promise.race([entered, stagedFlight.then(() => { throw new Error("STAGING_DID_NOT_REACH_REVOCATION_BARRIER") })])
+    const revoking = admin.$executeRawUnsafe("UPDATE users SET role = 'manager' WHERE id = $1 /* identity-authority-revocation-probe */", actor.userId)
+    // Prisma operations are lazy until awaited/then-chained.
+    const revocationFlight = revoking.then(value => ({ value }), error => ({ error }))
+    let blocked = false
+    try {
+      const until = Date.now() + 5_000
+      while (Date.now() < until) {
+        const [row] = await admin.$queryRawUnsafe("SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%identity-authority-revocation-probe%') AS blocked")
+        if (row.blocked) { blocked = true; break }
+        await new Promise(resolve => setTimeout(resolve, 20))
+      }
+    } finally { release() }
+    const completedStage = await stagedFlight, completedRevoke = await revocationFlight
+    assert.equal(blocked, true)
+    assert.equal(completedStage.error, undefined); assert.equal(completedRevoke.error, undefined)
+    await assert.rejects(stageIdentityAccount(writer, actor, { userId: "identity-user-a4", requestId: "staging-after-revoke" }), /IDENTITY_ADMIN_REQUIRED/)
+    await admin.$executeRawUnsafe("UPDATE users SET role = 'admin' WHERE id = $1", actor.userId)
+    receipt.checks.push("admin_revocation_cannot_race_an_authorized_identity_write")
 
     phase = "INDEPENDENT_APPLICATION_GRANTS"
     for (const [application, role] of [["TIME", "EMPLOYEE"], ["ROUTE_FIELD", "AGENT"]]) {
