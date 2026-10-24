@@ -141,7 +141,9 @@ afterAll(() => {
 
 describe("GPS review removes real Leaflet maps and refreshes the queue", () => {
   it.each([false, true])("accepts a point once with last=%s and survives map unmount", async (last) => {
-    if (last) rows = [rows[0]]
+    // Two different pins make fitBounds animate even on the final card;
+    // a single proposed pin would leave that timer path untested here.
+    if (last) rows = [row("first", true)]
     await mount()
     expect(container.querySelectorAll(".leaflet-container")).toHaveLength(last ? 1 : 2)
     const accept = container.querySelector<HTMLButtonElement>('[data-testid="mtm-customer-location-accept-first"]')
