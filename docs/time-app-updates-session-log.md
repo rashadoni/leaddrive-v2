@@ -37,3 +37,11 @@
 - Last completed action: final focused validation and six SSR preview exports.
 - Precise stopping point: save task-owned checkpoint commits, then return isolated branches to coordinator; no hosted CI or real-device acceptance executed by this agent.
 - Next action: coordinator visual/code review and integration decision; only then authorized hosted gates and later accepted artifact promotion. Existing Time acceptance failures still block public APK release.
+
+## 2026-10-24 — checkpoint saved
+
+- Implementation checkpoint: `3a10d4da326749c4e54f6946b460d0045bf14931`. Only explicit task-owned paths were staged. No push, PR, merge or deploy.
+- Result: isolated Time download/updater changes are reviewable; public release remains unavailable.
+- Last completed action: implementation committed after focused checks and SSR exports.
+- Stopping point: coordinator owns browser review, integration and future hosted/device gates; this agent has released the local-check slot.
+- Next action: review the six preview fixtures in `/tmp/leaddrive-time-review-20261024`, then decide integration/CI within task authorization.
