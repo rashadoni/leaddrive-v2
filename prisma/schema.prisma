@@ -651,6 +651,7 @@ model User {
   identityAccount IdentityAccount?
   identityActions IdentityEvent[] @relation("IdentityEventActor")
   identityProofsIssued IdentityPhoneProof[] @relation("IdentityProofIssuer")
+  identityActorReviews IdentityActorBinding[] @relation("IdentityActorReviewer")
   coordinatedBookingHosts BookingCoordinatorGrant[] @relation("BookingCoordinator")
   bookingCoordinators BookingCoordinatorGrant[] @relation("BookingCoordinatedHost")
   hostedBookings Booking[] @relation("BookingHost")
@@ -866,6 +867,7 @@ model IdentityAccount {
   reservations    IdentityPhoneReservation[]
   phoneProofs     IdentityPhoneProof[]
   grants          IdentityApplicationGrant[]
+  actorBindings   IdentityActorBinding[]
   events          IdentityEvent[]
 
   @@id([organizationId, userId])
@@ -875,6 +877,7 @@ model IdentityAccount {
 /// One person may hold CRM, TIME and ROUTE_FIELD independently.
 /// The SQL CHECKs restrict applications/status and require an explicit active role.
 model IdentityApplicationGrant {
+  membership IdentityApplicationMembership?
   organizationId String
   userId         String
   application    String @db.VarChar(16)
@@ -887,6 +890,45 @@ model IdentityApplicationGrant {
 
   @@id([organizationId, userId, application])
   @@map("identity_application_grants")
+}
+
+/// Explicit reviewed historical ownership, never inferred from phone/email.
+/// SQL forbids mutation/deletion; a new person must get a new actor.
+model IdentityActorBinding {
+  organizationId String
+  userId String
+  actorId String
+  reviewedByUserId String
+  reviewReference String @db.VarChar(128)
+  accountVersion Int
+  reviewedAt DateTime @default(now()) @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  account IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  actor MtmAgent @relation(fields: [organizationId, actorId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  reviewer User @relation("IdentityActorReviewer", fields: [organizationId, reviewedByUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  memberships IdentityApplicationMembership[]
+
+  @@id([organizationId, actorId])
+  @@unique([organizationId, userId, actorId], map: "identity_actor_bindings_subject_key")
+  @@map("identity_actor_bindings")
+}
+
+/// Inactive plan. Cutover, license and per-app workflow separation are separate gates.
+model IdentityApplicationMembership {
+  organizationId String
+  userId String
+  application String @db.VarChar(16)
+  actorId String
+  status String @default("REVOKED") @db.VarChar(16)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  grant IdentityApplicationGrant @relation(fields: [organizationId, userId, application], references: [organizationId, userId, application], onDelete: Restrict, onUpdate: Restrict)
+  binding IdentityActorBinding @relation(fields: [organizationId, userId, actorId], references: [organizationId, userId, actorId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([organizationId, userId, application])
+  @@unique([organizationId, application, actorId], map: "identity_application_memberships_actor_key")
+  @@map("identity_application_memberships")
 }
 
 /// Only confirmed current assignments live here. Reservations never grant login.
@@ -994,6 +1036,10 @@ model IdentityEvent {
   grantStatus     String? @db.VarChar(16)
   grantRole       String? @db.VarChar(50)
   grantVersion    Int?
+  actorId         String?
+  membershipStatus String? @db.VarChar(16)
+  membershipVersion Int?
+  reviewReference String? @db.VarChar(128)
   normalizedPhone String? @db.VarChar(16)
   reservationId   String?
   reservationExpiresAt DateTime? @db.Timestamptz(3)
@@ -6067,6 +6113,7 @@ model MtmDepartment {
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
+  identityActorBinding IdentityActorBinding?
   attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceMonthMemberships MtmAttendanceMonthMember[]
   attendanceReminderSubjects MtmAttendanceReminderNotice[] @relation("AttendanceReminderSubject")

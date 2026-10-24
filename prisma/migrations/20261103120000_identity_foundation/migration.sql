@@ -31,6 +31,39 @@ CREATE TABLE identity_application_grants (
   CHECK (status <> 'ACTIVE' OR (role IS NOT NULL AND length(btrim(role)) > 0))
 );
 
+-- An explicit administrator review fixes historical actor ownership. It does
+-- not change the legacy user link or authorize an app by itself.
+CREATE TABLE identity_actor_bindings (
+  "organizationId" TEXT NOT NULL,
+  "userId" TEXT NOT NULL,
+  "actorId" TEXT NOT NULL,
+  "reviewedByUserId" TEXT NOT NULL,
+  "reviewReference" VARCHAR(128) NOT NULL CHECK (length("reviewReference") BETWEEN 1 AND 128),
+  "accountVersion" INTEGER NOT NULL CHECK ("accountVersion" > 0),
+  "reviewedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY ("organizationId", "actorId"),
+  CONSTRAINT identity_actor_bindings_subject_key UNIQUE ("organizationId", "userId", "actorId"),
+  FOREIGN KEY ("organizationId", "userId") REFERENCES identity_accounts("organizationId", "userId") ON DELETE RESTRICT ON UPDATE RESTRICT,
+  FOREIGN KEY ("organizationId", "actorId") REFERENCES mtm_agents("organizationId", id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  FOREIGN KEY ("organizationId", "reviewedByUserId") REFERENCES users("organizationId", id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+CREATE TABLE identity_application_memberships (
+  "organizationId" TEXT NOT NULL,
+  "userId" TEXT NOT NULL,
+  application VARCHAR(16) NOT NULL CHECK (application IN ('TIME','ROUTE_FIELD')),
+  "actorId" TEXT NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'REVOKED' CHECK (status IN ('ACTIVE','REVOKED')),
+  version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMPTZ(3) NOT NULL,
+  PRIMARY KEY ("organizationId", "userId", application),
+  CONSTRAINT identity_application_memberships_actor_key UNIQUE ("organizationId", application, "actorId"),
+  FOREIGN KEY ("organizationId", "userId", application) REFERENCES identity_application_grants("organizationId", "userId", application) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  FOREIGN KEY ("organizationId", "userId", "actorId") REFERENCES identity_actor_bindings("organizationId", "userId", "actorId") ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
 CREATE TABLE identity_phone_claims (
   id TEXT PRIMARY KEY,
   "organizationId" TEXT NOT NULL,
@@ -124,12 +157,16 @@ CREATE TABLE identity_events (
   "actorUserId" TEXT,
   "requestId" VARCHAR(128) NOT NULL CHECK (length("requestId") > 0),
   "requestHash" VARCHAR(64) NOT NULL CHECK ("requestHash" ~ '^[a-f0-9]{64}$'),
-  action VARCHAR(40) NOT NULL CHECK (action IN ('ACCOUNT_STAGED', 'GRANT_CHANGED', 'PHONE_RESERVED', 'PHONE_CONFIRMED', 'PHONE_RELEASED', 'RESERVATION_EXPIRED', 'PHONE_PROOF_ISSUED', 'PHONE_PROOF_REJECTED', 'PHONE_DELIVERY_LEASED', 'PHONE_DELIVERY_RECORDED', 'PHONE_RESERVATION_CANCELLED', 'CREDENTIAL_STAGED')),
+  action VARCHAR(40) NOT NULL CHECK (action IN ('ACCOUNT_STAGED', 'GRANT_CHANGED', 'PHONE_RESERVED', 'PHONE_CONFIRMED', 'PHONE_RELEASED', 'RESERVATION_EXPIRED', 'PHONE_PROOF_ISSUED', 'PHONE_PROOF_REJECTED', 'PHONE_DELIVERY_LEASED', 'PHONE_DELIVERY_RECORDED', 'PHONE_RESERVATION_CANCELLED', 'CREDENTIAL_STAGED', 'ACTOR_BINDING_REVIEWED', 'MEMBERSHIP_CHANGED')),
   "accountVersion" INTEGER NOT NULL CHECK ("accountVersion" > 0),
   application VARCHAR(16) CHECK (application IN ('CRM', 'TIME', 'ROUTE_FIELD')),
   "grantStatus" VARCHAR(16) CHECK ("grantStatus" IN ('ACTIVE', 'REVOKED')),
   "grantRole" VARCHAR(50),
   "grantVersion" INTEGER CHECK ("grantVersion" > 0),
+  "actorId" TEXT CHECK ("actorId" IS NULL OR length("actorId") BETWEEN 1 AND 128),
+  "membershipStatus" VARCHAR(16) CHECK ("membershipStatus" IN ('ACTIVE','REVOKED')),
+  "membershipVersion" INTEGER CHECK ("membershipVersion" > 0),
+  "reviewReference" VARCHAR(128) CHECK ("reviewReference" IS NULL OR length("reviewReference") BETWEEN 1 AND 128),
   "normalizedPhone" VARCHAR(16) CHECK ("normalizedPhone" ~ '^\+[1-9][0-9]{6,14}$'),
   "reservationId" TEXT,
   "reservationExpiresAt" TIMESTAMPTZ(3),
@@ -149,6 +186,8 @@ CREATE TABLE identity_events (
   CHECK (action <> 'PHONE_PROOF_ISSUED' OR ("reservationId" IS NOT NULL AND "normalizedPhone" IS NOT NULL AND "proofExpiresAt" IS NOT NULL
     AND "proofExpiresAt" > "createdAt" AND "proofExpiresAt" <= "createdAt" + interval '10 minutes')),
   CHECK (action <> 'PHONE_PROOF_REJECTED' OR ("proofAttempt" IS NOT NULL AND "proofOutcome" IS NOT NULL)),
+  CHECK (action <> 'ACTOR_BINDING_REVIEWED' OR ("actorId" IS NOT NULL AND "reviewReference" IS NOT NULL)),
+  CHECK (action <> 'MEMBERSHIP_CHANGED' OR (application IS NOT NULL AND application IN ('TIME','ROUTE_FIELD') AND "actorId" IS NOT NULL AND "membershipStatus" IS NOT NULL AND "membershipVersion" IS NOT NULL)),
   CHECK (action <> 'CREDENTIAL_STAGED' OR "claimId" IS NOT NULL),
   CHECK (action <> 'PHONE_CONFIRMED' OR ("claimId" IS NOT NULL AND "normalizedPhone" IS NOT NULL)),
   CHECK (action <> 'PHONE_RESERVED' OR ("normalizedPhone" IS NOT NULL AND "reservationId" IS NOT NULL AND length("reservationId") > 0 AND "reservationExpiresAt" IS NOT NULL AND "reservationExpiresAt" > "createdAt" AND "reservationExpiresAt" <= "createdAt" + interval '15 minutes')),
@@ -164,12 +203,12 @@ CREATE INDEX "identity_events_organizationId_userId_createdAt_id_idx" ON identit
 DO $$
 DECLARE target TEXT;
 BEGIN
-  FOREACH target IN ARRAY ARRAY['identity_accounts', 'identity_application_grants', 'identity_phone_claims', 'identity_phone_reservations', 'identity_phone_proofs', 'identity_phone_proof_outbox', 'identity_events'] LOOP
+  FOREACH target IN ARRAY ARRAY['identity_accounts', 'identity_application_grants', 'identity_actor_bindings', 'identity_application_memberships', 'identity_phone_claims', 'identity_phone_reservations', 'identity_phone_proofs', 'identity_phone_proof_outbox', 'identity_events'] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', target);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', target);
     EXECUTE format('CREATE POLICY tenant_read ON %I FOR SELECT USING ("organizationId" = current_setting(''app.org_id'', true) OR current_setting(''app.rls_bypass'', true) = ''on'')', target);
     EXECUTE format('CREATE POLICY tenant_insert ON %I FOR INSERT WITH CHECK ("organizationId" = current_setting(''app.org_id'', true) OR current_setting(''app.rls_bypass'', true) = ''on'')', target);
-    IF target <> 'identity_events' THEN
+    IF target NOT IN ('identity_events', 'identity_actor_bindings') THEN
       EXECUTE format('CREATE POLICY tenant_update ON %I FOR UPDATE USING ("organizationId" = current_setting(''app.org_id'', true) OR current_setting(''app.rls_bypass'', true) = ''on'') WITH CHECK ("organizationId" = current_setting(''app.org_id'', true) OR current_setting(''app.rls_bypass'', true) = ''on'')', target);
       EXECUTE format('CREATE POLICY tenant_delete ON %I FOR DELETE USING ("organizationId" = current_setting(''app.org_id'', true) OR current_setting(''app.rls_bypass'', true) = ''on'')', target);
     END IF;
@@ -184,4 +223,12 @@ CREATE TRIGGER identity_event_immutable BEFORE UPDATE OR DELETE ON identity_even
   FOR EACH ROW EXECUTE FUNCTION identity_reject_event_mutation();
 CREATE TRIGGER identity_event_no_truncate BEFORE TRUNCATE ON identity_events
   FOR EACH STATEMENT EXECUTE FUNCTION identity_reject_event_mutation();
+CREATE FUNCTION identity_reject_binding_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'IDENTITY_ACTOR_BINDING_IMMUTABLE' USING ERRCODE = '23514';
+END $$;
+CREATE TRIGGER identity_actor_binding_immutable BEFORE UPDATE OR DELETE ON identity_actor_bindings
+  FOR EACH ROW EXECUTE FUNCTION identity_reject_binding_mutation();
+CREATE TRIGGER identity_actor_binding_no_truncate BEFORE TRUNCATE ON identity_actor_bindings
+  FOR EACH STATEMENT EXECUTE FUNCTION identity_reject_binding_mutation();
 COMMIT;

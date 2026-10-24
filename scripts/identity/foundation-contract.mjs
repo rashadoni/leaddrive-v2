@@ -12,7 +12,7 @@ import { admitContractTarget } from "./postgres-contract.mjs"
 const A = "identity-company-a", B = "identity-company-b"
 const actor = { organizationId: A, userId: "identity-user-a" }
 const other = { organizationId: B, userId: "identity-user-b" }
-const TABLES = ["identity_accounts", "identity_application_grants", "identity_phone_claims", "identity_phone_reservations", "identity_phone_proofs", "identity_phone_proof_outbox", "identity_events"]
+const TABLES = ["identity_accounts", "identity_application_grants", "identity_actor_bindings", "identity_application_memberships", "identity_phone_claims", "identity_phone_reservations", "identity_phone_proofs", "identity_phone_proof_outbox", "identity_events"]
 const PHONE = "+994550001122"
 const receipt = { status: "FAIL", sourceSha: null, productionObserved: false, checks: [] }
 let phase = "ADMISSION", admin, writer
@@ -42,6 +42,7 @@ async function main() {
     }
     // Adapt only the known minimal fixture, not the production schema.
     await admin.$executeRawUnsafe('ALTER TABLE users ADD CONSTRAINT identity_fixture_users_tenant_key UNIQUE ("organizationId", id)')
+    await admin.$executeRawUnsafe('ALTER TABLE mtm_agents ADD CONSTRAINT identity_fixture_agents_tenant_key UNIQUE ("organizationId", id)')
     await admin.$executeRawUnsafe("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'manager'")
     await admin.$executeRawUnsafe('ALTER TABLE organizations ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true')
     await admin.$executeRawUnsafe("UPDATE users SET role = 'admin' WHERE id IN ('identity-user-a', 'identity-user-b')")
@@ -63,10 +64,11 @@ async function main() {
     await admin.$executeRawUnsafe("GRANT SELECT ON organizations, users, mtm_agents TO identity_foundation_writer")
     // SELECT FOR SHARE also applies UPDATE RLS and needs UPDATE privilege.
     // Restrict the fixture privilege to id; no role/password/phone can be changed.
-    await admin.$executeRawUnsafe('GRANT UPDATE (id) ON users, organizations TO identity_foundation_writer')
+    await admin.$executeRawUnsafe('GRANT UPDATE (id) ON users, organizations, mtm_agents TO identity_foundation_writer')
     await admin.$executeRawUnsafe('CREATE POLICY identity_fixture_user_lock ON users FOR UPDATE TO identity_foundation_writer USING ("organizationId" = current_setting(\'app.org_id\', true)) WITH CHECK ("organizationId" = current_setting(\'app.org_id\', true))')
     await admin.$executeRawUnsafe('CREATE POLICY identity_fixture_company_lock ON organizations FOR UPDATE TO identity_foundation_writer USING (id = current_setting(\'app.org_id\', true)) WITH CHECK (id = current_setting(\'app.org_id\', true))')
     await admin.$executeRawUnsafe(`GRANT SELECT, INSERT, UPDATE, DELETE ON ${TABLES.join(", ")} TO identity_foundation_writer`)
+    await admin.$executeRawUnsafe('CREATE POLICY identity_fixture_agent_lock ON mtm_agents FOR UPDATE TO identity_foundation_writer USING ("organizationId" = current_setting(\'app.org_id\', true)) WITH CHECK ("organizationId" = current_setting(\'app.org_id\', true))')
     const writerUrl = new URL(url); writerUrl.username = "identity_foundation_writer"; writerUrl.password = "identity-foundation-writer-only"
     writer = makeRlsTestPrisma(writerUrl.href)
 
@@ -331,6 +333,30 @@ async function main() {
     await expectDatabaseError(() => admin.$executeRawUnsafe(`INSERT INTO identity_events (id, "organizationId", "userId", "requestId", "requestHash", action, "accountVersion") VALUES ($1,$2,$3,$4,$5,'ACCOUNT_STAGED',1)`,
       "anonymous-admin-action-refused", A, proofContext.userId, "schema-anonymous-stage", "a".repeat(64)), "23514")
     receipt.checks.push("proof_storage_has_tenant_bindings_state_limits_private_ciphertext_and_scoped_anonymous_audit")
+
+    phase = "REVIEWED_ACTOR_BINDING_STORAGE"
+    await admin.$executeRawUnsafe('INSERT INTO mtm_agents (id, "organizationId", "userId", role, status, "attendanceParticipant") VALUES ($1,$2,$3,\'AGENT\',\'ACTIVE\',false)', "binding-agent-a10", A, "identity-user-a10")
+    const binding = { organizationId: A, userId: "identity-user-a10", actorId: "binding-agent-a10", reviewedByUserId: actor.userId, reviewReference: "schema-review-a10", accountVersion: 1 }
+    await admin.identityActorBinding.create({ data: binding })
+    await expectDatabaseError(() => admin.identityActorBinding.create({ data: { ...binding, userId: actor.userId } }), "23505")
+    await expectDatabaseError(() => admin.identityActorBinding.create({ data: { ...binding, organizationId: B, userId: other.userId, reviewedByUserId: other.userId } }), "23503")
+    await expectDatabaseError(() => admin.identityActorBinding.create({ data: { ...binding, actorId: "identity-agent-a", userId: actor.userId, reviewedByUserId: other.userId } }), "23503")
+    await expectDatabaseError(() => admin.$executeRawUnsafe('UPDATE identity_actor_bindings SET "userId" = $1', actor.userId), "23514")
+    await expectDatabaseError(() => admin.$executeRawUnsafe('DELETE FROM identity_actor_bindings'), "23514")
+    receipt.checks.push("reviewed_actor_binding_is_tenant_scoped_immutable_and_not_transferred_to_another_person")
+
+    phase = "INDEPENDENT_MEMBERSHIP_STORAGE"
+    for (const [application, role] of [["TIME", "EMPLOYEE"], ["ROUTE_FIELD", "AGENT"]]) {
+      await admin.identityApplicationGrant.create({ data: { organizationId: A, userId: binding.userId, application, role, status: "ACTIVE" } })
+      await admin.identityApplicationMembership.create({ data: { organizationId: A, userId: binding.userId, actorId: binding.actorId, application, status: "ACTIVE" } })
+    }
+    assert.equal(await admin.identityApplicationMembership.count({ where: { organizationId: A, userId: binding.userId } }), 2)
+    await expectDatabaseError(() => admin.identityApplicationMembership.create({ data: { organizationId: A, userId: actor.userId, actorId: binding.actorId, application: "TIME" } }), "23503")
+    await expectDatabaseError(() => admin.$executeRawUnsafe('INSERT INTO identity_application_memberships ("organizationId","userId",application,"actorId","updatedAt") VALUES ($1,$2,\'CRM\',$3,now())', A, binding.userId, binding.actorId), "23514")
+    await expectDatabaseError(() => admin.$executeRawUnsafe('UPDATE identity_application_memberships SET version = 0 WHERE "userId" = $1', binding.userId), "23514")
+    await expectDatabaseError(() => admin.$executeRawUnsafe('TRUNCATE identity_actor_bindings CASCADE'), "23514")
+    assert.equal(await admin.identityApplicationMembership.count({ where: { organizationId: A, userId: binding.userId } }), 2)
+    receipt.checks.push("independent_mobile_memberships_require_tenant_person_binding_and_existing_grant")
 
     await checkPhoneProofTransactions({ admin, writer, failing, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
 
