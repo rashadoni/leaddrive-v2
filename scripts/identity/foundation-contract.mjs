@@ -28,7 +28,7 @@ async function main() {
     receipt.sourceSha = sha
     const build = process.env.IDENTITY_FOUNDATION_BUILD
     assert.equal(typeof build, "string")
-    const { stageIdentityAccount, readIdentityShadow } = await import(pathToFileURL(resolve(build, "registry.js")).href)
+    const { stageIdentityAccount, readIdentityShadow, planStagedApplicationGrant } = await import(pathToFileURL(resolve(build, "registry.js")).href)
     const { PrismaClient } = await import("@prisma/client")
     admin = new PrismaClient({ datasources: { db: { url: url.href } }, log: [] })
     phase = "ADMITTED_EXISTING_SYNTHETIC_FIXTURE"
@@ -140,14 +140,16 @@ async function main() {
     receipt.checks.push("admin_revocation_cannot_race_an_authorized_identity_write")
 
     phase = "INDEPENDENT_APPLICATION_GRANTS"
-    for (const [application, role] of [["TIME", "EMPLOYEE"], ["ROUTE_FIELD", "AGENT"]]) {
-      await admin.identityApplicationGrant.create({ data: { organizationId: A, userId: actor.userId, application, role, status: "ACTIVE" } })
-    }
+    const timePlan = { userId: actor.userId, application: "TIME", role: "EMPLOYEE", status: "ACTIVE", expectedAccountVersion: 1, expectedGrantVersion: 0, requestId: "plan-time" }
+    const plannedTime = await planStagedApplicationGrant(writer, actor, timePlan)
+    assert.equal(plannedTime.mode, "SHADOW"); assert.equal(plannedTime.authenticationChanged, false)
+    assert.equal(plannedTime.accountVersion, 2); assert.equal(plannedTime.grantVersion, 1)
+    await planStagedApplicationGrant(writer, actor, { ...timePlan, application: "ROUTE_FIELD", role: "AGENT", expectedAccountVersion: 2, requestId: "plan-field" })
     const before = await readIdentityShadow(writer, actor, actor.userId)
     assert.equal(before.applications.find(row => row.application === "CRM").status, "NOT_GRANTED")
     assert.equal(before.applications.find(row => row.application === "TIME").status, "ACTIVE")
     assert.equal(before.applications.find(row => row.application === "ROUTE_FIELD").status, "ACTIVE")
-    await admin.identityApplicationGrant.update({ where: { organizationId_userId_application: { organizationId: A, userId: actor.userId, application: "TIME" } }, data: { status: "REVOKED", version: { increment: 1 } } })
+    await planStagedApplicationGrant(writer, actor, { ...timePlan, status: "REVOKED", role: null, expectedAccountVersion: 3, expectedGrantVersion: 1, requestId: "plan-time-revoke" })
     const after = await readIdentityShadow(writer, actor, actor.userId)
     assert.equal(after.authenticationChanged, false)
     assert.equal(after.applications.find(row => row.application === "TIME").status, "REVOKED")
@@ -156,9 +158,37 @@ async function main() {
     await expectDatabaseError(() => admin.$executeRawUnsafe('INSERT INTO identity_application_grants ("organizationId", "userId", application, status, "updatedAt") VALUES ($1,$2,$3,$4,now())', A, actor.userId, "OTHER", "ACTIVE"), "23514")
     receipt.checks.push("one_person_two_apps_independent_revocation_without_crm_access")
 
+    phase = "GRANT_PLAN_CAS_REPLAY_ROLE_AND_AUDIT"
+    const planReplay = await planStagedApplicationGrant(writer, actor, timePlan)
+    assert.equal(planReplay.replayed, true); assert.equal(planReplay.accountVersion, 2)
+    await assert.rejects(planStagedApplicationGrant(writer, actor, { ...timePlan, role: "REVIEWER" }), /IDENTITY_REQUEST_REUSED/)
+    await assert.rejects(planStagedApplicationGrant(writer, actor, { ...timePlan, requestId: "stale-account-plan" }), /IDENTITY_ACCOUNT_STALE/)
+    await assert.rejects(planStagedApplicationGrant(writer, actor, { ...timePlan, expectedAccountVersion: 4, expectedGrantVersion: 1, requestId: "stale-grant-plan" }), /IDENTITY_GRANT_STALE/)
+    await assert.rejects(planStagedApplicationGrant(writer, actor, { ...timePlan, userId: "identity-user-a2", application: "CRM", role: "admin", requestId: "forbidden-crm-elevation" }), /IDENTITY_CRM_ROLE_CHANGE_FORBIDDEN/)
+    await assert.rejects(planStagedApplicationGrant(failing, actor, { ...timePlan, application: "CRM", role: "admin", expectedAccountVersion: 4, requestId: "grant-audit-failure" }), /SYNTHETIC_AUDIT_FAILURE/)
+    assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: A, userId: actor.userId, application: "CRM" } }), 0)
+    assert.equal((await admin.identityAccount.findUnique({ where: { organizationId_userId: { organizationId: A, userId: actor.userId } } })).version, 4)
+    const grantReceipt = await admin.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: A, requestId: "plan-time-revoke" } } })
+    assert.equal(grantReceipt.grantStatus, "REVOKED"); assert.equal(grantReceipt.grantRole, "EMPLOYEE"); assert.equal(grantReceipt.grantVersion, 2)
+    receipt.checks.push("grant_plans_bind_versions_roles_idempotency_and_atomic_audit")
+
+    phase = "CONCURRENT_MODULE_CONNECTION_PLANS"
+    const plans = [
+      { ...timePlan, userId: "identity-user-a4", requestId: "parallel-time" },
+      { ...timePlan, userId: "identity-user-a4", application: "ROUTE_FIELD", role: "AGENT", requestId: "parallel-field" },
+    ]
+    const parallel = await Promise.allSettled(plans.map(plan => planStagedApplicationGrant(writer, actor, plan)))
+    assert.equal(parallel.filter(row => row.status === "fulfilled").length, 1)
+    assert.equal(parallel.filter(row => row.status === "rejected" && row.reason?.code === "IDENTITY_ACCOUNT_STALE").length, 1)
+    const retry = parallel.findIndex(row => row.status === "rejected")
+    await planStagedApplicationGrant(writer, actor, { ...plans[retry], expectedAccountVersion: 2, requestId: "parallel-module-retry" })
+    assert.equal(await admin.identityAccount.count({ where: { organizationId: A, userId: "identity-user-a4" } }), 1)
+    assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: A, userId: "identity-user-a4", status: "ACTIVE" } }), 2)
+    receipt.checks.push("concurrent_module_plans_retry_without_duplicate_identity")
+
     phase = "PHONE_UNIQUENESS_AND_TENANT_FK"
     const claim = { organizationId: A, userId: actor.userId, normalizedPhone: PHONE, accountVersion: 1, verifiedAt: new Date() }
-    await admin.identityPhoneClaim.create({ data: claim })
+    await admin.identityPhoneClaim.create({ data: { ...claim, accountVersion: 4 } })
     await admin.identityPhoneClaim.create({ data: { ...claim, organizationId: B, userId: other.userId } })
     await expectDatabaseError(() => admin.identityPhoneClaim.create({ data: { ...claim, userId: "identity-user-a2" } }), "23505")
     await expectDatabaseError(() => admin.identityPhoneClaim.create({ data: { ...claim, normalizedPhone: "+994550009998" } }), "23505")

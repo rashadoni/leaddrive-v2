@@ -3,6 +3,16 @@ export const IDENTITY_APPLICATIONS = ["CRM", "TIME", "ROUTE_FIELD"] as const
 export type IdentityApplication = typeof IDENTITY_APPLICATIONS[number]
 export type IdentityGrantStatus = "ACTIVE" | "REVOKED"
 
+export type StagedApplicationGrantInput = {
+  userId: string
+  application: IdentityApplication
+  status: IdentityGrantStatus
+  role: string | null
+  expectedAccountVersion: number
+  expectedGrantVersion: number
+  requestId: string
+}
+
 export class IdentityRegistryError extends Error {
   constructor(readonly code: string) { super(code); this.name = "IdentityRegistryError" }
 }
@@ -29,6 +39,20 @@ export function assertIdentityScope(organizationId: string, userId: string): voi
 export function assertIdentityRequestId(value: string): void {
   if (!validKey(value)) {
     throw new IdentityRegistryError("IDENTITY_REQUEST_INVALID")
+  }
+}
+
+/** Planning is separate from live entitlement/enrollment/auth activation. */
+export function assertStagedApplicationGrant(input: StagedApplicationGrantInput): void {
+  assertIdentityRequestId(input.requestId)
+  if (!IDENTITY_APPLICATIONS.includes(input.application) || !["ACTIVE", "REVOKED"].includes(input.status)
+    || !Number.isSafeInteger(input.expectedAccountVersion) || input.expectedAccountVersion < 1
+    || !Number.isSafeInteger(input.expectedGrantVersion) || input.expectedGrantVersion < 0
+    || (input.role !== null && (typeof input.role !== "string" || !input.role.trim() || input.role.length > 50 || /[\u0000-\u001f\u007f]/.test(input.role)))
+    || (input.status === "ACTIVE" && input.role === null)
+    || (input.role !== null && input.application === "TIME" && !["EMPLOYEE", "REVIEWER"].includes(input.role))
+    || (input.role !== null && input.application === "ROUTE_FIELD" && !["ADMIN", "MANAGER", "SUPERVISOR", "AGENT"].includes(input.role))) {
+    throw new IdentityRegistryError("IDENTITY_GRANT_PLAN_INVALID")
   }
 }
 

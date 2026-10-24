@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { assertIdentityRequestId, assertIdentityScope, compareIdentityShadow, normalizeIdentityPhone, type IdentityShadowInput } from "./contract"
+import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, compareIdentityShadow, normalizeIdentityPhone, type IdentityShadowInput, type StagedApplicationGrantInput } from "./contract"
 
 const base = (): IdentityShadowInput => ({ account: { version: 1 }, canonicalPhone: "+994550001122", userPhone: "+994 55 000 11 22", agentPhones: ["+994550001122"], grants: [] })
 
@@ -61,5 +61,27 @@ describe("one identity across independently granted applications", () => {
     }
     expect(() => assertIdentityScope("tenant-1", "user-1")).not.toThrow()
     expect(() => assertIdentityRequestId("request:1")).not.toThrow()
+  })
+})
+
+describe("explicit application reconciliation plans", () => {
+  const plan = (): StagedApplicationGrantInput => ({ userId: "person-1", application: "TIME", status: "ACTIVE", role: "EMPLOYEE", expectedAccountVersion: 1, expectedGrantVersion: 0, requestId: "plan-time" })
+  it("requires positive account versions and a nonnegative grant version", () => {
+    expect(() => assertStagedApplicationGrant(plan())).not.toThrow()
+    for (const version of [0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1]) expect(() => assertStagedApplicationGrant({ ...plan(), expectedAccountVersion: version })).toThrow("IDENTITY_GRANT_PLAN_INVALID")
+    expect(() => assertStagedApplicationGrant({ ...plan(), expectedGrantVersion: -1 })).toThrow("IDENTITY_GRANT_PLAN_INVALID")
+  })
+  it("does not interpret a field role as an attendance role or vice versa", () => {
+    expect(() => assertStagedApplicationGrant({ ...plan(), role: "AGENT" })).toThrow("IDENTITY_GRANT_PLAN_INVALID")
+    expect(() => assertStagedApplicationGrant({ ...plan(), application: "ROUTE_FIELD" })).toThrow("IDENTITY_GRANT_PLAN_INVALID")
+    expect(() => assertStagedApplicationGrant({ ...plan(), application: "ROUTE_FIELD", role: "SUPERVISOR" })).not.toThrow()
+  })
+  it("rejects absent/control-bearing active roles and unrecognized applications", () => {
+    for (const role of [null, "", " ", "EMPLOYEE\n"]) expect(() => assertStagedApplicationGrant({ ...plan(), role })).toThrow("IDENTITY_GRANT_PLAN_INVALID")
+    expect(() => assertStagedApplicationGrant({ ...plan(), application: "OTHER" as StagedApplicationGrantInput["application"] })).toThrow("IDENTITY_GRANT_PLAN_INVALID")
+    expect(() => assertStagedApplicationGrant({ ...plan(), application: "CRM", role: "custom_crm_role" })).not.toThrow()
+  })
+  it("permits explicit revocation without assigning a new role", () => {
+    expect(() => assertStagedApplicationGrant({ ...plan(), status: "REVOKED", role: null, expectedGrantVersion: 3 })).not.toThrow()
   })
 })

@@ -135,14 +135,24 @@ explicit grant states, never raw numbers or credentials. Neither function is
 called from a current HTTP, login or enrollment path. `authenticationChanged`
 is always false in this stage.
 
+`planStagedApplicationGrant` records an explicit reconciliation plan against an
+existing staged account, with expected account/grant versions. It never creates
+another person for another module, never changes a CRM role, and refuses an
+account that has already cut over. Admin/company/subject row locks serialize
+authority revocation with the write. Each receipt records the exact application,
+role, status and grant version; audit failure rolls back both the plan and its
+version change. A stale parallel module connection must refresh and retry.
+These stored plans do not bypass future entitlement, membership, phone proof or
+audience-auth checks and cannot affect current login.
+
 The same hosted gate validates/generates Prisma, compiles the two service files,
 runs the focused Vitest contract, then executes `foundation-contract.mjs`. That
 script admits only the existing fixed synthetic PostgreSQL fixture, applies the
 actual migration with psql, and uses a non-superuser/NOBYPASSRLS writer to
-exercise staging, replay, authorization, transaction rollback, independent
-grants, tenant isolation and concurrent phone uniqueness. Direct fixture grants
-prove the storage contract; they do not prove a finished registration API or
-an authorized production cutover. Its sanitized receipt is SHA-bound alongside
+exercise staging, replay, authorization/revocation races, transaction rollback,
+independent grant plans, tenant isolation and concurrent phone uniqueness. These
+service/storage checks do not prove a finished registration API or an authorized
+production cutover. Its sanitized receipt is SHA-bound alongside
 the original six-check snapshot receipt.
 
 Still required: verified phone/change/OTP service, independent enrollment and

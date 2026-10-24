@@ -72,12 +72,16 @@ CREATE TABLE identity_events (
   action VARCHAR(40) NOT NULL CHECK (action IN ('ACCOUNT_STAGED', 'GRANT_CHANGED', 'PHONE_RESERVED', 'PHONE_CONFIRMED', 'PHONE_RELEASED', 'RESERVATION_EXPIRED')),
   "accountVersion" INTEGER NOT NULL CHECK ("accountVersion" > 0),
   application VARCHAR(16) CHECK (application IN ('CRM', 'TIME', 'ROUTE_FIELD')),
+  "grantStatus" VARCHAR(16) CHECK ("grantStatus" IN ('ACTIVE', 'REVOKED')),
+  "grantRole" VARCHAR(50),
+  "grantVersion" INTEGER CHECK ("grantVersion" > 0),
   "normalizedPhone" VARCHAR(16) CHECK ("normalizedPhone" ~ '^\+[1-9][0-9]{6,14}$'),
   "previousClaimId" TEXT,
   "claimId" TEXT,
   "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY ("organizationId", "userId") REFERENCES identity_accounts("organizationId", "userId") ON DELETE RESTRICT ON UPDATE RESTRICT,
-  FOREIGN KEY ("organizationId", "actorUserId") REFERENCES users("organizationId", id) ON DELETE RESTRICT ON UPDATE RESTRICT
+  FOREIGN KEY ("organizationId", "actorUserId") REFERENCES users("organizationId", id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CHECK (action <> 'GRANT_CHANGED' OR (application IS NOT NULL AND "grantStatus" IS NOT NULL AND "grantVersion" IS NOT NULL AND ("grantStatus" <> 'ACTIVE' OR ("grantRole" IS NOT NULL AND length(btrim("grantRole")) > 0))))
 );
 CREATE UNIQUE INDEX "identity_events_organizationId_requestId_key" ON identity_events("organizationId", "requestId");
 CREATE INDEX "identity_events_organizationId_userId_createdAt_id_idx" ON identity_events("organizationId", "userId", "createdAt", id);

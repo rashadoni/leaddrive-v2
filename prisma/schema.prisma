@@ -935,6 +935,9 @@ model IdentityEvent {
   action          String @db.VarChar(40)
   accountVersion  Int
   application     String? @db.VarChar(16)
+  grantStatus     String? @db.VarChar(16)
+  grantRole       String? @db.VarChar(50)
+  grantVersion    Int?
   normalizedPhone String? @db.VarChar(16)
   previousClaimId String?
   claimId         String?
