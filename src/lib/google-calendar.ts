@@ -4,6 +4,7 @@
 // the same `auth` and `calendar`, so the calls below are unchanged.
 import * as google from "googleapis/build/src/apis/calendar"
 import { prisma } from "@/lib/prisma"
+import { calendarAccount } from "./google-calendar-account"
 
 function createOAuth2Client() {
   return new google.auth.OAuth2(
@@ -14,15 +15,15 @@ function createOAuth2Client() {
 }
 
 export async function getGoogleCalendarClient(userId: string, accountId?: string) {
-  // Get tokens from Account model — check both "google-calendar" (standalone) and "google" (SSO)
+  const selectedId = accountId ?? (await calendarAccount(prisma, userId))?.id
+  if (!selectedId) throw new Error("Google Calendar not connected")
   const account = await prisma.account.findFirst({
     where: {
       userId,
-      ...(accountId ? { id: accountId } : {}),
+      id: selectedId,
       provider: { in: ["google-calendar", "google"] },
       access_token: { not: null },
     },
-    orderBy: { provider: "desc" }, // prefer "google-calendar" (standalone) over "google" (SSO)
   })
 
   if (!account?.access_token) {
@@ -44,14 +45,14 @@ export async function getGoogleCalendarClient(userId: string, accountId?: string
   // Handle token refresh — update whichever provider we found
   oauth2Client.on("tokens", async (tokens) => {
     if (tokens.access_token) {
-      await prisma.account.update({
-        where: { id: account.id },
+      await prisma.account.updateMany({
+        where: { id: account.id, access_token: account.access_token, refresh_token: account.refresh_token ?? null },
         data: {
           access_token: tokens.access_token,
           ...(tokens.refresh_token ? { refresh_token: tokens.refresh_token } : {}),
           ...(tokens.expiry_date ? { expires_at: Math.floor(tokens.expiry_date / 1000) } : {}),
         },
-      })
+      }).catch(() => { console.warn("[Google Calendar] token persistence unavailable") })
     }
   })
 
@@ -103,10 +104,10 @@ export async function listCalendarEvents(userId: string, timeMin: string, timeMa
  * so no event details are read). Null when the user has no calendar
  * connected — the caller treats that as "nothing known", not as an error.
  */
-export async function listBusyIntervals(userId: string, timeMin: string, timeMax: string): Promise<{ start: Date; end: Date }[] | null> {
-  const account = await prisma.account.findFirst({ where: { userId, provider: { in: ["google-calendar", "google"] } }, select: { id: true }, orderBy: { provider: "desc" } })
-  if (!account) return null
-  const calendar = await getGoogleCalendarClient(userId, account.id)
+export async function listBusyIntervals(userId: string, timeMin: string, timeMax: string, checkedAccountId?: string | null): Promise<{ start: Date; end: Date }[] | null> {
+  const accountId = checkedAccountId === undefined ? (await calendarAccount(prisma, userId))?.id : checkedAccountId
+  if (!accountId) return null
+  const calendar = await getGoogleCalendarClient(userId, accountId)
   const result = await calendar.freebusy.query({
     requestBody: { timeMin, timeMax, items: [{ id: "primary" }] },
   }, { timeout: 8000 })

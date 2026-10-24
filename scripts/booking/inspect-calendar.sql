@@ -21,6 +21,8 @@ SELECT json_build_object(
  'expiredCount',(SELECT count(*) FROM selected WHERE expires_at < extract(epoch FROM now())),
  'expiredWithoutRefreshCount',(SELECT count(*) FROM selected WHERE expires_at < extract(epoch FROM now()) AND COALESCE(refresh_token,'')=''),
  'refreshPresentCount',(SELECT count(*) FROM selected WHERE COALESCE(refresh_token,'')<>''),
+ 'identityOnlySsoCount',(SELECT count(*) FROM selected WHERE provider='google' AND btrim(COALESCE(scope,''))<>'' AND
+   regexp_split_to_array(btrim(scope),'[[:space:]]+') <@ ARRAY['openid','email','profile','https://www.googleapis.com/auth/userinfo.email','https://www.googleapis.com/auth/userinfo.profile']),
  'unknownScopeCount',(SELECT count(*) FROM selected WHERE id IS NOT NULL AND COALESCE(scope,'')=''),
  'missingFreeBusyScopeCount',(SELECT count(*) FROM selected WHERE id IS NOT NULL AND NOT
    (regexp_split_to_array(COALESCE(scope,''),'[[:space:]]+') && ARRAY[
