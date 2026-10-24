@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
+import bcrypt from "bcryptjs"
+import { credentialSetupHint, credentialSetupRequestHash, mintCredentialSetup, verifyCredentialSetup, type CredentialSetupContext } from "./credential-setup.js"
 import type { IdentityPhoneProof, Prisma } from "@prisma/client"
 import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError } from "./contract.js"
 import { phoneProofAttemptHash, sealPhoneProof, verifyPhoneProofCode, type PhoneProofContext, type PhoneProofKey, type SealedPhoneProof } from "./phone-proof.js"
@@ -302,5 +304,89 @@ export async function recordStagedPhoneProofDelivery(client: RegistryClient, org
       action: "PHONE_DELIVERY_RECORDED", accountVersion: proof.accountVersion, credentialEpoch: proof.credentialEpoch,
       proofId: proof.id, proofOutcome: outcome, createdAt: now } })
     return { ...metadata, recorded: true as const, replayed: false }
+  })
+}
+
+
+async function setupState(tx: Prisma.TransactionClient, organizationId: string, proofId: string) {
+  const proof = await lockedProof(tx, organizationId, proofId)
+  if (!proof || proof.status !== "CONFIRMED" || !proof.usedAt) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
+  const account = await subject(tx, organizationId, proof.userId)
+  await issuer(tx, proof)
+  const confirmation = await tx.identityEvent.findFirst({ where: { organizationId, userId: proof.userId, proofId, action: "PHONE_CONFIRMED" } })
+  if (!confirmation?.claimId || !confirmation.credentialEpoch) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
+  const currentClaim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_userId: { organizationId, userId: proof.userId } }, select: { id: true } })
+  const frozen: CredentialSetupContext = { organizationId, userId: proof.userId, proofId, claimId: confirmation.claimId,
+    accountVersion: confirmation.accountVersion, credentialEpoch: confirmation.credentialEpoch,
+    confirmedAt: proof.usedAt.toISOString(), expiresAt: proof.expiresAt.toISOString() }
+  return { proof, account, currentClaim, frozen, now: await clock(tx) }
+}
+
+/**
+ * The only public-service composition allowed to mint setup capability: first
+ * verify the submitted possession code, then recheck its immutable confirmation.
+ * A lost response can replay the same code/request without extending expiry.
+ * The returned capability is not a mobile/CRM session and never bypasses MFA.
+ */
+export async function consumeStagedPhoneProofWithSetup(client: RegistryClient, organizationId: string, input: StagedProofAttempt, resolve: PhoneProofKeyResolver) {
+  const result = await consumeStagedPhoneProof(client, organizationId, input, resolve)
+  if (result.status !== "CONFIRMED") return result
+  return proofTransaction(client, organizationId, true, async tx => {
+    const state = await setupState(tx, organizationId, input.proofId)
+    if (state.currentClaim?.id !== result.claimId || state.account.version !== result.accountVersion || state.account.credentialEpoch !== result.credentialEpoch) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
+    const setupToken = mintCredentialSetup(state.frozen, keyFor(state.proof, resolve), state.now)
+    return { ...result, setupToken, expiresAt: state.frozen.expiresAt }
+  })
+}
+
+export type StagedCredentialInput = { setupToken: string; password: string; requestId: string }
+export type SharedPasswordPolicy = (password: string) => string | null
+/**
+ * Internal staged credential write, not login/reset of live credentials.
+ * `policy` is the server's shared passwordPolicyError, never request data.
+ * Hashing is bounded bcrypt cost12 outside the tenant transaction. Both the
+ * initial and final transactions validate capability/current authority; an
+ * immutable keyed receipt makes identical retries safe despite bcrypt's salt.
+ */
+export async function setStagedIdentityCredential(client: RegistryClient, organizationId: string, input: StagedCredentialInput,
+  resolve: PhoneProofKeyResolver, policy: SharedPasswordPolicy) {
+  exact(input, ["setupToken", "password", "requestId"])
+  assertIdentityRequestId(input.requestId)
+  if (typeof input.password !== "string" || input.password.length > 72 || Buffer.byteLength(input.password, "utf8") > 72) throw new IdentityRegistryError("IDENTITY_PASSWORD_WEAK")
+  const hint = credentialSetupHint(input.setupToken)
+  if (!hint) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
+  if (policy(input.password)) throw new IdentityRegistryError("IDENTITY_PASSWORD_WEAK")
+  const verify = async (tx: Prisma.TransactionClient) => {
+    const state = await setupState(tx, organizationId, hint.proofId)
+    const key = keyFor(state.proof, resolve)
+    if (hint.keyId !== key.id || !verifyCredentialSetup(state.frozen, key, input.setupToken, state.now)) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
+    const requestHash = credentialSetupRequestHash(state.frozen, key, input.requestId, input.password)
+    const previous = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId, requestId: input.requestId } } })
+    if (previous) {
+      if (previous.action !== "CREDENTIAL_STAGED" || previous.requestHash !== requestHash || previous.proofId !== state.proof.id || previous.userId !== state.proof.userId) throw new IdentityRegistryError("IDENTITY_REQUEST_REUSED")
+      if (state.currentClaim?.id !== previous.claimId || state.account.version !== previous.accountVersion || state.account.credentialEpoch !== previous.credentialEpoch) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
+      return { done: { ...metadata, status: "CREDENTIAL_STAGED" as const, accountVersion: previous.accountVersion, credentialEpoch: previous.credentialEpoch, replayed: true }, state, requestHash }
+    }
+    if (state.currentClaim?.id !== state.frozen.claimId || state.account.version !== state.frozen.accountVersion || state.account.credentialEpoch !== state.frozen.credentialEpoch) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
+    if (state.account.version >= 2_147_483_647 || state.account.credentialEpoch >= 2_147_483_647) throw new IdentityRegistryError("IDENTITY_VERSION_EXHAUSTED")
+    return { done: null, state, requestHash }
+  }
+  const admitted = await proofTransaction(client, organizationId, true, verify)
+  if (admitted.done) return admitted.done
+  const passwordHash = await bcrypt.hash(input.password, 12)
+  return proofTransaction(client, organizationId, true, async tx => {
+    const current = await verify(tx)
+    if (current.done) return current.done
+    const { state, requestHash } = current
+    const nextVersion = state.account.version + 1, nextEpoch = state.account.credentialEpoch + 1
+    const changed = await tx.identityAccount.updateMany({ where: { organizationId, userId: state.proof.userId, cutoverAt: null,
+      version: state.frozen.accountVersion, credentialEpoch: state.frozen.credentialEpoch }, data: { passwordHash, version: nextVersion, credentialEpoch: nextEpoch } })
+    if (changed.count !== 1) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
+    const pending = await tx.identityPhoneProof.findMany({ where: { organizationId, userId: state.proof.userId, status: "PENDING" }, select: { id: true }, take: 100 })
+    await suppress(tx, organizationId, pending.map(row => row.id), "SUPERSEDED")
+    await tx.identityEvent.create({ data: { id: randomUUID(), organizationId, userId: state.proof.userId, actorUserId: state.proof.userId,
+      requestId: input.requestId, requestHash, action: "CREDENTIAL_STAGED", accountVersion: nextVersion, credentialEpoch: nextEpoch,
+      proofId: state.proof.id, claimId: state.frozen.claimId, createdAt: state.now } })
+    return { ...metadata, status: "CREDENTIAL_STAGED" as const, accountVersion: nextVersion, credentialEpoch: nextEpoch, replayed: false }
   })
 }

@@ -275,3 +275,26 @@ foundation contract executes synthetic issue/consume/delivery/cancel races,
 wrong-attempt replay, current authority/version/expiry fences and real
 transaction rollback after injected audit failure. A source change is prepared
 until its own exact-head CI receipt passes; earlier green results do not apply.
+
+
+### Narrow staged credential setup
+
+`consumeStagedPhoneProofWithSetup` first consumes the actual possession code,
+then rechecks its current immutable confirmation before minting a deterministic
+`lds1` capability. It is not a JWT/session and has no app or MFA authority. The
+capability binds the tenant, person, proof, current claim, account/credential
+versions and the original proof deadline. Its routing hint is untrusted.
+`credential-setup.ts` derives separate capability/request MAC keys; no unkeyed
+password fingerprint or raw capability belongs in audit receipts.
+
+`setStagedIdentityCredential` requires the server's shared `passwordPolicyError`
+(not a request-supplied function), uses bounded bcrypt cost12 outside the lock,
+and revalidates current authority/claim/versions in the final transaction. It
+sets only the inactive registry credential with epoch/version CAS and atomic
+audit, making a new request under a spent capability fail. An identical retry
+can replay its receipt without relying on bcrypt's random salt. Current User/
+MtmAgent passwords, application grants, CRM MFA and live sessions are untouched.
+No endpoint is exposed, and production setup must hardcode the shared policy,
+server key ring and rate limits. The codec alone is not single-use; that property
+comes from the consuming database transaction. This source remains prepared
+until its exact focused compilation and real-PG checks pass.

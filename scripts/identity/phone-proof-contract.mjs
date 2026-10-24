@@ -2,11 +2,14 @@
 import assert from "node:assert/strict"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
+import bcrypt from "bcryptjs"
+import { passwordPolicyError } from "../password-policy.mjs"
 
 export async function checkPhoneProofTransactions({ admin, writer, failing, actor, other, build, checks, phase }) {
   const { stageIdentityAccount, reserveStagedIdentityPhone } = await import(pathToFileURL(resolve(build, "registry.js")).href)
   const { issueStagedPhoneProof: issue, consumeStagedPhoneProof: consume, cancelStagedPhoneReservation: cancel,
-    expireStagedPhoneProofs: expire, claimStagedPhoneProofDelivery: lease, recordStagedPhoneProofDelivery: record } = await import(pathToFileURL(resolve(build, "phone-proof-registry.js")).href)
+    expireStagedPhoneProofs: expire, claimStagedPhoneProofDelivery: lease, recordStagedPhoneProofDelivery: record,
+    consumeStagedPhoneProofWithSetup: consumeWithSetup, setStagedIdentityCredential: setCredential } = await import(pathToFileURL(resolve(build, "phone-proof-registry.js")).href)
   const { openPhoneProofDelivery } = await import(pathToFileURL(resolve(build, "phone-proof.js")).href)
   const org = actor.organizationId, key = { id: "synthetic-worker-key", material: new Uint8Array(32).fill(13) }
   const resolveKey = id => id === key.id ? key : null
@@ -190,6 +193,55 @@ export async function checkPhoneProofTransactions({ admin, writer, failing, acto
   if (confirmedRace) { assert.equal(raced[1].status, "rejected"); assert.equal(raced[1].reason.code, "IDENTITY_ACCOUNT_STALE") }
   else { assert.equal(raced[0].value.status, "INVALID"); assert.equal(raced[1].status, "fulfilled") }
   checks.push("explicit_resend_supersedes_old_secret_and_confirmation_cancellation_race_has_one_outcome")
+
+  phase("CREDENTIAL_SETUP_REQUIRES_CURRENT_POSSESSION_AND_IS_SINGLE_USE")
+  const credential = await setup("credential"), credentialProof = await issue(writer, actor, credential.input, key), credentialCode = await secret(credentialProof.proofId)
+  const possession = { proofId: credentialProof.proofId, code: credentialCode, requestId: "credential-confirm" }
+  const admitted = await consumeWithSetup(writer, org, possession, resolveKey)
+  assert.equal(admitted.status, "CONFIRMED"); assert.equal(typeof admitted.setupToken, "string")
+  assert.equal((await consumeWithSetup(writer, org, possession, resolveKey)).setupToken, admitted.setupToken)
+  const password = "Synthetic!Credential47"
+  const credentialInput = { setupToken: admitted.setupToken, password, requestId: "credential-set-once" }
+  await assert.rejects(setCredential(writer, other.organizationId, credentialInput, resolveKey, passwordPolicyError), /IDENTITY_SETUP_EXPIRED/)
+  await assert.rejects(setCredential(writer, org, { ...credentialInput, password: "weak" }, resolveKey, passwordPolicyError), /IDENTITY_PASSWORD_WEAK/)
+  await assert.rejects(setCredential(writer, org, { ...credentialInput, setupToken: admitted.setupToken + "=" }, resolveKey, passwordPolicyError), /IDENTITY_SETUP_EXPIRED/)
+  const credentialResults = await Promise.all([
+    setCredential(writer, org, credentialInput, resolveKey, passwordPolicyError),
+    setCredential(writer, org, credentialInput, resolveKey, passwordPolicyError),
+  ])
+  assert.equal(credentialResults.filter(row => !row.replayed).length, 1)
+  const storedCredential = await account(credential.userId)
+  assert.equal(storedCredential.version, 3); assert.equal(storedCredential.credentialEpoch, 3)
+  assert.equal(await bcrypt.compare(password, storedCredential.passwordHash), true)
+  assert.equal(await bcrypt.getRounds(storedCredential.passwordHash), 12)
+  await assert.rejects(setCredential(writer, org, { ...credentialInput, password: "Synthetic!Credential48" }, resolveKey, passwordPolicyError), /IDENTITY_REQUEST_REUSED/)
+  await assert.rejects(setCredential(writer, org, { ...credentialInput, requestId: "credential-spent-token" }, resolveKey, passwordPolicyError), /IDENTITY_SETUP_EXPIRED/)
+  assert.equal((await consumeWithSetup(writer, org, possession, resolveKey)).status, "INVALID")
+  const credentialLegacy = await admin.$queryRawUnsafe('SELECT phone, "passwordHash", role FROM users WHERE id = $1', credential.userId)
+  assert.deepEqual(credentialLegacy[0], { phone: "+994559988777", passwordHash: "legacy-untouched", role: "viewer" })
+  assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: org, userId: credential.userId } }), 0)
+  assert.equal(storedCredential.cutoverAt, null)
+  const credentialEvent = await admin.identityEvent.findUniqueOrThrow({ where: { organizationId_requestId: { organizationId: org, requestId: credentialInput.requestId } } })
+  assert.equal(JSON.stringify(credentialEvent).includes(password), false)
+  assert.equal(JSON.stringify(credentialEvent).includes(storedCredential.passwordHash), false)
+  assert.equal(JSON.stringify(credentialEvent).includes(admitted.setupToken), false)
+  checks.push("possession_bound_setup_sets_only_staged_cost12_credential_once_with_keyed_replay_and_no_grants_or_legacy_change")
+
+  phase("CREDENTIAL_SETUP_AUDIT_ROLLBACK_AND_STALE_AUTHORITY")
+  const credentialRollback = await setup("credential-rollback"), credentialRollbackProof = await issue(writer, actor, credentialRollback.input, key)
+  const credentialRollbackCode = await secret(credentialRollbackProof.proofId)
+  const rollbackAdmission = await consumeWithSetup(writer, org, { proofId: credentialRollbackProof.proofId, code: credentialRollbackCode, requestId: "credential-rollback-confirm" }, resolveKey)
+  const rollbackCredentialInput = { setupToken: rollbackAdmission.setupToken, password, requestId: "credential-rollback-write" }
+  await assert.rejects(setCredential(failing, org, rollbackCredentialInput, resolveKey, passwordPolicyError), /SYNTHETIC_AUDIT_FAILURE/)
+  const unchangedCredential = await account(credentialRollback.userId)
+  assert.equal(unchangedCredential.passwordHash, null); assert.equal(unchangedCredential.version, 2); assert.equal(unchangedCredential.credentialEpoch, 2)
+  await admin.$executeRawUnsafe("UPDATE users SET role = 'manager' WHERE id = $1", actor.userId)
+  try { await assert.rejects(setCredential(writer, org, rollbackCredentialInput, resolveKey, passwordPolicyError), /IDENTITY_PROOF_AUTHORITY_UNAVAILABLE/) }
+  finally { await admin.$executeRawUnsafe("UPDATE users SET role = 'admin' WHERE id = $1", actor.userId) }
+  await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: org, userId: credentialRollback.userId } }, data: { credentialEpoch: 3 } })
+  await assert.rejects(setCredential(writer, org, rollbackCredentialInput, resolveKey, passwordPolicyError), /IDENTITY_SETUP_EXPIRED/)
+  assert.equal((await account(credentialRollback.userId)).passwordHash, null)
+  checks.push("credential_setup_refuses_revoked_or_stale_authority_and_failed_audit_rolls_back_hash_and_epochs")
 
   phase("PROOF_EXPIRY_REPLAY_HAS_FIXED_DEADLINE")
   const expired = await setup("expired"), expiredProof = await issue(writer, actor, expired.input, key), expiredCode = await secret(expiredProof.proofId)

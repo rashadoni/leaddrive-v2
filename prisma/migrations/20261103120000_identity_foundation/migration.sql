@@ -124,7 +124,7 @@ CREATE TABLE identity_events (
   "actorUserId" TEXT,
   "requestId" VARCHAR(128) NOT NULL CHECK (length("requestId") > 0),
   "requestHash" VARCHAR(64) NOT NULL CHECK ("requestHash" ~ '^[a-f0-9]{64}$'),
-  action VARCHAR(40) NOT NULL CHECK (action IN ('ACCOUNT_STAGED', 'GRANT_CHANGED', 'PHONE_RESERVED', 'PHONE_CONFIRMED', 'PHONE_RELEASED', 'RESERVATION_EXPIRED', 'PHONE_PROOF_ISSUED', 'PHONE_PROOF_REJECTED', 'PHONE_DELIVERY_LEASED', 'PHONE_DELIVERY_RECORDED', 'PHONE_RESERVATION_CANCELLED')),
+  action VARCHAR(40) NOT NULL CHECK (action IN ('ACCOUNT_STAGED', 'GRANT_CHANGED', 'PHONE_RESERVED', 'PHONE_CONFIRMED', 'PHONE_RELEASED', 'RESERVATION_EXPIRED', 'PHONE_PROOF_ISSUED', 'PHONE_PROOF_REJECTED', 'PHONE_DELIVERY_LEASED', 'PHONE_DELIVERY_RECORDED', 'PHONE_RESERVATION_CANCELLED', 'CREDENTIAL_STAGED')),
   "accountVersion" INTEGER NOT NULL CHECK ("accountVersion" > 0),
   application VARCHAR(16) CHECK (application IN ('CRM', 'TIME', 'ROUTE_FIELD')),
   "grantStatus" VARCHAR(16) CHECK ("grantStatus" IN ('ACTIVE', 'REVOKED')),
@@ -144,11 +144,12 @@ CREATE TABLE identity_events (
   FOREIGN KEY ("organizationId", "userId") REFERENCES identity_accounts("organizationId", "userId") ON DELETE RESTRICT ON UPDATE RESTRICT,
   FOREIGN KEY ("organizationId", "actorUserId") REFERENCES users("organizationId", id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CHECK ("actorUserId" IS NOT NULL OR action IN ('PHONE_PROOF_REJECTED','PHONE_DELIVERY_LEASED','PHONE_DELIVERY_RECORDED')),
-  CHECK (action NOT IN ('PHONE_PROOF_ISSUED','PHONE_PROOF_REJECTED','PHONE_DELIVERY_LEASED','PHONE_DELIVERY_RECORDED','PHONE_CONFIRMED')
+  CHECK (action NOT IN ('PHONE_PROOF_ISSUED','PHONE_PROOF_REJECTED','PHONE_DELIVERY_LEASED','PHONE_DELIVERY_RECORDED','PHONE_CONFIRMED','CREDENTIAL_STAGED')
     OR ("proofId" IS NOT NULL AND "credentialEpoch" IS NOT NULL)),
   CHECK (action <> 'PHONE_PROOF_ISSUED' OR ("reservationId" IS NOT NULL AND "normalizedPhone" IS NOT NULL AND "proofExpiresAt" IS NOT NULL
     AND "proofExpiresAt" > "createdAt" AND "proofExpiresAt" <= "createdAt" + interval '10 minutes')),
   CHECK (action <> 'PHONE_PROOF_REJECTED' OR ("proofAttempt" IS NOT NULL AND "proofOutcome" IS NOT NULL)),
+  CHECK (action <> 'CREDENTIAL_STAGED' OR "claimId" IS NOT NULL),
   CHECK (action <> 'PHONE_CONFIRMED' OR ("claimId" IS NOT NULL AND "normalizedPhone" IS NOT NULL)),
   CHECK (action <> 'PHONE_RESERVED' OR ("normalizedPhone" IS NOT NULL AND "reservationId" IS NOT NULL AND length("reservationId") > 0 AND "reservationExpiresAt" IS NOT NULL AND "reservationExpiresAt" > "createdAt" AND "reservationExpiresAt" <= "createdAt" + interval '15 minutes')),
   CHECK (action <> 'GRANT_CHANGED' OR (application IS NOT NULL AND "grantStatus" IS NOT NULL AND "grantVersion" IS NOT NULL AND ("grantStatus" <> 'ACTIVE' OR ("grantRole" IS NOT NULL AND length(btrim("grantRole")) > 0))))
