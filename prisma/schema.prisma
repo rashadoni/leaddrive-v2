@@ -69,6 +69,10 @@ model Organization {
   // the compliance trail is not owned by the organization and survives it.
   tenantMasterKeys      TenantMasterKey[]
   tenantDataKeys        TenantDataKey[]
+  bookingChangeNotes BookingChangeNote[]
+  bookingSecrets BookingSecret[]
+  bookingBindings BookingIntegrationBinding[]
+  bookingCoordinatorGrants BookingCoordinatorGrant[]
   bookingPages          BookingPage[]
   adConversionDestinations AdConversionDestination[]
   adConversionEvents       AdConversionEvent[]
@@ -646,6 +650,9 @@ model PlanRequest {
 model User {
   identityAccount IdentityAccount?
   identityActions IdentityEvent[] @relation("IdentityEventActor")
+  coordinatedBookingHosts BookingCoordinatorGrant[] @relation("BookingCoordinator")
+  bookingCoordinators BookingCoordinatorGrant[] @relation("BookingCoordinatedHost")
+  hostedBookings Booking[] @relation("BookingHost")
   attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceReminderNotices MtmAttendanceReminderNotice[]
   attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
@@ -19731,6 +19738,7 @@ model DomainEvent {
 
   outbox  EventOutbox?
   effects EffectOutbox[]
+  bookingChangeNote BookingChangeNote?
 
   @@unique([organizationId, id], map: "domain_events_org_id_key")
   @@unique([organizationId, aggregateType, aggregateId, aggregateVersion], map: "domain_events_stream_version_key")
@@ -23039,6 +23047,7 @@ model MtmAttendanceReminderNotice {
 /// src/lib/booking/availability.ts from `weekly` minus the hosts' bookings
 /// and, when connected, their Google Calendar.
 model BookingPage {
+  version Int @default(0)
   id               String       @id @default(cuid())
   organizationId   String
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -23064,6 +23073,7 @@ model BookingPage {
 
   bookings Booking[]
 
+  @@unique([organizationId, id], map: "booking_pages_org_id_key")
   @@index([organizationId])
   @@map("booking_pages")
 }
@@ -23072,12 +23082,25 @@ model BookingPage {
 /// start at the same moment (partial unique index in the migration), and the
 /// booking transaction holds a per-host lock while it checks for overlap.
 model Booking {
+  version Int @default(0)
+  snapshot Json?
+  source String @default("public_link")
+  secretId String?
+  adAttribution Json?
+  createdBy String?
+  outcomeNote String?
+  cancellationReason String?
+  bufferBefore Int @default(0)
+  bufferAfter Int @default(0)
+  bindings BookingIntegrationBinding[]
+  changeNotes BookingChangeNote[]
   id              String      @id @default(cuid())
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   bookingPageId   String
-  bookingPage     BookingPage @relation(fields: [bookingPageId], references: [id], onDelete: Cascade)
+  bookingPage     BookingPage @relation(fields: [organizationId, bookingPageId], references: [organizationId, id], onDelete: NoAction)
   hostUserId      String
+  hostUser User @relation("BookingHost", fields: [organizationId, hostUserId], references: [organizationId, id], onDelete: NoAction)
   startsAt        DateTime
   endsAt          DateTime
   name            String
@@ -23097,6 +23120,9 @@ model Booking {
 
   @@index([organizationId, hostUserId, startsAt])
   @@index([bookingPageId, startsAt])
+  @@index([organizationId, startsAt, id], map: "bookings_org_start_id_idx")
+  @@index([organizationId, hostUserId, startsAt, id], map: "bookings_org_host_start_id_idx")
+  @@unique([organizationId, id], map: "bookings_org_id_key")
   @@map("bookings")
 }
 
@@ -23162,4 +23188,76 @@ model AdConversionEvent {
   @@index([organizationId, status])
   @@index([destinationId, createdAt])
   @@map("ad_conversion_events")
+}
+
+
+/// Explicit own/team expansion for the meetings workspace; board membership is unrelated.
+model BookingCoordinatorGrant {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  coordinatorUserId String
+  coordinator User @relation("BookingCoordinator", fields: [organizationId, coordinatorUserId], references: [organizationId, id], onDelete: Cascade)
+  hostUserId String
+  host User @relation("BookingCoordinatedHost", fields: [organizationId, hostUserId], references: [organizationId, id], onDelete: Cascade)
+  canManage Boolean @default(true)
+  createdBy String
+  createdAt DateTime @default(now())
+  @@unique([organizationId, coordinatorUserId, hostUserId], map: "booking_coordinator_grants_identity_key")
+  @@index([organizationId, hostUserId], map: "booking_coordinator_grants_host_idx")
+  @@map("booking_coordinator_grants")
+}
+
+
+/// Encrypted response and delivery capability. The immutable receipt stores only a reference.
+model BookingSecret {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recoveryHash String
+  responseCipher String?
+  responseExpiresAt DateTime
+  deliveryCipher String?
+  createdAt DateTime @default(now())
+  @@index([organizationId, responseExpiresAt])
+  @@map("booking_secrets")
+}
+
+/// Preserve every old calendar resource until deletion is acknowledged.
+model BookingIntegrationBinding {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId String
+  booking Booking @relation(fields: [organizationId, bookingId], references: [organizationId, id], onDelete: Cascade)
+  hostUserId String
+  accountId String
+  calendarId String @default("primary")
+  generation String
+  providerEventId String?
+  desiredVersion Int
+  appliedVersion Int @default(0)
+  desiredState String @default("present")
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([organizationId, bookingId, generation], map: "booking_bindings_generation_key")
+  @@index([organizationId, bookingId])
+  @@map("booking_integration_bindings")
+}
+
+
+/// Sensitive explanations are kept outside the immutable structural event stream.
+model BookingChangeNote {
+  eventId String @id @db.Uuid
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId String
+  booking Booking @relation(fields: [organizationId, bookingId], references: [organizationId, id], onDelete: Cascade)
+  event DomainEvent @relation(fields: [organizationId, eventId], references: [organizationId, id], onDelete: Cascade)
+  data Json
+  createdAt DateTime @default(now())
+  @@index([organizationId, bookingId])
+  @@unique([organizationId, eventId])
+  @@map("booking_change_notes")
 }

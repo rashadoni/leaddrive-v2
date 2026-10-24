@@ -39,6 +39,7 @@ import { navItems, NAV_GROUP_ORDER } from "@/lib/nav-items"
 // the group catalog narrowed ModuleId, but this map deliberately keeps the
 // legacy vocabulary; see the moduleToSection comment below).
 export const ENTITY_TO_MODULE: Record<string, string> = {
+  booking: "bookings",
   task:           "tasks",
   deal:           "deals",       // → sales group (LEGACY_MODULE_MAP deals→sales)
   lead:           "leads",       // → sales group (LEGACY_MODULE_MAP leads→sales)
@@ -152,6 +153,8 @@ export interface NotificationKind {
  */
 export const NOTIFICATION_KINDS: NotificationKind[] = (
   [
+    { kind: "booking.created", entityType: "booking" },
+    { kind: "booking.cancelled", entityType: "booking" },
     { kind: "task.created",     entityType: "task" },
     { kind: "task.completed",   entityType: "task" },
     { kind: "deal.created",     entityType: "deal" },

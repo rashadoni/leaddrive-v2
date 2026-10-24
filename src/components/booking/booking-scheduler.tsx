@@ -48,7 +48,7 @@ export interface BookingConfirmation {
 
 export type BookResult =
   | { ok: true; booking: BookingConfirmation }
-  | { ok: false; reason: "taken" | "invalid" | "error" }
+  | { ok: false; reason: "taken" | "invalid" | "error" | "calendar" | "expired" }
 
 const INTL: Record<string, string> = { az: "az-AZ", ru: "ru-RU", en: "en-GB" }
 
@@ -95,10 +95,11 @@ export function BookingSummary({ page }: { page: PublicBookingPage }) {
 }
 
 export function BookingScheduler({
-  page, days, onBook,
+  page, days, onBook, staff = false,
 }: {
   page: PublicBookingPage
   days: DaySlots[]
+  staff?: boolean
   onBook: (request: BookingRequest) => Promise<BookResult>
 }) {
   const t = useTranslations("booking")
@@ -123,14 +124,14 @@ export function BookingScheduler({
       setConfirmed(result.booking)
       return
     }
-    setError(result.reason === "taken" ? t("errTaken") : result.reason === "invalid" ? t("errInvalid") : t("errGeneric"))
+    setError(result.reason === "calendar" ? t("calendarUnavailable") : result.reason === "expired" ? t("confirmationExpired") : result.reason === "taken" ? t("errTaken") : result.reason === "invalid" ? t("errInvalid") : t("errGeneric"))
     if (result.reason === "taken") setStartsAt(null)
   }
 
   if (confirmed) return <BookingConfirmed page={page} booking={confirmed} />
 
   return (
-    <div className="grid gap-6 md:grid-cols-[260px_1fr]">
+    <div className={staff ? "space-y-5" : "grid gap-6 md:grid-cols-[260px_1fr]"}>
       <BookingSummary page={page} />
       <section className="min-w-0 space-y-5" aria-label={t("chooseTime")}>
         {days.length === 0 ? (
@@ -150,7 +151,7 @@ export function BookingScheduler({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <Label htmlFor="booking-name">{t("name")}</Label>
+                <Label htmlFor="booking-name">{t(staff ? "clientName" : "name")}</Label>
                 <Input id="booking-name" className="mt-1" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </div>
               <div>
@@ -170,7 +171,7 @@ export function BookingScheduler({
             {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
             <Button className="min-h-11 w-full sm:w-auto" onClick={() => void submit()} disabled={!canSubmit}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CalendarCheck className="h-4 w-4" aria-hidden="true" />}
-              {t("book", { time: format.time(startsAt) })}
+              {t(staff ? "bookForClient" : "book", { time: format.time(startsAt) })}
             </Button>
           </div>
         ) : (

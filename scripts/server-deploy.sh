@@ -68,6 +68,10 @@ RUNTIME_STATE_CUTOVER_FINALIZED=false
 HANDOFF_STARTED=false
 HANDOFF_RECOVERY_COMPLETE=false
 EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED=false
+BOOKING_RELEASE_CONTROLLER=""
+BOOKING_RELEASE_CANDIDATE_FILE=""
+BOOKING_RELEASE_FIRST_EXPANSION=false
+BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED=false
 OPS_CURRENT_PREVIOUS_TARGET=""
 OPS_CURRENT_NEW_TARGET=""
 OPS_CURRENT_SWITCHED=false
@@ -238,7 +242,7 @@ assert_dotenv_key_allowed() {
     OPERATIONS_ACTIVATION_STARTED|GENESIS_ACTIVATION_DURABLE|OPERATIONS_CRONTAB_INTENT|OPERATIONS_SYSTEMD_UNITS|OPERATIONS_TIMERS|\
     OPERATIONS_BACKUP_LOCK_FD|OPERATIONS_SECRETS_LOCK_FD|\
     OPERATIONS_RUNTIME_FILES_LOCK_FD|OPERATIONS_LOG_LOCK_FD|\
-    OPERATIONS_LOGROTATE_FILES|EVENT_PLATFORM_*|LOG_EVIDENCE_*|LOG_GENESIS_*|LOG_BOOTSTRAP_*|\
+    OPERATIONS_LOGROTATE_FILES|BOOKING_RELEASE_*|booking_control_file|EVENT_PLATFORM_*|LOG_EVIDENCE_*|LOG_GENESIS_*|LOG_BOOTSTRAP_*|\
     REVIEWED_LOG_CURSOR_AWK_RE|BACKUP_EVIDENCE_ROOT|BACKUP_CUSTODY_MARKER|\
     BACKUP_OFFLINE_RESTORE_MARKER|BACKUP_BOOTSTRAP_RESTORE_MARKER|BACKUP_OFFLINE_ALLOWED_SIGNERS|BACKUP_SIGNED_EVIDENCE_DIR|\
     EXPECTED_SHARED_SERVER_IP|\
@@ -7961,8 +7965,38 @@ else
   log "No existing standalone directory (first deploy)"
 fi
 
+# Acquire the migration connection only inside a child scope. Admission runs
+# after the preflight unset, and activation/recovery may run after migrations
+# unset it again. Never retain or export this credential to backfills or PM2.
+with_booking_release_database() {
+  (
+    load_dotenv_file "$MIGRATION_ENV_FILE" migration || return
+    require_env MIGRATION_DATABASE_URL || return
+    require_env MIGRATION_EXPECTED_DB_ROLE || return
+    BOOKING_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" DATABASE_URL="$MIGRATION_DATABASE_URL" "$@"
+  )
+}
+
+# Drain before counting so a customer request cannot race rollback admission.
+# This also persists an empty reboot target before any legacy restart.
+ensure_booking_rollback_compatible() {
+  local target="$1" quiesced=false
+  [ -n "$BOOKING_RELEASE_CONTROLLER" ] || return 0
+  BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED=true
+  if ! persist_event_platform_pm2_stop_fence; then return 1; fi
+  quiesced=true
+  if ! with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
+    --check-rollback "$target" "$BOOKING_RELEASE_CANDIDATE_FILE" "$EXPECTED_DEPLOY_SHA_ARG" \
+    "$BOOKING_RELEASE_FIRST_EXPANSION" "$quiesced"; then
+    log "FATAL: refusing an unproven booking rollback; preserve the candidate and canonical database"
+    return 1
+  fi
+  BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED=false
+}
+
 restore_standalone_before_pm2() {
   local rollback_source="${EVENT_PLATFORM_PREVIOUS_STANDALONE_PATH:-$BACKUP_PATH/standalone}"
+  ensure_booking_rollback_compatible "$rollback_source" || return 1
   if [ -d "$rollback_source" ]; then
     safe_remove_tree "$APP_DIR/.next/standalone"
     cp -a -- "$rollback_source" "$APP_DIR/.next/standalone"
@@ -7976,6 +8010,10 @@ restore_standalone_before_pm2() {
 fatal_after_standalone_replacement() {
   local message="$1"
   log "FATAL: $message"
+  if [ "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ]; then
+    log "Booking recovery is fail-closed; the previous artifact will not be restored."
+    exit 1
+  fi
   if [ "$STANDALONE_REPLACED" = "true" ] \
      || [ "$HANDOFF_STARTED" = "true" ] \
      || [ "$EVENT_PLATFORM_CUTOVER_STATE" = "migration_applied" ]; then
@@ -7989,6 +8027,7 @@ fatal_after_standalone_replacement() {
 recover_application_handoff() {
   local rollback_config rollback_code rollback_ping_code
   local rollback_source="${EVENT_PLATFORM_PREVIOUS_STANDALONE_PATH:-$BACKUP_PATH/standalone}"
+  ensure_booking_rollback_compatible "$rollback_source" || return 1
 
   if [ "$RUNTIME_STATE_CUTOVER_FINALIZED" != "true" ]; then
     log "Reverting incomplete runtime state cutover before restarting the previous artifact..."
@@ -8080,7 +8119,9 @@ rollback_replaced_standalone_on_exit() {
     status=1
   fi
   if [ "$status" -ne 0 ] && [ "$HANDOFF_STARTED" = "true" ] && [ "$HANDOFF_RECOVERY_COMPLETE" != "true" ]; then
-    if [ "$EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED" = "true" ]; then
+    if [ "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ]; then
+      log "FATAL: booking rollback is not proven; keep PM2 stopped and preserve the canonical candidate for reviewed recovery"
+    elif [ "$EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED" = "true" ]; then
       log "FATAL: previous PM2 artifact remains stopped because the Fund pilot committed without a proven rollback-client path"
       log "FATAL: preserve the database and recovery-point evidence for reviewed operator recovery: ${EVENT_PLATFORM_PILOT_BACKUP_EVIDENCE:-unavailable}"
     else
@@ -8155,6 +8196,28 @@ for K in ESIGN_SECRET CRON_SECRET BROWSER_SOFTPHONE_TICKET_SECRET SOFTPHONE_RELA
 done
 load_dotenv_file "$APP_ENV_FILE"
 verify_runtime_cutover_preflight
+
+# Stage the reviewed controller outside the live tree, where it survives a
+# failed handoff or refused rollback. Credentials stay in child environment.
+BOOKING_RELEASE_CONTROL_DIR="$BACKUP_PATH/booking-release-controller"
+mkdir -p "$BOOKING_RELEASE_CONTROL_DIR/scripts/booking" "$BOOKING_RELEASE_CONTROL_DIR/scripts/event-platform"
+chmod 700 "$BOOKING_RELEASE_CONTROL_DIR"
+for booking_control_file in scripts/booking/release-contract.mjs scripts/booking/release-state.sql scripts/booking/activate-workspace.sql scripts/event-platform/inspect-production.sh; do
+  tar -xOzf "$DEPLOY_TAR" "./$booking_control_file" > "$BOOKING_RELEASE_CONTROL_DIR/$booking_control_file" \
+    || fatal_after_standalone_replacement "booking controller is missing from the immutable artifact"
+done
+tar -xOzf "$DEPLOY_TAR" ./.booking-backend-contract.json > "$BOOKING_RELEASE_CONTROL_DIR/candidate.json" \
+  || fatal_after_standalone_replacement "immutable artifact has no booking backend contract"
+BOOKING_RELEASE_CONTROLLER="$BOOKING_RELEASE_CONTROL_DIR/scripts/booking/release-contract.mjs"
+BOOKING_RELEASE_CANDIDATE_FILE="$BOOKING_RELEASE_CONTROL_DIR/candidate.json"
+BOOKING_RELEASE_ADMISSION=$(with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
+  --check-admission "$BOOKING_RELEASE_CANDIDATE_FILE" "$ARTIFACT_DEPLOY_SHA" "$APP_DIR/.next/standalone") \
+  || fatal_after_standalone_replacement "booking predecessor is not compatible with this artifact"
+case "$BOOKING_RELEASE_ADMISSION" in
+  first-expansion) BOOKING_RELEASE_FIRST_EXPANSION=true ;;
+  compatible) BOOKING_RELEASE_FIRST_EXPANSION=false ;;
+  *) fatal_after_standalone_replacement "invalid booking artifact admission result" ;;
+esac
 
 # Resolve the durable database gate and persist the exact previous client
 # before the generic standalone path is touched. On the first cutover the old
@@ -8948,6 +9011,20 @@ if [ -f "$APP_CATALOG_SCRIPT_STANDALONE" ]; then
   node "$APP_CATALOG_SCRIPT_STANDALONE" --execute 2>&1 || log "WARNING: app catalog seed returned non-zero (non-fatal)"
 fi
 
+# Only B activates the already-proven A contract. The mode cannot be reset
+# by rollback, and no new schema/profile is introduced by this transition.
+node "$BOOKING_RELEASE_CONTROLLER" --activation-sql "$BOOKING_RELEASE_CANDIDATE_FILE" "$ARTIFACT_DEPLOY_SHA" \
+  > "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" \
+  || fatal_after_standalone_replacement "cannot prepare artifact-bound booking activation"
+if [ -s "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" ]; then
+  with_booking_release_database npx prisma db execute --schema="$SCHEMA_TO_USE" --stdin \
+    < "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" \
+    || fatal_after_standalone_replacement "booking workspace activation failed"
+  with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
+    --assert-activated "$BOOKING_RELEASE_CANDIDATE_FILE" "$ARTIFACT_DEPLOY_SHA" \
+    || fatal_after_standalone_replacement "booking workspace activation was not proven"
+fi
+
 # ── Step 4: Stop old process, cut over runtime, restart PM2 ─────────
 log "Stopping old processes..."
 cd "$APP_DIR"
@@ -8980,6 +9057,10 @@ if ss -tlnp | grep -q ":3001 "; then
   fuser -k -9 3001/tcp 2>/dev/null || true
   sleep 2
 fi
+
+# A crash between first canonical process start and pm2 save must not resurrect
+# the legacy writer. Save/verify the stopped state before opening the new app.
+if [ -n "$BOOKING_RELEASE_CONTROLLER" ]; then persist_event_platform_pm2_stop_fence; fi
 
 log "Starting PM2..."
 
