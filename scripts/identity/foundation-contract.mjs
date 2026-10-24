@@ -314,17 +314,21 @@ async function main() {
     await admin.identityPhoneProof.create({ data: { ...proofData, id: "superseded-schema-proof", status: "SUPERSEDED", deliveryCiphertext: null } })
     await expectDatabaseError(() => admin.identityPhoneProof.create({ data: { ...proofData, id: "foreign-proof-subject", organizationId: B, issuedByUserId: other.userId } }), "23503")
     await expectDatabaseError(() => admin.identityPhoneProof.create({ data: { ...proofData, id: "foreign-proof-issuer", organizationId: B, userId: other.userId } }), "23503")
-    await expectDatabaseError(() => admin.identityPhoneProof.create({ data: { ...proofData, id: "invalid-proof-counter", reservationId: "other-schema-reservation", attempts: 5 } }), "23514")
-    await expectDatabaseError(() => admin.identityPhoneProof.create({ data: { ...proofData, id: "invalid-confirmed-proof", reservationId: "other-schema-reservation", status: "CONFIRMED", deliveryCiphertext: null } }), "23514")
+    phase = "PROOF_STORAGE_COUNTER_LIMIT"
+    await expectDatabaseError(() => admin.$executeRawUnsafe('UPDATE identity_phone_proofs SET attempts = 5 WHERE id = $1', storedProof.id), "23514")
+    phase = "PROOF_STORAGE_CONFIRMATION_LIMIT"
+    await expectDatabaseError(() => admin.$executeRawUnsafe("UPDATE identity_phone_proofs SET status = 'CONFIRMED', \"deliveryCiphertext\" = NULL WHERE id = $1", storedProof.id), "23514")
     const delivery = await admin.identityPhoneProofOutbox.create({ data: { organizationId: A, userId: proofContext.userId, proofId: storedProof.id } })
     assert.equal(delivery.status, "PENDING"); assert.equal(delivery.attempts, 0)
     await expectDatabaseError(() => admin.identityPhoneProofOutbox.create({ data: { organizationId: A, userId: "identity-user-a9", proofId: "superseded-schema-proof" } }), "23503")
-    await expectDatabaseError(() => admin.identityPhoneProofOutbox.update({ where: { organizationId_proofId: { organizationId: A, proofId: storedProof.id } }, data: { status: "LEASED" } }), "23514")
+    phase = "PROOF_STORAGE_LEASE_LIMIT"
+    await expectDatabaseError(() => admin.$executeRawUnsafe("UPDATE identity_phone_proof_outbox SET status = 'LEASED' WHERE \"proofId\" = $1", storedProof.id), "23514")
     await admin.identityEvent.create({ data: { id: "anonymous-proof-rejection", organizationId: A, userId: proofContext.userId, actorUserId: null,
       requestId: "schema-proof-attempt-1", requestHash: phoneProofAttemptHash(proofContext, proofKey, "schema-proof-attempt-1", "111111"),
       action: "PHONE_PROOF_REJECTED", accountVersion: 1, credentialEpoch: 1, proofId: storedProof.id, proofAttempt: 1, proofOutcome: "INVALID_CODE" } })
-    await expectDatabaseError(() => admin.identityEvent.create({ data: { id: "anonymous-admin-action-refused", organizationId: A, userId: proofContext.userId, actorUserId: null,
-      requestId: "schema-anonymous-stage", requestHash: "a".repeat(64), action: "ACCOUNT_STAGED", accountVersion: 1 } }), "23514")
+    phase = "PROOF_STORAGE_ANONYMOUS_ADMIN_REFUSAL"
+    await expectDatabaseError(() => admin.$executeRawUnsafe(`INSERT INTO identity_events (id, "organizationId", "userId", "requestId", "requestHash", action, "accountVersion") VALUES ($1,$2,$3,$4,$5,'ACCOUNT_STAGED',1)`,
+      "anonymous-admin-action-refused", A, proofContext.userId, "schema-anonymous-stage", "a".repeat(64)), "23514")
     receipt.checks.push("proof_storage_has_tenant_bindings_state_limits_private_ciphertext_and_scoped_anonymous_audit")
 
     phase = "RLS_AND_IMMUTABILITY"
@@ -353,8 +357,11 @@ async function main() {
     assert.equal(legacy[0].passwordHash, "!personnel:sign-in-by-whatsapp-code")
     receipt.checks.push("shadow_reports_existing_divergence_without_mutating_legacy_login")
     receipt.status = "PASS"
-  } catch {
+  } catch (error) {
     receipt.failedPhase = phase
+    // Fixed error identifiers only; never print Prisma payloads, codes or phones.
+    const safeCode = error?.meta?.code ?? error?.code
+    if (typeof safeCode === "string" && /^(P[0-9]{4}|[0-9]{5}|ERR_ASSERTION)$/.test(safeCode)) receipt.errorCode = safeCode
     process.exitCode = 1
   } finally {
     await writer?.$disconnect().catch(() => {})
