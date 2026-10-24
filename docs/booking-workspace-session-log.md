@@ -335,3 +335,13 @@
 - CI source-validation `40092136260` на `303b6905c525bfb726e5b2307dae8a0f477cecfd`: 8/8 PASS, включая SQL на disposable PostgreSQL16, конфликты и реальный запрет INSERT в read-only transaction. Первоначальная ошибка подключения fixture исправлена, gate не ослаблен.
 - Full required checks PR #1024 ещё выполняются; инструмент пока не в main и inventory не запускался. PR #1023 остаётся draft/NO-GO, feature source и его exact-SHA CI не менялись.
 - Подробный append-only журнал продолжения: `docs/booking-release-preflight-session-log.md` в новом worktree. План A/B: `docs/booking-release-cutover-plan.md`; это план, не реализованный cutover/controller или готовый rollback artifact.
+
+## 2026-10-24 12:29 UTC — I-01 закрыт фактической production inventory
+
+- PR #1024 принят squash только после всех пяти required GitHub checks и дополнительного PostgreSQL source-validation PASS. Main SHA `cb1c604e274d75cfde10534b94978ce293f8f121`; feature #1023 не merged.
+- Explicit main dispatch `40094038543`, production-inventory job `120872601701`: SUCCESS через штатный protected Actions SSH (локальный SSH ключ не менялся).
+- Sanitized artifact `12560530704`, digest `sha256:a68bc4f8b0771f5c7ce560c07aa9f14fc8facc0c894a62492d2dea8bf95b7033`; копия результата `docs/booking-workspace/evidence/production-inventory-20261024.json`.
+- Наблюдение `2026-10-24T12:29:14.599Z`, deployed artifact `64356065f3878a547bdd5fa87cbf9f789f1f92a2`: 2 Booking; host/page/task/lead связи корректны; duplicate Task, пересечения и неверные интервалы — 0; отсутствующие Task/Lead — 0; btree_gist установлен; роль BYPASSRLS, транзакция READ ONLY.
+- I-01 закрыт для этого наблюдения. Перед фактической миграцией повторяется свежая проверка; результат не означает разрешения изменять/чинить данные.
+- Автоматический deploy инструментального main запущен run `40094028286`; пока checks/build in progress, новой версии приложения на production ещё не подтверждено. Старые customer Booking не изменялись, провайдерские отправки не делались.
+- Следующая фаза: реализовать совместимый backend A с отложенной строгой проверкой legacy writer, admission/rollback защитой и отдельным включением UI B. I-05 остаётся открытым до проверенного кода, а не только плана A/B.
