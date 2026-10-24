@@ -145,7 +145,7 @@ pgDescribe("online booking on a real Postgres", () => {
     settingsPost = settings.POST
     await bypass(async () => {
       for (const id of [ORG, OTHER_ORG]) {
-        await prisma.organization.create({ data: { id, name: `Org ${id}`, slug: id, modules: { crm: true, settings: true }, settings: { timezone: "Asia/Baku" } } })
+        await prisma.organization.create({ data: { id, name: `Org ${id}`, slug: id, modules: { crm: true, sales: true, settings: true }, settings: { timezone: "Asia/Baku" } } })
       }
       await prisma.user.createMany({
         data: [

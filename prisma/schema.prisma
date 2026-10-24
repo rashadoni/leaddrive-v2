@@ -69,6 +69,7 @@ model Organization {
   // the compliance trail is not owned by the organization and survives it.
   tenantMasterKeys      TenantMasterKey[]
   tenantDataKeys        TenantDataKey[]
+  bookingCoordinatorGrants BookingCoordinatorGrant[]
   bookingPages          BookingPage[]
   adConversionDestinations AdConversionDestination[]
   adConversionEvents       AdConversionEvent[]
@@ -644,6 +645,8 @@ model PlanRequest {
 }
 
 model User {
+  coordinatedBookingHosts BookingCoordinatorGrant[] @relation("BookingCoordinator")
+  bookingCoordinators BookingCoordinatorGrant[] @relation("BookingCoordinatedHost")
   attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceReminderNotices MtmAttendanceReminderNotice[]
   attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
@@ -22997,6 +23000,8 @@ model Booking {
 
   @@index([organizationId, hostUserId, startsAt])
   @@index([bookingPageId, startsAt])
+  @@index([organizationId, startsAt, id], map: "bookings_org_start_id_idx")
+  @@index([organizationId, hostUserId, startsAt, id], map: "bookings_org_host_start_id_idx")
   @@map("bookings")
 }
 
@@ -23062,4 +23067,22 @@ model AdConversionEvent {
   @@index([organizationId, status])
   @@index([destinationId, createdAt])
   @@map("ad_conversion_events")
+}
+
+
+/// Explicit own/team expansion for the meetings workspace; board membership is unrelated.
+model BookingCoordinatorGrant {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  coordinatorUserId String
+  coordinator User @relation("BookingCoordinator", fields: [organizationId, coordinatorUserId], references: [organizationId, id], onDelete: Cascade)
+  hostUserId String
+  host User @relation("BookingCoordinatedHost", fields: [organizationId, hostUserId], references: [organizationId, id], onDelete: Cascade)
+  canManage Boolean @default(true)
+  createdBy String
+  createdAt DateTime @default(now())
+  @@unique([organizationId, coordinatorUserId, hostUserId], map: "booking_coordinator_grants_identity_key")
+  @@index([organizationId, hostUserId], map: "booking_coordinator_grants_host_idx")
+  @@map("booking_coordinator_grants")
 }
