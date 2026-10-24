@@ -45,7 +45,7 @@ jobs:
       TENANT_CASCADE_TEST_CONFIRM: drop-local-tenant-cascade-test-schema
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Exercise migration against historical orphan data
         env:
