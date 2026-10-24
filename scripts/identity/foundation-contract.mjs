@@ -11,7 +11,7 @@ import { admitContractTarget } from "./postgres-contract.mjs"
 const A = "identity-company-a", B = "identity-company-b"
 const actor = { organizationId: A, userId: "identity-user-a" }
 const other = { organizationId: B, userId: "identity-user-b" }
-const TABLES = ["identity_accounts", "identity_application_grants", "identity_phone_claims", "identity_phone_reservations", "identity_events"]
+const TABLES = ["identity_accounts", "identity_application_grants", "identity_phone_claims", "identity_phone_reservations", "identity_phone_proofs", "identity_phone_proof_outbox", "identity_events"]
 const PHONE = "+994550001122"
 const receipt = { status: "FAIL", sourceSha: null, productionObserved: false, checks: [] }
 let phase = "ADMISSION", admin, writer
@@ -292,6 +292,40 @@ async function main() {
     await assert.rejects(reserveStagedIdentityPhone(writer, actor, identical), /IDENTITY_ALREADY_AUTHORITATIVE/)
     await expectDatabaseError(() => admin.$executeRawUnsafe('INSERT INTO identity_events (id,"organizationId","userId","actorUserId","requestId","requestHash",action,"accountVersion","normalizedPhone","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,1,$8,now())', "invalid-reservation-receipt", A, historical.userId, actor.userId, "invalid-reserved-event", "a".repeat(64), "PHONE_RESERVED", "+994550005599"), "23514")
     receipt.checks.push("reservation_scope_is_tenant_local_and_refuses_live_authoritative_account")
+
+    phase = "PROOF_STORAGE_AND_PRIVATE_DELIVERY_CONSTRAINTS"
+    const { sealPhoneProof, openPhoneProofDelivery, phoneProofAttemptHash } = await import(pathToFileURL(resolve(build, "phone-proof.js")).href)
+    await admin.$executeRawUnsafe('INSERT INTO users (id, "organizationId", "isActive", role) VALUES ($1,$2,true,$3)', "identity-user-a10", A, "viewer")
+    await stageIdentityAccount(writer, actor, { userId: "identity-user-a10", requestId: "stage-proof-storage-a10" })
+    const proofNow = new Date(), proofUntil = new Date(proofNow.valueOf() + 600_000)
+    const proofContext = { organizationId: A, userId: "identity-user-a10", reservationId: "historical-proof-reservation", challengeId: "schema-proof-a10",
+      normalizedPhone: "+994550006600", accountVersion: 1, credentialEpoch: 1, createdAt: proofNow.toISOString(), expiresAt: proofUntil.toISOString() }
+    const proofKey = { id: "synthetic-proof-key", material: new Uint8Array(32).fill(7) }
+    const sealed = sealPhoneProof(proofContext, proofKey)
+    const proofData = { id: proofContext.challengeId, organizationId: A, userId: proofContext.userId, issuedByUserId: actor.userId,
+      reservationId: proofContext.reservationId, normalizedPhone: proofContext.normalizedPhone, accountVersion: 1, credentialEpoch: 1,
+      createdAt: proofNow, expiresAt: proofUntil, ...sealed }
+    const storedProof = await admin.identityPhoneProof.create({ data: proofData })
+    const secret = openPhoneProofDelivery(proofContext, storedProof, proofKey, new Date(proofNow.valueOf() + 1))
+    assert.equal(Object.values(storedProof).includes(secret), false)
+    assert.equal(Object.hasOwn(storedProof, "code"), false)
+    assert.equal(storedProof.status, "PENDING"); assert.equal(storedProof.attempts, 0)
+    await expectDatabaseError(() => admin.identityPhoneProof.create({ data: { ...proofData, id: "duplicate-pending-proof" } }), "23505")
+    await admin.identityPhoneProof.create({ data: { ...proofData, id: "superseded-schema-proof", status: "SUPERSEDED", deliveryCiphertext: null } })
+    await expectDatabaseError(() => admin.identityPhoneProof.create({ data: { ...proofData, id: "foreign-proof-subject", organizationId: B, issuedByUserId: other.userId } }), "23503")
+    await expectDatabaseError(() => admin.identityPhoneProof.create({ data: { ...proofData, id: "foreign-proof-issuer", organizationId: B, userId: other.userId } }), "23503")
+    await expectDatabaseError(() => admin.identityPhoneProof.create({ data: { ...proofData, id: "invalid-proof-counter", reservationId: "other-schema-reservation", attempts: 5 } }), "23514")
+    await expectDatabaseError(() => admin.identityPhoneProof.create({ data: { ...proofData, id: "invalid-confirmed-proof", reservationId: "other-schema-reservation", status: "CONFIRMED", deliveryCiphertext: null } }), "23514")
+    const delivery = await admin.identityPhoneProofOutbox.create({ data: { organizationId: A, userId: proofContext.userId, proofId: storedProof.id } })
+    assert.equal(delivery.status, "PENDING"); assert.equal(delivery.attempts, 0)
+    await expectDatabaseError(() => admin.identityPhoneProofOutbox.create({ data: { organizationId: A, userId: "identity-user-a9", proofId: "superseded-schema-proof" } }), "23503")
+    await expectDatabaseError(() => admin.identityPhoneProofOutbox.update({ where: { organizationId_proofId: { organizationId: A, proofId: storedProof.id } }, data: { status: "LEASED" } }), "23514")
+    await admin.identityEvent.create({ data: { id: "anonymous-proof-rejection", organizationId: A, userId: proofContext.userId, actorUserId: null,
+      requestId: "schema-proof-attempt-1", requestHash: phoneProofAttemptHash(proofContext, proofKey, "schema-proof-attempt-1", "111111"),
+      action: "PHONE_PROOF_REJECTED", accountVersion: 1, credentialEpoch: 1, proofId: storedProof.id, proofAttempt: 1, proofOutcome: "INVALID_CODE" } })
+    await expectDatabaseError(() => admin.identityEvent.create({ data: { id: "anonymous-admin-action-refused", organizationId: A, userId: proofContext.userId, actorUserId: null,
+      requestId: "schema-anonymous-stage", requestHash: "a".repeat(64), action: "ACCOUNT_STAGED", accountVersion: 1 } }), "23514")
+    receipt.checks.push("proof_storage_has_tenant_bindings_state_limits_private_ciphertext_and_scoped_anonymous_audit")
 
     phase = "RLS_AND_IMMUTABILITY"
     for (const table of TABLES) {

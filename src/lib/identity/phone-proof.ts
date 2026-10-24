@@ -50,8 +50,13 @@ function keys(key: PhoneProofKey) {
     || !(key.material instanceof Uint8Array) || key.material.byteLength !== 32) throw new IdentityRegistryError("IDENTITY_PROOF_KEY_INVALID")
   const root = Buffer.from(key.material)
   try {
-    return { mac: Buffer.from(hkdfSync("sha256", root, PURPOSE, `code-mac/v1/${key.id}`, 32)), encryption: Buffer.from(hkdfSync("sha256", root, PURPOSE, `delivery-encryption/v1/${key.id}`, 32)) }
+    return { mac: Buffer.from(hkdfSync("sha256", root, PURPOSE, `code-mac/v1/${key.id}`, 32)), encryption: Buffer.from(hkdfSync("sha256", root, PURPOSE, `delivery-encryption/v1/${key.id}`, 32)),
+      attempt: Buffer.from(hkdfSync("sha256", root, PURPOSE, `attempt-request/v1/${key.id}`, 32)) }
   } finally { root.fill(0) }
+}
+
+function clearKeys(derived: ReturnType<typeof keys>) {
+  derived.mac.fill(0); derived.encryption.fill(0); derived.attempt.fill(0)
 }
 
 function active(context: PhoneProofContext, at: Date) {
@@ -82,7 +87,7 @@ export function sealPhoneProof(context: PhoneProofContext, key: PhoneProofKey): 
     const ciphertext = Buffer.concat([cipher.update(code), cipher.final()]), tag = cipher.getAuthTag()
     return { keyId: key.id, codeHash: codeMac(aad, code, derived.mac).toString("hex"),
       deliveryCiphertext: ["v1", key.id, iv.toString("base64url"), ciphertext.toString("base64url"), tag.toString("base64url")].join(".") }
-  } finally { code.fill(0); aad.fill(0); derived.mac.fill(0); derived.encryption.fill(0) }
+  } finally { code.fill(0); aad.fill(0); clearKeys(derived) }
 }
 
 /** `at` must be trusted current server/database time, never a request value. */
@@ -93,7 +98,7 @@ export function verifyPhoneProofCode(context: PhoneProofContext, proof: SealedPh
     const entered = Buffer.from(code, "ascii")
     try { return timingSafeEqual(Buffer.from(proof.codeHash, "hex"), codeMac(aad, entered, derived.mac)) }
     finally { entered.fill(0) }
-  } finally { aad.fill(0); derived.mac.fill(0); derived.encryption.fill(0) }
+  } finally { aad.fill(0); clearKeys(derived) }
 }
 
 /**
@@ -120,5 +125,21 @@ export function openPhoneProofDelivery(context: PhoneProofContext, proof: Sealed
     if (!/^\d{6}$/.test(code) || !timingSafeEqual(Buffer.from(proof.codeHash, "hex"), codeMac(aad, clear, derived.mac))) throw new Error("REFUSED")
     return code
   } catch { throw new IdentityRegistryError("IDENTITY_PROOF_DELIVERY_REFUSED") }
-  finally { block?.fill(0); clear?.fill(0); aad.fill(0); derived.mac.fill(0); derived.encryption.fill(0) }
+  finally { block?.fill(0); clear?.fill(0); aad.fill(0); clearKeys(derived) }
+}
+
+/**
+ * Secret-keyed idempotency fingerprint for a submitted code, NOT a code check.
+ * Never put an unkeyed hash of a six-digit secret in an audit receipt: the
+ * small search space would disclose it. A different payload under a reused
+ * request ID must be rejected before comparing the entered code to the proof,
+ * otherwise replay can become an unlimited correctness oracle.
+ */
+export function phoneProofAttemptHash(context: PhoneProofContext, key: PhoneProofKey, requestId: string, enteredCode: string): string {
+  assertIdentityRequestId(requestId)
+  if (typeof enteredCode !== "string" || enteredCode.length > 64) throw new IdentityRegistryError("IDENTITY_PROOF_INPUT_INVALID")
+  const aad = contextBytes(context), derived = keys(key)
+  try {
+    return createHmac("sha256", derived.attempt).update(aad).update(Buffer.from([0])).update(JSON.stringify([requestId, enteredCode]), "utf8").digest("hex")
+  } finally { aad.fill(0); clearKeys(derived) }
 }

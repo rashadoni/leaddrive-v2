@@ -650,6 +650,7 @@ model PlanRequest {
 model User {
   identityAccount IdentityAccount?
   identityActions IdentityEvent[] @relation("IdentityEventActor")
+  identityProofsIssued IdentityPhoneProof[] @relation("IdentityProofIssuer")
   coordinatedBookingHosts BookingCoordinatorGrant[] @relation("BookingCoordinator")
   bookingCoordinators BookingCoordinatorGrant[] @relation("BookingCoordinatedHost")
   hostedBookings Booking[] @relation("BookingHost")
@@ -863,6 +864,7 @@ model IdentityAccount {
   updatedAt       DateTime @updatedAt @db.Timestamptz(3)
   phoneClaim      IdentityPhoneClaim?
   reservations    IdentityPhoneReservation[]
+  phoneProofs     IdentityPhoneProof[]
   grants          IdentityApplicationGrant[]
   events          IdentityEvent[]
 
@@ -923,13 +925,67 @@ model IdentityPhoneReservation {
   @@map("identity_phone_reservations")
 }
 
+/// Frozen proof context survives removal of its consumed/expired reservation.
+/// A reservationId is a historical pointer; the service requires the live owned
+/// reservation before first consumption. No proof is a login/application grant.
+model IdentityPhoneProof {
+  id              String @id @default(uuid())
+  organizationId  String
+  userId          String
+  issuedByUserId  String
+  reservationId   String
+  normalizedPhone String @db.VarChar(16)
+  accountVersion  Int
+  credentialEpoch Int
+  keyId           String @db.VarChar(40)
+  codeHash        String @db.VarChar(64)
+  deliveryCiphertext String? @db.VarChar(128)
+  status          String @default("PENDING") @db.VarChar(16)
+  attempts        Int @default(0)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt       DateTime @db.Timestamptz(3)
+  usedAt          DateTime? @db.Timestamptz(3)
+  account         IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  issuer          User @relation("IdentityProofIssuer", fields: [organizationId, issuedByUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  delivery        IdentityPhoneProofOutbox?
+
+  @@unique([organizationId, userId, id], map: "identity_phone_proofs_subject_key")
+  @@index([organizationId, reservationId, createdAt], map: "identity_phone_proofs_reservation_created_idx")
+  @@index([organizationId, expiresAt], map: "identity_phone_proofs_expiry_idx")
+  @@map("identity_phone_proofs")
+}
+
+/// One external-send attempt per proof. An expired/uncertain lease is never
+/// automatically resent. SENT means provider acknowledgement, not possession.
+model IdentityPhoneProofOutbox {
+  organizationId String
+  userId         String
+  proofId        String
+  proof          IdentityPhoneProof @relation(fields: [organizationId, userId, proofId], references: [organizationId, userId, id], onDelete: Cascade, onUpdate: Restrict)
+  status         String @default("PENDING") @db.VarChar(16)
+  attempts       Int @default(0)
+  availableAt    DateTime @default(now()) @db.Timestamptz(3)
+  leaseToken     String? @db.Uuid
+  leaseUntil     DateTime? @db.Timestamptz(3)
+  providerMessageId String? @db.VarChar(300)
+  outcome        String? @db.VarChar(32)
+  settledAt      DateTime? @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@id([organizationId, proofId])
+  @@unique([organizationId, userId, proofId], map: "identity_phone_proof_outbox_subject_key")
+  @@index([organizationId, status, availableAt], map: "identity_phone_proof_outbox_due_idx")
+  @@map("identity_phone_proof_outbox")
+}
+
 /// Append-only security receipts. Raw credentials, OTP and session data are absent.
 /// Phone assignment history is private tenant data, never an operational log payload.
 model IdentityEvent {
   id              String @id @default(uuid())
   organizationId  String
   userId          String
-  actorUserId     String
+  actorUserId     String?
   requestId       String @db.VarChar(128)
   requestHash     String @db.VarChar(64)
   action          String @db.VarChar(40)
@@ -941,11 +997,16 @@ model IdentityEvent {
   normalizedPhone String? @db.VarChar(16)
   reservationId   String?
   reservationExpiresAt DateTime? @db.Timestamptz(3)
+  proofId         String?
+  proofExpiresAt  DateTime? @db.Timestamptz(3)
+  proofAttempt    Int?
+  proofOutcome    String? @db.VarChar(32)
+  credentialEpoch Int?
   previousClaimId String?
   claimId         String?
   createdAt       DateTime @default(now()) @db.Timestamptz(3)
   account         IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
-  actor           User @relation("IdentityEventActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  actor           User? @relation("IdentityEventActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([organizationId, requestId])
   @@index([organizationId, userId, createdAt, id])

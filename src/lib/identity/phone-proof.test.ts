@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { sealPhoneProof, openPhoneProofDelivery, verifyPhoneProofCode, type PhoneProofContext, type PhoneProofKey } from "./phone-proof"
+import { sealPhoneProof, openPhoneProofDelivery, verifyPhoneProofCode, phoneProofAttemptHash, type PhoneProofContext, type PhoneProofKey } from "./phone-proof"
 
 const context = (): PhoneProofContext => ({ organizationId: "example-company", userId: "example-person", reservationId: "reservation-1", challengeId: "challenge-1",
   normalizedPhone: "+994550001122", accountVersion: 3, credentialEpoch: 2, createdAt: "2026-10-24T20:00:00.000Z", expiresAt: "2026-10-24T20:10:00.000Z" })
@@ -90,5 +90,28 @@ describe("bound phone-possession proof primitive (no login or provider)", () => 
       { ...context(), unintendedSecret: "fixture-extra-secret" },
     ]) expect(() => sealPhoneProof(changed, key())).toThrow("IDENTITY_PROOF_CONTEXT_INVALID")
     for (const changed of [{ ...key(), id: "bad.key" }, { ...key(), id: "fixture-key-1\n" }, { ...key(), material: new Uint8Array(31) }, { ...key(), material: new Uint8Array(33) }]) expect(() => sealPhoneProof(context(), changed)).toThrow("IDENTITY_PROOF_KEY_INVALID")
+  })
+})
+
+describe("secret-safe proof-attempt idempotency", () => {
+  it("binds the exact submitted code and nonce without reusing the code-verification MAC", () => {
+    const proof = sealPhoneProof(context(), key()), code = openPhoneProofDelivery(context(), proof, key(), at())
+    const hash = phoneProofAttemptHash(context(), key(), "attempt-1", code)
+    expect(hash).toMatch(/^[a-f0-9]{64}$/)
+    expect(hash).not.toBe(proof.codeHash)
+    expect(phoneProofAttemptHash(context(), key(), "attempt-1", code)).toBe(hash)
+    expect(phoneProofAttemptHash(context(), key(), "attempt-2", code)).not.toBe(hash)
+    expect(phoneProofAttemptHash(context(), key(), "attempt-1", code + "\n")).not.toBe(hash)
+    expect(phoneProofAttemptHash(context(), key(), "attempt-1", "")).not.toBe(hash)
+  })
+  it("cannot move an attempt receipt to another context or root key", () => {
+    const hash = phoneProofAttemptHash(context(), key(), "attempt-1", "123456")
+    expect(phoneProofAttemptHash({ ...context(), organizationId: "other-company" }, key(), "attempt-1", "123456")).not.toBe(hash)
+    expect(phoneProofAttemptHash({ ...context(), challengeId: "other-challenge" }, key(), "attempt-1", "123456")).not.toBe(hash)
+    expect(phoneProofAttemptHash(context(), { ...key(), material: new Uint8Array(32).fill(8) }, "attempt-1", "123456")).not.toBe(hash)
+  })
+  it("bounds untrusted attempt text and rejects malformed request IDs", () => {
+    expect(() => phoneProofAttemptHash(context(), key(), "attempt-1", "x".repeat(65))).toThrow("IDENTITY_PROOF_INPUT_INVALID")
+    expect(() => phoneProofAttemptHash(context(), key(), "attempt-1\n", "123456")).toThrow("IDENTITY_REQUEST_INVALID")
   })
 })

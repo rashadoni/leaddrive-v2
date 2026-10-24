@@ -121,7 +121,7 @@ existing tenant+User key. A person may have CRM, TIME and ROUTE_FIELD grants
 independently, with one current verified login phone per person and one owner
 per company+phone. The same phone in a different company is a separate identity.
 Reservations are separate, expire within 15 minutes, and cannot authorize login.
-All five new tables use FORCE RLS and composite tenant foreign keys. Security
+All new tables use FORCE RLS and composite tenant foreign keys. Security
 receipts are append-only even for a table owner. The migration changes no
 legacy rows, credentials, roles, triggers or application access.
 
@@ -145,7 +145,7 @@ version change. A stale parallel module connection must refresh and retry.
 These stored plans do not bypass future entitlement, membership, phone proof or
 audience-auth checks and cannot affect current login.
 
-The same hosted gate validates/generates Prisma, compiles the two service files,
+The same hosted gate validates/generates Prisma, compiles the focused identity modules,
 runs the focused Vitest contract, then executes `foundation-contract.mjs`. That
 script admits only the existing fixed synthetic PostgreSQL fixture, applies the
 actual migration with psql, and uses a non-superuser/NOBYPASSRLS writer to
@@ -213,3 +213,27 @@ rotation window. The primitive is not an authorization decision or a complete
 OTP service: transactional persistence/delivery, resend/rate/attempt limits,
 single-use consumption, claim assignment and narrow setup tokens are the next
 integration. Existing authentication and the WhatsApp sender remain unchanged.
+
+### Proof storage and delivery preparation
+
+`IdentityPhoneProof` freezes the private context and stores only the keyed code
+hash and encrypted delivery payload. The reservation ID is a historical
+pointer: removing a consumed/expired reservation does not erase proof replay
+context. Issuance/consumption must still revalidate the live owned reservation
+and current versions. Composite tenant+User/issuer foreign keys, bounded TTL,
+state/counter checks and a partial SQL unique index restrict pending proofs.
+`IdentityPhoneProofOutbox` has a subject-bound proof FK and one CAS delivery
+lease/send attempt. An ambiguous or expired send lease is not automatically
+resent. SENT records provider acknowledgement, never phone possession.
+
+The new explicit system/rejected-proof audit actions may have no human actor;
+all existing administrator actions still require a non-null actor. This avoids
+attributing an anonymous failed guess to its target User. Ciphertexts are
+scrubbed by the future consumption/expiry service. Storage and crypto are not
+an exposed OTP API or a running provider worker; no current authentication or
+live sending behavior consumes these tables yet.
+
+Attempt idempotency uses `phoneProofAttemptHash`, a separately HKDF-keyed HMAC
+of the exact context, request ID and submitted text. Never persist an unkeyed
+hash of the small OTP search space. A changed retry must be rejected before
+checking correctness, so a reused failed request cannot become a code oracle.
