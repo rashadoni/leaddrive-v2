@@ -13,11 +13,12 @@ function createOAuth2Client() {
   )
 }
 
-export async function getGoogleCalendarClient(userId: string) {
+export async function getGoogleCalendarClient(userId: string, accountId?: string) {
   // Get tokens from Account model — check both "google-calendar" (standalone) and "google" (SSO)
   const account = await prisma.account.findFirst({
     where: {
       userId,
+      ...(accountId ? { id: accountId } : {}),
       provider: { in: ["google-calendar", "google"] },
       access_token: { not: null },
     },
@@ -103,16 +104,14 @@ export async function listCalendarEvents(userId: string, timeMin: string, timeMa
  * connected — the caller treats that as "nothing known", not as an error.
  */
 export async function listBusyIntervals(userId: string, timeMin: string, timeMax: string): Promise<{ start: Date; end: Date }[] | null> {
-  let calendar
-  try {
-    calendar = await getGoogleCalendarClient(userId)
-  } catch {
-    return null
-  }
+  const account = await prisma.account.findFirst({ where: { userId, provider: { in: ["google-calendar", "google"] } }, select: { id: true } })
+  if (!account) return null
+  const calendar = await getGoogleCalendarClient(userId, account.id)
   const result = await calendar.freebusy.query({
     requestBody: { timeMin, timeMax, items: [{ id: "primary" }] },
-  })
-  const busy = result.data.calendars?.primary?.busy ?? []
+  }, { timeout: 8000 })
+  if (!result.data.calendars?.primary || result.data.calendars.primary.errors?.length) throw new Error("Calendar availability unavailable")
+  const busy = result.data.calendars.primary.busy ?? []
   return busy
     .filter((item) => item.start && item.end)
     .map((item) => ({ start: new Date(item.start as string), end: new Date(item.end as string) }))

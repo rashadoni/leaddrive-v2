@@ -131,3 +131,36 @@
 - Полный compiler/build/PostgreSQL/browser на этой точке NOT RUN; тяжёлые
   проверки будут на CI. Следующая работа: команды в карточке и проверки
   транзакций, повторов, интеграций и старых записей, затем browser-проверка.
+
+## 2026-10-24 — Команды, история и сохраняемая обработка
+
+- Добавлены ручная запись, перенос/смена принимающего, отмена, результат и
+  исправление результата внутри панели встречи. Запросы получают стабильный
+  idempotency key; публичное подтверждение защищено отдельным recovery secret.
+- Добавлены Booking.version, snapshots, encrypted response/delivery storage,
+  calendar bindings, чувствительные пояснения отдельно от immutable events.
+  События и intents записываются атомарно с Booking через существующую platform.
+- Уточнение реализации относительно первичного плана: старые строки остаются
+  явно неадаптированными с version=0; первая команда атомарно создаёт import
+  baseline + head, затем изменение. Это не выдаётся за исходное создание и не
+  требует массового backfill перед появлением журнала. Старые отсутствующие
+  связи Lead/Task автоматически не дублируются.
+- Добавлен bounded worker, cron registration, независимые CRM/Google/email/push
+  intents, истечение response payload, сохранность активных delivery secrets.
+  UNKNOWN не повторяется автоматически; operator script использует отдельную
+  DB identity и evidence, по умолчанию работает как dry-run. Скрипт не запускался.
+- Task-зеркала защищены DB trigger для всех writers. Новый host FK и связи
+  новых моделей tenant-aware; миграции расширяющие и транзакционные, конфликты
+  старых интервалов/ссылок должны остановить gate вместо изменения данных.
+- Доступ к чужому host проверяется до внешнего calendar call; отключённый Sales
+  закрывает новые публичные записи. Закрытие формы не препятствует отмене.
+- Реальные PG-тесты расширяются потерей ответа, параллельным replay, командами,
+  RLS под непривилегированной ролью, UNKNOWN и операторской сверкой. Они ещё
+  NOT RUN на этой точке; full build/typecheck также NOT RUN на Contabo.
+- Локально targeted tests 146/146 PASS (7 files): доступ, request identity,
+  cross-page buffers, identity-aware Google intervals и notification taxonomy.
+  Prisma validate после добавления note relation потребовал composite unique;
+  он добавлен, последующая проверка PASS. Scoped ESLint выявил ненужную ручную
+  memoization; она убрана без отключения правила, финальная проверка идёт.
+- Следующая работа: завершить PG/browser evidence, исправить найденное в
+  проверках, checkpoint, затем полный compiler/DB/build на разрешённом CI.

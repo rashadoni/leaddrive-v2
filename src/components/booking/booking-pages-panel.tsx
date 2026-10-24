@@ -163,7 +163,7 @@ export function BookingPagesPanel() {
             />
           </CardContent>
         </Card>
-      ) : loading ? null : pages.length === 0 ? (
+      ) : loading ? <p role="status">{t("workspaceLoading")}</p> : error ? <Button variant="outline" onClick={() => { setLoading(true); load() }}>{t("retry")}</Button> : pages.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">{t("emptyList")}</CardContent>
         </Card>

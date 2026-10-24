@@ -9,6 +9,10 @@ export function isBookingOperator(role: string, principalType = "session"): bool
   return principalType === "session" && BOOKING_ROLES.some((allowed) => allowed === role)
 }
 
+export function bookingHostWhere(orgId: string, ids?: string[]): Prisma.UserWhereInput {
+  return { organizationId: orgId, isActive: true, ...(ids ? { id: { in: ids } } : {}), role: { in: [...BOOKING_ROLES] }, OR: [{ role: { in: ["admin", "superadmin"] } }, { NOT: { hiddenModules: { has: "sales" } } }] }
+}
+
 export interface BookingAccess {
   orgId: string
   userId: string

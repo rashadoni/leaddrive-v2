@@ -153,6 +153,8 @@ export interface NotificationKind {
  */
 export const NOTIFICATION_KINDS: NotificationKind[] = (
   [
+    { kind: "booking.created", entityType: "booking" },
+    { kind: "booking.cancelled", entityType: "booking" },
     { kind: "task.created",     entityType: "task" },
     { kind: "task.completed",   entityType: "task" },
     { kind: "deal.created",     entityType: "deal" },

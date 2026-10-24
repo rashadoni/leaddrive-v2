@@ -20,6 +20,7 @@
  * the deploy («Online booking database gate»), where
  * `ONLINE_BOOKING_DB_GATE=required` turns a missing URL into a failure.
  */
+import { randomUUID } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
@@ -46,6 +47,7 @@ const scratch = vi.hoisted(() => {
 
 const session = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const mail = vi.hoisted(() => ({ sent: [] as { to: string; subject: string }[] }))
+const calendar = vi.hoisted(() => ({ update: vi.fn(), insert: vi.fn(), remove: vi.fn() }))
 
 vi.mock("@/lib/auth", () => ({ auth: async () => session.current }))
 vi.mock("@/lib/mobile-auth", async () => {
@@ -53,6 +55,7 @@ vi.mock("@/lib/mobile-auth", async () => {
   return makeMobileAuthMock()
 })
 vi.mock("@/lib/google-calendar", () => ({
+  getGoogleCalendarClient: vi.fn(async () => ({ events: { update: calendar.update, insert: calendar.insert, delete: calendar.remove } })),
   listBusyIntervals: vi.fn(async () => null),
   createCalendarEvent: vi.fn(async () => { throw new Error("Google Calendar not connected") }),
   deleteCalendarEvent: vi.fn(async () => {}),
@@ -125,6 +128,11 @@ pgDescribe("online booking on a real Postgres", () => {
   let cancelPost!: typeof import("@/app/api/v1/public/booking/cancel/[token]/route").POST
   let settingsGet!: typeof import("@/app/api/v1/booking-pages/route").GET
   let settingsPost!: typeof import("@/app/api/v1/booking-pages/route").POST
+  let meetingsGet!: typeof import("@/app/api/v1/bookings/route").GET
+  let meetingGet!: typeof import("@/app/api/v1/bookings/[id]/route").GET
+  let actionsPost!: typeof import("@/app/api/v1/bookings/[id]/actions/route").POST
+  let grantsPut!: typeof import("@/app/api/v1/bookings/coordinators/route").PUT
+  let drain!: typeof import("@/lib/booking/effect-worker").drainBookingEffects
   let sequence = 0
 
   beforeAll(async () => {
@@ -132,6 +140,24 @@ pgDescribe("online booking on a real Postgres", () => {
     prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `CREATE DATABASE "${scratch!.name}"`)
     prismaCli(["db", "push", "--schema", schemaWithoutEmbeddings(), "--skip-generate", "--accept-data-loss"], { ...process.env, DATABASE_URL: scratch!.url })
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, bookingConstraintsSql())
+    // Run the actual canonical ledger DDL, including attempt/state/append-only guards.
+    // These tables are dropped only in this newly created scratch database, before fixtures exist.
+    const foundation = readFileSync(path.join(ROOT, "prisma/migrations/20260901090000_event_platform_foundation/migration.sql"), "utf8")
+    const tables = [...foundation.matchAll(/CREATE TABLE "([^"]+)"/g)].map((match) => `"${match[1]}"`)
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DROP TABLE IF EXISTS ${tables.join(",")} CASCADE;`)
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'leaddrive_effect_operator') THEN CREATE ROLE leaddrive_effect_operator NOLOGIN; END IF; END $$;`)
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, foundation)
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `ALTER TABLE booking_change_notes ADD CONSTRAINT booking_notes_event_test_fkey FOREIGN KEY ("organizationId", "eventId") REFERENCES domain_events("organizationId", id) ON DELETE CASCADE;`)
+    const commandDdl = readFileSync(path.join(ROOT, "prisma/migrations/20261102100000_booking_commands/migration.sql"), "utf8")
+    const intervalGuard = commandDdl.match(/CREATE EXTENSION IF NOT EXISTS btree_gist;[\s\S]*?WHERE \(status = 'confirmed'\);/)![0]
+    const taskGuard = commandDdl.slice(commandDdl.indexOf("CREATE FUNCTION booking_managed_task_guard_fn"), commandDdl.lastIndexOf("COMMIT;"))
+    const policies = commandDdl.match(/DO \$policy\$[\s\S]*?\$policy\$;/)![0]
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, intervalGuard + "\n" + taskGuard + "\n" + policies)
+    const bookingDdl = readFileSync(path.join(ROOT, "prisma/migrations/20261101090000_online_booking/migration.sql"), "utf8")
+    const grantDdl = readFileSync(path.join(ROOT, "prisma/migrations/20261102090000_booking_workspace/migration.sql"), "utf8")
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, bookingDdl.slice(bookingDdl.indexOf('ALTER TABLE "booking_pages" ENABLE')) + "\n" + grantDdl.slice(grantDdl.indexOf('ALTER TABLE "booking_coordinator_grants" ENABLE'), grantDdl.indexOf('CREATE INDEX "bookings_org_start')))
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `ALTER TABLE bookings DROP CONSTRAINT bookings_status_check; ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('confirmed','cancelled','completed','no_show'));`)
+
     prisma = (await import("@/lib/prisma")).prisma
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
     const pub = await import("@/app/api/v1/public/booking/[slug]/route")
@@ -143,6 +169,11 @@ pgDescribe("online booking on a real Postgres", () => {
     const settings = await import("@/app/api/v1/booking-pages/route")
     settingsGet = settings.GET
     settingsPost = settings.POST
+    meetingsGet = (await import("@/app/api/v1/bookings/route")).GET
+    meetingGet = (await import("@/app/api/v1/bookings/[id]/route")).GET
+    actionsPost = (await import("@/app/api/v1/bookings/[id]/actions/route")).POST
+    grantsPut = (await import("@/app/api/v1/bookings/coordinators/route")).PUT
+    drain = (await import("@/lib/booking/effect-worker")).drainBookingEffects
     await bypass(async () => {
       for (const id of [ORG, OTHER_ORG]) {
         await prisma.organization.create({ data: { id, name: `Org ${id}`, slug: id, modules: { crm: true, sales: true, settings: true }, settings: { timezone: "Asia/Baku" } } })
@@ -183,8 +214,12 @@ pgDescribe("online booking on a real Postgres", () => {
     return { status: res.status, body: await res.json() }
   }
 
-  const book = (slug: string, startsAt: string, name = "Müştəri") =>
-    pagePost(json("POST", `/api/v1/public/booking/${slug}`, { startsAt, name, phone: "+994 50 123 45 67", email: "client@example.test", note: "Qiymətlər" }), slugParams(slug))
+  async function book(slug: string, startsAt: string, name = "Müştəri") {
+    const response = await pagePost(json("POST", `/api/v1/public/booking/${slug}`, { idempotencyKey: randomUUID(), recoverySecret: randomUUID(), startsAt, name, phone: "+994 50 123 45 67", email: "client@example.test", note: "Qiymətlər" }), slugParams(slug))
+    // The HTTP response does not await providers. Exercise the persisted worker explicitly.
+    if (response.status === 201) await bypass(() => drain(ORG, 50))
+    return response
+  }
 
   /**
    * A slot a few days ahead, away from the notice period. A host's busy time
@@ -276,6 +311,7 @@ pgDescribe("online booking on a real Postgres", () => {
     expect(shown.data).toMatchObject({ status: "confirmed", startsAt, hostName: "Leyla", past: false })
 
     const first = await cancelPost(json("POST", `/api/v1/public/booking/cancel/${token}`), tokenParams(token))
+    await bypass(() => drain(ORG, 50))
     const second = await cancelPost(json("POST", `/api/v1/public/booking/cancel/${token}`), tokenParams(token))
     expect([first.status, second.status]).toEqual([200, 200])
 
@@ -320,4 +356,165 @@ pgDescribe("online booking on a real Postgres", () => {
     const list = await (await settingsGet(json("GET", "/api/v1/booking-pages"))).json()
     expect(list.data.pages).toEqual([])
   })
+
+  it("a lost response and concurrent retry reserve once and protect confirmation with a recovery secret", async () => {
+    const slug = await newPage({ hostIds: [HOST_A, HOST_B] })
+    const startsAt = await someSlot(slug, 12)
+    const payload = { startsAt, name: "Retry client", phone: "+994501000001", idempotencyKey: randomUUID(), recoverySecret: randomUUID() }
+    const responses = await Promise.all(Array.from({ length: 8 }, () => pagePost(json("POST", `/api/v1/public/booking/${slug}`, payload), slugParams(slug))))
+    expect(responses.map((response) => response.status)).toEqual(Array(8).fill(201))
+    const receipts = await Promise.all(responses.map((response) => response.json()))
+    expect(new Set(receipts.map((body) => body.data.id)).size).toBe(1)
+    expect(new Set(receipts.map((body) => body.data.cancelUrl)).size).toBe(1)
+    const id = receipts[0].data.id
+    const booking = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(booking.version).toBe(1)
+    expect(booking.taskId).toBeNull()
+    expect((await (await meetingGet(json("GET", `/api/v1/bookings/${id}`), { params: Promise.resolve({ id }) })).json()).data.id).toBe(id)
+    const badSecret = await pagePost(json("POST", `/api/v1/public/booking/${slug}`, { ...payload, recoverySecret: randomUUID() }), slugParams(slug))
+    expect(badSecret.status).toBe(403)
+    const conflict = await pagePost(json("POST", `/api/v1/public/booking/${slug}`, { ...payload, name: "Different request" }), slugParams(slug))
+    expect(conflict.status).toBe(409)
+    await bypass(() => drain(ORG, 50))
+    const once = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    await bypass(() => drain(ORG, 50))
+    const twice = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(twice.taskId).toBe(once.taskId)
+    expect(twice.leadId).toBe(once.leadId)
+    const head = await bypass(() => prisma.eventAggregateHead.findUniqueOrThrow({ where: { organizationId_aggregateType_aggregateId: { organizationId: ORG, aggregateType: "booking", aggregateId: id } } }))
+    expect(Number(head.currentVersion)).toBe(once.version)
+  })
+
+  it("own and explicit team scope apply to list, forged host filters, details and revoked grants", async () => {
+    const slug = await newPage({ hostIds: [HOST_B] })
+    const response = await book(slug, await someSlot(slug, 14))
+    expect(response.status).toBe(201)
+    const id = (await response.json()).data.id
+    const row = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    session.current = { user: { id: HOST_A, organizationId: ORG, role: "manager", email: "a@example.test", name: "Leyla" } }
+    const own = await (await meetingsGet(json("GET", `/api/v1/bookings?page=${row.bookingPageId}&host=${HOST_B}`))).json()
+    expect(own.data.items).toEqual([])
+    expect((await meetingGet(json("GET", `/api/v1/bookings/${id}`), { params: Promise.resolve({ id }) })).status).toBe(404)
+    signIn("admin")
+    expect((await grantsPut(json("PUT", "/api/v1/bookings/coordinators", { coordinatorUserId: HOST_A, hostIds: [HOST_B], canManage: false }))).status).toBe(200)
+    session.current = { user: { id: HOST_A, organizationId: ORG, role: "manager", email: "a@example.test", name: "Leyla" } }
+    const shared = await (await meetingGet(json("GET", `/api/v1/bookings/${id}`), { params: Promise.resolve({ id }) })).json()
+    expect(shared.data.id).toBe(id)
+    expect(shared.data.canManage).toBe(false)
+    expect(shared.data.cancelTokenHash).toBeUndefined()
+    expect(shared.data.secretId).toBeUndefined()
+    const denied = await actionsPost(json("POST", `/api/v1/bookings/${id}/actions`, { operation: "cancel", version: row.version, idempotencyKey: randomUUID() }), { params: Promise.resolve({ id }) })
+    expect(denied.status).toBe(403)
+    signIn("admin")
+    await grantsPut(json("PUT", "/api/v1/bookings/coordinators", { coordinatorUserId: HOST_A, hostIds: [], canManage: false }))
+    session.current = { user: { id: HOST_A, organizationId: ORG, role: "manager", email: "a@example.test", name: "Leyla" } }
+    expect((await meetingGet(json("GET", `/api/v1/bookings/${id}`), { params: Promise.resolve({ id }) })).status).toBe(404)
+    signIn("admin", OTHER_ORG)
+    expect((await meetingGet(json("GET", `/api/v1/bookings/${id}`), { params: Promise.resolve({ id }) })).status).toBe(404)
+  })
+
+  it("cancel and move races keep one version, preserve a closed page's cancellation and protect the task mirror", async () => {
+    const slug = await newPage()
+    const booked = await book(slug, await someSlot(slug, 16))
+    const id = (await booked.json()).data.id
+    const row = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    await expect(bypass(() => prisma.task.update({ where: { id: row.taskId! }, data: { dueDate: new Date() } }))).rejects.toThrow()
+    await bypass(() => prisma.bookingPage.update({ where: { id: row.bookingPageId }, data: { isActive: false } }))
+    const requests = await Promise.all(Array.from({ length: 2 }, () => actionsPost(json("POST", `/api/v1/bookings/${id}/actions`, { operation: "cancel", version: row.version, reason: "Plans changed", idempotencyKey: randomUUID() }), { params: Promise.resolve({ id }) })))
+    expect(requests.map((result) => result.status).sort()).toEqual([200, 409])
+    await bypass(() => drain(ORG, 50))
+    const updated = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(updated.status).toBe("cancelled")
+    expect(updated.version).toBe(row.version + 1)
+    expect((await bypass(() => prisma.task.findUniqueOrThrow({ where: { id: row.taskId! } }))).status).toBe("cancelled")
+    expect(await bypass(() => prisma.bookingChangeNote.count({ where: { bookingId: id } }))).toBe(1)
+  })
+
+
+  it("reschedules in place, reassigns its mirror and bootstraps a legacy outcome without inventing its creation history", async () => {
+    const slug = await newPage()
+    const result = await book(slug, await someSlot(slug, 18))
+    const id = (await result.json()).data.id
+    const before = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    await bypass(() => prisma.bookingPage.update({ where: { id: before.bookingPageId }, data: { hostIds: [HOST_A, HOST_B], version: { increment: 1 } } }))
+    const targetSlug = await newPage({ hostIds: [HOST_B] })
+    const startsAt = await someSlot(targetSlug, 20)
+    const request = { operation: "reschedule", version: before.version, hostUserId: HOST_B, startsAt, idempotencyKey: randomUUID(), notifyCustomer: false }
+    const moved = await actionsPost(json("POST", `/api/v1/bookings/${id}/actions`, request), { params: Promise.resolve({ id }) })
+    expect(moved.status, await moved.clone().text()).toBe(200)
+    const replay = await actionsPost(json("POST", `/api/v1/bookings/${id}/actions`, request), { params: Promise.resolve({ id }) })
+    expect(await replay.json()).toEqual(await moved.json())
+    await bypass(() => drain(ORG, 50))
+    const after = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(after.id).toBe(before.id)
+    expect(after.taskId).toBe(before.taskId)
+    expect(after.hostUserId).toBe(HOST_B)
+    expect(after.version).toBe(before.version + 1)
+    const task = await bypass(() => prisma.task.findUniqueOrThrow({ where: { id: after.taskId! } }))
+    expect(task.assignedTo).toBe(HOST_B)
+    expect(task.dueDate).toEqual(new Date(startsAt))
+    const legacy = await bypass(() => prisma.booking.create({ data: { organizationId: ORG, bookingPageId: before.bookingPageId, hostUserId: HOST_A, startsAt: new Date("2020-01-01T05:00:00Z"), endsAt: new Date("2020-01-01T05:30:00Z"), name: "Legacy client", phone: "+994501000002", cancelTokenHash: randomUUID() } }))
+    const recorded = await actionsPost(json("POST", `/api/v1/bookings/${legacy.id}/actions`, { operation: "outcome", version: 0, outcome: "completed", note: "Synthetic meeting outcome", idempotencyKey: randomUUID() }), { params: Promise.resolve({ id: legacy.id }) })
+    expect(recorded.status, await recorded.clone().text()).toBe(200)
+    const actual = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: legacy.id } }))
+    expect(actual).toMatchObject({ status: "completed", version: 2, source: "legacy", outcomeNote: "Synthetic meeting outcome" })
+    const events = await bypass(() => prisma.domainEvent.findMany({ where: { organizationId: ORG, aggregateType: "booking", aggregateId: legacy.id }, orderBy: { aggregateVersion: "asc" } }))
+    expect(events.map((event) => event.eventType)).toEqual(["sales.booking-imported.v1", "sales.booking-completed.v1"])
+  })
+
+  it("an unknown calendar create is never retried, while cancellation remains visible and a reviewed reconciliation permits cleanup", async () => {
+    const account = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "google-calendar", providerAccountId: "synthetic-booking-account", access_token: "synthetic-test-token" } }))
+    calendar.update.mockRejectedValue({ code: 404 })
+    calendar.insert.mockRejectedValue(new Error("synthetic timeout after provider accepted"))
+    calendar.remove.mockResolvedValue({ data: {} })
+    try {
+      const slug = await newPage()
+      const payload = { startsAt: await someSlot(slug, 22), name: "Unknown result", phone: "+994501000003", idempotencyKey: randomUUID(), recoverySecret: randomUUID() }
+      const response = await pagePost(json("POST", `/api/v1/public/booking/${slug}`, payload), slugParams(slug))
+      expect(response.status, await response.clone().text()).toBe(201)
+      const id = (await response.json()).data.id
+      await bypass(() => drain(ORG, 50))
+      const effect = await bypass(() => prisma.effectOutbox.findFirstOrThrow({ where: { organizationId: ORG, effectType: "booking.calendar", payload: { path: ["bookingId"], equals: id } } }))
+      expect(effect.status).toBe("reconciliation_required")
+      expect(calendar.insert).toHaveBeenCalledTimes(1)
+      await bypass(() => drain(ORG, 50))
+      expect(calendar.insert).toHaveBeenCalledTimes(1)
+      const row = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+      const cancelled = await actionsPost(json("POST", `/api/v1/bookings/${id}/actions`, { operation: "cancel", version: row.version, idempotencyKey: randomUUID() }), { params: Promise.resolve({ id }) })
+      expect(cancelled.status).toBe(200)
+      await bypass(() => drain(ORG, 50))
+      expect(calendar.remove).not.toHaveBeenCalled()
+      const context = await import("@/lib/rls-context")
+      await context.runWithTenant(ORG, () => prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe("SET LOCAL ROLE leaddrive_effect_operator")
+        await tx.effectReconciliation.create({ data: { organizationId: ORG, effectId: effect.id, attemptNumber: effect.attemptCount, decision: "dead", reason: "Provider readback verified the created event; latest cancellation must delete it", evidence: { providerState: "present", synthetic: true } } })
+        await tx.effectOutbox.update({ where: { id: effect.id }, data: { status: "dead", completedAt: new Date() } })
+      }))
+      await bypass(() => drain(ORG, 50))
+      expect(calendar.insert).toHaveBeenCalledTimes(1)
+      expect(calendar.remove).toHaveBeenCalledTimes(1)
+      expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))).status).toBe("cancelled")
+    } finally { await bypass(() => prisma.account.delete({ where: { id: account.id } })) }
+  })
+
+  it("FORCE RLS hides another tenant from a real unprivileged connection identity", async () => {
+    signIn("admin", OTHER_ORG)
+    const slug = await newPage({ hostIds: [`user-admin-${OTHER_ORG}`] })
+    const response = await book(slug, await someSlot(slug, 2))
+    expect(response.status).toBe(201)
+    const role = `booking_reader_${randomUUID().replaceAll("-", "")}`
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `CREATE ROLE "${role}" NOLOGIN; GRANT USAGE ON SCHEMA public TO "${role}"; GRANT SELECT ON bookings TO "${role}";`)
+    try {
+      const visible = await bypass(() => prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL ROLE "${role}"`)
+        await tx.$executeRaw`SELECT set_config('app.rls_bypass', 'off', true), set_config('app.org_id', ${ORG}, true)`
+        return tx.$queryRaw<{ organizationId: string }[]>`SELECT "organizationId" FROM bookings`
+      }))
+      expect(visible.length).toBeGreaterThan(0)
+      expect(new Set(visible.map((row) => row.organizationId))).toEqual(new Set([ORG]))
+    } finally {
+      prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `REVOKE ALL ON bookings FROM "${role}"; REVOKE USAGE ON SCHEMA public FROM "${role}"; DROP ROLE "${role}";`)
+    }
+  })
+
 })
