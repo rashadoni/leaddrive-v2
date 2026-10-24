@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import { preloadTenantDataKeys } from "@/lib/crypto/tenant-data-keys"
-import { prisma } from "@/lib/prisma"
+import { bookingDb as prisma } from "./db"
 import { hashCanonicalJson } from "@/lib/event-platform/canonical-json"
 import { findCommandReceipt, storeCommandReceipt } from "@/lib/event-platform/command-receipt"
 import { encryptForTenantBound, decryptForTenantBound } from "@/lib/crypto/tenant-pii-encryption"
@@ -11,7 +11,7 @@ import { assertBookingInterval, bookingRules } from "./commands"
 import { BookingCommandError } from "./command-error"
 import { computeSlots, findSlot } from "./availability"
 import { activeHosts, orgContext, loadBusyByHost, bookingCancelUrl, hashBookingToken, type BookingInput, type CreateBookingResult } from "./book"
-import { bookingHostWhere } from "./access"
+import { bookingHostWhere, bookingScope } from "./access"
 import type { BookingAccess } from "./access"
 
 const digest = (value: string) => createHash("sha256").update(value).digest("hex")
@@ -27,6 +27,11 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
   async function replay(db: Prisma.TransactionClient | typeof prisma) {
     const receipt = await findCommandReceipt(db, identity)
     if (!receipt) return null
+    if (access) {
+      const storedId = (receipt.responseBody as { id?: unknown })?.id
+      const visible = typeof storedId === "string" ? await db.booking.findFirst({ where: { AND: [bookingScope(access, true), { id: storedId }] }, select: { hostUserId: true } }) : null
+      if (!visible || !access.administrator && visible.hostUserId !== access.userId && !await db.bookingCoordinatorGrant.findFirst({ where: { organizationId: orgId, coordinatorUserId: access.userId, hostUserId: visible.hostUserId, canManage: true }, select: { id: true } })) throw new BookingCommandError("NOT_FOUND", 404)
+    }
     const secret = await db.bookingSecret.findFirst({ where: { id: secretId, organizationId: orgId } })
     const supplied = Buffer.from(digest(input.recoverySecret!), "hex")
     const expected = Buffer.from(secret?.recoveryHash ?? "00".repeat(32), "hex")

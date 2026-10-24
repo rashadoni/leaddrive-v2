@@ -10,10 +10,10 @@ export interface BookingHistoryItem { id: string; type: string; when: string; ve
 interface HistoryPage { items: BookingHistoryItem[]; nextCursor: number | null }
 const LABELS: Record<string, string> = { "sales.booking-created.v1": "bookingCreated", "sales.booking-imported.v1": "historyImported", "sales.booking-rescheduled.v1": "historyRescheduled", "sales.booking-cancelled.v1": "meetingCancelled", "sales.booking-completed.v1": "meetingCompleted", "sales.booking-no-show.v1": "meetingNoShow", "sales.booking-outcome-corrected.v1": "historyCorrected" }
 
-export function BookingHistory({ booking, timezone }: { booking: WorkspaceBooking; timezone: string }) {
+export function BookingHistory({ booking, timezone, cacheScope }: { booking: WorkspaceBooking; timezone: string; cacheScope: string }) {
   const t = useTranslations("booking"), locale = useLocale()
   const history = useInfiniteQuery({
-    queryKey: ["booking-history", booking.id, booking.version],
+    queryKey: ["booking-history", cacheScope, booking.id, booking.version],
     initialPageParam: null as number | null,
     initialData: { pages: [{ items: booking.history ?? [], nextCursor: booking.historyNextCursor ?? null }], pageParams: [null] },
     queryFn: async ({ signal, pageParam }): Promise<HistoryPage> => {

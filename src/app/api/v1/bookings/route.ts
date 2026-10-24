@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { withRlsAuth } from "@/lib/with-rls"
 import { bookingAccess } from "@/lib/booking/access"
+import { readAttribution } from "@/lib/ad-conversions/attribution"
 import { bookSchema } from "@/lib/booking/booking-input"
 import { z } from "zod"
 import { createStoredBooking } from "@/lib/booking/create"
@@ -30,9 +31,10 @@ export const POST = withRlsAuth("bookings", "write", async (req: NextRequest, au
   const parsed = createInput.safeParse(await req.json().catch(() => null))
   if (!parsed.success || parsed.data.website) return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 })
   try {
-    const result = await createStoredBooking(auth.orgId, parsed.data.pageId, parsed.data, new Date(), access)
+    const result = await createStoredBooking(auth.orgId, parsed.data.pageId, { ...parsed.data, attribution: readAttribution(parsed.data.attribution, { userAgent: req.headers.get("user-agent") }) }, new Date(), access)
     if (!result.ok) return NextResponse.json({ code: result.reason === "taken" ? "SLOT_TAKEN" : "NOT_FOUND" }, { status: result.reason === "taken" ? 409 : 404 })
-    return NextResponse.json({ success: true, data: result.booking }, { status: 201 })
+    const { id, startsAt, endsAt, hostName } = result.booking
+    return NextResponse.json({ success: true, data: { id, startsAt, endsAt, hostName } }, { status: 201 })
   } catch (error) {
     if (error instanceof BookingCommandError) return NextResponse.json({ code: error.code }, { status: error.status })
     if (error instanceof IdempotencyConflictError) return NextResponse.json({ code: "IDEMPOTENCY_CONFLICT" }, { status: 409 })

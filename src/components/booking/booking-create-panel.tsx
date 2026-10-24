@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BookingScheduler, type BookResult, type BookingRequest, type PublicBookingPage } from "./booking-scheduler"
 import { BOOKING_ERROR_KEYS } from "./booking-meeting-actions"
-import { bookingRequestIdentity } from "@/lib/booking/client-identity"
+import { bookingRequestIdentity, completeBookingRequest } from "@/lib/booking/client-identity"
 import { dateInputValueInTimezone } from "@/lib/timezone"
 import type { DaySlots } from "@/lib/booking/availability"
 
@@ -37,6 +37,7 @@ export function BookingCreatePanel({ pages, hosts, timezone, onSaved }: { pages:
         if (body.code === "SLOT_TAKEN") { void available.refetch(); return { ok: false, reason: "taken" } }
         return { ok: false, reason: response.status === 400 ? "invalid" : "error" }
       }
+      completeBookingRequest(`staff-create:${pageId}`)
       onSaved(body.data.id)
       return { ok: true, booking: body.data }
     } catch { setError(t("commandUnconfirmed")); return { ok: false, reason: "error" } }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
-import { prisma } from "@/lib/prisma"
+import { bookingDb as prisma } from "@/lib/booking/db"
 import { withRlsAuth } from "@/lib/with-rls"
 import { bookingAccess } from "@/lib/booking/access"
 import { bookingContext, bookingFilters } from "@/lib/booking/queries"

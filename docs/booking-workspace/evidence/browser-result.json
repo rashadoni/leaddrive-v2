@@ -6,6 +6,7 @@
   ],
   "passed": [
     "detail",
+    "history-cache-privacy-isolation",
     "follow-up-task",
     "reschedule",
     "cancel",

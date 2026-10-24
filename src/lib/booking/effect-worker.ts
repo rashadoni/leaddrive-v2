@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto"
 import type { Booking, EffectOutbox, Prisma } from "@prisma/client"
 import { preloadTenantDataKeys } from "@/lib/crypto/tenant-data-keys"
-import { prisma } from "@/lib/prisma"
+import { bookingDb as prisma } from "./db"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { withJobLease } from "@/lib/cron/job-lease"
 import { createNotification, deliverNotificationPush } from "@/lib/notifications"
@@ -71,7 +71,7 @@ export async function drainBookingEffects(orgId: string, limit = 20, deadline = 
       if (!effect) return null
       const identity = effect.payload as { bookingId: string }
       await tx.$queryRaw`SELECT id FROM bookings WHERE "organizationId" = ${orgId} AND id = ${identity.bookingId} FOR UPDATE`
-      await tx.$queryRaw`SELECT id FROM effect_outbox WHERE "organizationId" = ${orgId} AND id = ${effect.id} FOR UPDATE`
+      await tx.$queryRaw`SELECT id FROM effect_outbox WHERE "organizationId" = ${orgId} AND id = ${effect.id}::uuid FOR UPDATE`
       const fresh = await tx.effectOutbox.findFirst({ where: { id: effect.id, organizationId: orgId } })
       if (!fresh || fresh.status !== effect.status || fresh.leaseToken !== effect.leaseToken) return { done: true as const }
       effect = fresh

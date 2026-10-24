@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma"
+import { bookingDb as prisma } from "./db"
 import { getGoogleCalendarClient } from "@/lib/google-calendar"
 import { localDateTimeToUtc } from "@/lib/timezone"
 import { BookingCommandError } from "./command-error"

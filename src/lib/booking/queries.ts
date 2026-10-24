@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { Prisma } from "@prisma/client"
-import { prisma } from "@/lib/prisma"
+import { bookingDb as prisma } from "./db"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { organizationTimezone } from "@/lib/ticketing/customer-locale"
 import { isValidTimezone } from "@/lib/timezone"
@@ -82,7 +82,7 @@ export async function bookingDetail(access: BookingAccess, id: string, role: Rol
   ])
   const canManage = access.writableHostIds === null || access.writableHostIds.includes(row.hostUserId)
   const canCorrect = access.administrator || Boolean(await prisma.bookingCoordinatorGrant.findFirst({ where: { organizationId: access.orgId, coordinatorUserId: access.userId, hostUserId: row.hostUserId, canManage: true } }))
-  return { ...safe, canCreateFollowUp: canManage && checkPermission(role, "tasks", "write"), canManage, canCorrect, availableHosts, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, history: events.items, historyNextCursor: events.nextCursor, historyLimited: Boolean(events.nextCursor), integrations: effects.map((effect) => ({ type: effect.effectType, status: effect.status, requiresAttention: effect.lastError !== null, count: effect._count._all })), hostName: host?.name ?? null, hostActive: host?.isActive ?? false, calendarLinked: Boolean(googleEventId),
+  return { ...safe, phoneRestricted: access.phoneRestricted, canCreateFollowUp: canManage && checkPermission(role, "tasks", "write"), canManage, canCorrect, availableHosts, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, history: events.items, historyNextCursor: events.nextCursor, historyLimited: Boolean(events.nextCursor), integrations: effects.map((effect) => ({ type: effect.effectType, status: effect.status, requiresAttention: effect.lastError !== null, count: effect._count._all })), hostName: host?.name ?? null, hostActive: host?.isActive ?? false, calendarLinked: Boolean(googleEventId),
     leadId: checkPermission(role, "leads", "read") ? leadId : null,
     taskId: checkPermission(role, "tasks", "read") ? taskId : null,
   }

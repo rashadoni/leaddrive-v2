@@ -17,3 +17,10 @@ export async function bookingRequestIdentity(scope: string, payload: unknown) {
   try { sessionStorage.setItem(storageKey, JSON.stringify({ fingerprint, ...identity })) } catch { /* No form PII is persisted. */ }
   return identity
 }
+
+/** A confirmed success ends this intent; a lost/failed response keeps its retry identity. */
+export function completeBookingRequest(scope: string) {
+  const key = `booking-request:${scope}`
+  memory.delete(key)
+  try { sessionStorage.removeItem(key) } catch { /* Storage may be unavailable. */ }
+}

@@ -3,8 +3,9 @@
  *   GET  → { pages, users, linkBase }
  *   POST → create
  */
+import type { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { bookingDb as prisma } from "@/lib/booking/db"
 import { withRlsAuth } from "@/lib/with-rls"
 import { bookingPageUrl } from "@/lib/booking/book"
 import { bookingAccess, bookingHostWhere } from "@/lib/booking/access"
@@ -50,7 +51,7 @@ export const POST = withRlsAuth("bookings", "write", async (req: NextRequest, au
   if (hostsOk !== new Set(input.hostIds).size) return NextResponse.json({ error: "Unknown host", code: "HOSTS_REQUIRED" }, { status: 400 })
   try {
     const page = await prisma.bookingPage.create({
-      data: { ...input, organizationId: auth.orgId, createdBy: auth.userId ?? null },
+      data: { ...input, weekly: input.weekly as unknown as Prisma.InputJsonValue, organizationId: auth.orgId, createdBy: auth.userId ?? null },
     })
     return NextResponse.json({ success: true, data: page }, { status: 201 })
   } catch (error) {

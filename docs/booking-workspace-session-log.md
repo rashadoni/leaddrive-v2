@@ -200,3 +200,44 @@
 - Последние scoped ESLint, translation parity (28611 keys) и diff whitespace
   проходят; source code готов к внешним gates. Полный build запрашивается
   через штатную метку production-build на PR, без запуска на Contabo.
+
+## 2026-10-24 — Финальный критический разбор, второй проход
+
+- Replay ручной записи теперь повторно проверяет текущий scope/grant; staff
+  response не раскрывает customer cancel capability. Добавлен реальный PG-сценарий
+  создания → replay → отзыв grant → запрет повторного replay.
+- Identity завершается после полученного успеха; потеря/ошибка ответа сохраняет
+  ту же попытку. Targeted suite после изменения: 147/147 PASS.
+- Обнаружена граница client cache истории: ключ не включал identity/privacy.
+  Она добавлена и проверена на реальном компоненте: смена пользователя с общим
+  QueryClient и скрытыми телефонами не показывает предыдущий note. Browser PASS.
+- В booking выделена типизированная граница generated PrismaClient поверх
+  существующего RLS proxy; runtime-клиент и transaction injection сохранены.
+- Read-only inventory production не выполнен: штатный leaddrive-prod alias
+  указывает на разрешённый 13.140.132.245, но сервер отверг public key.
+  Другие credentials/retired targets не использовались; production не менялся.
+- Отдельный implementation audit фиксирует UI 17/20, исправленные дефекты,
+  release gate по production inventory и остаточные P2/P3 без ложного PASS.
+- Hosted run 40084671778 на a5ea772d0 ещё выполняется; локальные исправления
+  второго прохода будут проверены следующим exact-SHA запуском, а не выданы
+  за проверенные старым run.
+
+## 2026-10-24 — Первый полный CI и исправления
+
+- Run 40084671778 / a5ea772d0: production standalone build PASS.
+  PostgreSQL gate FAIL из-за uuid=text в raw lock effect_outbox; UUID cast
+  добавлен. Fixture 211 cancelled rows исправлен: cancelledAt обязателен.
+- Typecheck завершился полностью; defect gate FAIL на двух новых парах:
+  тест навигации не задавал plan, staff create передавал unknown attribution.
+  Контракты исправлены, host reassignment использует проверяемый relation connect.
+  Baselines и обязательные gates не менялись и не ослаблялись.
+- Расширен DB guard источника истины: deferred trigger проверяет финальные
+  Booking/head и факты события; canonical update требует новой версии, новые
+  version=0 записи от старого writer не могут коммититься. Legacy reads остаются
+  доступны; первая команда адаптирует их в общей транзакции.
+- PostgreSQL proof теперь применяет полностью оригинальную online-booking
+  миграцию и обе реальные forward-миграции в пустой scratch DB. Извлечение
+  отдельных фрагментов DDL заменено проверкой реального пути обновления.
+  Legacy fixtures явно представляют pre-cutover rows, только в scratch.
+- Эти изменения после первого run ещё не подтверждены им; сохраняется новый
+  checkpoint и запускается следующий exact-SHA CI.

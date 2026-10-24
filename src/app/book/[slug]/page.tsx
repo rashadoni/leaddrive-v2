@@ -8,7 +8,7 @@ import { CircleAlert, Loader2 } from "lucide-react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { BookingScheduler, type BookResult, type BookingRequest, type PublicBookingPage } from "@/components/booking/booking-scheduler"
 import type { DaySlots } from "@/lib/booking/availability"
-import { bookingRequestIdentity } from "@/lib/booking/client-identity"
+import { bookingRequestIdentity, completeBookingRequest } from "@/lib/booking/client-identity"
 import { collectAdAttribution } from "@/lib/ad-conversions/collect"
 
 async function fetchBookingPage(slug: string): Promise<{ page: PublicBookingPage; days: DaySlots[] } | null> {
@@ -50,7 +50,7 @@ export default function PublicBookingPage() {
         body: JSON.stringify({ ...request, ...identity, locale, attribution: collectAdAttribution() }),
       })
       const body = await response.json().catch(() => ({}))
-      if (response.ok && body.success) return { ok: true, booking: body.data }
+      if (response.ok && body.success) { completeBookingRequest(`public:${slug}`); return { ok: true, booking: body.data } }
       if (body.code === "CALENDAR_UNAVAILABLE") return { ok: false, reason: "calendar" }
       if (body.code === "CONFIRMATION_EXPIRED") return { ok: false, reason: "expired" }
       if (response.status === 409 && !["IDEMPOTENCY_CONFLICT", "AVAILABILITY_CHANGED"].includes(body.code)) {

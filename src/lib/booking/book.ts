@@ -13,7 +13,7 @@
  */
 import { createHash } from "crypto"
 import { hasModule, moduleRecordFromOrgFields } from "@/lib/modules"
-import { prisma } from "@/lib/prisma"
+import { bookingDb as prisma } from "./db"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { organizationTimezone } from "@/lib/ticketing/customer-locale"
 import { listBusyIntervals } from "@/lib/google-calendar"

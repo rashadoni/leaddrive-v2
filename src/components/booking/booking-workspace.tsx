@@ -23,6 +23,7 @@ export interface WorkspaceBooking {
   id: string
   version: number
   availableHosts?: { id: string; name: string }[]
+  phoneRestricted?: boolean
   canCreateFollowUp?: boolean
   canManage?: boolean
   canCorrect?: boolean
@@ -224,7 +225,7 @@ export function BookingWorkspace() {
         {detail.outcomeNote ? <section><h3 className="text-sm font-medium">{t("outcomeNote")}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm">{detail.outcomeNote}</p></section> : null}
         {detail.cancellationReason ? <p className="whitespace-pre-wrap break-words text-sm">{detail.cancellationReason}</p> : null}
         <BookingFollowUp key={detail.id} booking={detail} />
-        <BookingHistory booking={detail} timezone={detailTimezone} />
+        <BookingHistory booking={detail} timezone={detailTimezone} cacheScope={`${identity}:${Boolean(detail.phoneRestricted)}`} />
         <section className="space-y-2 border-t pt-4"><h3 className="text-sm font-medium">{t("deliveryTitle")}</h3>
           {detail.integrations?.length ? detail.integrations.map((item, index) => <p key={`${item.type}:${item.status}:${index}`} className={`text-xs ${item.requiresAttention || item.status === "reconciliation_required" || item.status === "definitely_failed" ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>{t(integrationLabel(item.type))} · {t(item.status === "succeeded" ? "deliveryApplied" : item.requiresAttention || ["reconciliation_required", "definitely_failed"].includes(item.status) ? "deliveryNeedsCheck" : "deliveryPending")} ({item.count})</p>) : <p className="text-xs text-muted-foreground">{t("calendarLinkState", { state: t(detail.calendarLinked ? "calendarLinked" : "calendarNotLinked") })}</p>}
         </section>

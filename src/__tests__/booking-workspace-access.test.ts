@@ -51,9 +51,9 @@ describe("meeting workspace access", () => {
 
   it("provides a single menu destination to operators and hides it from viewers", () => {
     for (const role of ["sales", "manager", "admin"] as const) {
-      const items = accessibleNavItems({ role, modules: { sales: true } })
+      const items = accessibleNavItems({ plan: "professional", role, modules: { sales: true } })
       expect(items.filter((item) => item.tKey === "onlineBooking").map((item) => item.href)).toEqual(["/meetings"])
     }
-    expect(accessibleNavItems({ role: "viewer", modules: { sales: true } }).some((item) => item.href === "/meetings")).toBe(false)
+    expect(accessibleNavItems({ plan: "professional", role: "viewer", modules: { sales: true } }).some((item) => item.href === "/meetings")).toBe(false)
   })
 })

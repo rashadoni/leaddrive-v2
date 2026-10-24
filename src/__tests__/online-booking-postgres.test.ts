@@ -20,6 +20,7 @@
  * the deploy («Online booking database gate»), where
  * `ONLINE_BOOKING_DB_GATE=required` turns a missing URL into a failure.
  */
+import type { Prisma as GeneratedPrisma, PrismaClient } from "@prisma/client"
 import { randomUUID } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
@@ -92,16 +93,6 @@ function schemaWithoutEmbeddings(): string {
   return file
 }
 
-/** `db push` builds no CHECKs and no partial indexes; these are lifted from the migration. */
-function bookingConstraintsSql(): string {
-  const sql = readFileSync(path.join(ROOT, "prisma/migrations/20261101090000_online_booking/migration.sql"), "utf8")
-  const partial = sql.match(/CREATE UNIQUE INDEX "bookings_host_start_confirmed_key"[\s\S]*?;/)
-  if (!partial) throw new Error("partial unique index not found in the migration")
-  const checks = [...sql.matchAll(/CONSTRAINT "(bookings_\w+_check)" CHECK (\(.*\))/g)]
-  if (checks.length < 3) throw new Error("booking CHECKs not found in the migration")
-  return [partial[0], ...checks.map(([, name, body]) => `ALTER TABLE "bookings" ADD CONSTRAINT "${name}" CHECK ${body.replace(/,$/, "")};`)].join("\n")
-}
-
 function signIn(role: string, organizationId = ORG) {
   session.current = { user: { id: `user-${role}-${organizationId}`, organizationId, role, email: `${role}@example.com`, name: role } }
 }
@@ -119,8 +110,7 @@ const ALL_DAY = Object.fromEntries(["0", "1", "2", "3", "4", "5", "6"].map((day)
 const pgDescribe = scratch ? describe : describe.skip
 
 pgDescribe("online booking on a real Postgres", () => {
-  type Prisma = typeof import("@/lib/prisma").prisma
-  let prisma!: Prisma
+  let prisma!: PrismaClient
   let bypass!: typeof import("@/lib/rls-context").runWithRlsBypass
   let pageGet!: typeof import("@/app/api/v1/public/booking/[slug]/route").GET
   let pagePost!: typeof import("@/app/api/v1/public/booking/[slug]/route").POST
@@ -139,7 +129,12 @@ pgDescribe("online booking on a real Postgres", () => {
     prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `DROP DATABASE IF EXISTS "${scratch!.name}" WITH (FORCE)`)
     prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `CREATE DATABASE "${scratch!.name}"`)
     prismaCli(["db", "push", "--schema", schemaWithoutEmbeddings(), "--skip-generate", "--accept-data-loss"], { ...process.env, DATABASE_URL: scratch!.url })
-    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, bookingConstraintsSql())
+    // Only in this newly created empty scratch DB: replace the booking subset
+    // with its original schema, then apply both actual forward migrations.
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DROP TABLE IF EXISTS booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE;`)
+    for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands"]) {
+      prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, readFileSync(path.join(ROOT, `prisma/migrations/${migration}/migration.sql`), "utf8"))
+    }
     // Run the actual canonical ledger DDL, including attempt/state/append-only guards.
     // These tables are dropped only in this newly created scratch database, before fixtures exist.
     const foundation = readFileSync(path.join(ROOT, "prisma/migrations/20260901090000_event_platform_foundation/migration.sql"), "utf8")
@@ -148,17 +143,8 @@ pgDescribe("online booking on a real Postgres", () => {
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'leaddrive_effect_operator') THEN CREATE ROLE leaddrive_effect_operator NOLOGIN; END IF; END $$;`)
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, foundation)
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `ALTER TABLE booking_change_notes ADD CONSTRAINT booking_notes_event_test_fkey FOREIGN KEY ("organizationId", "eventId") REFERENCES domain_events("organizationId", id) ON DELETE CASCADE;`)
-    const commandDdl = readFileSync(path.join(ROOT, "prisma/migrations/20261102100000_booking_commands/migration.sql"), "utf8")
-    const intervalGuard = commandDdl.match(/CREATE EXTENSION IF NOT EXISTS btree_gist;[\s\S]*?WHERE \(status = 'confirmed'\);/)![0]
-    const taskGuard = commandDdl.slice(commandDdl.indexOf("CREATE FUNCTION booking_managed_task_guard_fn"), commandDdl.lastIndexOf("COMMIT;"))
-    const policies = commandDdl.match(/DO \$policy\$[\s\S]*?\$policy\$;/)![0]
-    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, intervalGuard + "\n" + taskGuard + "\n" + policies)
-    const bookingDdl = readFileSync(path.join(ROOT, "prisma/migrations/20261101090000_online_booking/migration.sql"), "utf8")
-    const grantDdl = readFileSync(path.join(ROOT, "prisma/migrations/20261102090000_booking_workspace/migration.sql"), "utf8")
-    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, bookingDdl.slice(bookingDdl.indexOf('ALTER TABLE "booking_pages" ENABLE')) + "\n" + grantDdl.slice(grantDdl.indexOf('ALTER TABLE "booking_coordinator_grants" ENABLE'), grantDdl.indexOf('CREATE INDEX "bookings_org_start')))
-    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `ALTER TABLE bookings DROP CONSTRAINT bookings_status_check; ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('confirmed','cancelled','completed','no_show'));`)
 
-    prisma = (await import("@/lib/prisma")).prisma
+    prisma = (await import("@/lib/prisma")).prisma as PrismaClient
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
     const pub = await import("@/app/api/v1/public/booking/[slug]/route")
     pageGet = pub.GET
@@ -198,6 +184,14 @@ pgDescribe("online booking on a real Postgres", () => {
     mail.sent = []
     signIn("admin")
   })
+
+  async function legacyFixture<T>(write: (tx: GeneratedPrisma.TransactionClient) => Promise<T>): Promise<T> {
+    // Represent rows that already existed before the cutover, only in scratch.
+    return bypass(() => prisma.$transaction(async (tx: GeneratedPrisma.TransactionClient) => {
+      await tx.$executeRawUnsafe("SET LOCAL session_replication_role = 'replica'")
+      return write(tx)
+    }))
+  }
 
   async function newPage(over: Record<string, unknown> = {}) {
     const slug = `page-${++sequence}`
@@ -409,17 +403,17 @@ pgDescribe("online booking on a real Postgres", () => {
     const slug = await newPage()
     const page = await bypass(() => prisma.bookingPage.findUniqueOrThrow({ where: { slug } }))
     const start = new Date("2030-01-15T08:00:00Z")
-    await bypass(() => prisma.booking.createMany({ data: Array.from({ length: 211 }, (_, index) => ({
+    await legacyFixture((tx) => tx.booking.createMany({ data: Array.from({ length: 211 }, (_, index) => ({
       id: `pagination-${index.toString().padStart(4, "0")}`, organizationId: ORG, bookingPageId: page.id, hostUserId: HOST_A,
-      startsAt: start, endsAt: new Date(start.getTime() + 1800000), name: "Calendar pagination client", phone: "+994501000003", status: "cancelled", cancelTokenHash: randomUUID(),
+      startsAt: start, endsAt: new Date(start.getTime() + 1800000), name: "Calendar pagination client", phone: "+994501000003", status: "cancelled", cancelledAt: new Date(), cancelTokenHash: randomUUID(),
     })) }))
     const ids: string[] = []
     let cursor: string | null = null
     do {
-      const filter = new URLSearchParams({ page: page.id, limit: "100", ...(cursor ? { cursor } : {}) })
-      const response = await meetingsGet(json("GET", `/api/v1/bookings?${filter}`))
+      const filter: URLSearchParams = new URLSearchParams({ page: page.id, limit: "100", ...(cursor ? { cursor } : {}) })
+      const response: Response = await meetingsGet(json("GET", `/api/v1/bookings?${filter}`))
       expect(response.status).toBe(200)
-      const data = (await response.json()).data
+      const data: { items: { id: string }[]; nextCursor: string | null } = (await response.json()).data
       ids.push(...data.items.map((row: { id: string }) => row.id)); cursor = data.nextCursor
     } while (cursor)
     expect(ids).toHaveLength(211)
@@ -429,6 +423,42 @@ pgDescribe("online booking on a real Postgres", () => {
     const response = await calendarGet(json("GET", `/api/v1/bookings/calendar?${filter}`))
     expect(response.status).toBe(200)
     expect((await response.json()).data.days).toEqual([{ day: "2030-01-15", count: 211 }])
+  })
+
+  it("the database rejects old and direct writers that bypass canonical events", async () => {
+    const slug = await newPage()
+    const response = await book(slug, await someSlot(slug, 22))
+    const id = (await response.json()).data.id
+    await expect(bypass(() => prisma.booking.update({ where: { id }, data: { status: "no_show" } }))).rejects.toThrow()
+    await expect(bypass(() => prisma.booking.update({ where: { id }, data: { name: "Changed outside command" } }))).rejects.toThrow()
+    const original = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(original.status).toBe("confirmed")
+    await expect(bypass(() => prisma.booking.create({ data: {
+      organizationId: ORG, bookingPageId: original.bookingPageId, hostUserId: HOST_A,
+      startsAt: new Date("2031-01-01T08:00Z"), endsAt: new Date("2031-01-01T08:30Z"),
+      name: "Old writer", phone: "+994501000005", cancelTokenHash: randomUUID(),
+    } }))).rejects.toThrow()
+  })
+
+  it("a manual create returns no customer capability and cannot replay after coordinator access is revoked", async () => {
+    const slug = await newPage({ hostIds: [HOST_B] })
+    const startsAt = await someSlot(slug, 15)
+    const page = await bypass(() => prisma.bookingPage.findUniqueOrThrow({ where: { slug } }))
+    await grantsPut(json("PUT", "/api/v1/bookings/coordinators", { coordinatorUserId: HOST_A, hostIds: [HOST_B], canManage: true }))
+    session.current = { user: { id: HOST_A, organizationId: ORG, role: "manager", email: "a@example.test", name: "Leyla" } }
+    const createPost = (await import("@/app/api/v1/bookings/route")).POST
+    const input = { pageId: page.id, startsAt, name: "Staff-created client", phone: "+994501000004", idempotencyKey: randomUUID(), recoverySecret: randomUUID() }
+    const response = await createPost(json("POST", "/api/v1/bookings", input))
+    expect(response.status, await response.clone().text()).toBe(201)
+    const data = (await response.json()).data
+    expect(data.cancelUrl).toBeUndefined()
+    expect(data.secretId).toBeUndefined()
+    const replay = await createPost(json("POST", "/api/v1/bookings", input))
+    expect((await replay.json()).data.id).toBe(data.id)
+    signIn("admin")
+    await grantsPut(json("PUT", "/api/v1/bookings/coordinators", { coordinatorUserId: HOST_A, hostIds: [], canManage: false }))
+    session.current = { user: { id: HOST_A, organizationId: ORG, role: "manager", email: "a@example.test", name: "Leyla" } }
+    expect((await createPost(json("POST", "/api/v1/bookings", input))).status).toBe(404)
   })
 
   it("own and explicit team scope apply to list, forged host filters, details and revoked grants", async () => {
@@ -499,7 +529,7 @@ pgDescribe("online booking on a real Postgres", () => {
     const task = await bypass(() => prisma.task.findUniqueOrThrow({ where: { id: after.taskId! } }))
     expect(task.assignedTo).toBe(HOST_B)
     expect(task.dueDate).toEqual(new Date(startsAt))
-    const legacy = await bypass(() => prisma.booking.create({ data: { organizationId: ORG, bookingPageId: before.bookingPageId, hostUserId: HOST_A, startsAt: new Date("2020-01-01T05:00:00Z"), endsAt: new Date("2020-01-01T05:30:00Z"), name: "Legacy client", phone: "+994501000002", cancelTokenHash: randomUUID() } }))
+    const legacy = await legacyFixture((tx) => tx.booking.create({ data: { organizationId: ORG, bookingPageId: before.bookingPageId, hostUserId: HOST_A, startsAt: new Date("2020-01-01T05:00:00Z"), endsAt: new Date("2020-01-01T05:30:00Z"), name: "Legacy client", phone: "+994501000002", cancelTokenHash: randomUUID() } }))
     const recorded = await actionsPost(json("POST", `/api/v1/bookings/${legacy.id}/actions`, { operation: "outcome", version: 0, outcome: "completed", note: "Synthetic meeting outcome", idempotencyKey: randomUUID() }), { params: Promise.resolve({ id: legacy.id }) })
     expect(recorded.status, await recorded.clone().text()).toBe(200)
     const actual = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: legacy.id } }))

@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import { z } from "zod"
-import { prisma } from "@/lib/prisma"
+import { bookingDb as prisma } from "./db"
 import { hashCanonicalJson } from "@/lib/event-platform/canonical-json"
 import { findCommandReceipt, storeCommandReceipt } from "@/lib/event-platform/command-receipt"
 import { organizationTimezone } from "@/lib/ticketing/customer-locale"
@@ -94,7 +94,7 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
       if (!findSlot(computeSlots({ rules, hostIds: [hostId], busyByHost: new Map([[hostId, preflight.intervals]]), now }), input.startsAt)) throw new BookingCommandError("SLOT_TAKEN")
       const startsAt = new Date(input.startsAt), endsAt = new Date(startsAt.getTime() + currentPage.durationMinutes * 60_000)
       await assertBookingInterval(tx, access.orgId, hostId, startsAt, endsAt, currentPage.bufferMinutes, id)
-      change = { startsAt, endsAt, hostUserId: hostId, bufferBefore: currentPage.bufferMinutes, bufferAfter: currentPage.bufferMinutes }
+      change = { startsAt, endsAt, hostUser: { connect: { organizationId_id: { organizationId: access.orgId, id: hostId } } }, bufferBefore: currentPage.bufferMinutes, bufferAfter: currentPage.bufferMinutes }
       type = "rescheduled"
     }
     await ensureLegacyBinding(tx, row)

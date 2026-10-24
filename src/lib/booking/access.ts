@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { bookingDb as prisma } from "./db"
 import type { AuthResult } from "@/lib/api-auth"
 import type { Prisma } from "@prisma/client"
 
