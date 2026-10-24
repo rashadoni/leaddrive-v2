@@ -258,7 +258,7 @@ export async function claimStagedPhoneProofDelivery(client: RegistryClient, orga
       data: { status: "LEASED", attempts: 1, leaseToken, leaseUntil } })
     if (changed.count !== 1) throw new IdentityRegistryError("IDENTITY_PROOF_STALE")
     await tx.identityEvent.create({ data: { id: randomUUID(), organizationId, userId: proof.userId, actorUserId: null,
-      requestId: `delivery-lease:${proofId}`, requestHash: digest([1, "PHONE_DELIVERY_LEASED", organizationId, proofId, leaseToken]),
+      requestId: `delivery-lease:${digest([leaseToken])}`, requestHash: digest([1, "PHONE_DELIVERY_LEASED", organizationId, proofId, leaseToken]),
       action: "PHONE_DELIVERY_LEASED", accountVersion: proof.accountVersion, credentialEpoch: proof.credentialEpoch,
       proofId, proofOutcome: "LEASED", createdAt: now } })
     return { proofId, leaseToken, leaseUntil: leaseUntil.toISOString(), context: context(proof),
@@ -287,7 +287,7 @@ export async function recordStagedPhoneProofDelivery(client: RegistryClient, org
     const proof = await lockedProof(tx, organizationId, input.proofId)
     const row = await tx.identityPhoneProofOutbox.findUnique({ where: { organizationId_proofId: { organizationId, proofId: input.proofId } } })
     if (!proof || !row || row.attempts !== 1 || row.leaseToken !== input.leaseToken) throw new IdentityRegistryError("IDENTITY_PROOF_DELIVERY_REFUSED")
-    const requestId = `delivery-receipt:${proof.id}`
+    const requestId = `delivery-receipt:${digest([input.leaseToken])}`
     const previous = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId, requestId } } })
     if (previous) {
       if (previous.action !== "PHONE_DELIVERY_RECORDED" || previous.requestHash !== requestHash) throw new IdentityRegistryError("IDENTITY_REQUEST_REUSED")

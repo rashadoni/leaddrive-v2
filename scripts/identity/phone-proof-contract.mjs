@@ -66,11 +66,17 @@ export async function checkPhoneProofTransactions({ admin, writer, failing, acto
   checks.push("wrong_attempts_commit_max_five_and_changed_retry_cannot_become_code_oracle")
 
   phase("PROOF_DELIVERY_IS_NOT_POSSESSION")
+  // A client knows proofId, but cannot preplant a system audit receipt using
+  // the old predictable namespace and block a private lease/provider outcome.
+  const interferenceCode = await secret(issued.proofId)
+  const interferenceWrong = interferenceCode === "000000" ? "111111" : "000000"
+  assert.equal((await attempt(issued.proofId, interferenceWrong, `delivery-lease:${issued.proofId}`)).status, "INVALID")
   const jobs = await Promise.all([lease(writer, org, issued.proofId), lease(writer, org, issued.proofId)])
   assert.equal(jobs.filter(Boolean).length, 1)
   const job = jobs.find(Boolean), code = openPhoneProofDelivery(job.context, job.sealed, key, new Date())
   const sent = { proofId: issued.proofId, leaseToken: job.leaseToken, outcome: "SENT", providerMessageId: "synthetic-provider-receipt" }
   await assert.rejects(record(writer, org, { ...sent, leaseToken: "00000000-0000-4000-8000-000000000000" }), /IDENTITY_PROOF_DELIVERY_REFUSED/)
+  assert.equal((await attempt(issued.proofId, interferenceWrong, `delivery-receipt:${issued.proofId}`)).status, "INVALID")
   assert.equal((await record(writer, org, sent)).replayed, false)
   assert.equal((await record(writer, org, sent)).replayed, true)
   await assert.rejects(record(writer, org, { ...sent, providerMessageId: "changed-receipt" }), /IDENTITY_REQUEST_REUSED/)
