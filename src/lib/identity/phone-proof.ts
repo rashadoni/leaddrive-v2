@@ -103,7 +103,7 @@ export function verifyPhoneProofCode(context: PhoneProofContext, proof: SealedPh
  */
 export function openPhoneProofDelivery(context: PhoneProofContext, proof: SealedPhoneProof, key: PhoneProofKey, at: Date): string {
   const aad = contextBytes(context), derived = keys(key)
-  let clear: Buffer | undefined
+  let clear: Buffer | undefined, block: Buffer | undefined
   try {
     if (!active(context, at) || !recordValid(proof) || proof.keyId !== key.id) throw new Error("REFUSED")
     const fields = proof.deliveryCiphertext.split(".")
@@ -113,11 +113,12 @@ export function openPhoneProofDelivery(context: PhoneProofContext, proof: Sealed
     if ([iv, ciphertext, tag].some((value, index) => value.toString("base64url") !== fields[index + 2])) throw new Error("REFUSED")
     const decipher = createDecipheriv("aes-256-gcm", derived.encryption, iv, { authTagLength: 16 })
     decipher.setAAD(aad); decipher.setAuthTag(tag)
-    clear = Buffer.concat([decipher.update(ciphertext), decipher.final()])
+    block = decipher.update(ciphertext)
+    clear = Buffer.concat([block, decipher.final()])
     if (clear.length !== 6 || !clear.every(value => value >= 48 && value <= 57)) throw new Error("REFUSED")
     const code = clear.toString("ascii")
     if (!/^\d{6}$/.test(code) || !timingSafeEqual(Buffer.from(proof.codeHash, "hex"), codeMac(aad, clear, derived.mac))) throw new Error("REFUSED")
     return code
   } catch { throw new IdentityRegistryError("IDENTITY_PROOF_DELIVERY_REFUSED") }
-  finally { clear?.fill(0); aad.fill(0); derived.mac.fill(0); derived.encryption.fill(0) }
+  finally { block?.fill(0); clear?.fill(0); aad.fill(0); derived.mac.fill(0); derived.encryption.fill(0) }
 }
