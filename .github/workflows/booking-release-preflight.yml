@@ -25,6 +25,12 @@ on:
         required: true
         type: string
 
+# PR refreshes cancel obsolete synthetic checks. Operational dispatches use
+# unique groups and still serialize through the production-deploy job lock.
+concurrency:
+  group: booking-preflight-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
   actions: read

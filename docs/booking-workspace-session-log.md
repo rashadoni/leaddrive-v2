@@ -401,3 +401,10 @@
 - Добавлено узкое исключение только для исчезнувших never-canonical version-zero row events при выключенном B. Любой queued positive version и любое удаление в strict mode всё ещё отвергается. До B activation добавлены реальные попытки positive/delete и positive/zero/delete с обязательным rollback, плюс проверка сохранности legacy row.
 - Fresh inventory dispatch `40106579218` привязан к фактически выложенному current main `6a755bb2329d2f4ff9a1cc9dc2bf5b7900507376`; Time deploy `40102027380` SUCCESS, build-info exact match. Чужой PR не merged этой задачей.
 - Авторизация сохраняется: согласованный пользователем список UX и поручение довести до конца без промежуточных подтверждений, затем «начинай». Перед выпуском список повторён в чате; новые пользовательские функции сверх согласованного варианта не добавляются. Пять required checks и реальный A artifact до B обязательны.
+
+## 2026-10-24 15:26 UTC — Свежая production inventory и очередь preflight
+
+- Main dispatch `40106579218` / job `120909848143`: SUCCESS. Наблюдение `2026-10-24T15:24:25.153Z` exact source/deployed `6a755bb2329d2f4ff9a1cc9dc2bf5b7900507376`: по-прежнему 2 Booking, все проверяемые нарушения 0; btree_gist установлен; READ ONLY и RLS unfiltered подтверждены.
+- Artifact `12564134205`, digest `sha256:bda5c31e1f9c44548c17d2920b0b5af63d14bf83eaac852692ef3530d49d26db`; allowlisted копия сохранена отдельным `production-inventory-20261024-1524.json`, прежнее наблюдение не перезаписывается.
+- Audit выявил отсутствие общей concurrency у нового inspector workflow. Добавлена отмена obsolete synthetic PR runs; operational dispatch имеет уникальную группу и прежнюю production-deploy сериализацию, поэтому не отменяет действующую production проверку/выкладку. Production данные и controller admission этим не меняются.
+- Следующее действие: полный hosted CI на финальном source A/B; затем verified immutable A до активации B.
