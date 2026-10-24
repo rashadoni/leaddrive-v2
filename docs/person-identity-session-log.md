@@ -342,3 +342,10 @@ Checkpoint only while c77150acf focused40141858850/job121015089205 runs. Existin
 ### 2026-10-24T23:20:40.008447+00:00 — primary JWT boundary cross-check
 
 Read RFC8725 sections3.8–3.12 (https://www.rfc-editor.org/rfc/rfc8725.html#section-3.8) for issuer/subject/audience and mutually exclusive JWT profiles. Confirmed future composition must pin algorithm/issuer/key/audience and explicit token type; typ alone is insufficient when legacy verifiers ignore it, so dedicated identity key/no legacy claims remain necessary. Added primary reference to architecture. This is source/design verification, not a new active JWT signer/verifier or security certification. Currentc771 CI remains pending; latest lease-audit fix68aabea8f is local. Next inspect actual CI and continue its concrete gate.
+
+
+### 2026-10-24T23:20:55.624873+00:00 — expanded credential/dispatch/policy gate passed
+
+Exactc77150acfab8b9b367f71485d02177297107701b focused40141858850/job121015089205 SUCCESS. Actual logs verify Prisma validate/generate, scoped strict TS,68 Vitest,26 Node,6 snapshot and31 foundation PostgreSQL checks. The compiled-output dependency symlink resolved the9b import failure, with real bcrypt cost12/shared policy and credential concurrency/rollback cases passing. Private dispatch and future mobile audience policy also passed their current tests; all productionObserved=false. No current auth/HTTP/provider rollout implied.
+
+Next publish the separately checkpointed68aabea8f private audit nonce interference fix plus documentary RFC reference and run its actual source. Existingc771 PASS does not include that new guard; no merge/deploy until its own verification and remaining reviewed integration. Time1047 active background acceptance still needs full window26Oct01:07:08Baku and final replay/visual/backend/cleanup review.
