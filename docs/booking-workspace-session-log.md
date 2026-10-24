@@ -378,3 +378,10 @@
 - Добавлены read-only post-deploy/recovery proofs: live artifact SHA, mode, expanded storage и canonical count. Synthetic customer записи и provider sends для smoke не требуются.
 - Actual log инструментального deploy подтверждает plain recovery mode; encrypted/offline commissioning не активна. Существующая политика normal releases не менялась, сертификат полной DR не заявляется.
 - Новый аудит и protocol описывают фактический code path; I-05 до hosted acceptance и реального A artifact ещё не закрывается. Следующие действия: checkpoint/push A, PR с production-build gate; проверить результаты; подготовить B как смену immutable UI phase с тем же backend.
+
+## 2026-10-24 15:03 UTC — Первая hosted проверка A выявила гонку тестового writer
+
+- Run `40104161255`, source `d7235866e3bb8b489883738c888763afc7e8af1b`: typecheck PASS; static-checks FAIL в новом Node PostgreSQL acceptance, до application booking suite. Baseline не менялся, красный gate не обходится.
+- Ошибка: тест начинал synchronous polling до завершения передачи SQL фоновому psql. Он не доказывал начало транзакции и не увидел table lock. Добавлены awaited stdin completion, независимая pg_locks readiness и explicit проверка exit status/read-only drain ответа.
+- Production drain дополнительно ограничен current database OID, чтобы одинаковые relation OID в другом DB/clone не давали ложную занятость.
+- Для короткой обратной связи существующий protected preflight workflow дополнен отдельным synthetic release-contract PostgreSQL run на PR paths. Он дополняет full static-checks, не заменяет его; production доступ по-прежнему только explicit main dispatch.

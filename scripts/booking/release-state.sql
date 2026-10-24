@@ -9,6 +9,7 @@ SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='publi
 SELECT current_setting('app.booking_release_require_drained', true) IS DISTINCT FROM 'on'
   OR NOT EXISTS(SELECT 1 FROM pg_locks
     WHERE locktype='relation' AND relation='public.bookings'::regclass
+      AND database=(SELECT oid FROM pg_database WHERE datname=current_database())
       AND mode <> 'AccessShareLock' AND pid IS DISTINCT FROM pg_backend_pid()) AS writers_drained \gset
 \if :writers_drained
 SELECT json_build_object(
