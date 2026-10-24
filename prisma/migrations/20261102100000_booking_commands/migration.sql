@@ -128,6 +128,16 @@ BEGIN
   THEN
     RAISE EXCEPTION 'Booking requires a matching canonical event and aggregate head' USING ERRCODE = 'check_violation';
   END IF;
+  -- Keep legacy broken links readable/cancellable, but never attach a new
+  -- foreign-tenant or missing CRM projection. Ordinary writers cannot rebind mirrors.
+  IF (TG_OP = 'INSERT' OR current_booking."taskId" IS DISTINCT FROM OLD."taskId")
+     AND current_booking."taskId" IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM public.tasks WHERE id = current_booking."taskId" AND "organizationId" = current_booking."organizationId")
+  THEN RAISE EXCEPTION 'Booking task must belong to its organization' USING ERRCODE = 'check_violation'; END IF;
+  IF (TG_OP = 'INSERT' OR current_booking."leadId" IS DISTINCT FROM OLD."leadId")
+     AND current_booking."leadId" IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM public.leads WHERE id = current_booking."leadId" AND "organizationId" = current_booking."organizationId")
+  THEN RAISE EXCEPTION 'Booking lead must belong to its organization' USING ERRCODE = 'check_violation'; END IF;
   IF TG_OP = 'UPDATE'
      AND (to_jsonb(NEW) - ARRAY['taskId','leadId','googleEventId','updatedAt','version'])
        IS DISTINCT FROM (to_jsonb(OLD) - ARRAY['taskId','leadId','googleEventId','updatedAt','version'])

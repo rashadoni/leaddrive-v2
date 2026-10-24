@@ -433,6 +433,10 @@ pgDescribe("online booking on a real Postgres", () => {
     await expect(bypass(() => prisma.booking.update({ where: { id }, data: { name: "Changed outside command" } }))).rejects.toThrow()
     const original = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
     expect(original.status).toBe("confirmed")
+    const foreignTask = await bypass(() => prisma.task.create({ data: { organizationId: OTHER_ORG, title: "Foreign task" } }))
+    const foreignLead = await bypass(() => prisma.lead.create({ data: { organizationId: OTHER_ORG, contactName: "Foreign lead" } }))
+    await expect(bypass(() => prisma.booking.update({ where: { id }, data: { taskId: foreignTask.id } }))).rejects.toThrow()
+    await expect(bypass(() => prisma.booking.update({ where: { id }, data: { leadId: foreignLead.id } }))).rejects.toThrow()
     await expect(bypass(() => prisma.booking.create({ data: {
       organizationId: ORG, bookingPageId: original.bookingPageId, hostUserId: HOST_A,
       startsAt: new Date("2031-01-01T08:00Z"), endsAt: new Date("2031-01-01T08:30Z"),
