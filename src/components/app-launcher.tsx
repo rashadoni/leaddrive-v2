@@ -21,7 +21,7 @@ import { useTranslations } from "next-intl"
 import { Search, Star, X, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
-  accessibleNavItems, NAV_GROUP_ORDER, groupLauncherStyle,
+  accessibleNavItems, navItemMatchesSearch, NAV_GROUP_ORDER, groupLauncherStyle,
   type NavItem, type OrgNavContext,
 } from "@/lib/nav-items"
 import { useLauncherPrefs } from "@/contexts/launcher-prefs-context"
@@ -45,11 +45,17 @@ export function AppLauncher({ org, open, onOpenChange }: AppLauncherProps) {
   const tDesc = useTranslations("navDesc")
   const router = useRouter()
   const [query, setQuery] = useState("")
+  const [searchOpen, setSearchOpen] = useState(open)
+  // Opening starts a new search before stale results can be painted.
+  if (searchOpen !== open) {
+    setSearchOpen(open)
+    if (open) setQuery("")
+  }
   const inputRef = useRef<HTMLInputElement>(null)
   const { favorites, recents, isFavorite, toggleFavorite, recordVisit } = useLauncherPrefs()
 
   const openRef = useRef(open)
-  openRef.current = open
+  useEffect(() => { openRef.current = open }, [open])
 
   // Global shortcut: Cmd/Ctrl+Shift+K toggles the launcher. Cmd+K is taken
   // (command palette + sidebar search), so the launcher uses +Shift. Listener
@@ -72,10 +78,6 @@ export function AppLauncher({ org, open, onOpenChange }: AppLauncherProps) {
     return () => window.removeEventListener(OPEN_LAUNCHER_EVENT, openIt)
   }, [onOpenChange])
 
-  useEffect(() => {
-    if (open) setQuery("")
-  }, [open])
-
   const items = useMemo(() => accessibleNavItems(org), [org])
   const byHref = useMemo(() => {
     const m = new Map<string, NavItem>()
@@ -90,7 +92,7 @@ export function AppLauncher({ org, open, onOpenChange }: AppLauncherProps) {
     if (!q) return null
     return items.filter(
       (it) =>
-        t(it.tKey).toLowerCase().includes(q) ||
+        navItemMatchesSearch(it, q, t) ||
         t(`groups.${it.group}`).toLowerCase().includes(q) ||
         (tDesc.has(it.tKey) && tDesc(it.tKey).toLowerCase().includes(q))
     )

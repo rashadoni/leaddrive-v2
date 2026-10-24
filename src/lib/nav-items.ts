@@ -44,6 +44,8 @@ export interface NavItem {
   href: string
   icon: ElementType
   tKey: string
+  /** Additional translated navigation labels accepted by menu search. */
+  searchKeys?: readonly string[]
   group: string
   /** Task-oriented subgroup used only inside the Support module navigation. */
   supportSection?: SupportNavSection
@@ -123,6 +125,12 @@ export type SupportNavSection = "work" | "team" | "rules"
 
 export const SUPPORT_NAV_SECTION_ORDER: readonly SupportNavSection[] = ["work", "team", "rules"]
 
+/** Search stays inside the caller's accessible items; aliases never grant access. */
+export function navItemMatchesSearch(item: NavItem, query: string, label: (key: string) => string): boolean {
+  const term = query.trim().toLowerCase()
+  return [item.tKey, ...(item.searchKeys ?? [])].some((key) => label(key).toLowerCase().includes(term))
+}
+
 /**
  * Shape of the `org` context the navigation gate needs. Matches the object the
  * dashboard layout builds from the session (see `(dashboard)/layout.tsx`).
@@ -187,7 +195,7 @@ export const navItems: NavItem[] = [
   // sidebar, right after CRM.
   { module: "sales", href: "/leads", icon: UserPlus, tKey: "leads", group: "Sales" },
   { module: "sales", href: "/deals", icon: Handshake, tKey: "deals", group: "Sales" },
-  ...(BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/meetings", icon: CalendarCheck, tKey: "bookingWorkspace", group: "Sales", permissionScope: "bookings" } satisfies NavItem] : []),
+  ...(BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/meetings", icon: CalendarCheck, tKey: "bookingWorkspace", searchKeys: ["onlineBooking"], group: "Sales", permissionScope: "bookings" } satisfies NavItem] : []),
   { module: "sales", href: "/quotes", icon: FileBadge, tKey: "quotes", group: "Sales" },
   { module: "sales", href: "/sequences", icon: Zap, tKey: "sequences", group: "Sales" },
   { module: "sales", href: "/forecast", icon: TrendingUp, tKey: "forecast", group: "Sales" },
@@ -212,7 +220,7 @@ export const navItems: NavItem[] = [
   { module: "sales", href: "/settings/territories", icon: MapPin, tKey: "territories", group: "Sales" },
   { module: "sales", href: "/settings/lead-rules", icon: Filter, tKey: "leadRules", group: "Sales" },
   { module: "sales", href: "/settings/web-to-lead", icon: Globe, tKey: "webToLead", group: "Sales" },
-  ...(!BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/settings/booking", icon: CalendarCheck, tKey: "onlineBooking", group: "Sales", permissionScope: "bookings", allowedRoles: ADMIN_ROLES } satisfies NavItem] : []),
+  ...(!BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/settings/booking", icon: CalendarCheck, tKey: "onlineBooking", searchKeys: ["bookingWorkspace"], group: "Sales", permissionScope: "bookings", allowedRoles: ADMIN_ROLES } satisfies NavItem] : []),
   { module: "contracts", href: "/contracts", icon: FileText, tKey: "contracts", group: "Contracts Control" },
   { module: "contracts", href: "/contracts/lifecycle", icon: RefreshCw, tKey: "contractLifecycle", group: "Contracts Control" },
   { module: "contracts", href: "/contracts/templates", icon: Library, tKey: "contractTemplatesNav", group: "Contracts Control" },

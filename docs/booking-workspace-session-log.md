@@ -438,3 +438,18 @@
 
 - Journal-only merge conflict разрешён сохранением обеих append-only записей (16:13, затем 16:30); исходный текст истории не удалялся.
 - Superseded: локальный checkpoint `39e35a810` теперь публикуется в составе нового B merge, поэтому новый source B будет отличаться от A только phase flag и docs/evidence. Предыдущий remote `4cbdab6b7...` больше не является кандидатом после push; новый head требуется проверить заново.
+## 2026-10-24 16:38 UTC — Закрывается исходный сценарий поиска раздела
+
+- Сверка согласованного требования «находить по старому и новому названию» выявила UI-пробел: sidebar/Cmd+K/launcher искали текущую подпись, и «Онлайн-запись» не находила новое «Встречи и запись».
+- Добавлены переведённые search aliases двух booking labels и единый matcher в трёх существующих поисках. Обработка выполняется только после accessibleNavItems: alias не выдаёт доступ и не создаёт второй пункт/устаревшую ссылку. Существующие поиски групп, Support sections и прочие aliases сохранены.
+- Подсказка нового пункта AZ/RU/EN теперь описывает назначение раздела. Unit discovery проверяет оба имени в трёх языках, ровно один правильный текущий URL и отсутствие результата для viewer/reviewer.
+- Это исправление исходной findability задачи; новая функциональная область не добавляется. Требуется новый source CI/build из-за client search компонентов; baseline и guards сохраняются.
+- Discovery/navigation/access + deploy contract: 84/84 PASS в 3 целевых файлах. i18n parity 28630 keys PASS. Scoped lint нашёл прежнюю render-time ref mutation в уже затронутом AppLauncher; обновление ref перенесено в useEffect, подписка/клавиатурное действие сохранены. Lint повторяется без исключения правила.
+- Повтор lint после ref fix выявил прежний synchronous query reset effect того же компонента. Query reset перенесён в guarded prop-change state adjustment до commit, чтобы при открытии не отображались прежние результаты; без async обхода lint или ослабления правил.
+
+## 2026-10-24 16:47 UTC — Реальная browser-проверка поиска и режима B
+
+- A source `a299c6458` включает translated search aliases и lint-safe launcher lifecycle. B получил тот же код с сохранением workspace phase; единственный journal conflict разрешён сохранением обеих append-only записей. Backend/schema одинаковы.
+- На реальном AppLauncher/LauncherPrefsProvider в изолированном Vite: оба названия находят один правильный пункт; Enter записывает переход `/meetings`; открытие из parent и по клавиатуре очищает поиск; 1440/390px без overflow; JS/console errors 0, external requests 0. Preferences API перехвачен локально, реальные CRM-данные не запрашивались/не менялись.
+- Evidence: `menu-search-browser-result.json`, `menu-search-desktop.png`, `menu-search-mobile.png`; observed `2026-10-24T16:45:37.285Z`. Скриншоты просмотрены. Task-owned preview process остановлен по проверенному PID/command path.
+- Это component UI proof, не authenticated production E2E. Source B после checkpoint/push требует полного exact-head CI. Предыдущий `2d11a88d9...` superseded; production по-прежнему `6a755bb...`, ни A, ни B не выпущены.
