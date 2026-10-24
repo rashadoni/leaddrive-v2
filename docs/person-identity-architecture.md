@@ -176,3 +176,12 @@ Legacy-совместимость имеет явный период и нижн
 Установка пока изменяет только неактивный IdentityAccount. Сервис принимает серверную общую passwordPolicyError, применяет bcrypt cost12 вне транзакции, затем заново проверяет capability/права/claim/версии под tenant lock. Изменение hash, обеих версий, закрытие старых proof и audit атомарны. CAS расходует capability один раз; идентичный request/password распознаётся отдельным HMAC, а не публичным хэшем пароля. Повтор не продлевает expiry; утрата authority, смена claim/версий или уже spent token под новым nonce отвергаются. Legacy User/MtmAgent credentials, MFA, grants и текущие сессии не меняются.
 
 Эта подготовка не является активным password reset. Перед подключением HTTP нужны фиксированная server-side композиция общей политики, rate limits, безопасные публичные ошибки, отправка/receiver контракт и согласованная audience/cutover реализация. Нельзя дать администратору endpoint для mint setup из произвольного proof ID: композиция сначала реально проверяет код владения. Новый unit/PG исходник требует собственного точного CI; пока он PREPARED, не PASS.
+
+
+### 8.4. Подготовленный контракт сессии приложения
+
+`mobile-session-contract.ts` пока не включён в auth. Он применим только после настоящей криптографической проверки JWT отдельным identity key, фиксированного issuer/algorithm и одного точного audience. Клиентский app/header не является доказательством. CRM вообще не допускается этой мобильной политикой; текущая CRM MFA остаётся отдельной обязательной границей.
+
+Серверное состояние включает явный rollout/cutover, активную компанию/личность, актуальные phone claim/credential epoch, grant/version/role выбранного приложения, лицензию и явное membership с исходным actor. Никакой вывод доступа из общей роли User/MtmAgent. Account.version служит CAS для записи и НЕ входит в session claims: отзыв Field меняет эту ревизию, но не должен выключать Time с неизменившимся grant. Смена общей credential epoch выключает оба. Контекст сохраняет actorId+application, а не превращается автоматически в старый agentId/role.
+
+Это ещё не JWT signer/verifier, DB resolver, разделение Time/Field workdays или миграция очереди. Нельзя включать новую регистрацию/создание User до CRM-denial boundary: само появление User в прежней модели не должно подарить CRM. Нельзя подставить эту политику в старые guards, просто разрешив AGENT в HR. Следующими остаются явные membership/storage, совместимость sync и настоящий server composition/API/UI с E2E.

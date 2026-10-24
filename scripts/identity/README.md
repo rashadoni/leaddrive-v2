@@ -317,3 +317,22 @@ transport are definite FAILED; failures after entering provider code default
 to UNCERTAIN. The hosted PostgreSQL case composes the real store with a
 synthetic transport and checks parallel dispatch sends once, records the ack,
 and still creates no claim until the person submits the code.
+
+
+### Future mobile session authorization contract
+
+`mobile-session-contract.ts` is a policy over already cryptographically verified
+claims and fresh tenant-scoped state; it is not a token verifier or a live auth
+path. A future verifier must pin a dedicated identity key/issuer/algorithm and
+exact single-app audience, then call this policy with the server route's app.
+Never reuse legacy JWT_SECRET or accept a request body/header as verified
+claims. Current login/middleware does not call this file.
+
+Requires explicit rollout, authoritative cutover, active company/person,
+current phone claim and credential epoch, the current app grant/version/role,
+license and app membership with the original actor. Rejects cross-tenant/app
+state, CRM, legacy/setup shapes and ambiguous audiences. account.version is
+only a write-CAS revision: a sibling grant change must not kill this app's
+unchanged session. The shared credential epoch does revoke both. Output keeps
+actorId/application explicit; adapting it blindly into legacy agentId/role
+would bypass the workday and HR separation still required before cutover.
