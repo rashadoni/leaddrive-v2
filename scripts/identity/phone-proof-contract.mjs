@@ -87,6 +87,9 @@ export async function checkPhoneProofTransactions({ admin, writer, failing, acto
   assert.equal(changed.version, 2); assert.equal(changed.credentialEpoch, 2); assert.equal(changed.passwordHash, null); assert.equal(changed.cutoverAt, null)
   const claims = await admin.identityPhoneClaim.findMany({ where: { organizationId: org, userId: good.userId } })
   assert.equal(claims.length, 1); assert.equal(claims[0].normalizedPhone, good.phone); assert.notEqual(claims[0].id, old.id)
+  await assert.rejects(admin.identityEvent.create({ data: { id: "duplicate-proof-confirmation", organizationId: org, userId: good.userId, actorUserId: good.userId,
+    requestId: "duplicate-proof-confirmation", requestHash: "b".repeat(64), action: "PHONE_CONFIRMED", accountVersion: 2, credentialEpoch: 2,
+    proofId: issued.proofId, claimId: claims[0].id, normalizedPhone: good.phone } }), error => error?.code === "P2002")
   assert.equal(await admin.identityPhoneReservation.count({ where: { id: good.input.reservationId } }), 0)
   const legacy = await admin.$queryRawUnsafe('SELECT phone, "passwordHash", role FROM users WHERE id = $1', good.userId)
   assert.deepEqual(legacy[0], { phone: "+994559988777", passwordHash: "legacy-untouched", role: "viewer" })
@@ -225,6 +228,7 @@ export async function checkPhoneProofTransactions({ admin, writer, failing, acto
   assert.equal(JSON.stringify(credentialEvent).includes(password), false)
   assert.equal(JSON.stringify(credentialEvent).includes(storedCredential.passwordHash), false)
   assert.equal(JSON.stringify(credentialEvent).includes(admitted.setupToken), false)
+  await assert.rejects(admin.identityEvent.create({ data: { ...credentialEvent, id: "duplicate-credential-effect", requestId: "duplicate-credential-effect" } }), error => error?.code === "P2002")
   checks.push("possession_bound_setup_sets_only_staged_cost12_credential_once_with_keyed_replay_and_no_grants_or_legacy_change")
 
   phase("CREDENTIAL_SETUP_AUDIT_ROLLBACK_AND_STALE_AUTHORITY")

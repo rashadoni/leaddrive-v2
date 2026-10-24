@@ -155,6 +155,10 @@ CREATE TABLE identity_events (
   CHECK (action <> 'GRANT_CHANGED' OR (application IS NOT NULL AND "grantStatus" IS NOT NULL AND "grantVersion" IS NOT NULL AND ("grantStatus" <> 'ACTIVE' OR ("grantRole" IS NOT NULL AND length(btrim("grantRole")) > 0))))
 );
 CREATE UNIQUE INDEX "identity_events_organizationId_requestId_key" ON identity_events("organizationId", "requestId");
+-- A proof may confirm one phone and set one credential, even if a future
+-- writer accidentally omits the transaction service's status/version guard.
+CREATE UNIQUE INDEX identity_events_one_proof_effect ON identity_events("organizationId", "proofId", action)
+  WHERE action IN ('PHONE_CONFIRMED', 'CREDENTIAL_STAGED');
 CREATE INDEX "identity_events_organizationId_userId_createdAt_id_idx" ON identity_events("organizationId", "userId", "createdAt", id);
 
 DO $$
