@@ -298,3 +298,22 @@ No endpoint is exposed, and production setup must hardcode the shared policy,
 server key ring and rate limits. The codec alone is not single-use; that property
 comes from the consuming database transaction. This source remains prepared
 until its exact focused compilation and real-PG checks pass.
+
+
+### Bounded dispatch composition
+
+`phone-proof-dispatch.ts` composes the authorized store lease/receipt methods,
+private decryption and one fixed server transport. It checks tenant/proof scope,
+the exact lease and proof deadlines, and caps waiting at30 seconds. A thrown
+provider call, missing acknowledgement ID or timeout is uncertain and is never
+retried. A transport that ignores abort still cannot make the worker wait
+forever. Receipt-write failure is a fixed safe error; the existing lease prevents
+a second send. Output contains only status and authenticationChanged=false.
+
+No transport/provider/scheduler is activated. A future adapter MUST send one
+request without hidden retries and respect the supplied AbortSignal; do not
+plug in the legacy multi-language retry loop unchanged. Local failures before
+transport are definite FAILED; failures after entering provider code default
+to UNCERTAIN. The hosted PostgreSQL case composes the real store with a
+synthetic transport and checks parallel dispatch sends once, records the ack,
+and still creates no claim until the person submits the code.

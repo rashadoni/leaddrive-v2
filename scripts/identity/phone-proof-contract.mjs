@@ -11,6 +11,7 @@ export async function checkPhoneProofTransactions({ admin, writer, failing, acto
     expireStagedPhoneProofs: expire, claimStagedPhoneProofDelivery: lease, recordStagedPhoneProofDelivery: record,
     consumeStagedPhoneProofWithSetup: consumeWithSetup, setStagedIdentityCredential: setCredential } = await import(pathToFileURL(resolve(build, "phone-proof-registry.js")).href)
   const { openPhoneProofDelivery } = await import(pathToFileURL(resolve(build, "phone-proof.js")).href)
+  const { dispatchStagedPhoneProof: dispatch } = await import(pathToFileURL(resolve(build, "phone-proof-dispatch.js")).href)
   const org = actor.organizationId, key = { id: "synthetic-worker-key", material: new Uint8Array(32).fill(13) }
   const resolveKey = id => id === key.id ? key : null
   let counter = 0
@@ -196,6 +197,29 @@ export async function checkPhoneProofTransactions({ admin, writer, failing, acto
   if (confirmedRace) { assert.equal(raced[1].status, "rejected"); assert.equal(raced[1].reason.code, "IDENTITY_ACCOUNT_STALE") }
   else { assert.equal(raced[0].value.status, "INVALID"); assert.equal(raced[1].status, "fulfilled") }
   checks.push("explicit_resend_supersedes_old_secret_and_confirmation_cancellation_race_has_one_outcome")
+
+  phase("PRIVATE_DISPATCH_INTEGRATES_ACTUAL_OUTBOX_WITH_ONE_SYNTHETIC_TRANSPORT")
+  const dispatchSubject = await setup("dispatch"), dispatchProof = await issue(writer, actor, dispatchSubject.input, key)
+  let transportCalls = 0, transportedCode = null
+  const dispatcher = {
+    claim: (organizationId, proofId) => lease(writer, organizationId, proofId),
+    record: (organizationId, receipt) => record(writer, organizationId, receipt), resolveKey,
+    send: async input => {
+      assert.equal(input.to, dispatchSubject.phone); assert.equal(input.signal.aborted, false)
+      transportCalls++; transportedCode = input.code
+      return { status: "SENT", providerMessageId: "synthetic-dispatch-id" }
+    },
+  }
+  const dispatchResults = await Promise.all([dispatch(org, dispatchProof.proofId, dispatcher), dispatch(org, dispatchProof.proofId, dispatcher)])
+  assert.deepEqual(dispatchResults.map(row => row.status).sort(), ["SENT", "SKIPPED"])
+  assert.equal(transportCalls, 1)
+  assert.equal((await outboxRow(dispatchProof.proofId)).attempts, 1)
+  assert.equal((await outboxRow(dispatchProof.proofId)).status, "SENT")
+  assert.equal(await admin.identityPhoneClaim.count({ where: { organizationId: org, userId: dispatchSubject.userId } }), 0)
+  assert.equal((await dispatch(org, dispatchProof.proofId, dispatcher)).status, "SKIPPED")
+  assert.equal(transportCalls, 1)
+  assert.equal((await attempt(dispatchProof.proofId, transportedCode, "dispatch-possession-confirm")).status, "CONFIRMED")
+  checks.push("actual_private_outbox_dispatch_uses_one_synthetic_transport_and_ack_is_not_possession")
 
   phase("CREDENTIAL_SETUP_REQUIRES_CURRENT_POSSESSION_AND_IS_SINGLE_USE")
   const credential = await setup("credential"), credentialProof = await issue(writer, actor, credential.input, key), credentialCode = await secret(credentialProof.proofId)
