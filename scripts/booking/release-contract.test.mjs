@@ -224,14 +224,22 @@ test('actual read-only release-state SQL handles old schema, draining, expansion
     });
     heldExit = new Promise(resolve=>{held.once('exit',resolve);held.once('error',()=>resolve(-1));});
     await new Promise((resolve,reject)=>{held.once('spawn',resolve);held.once('error',reject);});
-    held.stdin.end("BEGIN; INSERT INTO bookings VALUES ('late-commit',1); SELECT pg_sleep(4); COMMIT;");
-    let busy=false;
-    for (let attempt=0;attempt<20;attempt++) {
-      const probe=spawnSync('bash',['-s'],{input:databaseStateScript(true),encoding:'utf8',timeout:5000,
-        env:{...env,BOOKING_RELEASE_DB_URL:scratch.toString()}});
-      if (probe.stdout.trim()==='BOOKING_WRITERS_BUSY') {busy=true;break;}
+    await new Promise((resolve,reject)=>{
+      held.stdin.once('error',reject);
+      held.stdin.end("BEGIN; INSERT INTO bookings VALUES ('late-commit',1); SELECT pg_sleep(4); COMMIT;",resolve);
+    });
+    let writerReady=false;
+    for (let attempt=0;attempt<40;attempt++) {
+      const locks=sql("SELECT count(*) FROM pg_locks WHERE relation='public.bookings'::regclass AND database=(SELECT oid FROM pg_database WHERE datname=current_database()) AND mode='RowExclusiveLock' AND pid<>pg_backend_pid()");
+      assert.equal(locks.status,0,'independent writer readiness query must succeed');
+      if (Number(locks.stdout.trim())>0) {writerReady=true;break;}
+      await new Promise(resolve=>setTimeout(resolve,25));
     }
-    assert.equal(busy,true,'a pending canonical commit must block the zero-count proof');
+    assert.equal(writerReady,true,'fixture writer must hold its table lock before testing admission');
+    const probe=spawnSync('bash',['-s'],{input:databaseStateScript(true),encoding:'utf8',timeout:5000,
+      env:{...env,BOOKING_RELEASE_DB_URL:scratch.toString()}});
+    assert.equal(probe.status,0,'read-only writer drain query must succeed');
+    assert.equal(probe.stdout.trim(),'BOOKING_WRITERS_BUSY','a pending canonical commit must block the zero-count proof');
     const candidateFile=path.join(rollbackFixture,'candidate.json');
     writeFileSync(candidateFile,JSON.stringify(manifest()));
     const started=Date.now();

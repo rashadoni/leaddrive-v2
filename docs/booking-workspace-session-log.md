@@ -386,3 +386,10 @@
 - Исходная feature branch продолжена fast-forward к A с сохранением всех checkpoint commits; B меняет только `src/lib/booking/release-phase.json` на workspace и дополняет этот журнал. Backend, schema, migrations и marker storage contract A/B одинаковы.
 - Новый label nav.bookingWorkspace действительно содержит «Встречи и запись»; navDesc и voice keys синхронизированы с immutable phase. В A старый редактор доступен администратору, B открывает согласованный workspace сотрудникам/координаторам с own/team access.
 - PR #1023 становится stage B и остаётся зависимым от #1026: сначала нужны зелёные exact-source checks и actual immutable A artifact с успешным production smoke, затем включение B. Старый writer не используется после canonical данных/активации.
+
+## 2026-10-24 15:03 UTC — Первая hosted проверка A выявила гонку тестового writer
+
+- Run `40104161255`, source `d7235866e3bb8b489883738c888763afc7e8af1b`: typecheck PASS; static-checks FAIL в новом Node PostgreSQL acceptance, до application booking suite. Baseline не менялся, красный gate не обходится.
+- Ошибка: тест начинал synchronous polling до завершения передачи SQL фоновому psql. Он не доказывал начало транзакции и не увидел table lock. Добавлены awaited stdin completion, независимая pg_locks readiness и explicit проверка exit status/read-only drain ответа.
+- Production drain дополнительно ограничен current database OID, чтобы одинаковые relation OID в другом DB/clone не давали ложную занятость.
+- Для короткой обратной связи существующий protected preflight workflow дополнен отдельным synthetic release-contract PostgreSQL run на PR paths. Он дополняет full static-checks, не заменяет его; production доступ по-прежнему только explicit main dispatch.
