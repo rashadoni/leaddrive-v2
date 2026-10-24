@@ -7965,6 +7965,18 @@ else
   log "No existing standalone directory (first deploy)"
 fi
 
+# Acquire the migration connection only inside a child scope. Admission runs
+# after the preflight unset, and activation/recovery may run after migrations
+# unset it again. Never retain or export this credential to backfills or PM2.
+with_booking_release_database() {
+  (
+    load_dotenv_file "$MIGRATION_ENV_FILE" migration || return
+    require_env MIGRATION_DATABASE_URL || return
+    require_env MIGRATION_EXPECTED_DB_ROLE || return
+    BOOKING_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" DATABASE_URL="$MIGRATION_DATABASE_URL" "$@"
+  )
+}
+
 # Drain before counting so a customer request cannot race rollback admission.
 # This also persists an empty reboot target before any legacy restart.
 ensure_booking_rollback_compatible() {
@@ -7973,7 +7985,7 @@ ensure_booking_rollback_compatible() {
   BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED=true
   if ! persist_event_platform_pm2_stop_fence; then return 1; fi
   quiesced=true
-  if ! BOOKING_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" node "$BOOKING_RELEASE_CONTROLLER" \
+  if ! with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
     --check-rollback "$target" "$BOOKING_RELEASE_CANDIDATE_FILE" "$EXPECTED_DEPLOY_SHA_ARG" \
     "$BOOKING_RELEASE_FIRST_EXPANSION" "$quiesced"; then
     log "FATAL: refusing an unproven booking rollback; preserve the candidate and canonical database"
@@ -8198,7 +8210,7 @@ tar -xOzf "$DEPLOY_TAR" ./.booking-backend-contract.json > "$BOOKING_RELEASE_CON
   || fatal_after_standalone_replacement "immutable artifact has no booking backend contract"
 BOOKING_RELEASE_CONTROLLER="$BOOKING_RELEASE_CONTROL_DIR/scripts/booking/release-contract.mjs"
 BOOKING_RELEASE_CANDIDATE_FILE="$BOOKING_RELEASE_CONTROL_DIR/candidate.json"
-BOOKING_RELEASE_ADMISSION=$(BOOKING_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" node "$BOOKING_RELEASE_CONTROLLER" \
+BOOKING_RELEASE_ADMISSION=$(with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
   --check-admission "$BOOKING_RELEASE_CANDIDATE_FILE" "$ARTIFACT_DEPLOY_SHA" "$APP_DIR/.next/standalone") \
   || fatal_after_standalone_replacement "booking predecessor is not compatible with this artifact"
 case "$BOOKING_RELEASE_ADMISSION" in
@@ -9005,10 +9017,10 @@ node "$BOOKING_RELEASE_CONTROLLER" --activation-sql "$BOOKING_RELEASE_CANDIDATE_
   > "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" \
   || fatal_after_standalone_replacement "cannot prepare artifact-bound booking activation"
 if [ -s "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" ]; then
-  DATABASE_URL="$MIGRATION_DATABASE_URL" npx prisma db execute --schema="$SCHEMA_TO_USE" --stdin \
+  with_booking_release_database npx prisma db execute --schema="$SCHEMA_TO_USE" --stdin \
     < "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" \
     || fatal_after_standalone_replacement "booking workspace activation failed"
-  BOOKING_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" node "$BOOKING_RELEASE_CONTROLLER" \
+  with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
     --assert-activated "$BOOKING_RELEASE_CANDIDATE_FILE" "$ARTIFACT_DEPLOY_SHA" \
     || fatal_after_standalone_replacement "booking workspace activation was not proven"
 fi
