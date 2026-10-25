@@ -57,6 +57,9 @@ export async function checkIdentityResolver({ admin, writer, build, actor, userI
   await admin.$executeRawUnsafe("CREATE ROLE identity_lifecycle_operator NOLOGIN NOSUPERUSER NOBYPASSRLS")
   await admin.$executeRawUnsafe("GRANT USAGE ON SCHEMA public TO identity_lifecycle_operator")
   await admin.$executeRawUnsafe("GRANT SELECT ON users,mtm_agents,identity_accounts,identity_application_grants,identity_application_memberships TO identity_lifecycle_operator")
+  // The database legacy-write fence must also inspect the immutable original
+  // owner during a direct relink; this role still cannot mutate that binding.
+  await admin.$executeRawUnsafe('GRANT SELECT ("organizationId","actorId","userId") ON identity_actor_bindings TO identity_lifecycle_operator')
   await admin.$executeRawUnsafe('GRANT UPDATE ("isActive","anonymizedAt","passwordChangedAt") ON users TO identity_lifecycle_operator')
   await admin.$executeRawUnsafe('GRANT UPDATE ("userId",status) ON mtm_agents TO identity_lifecycle_operator')
   await admin.$executeRawUnsafe('GRANT UPDATE (version,"credentialEpoch","updatedAt") ON identity_accounts TO identity_lifecycle_operator')
