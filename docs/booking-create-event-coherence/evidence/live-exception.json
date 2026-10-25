@@ -1,0 +1,25 @@
+{
+  "kind": "matched production application exception via existing read-only Actions workflow",
+  "workflow_run": 40193896108,
+  "job": 121170506143,
+  "conclusion": "success",
+  "workflow_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/40193896108",
+  "source_and_live_sha": "cee8b68a7a811c0b861d00ab97664bb58f58511d",
+  "requests_utc": [
+    "2026-10-25T12:06:19Z",
+    "2026-10-25T12:07:47Z"
+  ],
+  "application_log_times": [
+    "2026-10-25 13:06:19 +01:00",
+    "2026-10-25 13:07:47 +01:00"
+  ],
+  "exception_class": "PrismaClientUnknownRequestError",
+  "clientVersion": "6.19.3",
+  "exception_message": "event stream head does not match its final version",
+  "aggregateType": "booking",
+  "stack_route": ".next/server/app/api/v1/bookings/route.js",
+  "invariant_source": "prisma/migrations/20260901090000_event_platform_foundation/migration.sql:event_stream_commit_coherence_fn",
+  "raw_logs_or_unrelated_payloads_saved": false,
+  "production_mutated_by_diagnostic": false,
+  "interpretation": "The failed invariant is identified; which of missing event, event ID or timestamp mismatch caused it is not yet established."
+}
