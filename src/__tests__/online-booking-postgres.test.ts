@@ -120,6 +120,7 @@ pgDescribe("online booking on a real Postgres", () => {
   let settingsPost!: typeof import("@/app/api/v1/booking-pages/route").POST
   let meetingsGet!: typeof import("@/app/api/v1/bookings/route").GET
   let meetingGet!: typeof import("@/app/api/v1/bookings/[id]/route").GET
+  let taskLinkGet!: typeof import("@/app/api/v1/bookings/task-link/route").GET
   let actionsPost!: typeof import("@/app/api/v1/bookings/[id]/actions/route").POST
   let grantsPut!: typeof import("@/app/api/v1/bookings/coordinators/route").PUT
   let drain!: typeof import("@/lib/booking/effect-worker").drainBookingEffects
@@ -221,6 +222,7 @@ pgDescribe("online booking on a real Postgres", () => {
     settingsPost = settings.POST
     meetingsGet = (await import("@/app/api/v1/bookings/route")).GET
     meetingGet = (await import("@/app/api/v1/bookings/[id]/route")).GET
+    taskLinkGet = (await import("@/app/api/v1/bookings/task-link/route")).GET
     actionsPost = (await import("@/app/api/v1/bookings/[id]/actions/route")).POST
     grantsPut = (await import("@/app/api/v1/bookings/coordinators/route")).PUT
     drain = (await import("@/lib/booking/effect-worker")).drainBookingEffects
@@ -645,6 +647,46 @@ pgDescribe("online booking on a real Postgres", () => {
     expect((await meetingGet(json("GET", `/api/v1/bookings/${id}`), { params: Promise.resolve({ id }) })).status).toBe(404)
     signIn("admin", OTHER_ORG)
     expect((await meetingGet(json("GET", `/api/v1/bookings/${id}`), { params: Promise.resolve({ id }) })).status).toBe(404)
+  })
+
+  it("task navigation obeys real own/team/tenant scope and revoked grants", async () => {
+    const slug = await newPage({ hostIds: [HOST_B] })
+    const response = await book(slug, await someSlot(slug, 18))
+    expect(response.status).toBe(201)
+    const id = (await response.json()).data.id
+    const row = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(row.taskId).toBeTruthy()
+    const before = await bypass(() => prisma.task.findUniqueOrThrow({ where: { id: row.taskId! } }))
+    const taskRoutes = await import("@/app/api/v1/tasks/[id]/route")
+    const params = { params: Promise.resolve({ id: row.taskId! }) }
+    const edit = await taskRoutes.PATCH(json("PATCH", `/api/v1/tasks/${row.taskId}`, { title: "Must not overwrite meeting" }), params)
+    expect(edit.status).toBe(409)
+    expect((await edit.json()).code).toBe("BOOKING_MANAGED_TASK")
+    const remove = await taskRoutes.DELETE(json("DELETE", `/api/v1/tasks/${row.taskId}`), params)
+    expect(remove.status).toBe(409)
+    expect((await remove.json()).code).toBe("BOOKING_MANAGED_TASK")
+    const preserved = await bypass(() => prisma.task.findUniqueOrThrow({ where: { id: row.taskId! } }))
+    expect(preserved.title).toBe(before.title)
+    expect(preserved.deletedAt).toBeNull()
+    const request = () => json("GET", `/api/v1/bookings/task-link?taskId=${encodeURIComponent(row.taskId!)}`)
+    const asHostA = () => { session.current = { user: { id: HOST_A, organizationId: ORG, role: "manager", email: "a@example.test", name: "Staff" } } }
+    asHostA()
+    expect((await (await taskLinkGet(request())).json()).data).toBeNull()
+    signIn("admin")
+    expect((await grantsPut(json("PUT", "/api/v1/bookings/coordinators", { coordinatorUserId: HOST_A, hostIds: [HOST_B], canManage: false }))).status).toBe(200)
+    asHostA()
+    const visible = await taskLinkGet(request())
+    expect(visible.headers.get("Cache-Control")).toBe("private, no-store")
+    expect(await visible.json()).toEqual({ success: true, data: { bookingId: id } })
+    signIn("admin")
+    await grantsPut(json("PUT", "/api/v1/bookings/coordinators", { coordinatorUserId: HOST_A, hostIds: [], canManage: false }))
+    asHostA()
+    expect((await (await taskLinkGet(request())).json()).data).toBeNull()
+    signIn("admin", OTHER_ORG)
+    expect((await (await taskLinkGet(request())).json()).data).toBeNull()
+    await bypass(() => prisma.user.create({ data: { id: `user-viewer-${ORG}`, organizationId: ORG, email: "viewer-booking@example.test", name: "Viewer", passwordHash: "-", role: "viewer" } }))
+    signIn("viewer")
+    expect((await taskLinkGet(request())).status).toBe(403)
   })
 
   it("cancel and move races keep one version, preserve a closed page's cancellation and protect the task mirror", async () => {

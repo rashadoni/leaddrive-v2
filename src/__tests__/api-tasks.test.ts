@@ -12,6 +12,7 @@ vi.mock("@/lib/prisma", () => {
       updateMany: vi.fn(),
       deleteMany: vi.fn(),
     },
+    booking: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
     socialMention: { updateMany: vi.fn() },
     company:  { findFirst: vi.fn() },
     contact:  { findFirst: vi.fn() },
