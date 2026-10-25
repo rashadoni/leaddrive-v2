@@ -62,6 +62,10 @@ export async function drainBookingEffects(orgId: string, limit = 20, deadline = 
     let work
     try {
       work = await prisma.$transaction(async (tx) => {
+      // Prisma DateTime fields are UTC TIMESTAMP values. Keep due/expiry
+      // comparisons and the database lease guard in that same time basis.
+      // LOCAL resets on commit/rollback and never changes pooled defaults.
+      await tx.$executeRaw`SET LOCAL TIME ZONE 'UTC'`
       const rows = await tx.$queryRaw<EffectOutbox[]>`
         SELECT * FROM effect_outbox WHERE "organizationId" = ${orgId} AND "effectType" LIKE 'booking.%' AND "executionMode" = 'live'
         AND ((status = 'pending' AND "availableAt" <= CURRENT_TIMESTAMP) OR (status = 'leased' AND "leaseExpiresAt" < CURRENT_TIMESTAMP))
