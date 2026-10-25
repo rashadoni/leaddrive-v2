@@ -716,6 +716,26 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect(publicSession.identityCrm).toBeUndefined()
     expect(publicSession.user.identityCrm).toBeUndefined()
     expect(JSON.stringify(publicSession)).not.toContain('"credentialEpoch"')
+    if (suffix === "totp") {
+      // Stand in only the preceding factor verification by storing a real,
+      // server-issued nonce; consumption and JWT updates use actual code/DB.
+      const { createTwoFactorNonce } = await import("@/lib/two-factor-nonce")
+      const nonce = createTwoFactorNonce()
+      await bypass(() => prisma.user.update({ where: { id: f.userId }, data: { twoFactorNonce: nonce } }))
+      const cleared = await f.callback({ token: { ...token }, user: undefined, trigger: "update", session: { needs2fa: false, twoFactorNonce: nonce } })
+      expect(cleared).toMatchObject({ role: "viewer", identityCrm: token.identityCrm })
+      expect(cleared.needs2fa).toBeUndefined()
+      expect((await bypass(() => prisma.user.findUniqueOrThrow({ where: { id: f.userId }, select: { twoFactorNonce: true } }))).twoFactorNonce).toBeNull()
+      const replay = await f.callback({ token: { ...token }, user: undefined, trigger: "update", session: { needs2fa: false, twoFactorNonce: nonce } })
+      expect(replay.needs2fa).toBe(true)
+      const unconsumed = createTwoFactorNonce()
+      await bypass(async () => {
+        await prisma.user.update({ where: { id: f.userId }, data: { twoFactorNonce: unconsumed } })
+        await prisma.identityAccount.update({ where: { organizationId_userId: f.scope }, data: { credentialEpoch: { increment: 1 }, version: { increment: 1 } } })
+      })
+      expect(await f.callback({ token: { ...token }, user: undefined, trigger: "update", session: { needs2fa: false, twoFactorNonce: unconsumed } })).toBeNull()
+      expect((await bypass(() => prisma.user.findUniqueOrThrow({ where: { id: f.userId }, select: { twoFactorNonce: true } }))).twoFactorNonce).toBe(unconsumed)
+    }
     expect(sent).toHaveLength(0)
   })
 
