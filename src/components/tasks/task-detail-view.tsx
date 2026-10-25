@@ -32,6 +32,7 @@ import { InfoHint } from "@/components/info-hint"
 import { InlineCustomFieldCell, type CustomFieldDef } from "@/components/tasks/inline-tasks-table"
 import { useTaskTypes, useEventTypes } from "@/components/tasks/use-task-types"
 import { toast } from "sonner"
+import { TaskMeetingNotice } from "./task-meeting-notice"
 
 interface ChecklistItem {
   id: string
@@ -757,6 +758,7 @@ function SearchableUserList({ users, renderItem, prefix }: {
 export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, boardColumns }: { taskIdProp?: string; modal?: boolean; onClose?: () => void; onMutated?: () => void; boardColumns?: { key: string; label: string; columnKey?: string }[] }) {
   const t = useTranslations("tasks")
   const tc = useTranslations("common")
+  const tb = useTranslations("booking")
   const tab = useTranslations("abTest")
   const tForms = useTranslations("forms")
   const locale = useLocale()
@@ -765,6 +767,16 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
   const { data: session } = useSession()
   const taskId = taskIdProp ?? (params.id as string)
   const orgId = session?.user?.organizationId
+  const meetingScope = `${orgId ?? ""}:${session?.user?.id ?? ""}:${taskId}`
+  const [blockedMeetingScope, setBlockedMeetingScope] = useState<string | null>(null)
+  const mutationError = async (response: Response, fallback: string) => {
+    const body = await response.json().catch(() => ({}))
+    if (body.code === "BOOKING_MANAGED_TASK") {
+      setBlockedMeetingScope(meetingScope)
+      return tb("taskManagedError")
+    }
+    return typeof body.error === "string" ? body.error : fallback
+  }
 
   const [task, setTask] = useState<TaskData | null>(null)
   useAutoTour("taskDetail")
@@ -881,7 +893,7 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
         body: JSON.stringify({ [field]: value }),
       })
       if (!res.ok) {
-        toast.error((await res.json().catch(() => ({})))?.error || t("updateFailed"))
+        toast.error(await mutationError(res, t("updateFailed")))
       }
       fetchTask()
     } catch (err) { console.error(err); toast.error(t("updateFailed")) }
@@ -898,7 +910,7 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
         body: JSON.stringify(patch),
       })
       if (!res.ok) {
-        toast.error((await res.json().catch(() => ({})))?.error || t("updateFailed"))
+        toast.error(await mutationError(res, t("updateFailed")))
       }
       fetchTask()
     } catch (err) { console.error(err); toast.error(t("updateFailed")) }
@@ -918,7 +930,7 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
       headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>) },
       body: JSON.stringify({ customFields: { [fieldName]: value } }),
     })
-    if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || "Update failed")
+    if (!res.ok) throw new Error(await mutationError(res, t("updateFailed")))
     fetchTask()
   }
 
@@ -991,7 +1003,8 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
         body: JSON.stringify(lane ? { status: newStatus, boardColumnKey: lane } : { status: newStatus }),
       })
       if (res.ok) fetchTask()
-    } catch (err) { console.error(err) } finally { setUpdatingStatus(false) }
+      else toast.error(await mutationError(res, t("updateFailed")))
+    } catch (err) { console.error(err); toast.error(t("updateFailed")) } finally { setUpdatingStatus(false) }
   }
 
   const handleDelete = async () => {
@@ -999,7 +1012,7 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
       method: "DELETE",
       headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
     })
-    if (!res.ok) throw new Error((await res.json()).error || tc("errorDeleteFailed"))
+    if (!res.ok) throw new Error(await mutationError(res, tc("errorDeleteFailed")))
     if (modal) { onMutated?.(); onClose?.() } else { router.push("/tasks") }
   }
 
@@ -1061,6 +1074,7 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
 
   return (
     <div className="space-y-3">
+      <TaskMeetingNotice taskId={taskId} blocked={blockedMeetingScope === meetingScope} onNavigate={modal ? onClose : undefined} />
       {/* Breadcrumbs — page only; in the board modal the dialog frame owns the
           close affordance, so the app breadcrumb is hidden. */}
       {!modal && (
