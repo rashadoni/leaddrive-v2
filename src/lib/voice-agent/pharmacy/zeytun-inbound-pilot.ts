@@ -3,6 +3,7 @@ import { z } from "zod"
 import { readJsonRequestWithinLimit } from "../../request-body-limit"
 import { zeytunBalanceQuerySchema } from "./zeytun-available-balances"
 import { searchResponse, searchRestrictions } from "./zeytun-search-boundary"
+import { openingForCandidates, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
 import { PHONE_ORDER_MAX_LINES, phoneOrderLabel, phoneOrderLineInputSchema, type PhoneOrderCatalog,
   type PhoneOrderLineInput, type PhoneOrderSaveResult } from "./phone-orders"
 
@@ -32,6 +33,8 @@ const lineGrantSchema = z.strictObject({
   approvalReference: id,
   approvedSource: z.strictObject({ organizationId: id, scopeKey: hash }),
   orderOrganizationId: id,
+  /** The 1C pharmacy list (ListClients snapshot) the caller's number is looked up in. */
+  pharmacySource: z.strictObject({ organizationId: id, scopeKey: hash }).optional(),
 })
 export const inboundPilotConfigSchema = z.discriminatedUnion("purpose", [ownerPreviewGrantSchema, lineGrantSchema])
 export type InboundPilotConfig = z.infer<typeof inboundPilotConfigSchema>
@@ -94,6 +97,8 @@ export type InboundPilotDependencies = {
   /** Atomic one-call claim shared by all app processes on this host. */
   claim: (config: InboundPilotConfig, call: InboundPilotCall) => Promise<boolean>
   isClaimed: (config: InboundPilotConfig, call: InboundPilotCall) => Promise<boolean>
+  /** The pharmacies 1C lists for this number (at most five); empty when none or unknown. */
+  findPharmacies?: (config: InboundPilotConfig, phoneE164: string) => Promise<PharmacyCandidate[]>
   /** Saves the call's list to config.orderOrganizationId's phone orders. */
   saveOrder?: (config: InboundPilotConfig & { orderOrganizationId: string }, call: InboundPilotCall,
     catalog: PhoneOrderCatalog, lines: PhoneOrderLineInput[], pharmacy?: string) => Promise<PhoneOrderSaveResult>
@@ -142,7 +147,7 @@ export const ZEYTUN_LINE_PROMPT = [
   ["The caller is the owner's test participant, NOT an authenticated pharmacy. Do not use any CRM customer history or infer a pharmacy identity from the caller's number.",
     "The caller claims to be a pharmacy, NOT verified. The opening asks which one; if unclear ask once more, then go on. Never infer it from the number or CRM history."],
   ["say once that this test call cannot confirm them", "say once that you cannot confirm them on this call"],
-  ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named it."],
+  ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named or confirmed it."],
 ].reduce((prompt, [from, to]) => {
   if (!prompt.includes(from)) throw new Error("zeytun_line_prompt_drift")
   return prompt.replace(from, to)
@@ -257,8 +262,11 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         const seconds = Math.min(300, Math.floor((Date.parse(config.expiresAt) - clock()) / 1000))
         if (seconds < 30) return denied()
         const line = isLineGrant(config)
+        // A directory that cannot be read only costs the greeting its name.
+        const candidates = line && dependencies.findPharmacies
+          ? await dependencies.findPharmacies(config, internationalNumber(call.fromNumber) ?? "").catch(() => []) : []
         return searchResponse({ enabled: true, variant: "pharmacy_inbound_preview", prompt: line ? ZEYTUN_LINE_PROMPT : ZEYTUN_INBOUND_PROMPT,
-          opening: line ? ZEYTUN_LINE_OPENING : ZEYTUN_INBOUND_OPENING, closing: ZEYTUN_INBOUND_CLOSING, ...ZEYTUN_INBOUND_VOICE, speech: ZEYTUN_INBOUND_SPEECH,
+          opening: line ? openingForCandidates(ZEYTUN_LINE_OPENING, candidates) : ZEYTUN_INBOUND_OPENING, closing: ZEYTUN_INBOUND_CLOSING, ...ZEYTUN_INBOUND_VOICE, speech: ZEYTUN_INBOUND_SPEECH,
           maxSeconds: seconds, expiresAt: config.expiresAt, vocabulary: (catalog.vocabulary ?? []).slice(0, 400) })
       }
       if (input.action === "order") {

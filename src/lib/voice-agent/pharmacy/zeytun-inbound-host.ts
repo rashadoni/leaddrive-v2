@@ -1,28 +1,17 @@
 import { constants } from "node:fs"
-import { lstat, open } from "node:fs/promises"
-import { dirname, isAbsolute, join } from "node:path"
+import { open } from "node:fs/promises"
+import { dirname, join } from "node:path"
 import { runWithTenant } from "../../rls-context"
+import { readPrivate } from "./zeytun-private-file"
 import { ZeytunAvailableBalances } from "./zeytun-available-balances"
 import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
 import { inboundPilotDigest, isLineGrant, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies } from "./zeytun-inbound-pilot"
 import type { ZeytunCallDatabase } from "./zeytun-call-loader"
 import { savePhoneOrderFromCall } from "./phone-orders"
+import { ZeytunClientsDirectory } from "./zeytun-clients-directory"
+import { identifyPharmacy, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
 import type { PrismaClient } from "@prisma/client"
 
-/** Tiny operator grant/claim reads; the catalog is parsed once, with no 1C I/O. */
-export async function readPrivate(path: string, limit = 8192): Promise<unknown> {
-  if (!isAbsolute(path)) throw new Error("invalid_private_path")
-  const dir = await lstat(dirname(path))
-  if (!dir.isDirectory() || dir.isSymbolicLink() || (dir.mode & 0o077) || dir.uid !== process.getuid?.()) throw new Error("private_directory_required")
-  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
-  try {
-    const stat = await handle.stat()
-    if (!stat.isFile() || stat.nlink !== 1 || (stat.mode & 0o077) || stat.uid !== process.getuid?.() || stat.size > limit) throw new Error("private_file_required")
-    const buffer = Buffer.alloc(limit + 1), { bytesRead } = await handle.read(buffer, 0, buffer.length, 0)
-    if (bytesRead > limit) throw new Error("private_file_too_large")
-    return JSON.parse(buffer.subarray(0, bytesRead).toString("utf8"))
-  } finally { await handle.close() }
-}
 // 2026-10-25 live call: the session request got 503 and the station ended the
 // call in silence. Parsing the 14 MB catalog holds this process ~2 s, and the
 // call's transaction had 500 ms to start. The station allows 5 s per session
@@ -35,12 +24,37 @@ function callerNumber(value: string) {
   const digits = compact.startsWith("+") ? compact.slice(1) : compact
   return /^[1-9]\d{7,14}$/.test(digits) ? `+${digits}` : value.slice(0, 64)
 }
+/** A directory older than this is not used to name a caller: 1C stopped answering. */
+const PHARMACY_DIRECTORY_MAX_AGE_MS = 7 * 24 * 60 * 60_000
+
 export function createInboundPilotHost(options: {
   configFile: string; snapshotDirectory: string; runtimeOrganizationId: string; database: ZeytunCallDatabase
   /** The application client the phone orders are written with (tenant RLS). */
   orders?: PrismaClient
 }): InboundPilotDependencies {
   let catalog: { key: string; at: number; value: ReturnType<InboundPilotDependencies["loadCatalog"]>; next?: Promise<void> } | null = null
+  // The pharmacy list is small (~1 200 rows, ~0.1 s to parse): re-read when
+  // its header changes, looked at no more than once a minute.
+  let pharmacies: { key: string; version: string; at: number; directory: ZeytunClientsDirectory } | null = null
+  async function findPharmacies(config: InboundPilotConfig, phoneE164: string): Promise<PharmacyCandidate[]> {
+    if (!isLineGrant(config) || !config.pharmacySource || !/^\+[1-9]\d{7,14}$/.test(phoneE164)) return []
+    const source = config.pharmacySource, key = `${source.organizationId}:${source.scopeKey}`
+    const store = new ZeytunSnapshotStore(options.snapshotDirectory, source.organizationId, source.scopeKey)
+    if (!pharmacies || pharmacies.key !== key || Date.now() - pharmacies.at >= 60_000) {
+      const head = await store.peek()
+      if (!head) return []
+      if (pharmacies?.key === key && pharmacies.version === head.version) pharmacies.at = Date.now()
+      else {
+        const saved = await store.load()
+        if (!saved) return []
+        pharmacies = { key, version: saved.version, at: Date.now(), directory: new ZeytunClientsDirectory(saved.payload, saved.context) }
+      }
+    }
+    const summary = pharmacies.directory.summary(source.organizationId)
+    if (summary.source !== "live" || Date.now() - Date.parse(summary.observedAt) > PHARMACY_DIRECTORY_MAX_AGE_MS) return []
+    return pharmacies.directory.findByPhone(source.organizationId, phoneE164).candidates
+      .map((client) => ({ guid: client.counterpartyGuid, name: client.name, address: client.address || null }))
+  }
   // The rehearsal binds its grant to one call; the line claims each call apart.
   const claimPath = (config: InboundPilotConfig, call: InboundPilotCall) => join(dirname(options.configFile),
     isLineGrant(config) ? `line-${config.id}-${call.providerCallId}.claim` : `inbound-${config.id}.claim`)
@@ -141,20 +155,27 @@ export function createInboundPilotHost(options: {
       return catalog.value
     },
     isClaimed,
+    findPharmacies,
     ...(options.orders ? {
       // The pilot's caller is the owner's test participant: the order is
       // marked a test call and names no pharmacy (shared numbers in 1C cannot
       // identify one). The number is the grant's, which the call matched.
-      saveOrder: (config, call, catalog, lines, pharmacy) => savePhoneOrderFromCall(options.orders!, {
-        organizationId: config.orderOrganizationId, providerCallId: call.providerCallId, callStartedAt: call.startedAt,
-        ...(isLineGrant(config)
-          // A name the caller gave is kept as said: the card shows it as
-          // spoken, never as the 1C pharmacy.
-          ? { callerPhoneE164: callerNumber(call.fromNumber), identification: pharmacy ? "named_on_call" as const : "unidentified" as const,
-              pharmacyName: pharmacy }
-          : { callerPhoneE164: config.testPhoneE164, identification: "test_call" as const }),
-        catalog, lines,
-      }),
+      saveOrder: async (config, call, catalog, lines, pharmacy) => {
+        const base = { organizationId: config.orderOrganizationId, providerCallId: call.providerCallId,
+          callStartedAt: call.startedAt, catalog, lines }
+        if (!isLineGrant(config)) {
+          return savePhoneOrderFromCall(options.orders!, { ...base, callerPhoneE164: config.testPhoneE164, identification: "test_call" })
+        }
+        // The 1C pharmacy when the number names one the caller did not
+        // contradict, or the one of a shared number the caller named; a name
+        // matching nothing in 1C is kept as said, never as a 1C pharmacy.
+        const caller = callerNumber(call.fromNumber)
+        const identity = identifyPharmacy(await findPharmacies(config, caller).catch(() => []), pharmacy)
+        return savePhoneOrderFromCall(options.orders!, { ...base, callerPhoneE164: caller, identification: identity.identification,
+          ...("pharmacy" in identity
+            ? { pharmacyName: identity.pharmacy.name, pharmacyGuid: identity.pharmacy.guid, pharmacyAddress: identity.pharmacy.address }
+            : "spoken" in identity ? { pharmacyName: identity.spoken } : {}) })
+      },
     } satisfies Pick<InboundPilotDependencies, "saveOrder"> : {}),
     async claim(config, call) {
       if (config.organizationId !== options.runtimeOrganizationId) return false

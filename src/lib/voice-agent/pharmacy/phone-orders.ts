@@ -34,9 +34,12 @@ export type PhoneOrderSaveInput = {
   providerCallId: string
   callStartedAt: string
   callerPhoneE164: string
-  identification: "test_call" | "phone_unique" | "named_on_call" | "unidentified"
-  /** The pharmacy as the caller named it (named_on_call), unverified. */
+  identification: "test_call" | "phone_unique" | "phone_shared" | "named_on_call" | "unidentified"
+  /** The pharmacy: 1C's name (phone_*) or the caller's own words (named_on_call). */
   pharmacyName?: string
+  /** 1C counterparty GUID and address, when the pharmacy was found in 1C. */
+  pharmacyGuid?: string
+  pharmacyAddress?: string | null
   catalog: PhoneOrderCatalog
   lines: PhoneOrderLineInput[]
 }
@@ -116,7 +119,8 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
       await tx.pharmacyPhoneOrderLine.createMany({ data: lineRows.map(line => ({ ...line, orderId: existing.id })) })
       const updated = await tx.pharmacyPhoneOrder.update({
         where: { id: existing.id },
-        data: { ...(input.pharmacyName ? { pharmacyName: input.pharmacyName, pharmacyIdentification: input.identification } : {}),
+        data: { ...(input.pharmacyName ? { pharmacyName: input.pharmacyName, pharmacyIdentification: input.identification,
+            pharmacyGuid: input.pharmacyGuid ?? null, pharmacyAddress: input.pharmacyAddress ?? null } : {}),
           totalAmount: total, revision: { increment: 1 }, catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey,
           catalogVersion: input.catalog.version, catalogObservedAt: new Date(input.catalog.observedAt) },
       })
@@ -130,6 +134,7 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
         callStartedAt: new Date(input.callStartedAt),
         callerPhone: encryptForTenantBound(orgId, PHONE_ORDERS_TABLE, "callerPhone", input.callerPhoneE164),
         pharmacyIdentification: input.identification, pharmacyName: input.pharmacyName ?? null,
+        pharmacyGuid: input.pharmacyGuid ?? null, pharmacyAddress: input.pharmacyAddress ?? null,
         catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey, catalogVersion: input.catalog.version,
         catalogObservedAt: new Date(input.catalog.observedAt), totalAmount: total,
         lines: { create: lineRows },

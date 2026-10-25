@@ -23120,7 +23120,7 @@ model PharmacyPhoneOrder {
   callStartedAt          DateTime
   /// Tenant-bound ciphertext of the caller's number.
   callerPhone            String
-  /// test_call | phone_unique | named_on_call | unidentified
+  /// test_call | phone_unique | phone_shared | named_on_call | unidentified
   pharmacyIdentification String
   /// 1C counterparty GUID, name and address when the pharmacy is known.
   pharmacyGuid           String?

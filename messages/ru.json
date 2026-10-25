@@ -30879,6 +30879,7 @@
     "identification": {
       "test_call": "аптека не определяется",
       "phone_unique": "узнана по номеру",
+      "phone_shared": "узнана по номеру и названию",
       "named_on_call": "назвалась в звонке",
       "unidentified": "аптека не определена"
     },
