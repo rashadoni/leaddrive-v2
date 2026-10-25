@@ -255,3 +255,10 @@ Source review после52-group PASS выявил storage gap: сервисы �
 
 
 Уточнение8.10 после полного чтения Auth.js callbacks: наличие bypassAdapter НЕ означает, что OAuth сейчас доступен. callbacks.signIn в src/lib/auth.ts явно отвергает любой account.provider, кроме credentials; этот запрет должен сохраняться. Новый identity CRM admission нужен в Credentials authorize, повторной выдаче jwt по свежему User.id и refresh callbacks (а также центральных cookie/API guards), но не является разрешением включить OAuth/автоматическое создание организаций или связать аккаунты по email. Старое упоминание OAuth относится к обязательной сохранности этой границы, а не к подтверждённому активному OAuth входу.
+
+
+## 9. Проверенный серверный foundation на 2026-10-25T01:36:58.790600+00:00
+
+Этот раздел обновляет исторические PREPARED/ожидаемые результаты разделов7–8, не стирая прежние записи. Exact source fe295ab7a9af631182ebd32e0aee81ef1d22b77f: GitHub40150397061/job121040568171 SUCCESS. Фактически прошли Prisma validate/generate, строгая scoped TS-компиляция/импорт runtime,115 Vitest/10файлов,29 Node,6snapshot и55foundation PostgreSQL checks; productionObserved=false. В том числе реальные issue/consume/setup, текущие лицензии, общий canonical password для двух приложений, одинаковый номер в разных компаниях, гонки пароля/владельца, RLS, immutable actor binding, общий logout-all с atomic audit и запреты отката/recreate grant/member версий. Это проверка исполняемого серверного слоя на отдельной БД, не регистрация реального сотрудника.
+
+Полная сборка этой же версии40150397065 ещё RUNNING; прошлый2a196 build PASS к ней не переносится. Global typecheck/static jobs пропущены для draft=NOT RUN; browser/Android E2E нового identity flow NOT RUN. Текущие формы/auth/provider/API и production identities не переключены. Следующий продуктовый этап — legacy credential/write и CRM/seat boundaries, enrollment/change-phone API/UI, app-specific Time/Field workday/session storage и совместимая миграция клиентов/очередей, затем test-tenant acceptance и отдельно разрешённый security rollout. Владелец реального конфликтующего номера Zeytun остаётся NOT VERIFIED.
