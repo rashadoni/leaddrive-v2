@@ -542,3 +542,9 @@
 - Пользователь явно подтвердил: «на прод выпускай». В прежнем task worktree/branch повторно проверены routing, clean Git state, workflow40223978535 и текущие public endpoints.
 - Workflow SUCCESS; app/leaddrive/zeytun возвращают exact artifact a5d26517b18f20a26a4553292644d5020a3f0a6b, ping ok=true на всех3. Требуемый общий стиль уже опубликован; повторный deploy того же artifact не запускался. После source9961113a в feature branch только checkpoint документации, невыпущенных изменений приложения нет.
 - Итог: запрос публикации уже выполнен и заново подтверждён. Последнее действие — live SHA/health verification; остановка после подтверждения работающего релиза; следующего deploy действия не требуется.
+
+### Диагностика вспыхивающего AI-поиска на главной
+
+- Пользователь показал screenshot /dashboard во время skeleton loading и спросил, что за поиск появляется и затем исчезает. Вопрос исследован без изменения UI или нового deployment.
+- Идентифицирован ContentSearchBar: запасной вход в тот же Da Vinci через davinci:open. DashboardHeroProvider начинает с heroCommandVisible=true, но dashboard/page.tsx effect устанавливает showGreeting && !loading. Во время loading=true получается false; layout перестаёт скрывать общую строку. После loading=false при showGreeting=true строка снова скрывается. Состояния «ещё загружается» и «виджет выключен» смешаны.
+- Intended fallback нужен при выключенном welcomeGreeting; исправление должно отличать pending widget configuration от действительно disabled greeting, без удаления fallback у пользователей с выключенным виджетом. Код не менялся, browser reproduction и tests NOT RUN (ответ на вопрос/анализ исходников). Остановка после подтверждения причины по screenshot и source; возможное следующее действие — устранение loading flash отдельной узкой правкой.
