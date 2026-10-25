@@ -1,3 +1,4 @@
+import { identityDirectoryPhone } from "@/lib/identity/directory-contact"
 import { createHash, randomUUID } from "node:crypto"
 import { ATTENDANCE_TRACKED_CARD_WHERE, attendanceTrackedCardSql, isAttendanceTrackedCard } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
@@ -63,6 +64,8 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const users = await tx.user.findMany({ where: { organizationId, isActive: true, anonymizedAt: null }, select: { id: true, name: true, phone: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
     const cards = await tx.mtmAgent.findMany({ where: { organizationId }, select: { id: true, name: true, phone: true, position: true, managerId: true, userId: true, role: true, status: true, attendanceParticipant: true, attendanceExcluded: true, attendanceIncludedFrom: true, teamId: true, team: { select: { name: true } }, departmentId: true, department: { select: { name: true } },
+      user: { select: { identityAccount: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
+      identityActorBinding: { select: { account: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
       auditLogs: { where: { organizationId, metadataKind: "mtm_attendance_employment", OR: [
         { action: { in: ["MTM_ATTENDANCE_EMPLOYEE_CREATED", "MTM_ATTENDANCE_EMPLOYEE_ENROLLED"] } },
         { action: "MTM_ATTENDANCE_EMPLOYMENT_RECORDED", newData: { path: ["kind"], equals: "HIRE" } },
@@ -90,7 +93,7 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
         eligible: false }
     }), employees: tracked.map(card => ({ id: card.id, name: card.name, role: card.role, status: card.status, teamName: card.team?.name ?? null,
       departmentId: card.departmentId, departmentName: card.department?.name ?? null, position: card.position ?? null, teamId: card.teamId, managerId: card.managerId,
-      phone: card.phone ?? (card.userId ? phones.get(card.userId) ?? null : null), todayMark: marks.get(card.id) ?? null,
+      phone: identityDirectoryPhone({ userAccount: card.user?.identityAccount, boundAccount: card.identityActorBinding?.account, legacyPhone: card.phone ?? (card.userId ? phones.get(card.userId) ?? null : null) }), todayMark: marks.get(card.id) ?? null,
       included: !card.attendanceExcluded, participationVersion: latestParticipation.get(card.id) ?? null, includedFrom: card.attendanceIncludedFrom?.toISOString() ?? null,
       history: events.filter(event => event.agentId === card.id).map(event => ({ id: event.id, kind: event.kind,
         // A termination instant is the start of the day after the last work day.
@@ -306,8 +309,8 @@ export async function readAttendanceEmployee(actor: AttendanceReviewer, agentId:
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const card = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, ...ATTENDANCE_TRACKED_CARD_WHERE },
       select: { id: true, name: true, phone: true, email: true, role: true, status: true, position: true, teamId: true, managerId: true, attendanceExcluded: true, team: { select: { name: true } }, departmentId: true, department: { select: { name: true } },
-        user: { select: { id: true, name: true, phone: true, email: true, role: true, isActive: true, identityAccount: { select: { cutoverAt: true } } } },
-        identityActorBinding: { select: { account: { select: { cutoverAt: true } } } } } })
+        user: { select: { id: true, name: true, phone: true, email: true, role: true, isActive: true, identityAccount: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
+        identityActorBinding: { select: { account: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } } } })
     if (!card) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
     const [teams, departments, managerCards, events, participation] = await Promise.all([
       tx.mtmTeam.findMany({ where: { organizationId }, select: { id: true, name: true, departmentId: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1000 }),
@@ -332,9 +335,12 @@ export async function readAttendanceEmployee(actor: AttendanceReviewer, agentId:
       if (!(error instanceof Error) || !error.message.startsWith("MTM_ATTENDANCE_")) throw error
     }
     const marks = await todayMarks(tx, organizationId, [agentId], today)
-    const preparation = await readAttendanceEmployeePreparation(tx, { organizationId, agentId, date: today }, card, now)
+    const phone = identityDirectoryPhone({ userAccount: card.user?.identityAccount, boundAccount: card.identityActorBinding?.account, legacyPhone: card.phone ?? card.user?.phone ?? null })
+    const preparationCard = card.user?.identityAccount?.cutoverAt || card.identityActorBinding?.account.cutoverAt
+      ? { ...card, phone, email: null, user: card.user ? { ...card.user, phone, email: null } : null } : card
+    const preparation = await readAttendanceEmployeePreparation(tx, { organizationId, agentId, date: today }, preparationCard, now)
     return { timezone, today, teams, departments, preparation, managers: managerCards.map(manager => ({ id: manager.id, name: manager.name, position: manager.position ?? null })), month,
-      employee: { id: card.id, name: card.user?.name ?? card.name, phone: card.phone ?? card.user?.phone ?? null, email: realEmail(card.email) ?? realEmail(card.user?.email),
+      employee: { id: card.id, name: card.user?.name ?? card.name, phone, email: realEmail(card.email) ?? realEmail(card.user?.email),
         role: card.role, status: card.status, crmRole: card.user?.role ?? null, loginEditable: !card.user?.identityAccount?.cutoverAt && !card.identityActorBinding?.account.cutoverAt
           && (!card.user || !LOGIN_LOCKED_ROLES.has(card.user.role)),
         position: card.position ?? null, teamId: card.teamId, teamName: card.team?.name ?? null, departmentId: card.departmentId, departmentName: card.department?.name ?? null, managerId: card.managerId,
