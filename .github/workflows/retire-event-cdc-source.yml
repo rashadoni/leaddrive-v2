@@ -7,7 +7,9 @@ name: Retire event CDC source on production
 # Runs scripts/event-platform/retire-cdc-source.sh on the production host:
 #   inspect (default) — read-only report;
 #   apply             — safety pg_dump, CDC role NOLOGIN, walsender terminated,
-#                       slot and publication dropped, verified, CRM pinged.
+#                       slot and publication dropped, verified, CRM pinged;
+#   restore           — undo apply: CDC role LOGIN, publication back; the
+#                       connector recreates its slot when it starts.
 # Idempotent: apply on a retired source changes nothing and still verifies.
 # Dispatch-only and on the production-deploy lock; it never runs from a push.
 
@@ -15,23 +17,27 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "inspect — только посмотреть; apply — снять CDC (копия базы, слот, публикация, вход роли)"
+        description: "inspect — только посмотреть; apply — снять CDC (копия базы, слот, публикация, вход роли); restore — вернуть вход роли и публикацию"
         type: choice
-        options: [inspect, apply]
+        options: [inspect, apply, restore]
         default: inspect
 
 permissions:
   contents: read
-
-concurrency:
-  group: production-deploy
-  cancel-in-progress: false
 
 jobs:
   retire:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: production
+    # Shares the production lock with deploys and waits its turn behind them
+    # without replacing a pending deploy (same as event-platform-readiness.yml).
+    # The first dispatch, 2026-10-25, used the default single pending slot and
+    # was replaced by a deploy while main kept deploying.
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+      queue: max
     steps:
       - uses: actions/checkout@v6
         with:
@@ -42,7 +48,7 @@ jobs:
           MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
-          case "$MODE" in inspect|apply) ;; *) echo "::error::mode must be inspect or apply"; exit 1 ;; esac
+          case "$MODE" in inspect|apply|restore) ;; *) echo "::error::mode must be inspect, apply or restore"; exit 1 ;; esac
           bash -n scripts/event-platform/retire-cdc-source.sh
 
       - name: Setup pinned production SSH
@@ -59,13 +65,13 @@ jobs:
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
           set -euo pipefail
-          case "$MODE" in inspect|apply) ;; *) exit 1 ;; esac
+          case "$MODE" in inspect|apply|restore) ;; *) exit 1 ;; esac
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             "$SERVER_USER@$SERVER_HOST" "bash -s -- $MODE" \
             < scripts/event-platform/retire-cdc-source.sh
 
       - name: CRM answers from outside
-        if: inputs.mode == 'apply'
+        if: inputs.mode != 'inspect'
         run: |
           set -euo pipefail
           for path in /api/v1/ping /login; do

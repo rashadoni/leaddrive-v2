@@ -5,6 +5,11 @@ BACKUP COMMISSIONING; ENTERPRISE PITR/SECOND-REGION/FULL-AUTHORITY GATES OPEN;
 KAFKA TRANSPORT PREPARED BUT NOT ACTIVATED**
 Date: 2026-09-05
 
+> **2026-10-25: сворачивание Kafka отменено владельцем — Kafka нужна.** Днём
+> прод сняли с роли CDC-источника (`retire-event-cdc-source.yml`, `apply`);
+> обратный шаг — тот же workflow с `restore`, затем перезапуск коннектора. См.
+> раздел «Kafka нужна» в корневом `CLAUDE.md`.
+
 LeadDrive uses this program to make calculation, consumer, and projection bugs
 recoverable without rolling the whole shared multi-tenant database back in
 time. Status in this document is deliberately split by layer: repository code,

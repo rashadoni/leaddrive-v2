@@ -6,16 +6,19 @@
  *
  * The registry answers only Azerbaijani addresses, and LeadDrive runs abroad,
  * so the request goes through the Fanum station in Baku: one nginx location
- * (`scripts/pbx/az-taxpayer-registry/`) behind the station's pinned TLS and
- * its one-host source ACL. Without the relay the lookup answers "unavailable"
- * and the form still works by hand.
+ * (`scripts/pbx/az-taxpayer-registry/`) behind the station's pinned TLS,
+ * reached through the tunnel the station keeps to the CRM host. Without the
+ * relay the lookup answers "unavailable" and the form still works by hand.
  *
  * The registry is public and needs no login; it is asked once per press of
  * «VÖEN ilə doldur», never in bulk.
  */
 import { secureFanumPbxControlFetch } from "@/lib/voip/fanum-pbx-control-transport"
 
-const DEFAULT_RELAY = "https://185.161.225.131:8088"
+// The station's own tunnel to this host (fanum-ari-tunnel, -R 127.0.0.1:18088):
+// it does not depend on the station's public port forwarding, which answered
+// «EHOSTUNREACH» on 2026-10-25. TLS still checks the pinned station certificate.
+const DEFAULT_RELAY = "https://127.0.0.1:18088"
 const RELAY_PATH = "/registry/az/find-taxpayer"
 const TIMEOUT_MS = 20_000
 
