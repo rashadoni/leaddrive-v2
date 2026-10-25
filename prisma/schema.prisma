@@ -1056,6 +1056,7 @@ model IdentityEvent {
   proofOutcome    String? @db.VarChar(32)
   credentialEpoch Int?
   contactRevision Int?
+  activationArtifactSha String? @db.VarChar(40)
   previousClaimId String?
   claimId         String?
   createdAt       DateTime @default(now()) @db.Timestamptz(3)

@@ -4,8 +4,19 @@ BEGIN;
 SET LOCAL lock_timeout = '3s';
 SET LOCAL statement_timeout = '30s';
 
+CREATE FUNCTION identity_legacy_phone_conflicts(source_phone TEXT, canonical_phone TEXT)
+RETURNS BOOLEAN LANGUAGE plpgsql IMMUTABLE STRICT AS $$
+DECLARE digits TEXT;
+BEGIN
+  digits := regexp_replace(source_phone, '[^0-9]', '', 'g');
+  IF left(digits, 2) = '00' THEN digits := substr(digits, 3); END IF;
+  RETURN digits = substr(canonical_phone, 2)
+    OR (left(digits, 1) = '0' AND length(digits) BETWEEN 9 AND 15
+      AND right(canonical_phone, length(digits) - 1) = substr(digits, 2));
+END $$;
+
 CREATE FUNCTION identity_guard_legacy_login_write() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE subject_id TEXT; bound_id TEXT; digits TEXT; contact_changed BOOLEAN;
+DECLARE subject_id TEXT; bound_id TEXT; contact_changed BOOLEAN;
 BEGIN
   -- Includes password-only creation and relinking, which otherwise could race
   -- a cutover's final actor inventory even with no phone in the new row.
@@ -42,13 +53,11 @@ BEGIN
   IF contact_changed AND NEW.phone IS NOT NULL AND NEW.phone <> '' THEN
     -- Shared with proof/claim/cutover writers, including previously unfenced
     -- creation endpoints. A deadlock aborts the write rather than admitting it.
-    digits := regexp_replace(NEW.phone, '[^0-9]', '', 'g');
-    IF length(digits) >= 7 AND EXISTS (
+    IF EXISTS (
       SELECT 1 FROM identity_phone_claims c JOIN identity_accounts a
         ON a."organizationId" = c."organizationId" AND a."userId" = c."userId"
       WHERE c."organizationId" = NEW."organizationId" AND a."cutoverAt" IS NOT NULL
-        AND (c."normalizedPhone" = '+' || digits
-          OR (left(digits, 1) = '0' AND right(c."normalizedPhone", length(digits) - 1) = substr(digits, 2)))
+        AND identity_legacy_phone_conflicts(NEW.phone, c."normalizedPhone")
     ) THEN
       RAISE EXCEPTION 'IDENTITY_CANONICAL_PHONE_RESERVED' USING ERRCODE = '23514';
     END IF;

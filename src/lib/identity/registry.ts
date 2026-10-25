@@ -91,11 +91,17 @@ export async function readIdentityShadow(client: RegistryClient, actor: Identity
  * will additionally require tenant entitlement, membership and auth rollout.
  */
 export async function planStagedApplicationGrant(client: RegistryClient, actor: IdentityActor, input: StagedApplicationGrantInput) {
+  return planApplicationGrant(client, actor, input)
+}
+export async function planIdentityApplicationByAdministrator(client: RegistryClient, actor: IdentityAdministrator, input: StagedApplicationGrantInput) {
+  return planApplicationGrant(client, actor, input, actor)
+}
+async function planApplicationGrant(client: RegistryClient, actor: IdentityActor, input: StagedApplicationGrantInput, administrator?: IdentityAdministrator) {
   assertIdentityScope(actor.organizationId, input.userId)
   assertStagedApplicationGrant(input)
   const requestHash = createHash("sha256").update(JSON.stringify([1, "GRANT_CHANGED", actor.organizationId, actor.userId,
     input.userId, input.application, input.status, input.role, input.expectedAccountVersion, input.expectedGrantVersion])).digest("hex")
-  return withRegistryTransaction(client, actor, false, async tx => {
+  const work = async (tx: Prisma.TransactionClient) => {
     const event = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: actor.organizationId, requestId: input.requestId } },
       select: { requestHash: true, accountVersion: true, action: true, grantVersion: true } })
     if (event) {
@@ -123,7 +129,8 @@ export async function planStagedApplicationGrant(client: RegistryClient, actor: 
     await tx.identityEvent.create({ data: { id: randomUUID(), ...accountKey, actorUserId: actor.userId, requestId: input.requestId, requestHash,
       action: "GRANT_CHANGED", accountVersion: version, application: input.application, grantStatus: input.status, grantRole: role, grantVersion: grant.version } })
     return { mode: "SHADOW" as const, accountVersion: version, grantVersion: grant.version, replayed: false, authenticationChanged: false as const }
-  })
+  }
+  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
 }
 
 /**

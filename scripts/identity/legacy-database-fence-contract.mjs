@@ -7,7 +7,7 @@ export async function checkLegacyDatabaseFence({ admin, writer, actor, other, ch
   const org = actor.organizationId, userId = "database-fence-person", cardId = "database-fence-card"
   const phone = "+994558811223", scope = { organizationId: org, userId }
   await admin.$executeRaw`INSERT INTO users (id,"organizationId","isActive",role,"passwordHash",phone) VALUES (${userId},${org},true,'viewer','!old-fixture',${phone})`
-  await admin.$executeRaw`INSERT INTO mtm_agents (id,"organizationId","userId",role,status,"passwordHash",phone) VALUES (${cardId},${org},${userId},'AGENT','ACTIVE','!old-fixture',${phone})`
+  await admin.$executeRaw`INSERT INTO mtm_agents (id,"organizationId","userId",role,status,"passwordHash",phone,"attendanceParticipant") VALUES (${cardId},${org},${userId},'AGENT','ACTIVE','!old-fixture',${phone},false)`
   await admin.identityAccount.create({ data: scope })
   await admin.identityPhoneClaim.create({ data: { ...scope, normalizedPhone: phone, accountVersion: 1, verifiedAt: new Date() } })
   await admin.$executeRawUnsafe('GRANT UPDATE ("passwordHash", phone) ON users, mtm_agents TO identity_foundation_writer')
@@ -27,14 +27,14 @@ export async function checkLegacyDatabaseFence({ admin, writer, actor, other, ch
       await scoped(tx => tx.$executeRawUnsafe(`UPDATE ${table} SET "passwordHash"="passwordHash",phone=phone WHERE id=$1 AND "organizationId"=$2`, id, org))
     }
     const addUser = (id, tenant, number) => admin.$executeRaw`INSERT INTO users (id,"organizationId","isActive",role,"passwordHash",phone) VALUES (${id},${tenant},true,'viewer','!new-fixture',${number})`
-    for (const number of [phone, "+994 (55) 881-12-23", "0558811223"]) {
+    for (const number of [phone, "+994 (55) 881-12-23", "0558811223", "00994558811223"]) {
       await assert.rejects(addUser("database-fence-conflict", org, number), /IDENTITY_CANONICAL_PHONE_RESERVED/)
     }
     await addUser("database-fence-other-tenant", other.organizationId, phone)
     await addUser("database-fence-unclaimed", org, "+994558811224")
     await assert.rejects(scoped(tx => tx.$executeRaw`UPDATE users SET phone=${phone} WHERE id='database-fence-unclaimed' AND "organizationId"=${org}`), /IDENTITY_CANONICAL_PHONE_RESERVED/)
-    await assert.rejects(admin.$executeRaw`INSERT INTO mtm_agents (id,"organizationId","userId",role,status,"passwordHash") VALUES ('database-fence-new-password',${org},${userId},'EMPLOYEE','ACTIVE','!independent-password')`, /IDENTITY_CANONICAL_CREDENTIAL_REQUIRED/)
-    await admin.$executeRaw`INSERT INTO mtm_agents (id,"organizationId","userId",role,status) VALUES ('database-fence-new-card',${org},${userId},'EMPLOYEE','ACTIVE')`
+    await assert.rejects(admin.$executeRaw`INSERT INTO mtm_agents (id,"organizationId","userId",role,status,"passwordHash","attendanceParticipant") VALUES ('database-fence-new-password',${org},${userId},'EMPLOYEE','ACTIVE','!independent-password',true)`, /IDENTITY_CANONICAL_CREDENTIAL_REQUIRED/)
+    await admin.$executeRaw`INSERT INTO mtm_agents (id,"organizationId","userId",role,status,"attendanceParticipant") VALUES ('database-fence-new-card',${org},${userId},'EMPLOYEE','ACTIVE',true)`
     assert.equal((await admin.user.findUniqueOrThrow({ where: { id: userId }, select: { passwordHash: true } })).passwordHash, "!shadow-fixture")
     checks.push("database_refuses_old_password_restoration_and_canonical_phone_allocation_but_allows_shadow_other_tenant_and_credentialless_card")
 
@@ -58,7 +58,7 @@ export async function checkLegacyDatabaseFence({ admin, writer, actor, other, ch
     await entered
     const insertion = admin.$transaction(async tx => {
       connection((await tx.$queryRaw`SELECT pg_backend_pid() AS pid`)[0].pid)
-      return tx.$executeRaw`INSERT INTO mtm_agents (id,"organizationId","userId",role,status,"passwordHash") VALUES ('database-fence-race-card',${org},${racing},'AGENT','ACTIVE','!racing-password')`
+      return tx.$executeRaw`INSERT INTO mtm_agents (id,"organizationId","userId",role,status,"passwordHash","attendanceParticipant") VALUES ('database-fence-race-card',${org},${racing},'AGENT','ACTIVE','!racing-password',false)`
     }, { timeout: 15_000 })
     const refused = assert.rejects(insertion, /IDENTITY_CANONICAL_CREDENTIAL_REQUIRED/)
     try {
