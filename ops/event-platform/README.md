@@ -246,8 +246,8 @@ cluster with its own certificate. A problem is told after two passes in a row,
 once, with a reminder a day later and a note when it is over; a crash of the
 watch itself is told at most every six hours; a Monday note says it is alive.
 
-Covered: replication-slot retained bytes (1 GB warning, 4 GB critical, cap
-16 GB), slot inactive / unreserved / lost / missing, connector and task state,
+Covered: replication-slot retained bytes (256 MB warning, 2 GB critical, cap
+16 GB; heartbeats keep a healthy slot at a few MB), slot inactive / unreserved / lost / missing, connector and task state,
 each Connect worker and registry, controller quorum and each voter, each
 broker's last fetch, offline / below-min-ISR / under-replicated partitions,
 disk use on every host, WireGuard peers, node certificate expiry.

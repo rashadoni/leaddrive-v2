@@ -472,7 +472,11 @@ Kafka 36 из 36 событий outbox без дублей.
   затем слот: создать его сразу (`pg_create_logical_replication_slot`), чтобы
   разрыв не рос. Коннектор со старым offset при `snapshot.mode=initial` на
   новом слоте падает («Last recorded offset is no longer available»): stop →
-  `PATCH /connectors/<имя>/offsets` на LSN нового слота → resume. Строки
+  `DELETE /connectors/<имя>/offsets` → `snapshot.mode=no_data` → resume; когда
+  слот сдвинулся, вернуть `initial` (offset уже есть, снапшота не будет).
+  **Не ставить offset на LSN слота через `PATCH`**: такой позиции нет в потоке,
+  Debezium бесконечно ищет её («LSN flushing is not allowed yet») и слот стоит
+  (2026-10-25, 15:15–16:55 UTC). Строки
   outbox, записанные без слота, догнать одноразовым коннектором
   `snapshot.mode=initial_only` с выборкой `WHERE "eventId" IN (…)` и сверить
   eventId в Kafka с outbox — так восстановлено 2026-10-25.
