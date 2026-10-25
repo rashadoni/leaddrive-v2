@@ -1,0 +1,157 @@
+/* One hierarchy for all authenticated CRM pages and their internal windows.
+   Public sites and exported documents remain outside this scope. Status/data
+   colours are never reset by a wildcard or a match on a Tailwind colour name. */
+[data-crm-workspace] {
+  color-scheme: light;
+  --border: 216 21% 84%;
+  --input: 216 18% 72%;
+  --crm-action: 20 90% 38%;
+  --crm-action-hover: 20 90% 33%;
+  --crm-accent-text: 20 90% 33%;
+  --crm-panel-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.dark [data-crm-workspace]:not(:where(.force-light, .force-light *)),
+html[data-wallpaper][data-wallpaper-scope="dashboard"] [data-crm-workspace]:not(:where(.force-light, .force-light *)) {
+  color-scheme: dark;
+  --border: 215 18% 33%;
+  --input: 215 16% 45%;
+  --crm-accent-text: 24 95% 70%;
+}
+
+[data-crm-workspace] .force-light {
+  color-scheme: light;
+  --border: 216 21% 84%;
+  --input: 216 18% 72%;
+  --crm-accent-text: 20 90% 33%;
+}
+
+/* Native fields use the same tokens as Input/Select. Base-layer defaults allow
+   explicit validation, disabled, transparent and focus utilities to win. The
+   background token is local to the field, so bg-background means its surface. */
+@layer base {
+  [data-crm-workspace] :where(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"], [type="button"], [type="submit"], [type="reset"], [type="image"])) {
+    --background: var(--card);
+    --border: var(--input);
+    background-color: hsl(var(--card));
+  }
+
+  [data-crm-workspace] :where(input[type="checkbox"], input[type="radio"]) {
+    accent-color: hsl(var(--primary));
+  }
+}
+
+[data-crm-workspace] :is([data-crm-card], [data-crm-section], [data-crm-stat], .crm-panel, .ai-card, .glass-panel) {
+  box-shadow: var(--crm-panel-shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-crm-workspace] :is(.crm-panel, .ai-card, .glass-panel) {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+[data-crm-workspace] :is(.ai-glow, .ai-card):hover {
+  box-shadow: var(--crm-panel-shadow);
+}
+
+[data-crm-workspace] .ai-gradient-border::before {
+  display: none;
+}
+
+[data-crm-workspace] .ai-accent {
+  border-color: hsl(var(--border));
+  box-shadow: none;
+}
+
+[data-crm-workspace] [data-crm-button] {
+  border-radius: 0.5rem;
+}
+
+/* Change the default token, not the background declaration: explicit success,
+   hang-up and other semantic button classes must retain their own colours. */
+[data-crm-workspace] [data-crm-button="default"] {
+  --primary: var(--crm-action);
+}
+
+[data-crm-workspace] [data-crm-button="brand"] {
+  background: hsl(var(--crm-action));
+  color: hsl(var(--primary-foreground));
+}
+
+[data-crm-workspace] [data-crm-button="brand"]:hover:not(:disabled) {
+  background: hsl(var(--crm-action-hover));
+}
+
+[data-crm-workspace] [data-crm-badge="ai"] {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  border-color: hsl(var(--border));
+}
+
+/* A tab is navigation, not a second primary action. The same orange underline
+   is used by MTM's ordinary buttons and the shared Radix Tabs component. */
+[data-crm-workspace] [data-crm-tabs] {
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
+  box-shadow: none;
+}
+
+[data-crm-workspace] [data-crm-tab] {
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  --tw-shadow: 0 0 #0000;
+}
+
+[data-crm-workspace] [data-crm-tab][data-state="active"] {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  border-bottom-color: hsl(var(--primary));
+}
+
+[data-crm-workspace] [data-crm-filter] {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
+  box-shadow: none;
+}
+
+[data-crm-workspace] [data-crm-filter][data-state="active"] {
+  border-color: hsl(var(--foreground));
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+/* Dialogs sit above the page. A recessed canvas stays gray inside them. */
+[data-crm-workspace] [data-crm-dialog],
+[data-crm-workspace][role="dialog"] {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+[data-crm-workspace][data-crm-surface="canvas"],
+[data-crm-workspace] [data-crm-dialog-content] {
+  background-color: hsl(var(--background));
+}
+
+[data-crm-workspace] :is([data-crm-dialog-header], [data-crm-dialog-footer]) {
+  background-color: hsl(var(--card));
+}
+
+[data-crm-workspace] [data-crm-dialog-header] {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+[data-crm-workspace] [data-crm-stat-icon] {
+  color: hsl(var(--muted-foreground));
+}
+
+[data-crm-workspace] [data-crm-stat-value] {
+  color: hsl(var(--foreground));
+}

@@ -24,6 +24,11 @@ describe("dashboard AI launcher placement", () => {
     expect(layout).toContain('pathname.startsWith("/leaderboard")')
     expect(layout).toContain("isDashboardHome && heroCommandVisible")
     expect(layout).toContain("heroCommandVisible: isDashboardHome && heroCommandVisible")
+    // While the dashboard loads, its skeleton holds the hero field; saying
+    // "no field" then flashed the orange shared bar on every open.
+    const dashboardPage = source("src/app/(dashboard)/dashboard/page.tsx")
+    expect(dashboardPage).toContain("setHeroCommandVisible(loading || showGreeting)")
+    expect(dashboardPage).not.toContain("setHeroCommandVisible(showGreeting && !loading)")
     expect(panel).toContain("showFloatingLauncher = true")
     expect(panel).toContain("!open && showFloatingLauncher")
     expect(voice).toContain("showFloatingLauncher = true")
@@ -84,8 +89,9 @@ describe("dashboard AI launcher placement", () => {
     expect(status).toContain("createPortal(")
     expect(status).toContain('VOICE_STATUS_LAYER_ID = "dashboard-voice-status-layer"')
     expect(status).toContain("fixed z-50")
-    expect(layout).toContain('<div id="dashboard-voice-status-layer" />')
-    expect(layout.indexOf('<div id="dashboard-voice-status-layer" />')).toBeGreaterThan(layout.indexOf('className="relative z-[2] flex h-screen min-w-0"'))
+    const statusLayer = layout.match(/<div\b[^>]*\bid="dashboard-voice-status-layer"[^>]*\/>/)?.[0]
+    expect(statusLayer).toContain('data-crm-workspace=""')
+    expect(layout.indexOf('id="dashboard-voice-status-layer"')).toBeGreaterThan(layout.indexOf('className="relative z-[2] flex h-screen min-w-0"'))
     expect(voiceConsole).toContain("<VoiceInlineStatus")
     expect(voice).toContain("<VoiceInlineStatus")
     expect(voiceConsole).not.toContain("absolute right-0 top-full z-20")

@@ -371,8 +371,8 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
-              <Sparkles className="h-6 w-6 text-white" />
+            <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
+              <Sparkles className="h-6 w-6 text-muted-foreground" />
             </div>
             <div>
               <h2 className="text-xl font-bold">{isEdit ? tf("editAiAgent") : tf("newAiAgent")}</h2>
@@ -430,16 +430,16 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
                     onClick={() => setForm(f => ({ ...f, model: model.id }))}
                     className={cn(
                       "w-full flex items-center gap-4 p-3.5 rounded-xl border-2 transition-all text-left",
-                      isSelected ? model.bgSelected + " shadow-sm" : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
+                      isSelected ? "border-foreground bg-muted/40 shadow-sm" : "border-border hover:border-zinc-300 dark:hover:border-zinc-600"
                     )}
                   >
-                    <div className={cn("h-10 w-10 rounded-lg bg-gradient-to-br flex items-center justify-center flex-shrink-0", model.color)}>
-                      <Icon className="h-5 w-5 text-white" />
+                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                      <Icon className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm">{model.name}</span>
-                        {isSelected && <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">{t("selected")}</span>}
+                        {isSelected && <span className="text-[10px] font-bold text-foreground bg-muted px-2 py-0.5 rounded-full">{t("selected")}</span>}
                       </div>
                       <p className="text-xs text-muted-foreground">{t(model.descKey as any)}</p>
                     </div>
@@ -525,7 +525,7 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
                     onClick={() => toggleGroup(group)}
                     className={cn(
                       "w-full flex items-center gap-3.5 p-3.5 rounded-xl border-2 transition-all text-left",
-                      enabled ? "border-blue-300 bg-blue-50/60 shadow-sm" : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
+                      enabled ? "border-blue-300 bg-blue-50/60 shadow-sm" : "border-border hover:border-zinc-300 dark:hover:border-zinc-600"
                     )}
                   >
                     <div className={cn(
@@ -586,15 +586,15 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
                       type="button"
                       onClick={() => toggleRule(preset)}
                       className={cn(
-                        "w-full flex items-center gap-3 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 transition-all text-left",
-                        enabled ? "border-red-200 bg-red-50/60" : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600",
+                        "w-full flex items-center gap-3 p-3 rounded-xl border border-border transition-all text-left",
+                        enabled ? "border-red-200 bg-red-50/60" : "border-border hover:border-zinc-300 dark:hover:border-zinc-600",
                         preset.alwaysOn && "opacity-90 cursor-default"
                       )}
                     >
                       {/* Checkbox */}
                       <div className={cn(
                         "w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border-2 transition-colors",
-                        enabled ? "bg-red-500 border-red-500" : "border-zinc-200 dark:border-zinc-700 bg-card",
+                        enabled ? "bg-red-500 border-red-500" : "border-border bg-card",
                         preset.alwaysOn && "bg-red-400 border-red-400"
                       )}>
                         {enabled && (
@@ -685,7 +685,7 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
                         "p-2 rounded-xl border-2 text-center transition-all",
                         form.agentType === at.id
                           ? "border-orange-400 bg-orange-50/60 shadow-sm"
-                          : "border-zinc-200 dark:border-zinc-700 hover:border-orange-200"
+                          : "border-border hover:border-orange-200"
                       )}
                     >
                       <p className="text-xs font-semibold">{at.label}</p>
@@ -757,10 +757,10 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
                             : [...f.intents, intent],
                         }))}
                         className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-all",
+                          "px-3 py-1.5 rounded-lg text-xs font-medium border border-border transition-all",
                           active
                             ? "bg-orange-100 text-orange-700 border-orange-300"
-                            : "bg-muted/50 text-muted-foreground border-zinc-200 dark:border-zinc-700 hover:border-orange-200"
+                            : "bg-muted/50 text-muted-foreground border-border hover:border-orange-200"
                         )}
                       >
                         {intent.replace(/_/g, " ")}
@@ -820,7 +820,7 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
           <Button
             onClick={handleSubmit}
             disabled={saving}
-            className="rounded-xl px-8 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg"
+            className="rounded-xl px-8"
           >
             <Save className="h-4 w-4 mr-2" />
             {saving ? t("saving") : isEdit ? t("saveAgent") : t("createAgent")}

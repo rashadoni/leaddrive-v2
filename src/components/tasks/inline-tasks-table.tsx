@@ -417,7 +417,7 @@ export function InlineTasksTable({
           {tc("results", { count: filtered.length })}
         </span>
         {activeCustomFields.length > 0 && (
-          <span className="text-xs text-muted-foreground border-l border-zinc-200 dark:border-zinc-700 pl-3 ml-1">
+          <span className="text-xs text-muted-foreground border-l border-border pl-3 ml-1">
             + {activeCustomFields.length} custom field{activeCustomFields.length === 1 ? "" : "s"}
           </span>
         )}
@@ -443,7 +443,7 @@ export function InlineTasksTable({
           works); avoids the 9-column horizontal scroll on narrow screens. */}
       <div className="md:hidden space-y-2">
         {filtered.length === 0 ? (
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
             {search ? tc("noResults") : t("noTasks") || tc("noData")}
           </div>
         ) : (
@@ -465,7 +465,7 @@ export function InlineTasksTable({
       </div>
 
       {/* Desktop table — hidden below md: breakpoint (mobile cards take over) */}
-      <div className="hidden md:block rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+      <div className="hidden md:block rounded-xl border border-border bg-card overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
         <div className="overflow-x-auto">
           {/* Column sizing relies on AUTO table layout: w-px+nowrap columns
               shrink to content, the w-full/max-w-0 title column absorbs the
@@ -476,7 +476,7 @@ export function InlineTasksTable({
                   shrink-to-fit (w-px + nowrap) so it's exactly as wide as its
                   content; the Task column absorbs the remaining width. More
                   columns fit on screen without horizontal scrolling. */}
-              <tr className="border-b border-zinc-200 dark:border-zinc-700 bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <th className="w-8 px-2 py-2.5">
                   <input
                     type="checkbox"
@@ -602,7 +602,7 @@ function GroupHeaderRow({ label, count, collapsed, onToggle, colSpan }: {
   label: string; count: number; collapsed: boolean; onToggle: () => void; colSpan: number
 }) {
   return (
-    <tr className="bg-muted/30 border-b border-zinc-200 dark:border-zinc-700">
+    <tr className="bg-muted/30 border-b border-border">
       <td colSpan={colSpan} className="px-2 py-2">
         <button type="button" onClick={onToggle} className="flex items-center gap-1.5 text-sm font-semibold text-foreground hover:opacity-80">
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -683,7 +683,7 @@ function TaskRow({
 
   return (
     <tr className={cn(
-      "border-b border-zinc-200 dark:border-zinc-700 last:border-0 transition-colors hover:bg-muted/40 group",
+      "border-b border-border last:border-0 transition-colors hover:bg-muted/40 group",
       // Checkbox-selected rows get a light orange wash so the selection is
       // obvious at a glance (user feedback 2026-06-12). Hover deepens (not
       // greys) it; overdue red tint (rowClassName, !important) wins on overlap.
@@ -926,7 +926,7 @@ function MobileTaskCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)] transition-colors",
+        "rounded-xl border border-border bg-card p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)] transition-colors",
         isSelected && "bg-orange-50 dark:bg-orange-900/15 border-orange-200 dark:border-orange-800",
         extraClass,
       )}
@@ -1220,7 +1220,7 @@ export function InlineSelectCell({ value, options, labels, badgeClasses, onSave,
         {saving && <Loader2 className="h-3 w-3 animate-spin" />}
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 min-w-[160px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md py-1">
+        <div className="absolute z-50 mt-1 min-w-[160px] rounded-lg border border-border bg-popover shadow-md py-1">
           {placeholder && (
             <button
               type="button"
@@ -1318,7 +1318,7 @@ export function InlineDateCell({ value, status, onSave, overdueDays = false }: {
         {saving && <Loader2 className="h-3 w-3 animate-spin" />}
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md p-2 flex items-center gap-2">
+        <div className="absolute z-50 mt-1 rounded-lg border border-border bg-popover shadow-md p-2 flex items-center gap-2">
           <input
             ref={inputRef}
             type="date"
@@ -1423,8 +1423,8 @@ function InlineAssigneeCell({ value, assignee, users, onSave, collaborators = []
         {saving && <Loader2 className="h-3 w-3 animate-spin shrink-0" />}
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 min-w-[220px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md">
-          <div className="p-2 border-b border-zinc-200 dark:border-zinc-700">
+        <div className="absolute z-50 mt-1 min-w-[220px] rounded-lg border border-border bg-popover shadow-md">
+          <div className="p-2 border-b border-border">
             <input
               ref={inputRef}
               value={search}
@@ -1583,8 +1583,8 @@ export function InlineProjectCell({ value, project, projects, onSave }: {
         {saving && <Loader2 className="h-3 w-3 animate-spin shrink-0" />}
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 min-w-[220px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md">
-          <div className="p-2 border-b border-zinc-200 dark:border-zinc-700">
+        <div className="absolute z-50 mt-1 min-w-[220px] rounded-lg border border-border bg-popover shadow-md">
+          <div className="p-2 border-b border-border">
             <input
               ref={inputRef}
               value={search}
@@ -1827,7 +1827,7 @@ function AddTaskRow({ onCreate, totalCols }: {
       <tr
         onClick={() => setActive(true)}
         title={t("inlineAddTaskTooltip")}
-        className="border-b border-zinc-200 dark:border-zinc-700 cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-900/15 transition-colors"
+        className="border-b border-border cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-900/15 transition-colors"
       >
         {/* Inner <td> takes the focus + keyboard handlers so keyboard users
             can reach Add-Task. (Putting tabIndex on <tr> is technically valid
@@ -1855,7 +1855,7 @@ function AddTaskRow({ onCreate, totalCols }: {
   return (
     // Active (typing) state: light orange wash, clearly visible — the old
     // bg-primary/5 read as plain white (user feedback 2026-06-12).
-    <tr className="border-b border-zinc-200 dark:border-zinc-700 bg-orange-100/70 dark:bg-orange-900/25">
+    <tr className="border-b border-border bg-orange-100/70 dark:bg-orange-900/25">
       <td className="px-2 py-2.5"></td>
       <td colSpan={totalCols - 2} className="px-2 py-2.5">
         <div className="flex items-center gap-2">
@@ -1878,7 +1878,7 @@ function AddTaskRow({ onCreate, totalCols }: {
           type="button"
           onMouseDown={(e) => { e.preventDefault(); commit(false) }}
           disabled={saving || !title.trim()}
-          className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50" data-crm-button="default"
         >
           {tc("save")}
         </button>
@@ -1927,7 +1927,7 @@ function ColumnVisibilityMenu({
         type="button"
         onClick={() => setOpen(o => !o)}
         title={t("inlineColumnsTooltip")}
-        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-2 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
       >
         <Columns3 className="h-3 w-3" />
         {t("columnsButton")}
@@ -1936,7 +1936,7 @@ function ColumnVisibilityMenu({
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-1 min-w-[220px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md py-1 max-h-[400px] overflow-y-auto">
+        <div className="absolute right-0 z-50 mt-1 min-w-[220px] rounded-lg border border-border bg-popover shadow-md py-1 max-h-[400px] overflow-y-auto">
           <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             {t("columnsSectionStandard")}
           </div>
@@ -1961,7 +1961,7 @@ function ColumnVisibilityMenu({
           })}
           {activeCustomFields.length > 0 && (
             <>
-              <div className="px-3 pt-2 pb-1 mt-1 border-t border-zinc-200 dark:border-zinc-700 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="px-3 pt-2 pb-1 mt-1 border-t border-border text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("columnsSectionCustom")}
               </div>
               {activeCustomFields.map(def => {

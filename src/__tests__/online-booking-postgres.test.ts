@@ -405,6 +405,56 @@ pgDescribe("online booking on a real Postgres", () => {
     expect(offered).not.toContain(startsAt)
   })
 
+  it.each(["UTC", "Europe/Berlin", "Asia/Baku", "America/New_York"])(
+    "projects the booked meeting when the database default timezone is %s",
+    async (timezone) => {
+      const slug = await newPage()
+      const startsAt = await someSlot(slug, 20)
+      // Create while the scratch DB is in UTC. Only the real background
+      // worker runs against the changed database default below.
+      const response = await pagePost(json("POST", `/api/v1/public/booking/${slug}`, {
+        idempotencyKey: randomUUID(), recoverySecret: randomUUID(), startsAt,
+        name: `Timezone worker ${timezone}`, phone: "+994500000007",
+      }), slugParams(slug))
+      expect(response.status, await response.clone().text()).toBe(201)
+      const { data: { id } } = await response.json()
+      const before = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+      expect(before).toMatchObject({ leadId: null, taskId: null })
+
+      try {
+        // This changes only this suite's newly created disposable database.
+        // Reconnect so the actual Prisma pool inherits its default TimeZone;
+        // setting a session variable on one arbitrary pool connection is not
+        // a reliable reproduction of the production worker configuration.
+        prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env,
+          `ALTER DATABASE "${scratch!.name}" SET timezone TO '${timezone}';`)
+        await prisma.$disconnect()
+        const { PrismaClient: RawPrismaClient } = await import("@prisma/client")
+        const probe = new RawPrismaClient({ datasourceUrl: scratch!.url })
+        try {
+          expect(await probe.$queryRawUnsafe<Array<{ TimeZone: string }>>("SHOW TimeZone"))
+            .toEqual([{ TimeZone: timezone }])
+        } finally { await probe.$disconnect() }
+        await bypass(() => drain(ORG, 50))
+      } finally {
+        prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env,
+          `ALTER DATABASE "${scratch!.name}" SET timezone TO 'UTC';`)
+        await prisma.$disconnect()
+      }
+
+      const effects = await bypass(() => prisma.effectOutbox.findMany({
+        where: { organizationId: ORG, effectType: "booking.project", payload: { path: ["bookingId"], equals: id } },
+        select: { status: true, lastError: true },
+      }))
+      expect(effects).toEqual([{ status: "succeeded", lastError: null }])
+      const after = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+      expect(after.leadId).not.toBeNull()
+      expect(after.taskId).not.toBeNull()
+      expect(await bypass(() => prisma.task.findUniqueOrThrow({ where: { id: after.taskId! } })))
+        .toMatchObject({ assignedTo: HOST_A, status: "pending", relatedId: after.leadId })
+    },
+  )
+
   it("eight customers on the same time get one meeting", async () => {
     const slug = await newPage()
     const startsAt = await someSlot(slug)

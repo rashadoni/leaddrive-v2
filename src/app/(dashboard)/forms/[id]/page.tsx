@@ -225,7 +225,7 @@ export default function FormEditorPage() {
           <select
             value={form.campaignId || ""}
             onChange={(e) => update("campaignId", e.target.value || null)}
-            className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
+            className="w-full px-3 py-2 rounded-lg border border-input bg-transparent text-sm"
           >
             <option value="">{t("metadata.campaignNone")}</option>
             {campaigns.map((c) => (

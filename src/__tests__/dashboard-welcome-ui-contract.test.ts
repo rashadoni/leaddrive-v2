@@ -116,8 +116,8 @@ describe("dashboard welcome experience", () => {
     expect(header).toContain('data-testid="header-page-help"')
     expect(header.indexOf('tNav("allApps")')).toBeLessThan(header.indexOf('data-testid="header-page-help"'))
     expect(header).toContain('pathname === "/dashboard" &&')
-    expect(header).toContain('<TourReplayButton tourId="dashboard" />')
-    expect(header).toContain('<HelpButton slug="crm-dashboard" variant="label" />')
+    expect(header).toContain('<TourReplayButton tourId="dashboard" className="max-xl:hidden" />')
+    expect(header).toContain('<HelpButton slug="crm-dashboard" variant="label" className="max-xl:hidden" />')
     // And the page no longer draws them anywhere in its own flow.
     expect(page).not.toContain("<TourReplayButton")
     expect(page).not.toContain("<HelpButton")

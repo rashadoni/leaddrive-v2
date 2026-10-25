@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
-import { createInboundPilotHandler, ZEYTUN_INBOUND_CLOSING, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
+import { createInboundPilotHandler, ZEYTUN_INBOUND_CLOSING, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, ZEYTUN_LINE_OPENING, ZEYTUN_LINE_PROMPT, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
 
 const now = Date.parse("2026-10-22T12:00:00Z"), token = "t".repeat(48)
-export const config: InboundPilotConfig = {
+export const config: Extract<InboundPilotConfig, { purpose: "owner_inbound_preview" }> = {
   version: 1, enabled: true, purpose: "owner_inbound_preview", id: "aaaaaaaa-1111-4111-8111-111111111111",
   organizationId: "tenant-test", channelConfigId: "line-test", testPhoneE164: "+994500000001",
   issuedAt: new Date(now - 60_000).toISOString(), expiresAt: new Date(now + 600_000).toISOString(), approvalReference: "test-approval",
@@ -60,6 +60,8 @@ describe("single-call inbound owner rehearsal", () => {
     expect(body).toMatchObject({ voice: null, pinSpeechLanguage: false,
       speech: { engine: "tts", model: "gemini-3.8-flash-tts", voice: "Sulafat" } })
     expect(body.prompt).toContain(`"${ZEYTUN_INBOUND_CLOSING}"`)
+    // No maker words in this catalog: an empty hint list, never a missing field.
+    expect(body.vocabulary).toEqual([])
     expect(f.dependencies.claim).toHaveBeenCalledOnce()
     expect(f.dependencies.loadCall).toHaveBeenCalledTimes(2)
     expect(response.headers.get("cache-control")).toBe("no-store")
@@ -277,5 +279,80 @@ describe("saving the agreed list from the rehearsal call", () => {
     const f = withOrders()
     f.saveOrder.mockResolvedValueOnce({ status: "already_reviewed", number: 1001 } as never)
     expect(await (await f.handle(order(lines))).json()).toEqual({ status: "already_reviewed", orderNumber: "TS-1001" })
+  })
+})
+
+describe("the line: every inbound call on it is Zeytun's order desk", () => {
+  const line = {
+    version: 1, enabled: true, purpose: "zeytun_line", id: "dddddddd-1111-4111-8111-111111111111",
+    organizationId: config.organizationId, channelConfigId: config.channelConfigId,
+    issuedAt: new Date(now - 60_000).toISOString(), expiresAt: new Date(now + 7 * 24 * 3600_000).toISOString(),
+    approvalReference: "owner-2026-10-24", approvedSource: { organizationId: config.approvedSource.organizationId, scopeKey: config.approvedSource.scopeKey },
+    orderOrganizationId: "org-zeytun",
+  } as const
+  const pharmacyCall = { ...call, fromNumber: "+994552223344", targetPhoneE164: "+994552223344" }
+  function lineFixture() {
+    const f = fixture()
+    f.dependencies.loadConfig.mockImplementation(async () => structuredClone(line))
+    f.dependencies.loadCall.mockImplementation(async () => structuredClone(pharmacyCall))
+    // The newest snapshot, not the rehearsal's pinned version.
+    f.catalog.version = "e".repeat(64)
+    const saveOrder = vi.fn(async () => ({ status: "saved" as const, orderId: "o1", number: 1001, revision: 1, created: true, changed: true,
+      total: "0.00", currency: "AZN" as const, priced: 0, unpriced: [], notFound: ["x"] }))
+    return { ...f, saveOrder, handle: createInboundPilotHandler(token, { ...f.dependencies, saveOrder }) }
+  }
+
+  it("keeps its texts inside the bridge limits and never calls the caller a test", () => {
+    expect(ZEYTUN_LINE_PROMPT.length).toBeLessThanOrEqual(4000)
+    expect(ZEYTUN_LINE_OPENING.length).toBeLessThanOrEqual(500)
+    expect(ZEYTUN_LINE_OPENING).not.toMatch(/sınaq/i)
+    expect(ZEYTUN_LINE_PROMPT).not.toMatch(/test participant|test call|rehearsal/i)
+    expect(ZEYTUN_LINE_PROMPT).toContain("NOT verified")
+    expect(ZEYTUN_LINE_PROMPT).toContain(`"${ZEYTUN_INBOUND_CLOSING}"`)
+  })
+
+  it("answers any caller with the line's opening and claims each call by itself", async () => {
+    const f = lineFixture()
+    const body = await (await f.handle(request())).json()
+    expect(body).toMatchObject({ enabled: true, variant: "pharmacy_inbound_preview", opening: ZEYTUN_LINE_OPENING, prompt: ZEYTUN_LINE_PROMPT, maxSeconds: 300 })
+    expect(f.dependencies.claim).toHaveBeenCalledOnce()
+  })
+
+  it("hands the station the catalog's maker words for recognition", async () => {
+    const f = lineFixture()
+    f.catalog.vocabulary = ["Sopharma", "Berlin-Chemie"]
+    expect((await (await f.handle(request())).json()).vocabulary).toEqual(["Sopharma", "Berlin-Chemie"])
+  })
+
+  it("leaves outbound calls on the line with the line's own agent", async () => {
+    const f = lineFixture()
+    f.dependencies.loadCall.mockResolvedValue({ ...pharmacyCall, direction: "outbound" })
+    expect(await (await f.handle(request())).json()).toEqual({ enabled: false })
+    expect(f.dependencies.claim).not.toHaveBeenCalled()
+  })
+
+  it("refuses rather than hands to AAC an inbound call it cannot read yet", async () => {
+    const f = lineFixture()
+    f.dependencies.loadCall.mockResolvedValue(null)
+    expect((await f.handle(request())).status).toBe(403)
+  })
+
+  it("takes a newer snapshot but never a stale one, and lasts at most a month", async () => {
+    const f = lineFixture()
+    expect((await f.handle(search())).status).toBe(200)
+    const stale = lineFixture()
+    stale.catalog.observedAt = new Date(now - 25 * 3600_000).toISOString()
+    expect((await stale.handle(search())).status).toBe(403)
+    const long = lineFixture()
+    long.dependencies.loadConfig.mockImplementation(async () => ({ ...structuredClone(line), expiresAt: new Date(now + 32 * 24 * 3600_000).toISOString() }))
+    expect(await (await long.handle(request())).json()).toEqual({ enabled: false })
+  })
+
+  it("saves the list with the pharmacy the caller named", async () => {
+    const f = lineFixture()
+    const response = await f.handle(request({ action: "order", callId: call.providerCallId, pharmacy: "Zəfər Aptek",
+      lines: [{ quantity: 2, unit: "qutu", spoken: "iki qutu" }] }))
+    expect(await response.json()).toMatchObject({ status: "saved", orderNumber: "TS-1001" })
+    expect((f.saveOrder.mock.calls[0] as unknown[])[4]).toBe("Zəfər Aptek")
   })
 })

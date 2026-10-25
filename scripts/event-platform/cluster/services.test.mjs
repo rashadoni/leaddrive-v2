@@ -19,6 +19,13 @@ test('each service identity gets only the access its job needs', () => {
   const fund = grantsFor(PRINCIPALS.fundWorker)
   assert.deepEqual(fund.filter((g) => g.includes('--topic')).map((g) => g.match(/--topic (\S+)/)[1]), ['ld.prod.finance.events.v1'])
   assert.ok(!fund.some((g) => /--operation (Write|IdempotentWrite)/.test(g)), 'the fund worker only reads')
+  // Every admin call the bridge makes at start must be granted, or it never
+  // reaches READY on an ACL-enforcing cluster (the CI stack has no ACLs).
+  const bridge = readFileSync(new URL('../../../ops/event-platform/driver/KafkaPartitionBridge.java', import.meta.url), 'utf8')
+  const financeGrant = fund.find((g) => g.includes('--topic ld.prod.finance.events.v1'))
+  for (const [call, operation] of [['describeTopics', 'Describe'], ['describeConfigs', 'DescribeConfigs']]) {
+    if (bridge.includes(`admin.${call}(`)) assert.match(financeGrant, new RegExp(`--operation ${operation}\\b`), `bridge calls ${call}`)
+  }
 
   const registry = grantsFor(PRINCIPALS.registry)
   for (const g of registry.filter((g) => g.includes('--topic'))) {
@@ -90,5 +97,11 @@ test('Connect reaches the source by its certificate name over the overlay and ke
   assert.doesNotMatch(beat, /\.events\.v1$/)
   // The heartbeat's own WAL message is consumed, never emitted as a record.
   assert.match(connector.config['heartbeat.action.query'], /^SELECT pg_logical_emit_message\(false, '([a-z-]+)', ''\)$/)
-  assert.equal(connector.config['message.prefix.exclude.list'], `${connector.config['heartbeat.action.query'].match(/'([a-z-]+)'/)[1]}.*`)
+  // Allow-list that admits nothing: neither the heartbeat nor any foreign
+  // prefix is emitted, so no message can hit the unwritable .message topic.
+  const prefix = connector.config['heartbeat.action.query'].match(/'([a-z-]+)'/)[1]
+  assert.equal(connector.config['message.prefix.exclude.list'], undefined)
+  const allowed = connector.config['message.prefix.include.list'].split(',')
+  assert.ok(allowed.length === 1 && !new RegExp(`^(?:${allowed[0]})$`).test(prefix), 'the heartbeat prefix is not emitted')
+  for (const foreign of ['drill-foreign-prefix', 'pgaudit', 'wal2json', '']) assert.ok(!new RegExp(`^(?:${allowed[0]})$`).test(foreign))
 })

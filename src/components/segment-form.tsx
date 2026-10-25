@@ -344,7 +344,7 @@ export function SegmentForm({ open, onOpenChange, onSaved, initialData, orgId }:
                   <button
                     type="button"
                     onClick={() => setAdvancedMode(!advancedMode)}
-                    className={cn("flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-700 transition-colors",
+                    className={cn("flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-border transition-colors",
                       advancedMode ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground hover:text-foreground border-muted"
                     )}
                   >
@@ -421,7 +421,7 @@ export function SegmentForm({ open, onOpenChange, onSaved, initialData, orgId }:
               )}
 
               {/* Filter grid */}
-              {!advancedMode && <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/30 p-4 space-y-4">
+              {!advancedMode && <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
                 {/* Row 1: Company + Source */}
                 <div className="grid grid-cols-2 gap-3">
                   <FilterField icon={Building2} label={t("condCompany")}>
@@ -553,7 +553,7 @@ export function SegmentForm({ open, onOpenChange, onSaved, initialData, orgId }:
             </div>
 
             {/* Behavioral Conditions */}
-            <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 bg-amber-50/50 dark:bg-amber-950/10">
+            <div className="border border-border rounded-lg p-3 bg-amber-50/50 dark:bg-amber-950/10">
               <h4 className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-3 uppercase">{tb("title")}</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -669,14 +669,14 @@ function ToggleCheck({ checked, onChange, icon: Icon, label }: {
       type="button"
       onClick={() => onChange(!checked)}
       className={cn(
-        "flex items-center gap-2 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm transition-all",
+        "flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm transition-all",
         checked
           ? "bg-primary/10 border-primary/30 text-primary font-medium"
           : "bg-background border-transparent hover:border-zinc-300 dark:hover:border-zinc-600 text-muted-foreground hover:text-foreground"
       )}
     >
       <div className={cn(
-        "h-4 w-4 rounded border border-zinc-200 dark:border-zinc-700 flex items-center justify-center transition-colors",
+        "h-4 w-4 rounded border border-border flex items-center justify-center transition-colors",
         checked ? "bg-primary border-primary" : "border-muted-foreground/30"
       )}>
         {checked && <Check className="h-3 w-3 text-primary-foreground" />}

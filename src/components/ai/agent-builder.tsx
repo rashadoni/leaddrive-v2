@@ -97,7 +97,7 @@ export function AgentBuilder() {
             id="systemPrompt"
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
-            className="w-full p-3 rounded-md border border-zinc-200 dark:border-zinc-700 bg-background text-foreground"
+            className="w-full p-3 rounded-md border border-input bg-background text-foreground"
             rows={4}
           />
         </div>

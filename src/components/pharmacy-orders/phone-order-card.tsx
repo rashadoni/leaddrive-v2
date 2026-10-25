@@ -31,7 +31,7 @@ type Order = {
 type CatalogItem = { externalId: string; itemCode: string; name: string; price: { amount: string; per: string } | null }
 type Picker = { mode: "pick"; line: Line } | { mode: "add" }
 
-const CARD = "rounded-xl border border-zinc-200 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.05)] dark:border-zinc-700"
+const CARD = "rounded-xl border border-border bg-card shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
 
 export function PhoneOrderCard({ orderId }: { orderId: string }) {
   const t = useTranslations("pharmacyPhoneOrders")
@@ -104,7 +104,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
         </div>
       </div>
 
-      {error ? <p role="alert" className="rounded-xl border border-zinc-200 bg-card px-4 py-2 text-sm text-red-600 shadow-[inset_3px_0_0_#dc2626]">{t(error)}</p> : null}
+      {error ? <p role="alert" className="rounded-xl border border-border bg-card px-4 py-2 text-sm text-red-600 shadow-[inset_3px_0_0_#dc2626]">{t(error)}</p> : null}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi title={t("kpiTotal")} sub={t("kpiTotalSub", { date: formatOrderDate(order.catalog.observedAt, locale, false) })}>
@@ -122,7 +122,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
       </div>
 
       <section className={cn(CARD, "overflow-hidden")}>
-        <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-2.5 dark:border-zinc-800">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <h2 className="text-sm font-semibold">{t("linesTitle")}</h2>
           {pending ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setPicker({ mode: "add" })}>{t("addLine")}</Button> : null}
         </div>
@@ -144,7 +144,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
                 const unresolved = line.status === "not_found"
                 const isEditing = editing?.lineId === line.id
                 return (
-                  <tr key={line.id} className={cn("border-t border-zinc-100 align-top dark:border-zinc-800", unresolved && "shadow-[inset_3px_0_0_#f59e0b]")}>
+                  <tr key={line.id} className={cn("border-t border-border align-top", unresolved && "shadow-[inset_3px_0_0_#f59e0b]")}>
                     <td className={cn("py-2 pl-4", unresolved ? "font-semibold text-amber-600" : "text-muted-foreground")}>{line.position}</td>
                     <td className="py-2 pr-3">
                       {unresolved ? (
@@ -190,7 +190,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
                   </tr>
                 )
               })}
-              <tr className="border-t border-zinc-200 bg-muted/40 dark:border-zinc-700">
+              <tr className="border-t border-border bg-muted/40">
                 <td />
                 <td className="py-2.5 font-semibold" colSpan={4}>
                   {missing ? t("totalRowMissing", { count: found, missing }) : t("totalRow", { count: found })}
@@ -206,8 +206,14 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
       <div className="grid gap-4 md:grid-cols-2">
         <section className={cn(CARD, "px-4 py-3")}>
           <h2 className="text-sm font-semibold">{t("pharmacyTitle")}</h2>
-          {testCall && !order.pharmacy.name ? (
-            <p className="mt-2 text-sm text-muted-foreground">{t("testCallNote")}</p>
+          {!order.pharmacy.name ? (
+            <p className="mt-2 text-sm text-muted-foreground">{t(testCall ? "testCallNote" : "unidentifiedNote")}</p>
+          ) : order.pharmacy.identification === "named_on_call" ? (
+            <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+              <Field label={t("pharmacySpokenName")} value={order.pharmacy.name} strong />
+              <Field label={t("pharmacyHow")} value={t("identification.named_on_call")} />
+              <p className="col-span-2 text-[11px] text-muted-foreground">{t("spokenNameNote")}</p>
+            </div>
           ) : (
             <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
               <Field label={t("pharmacyName")} value={order.pharmacy.name} strong />
@@ -312,7 +318,7 @@ function ProductPicker({ orderId, picker, busy, onClose, onChoose }: {
         {shown?.observedAt ? <p className="mt-1 text-[11px] text-muted-foreground">{t("pickerFrom", { date: formatOrderDate(shown.observedAt, locale, false) })}</p> : null}
         {failed ? <p className="mt-3 text-sm text-red-600">{t("errorCatalog")}</p> : null}
         {shown && !items.length ? <p className="mt-3 text-sm text-muted-foreground">{t("pickerEmpty")}</p> : null}
-        <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800">
+        <ul className="mt-3 divide-y divide-border">
           {items.map(item => (
             <li key={item.externalId} className={cn("flex items-center justify-between gap-3 py-2", chosen?.externalId === item.externalId && "bg-muted/40")}>
               <div className="min-w-0">

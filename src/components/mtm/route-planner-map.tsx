@@ -119,7 +119,7 @@ export default function RoutePlannerMap({
                         disabled={taken}
                         data-testid={`mtm-route-planner-add-${candidate.key}`}
                         onClick={() => onAdd(candidate)}
-                        className="inline-flex h-7 shrink-0 items-center rounded-full bg-primary px-2.5 text-xs font-semibold text-primary-foreground disabled:bg-zinc-200 disabled:text-zinc-500"
+                        className="inline-flex h-7 shrink-0 items-center rounded-full bg-primary px-2.5 text-xs font-semibold text-primary-foreground disabled:bg-zinc-200 disabled:text-zinc-500" data-crm-button="default"
                       >
                         {taken ? words.inRoute : words.add(candidate)}
                       </button>

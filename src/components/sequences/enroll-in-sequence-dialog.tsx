@@ -116,7 +116,7 @@ export function EnrollInSequenceDialog({
                 onClick={() => enroll(seq)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left",
-                  "border-zinc-200 dark:border-zinc-700 hover:border-primary hover:bg-muted/50 disabled:opacity-50"
+                  "border-border hover:border-primary hover:bg-muted/50 disabled:opacity-50"
                 )}
               >
                 <Zap className="h-4 w-4 text-primary shrink-0" />

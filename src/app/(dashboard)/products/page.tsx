@@ -284,7 +284,7 @@ export default function ProductsPage() {
           { key: "all", label: tc("all"), count: products.length },
           ...CATEGORIES.map(c => ({ key: c.value, label: c.label, count: products.filter(p => p.category === c.value).length })),
         ].filter(t => t.key === "all" || t.count > 0).map(tab => (
-          <button
+          <button data-crm-filter="" data-state={filter === tab.key ? "active" : "inactive"}
             key={tab.key}
             onClick={() => setFilter(tab.key)}
             className={cn(

@@ -382,7 +382,7 @@ export default function CalculatedInsightsPage() {
         {!loading && data && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card text-card-foreground">
+              <MotionCard className="p-3 border border-border rounded-lg bg-card text-card-foreground">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <User className="w-3 h-3" /> {t("kpiProfiles")}
                 </p>
@@ -394,7 +394,7 @@ export default function CalculatedInsightsPage() {
                   title={t("trendDeltaTitle")}
                 />
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card text-card-foreground">
+              <MotionCard className="p-3 border border-border rounded-lg bg-card text-card-foreground">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <DollarSign className="w-3 h-3" /> {t("kpiProjectedLtv")}
                 </p>
@@ -422,7 +422,7 @@ export default function CalculatedInsightsPage() {
                 className={`p-3 border rounded-lg text-card-foreground ${
                   data.highRiskCount > 0
                     ? "border-red-300 dark:border-red-800 bg-red-50/70 dark:bg-red-500/10"
-                    : "border-zinc-200 dark:border-zinc-700 bg-card"
+                    : "border-border bg-card"
                 }`}
               >
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -442,7 +442,7 @@ export default function CalculatedInsightsPage() {
                   title={t("trendDeltaTitle")}
                 />
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card text-card-foreground">
+              <MotionCard className="p-3 border border-border rounded-lg bg-card text-card-foreground">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Brain className="w-3 h-3" /> {t("kpiAvgEngagement")}
                 </p>
@@ -487,7 +487,7 @@ export default function CalculatedInsightsPage() {
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder={t("searchPlaceholder")}
                       aria-label={t("searchPlaceholder")}
-                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-input rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                   <div className="flex items-center gap-1" role="group" aria-label={t("filterRisk")}>
@@ -500,7 +500,7 @@ export default function CalculatedInsightsPage() {
                         className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
                           riskFilter === r
                             ? "bg-primary text-primary-foreground border-primary"
-                            : "border-zinc-200 dark:border-zinc-700 hover:bg-muted"
+                            : "border-border hover:bg-muted"
                         }`}
                       >
                         {r === "all" ? t("filterAll") : t(r)}
@@ -511,7 +511,7 @@ export default function CalculatedInsightsPage() {
                     value={sortKey}
                     onChange={(e) => setSortKey(e.target.value as SortKey)}
                     aria-label={t("sortLabel")}
-                    className="text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="text-sm border border-input rounded-lg px-2 py-1.5 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
                     <option value="priority">{t("sortPriority")}</option>
                     <option value="ltv">{t("sortLtv")}</option>
@@ -547,7 +547,7 @@ export default function CalculatedInsightsPage() {
                           className={`p-4 border rounded-lg text-card-foreground transition-colors ${
                             p.isStalePriority
                               ? "border-amber-300 dark:border-amber-700 border-l-4 border-l-amber-500 bg-amber-50/70 dark:bg-amber-500/10"
-                              : "border-zinc-200 dark:border-zinc-700 bg-card"
+                              : "border-border bg-card"
                           }`}
                         >
                           <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
@@ -708,8 +708,8 @@ export default function CalculatedInsightsPage() {
                                     className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                                       st === "error"
                                         ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-500/25"
-                                        : "bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-60"
-                                    }`}
+                                        : "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                                    }`} data-crm-button="default"
                                   >
                                     {st === "saving" ? (
                                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -722,7 +722,7 @@ export default function CalculatedInsightsPage() {
                               {p.primaryContactId && (
                                 <Link
                                   href={`/contacts/${p.primaryContactId}`}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-muted transition-colors"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border hover:bg-muted transition-colors"
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" />
                                   {t("actionOpenProfile")}

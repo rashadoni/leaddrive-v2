@@ -570,7 +570,7 @@ export default function EventDetailPage() {
                 {/* Role selector */}
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-muted-foreground">{tc("role")}:</label>
-                  <select className="h-7 border border-zinc-200 dark:border-zinc-700 rounded-md px-2 text-xs" value={pRole} onChange={e => setPRole(e.target.value)}>
+                  <select className="h-7 border border-input rounded-md px-2 text-xs" value={pRole} onChange={e => setPRole(e.target.value)}>
                     {["attendee","speaker","sponsor","organizer","vip"].map(r => (
                       <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>
                     ))}

@@ -165,7 +165,7 @@ export default function MtmLeaderboardPage() {
         <div className="animate-pulse space-y-4"><div className="h-48 bg-muted rounded-lg" /><div className="h-64 bg-muted rounded-lg" /></div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div className="lg:col-span-2 rounded-lg border border-border bg-card p-4">
             <h3 className="font-semibold text-sm mb-4 flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-500" /> {t("fullRanking")}</h3>
             {rankings.length === 0 ? (
               <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">{t("noAgents")}</div>
@@ -173,7 +173,7 @@ export default function MtmLeaderboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[560px] text-sm">
                   <thead>
-                    <tr className="border-b border-zinc-200 text-xs text-muted-foreground dark:border-zinc-700">
+                    <tr className="border-b border-border text-xs text-muted-foreground">
                       {SORTABLE.map(({ key, label, numeric }) => (
                         <th key={key} scope="col" className={numeric ? "px-2 py-2 text-right" : "px-2 py-2 text-left"}
                           aria-sort={sort.key === key ? (sort.desc ? "descending" : "ascending") : "none"}>
@@ -194,7 +194,7 @@ export default function MtmLeaderboardPage() {
                         aria-label={t("openBreakdown", { name: agent.name })}
                         onClick={() => openBreakdown(agent.agentId)}
                         onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openBreakdown(agent.agentId) } }}
-                        className="cursor-pointer border-b border-zinc-100 last:border-b-0 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-800">
+                        className="cursor-pointer border-b border-border last:border-b-0 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                         <td className="px-2 py-2">
                           <div className="flex items-center gap-2">
                             <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
@@ -227,7 +227,7 @@ export default function MtmLeaderboardPage() {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+            <div className="rounded-lg border border-border bg-card p-4">
               <h3 className="font-semibold text-sm mb-4 flex items-center gap-2"><Star className="h-4 w-4 text-primary" /> {t("achievements")}</h3>
               {rankings.length > 0 && rankings[0].achievements ? (
                 <div className="space-y-3">
@@ -252,7 +252,7 @@ export default function MtmLeaderboardPage() {
 
             {/* With two field employees there is a top two, not nothing. */}
             {rankings.length >= 2 && (
-              <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+              <div className="rounded-lg border border-border bg-card p-4">
                 <h3 className="font-semibold text-sm mb-1">{t("top3Weekly")}</h3>
                 <p className="mb-3 text-[11px] text-muted-foreground">{t("top3FromRanking")}</p>
                 <div className="space-y-2" data-testid="mtm-leaderboard-top3">

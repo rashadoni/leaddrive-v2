@@ -152,8 +152,8 @@ function briefingToneClasses(tone?: AdvisorBriefingItem["tone"]) {
   if (tone === "critical") return "border-red-200 bg-red-50/70 text-red-900 hover:border-red-300 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-200"
   if (tone === "money") return "border-amber-200 bg-amber-50/70 text-amber-900 hover:border-amber-300 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200"
   if (tone === "info") return "border-blue-200 bg-blue-50/70 text-blue-900 hover:border-blue-300 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-200"
-  if (tone === "healthy") return "border-zinc-200 bg-zinc-50 text-zinc-900 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-  return "border-zinc-200 bg-background text-foreground hover:border-primary/50 dark:border-zinc-700"
+  if (tone === "healthy") return "border-border bg-zinc-50 text-zinc-900 hover:border-zinc-300 dark:bg-zinc-900 dark:text-zinc-100"
+  return "border-border bg-background text-foreground hover:border-primary/50"
 }
 
 function isTechnicalOwnerId(value?: string | null) {
@@ -236,7 +236,7 @@ function scenarioToneClasses(tone: AdvisorScenarioItem["tone"]) {
   if (tone === "critical") return "border-red-200 bg-red-50 text-red-800 hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
   if (tone === "money") return "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50"
   if (tone === "healthy") return "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
-  return "border-zinc-200 bg-card text-foreground hover:bg-muted/40 dark:border-zinc-700"
+  return "border-border bg-card text-foreground hover:bg-muted/40"
 }
 
 export function DailyBriefingStrip({
@@ -253,13 +253,13 @@ export function DailyBriefingStrip({
   onSelect: (signalId: string) => void
 }) {
   return (
-    <section className="rounded-xl border border-zinc-200 bg-card p-3 dark:border-zinc-700">
+    <section className="rounded-xl border border-border bg-card p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold">{title}</h2>
         <span className="hidden text-[11px] text-muted-foreground md:inline">{keyboardHint}</span>
       </div>
       {items.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-zinc-200 bg-background px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">{emptyText}</p>
+        <p className="rounded-lg border border-dashed border-border bg-background px-3 py-2 text-xs text-muted-foreground">{emptyText}</p>
       ) : (
         <div className="grid min-w-0 gap-2 md:grid-cols-2 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
           {items.map((item) => (
@@ -316,7 +316,7 @@ export function AdvisorScenarioLauncher({
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{labels.description}</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
-          <div className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white/80 p-1 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/40">
+          <div className="flex items-center gap-1 rounded-full border border-border bg-white/80 p-1 shadow-sm dark:bg-zinc-950/40">
             <span className="px-2 text-[11px] font-medium text-muted-foreground">{labels.dateScope}</span>
             {dateScopes.map((scope) => (
               <Button
@@ -339,7 +339,7 @@ export function AdvisorScenarioLauncher({
       </div>
 
       {activeScenarios.length === 0 ? (
-        <p className="mt-4 rounded-lg border border-dashed border-zinc-200 bg-background px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">{labels.noScenarios}</p>
+        <p className="mt-4 rounded-lg border border-dashed border-border bg-background px-3 py-2 text-xs text-muted-foreground">{labels.noScenarios}</p>
       ) : (
         <div className="mt-5 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(240px,1fr))]">
           {activeScenarios.map((scenario) => (
@@ -479,7 +479,7 @@ export function AdvisorGuidedFlow({
       </div>
       <div className="grid gap-2 sm:grid-cols-4">
         {steps.map((step, index) => (
-          <div key={step.key} className="relative rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+          <div key={step.key} className="relative rounded-xl border border-border bg-zinc-50/80 p-3 dark:bg-zinc-950/40">
             <div className="flex items-center gap-2">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-orange-600 shadow-sm dark:bg-zinc-900 dark:text-orange-300">
                 {step.icon}
@@ -535,7 +535,7 @@ export function AdvisorCommandStrip({
   onCommandFilterChange: (filter: string) => void
 }) {
   return (
-    <section className="rounded-xl border border-zinc-200 bg-card p-3 dark:border-zinc-700">
+    <section className="rounded-xl border border-border bg-card p-3">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -551,7 +551,7 @@ export function AdvisorCommandStrip({
           />
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
-          <div className="flex items-center gap-1 rounded-full border border-zinc-200 bg-background p-1 dark:border-zinc-700">
+          <div className="flex items-center gap-1 rounded-full border border-border bg-background p-1">
             <span className="px-2 text-[11px] font-medium text-muted-foreground">{labels.dateScope}</span>
             {dateScopes.map((scope) => (
               <Button
@@ -702,7 +702,7 @@ export function RiskRow({
       onClick={onSelect}
       aria-pressed={active}
       aria-label={`${active ? selectedText : openText}: ${title}`}
-      className={`group w-full rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/60 hover:shadow-sm dark:hover:bg-orange-950/10 ${active ? "border-orange-300 bg-orange-50/80 shadow-sm ring-1 ring-orange-200 dark:border-orange-900/60 dark:bg-orange-950/20 dark:ring-orange-900/50" : "border-zinc-200 bg-background dark:border-zinc-700"}`}
+      className={`group w-full rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/60 hover:shadow-sm dark:hover:bg-orange-950/10 ${active ? "border-orange-300 bg-orange-50/80 shadow-sm ring-1 ring-orange-200 dark:border-orange-900/60 dark:bg-orange-950/20 dark:ring-orange-900/50" : "border-border bg-background"}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
@@ -720,7 +720,7 @@ export function RiskRow({
             </p>
           ) : null}
         </div>
-        <span data-video-target="ai-actions-open-risk" className={`mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors ${active ? "border-orange-200 bg-orange-100 text-orange-800 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300" : "border-zinc-200 bg-background text-muted-foreground group-hover:border-orange-300 group-hover:text-foreground dark:border-zinc-700"}`}>
+        <span data-video-target="ai-actions-open-risk" className={`mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors ${active ? "border-orange-200 bg-orange-100 text-orange-800 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300" : "border-border bg-background text-muted-foreground group-hover:border-orange-300 group-hover:text-foreground"}`}>
           {active ? <CheckCircle2 className="h-3 w-3" /> : null}
           <span className="max-w-[8.5rem] truncate">{active ? selectedText : openText}</span>
           <ArrowUpRight className="h-3 w-3" />
@@ -813,7 +813,7 @@ export function AdvisorSignalRail({
   actionLabel?: (action: AdvisorAction, signal: AdvisorSignal) => string
 }) {
   return (
-    <section className="min-w-0 rounded-2xl border border-zinc-200 bg-white/90 p-3 shadow-sm dark:border-zinc-800 dark:bg-card sm:p-4">
+    <section className="min-w-0 rounded-2xl border border-border bg-white/90 p-3 shadow-sm dark:bg-card sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">{labels.needsAttention}</h2>
@@ -827,7 +827,7 @@ export function AdvisorSignalRail({
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder={labels.searchPlaceholder}
             aria-label={labels.searchPlaceholder}
-            className="h-9 w-full rounded-full border border-zinc-200 bg-background pl-8 pr-3 text-xs outline-none focus:border-primary/60 dark:border-zinc-700 sm:w-72"
+            className="h-9 w-full rounded-full border border-input bg-background pl-8 pr-3 text-xs outline-none focus:border-primary/60 sm:w-72"
           />
         </div>
       </div>
@@ -885,7 +885,7 @@ export function AdvisorSignalRail({
 
 export function InfoPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-background px-3 py-2 dark:border-zinc-700">
+    <div className="rounded-lg border border-border bg-background px-3 py-2">
       <p className="text-[11px] text-muted-foreground">{label}</p>
       <p className="text-sm font-medium">{value}</p>
     </div>
@@ -896,7 +896,7 @@ function collectorHealthClasses(status: AdvisorCollectorHealth["status"]): strin
   if (status === "collector_failed") return "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300"
   if (status === "active") return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300"
   if (status === "no_data") return "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300"
-  return "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+  return "border-border bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300"
 }
 
 function collectorHealthLabel(health: AdvisorCollectorHealth, labels: {
@@ -952,7 +952,7 @@ export function ModuleTile({
       ? labels.moduleNoAccessHint
       : labels.moduleBlockedHint
   return (
-    <div className="rounded-lg border border-zinc-200 bg-background p-4 dark:border-zinc-700">
+    <div className="rounded-lg border border-border bg-background p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-medium">{domainLabel(capability.key, capability.label)}</p>
@@ -961,7 +961,7 @@ export function ModuleTile({
           {!active && capability.reason ? <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{capability.reason}</p> : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <Badge variant="outline" className={active ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300" : "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"}>
+          <Badge variant="outline" className={active ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300" : "border-border bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300"}>
             {active ? <CheckCircle2 className="mr-1 h-3 w-3" /> : <Lock className="mr-1 h-3 w-3" />}
             {active ? labels.active : capability.status === "no_access" ? labels.noAccess : labels.locked}
           </Badge>
@@ -1028,7 +1028,7 @@ export function AdvisorModuleCoverage({
   onFilter: (domain: AdvisorDomainKey) => void
 }) {
   return (
-    <section className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <section className="rounded-xl border border-border bg-card p-4">
       <div className="mb-4">
         <h2 className="text-base font-semibold">{labels.moduleCoverage}</h2>
         <p className="text-sm text-muted-foreground">{labels.moduleCoverageDesc}</p>
@@ -1157,7 +1157,7 @@ export function AdvisorAskPanel({
     : null
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <section className="rounded-xl border border-border bg-card p-4">
       <h2 className="text-base font-semibold">{labels.quickQuestions}</h2>
       <p className="mb-4 text-sm text-muted-foreground">{labels.askDesc}</p>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row">
@@ -1169,7 +1169,7 @@ export function AdvisorAskPanel({
             if (event.key === "Enter") onAsk()
           }}
           placeholder={labels.askPlaceholder}
-          className="h-10 min-w-0 flex-1 rounded-lg border border-zinc-200 bg-background px-3 text-sm outline-none focus:border-primary/60 dark:border-zinc-700"
+          className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-primary/60"
         />
         <Button className="w-full sm:w-auto" onClick={() => onAsk()} disabled={asking || !question.trim()}>
           {asking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquareText className="h-3.5 w-3.5" />}
@@ -1190,7 +1190,7 @@ export function AdvisorAskPanel({
         ))}
       </div>
       {answer ? (
-        <div className="mt-4 rounded-lg border border-zinc-200 bg-background p-4 dark:border-zinc-700">
+        <div className="mt-4 rounded-lg border border-border bg-background p-4">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-medium uppercase text-muted-foreground">{labels.answer}</p>
@@ -1258,7 +1258,7 @@ export function AdvisorAskPanel({
                 <h4 className="mt-1 text-sm font-semibold leading-snug">{signalTitle(primaryAnswerSignal)}</h4>
                 {signalSummary ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{signalSummary(primaryAnswerSignal)}</p> : null}
                 {primaryActionText ? (
-                  <div className="mt-3 rounded-md border border-zinc-200 bg-background/80 p-3 dark:border-zinc-700">
+                  <div className="mt-3 rounded-md border border-border bg-background/80 p-3">
                     <p className="text-[11px] font-medium text-muted-foreground">{labels.whatToDoNext}</p>
                     <p className="mt-1 text-sm font-semibold">{primaryActionText}</p>
                     {primaryActionDescription ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{primaryActionDescription}</p> : null}
@@ -1394,7 +1394,7 @@ export function AdvisorAnswerSummaryCard({
           <button
             type="button"
             onClick={() => onOpenRisk(primarySignal)}
-            className="min-w-0 rounded-lg border border-zinc-200 bg-background p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 dark:border-zinc-700"
+            className="min-w-0 rounded-lg border border-border bg-background p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
           >
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <Badge variant="outline" className={severityClassName(primarySignal.severity)}>{severityLabel(primarySignal.severity)}</Badge>
@@ -1404,7 +1404,7 @@ export function AdvisorAnswerSummaryCard({
             <h3 className="mt-1 break-words text-sm font-semibold leading-snug">{signalTitle(primarySignal)}</h3>
             {signalSummary ? <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{signalSummary(primarySignal)}</p> : null}
           </button>
-          <div className="min-w-0 rounded-lg border border-zinc-200 bg-background p-3 dark:border-zinc-700">
+          <div className="min-w-0 rounded-lg border border-border bg-background p-3">
             <p className="text-[11px] font-medium text-muted-foreground">{labels.whatToDoNext}</p>
             {primaryAction && actionText ? (
               <>
@@ -1541,7 +1541,7 @@ export function AdvisorSignalDetail({
   metricLabel?: (metric: NonNullable<AdvisorSignal["metric"]>, signal: AdvisorSignal) => string
 }) {
   return (
-    <aside className={`rounded-2xl border border-zinc-200 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-card 2xl:sticky 2xl:top-4 2xl:self-start ${className}`}>
+    <aside className={`rounded-2xl border border-border bg-white/90 p-4 shadow-sm dark:bg-card 2xl:sticky 2xl:top-4 2xl:self-start ${className}`}>
       <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
         <ShieldCheck className="h-4 w-4 text-orange-600 dark:text-orange-300" />
         {labels.riskDetail}
@@ -1550,7 +1550,7 @@ export function AdvisorSignalDetail({
         <AdvisorDetailEmptyState labels={labels} />
       ) : (
         <div className="space-y-4">
-          <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+          <div className="rounded-xl border border-border bg-zinc-50/70 p-3 dark:bg-zinc-950/30">
             <Badge variant="outline" className={severityClassName(signal.severity)}>{severityLabel(signal.severity)}</Badge>
             <h3 className="mt-2 text-lg font-semibold leading-tight">{signalTitle ? signalTitle(signal) : signal.title}</h3>
             <p className="mt-1 text-sm text-muted-foreground">{signalSummary ? signalSummary(signal) : signal.summary}</p>
@@ -1590,7 +1590,7 @@ export function AdvisorSignalDetail({
               ))}
             </div>
           </div>
-          <details className="rounded-xl border border-zinc-200 bg-background p-3 dark:border-zinc-800">
+          <details className="rounded-xl border border-border bg-background p-3">
             <summary className="flex cursor-pointer items-center justify-between gap-3 text-sm font-semibold">
               <span>{labels.evidence}</span>
               <Badge variant="outline" className="text-[10px]">{signal.sources.length} {labels.sources.toLowerCase()}</Badge>
@@ -1675,7 +1675,7 @@ function AdvisorDetailEmptyState({
   ]
 
   return (
-    <div className="rounded-lg border border-dashed border-zinc-200 bg-muted/30 p-4 dark:border-zinc-700">
+    <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
       <div className="mx-auto max-w-lg text-center">
         <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
           <MousePointer2 className="h-5 w-5" />
@@ -1685,7 +1685,7 @@ function AdvisorDetailEmptyState({
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {steps.map((step, index) => (
-          <div key={step.label} className="flex items-center gap-2 rounded-md border border-zinc-200 bg-background px-3 py-2 text-xs dark:border-zinc-700">
+          <div key={step.label} className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">{step.icon}</span>
             <span className="min-w-0 font-medium text-foreground">{index + 1}. {step.label}</span>
           </div>
@@ -1724,7 +1724,7 @@ function SignalWorkflow({
   ]
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-background p-3 dark:border-zinc-700">
+    <div className="rounded-lg border border-border bg-background p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <h4 className="text-xs font-semibold text-muted-foreground">{labels.flow}</h4>
         <Badge variant="outline" className="text-[10px]">{signal.sources.length} {labels.sources.toLowerCase()}</Badge>
@@ -1766,7 +1766,7 @@ function RelatedSignalChain({
   signalTitle?: (signal: AdvisorSignal) => string
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-background p-3 dark:border-zinc-700">
+    <div className="rounded-lg border border-border bg-background p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h4 className="text-xs font-semibold text-muted-foreground">{labels.causalChain}</h4>
@@ -1780,7 +1780,7 @@ function RelatedSignalChain({
             key={signal.id}
             type="button"
             onClick={() => onSelect(signal.id)}
-            className="flex w-full items-start justify-between gap-2 rounded-md border border-zinc-200 bg-muted/30 px-2.5 py-2 text-left transition-colors hover:border-primary/50 hover:bg-primary/5 dark:border-zinc-700"
+            className="flex w-full items-start justify-between gap-2 rounded-md border border-border bg-muted/30 px-2.5 py-2 text-left transition-colors hover:border-primary/50 hover:bg-primary/5"
           >
             <div className="min-w-0">
               <div className="mb-1 flex flex-wrap items-center gap-1.5">
@@ -1820,7 +1820,7 @@ function SignalTimelinePanel({
   if (timeline.length === 0) return null
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-background p-3 dark:border-zinc-700">
+    <div className="rounded-lg border border-border bg-background p-3">
       <div className="mb-3 flex items-center gap-2">
         <Clock3 className="h-4 w-4 text-primary" />
         <h4 className="text-sm font-semibold">{labels.timeline}</h4>
@@ -2171,7 +2171,7 @@ function RecommendedActionPanel({
             const key = `${signal.id}:${action.actionType}`
             const description = actionDescription?.(action, signal)
             return (
-              <div key={key} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-background p-3 transition-colors hover:border-orange-200 dark:border-zinc-800 dark:hover:border-orange-900/60">
+              <div key={key} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-background p-3 transition-colors hover:border-orange-200 dark:hover:border-orange-900/60">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{actionLabel?.(action, signal) || action.label}</p>
                   <p className="text-xs text-muted-foreground">{actionTypeLabel(action.actionType)} · {actionRiskLabel(action.risk)}</p>
@@ -2194,15 +2194,15 @@ function actionSeverityClasses(severity?: string | null) {
   if (severity === "critical") return "border-red-300 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300"
   if (severity === "high") return "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
   if (severity === "medium") return "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300"
-  return "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+  return "border-border bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
 }
 
 function executionStatusClasses(status?: string | null) {
   if (status === "executed") return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300"
   if (status === "failed") return "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300"
   if (status === "executing") return "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300"
-  if (status === "queued" || status === "approved" || status === "pending") return "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
-  return "border-zinc-200 bg-background text-muted-foreground dark:border-zinc-700"
+  if (status === "queued" || status === "approved" || status === "pending") return "border-border bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+  return "border-border bg-background text-muted-foreground"
 }
 
 function executionStatusLabel(status: string | null | undefined, approved: boolean | null, copy: AdvisorActionPanelCopy) {
@@ -2333,7 +2333,7 @@ export function AdvisorActionTrailPanel({
   className?: string
 }) {
   return (
-    <aside className={`rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 2xl:sticky 2xl:top-4 2xl:self-start ${className}`}>
+    <aside className={`rounded-xl border border-border bg-card p-4 2xl:sticky 2xl:top-4 2xl:self-start ${className}`}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">{copy.actionTrail}</h2>
@@ -2350,7 +2350,7 @@ export function AdvisorActionTrailPanel({
           ))
         )}
       </div>
-      <div className="mt-4 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+      <div className="mt-4 border-t border-border pt-3">
         <h3 className="mb-2 text-xs font-semibold text-muted-foreground">{copy.recentDecisions}</h3>
         <div className="space-y-2">
           {history.slice(0, 3).map((action) => (
@@ -2379,7 +2379,7 @@ function ActionMiniCard({
   const summary = actionSummary(action, localizers)
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-background p-3 dark:border-zinc-700">
+    <div className="rounded-lg border border-border bg-background p-3">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Badge variant="outline" className={executionStatusClasses(action.executionStatus)}>
           {executionStatusLabel(action.executionStatus, action.approved, copy)}
@@ -2406,7 +2406,7 @@ function ActionMiniCard({
           ) : null}
         </div>
       ) : null}
-      <div className="mt-2 rounded-md border border-zinc-200 px-2.5 py-2 text-[11px] dark:border-zinc-700">
+      <div className="mt-2 rounded-md border border-border px-2.5 py-2 text-[11px]">
         <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
           <span className="font-semibold">{copy.preview}</span>
           <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{actionTypeLabel(copy, action.actionType)}</Badge>
@@ -2453,7 +2453,7 @@ export function AdvisorActionExecutionTrail({
   localizers?: AdvisorActionDisplayLocalizers
 }) {
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-card">
+    <section className="rounded-2xl border border-border bg-white/90 p-4 shadow-sm dark:bg-card">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -2588,7 +2588,7 @@ export function AdvisorActionHistoryPanel({
   }, [actions])
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-card">
+    <section className="rounded-2xl border border-border bg-white/90 p-4 shadow-sm dark:bg-card">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -2603,13 +2603,13 @@ export function AdvisorActionHistoryPanel({
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
           <HistoryStatBadge label={copy.executed} value={historyStats.executed} className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300" />
-          <HistoryStatBadge label={copy.queuedStatus} value={historyStats.waiting} className="border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300" />
+          <HistoryStatBadge label={copy.queuedStatus} value={historyStats.waiting} className="border-border bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300" />
           <HistoryStatBadge label={copy.rejected} value={historyStats.rejected} className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300" />
           <HistoryStatBadge label={copy.failed} value={historyStats.failed} className="border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300" />
         </div>
       </div>
 
-      <div className="mb-4 grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30 lg:grid-cols-2">
+      <div className="mb-4 grid gap-3 rounded-2xl border border-border bg-zinc-50/70 p-3 dark:bg-zinc-950/30 lg:grid-cols-2">
         <HistoryFilterGroup
           label={copy.historyFilters}
           options={statusOptions}
@@ -2686,7 +2686,7 @@ function HistoryDecisionCard({
   const summary = actionSummary(action, localizers)
 
   return (
-    <article className="group rounded-2xl border border-zinc-200 bg-background p-4 transition-colors hover:border-orange-200 hover:bg-orange-50/25 dark:border-zinc-800 dark:hover:border-orange-900/50 dark:hover:bg-orange-950/10">
+    <article className="group rounded-2xl border border-border bg-background p-4 transition-colors hover:border-orange-200 hover:bg-orange-50/25 dark:hover:border-orange-900/50 dark:hover:bg-orange-950/10">
       <div className="grid gap-4 lg:grid-cols-[44px_minmax(0,1fr)_minmax(240px,0.42fr)]">
         <div className="flex lg:block">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 text-sm font-semibold text-zinc-700 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800">
@@ -2719,7 +2719,7 @@ function HistoryDecisionCard({
             </div>
           ) : null}
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-white/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+        <div className="rounded-xl border border-border bg-white/70 p-3 dark:bg-zinc-950/30">
           <p className="mb-2 text-xs font-semibold">{copy.preview}</p>
           <div className="space-y-2 text-xs">
             <div>
@@ -2733,11 +2733,11 @@ function HistoryDecisionCard({
           </div>
         </div>
       </div>
-      <details className="mt-3 rounded-xl border border-zinc-200 bg-white/60 dark:border-zinc-800 dark:bg-zinc-950/20">
+      <details className="mt-3 rounded-xl border border-border bg-white/60 dark:bg-zinc-950/20">
         <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-orange-700 dark:text-orange-300">
           {copy.reviewDetails}
         </summary>
-        <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">
+        <div className="border-t border-border p-3">
           <ActionDecisionPreview action={action} copy={copy} localizers={localizers} />
         </div>
       </details>
@@ -2772,7 +2772,7 @@ export function AdvisorActionList({
   onSaveEdit?: (action: ShadowAction) => void
 }) {
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-card">
+    <section className="rounded-2xl border border-border bg-white/90 p-4 shadow-sm dark:bg-card">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -2795,7 +2795,7 @@ export function AdvisorActionList({
             const isEditing = editingActionId === action.id && canEdit
 
             return (
-              <div key={action.id} className={`rounded-2xl border p-4 transition-colors ${onReview && action.approved === null ? "border-orange-200 bg-orange-50/45 dark:border-orange-900/50 dark:bg-orange-950/15" : "border-zinc-200 bg-background dark:border-zinc-800"}`}>
+              <div key={action.id} className={`rounded-2xl border p-4 transition-colors ${onReview && action.approved === null ? "border-orange-200 bg-orange-50/45 dark:border-orange-900/50 dark:bg-orange-950/15" : "border-border bg-background"}`}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -2820,7 +2820,7 @@ export function AdvisorActionList({
                           {copy.edit}
                         </Button>
                       ) : null}
-                      <Button size="sm" className="w-full rounded-full bg-orange-600 text-white shadow-sm hover:bg-orange-700 sm:w-auto" onClick={() => onReview(action, "approve")}><CheckCircle2 className="h-3.5 w-3.5" />{copy.approve}</Button>
+                      <Button size="sm" className="w-full rounded-full shadow-sm sm:w-auto" onClick={() => onReview(action, "approve")}><CheckCircle2 className="h-3.5 w-3.5" />{copy.approve}</Button>
                       <Button size="sm" variant="outline" className="w-full rounded-full bg-white/80 sm:w-auto dark:bg-zinc-950/40" onClick={() => onReview(action, "reject")}><XCircle className="h-3.5 w-3.5" />{copy.reject}</Button>
                     </div>
                   ) : null}
@@ -2847,7 +2847,7 @@ export function AdvisorActionList({
                   <ActionDecisionPreview action={action} copy={copy} localizers={localizers} />
                 )}
                 {isEditing ? (
-                  <div className="mt-3 space-y-3 rounded-xl border border-zinc-200 bg-muted/30 p-3 dark:border-zinc-800">
+                  <div className="mt-3 space-y-3 rounded-xl border border-border bg-muted/30 p-3">
                     <ActionPayloadEditor
                       action={action}
                       copy={copy}
@@ -3000,7 +3000,7 @@ export function SkeletonBlock({ className = "" }: { className?: string }) {
 
 export function EmptyState({ text }: { text: string }) {
   return (
-    <div className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-zinc-200 bg-background p-6 text-center text-sm text-muted-foreground dark:border-zinc-700">
+    <div className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-border bg-background p-6 text-center text-sm text-muted-foreground">
       {text}
     </div>
   )
@@ -3009,14 +3009,14 @@ export function EmptyState({ text }: { text: string }) {
 export function LoadingPanel() {
   return (
     <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-      <section className="min-w-0 rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+      <section className="min-w-0 rounded-xl border border-border bg-card p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <SkeletonBlock className="h-5 w-36" />
           <SkeletonBlock className="h-9 w-40 rounded-full sm:w-56" />
         </div>
         <div className="space-y-2">
           {[0, 1, 2, 3].map((item) => (
-            <div key={item} className="min-w-0 rounded-lg border border-zinc-200 bg-background p-3 dark:border-zinc-700">
+            <div key={item} className="min-w-0 rounded-lg border border-border bg-background p-3">
               <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
                 <SkeletonBlock className="h-5 w-16 rounded-full" />
                 <SkeletonBlock className="h-3 w-24" />
@@ -3027,7 +3027,7 @@ export function LoadingPanel() {
           ))}
         </div>
       </section>
-      <aside className="min-w-0 rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+      <aside className="min-w-0 rounded-xl border border-border bg-card p-4">
         <SkeletonBlock className="mb-4 h-5 w-28" />
         <SkeletonBlock className="h-6 w-20 rounded-full" />
         <SkeletonBlock className="mt-3 h-6 w-4/5" />
@@ -3095,7 +3095,7 @@ export function AdvisorEmptyState({
   const message = filtered ? labels.emptyFilteredReason : diagnostic
 
   return (
-    <div className="rounded-lg border border-dashed border-zinc-200 bg-background p-4 dark:border-zinc-700">
+    <div className="rounded-lg border border-dashed border-border bg-background p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-foreground">{title}</p>
@@ -3130,7 +3130,7 @@ export function AdvisorEmptyState({
       {capabilities.length > 0 ? (
         <div className="grid gap-2 sm:grid-cols-2">
           {capabilities.map((capability) => (
-            <div key={capability.key} className="rounded-md border border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700">
+            <div key={capability.key} className="rounded-md border border-border px-3 py-2 text-xs">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-foreground">{domainLabel(capability.key, capability.label)}</span>
                 <span className={capability.status === "active" ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}>

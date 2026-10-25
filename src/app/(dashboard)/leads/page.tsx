@@ -371,9 +371,9 @@ export default function LeadsPage() {
           </div>
           <div className="h-9 w-28 bg-muted animate-pulse rounded" />
         </div>
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+        <div className="rounded-lg border border-border overflow-hidden">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-12 bg-muted/40 animate-pulse border-b border-zinc-200 dark:border-zinc-700" style={{ animationDelay: `${i * 50}ms` }} />
+            <div key={i} className="h-12 bg-muted/40 animate-pulse border-b border-border" style={{ animationDelay: `${i * 50}ms` }} />
           ))}
         </div>
       </div>
@@ -404,12 +404,12 @@ export default function LeadsPage() {
         {/* Right controls */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* Tab switcher */}
-          <div className="flex items-center gap-1 border border-zinc-200 dark:border-zinc-700 rounded-lg p-1">
+          <div data-crm-tabs="" className="flex items-center gap-1 border border-border rounded-lg p-1">
             {([
               { key: "analytics" as const, Icon: BarChart3, label: tc("analytics") },
               { key: "workspace" as const, Icon: Columns3,  label: tc("list") },
             ]).map(({ key, Icon, label }) => (
-              <button
+              <button data-crm-tab="" data-state={tab === key ? "active" : "inactive"}
                 key={key}
                 onClick={() => setTab(key)}
                 className={cn(
@@ -428,7 +428,7 @@ export default function LeadsPage() {
           {/* Insights */}
           <button
             onClick={() => router.push("/contacts?entity=leads")}
-            className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 border border-zinc-200 dark:border-zinc-700 rounded-lg transition-colors"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 border border-border rounded-lg transition-colors"
           >
             {t("insightsBtn")}
           </button>
@@ -439,7 +439,7 @@ export default function LeadsPage() {
               const ownerUserId = session?.user?.id
               router.push(`/voip/call-queues${ownerUserId ? `?ownerUserId=${encodeURIComponent(ownerUserId)}` : ""}`)
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground dark:border-zinc-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ListOrdered aria-hidden="true" className="h-3.5 w-3.5" />
             {t("aiCallQueues")}
@@ -448,7 +448,7 @@ export default function LeadsPage() {
           {/* New Lead — only this button gets orange */}
           <button
             onClick={() => { setEditData(undefined); setShowForm(true) }}
-            className="flex items-center gap-1.5 text-sm font-semibold bg-[#FF4D00] text-white px-4 py-1.5 rounded-lg hover:bg-[#e04400] transition-colors"
+            className="flex items-center gap-1.5 text-sm font-semibold bg-primary text-primary-foreground px-4 py-1.5 rounded-lg hover:bg-primary/90 transition-colors" data-crm-button="default"
           >
             <Plus className="h-4 w-4" />
             {t("newLead")}
@@ -489,14 +489,14 @@ export default function LeadsPage() {
           <DidYouKnow page="leads" className="mb-2" />
 
           {/* ── STATS ──────────────────────────────────────────────────── */}
-          <div className="grid grid-cols-4 gap-0 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+          <div className="grid grid-cols-4 gap-0 rounded-lg border border-border overflow-hidden">
             {[
               { value: leads.length,                label: t("title") },
               { value: statusCounts.converted || 0, label: t("statusConverted") },
               { value: `${avgScore}/100`,            label: t("avgScore") },
               { value: hotLeads,                     label: t("hotLeads"), hot: true },
             ].map((stat, i) => (
-              <div key={i} className={cn("px-6 py-4", i > 0 && "border-l border-zinc-200 dark:border-zinc-700")}>
+              <div key={i} className={cn("px-6 py-4", i > 0 && "border-l border-border")}>
                 <div className={cn(
                   "text-3xl font-bold tracking-tight",
                   stat.hot && hotLeads > 0 ? "text-[#FF4D00]" : "text-foreground"
@@ -528,7 +528,7 @@ export default function LeadsPage() {
                   "px-3 py-1 text-sm rounded-full border transition-colors",
                   statusFilter === item.key
                     ? "bg-foreground text-background border-foreground font-medium"
-                    : "border-zinc-200 dark:border-zinc-700 text-muted-foreground hover:border-foreground/40 hover:text-foreground"
+                    : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground"
                 )}
               >
                 {item.label}
@@ -545,7 +545,7 @@ export default function LeadsPage() {
                 placeholder={t("searchPlaceholder")}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full border border-zinc-200 dark:border-zinc-700 rounded-lg py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 bg-background"
+                className="w-full border border-input rounded-lg py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 bg-background"
               />
             </div>
 
@@ -553,7 +553,7 @@ export default function LeadsPage() {
             <select
               value={categoryFilter}
               onChange={e => setCategoryFilter(e.target.value)}
-              className="border border-zinc-200 dark:border-zinc-700 rounded-lg py-2 px-3 text-sm bg-background focus:outline-none cursor-pointer text-muted-foreground hover:border-foreground/40 transition-colors"
+              className="border border-input rounded-lg py-2 px-3 text-sm bg-background focus:outline-none cursor-pointer text-muted-foreground hover:border-foreground/40 transition-colors"
             >
               <option value="">{t("allCategories")}</option>
               <option value="vip">{categoryLabel("vip")}</option>
@@ -568,7 +568,7 @@ export default function LeadsPage() {
               value={sourceFilter}
               onChange={e => setSourceFilter(e.target.value)}
               aria-label={t("filterBySource")}
-              className="border border-zinc-200 dark:border-zinc-700 rounded-lg py-2 px-3 text-sm bg-background focus:outline-none cursor-pointer text-muted-foreground hover:border-foreground/40 transition-colors"
+              className="border border-input rounded-lg py-2 px-3 text-sm bg-background focus:outline-none cursor-pointer text-muted-foreground hover:border-foreground/40 transition-colors"
             >
               <option value="">{t("allSources")}</option>
               {sourceOptions.map(source => (
@@ -581,7 +581,7 @@ export default function LeadsPage() {
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value)}
-              className="border border-zinc-200 dark:border-zinc-700 rounded-lg py-2 px-3 text-sm bg-background focus:outline-none cursor-pointer text-muted-foreground hover:border-foreground/40 transition-colors"
+              className="border border-input rounded-lg py-2 px-3 text-sm bg-background focus:outline-none cursor-pointer text-muted-foreground hover:border-foreground/40 transition-colors"
             >
               <option value="score_desc">{t("sortScoreDesc")}</option>
               <option value="score_asc">{t("sortScoreAsc")}</option>
@@ -592,12 +592,12 @@ export default function LeadsPage() {
             </select>
 
             {/* View toggle */}
-            <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+            <div data-crm-tabs="" className="flex items-center border border-border rounded-lg overflow-hidden">
               {([
                 { mode: "table"  as const, Icon: List,       label: tc("list") },
                 { mode: "kanban" as const, Icon: LayoutGrid, label: tc("kanban") },
               ]).map(({ mode, Icon, label }) => (
-                <button
+                <button data-crm-tab="" data-state={viewMode === mode ? "active" : "inactive"}
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   title={label}
@@ -649,7 +649,7 @@ export default function LeadsPage() {
                         if (id) handleKanbanDrop(id, status)
                       }}
                     >
-                    <div className="mb-3 pb-2 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+                    <div className="mb-3 pb-2 border-b border-border flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <span className={cn("h-2 w-2 rounded-full flex-shrink-0", statusDot[status])} />
                         <span className="text-xs font-semibold text-foreground">
@@ -669,7 +669,7 @@ export default function LeadsPage() {
                             onDragStart={(e) => { e.dataTransfer.setData("text/plain", lead.id); e.dataTransfer.effectAllowed = "move"; setDragLeadId(lead.id) }}
                             onDragEnd={() => setDragLeadId(null)}
                             className={cn(
-                              "bg-card border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-foreground/30 hover:shadow-sm transition-all",
+                              "bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-foreground/30 hover:shadow-sm transition-all",
                               dragLeadId === lead.id && "opacity-50",
                             )}
                             onClick={() => router.push(`/leads/${lead.id}`)}
@@ -705,7 +705,7 @@ export default function LeadsPage() {
                               ) : null}
                             </div>
                             <div
-                              className="flex gap-1 mt-2 border-t border-zinc-200 dark:border-zinc-700 pt-2"
+                              className="flex gap-1 mt-2 border-t border-border pt-2"
                               onClick={e => e.stopPropagation()}
                             >
                               {lead.status !== "converted" && (
@@ -734,7 +734,7 @@ export default function LeadsPage() {
                         )
                       })}
                       {statusLeads.length === 0 && (
-                        <div className="flex h-20 items-center justify-center text-xs text-muted-foreground/40 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-lg">
+                        <div className="flex h-20 items-center justify-center text-xs text-muted-foreground/40 border border-dashed border-border rounded-lg">
                           —
                         </div>
                       )}
@@ -746,7 +746,7 @@ export default function LeadsPage() {
               {/* "Other" column for any leads with non-standard status (legacy/imported data) */}
               {showOther && (
                 <MotionItem className="min-w-0">
-                  <div className="mb-3 pb-2 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+                  <div className="mb-3 pb-2 border-b border-border flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full flex-shrink-0 bg-zinc-400" />
                       <span className="text-xs font-semibold text-foreground">{tc("other")}</span>
@@ -765,7 +765,7 @@ export default function LeadsPage() {
                         onDragEnd={() => setDragLeadId(null)}
                         onClick={() => router.push(`/leads/${lead.id}`)}
                         className={cn(
-                          "rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow bg-card",
+                          "rounded-lg border border-border p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow bg-card",
                           dragLeadId === lead.id && "opacity-50",
                         )}
                       >
@@ -810,7 +810,7 @@ export default function LeadsPage() {
                     handleBulkAction("update_status", status)
                     setStatusMenuKey(k => k + 1)
                   }}
-                  className="h-8 px-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-card text-xs"
+                  className="h-8 px-2 rounded-md border border-input bg-card text-xs"
                   aria-label={t("bulkSetStatus")}
                 >
                   <option value="" disabled>{t("bulkSetStatus")}</option>
@@ -887,7 +887,7 @@ export default function LeadsPage() {
                 Tap → /leads/[id]; explicit convert/edit/delete buttons. */}
             <div className="md:hidden space-y-2">
               {filtered.length === 0 ? (
-                <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-8 text-center text-sm text-muted-foreground">
+                <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
                   {search ? t("noResults") : t("noLeads")}
                 </div>
               ) : (
@@ -906,7 +906,7 @@ export default function LeadsPage() {
                     <div
                       key={lead.id}
                       className={cn(
-                        "rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)]",
+                        "rounded-xl border border-border bg-card p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)]",
                         selectedLeadIds.has(lead.id) && "ring-1 ring-primary/40 bg-primary/[0.04]",
                       )}
                     >
@@ -1024,10 +1024,10 @@ export default function LeadsPage() {
             </div>
 
             {/* Desktop table — hidden below md: */}
-            <div className="hidden md:block rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+            <div className="hidden md:block rounded-lg border border-border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[1040px]">
-                  <thead className="bg-muted border-b border-zinc-200 dark:border-zinc-700">
+                  <thead className="bg-muted border-b border-border">
                     <tr>
                       {/* Bulk-select header — Roadmap #19 Phase C. Tri-state. */}
                       {(() => {
@@ -1110,7 +1110,7 @@ export default function LeadsPage() {
                         <tr
                           key={lead.id}
                           className={cn(
-                            "group border-b border-zinc-200 dark:border-zinc-700 last:border-0 hover:bg-muted/50 transition-colors",
+                            "group border-b border-border last:border-0 hover:bg-muted/50 transition-colors",
                             selectedLeadIds.has(lead.id) && "bg-primary/[0.04]",
                           )}
                         >
@@ -1286,7 +1286,7 @@ export default function LeadsPage() {
 
               {/* Footer */}
               {filtered.length > 0 && (
-                <div className="px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-700 bg-muted/30 text-xs text-muted-foreground">
+                <div className="px-4 py-2.5 border-t border-border bg-muted/30 text-xs text-muted-foreground">
                   {filtered.length !== leads.length
                     ? `${filtered.length} из ${leads.length} ${t("title").toLowerCase()}`
                     : `${leads.length} ${t("title").toLowerCase()}`}

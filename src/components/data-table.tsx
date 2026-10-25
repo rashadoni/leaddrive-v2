@@ -138,10 +138,10 @@ export function DataTable<T extends Record<string, unknown>>({
         {!hideResultCount && <span className={cn("text-sm text-muted-foreground", compact && "hidden sm:inline")}>{t("results", { count: filtered.length })}</span>}
       </div>}
 
-      <div className={cn("overflow-x-auto rounded-xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-700", compact && "rounded-md border-border shadow-none", mobileCardRender && "hidden md:block")}>
+      <div className={cn("overflow-x-auto rounded-xl border border-border bg-card shadow-sm", compact && "rounded-md border-border shadow-none", mobileCardRender && "hidden md:block")}>
         <table className="w-full text-sm">
           <thead>
-            <tr className={cn("border-b border-zinc-200 bg-muted/40 dark:border-zinc-700", compact && "border-border")}>
+            <tr className={cn("border-b border-border bg-muted", compact && "border-border")}>
               {columns.map((col) => (
                 <th
                   key={col.key}
@@ -181,7 +181,7 @@ export function DataTable<T extends Record<string, unknown>>({
                   // `group` so a pinned cell, which carries its own opaque
                   // background, can follow the row's hover instead of staying
                   // the one untinted cell in a highlighted row.
-                  "group border-b border-zinc-200 transition-colors last:border-0 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none dark:border-zinc-700",
+                  "group border-b border-border transition-colors last:border-0 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none",
                   compact && "border-border",
                   onRowClick && "cursor-pointer",
                   rowClassName?.(item)

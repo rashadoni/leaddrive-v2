@@ -455,7 +455,7 @@ export default function IntegrationsPage() {
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">{c.webhookIntro}</p>
           {webhooks.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-zinc-200 px-5 py-8 text-center text-muted-foreground dark:border-zinc-700">
+            <div className="rounded-lg border border-dashed border-border px-5 py-8 text-center text-muted-foreground">
               <Webhook className="mx-auto mb-3 h-9 w-9 opacity-30" />
               <p className="font-medium text-foreground">{t("noWebhooks")}</p>
               <p className="mx-auto mt-2 max-w-xl text-sm leading-6">{c.noWebhooksHint}</p>
@@ -466,7 +466,7 @@ export default function IntegrationsPage() {
           ) : (
             <div className="space-y-3">
               {webhooks.map(wh => (
-                <div key={wh.id} className="flex items-center justify-between p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+                <div key={wh.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-mono truncate">{wh.url}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -504,7 +504,7 @@ export default function IntegrationsPage() {
         </CardHeader>
         <CardContent>
           {slackConfigs.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-zinc-200 px-5 py-8 text-center text-muted-foreground dark:border-zinc-700">
+            <div className="rounded-lg border border-dashed border-border px-5 py-8 text-center text-muted-foreground">
               <MessageSquare className="mx-auto mb-3 h-9 w-9 opacity-30" />
               <p className="font-medium text-foreground">{t("noSlack")}</p>
               <p className="mx-auto mt-2 max-w-xl text-sm leading-6">{c.noSlackHint}</p>
@@ -515,7 +515,7 @@ export default function IntegrationsPage() {
           ) : (
             <div className="space-y-3">
               {slackConfigs.map(cfg => (
-                <div key={cfg.id} className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg space-y-2">
+                <div key={cfg.id} className="p-3 border border-border rounded-lg space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">{cfg.configName}</p>
@@ -529,7 +529,7 @@ export default function IntegrationsPage() {
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center justify-between pt-1 border-t border-border">
                     <div>
                       <p className="text-xs font-medium">{t("contractAlertsLabel")}</p>
                       <p className="text-xs text-muted-foreground">{t("contractAlertsHint")}</p>
@@ -558,7 +558,7 @@ export default function IntegrationsPage() {
         </CardHeader>
         <CardContent>
           {teamsConfigs.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-zinc-200 px-5 py-8 text-center text-muted-foreground dark:border-zinc-700">
+            <div className="rounded-lg border border-dashed border-border px-5 py-8 text-center text-muted-foreground">
               <MessageSquare className="mx-auto mb-3 h-9 w-9 opacity-30" />
               <p className="font-medium text-foreground">{t("noTeams")}</p>
               <p className="mx-auto mt-2 max-w-xl text-sm leading-6">{c.noTeamsHint}</p>
@@ -569,7 +569,7 @@ export default function IntegrationsPage() {
           ) : (
             <div className="space-y-3">
               {teamsConfigs.map(cfg => (
-                <div key={cfg.id} className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg space-y-2">
+                <div key={cfg.id} className="p-3 border border-border rounded-lg space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">{cfg.configName}</p>
@@ -583,7 +583,7 @@ export default function IntegrationsPage() {
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center justify-between pt-1 border-t border-border">
                     <div>
                       <p className="text-xs font-medium">{t("contractAlertsLabel")}</p>
                       <p className="text-xs text-muted-foreground">{t("contractAlertsHint")}</p>
@@ -618,7 +618,7 @@ export default function IntegrationsPage() {
         <CardContent>
           <div className="space-y-3">
             {/* Native provider — always available */}
-            <div className="flex items-center justify-between p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+            <div className="flex items-center justify-between p-3 border border-border rounded-lg">
               <div>
                 <p className="text-sm font-medium">{t("esignProviderNative")}</p>
                 <p className="text-xs text-muted-foreground">{c.nativeESignHint}</p>
@@ -633,7 +633,7 @@ export default function IntegrationsPage() {
               "flex items-center justify-between p-3 border rounded-lg",
               esignProviderConnected
                 ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-950/20"
-                : "border-zinc-200 dark:border-zinc-700"
+                : "border-border"
             )}>
               <div>
                 <p className="text-sm font-medium">{t("esignProviderDocuSign")}</p>

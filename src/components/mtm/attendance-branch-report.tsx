@@ -18,8 +18,8 @@ import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 
 type Range = { from: string; to: string }
 type Report = MtmAttendanceReport & { snapshot?: AttendanceReportSnapshot }
-const SELECT_CLASS = "min-h-11 w-full min-w-0 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
-const LINK_CLASS = "inline-flex min-h-11 items-center justify-center rounded-full border border-zinc-200 px-4 py-2 text-center text-sm font-medium hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
+const SELECT_CLASS = "min-h-11 w-full min-w-0 rounded-lg border border-input bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+const LINK_CLASS = "inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 text-center text-sm font-medium hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
 /** Safe, historical branch projection of the same scoped snapshot used by downloads. */
 export function MtmAttendanceBranchReport() {
@@ -139,7 +139,7 @@ export function MtmAttendanceBranchReport() {
         {report ? <p className="col-span-full text-xs leading-relaxed text-muted-foreground">{t("reportPeriod", { from: dateLabel(report.from), to: dateLabel(report.to) })} · {t("reportTimezones", { zones: timezones.length ? format.list(timezones) : "—" })}</p> : null}
       </form>
     </HomeCard>
-    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{metrics.map(metric => <div key={metric.key} className="min-w-0 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{metrics.map(metric => <div key={metric.key} className="min-w-0 rounded-2xl border border-border bg-card p-4">
       <p className="text-xs text-muted-foreground">{t(metric.title)}</p><p className="my-1 text-3xl font-semibold tabular-nums" data-testid={`attendance-branch-${metric.key}-value`}>{report && hasKnownMarks ? format.number(metric.value) : "—"}</p><p className="text-xs leading-relaxed text-muted-foreground">{metric.hint}</p>
     </div>)}</div>
     <HomeCard testId="attendance-branch-results" titleId="attendance-branch-results-title" icon={<Building2 className="h-4 w-4" aria-hidden="true" />} tone="orange" title={t("branchReportTableTitle")}>
@@ -149,9 +149,9 @@ export function MtmAttendanceBranchReport() {
         {error ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{error}</p>{!accessUnavailable ? <Button variant="outline" className="min-h-11" onClick={() => void load(lastRange.current)}>{t("reportReload")}</Button> : null}</div> : null}
         {scopeUnavailable ? <p role="alert" className="text-sm text-amber-800 dark:text-amber-300">{t("viewsScopeUnavailable")}</p> : null}
         {table ? <>{!table.rows.length ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("branchReportEmpty")}</p> : <div className="overflow-x-auto"><table className="block w-full text-sm tabular-nums sm:table" data-testid="attendance-branch-table">
-          <thead className="sr-only sm:not-sr-only sm:table-header-group"><tr>{table.columns.map((column, index) => <th key={column.key} scope="col" className={`border-b border-zinc-200 px-3 py-3 text-xs font-medium text-muted-foreground dark:border-zinc-700 ${index ? "text-right" : "text-left"}`}>{column.label}</th>)}</tr></thead>
-          <tbody className="block sm:table-row-group">{table.rows.map(row => <tr key={row.key} data-testid="attendance-branch-row" className="grid grid-cols-2 gap-x-5 gap-y-3 border-b border-zinc-100 py-4 dark:border-zinc-800 sm:table-row sm:border-0 sm:py-0">
-            {row.cells.map((cell, index) => index === 0 ? <th key={table.columns[index].key} scope="row" className="col-span-2 min-w-0 break-words text-left font-semibold sm:w-[36%] sm:border-b sm:border-zinc-100 sm:px-3 sm:py-4 dark:sm:border-zinc-800">{cell}</th> : <td key={table.columns[index].key} className="min-w-0 sm:border-b sm:border-zinc-100 sm:px-3 sm:py-4 sm:text-right dark:sm:border-zinc-800"><span className="mb-1 block text-xs text-muted-foreground sm:hidden" aria-hidden="true">{table.columns[index].label}</span>{cell}</td>)}
+          <thead className="sr-only sm:not-sr-only sm:table-header-group"><tr>{table.columns.map((column, index) => <th key={column.key} scope="col" className={`border-b border-border px-3 py-3 text-xs font-medium text-muted-foreground ${index ? "text-right" : "text-left"}`}>{column.label}</th>)}</tr></thead>
+          <tbody className="block sm:table-row-group">{table.rows.map(row => <tr key={row.key} data-testid="attendance-branch-row" className="grid grid-cols-2 gap-x-5 gap-y-3 border-b border-border py-4 sm:table-row sm:border-0 sm:py-0">
+            {row.cells.map((cell, index) => index === 0 ? <th key={table.columns[index].key} scope="row" className="col-span-2 min-w-0 break-words text-left font-semibold sm:w-[36%] sm:border-b sm:border-border sm:px-3 sm:py-4 dark:sm:border-border">{cell}</th> : <td key={table.columns[index].key} className="min-w-0 sm:border-b sm:border-border sm:px-3 sm:py-4 sm:text-right dark:sm:border-border"><span className="mb-1 block text-xs text-muted-foreground sm:hidden" aria-hidden="true">{table.columns[index].label}</span>{cell}</td>)}
           </tr>)}</tbody>
         </table></div>}
           <div className="space-y-2 text-xs leading-relaxed text-muted-foreground" data-testid="attendance-branch-details">{table.details.slice(1).map((line, index) => <p key={index}>{line}</p>)}</div>
@@ -159,7 +159,7 @@ export function MtmAttendanceBranchReport() {
         </> : null}
       </div>
     </HomeCard>
-    <div className="grid gap-5 rounded-2xl border border-zinc-200 bg-card p-5 sm:grid-cols-2 dark:border-zinc-700">
+    <div className="grid gap-5 rounded-2xl border border-border bg-card p-5 sm:grid-cols-2">
       <div className="space-y-2"><h2 className="text-sm font-semibold">{t("branchReportReadTitle")}</h2><p className="text-sm leading-relaxed text-muted-foreground">{t("branchReportReadHint")}</p><p className="text-sm leading-relaxed text-muted-foreground">{t("branchReportEvidenceHint")}</p></div>
       <div className="space-y-2"><h2 className="text-sm font-semibold">{t("branchReportMissingTitle")}</h2><p className="text-sm leading-relaxed text-muted-foreground">{t("branchReportMissingHint")}</p><p className="text-sm leading-relaxed text-muted-foreground">{t("branchReportBreakPrivacy")}</p></div>
     </div>

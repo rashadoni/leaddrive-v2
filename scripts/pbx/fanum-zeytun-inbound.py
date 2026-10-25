@@ -483,6 +483,7 @@ class ZeytunInboundBridge:
         self.tts_voice = None
         self.tts_model = None
         self.relay = None
+        self.vocabulary = ()
 
     def _request(self, body):
         # The first session also builds the pinned catalog once. Keep that
@@ -542,6 +543,14 @@ class ZeytunInboundBridge:
             # Owner, 2026-10-23: "эту ставь" - the gemini-3.8-flash-tts voice.
             # Only a known model and voice switch the relay on; anything else
             # keeps the model's own voice, never a guessed one.
+            # 2026-10-25 live call: "Sopharma" was transcribed "суппозитории".
+            # The CRM sends the catalog's manufacturer words; only short
+            # printable words are taken, and the base list always comes first.
+            words = value.get("vocabulary")
+            if isinstance(words, list):
+                self.vocabulary = tuple(dict.fromkeys(
+                    w.strip() for w in words[:400]
+                    if isinstance(w, str) and 2 <= len(w.strip()) <= 40 and w.isprintable()))
             speech = value.get("speech")
             if (isinstance(speech, dict) and speech.get("engine") == "tts"
                     and speech.get("model") in ZeytunGeminiTts.MODELS and speech.get("voice") in self.VOICES):
@@ -577,13 +586,16 @@ class ZeytunInboundBridge:
                                 "quantity": {"type": "INTEGER", "description": "Whole number, in the unit the caller said."},
                                 "unit": {"type": "STRING", "description": "The caller's unit: qutu, ədəd, flakon, ampula, ..."},
                                 "spoken": {"type": "STRING", "description": "The caller's own words for this line, at most 160 characters."}},
-                 "required": ["quantity", "unit", "spoken"]}}}, "required": ["lines"]}}]}]
+                 "required": ["quantity", "unit", "spoken"]}},
+                 "pharmacy": {"type": "STRING", "description": "The pharmacy as the caller named it, at most 120 characters; omit when not named."}},
+                 "required": ["lines"]}}]}]
 
     def transcription(self):
         # Fields of AudioTranscriptionConfig (ai.google.dev/api/live); accepted
         # by gemini-3.1-flash-live-preview and gemini-3.8-live on 2026-10-23.
-        return {"languageCodes": list(self.TRANSCRIPTION_LANGUAGES),
-                "customVocabulary": list(self.TRANSCRIPTION_VOCABULARY)}
+        words = list(dict.fromkeys(self.TRANSCRIPTION_VOCABULARY + self.vocabulary))
+        # More than 1000 entries is rejected by the provider (2026-10-23).
+        return {"languageCodes": list(self.TRANSCRIPTION_LANGUAGES), "customVocabulary": words[:1000]}
 
     def speech_language(self):
         return self.SPEECH_LANGUAGE if self.pin_language else None
@@ -703,6 +715,17 @@ class ZeytunInboundBridge:
                 "lines": priced, "notIncluded": skipped, "complete": not skipped}
 
     @staticmethod
+    def order_request(args):
+        """The save call as the CRM accepts it ({"lines", "pharmacy"?}), or None."""
+        if not isinstance(args, dict) or not {"lines"} <= set(args) <= {"lines", "pharmacy"}:
+            return None
+        lines = ZeytunInboundBridge.order_lines({"lines": args["lines"]})
+        pharmacy = args.get("pharmacy")
+        if lines is None or (pharmacy is not None and (not isinstance(pharmacy, str) or not 1 <= len(pharmacy.strip()) <= 120)):
+            return None
+        return {"lines": lines, **({"pharmacy": pharmacy.strip()} if pharmacy is not None else {})}
+
+    @staticmethod
     def order_lines(args):
         """The save call's lines exactly as the CRM accepts them, or None."""
         lines = args.get("lines") if isinstance(args, dict) and set(args) == {"lines"} else None
@@ -789,7 +812,7 @@ class ZeytunInboundBridge:
                     send({"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}})
                 continue
             saving = name == self.SAVE_NAME
-            args = self.order_lines(call.get("args")) if saving else self.query(call.get("args"))
+            args = self.order_request(call.get("args")) if saving else self.query(call.get("args"))
             response = lambda body, key=key, name=name: {"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}}
             error = None
             with self.lock:
@@ -815,7 +838,7 @@ class ZeytunInboundBridge:
             def work(key=key, marker=marker, args=args, response=response, saving=saving):
                 try:
                     if saving:
-                        result = self.safe_saved(self.request({"action": "order", "callId": self.call_id, "lines": args}))
+                        result = self.safe_saved(self.request({"action": "order", "callId": self.call_id, **args}))
                     else:
                         result = self.safe_result(self.request({"action": "search", "callId": self.call_id, "query": args}))
                 except Exception:

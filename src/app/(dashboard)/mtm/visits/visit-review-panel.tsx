@@ -93,10 +93,10 @@ export interface VisitReviewData {
 }
 
 export function visitStatusClasses(status: string): string {
-  if (status === "CHECKED_IN") return "border-zinc-200 text-sky-700 dark:border-zinc-700 dark:text-sky-300"
-  if (status === "CHECKED_OUT") return "border-zinc-200 text-emerald-700 dark:border-zinc-700 dark:text-emerald-300"
-  if (status === "CANCELLED") return "border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-  return "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+  if (status === "CHECKED_IN") return "border-border text-sky-700 dark:text-sky-300"
+  if (status === "CHECKED_OUT") return "border-border text-emerald-700 dark:text-emerald-300"
+  if (status === "CANCELLED") return "border-border bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+  return "border-border bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300"
 }
 
 /**
@@ -134,7 +134,7 @@ function RoadmapTrack({ steps, t }: { steps: VisitRoadmapStep[]; t: Translator }
           ? "border-emerald-500 text-emerald-700 dark:text-emerald-300"
           : step.state === "missing"
             ? "border-red-500 text-red-700 dark:text-red-300"
-            : "border-zinc-300 bg-muted text-muted-foreground dark:border-zinc-700"
+            : "border-zinc-300 bg-muted text-muted-foreground dark:border-border"
         const detail = step.detailKey === "openedCount"
           ? t("review.stepOpened", { count: step.count ?? 0 })
           : step.detailKey === "photoCount"
@@ -263,7 +263,7 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
 function VisitReviewShell({ children }: { children: ReactNode }) {
   return (
     <section
-      className="rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800"
+      className="rounded-2xl border border-border bg-card shadow-sm"
       aria-labelledby="visit-review-title"
       data-testid="mtm-visit-review"
     >
@@ -450,7 +450,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
 
   return shell(
     <>
-      <header className="flex items-start justify-between gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800 sm:px-5 sm:py-4">
+      <header className="flex items-start justify-between gap-3 border-b border-border p-4 sm:px-5 sm:py-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             {leftOpen ? (
@@ -479,7 +479,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
             </Link>
           </p>
           {leftOpen && visit.agent?.id && !data.viewer.canExecute ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-sm" data-testid="mtm-visit-left-open-note">
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-sm" data-testid="mtm-visit-left-open-note">
               <span className="min-w-0 flex-1">{t("leftOpenHint")}</span>
               <RemindAgentButton
                 agentId={visit.agent.id}
@@ -497,7 +497,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
         </Button>
       </header>
 
-      <div className="border-b border-zinc-200 bg-muted/30 px-4 py-2.5 dark:border-zinc-800 sm:px-5">
+      <div className="border-b border-border bg-muted/30 px-4 py-2.5 sm:px-5">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm" data-testid="mtm-visit-review-facts">
           {facts.map((item) => (
             <span key={item.key} className={`inline-flex items-center gap-1.5 ${item.tone || "text-foreground"}`}>
@@ -514,7 +514,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
           manager who was there made of the agent's work. */}
       {visit.jointVisit ? <JointVisitReviewBlock jointVisit={visit.jointVisit} timezone={data.timezone} /> : null}
 
-      <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800 sm:px-5">
+      <div className="border-b border-border px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="text-sm font-semibold text-foreground">{t("review.roadmapTitle")}</h3>
           <span className="text-xs text-muted-foreground">
@@ -527,7 +527,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <div className="divide-y divide-zinc-200 px-4 dark:divide-zinc-800 sm:px-5 lg:border-r lg:border-zinc-200 lg:dark:border-zinc-800">
+        <div className="divide-y divide-border px-4 sm:px-5 lg:border-r lg:border-border lg:dark:border-border">
           <section className="py-3">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               {blockTitle(t("review.sectionProgress"))}
@@ -537,7 +537,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
                   : visit.primaryAgentHidden ? t("review.routeHidden") : t("review.unplanned")}
               </span>
             </div>
-            <dl className="mt-1 divide-y divide-zinc-100 dark:divide-zinc-800/60">
+            <dl className="mt-1 divide-y divide-border">
               {placeRow(t("review.placeCheckIn"), place.checkIn, "checkIn")}
               {placeRow(t("review.placeCheckOut"), place.checkOut, "checkOut")}
             </dl>
@@ -546,8 +546,8 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
               <p
                 data-testid="mtm-visit-review-location-request"
                 className={visit.locationRequest.status === "SUBMITTED"
-                  ? "mt-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-xs"
-                  : "mt-2 rounded-lg border border-zinc-200 bg-muted/40 px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700"}
+                  ? "mt-2 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-xs"
+                  : "mt-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"}
               >
                 {t(`review.locationRequest.${visit.locationRequest.status}`)}
               </p>
@@ -584,7 +584,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
                   const latitude = session.openLat ?? session.closeLat
                   const longitude = session.openLng ?? session.closeLng
                   return (
-                    <li key={session.id} className="rounded-xl border border-zinc-200 p-2.5 dark:border-zinc-800">
+                    <li key={session.id} className="rounded-xl border border-border p-2.5">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="font-medium text-foreground">{session.product.name}</p>
@@ -645,7 +645,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
           ) : null}
         </div>
 
-        <div className="divide-y divide-zinc-200 border-t border-zinc-200 px-4 dark:divide-zinc-800 dark:border-zinc-800 sm:px-5 lg:border-t-0">
+        <div className="divide-y divide-border border-t border-border px-4 sm:px-5 lg:border-t-0">
           {visit.notes?.trim() || hasResult ? (
             <section className="py-3">
               {blockTitle(t("review.sectionOutcome"))}
@@ -676,7 +676,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
           {actionRows.length ? (
             <section className="py-3">
               {blockTitle(t("review.actionsTitle"))}
-              <ul className="mt-1 divide-y divide-zinc-100 text-sm dark:divide-zinc-800/60" data-testid="mtm-visit-review-actions">
+              <ul className="mt-1 divide-y divide-border text-sm" data-testid="mtm-visit-review-actions">
                 {actionRows.map((row) => (
                   <li key={row.actionKey} className="flex items-center justify-between gap-3 py-1.5">
                     <span className="flex items-center gap-2 text-foreground">

@@ -51,7 +51,7 @@ function normalizePolicy(policy: Policy): Policy {
   return { ...policy, effectiveFrom: dateInput(policy.effectiveFrom), effectiveTo: dateInput(policy.effectiveTo) || null }
 }
 
-const fieldClass = "h-9 rounded-md border border-zinc-200 bg-background px-2.5 text-sm dark:border-zinc-700"
+const fieldClass = "h-9 rounded-md border border-input bg-background px-2.5 text-sm"
 
 /**
  * Route & Field → Settings → what an agent does on a visit.
@@ -288,13 +288,13 @@ export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
 
       <div id="visit-policy-advanced" hidden={editorHidden} className={editorHidden ? undefined : "mt-1"}>
       {loadError ? (
-        <div role="alert" className="flex items-start gap-2 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-sm">
+        <div role="alert" className="flex items-start gap-2 rounded-md border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{loadError}</span>
         </div>
       ) : featureDisabled ? (
         // Switch off: rules are neither listed nor applied, and every write
         // would be refused with 409 — so no table, no group rules, no preview.
-        <div role="status" className="flex items-start gap-2 rounded-md border border-zinc-200 bg-muted/40 px-3 py-3 text-sm dark:border-zinc-800" data-testid="visit-policy-feature-disabled">
+        <div role="status" className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-3 text-sm" data-testid="visit-policy-feature-disabled">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <span>
             <span className="block font-medium">{t(disabledNotice.text)}</span>
@@ -305,7 +305,7 @@ export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
 
       {/* Neither the "switched off" notice nor a load error sits next to the rules. */}
       {featureDisabled || loadError ? null : (
-      <div className="rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700" data-testid="visit-special-rules">
+      <div className="rounded-lg border border-border bg-card p-4" data-testid="visit-special-rules">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -342,9 +342,9 @@ export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
         ) : null}
 
         {special.length === 0 ? (
-          <p className="mt-3 border-t border-zinc-200 pt-3 text-sm text-muted-foreground dark:border-zinc-700" data-testid="visit-special-rules-empty">{t("empty")}</p>
+          <p className="mt-3 border-t border-border pt-3 text-sm text-muted-foreground" data-testid="visit-special-rules-empty">{t("empty")}</p>
         ) : (
-          <ul className="mt-3 divide-y divide-zinc-200 border-t border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+          <ul className="mt-3 divide-y divide-border border-t border-border">
             {special.map((rule) => {
               const id = rule.id as string
               const open = openRuleId === id
@@ -408,7 +408,7 @@ export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
 
         {/* Which rule one agent really gets at one institution: the answer of
             the same resolver the visit uses, not a guess from the list above. */}
-        <div className="mt-4 border-t border-zinc-200 pt-3 dark:border-zinc-700" data-testid="visit-rule-check">
+        <div className="mt-4 border-t border-border pt-3" data-testid="visit-rule-check">
           <h3 className="flex items-center gap-2 text-sm font-semibold"><Eye className="h-4 w-4 text-muted-foreground" aria-hidden="true" />{t("previewTitle")}</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">{t("previewHint")}</p>
           <div className="mt-2 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
@@ -432,7 +432,7 @@ export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
               <p className="text-xs text-muted-foreground">{preview.sourcePolicyName ? t("previewSource", { name: preview.sourcePolicyName }) : t("previewDefault")}</p>
               <ul className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                 {preview.requirements.filter((item) => item.actionKey !== "CHECKLIST" && item.actionKey !== "NEXT_ACTION").map((item) => (
-                  <li key={item.actionKey} className="flex items-baseline justify-between gap-2 border-b border-zinc-100 py-1 text-sm dark:border-zinc-800">
+                  <li key={item.actionKey} className="flex items-baseline justify-between gap-2 border-b border-border py-1 text-sm">
                     <span className={cn("min-w-0 truncate", item.mode === "HIDDEN" && "text-muted-foreground")}>{t(`actions.${item.actionKey}`)}</span>
                     <span className={cn("shrink-0 text-xs", item.mode === "REQUIRED" ? "font-semibold text-rose-700 dark:text-rose-300" : "text-muted-foreground")}>
                       {t(`modes.${item.mode}`)}{item.mode === "REQUIRED" && item.minCount > 1 ? <HintValue text={t("hint.policyMinCount", { count: item.minCount })}>{` ×${item.minCount}`}</HintValue> : ""}

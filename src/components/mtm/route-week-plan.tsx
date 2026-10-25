@@ -270,8 +270,8 @@ export function MtmRouteWeekPlan({
   }
 
   return (
-    <section data-testid="mtm-route-week-plan" className="overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-      <div className="flex flex-col gap-2 border-b border-zinc-200 px-3 py-2 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
+    <section data-testid="mtm-route-week-plan" className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="flex flex-col gap-2 border-b border-border px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-semibold">{t("weekPlanTitle")}</h2>
           {rangeLoading ? <p role="status" className="mt-1 text-xs text-muted-foreground">{t("weekLoading")}</p> : null}
@@ -290,7 +290,7 @@ export function MtmRouteWeekPlan({
             onChange={(event) => setAgentSearch(event.target.value)}
             placeholder={t("weekAgentSearch")}
             aria-label={t("weekAgentSearch")}
-            className="min-h-11 w-full rounded-lg border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700 sm:w-56"
+            className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm sm:w-56"
           />
           {teams.length > 1 ? (
             <select
@@ -298,7 +298,7 @@ export function MtmRouteWeekPlan({
               value={agentTeamId}
               onChange={(event) => setAgentTeamId(event.target.value)}
               aria-label={t("weekTeamFilter")}
-              className="min-h-11 w-full rounded-lg border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700 sm:w-44"
+              className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm sm:w-44"
             >
               <option value="">{t("weekTeamAll")}</option>
               {teams.map((team) => (
@@ -328,12 +328,12 @@ export function MtmRouteWeekPlan({
       */}
       <div data-testid="mtm-week-scroller" className="scroll-hint-x overflow-x-auto">
         <div className="min-w-[880px]">
-          <div className="grid grid-cols-[180px_repeat(7,minmax(100px,1fr))] border-b border-zinc-200 bg-muted/30 text-xs dark:border-zinc-700">
-            <div className="sticky left-0 z-20 flex items-center gap-2 border-r border-zinc-200 bg-muted px-3 py-2 font-medium dark:border-zinc-700">
+          <div className="grid grid-cols-[180px_repeat(7,minmax(100px,1fr))] border-b border-border bg-muted/30 text-xs">
+            <div className="sticky left-0 z-20 flex items-center gap-2 border-r border-border bg-muted px-3 py-2 font-medium">
               <Users className="h-4 w-4" /> {t("agent")}
             </div>
             {days.map((day) => (
-              <div key={dateKey(day)} className="border-r border-zinc-200 px-2 py-2 text-center last:border-r-0 dark:border-zinc-700">
+              <div key={dateKey(day)} className="border-r border-border px-2 py-2 text-center last:border-r-0">
                 <div className="font-medium">{formatDate(day, locale, { weekday: "short" })}</div>
                 <div className="text-muted-foreground">{formatDate(day, locale, { day: "2-digit", month: "2-digit" })}</div>
               </div>
@@ -341,8 +341,8 @@ export function MtmRouteWeekPlan({
           </div>
 
           {visibleAgents.map((agent) => (
-            <div key={agent.id} className="grid min-h-16 grid-cols-[180px_repeat(7,minmax(100px,1fr))] border-b border-zinc-200 last:border-b-0 dark:border-zinc-700">
-              <div className="sticky left-0 z-10 border-r border-zinc-200 bg-card px-3 py-2 text-sm font-medium dark:border-zinc-700">
+            <div key={agent.id} className="grid min-h-16 grid-cols-[180px_repeat(7,minmax(100px,1fr))] border-b border-border last:border-b-0">
+              <div className="sticky left-0 z-10 border-r border-border bg-card px-3 py-2 text-sm font-medium">
                 {onOpenAgent ? (
                   <Hint text={t("hint.openAgentPeriod", { employee: agent.name })}>
                     <button type="button" data-testid={`mtm-route-week-agent-${agent.id}`} onClick={() => onOpenAgent(agent.id)} className="text-left font-medium text-foreground underline-offset-2 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
@@ -355,7 +355,7 @@ export function MtmRouteWeekPlan({
                 const dayRoutes = routesByAgentAndDate.get(`${agent.id}:${dateKey(day)}`) ?? []
                 const canCreateForAgent = canCreateRoutes && (canManageAssignments || !selfAgentId || selfAgentId === agent.id)
                 return (
-                  <div key={dateKey(day)} className="group space-y-1 border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700">
+                  <div key={dateKey(day)} className="group space-y-1 border-r border-border p-1.5 last:border-r-0">
                     {dayRoutes.map((route) => {
                       // The row already names the agent; the cell said it again
                       // (audit 2026-09-14). It now says how the day went:
@@ -380,7 +380,7 @@ export function MtmRouteWeekPlan({
                         type="button"
                         data-testid="mtm-week-route-cell"
                         onClick={() => onSelectRoute(route)}
-                        className="block min-h-11 w-full rounded-lg border border-zinc-200 bg-muted/60 px-2 py-1.5 text-left hover:border-primary/50 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
+                        className="block min-h-11 w-full rounded-lg border border-border bg-muted/60 px-2 py-1.5 text-left hover:border-primary/50 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <span className="flex items-center gap-1 text-xs font-medium tabular-nums">
                           <span className="truncate">{summary}</span>
@@ -421,13 +421,13 @@ export function MtmRouteWeekPlan({
           ))}
 
           {idleAgents.length > 0 && busyAgents.length > 0 && !agentSearch ? (
-            <div data-testid="mtm-week-idle-agents" className="flex items-center gap-3 border-b border-zinc-200 px-3 py-2 text-sm text-muted-foreground dark:border-zinc-700">
+            <div data-testid="mtm-week-idle-agents" className="flex items-center gap-3 border-b border-border px-3 py-2 text-sm text-muted-foreground">
               <span>{t("weekIdleAgents", { count: idleAgents.length })}</span>
               <Hint text={t("hint.showIdle")}><Button type="button" variant="outline" size="sm" className="min-h-10" onClick={() => setShowIdle((current) => !current)}>{showIdle ? t("weekHideIdle") : t("weekShowIdle")}</Button></Hint>
             </div>
           ) : null}
           {agents.length > 0 && hiddenCount > 0 ? (
-            <div className="border-t border-zinc-200 px-3 py-1.5 text-xs text-muted-foreground dark:border-zinc-700">
+            <div className="border-t border-border px-3 py-1.5 text-xs text-muted-foreground">
               {t("weekAgentsHidden", { count: hiddenCount })}
             </div>
           ) : null}

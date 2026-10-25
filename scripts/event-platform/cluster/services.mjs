@@ -60,8 +60,11 @@ export function aclBindings(env, catalogTopics) {
     allow(PRINCIPALS.registry, ['Read', 'Write', 'Describe', 'DescribeConfigs'], ['--topic', `ld.${env}.registry.`], 'prefixed'),
     allow(PRINCIPALS.registry, ['IdempotentWrite'], ['--cluster']),
     allow(PRINCIPALS.registry, ['Read'], ['--group', '*']),
-    // The Fund shadow worker only consumes Finance events.
-    allow(PRINCIPALS.fundWorker, ['Read', 'Describe'], ['--topic', financeEvents]),
+    // The Fund shadow worker only consumes Finance events. DescribeConfigs:
+    // the bridge refuses to start unless the topic's cleanup.policy is delete
+    // (verifyTopic). Without it the worker never reaches READY on the real
+    // cluster — found by the 2026-10-25 drill (fund-drill.ts).
+    allow(PRINCIPALS.fundWorker, ['Read', 'Describe', 'DescribeConfigs'], ['--topic', financeEvents]),
     allow(PRINCIPALS.fundWorker, ['Read'], ['--group', `ld.${env}.fund-shadow.`], 'prefixed'),
   ]
 }
@@ -195,6 +198,8 @@ ${source ? `      - /etc/leaddrive-kafka/tls/source-postgres.pem:/etc/kafka/tls/
 // prefix), advances its offset, and the next heartbeat commits that offset.
 // The heartbeat topic sits under the connect prefix ld-connect may write.
 export const SLOT_MESSAGE_PREFIX = 'ld-slot-heartbeat'
+// Matches no prefix ever written: Debezium compares the whole prefix.
+export const MESSAGE_PREFIX_NONE = 'ld-cdc-emits-no-logical-messages'
 export function heartbeatTopic(env) { return `ld.${env}.connect.heartbeat.ld.${env}.cdc-source` }
 export function slotHeartbeat(env) {
   return {
@@ -203,7 +208,12 @@ export function slotHeartbeat(env) {
     // (drill run 40193162960 wrote to __debezium-heartbeat.* with it).
     'topic.heartbeat.prefix': `ld.${env}.connect.heartbeat`,
     'heartbeat.action.query': `SELECT pg_logical_emit_message(false, '${SLOT_MESSAGE_PREFIX}', '')`,
-    'message.prefix.exclude.list': `${SLOT_MESSAGE_PREFIX}.*`,
+    // Allow-list, not deny-list: no logical-decoding message is ever emitted.
+    // With only the heartbeat excluded, any other prefix (a manual check, an
+    // extension) was routed to ld.<env>.cdc-source.message, which ld-connect
+    // may not write, and killed the task (production, 2026-10-25 13:04 UTC).
+    // The heartbeat is still consumed and advances the offset (drill.sh step).
+    'message.prefix.include.list': MESSAGE_PREFIX_NONE,
   }
 }
 

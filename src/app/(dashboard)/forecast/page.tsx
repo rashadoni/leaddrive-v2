@@ -137,28 +137,28 @@ export default function ForecastPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MotionCard className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card">
+        <MotionCard className="p-4 rounded-xl border border-border bg-card">
           <div className="flex items-center gap-2 mb-2">
             <DollarSign className="h-4 w-4 text-emerald-500" />
             <span className="text-xs text-muted-foreground">{t("committed")}</span>
           </div>
           <p className="text-lg font-bold text-emerald-600">{fmtCurrencyCompact(totalCommitted)}</p>
         </MotionCard>
-        <MotionCard className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card">
+        <MotionCard className="p-4 rounded-xl border border-border bg-card">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="h-4 w-4 text-purple-500" />
             <span className="text-xs text-muted-foreground">{t("bestCase")}</span>
           </div>
           <p className="text-lg font-bold text-purple-600">{fmtCurrencyCompact(totalBestCase)}</p>
         </MotionCard>
-        <MotionCard className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card">
+        <MotionCard className="p-4 rounded-xl border border-border bg-card">
           <div className="flex items-center gap-2 mb-2">
             <BarChart3 className="h-4 w-4 text-slate-500" />
             <span className="text-xs text-muted-foreground">{t("pipelineWeighted")}</span>
           </div>
           <p className="text-lg font-bold">{fmtCurrencyCompact(totalPipeline)}</p>
         </MotionCard>
-        <MotionCard className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card">
+        <MotionCard className="p-4 rounded-xl border border-border bg-card">
           <div className="flex items-center gap-2 mb-2">
             <Target className="h-4 w-4 text-amber-500" />
             <span className="text-xs text-muted-foreground">{t("quota", { quarter: selectedQuarter })}</span>
@@ -169,7 +169,7 @@ export default function ForecastPage() {
       </div>
 
       {/* Forecast Chart */}
-      <MotionCard className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card">
+      <MotionCard className="p-4 rounded-xl border border-border bg-card">
         <h3 className="text-sm font-semibold mb-3">{t("revenueChart")}</h3>
         <ResponsiveContainer width="100%" height={280}>
           <AreaChart data={localizedForecast} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
@@ -201,7 +201,7 @@ export default function ForecastPage() {
 
       {/* By Rep: Quota vs Actual */}
       {quarterQuotas.length > 0 && (
-        <MotionCard className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card">
+        <MotionCard className="p-4 rounded-xl border border-border bg-card">
           <h3 className="text-sm font-semibold mb-3">{t("byManagers")} — Q{selectedQuarter} {year}</h3>
           <div className="space-y-3">
             {quarterQuotas.map(q => {
@@ -246,11 +246,11 @@ export default function ForecastPage() {
 
       {/* By Pipeline */}
       {pipelineData.length > 0 && (
-        <MotionCard className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card">
+        <MotionCard className="p-4 rounded-xl border border-border bg-card">
           <h3 className="text-sm font-semibold mb-3">{t("byPipelines")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {pipelineData.map(pl => (
-              <div key={pl.name} className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 space-y-2">
+              <div key={pl.name} className="rounded-lg border border-border p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold">{pl.name}</span>
                   <span className="text-[10px] text-muted-foreground">{pl.count} {t("deals")}</span>

@@ -87,7 +87,7 @@ export function WorkforceShiftSegmentEditor(props: {
   }
 
   return (
-    <fieldset className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700" data-testid="workforce-shift-segment-editor">
+    <fieldset className="mt-6 border-t border-border pt-6" data-testid="workforce-shift-segment-editor">
       <legend className="text-sm font-medium">{t("shiftSegments")}</legend>
       <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <p id="workforce-shift-segments-hint" className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("shiftSegmentsHint")}</p>
@@ -97,12 +97,12 @@ export function WorkforceShiftSegmentEditor(props: {
       </div>
 
       {props.segments.length === 0 ? (
-        <div className="mt-4 border-y border-dashed border-zinc-200 py-5 dark:border-zinc-700">
+        <div className="mt-4 border-y border-dashed border-border py-5">
           <p className="text-sm font-medium">{t("shiftSegmentsEmptyTitle")}</p>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("shiftSegmentsEmptyHint")}</p>
         </div>
       ) : (
-        <ol className="mt-4 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700" aria-describedby={props.validationIssue ? "workforce-shift-segments-hint workforce-shift-segments-error" : "workforce-shift-segments-hint"}>
+        <ol className="mt-4 divide-y divide-border border-y border-border" aria-describedby={props.validationIssue ? "workforce-shift-segments-hint workforce-shift-segments-error" : "workforce-shift-segments-hint"}>
           {props.segments.map((segment, index) => {
             const currentSite = segment.siteId == null
               ? undefined
@@ -180,7 +180,7 @@ export function WorkforceShiftSegmentSummary(props: {
   }
 
   return (
-    <ol className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+    <ol className="mt-3 divide-y divide-border border-y border-border">
       {props.segments.map((segment, index) => {
         const site = segment.siteId == null ? undefined : props.sites.find((candidate) => candidate.id === segment.siteId)
         return (

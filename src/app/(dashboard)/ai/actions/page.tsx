@@ -900,7 +900,7 @@ function severityClasses(severity: AdvisorSignal["severity"]) {
   if (severity === "critical") return "border-red-300 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300"
   if (severity === "high") return "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
   if (severity === "medium") return "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300"
-  return "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+  return "border-border bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
 }
 
 function formatMoney(value: number, currency = "AZN") {

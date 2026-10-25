@@ -38,7 +38,7 @@ export function HomeSetupStrip({ steps }: { steps: readonly HomeSetupStep[] }) {
   return (
     // White with a border and orange links, not a blue strip of pills
     // (owner-approved colours, 2026-10-18).
-    <div data-testid="mtm-home-setup" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-zinc-200 bg-card px-4 py-2.5 text-sm text-foreground dark:border-zinc-700">
+    <div data-testid="mtm-home-setup" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-border bg-card px-4 py-2.5 text-sm text-foreground">
       <Wrench className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="font-semibold">{t("setupTitle", { count: steps.length })}</span>
       {steps.map((step) => (
@@ -158,7 +158,7 @@ export function HomeBaseCard({ base, monthStart }: { base: HomeBase | null; mont
 
 function QualityRow({ testId, icon, tone, label, sub, value, hint }: { testId: string; icon: ReactNode; tone: HomeTone; label: string; sub: string; value: string; hint: string }) {
   return (
-    <li data-testid={testId} className="flex items-center gap-3 border-b border-zinc-100 py-2.5 last:border-b-0 dark:border-zinc-800">
+    <li data-testid={testId} className="flex items-center gap-3 border-b border-border py-2.5 last:border-b-0">
       <span className="flex h-9 w-6 shrink-0 items-center justify-center text-muted-foreground">{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold"><HintValue text={hint}>{label}</HintValue></p>

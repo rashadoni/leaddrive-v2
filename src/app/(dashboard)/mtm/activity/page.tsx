@@ -169,7 +169,7 @@ export default function MtmActivityPage() {
             onChange={(value) => { setType(value); setViolations(false) }} />
           <Hint text={t("hint.violations")}>
             <button type="button" data-testid="mtm-activity-violations" aria-pressed={violations} onClick={toggleViolations}
-              className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${violations ? "border-red-400 text-red-700 dark:border-red-500/50 dark:text-red-300" : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}>
+              className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${violations ? "border-red-400 text-red-700 dark:border-red-500/50 dark:text-red-300" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}>
               <ShieldAlert className="h-4 w-4" aria-hidden="true" />
               {t("violations")} ({kpi.totalViolations})
             </button>
@@ -181,7 +181,7 @@ export default function MtmActivityPage() {
       </div>
 
       {errorKey ? (
-        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm sm:flex-row sm:items-center">
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm sm:flex-row sm:items-center">
           <Lock className="h-5 w-5 shrink-0" aria-hidden="true" />
           <p className="min-w-0 flex-1">{tt(`accessError.${errorKey}`)}</p>
           {errorKey === "loadFailed" && (
@@ -191,13 +191,13 @@ export default function MtmActivityPage() {
       ) : loading ? (
         <div className="animate-pulse space-y-2">{[...Array(6)].map((_, i) => <div key={i} className="h-14 bg-muted rounded-lg" />)}</div>
       ) : logs.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">
+        <div className="h-48 flex items-center justify-center text-muted-foreground border border-border rounded-lg bg-card">
           {t("noActivity")}
         </div>
       ) : (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden">
+        <div className="rounded-lg border border-border bg-card overflow-hidden">
           {renderTimeline()}
-          <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-200 dark:border-zinc-700 text-xs text-muted-foreground">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border text-xs text-muted-foreground">
             <span>{t("showingOf", { shown: logs.length, total })}</span>
             {logs.length < total && (
               <Button size="sm" variant="outline" onClick={() => load(page + 1, true)} disabled={loadingMore}>
@@ -244,7 +244,7 @@ export default function MtmActivityPage() {
     return (
       <div
         onClick={clickable ? () => router.push(href!) : undefined}
-        className={`flex items-center gap-3 px-4 py-2.5 border-b last:border-0 border-zinc-100 dark:border-zinc-800 ${clickable ? "cursor-pointer hover:bg-muted/40" : ""}`}
+        className={`flex items-center gap-3 px-4 py-2.5 border-b last:border-0 border-border ${clickable ? "cursor-pointer hover:bg-muted/40" : ""}`}
       >
         {/* agent avatar / initials */}
         <Avatar name={log.actor?.name ?? log.agent?.name} avatar={log.actor ? null : log.agent?.avatar} />

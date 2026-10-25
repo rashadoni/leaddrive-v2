@@ -1891,7 +1891,7 @@ export default function ContractDetailPage() {
                     <select
                       value={lvl.mode}
                       onChange={(e) => updateLevel(lvlIdx, "mode", e.target.value as "all" | "any" | "quorum")}
-                      className="h-8 rounded border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="h-8 rounded border border-input bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
                     >
                       <option value="all">{t("approvalModeAllOption")}</option>
                       <option value="any">{t("approvalModeAnyOption")}</option>
@@ -2067,7 +2067,7 @@ export default function ContractDetailPage() {
                   <select
                     value={diffFrom}
                     onChange={(e) => setDiffFrom(e.target.value)}
-                    className="h-8 rounded border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="h-8 rounded border border-input bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="">{t("versionsSelectFrom")}</option>
                     {versions.map((v) => (
@@ -2081,7 +2081,7 @@ export default function ContractDetailPage() {
                   <select
                     value={diffTo}
                     onChange={(e) => setDiffTo(e.target.value)}
-                    className="h-8 rounded border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="h-8 rounded border border-input bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="">{t("versionsSelectTo")}</option>
                     {versions.map((v) => (
@@ -2123,7 +2123,7 @@ export default function ContractDetailPage() {
               <select
                 value={redlineFrom}
                 onChange={(e) => setRedlineFrom(e.target.value)}
-                className="h-8 rounded border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="h-8 rounded border border-input bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="">{t("versionsSelectFrom")}</option>
                 {versions.map((v) => (
@@ -2137,7 +2137,7 @@ export default function ContractDetailPage() {
               <select
                 value={redlineTo}
                 onChange={(e) => setRedlineTo(e.target.value)}
-                className="h-8 rounded border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="h-8 rounded border border-input bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="">{t("versionsSelectTo")}</option>
                 {versions.map((v) => (
@@ -2395,7 +2395,7 @@ export default function ContractDetailPage() {
                     <select
                       value={signer.role}
                       onChange={(e) => updateSigner(idx, "role", e.target.value)}
-                      className="h-8 rounded border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="h-8 rounded border border-input bg-card px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
                     >
                       <option value="signer">{t("esignRoleSigner")}</option>
                       <option value="cc">{t("esignRoleCc")}</option>

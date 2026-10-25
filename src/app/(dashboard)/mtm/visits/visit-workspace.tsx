@@ -430,7 +430,7 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
     const count = completedCounts.get(requirement.actionKey) ?? 0
     const done = count >= requirement.minCount
     return (
-      <div key={requirement.id} className="border-t border-zinc-200 py-4 first:border-t-0 dark:border-zinc-800">
+      <div key={requirement.id} className="border-t border-border py-4 first:border-t-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Icon className="h-4 w-4 text-muted-foreground" />
@@ -467,7 +467,7 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
         {!done && requirement.actionKey === "STOCK_CHECK" && (
           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_180px_120px_auto]">
             <Input value={stock.product} onChange={(event) => setStock({ ...stock, product: event.target.value })} placeholder={t("product")} className="h-9" />
-            <select value={stock.state} onChange={(event) => setStock({ ...stock, state: event.target.value })} className="h-9 rounded-md border border-zinc-200 bg-background px-2 text-sm dark:border-zinc-700"><option value="AVAILABLE">{t("available")}</option><option value="NOT_AVAILABLE">{t("notAvailable")}</option><option value="UNKNOWN">{t("unknown")}</option></select>
+            <select value={stock.state} onChange={(event) => setStock({ ...stock, state: event.target.value })} className="h-9 rounded-md border border-input bg-background px-2 text-sm"><option value="AVAILABLE">{t("available")}</option><option value="NOT_AVAILABLE">{t("notAvailable")}</option><option value="UNKNOWN">{t("unknown")}</option></select>
             <Input type="number" min={0} value={stock.quantity} onChange={(event) => setStock({ ...stock, quantity: event.target.value })} placeholder={t("quantity")} className="h-9" />
             <Hint wrap text={busy ? null : stock.product ? t("hint.saveStock") : t("hint.fillFirst")}><Button size="icon" className="h-9 w-9" disabled={!stock.product || busy} onClick={() => void saveAction("STOCK_CHECK", { ...stock, quantity: stock.quantity ? Number(stock.quantity) : null })} aria-label={t("saveAction")}><Save className="h-4 w-4" /></Button></Hint>
           </div>
@@ -492,12 +492,12 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
         <div className="text-right text-xs text-muted-foreground"><div className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" /> <HintValue text={t("hint.checkIn")}>{formatDateTime(new Date(data.visit.checkInAt), locale)}</HintValue></div>{data.visit.requirementSnapshot?.sourcePolicy?.name && <div className="mt-1"><HintValue text={t("hint.policy")}>{data.visit.requirementSnapshot.sourcePolicy.name}</HintValue></div>}</div>
       </div>
 
-      {!online && <div className="mt-4 flex items-center gap-2 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-sm"><AlertCircle className="h-4 w-4" /> {t("offlineDraft")}</div>}
+      {!online && <div className="mt-4 flex items-center gap-2 rounded-md border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-sm"><AlertCircle className="h-4 w-4" /> {t("offlineDraft")}</div>}
 
       <div className="mt-6 grid gap-7 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-7">
           <div><h3 className="text-sm font-semibold">{t("requiredActions")}</h3><div className="mt-2">{required.length ? required.map(actionRow) : <p className="py-3 text-sm text-muted-foreground">{t("noRequiredActions")}</p>}</div></div>
-          {optional.length > 0 && <details className="group"><summary className="flex cursor-pointer list-none items-center justify-between border-y border-zinc-200 py-3 text-sm font-semibold dark:border-zinc-800">{t("optionalActions")}<ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary><div>{optional.map(actionRow)}</div></details>}
+          {optional.length > 0 && <details className="group"><summary className="flex cursor-pointer list-none items-center justify-between border-y border-border py-3 text-sm font-semibold">{t("optionalActions")}<ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary><div>{optional.map(actionRow)}</div></details>}
 
           <div className="space-y-3">
             <h3 className="text-sm font-semibold">{t("visitResult")}</h3>
@@ -507,17 +507,17 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
                 : t("resultNotSaved")}
             </p>
             {draftRestored && (
-              <p role="status" className="rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-xs">
+              <p role="status" className="rounded-md border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-xs">
                 {t("localDraftNotice")}
               </p>
             )}
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1"><HintValue text={visibleActions.has("NEXT_ACTION") ? t("hint.outcomeWithReschedule") : t("hint.outcome")} className="text-xs text-muted-foreground">{t("outcome")}</HintValue><select value={result.outcome} onChange={(event) => setResult({ ...result, outcome: event.target.value })} className="h-10 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700"><option value="">{t("selectOutcome")}</option>{["SUCCESSFUL", "PARTIAL", "NO_CONTACT", ...(visibleActions.has("NEXT_ACTION") ? ["RESCHEDULE"] : [])].map((value) => <option key={value} value={value}>{t(`outcomes.${value}`)}</option>)}</select></label>
-              <label className="space-y-1"><HintValue text={t("hint.potential")} className="text-xs text-muted-foreground">{t("potential")}</HintValue><select value={result.potential} onChange={(event) => setResult({ ...result, potential: event.target.value })} className="h-10 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700">{["HIGH", "MEDIUM", "LOW", "UNKNOWN"].map((value) => <option key={value} value={value}>{t(`potentials.${value}`)}</option>)}</select></label>
+              <label className="space-y-1"><HintValue text={visibleActions.has("NEXT_ACTION") ? t("hint.outcomeWithReschedule") : t("hint.outcome")} className="text-xs text-muted-foreground">{t("outcome")}</HintValue><select value={result.outcome} onChange={(event) => setResult({ ...result, outcome: event.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">{t("selectOutcome")}</option>{["SUCCESSFUL", "PARTIAL", "NO_CONTACT", ...(visibleActions.has("NEXT_ACTION") ? ["RESCHEDULE"] : [])].map((value) => <option key={value} value={value}>{t(`outcomes.${value}`)}</option>)}</select></label>
+              <label className="space-y-1"><HintValue text={t("hint.potential")} className="text-xs text-muted-foreground">{t("potential")}</HintValue><select value={result.potential} onChange={(event) => setResult({ ...result, potential: event.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">{["HIGH", "MEDIUM", "LOW", "UNKNOWN"].map((value) => <option key={value} value={value}>{t(`potentials.${value}`)}</option>)}</select></label>
             </div>
-            {visibleActions.has("VISIT_NOTE") && <><Input value={result.discussedTopics} onChange={(event) => setResult({ ...result, discussedTopics: event.target.value })} placeholder={t("topicsPlaceholder")} /><textarea value={result.finalNote} onChange={(event) => setResult({ ...result, finalNote: event.target.value })} placeholder={t("notePlaceholder")} className="min-h-24 w-full rounded-md border border-zinc-200 bg-background p-3 text-sm dark:border-zinc-700" /></>}
-            {visibleActions.has("FEEDBACK") && <textarea value={result.feedback} onChange={(event) => setResult({ ...result, feedback: event.target.value })} placeholder={t("feedbackPlaceholder")} className="min-h-20 w-full rounded-md border border-zinc-200 bg-background p-3 text-sm dark:border-zinc-700" />}
-            {visibleActions.has("NEXT_ACTION") && <div className="grid gap-2 sm:grid-cols-[1fr_190px_140px]"><Input value={result.nextActionTitle} onChange={(event) => setResult({ ...result, nextActionTitle: event.target.value })} placeholder={t("nextActionPlaceholder")} /><Input type="datetime-local" value={result.nextActionDueDate} onChange={(event) => setResult({ ...result, nextActionDueDate: event.target.value })} /><select value={result.nextActionPriority} onChange={(event) => setResult({ ...result, nextActionPriority: event.target.value })} className="h-10 rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700">{["LOW", "MEDIUM", "HIGH", "URGENT"].map((value) => <option key={value} value={value}>{t(`priorities.${value}`)}</option>)}</select></div>}
+            {visibleActions.has("VISIT_NOTE") && <><Input value={result.discussedTopics} onChange={(event) => setResult({ ...result, discussedTopics: event.target.value })} placeholder={t("topicsPlaceholder")} /><textarea value={result.finalNote} onChange={(event) => setResult({ ...result, finalNote: event.target.value })} placeholder={t("notePlaceholder")} className="min-h-24 w-full rounded-md border border-input bg-background p-3 text-sm" /></>}
+            {visibleActions.has("FEEDBACK") && <textarea value={result.feedback} onChange={(event) => setResult({ ...result, feedback: event.target.value })} placeholder={t("feedbackPlaceholder")} className="min-h-20 w-full rounded-md border border-input bg-background p-3 text-sm" />}
+            {visibleActions.has("NEXT_ACTION") && <div className="grid gap-2 sm:grid-cols-[1fr_190px_140px]"><Input value={result.nextActionTitle} onChange={(event) => setResult({ ...result, nextActionTitle: event.target.value })} placeholder={t("nextActionPlaceholder")} /><Input type="datetime-local" value={result.nextActionDueDate} onChange={(event) => setResult({ ...result, nextActionDueDate: event.target.value })} /><select value={result.nextActionPriority} onChange={(event) => setResult({ ...result, nextActionPriority: event.target.value })} className="h-10 rounded-md border border-input bg-background px-3 text-sm">{["LOW", "MEDIUM", "HIGH", "URGENT"].map((value) => <option key={value} value={value}>{t(`priorities.${value}`)}</option>)}</select></div>}
             <Hint wrap text={busy ? null : online ? t("hint.saveResult") : t("hint.saveResultOffline")}><Button variant="outline" size="sm" disabled={busy || !online} onClick={() => { setBusy(true); saveResult().then(() => { toast.success(t("resultSaved")); return load() }).catch((error) => toast.error(error instanceof Error ? error.message : t("resultFailed"))).finally(() => setBusy(false)) }}><Save className="mr-1 h-4 w-4" /> {t("saveDraft")}</Button></Hint>
           </div>
         </div>
@@ -525,7 +525,7 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
         <aside className="space-y-6">
           <div>
             <h3 className="text-sm font-semibold"><HintValue text={t("hint.reminders")}>{t("reminders")}</HintValue></h3>
-            <div className="mt-2 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+            <div className="mt-2 divide-y divide-border border-y border-border">
               {data.reminders.length ? data.reminders.slice(0, REMINDER_PREVIEW_LIMIT).map((reminder) => (
                 <div key={reminder.id} className="py-3">
                   <div className="flex items-start justify-between gap-2">
@@ -554,7 +554,7 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
         </aside>
       </div>
 
-      <div className="sticky bottom-0 z-10 mt-6 border-t border-zinc-200 bg-card/95 py-3 backdrop-blur-sm dark:border-zinc-800">
+      <div className="sticky bottom-0 z-10 mt-6 border-t border-border bg-card/95 py-3 backdrop-blur-sm">
         {missing.length > 0 && <div className="mb-2 flex flex-wrap gap-2">{missing.map((item) => <HintValue key={item.actionKey} text={t("hint.missing")} className="rounded-md px-2 py-1 text-xs text-rose-700 dark:text-rose-300">{t(`actions.${item.actionKey}`)} {item.completedCount}/{item.requiredCount}</HintValue>)}</div>}
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">

@@ -27,7 +27,7 @@ export function Badge({ className, variant, children, ...props }: BadgeProps) {
   }
   // outline, default, secondary: a neutral label with a thin edge, no fill.
   return (
-    <div className={cn("inline-flex items-center rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs font-medium text-foreground dark:border-zinc-700", className)} {...props}>
+    <div className={cn("inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-foreground", className)} {...props}>
       {children}
     </div>
   )

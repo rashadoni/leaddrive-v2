@@ -346,7 +346,7 @@ export default function FieldPermissionsPage() {
           ) : (
             <div className="space-y-3">
               {rules.map(rule => (
-                <div key={rule.id} className="flex items-center justify-between p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+                <div key={rule.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
                   <div>
                     <div className="font-medium">{rule.name}</div>
                     <div className="text-sm text-muted-foreground">

@@ -369,7 +369,7 @@ function ChannelToggles({ channels, channelList, onToggle, label }: {
               <p className="text-sm font-medium">{label}</p>
               <p className={`text-xs ${warn ? "font-medium text-amber-600" : "text-muted-foreground"}`}>{desc}</p>
             </div>
-            <input type="checkbox" checked={channels.includes(key)} onChange={() => onToggle(key)} className="rounded border-zinc-200 dark:border-zinc-700 w-4 h-4" />
+            <input type="checkbox" checked={channels.includes(key)} onChange={() => onToggle(key)} className="rounded border-input w-4 h-4" />
           </label>
         ))}
       </div>

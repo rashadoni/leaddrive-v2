@@ -249,7 +249,7 @@ function DefinitionRow({
   hint?: string | null
 }) {
   return (
-    <div className={cn("grid gap-1 border-b border-zinc-200 py-3 last:border-0 dark:border-zinc-700 sm:grid-cols-[10.5rem_minmax(0,1fr)] sm:gap-4", className)}>
+    <div className={cn("grid gap-1 border-b border-border py-3 last:border-0 sm:grid-cols-[10.5rem_minmax(0,1fr)] sm:gap-4", className)}>
       <dt className="text-xs font-medium text-muted-foreground"><HintValue text={hint}>{label}</HintValue></dt>
       <dd className="min-w-0 text-sm">{value || "—"}</dd>
     </div>
@@ -501,7 +501,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         ) : null}
       </div>
 
-      <header className="overflow-hidden rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
+      <header className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-7">
           <div className="grid min-w-0 gap-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -621,7 +621,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
 
         <TabsContent value="details">
           <div className={cn("grid gap-5", referenceRows.length || coordinateVerification ? "xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]" : null)}>
-            <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+            <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
               <h2 className="text-base font-semibold">{t("detail.contactDetails")}</h2>
               <dl className="mt-2">
                 <DefinitionRow label={t("detail.contactPerson")} value={summary.contactPerson} />
@@ -638,7 +638,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
             </section>
 
             {referenceRows.length || coordinateVerification ? <div className="grid content-start gap-5">
-              {referenceRows.length ? <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+              {referenceRows.length ? <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
                 <h2 className="text-base font-semibold">{t("detail.additionalDetails")}</h2>
                 <dl className="mt-2">
                   {referenceRows.map((row) => (
@@ -647,7 +647,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                 </dl>
               </section> : null}
 
-              {coordinateVerification ? <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+              {coordinateVerification ? <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-base font-semibold">{t("detail.coordinateQuality")}</h2>
@@ -681,7 +681,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                   </Hint>
                 ) : null}
                 {canManage && hasCoordinates ? (
-                  <div className="mt-4 grid gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                  <div className="mt-4 grid gap-2 border-t border-border pt-4">
                     <input
                       value={coordinateSource}
                       onChange={(event) => setCoordinateSource(event.target.value)}
@@ -707,7 +707,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               </section> : null}
             </div> : null}
           </div>
-          {showCommercial ? <section className="mt-5 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+          {showCommercial ? <section className="mt-5 rounded-2xl border border-border bg-card p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold">{t("detail.commercialTitle")}</h2>
@@ -730,7 +730,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
           <SectionFrame title={t("detail.contactsTitle")} description={t("detail.contactsDescription")}>
             <SectionState loading={sectionLoading === "contacts"} error={sectionError} retry={() => void loadDetailSection("contacts")} t={t}>
               {contacts?.length ? (
-                <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                <div className="divide-y divide-border">
                   {contacts.map((workplace) => (
                     <article key={workplace.id} className="grid gap-3 py-4 first:pt-0 last:pb-0 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,0.55fr)]">
                       <div className="grid gap-1">
@@ -789,7 +789,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
             <SectionFrame title={t("detail.assignmentHistory")} description={t("detail.assignmentHistoryDescription")}>
               <SectionState loading={sectionLoading === "staff"} error={sectionError} retry={() => void loadDetailSection("staff")} t={t}>
                 {canManage ? (
-                  <div className="mb-4 flex flex-wrap gap-2 border-b border-zinc-200 pb-4 dark:border-zinc-700">
+                  <div className="mb-4 flex flex-wrap gap-2 border-b border-border pb-4">
                     <Hint text={t("detail.hint.assign")}>
                       <Button asChild size="sm">
                         <Link href={`/mtm/customers?assignmentTarget=${encodeURIComponent(organizationId)}&assignmentMode=ASSIGN`}><UserPlus className="h-4 w-4" />{explorer("assign")}</Link>
@@ -803,7 +803,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                   </div>
                 ) : null}
                 {staff?.agentAssignments.length ? (
-                  <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                  <div className="divide-y divide-border">
                     {staff.agentAssignments.map((assignment) => (
                       <article key={assignment.id} className="grid gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]">
                         <div>
@@ -864,7 +864,7 @@ function SectionFrame({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+    <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="mb-5 grid gap-1">
         <h2 className="text-base font-semibold">{title}</h2>
         <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>

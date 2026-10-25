@@ -2,13 +2,13 @@
 
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import { Sun, Moon, Search, LogOut, Command, LayoutGrid, User } from "lucide-react"
+import { Sun, Moon, Search, LogOut, Command, LayoutGrid, User, Globe } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { signOutCallbackUrl } from "@/lib/tenant-domain"
 import { NotificationBell } from "@/components/notification-bell"
-import { LanguageSwitcher } from "@/components/language-switcher"
+import { LanguageSwitcher, LANGUAGE_CODES, LANGUAGE_KEYS, switchLocale } from "@/components/language-switcher"
 import { WallpaperSelector } from "@/components/wallpaper-selector"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -41,8 +41,9 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
   const tAuth = useTranslations("auth")
   const tNav = useTranslations("nav")
   const tProfile = useTranslations("profile")
+  const locale = useLocale()
   const pathname = usePathname()
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, resolvedTheme } = useTheme()
 
   // The NextAuth session doesn't carry the avatar URL, so the header fetches it
   // once on mount (the same /users/me the profile page uses). Falls back to the
@@ -70,11 +71,15 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
       data-session-ready={orgName && userName ? "true" : "false"}
       className="flex h-14 min-w-0 items-center justify-between gap-2 border-b border-zinc-200/40 bg-card px-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] backdrop-blur-xl dark:border-zinc-700/40 sm:px-4 lg:px-6"
     >
-      <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+      <div className="flex min-w-0 items-center gap-2 overflow-x-clip sm:gap-4">
+        {/* Below sm the organisation name moves into the user menu: next to
+            the phone's sidebar rail there is no room for it, and it was one of
+            the things pushing the avatar — the only way into the profile — off
+            the right edge of the screen. */}
         {orgName ? (
-          <span className="max-w-24 truncate text-sm font-semibold text-foreground sm:max-w-32 xl:max-w-none">{orgName}</span>
+          <span className="hidden max-w-24 truncate text-sm font-semibold text-foreground sm:inline sm:max-w-32 xl:max-w-none">{orgName}</span>
         ) : !sessionLoaded ? (
-          <span className="inline-block h-4 w-28 rounded bg-foreground/10 animate-pulse" aria-hidden="true" />
+          <span className="hidden h-4 w-28 rounded bg-foreground/10 animate-pulse sm:inline-block" aria-hidden="true" />
         ) : null}
 
         {/* Visible search bar — pill style */}
@@ -92,7 +97,7 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
           data-tour-id="app-launcher"
           title={`${tNav("allApps")} (⌘⇧K)`}
           aria-label={tNav("allApps")}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#c2410c] px-3 py-1.5 text-sm font-medium text-white shadow-sm ring-1 ring-black/10 transition-all hover:bg-[#9a3412] hover:shadow-md active:scale-[0.98] sm:px-3.5 cursor-pointer"
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm ring-1 ring-black/10 transition-all hover:bg-primary/90 hover:shadow-md active:scale-[0.98] sm:px-3.5 cursor-pointer" data-crm-button="default"
         >
           <LayoutGrid className="h-4 w-4" />
           <span className="hidden sm:inline">{tNav("allApps")}</span>
@@ -110,8 +115,14 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
             className="dashboard-welcome-help flex shrink-0 items-center gap-1"
             role="group"
           >
-            <TourReplayButton tourId="dashboard" />
-            <HelpButton slug="crm-dashboard" variant="label" />
+            {/* Below xl only a "?" icon for help: with their labels these two
+                were wider than the room left before the bell, and "Справка"
+                landed on top of the avatar — on a phone the profile could not
+                be opened at all (2026-10-25). The tour replay waits for xl:
+                as an icon it is a second identical "?". */}
+            <TourReplayButton tourId="dashboard" className="max-xl:hidden" />
+            <HelpButton slug="crm-dashboard" variant="label" className="max-xl:hidden" />
+            <HelpButton slug="crm-dashboard" variant="icon" className="xl:hidden" />
           </div>
         )}
       </div>
@@ -127,15 +138,20 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
         />
         <NotificationBell />
 
-        <LanguageSwitcher />
+        {/* Language, wallpaper and theme sit in the user menu below md (see
+            the menu), so on a phone the avatar always stays on screen. */}
+        <div className="hidden items-center gap-1 sm:gap-2 md:flex">
+          <LanguageSwitcher />
 
-        <WallpaperSelector />
+          <WallpaperSelector />
+        </div>
 
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           title="Toggle theme"
+          className="hidden md:inline-flex"
         >
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -178,7 +194,10 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
                     {initial}
                   </span>
                 )}
-                <span className="truncate text-sm font-medium">{userName}</span>
+                <div className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{userName}</span>
+                  {orgName ? <span className="block truncate text-xs text-muted-foreground">{orgName}</span> : null}
+                </div>
               </div>
 
               <div className="my-1 h-px bg-zinc-200/60 dark:bg-zinc-700/60" />
@@ -192,6 +211,50 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
                   {tProfile("myProfile")}
                 </Link>
               </PopoverClose>
+
+              {/* Phone-only: the header has no room for these three. */}
+              <div className="md:hidden">
+                <div className="my-1 h-px bg-zinc-200/60 dark:bg-zinc-700/60" />
+                <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+                  <span className="flex items-center gap-2 text-sm text-foreground">
+                    <Globe className="h-4 w-4" />
+                    {t("language")}
+                  </span>
+                  <div className="flex gap-1">
+                    {LANGUAGE_CODES.map((code) => (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => switchLocale(code)}
+                        title={t(LANGUAGE_KEYS[code])}
+                        aria-pressed={code === locale}
+                        className={`min-h-8 rounded-md px-2 text-xs font-medium uppercase transition-colors ${
+                          code === locale ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/60"
+                        }`}
+                      >
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                  className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-sm text-foreground transition-colors hover:bg-muted/60"
+                >
+                  <span className="flex items-center gap-2">
+                    {resolvedTheme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                    {tProfile("theme")}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {resolvedTheme === "dark" ? tProfile("themeDark") : tProfile("themeLight")}
+                  </span>
+                </button>
+                <div className="flex items-center justify-between gap-2 px-2 py-0.5">
+                  <span className="pl-6 text-sm text-foreground">{t("wallpaper")}</span>
+                  <WallpaperSelector />
+                </div>
+              </div>
 
               <div className="my-1 h-px bg-zinc-200/60 dark:bg-zinc-700/60" />
 

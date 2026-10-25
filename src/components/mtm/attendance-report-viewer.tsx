@@ -28,7 +28,7 @@ const shiftMonth = (range: Range, step: number) => {
   const [year, month] = range.from.slice(0, 7).split("-").map(Number)
   return monthOf(new Date(Date.UTC(year, month - 1 + step, 1, 12)).toISOString().slice(0, 10))
 }
-const SELECT = "min-h-10 min-w-44 rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
+const SELECT = "min-h-10 min-w-44 rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 
 /**
  * One Personnel report: its period, team, the table and Excel/PDF of the same snapshot.

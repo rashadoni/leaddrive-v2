@@ -353,7 +353,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
                   {contact.assignedHere && off ? (
                     <span className="text-[11px] font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
                   ) : contact.assignedHere ? (
-                    <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
+                    <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
                   ) : contact.agents.length > 0 ? (
                     <Hint text={t("clientsAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") })}>
                       <span tabIndex={0} className="block truncate text-[11px] font-semibold text-violet-700 dark:text-violet-300">
@@ -378,7 +378,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
             </button>
           ) : null}
 
-          <p className="flex items-start gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
+          <p className="flex items-start gap-2 rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
               {t("clientsNote", { count: chosen.length })}

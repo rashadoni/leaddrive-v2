@@ -493,21 +493,26 @@ const authMiddleware = auth(async (req) => {
     const xtSession = req.auth as any
     const xtSessionSlug = xtSession?.user?.organizationSlug as string | undefined
     if (xtSessionSlug !== tenantSlug) {
-      const proto = req.headers.get("x-forwarded-proto") || "https"
-      const loginUrl = new URL("/login", `${proto}://${host}`)
-      loginUrl.searchParams.set("error", "cross-tenant")
-      const response = NextResponse.redirect(loginUrl)
-      const cookieName = process.env.NODE_ENV === "production"
-        ? "__Secure-authjs.session-token"
-        : "authjs.session-token"
-      response.cookies.set(cookieName, "", {
-        expires: new Date(0),
-        path: "/",
-        domain: process.env.COOKIE_DOMAIN || undefined,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        httpOnly: true,
-      })
+      // Refuse, but leave the cookie alone. It is shared across
+      // *.leaddrivecrm.org and holds the session of the tenant the person
+      // signed into LAST. Clearing it here signed them out of that tenant
+      // whenever a tab of the previous one was still open: its background
+      // polls (/api/v1/notifications, every few seconds) arrived here and
+      // wiped the new session. Production, 2026-10-25 15:32–15:42 UTC: four
+      // successful Zeytun sign-ins, each undone within seconds by
+      // `session-slug=zeytun host-slug=leaddrive path=/api/v1/notifications`;
+      // the owner saw it as "the password changed". The refusal alone keeps
+      // tenant X's session out of tenant Y's data; signing in on Y replaces
+      // the cookie anyway.
+      let response: NextResponse
+      if (pathname.startsWith("/api/")) {
+        response = NextResponse.json({ error: "Unauthorized", code: SESSION_EXPIRED_CODE }, { status: 401 })
+      } else {
+        const proto = req.headers.get("x-forwarded-proto") || "https"
+        const loginUrl = new URL("/login", `${proto}://${host}`)
+        loginUrl.searchParams.set("error", "cross-tenant")
+        response = NextResponse.redirect(loginUrl)
+      }
       // The path without anybody's link in it: a page opened by a token in
       // its address (/share/location/<token>) must not leave that token here.
       console.warn(

@@ -173,7 +173,7 @@ function DataTile({
   explain?: string | null
 }) {
   return (
-    <div className="grid min-w-0 gap-1 rounded-xl border border-zinc-200 bg-background p-3 dark:border-zinc-700">
+    <div className="grid min-w-0 gap-1 rounded-xl border border-border bg-background p-3">
       <span className="text-xs font-medium text-muted-foreground"><HintValue text={explain}>{label}</HintValue></span>
       <span className="break-words text-sm font-semibold tabular-nums">{value ?? "—"}</span>
       {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
@@ -194,7 +194,7 @@ function PanelSection({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+    <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="flex items-start gap-3">
         <div className="p-2 text-muted-foreground">
           <Icon className="h-5 w-5" />
@@ -384,7 +384,7 @@ export function MtmContactScoringPanel({
   return (
     <div className="grid gap-5">
       {(canAssess || canRecordPotential) ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
           <div className="grid gap-1">
             <h2 className="font-semibold">{t("lifecycleActionsTitle")}</h2>
             {nothingRecorded ? <p className="text-sm text-muted-foreground">{t("nothingRecorded")}</p> : null}
@@ -598,7 +598,7 @@ function AssessmentCard({
   return (
     <article className={cn(
       "grid gap-4 rounded-2xl border p-4",
-      current ? "border-primary/30 bg-primary/[0.035]" : "border-zinc-200 dark:border-zinc-700",
+      current ? "border-primary/30 bg-primary/[0.035]" : "border-border",
     )}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
@@ -634,7 +634,7 @@ function AssessmentCard({
       </div>
 
       {glossarySnapshot ? (
-        <details className="rounded-xl border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500">
+        <details className="rounded-xl border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500">
           <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-emerald-900 dark:text-emerald-200">
             <ShieldCheck className="mr-1.5 inline h-4 w-4" />
             {t("governedGlossaryTitle")}
@@ -698,7 +698,7 @@ function PotentialCard({
   return (
     <article className={cn(
       "grid gap-4 rounded-2xl border p-4",
-      current ? "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500" : "border-zinc-200 dark:border-zinc-700",
+      current ? "border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500" : "border-border",
     )}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
@@ -755,7 +755,7 @@ function PotentialCard({
           <span className="flex items-center gap-2 text-xs font-semibold"><Link2 className="h-4 w-4" /><HintValue text={t("hint.evidenceVisits")}>{t("evidenceVisits", { count: potential.evidenceVisits.length })}</HintValue></span>
           <div className="grid gap-2">
             {potential.evidenceVisits.map(({ visit }) => (
-              <div key={visit.id} className="flex flex-wrap justify-between gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700">
+              <div key={visit.id} className="flex flex-wrap justify-between gap-2 rounded-lg border border-border px-3 py-2 text-xs">
                 <span>{visit.customer.name}</span>
                 <span className="text-muted-foreground">{visit.checkInAt ? dateTimeFormatter.format(new Date(visit.checkInAt)) : t("dateMissing")}</span>
               </div>
@@ -795,7 +795,7 @@ function ProvenanceRows({
   t: ReturnType<typeof useTranslations>
 }) {
   return (
-    <details className="rounded-xl border border-zinc-200 p-3 text-xs dark:border-zinc-700">
+    <details className="rounded-xl border border-border p-3 text-xs">
       <summary className="cursor-pointer font-semibold">{t("provenance")}</summary>
       <dl className="mt-3 grid gap-2">
         {rows.map(([key, value]) => (

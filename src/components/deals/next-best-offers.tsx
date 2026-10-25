@@ -113,10 +113,10 @@ export function NextBestOffers({ dealId, orgId }: { dealId: string; orgId?: stri
               <div
                 key={product.id}
                 onClick={() => setSelected(product)}
-                className="flex items-start gap-3 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-gradient-to-r from-amber-50/30 to-orange-50/30 hover:shadow-md hover:border-amber-200 transition-all cursor-pointer group"
+                className="flex items-start gap-3 p-2.5 rounded-lg border border-border bg-card hover:shadow-sm hover:border-foreground/25 transition-all cursor-pointer group"
               >
-                <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                  <Package className="h-5 w-5 text-amber-600" />
+                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                  <Package className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">

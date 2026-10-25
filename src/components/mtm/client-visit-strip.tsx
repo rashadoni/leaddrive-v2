@@ -157,7 +157,7 @@ export function MtmClientVisitStrip({ kind, summary, longOpenMinutes, timezone, 
       ), nextCell]
     : [lastCell, openCell ?? nextCell, clientsCell ?? (openCell ? nextCell : null)]
   return (
-    <div data-testid="mtm-client-visit-strip" className="grid divide-y divide-zinc-200 border-t border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700 md:grid-cols-3 md:divide-x md:divide-y-0">
+    <div data-testid="mtm-client-visit-strip" className="grid divide-y divide-border border-t border-border md:grid-cols-3 md:divide-x md:divide-y-0">
       {cells.filter(Boolean).map((cell, index) => <div key={index} className="contents">{cell}</div>)}
     </div>
   )
@@ -176,15 +176,15 @@ export function MtmClientVisitList({ kind, visits, total, longOpenMinutes, timez
   const now = useMinuteClock()
   const openFor = useOpenForText()
   return (
-    <section data-testid="mtm-client-visit-list" className="rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-100 px-5 py-3 dark:border-zinc-800">
+    <section data-testid="mtm-client-visit-list" className="rounded-2xl border border-border bg-card">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
         <h2 className="text-[15px] font-semibold">{title ?? t("listTitle", { count: total })}</h2>
         {total > visits.length ? <span className="text-xs text-muted-foreground">{t("listLatest", { count: visits.length })}</span> : null}
       </div>
       {visits.length === 0 ? (
         <p className="px-5 py-4 text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
-        <ol className="divide-y divide-zinc-100 dark:divide-zinc-800">
+        <ol className="divide-y divide-border">
           {visits.map((visit) => {
             const leftOpen = isMtmVisitLeftOpen(visit, now, longOpenMinutes)
             return (

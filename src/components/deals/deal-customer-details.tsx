@@ -72,7 +72,7 @@ export function DealCustomerDetails({
   const cards = (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {contact && (
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3.5 flex gap-3 min-w-0">
+          <div className="rounded-lg border border-border p-3.5 flex gap-3 min-w-0">
             <div className="h-11 w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
               {contact.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -105,7 +105,7 @@ export function DealCustomerDetails({
         )}
 
         {company && (
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3.5 flex gap-3 min-w-0">
+          <div className="rounded-lg border border-border p-3.5 flex gap-3 min-w-0">
             <div className="h-11 w-11 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
               <Building2 className="h-5 w-5" />
             </div>
@@ -146,7 +146,7 @@ export function DealCustomerDetails({
   if (bare) return cards
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-sm font-semibold mb-3">{t("customerDetails")}</p>
       {cards}
     </div>

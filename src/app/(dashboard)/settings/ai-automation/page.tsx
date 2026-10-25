@@ -500,15 +500,15 @@ export default function AiAutomationPage() {
       </div>
 
       {/* Hero: how AI works */}
-      <Card data-tour-id="ai-hero" className="mb-6 border-primary/15 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent">
+      <Card data-tour-id="ai-hero" className="mb-6 border-border bg-card text-card-foreground">
         <CardContent className="pt-5">
           <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             {t("heroHowItWorks")}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="flex gap-3 p-3 rounded-lg bg-blue-50/70 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40">
-              <div className="shrink-0 h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
-                <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <div className="flex gap-3 p-3 rounded-lg bg-card border border-border">
+              <div className="shrink-0 h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                <Eye className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 mb-1 flex-wrap">
@@ -521,9 +521,9 @@ export default function AiAutomationPage() {
               </div>
             </div>
 
-            <div className="flex gap-3 p-3 rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40">
-              <div className="shrink-0 h-9 w-9 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
-                <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <div className="flex gap-3 p-3 rounded-lg bg-card border border-border">
+              <div className="shrink-0 h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                <Shield className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 mb-1 flex-wrap">
@@ -536,14 +536,14 @@ export default function AiAutomationPage() {
               </div>
             </div>
 
-            <div className="flex gap-3 p-3 rounded-lg bg-violet-50/70 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/40">
-              <div className="shrink-0 h-9 w-9 rounded-full bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center">
-                <Bot className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <div className="flex gap-3 p-3 rounded-lg bg-card border border-border">
+              <div className="shrink-0 h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                <Bot className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                   <p className="text-sm font-semibold text-foreground">{t("heroLiveTitle")}</p>
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400">
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-foreground">
                     {t("heroBadgeAuto")}
                   </span>
                 </div>
@@ -559,7 +559,7 @@ export default function AiAutomationPage() {
         <Card className="mb-6">
           <CardContent className="pt-5">
             <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-3">
-              <Sparkles className="h-4 w-4 text-violet-500" />
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
               {t("statsTitle")}
             </h3>
             {stats.approvedThisMonth === 0 && stats.rejectedThisMonth === 0 && stats.pending === 0 ? (
@@ -653,7 +653,7 @@ export default function AiAutomationPage() {
                 min="0.5"
                 value={budgetLimit}
                 onChange={e => setBudgetLimit(e.target.value)}
-                className="h-7 w-20 text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 bg-background"
+                className="h-7 w-20 text-xs border border-input rounded px-2 bg-background"
               />
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={saveBudgetLimit} disabled={savingBudget}>
                 {savingBudget ? "..." : t("save")}
@@ -674,7 +674,7 @@ export default function AiAutomationPage() {
                     min="1"
                     value={aiLimits[key]}
                     onChange={(e) => setAiLimits((prev) => ({ ...prev, [key]: e.target.value }))}
-                    className="h-7 w-24 rounded border border-zinc-200 bg-background px-2 text-xs dark:border-zinc-700"
+                    className="h-7 w-24 rounded border border-input bg-background px-2 text-xs"
                   />
                 </label>
               ))}
@@ -734,14 +734,14 @@ export default function AiAutomationPage() {
                 placeholder="Bot Token"
                 value={delivery.telegramBotToken}
                 onChange={e => setDelivery(d => ({ ...d, telegramBotToken: e.target.value }))}
-                className="h-8 text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 bg-background"
+                className="h-8 text-xs border border-input rounded px-2 bg-background"
               />
               <input
                 type="text"
                 placeholder="Chat ID"
                 value={delivery.telegramChatId}
                 onChange={e => setDelivery(d => ({ ...d, telegramChatId: e.target.value }))}
-                className="h-8 text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 bg-background"
+                className="h-8 text-xs border border-input rounded px-2 bg-background"
               />
             </div>
           </div>
@@ -773,7 +773,7 @@ export default function AiAutomationPage() {
               placeholder="Webhook URL (https://hooks.slack.com/...)"
               value={delivery.slackWebhookUrl}
               onChange={e => setDelivery(d => ({ ...d, slackWebhookUrl: e.target.value }))}
-              className="h-8 w-full text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 bg-background"
+              className="h-8 w-full text-xs border border-input rounded px-2 bg-background"
             />
           </div>
 
@@ -974,7 +974,7 @@ export default function AiAutomationPage() {
                     <select
                       value={advisorDraft.maxAutonomyLevel}
                       onChange={(e) => setAdvisorDraft((draft) => ({ ...draft, maxAutonomyLevel: e.target.value as AdvisorSettingsPayload["settings"]["maxAutonomyLevel"] }))}
-                      className="h-9 w-full rounded border border-zinc-200 bg-background px-2 text-sm dark:border-zinc-700"
+                      className="h-9 w-full rounded border border-input bg-background px-2 text-sm"
                     >
                       {["L0", "L1", "L2", "L3", "L4"].map((level) => (
                         <option key={level} value={level}>{level}</option>
@@ -989,7 +989,7 @@ export default function AiAutomationPage() {
                       max="500"
                       value={advisorDraft.dailyLimit}
                       onChange={(e) => setAdvisorDraft((draft) => ({ ...draft, dailyLimit: e.target.value }))}
-                      className="h-9 w-full rounded border border-zinc-200 bg-background px-2 text-sm dark:border-zinc-700"
+                      className="h-9 w-full rounded border border-input bg-background px-2 text-sm"
                     />
                   </label>
                   <label className="space-y-1 text-xs text-muted-foreground">
@@ -1000,7 +1000,7 @@ export default function AiAutomationPage() {
                       max="100"
                       value={advisorDraft.actionTypeDailyLimit}
                       onChange={(e) => setAdvisorDraft((draft) => ({ ...draft, actionTypeDailyLimit: e.target.value }))}
-                      className="h-9 w-full rounded border border-zinc-200 bg-background px-2 text-sm dark:border-zinc-700"
+                      className="h-9 w-full rounded border border-input bg-background px-2 text-sm"
                     />
                   </label>
                 </div>
@@ -1152,7 +1152,7 @@ export default function AiAutomationPage() {
                   <div
                     key={f.key}
                     className={`rounded-lg border transition-colors ${
-                      f.enabled ? "bg-card border-zinc-200 dark:border-zinc-700" : "bg-muted/30 border-transparent"
+                      f.enabled ? "bg-card border-border" : "bg-muted/30 border-transparent"
                     }`}
                   >
                     <div className="flex items-center justify-between p-3">
@@ -1215,7 +1215,7 @@ export default function AiAutomationPage() {
                 if (!shadow || !live) return null
                 const Icon = s.icon
                 return (
-                  <div key={s.key} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-3.5">
+                  <div key={s.key} className="rounded-lg border border-border bg-card p-3.5">
                     <div className="flex items-start gap-2.5 mb-3">
                       <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${s.accent}`} />
                       <div className="min-w-0">
@@ -1253,13 +1253,13 @@ export default function AiAutomationPage() {
 
                       <div className={`flex items-center justify-between p-2.5 rounded-md transition-colors ${
                         live.enabled
-                          ? "bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-900/50"
+                          ? "bg-card border border-foreground/30"
                           : "bg-muted/40 border border-transparent"
                       }`}>
                         <div className="min-w-0 pr-2">
                           <div className="flex items-center gap-1.5">
-                            <Bot className="h-3 w-3 text-violet-600 dark:text-violet-400 shrink-0" />
-                            <span className="text-xs font-semibold text-violet-800 dark:text-violet-300">{t("modeAuto")}</span>
+                            <Bot className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-semibold text-foreground">{t("modeAuto")}</span>
                           </div>
                           <p className="text-[11px] text-muted-foreground mt-0.5">{t("modeAutoDesc")}</p>
                         </div>
@@ -1271,7 +1271,7 @@ export default function AiAutomationPage() {
                           {toggling === live.key ? (
                             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                           ) : live.enabled ? (
-                            <ToggleRight className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                            <ToggleRight className="h-6 w-6 text-foreground" />
                           ) : (
                             <ToggleLeft className="h-6 w-6 text-muted-foreground" />
                           )}

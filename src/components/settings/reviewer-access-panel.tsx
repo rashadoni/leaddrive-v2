@@ -145,7 +145,7 @@ export function ReviewerAccessPanel() {
   const kindLabel = (kind: string) => kind === "record" ? t("kindRecord") : kind === "file" ? t("kindFile") : t("kindList")
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700" data-testid="reviewer-access-panel">
+    <section className="rounded-xl border border-border bg-card p-4" data-testid="reviewer-access-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -163,7 +163,7 @@ export function ReviewerAccessPanel() {
       ) : grants.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
-        <ul className="mt-4 divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+        <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
           {grants.map((grant) => {
             const state = status(grant)
             return (
@@ -205,7 +205,7 @@ export function ReviewerAccessPanel() {
                         </thead>
                         <tbody>
                           {journal.map((row) => (
-                            <tr key={row.id} className="border-t border-zinc-200 dark:border-zinc-700">
+                            <tr key={row.id} className="border-t border-border">
                               <td className="py-1 pr-3 whitespace-nowrap">{formatTime(row.occurredAt)}</td>
                               <td className="py-1 pr-3">
                                 {t.has(`scopes.${row.section}` as never) ? t(`scopes.${row.section}` as never) : row.section} · {kindLabel(row.kind)}
@@ -361,7 +361,7 @@ function GrantDialog({
                       onChange={(e) => setModules((current) => e.target.checked
                         ? [...current, option.id]
                         : current.filter((id) => id !== option.id))}
-                      className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                      className="h-4 w-4 rounded border-input"
                     />
                     {option.label}
                   </label>

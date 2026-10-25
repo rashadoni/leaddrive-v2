@@ -29,7 +29,7 @@ export function ProjectSidebar({ project, getUserName }: ProjectSidebarProps) {
 
   return (
     <MotionCard>
-      <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] hover:shadow-md transition-all duration-200 p-5 space-y-4">
+      <div className="rounded-xl border border-border bg-card backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] hover:shadow-md transition-all duration-200 p-5 space-y-4">
         {/* Completion */}
         <div>
           <div className="flex items-center justify-between text-sm mb-1.5">
@@ -51,7 +51,7 @@ export function ProjectSidebar({ project, getUserName }: ProjectSidebarProps) {
         )}
 
         {/* Status + Priority */}
-        <div className="space-y-2.5 text-sm pb-3 border-b border-zinc-200/30 dark:border-zinc-700/30">
+        <div className="space-y-2.5 text-sm pb-3 border-b border-border">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">{t("status")}</span>
             <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", statusColors[project.status])}>{statusLabels[project.status]}</span>
@@ -63,7 +63,7 @@ export function ProjectSidebar({ project, getUserName }: ProjectSidebarProps) {
         </div>
 
         {/* Manager + Company */}
-        <div className="space-y-2.5 text-sm pb-3 border-b border-zinc-200/30 dark:border-zinc-700/30">
+        <div className="space-y-2.5 text-sm pb-3 border-b border-border">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">{t("manager")}</span>
             <span className="font-medium">{getUserName(project.managerId)}</span>
@@ -77,7 +77,7 @@ export function ProjectSidebar({ project, getUserName }: ProjectSidebarProps) {
         </div>
 
         {/* Dates */}
-        <div className="space-y-2.5 text-sm pb-3 border-b border-zinc-200/30 dark:border-zinc-700/30">
+        <div className="space-y-2.5 text-sm pb-3 border-b border-border">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">{t("startDate")}</span>
             <span className="text-sm">{formatDate(project.startDate, locale)}</span>
@@ -89,7 +89,7 @@ export function ProjectSidebar({ project, getUserName }: ProjectSidebarProps) {
         </div>
 
         {/* Budget */}
-        <div className="space-y-2.5 text-sm pb-3 border-b border-zinc-200/30 dark:border-zinc-700/30">
+        <div className="space-y-2.5 text-sm pb-3 border-b border-border">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">{t("budget")}</span>
             <span className="font-medium tabular-nums">{sym}{project.budget.toLocaleString()}</span>

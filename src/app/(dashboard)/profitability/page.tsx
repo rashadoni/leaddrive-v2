@@ -124,7 +124,7 @@ function CostBreakdown({ data }: { data: any }) {
             </span>
           </button>
           {expanded[sec.key] && sec.items.length > 0 && (
-            <div className="ml-11 mr-2 mb-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/20 overflow-hidden">
+            <div className="ml-11 mr-2 mb-3 rounded-lg border border-border bg-muted/20 overflow-hidden">
               {sec.items.map((item: any, i: number) =>
                 item.label === "_separator" ? (
                   <div key={i} className="border-t border-dashed mx-3" />

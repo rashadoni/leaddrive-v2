@@ -31,8 +31,9 @@ describe("lead detail responsive layout", () => {
   })
 
   it("wraps lead tabs instead of requiring horizontal scrolling", () => {
-    expect(source).toContain(
-      '<div className="flex flex-wrap gap-x-1 border-b">',
+    // Shared appearance markers may surround className without changing layout.
+    expect(source).toMatch(
+      /<div\b[^>]*\bclassName="flex flex-wrap gap-x-1 border-b"[^>]*>/,
     )
   })
 

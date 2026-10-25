@@ -555,7 +555,7 @@ export default function MtmSettingsPage() {
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `mtm-setting-error-${key}` : undefined}
           onChange={(e) => updateNumber(key, e.target.value)}
-          className={`w-24 rounded-md border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${error ? "border-destructive" : "border-zinc-200 dark:border-zinc-700"}`}
+          className={`w-24 rounded-md border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${error ? "border-destructive" : "border-input"}`}
         />
         {/* The unit used to live only in the screen-reader label and in a
             «(м)» glued to some titles; a number without it is a guess. */}
@@ -642,7 +642,7 @@ export default function MtmSettingsPage() {
           )}
         </div>
         {item.key === "maxPhotosPerVisit" && typeof settings.maxPhotosPerVisit === "number" && policyPhotoMinimum > settings.maxPhotosPerVisit ? (
-          <div data-testid="max-photos-policy-warning" role="status" className="flex items-start gap-2 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-xs">
+          <div data-testid="max-photos-policy-warning" role="status" className="flex items-start gap-2 rounded-md border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-xs">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>{ts("maxPhotosBelowPolicyMinimum")}</span>
           </div>
@@ -667,7 +667,7 @@ export default function MtmSettingsPage() {
     )
   }
 
-  const cardClass = "rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4"
+  const cardClass = "rounded-lg border border-border bg-card p-4"
 
   // Every tab is one grid of two equal columns (owner, 2026-10-08, shown a
   // half-width card with nothing beside it: «симметрично делай… половинчатые
@@ -711,9 +711,9 @@ export default function MtmSettingsPage() {
           компактнее… сама структура какая-то непонятная»). Every panel stays
           mounted and is only hidden, so an unsaved change in one tab is still
           there after a look at another. */}
-      <div role="tablist" aria-label={ts("tabsLabel")} className={MTM_TAB_ROW} data-testid="mtm-settings-tabs">
+      <div data-crm-tabs="" role="tablist" aria-label={ts("tabsLabel")} className={MTM_TAB_ROW} data-testid="mtm-settings-tabs">
         {SETTINGS_TABS.map((name) => (
-          <button
+          <button data-crm-tab="" data-state={tab === name ? "active" : "inactive"}
             key={name}
             type="button"
             role="tab"
@@ -790,7 +790,7 @@ export default function MtmSettingsPage() {
 
           {name === "admin" ? (
             <>
-              <details data-settings-group="groupAdvanced" className="group rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card">
+              <details data-settings-group="groupAdvanced" className="group rounded-lg border border-border bg-card">
                 <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold">
                   <Satellite className="h-4 w-4 text-muted-foreground" /> {ts(advancedGroup.titleKey)}
                   <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
@@ -811,7 +811,7 @@ export default function MtmSettingsPage() {
                 <details
                   data-settings-group="groupImplementerTools"
                   data-testid="mtm-settings-implementer-tools"
-                  className="group rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card"
+                  className="group rounded-lg border border-border bg-card"
                   onToggle={(event) => { if ((event.currentTarget as HTMLDetailsElement).open) setImplementerToolsOpened(true) }}
                 >
                   <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold">
@@ -845,7 +845,7 @@ export default function MtmSettingsPage() {
       <div
         data-testid="mtm-settings-save-bar"
         hidden={!dirty && !saving}
-        className="sticky bottom-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-card/95 px-4 py-2 shadow-sm backdrop-blur dark:border-zinc-700"
+        className="sticky bottom-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card/95 px-4 py-2 shadow-sm backdrop-blur"
       >
         <span role="status" aria-live="polite" className={`text-sm ${dirty ? "font-medium text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
           {dirty ? ts("dirtyIndicator") : ts("noChanges")}

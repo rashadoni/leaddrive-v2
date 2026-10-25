@@ -143,7 +143,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
     return (
       <div className="space-y-4" data-testid="mtm-agent-section">
         {back}
-        <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm">
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{error}</span>
         </div>
       </div>
@@ -169,7 +169,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
   return (
     <div className="space-y-4" data-testid="mtm-agent-section">
       {back}
-      <header className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+      <header className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-card p-4">
         <div className="flex min-w-0 items-start gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary" aria-hidden="true">{agent.name.charAt(0).toUpperCase()}</div>
           <div className="min-w-0">
@@ -225,7 +225,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
       {ratingsOpen && agent.role === "AGENT" ? (
         <MtmAgentEvaluations state={evaluations} />
       ) : view === "candidates" && !canReceiveClients ? (
-        <div className="flex items-start gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-4 text-sm" data-testid="mtm-agent-attach-unavailable">
+        <div className="flex items-start gap-2 rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-4 text-sm" data-testid="mtm-agent-attach-unavailable">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <div>
             <p className="font-medium">{t("attachUnavailableTitle")}</p>
@@ -235,7 +235,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
       ) : view === "candidates" ? (
         <div className="space-y-3">
           {forbidden ? null : (
-            <div role="radiogroup" aria-label={t("attachHow")} className="inline-flex flex-wrap gap-1 rounded-full border border-zinc-200 bg-muted/40 p-1 dark:border-zinc-700" data-testid="mtm-agent-attach-how">
+            <div role="radiogroup" aria-label={t("attachHow")} className="inline-flex flex-wrap gap-1 rounded-full border border-border bg-muted/40 p-1" data-testid="mtm-agent-attach-how">
               {([["place", ListFilter, "attachByPlace"], ["list", Search, "attachBySearch"]] as const).map(([key, Icon, label]) => (
                 <Hint key={key} text={t(key === "place" ? "hint.attachByPlace" : "hint.attachBySearch")}>
                   <button

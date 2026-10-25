@@ -109,8 +109,8 @@ export default function EventsPage() {
         </div>
         <div className="flex items-center gap-2">
           {/* Tab switcher */}
-          <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/50 p-0.5">
-            <button
+          <div data-crm-tabs="" className="flex items-center rounded-lg border border-border bg-muted/50 p-0.5">
+            <button data-crm-tab="" data-state={tab === "analytics" ? "active" : "inactive"}
               onClick={() => setTab("analytics")}
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
@@ -120,7 +120,7 @@ export default function EventsPage() {
               <BarChart3 className="h-4 w-4" />
               {tc("analytics")}
             </button>
-            <button
+            <button data-crm-tab="" data-state={tab === "list" ? "active" : "inactive"}
               onClick={() => setTab("list")}
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",

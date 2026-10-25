@@ -151,7 +151,7 @@ export default function ForecastSnapshotsPage() {
           <button
             onClick={takeSnapshot}
             disabled={taking}
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed" data-crm-button="default"
           >
             {taking ? (
               <>
@@ -183,7 +183,7 @@ export default function ForecastSnapshotsPage() {
           </MotionCard>
         )}
 
-        <MotionCard className="overflow-hidden border border-zinc-200 dark:border-zinc-700 rounded-lg">
+        <MotionCard className="overflow-hidden border border-border rounded-lg">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted/50">

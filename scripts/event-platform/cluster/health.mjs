@@ -12,14 +12,19 @@ export const LIMITS = Object.freeze({
   // WAL the CDC slot keeps on the production disk. The hard cap is
   // max_slot_wal_keep_size = 16GB; past it PostgreSQL drops the slot and the
   // connector must start over from a new snapshot.
-  slotRetainedWarnBytes: 1 * GiB,
-  slotRetainedCriticalBytes: 4 * GiB,
+  // Heartbeats confirm a position every minute, so a healthy slot holds a few
+  // MB; 256 MB means it stopped moving for most of a day (or longer than an
+  // hour of heavy writes), well before the cap.
+  slotRetainedWarnBytes: 256 * 1024 ** 2,
+  slotRetainedCriticalBytes: 2 * GiB,
   diskWarnPercent: 80,
   diskCriticalPercent: 90,
   // A voter or broker whose last fetch is this far behind the leader's is gone.
   fetchStaleMs: 30_000,
   tunnelStaleSeconds: 180,
   certWarnDays: 30,
+  // The backup watch passes every 5 minutes.
+  backupWatchStaleMs: 20 * 60_000,
 })
 
 const SITE_RU = {
@@ -142,6 +147,13 @@ export function evaluate({ topology, inventory, probes, cluster: clusterView }) 
       }
     }
     if (m.roles.includes(SOURCE_ROLE)) problems.push(...sourceProblems(data.source))
+    if (data.backupWatch) {
+      const age = data.time * 1000 - (data.backupWatch.lastPass ?? 0)
+      if (!data.backupWatch.lastPass || age > LIMITS.backupWatchStaleMs) {
+        problems.push(problem(`backup-watch:${m.name}`, 'warning', 'Не работает запасной сторож Kafka',
+          `Запасной сторож на ${label(m.name)} ${data.backupWatch.lastPass ? `не проверял ничего ${Math.round(age / 60_000)} мин` : 'ни разу не отработал'}. Если dev-бокс выключится, о Kafka никто не сообщит.`))
+      }
+    }
   }
 
   problems.push(...connectorProblems(members.filter((m) => m.roles.includes('connect')).map((m) => probes[m.name]).filter((p) => p?.ok)))

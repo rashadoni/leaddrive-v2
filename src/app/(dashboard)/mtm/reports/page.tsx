@@ -182,7 +182,7 @@ export default function MtmReportsPage() {
                 onClick={() => chooseReport(rt)}
                 className={`inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm transition-colors ${on
                   ? "border-primary bg-primary font-semibold text-primary-foreground"
-                  : count > 0 ? "border-zinc-200 bg-card font-medium hover:bg-muted/60 dark:border-zinc-700" : "border-dashed border-zinc-200 text-muted-foreground hover:bg-muted/40 dark:border-zinc-700"}`}
+                  : count > 0 ? "border-border bg-card font-medium hover:bg-muted/60" : "border-dashed border-border text-muted-foreground hover:bg-muted/40"}`}
               >
                 {t(`type_${rt}`)}
                 <span className={`rounded-full px-1.5 text-xs font-semibold tabular-nums ${on ? "bg-white/25" : "bg-muted"}`}>{count}</span>
@@ -209,7 +209,7 @@ export default function MtmReportsPage() {
               )}
 
               {/* Trend chart */}
-              <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+              <div className="rounded-lg border border-border bg-card p-4">
                 <h4 className="text-sm font-medium text-muted-foreground mb-3">{t("trend")}</h4>
                 <ResponsiveContainer width="100%" height={220}>
                   <AreaChart data={series} margin={{ top: 5, right: 12, bottom: 5, left: -12 }}>
@@ -230,9 +230,9 @@ export default function MtmReportsPage() {
 
               {/* Detail table */}
               {rows.length === 0 ? (
-                <div className="h-40 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{t("noData")}</div>
+                <div className="h-40 flex items-center justify-center text-muted-foreground border border-border rounded-lg bg-card">{t("noData")}</div>
               ) : (
-                <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden">
+                <div className="rounded-lg border border-border bg-card overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -259,7 +259,7 @@ export default function MtmReportsPage() {
                       </tbody>
                     </table>
                   </div>
-                  <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-200 dark:border-zinc-700 text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-border text-xs text-muted-foreground">
                     <span>{t("showingOf", { shown: rows.length, total })}</span>
                     {rows.length < total && (
                       <Button size="sm" variant="outline" onClick={() => loadReport(selected, page + 1, true)} disabled={loadingMore}>

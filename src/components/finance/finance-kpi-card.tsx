@@ -27,21 +27,17 @@ export function FinanceKpiCard({ title, value, plan, planLabel, sub, icon, color
   const isPositive = invertVariance ? (variancePct ?? 0) <= 0 : (variancePct ?? 0) >= 0
   const varianceColor = variancePct === 0 || variancePct === undefined ? "text-muted-foreground" : isPositive ? "text-green-600" : "text-red-600"
   const VarianceIcon = variancePct === 0 || variancePct === undefined ? Minus : isPositive ? TrendingUp : TrendingDown
+  const signalColor = ["#22c55e", "#ef4444", "#f59e0b"].includes(color.toLowerCase()) ? color : undefined
 
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-all duration-300"
-      style={{
-        background: `linear-gradient(135deg, ${color}08 0%, ${color}18 100%)`,
-        borderColor: `${color}20`,
-      }}
+      className="relative overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-300"
     >
-      <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl" style={{ backgroundColor: color }} />
       <div className="relative p-4 pt-5">
         <div className="flex justify-between items-start">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide leading-tight">{title}</p>
-            <p className="text-2xl font-bold mt-1 tabular-nums tracking-tight leading-none">
+            <p className="text-2xl font-bold mt-1 tabular-nums tracking-tight leading-none text-foreground">
               {fmt(value)} <span className="text-xs font-normal text-muted-foreground">{currency}</span>
             </p>
             {plan !== undefined && plan > 0 && (
@@ -57,7 +53,7 @@ export function FinanceKpiCard({ title, value, plan, planLabel, sub, icon, color
             )}
             {sub && <p className="text-[11px] text-muted-foreground mt-1 leading-tight">{sub}</p>}
           </div>
-          <div className="p-2.5 rounded-xl shrink-0 ml-2" style={{ color, backgroundColor: `${color}12` }}>{icon}</div>
+          <div className="p-2.5 rounded-xl bg-muted text-muted-foreground shrink-0 ml-2" style={{ color: signalColor }}>{icon}</div>
         </div>
       </div>
     </div>

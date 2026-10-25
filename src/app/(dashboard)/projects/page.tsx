@@ -333,19 +333,19 @@ export default function ProjectsPage() {
 
       {/* Filter pills */}
       <div className="flex flex-wrap gap-2">
-        <button
+        <button data-crm-filter="" data-state={activeFilter === "all" ? "active" : "inactive"}
           onClick={() => setFilter("all")}
           className={cn("px-3 py-1.5 text-sm rounded-full border transition-all duration-200",
-            activeFilter === "all" ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-background hover:bg-muted border-zinc-200 dark:border-zinc-700"
+            activeFilter === "all" ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-background hover:bg-muted border-border"
           )}>
           {t("allProjects")} ({total})
         </button>
         {(["planning", "active", "on_hold", "completed", "cancelled"] as const).map(key => (
           statusCounts[key] ? (
-            <button key={key}
+            <button data-crm-filter="" data-state={activeFilter === key ? "active" : "inactive"} key={key}
               onClick={() => setFilter(key)}
               className={cn("px-3 py-1.5 text-sm rounded-full border transition-all duration-200",
-                activeFilter === key ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-background hover:bg-muted border-zinc-200 dark:border-zinc-700"
+                activeFilter === key ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-background hover:bg-muted border-border"
               )}>
               {statusLabels[key]} ({statusCounts[key]})
             </button>
@@ -355,7 +355,7 @@ export default function ProjectsPage() {
 
       {/* Bulk actions */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-card/80 backdrop-blur-xl border border-zinc-200/60 dark:border-zinc-700/60 shadow-lg rounded-xl">
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-card/80 backdrop-blur-xl border border-border shadow-lg rounded-xl">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <select onChange={e => { if (e.target.value) handleBulkStatusChange(e.target.value); e.target.value = "" }}
             className="text-xs rounded-lg border border-input bg-background px-2 py-1.5">

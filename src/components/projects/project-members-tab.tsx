@@ -79,7 +79,7 @@ export function ProjectMembersTab({ projectId, members, users, currency, headers
       </div>
 
       {showForm && (
-        <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card p-4 space-y-3">
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("addMember")}</h3>
             <button onClick={() => setShowForm(false)} className="p-1 hover:bg-muted rounded transition-colors"><X className="h-4 w-4" /></button>
@@ -103,10 +103,10 @@ export function ProjectMembersTab({ projectId, members, users, currency, headers
       )}
 
       {members.length > 0 ? (
-        <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card overflow-hidden">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-200/40 dark:border-zinc-700/40 bg-primary/[0.03]">
+              <tr className="border-b border-border bg-primary/[0.03]">
                 <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("members")}</th>
                 <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("role")}</th>
                 <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("estimatedHours")}</th>
@@ -118,7 +118,7 @@ export function ProjectMembersTab({ projectId, members, users, currency, headers
               {members.map(m => {
                 const userName = getUserName(m.userId)
                 return (
-                  <tr key={m.id} className="border-b border-zinc-200 dark:border-zinc-700/20 hover:bg-muted/30 transition-colors">
+                  <tr key={m.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${getAvatarColor(userName)}`}>

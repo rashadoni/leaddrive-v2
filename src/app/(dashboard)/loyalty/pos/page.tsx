@@ -256,29 +256,29 @@ export default function LoyaltyPosPage() {
       )}
 
       {!member ? (
-        <MotionCard className="p-5 border border-zinc-200 dark:border-zinc-700 rounded-xl">
+        <MotionCard surface="card" className="p-5 border border-border rounded-xl">
           {scanning ? (
             <div className="space-y-3">
               <video ref={videoRef} className="w-full rounded-lg bg-black aspect-square object-cover" muted playsInline />
-              <button onClick={stopCamera} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm hover:bg-muted">
+              <button onClick={stopCamera} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 border border-border rounded-md text-sm hover:bg-muted">
                 <X className="w-4 h-4" /> {t("stopScan")}
               </button>
             </div>
           ) : (
             <div className="space-y-4">
               {cameraCapabilityChecked && cameraSupported && (
-                <button onClick={startCamera} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90">
+                <button onClick={startCamera} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90" data-crm-button="default">
                   <Camera className="w-5 h-5" /> {t("scanCamera")}
                 </button>
               )}
               {cameraCapabilityChecked && !cameraSupported && (
-                <div className="rounded-lg border border-dashed border-zinc-300 bg-muted/40 p-4 text-sm text-muted-foreground dark:border-zinc-700">
+                <div className="rounded-lg border border-dashed border-zinc-300 bg-muted/40 p-4 text-sm text-muted-foreground dark:border-border">
                   <p className="font-medium text-foreground">{t("errorCamera")}</p>
                   <p className="mt-1 text-xs leading-5">{t("cameraUnsupportedDesc")}</p>
                 </div>
               )}
               {cameraUnavailable && cameraSupported && (
-                <div className="rounded-lg border border-dashed border-zinc-300 bg-muted/40 p-4 text-sm text-muted-foreground dark:border-zinc-700">
+                <div className="rounded-lg border border-dashed border-zinc-300 bg-muted/40 p-4 text-sm text-muted-foreground dark:border-border">
                   <p className="font-medium text-foreground">{t("cameraPermissionTitle")}</p>
                   <p className="mt-1 text-xs leading-5">{t("cameraPermissionDesc")}</p>
                 </div>
@@ -291,9 +291,9 @@ export default function LoyaltyPosPage() {
                     onChange={(e) => setCode(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && resolve(code)}
                     placeholder={t("manualPlaceholder")}
-                    className="flex-1 px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-mono uppercase"
+                    className="flex-1 px-3 py-2 border border-input rounded-md text-sm font-mono uppercase"
                   />
-                  <button onClick={() => resolve(code)} disabled={resolving || !code.trim()} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                  <button onClick={() => resolve(code)} disabled={resolving || !code.trim()} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50" data-crm-button="default">
                     {resolving ? tc("loading") : t("find")}
                   </button>
                 </div>
@@ -302,7 +302,7 @@ export default function LoyaltyPosPage() {
           )}
         </MotionCard>
       ) : (
-        <MotionCard className="p-5 border border-zinc-200 dark:border-zinc-700 rounded-xl space-y-4">
+        <MotionCard surface="card" className="p-5 border border-border rounded-xl space-y-4">
           {/* Member */}
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -353,10 +353,10 @@ export default function LoyaltyPosPage() {
                 value={purchaseAmount}
                 onChange={(e) => setPurchaseAmount(e.target.value)}
                 placeholder={t("purchaseAmountPlaceholder")}
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-mono"
+                className="w-full px-3 py-2 border border-input rounded-md text-sm font-mono"
               />
             </div>
-            <div className={`rounded-lg border p-3 text-sm ${suggested.source === "no_rule" ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200" : "border-zinc-200 bg-background dark:border-zinc-700"}`}>
+            <div className={`rounded-lg border p-3 text-sm ${suggested.source === "no_rule" ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200" : "border-border bg-background"}`}>
               <div className="flex items-center justify-between gap-3">
                 <span className="font-medium">{t("suggestedPoints")}</span>
                 <span className="font-mono text-lg font-bold">{suggested.points.toLocaleString()} {t("pts")}</span>
@@ -381,7 +381,7 @@ export default function LoyaltyPosPage() {
               {manualOverride ? t("hideManualOverride") : t("showManualOverride")}
             </button>
             {manualOverride && (
-              <div className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+              <div className="space-y-2 rounded-lg border border-border p-3">
                 <label className="block text-xs font-medium">{t("manualAwardLabel")}</label>
                 <input
                   type="number"
@@ -390,20 +390,20 @@ export default function LoyaltyPosPage() {
                   value={points}
                   onChange={(e) => setPoints(e.target.value)}
                   placeholder={t("awardPlaceholder")}
-                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-mono"
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm font-mono"
                 />
               </div>
             )}
             <button
               onClick={award}
               disabled={awarding || (!manualOverride && (!purchaseAmount || suggested.points <= 0)) || (manualOverride && !points)}
-              className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50" data-crm-button="default"
             >
               <Gift className="w-4 h-4" /> {awarding ? tc("saving") : t("awardBtn")}
             </button>
           </div>
 
-          <button onClick={reset} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm hover:bg-muted">
+          <button onClick={reset} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 border border-border rounded-md text-sm hover:bg-muted">
             <RefreshCw className="w-4 h-4" /> {t("nextMember")}
           </button>
         </MotionCard>
