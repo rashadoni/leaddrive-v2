@@ -12,8 +12,11 @@ export const LIMITS = Object.freeze({
   // WAL the CDC slot keeps on the production disk. The hard cap is
   // max_slot_wal_keep_size = 16GB; past it PostgreSQL drops the slot and the
   // connector must start over from a new snapshot.
-  slotRetainedWarnBytes: 1 * GiB,
-  slotRetainedCriticalBytes: 4 * GiB,
+  // Heartbeats confirm a position every minute, so a healthy slot holds a few
+  // MB; 256 MB means it stopped moving for most of a day (or longer than an
+  // hour of heavy writes), well before the cap.
+  slotRetainedWarnBytes: 256 * 1024 ** 2,
+  slotRetainedCriticalBytes: 2 * GiB,
   diskWarnPercent: 80,
   diskCriticalPercent: 90,
   // A voter or broker whose last fetch is this far behind the leader's is gone.
