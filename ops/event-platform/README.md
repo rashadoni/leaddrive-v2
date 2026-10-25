@@ -253,10 +253,27 @@ broker's last fetch, offline / below-min-ISR / under-replicated partitions,
 disk use on every host, WireGuard peers, node certificate expiry.
 
 Not covered yet: consumer lag (no consumer runs), outbox-to-Kafka watermark
-age beyond what the slot shows, schemas, quarantine, archive, projections. The
-watch shares a failure domain with production (both in Contabo Hub Europe):
-when that site is gone entirely, no alert comes until the planned monitoring
-host outside it exists.
+age beyond what the slot shows, schemas, quarantine, archive, projections.
+
+### The backup watch (2026-10-25)
+
+The workstation shares a provider with production and two of the three Kafka
+sites (Contabo). A copy of the same `watch.mjs` therefore runs on
+`BACKUP_WATCH_HOST` (`kafka-p-broker-gra`, OVH Gravelines) as root under the
+system timer `ld-kafka-backup-watch` (`provision.sh install-backup-watch`, after
+`install-watch`). Every finished pass of the main watch leaves a heartbeat
+there (`ssh … heartbeat`, the one write the probe allows, and only on that
+host). While the heartbeat is younger than 12 minutes the backup only stands
+by. When it is older, the backup tells the owner «Главный сторож Kafka молчит»
+and runs the full watch itself, every message marked «[запасной сторож]»,
+until the heartbeat returns; then it tells that the silence is over and leaves
+the Kafka problems to the main watch. The main watch in turn reports a backup
+that has not passed for 20 minutes. Its copy of the watch key keeps the forced,
+read-only commands; the Telegram settings live in
+`/etc/leaddrive-kafka/watch-notify.env` (root, 0600).
+
+Both watches gone together (the workstation and OVH Gravelines at once) is
+still silent.
 
 ## Evidence identifiers and credential-reference shape
 

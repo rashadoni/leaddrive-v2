@@ -7,8 +7,10 @@ and reachable only as the forced command of the watch key:
     restrict,command="/usr/local/sbin/ld-kafka-health ROLES" ssh-ed25519 ... ld-kafka-watch
 
 ROLES comes from authorized_keys, never from the caller. The caller may ask for
-exactly one extra thing, "cluster" (on a broker: describe quorum and topics with
-the broker's own certificate); anything else is refused. Nothing here writes.
+"cluster" (on a broker: describe quorum and topics with the broker's own
+certificate) or "heartbeat" (only on the host of the backup watch: the main
+watch finished a pass); anything else is refused. The heartbeat is the one
+write: a timestamp in WATCH_DIR, which exists only where the backup runs.
 Settings the probe cannot derive live in /etc/leaddrive-kafka/health.json.
 """
 import json
@@ -22,6 +24,7 @@ import urllib.request
 
 CONFIG = "/etc/leaddrive-kafka/health.json"
 TLS = "/etc/leaddrive-kafka/tls"
+WATCH_DIR = "/var/lib/ld-kafka-watch"
 
 
 def run(argv, timeout=20, **kw):
@@ -127,9 +130,28 @@ def source(config):
     return {"expectedSlot": config.get("expectedSlot"), "slots": slots}
 
 
+def heartbeat():
+    tmp = f"{WATCH_DIR}/primary-heartbeat.tmp"
+    with open(tmp, "w") as f:
+        f.write(str(int(time.time() * 1000)))
+    os.replace(tmp, f"{WATCH_DIR}/primary-heartbeat")
+
+
+def backup_watch():
+    """When the backup watch last finished a pass (ms), as its state says."""
+    try:
+        return {"lastPass": json.load(open(f"{WATCH_DIR}/state/state.json")).get("lastPass")}
+    except (OSError, ValueError):
+        return {"lastPass": None}
+
+
 def main():
     roles = set(sys.argv[1].split(",")) if len(sys.argv) > 1 else set()
     asked = os.environ.get("SSH_ORIGINAL_COMMAND", "").strip()
+    if asked == "heartbeat" and os.path.isdir(WATCH_DIR):
+        heartbeat()
+        print(json.dumps({"ok": True}))
+        return 0
     if asked not in ("", "cluster") or (asked == "cluster" and "broker" not in roles):
         print(json.dumps({"error": "refused"}))
         return 2
@@ -146,6 +168,8 @@ def main():
         data["connect"] = {"ok": ok, "connectors": connectors, "expected": config.get("expectedConnectors", [])}
         ok, _ = http_json(f"http://{address}:8080/apis/registry/v3/system/info") if address else (False, None)
         data["registry"] = {"ok": ok}
+    if config.get("backupWatch"):
+        data["backupWatch"] = backup_watch()
     if asked == "cluster":
         data["cluster"] = cluster_view()
     print(json.dumps(data))
