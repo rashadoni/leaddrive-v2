@@ -502,3 +502,57 @@
 - В тесте устаревший literal заменён проверками двух конкретных CTA (header/empty state): shared default Button, сохранённые размеры44px/responsive widths и обработчики, default variant, общийdata marker и scoped CRM action token. Остальные state/portal/flow assertions сохранены; test baseline не расширялся. Независимый reviewer сверил source/common Button/CSS и подтвердил причину.
 - Targeted4 suites29tests PASS; lint изменённого теста PASS; git diff --check PASS. Первый test command не запустил suites из-за неподдерживаемого Vitest4 --minWorkers; повтор с --maxWorkers=1 успешно выполнен. Исходники интерфейса при этом исправлении не менялись.
 - Текущий main267a9524e содержит отдельные reviewed Kafka/PBX changes (7paths), пересечений с UI нет. Следующий шаг — checkpoint, обычный merge current main для актуального candidate, push и новые required checks без обхода gate.
+
+### KB contract исправлен, новый CI запущен
+
+- Commit7099fe85e сохранил KB test correction и журнал. Current main267a9524e объединён без конфликтов в9961113a22f2a980f2f96fd17591f2ba4b5cca6c. Merge принёс11 upstream paths суммарно от ранее включённого4802ab765;7paths были новыми относительно PR event base14eba222. Изменение CLAUDE.md касается только Kafka offset recovery и прочитано; release routing не менялся.
+- Diff6eb4ffcf..9961113a по src/app,src/components,src/lib,src/hooks пуст: визуальный source не изменён. Новый head pushed, PR1057 MERGEABLE. Required run40221321892 и дополнительные workflows запущены. Предыдущий failure не обходится; требуется SUCCESS нового head.
+- Продолжение: дождаться нового required и применимого дополнительного CI, merge ожидаемого9961113a, Actions deploy, public SHA/ping на3hosts и native authenticated smoke. Авторизация пользователя сохраняется.
+
+- Новый source9961113a: все9 дополнительных workflows SUCCESS,13jobs successful/4conditional skipped/0failures. Независимый report followup/followup-ci-review-9961113a.md сохранён отдельно. Candidate33a7165bb048426b878f4afc817517ba9bf9b4b8 имеет base267a9524e и source9961113a; parent drift не повторился. Attendance66PASS/5NOT_RUN, Booking run40221321873 complete bundle +20authenticated browser cases PASS, Workforce11withdrawal receipts PASS/archived journeys NOT RUN.
+- Required typecheck,pr-scope,runner-policy,scan SUCCESS; последним остаётся static-checks / Unit tests vs baseline. Merge ещё не выполнялся.
+
+### Все gates пройдены, дополнительный выпуск merged
+
+- Required run40221321892 SUCCESS: pr-scope,static-checks,typecheck. Отдельные runner-policy/scan также SUCCESS. Перед merge exact head9961113a подтверждён; PR1057 MERGEABLE/CLEAN,18successful checks,5skipped (4conditional exact-source + optional PR production-build, complete build покрыт Booking). Ни failures, ни pending checks не осталось. Premerge snapshot сохранён в followup/premerge-9961113a.json.
+- PR1057 description обновлён по конечной реализации и фактическим проверкам. GitHub merge выполнен с expected_head_sha9961113a; merge commit a5d26517b18f20a26a4553292644d5020a3f0a6b. Root/branch/origin/production13.140.132.245:/opt/leaddrive-v2 и Actions route снова проверены. Прямой server deploy не выполнялся.
+- Следующий шаг — дождаться штатного production workflow дляa5d26517, затем проверить точный public artifact/ping на3hosts и native authenticated страницы. Пока не объявляем follow-up установленным.
+
+- Production run40223978535 для exact mergea5d26517 начат2026-10-25T19:00:54Z: quality/security и build выполняются параллельно. Current stop: доустановкиartifact. Следующее действие — отслеживание workflow, затем publicSHA/native smoke.
+
+### Дополнительный release: Quality и production build завершены
+
+- Run40223978535 / a5d26517: Quality & security gates SUCCESS; итог unit baseline18known failing files/18baseline, новых failures0. Это pass принятого gate, не заявление об отсутствии legacy failures.
+- Production build & publish artifact SUCCESS: Compiled successfully, exit0; прежняя next/font error из отдельного upstreamrun не повторилась. Artifact leaddrive-prod-a5d26517b18f20a26a4553292644d5020a3f0a6b, ID12610429235; независимый report сохранён в followup/release/release-quality-review-a5d26517.md.
+- Deployment выполняет штатный Stage immutable artifact on production disk. До его завершения follow-up не объявляется установленным. Следующее действие: итог workflow, exact publicSHA/ping и native authenticated smoke.
+
+### Финальный общий стиль опубликован и проверен
+
+- Production run40223978535 полностью SUCCESS, включая SHA-bound artifact, atomic deploy, post-deploy smoke и retention job. Выпущен merge a5d26517b18f20a26a4553292644d5020a3f0a6b из PR1057 (https://github.com/rashadoni/leaddrive-v2/pull/1057); он включает ранее выпущенный общий стиль PR1041. Полный build выполнен на GitHub runner, на Contabo он не запускался.
+- Read-only public verification после deployment: app.leaddrivecrm.org, leaddrive.leaddrivecrm.org и zeytun.leaddrivecrm.org сообщают exact artifact a5d26517b18f20a26a4553292644d5020a3f0a6b; все3 ping ok=true. Evidence followup/release/public-artifact-a5d26517b18f.json.
+- Native authenticated Chrome в прежней app/Fanumsec session: последовательно Deals/Boards/Tasks (19:31:42Z) и Loyalty POS/Settings Channels/Companies (19:32:29Z). Пять structural PASS, Boards LIMITED empty; Tasks также без business records, его4табличныхстроки — структура/группы. Заполненные Tasks/Board detail не объявляются проверенными. Все6header и9ordinarymainactions имеют rgb(184,68,10), white text, radius8px; общие border/input/card/canvas tokens подтверждены; document/main horizontal overflow отсутствует.
+- Root просмотрел новые Deals/Tasks/Channels/Companies PNG и computedJSON всех6; independent reviewer просмотрел все6PNG/JSON, blocking style regression не обнаружил. POS Find disabled opacity0.5 сохранена, камера недоступна/правила не настроены; scan/reward/lookup не выполнялись. Channels provider logos/connected states сохранены, default actions внутри каталога не sampled (0), header sampled.
+- Оба browser batches завершили cleanup: /companies восстановлен, tour preferences восстановлены и перезагружены, viewport override снят. Business controls/forms не использовались; сессия и cookies не экспортировались. Live проверки только desktop/light; dark/mobile/wallpaper имеют отдельную isolated fixture evidence, не выдаются за этот production smoke.
+- Финальные отчёты: followup/release/live-smoke-a5d26517-summary.json и independent-style-review-a5d26517.md в приватном visual-evidence каталоге. Совокупное live coverage:18representative routes после первого общего выпуска,6повторно после follow-up; source inventory247routes не означает247визуальныхпосещений.
+- Ограничения сохранены: ранее /finance показывал существующий error boundary, рабочая finance UI NOT VERIFIED; в разрешённой live session нет существующих meetings/boards для detail review. Booking20populated role cases PASS на isolated hosted production bundle, не live tenant records. Full local build/typecheck/E2E NOT RUN согласно workload contract; обязательные hosted gates и production build SUCCESS. Legacy unit baseline18known failing files не расширялся, новых failures0. Остальные NOT_RUN/conditional acceptance limits приведены выше и в PR.
+- Итог: общий стиль внесён в shared components/workspace styles и старые ordinary native actions по внутренней CRM, выпущен и проверен в доступных условиях. Код, обязательные проверки и deployment завершены. Последняя содержательная операция — независимый post-release visual review; дальше только checkpoint этой append-only записи на прежней feature branch и финальное сообщение. Новой продуктовой публикации из-за документации не требуется.
+
+### Повторное поручение выпустить на прод — 2026-10-25T23:37:17+04:00
+
+- Пользователь явно подтвердил: «на прод выпускай». В прежнем task worktree/branch повторно проверены routing, clean Git state, workflow40223978535 и текущие public endpoints.
+- Workflow SUCCESS; app/leaddrive/zeytun возвращают exact artifact a5d26517b18f20a26a4553292644d5020a3f0a6b, ping ok=true на всех3. Требуемый общий стиль уже опубликован; повторный deploy того же artifact не запускался. После source9961113a в feature branch только checkpoint документации, невыпущенных изменений приложения нет.
+- Итог: запрос публикации уже выполнен и заново подтверждён. Последнее действие — live SHA/health verification; остановка после подтверждения работающего релиза; следующего deploy действия не требуется.
+
+### Диагностика вспыхивающего AI-поиска на главной
+
+- Пользователь показал screenshot /dashboard во время skeleton loading и спросил, что за поиск появляется и затем исчезает. Вопрос исследован без изменения UI или нового deployment.
+- Идентифицирован ContentSearchBar: запасной вход в тот же Da Vinci через davinci:open. DashboardHeroProvider начинает с heroCommandVisible=true, но dashboard/page.tsx effect устанавливает showGreeting && !loading. Во время loading=true получается false; layout перестаёт скрывать общую строку. После loading=false при showGreeting=true строка снова скрывается. Состояния «ещё загружается» и «виджет выключен» смешаны.
+- Intended fallback нужен при выключенном welcomeGreeting; исправление должно отличать pending widget configuration от действительно disabled greeting, без удаления fallback у пользователей с выключенным виджетом. Код не менялся, browser reproduction и tests NOT RUN (ответ на вопрос/анализ исходников). Остановка после подтверждения причины по screenshot и source; возможное следующее действие — устранение loading flash отдельной узкой правкой.
+
+### Пользователь поручил удалить дублирующую строку AI-поиска
+
+- Прямая команда «нахрен её удали у нас есть поисковик» разрешает удаление именно ContentSearchBar из интерфейса. Прежняя идея сохранять fallback при отключённом приветствии superseded этим поручением. Существующие CommandSearch/поле приветствия/советник не удаляются. Публикация входит в ранее явно разрешённое продолжение задачи; дополнительного подтверждения того же удаления не требуется.
+- Прежний worktree и feature branch сохранены. Current origin/main ebb1f62bf объединён обычным merge без конфликтов. Upstream PR1058 уже устранил loading flash условием loading || showGreeting, но оставлял fallback; новое требование полностью убирает его. Upstream изменения header/Kafka/voice не редактировались.
+- Узкая правка центральной dashboardAssistantVisibility: contentSearchVisible всегда false, поэтому существующий conditional layout никогда не монтирует лишнюю строку. Все состояния loading/hero/route закрыты. Логика голосовой кнопки и самостоятельные существующие поиски сохранены; компонент из UI удалён без несвязанной зачистки исходников.
+- Обновлён существующий placement contract под новое решение владельца, включая загрузку/выключенное приветствие и сохранность CommandSearch/hero. Три targeted suites27tests PASS; lint двух изменённых TS files PASS; git diff --check PASS. Full local build/typecheck/E2E NOT RUN по host workload contract; обязательные hosted gates будут выполнены перед merge, production build — в штатном deploy.
+- Следующее действие: checkpoint, draft PR, ready после завершённой локальной проверки, все required checks, release и native browser observation от начала загрузки плюс проверка открытия существующего поиска.

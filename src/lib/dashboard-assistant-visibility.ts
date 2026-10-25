@@ -19,24 +19,13 @@ export interface DashboardAssistantVisibility {
 export function dashboardAssistantVisibility({
   pathname,
   childrenReady,
-  moduleBlocked,
-  hideContentSearch,
-  heroCommandVisible = false,
 }: DashboardAssistantVisibilityInput): DashboardAssistantVisibility {
   const isMtmRoute = pathname === "/mtm" || pathname.startsWith("/mtm/")
-  const isDashboardHome = pathname === "/dashboard"
 
-  // Решение владельца: ни оранжевой строки поиска, ни плавающей кнопки на
-  // внутренних страницах быть не должно. На главной есть поле Da Vinci в
-  // приветствии, и его достаточно; советник, кроме того, открывается из
-  // бокового меню на любой странице.
-  //
-  // Поэтому общая строка живёт ТОЛЬКО на главной и только как замена полю —
-  // когда виджет приветствия выключен тенантом. Без этой оговорки тот, кто
-  // выключил приветствие, остался бы вообще без входа в советника из потока
-  // страницы; ровно это и защищал прежний фолбэк.
-  const contentSearchVisible =
-    childrenReady && !moduleBlocked && isDashboardHome && !hideContentSearch
+  // Решение владельца: убрать дублирующую строку AI-поиска полностью,
+  // включая загрузку главной и выключенное приветствие. Поиск в шапке,
+  // поле приветствия и вход в советника из меню остаются самостоятельными.
+  const contentSearchVisible = false
 
   // Голосовой шар — другая модальность и он закрыт списком пилота, поэтому
   // остаётся. Его прежняя встроенная посадка держалась на строке поиска
@@ -46,9 +35,8 @@ export function dashboardAssistantVisibility({
 
   return {
     contentSearchVisible,
-    // Поле оставлено, а не удалено: панель советника по-прежнему смонтирована
-    // и слушает событие davinci:open от строки поиска. Это единственный
-    // выключатель, если владелец захочет кнопку обратно.
+    // Панель советника по-прежнему слушает davinci:open от существующих
+    // входов, но дополнительной плавающей кнопки нет.
     showFloatingAiLauncher: false,
     showFloatingVoiceOrb: showFloatingAssistants,
   }
