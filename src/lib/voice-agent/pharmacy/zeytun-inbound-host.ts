@@ -4,13 +4,13 @@ import { dirname, isAbsolute, join } from "node:path"
 import { runWithTenant } from "../../rls-context"
 import { ZeytunAvailableBalances } from "./zeytun-available-balances"
 import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
-import { inboundPilotDigest, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies } from "./zeytun-inbound-pilot"
+import { inboundPilotDigest, isLineGrant, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies } from "./zeytun-inbound-pilot"
 import type { ZeytunCallDatabase } from "./zeytun-call-loader"
 import { savePhoneOrderFromCall } from "./phone-orders"
 import type { PrismaClient } from "@prisma/client"
 
 /** Tiny operator grant/claim reads; the catalog is parsed once, with no 1C I/O. */
-async function readPrivate(path: string, limit = 8192): Promise<unknown> {
+export async function readPrivate(path: string, limit = 8192): Promise<unknown> {
   if (!isAbsolute(path)) throw new Error("invalid_private_path")
   const dir = await lstat(dirname(path))
   if (!dir.isDirectory() || dir.isSymbolicLink() || (dir.mode & 0o077) || dir.uid !== process.getuid?.()) throw new Error("private_directory_required")
@@ -23,18 +23,26 @@ async function readPrivate(path: string, limit = 8192): Promise<unknown> {
     return JSON.parse(buffer.subarray(0, bytesRead).toString("utf8"))
   } finally { await handle.close() }
 }
+/** The caller's number in international form when it is one; otherwise as the PBX gave it. */
+function callerNumber(value: string) {
+  const compact = value.replace(/[\s()-]/gu, "")
+  const digits = compact.startsWith("+") ? compact.slice(1) : compact
+  return /^[1-9]\d{7,14}$/.test(digits) ? `+${digits}` : value.slice(0, 64)
+}
 export function createInboundPilotHost(options: {
   configFile: string; snapshotDirectory: string; runtimeOrganizationId: string; database: ZeytunCallDatabase
   /** The application client the phone orders are written with (tenant RLS). */
   orders?: PrismaClient
 }): InboundPilotDependencies {
-  let catalog: { key: string; value: ReturnType<InboundPilotDependencies["loadCatalog"]> } | null = null
-  const claimPath = (config: InboundPilotConfig) => join(dirname(options.configFile), `inbound-${config.id}.claim`)
+  let catalog: { key: string; at: number; value: ReturnType<InboundPilotDependencies["loadCatalog"]>; next?: Promise<void> } | null = null
+  // The rehearsal binds its grant to one call; the line claims each call apart.
+  const claimPath = (config: InboundPilotConfig, call: InboundPilotCall) => join(dirname(options.configFile),
+    isLineGrant(config) ? `line-${config.id}-${call.providerCallId}.claim` : `inbound-${config.id}.claim`)
   const claimValue = (config: InboundPilotConfig, call: InboundPilotCall) => ({
     grantDigest: inboundPilotDigest(config), callId: call.providerCallId, callLogId: call.id,
   })
   const isClaimed = async (config: InboundPilotConfig, call: InboundPilotCall) => {
-    try { return JSON.stringify(await readPrivate(claimPath(config), 2048)) === JSON.stringify(claimValue(config, call)) }
+    try { return JSON.stringify(await readPrivate(claimPath(config, call), 2048)) === JSON.stringify(claimValue(config, call)) }
     catch { return false }
   }
   const markPreview = async (config: InboundPilotConfig, call: InboundPilotCall) => {
@@ -85,30 +93,51 @@ export function createInboundPilotHost(options: {
     },
     async loadCatalog(config) {
       const key = inboundPilotDigest(config)
-      if (catalog?.key === key) return catalog.value
-      const value = (async () => {
+      const load = () => (async () => {
         const source = config.approvedSource
         const store = new ZeytunSnapshotStore(options.snapshotDirectory, source.organizationId, source.scopeKey)
         const snapshot = await store.load()
-        if (!snapshot || snapshot.version !== source.catalogVersion) throw new Error("snapshot_unavailable")
+        // The rehearsal is pinned to the version the owner approved; the line
+        // takes the newest live snapshot the refresh cron saved.
+        if (!snapshot || (!isLineGrant(config) && snapshot.version !== config.approvedSource.catalogVersion)) throw new Error("snapshot_unavailable")
         const feed = new ZeytunAvailableBalances(snapshot.payload, snapshot.context)
         return { organizationId: source.organizationId, scopeKey: source.scopeKey, version: snapshot.version,
           observedAt: snapshot.context.observedAt, source: snapshot.context.source,
           search: (query: Parameters<ZeytunAvailableBalances["search"]>[1]) => feed.search(source.organizationId, query) }
       })()
-      catalog = { key, value }
-      // Keep a failed promise pinned as well: a missing/corrupt 25MB snapshot
-      // must not be reread on every spoken request. New operator grant retries.
-      return value
+      if (catalog?.key !== key) {
+        catalog = { key, at: Date.now(), value: load() }
+        // Keep a failed promise pinned as well: a missing/corrupt 25MB snapshot
+        // must not be reread on every spoken request. New operator grant retries.
+        return catalog.value
+      }
+      // The line lives for weeks: re-read the store every ten minutes in the
+      // background and keep answering from the parsed copy meanwhile. A failed
+      // re-read keeps the copy; the request path's age gate still applies.
+      if (isLineGrant(config) && !catalog.next && Date.now() - catalog.at >= 10 * 60_000) {
+        const current = catalog, fresh = load()
+        current.next = fresh.then(() => {
+          if (catalog === current) catalog = { key, at: Date.now(), value: fresh }
+        }, () => {
+          if (catalog === current) { current.at = Date.now(); current.next = undefined }
+        })
+      }
+      return catalog.value
     },
     isClaimed,
     ...(options.orders ? {
       // The pilot's caller is the owner's test participant: the order is
       // marked a test call and names no pharmacy (shared numbers in 1C cannot
       // identify one). The number is the grant's, which the call matched.
-      saveOrder: (config, call, catalog, lines) => savePhoneOrderFromCall(options.orders!, {
+      saveOrder: (config, call, catalog, lines, pharmacy) => savePhoneOrderFromCall(options.orders!, {
         organizationId: config.orderOrganizationId, providerCallId: call.providerCallId, callStartedAt: call.startedAt,
-        callerPhoneE164: config.testPhoneE164, identification: "test_call", catalog, lines,
+        ...(isLineGrant(config)
+          // A name the caller gave is kept as said: the card shows it as
+          // spoken, never as the 1C pharmacy.
+          ? { callerPhoneE164: callerNumber(call.fromNumber), identification: pharmacy ? "named_on_call" as const : "unidentified" as const,
+              pharmacyName: pharmacy }
+          : { callerPhoneE164: config.testPhoneE164, identification: "test_call" as const }),
+        catalog, lines,
       }),
     } satisfies Pick<InboundPilotDependencies, "saveOrder"> : {}),
     async claim(config, call) {
@@ -116,7 +145,7 @@ export function createInboundPilotHost(options: {
       // Parent permissions are checked by loadConfig before a claim. Exclusive
       // creation binds this grant to one call across processes/restarts.
       let handle
-      try { handle = await open(claimPath(config), constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600) }
+      try { handle = await open(claimPath(config, call), constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600) }
       catch (error) {
         if ((error as NodeJS.ErrnoException).code === "EEXIST") return (await isClaimed(config, call)) && markPreview(config, call)
         throw error
