@@ -199,7 +199,9 @@ export function heartbeatTopic(env) { return `ld.${env}.connect.heartbeat.ld.${e
 export function slotHeartbeat(env) {
   return {
     'heartbeat.interval.ms': '60000',
-    'heartbeat.topics.prefix': `ld.${env}.connect.heartbeat`,
+    // Read by the default topic naming strategy; "heartbeat.topics.prefix" is ignored
+    // (drill run 40193162960 wrote to __debezium-heartbeat.* with it).
+    'topic.heartbeat.prefix': `ld.${env}.connect.heartbeat`,
     'heartbeat.action.query': `SELECT pg_logical_emit_message(false, '${SLOT_MESSAGE_PREFIX}', '')`,
     'message.prefix.exclude.list': SLOT_MESSAGE_PREFIX,
   }

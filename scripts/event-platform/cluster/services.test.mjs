@@ -83,7 +83,7 @@ test('Connect reaches the source by its certificate name over the overlay and ke
   // Heartbeats keep the slot moving while the outbox is quiet; their topic is
   // a platform topic under the prefix Connect may write, never an events topic.
   assert.equal(connector.config['heartbeat.interval.ms'], '60000')
-  const beat = `${connector.config['heartbeat.topics.prefix']}.${connector.config['topic.prefix']}`
+  const beat = `${connector.config['topic.heartbeat.prefix']}.${connector.config['topic.prefix']}`
   assert.equal(beat, heartbeatTopic('prod'))
   assert.ok(infraTopics('prod').some((t) => t.name === beat))
   assert.ok(grantsFor(PRINCIPALS.connect).some((g) => /--operation Write .*--topic ld\.prod\.connect\. --resource-pattern-type prefixed/.test(g)) && beat.startsWith('ld.prod.connect.'))
