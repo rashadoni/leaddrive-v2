@@ -87,6 +87,42 @@ try {
     }
     await admin.mtmSetting.create({ data: { organizationId: company, key: "attendanceEnabled", value: true } })
     await admin.mtmSetting.create({ data: { organizationId: company, key: "identityAuthV1", value: { version: 1, enabled: true } } })
+    phase("OPERATOR_COMPANY_OPT_IN_SQL")
+    const { inventorySql, enableSql, databaseEnvironment, assertInventory } = await import("./commission-runtime.mjs")
+    const operatorCompany = "identity-commission-fixture"
+    await admin.organization.create({ data: { id: operatorCompany, slug: operatorCompany, name: "Fictional operator company" } })
+    const operatorSql = (query, readonly = true) => execFileSync("psql", ["-X", "-qAt", "--set=ON_ERROR_STOP=1",
+      `--set=slug=${operatorCompany}`, `--set=sha=${head}`, "--set=operator=fixture-operator",
+      "--set=setting_id=identity-commission-setting", "--set=audit_id=identity-commission-audit"], {
+      encoding: "utf8", input: query, env: databaseEnvironment(appUrl.href, ownerUrl.href, readonly), timeout: 15000, stdio: ["pipe", "pipe", "pipe"],
+    })
+    const operatorBefore = JSON.parse(operatorSql(inventorySql)); assertInventory(operatorBefore); assert.equal(operatorBefore.enabled, false)
+    await admin.$executeRawUnsafe(`CREATE FUNCTION identity_commission_fail_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      IF NEW.action = 'IDENTITY_COMPANY_ENABLED' THEN RAISE EXCEPTION 'SYNTHETIC_COMMISSION_AUDIT_FAILURE' USING ERRCODE='23514'; END IF; RETURN NEW; END $$`)
+    await admin.$executeRawUnsafe('CREATE TRIGGER identity_commission_fail_audit BEFORE INSERT ON mtm_audit_logs FOR EACH ROW EXECUTE FUNCTION identity_commission_fail_audit()')
+    try {
+      assert.throws(() => operatorSql(enableSql, false))
+      assert.equal(await admin.mtmSetting.count({ where: { organizationId: operatorCompany } }), 0)
+      assert.equal(await admin.mtmAuditLog.count({ where: { organizationId: operatorCompany } }), 0)
+    } finally {
+      await admin.$executeRawUnsafe('DROP TRIGGER identity_commission_fail_audit ON mtm_audit_logs')
+      await admin.$executeRawUnsafe('DROP FUNCTION identity_commission_fail_audit()')
+    }
+    assert.throws(() => operatorSql(enableSql, true))
+    assert.equal(await admin.mtmSetting.count({ where: { organizationId: operatorCompany } }), 0)
+    await admin.mtmSetting.create({ data: { organizationId: operatorCompany, key: "identityAuthV1", value: { version: 1, enabled: false } } })
+    operatorSql(enableSql, false); operatorSql(enableSql, false)
+    const operatorAfter = JSON.parse(operatorSql(inventorySql)); assertInventory(operatorAfter); assert.equal(operatorAfter.enabled, true)
+    assert.equal(operatorAfter.canonicalCount, operatorBefore.canonicalCount); assert.equal(operatorAfter.proofCount, operatorBefore.proofCount)
+    assert.equal(await admin.mtmAuditLog.count({ where: { organizationId: operatorCompany, action: "IDENTITY_COMPANY_ENABLED" } }), 1)
+    const operatorAudit = await admin.mtmAuditLog.findFirstOrThrow({ where: { organizationId: operatorCompany, action: "IDENTITY_COMPANY_ENABLED" } })
+    assert.deepEqual(operatorAudit.oldData, { version: 1, enabled: false })
+    assert.deepEqual(operatorAudit.newData, { enabled: true, sourceSha: head, githubOperator: "fixture-operator" })
+    assert.deepEqual((await admin.mtmSetting.findUniqueOrThrow({ where: flagKey })).value, { version: 1, enabled: true })
+    await admin.organization.update({ where: { id: operatorCompany }, data: { isActive: false } })
+    assert.throws(() => operatorSql(enableSql, false))
+    assert.equal(await admin.mtmAuditLog.count({ where: { organizationId: operatorCompany } }), 1)
+    process.stdout.write("IDENTITY_COMMISSION_SQL_PASS rollback_idempotency_scope_no_conversion\n")
     process.stdout.write("IDENTITY_CRM_BROWSER_FIXTURE_PREPARED\n")
   } else {
     assert.equal(process.argv[2], "verify")
