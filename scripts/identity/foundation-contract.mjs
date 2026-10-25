@@ -24,7 +24,7 @@ import { admitContractTarget } from "./postgres-contract.mjs"
 const A = "identity-company-a", B = "identity-company-b"
 const actor = { organizationId: A, userId: "identity-user-a" }
 const other = { organizationId: B, userId: "identity-user-b" }
-const TABLES = ["identity_accounts", "identity_application_grants", "identity_actor_bindings", "identity_application_memberships", "identity_phone_claims", "identity_phone_reservations", "identity_phone_proofs", "identity_phone_proof_outbox", "identity_events"]
+const TABLES = ["identity_accounts", "identity_application_grants", "identity_actor_bindings", "identity_application_memberships", "identity_phone_claims", "identity_phone_reservations", "identity_phone_proofs", "identity_phone_proof_outbox", "identity_events", "identity_onboarding_intents"]
 const PHONE = "+994550001122"
 const receipt = { status: "FAIL", sourceSha: null, productionObserved: false, checks: [] }
 let phase = "ADMISSION", admin, writer
@@ -84,7 +84,7 @@ async function main() {
     await admin.$executeRawUnsafe(`CREATE POLICY identity_fixture_settings_read ON mtm_settings FOR SELECT USING ("organizationId"=current_setting('app.org_id',true))`)
 
     phase = "ACTUAL_ADDITIVE_MIGRATION"
-    for (const migration of ["20261103120000_identity_foundation", "20261103121000_identity_contact_revision", "20261103122000_identity_proof_authority", "20261103123000_identity_legacy_write_fence", "20261103124000_identity_staged_credential_revision", "20261103125000_identity_activation_receipt", "20261103126000_identity_common_password_recovery"]) execFileSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--file", `prisma/migrations/${migration}/migration.sql`], {
+    for (const migration of ["20261103120000_identity_foundation", "20261103121000_identity_contact_revision", "20261103122000_identity_proof_authority", "20261103123000_identity_legacy_write_fence", "20261103124000_identity_staged_credential_revision", "20261103125000_identity_activation_receipt", "20261103126000_identity_common_password_recovery", "20261103127000_identity_onboarding_intent"]) execFileSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--file", `prisma/migrations/${migration}/migration.sql`], {
       env: { ...process.env, PGHOST: url.hostname, PGPORT: url.port, PGDATABASE: url.pathname.slice(1), PGUSER: decodeURIComponent(url.username), PGPASSWORD: decodeURIComponent(url.password) },
       stdio: ["ignore", "pipe", "pipe"], timeout: 30_000,
     })

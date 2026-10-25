@@ -1,3 +1,4 @@
+import { checkIdentityOnboarding } from "./onboarding-contract.mjs"
 import { checkCanonicalRecovery } from "./recovery-contract.mjs"
 import assert from "node:assert/strict"
 import bcrypt from "bcryptjs"
@@ -97,7 +98,9 @@ export async function checkIdentityActivation({ admin, writer, failing, actor, o
     const issuer = { organizationId: org, userId: issuerId, mode: "CANONICAL", claims: admitted.claims }
     const invited = await prepare("canonical-issuer", issuer)
     assert.equal((await activate(writer, issuer, invited.input, runtime)).status, "ACTIVE")
-    await admin.identityApplicationGrant.update({ where: issuerGrant, data: { status: "REVOKED", version: 2 } })
+    await checkIdentityOnboarding({ load, admin, writer, failing, issuer, runtime, checks, phase, passwordPolicyError })
+    const afterOnboardingGrant = await admin.identityApplicationGrant.findUniqueOrThrow({ where: issuerGrant })
+    await admin.identityApplicationGrant.update({ where: issuerGrant, data: { status: "REVOKED", version: afterOnboardingGrant.version + 1 } })
     await assert.rejects(activate(writer, issuer, invited.input, runtime), /IDENTITY_ADMIN_REQUIRED/)
     assert.ok((await account(invited.input.userId)).cutoverAt)
     checks.push("canonical_administrator_can_review_plan_prove_and_activate_without_legacy_role_and_revocation_denies_replay")

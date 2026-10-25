@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       if (limited) return limited
       if (body.value.setupToken.startsWith("lds")) {
         const { setupToken, password, organizationSlug, application } = body.value
-        if (!setupToken.startsWith("lds3.") || !organizationSlug || !application) return expired()
+        if ((!setupToken.startsWith("lds3.") && !setupToken.startsWith("lds2.")) || !organizationSlug || !application) return expired()
         const weak = passwordPolicyError(password)
         if (weak) return codeFlowError(400, "MTM_PASSWORD_WEAK", weak)
         const organization = await companyBySlug(organizationSlug)

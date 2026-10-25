@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import bcrypt from "bcryptjs"
+import { revalidateOnboardingProof } from "./onboarding-authority"
 import { credentialSetupHint, credentialSetupRequestHash, mintCredentialSetup, verifyCredentialSetup, type CredentialSetupContext } from "./credential-setup"
 import type { IdentityPhoneProof, Prisma } from "@prisma/client"
 import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError } from "./contract"
@@ -57,6 +58,7 @@ async function proofTransaction<T>(client: RegistryClient, organizationId: strin
   }, { isolationLevel: "ReadCommitted", timeout: 15_000, maxWait: 5_000 })
 }
 async function issuer(tx: Prisma.TransactionClient, proof: IdentityPhoneProof) {
+  await revalidateOnboardingProof(tx, proof)
   if (proof.contextVersion === 3) { await revalidateIdentityRecoveryAuthority(tx, proof.issuerAuthority, proof.organizationId, proof.userId); return }
   if (!proof.issuedByUserId) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
   if (proof.contextVersion === 2) {
@@ -192,7 +194,10 @@ export async function consumeStagedPhoneProof(client: RegistryClient, organizati
       // Return from the transaction: throwing here would roll back the spent try.
       return invalid()
     }
-    if (await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId, normalizedPhone: proof.normalizedPhone } }, select: { id: true } })) throw new IdentityRegistryError("IDENTITY_PHONE_UNAVAILABLE")
+    const occupiedClaim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId, normalizedPhone: proof.normalizedPhone } }, select: { userId: true } })
+    // Only a current, revalidated first-login intent can renew its OWN staged
+    // claim after setup expiry. A different person is never adopted by OTP.
+    if (occupiedClaim && (!proof.onboardingIntentId || occupiedClaim.userId !== proof.userId)) throw new IdentityRegistryError("IDENTITY_PHONE_UNAVAILABLE")
     if (account.version >= 2_147_483_647 || account.credentialEpoch >= 2_147_483_647) throw new IdentityRegistryError("IDENTITY_VERSION_EXHAUSTED")
     const oldClaim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_userId: { organizationId, userId: proof.userId } }, select: { id: true } })
     const nextVersion = account.version + 1, nextEpoch = account.credentialEpoch + 1, claimId = randomUUID()

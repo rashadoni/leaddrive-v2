@@ -5,6 +5,7 @@ import { normalizeIdentityPhone } from "./contract"
 import { identityRuntimeKeys } from "./runtime-keys"
 import { withIdentityMobileReadSnapshot } from "./mobile-session-resolver"
 import { identityMobileLogin } from "./mobile-login-runtime"
+import { issueIdentityOnboardingProof, confirmIdentityOnboardingProof, finishIdentityOnboarding } from "./onboarding"
 import { issueCanonicalRecovery, confirmCanonicalRecovery, resetCanonicalPassword } from "./canonical-recovery"
 import { phoneProofContext, claimStagedPhoneProofDelivery, recordStagedPhoneProofDelivery, type SharedPasswordPolicy } from "./phone-proof-registry"
 import { phoneProofAttemptHash } from "./phone-proof"
@@ -17,13 +18,17 @@ async function selection(client: RegistryClient, organizationId: string, phone: 
     const claim = normalized ? await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId, normalizedPhone: normalized } },
       select: { account: { select: { cutoverAt: true } } } }) : null
     const proof = challengeId ? await tx.identityPhoneProof.findFirst({ where: { organizationId, id: challengeId } }) : null
-    return { canonical: !!claim?.account.cutoverAt || !!proof, normalized, proof }
+    const intent = !claim?.account.cutoverAt && normalized ? await tx.identityOnboardingIntent.findFirst({
+      where: { organizationId, normalizedPhone: normalized, status: "ACTIVE" }, select: { id: true, application: true },
+    }) : null
+    return { canonical: !!claim?.account.cutoverAt || !!proof || !!intent, normalized, proof, intent }
   })
   return snapshot.value
 }
 
 /** HTTP composition after company selection and existing distributed limits.
- * All canonical outcomes share the public generic sent response. No fallback
+ * Reviewed first-login invitations and canonical recovery keep separate proof
+ * purposes. All identity outcomes share the public generic sent response. No fallback
  * to legacy after selecting a canonical claim or challenge. */
 export async function requestIdentityMobileRecovery(client: RegistryClient, organizationId: string,
   input: { phone: string; application: IdentityMobileApplication }, send: ProofDispatchDependencies["send"]) {
@@ -33,7 +38,9 @@ export async function requestIdentityMobileRecovery(client: RegistryClient, orga
     if (!selected.canonical) return { status: "LEGACY" as const }
     const keys = identityRuntimeKeys()
     if (!keys.proof || !keys.mobile) return fake
-    const issued = await issueCanonicalRecovery(client, organizationId, { ...input, requestId: randomUUID() }, keys.proof.active)
+    const issued = selected.intent
+      ? await issueIdentityOnboardingProof(client, organizationId, { ...input, requestId: randomUUID() }, keys.proof.active)
+      : await issueCanonicalRecovery(client, organizationId, { ...input, requestId: randomUUID() }, keys.proof.active)
     if (!issued) return fake
     await dispatchStagedPhoneProof(organizationId, issued.proofId, {
       claim: (org, id) => claimStagedPhoneProofDelivery(client, org, id),
@@ -49,7 +56,15 @@ export async function verifyIdentityMobileRecovery(client: RegistryClient, organ
     const selected = await selection(client, organizationId, input.phone, input.challengeId)
     if (!selected.canonical) return { status: "LEGACY" as const }
     const proof = selected.proof, ring = identityRuntimeKeys().proof
-    if (!proof || !ring || proof.contextVersion !== 3 || proof.normalizedPhone !== selected.normalized) return { status: "DENIED" as const }
+    if (!proof || !ring || proof.normalizedPhone !== selected.normalized) return { status: "DENIED" as const }
+    if (proof.contextVersion === 2 && proof.onboardingIntentId) {
+      const onboarding = await confirmIdentityOnboardingProof(client, organizationId, { proofId: proof.id, phone: input.phone, application: input.application, code: input.code }, ring.resolve)
+      if (onboarding.status !== "CONFIRMED" || !("setupToken" in onboarding)) return { status: "DENIED" as const }
+      const snapshot = await withIdentityMobileReadSnapshot(client, organizationId, tx => tx.user.findFirst({
+        where: { organizationId, id: proof.userId, isActive: true, anonymizedAt: null }, select: { name: true } }))
+      return snapshot.value ? { status: "CONFIRMED" as const, setupToken: onboarding.setupToken, name: snapshot.value.name } : { status: "DENIED" as const }
+    }
+    if (proof.contextVersion !== 3) return { status: "DENIED" as const }
     const key = ring.resolve(proof.keyId)
     if (!key) return { status: "DENIED" as const }
     // Stable retries without storing an enumerable hash of the six-digit code.
@@ -67,7 +82,13 @@ export async function finishIdentityMobileRecovery(client: RegistryClient, organ
   input: { setupToken: string; application: IdentityMobileApplication; password: string }, policy: SharedPasswordPolicy) {
   try {
     const keys = identityRuntimeKeys(), hint = credentialSetupHint(input.setupToken)
-    if (!keys.proof || !keys.mobile || !hint || !input.setupToken.startsWith("lds3.")) return { status: "DENIED" as const }
+    if (!keys.proof || !keys.mobile || !hint) return { status: "DENIED" as const }
+    if (input.setupToken.startsWith("lds2.")) {
+      const subject = await finishIdentityOnboarding(client, organizationId, input, keys.proof.resolve, policy)
+      const login = await identityMobileLogin(client, organizationId, { phone: subject.phone, password: input.password, application: input.application })
+      return login.status === "AUTHENTICATED" ? login : { status: "DENIED" as const }
+    }
+    if (!input.setupToken.startsWith("lds3.")) return { status: "DENIED" as const }
     const requestId = `recovery-password:${createHash("sha256").update(input.setupToken).digest("hex")}`
     const result = await resetCanonicalPassword(client, organizationId, { ...input, requestId }, keys.proof.resolve, policy)
     const snapshot = await withIdentityMobileReadSnapshot(client, organizationId, tx => tx.identityPhoneProof.findFirst({

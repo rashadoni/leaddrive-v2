@@ -41,7 +41,7 @@ export async function checkApplicationRevisions({ admin, actor, checks, phase })
       AND tgfoid = 'identity_guard_account_revision()'::regprocedure`
   assert.equal(truncate.count, 1)
   await assert.rejects(admin.$transaction(async tx => {
-    await tx.$executeRawUnsafe("TRUNCATE identity_accounts, identity_application_grants, identity_actor_bindings, identity_application_memberships, identity_phone_claims, identity_phone_reservations, identity_phone_proofs, identity_phone_proof_outbox, identity_events")
+    await tx.$executeRawUnsafe("TRUNCATE identity_accounts, identity_application_grants, identity_actor_bindings, identity_application_memberships, identity_phone_claims, identity_phone_reservations, identity_phone_proofs, identity_phone_proof_outbox, identity_events, identity_onboarding_intents")
     throw new Error("fixture-account-truncate-was-not-refused")
   }), error => error?.meta?.code === "23514" && String(error?.meta?.message).includes("IDENTITY_ACCOUNT_STATE_RETAINED"))
   assert.deepEqual(await admin.identityAccount.findUniqueOrThrow({ where: retainedKey, select: { cutoverAt: true, credentialEpoch: true, version: true, passwordHash: true } }), before)

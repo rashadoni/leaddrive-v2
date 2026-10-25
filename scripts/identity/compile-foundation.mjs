@@ -18,7 +18,7 @@ export async function admitIdentityBuild(env, cwd) {
 async function main() {
   const { workspace, temp, output } = await admitIdentityBuild(process.env, process.cwd())
   await mkdir(output, { mode: 0o700 }) // Refuse stale output/symlink; never clean another job's directory.
-  const names = ["contract", "registry", "phone-proof", "phone-proof-registry", "credential-setup", "phone-proof-dispatch", "mobile-session-contract", "mobile-session", "membership-registry", "mobile-session-resolver", "tenant-policy", "mobile-password-auth", "legacy-credential-boundary", "legacy-credential-write", "legacy-crm-boundary", "crm-seat-policy", "canonical-password", "crm-session", "administrator", "application-enrollment", "application-actor", "runtime-keys", "mobile-login-runtime", "mobile-runtime", "activation-runtime", "activation", "recovery-authority", "canonical-recovery", "mobile-recovery-runtime"]
+  const names = ["contract", "registry", "phone-proof", "phone-proof-registry", "credential-setup", "phone-proof-dispatch", "mobile-session-contract", "mobile-session", "membership-registry", "mobile-session-resolver", "tenant-policy", "mobile-password-auth", "legacy-credential-boundary", "legacy-credential-write", "legacy-crm-boundary", "crm-seat-policy", "canonical-password", "crm-session", "administrator", "application-enrollment", "application-actor", "runtime-keys", "mobile-login-runtime", "mobile-runtime", "activation-runtime", "activation", "recovery-authority", "canonical-recovery", "mobile-recovery-runtime", "onboarding-contract", "onboarding-authority", "onboarding"]
   const config = join(temp, "identity-foundation-tsconfig.json")
   await writeFile(config, JSON.stringify({ extends: join(workspace, "tsconfig.json"), compilerOptions: {
     target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", types: ["node"], typeRoots: [join(workspace, "node_modules/@types")], strict: true, skipLibCheck: true,
@@ -29,7 +29,7 @@ async function main() {
   // These links exist only in scratch output; no source/global dependency changes.
   await mkdir(join(output, "node_modules/@prisma"), { recursive: true })
   await mkdir(join(output, "node_modules/@"), { recursive: true })
-  for (const name of ["bcryptjs", "jsonwebtoken", "@prisma/client"]) await symlink(join(workspace, "node_modules", name), join(output, "node_modules", name), "dir")
+  for (const name of ["bcryptjs", "jsonwebtoken", "@prisma/client", "zod"]) await symlink(join(workspace, "node_modules", name), join(output, "node_modules", name), "dir")
   await symlink(output, join(output, "node_modules/@/lib"), "dir")
   const compiled = await import(pathToFileURL(join(output, "identity/tenant-policy.js")).href)
   if (typeof compiled.readIdentityMobileTenantPolicy !== "function") throw new Error("IDENTITY_BUILD_IMPORT_REFUSED")

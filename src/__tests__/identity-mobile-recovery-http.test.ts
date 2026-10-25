@@ -49,10 +49,10 @@ describe("public common-password recovery composition", () => {
     expect((await call(verify, { ...input, challengeId, code: "123456" })).status).toBe(400)
     expect(m.holder).not.toHaveBeenCalled()
   })
-  it("resets and signs in only through the selected application", async () => {
-    const response = await call(finish, { organizationSlug: input.organizationSlug, application: "TIME", setupToken: "lds3.fixture", password: "Fictional!Recovered482" })
+  it.each(["lds2.fixture", "lds3.fixture"])("sets the shared password only through the selected application: %s", async setupToken => {
+    const response = await call(finish, { organizationSlug: input.organizationSlug, application: "TIME", setupToken, password: "Fictional!Recovered482" })
     expect(response.status).toBe(200)
-    expect(m.finish).toHaveBeenCalledWith(expect.anything(), "server-tenant", { application: "TIME", setupToken: "lds3.fixture", password: "Fictional!Recovered482" }, expect.any(Function))
+    expect(m.finish).toHaveBeenCalledWith(expect.anything(), "server-tenant", { application: "TIME", setupToken, password: "Fictional!Recovered482" }, expect.any(Function))
     expect(m.oldSetup).not.toHaveBeenCalled()
   })
   it.each([{}, { organizationSlug: input.organizationSlug }, { application: "TIME" }])("refuses canonical setup missing company/application: %j", async scope => {

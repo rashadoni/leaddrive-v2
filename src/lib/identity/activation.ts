@@ -1,12 +1,14 @@
+import type { Prisma } from "@prisma/client"
 import { createHash, randomUUID } from "node:crypto"
 import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, IdentityRegistryError, normalizeIdentityPhone, type IdentityApplication } from "./contract"
-import { withIdentityAdministrator, type IdentityAdministrator } from "./administrator"
+import { withIdentityAdministrator, withIdentityAdministratorInTransaction, type IdentityAdministrator } from "./administrator"
 import { assertIdentityActivationRuntime } from "./activation-runtime"
 import { isCanonicalIdentityPasswordHash } from "./canonical-password"
 import { revalidateIdentityProofAuthority } from "./proof-authority"
 import { IDENTITY_AUTH_SETTING_KEY, isIdentityAuthExplicitlyEnabled, readIdentityMobileTenantPolicy } from "./tenant-policy"
 import type { RegistryClient } from "./registry"
 import { phonesMatch } from "../mtm/mobile-login-phone"
+import { revalidateOnboardingProof } from "./onboarding-authority"
 import { REVIEWER_ROLE } from "../reviewer-grant"
 
 export type IdentityActivationPlan = { application: IdentityApplication; role: string | null; status: "ACTIVE" | "REVOKED";
@@ -23,6 +25,14 @@ const ordered = (plans: IdentityActivationPlan[]) => [...plans].sort((a, b) => a
  * admitRuntime is a server dependency for disposable acceptance, never input. */
 export async function activateReviewedIdentity(client: RegistryClient, administrator: IdentityAdministrator, input: IdentityActivationInput,
   admitRuntime: () => Promise<string> = assertIdentityActivationRuntime) {
+  const artifactSha = await admitRuntime()
+  return withIdentityAdministrator(client, administrator, tx => activateReviewedIdentityInTransaction(tx, administrator, input, artifactSha))
+}
+
+/** Internal composition for one atomic cutover plus onboarding completion.
+ * artifactSha is admitted by the server wrapper, never by a request body. */
+export async function activateReviewedIdentityInTransaction(tx: Prisma.TransactionClient, administrator: IdentityAdministrator,
+  input: IdentityActivationInput, artifactSha: string) {
   const fields = ["userId", "expectedAccountVersion", "expectedCredentialEpoch", "expectedContactRevision", "credentialRequestId", "reviewReference", "requestId", "applications"]
   if (!input || typeof input !== "object" || Object.keys(input).length !== fields.length || fields.some(k => !Object.hasOwn(input, k))
     || ![input.expectedAccountVersion, input.expectedCredentialEpoch, input.expectedContactRevision].every(revision)
@@ -38,13 +48,12 @@ export async function activateReviewedIdentity(client: RegistryClient, administr
   }
   if (new Set(input.applications.map(p => p.application)).size !== input.applications.length || !input.applications.some(p => p.status === "ACTIVE")) throw new IdentityRegistryError("IDENTITY_ACTIVATION_INPUT_INVALID")
   const submitted = input.applications.map(p => ({ application: p.application, role: p.role, status: p.status, grantVersion: p.grantVersion, actorId: p.actorId, membershipVersion: p.membershipVersion, membershipStatus: p.membershipStatus }))
-  const artifactSha = await admitRuntime()
   if (!/^[a-f0-9]{40}$/.test(artifactSha)) throw new IdentityRegistryError("IDENTITY_ACTIVATION_RUNTIME_UNAVAILABLE")
   // A retry may use a newer compatible artifact; the original successful
   // receipt retains its SHA. Artifact version is not caller authorization.
   const requestHash = createHash("sha256").update(JSON.stringify([1, "ACCOUNT_ACTIVATED", administrator.organizationId, administrator.userId,
     ...fields.filter(k => k !== "applications").map(k => input[k as keyof IdentityActivationInput]), ordered(submitted)])).digest("hex")
-  return withIdentityAdministrator(client, administrator, async tx => {
+  return withIdentityAdministratorInTransaction(tx, administrator, async tx => {
     const scope = { organizationId: administrator.organizationId, userId: input.userId }
     const previous = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: scope.organizationId, requestId: input.requestId } } })
     if (previous) {
@@ -66,6 +75,7 @@ export async function activateReviewedIdentity(client: RegistryClient, administr
     const proof = await tx.identityPhoneProof.findFirst({ where: { ...scope, id: credential.proofId, status: "CONFIRMED" } })
     const now = (await tx.$queryRaw<Array<{ now: Date }>>`SELECT clock_timestamp() AS now`)[0].now
     if (!proof || proof.expiresAt <= now) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
+    await revalidateOnboardingProof(tx, proof)
     if (!proof.issuedByUserId || ![1, 2].includes(proof.contextVersion)) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
     if (proof.contextVersion === 2) await revalidateIdentityProofAuthority(tx, proof.issuerAuthority, scope.organizationId, proof.issuedByUserId)
     else if (administrator.mode !== "LEGACY" || proof.issuedByUserId !== administrator.userId) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")

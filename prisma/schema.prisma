@@ -870,6 +870,7 @@ model IdentityAccount {
   phoneClaim      IdentityPhoneClaim?
   reservations    IdentityPhoneReservation[]
   phoneProofs     IdentityPhoneProof[]
+  onboardingIntents IdentityOnboardingIntent[]
   grants          IdentityApplicationGrant[]
   actorBindings   IdentityActorBinding[]
   events          IdentityEvent[]
@@ -983,6 +984,8 @@ model IdentityPhoneProof {
   normalizedPhone String @db.VarChar(16)
   accountVersion  Int
   credentialEpoch Int
+  onboardingIntentId String?
+  onboardingIntent IdentityOnboardingIntent? @relation(fields: [organizationId, userId, onboardingIntentId], references: [organizationId, userId, id], onDelete: Restrict, onUpdate: Restrict)
   contextVersion  Int @default(1)
   contactRevision Int?
   issuerAuthority Json?
@@ -1002,6 +1005,39 @@ model IdentityPhoneProof {
   @@index([organizationId, reservationId, createdAt], map: "identity_phone_proofs_reservation_created_idx")
   @@index([organizationId, expiresAt], map: "identity_phone_proofs_expiry_idx")
   @@map("identity_phone_proofs")
+}
+
+/// Administrator-reviewed first-login intent. It is not a phone claim or session.
+/// Immutable review/issuer/application plan; cancellation and completion retained.
+model IdentityOnboardingIntent {
+  id String @id @default(uuid())
+  organizationId String
+  userId String
+  issuedByUserId String
+  issuerAuthority Json
+  normalizedPhone String @db.VarChar(16)
+  application String @db.VarChar(16)
+  applications Json
+  accountVersion Int
+  credentialEpoch Int
+  contactRevision Int
+  requestId String @db.VarChar(128)
+  requestHash String @db.VarChar(64)
+  reviewReference String @db.VarChar(128)
+  status String @default("ACTIVE") @db.VarChar(16)
+  currentProofId String?
+  issuedAccountVersion Int
+  issuedCredentialEpoch Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  completedAt DateTime? @db.Timestamptz(3)
+  account IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  proofs IdentityPhoneProof[]
+
+  @@unique([organizationId, userId, id], map: "identity_onboarding_intents_subject_key")
+  @@unique([organizationId, requestId], map: "identity_onboarding_request_key")
+  @@index([organizationId, normalizedPhone, status], map: "identity_onboarding_phone_status_idx")
+  @@map("identity_onboarding_intents")
 }
 
 /// One external-send attempt per proof. An expired/uncertain lease is never
