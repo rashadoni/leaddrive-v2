@@ -140,10 +140,14 @@ try {
     await admin.identityApplicationGrant.create({ data: { organizationId: company, userId: userId("ordinary"), application: "TIME", status: "ACTIVE", role: "EMPLOYEE" } })
     await admin.identityAccount.update({ where: accountKey("ordinary"), data: { version: { increment: 1 } } })
     assert.equal((await session(ordinary.current)).user.role, "viewer")
+    const originalCookies = await ordinary.current.cookies() // Synthetic fixture only, never exported.
     await admin.identityApplicationGrant.update({ where: grantKey("ordinary"), data: { status: "REVOKED", role: null, version: 2 } })
     await denied(ordinary.current)
     const revoked = await login("ordinary"); assert.equal(revoked.error, "CredentialsSignin")
     await admin.identityApplicationGrant.update({ where: grantKey("ordinary"), data: { status: "ACTIVE", role: "viewer", version: 3 } })
+    // Auth.js clears invalid cookies; replay the actual earlier fixture cookie
+    // in memory to prove a new grant revision, not just browser deletion.
+    await ordinary.current.addCookies(originalCookies)
     await denied(ordinary.current) // Reactivation never revives an older cookie.
     check("sibling_mobile_grant_does_not_revoke_crm_but_crm_revoke_reactivate_requires_new_login")
     phase("COMMON_CREDENTIAL_EPOCH_AND_ROLLOUT_OFF")
