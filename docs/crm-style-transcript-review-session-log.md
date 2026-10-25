@@ -502,3 +502,20 @@
 - В тесте устаревший literal заменён проверками двух конкретных CTA (header/empty state): shared default Button, сохранённые размеры44px/responsive widths и обработчики, default variant, общийdata marker и scoped CRM action token. Остальные state/portal/flow assertions сохранены; test baseline не расширялся. Независимый reviewer сверил source/common Button/CSS и подтвердил причину.
 - Targeted4 suites29tests PASS; lint изменённого теста PASS; git diff --check PASS. Первый test command не запустил suites из-за неподдерживаемого Vitest4 --minWorkers; повтор с --maxWorkers=1 успешно выполнен. Исходники интерфейса при этом исправлении не менялись.
 - Текущий main267a9524e содержит отдельные reviewed Kafka/PBX changes (7paths), пересечений с UI нет. Следующий шаг — checkpoint, обычный merge current main для актуального candidate, push и новые required checks без обхода gate.
+
+### KB contract исправлен, новый CI запущен
+
+- Commit7099fe85e сохранил KB test correction и журнал. Current main267a9524e объединён без конфликтов в9961113a22f2a980f2f96fd17591f2ba4b5cca6c. Merge принёс11 upstream paths суммарно от ранее включённого4802ab765;7paths были новыми относительно PR event base14eba222. Изменение CLAUDE.md касается только Kafka offset recovery и прочитано; release routing не менялся.
+- Diff6eb4ffcf..9961113a по src/app,src/components,src/lib,src/hooks пуст: визуальный source не изменён. Новый head pushed, PR1057 MERGEABLE. Required run40221321892 и дополнительные workflows запущены. Предыдущий failure не обходится; требуется SUCCESS нового head.
+- Продолжение: дождаться нового required и применимого дополнительного CI, merge ожидаемого9961113a, Actions deploy, public SHA/ping на3hosts и native authenticated smoke. Авторизация пользователя сохраняется.
+
+- Новый source9961113a: все9 дополнительных workflows SUCCESS,13jobs successful/4conditional skipped/0failures. Независимый report followup/followup-ci-review-9961113a.md сохранён отдельно. Candidate33a7165bb048426b878f4afc817517ba9bf9b4b8 имеет base267a9524e и source9961113a; parent drift не повторился. Attendance66PASS/5NOT_RUN, Booking run40221321873 complete bundle +20authenticated browser cases PASS, Workforce11withdrawal receipts PASS/archived journeys NOT RUN.
+- Required typecheck,pr-scope,runner-policy,scan SUCCESS; последним остаётся static-checks / Unit tests vs baseline. Merge ещё не выполнялся.
+
+### Все gates пройдены, дополнительный выпуск merged
+
+- Required run40221321892 SUCCESS: pr-scope,static-checks,typecheck. Отдельные runner-policy/scan также SUCCESS. Перед merge exact head9961113a подтверждён; PR1057 MERGEABLE/CLEAN,18successful checks,5skipped (4conditional exact-source + optional PR production-build, complete build покрыт Booking). Ни failures, ни pending checks не осталось. Premerge snapshot сохранён в followup/premerge-9961113a.json.
+- PR1057 description обновлён по конечной реализации и фактическим проверкам. GitHub merge выполнен с expected_head_sha9961113a; merge commit a5d26517b18f20a26a4553292644d5020a3f0a6b. Root/branch/origin/production13.140.132.245:/opt/leaddrive-v2 и Actions route снова проверены. Прямой server deploy не выполнялся.
+- Следующий шаг — дождаться штатного production workflow дляa5d26517, затем проверить точный public artifact/ping на3hosts и native authenticated страницы. Пока не объявляем follow-up установленным.
+
+- Production run40223978535 для exact mergea5d26517 начат2026-10-25T19:00:54Z: quality/security и build выполняются параллельно. Current stop: доустановкиartifact. Следующее действие — отслеживание workflow, затем publicSHA/native smoke.
