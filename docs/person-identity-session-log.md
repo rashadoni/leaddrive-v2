@@ -1227,3 +1227,8 @@ Server run40213352343 again completed90 PG foundation checks but v2 invitation p
 
 - All seven scan findings were inspected: non-verifiable lds1/lds3 fixture capabilities in two HTTP mock files, introduced by4dbd22e69 and85825720d. Current tests construct the same fake values. Added only exact commit/path/rule/line historical fingerprints in .gitleaksignore; no general path/token detector exemption and no credential was present. Exact PR history scan now PASS, zero findings; updated HTTP26 tests and lint PASS. Hosted required scan still awaits this checkpoint.
 - dd actual-cookie40227302839 has entered the real browser/auth phase. Let this run finish before pushing the prepared checkpoint so useful acceptance is not repeatedly cancelled. Next: inspect the result, fix any actual failure, then push and qualify the final source.
+
+### 2026-10-25T20:03:15.349448+00:00 — reconcile current main before final gates (UTC)
+
+- Checkpointd67400668 saved owned-Time-card connection and exact historical synthetic-token scan exceptions. Fetched current registered origin/main ebb1f62bf and merged it without conflicts as e6c0fbee7. Preserved current cross-tenant-cookie refusal fix, UI appearance changes, schema additions and deployment contract; no production or unrelated branch mutation.
+- On merged source:130 focused registration/bootstrap/recovery/proxy UI+HTTP tests PASS; translation parity, runner86, Node syntax and diff PASS. Full types/build/schema/browser remain hosted-only and must qualify the forthcoming pushed SHA. dd actual-cookie40227302839 is still running and is deliberately not cancelled. Next: inspect it, push the completed source and enable the required PR checks.
