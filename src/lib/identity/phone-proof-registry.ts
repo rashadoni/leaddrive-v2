@@ -48,6 +48,10 @@ async function proofTransaction<T>(client: RegistryClient, organizationId: strin
 async function issuer(tx: Prisma.TransactionClient, proof: IdentityPhoneProof) {
   const [admin] = await tx.$queryRaw<Array<{ role: string }>>`SELECT role FROM users WHERE "organizationId" = ${proof.organizationId} AND id = ${proof.issuedByUserId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
   if (!admin || !["admin", "superadmin"].includes(admin.role)) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
+  const issuerAccount = await tx.identityAccount.findUnique({
+    where: { organizationId_userId: { organizationId: proof.organizationId, userId: proof.issuedByUserId } }, select: { cutoverAt: true },
+  })
+  if (issuerAccount && issuerAccount.cutoverAt !== null) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
 }
 async function suppress(tx: Prisma.TransactionClient, organizationId: string, proofIds: string[], status: "EXPIRED" | "SUPERSEDED") {
   if (!proofIds.length) return

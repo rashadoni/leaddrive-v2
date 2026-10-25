@@ -7,7 +7,7 @@ import { passwordPolicyError } from "../password-policy.mjs"
 
 export async function checkPhoneProofTransactions({ admin, writer, failing, actor, other, build, checks, phase }) {
   phase("PROOF_TRANSACTION_MODULE_IMPORTS")
-  const { stageIdentityAccount, reserveStagedIdentityPhone } = await import(pathToFileURL(resolve(build, "registry.js")).href)
+  const { stageIdentityAccount, reserveStagedIdentityPhone, readIdentityShadow } = await import(pathToFileURL(resolve(build, "registry.js")).href)
   const { issueStagedPhoneProof: issue, consumeStagedPhoneProof: consume, cancelStagedPhoneReservation: cancel,
     expireStagedPhoneProofs: expire, claimStagedPhoneProofDelivery: lease, recordStagedPhoneProofDelivery: record,
     consumeStagedPhoneProofWithSetup: consumeWithSetup, setStagedIdentityCredential: setCredential } = await import(pathToFileURL(resolve(build, "phone-proof-registry.js")).href)
@@ -16,11 +16,11 @@ export async function checkPhoneProofTransactions({ admin, writer, failing, acto
   const org = actor.organizationId, key = { id: "synthetic-worker-key", material: new Uint8Array(32).fill(13) }
   const resolveKey = id => id === key.id ? key : null
   let counter = 0
-  async function setup(label) {
+  async function setup(label, principal = actor) {
     const userId = `proof-user-${label}`, phone = `+9945599${String(++counter).padStart(5, "0")}`
     await admin.$executeRawUnsafe('INSERT INTO users (id, "organizationId", "isActive", role, phone, "passwordHash") VALUES ($1,$2,true,$3,$4,$5)', userId, org, "viewer", "+994559988777", "legacy-untouched")
-    await stageIdentityAccount(writer, actor, { userId, requestId: `proof-stage-${label}` })
-    const reservation = await reserveStagedIdentityPhone(writer, actor, { userId, phone, expectedAccountVersion: 1, expectedCredentialEpoch: 1, requestId: `proof-reserve-${label}` })
+    await stageIdentityAccount(writer, principal, { userId, requestId: `proof-stage-${label}` })
+    const reservation = await reserveStagedIdentityPhone(writer, principal, { userId, phone, expectedAccountVersion: 1, expectedCredentialEpoch: 1, requestId: `proof-reserve-${label}` })
     const input = { userId, reservationId: reservation.reservationId, expectedAccountVersion: 1, expectedCredentialEpoch: 1, requestId: `proof-issue-${label}` }
     return { userId, phone, input }
   }
@@ -291,4 +291,33 @@ export async function checkPhoneProofTransactions({ admin, writer, failing, acto
   assert.equal((await proofRow(sweptProof.proofId)).deliveryCiphertext, null)
   assert.equal((await outboxRow(sweptProof.proofId)).status, "EXPIRED")
   checks.push("database_expiry_closes_and_scrubs_proof_without_extending_immutable_deadline")
+
+  phase("CONVERTED_ISSUER_CANNOT_REUSE_LEGACY_ADMIN_ROLE_FOR_STAGING")
+  const issuerId = "proof-converted-admin", converted = { organizationId: org, userId: issuerId }
+  await admin.$executeRaw`INSERT INTO users (id,"organizationId","isActive",role) VALUES (${issuerId},${org},true,'admin')`
+  await stageIdentityAccount(writer, actor, { userId: issuerId, requestId: "proof-stage-converted-admin" })
+  const pending = await setup("issuer-marker-pending", converted)
+  const pendingProof = await issue(writer, converted, pending.input, key), pendingCode = await secret(pendingProof.proofId)
+  const confirmedSubject = await setup("issuer-marker-confirmed", converted)
+  const confirmedProof = await issue(writer, converted, confirmedSubject.input, key)
+  const capability = await consumeWithSetup(writer, org, { proofId: confirmedProof.proofId, code: await secret(confirmedProof.proofId), requestId: "proof-before-issuer-marker" }, resolveKey)
+  assert.equal(typeof capability.setupToken, "string")
+  const pendingBefore = await proofRow(pendingProof.proofId), outboxBefore = await outboxRow(pendingProof.proofId)
+  const confirmedBefore = await account(confirmedSubject.userId)
+  await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: org, userId: issuerId } },
+    data: { cutoverAt: new Date(), passwordHash: "!fixture-converted-issuer", version: 2, credentialEpoch: 2 } })
+  await assert.rejects(stageIdentityAccount(writer, converted, { userId: pending.userId, requestId: "converted-issuer-stage-refusal" }), /IDENTITY_CANONICAL_ADMIN_CONTEXT_REQUIRED/)
+  await assert.rejects(readIdentityShadow(writer, converted, pending.userId), /IDENTITY_CANONICAL_ADMIN_CONTEXT_REQUIRED/)
+  await assert.rejects(issue(writer, converted, pending.input, key), /IDENTITY_CANONICAL_ADMIN_CONTEXT_REQUIRED/)
+  checks.push("converted_admin_legacy_role_cannot_stage_read_or_issue_even_idempotent_proof_without_canonical_crm_context")
+
+  phase("CONVERTED_ISSUER_REVOKES_OLD_ADMIN_PROOF_DELIVERY_CONFIRM_AND_SETUP")
+  await assert.rejects(lease(writer, org, pendingProof.proofId), /IDENTITY_PROOF_AUTHORITY_UNAVAILABLE/)
+  await assert.rejects(consume(writer, org, { proofId: pendingProof.proofId, code: pendingCode, requestId: "converted-issuer-confirm-refusal" }, resolveKey), /IDENTITY_PROOF_AUTHORITY_UNAVAILABLE/)
+  await assert.rejects(setCredential(writer, org, { setupToken: capability.setupToken, password: "Synthetic!IssuerCredential47", requestId: "converted-issuer-credential-refusal" }, resolveKey, passwordPolicyError), /IDENTITY_PROOF_AUTHORITY_UNAVAILABLE/)
+  assert.deepEqual(await proofRow(pendingProof.proofId), pendingBefore)
+  assert.deepEqual(await outboxRow(pendingProof.proofId), outboxBefore)
+  assert.deepEqual(await account(confirmedSubject.userId), confirmedBefore)
+  assert.equal((await readIdentityShadow(writer, actor, pending.userId)).authenticationChanged, false)
+  checks.push("issuer_cutover_blocks_private_delivery_correct_pending_code_and_valid_setup_atomically_without_changing_subject_or_outbox")
 }

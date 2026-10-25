@@ -24,6 +24,12 @@ export async function withRegistryTransaction<T>(client: RegistryClient, actor: 
       ? await tx.organization.findFirst({ where: { id: actor.organizationId, isActive: true }, select: { id: true } })
       : (await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM organizations WHERE id = ${actor.organizationId} AND "isActive" FOR SHARE`)[0]
     if (!company || !principal || !["admin", "superadmin"].includes(principal.role)) throw new IdentityRegistryError("IDENTITY_ADMIN_REQUIRED")
+    const issuerAccount = await tx.identityAccount.findUnique({
+      where: { organizationId_userId: { organizationId: actor.organizationId, userId: actor.userId } }, select: { cutoverAt: true },
+    })
+    // The staged API only knows a legacy server principal. A converted admin
+    // needs a future CRM grant/session epoch contract; old User.role is not it.
+    if (issuerAccount && issuerAccount.cutoverAt !== null) throw new IdentityRegistryError("IDENTITY_CANONICAL_ADMIN_CONTEXT_REQUIRED")
     return work(tx)
   }, { isolationLevel: readOnly ? "RepeatableRead" : "ReadCommitted", timeout: 15_000, maxWait: 5_000 })
 }
