@@ -440,7 +440,10 @@ async function main() {
     const safeCode = error?.meta?.code ?? error?.code
     const observed = error?.observedDatabaseErrorCode
     if (typeof observed === "string" && /^(P[0-9]{4}|[0-9]{5})$/.test(observed)) receipt.observedDatabaseErrorCode = observed
-    if (typeof safeCode === "string" && /^(P[0-9]{4}|[0-9]{5}|ERR_ASSERTION|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND)$/.test(safeCode)) receipt.errorCode = safeCode
+    if (typeof safeCode === "string" && /^(P[0-9]{4}|[0-9]{5}|ERR_ASSERTION|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|IDENTITY_[A-Z0-9_]{1,80})$/.test(safeCode)) receipt.errorCode = safeCode
+    if (["Error", "TypeError", "AssertionError", "IdentityRegistryError", "PrismaClientValidationError"].includes(error?.name)) receipt.failureKind = error.name
+    const sourceLocation = typeof error?.stack === "string" ? error.stack.match(/\/identity\/([a-z-]+\.m?js):(\d+):(\d+)/) : null
+    if (sourceLocation) receipt.failureLocation = `${sourceLocation[1]}:${sourceLocation[2]}:${sourceLocation[3]}`
     process.exitCode = 1
   } finally {
     await writer?.$disconnect().catch(() => {})
