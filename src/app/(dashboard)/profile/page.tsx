@@ -495,7 +495,9 @@ function SecuritySection({ profile }: { profile: MeProfile }) {
         </div>
 
         {/* Log out of all devices */}
-        <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+        {/* Stacked on phones: side by side, the button left the text a
+            one-word-per-line column (owner's screenshot, 2026-10-25). */}
+        <div className="flex flex-col items-start gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-sm font-medium">
               <ShieldOff className="h-4 w-4 text-muted-foreground" />
