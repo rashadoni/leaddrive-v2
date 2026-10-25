@@ -199,6 +199,8 @@ describe("account-security management is browser-session-only", () => {
       .mockResolvedValueOnce(targetUser as never)
       .mockResolvedValueOnce(targetUser as never)
       .mockResolvedValueOnce(targetUser as never)
+      // Credential maintenance re-reads the same target under its write lock.
+      .mockResolvedValueOnce(targetUser as never)
     vi.mocked(prisma.user.create).mockResolvedValue({
       id: "user-new",
       name: "New User",
