@@ -389,6 +389,31 @@ try {
     const firstSetup = (await firstConfirmed.json()).data.setupToken
     assert.ok(firstSetup.startsWith("lds2."))
     const firstPassword = `Onboarding!${password.slice(0, 32)}`
+    const firstLegacy = await admin.user.findUniqueOrThrow({ where: { id: userId("onboarding") }, select: { passwordHash: true } })
+    phase("ACTUAL_PUBLIC_FIRST_LOGIN_HR_AUDIT_ROLLBACK")
+    await admin.$executeRawUnsafe('CREATE SEQUENCE identity_onboarding_time_audit_reached')
+    await admin.$executeRawUnsafe('GRANT USAGE,SELECT ON SEQUENCE identity_onboarding_time_audit_reached TO identity_crm_browser')
+    await admin.$executeRawUnsafe(`CREATE FUNCTION identity_onboarding_time_fail_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      IF NEW.action = 'MTM_IDENTITY_TIME_ENROLLED' THEN PERFORM nextval('identity_onboarding_time_audit_reached'); RAISE EXCEPTION 'SYNTHETIC_FIRST_LOGIN_HR_FAILURE' USING ERRCODE='23514'; END IF;
+      RETURN NEW; END $$`)
+    await admin.$executeRawUnsafe('CREATE TRIGGER identity_onboarding_time_fail_audit BEFORE INSERT ON mtm_audit_logs FOR EACH ROW EXECUTE FUNCTION identity_onboarding_time_fail_audit()')
+    try {
+      await reserveAuthPost()
+      const failedFirstLogin = await firstClient.request.post("/api/v1/mtm/mobile/auth/password", { timeout: 120000, data: {
+        organizationSlug: company, application: "TIME", setupToken: firstSetup, password: firstPassword,
+      } })
+      assert.equal(failedFirstLogin.status(), 401)
+      assert.equal((await admin.$queryRawUnsafe('SELECT is_called FROM identity_onboarding_time_audit_reached'))[0].is_called, true)
+      assert.equal((await admin.identityAccount.findUniqueOrThrow({ where: accountKey("onboarding") })).cutoverAt, null)
+      assert.deepEqual(await admin.user.findUniqueOrThrow({ where: { id: userId("onboarding") }, select: { passwordHash: true } }), firstLegacy)
+      assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: userId("onboarding"), role: "EMPLOYEE" } }), 0)
+      assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: company, userId: userId("onboarding"), application: "TIME" } }), 0)
+      assert.equal((await admin.identityOnboardingIntent.findUniqueOrThrow({ where: { id: invitationResult.intentId } })).status, "ACTIVE")
+    } finally {
+      await admin.$executeRawUnsafe('DROP TRIGGER identity_onboarding_time_fail_audit ON mtm_audit_logs')
+      await admin.$executeRawUnsafe('DROP FUNCTION identity_onboarding_time_fail_audit()')
+      await admin.$executeRawUnsafe('DROP SEQUENCE identity_onboarding_time_audit_reached')
+    }
     phase("ACTUAL_PUBLIC_FIRST_LOGIN_CUTOVER")
     await reserveAuthPost()
     const firstSession = await firstClient.request.post("/api/v1/mtm/mobile/auth/password", { timeout: 120000, data: {

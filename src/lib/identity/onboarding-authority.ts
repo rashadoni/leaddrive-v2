@@ -30,9 +30,9 @@ export async function assertOnboardingApplicationPlan(tx: Prisma.TransactionClie
   for (const p of plans.data.filter(p => p.status === "ACTIVE" && p.application !== "CRM")) {
     const policy = await readIdentityMobileTenantPolicy(tx, scope.organizationId, p.application as "TIME" | "ROUTE_FIELD")
     if (!policy.identityEnabled || !policy.licensed) throw unavailable()
-    await tx.$queryRaw`SELECT id FROM mtm_agents WHERE "organizationId"=${scope.organizationId} AND id=${p.actorId} FOR SHARE`
-    const card = await tx.mtmAgent.findFirst({ where: { organizationId: scope.organizationId, id: p.actorId!, userId: scope.userId, status: "ACTIVE" },
-      select: { role: true, attendanceParticipant: true, attendanceExcluded: true } })
+    const [card] = await tx.$queryRaw<Array<{ role: string; attendanceParticipant: boolean; attendanceExcluded: boolean }>>`
+      SELECT role,"attendanceParticipant","attendanceExcluded" FROM mtm_agents
+      WHERE "organizationId"=${scope.organizationId} AND id=${p.actorId} AND "userId"=${scope.userId} AND status='ACTIVE' FOR SHARE`
     const binding = await tx.identityActorBinding.findUnique({ where: { organizationId_actorId: { organizationId: scope.organizationId, actorId: p.actorId! } } })
     if (!card || binding?.userId !== scope.userId || card.role !== p.role
       || (p.application === "TIME" ? card.role !== "EMPLOYEE" || !card.attendanceParticipant || card.attendanceExcluded : card.role === "EMPLOYEE")) throw unavailable()
