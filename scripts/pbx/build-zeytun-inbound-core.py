@@ -82,6 +82,15 @@ def build(source, bridge):
         self._accept_resumption_update(event)
         if "goAway" in event:'''
     replace(anchor, replacement)
+    # Owner, 2026-10-25: «после прощания почему не кладёт трубку?» — the goodbye
+    # ended at 20:35:14.5 and the station still waited (3 s for a caller who
+    # might answer it, then 1.5 s): the caller hung up first. A pharmacy call
+    # closes only after the caller said goodbye, so it hangs up about a second
+    # after the closing has played. Other calls keep the core's waits.
+    replace("                elif now - caller_quiet_since >= CALL_FAREWELL_CALLER_WAIT_SECONDS:\n",
+            "                elif now - caller_quiet_since >= (1.0 if self.pharmacy_preview else CALL_FAREWELL_CALLER_WAIT_SECONDS):\n")
+    replace("                elif now - farewell_done_at >= CALL_FAREWELL_HANGUP_DELAY_SECONDS:\n",
+            "                elif now - farewell_done_at >= (0.8 if self.pharmacy_preview else CALL_FAREWELL_HANGUP_DELAY_SECONDS):\n")
     # Only recovery wording changes; pharmacy calls are never marked as demos.
     for phrase in ['"what they last said" if self.is_demo_call', '"question" if self.is_demo_call', '"" if self.is_demo_call',
                    'FRESH_RECOVERY_REPEAT_SENTENCES_NEUTRAL if self.is_demo_call']:

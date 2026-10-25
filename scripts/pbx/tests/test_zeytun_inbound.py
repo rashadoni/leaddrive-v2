@@ -703,6 +703,12 @@ class ArtifactTests(unittest.TestCase):
                    "_fresh_recovery_prompt", "_fresh_recovery_event"}
         # Recovery method names are discovered from the pinned source; assert
         # their changed content is confined to the four neutral-wording checks.
+        # The deadline loop changes only its two farewell waits, for pharmacy calls.
+        loop = ast.unparse(old_methods["_call_deadline_loop"])
+        for wait, shorter in [("CALL_FAREWELL_CALLER_WAIT_SECONDS", "1.0"), ("CALL_FAREWELL_HANGUP_DELAY_SECONDS", "0.8")]:
+            loop = loop.replace(f">= {wait}:", f">= ({shorter} if self.pharmacy_preview else {wait}):")
+        self.assertEqual(ast.dump(ast.parse(loop).body[0]), ast.dump(new_methods["_call_deadline_loop"]))
+        differences.discard("_call_deadline_loop")
         for name in differences - allowed:
             original = ast.unparse(old_methods[name])
             expected = original.replace("self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")
