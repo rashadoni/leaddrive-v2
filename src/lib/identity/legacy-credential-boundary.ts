@@ -38,8 +38,21 @@ export async function readLegacyCredentialBoundary(client: RegistryClient, organ
 /** Internal eligibility only: caller owns a verified scope and transaction. */
 export async function readLegacyCredentialBoundaryInTransaction(tx: Prisma.TransactionClient, organizationId: string,
   principal: LegacyCredentialPrincipal): Promise<LegacyCredentialBoundary> {
-  const company = await tx.organization.findFirst({ where: { id: organizationId, isActive: true }, select: { id: true } })
-  if (!company) return "UNAVAILABLE" as const
+  return readLegacyBoundaryState(tx, organizationId, principal, true)
+}
+
+/** Internal maintenance eligibility; caller must separately authorize the change.
+ * Disabled principals may be maintained without being admitted to sign in.
+ * Anonymized/missing/foreign/canonical ownership still refuses old credentials. */
+export async function readLegacyCredentialMaintenanceBoundaryInTransaction(tx: Prisma.TransactionClient, organizationId: string,
+  principal: LegacyCredentialPrincipal): Promise<LegacyCredentialBoundary> {
+  return readLegacyBoundaryState(tx, organizationId, principal, false)
+}
+
+async function readLegacyBoundaryState(tx: Prisma.TransactionClient, organizationId: string,
+  principal: LegacyCredentialPrincipal, requireActive: boolean): Promise<LegacyCredentialBoundary> {
+  const company = await tx.organization.findFirst({ where: { id: organizationId }, select: { id: true, isActive: true } })
+  if (!company || (requireActive && company.isActive !== true)) return "UNAVAILABLE" as const
   const userIds = new Set<string>()
   let linkedUserId: string | null = null
   if (principal.kind === "USER") {
@@ -47,7 +60,7 @@ export async function readLegacyCredentialBoundaryInTransaction(tx: Prisma.Trans
     userIds.add(principal.userId)
   } else {
     const actor = await tx.mtmAgent.findFirst({ where: { id: principal.actorId, organizationId }, select: { userId: true, status: true } })
-    if (!actor || actor.status !== "ACTIVE") return "UNAVAILABLE" as const
+    if (!actor || (requireActive && actor.status !== "ACTIVE")) return "UNAVAILABLE" as const
     linkedUserId = actor.userId
     if (linkedUserId) userIds.add(linkedUserId)
     const binding = await tx.identityActorBinding.findUnique({ where: { organizationId_actorId: { organizationId, actorId: principal.actorId } }, select: { userId: true } })
@@ -57,6 +70,6 @@ export async function readLegacyCredentialBoundaryInTransaction(tx: Prisma.Trans
     const accounts = await tx.identityAccount.findMany({ where: { organizationId, userId: { in: [...userIds] } }, select: { cutoverAt: true } })
     if (accounts.some(account => account.cutoverAt !== null)) return "MIGRATED" as const
   }
-  if (linkedUserId && !await tx.user.findFirst({ where: { id: linkedUserId, organizationId, isActive: true, anonymizedAt: null }, select: { id: true } })) return "UNAVAILABLE" as const
+  if (linkedUserId && !await tx.user.findFirst({ where: { id: linkedUserId, organizationId, anonymizedAt: null, ...(requireActive ? { isActive: true } : {}) }, select: { id: true } })) return "UNAVAILABLE" as const
   return "LEGACY" as const
 }

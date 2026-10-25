@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url"
 import { setTimeout as delay } from "node:timers/promises"
 
 export async function checkLegacyWrites({ admin, writer, actor, other, build, checks, phase }) {
-  const { withLegacyCredentialWrite: fence } = await import(pathToFileURL(resolve(build, "legacy-credential-write.js")).href)
+  const { withLegacyCredentialWrite: fence, withLegacyCredentialMaintenance: maintain } = await import(pathToFileURL(resolve(build, "legacy-credential-write.js")).href)
   const org = actor.organizationId, subjects = new Map()
   const deferred = () => {
     let resolve, reject
@@ -37,7 +37,7 @@ export async function checkLegacyWrites({ admin, writer, actor, other, build, ch
   }
   // Temporarily grant just the credential column in this private scratch DB.
   // Existing tenant SELECT/UPDATE policies and NOBYPASSRLS remain unchanged.
-  await admin.$executeRawUnsafe('GRANT UPDATE ("passwordHash") ON mtm_agents TO identity_foundation_writer')
+  await admin.$executeRawUnsafe('GRANT UPDATE ("passwordHash") ON mtm_agents, users TO identity_foundation_writer')
   try {
     for (const name of ["normal", "writer-first", "cutover-first"]) {
       const userId = `legacy-write-user-${name}`, actorId = `legacy-write-actor-${name}`
@@ -138,7 +138,45 @@ export async function checkLegacyWrites({ admin, writer, actor, other, build, ch
     assert.deepEqual(await fence(writer, org, [...card(orphan), { kind: "USER", userId: first.userId }], async () => { targetWork = true }), { allowed: false })
     assert.equal(targetWork, false)
     checks.push("legacy_write_refuses_immutable_canonical_owner_and_explicit_new_link_target")
+
+    phase("LEGACY_MAINTENANCE_DISABLED_PRINCIPAL_WITHOUT_SIGNIN_OR_REACTIVATION")
+    const maintainedUser = "legacy-maintenance-user", maintainedActor = "legacy-maintenance-actor"
+    await admin.$executeRaw`INSERT INTO users (id,"organizationId","isActive",role,"passwordHash") VALUES (${maintainedUser},${org},false,'viewer','!fixture-disabled-old')`
+    await admin.$executeRaw`INSERT INTO mtm_agents (id,"organizationId","userId",role,status,"attendanceParticipant","passwordHash") VALUES (${maintainedActor},${org},${maintainedUser},'AGENT','INACTIVE',false,'!fixture-disabled-old')`
+    await admin.identityAccount.create({ data: { organizationId: org, userId: maintainedUser } })
+    let unexpectedAdmission = false
+    assert.deepEqual(await fence(writer, org, card(maintainedActor), async () => { unexpectedAdmission = true }), { allowed: false })
+    const principal = [{ kind: "USER", userId: maintainedUser }]
+    assert.deepEqual(await fence(writer, org, principal, async () => { unexpectedAdmission = true }), { allowed: false })
+    assert.equal(unexpectedAdmission, false)
+    assert.deepEqual(await maintain(writer, org, card(maintainedActor), tx => tx.$executeRaw`UPDATE mtm_agents SET "passwordHash" = '!fixture-disabled-new' WHERE "organizationId" = ${org} AND id = ${maintainedActor}`), { allowed: true, value: 1 })
+    const originalCompany = await admin.organization.findUniqueOrThrow({ where: { id: org }, select: { isActive: true } })
+    try {
+      await admin.organization.update({ where: { id: org }, data: { isActive: false }, select: { id: true } })
+      assert.deepEqual(await maintain(writer, org, principal, tx => tx.$executeRaw`UPDATE users SET "passwordHash" = '!fixture-disabled-new' WHERE "organizationId" = ${org} AND id = ${maintainedUser}`), { allowed: true, value: 1 })
+      const [disabled] = await admin.$queryRaw`SELECT "isActive", "passwordHash" FROM users WHERE id = ${maintainedUser}`
+      assert.equal(disabled.isActive, false); assert.equal(disabled.passwordHash, "!fixture-disabled-new")
+      assert.equal((await admin.mtmAgent.findFirstOrThrow({ where: { id: maintainedActor }, select: { status: true } })).status, "INACTIVE")
+      checks.push("legacy_maintenance_preserves_disabled_user_actor_and_company_without_admitting_signin_or_reactivating_any_principal")
+
+      phase("LEGACY_MAINTENANCE_CANONICAL_OR_ANONYMIZED_PRINCIPAL_REFUSAL")
+      await admin.$executeRaw`UPDATE users SET "anonymizedAt" = now() WHERE id = ${maintainedUser}`
+      assert.deepEqual(await maintain(writer, org, principal, async () => { unexpectedAdmission = true }), { allowed: false })
+      await admin.$executeRaw`UPDATE users SET "anonymizedAt" = NULL WHERE id = ${maintainedUser}`
+      await assert.rejects(maintain(writer, org, principal, async tx => {
+        await tx.$executeRaw`UPDATE users SET "passwordHash" = '!fixture-maintenance-rollback' WHERE "organizationId" = ${org} AND id = ${maintainedUser}`
+        throw new Error("fixture-maintenance-audit-failed")
+      }), /fixture-maintenance-audit-failed/)
+      await cutover(maintainedUser)
+      assert.deepEqual(await maintain(writer, org, principal, async () => { unexpectedAdmission = true }), { allowed: false })
+      assert.deepEqual(await maintain(writer, org, card(maintainedActor), async () => { unexpectedAdmission = true }), { allowed: false })
+      assert.equal(unexpectedAdmission, false)
+      assert.equal((await admin.$queryRaw`SELECT "passwordHash" FROM users WHERE id = ${maintainedUser}`)[0].passwordHash, "!fixture-disabled-new")
+      checks.push("legacy_maintenance_refuses_canonical_or_anonymized_ownership_even_when_disabled_and_rolls_back_failed_credential_work")
+    } finally {
+      await admin.organization.update({ where: { id: org }, data: { isActive: originalCompany.isActive }, select: { id: true } })
+    }
   } finally {
-    await admin.$executeRawUnsafe('REVOKE UPDATE ("passwordHash") ON mtm_agents FROM identity_foundation_writer')
+    await admin.$executeRawUnsafe('REVOKE UPDATE ("passwordHash") ON mtm_agents, users FROM identity_foundation_writer')
   }
 }

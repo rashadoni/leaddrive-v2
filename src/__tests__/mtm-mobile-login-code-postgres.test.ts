@@ -35,7 +35,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
 const adminUrl = process.env.MTM_LOGIN_CODE_TEST_DATABASE_URL
@@ -71,6 +71,13 @@ const webSession = vi.hoisted(() => ({ current: null as Record<string, unknown> 
 vi.mock("@/lib/api-auth", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/api-auth")>(),
   getSession: vi.fn(async () => webSession.current),
+  requireSessionAuth: vi.fn(async () => webSession.current?.principalType === "session"
+    ? webSession.current : NextResponse.json({ error: "Unauthorized" }, { status: 401 })),
+}))
+
+vi.mock("@/lib/superadmin-guard", () => ({
+  requireSuperAdmin: vi.fn(async () => webSession.current?.principalType === "session" && webSession.current.role === "superadmin"
+    ? webSession.current : NextResponse.json({ error: "Forbidden" }, { status: 403 })),
 }))
 
 // Limits are not under test; every request is let through.
@@ -113,6 +120,8 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
   let verifyCode!: typeof import("@/app/api/v1/mtm/mobile/auth/code/verify/route").POST
   let setPassword!: typeof import("@/app/api/v1/mtm/mobile/auth/password/route").POST
   let signIn!: typeof import("@/app/api/v1/mtm/mobile/auth/route").POST
+  let resetUser!: typeof import("@/app/api/v1/users/[id]/reset-password/route").POST
+  let resetTenantUser!: typeof import("@/app/api/v1/admin/tenants/[id]/users/[userId]/reset-password/route").POST
   let updateAgent!: typeof import("@/app/api/v1/mtm/agents/[id]/route").PUT
   let resolveMobileAuth!: typeof import("@/lib/mobile-auth").resolveMobileAuth
   let availability!: typeof import("@/lib/mtm/whatsapp-login-code")
@@ -139,6 +148,8 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     updateAgent = (await import("@/app/api/v1/mtm/agents/[id]/route")).PUT
     resolveMobileAuth = (await import("@/lib/mobile-auth")).resolveMobileAuth
     await import("@/lib/auth")
+    resetUser = (await import("@/app/api/v1/users/[id]/reset-password/route")).POST
+    resetTenantUser = (await import("@/app/api/v1/admin/tenants/[id]/users/[userId]/reset-password/route")).POST
     availability = await import("@/lib/mtm/whatsapp-login-code")
     vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
       sent.push({ url, authorization: new Headers(init.headers).get("authorization"), body: JSON.parse(String(init.body)) })
@@ -472,6 +483,49 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect(await callback({ token, user: undefined })).toBeNull()
     expect(await state()).toEqual(before)
     expect(sent).toHaveLength(0)
+  })
+
+  it.each(["tenant", "platform"] as const)("keeps %s admin reset of disabled legacy users atomic and refuses canonical credentials", async scope => {
+    const company = `identity-admin-credential-${scope}`, initialPassword = "Fictional-Admin-Initial-2026!"
+    const { targetId, actorId } = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, name: "Fictional credential maintenance company", slug: company, isActive: scope === "tenant", modules: { settings: true } } })
+      const actorOrg = scope === "tenant" ? company : SENDER
+      const actor = await prisma.user.create({ data: { organizationId: actorOrg, name: "Fictional credential administrator", email: `${scope}-actor@credential.invalid`, role: scope === "tenant" ? "admin" : "superadmin", passwordHash: "!fixture-actor-session" } })
+      const target = await prisma.user.create({ data: { organizationId: company, name: "Fictional disabled target", email: `${scope}-target@credential.invalid`, role: scope === "tenant" ? "viewer" : "admin", isActive: false, passwordHash: await bcrypt.hash(initialPassword, 4) } })
+      return { targetId: target.id, actorId: actor.id }
+    })
+    const reset = (password: string) => {
+      const url = scope === "tenant" ? `http://localhost:3000/api/v1/users/${targetId}/reset-password`
+        : `http://localhost:3000/api/v1/admin/tenants/${company}/users/${targetId}/reset-password`
+      const request = new NextRequest(url, { method: "POST", headers: { "content-type": "application/json", origin: "http://localhost:3000", "sec-fetch-site": "same-origin" }, body: JSON.stringify({ password, confirmPassword: password }) })
+      return scope === "tenant" ? resetUser(request, { params: Promise.resolve({ id: targetId }) })
+        : resetTenantUser(request, { params: Promise.resolve({ id: company, userId: targetId }) })
+    }
+    const state = () => bypass(() => prisma.user.findUniqueOrThrow({ where: { id: targetId }, select: { passwordHash: true, passwordChangedAt: true, isActive: true, resetToken: true, resetTokenExp: true } }))
+    webSession.current = { userId: actorId, orgId: scope === "tenant" ? company : SENDER, role: scope === "tenant" ? "admin" : "superadmin", email: `${scope}-actor@credential.invalid`, name: "Fictional credential administrator", principalType: "session" }
+    try {
+      const newPassword = "Fictional-Admin-Changed-2026!"
+      const accepted = await reset(newPassword)
+      expect(accepted.status).toBe(200)
+      expect((await accepted.json()).data.isActive).toBe(false)
+      const before = await state()
+      expect(await bcrypt.compare(newPassword, before.passwordHash)).toBe(true)
+      expect(before.isActive).toBe(false)
+      await bypass(() => prisma.$executeRawUnsafe(`ALTER TABLE audit_logs ADD CONSTRAINT identity_fixture_admin_audit_fail CHECK ("organizationId" <> '${company}' OR action NOT IN ('password_reset', 'superadmin_password_reset')) NOT VALID`))
+      try {
+        expect((await reset("Fictional-Admin-Rollback-2026!")).status).toBe(500)
+        expect(await state()).toEqual(before)
+      } finally {
+        await bypass(() => prisma.$executeRawUnsafe("ALTER TABLE audit_logs DROP CONSTRAINT identity_fixture_admin_audit_fail"))
+      }
+      await bypass(() => prisma.identityAccount.create({ data: { organizationId: company, userId: targetId, cutoverAt: new Date(), passwordHash: "!fixture-admin-canonical" } }))
+      const refused = await reset("Fictional-Admin-Forbidden-2026!")
+      expect(refused.status).toBe(409)
+      expect((await refused.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+      expect(await state()).toEqual(before)
+      expect((await bypass(() => prisma.organization.findUniqueOrThrow({ where: { id: company }, select: { isActive: true } }))).isActive).toBe(scope === "tenant")
+      expect(sent).toHaveLength(0)
+    } finally { webSession.current = null }
   })
 
   it("says aloud that codes cannot be sent while the template is missing — to everybody, and withdraws the code", async () => {

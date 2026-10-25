@@ -30,6 +30,12 @@ vi.mock("@/lib/api-auth", () => ({
   isAuthError: vi.fn((value: unknown) => value instanceof NextResponse),
 }))
 
+const credentialFence = vi.hoisted(() => ({ allowed: true }))
+vi.mock("@/lib/identity/legacy-credential-write", () => ({
+  withLegacyCredentialMaintenance: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    credentialFence.allowed ? { allowed: true, value: await work(client) } : { allowed: false }),
+}))
+
 vi.mock("@/lib/prisma", () => ({
   logAudit: vi.fn(),
   prisma: {
@@ -50,7 +56,7 @@ vi.mock("bcryptjs", () => ({
 }))
 
 import { POST } from "@/app/api/v1/users/[id]/reset-password/route"
-import { logAudit } from "@/lib/prisma"
+import { logAudit, prisma } from "@/lib/prisma"
 
 const params = { params: Promise.resolve({ id: "user-1" }) }
 
@@ -63,6 +69,7 @@ function request(body: Record<string, unknown>) {
 }
 
 beforeEach(() => {
+  credentialFence.allowed = true
   state.authOk = true
   state.lastUpdate = null
   state.user = {
@@ -77,6 +84,15 @@ beforeEach(() => {
 })
 
 describe("POST /api/v1/users/[id]/reset-password", () => {
+  it("refuses legacy credential writes when the migration fence rejects the target", async () => {
+    credentialFence.allowed = false
+    const response = await POST(request({ password: "Valid-Test-Pass-2026!", confirmPassword: "Valid-Test-Pass-2026!" }), params)
+    expect(response.status).toBe(409)
+    expect((await response.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+    expect(state.lastUpdate).toBeNull()
+    expect(logAudit).not.toHaveBeenCalled()
+  })
+
   it("rejects mismatched confirmation without changing the account", async () => {
     const response = await POST(request({
       password: "Valid-Test-Pass-2026!",
@@ -123,6 +139,7 @@ describe("POST /api/v1/users/[id]/reset-password", () => {
         userId: "admin-1",
         newValue: expect.objectContaining({ sessionsInvalidated: true }),
       }),
+      prisma,
     )
     expect(JSON.stringify(vi.mocked(logAudit).mock.calls)).not.toContain("Valid-Test-Pass-2026!")
     expect(JSON.stringify(vi.mocked(logAudit).mock.calls)).not.toContain("HASH(")
