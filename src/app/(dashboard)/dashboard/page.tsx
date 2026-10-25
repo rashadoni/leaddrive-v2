@@ -259,9 +259,13 @@ export default function DashboardPage() {
 
   // Tell the shell whether the hero is showing a Da Vinci field, so it can drop
   // its own duplicate entry points — or restore them when the greeting is off.
+  // While loading the skeleton already holds the hero's field, and the greeting
+  // is on unless the loaded config says otherwise: reporting "no field" here
+  // made the shell flash its orange search bar on every open of the dashboard
+  // until the data arrived (owner, 2026-10-25).
   const { setHeroCommandVisible } = useDashboardHero()
   useEffect(() => {
-    setHeroCommandVisible(showGreeting && !loading)
+    setHeroCommandVisible(loading || showGreeting)
     return () => setHeroCommandVisible(false)
   }, [loading, setHeroCommandVisible, showGreeting])
 

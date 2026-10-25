@@ -102,7 +102,7 @@ export function createInboundPilotHost(options: {
         if (!snapshot || (!isLineGrant(config) && snapshot.version !== config.approvedSource.catalogVersion)) throw new Error("snapshot_unavailable")
         const feed = new ZeytunAvailableBalances(snapshot.payload, snapshot.context)
         return { organizationId: source.organizationId, scopeKey: source.scopeKey, version: snapshot.version,
-          observedAt: snapshot.context.observedAt, source: snapshot.context.source,
+          observedAt: snapshot.context.observedAt, source: snapshot.context.source, vocabulary: feed.manufacturerWords(400),
           search: (query: Parameters<ZeytunAvailableBalances["search"]>[1]) => feed.search(source.organizationId, query) }
       })()
       if (catalog?.key !== key) {

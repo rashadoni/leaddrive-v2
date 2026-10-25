@@ -483,6 +483,7 @@ class ZeytunInboundBridge:
         self.tts_voice = None
         self.tts_model = None
         self.relay = None
+        self.vocabulary = ()
 
     def _request(self, body):
         # The first session also builds the pinned catalog once. Keep that
@@ -542,6 +543,14 @@ class ZeytunInboundBridge:
             # Owner, 2026-10-23: "эту ставь" - the gemini-3.8-flash-tts voice.
             # Only a known model and voice switch the relay on; anything else
             # keeps the model's own voice, never a guessed one.
+            # 2026-10-25 live call: "Sopharma" was transcribed "суппозитории".
+            # The CRM sends the catalog's manufacturer words; only short
+            # printable words are taken, and the base list always comes first.
+            words = value.get("vocabulary")
+            if isinstance(words, list):
+                self.vocabulary = tuple(dict.fromkeys(
+                    w.strip() for w in words[:400]
+                    if isinstance(w, str) and 2 <= len(w.strip()) <= 40 and w.isprintable()))
             speech = value.get("speech")
             if (isinstance(speech, dict) and speech.get("engine") == "tts"
                     and speech.get("model") in ZeytunGeminiTts.MODELS and speech.get("voice") in self.VOICES):
@@ -584,8 +593,9 @@ class ZeytunInboundBridge:
     def transcription(self):
         # Fields of AudioTranscriptionConfig (ai.google.dev/api/live); accepted
         # by gemini-3.1-flash-live-preview and gemini-3.8-live on 2026-10-23.
-        return {"languageCodes": list(self.TRANSCRIPTION_LANGUAGES),
-                "customVocabulary": list(self.TRANSCRIPTION_VOCABULARY)}
+        words = list(dict.fromkeys(self.TRANSCRIPTION_VOCABULARY + self.vocabulary))
+        # More than 1000 entries is rejected by the provider (2026-10-23).
+        return {"languageCodes": list(self.TRANSCRIPTION_LANGUAGES), "customVocabulary": words[:1000]}
 
     def speech_language(self):
         return self.SPEECH_LANGUAGE if self.pin_language else None

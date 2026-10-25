@@ -60,6 +60,8 @@ describe("single-call inbound owner rehearsal", () => {
     expect(body).toMatchObject({ voice: null, pinSpeechLanguage: false,
       speech: { engine: "tts", model: "gemini-3.8-flash-tts", voice: "Sulafat" } })
     expect(body.prompt).toContain(`"${ZEYTUN_INBOUND_CLOSING}"`)
+    // No maker words in this catalog: an empty hint list, never a missing field.
+    expect(body.vocabulary).toEqual([])
     expect(f.dependencies.claim).toHaveBeenCalledOnce()
     expect(f.dependencies.loadCall).toHaveBeenCalledTimes(2)
     expect(response.headers.get("cache-control")).toBe("no-store")
@@ -314,6 +316,12 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     const body = await (await f.handle(request())).json()
     expect(body).toMatchObject({ enabled: true, variant: "pharmacy_inbound_preview", opening: ZEYTUN_LINE_OPENING, prompt: ZEYTUN_LINE_PROMPT, maxSeconds: 300 })
     expect(f.dependencies.claim).toHaveBeenCalledOnce()
+  })
+
+  it("hands the station the catalog's maker words for recognition", async () => {
+    const f = lineFixture()
+    f.catalog.vocabulary = ["Sopharma", "Berlin-Chemie"]
+    expect((await (await f.handle(request())).json()).vocabulary).toEqual(["Sopharma", "Berlin-Chemie"])
   })
 
   it("leaves outbound calls on the line with the line's own agent", async () => {

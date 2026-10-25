@@ -10,6 +10,7 @@
 #   provision.sh admin BROKER TOOL ARGS...  run a Kafka admin tool over mTLS from BROKER
 #   provision.sh topics CLUSTER ENV         create the governed catalog (idempotent)
 #   provision.sh install-watch ENV          health probe on every host + the watch timer here
+#   provision.sh install-backup-watch       the backup watch on BACKUP_WATCH_HOST (after install-watch)
 #
 # The production web host is not handled here; its tunnel/ufw step is separate.
 set -Eeuo pipefail
@@ -33,6 +34,8 @@ public_of() { js 'const i = JSON.parse(process.argv[2]).hosts[process.argv[1]]; 
 on() { local name="$1"; shift; ssh "${ssh_opts[@]}" "root@$(public_of "$name")" "$@"; }
 copy() { local name="$1" mode="$2" owner="$3" src="$4" dst="$5"
   on "$name" "install -m $mode -o ${owner%:*} -g ${owner#*:} /dev/stdin '$dst'" <"$src"; }
+
+backup_host() { node --input-type=module -e "import { BACKUP_WATCH_HOST } from '$here/watch.mjs'; console.log(BACKUP_WATCH_HOST)"; }
 
 member_role() { js '
   const t = m.loadTopology(); const h = m.meshMembers(t).find((x) => x.name === process.argv[1])
@@ -370,7 +373,8 @@ case "${1:-}" in
         config="$(js 'const t = m.loadTopology(); console.log(JSON.stringify({ expectedSlot: `leaddrive_event_outbox_${process.argv[1]}`, database: t.sourceHost.database }))' "$env")"
       else
         run_on() { on "$name" "$@"; }
-        config="$(js 'console.log(JSON.stringify({ expectedConnectors: process.argv[2].split(",").includes("connect") ? [`leaddrive-event-outbox-${process.argv[1]}`] : [] }))' "$env" "$roles")"
+        config="$(js 'console.log(JSON.stringify({ expectedConnectors: process.argv[2].split(",").includes("connect") ? [`leaddrive-event-outbox-${process.argv[1]}`] : [],
+          backupWatch: process.argv[3] === process.argv[4] }))' "$env" "$roles" "$name" "$(backup_host)")"
       fi
       run_on 'install -m 0755 -o root -g root /dev/stdin /usr/local/sbin/ld-kafka-health' <"$here/health-probe.py"
       printf '%s\n' "$config" | run_on 'install -d -m 0755 /etc/leaddrive-kafka && install -m 0644 /dev/stdin /etc/leaddrive-kafka/health.json'
@@ -394,6 +398,36 @@ case "${1:-}" in
     systemctl --user daemon-reload
     systemctl --user enable --now ld-kafka-watch.timer >/dev/null
     echo "watch timer: $(systemctl --user is-active ld-kafka-watch.timer)"
+    ;;
+
+  install-backup-watch)
+    # The same watch.mjs on a host outside this workstation's provider, as root
+    # under systemd. It reads the operator's inventory and known_hosts and uses
+    # a copy of the watch key (forced read-only commands only), so it can probe
+    # production too. Idempotent; rerun after install-watch or a watch change.
+    name="$(backup_host)"
+    watch_key="${LD_KAFKA_WATCH_KEY:-$HOME/.ssh/leaddrive_kafka_watch}"
+    notify_env="${LD_KAFKA_NOTIFY_ENV:-$HOME/.config/hetzner-task-notify.env}"
+    [ -f "$watch_key" ] || die "run install-watch first: no watch key $watch_key"
+    [ -r "$notify_env" ] || die "no Telegram settings at $notify_env"
+    on "$name" 'command -v node >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends nodejs >/dev/null
+      install -d -m 0700 /etc/leaddrive-kafka/watch /var/lib/ld-kafka-watch /var/lib/ld-kafka-watch/state
+      node -e "process.exit(Number(process.versions.node.split(\".\")[0]) >= 18 ? 0 : 1)"' || die "no Node.js 18+ on $name"
+    for f in scripts/event-platform/cluster/watch.mjs scripts/event-platform/cluster/health.mjs scripts/event-platform/cluster/render.mjs \
+             ops/event-platform/topology.v1.json ops/event-platform/topics.v1.json; do
+      on "$name" "install -D -m 0644 /dev/stdin /opt/ld-kafka-watch/$f" <"$repo/$f"
+    done
+    copy "$name" 0600 root:root "$watch_key" /etc/leaddrive-kafka/watch/key
+    copy "$name" 0600 root:root "$inventory" /etc/leaddrive-kafka/watch/inventory.json
+    copy "$name" 0600 root:root "$state/known_hosts" /etc/leaddrive-kafka/watch/known_hosts
+    grep -E '^(TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID)=' "$notify_env" >"$state/.notify.tmp"
+    copy "$name" 0600 root:root "$state/.notify.tmp" /etc/leaddrive-kafka/watch-notify.env; rm -f "$state/.notify.tmp"
+    copy "$name" 0755 root:root "$repo/ops/event-platform/watch/notify-telegram.sh" /usr/local/sbin/ld-kafka-notify
+    for unit in ld-kafka-backup-watch.service ld-kafka-backup-watch.timer ld-kafka-backup-watch-failed.service; do
+      copy "$name" 0644 root:root "$repo/ops/event-platform/watch/$unit" "/etc/systemd/system/$unit"
+    done
+    on "$name" 'systemctl daemon-reload && systemctl enable --now ld-kafka-backup-watch.timer >/dev/null && systemctl is-active ld-kafka-backup-watch.timer' \
+      | sed "s/^/backup watch timer on $name: /"
     ;;
 
   verify)
