@@ -344,3 +344,9 @@
 - Независимый read-only обзор source diff/документации и восьми кадров стенда: конкретных новых регрессий/блокеров не найдено. HelpButton/tours являются заглушками стенда; их реальная интеграция и заполненные рабочие страницы должны проверяться после выпуска.
 - Full project typecheck, full Next build и full browser E2E локально: NOT RUN — host workload contract; необходимые полные gates выполняются hosted CI. Локально применены только ограниченные последовательные проверки; available RAM ~12 GiB, disk 118 GiB, memory pressure 0 перед запуском.
 - Приватные артефакты проверки: /mnt/HC_Volume_106454338/codex-alt-data/visual-evidence/leaddrive-crm-style-20261025/shared-style/. Production ещё содержит предыдущий PR #1034. Следующий шаг: checkpoint всего оформления, один PR, required CI, затем штатный общий выпуск и живой smoke по разделам.
+
+### Один общий PR
+
+- Source checkpoint a7a8bba37; создан draft PR #1041 https://github.com/rashadoni/leaddrive-v2/pull/1041 и прикреплён к задаче.
+- Пока шла реализация, origin/main продвинулся до eb60af16ff695ba4284c7cb809de33dbd2b128e6 (телефонные заказы и VÖEN компании). Main объединён штатным merge ef2b047c9 без конфликтов. Единственное пересечение UI — добавленные upstream voen field и setVoen в invoices/create; они сохранены, общий style diff не менялся. Узкий повтор lint invoices/create относительно текущего main не выявил новых сообщений; git diff --check PASS. Схема, API, PBX и workflow-изменения принадлежат main и не входят в diff этого PR.
+- Следующий шаг: актуальный PR head → ready → обязательные hosted checks; production пока не объявляется обновлённым.
