@@ -7,6 +7,16 @@ ALTER TABLE identity_phone_proofs ADD CONSTRAINT identity_proof_authority_shape 
   OR ("contextVersion" = 2 AND "contactRevision" > 0 AND "contactRevision" IS NOT NULL
     AND "issuerAuthority" IS NOT NULL AND jsonb_typeof("issuerAuthority") = 'object')
 );
+-- The foundation's envelope check admitted only v1. Preserve its shape and
+-- key binding while requiring the envelope to match the frozen context version.
+ALTER TABLE identity_phone_proofs DROP CONSTRAINT identity_phone_proofs_check5;
+ALTER TABLE identity_phone_proofs ADD CONSTRAINT identity_phone_proofs_delivery_context CHECK (
+  "deliveryCiphertext" IS NULL OR (
+    "deliveryCiphertext" ~ '^v[12][.][A-Za-z0-9_-]{1,40}[.][A-Za-z0-9_-]{16}[.][A-Za-z0-9_-]{8}[.][A-Za-z0-9_-]{22}$'
+    AND split_part("deliveryCiphertext", '.', 1) = 'v' || "contextVersion"::text
+    AND split_part("deliveryCiphertext", '.', 2) = "keyId"
+  )
+);
 CREATE FUNCTION identity_guard_proof_authority() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF NEW."contextVersion" IS DISTINCT FROM OLD."contextVersion"

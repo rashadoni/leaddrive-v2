@@ -1071,3 +1071,10 @@ Next: publish this checkpoint and qualify hosted tests; add explicit application
 Exact server860dd63d7 actual-cookie job121229121619/run40213352277 SUCCESS: real administrator card preparation/audit rollback, public same-phone/common-password Time and Field login, different profile actor IDs, Time-to-Field denial, mobile-to-CRM denial, and Time revocation preserving Field. This is synthetic hosted acceptance, not production activation or the owner’s real registration. Native draft PR204 published eaf19d5 and then c21a488 correcting an eager native metadata import exposed by hosted tests; its journal is /mnt/HC_Volume_106454338/codex-alt-data/worktrees/mtm-person-identity/docs/person-identity-mobile-session-log.md.
 
 Server run40213352343 again completed90 PG foundation checks but v2 invitation phase failed without a retained safe service error code. Added whitelisted error identifiers and source-file line locations plus narrower phase markers; no raw SQL, token, phone, hash or stack payload is printed. Continue diagnosis before qualifying proof-v2. Public onboarding/form, activation and rollback safeguards remain unfinished.
+
+### 2026-10-25T17:02:15.552869+00:00 — v2 envelope constraint correction (UTC)
+
+- Resumed at the failed canonical proof issuance. Confirmed PostgreSQL foundation check5 admitted only v1 ciphertext. The additive v2 migration now preserves envelope shape/key binding and requires the prefix to equal contextVersion. Added actual PG rejection of a v1 envelope on a v2 proof.
+- Local node syntax and git diff checks passed. PostgreSQL/schema acceptance NOT RUN locally under host workload policy; pushed for hosted CI.
+- Native PR #204 c21a488 tests passed in run 40213969736; APK build still pending. No production cutover or real registration claimed.
+- Next: exact-source PG acceptance, then explicit onboarding/activation and first-login integration with safe compatibility floor.

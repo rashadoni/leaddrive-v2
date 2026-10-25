@@ -52,6 +52,11 @@ export async function checkProofAuthority({ admin, writer, failing, actor, build
     phase("CANONICAL_PROOF_V2_FROZEN_DELIVERY_CONTEXT")
     const code = await clearCode(issued.proofId)
     phase("CANONICAL_PROOF_V2_DATABASE_CONTEXT_IMMUTABILITY")
+    const envelope = await admin.identityPhoneProof.findUniqueOrThrow({ where: { id: issued.proofId } })
+    assert.match(envelope.deliveryCiphertext, /^v2\./)
+    await assert.rejects(admin.identityPhoneProof.update({ where: { id: issued.proofId }, data: {
+      deliveryCiphertext: envelope.deliveryCiphertext.replace(/^v2\./, "v1."),
+    } }), /identity_phone_proofs_delivery_context/)
     await assert.rejects(admin.identityPhoneProof.update({ where: { id: issued.proofId }, data: { contextVersion: 1 } }), /IDENTITY_PROOF_AUTHORITY_IMMUTABLE/)
     await admin.identityApplicationGrant.update({ where: grantKey, data: { status: "REVOKED", version: 2 } })
     phase("CANONICAL_PROOF_V2_REVOKED_ISSUER_DELIVERY_AND_CONFIRMATION")
