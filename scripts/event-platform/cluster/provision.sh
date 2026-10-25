@@ -374,7 +374,7 @@ case "${1:-}" in
       else
         run_on() { on "$name" "$@"; }
         config="$(js 'console.log(JSON.stringify({ expectedConnectors: process.argv[2].split(",").includes("connect") ? [`leaddrive-event-outbox-${process.argv[1]}`] : [],
-          backupWatch: process.argv[3] === process.argv[4] }))' "$env" "$roles" "$name" "$(backup_host)")"
+          backupWatch: process.argv[3] === process.argv[4], eventTopicPrefix: `ld.${process.argv[1]}.` }))' "$env" "$roles" "$name" "$(backup_host)")"
       fi
       run_on 'install -m 0755 -o root -g root /dev/stdin /usr/local/sbin/ld-kafka-health' <"$here/health-probe.py"
       printf '%s\n' "$config" | run_on 'install -d -m 0755 /etc/leaddrive-kafka && install -m 0644 /dev/stdin /etc/leaddrive-kafka/health.json'
