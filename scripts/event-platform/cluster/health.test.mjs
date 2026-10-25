@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { evaluate, parseQuorumReplication, parseQuorumStatus, parseTopics } from './health.mjs'
 import { loadTopology } from './render.mjs'
-import { applySent, messages, step, weeklyDue } from './watch.mjs'
+import { applySent, messages, PRIMARY_SILENT_MS, primarySilence, standbyState, step, weeklyDue } from './watch.mjs'
 
 // Output shapes as Kafka 4.3.1 prints them on the production cluster (2026-10-23).
 const STATUS = `ClusterId:              K3TZRGsp2DK1UJYj_Sxrwg
@@ -162,4 +162,49 @@ test('the weekly note goes out on Monday morning in Baku, once', () => {
   assert.equal(weeklyDue(monday10 - 3600_000, monday10), false)
   assert.equal(weeklyDue(undefined, Date.UTC(2026, 9, 26, 4, 0)), false, '08:00 Baku is too early')
   assert.equal(weeklyDue(undefined, Date.UTC(2026, 9, 27, 6, 0)), false, 'Tuesday')
+})
+
+test('the backup calls the main watch silent only after a missed pass, and tells when it is back', () => {
+  const t0 = 1792789253579
+  assert.equal(primarySilence(t0 - 5 * 60_000, t0), null, 'a pass five minutes ago is alive')
+  assert.equal(primarySilence(t0 - PRIMARY_SILENT_MS + 1000, t0), null)
+  const silent = primarySilence(t0 - 20 * 60_000, t0)
+  assert.equal(silent.severity, 'critical')
+  assert.match(silent.detail, /20 мин/)
+  assert.match(primarySilence(NaN, t0).detail, /с момента установки/, 'no heartbeat yet is silence too')
+
+  // Silence plus a Kafka problem the backup found while on duty.
+  const broker = { id: 'broker:kafka-p-broker-eu', severity: 'warning', title: 'Выпал брокер', detail: '…' }
+  let s = step({}, [silent, broker], t0)
+  s = step({ incidents: s.incidents }, [silent, broker], t0 + 300_000)
+  const [raise] = messages(s)
+  assert.deepEqual(raise.ids.sort(), [broker.id, silent.id].sort())
+  applySent(s.incidents, raise, t0 + 300_000)
+
+  // The main watch is back: the Kafka problem is its to tell, silently dropped
+  // here; the end of the silence is told after two passes.
+  let state = standbyState({ incidents: s.incidents })
+  assert.deepEqual(Object.keys(state.incidents), [silent.id])
+  s = step(state, [], t0 + 600_000)
+  assert.deepEqual(messages(s), [])
+  s = step(standbyState({ incidents: s.incidents }), [], t0 + 900_000)
+  const [clear] = messages(s)
+  assert.equal(clear.kind, 'clear')
+  assert.deepEqual(clear.ids, [silent.id])
+  // An unreported blip of silence leaves nothing in standby.
+  assert.deepEqual(standbyState({ incidents: step({}, [silent], t0).incidents }).incidents, {})
+})
+
+test('the main watch reports a backup watch that stopped passing', () => {
+  const probes = healthyProbes()
+  const gra = probes['kafka-p-broker-gra'].data
+  gra.time = 1792789253
+  gra.backupWatch = { lastPass: gra.time * 1000 - 6 * 60_000 }
+  assert.deepEqual(evaluate({ topology, inventory, probes, cluster: healthyCluster() }), [])
+  gra.backupWatch = { lastPass: gra.time * 1000 - 45 * 60_000 }
+  const [late] = evaluate({ topology, inventory, probes, cluster: healthyCluster() })
+  assert.equal(late.id, 'backup-watch:kafka-p-broker-gra')
+  assert.match(late.detail, /45 мин/)
+  gra.backupWatch = { lastPass: null }
+  assert.match(evaluate({ topology, inventory, probes, cluster: healthyCluster() })[0].detail, /ни разу/)
 })

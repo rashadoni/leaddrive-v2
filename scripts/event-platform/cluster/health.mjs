@@ -23,6 +23,8 @@ export const LIMITS = Object.freeze({
   fetchStaleMs: 30_000,
   tunnelStaleSeconds: 180,
   certWarnDays: 30,
+  // The backup watch passes every 5 minutes.
+  backupWatchStaleMs: 20 * 60_000,
 })
 
 const SITE_RU = {
@@ -145,6 +147,13 @@ export function evaluate({ topology, inventory, probes, cluster: clusterView }) 
       }
     }
     if (m.roles.includes(SOURCE_ROLE)) problems.push(...sourceProblems(data.source))
+    if (data.backupWatch) {
+      const age = data.time * 1000 - (data.backupWatch.lastPass ?? 0)
+      if (!data.backupWatch.lastPass || age > LIMITS.backupWatchStaleMs) {
+        problems.push(problem(`backup-watch:${m.name}`, 'warning', 'Не работает запасной сторож Kafka',
+          `Запасной сторож на ${label(m.name)} ${data.backupWatch.lastPass ? `не проверял ничего ${Math.round(age / 60_000)} мин` : 'ни разу не отработал'}. Если dev-бокс выключится, о Kafka никто не сообщит.`))
+      }
+    }
   }
 
   problems.push(...connectorProblems(members.filter((m) => m.roles.includes('connect')).map((m) => probes[m.name]).filter((p) => p?.ok)))
