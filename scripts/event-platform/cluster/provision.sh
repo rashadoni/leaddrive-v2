@@ -9,6 +9,7 @@
 #   provision.sh verify                     public ports closed, tunnels up, quorum healthy
 #   provision.sh admin BROKER TOOL ARGS...  run a Kafka admin tool over mTLS from BROKER
 #   provision.sh topics CLUSTER ENV         create the governed catalog (idempotent)
+#   provision.sh install-watch ENV          health probe on every host + the watch timer here
 #
 # The production web host is not handled here; its tunnel/ufw step is separate.
 set -Eeuo pipefail
@@ -343,6 +344,58 @@ case "${1:-}" in
     echo
     ;;
 
+  install-watch)
+    # provision.sh install-watch ENV: the read-only probe on every host behind a
+    # forced-command key, then the watch timer on this workstation. Idempotent;
+    # rerun after changing health*.mjs, watch.mjs or the topology.
+    env="${2:-}"; [[ "$env" =~ ^[a-z][a-z0-9]*$ ]] || die "usage: install-watch ENV"
+    watch_key="${LD_KAFKA_WATCH_KEY:-$HOME/.ssh/leaddrive_kafka_watch}"
+    [ -f "$watch_key" ] || ssh-keygen -q -t ed25519 -N '' -C ld-kafka-watch -f "$watch_key"
+    pub="$(cut -d' ' -f1,2 "$watch_key.pub")"
+    src_key="${LD_SOURCE_SSH_KEY:-$HOME/.ssh/leaddrive_prod_2026_09_09}"
+    src_name="$(js 'console.log(m.loadTopology().sourceHost.name)')"
+    mapfile -t members < <(js '
+      const inv = JSON.parse(process.argv[1]); const t = m.loadTopology()
+      const primary = t.clusters.find((c) => c.name === "primary")
+      for (const h of [...primary.hosts, { name: t.sourceHost.name, roles: ["source"] }]) if (inv.hosts[h.name]?.publicAddress) console.log(h.name, h.roles.join(","))' "$(cat "$inventory")")
+    for line in "${members[@]}"; do
+      read -r name roles <<<"$line"
+      if [ "$name" = "$src_name" ]; then
+        ip="$(public_of "$name")"
+        # The watch checks host keys against the operator's known_hosts only;
+        # the production key comes from the one this workstation already trusts.
+        ssh-keygen -F "$ip" -f "$state/known_hosts" >/dev/null || ssh-keygen -F "$ip" | grep -v '^#' >>"$state/known_hosts" || true
+        ssh-keygen -F "$ip" -f "$state/known_hosts" >/dev/null || die "no trusted host key for $name ($ip)"
+        run_on() { ssh -i "$src_key" -o IdentitiesOnly=yes -o ControlMaster=no -o ControlPath=none -o BatchMode=yes -o ConnectTimeout=15 "root@$ip" "$@"; }
+        config="$(js 'const t = m.loadTopology(); console.log(JSON.stringify({ expectedSlot: `leaddrive_event_outbox_${process.argv[1]}`, database: t.sourceHost.database }))' "$env")"
+      else
+        run_on() { on "$name" "$@"; }
+        config="$(js 'console.log(JSON.stringify({ expectedConnectors: process.argv[2].split(",").includes("connect") ? [`leaddrive-event-outbox-${process.argv[1]}`] : [] }))' "$env" "$roles")"
+      fi
+      run_on 'install -m 0755 -o root -g root /dev/stdin /usr/local/sbin/ld-kafka-health' <"$here/health-probe.py"
+      printf '%s\n' "$config" | run_on 'install -d -m 0755 /etc/leaddrive-kafka && install -m 0644 /dev/stdin /etc/leaddrive-kafka/health.json'
+      entry="restrict,command=\"/usr/local/sbin/ld-kafka-health $roles\" $pub ld-kafka-watch"
+      printf '%s\n' "$entry" | run_on 'install -d -m 0700 /root/.ssh; touch /root/.ssh/authorized_keys
+        { grep -v " ld-kafka-watch$" /root/.ssh/authorized_keys; cat; } >/root/.ssh/authorized_keys.new
+        chmod 0600 /root/.ssh/authorized_keys.new && mv /root/.ssh/authorized_keys.new /root/.ssh/authorized_keys'
+      echo "probe on $name ($roles)"
+    done
+    # The watch runs from its own copy, so a removed worktree cannot stop it.
+    dest="$HOME/.local/share/ld-kafka-watch"
+    for f in scripts/event-platform/cluster/watch.mjs scripts/event-platform/cluster/health.mjs scripts/event-platform/cluster/render.mjs \
+             ops/event-platform/topology.v1.json ops/event-platform/topics.v1.json; do
+      install -D -m 0644 "$repo/$f" "$dest/$f"
+    done
+    units="$HOME/.config/systemd/user"; mkdir -p "$units"
+    for unit in ld-kafka-watch.service ld-kafka-watch.timer ld-kafka-watch-failed.service; do
+      sed -e "s|@NODE@|$(command -v node)|g" -e "s|@WATCH@|$dest/scripts/event-platform/cluster/watch.mjs|g" \
+        "$repo/ops/event-platform/watch/$unit" >"$units/$unit"
+    done
+    systemctl --user daemon-reload
+    systemctl --user enable --now ld-kafka-watch.timer >/dev/null
+    echo "watch timer: $(systemctl --user is-active ld-kafka-watch.timer)"
+    ;;
+
   verify)
     status=0
     while read -r name roles; do
@@ -361,5 +414,5 @@ case "${1:-}" in
     exit "$status"
     ;;
 
-  *) sed -n '2,13p' "$0"; exit 2 ;;
+  *) sed -n '2,14p' "$0"; exit 2 ;;
 esac

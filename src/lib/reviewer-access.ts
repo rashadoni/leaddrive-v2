@@ -46,6 +46,11 @@ const CLOSED_PAGE_PREFIXES = ["/settings", "/admin"]
 
 export type ReviewerDenial = "expired" | "forbidden"
 
+/** A page a reviewer never opens; the menu hides it, the proxy refuses it. */
+export function reviewerPageClosed(pathname: string): boolean {
+  return CLOSED_PAGE_PREFIXES.some((prefix) => underPrefix(pathname, prefix))
+}
+
 function underPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`)
 }
@@ -78,7 +83,7 @@ export function reviewerRequestDenial(input: {
     return null
   }
 
-  if (CLOSED_PAGE_PREFIXES.some((prefix) => underPrefix(pathname, prefix))) return "forbidden"
+  if (reviewerPageClosed(pathname)) return "forbidden"
   return null
 }
 

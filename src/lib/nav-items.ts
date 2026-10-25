@@ -13,6 +13,7 @@ import type { ElementType } from "react"
 import { type ModuleId, type AddonFlagId, hasModule } from "@/lib/modules"
 import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "@/lib/tenant-capabilities"
 import { checkPermission, type Role } from "@/lib/permissions"
+import { REVIEWER_ROLE, reviewerPageClosed } from "@/lib/reviewer-access"
 import { isMtmNavigationItemActive } from "@/lib/mtm/navigation"
 import {
   Megaphone,
@@ -23,7 +24,7 @@ import {
   Settings, DollarSign, Target, Send, Clock,
   TrendingUp, Filter, Workflow, Server, Bell, CalendarDays, Headphones, Package, RefreshCw,
   FolderKanban, Wallet, MapPin, Route, Camera, AlertTriangle,
-  ClipboardList, UserCog, GitBranch, Plug, Keyboard, Shield, Phone,
+  ClipboardList, UserCog, GitBranch, Plug, Keyboard, Shield, Phone, PhoneIncoming,
   Trophy, Activity, FileBarChart, Bot, Sparkles, Inbox, MessageSquareWarning, Key, Gauge, ChartPie, Award,
   Tag, Wrench, ScanLine, LayoutTemplate, Columns3, Library,
   Globe, Globe2, Hash, LayoutGrid, SearchCheck, Reply, Scale,
@@ -357,6 +358,7 @@ export const navItems: NavItem[] = [
   { module: "mtm", href: "/mtm/operations", icon: Radio, tKey: "mtmOperations", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/visits", icon: CheckSquare, tKey: "mtmVisits", group: "Route & Field" },
   { module: "mtm", href: "/mtm/promotions", icon: FileBadge, tKey: "mtmPromotions", group: "Route & Field", orgSetting: "pharmacyPromotionsEnabled" },
+  { module: "mtm", feature: "pharmacy_phone_orders", href: "/pharmacy-orders", icon: PhoneIncoming, tKey: "pharmacyPhoneOrders", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/tasks", icon: ClipboardList, tKey: "mtmTasks", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/customers", icon: Building2, tKey: "mtmCustomers", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/contacts", icon: Users, tKey: "mtmContacts", group: "Route & Field", orgSetting: "fieldContactsEnabled" },
@@ -593,6 +595,10 @@ export function isNavItemOrgSettingEnabled(org: OrgNavContext, item: NavItem): b
  */
 export function isNavItemRoleAllowed(org: OrgNavContext, item: NavItem): boolean {
   const role = (org.role as Role) || "viewer"
+  // An outside reviewer (src/lib/reviewer-access.ts) is refused every settings
+  // page by the proxy, so the menu does not offer one: no Settings group, and no
+  // section's own /settings/… entry either.
+  if (role === REVIEWER_ROLE && (item.group === "Settings" || reviewerPageClosed(navItemPathname(item.href)))) return false
   if (item.permissionScope && !checkPermission(role, item.permissionScope, "read")) return false
   if (item.allowedRoles && !item.allowedRoles.includes(role)) return false
   if (item.orgWide && (org.hiddenModules?.length ?? 0) > 0) return false

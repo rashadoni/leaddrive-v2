@@ -10,7 +10,11 @@
 #   3. all 86 catalog topics exist with RF=3, min ISR 2, replicas on three racks;
 #   4. losing one site keeps acks=all writes and controller quorum; losing two
 #      refuses writes; recovery loses no acknowledged record;
-#   5. a cold restart keeps topics, ACLs and credentials.
+#   5. a cold restart keeps topics, ACLs and credentials;
+#   6. the watch (health.mjs) reads this Kafka's own answers correctly: silent
+#      when healthy, names the lost site, calls two lost sites critical;
+#   7. the CDC slot keeps moving while only other tables change, and no
+#      outbox row is lost across a connector restart in the middle of that.
 # One runner is one failure domain: this proves configuration and Kafka
 # behaviour, not physical independence of the real sites.
 #
@@ -193,6 +197,17 @@ admin kafka-acls.sh --add --allow-principal User:ld-connect --operation Idempote
 admin kafka-acls.sh --add --allow-principal User:ld-fund-worker --operation Read --operation Describe --topic "$finance_events" >/dev/null
 admin kafka-acls.sh --add --allow-principal User:ld-fund-worker --operation Read --group "ld.$env.fund-shadow." --resource-pattern-type prefixed >/dev/null
 
+step "The watch reads a healthy cluster as healthy"
+watch_view() { # watch_view TAG -> "id severity" lines the watch would raise from the cluster's own answers
+  KAFKA_TIMEOUT=40 admin kafka-metadata-quorum.sh describe --status >"$work/watch-$1-status.txt" 2>/dev/null || true
+  KAFKA_TIMEOUT=40 admin kafka-metadata-quorum.sh describe --replication >"$work/watch-$1-replication.txt" 2>/dev/null || true
+  KAFKA_TIMEOUT=60 admin kafka-topics.sh --describe >"$work/watch-$1-topics.txt" 2>/dev/null || true
+  node "$repo/scripts/event-platform/cluster/health.mjs" cluster "$work/watch-$1-status.txt" "$work/watch-$1-replication.txt" "$work/watch-$1-topics.txt"
+}
+out="$(watch_view healthy)"
+[ -z "$out" ] || { printf '%s\n' "$out"; fail "the watch sees problems on a healthy cluster"; }
+echo "watch: no problems on $(grep -c 'Partition:' "$work/watch-healthy-topics.txt") healthy partitions"
+
 step "Negative authentication and authorization checks"
 refusal='[Aa]uthoriz|[Aa]uthenticat|SSL handshake|[Hh]andshake failed|[Nn]ot authorized|[Dd]enied|Disconnected|Timed out|TimeoutException|timed out'
 expect_refused() {
@@ -254,6 +269,16 @@ n="$(wc -l <"$work/acked-loss.txt")"
 admin kafka-metadata-quorum.sh describe --status >"$work/quorum-one-down.txt" || fail "controller quorum unreachable with one site down"
 grep -Eq 'LeaderId:[[:space:]]*[1-3]' "$work/quorum-one-down.txt" || fail "no controller leader with one site down"
 echo "one site down: 4000/4000 acknowledged; $(grep -Eo 'LeaderId:[[:space:]]*[0-9]+' "$work/quorum-one-down.txt")"
+lost_broker="${brokers[1]}"
+lost_controller="$(for n in "${gone[@]}"; do [[ " ${controllers[*]} " == *" $n "* ]] && echo "$n"; done)"
+watch_names_lost_site() {
+  local out; out="$(watch_view one-down)"
+  grep -q "^broker:$lost_broker warning$" <<<"$out" && grep -q "^controller:$lost_controller warning$" <<<"$out" \
+    && grep -q '^partitions-under-replicated warning$' <<<"$out"
+}
+ALLOW_STOPPED=1 wait_until "the watch to name the lost site" 20 watch_names_lost_site
+! grep -q ' critical$' <<<"$(watch_view one-down)" || { cat "$work/watch-one-down-status.txt"; fail "one lost site must not read as critical"; }
+echo "watch with $lost_site down: $(watch_view one-down | tr '\n' ';')"
 
 step "Lose a second site: writes must be refused"
 second_site="$(site_of "${brokers[2]}")"
@@ -261,6 +286,9 @@ mapfile -t gone2 < <(nodes_at "$second_site")
 docker stop "${gone2[@]}" >/dev/null
 echo "stopped site $second_site: ${gone2[*]}"
 expect_write_refused "write with one replica alive" connect-short.properties "$finance_events" 5 3
+out="$(watch_view two-down)"
+grep -q ' critical$' <<<"$out" || { printf '%s\n' "$out"; fail "two lost sites must read as critical"; }
+echo "watch with two sites down: $(tr '\n' ';' <<<"$out")"
 
 step "Recover both sites and verify nothing acknowledged was lost"
 docker start "${gone[@]}" "${gone2[@]}" >/dev/null
@@ -384,8 +412,9 @@ node -e '
     .replaceAll("__PGDATABASE__", "leaddrive").replaceAll("__SECRET_FROM_PROVIDER__", process.argv[3])
     .replaceAll("__PG_SSL_ROOT_CERT_PATH__", "/etc/kafka/tls/ca.pem")
   if (/__[A-Z_]+__/.test(s)) throw new Error("unresolved placeholder in connector")
-  process.stdout.write(s)
-' "$repo/ops/event-platform/debezium/event-outbox-connector.template.json" "$env" "$cdc_password" >"$work/connector.json"
+  const c = JSON.parse(s)
+  import(process.argv[4]).then((m) => { Object.assign(c.config, m.slotHeartbeat(process.argv[2])); process.stdout.write(JSON.stringify(c)) })
+' "$repo/ops/event-platform/debezium/event-outbox-connector.template.json" "$env" "$cdc_password" "$services" >"$work/connector.json"
 docker exec -i kafka-p-connect-eu curl -fsS -X POST -H 'Content-Type: application/json' --data @- \
   http://kafka-p-connect-eu:8083/connectors <"$work/connector.json" >/dev/null || fail "connector registration rejected"
 connector_status() { docker exec kafka-p-connect-eu curl -fsS "http://kafka-p-connect-eu:8083/connectors/leaddrive-event-outbox-$env/status"; }
@@ -403,6 +432,38 @@ grep -q 'eventtype:finance.fund-transaction-recorded.v1' "$work/cdc.txt" || fail
 grep -q 'organizationid:org-1' "$work/cdc.txt" || fail "organizationid header missing"
 grep -Eq '(^|[[:space:]])org-0:fund:fund-1[[:space:]]' "$work/cdc.txt" || fail "partition key is not the outbox partitionKey"
 echo "6/6 outbox rows (3 snapshot, 3 streamed) arrived over SCRAM/TLS from a verify-full PostgreSQL source, with key and headers"
+
+step "The CDC slot keeps moving while only other tables change"
+pgq() { docker exec -i "$pg" psql -XAtq -v ON_ERROR_STOP=1 -U postgres -d leaddrive "$@"; }
+other_traffic() { pgq -c 'INSERT INTO other_traffic (pad) SELECT repeat(md5(g::text), 32) FROM generate_series(1, 20000) g' >/dev/null; }
+pgq -c 'CREATE TABLE other_traffic (id bigserial PRIMARY KEY, pad text)' >/dev/null
+other_traffic
+target="$(pgq -c 'select pg_current_wal_lsn()')"
+slot_sql="from pg_replication_slots where slot_name = 'leaddrive_event_outbox_$env'"
+slot_caught_up() { [ "$(pgq -c "select pg_wal_lsn_diff(confirmed_flush_lsn, '$target') >= 0 $slot_sql")" = t ]; }
+for _ in $(seq 40); do slot_caught_up && break; sleep 3; done
+slot_caught_up || { pgq -c "select slot_name, active, confirmed_flush_lsn, pg_current_wal_lsn() $slot_sql"; fail "the slot did not confirm WAL written to other tables (target $target)"; }
+echo "slot confirmed past $target with no outbox row; it now holds $(pgq -c "select pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) $slot_sql") of WAL"
+
+# Confirming positions nobody subscribes to must never skip an outbox row:
+# interleave rows with other traffic and restart the task in the middle.
+for n in 7 8 9; do outbox_row "$n"; done | pgq >/dev/null
+other_traffic
+docker exec kafka-p-connect-eu curl -fsS -X POST "http://kafka-p-connect-eu:8083/connectors/leaddrive-event-outbox-$env/restart?includeTasks=true" >/dev/null \
+  || fail "connector restart rejected"
+other_traffic
+for n in 10 11 12; do outbox_row "$n"; done | pgq >/dev/null
+other_traffic
+for _ in $(seq 40); do connector_running && break; sleep 3; done
+connector_running || { connector_status | cut -c1-1500; echo; fail "connector task is not RUNNING after restart"; }
+sleep 15
+KAFKA_TIMEOUT=90 kafka kafka-console-consumer.sh --bootstrap-server "$bootstrap_scram" --consumer.config /client/fund.properties \
+  --topic "$finance_events" --group "ld.$env.fund-shadow.cdc-restart" --from-beginning --timeout-ms 20000 2>/dev/null \
+  | grep -o '"n": *[0-9]*' | grep -o '[0-9]*$' | sort -n | uniq >"$work/cdc-restart.txt" || true
+missing="$(comm -23 <(seq 1 12 | sort) <(sort "$work/cdc-restart.txt"))"
+[ -z "$missing" ] || fail "outbox rows missing after the restart: $(tr '\n' ' ' <<<"$missing")"
+slot_caught_up || fail "the slot fell behind after the restart"
+echo "12/12 outbox rows in Kafka across a task restart amid other traffic"
 
 step "Registry keeps schemas in Kafka across a restart"
 schema='{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["amount"],"properties":{"amount":{"type":"string"}}}'

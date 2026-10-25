@@ -9,6 +9,7 @@ import {
   nonNegativeCountSchema,
   nonNegativeFinancialAmountSchema,
 } from "@/lib/validation/numeric"
+import { voenInput } from "@/lib/companies/az-taxpayer-registry"
 
 const updateCompanySchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -34,6 +35,8 @@ const updateCompanySchema = z.object({
   slaPolicyId: z.string().nullable().optional(),
   creditLimit: nonNegativeFinancialAmountSchema.nullable().optional(),
   creditCurrency: z.string().max(10).nullable().optional(),
+  voen: z.string().max(40).nullable().optional(),
+  director: z.string().max(200).nullable().optional(),
 })
 
 export const GET = withRlsAuth("companies", "read", async (_req, { orgId, role }, { params }: { params: Promise<{ id: string }> }) => {
@@ -65,10 +68,15 @@ export const PUT = withRlsAuth("companies", "write", async (req, { orgId, role }
   const body = await req.json()
   const parsed = updateCompanySchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+  const voen = voenInput(parsed.data.voen)
+  if (!voen.ok) return NextResponse.json({ error: "VÖEN is ten digits", code: "INVALID_VOEN" }, { status: 400 })
+  const data: Record<string, unknown> = { ...parsed.data, voen: voen.value }
+  if (voen.value === undefined) delete data.voen
+  if (parsed.data.director !== undefined) data.director = parsed.data.director?.trim() || null
 
   try {
     const fieldPerms = await getFieldPermissions(orgId, role, "company")
-    const allowedData = filterWritableFields(parsed.data || body, fieldPerms, role)
+    const allowedData = filterWritableFields(data, fieldPerms, role)
     const company = await prisma.company.updateMany({
       where: { id, organizationId: orgId },
       data: allowedData,

@@ -1,0 +1,12 @@
+{
+  "candidateSha": "39ec68f1d0f7b640e8437d57b74ad7f5c3f06c27",
+  "expression": "github.event_name != 'pull_request' || !github.event.pull_request.draft",
+  "scenario": "synchronize snapshot draft=true but current PR already ready; a ready event can refer to previous head",
+  "currentPrDraft": false,
+  "synchronizeSnapshotDraft": true,
+  "freshHeadJobRuns": false,
+  "olderReadySnapshotJobRuns": true,
+  "kind": "exact expression truth-table counterexample; not a new GitHub event/race run",
+  "repositoryPriorIncident": "AGENTS.md CI cost policy; pr-checks.yml pr-scope draft logic documents PR639 race",
+  "productionRequests": 0
+}

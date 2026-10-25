@@ -219,4 +219,69 @@ describe("Add employee", () => {
     expect(input("addEmployeeEmail").value).toBe("taken@example.test")
     expect(input("addEmployeePhone").value).toBe("+994501112233")
   })
+  it.each(["ru", "az", "en"] as const)("opens an existing hidden CRM card after the phone conflict in %s without creating or linking again", async language => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match")
+      ? response({ kind: "attendance", agentId: "existing-card", name: "Existing CRM person", enrolled: false })
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render(language)
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Typed name"); await type("addEmployeePhone", "+994501112233")
+    await send()
+    const match = form().querySelector('[data-testid="attendance-phone-match"]')!
+    expect(match.textContent).toContain(p("addEmployeePhoneProfile", { name: "Existing CRM person" }))
+    expect(match.textContent).toContain(p("addEmployeePhoneExistingHire"))
+    expect(match.querySelector("a")!.getAttribute("href")).toBe("/mtm/attendance/people/existing-card?back=%2Fmtm%2Fattendance%2Fpeople%3Ftab%3Demployees")
+    expect(creates()).toHaveLength(1)
+    expect(fetchMock.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(2)
+    expect(form().querySelector('[role="alert"]')).toBeNull()
+    expect(input("addEmployeeName").value).toBe("Typed name")
+    await type("addEmployeePhone", "+994501112234")
+    expect(form().querySelector('[data-testid="attendance-phone-match"]')).toBeNull()
+  })
+
+  it.each([{ kind: "other", name: "Field profile" }, { kind: "ambiguous" }])("never offers an attendance card for $kind", async match => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match") ? response(match)
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "New person"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(form().querySelector('[data-testid="attendance-phone-match"] a')).toBeNull()
+    expect(creates()).toHaveLength(1)
+  })
+
+  it("discards a delayed lookup when the entered number changes", async () => {
+    let finish!: (response: Response) => void
+    fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match") ? new Promise<Response>(resolve => { finish = resolve })
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "New person"); await type("addEmployeePhone", "+994501112233"); await send()
+    await type("addEmployeePhone", "+994501112234")
+    await act(async () => { finish(response({ kind: "attendance", agentId: "old-result", name: "Old result", enrolled: false })) })
+    expect(form().querySelector('[data-testid="attendance-phone-match"]')).toBeNull()
+    expect(form().querySelector('[role="alert"]')).toBeNull()
+  })
+
+  it.each([true, false])("resolves an existing profile at the seat limit; match=%s", async found => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match")
+      ? response(found ? { kind: "attendance", agentId: "existing-card", name: "Existing person", enrolled: false } : { kind: "none" })
+      : String(url).endsWith("/employees/new") ? response(null, 403, "MTM_ATTENDANCE_EMPLOYEE_USER_LIMIT") : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "New person"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(creates()).toHaveLength(1)
+    if (found) expect(form().querySelector('[data-testid="attendance-phone-match"] a')).not.toBeNull()
+    else {
+      expect(form().querySelector('[data-testid="attendance-phone-match"]')).toBeNull()
+      expect(form().querySelector('[role="alert"]')!.textContent).toBe(p("addEmployeeUserLimit"))
+    }
+  })
+  it("does not look up a phone after an administrator permission refusal", async () => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/employees/new") ? response(null, 403, "MTM_ATTENDANCE_EMPLOYEE_ADMIN_REQUIRED") : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "New person"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/phone-match"))).toBe(false)
+  })
+
 })

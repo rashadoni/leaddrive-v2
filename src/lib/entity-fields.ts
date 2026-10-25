@@ -19,6 +19,7 @@ export const ENTITY_FIELDS: Record<string, { name: string; label: string; labelK
     { name: "leadTemperature", label: "Lead Temperature", labelKey: "fieldPermissions.fieldLeadTemperature" },
     { name: "description", label: "Description", labelKey: "fieldPermissions.fieldDescription" },
     { name: "voen", label: "VOEN", labelKey: "fieldPermissions.fieldVoen", sensitive: true },
+    { name: "director", label: "Director", labelKey: "fieldPermissions.fieldDirector" },
   ],
   contact: [
     { name: "fullName", label: "Full Name", labelKey: "fieldPermissions.fieldFullName" },

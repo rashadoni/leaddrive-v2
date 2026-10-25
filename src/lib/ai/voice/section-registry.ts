@@ -284,6 +284,7 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   campaigns: "bespoke",
   sequences: "pending",
   mtm_promotions: "pending",
+  "pharmacy-orders": "pending",
   mtm_photos: "pending",
   mtm_alerts: "pending",
   mtm_agents: "pending",

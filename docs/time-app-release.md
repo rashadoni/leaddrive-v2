@@ -100,3 +100,22 @@ in the deployed CRM SHA. Responses use `no-store`; there is no stale-release
 cache. It does not uninstall a copy already present on a device or invalidate
 an APK already downloaded. Existing Field routes and release selection remain
 unchanged.
+
+
+## First-release decision — 2026-10-25
+
+The owner explicitly authorized publishing the initial Time APK without waiting
+for uninterrupted 24-hour acceptance. For this first promotion only, that decision
+supersedes the waiting condition in step1 above. The interrupted attempts remain
+FAIL/REFUSED; they are not evidence of a completed full-day test. Attempt1047-v2
+was stopped through its normal cancellation/cleanup path. All three queued marks
+were separately recovered with original timestamps,148 prior events unchanged,
+no duplicate after cold restart, and all four environment restoration checks.
+
+All other publication checks remain: reviewed main, hosted tests and signed build,
+pinned certificate/package/increasing version, data-preserving in-place upgrade,
+versioned APK/checksum receipt, manifest review, deployment and public smoke.
+The existing updater automatically offers a newer release; Android requires the
+user to confirm installation. This release does not activate the person/phone
+identity migration. See docs/time-first-public-release-session-log.md for the
+actual artifact and deployment evidence.

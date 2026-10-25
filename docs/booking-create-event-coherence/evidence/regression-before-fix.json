@@ -1,0 +1,17 @@
+{
+  "source_sha": "9d7c5107faabfd1219e47f34f73626dbe8b39b7c",
+  "workflow_run": 40194634988,
+  "job": 121173666202,
+  "workflow_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/40194634988",
+  "gate": "Event-platform SDK PostgreSQL concurrency gate",
+  "total": 6,
+  "passed": 3,
+  "failed": 3,
+  "timezone_UTC": "PASS",
+  "timezone_Europe_Berlin": "FAIL",
+  "timezone_Asia_Baku": "FAIL",
+  "timezone_America_New_York": "FAIL",
+  "shared_failure": "PrismaClientUnknownRequestError: event stream head does not match its final version",
+  "database_foundation_guards_enabled": true,
+  "interpretation": "Same application error reproduced by changing only the transaction timezone. Existing optimistic concurrency and blind append baseline cases also passed in UTC. No guard/schema/RLS changes."
+}
