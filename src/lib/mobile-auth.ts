@@ -2,7 +2,7 @@ import { officeAttendanceMobilePath } from "@/lib/mtm/attendance-employee-contra
 import { NextRequest, NextResponse } from "next/server"
 import jwt, { type JwtPayload } from "jsonwebtoken"
 import { prisma } from "./prisma"
-import { runWithRlsBypass } from "./rls-context"
+import { runWithRlsBypass, runWithTenant } from "./rls-context"
 import {
   createSessionFingerprint,
   hasCurrentSessionFingerprint,
@@ -159,7 +159,9 @@ export async function resolveMobileAuth(
     // A verified legacy JWT must not bypass irreversible identity cutover.
     // The reader checks the current link AND reviewed original actor owner;
     // disabling rollout or relinking a card cannot restore the old token.
-    if (await readLegacyCredentialBoundary(prisma, decoded.orgId, { kind: "ACTOR", actorId: decoded.agentId }) !== "LEGACY") return null
+    const legacyBoundary = await runWithTenant(decoded.orgId,
+      () => readLegacyCredentialBoundary(prisma, decoded.orgId, { kind: "ACTOR", actorId: decoded.agentId }))
+    if (legacyBoundary !== "LEGACY") return null
     // RLS: revocation check runs before any tenant context exists — bypass-wrapped.
     const agent = await runWithRlsBypass(() => prisma.mtmAgent.findFirst({
       where: { id: decoded.agentId, organizationId: decoded.orgId },

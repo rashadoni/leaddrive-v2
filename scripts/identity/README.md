@@ -484,3 +484,6 @@ readLegacyCredentialBoundary returns LEGACY/MIGRATED/UNAVAILABLE from a fresh gu
 
 
 Legacy boundary caller update: the next candidate fences resolveMobileAuth after legacy signature verification and before ordinary state reads. Only LEGACY continues existing fingerprint/role/HR/license checks; getOrgId uses that resolver for approved MTM namespaces. It never activates canonical login. Seven new direct/office/tenant/invalid-signature regression cases and the existing compatibility suites are queued for the next exact focal gate. Password/code/setup and transactional writers remain separate prerequisites; do not enable cutover from this partial caller integration.
+
+
+App Prisma composition: PostgreSQL set_config in injected-client helpers is not a substitute for the extended app client AsyncLocalStorage scope. Call the legacy reader inside runWithTenant using the verified tenant so the Prisma transaction proxy establishes inTx; the reader still forces and verifies read-only/RR/bypass-off. Preserve prior context with run, not enterWith. Broad real-login PG caught the missing no-context wrapper; keep that positive compatibility assertion and the RLS test guard enabled.

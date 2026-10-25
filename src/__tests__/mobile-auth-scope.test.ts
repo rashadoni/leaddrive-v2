@@ -77,6 +77,7 @@ import { prisma } from "@/lib/prisma"
 import { getOrgId, requireAuth } from "@/lib/api-auth"
 import { JWT_SECRET, resolveMobileAuth, requireMobileAuth } from "@/lib/mobile-auth"
 import { readLegacyCredentialBoundary } from "@/lib/identity/legacy-credential-boundary"
+import { getRlsContext } from "@/lib/rls-context"
 import { createSessionFingerprint } from "@/lib/session-invalidation"
 import { hasModule, moduleRecordFromOrgFields } from "@/lib/modules"
 
@@ -161,6 +162,17 @@ beforeEach(() => {
 // FIX 3 — resolveMobileAuth revocation check (direct unit tests)
 // ===========================================================================
 describe("resolveMobileAuth — revocation check", () => {
+  it("binds the verified tenant for the real Prisma guard and restores the caller's prior context", async () => {
+    const previous = getRlsContext()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(ACTIVE_AGENT as any)
+    vi.mocked(readLegacyCredentialBoundary).mockImplementationOnce(async () => {
+      expect(getRlsContext()?.orgId).toBe(MOBILE_PAYLOAD.orgId)
+      expect(getRlsContext()?.bypass).not.toBe(true)
+      return "LEGACY"
+    })
+    expect((await resolveMobileAuth(makeRequestWithMobileBearer("/api/v1/mtm/mobile/bootstrap")))?.agentId).toBe(MOBILE_PAYLOAD.agentId)
+    expect(getRlsContext()).toBe(previous)
+  })
   it.each(["MIGRATED", "UNAVAILABLE"] as const)("refuses a valid legacy token at the %s authority boundary before business reads", async status => {
     vi.mocked(readLegacyCredentialBoundary).mockResolvedValue(status)
     expect(await resolveMobileAuth(makeRequestWithMobileBearer("/api/v1/mtm/mobile/bootstrap"))).toBeNull()
