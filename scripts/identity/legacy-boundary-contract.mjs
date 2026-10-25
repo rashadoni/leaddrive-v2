@@ -78,7 +78,8 @@ export async function checkLegacyBoundary({ admin, writer, actor, other, build, 
   assert.equal(opens, 0)
   checks.push("legacy_boundary_never_treats_missing_inactive_foreign_invalid_context_or_database_failure_as_legacy_permission")
 
-  const { readLegacyPhoneCredentialBoundary: phoneBoundary } = await module("legacy-credential-boundary")
+  const { readLegacyPhoneCredentialBoundary: phoneBoundary, readLegacyPhoneCredentialBoundaryInTransaction: phoneMutationBoundary } = await module("legacy-credential-boundary")
+  const { withLegacyCredentialWrite: phoneWriter } = await module("legacy-credential-write")
   const canonicalUser = "legacy-phone-canonical-user", oldUser = "legacy-phone-old-user"
   const directCard = "legacy-phone-direct-card", fallbackCard = "legacy-phone-user-card"
   const phone = "+994507778866", national = "0507778866"
@@ -93,6 +94,7 @@ export async function checkLegacyBoundary({ admin, writer, actor, other, build, 
   for (const cardId of [directCard, fallbackCard]) for (const entered of [phone, national]) {
     assert.equal(await phoneBoundary(writer, org, cardId, entered), "LEGACY")
   }
+  assert.deepEqual(await phoneWriter(writer, org, [card(fallbackCard)], tx => phoneMutationBoundary(tx, org, fallbackCard)), { allowed: true, value: "LEGACY" })
   checks.push("legacy_phone_namespace_shadow_claim_does_not_change_direct_or_linked_user_national_alias_admission")
 
   phase("LEGACY_PHONE_NAMESPACE_CANONICAL_OWNER_BLOCKS_DIFFERENT_OLD_ACTOR")
@@ -105,6 +107,7 @@ export async function checkLegacyBoundary({ admin, writer, actor, other, build, 
   // A legacy national alias must not pick a country or escape the conflict by
   // supplying another international prefix with the same subscriber digits.
   assert.equal(await phoneBoundary(writer, org, fallbackCard, "+155507778866"), "MIGRATED")
+  assert.deepEqual(await phoneWriter(writer, org, [card(fallbackCard)], tx => phoneMutationBoundary(tx, org, fallbackCard)), { allowed: true, value: "MIGRATED" })
   checks.push("canonical_phone_namespace_refuses_old_other_person_direct_user_national_and_country_ambiguous_aliases_without_reassigning_ownership")
 
   phase("LEGACY_PHONE_NAMESPACE_SCOPE_STALE_AND_DATABASE_ERRORS_REFUSE")

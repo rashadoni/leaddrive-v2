@@ -4,6 +4,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { withLegacyCredentialWrite } from "@/lib/identity/legacy-credential-write"
+import { readLegacyPhoneCredentialBoundaryInTransaction } from "@/lib/identity/legacy-credential-boundary"
 import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { passwordPolicyError } from "@/lib/password-policy"
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
           if (fresh.role === "EMPLOYEE" && (!fresh.userId || !fresh.attendanceParticipant
             || !await readAttendanceFeature(tx, fresh.organizationId))) return null
           if (mobileAppRefusal(fresh)) return null
+          if (await readLegacyPhoneCredentialBoundaryInTransaction(tx, fresh.organizationId, fresh.id) !== "LEGACY") return null
           const linkedUser = fresh.userId ? await tx.user.findFirst({
             where: { id: fresh.userId, organizationId: fresh.organizationId, isActive: true, anonymizedAt: null },
             select: { id: true, passwordHash: true, passwordChangedAt: true },

@@ -50,30 +50,41 @@ export async function readLegacyPhoneCredentialBoundary(client: RegistryClient, 
     if (typeof enteredPhone !== "string" || enteredPhone.length > 128) return "UNAVAILABLE"
     const digits = phoneDigits(enteredPhone)
     if (digits.length < 8 || digits.length > 15) return "UNAVAILABLE"
-    const snapshot = await withIdentityMobileReadSnapshot(client, organizationId, async tx => {
-      const principal = await readLegacyCredentialBoundaryInTransaction(tx, organizationId, { kind: "ACTOR", actorId })
-      if (principal !== "LEGACY") return principal
-      const actor = await tx.mtmAgent.findFirst({ where: { id: actorId, organizationId }, select: { phone: true, userId: true } })
-      if (!actor) return "UNAVAILABLE" as const
-      const user = !actor.phone && actor.userId ? await tx.user.findFirst({
-        where: { id: actor.userId, organizationId, isActive: true, anonymizedAt: null }, select: { phone: true },
-      }) : null
-      const effectivePhone = actor.phone ?? user?.phone ?? null
-      // Recheck the original lookup inside this snapshot; a changed phone must
-      // not authenticate a stale selected actor. Preserve the existing alias
-      // semantics, including the card's own phone taking priority.
-      if (!phonesMatch(effectivePhone, enteredPhone)) return "UNAVAILABLE" as const
-      const alternatives = [digits, phoneDigits(effectivePhone)].map(value => value.startsWith("0")
-        ? { normalizedPhone: { endsWith: value.slice(1) } }
-        : { normalizedPhone: `+${value}` })
-      const canonicalClaim = await tx.identityPhoneClaim.findFirst({
-        where: { organizationId, account: { cutoverAt: { not: null } }, OR: alternatives },
-        select: { id: true },
-      })
-      return canonicalClaim ? "MIGRATED" as const : "LEGACY" as const
-    })
+    const snapshot = await withIdentityMobileReadSnapshot(client, organizationId, async tx =>
+      readLegacyPhoneState(tx, organizationId, actorId, enteredPhone))
     return snapshot.value
   } catch { return "UNAVAILABLE" }
+}
+
+/** Internal phone-derived setup mutation check. Caller owns the scoped writer
+ * transaction and its canonical tenant lock; no nested snapshot/transaction.
+ * The number comes from current server state, never from the setup request. */
+export async function readLegacyPhoneCredentialBoundaryInTransaction(tx: Prisma.TransactionClient,
+  organizationId: string, actorId: string): Promise<LegacyCredentialBoundary> {
+  return readLegacyPhoneState(tx, organizationId, actorId)
+}
+
+async function readLegacyPhoneState(tx: Prisma.TransactionClient, organizationId: string,
+  actorId: string, enteredPhone?: string): Promise<LegacyCredentialBoundary> {
+  const principal = await readLegacyCredentialBoundaryInTransaction(tx, organizationId, { kind: "ACTOR", actorId })
+  if (principal !== "LEGACY") return principal
+  const actor = await tx.mtmAgent.findFirst({ where: { id: actorId, organizationId }, select: { phone: true, userId: true } })
+  if (!actor) return "UNAVAILABLE"
+  const user = !actor.phone && actor.userId ? await tx.user.findFirst({
+    where: { id: actor.userId, organizationId, isActive: true, anonymizedAt: null }, select: { phone: true },
+  }) : null
+  const effectivePhone = actor.phone ?? user?.phone ?? null
+  const entered = enteredPhone ?? effectivePhone
+  const digits = phoneDigits(entered)
+  // Recheck the selected actor's effective number in the same transaction.
+  if (digits.length < 8 || digits.length > 15 || !phonesMatch(effectivePhone, entered)) return "UNAVAILABLE"
+  const alternatives = [digits, phoneDigits(effectivePhone)].map(value => value.startsWith("0")
+    ? { normalizedPhone: { endsWith: value.slice(1) } }
+    : { normalizedPhone: `+${value}` })
+  const canonicalClaim = await tx.identityPhoneClaim.findFirst({
+    where: { organizationId, account: { cutoverAt: { not: null } }, OR: alternatives }, select: { id: true },
+  })
+  return canonicalClaim ? "MIGRATED" : "LEGACY"
 }
 
 /** Internal eligibility only: caller owns a verified scope and transaction. */

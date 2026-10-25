@@ -445,6 +445,11 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect((await post(requestCode, "/code", { phone, organizationSlug: company })).status).toBe(200)
     expect(sent).toHaveLength(1)
     const oldCode = codeOf(sent[0])
+    // A genuine server-signed pre-cutover capability must also lose the old
+    // phone-derived write path. Keep the separate OTP unconsumed for its test.
+    const { signPasswordSetupToken } = await import("@/lib/mtm/mobile-login-session")
+    const originalCard = await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId } }))
+    const oldSetup = signPasswordSetupToken(originalCard)
     await bypass(async () => {
       await prisma.identityAccount.update({ where: { organizationId_userId: { organizationId: company, userId: fixture.canonicalId } },
         data: { cutoverAt: new Date(), passwordHash: "!canonical-namespace-fixture", version: 2, credentialEpoch: 2 } })
@@ -453,6 +458,7 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     })
     sent.length = 0
     for (const entered of [phone, national, "+155507778877"]) expect((await login(entered)).status).toBe(401)
+    expect((await post(setPassword, "/password", { setupToken: oldSetup, password: "Different-Namespace-Pass-2026!" })).status).toBe(401)
     expect((await post(verifyCode, "/code/verify", { phone, organizationSlug: company, code: oldCode })).status).toBe(400)
     expect((await post(requestCode, "/code", { phone, organizationSlug: company })).status).toBe(200)
     expect(sent).toHaveLength(0)
@@ -461,6 +467,7 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect((await post(signIn, "", { email: "card-namespace@example.invalid", password, organizationSlug: company })).status).toBe(200)
     await bypass(async () => {
       expect((await prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId } })).userId).toBe(fixture.legacyId)
+      expect((await prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId } })).passwordHash).toBe(originalCard.passwordHash)
       expect((await prisma.identityPhoneClaim.findUniqueOrThrow({ where: { organizationId_userId: { organizationId: company, userId: fixture.canonicalId } } })).normalizedPhone).toBe(phone)
       expect((await prisma.otpCode.findFirstOrThrow({ where: { organizationId: company, phone }, orderBy: { createdAt: "desc" } })).attempts).toBe(0)
     })
