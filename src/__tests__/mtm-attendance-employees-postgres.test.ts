@@ -623,6 +623,82 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     await expect(tenant(organizationId, () => store.readAttendanceEmployee(admin, created.agentId))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND" })
   })
 
+  it("serializes legacy profile phone and metadata saves, rolls both records back on audit failure and locks canonical login fields", async () => {
+    const org = "identity-hr-profile-maintenance", oldPhone = "+994507772411", newPhone = "+994507772412", claimedPhone = "+994507772413"
+    const fixture = await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, slug: org, name: "Fictional identity HR profile", modules: { personnel: true } } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
+      const actor = await prisma.user.create({ data: { organizationId: org, name: "Fictional HR administrator", email: "admin@hr-identity.invalid", role: "admin", passwordHash: "!fixture" } })
+      const target = await prisma.user.create({ data: { organizationId: org, name: "Fictional HR subject", email: "subject@hr-identity.invalid", role: "viewer", passwordHash: "!fixture", phone: oldPhone } })
+      const owner = await prisma.user.create({ data: { organizationId: org, name: "Fictional canonical other person", email: "owner@hr-identity.invalid", role: "viewer", passwordHash: "!fixture" } })
+      await prisma.identityAccount.create({ data: { organizationId: org, userId: owner.id, cutoverAt: new Date(), passwordHash: "!fixture-canonical" } })
+      await prisma.identityPhoneClaim.create({ data: { organizationId: org, userId: owner.id, normalizedPhone: claimedPhone, verifiedAt: new Date(), accountVersion: 1 } })
+      return { actorId: actor.id, userId: target.id, cardId: (await prisma.mtmAgent.findFirstOrThrow({ where: { organizationId: org, userId: target.id }, select: { id: true } })).id }
+    })
+    const reviewer = { organizationId: org, userId: fixture.actorId, principalType: "session" as const }
+    const page = { name: "Renamed fictional HR subject", position: null, teamId: null, departmentId: null, managerId: null }
+    const state = () => tenant(org, async () => ({
+      user: await prisma.user.findUniqueOrThrow({ where: { id: fixture.userId }, select: { name: true, phone: true, isActive: true, role: true, updatedAt: true } }),
+      card: await prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId }, select: { name: true, phone: true, status: true, userId: true, updatedAt: true } }),
+      audit: await prisma.mtmAuditLog.count({ where: { organizationId: org, action: "MTM_ATTENDANCE_EMPLOYEE_UPDATED" } }),
+    }))
+    const before = await state()
+    sql(scratch!.adminDb, `ALTER TABLE mtm_audit_logs ADD CONSTRAINT identity_hr_profile_audit_failure CHECK ("organizationId" <> 'identity-hr-profile-maintenance' OR action <> 'MTM_ATTENDANCE_EMPLOYEE_UPDATED') NOT VALID`)
+    try {
+      await expect(tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, phone: newPhone }))).rejects.toBeDefined()
+      expect(await state()).toEqual(before)
+    } finally { sql(scratch!.adminDb, "ALTER TABLE mtm_audit_logs DROP CONSTRAINT identity_hr_profile_audit_failure") }
+    await tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, phone: newPhone }))
+    const maintained = await state()
+    expect(maintained.user).toMatchObject({ phone: newPhone, name: page.name, role: "viewer", isActive: true })
+    expect(maintained.card).toMatchObject({ phone: newPhone, name: page.name, userId: fixture.userId, status: "ACTIVE" })
+    expect(maintained.audit).toBe(1)
+    await expect(tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, phone: claimedPhone })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED", status: 409 })
+    expect(await state()).toEqual(maintained)
+
+    // A real credential writer holds User first. Metadata must wait on the
+    // shared advisory lock before taking actor, rather than deadlocking it.
+    let release!: () => void, ready!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    const started = new Promise<void>(resolve => { ready = resolve })
+    let writerPid = 0
+    const writer = tenant(org, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'identity-registry:' + org}, 0))`
+      writerPid = (await tx.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid() AS pid`)[0].pid
+      await tx.$queryRaw`SELECT id FROM users WHERE id=${fixture.userId} AND "organizationId"=${org} FOR UPDATE`
+      ready()
+      await held
+      await tx.$queryRaw`SELECT id FROM mtm_agents WHERE id=${fixture.cardId} AND "organizationId"=${org} FOR UPDATE`
+    }, { timeout: 15_000 }))
+    await Promise.race([started, writer])
+    const metadata = tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, name: "Serialized metadata" }))
+    try {
+      let waiting = false
+      const deadline = Date.now() + 1500
+      while (!waiting && Date.now() < deadline) {
+        waiting = await tenant(org, async () => ((await prisma.$queryRaw`
+          SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE usename=current_user AND pid<>${writerPid}
+            AND wait_event_type='Lock' AND wait_event='advisory') AS waiting`) as Array<{ waiting: boolean }>)[0].waiting)
+        if (!waiting) await new Promise(resolve => setTimeout(resolve, 10))
+      }
+      expect(waiting).toBe(true)
+    } finally { release(); await Promise.all([writer, metadata]) }
+    expect((await state()).user).toMatchObject({ name: "Serialized metadata", phone: newPhone })
+    await bypass(() => prisma.identityAccount.create({ data: { organizationId: org, userId: fixture.userId, cutoverAt: new Date(), passwordHash: "!fixture-authoritative" } }))
+    const detail = await tenant(org, () => store.readAttendanceEmployee(reviewer, fixture.cardId))
+    expect(detail.employee.loginEditable).toBe(false)
+    expect(JSON.stringify(detail)).not.toContain("cutoverAt")
+    const canonical = await state()
+    for (const body of [{ ...page, phone: newPhone }, { ...page, email: "changed@hr-identity.invalid" }]) {
+      await expect(tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, body)))
+        .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED", status: 409 })
+    }
+    expect(await state()).toEqual(canonical)
+    await tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, name: "Canonical metadata" }))
+    expect((await state()).user).toMatchObject({ name: "Canonical metadata", phone: newPhone })
+  }, 20_000)
+
   // Owner, 2026-10-16: «где удаление сотрудников» — by his rule for agents: delete without history, dismiss with it.
   it("deletes an office employee added by mistake, dismisses one with history, and leaves CRM users to Settings", async () => {
     const create = await import("@/lib/mtm/attendance-employee-create")
