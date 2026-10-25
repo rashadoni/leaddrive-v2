@@ -313,3 +313,6 @@ withRegistryTransaction и staged proof issuer пока проверяют legac
 
 
 Проверка integration fixes: exactff53 focal40154136372 прошёл243unit/29Node/6snapshot/58foundation PG; global type gate40154136481 прошёл относительно неизменной1334-error/64-pair baseline. Full bundle job121051733427 SUCCESS, то есть новые imports приняты фактической Next сборкой. В static121051818522 обязательный real WhatsApp-login PG step отмеченSUCCESS, оба настоящих положительных legacy-сеанса и canonical refusal более не падают. Общий static baseline ещё выполняется; полной глобальной PASS пока нет. Исходные50c ошибки остаются в журнале, запреты/RLS test guard не ослаблялись.
+
+
+Расширенная проверка9.1–9.2 завершена: exactff53/40154136481 SUCCESS. Real legacy WhatsApp/password PG10/10, включая действующий старый JWT до marker и отказ после без смены legacy fingerprints. Global static baseline18/18, global type baseline1334 diagnostics/64pairs=64baseline, никаких новых дефектов; полный bundle1066pages прошёл. Focal243unit/29Node/6snapshot/58foundation PG PASS. Это завершает проверенный milestone старого JWT fence, не password/code/setup/writer/CRM/API/UI/client rollout. PR снова draft для следующих изменений, production не тронут.
