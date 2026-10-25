@@ -19,6 +19,13 @@ test('pending is reported honestly, with both SHA bindings and UTC row metadata'
   assert.equal(result.metadata.rows[0].status, 'pending');
   assert.equal(result.metadata.rows[0].lastErrorCode, 'LOCAL_FAILURE_20');
   assert.equal(validate({ ...metadata(), bookingFound: false, rows: [] }).metadata.bookingFound, false);
+  const foundation = readFileSync(new URL('../../prisma/migrations/20260901090000_event_platform_foundation/migration.sql', import.meta.url), 'utf8');
+  const allowed = foundation.match(/CONSTRAINT "effect_outbox_status" CHECK \("status" IN \(([^)]+)\)\)/)?.[1].match(/'([^']+)'/g);
+  assert.ok(allowed, 'actual database status constraint available');
+  for (const quoted of allowed) {
+    const status = quoted.slice(1, -1);
+    assert.equal(validate({ ...metadata(), rows: [{ ...row(), status }] }).status, 'PASS_EFFECT_METADATA_ONLY', status);
+  }
 });
 
 test('untrusted output, arbitrary fields/errors, duplicate rows and invalid scalar values fail closed', () => {

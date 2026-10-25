@@ -6,7 +6,7 @@ const tenantPattern = /^[a-z0-9-]{1,60}$/;
 const bookingPattern = /^[a-z0-9]{20,32}$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const timestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
-const statuses = new Set(['pending', 'leased', 'succeeded', 'definitely_failed', 'reconciliation_required']);
+const statuses = new Set(['pending', 'leased', 'succeeded', 'definitely_failed', 'reconciliation_required', 'dead']);
 const keys = ['bookingFound', 'truncated', 'observedUTC', 'sessionTimezone', 'readOnly', 'rlsUnfiltered', 'rows'];
 const rowKeys = ['id', 'status', 'attemptCount', 'bookingVersion', 'lastErrorCode', 'availableAtUTC', 'createdAtUTC', 'completedAtUTC'];
 const exactKeys = (value, expected) => value !== null && typeof value === 'object' && !Array.isArray(value)

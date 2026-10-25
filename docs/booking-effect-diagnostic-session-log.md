@@ -27,3 +27,7 @@
 - Final source self-audit: five ownedpaths only; worker/auth/schema/retry unchanged. SQL restricts tenant+booking and hardcodeslive/project; guards bind currentmain and independently observed deployedartifact; readonly set beforequery, credentials-safe existingrunner, no rawstdout/stderr export. No productionmetadata or reason claimed from synthetic tests.
 - Remaining requiredstatic-checks/typecheck pending; pr-scope/runner-policy/scanPASS. Optional PR application buildSKIPPED; this change does not touch application build/runtime and does not need a new app deployment to run reviewedcurrent-main diagnostics. Never claim skippedbuildPASS.
 - Next: exacthead guardedmerge when five checksSUCCESS, normal protected dispatch with vieweffect-metadata/effect_tenantleaddrive/effect_booking_idcmvnycd8f000ukp9m9n847z7e and freshmain/artifactSHAs; preserve all test/live data.
+
+## 2026-10-25 — Final constraint audit correction before merge
+
+- Compared allowlisted statuses to actual foundation constraint: terminaldead is valid in the database but omitted from the first inspector draft. Added that finite status and a regression checking every database-allowed status against the sanitizer. Unknownstatuses stillfailclosed. This is a new source revision and must repeat exact-head hosted checks; earlier0a4check evidence remains historical, not attributed to newhead. No productionoperation occurred.
