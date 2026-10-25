@@ -3,6 +3,7 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "./prisma"
+import { readLegacyCrmCredentialBoundary } from "./identity/legacy-crm-boundary"
 import { runWithRlsBypass, runWithTenant } from "./rls-context"
 import {
   loginSchema,
@@ -40,6 +41,13 @@ async function reviewerAccessUntilFor(user: { id: string; role: string }): Promi
     select: { expiresAt: true, revokedAt: true },
   }))
   return reviewerAccessOpen(grant) ? new Date(grant!.expiresAt).toISOString() : false
+}
+
+/** Only fresh legacy eligibility permits the existing credentials/MFA flow. */
+async function legacyCrmMaySignIn(user: { id: string; organizationId: string }): Promise<boolean> {
+  if (!user.organizationId || !user.id) return false
+  return await runWithTenant(user.organizationId, async () =>
+    await readLegacyCrmCredentialBoundary(prisma, user.organizationId, user.id) === "LEGACY")
 }
 
 /**
@@ -141,7 +149,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null
           }
 
-          const user = await pickCandidateByPassword<typeof candidates[number]>(candidates, parsed.data.password)
+          let user: typeof candidates[number] | null = null
+          for (const candidate of candidates) {
+            if (!(await legacyCrmMaySignIn(candidate))) continue
+            user = await pickCandidateByPassword<typeof candidates[number]>([candidate], parsed.data.password)
+            if (user) break
+          }
           if (!user) {
             console.warn(`[Auth] credentials_rejected reason=password_mismatch candidates=${candidates.length}`)
             return null
@@ -312,6 +325,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (dbUser.role !== "superadmin" && dbUser.organization?.isActive !== true) {
           return null
         }
+        if (!(await legacyCrmMaySignIn(dbUser))) return null
         // An outside reviewer signs in only while their grant is open.
         const reviewerAccessUntil = await reviewerAccessUntilFor(dbUser)
         if (reviewerAccessUntil === false) return null
@@ -440,6 +454,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (freshUser.role !== "superadmin" && freshUser.organization?.isActive !== true) {
             return null
           }
+          if (!(await legacyCrmMaySignIn(freshUser))) return null
           // A reviewer's session ends with their grant: at the end date, or the
           // moment an admin closes it, whichever comes first.
           const freshReviewerAccessUntil = await reviewerAccessUntilFor(freshUser)

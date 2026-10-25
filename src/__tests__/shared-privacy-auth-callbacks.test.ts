@@ -1,6 +1,8 @@
+import { readLegacyCrmCredentialBoundary } from "@/lib/identity/legacy-crm-boundary"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 type Config = { providers: Array<{ authorize: (input: Record<string, string>) => Promise<Record<string, unknown> | null> }>; callbacks: { jwt: (input: { token: { sub: string }; user?: undefined }) => Promise<unknown> } }
 const state = vi.hoisted(() => ({ config: undefined as Config | undefined, findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), sendOtp: vi.fn(), compare: vi.fn() }))
+vi.mock("@/lib/identity/legacy-crm-boundary", () => ({ readLegacyCrmCredentialBoundary: vi.fn().mockResolvedValue("LEGACY") }))
 vi.mock("next-auth", () => ({ default: (config: Config) => { state.config = config; return {} } }))
 vi.mock("next-auth/providers/credentials", () => ({ default: (config: unknown) => config }))
 vi.mock("@auth/prisma-adapter", () => ({ PrismaAdapter: () => ({}) }))
@@ -11,7 +13,7 @@ vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: () => true, hashForRateLimi
 import "@/lib/auth"
 const CANARY = "PRIVATE_SYNTHETIC_person@example.invalid"
 const credentials = { email: CANARY, password: "synthetic-private-password" }
-beforeEach(() => { vi.clearAllMocks(); vi.stubEnv("REQUIRE_TENANT_SLUG", "0"); state.update.mockResolvedValue({}); state.compare.mockResolvedValue(true) })
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(readLegacyCrmCredentialBoundary).mockResolvedValue("LEGACY"); vi.stubEnv("REQUIRE_TENANT_SLUG", "0"); state.update.mockResolvedValue({}); state.compare.mockResolvedValue(true) })
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs() })
 describe("actual Auth.js callback privacy", () => {
   it("legacy lookup and rejected login log neither a masked identity nor the raw provider error", async () => {

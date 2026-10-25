@@ -56,6 +56,16 @@ const scratch = vi.hoisted(() => {
   return { name, url: url.toString() }
 })
 
+// Capture actual server authorize/JWT callbacks while keeping browser cookie
+// plumbing outside this database suite. Passwords, Prisma and boundary reads
+// remain real; this is not a signed-cookie/browser E2E claim.
+const crmAuth = vi.hoisted(() => ({ config: null as any }))
+vi.mock("next-auth", () => ({ default: (config: unknown) => {
+  crmAuth.config = config
+  return { handlers: {}, auth: async () => null, signIn: async () => null, signOut: async () => null }
+} }))
+vi.mock("next-auth/providers/credentials", () => ({ default: (config: unknown) => config }))
+
 /** The browser session of the organization's administrator, for the card's «Сбросить пароль». */
 const webSession = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 vi.mock("@/lib/api-auth", async (importOriginal) => ({
@@ -128,6 +138,7 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     signIn = (await import("@/app/api/v1/mtm/mobile/auth/route")).POST
     updateAgent = (await import("@/app/api/v1/mtm/agents/[id]/route")).PUT
     resolveMobileAuth = (await import("@/lib/mobile-auth")).resolveMobileAuth
+    await import("@/lib/auth")
     availability = await import("@/lib/mtm/whatsapp-login-code")
     vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
       sent.push({ url, authorization: new Headers(init.headers).get("authorization"), body: JSON.parse(String(init.body)) })
@@ -430,6 +441,37 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     }
     expect((await post(setPassword, "/password", { setupToken, password: "Fictional-Atomic-Changed-2026!" })).status).toBe(200)
     expect((await post(setPassword, "/password", { setupToken, password: "Fictional-Atomic-Changed-2026!" })).status).toBe(401)
+  })
+
+  it.each([
+    { suffix: "ordinary", role: "viewer", companyActive: true },
+    { suffix: "platform", role: "superadmin", companyActive: false },
+  ])("fences actual CRM authorize/issue/refresh callbacks after authority for $suffix while preserving legacy credentials", async ({ suffix, role, companyActive }) => {
+    const company = `identity-crm-callback-${suffix}`, email = `${suffix}@crm-boundary.invalid`, password = "Fictional-Crm-Callback-2026!"
+    const userId = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, name: "Fictional CRM boundary company", slug: company, isActive: companyActive } })
+      return (await prisma.user.create({ data: { organizationId: company, name: "Fictional CRM boundary person", email, role, passwordHash: await bcrypt.hash(password, 4) } })).id
+    })
+    const authorize = crmAuth.config.providers[0].authorize, callback = crmAuth.config.callbacks.jwt
+    const credentials = { email, password, organizationSlug: company }
+    const signedIn = await authorize(credentials)
+    expect(signedIn).toMatchObject({ id: userId, role, organizationId: company })
+    const token = await callback({ token: { sub: userId, email }, user: signedIn, account: { provider: "credentials" } })
+    expect(token).toMatchObject({ sub: userId, role, organizationId: company })
+    expect(await callback({ token, user: undefined })).toMatchObject({ sub: userId, role })
+    const state = () => bypass(() => prisma.user.findUniqueOrThrow({ where: { id: userId }, select: {
+      passwordHash: true, passwordChangedAt: true, isActive: true, loginCount: true, lastLogin: true,
+      totpEnabled: true, smsAuthEnabled: true, require2fa: true, twoFactorNonce: true,
+    } }))
+    const before = await state()
+    // Synthetic authority assumption only; platform conversion is not a
+    // supported onboarding path. Even malformed authority must refuse fallback.
+    await bypass(() => prisma.identityAccount.create({ data: { organizationId: company, userId, cutoverAt: new Date(), passwordHash: "!fixture-crm-canonical" } }))
+    expect(await authorize(credentials)).toBeNull()
+    expect(await callback({ token: { sub: userId, email }, user: signedIn, account: { provider: "credentials" } })).toBeNull()
+    expect(await callback({ token, user: undefined })).toBeNull()
+    expect(await state()).toEqual(before)
+    expect(sent).toHaveLength(0)
   })
 
   it("says aloud that codes cannot be sent while the template is missing — to everybody, and withdraws the code", async () => {
