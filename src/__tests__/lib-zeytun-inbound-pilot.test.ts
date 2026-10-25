@@ -196,7 +196,7 @@ describe("single-call inbound owner rehearsal", () => {
     const f = fixture()
     expect((await f.handle(request(undefined, { authorization: "Bearer wrong" }))).status).toBe(401)
     expect((await f.handle(request(undefined, { "content-type": "text/plain" }))).status).toBe(415)
-    expect((await f.handle(request({ padding: "x".repeat(4096) }))).status).toBe(413)
+    expect((await f.handle(request({ padding: "x".repeat(16_384) }))).status).toBe(413)
     expect((await f.handle(request({ action: "search", callId: call.providerCallId, query: { text: "a", customerGuid: "injected" } }))).status).toBe(400)
     expect(f.dependencies.loadConfig).not.toHaveBeenCalled()
   })
@@ -213,5 +213,69 @@ describe("single-call inbound owner rehearsal", () => {
     for (const audit of [null, {}, { pharmacyInboundPreview: true }, { pharmacyInboundPreview: { ...marker, providerCallId: "other" } }]) {
       expect(isPharmacyInboundPreview(audit, call.providerCallId)).toBe(false)
     }
+  })
+})
+
+describe("saving the agreed list from the rehearsal call", () => {
+  const PRODUCT = "cccccccc-1111-4111-8111-111111111111"
+  const order = (lines: unknown) => request({ action: "order", callId: call.providerCallId, lines })
+  const lines = [{ externalId: PRODUCT, quantity: 10, unit: "qutu", spoken: "on qutu" }, { quantity: 3, unit: "qutu", spoken: "fluimusil üç qutu" }]
+  function withOrders() {
+    const f = fixture()
+    f.dependencies.loadConfig.mockImplementation(async () => ({ ...structuredClone(config), orderOrganizationId: "org-zeytun" }))
+    vi.mocked(f.catalog.search).mockImplementation((query: { externalId?: string }) => ({ status: "candidates", candidateCount: 1, candidates:
+      query.externalId === PRODUCT ? [{ externalId: PRODUCT, itemCode: "TEST-01", name: "Medicine", nameAz: "Dərman",
+        priceAsReported: "12.5", baseUnitAsReported: "упак" }] : [] }))
+    const saveOrder = vi.fn(async () => ({ status: "saved" as const, orderId: "o1", number: 1001, revision: 1, created: true, changed: true,
+      total: "125.00", currency: "AZN" as const, priced: 1, unpriced: [], notFound: ["fluimusil üç qutu"] }))
+    const handle = createInboundPilotHandler(token, { ...f.dependencies, saveOrder })
+    return { ...f, saveOrder, handle }
+  }
+
+  it("saves to the grant's order organization with the catalog's own item and price, and returns the receipt", async () => {
+    const f = withOrders()
+    const response = await f.handle(order(lines))
+    expect(await response.json()).toEqual({ status: "saved", orderNumber: "TS-1001", changed: true, total: "125.00",
+      currency: "AZN", notFound: ["fluimusil üç qutu"], unpriced: [] })
+    const [grant, savedCall, catalog, saved] = f.saveOrder.mock.calls[0] as unknown as [
+      { orderOrganizationId: string }, InboundPilotCall, { find: (id: string) => unknown; source: string }, unknown]
+    expect(grant.orderOrganizationId).toBe("org-zeytun")
+    expect(savedCall.providerCallId).toBe(call.providerCallId)
+    expect(saved).toEqual(lines)
+    expect(catalog.source).toBe(config.approvedSource.organizationId)
+    expect(catalog.find(PRODUCT)).toEqual({ externalId: PRODUCT, itemCode: "TEST-01", name: "Medicine", nameAz: "Dərman",
+      listPrice: { amount: "12.5", per: "qutu" } })
+    expect(catalog.find("dddddddd-1111-4111-8111-111111111111")).toBeNull()
+    // The same proof as a search: the call must hold this grant's claim.
+    expect(f.dependencies.isClaimed).toHaveBeenCalledOnce()
+    expect(f.dependencies.claim).not.toHaveBeenCalled()
+  })
+
+  it("saves nothing without an order organization in the grant, or for a call without the claim", async () => {
+    const f = fixture()
+    const saveOrder = vi.fn()
+    const handle = createInboundPilotHandler(token, { ...f.dependencies, saveOrder })
+    expect(await (await handle(order(lines))).json()).toEqual({ status: "orders_disabled" })
+    const g = withOrders()
+    g.dependencies.isClaimed.mockResolvedValue(false)
+    expect((await g.handle(order(lines))).status).toBe(403)
+    expect(saveOrder).not.toHaveBeenCalled()
+    expect(g.saveOrder).not.toHaveBeenCalled()
+  })
+
+  it("refuses a malformed list before reading anything", async () => {
+    const f = withOrders()
+    for (const bad of [[], [{ quantity: 1, unit: "qutu" }], [{ quantity: 0, unit: "qutu", spoken: "x" }],
+      [{ quantity: 1, unit: "qutu", spoken: "x", price: "1.00" }], Array.from({ length: 31 }, () => ({ quantity: 1, unit: "qutu", spoken: "x" }))]) {
+      expect((await f.handle(order(bad))).status).toBe(400)
+    }
+    expect(f.dependencies.loadConfig).not.toHaveBeenCalled()
+    expect(f.saveOrder).not.toHaveBeenCalled()
+  })
+
+  it("tells the call when a manager already decided on its order", async () => {
+    const f = withOrders()
+    f.saveOrder.mockResolvedValueOnce({ status: "already_reviewed", number: 1001 } as never)
+    expect(await (await f.handle(order(lines))).json()).toEqual({ status: "already_reviewed", orderNumber: "TS-1001" })
   })
 })

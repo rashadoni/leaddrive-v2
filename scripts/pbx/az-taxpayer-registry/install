@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Install the taxpayer registry relay on the Fanum station's nginx.
+#
+# Adds one include line to the control server block and two small files. nginx
+# is reloaded, never restarted; Asterisk is not touched. If `nginx -t` or the
+# reload fails, every changed file is restored. Running it again is a no-op.
+set -Eeuo pipefail
+umask 022
+export LC_ALL=C
+
+readonly SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SITE="/etc/nginx/conf.d/fanum-ari-proxy.conf"
+readonly ZONE_DST="/etc/nginx/conf.d/az-taxpayer-registry-zone.conf"
+readonly LOCATION_DST="/etc/nginx/fanum-pbx-control/az-taxpayer-registry.conf"
+readonly INCLUDE_LINE="    include /etc/nginx/fanum-pbx-control/az-taxpayer-registry.conf;"
+# The control site as read from the station on 2026-10-24; drift refuses the install.
+readonly EXPECTED_SITE_SHA256="5cd237142b3d1d129136b03f75b433dcabc1628fff6e3974c2f6cbe462e8898c"
+
+fail() { printf 'az-taxpayer-registry-install: %s\n' "$1" >&2; exit 1; }
+[[ $EUID -eq 0 ]] || fail "run with sudo"
+
+if grep -qxF "$INCLUDE_LINE" "$SITE" && cmp -s "$SOURCE_DIR/location.conf" "$LOCATION_DST" && cmp -s "$SOURCE_DIR/zone.conf" "$ZONE_DST"; then
+  echo "az-taxpayer-registry-install: already installed"
+  exit 0
+fi
+[[ "$(sha256sum "$SITE" | awk '{print $1}')" == "$EXPECTED_SITE_SHA256" ]] || fail "control site changed since review; nothing written"
+[[ "$(grep -c '^    location / {$' "$SITE")" == 1 ]] || fail "control site has no single 'location /'; nothing written"
+
+readonly BACKUP="/var/backups/az-taxpayer-registry-$(date +%Y%m%d%H%M%S)"
+mkdir -p "$BACKUP"
+cp -a "$SITE" "$BACKUP/"
+restore() {
+  cp -a "$BACKUP/$(basename "$SITE")" "$SITE"
+  rm -f "$ZONE_DST" "$LOCATION_DST"
+  if nginx -t >/dev/null 2>&1; then systemctl reload nginx || true; fi
+  fail "$1 — restored from $BACKUP"
+}
+
+install -m 0644 "$SOURCE_DIR/zone.conf" "$ZONE_DST"
+install -m 0600 "$SOURCE_DIR/location.conf" "$LOCATION_DST"
+sed -i "s|^    location / {\$|$INCLUDE_LINE\n\n    location / {|" "$SITE"
+grep -qxF "$INCLUDE_LINE" "$SITE" || restore "include line was not added"
+nginx -t || restore "nginx -t refused the configuration"
+systemctl reload nginx || restore "nginx reload failed"
+echo "az-taxpayer-registry-install: installed; backup in $BACKUP"

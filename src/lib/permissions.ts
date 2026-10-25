@@ -883,6 +883,7 @@ export const ROUTE_MODULE_MAP: Record<string, Module> = {
   // handler; this map is used only by the web admin panel
   // middleware (cookie-session auth path).
   "/api/v1/mtm": "mtm",
+  "/api/v1/pharmacy-orders": "mtm",
   // Workforce has its own capability wrapper. It is intentionally not mapped
   // to a group ModuleId here; see CAPABILITY_GATED_PERMISSION_SCOPES.
   "/api/v1/workforce": "workforce",
