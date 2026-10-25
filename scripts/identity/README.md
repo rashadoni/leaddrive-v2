@@ -420,3 +420,23 @@ must change only Field grant/membership, not User.isActive or MtmAgent.status.
 The triggers are not permission to turn on new auth ahead of that work. Normal
 password login/provider/API/UI and app workflow/queue migration remain separate
 integration gates; no current route has switched to this identity runtime.
+
+
+### Fixed shared tenant policy
+
+`tenant-policy.ts` implements the server dependency using the existing shared
+capability catalog and `readAttendanceFeature`. Time requires Personnel plus
+the actual attendance switch; Field requires Route & Field and never reads an
+HR switch. Identity opt-in is exactly `{version:1,enabled:true}` at the new
+control-plane setting, not a truthy/missing default. The resolver still checks
+immutable per-person cutover, so toggling rollout cannot restore legacy auth.
+No setting is written by this policy and no current route enables it.
+
+The scoped hosted compiler now extends the repository's actual alias config,
+compiles only identity and its pure policy dependencies, and links exact locked
+runtime packages plus the existing @/lib alias into private scratch output.
+It does not edit application imports or install new bundlers. Node20 alias
+resolution and29 lightweight admission/inventory tests passed locally; real
+compiler/Vitest/PG work stays in GitHub. CI explicitly imports the emitted
+policy before tests, avoiding an untested output/dependency layout. The shared
+catalog and attendance regression suites are included in the focused gate.

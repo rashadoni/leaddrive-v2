@@ -215,3 +215,10 @@ Resolver не держит privilege lock до следующей записи: 
 Только у уже authoritative записей переходы User.isActive/anonymizedAt увеличивают общую credential epoch/revision и пишут системный audit; переходы технического actor status/userId увеличивают версии его membership и audit. Восстановление флага не оживляет прежнюю сессию; binding/grants не переприсваиваются. При отказе audit откатываются и исходный статус/связь, и security versions. На staged/legacy записи эти lifecycle triggers не действуют. Настоящий PostgreSQL fixture проверяет их под отдельной tenant-scoped NOLOGIN/NOBYPASSRLS ролью с минимальными колонками.
 
 Глобальный lifecycle человека/технического actor нельзя смешивать с обычным отзывом одного приложения. До cutover все legacy writers должны быть ограждены/адаптированы: «отключить Field» меняет Field grant/membership, а не общий User.isActive или MtmAgent.status. CRM-only отзыв аналогично не является увольнением человека. UI/API таких действий ещё предстоит завершить; эта подготовка не разрешает раннее включение новой авторизации.
+
+
+### 8.7. Фиксированная политика лицензии — подготовлено
+
+`tenant-policy.ts` использует существующие isTenantCapabilityEnabled и readAttendanceFeature. Time требует Personnel и включённый фактический переключатель учёта; Field требует Route & Field и не читает HR switch. Коммерческие правила/legacy entitlement semantics общего каталога не копируются и не меняются. Допуск нового runtime требует точного control-plane `{version:1,enabled:true}`; пустое/неправильное значение закрывает доступ, но не возвращает legacy mode. Это отдельный guard от необратимого per-person cutover.
+
+Новые unit/PG cases проверяют настоящие поля компании и mtm_settings через тот же RLS/RR snapshot, независимые лицензии и чужие настройки. На production значения не меняются; действующие маршруты пока не вызывают этот runtime. Прежние результаты76 unit/45 PG относятся к66b27222b; эта новая композиция/компилятор требуют собственного exact-head CI.

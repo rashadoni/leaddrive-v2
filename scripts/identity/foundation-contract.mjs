@@ -59,6 +59,14 @@ async function main() {
     await admin.$executeRawUnsafe('INSERT INTO users (id, "organizationId", "isActive", role) VALUES ($1, $2, true, $3)', "identity-user-a3", A, "viewer")
     await admin.$executeRawUnsafe('INSERT INTO users (id, "organizationId", "isActive", role) VALUES ($1, $2, true, $3)', "identity-user-a4", A, "viewer")
 
+    // Adapt the existing minimal disposable fixture for the shared entitlement
+    // and attendance readers; none of this alters production legacy tables.
+    await admin.$executeRawUnsafe("ALTER TABLE organizations ADD COLUMN plan TEXT NOT NULL DEFAULT 'starter', ADD COLUMN addons TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[], ADD COLUMN features JSONB NOT NULL DEFAULT '[]', ADD COLUMN modules JSONB NOT NULL DEFAULT '{}'")
+    await admin.$executeRawUnsafe('CREATE TABLE mtm_settings (id TEXT PRIMARY KEY,"organizationId" TEXT NOT NULL REFERENCES organizations(id),key TEXT NOT NULL,value JSONB NOT NULL,description TEXT,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,UNIQUE("organizationId",key))')
+    await admin.$executeRawUnsafe('ALTER TABLE mtm_settings ENABLE ROW LEVEL SECURITY')
+    await admin.$executeRawUnsafe('ALTER TABLE mtm_settings FORCE ROW LEVEL SECURITY')
+    await admin.$executeRawUnsafe(`CREATE POLICY identity_fixture_settings_read ON mtm_settings FOR SELECT USING ("organizationId"=current_setting('app.org_id',true))`)
+
     phase = "ACTUAL_ADDITIVE_MIGRATION"
     execFileSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--file", "prisma/migrations/20261103120000_identity_foundation/migration.sql"], {
       env: { ...process.env, PGHOST: url.hostname, PGPORT: url.port, PGDATABASE: url.pathname.slice(1), PGUSER: decodeURIComponent(url.username), PGPASSWORD: decodeURIComponent(url.password) },
@@ -71,7 +79,7 @@ async function main() {
     receipt.checks.push("additive_migration_no_backfill_or_implicit_grants")
     await admin.$executeRawUnsafe("CREATE ROLE identity_foundation_writer LOGIN PASSWORD 'identity-foundation-writer-only' NOSUPERUSER NOBYPASSRLS")
     await admin.$executeRawUnsafe("GRANT USAGE ON SCHEMA public TO identity_foundation_writer")
-    await admin.$executeRawUnsafe("GRANT SELECT ON organizations, users, mtm_agents TO identity_foundation_writer")
+    await admin.$executeRawUnsafe("GRANT SELECT ON organizations, users, mtm_agents, mtm_settings TO identity_foundation_writer")
     // SELECT FOR SHARE also applies UPDATE RLS and needs UPDATE privilege.
     // Restrict the fixture privilege to id; no role/password/phone can be changed.
     await admin.$executeRawUnsafe('GRANT UPDATE (id) ON users, organizations, mtm_agents TO identity_foundation_writer')

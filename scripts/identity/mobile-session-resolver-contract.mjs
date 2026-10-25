@@ -1,5 +1,6 @@
 /** Only invoked from the admitted synthetic foundation fixture, never a CLI. */
 import assert from "node:assert/strict"
+import { checkRealTenantPolicy } from "./tenant-policy-contract.mjs"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
@@ -133,6 +134,8 @@ export async function checkIdentityResolver({ admin, writer, build, actor, userI
   assert.equal(await auth(stagedToken), null)
   assert.notEqual(await auth(timeToken), null)
   checks.push("resolver_has_no_implicit_license_rollout_legacy_or_unsafe_transaction_fallback")
+
+  await checkRealTenantPolicy({ admin, writer, build, org, timeToken, fieldToken, keyRing, checks, phase })
 
   phase("RESOLVER_READS_CURRENT_INDEPENDENT_MEMBERSHIP_AND_GRANT")
   await admin.identityApplicationMembership.update({ where: memberKey("TIME"), data: { status: "REVOKED", version: 8 } })

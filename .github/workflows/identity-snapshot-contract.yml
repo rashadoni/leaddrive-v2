@@ -9,6 +9,10 @@ on:
       - 'prisma/schema.prisma'
       - 'prisma/migrations/20261103120000_identity_foundation/**'
       - 'src/lib/identity/**'
+      - 'src/lib/tenant-capabilities.ts'
+      - 'src/lib/modules.ts'
+      - 'src/lib/crm-product-availability.ts'
+      - 'src/lib/mtm/attendance-feature.ts'
       - 'package-lock.json'
   workflow_dispatch:
 
@@ -49,7 +53,7 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$IDENTITY_CONTRACT_HEAD_SHA"
           node scripts/ci/check-github-runner-policy.mjs
-          node --test scripts/identity/preflight.test.mjs scripts/identity/snapshot.test.mjs scripts/identity/postgres-contract.test.mjs
+          node --test scripts/identity/preflight.test.mjs scripts/identity/snapshot.test.mjs scripts/identity/postgres-contract.test.mjs scripts/identity/compile-foundation.test.mjs
           git diff --check
       - run: npm ci
       - run: npx prisma validate && npx prisma generate
@@ -63,17 +67,14 @@ jobs:
           IDENTITY_CONTRACT_RECEIPT: ${{ runner.temp }}/identity-snapshot-contract.json
       - name: Focused identity types and independent application unit checks
         run: |
-          npx tsc src/lib/identity/contract.ts src/lib/identity/registry.ts src/lib/identity/phone-proof.ts src/lib/identity/phone-proof-registry.ts src/lib/identity/credential-setup.ts src/lib/identity/phone-proof-dispatch.ts src/lib/identity/mobile-session-contract.ts src/lib/identity/mobile-session.ts src/lib/identity/membership-registry.ts src/lib/identity/mobile-session-resolver.ts --strict --esModuleInterop --skipLibCheck --target ES2022 --module NodeNext --moduleResolution NodeNext --types node --outDir "$RUNNER_TEMP/identity-foundation"
-          # Compiled Node modules live outside the checkout. Resolve only the
-          # exact lockfile-installed dependencies, including runtime bcrypt.
-          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/identity-foundation/node_modules"
-          VITEST_MAX_WORKERS=1 npx vitest run src/lib/identity/contract.test.ts src/lib/identity/phone-proof.test.ts src/lib/identity/credential-setup.test.ts src/lib/identity/phone-proof-dispatch.test.ts src/lib/identity/mobile-session-contract.test.ts src/lib/identity/mobile-session.test.ts src/__tests__/rls-bypass-classifier.test.ts
+          node scripts/identity/compile-foundation.mjs
+          VITEST_MAX_WORKERS=1 npx vitest run src/lib/identity/contract.test.ts src/lib/identity/phone-proof.test.ts src/lib/identity/credential-setup.test.ts src/lib/identity/phone-proof-dispatch.test.ts src/lib/identity/mobile-session-contract.test.ts src/lib/identity/mobile-session.test.ts src/lib/identity/tenant-policy.test.ts src/__tests__/rls-bypass-classifier.test.ts src/__tests__/tenant-capabilities.test.ts src/__tests__/attendance-feature.test.ts
       - name: Actual additive identity migration, tenant isolation and phone races
         run: node scripts/identity/foundation-contract.mjs
         env:
           IDENTITY_CONTRACT_DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
           EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
-          IDENTITY_FOUNDATION_BUILD: ${{ runner.temp }}/identity-foundation
+          IDENTITY_FOUNDATION_BUILD: ${{ runner.temp }}/identity-foundation/identity
           IDENTITY_FOUNDATION_RECEIPT: ${{ runner.temp }}/identity-foundation-contract.json
       - name: Retain sanitized result
         if: always()
