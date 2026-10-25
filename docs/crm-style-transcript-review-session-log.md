@@ -572,3 +572,23 @@
 - PR1063 merged с expected_head_sha. Merge SHA210429eff8cf62357c8a97aa5affbbdc26255b6d, родители current reviewed main1ac8e957ea38270c7d400ca621f75f20c8917ff4 и source dda49d5db. Изменения относительно first parent только3task paths: helper, существующий contract, журнал.
 - Production workflow40229858190 https://github.com/rashadoni/leaddrive-v2/actions/runs/40229858190 создан20:14:54Z. Build pending за работающей сборкой предыдущего main, Quality queued. Штатная build queue не прерывает текущую сборку; новый main заменяет только pending. Чужие runs не отменялись; workflow/deploy route не менялись.
 - Текущая остановка: исправление вmain, но ещё НЕ опубликовано. Дальше ждать штатную сборку/deploy, exactSHA/ping и native loading probe. Если reviewed descendant supersedes pending build, подтвердить ancestry и фактический source/артефакт, не откатывать main и не заявлять exact210 без evidence. Production target прежний13.140.132.245:/opt/leaddrive-v2; толькоGitHubActions.
+
+### Очередь production выбрала более новый reviewed main
+
+- Build для210429eff вrun40229858190 штатно CANCELLED как ещё pending после нового main. Это не source/build failure. Новый кандидат7503ae8fc1d61b223d1c942231453dd5cc82d703/run40230748624 (PR1065, профиль Telegram) имеет непосредственным предком210429eff. git fetch + merge-base --is-ancestor PASS; фактический helper в7503 прочитан, contentSearchVisible=false сохранён.
+- Следующий release/smoke отслеживается для7503ae8fc, если не будет ещё одного superseding descendant. Никакие чужие runs не отменялись, main не откатывался. Правка удаления ещё не объявляется установленной; ожидается успешный deployment и exact actual artifact verification.
+
+- Очередь освобождена: build run40230748624 для7503ae8fc теперь IN_PROGRESS (Install dependencies from lockfile), Quality также IN_PROGRESS. Это активная сборка, содержащая210429eff и contentSearchVisible=false. Публикация и after-smoke всё ещё впереди.
+
+- Run40230748624 /7503ae8fc: Quality & security gates SUCCESS. Production build находится на Build Next.js standalone. Ждём итог build/deploy; exact artifact и native after probe ещё NOT RUN.
+
+- Run40230748624 /7503ae8fc: Production build & publish artifact SUCCESS, Quality SUCCESS. Deploy to production & post-deploy smoke IN_PROGRESS (проверка скачанного SHA-bound artifact). Следующий шаг: завершение deployment, verify-release.py7503 и live-search-check.cjs after7503.
+
+### Лишняя строка удалена на проде — проверка завершена
+
+- Production workflow40230748624 полностью SUCCESS: Quality, complete production build, atomic deploy/post-deploy smoke и retention. Установлен7503ae8fc1d61b223d1c942231453dd5cc82d703, подтверждённый descendant нашего merge210429eff. Public build-info EXACT SHA и ping ok=true наapp/leaddrive/zeytun. Receipt: search-removal/release/public-artifact-7503ae8fc1d6.json.
+- Native authenticated Chrome after probe21:01:25Z: тот же artifact до/после наблюдения; loading skeleton реально наблюдался; DOM observer работал до page scripts. Лишняя form.ai-search-bar ни разу не смонтирована, maxBars=0 (baseline до измененияmaxBars=1). Trace:413msinitial0,1656msloading0,3316msloaded0. Это проверка процесса загрузки, а не только итогового скриншота.
+- Header присутствует, существующее поле Da Vinci в приветствии присутствует. Ctrl+K открывает существующий CommandSearch, input focused/empty; запросы поиска/AI/business действия не отправлялись. Root просмотрел after dashboard PNG. Все7checks и все3cleanup flags PASS: probe removed, tours restored, original /companies restored; viewport не менялся.
+- Evidence: search-removal/after-2026-10-25T21-01-25-371Z/report.json и dashboard.png; итог comparison.json в search-removal/release. Baseline probe не записывал artifact identity, поэтому exactSHA ему не приписывается; after probe привязан к7503до/после.
+- PR1063 description обновлён конечными validation/release результатами. Полные local build/typecheck/E2E NOT RUN по workload contract; required hosted checks и production build выполнены и успешны. Live smoke ограничен desktop loading/search entry; результаты поисковых запросов и всеCRMworkflows не тестировались этим узким изменением.
+- Итог: поручение удалить дополнительную AI-строку выполнено и опубликовано, существующие поиски сохранены. Последнее содержательное действие — live loading/search verification с восстановлением browserstate. Остановка после успешного релиза и проверки; дополнительного продуктового действия не требуется. Финальная операция — checkpoint этого журнала на прежней feature branch.
