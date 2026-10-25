@@ -25,7 +25,7 @@ export async function checkProofAuthority({ admin, writer, failing, actor, build
   }
   async function prepare(label) {
     const userId = `proof-v2-${label}`, phone = `+99455666${String(++counter).padStart(4, "0")}`
-    await admin.$executeRaw`INSERT INTO users (id,"organizationId","isActive",role,phone) VALUES (${userId},${org},true,'viewer',${phone})`
+    await admin.$executeRaw`INSERT INTO users (id,"organizationId","isActive",role,phone,"passwordHash") VALUES (${userId},${org},true,'viewer',${phone},'!fixture-credential-disabled')`
     const administrator = await authority()
     await registry.stageIdentityAccountByAdministrator(writer, administrator, { userId, requestId: `${userId}-stage` })
     const reservation = await registry.reserveIdentityPhoneByAdministrator(writer, administrator, { userId, phone, expectedAccountVersion: 1, expectedCredentialEpoch: 1, requestId: `${userId}-reserve` })
@@ -41,7 +41,7 @@ export async function checkProofAuthority({ admin, writer, failing, actor, build
   }
   try {
     await admin.mtmSetting.update({ where: flagKey, data: { value: { version: 1, enabled: true } } })
-    await admin.$executeRaw`INSERT INTO users (id,"organizationId","isActive",role) VALUES (${issuerId},${org},true,'viewer')`
+    await admin.$executeRaw`INSERT INTO users (id,"organizationId","isActive",role,"passwordHash") VALUES (${issuerId},${org},true,'viewer','!fixture-credential-disabled')`
     await admin.identityAccount.create({ data: { organizationId: org, userId: issuerId, cutoverAt: new Date(), passwordHash: await bcrypt.hash(password, 12) } })
     await admin.identityPhoneClaim.create({ data: { organizationId: org, userId: issuerId, normalizedPhone: "+994556660099", accountVersion: 1, verifiedAt: new Date() } })
     await admin.identityApplicationGrant.create({ data: { organizationId: org, userId: issuerId, application: "CRM", role: "admin", status: "ACTIVE" } })

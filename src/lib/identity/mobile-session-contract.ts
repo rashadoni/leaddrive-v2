@@ -48,7 +48,8 @@ export function parseIdentityMobileClaims(raw: unknown, expectedApp: IdentityMob
  * Authorization policy only: claims MUST first pass a real JWT verifier with
  * a dedicated identity signing key, pinned issuer/algorithm and exact audience.
  * Do not reuse JWT_SECRET, accept a body/header as verified claims, or fall
- * back to legacy auth on refusal. No current login/route calls this contract.
+ * back to legacy auth on refusal. Runtime composition preserves the application
+ * and permits Time only on its explicit mobile path allowlist.
  * The expected app is owned by the server route; CRM is never admitted here.
  */
 export function authorizeIdentityMobileSession(raw: unknown, expectedApp: IdentityMobileApplication, state: IdentityMobileState, now: Date) {
@@ -69,7 +70,8 @@ export function authorizeIdentityMobileSession(raw: unknown, expectedApp: Identi
   if ([person, account, claim, grant, membership, binding, actor].some(row => row.organizationId !== claims.organizationId || row.userId !== claims.sub)) return null
   // account.version is a write-CAS revision, deliberately NOT a session epoch:
   // revoking Field changes it but must not invalidate an unchanged Time grant.
-  // Return actorId/app explicitly; adapting to legacy agentId/role is not safe.
+  // The runtime adapter also checks current actor role/participation and route
+  // policy; these identifiers alone are insufficient for legacy transport.
   return { organizationId: claims.organizationId, userId: claims.sub, actorId: claims.actorId, application: expectedApp,
     role: grant.role, grantVersion: grant.version, membershipVersion: membership.version, credentialEpoch: account.credentialEpoch, phoneClaimId: claim.id, sessionId: claims.jti }
 }

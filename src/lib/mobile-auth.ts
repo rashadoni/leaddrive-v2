@@ -12,6 +12,7 @@ import { isTenantCapabilityEnabled } from "./tenant-capabilities"
 import { resolveWorkforceExceptionResponseRecording } from "./workforce/exception-response-rollout"
 import { readAttendanceFeature } from "./mtm/attendance-feature"
 import { readLegacyCredentialBoundary } from "./identity/legacy-credential-boundary"
+import { isIdentityMobileToken, readIdentityMobileRuntimeClaims, resolveIdentityMobileRuntime } from "./identity/mobile-runtime"
 
 export function requireJwtSecret(): string {
   return requireAuthSecret()
@@ -19,6 +20,7 @@ export function requireJwtSecret(): string {
 export const JWT_SECRET: string = requireJwtSecret()
 
 export interface MobileAuthResult {
+  identityApplication?: "TIME" | "ROUTE_FIELD"
   agentId: string
   userId: string
   orgId: string
@@ -97,8 +99,15 @@ export function getMobileAuth(req: NextRequest): MobileTokenAuthResult | null {
   if (!authHeader?.startsWith("Bearer ")) return null
 
   const token = authHeader.slice(7)
+  if (token.length > 4096) return null
   // Skip API keys (ld_ prefix)
   if (token.startsWith("ld_")) return null
+
+  if (isIdentityMobileToken(token)) {
+    const claims = readIdentityMobileRuntimeClaims(token)
+    return claims ? { agentId: claims.actorId, userId: claims.sub, orgId: claims.organizationId,
+      name: "", email: "", role: "", identityApplication: claims.application } : null
+  }
 
   try {
     const verified = jwt.verify(token, JWT_SECRET)
@@ -144,6 +153,9 @@ export async function resolveMobileAuth(
   req: NextRequest,
   _options: MobileAuthOptions = {},
 ): Promise<MobileAuthResult | null> {
+  const authorization = req.headers.get("authorization")
+  if (authorization?.startsWith("Bearer ") && authorization.length > 4103) return null
+  if (authorization?.startsWith("Bearer ") && isIdentityMobileToken(authorization.slice(7))) return resolveIdentityMobileRuntime(req, authorization.slice(7), prisma)
   const decoded = getMobileAuth(req)
   if (!decoded) return null
   let currentRole: string | null = null

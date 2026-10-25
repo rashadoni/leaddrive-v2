@@ -7,6 +7,10 @@ on:
       - '.github/workflows/identity-crm-auth-e2e.yml'
       - 'scripts/identity/**'
       - 'src/lib/auth.ts'
+      - 'src/lib/mobile-auth.ts'
+      - 'src/proxy.ts'
+      - 'src/app/api/v1/mtm/mobile/auth/**'
+      - 'src/app/api/v1/mtm/mobile/profile/**'
       - 'src/lib/identity/**'
       - 'src/app/api/v1/identity/**'
       - 'src/lib/api-auth.ts'
@@ -69,7 +73,8 @@ jobs:
           CRM_AUTH_SECRET="$(openssl rand -hex 32)"
           CRM_FIXTURE_PASSWORD="$(openssl rand -hex 24)"
           CRM_PII_KEY="$(openssl rand -hex 32)"
-          for value in "$CRM_DB_PASSWORD" "$CRM_AUTH_SECRET" "$CRM_FIXTURE_PASSWORD" "$CRM_PII_KEY"; do echo "::add-mask::$value"; done
+          CRM_MOBILE_KEY="$(openssl rand -hex 32)"
+          for value in "$CRM_DB_PASSWORD" "$CRM_AUTH_SECRET" "$CRM_FIXTURE_PASSWORD" "$CRM_PII_KEY" "$CRM_MOBILE_KEY"; do echo "::add-mask::$value"; done
           {
             echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/identity_crm_browser_test"
             echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/identity_crm_browser_test"
@@ -83,6 +88,7 @@ jobs:
             echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${CRM_APP_PORT}"
             echo "AUTH_SECRET=$CRM_AUTH_SECRET"
             echo "NEXTAUTH_SECRET=$CRM_AUTH_SECRET"
+            echo "IDENTITY_MOBILE_SESSION_KEYS={\"active\":\"fixture\",\"keys\":{\"fixture\":\"$CRM_MOBILE_KEY\"}}"
             echo "TENANT_PII_MASTER_KEY=$CRM_PII_KEY"
             echo "IDENTITY_CRM_FIXTURE_PASSWORD=$CRM_FIXTURE_PASSWORD"
             echo "IDENTITY_CRM_OUTPUT=$RUNNER_TEMP/identity-crm-browser-result"
@@ -109,11 +115,12 @@ jobs:
           GRANT USAGE ON SCHEMA public TO identity_crm_browser;
           GRANT SELECT ON ALL TABLES IN SCHEMA public TO identity_crm_browser;
           GRANT UPDATE ("lastLogin", "loginCount", "updatedAt") ON users TO identity_crm_browser;
-          GRANT UPDATE (version) ON identity_accounts TO identity_crm_browser;
+          GRANT UPDATE (version, "updatedAt") ON identity_accounts TO identity_crm_browser;
           GRANT UPDATE (id) ON organizations, identity_phone_claims, mtm_agents TO identity_crm_browser;
           GRANT INSERT, UPDATE ON identity_application_grants, identity_application_memberships TO identity_crm_browser;
           GRANT INSERT ON identity_events TO identity_crm_browser;
           GRANT INSERT ON mtm_agents, identity_actor_bindings TO identity_crm_browser;
+          GRANT INSERT ON mtm_audit_logs TO identity_crm_browser;
           SQL
           npx prisma validate
           npx prisma generate

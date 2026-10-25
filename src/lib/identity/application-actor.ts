@@ -62,7 +62,7 @@ export async function prepareIdentityApplicationActor(client: RegistryClient, ac
     if (changed.count !== 1) throw new IdentityRegistryError("IDENTITY_ACCOUNT_STALE")
     if (!input.actorId) await tx.mtmAgent.create({ data: { id: actorId, ...scope, name: person.name,
       role: input.role as "EMPLOYEE" | "AGENT" | "SUPERVISOR" | "MANAGER" | "ADMIN", status: "ACTIVE",
-      attendanceParticipant: false, canPlanOwnRoutes: input.application === "ROUTE_FIELD", canSelfPublishRoutes: false } })
+      attendanceParticipant: input.application === "TIME", canPlanOwnRoutes: input.application === "ROUTE_FIELD", canSelfPublishRoutes: false } })
     if (!binding) await tx.identityActorBinding.create({ data: { ...scope, actorId, reviewedByUserId: actor.userId, reviewReference: input.reviewReference, accountVersion } })
     await tx.identityEvent.create({ data: { id: randomUUID(), ...scope, actorUserId: actor.userId, requestId: input.requestId,
       requestHash, action: "ACTOR_BINDING_REVIEWED", accountVersion, actorId, application: input.application, reviewReference: input.reviewReference } })

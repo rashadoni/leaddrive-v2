@@ -18,7 +18,7 @@ export async function admitIdentityBuild(env, cwd) {
 async function main() {
   const { workspace, temp, output } = await admitIdentityBuild(process.env, process.cwd())
   await mkdir(output, { mode: 0o700 }) // Refuse stale output/symlink; never clean another job's directory.
-  const names = ["contract", "registry", "phone-proof", "phone-proof-registry", "credential-setup", "phone-proof-dispatch", "mobile-session-contract", "mobile-session", "membership-registry", "mobile-session-resolver", "tenant-policy", "mobile-password-auth", "legacy-credential-boundary", "legacy-credential-write", "legacy-crm-boundary", "crm-seat-policy", "canonical-password", "crm-session", "administrator", "application-enrollment", "application-actor"]
+  const names = ["contract", "registry", "phone-proof", "phone-proof-registry", "credential-setup", "phone-proof-dispatch", "mobile-session-contract", "mobile-session", "membership-registry", "mobile-session-resolver", "tenant-policy", "mobile-password-auth", "legacy-credential-boundary", "legacy-credential-write", "legacy-crm-boundary", "crm-seat-policy", "canonical-password", "crm-session", "administrator", "application-enrollment", "application-actor", "runtime-keys", "mobile-login-runtime", "mobile-runtime"]
   const config = join(temp, "identity-foundation-tsconfig.json")
   await writeFile(config, JSON.stringify({ extends: join(workspace, "tsconfig.json"), compilerOptions: {
     target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", types: ["node"], typeRoots: [join(workspace, "node_modules/@types")], strict: true, skipLibCheck: true,

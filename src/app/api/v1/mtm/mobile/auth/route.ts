@@ -5,6 +5,7 @@ import { hashForRateLimit } from "@/lib/rate-limit"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { withLegacyCredentialWrite } from "@/lib/identity/legacy-credential-write"
+import { identityMobileLogin } from "@/lib/identity/mobile-login-runtime"
 import { maskLegacyAuthEmail } from "@/lib/auth-credentials"
 import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 import { clientIp } from "@/lib/request-ip"
@@ -40,6 +41,7 @@ const MAX_MOBILE_LOGIN_BODY_SIZE = 8 * 1024
 // that number (owner, 2026-10-15); everyone else keeps the email. A number
 // needs the company: it is matched inside one organization only.
 const MobileLoginSchema = z.object({
+  application: z.enum(["TIME", "ROUTE_FIELD"]).optional(),
   email: z.string().trim().min(1).max(320).email().transform((value) => value.toLowerCase()).optional(),
   phone: z.string().trim().min(1).max(40).optional(),
   // Keep a generous ceiling for passphrases while bounding pre-auth CPU and
@@ -199,6 +201,19 @@ export async function POST(req: NextRequest) {
         { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
       )
     }
+    if (parsed.data.application && parsed.data.phone && resolvedOrg) {
+      const canonical = await identityMobileLogin(prisma, resolvedOrg.id, {
+        phone: parsed.data.phone, password, application: parsed.data.application,
+      })
+      if (canonical.status === "UNAVAILABLE") return NextResponse.json({ error: "Authentication temporarily unavailable" }, { status: 503, headers: { "Retry-After": "1", "Cache-Control": "private, no-store" } })
+      if (canonical.status === "DENIED") return NextResponse.json({ error: "Invalid email or password" }, { status: 401, headers: { "Cache-Control": "private, no-store" } })
+      if (canonical.status === "AUTHENTICATED") {
+        await writeMtmAudit({ organizationId: resolvedOrg.id, agentId: canonical.data.agent.id, action: "MOBILE_LOGIN", entity: "agent",
+          entityId: canonical.data.agent.id, metadataKind: "login_success", newData: { application: canonical.data.application }, req })
+        return NextResponse.json({ success: true, data: canonical.data }, { headers: { "Cache-Control": "private, no-store" } })
+      }
+    }
+
     let agent: ResolvedAuthAgent | null = null
     if (resolvedOrg && enteredPhone !== null) {
       const org = resolvedOrg
@@ -236,6 +251,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (!agent) {
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
+    }
+    if ((parsed.data.application === "TIME" && (agent.role === "AGENT" || !agent.attendanceParticipant))
+      || (parsed.data.application === "ROUTE_FIELD" && agent.role === "EMPLOYEE")) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 

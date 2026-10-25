@@ -218,14 +218,19 @@ try {
     assert.equal((await viewer.current.request.post(actorUrl, { timeout: 120000, data: preparation })).status(), 403)
     // Fail the real INSERT receipt after card creation; the whole operation
     // must roll back so retry cannot leave a second, unaudited history.
-    await admin.$executeRawUnsafe(`ALTER TABLE identity_events ADD CONSTRAINT cookie_actor_audit_failure CHECK ("requestId" <> 'cookie-time-create-card')`)
+    await admin.$executeRawUnsafe("CREATE SEQUENCE cookie_actor_audit_attempts")
+    await admin.$executeRawUnsafe("GRANT USAGE ON SEQUENCE cookie_actor_audit_attempts TO identity_crm_browser")
+    await admin.$executeRawUnsafe(`ALTER TABLE identity_events ADD CONSTRAINT cookie_actor_audit_failure CHECK ("requestId" <> 'cookie-time-create-card' OR nextval('cookie_actor_audit_attempts') < 0)`)
     try {
       const failed = await administrator.current.request.post(actorUrl, { timeout: 120000, data: preparation })
       assert.equal(failed.status(), 500)
+      const [observedAudit] = await admin.$queryRawUnsafe("SELECT is_called FROM cookie_actor_audit_attempts")
+      assert.equal(observedAudit.is_called, true) // Failure actually reached the injected receipt constraint.
       assert.equal((await admin.identityAccount.findUniqueOrThrow({ where: accountKey("employee") })).version, 1)
       assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: userId("employee") } }), 1)
     } finally {
       await admin.$executeRawUnsafe("ALTER TABLE identity_events DROP CONSTRAINT cookie_actor_audit_failure")
+      await admin.$executeRawUnsafe("DROP SEQUENCE cookie_actor_audit_attempts")
     }
     const prepared = await administrator.current.request.post(actorUrl, { timeout: 120000, data: preparation })
     assert.equal(prepared.status(), 200)
@@ -251,10 +256,36 @@ try {
     assert.equal(field.status(), 200)
     assert.equal(await admin.identityApplicationMembership.count({ where: { organizationId: company, userId: userId("employee"), status: "ACTIVE" } }), 2)
     assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: company, userId: userId("employee"), application: "CRM" } }), 0)
+    phase("ACTUAL_SHARED_PHONE_MOBILE_LOGIN_AND_APPLICATION_REVOCATION")
+    const mobile = await context()
+    const mobileSessions = {}
+    for (const application of ["TIME", "ROUTE_FIELD"]) {
+      const response = await mobile.request.post("/api/v1/mtm/mobile/auth", { timeout: 120000, data: {
+        application, organizationSlug: company, phone: "+994507770014", password,
+      } })
+      assert.equal(response.status(), 200)
+      const data = (await response.json()).data
+      assert.equal(data.application, application)
+      assert.equal(data.agent.id, application === "TIME" ? enrollment.actorId : userId("employee-ROUTE_FIELD"))
+      const headers = { Authorization: `Bearer ${data.token}` }
+      mobileSessions[application] = headers // Ephemeral memory only, never receipt or screenshot.
+      assert.equal((await mobile.request.get("/api/v1/users", { timeout: 120000, headers, maxRedirects: 0 })).status(), 401)
+      const profile = await mobile.request.get("/api/v1/mtm/mobile/profile", { timeout: 120000, headers, maxRedirects: 0 })
+      assert.equal(profile.status(), 200)
+      assert.equal((await profile.json()).data.agent.id, data.agent.id)
+    }
+    const fieldWithTime = await mobile.request.get("/api/v1/mtm/agents", { timeout: 120000, headers: mobileSessions.TIME, maxRedirects: 0 })
+    assert.ok([401, 403].includes(fieldWithTime.status()))
+    const revokedTime = await administrator.current.request.put(enrollmentUrl, { timeout: 120000, data: { ...enrollment,
+      status: "REVOKED", expectedAccountVersion: 4, expectedGrantVersion: 1, expectedMembershipVersion: 1, requestId: "cookie-time-revoke" } })
+    assert.equal(revokedTime.status(), 200)
+    assert.equal((await mobile.request.get("/api/v1/mtm/mobile/profile", { timeout: 120000, headers: mobileSessions.TIME, maxRedirects: 0 })).status(), 401)
+    assert.equal((await mobile.request.get("/api/v1/mtm/mobile/profile", { timeout: 120000, headers: mobileSessions.ROUTE_FIELD, maxRedirects: 0 })).status(), 200)
+    check("actual_public_phone_login_shared_password_separate_actor_profiles_time_cannot_enter_field_and_time_revocation_preserves_field")
     await admin.identityApplicationGrant.update({ where: grantKey("administrator"), data: { status: "REVOKED", version: 2 } })
     const revokedEnrollment = await administrator.current.request.put(enrollmentUrl, { timeout: 120000, maxRedirects: 0, data: enrollment })
     assert.ok([401, 403, 307].includes(revokedEnrollment.status()))
-    assert.equal(await admin.identityEvent.count({ where: { organizationId: company, userId: userId("employee"), action: "MEMBERSHIP_CHANGED" } }), 2)
+    assert.equal(await admin.identityEvent.count({ where: { organizationId: company, userId: userId("employee"), action: "MEMBERSHIP_CHANGED" } }), 3)
     check("actual_cookie_admin_enrolls_separate_time_field_actors_without_crm_access_and_revocation_mfa_viewer_scope_are_enforced")
     result.status = "PASS"; result.phase = "COMPLETE"
     process.stdout.write(`IDENTITY_CRM_BROWSER_PASS checks=${result.checks.length}\n`)
