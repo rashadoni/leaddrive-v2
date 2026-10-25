@@ -31,3 +31,9 @@
 ## 2026-10-25 — Final constraint audit correction before merge
 
 - Compared allowlisted statuses to actual foundation constraint: terminaldead is valid in the database but omitted from the first inspector draft. Added that finite status and a regression checking every database-allowed status against the sanitizer. Unknownstatuses stillfailclosed. This is a new source revision and must repeat exact-head hosted checks; earlier0a4check evidence remains historical, not attributed to newhead. No productionoperation occurred.
+
+## 2026-10-25T17:39Z — Final diagnostic source hosted proof
+
+- Finalcheckedhead15785064a45d1a732dea6f4b21c7bd36c09b4a45 pushed. Actual hosted preflight40217281775/sourcejob121241058219 completedSUCCESS; downloaded logs confirm32/32PASS(8inventory+3calendar+6effectmetadata+15releasecontract),0fail/0skip, including realPostgres. SourceNode5PASS/SQLtestNOT RUN locally; existing runnerpolicy84PASS. PRproductionjobSKIPPED correctly.
+- Required pr-scope/runner-policy/scanPASS on newhead; static-checks/typecheck stillinprogress, no bypass. Initial source0a4 generalchecks superseded by this head; no attempt to merge using its earlier green contexts.
+- Publicartifact advanced to e04595d429c0c134275413627fbdc95640d6a848, builtAt17:09:29Z. Must refresh independently for operational dispatch; do not assume earlier01048 stilllive. Currentstop: waitfinalheadgates, then guardedmerge/scopedreadonlyoperation. Journal-only continuation commits are kept locally without repeatedly restarting sourceCI.
