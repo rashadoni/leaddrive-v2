@@ -120,3 +120,39 @@ describe("explicit existing-person Time registration", () => {
     expect(mocks.enroll).not.toHaveBeenCalled()
   })
 })
+
+
+vi.mock("@/lib/identity/onboarding", () => ({ createIdentityOnboardingIntent: mocks.enroll, cancelIdentityOnboardingIntent: mocks.enroll }))
+import { POST as invite } from "@/app/api/v1/identity/people/[id]/onboarding/route"
+import { POST as cancelInvite } from "@/app/api/v1/identity/onboarding/[id]/cancel/route"
+const invitation = { phone: "+994507770014", application: "TIME", expectedAccountVersion: 4, expectedCredentialEpoch: 1,
+  expectedContactRevision: 1, requestId: "first-login-review", reviewReference: "explicit-first-login", applications: [
+    { application: "TIME", role: "EMPLOYEE", status: "ACTIVE", actorId: "reviewed-time-card", grantVersion: 1, membershipVersion: 1, membershipStatus: "ACTIVE" },
+  ] }
+const inviteCall = (route: typeof invite, value: unknown) => route(new NextRequest("https://fixture.example/api/v1/identity/people/fixture-person/onboarding", {
+  method: "POST", body: JSON.stringify(value),
+}), { params: Promise.resolve({ id: "fixture-person" }) })
+describe("first-login invitation HTTP review", () => {
+  it("binds the reviewed plan to the private canonical administrator and path person", async () => {
+    expect((await inviteCall(invite, invitation)).status).toBe(201)
+    expect(mocks.enroll).toHaveBeenCalledWith({}, { organizationId: "fixture-company", userId: "fixture-admin", mode: "CANONICAL", claims }, { ...invitation, userId: "fixture-person" })
+  })
+  it.each(["userId", "organizationId", "password", "issuerAuthority", "expiresAt"])("refuses caller-supplied %s", async field => {
+    expect((await inviteCall(invite, { ...invitation, [field]: "forged" })).status).toBe(400)
+    expect(mocks.enroll).not.toHaveBeenCalled()
+  })
+  it("does not turn a legacy session into durable canonical authority", async () => {
+    mocks.token.mockResolvedValue({ sub: "fixture-admin", organizationId: "fixture-company" })
+    expect((await inviteCall(invite, invitation)).status).toBe(409)
+    expect(mocks.enroll).not.toHaveBeenCalled()
+  })
+  it.each([invite, cancelInvite])("requires completed MFA before invitation or cancellation", async route => {
+    mocks.token.mockResolvedValue({ sub: "fixture-admin", organizationId: "fixture-company", identityCrm: claims, needs2fa: true })
+    expect((await inviteCall(route, invitation)).status).toBe(403)
+    expect(mocks.enroll).not.toHaveBeenCalled()
+  })
+  it("cancels only the path invitation under fresh server authority", async () => {
+    expect((await inviteCall(cancelInvite, { requestId: "cancel-reviewed" })).status).toBe(200)
+    expect(mocks.enroll).toHaveBeenCalledWith({}, { organizationId: "fixture-company", userId: "fixture-admin", mode: "CANONICAL", claims }, "fixture-person", "cancel-reviewed")
+  })
+})

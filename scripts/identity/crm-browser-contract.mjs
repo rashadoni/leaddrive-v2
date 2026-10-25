@@ -264,7 +264,7 @@ try {
     const registeredCard = await admin.mtmAgent.findUniqueOrThrow({ where: { id: registeredData.agentId }, include: { department: true, team: true } })
     assert.equal(registeredCard.position, registration.position); assert.equal(registeredCard.department.name, registration.newDepartmentName)
     assert.equal(registeredCard.team.name, registration.newTeamName)
-    assert.equal(await admin.workforceEmploymentEvent.count({ where: { organizationId: company, agentId: registeredData.agentId, kind: "HIRE" } }), 1)
+    assert.equal((await admin.$queryRaw`SELECT count(*)::int AS count FROM workforce_employment_events WHERE "organizationId"=${company} AND "agentId"=${registeredData.agentId} AND kind='HIRE'`)[0].count, 1)
     assert.deepEqual(await admin.user.findUniqueOrThrow({ where: { id: candidate.userId } }), beforePerson)
     assert.deepEqual(await admin.mtmAgent.findUniqueOrThrow({ where: { id: beforeField.id } }), beforeField)
     assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: company, userId: candidate.userId, application: "CRM" } }), 0)

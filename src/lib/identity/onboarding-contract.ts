@@ -1,5 +1,5 @@
 import { z } from "zod"
-const id = z.string().min(1).max(128)
+const id = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]*$/)
 const revision = z.number().int().positive().max(2_147_483_640)
 export const IdentityOnboardingPlan = z.object({
   application: z.enum(["CRM", "TIME", "ROUTE_FIELD"]), role: z.string().max(50).nullable(), status: z.enum(["ACTIVE", "REVOKED"]),
