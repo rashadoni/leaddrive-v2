@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import { REVIEWER_ROLE } from "../reviewer-grant"
 import type { RegistryClient } from "./registry"
-import { withIdentityAdministrator, type IdentityAdministrator } from "./administrator"
+import { withIdentityAdministrator, withIdentityAdministratorInTransaction, type IdentityAdministrator } from "./administrator"
 import { assertIdentityRequestId, IdentityRegistryError, normalizeIdentityPhone } from "./contract"
 import { freezeIdentityProofAuthority, identityProofAuthorityHash } from "./proof-authority"
 import { IdentityOnboardingInput, orderedOnboardingPlans } from "./onboarding-contract"
@@ -33,11 +33,15 @@ async function assertSourcePhone(tx: Prisma.TransactionClient, organizationId: s
  * The first legacy administrator is separately bootstrapped with a live review;
  * a legacy cookie cannot create this durable delegated authority. */
 export async function createIdentityOnboardingIntent(client: RegistryClient, administrator: IdentityAdministrator, raw: unknown) {
+  return withIdentityAdministrator(client, administrator, tx => createIdentityOnboardingIntentInTransaction(tx, administrator, raw))
+}
+
+export async function createIdentityOnboardingIntentInTransaction(tx: Prisma.TransactionClient, administrator: IdentityAdministrator, raw: unknown) {
   const parsed = IdentityOnboardingInput.safeParse(raw)
   if (!parsed.success || administrator.mode !== "CANONICAL") throw unavailable()
   const input = parsed.data, organizationId = administrator.organizationId, phone = normalizeIdentityPhone(input.phone)
   if (!phone) throw unavailable()
-  return withIdentityAdministrator(client, administrator, async tx => {
+  return withIdentityAdministratorInTransaction(tx, administrator, async tx => {
     const authority = await freezeIdentityProofAuthority(tx, administrator)
     const requestHash = digest([1, organizationId, administrator.userId, { ...input, phone, applications: orderedOnboardingPlans(input.applications) }, identityProofAuthorityHash(authority)])
     const previous = await tx.identityOnboardingIntent.findUnique({ where: { organizationId_requestId: { organizationId, requestId: input.requestId } } })

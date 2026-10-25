@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, IdentityRegistryError } from "./contract"
-import { withIdentityAdministrator, type IdentityAdministrator } from "./administrator"
+import { withIdentityAdministrator, withIdentityAdministratorInTransaction, type IdentityAdministrator } from "./administrator"
 import { withRegistryTransaction, type IdentityActor, type RegistryClient } from "./registry"
 import type { IdentityMobileApplication } from "./mobile-session-contract"
 
@@ -49,12 +49,19 @@ export async function reviewIdentityActorByAdministrator(client: RegistryClient,
   return reviewActor(client, actor, input, actor)
 }
 async function reviewActor(client: RegistryClient, actor: IdentityActor, input: StagedActorReview, administrator?: IdentityAdministrator) {
+  const work = reviewActorWork(actor, input)
+  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
+}
+export async function reviewIdentityActorInTransaction(tx: Prisma.TransactionClient, actor: IdentityAdministrator, input: StagedActorReview) {
+  return withIdentityAdministratorInTransaction(tx, actor, reviewActorWork(actor, input))
+}
+function reviewActorWork(actor: IdentityActor, input: StagedActorReview) {
   exact(input, ["userId", "actorId", "expectedAccountVersion", "reviewReference", "requestId"])
   assertIdentityScope(actor.organizationId, input.userId)
   for (const id of [input.actorId, input.reviewReference, input.requestId]) assertIdentityRequestId(id)
   if (!revision(input.expectedAccountVersion)) throw new IdentityRegistryError("IDENTITY_MEMBERSHIP_INPUT_INVALID")
   const requestHash = digest([1, "ACTOR_BINDING_REVIEWED", actor.organizationId, actor.userId, input.userId, input.actorId, input.expectedAccountVersion, input.reviewReference])
-  const work = async (tx: Prisma.TransactionClient) => {
+  return async (tx: Prisma.TransactionClient) => {
     const previous = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: actor.organizationId, requestId: input.requestId } } })
     if (previous) {
       if (previous.action !== "ACTOR_BINDING_REVIEWED" || previous.requestHash !== requestHash) throw new IdentityRegistryError("IDENTITY_REQUEST_REUSED")
@@ -73,7 +80,6 @@ async function reviewActor(client: RegistryClient, actor: IdentityActor, input: 
       requestId: input.requestId, requestHash, action: "ACTOR_BINDING_REVIEWED", accountVersion, actorId: input.actorId, reviewReference: input.reviewReference, createdAt: now } })
     return { ...metadata, status: "REVIEWED" as const, actorId: input.actorId, accountVersion, replayed: false }
   }
-  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
 }
 
 /** Inactive mobile membership plan, never a grant/license or current HR enrollment. */
@@ -84,6 +90,13 @@ export async function planIdentityMembershipByAdministrator(client: RegistryClie
   return planMembership(client, actor, input, actor)
 }
 async function planMembership(client: RegistryClient, actor: IdentityActor, input: StagedMembershipPlan, administrator?: IdentityAdministrator) {
+  const work = planMembershipWork(actor, input)
+  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
+}
+export async function planIdentityMembershipInTransaction(tx: Prisma.TransactionClient, actor: IdentityAdministrator, input: StagedMembershipPlan) {
+  return withIdentityAdministratorInTransaction(tx, actor, planMembershipWork(actor, input))
+}
+function planMembershipWork(actor: IdentityActor, input: StagedMembershipPlan) {
   exact(input, ["userId", "actorId", "application", "status", "expectedAccountVersion", "expectedMembershipVersion", "expectedGrantVersion", "requestId"])
   assertIdentityScope(actor.organizationId, input.userId); assertIdentityRequestId(input.actorId); assertIdentityRequestId(input.requestId)
   if (!["TIME", "ROUTE_FIELD"].includes(input.application) || !["ACTIVE", "REVOKED"].includes(input.status)
@@ -91,7 +104,7 @@ async function planMembership(client: RegistryClient, actor: IdentityActor, inpu
     || !(input.expectedMembershipVersion === 0 || revision(input.expectedMembershipVersion))) throw new IdentityRegistryError("IDENTITY_MEMBERSHIP_INPUT_INVALID")
   const requestHash = digest([1, "MEMBERSHIP_CHANGED", actor.organizationId, actor.userId, input.userId, input.actorId, input.application, input.status,
     input.expectedAccountVersion, input.expectedMembershipVersion, input.expectedGrantVersion])
-  const work = async (tx: Prisma.TransactionClient) => {
+  return async (tx: Prisma.TransactionClient) => {
     const previous = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: actor.organizationId, requestId: input.requestId } } })
     if (previous) {
       if (previous.action !== "MEMBERSHIP_CHANGED" || previous.requestHash !== requestHash || !previous.membershipVersion || !previous.membershipStatus) throw new IdentityRegistryError("IDENTITY_REQUEST_REUSED")
@@ -126,5 +139,4 @@ async function planMembership(client: RegistryClient, actor: IdentityActor, inpu
     return { ...metadata, status: "PLANNED" as const, application: input.application, actorId: input.actorId,
       membershipStatus: input.status, membershipVersion, accountVersion, replayed: false }
   }
-  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
 }

@@ -40,15 +40,18 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
   const [saving, setSaving] = useState(false), [error, setError] = useState<string | null>(null)
   const [match, setMatch] = useState<AttendancePhoneMatch | null>(null)
   const [canonicalPerson, setCanonicalPerson] = useState<Extract<IdentityTimePerson, { kind: "canonical" }> | null>(null)
+  const [legacyPerson, setLegacyPerson] = useState<Extract<IdentityTimePerson, { kind: "legacy" }> | null>(null)
+  const [preserveCrm, setPreserveCrm] = useState(false)
+  const [invited, setInvited] = useState(false)
   const enrollmentRequest = useRef<string | null>(null)
   const revision = useRef(0)
-  const clearResult = () => { revision.current++; setError(null); setMatch(null); setCanonicalPerson(null); enrollmentRequest.current = null }
+  const clearResult = () => { revision.current++; setError(null); setMatch(null); setCanonicalPerson(null); setLegacyPerson(null); setInvited(false); enrollmentRequest.current = null }
   const set = <K extends keyof Form>(key: K) => (value: Form[K]) => { setForm(current => ({ ...current, [key]: value })); clearResult() }
   const close = () => { clearResult(); setOpen(false) }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (saving || canonicalPerson) return
+    if (saving || canonicalPerson || legacyPerson || invited) return
     if (!internationalPhone(form.phone)) { setError("addEmployeePhoneInvalid"); return }
     const submittedRevision = revision.current
     setSaving(true); setError(null); setMatch(null)
@@ -77,6 +80,10 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
           const candidate = IdentityTimePersonResult.safeParse(canonicalBody?.data)
           if (canonicalLookup.ok && canonicalBody?.success && candidate.success && candidate.data.kind === "canonical") {
             setCanonicalPerson(candidate.data); enrollmentRequest.current = null
+            return
+          }
+          if (canonicalLookup.ok && canonicalBody?.success && candidate.success && candidate.data.kind === "legacy") {
+            setLegacyPerson(candidate.data); setPreserveCrm(false); enrollmentRequest.current = null
             return
           }
           const lookup = await fetch("/api/v1/mtm/attendance/employees/phone-match", {
@@ -120,6 +127,28 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
     finally { setSaving(false) }
   }
 
+  async function inviteExistingPerson() {
+    if (saving || !legacyPerson || invited || (!legacyPerson.fieldActorId && !preserveCrm)) return
+    const submittedRevision = revision.current, person = legacyPerson
+    enrollmentRequest.current ??= crypto.randomUUID()
+    setSaving(true); setError(null)
+    try {
+      const response = await fetch("/api/v1/identity/time/onboarding", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId: person.userId, phone: form.phone.trim(), sourceRevision: person.sourceRevision,
+          preserveCrm, requestId: enrollmentRequest.current, timeEnrollment: {
+            position: form.position.trim() || null, ...departmentPayload(form.department), hireDate: form.hireDate || null,
+          } }) })
+      const body = await response.json().catch(() => null)
+      if (submittedRevision !== revision.current) return
+      if (response.status === 201 && body?.success && body.data?.status === "ACTIVE") setInvited(true)
+      else {
+        if (response.status === 409) { setLegacyPerson(null); enrollmentRequest.current = null }
+        setError(response.status === 409 ? "addEmployeeIdentityChanged" : "addEmployeeFailed")
+      }
+    } catch { if (submittedRevision === revision.current) setError("addEmployeeFailed") }
+    finally { setSaving(false) }
+  }
+
   if (!open) return <Button type="button" className="min-h-11 rounded-full" disabled={disabled} onClick={() => setOpen(true)} data-testid="attendance-add-employee">
     <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" />{p("addEmployee")}</Button>
 
@@ -149,6 +178,19 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
         <Button type="button" className="min-h-11 rounded-full" disabled={saving} onClick={enrollExistingPerson} data-testid="attendance-canonical-enroll">{p(saving ? "addEmployeeSaving" : "addEmployeeIdentityTimeSubmit")}</Button>
       </>}
     </div> : null}
+    {legacyPerson ? <div role="status" className="max-w-prose space-y-3 rounded-xl border p-4 text-sm" data-testid="attendance-legacy-person">
+      <p>{p("addEmployeePhoneProfile", { name: legacyPerson.name })}</p>
+      {invited ? <p>{p("addEmployeeIdentityInviteReady")}</p> : <>
+        <p>{p(legacyPerson.fieldActorId ? "addEmployeeIdentityFieldReview" : "addEmployeeIdentityCrmReview")}</p>
+        <label className="flex items-start gap-2"><input type="checkbox" checked={preserveCrm} disabled={saving}
+          onChange={event => { setPreserveCrm(event.target.checked); enrollmentRequest.current = null }} />
+          <span>{p("addEmployeeIdentityPreserveCrm", { role: legacyPerson.crmRole })}</span></label>
+        {!preserveCrm && legacyPerson.fieldActorId ? <p>{p("addEmployeeIdentityNoCrm")}</p> : null}
+        <p className="text-muted-foreground">{p("addEmployeeIdentityInviteHint")}</p>
+        <Button type="button" className="min-h-11 rounded-full" disabled={saving || (!legacyPerson.fieldActorId && !preserveCrm)}
+          onClick={inviteExistingPerson} data-testid="attendance-legacy-invite">{p(saving ? "addEmployeeSaving" : "addEmployeeIdentityInviteSubmit")}</Button>
+      </>}
+    </div> : null}
     {match && match.kind !== "none" ? <div role="status" className="max-w-prose space-y-2 rounded-xl border p-4 text-sm" data-testid="attendance-phone-match">
       <p>{match.kind === "ambiguous" ? p("addEmployeePhoneAmbiguous") : p("addEmployeePhoneProfile", { name: match.name })}</p>
       {match.kind === "attendance" ? <>
@@ -158,7 +200,7 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
         </Button>
       </> : match.kind === "other" ? <p className="text-muted-foreground">{p("addEmployeePhoneOtherProfile")}</p> : null}
     </div> : null}
-    <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11 rounded-full" disabled={saving || !!canonicalPerson}>{p(saving ? "addEmployeeSaving" : "addEmployeeSubmit")}</Button>
+    <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11 rounded-full" disabled={saving || !!canonicalPerson || !!legacyPerson || invited}>{p(saving ? "addEmployeeSaving" : "addEmployeeSubmit")}</Button>
       <Button type="button" variant="outline" className="min-h-11 rounded-full" disabled={saving} onClick={close}>{p("cancel")}</Button></div>
   </form>
 }

@@ -156,3 +156,28 @@ describe("first-login invitation HTTP review", () => {
     expect(mocks.enroll).toHaveBeenCalledWith({}, { organizationId: "fixture-company", userId: "fixture-admin", mode: "CANONICAL", claims }, "fixture-person", "cancel-reviewed")
   })
 })
+
+vi.mock("@/lib/identity/time-onboarding", () => ({ prepareLegacyPersonForTime: mocks.enroll }))
+import { POST as prepareTimeInvite } from "@/app/api/v1/identity/time/onboarding/route"
+const legacyTimeInput = { userId: "fixture-person", phone: "+994507770014", sourceRevision: "a".repeat(64), preserveCrm: false,
+  requestId: "b9ab19e0-e59d-49ac-8f47-70ec6c5f3479", timeEnrollment: { position: "Accountant", teamId: null, departmentId: null, hireDate: "2026-10-25" } }
+describe("reviewed legacy-person Time invitation", () => {
+  it("binds explicit person, revision and CRM choice to the private administrator", async () => {
+    expect((await timeCall(prepareTimeInvite, legacyTimeInput)).status).toBe(201)
+    expect(mocks.enroll).toHaveBeenCalledWith({}, { organizationId: "fixture-company", userId: "fixture-admin", mode: "CANONICAL", claims }, legacyTimeInput)
+  })
+  it.each(["organizationId", "password", "applications", "issuerAuthority", "name"])("refuses caller-controlled %s", async key => {
+    expect((await timeCall(prepareTimeInvite, { ...legacyTimeInput, [key]: "forged" })).status).toBe(400)
+    expect(mocks.enroll).not.toHaveBeenCalled()
+  })
+  it("cannot turn a legacy administrator session into a durable invitation", async () => {
+    mocks.token.mockResolvedValue({ sub: "fixture-admin", organizationId: "fixture-company" })
+    expect((await timeCall(prepareTimeInvite, legacyTimeInput)).status).toBe(409)
+    expect(mocks.enroll).not.toHaveBeenCalled()
+  })
+  it("refuses incomplete MFA", async () => {
+    mocks.token.mockResolvedValue({ sub: "fixture-admin", organizationId: "fixture-company", identityCrm: claims, needs2fa: true })
+    expect((await timeCall(prepareTimeInvite, legacyTimeInput)).status).toBe(403)
+    expect(mocks.enroll).not.toHaveBeenCalled()
+  })
+})

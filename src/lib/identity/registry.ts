@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import type { Prisma, PrismaClient } from "@prisma/client"
-import { withIdentityAdministrator, type IdentityAdministrator } from "./administrator"
+import { withIdentityAdministrator, withIdentityAdministratorInTransaction, type IdentityAdministrator } from "./administrator"
 import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, assertStagedPhoneReservation, compareIdentityShadow, IdentityRegistryError, type IdentityApplication, type IdentityGrantStatus, type StagedApplicationGrantInput, type StagedPhoneReservationInput } from "./contract"
 
 export type RegistryClient = Pick<PrismaClient, "$transaction">
@@ -47,10 +47,18 @@ export async function stageIdentityAccountByAdministrator(client: RegistryClient
   return stageAccount(client, actor, input, actor)
 }
 async function stageAccount(client: RegistryClient, actor: IdentityActor, input: { userId: string; requestId: string }, administrator?: IdentityAdministrator) {
+  const work = stageAccountWork(actor, input)
+  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
+}
+/** Compose within the tenant transaction; repeat current administrator admission. */
+export async function stageIdentityAccountInTransaction(tx: Prisma.TransactionClient, actor: IdentityAdministrator, input: { userId: string; requestId: string }) {
+  return withIdentityAdministratorInTransaction(tx, actor, stageAccountWork(actor, input))
+}
+function stageAccountWork(actor: IdentityActor, input: { userId: string; requestId: string }) {
   assertIdentityScope(actor.organizationId, input.userId)
   assertIdentityRequestId(input.requestId)
   const requestHash = createHash("sha256").update(JSON.stringify([1, "ACCOUNT_STAGED", actor.organizationId, actor.userId, input.userId])).digest("hex")
-  const work = async (tx: Prisma.TransactionClient) => {
+  return async (tx: Prisma.TransactionClient) => {
     const event = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: actor.organizationId, requestId: input.requestId } }, select: { requestHash: true, accountVersion: true } })
     if (event) {
       if (event.requestHash !== requestHash) throw new IdentityRegistryError("IDENTITY_REQUEST_REUSED")
@@ -67,7 +75,6 @@ async function stageAccount(client: RegistryClient, actor: IdentityActor, input:
     await tx.identityEvent.create({ data: { id: randomUUID(), ...key, actorUserId: actor.userId, requestId: input.requestId, requestHash, action: "ACCOUNT_STAGED", accountVersion: account.version } })
     return { status: "STAGED" as const, accountVersion: account.version, replayed: false, authenticationChanged: false as const }
   }
-  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
 }
 
 /** Consistent private comparison; its result is never an authorization decision. */
@@ -97,11 +104,19 @@ export async function planIdentityApplicationByAdministrator(client: RegistryCli
   return planApplicationGrant(client, actor, input, actor)
 }
 async function planApplicationGrant(client: RegistryClient, actor: IdentityActor, input: StagedApplicationGrantInput, administrator?: IdentityAdministrator) {
+  const work = planApplicationGrantWork(actor, input)
+  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
+}
+/** Compose within the tenant transaction; repeat current administrator admission. */
+export async function planIdentityApplicationInTransaction(tx: Prisma.TransactionClient, actor: IdentityAdministrator, input: StagedApplicationGrantInput) {
+  return withIdentityAdministratorInTransaction(tx, actor, planApplicationGrantWork(actor, input))
+}
+function planApplicationGrantWork(actor: IdentityActor, input: StagedApplicationGrantInput) {
   assertIdentityScope(actor.organizationId, input.userId)
   assertStagedApplicationGrant(input)
   const requestHash = createHash("sha256").update(JSON.stringify([1, "GRANT_CHANGED", actor.organizationId, actor.userId,
     input.userId, input.application, input.status, input.role, input.expectedAccountVersion, input.expectedGrantVersion])).digest("hex")
-  const work = async (tx: Prisma.TransactionClient) => {
+  return async (tx: Prisma.TransactionClient) => {
     const event = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: actor.organizationId, requestId: input.requestId } },
       select: { requestHash: true, accountVersion: true, action: true, grantVersion: true } })
     if (event) {
@@ -130,7 +145,6 @@ async function planApplicationGrant(client: RegistryClient, actor: IdentityActor
       action: "GRANT_CHANGED", accountVersion: version, application: input.application, grantStatus: input.status, grantRole: role, grantVersion: grant.version } })
     return { mode: "SHADOW" as const, accountVersion: version, grantVersion: grant.version, replayed: false, authenticationChanged: false as const }
   }
-  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
 }
 
 /**

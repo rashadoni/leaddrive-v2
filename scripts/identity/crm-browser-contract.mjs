@@ -75,10 +75,6 @@ try {
     await admin.user.create({ data: { id: pendingUser, organizationId: company, email: email("onboarding"), name: "Fictional first login",
       phone: "+994507770020", role: "viewer", passwordHash: legacyHash, isActive: true } })
     await admin.mtmAgent.create({ data: { id: pendingActor, organizationId: company, userId: pendingUser, name: "Fictional first login", phone: "+994507770020", role: "AGENT", status: "ACTIVE", passwordHash: legacyHash } })
-    await admin.identityAccount.create({ data: { organizationId: company, userId: pendingUser, version: 4 } })
-    await admin.identityActorBinding.create({ data: { organizationId: company, userId: pendingUser, actorId: pendingActor, reviewedByUserId: userId("administrator"), reviewReference: "fixture-first-login-field", accountVersion: 3 } })
-    await admin.identityApplicationGrant.create({ data: { organizationId: company, userId: pendingUser, application: "ROUTE_FIELD", role: "AGENT", status: "ACTIVE" } })
-    await admin.identityApplicationMembership.create({ data: { organizationId: company, userId: pendingUser, application: "ROUTE_FIELD", actorId: pendingActor, status: "ACTIVE" } })
     await admin.mtmSetting.create({ data: { organizationId: company, key: "attendanceEnabled", value: true } })
     await admin.mtmSetting.create({ data: { organizationId: company, key: "identityAuthV1", value: { version: 1, enabled: true } } })
     process.stdout.write("IDENTITY_CRM_BROWSER_FIXTURE_PREPARED\n")
@@ -365,16 +361,38 @@ try {
     recoveryClient = makeRlsTestPrisma(appUrl.href)
     const proofKey = identityRuntimeKeys().proof.active
     phase("ACTUAL_ADMIN_FIRST_LOGIN_REVIEW")
-    const invitationUrl = `/api/v1/identity/people/${userId("onboarding")}/onboarding`
-    const invitation = { phone: "+994507770020", application: "TIME", expectedAccountVersion: 4,
-      timeEnrollment: { position: "Fictional analyst", departmentId: null, newDepartmentName: "Fictional Technology", teamId: null, newTeamName: "Fictional Operations", hireDate: "2026-10-25" },
-      expectedCredentialEpoch: 1, expectedContactRevision: 1, requestId: "cookie-onboarding-review", reviewReference: "cookie-explicit-first-login",
-      applications: [{ application: "ROUTE_FIELD", role: "AGENT", status: "ACTIVE", grantVersion: 1,
-        actorId: userId("onboarding-field"), membershipVersion: 1, membershipStatus: "ACTIVE" }] }
+    const invitationUrl = "/api/v1/identity/time/onboarding"
+    const candidateResponse = await administrator.current.request.post("/api/v1/identity/time/lookup", { timeout: 120000, data: { phone: "+994507770020" } })
+    assert.equal(candidateResponse.status(), 200)
+    const firstLoginCandidate = (await candidateResponse.json()).data
+    assert.equal(firstLoginCandidate.kind, "legacy"); assert.equal(firstLoginCandidate.userId, userId("onboarding")); assert.equal(firstLoginCandidate.fieldActorId, userId("onboarding-field"))
+    const invitation = { phone: "+994507770020", userId: firstLoginCandidate.userId, sourceRevision: firstLoginCandidate.sourceRevision, preserveCrm: false,
+      requestId: "e33b915e-39eb-4ea1-9f4d-667498d0d937",
+      timeEnrollment: { position: "Fictional analyst", departmentId: null, newDepartmentName: "Fictional Technology", teamId: null, newTeamName: "Fictional Operations", hireDate: "2026-10-25" } }
     assert.equal((await viewer.current.request.post(invitationUrl, { timeout: 120000, data: invitation })).status(), 403)
+    for (const stale of [{ ...invitation, sourceRevision: "0".repeat(64) }, { ...invitation, userId: userId("employee") }]) {
+      assert.equal((await administrator.current.request.post(invitationUrl, { timeout: 120000, data: stale })).status(), 409)
+    }
+    assert.equal(await admin.identityAccount.count({ where: { organizationId: company, userId: firstLoginCandidate.userId } }), 0)
+    phase("ACTUAL_ADMIN_FIRST_LOGIN_PREPARATION_ROLLBACK")
+    await admin.$executeRawUnsafe(`CREATE FUNCTION identity_prepare_time_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      RAISE EXCEPTION 'SYNTHETIC_TIME_REVIEW_FAILURE' USING ERRCODE='23514'; END $$`)
+    await admin.$executeRawUnsafe('CREATE TRIGGER identity_prepare_time_fail BEFORE INSERT ON identity_onboarding_intents FOR EACH ROW EXECUTE FUNCTION identity_prepare_time_fail()')
+    try {
+      assert.equal((await administrator.current.request.post(invitationUrl, { timeout: 120000, data: invitation })).status(), 500)
+      assert.equal(await admin.identityAccount.count({ where: { organizationId: company, userId: firstLoginCandidate.userId } }), 0)
+      assert.equal(await admin.identityActorBinding.count({ where: { organizationId: company, userId: firstLoginCandidate.userId } }), 0)
+      assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: company, userId: firstLoginCandidate.userId } }), 0)
+    } finally {
+      await admin.$executeRawUnsafe('DROP TRIGGER identity_prepare_time_fail ON identity_onboarding_intents')
+      await admin.$executeRawUnsafe('DROP FUNCTION identity_prepare_time_fail()')
+    }
     const invitationResponse = await administrator.current.request.post(invitationUrl, { timeout: 120000, data: invitation })
     assert.equal(invitationResponse.status(), 201)
     const invitationResult = (await invitationResponse.json()).data
+    const repeatedReview = await administrator.current.request.post(invitationUrl, { timeout: 120000, data: invitation })
+    assert.equal(repeatedReview.status(), 201); assert.equal((await repeatedReview.json()).data.intentId, invitationResult.intentId)
+    assert.equal((await administrator.current.request.post(invitationUrl, { timeout: 120000, data: { ...invitation, preserveCrm: true } })).status(), 409)
     const { issueIdentityOnboardingProof } = await loadIdentity("onboarding")
     const firstProof = await issueIdentityOnboardingProof(recoveryClient, company, { phone: invitation.phone, application: "TIME", requestId: "cookie-first-login-code" }, proofKey)
     const firstRow = await admin.identityPhoneProof.findUniqueOrThrow({ where: { id: firstProof.proofId } })

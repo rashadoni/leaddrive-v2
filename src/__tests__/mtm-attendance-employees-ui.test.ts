@@ -251,6 +251,40 @@ describe("Add employee", () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/enroll"))).toBe(false)
   })
 
+  it.each(["ru", "az", "en"] as const)("requires explicit legacy-person review and explains pending first login in %s", async language => {
+    const candidate = { kind: "legacy", userId: "existing-person", name: "Existing Field person", sourceRevision: "a".repeat(64), fieldActorId: "existing-field", fieldRole: "AGENT", crmRole: "viewer" }
+    fetchMock.mockImplementation(async url => String(url).endsWith("/identity/time/lookup") ? response(candidate)
+      : String(url).endsWith("/identity/time/onboarding") ? response({ status: "ACTIVE", intentId: "prepared-review" }, 201)
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render(language); await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Different typed name"); await type("addEmployeePhone", "+994501112233"); await send()
+    const review = form().querySelector('[data-testid="attendance-legacy-person"]')!
+    expect(review.textContent).toContain(p("addEmployeePhoneProfile", { name: candidate.name }))
+    expect(review.textContent).toContain(p("addEmployeeIdentityNoCrm"))
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/onboarding"))).toBe(false)
+    await send(); expect(creates()).toHaveLength(1)
+    await act(async () => review.querySelector<HTMLButtonElement>('[data-testid="attendance-legacy-invite"]')!.click())
+    const sent = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/identity/time/onboarding"))!
+    const data = JSON.parse(String(sent[1]!.body))
+    expect(data).toMatchObject({ userId: candidate.userId, sourceRevision: candidate.sourceRevision, preserveCrm: false, phone: "+994501112233" })
+    expect(data).not.toHaveProperty("name"); expect(data).not.toHaveProperty("email"); expect(data).not.toHaveProperty("applications")
+    expect(form().textContent).toContain(p("addEmployeeIdentityInviteReady"))
+    expect(form().querySelector('[data-testid="attendance-legacy-invite"]')).toBeNull()
+    expect(creates()).toHaveLength(1)
+  })
+
+  it("clears legacy review when the number changes and never enrolls its stale candidate", async () => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/identity/time/lookup")
+      ? response({ kind: "legacy", userId: "existing-person", name: "Existing person", sourceRevision: "a".repeat(64), fieldActorId: "field", fieldRole: "AGENT", crmRole: "viewer" })
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render(); await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Typed name"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(form().querySelector('[data-testid="attendance-legacy-person"]')).not.toBeNull()
+    await type("addEmployeePhone", "+994501112234")
+    expect(form().querySelector('[data-testid="attendance-legacy-person"]')).toBeNull()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/onboarding"))).toBe(false)
+  })
+
   it.each((["ru", "az", "en"] as const).flatMap(language => ["MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN", "IDENTITY_CANONICAL_PHONE_RESERVED"].map(code => ({ language, code }))))("opens an existing hidden CRM card after $code in $language without creating or linking again", async ({ language, code }) => {
     fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match")
       ? response({ kind: "attendance", agentId: "existing-card", name: "Existing CRM person", enrolled: false })
