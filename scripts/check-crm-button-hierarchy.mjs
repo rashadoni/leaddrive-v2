@@ -24,12 +24,14 @@ export function findButtonViolations(source, file = 'fixture.tsx') {
   function visit(node) {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tag = node.tagName.getText(sf);
-      if (['Button', 'button', 'a', 'Link'].includes(tag)) {
+      if (['Button', 'button', 'a', 'Link', 'Badge'].includes(tag)) {
         const attrs = Object.fromEntries(node.attributes.properties.filter(ts.isJsxAttribute).map(a => [a.name.getText(sf), a.initializer?.getText(sf) ?? 'true']));
+        if (tag === 'Badge' && !attrs.onClick) return;
         const classes = attrs.className ?? '';
         const variant = attrs.variant ?? '"default"';
         const semantic = roles.has((attrs['data-crm-color-role'] ?? '').replaceAll('"', ''));
         const add = rule => problems.push({ file, line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1, rule });
+        if (tag === 'Badge' && attrs.onClick && !semantic && variant.includes('"default"')) add('interactive-badge-uses-primary');
         if (tag === 'Button' && variant.startsWith('{') && variant.includes('"default"') && selection.test(variant) && !semantic) add('selection-uses-primary');
         if (tag !== 'Button' && basePrimary.test(classes) && !attrs['data-crm-button'] && !attrs['data-crm-tab'] && !attrs['data-crm-filter'] && !semantic) add('native-primary-without-shared-style');
         if (customFill.test(classes) && !semantic) add('local-action-colour');

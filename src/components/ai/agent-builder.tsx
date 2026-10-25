@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Settings } from "lucide-react"
 
@@ -37,14 +36,16 @@ export function AgentBuilder() {
           <p className="text-sm font-medium mb-2">Model Selection</p>
           <div className="flex gap-2">
             {["haiku", "sonnet", "opus"].map((m) => (
-              <Badge
+              <Button
                 key={m}
-                variant={model === m ? "default" : "outline"}
-                className="cursor-pointer"
+                type="button"
+                size="sm"
+                aria-pressed={model === m}
+                variant={model === m ? "selected" : "outline"}
                 onClick={() => setModel(m)}
               >
                 {m.charAt(0).toUpperCase() + m.slice(1)}
-              </Badge>
+              </Button>
             ))}
           </div>
         </div>

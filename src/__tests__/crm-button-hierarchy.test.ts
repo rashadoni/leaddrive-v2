@@ -41,6 +41,7 @@ describe("CRM action hierarchy source guard", () => {
   })
 
   it.each([
+    ['<Badge variant={model === m ? "default" : "outline"} onClick={() => select(m)} />', "interactive-badge-uses-primary"],
     ['<Button variant={activeFilter === key ? "default" : "outline"} />', "selection-uses-primary"],
     ['<button className="bg-primary text-primary-foreground">Save</button>', "native-primary-without-shared-style"],
     ['<Button className="bg-orange-600 text-white">Save</Button>', "local-action-colour"],
