@@ -595,7 +595,7 @@ export default function AttributionModelsPage() {
             <button
               onClick={openCreate}
               disabled={busy}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50" data-crm-button="default"
             >
               <Plus className="w-4 h-4" />
               {t("newModel")}
@@ -814,7 +814,7 @@ export default function AttributionModelsPage() {
               <button
                 onClick={submit}
                 disabled={busy}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50" data-crm-button="default"
               >
                 {busy && <Loader2 className="w-4 h-4 animate-spin" />}
                 {tc("save")}

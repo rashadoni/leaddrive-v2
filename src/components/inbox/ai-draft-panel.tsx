@@ -166,7 +166,7 @@ export function AiDraftPanel({
           type="button"
           onClick={() => act("send")}
           disabled={busy || !text.trim()}
-          className="rounded-md bg-violet-600 px-3 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+          className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50" data-crm-button="default"
         >
           {busy ? c.sending : c.send}
         </button>

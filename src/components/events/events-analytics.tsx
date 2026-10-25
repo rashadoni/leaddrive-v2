@@ -354,7 +354,7 @@ function InviteModal({ event, onClose }: { event: Event; onClose: () => void }) 
             <button
               onClick={handleSend}
               disabled={sending || !emails.trim()}
-              className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed" data-crm-button="default"
             >
               {sending ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -423,7 +423,7 @@ export function EventsAnalytics({ events }: EventsAnalyticsProps) {
               <CalendarDays className="w-4 h-4 text-violet-400" />
               {t("title")}
             </h3>
-            <button className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors">
+            <button className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-colors" data-crm-button="default">
               <Plus className="w-3.5 h-3.5" />
               {t("newEvent")}
             </button>
@@ -649,7 +649,7 @@ export function EventsAnalytics({ events }: EventsAnalyticsProps) {
             {/* Invite */}
             <button
               onClick={() => setShowInviteModal(true)}
-              className={cn("flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors bg-violet-600 hover:bg-violet-500 text-white")}
+              className={cn("flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors bg-primary hover:bg-primary/90 text-primary-foreground")} data-crm-button="default"
             >
               <Mail className="w-3.5 h-3.5" />
               {t("invite")}

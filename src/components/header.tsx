@@ -92,7 +92,7 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
           data-tour-id="app-launcher"
           title={`${tNav("allApps")} (⌘⇧K)`}
           aria-label={tNav("allApps")}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#c2410c] px-3 py-1.5 text-sm font-medium text-white shadow-sm ring-1 ring-black/10 transition-all hover:bg-[#9a3412] hover:shadow-md active:scale-[0.98] sm:px-3.5 cursor-pointer"
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm ring-1 ring-black/10 transition-all hover:bg-primary/90 hover:shadow-md active:scale-[0.98] sm:px-3.5 cursor-pointer" data-crm-button="default"
         >
           <LayoutGrid className="h-4 w-4" />
           <span className="hidden sm:inline">{tNav("allApps")}</span>

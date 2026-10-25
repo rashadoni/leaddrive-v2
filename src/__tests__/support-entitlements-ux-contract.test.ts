@@ -90,6 +90,8 @@ describe("support entitlements UX contract", () => {
 
   it("preserves permission and recovery states without decorative AI palette tropes", () => {
     const page = source("src/app/(dashboard)/support/entitlements/page.tsx")
+    const button = source("src/components/ui/button.tsx")
+    const appearance = source("src/app/crm-workspace.css")
     expect(page).toContain("permissions.canWrite")
     expect(page).toContain("permissions.canActivate")
     expect(page).toContain("permissions.canCancel")
@@ -98,7 +100,13 @@ describe("support entitlements UX contract", () => {
     expect(page).toContain('aria-busy="true"')
     expect(page).toContain("motion-reduce:animate-none")
     expect(page).toContain('HelpButton slug="entitlements" className="h-11 w-11 shrink-0"')
-    expect(page).toContain("bg-orange-700 text-white hover:bg-orange-800")
+    const create = page.match(/<Button className="min-h-11 shrink-0"[^\n]*data-testid="support-entitlements-create"[\s\S]*?<\/Button>/)?.[0]
+    expect(create).toContain('onClick={openCreate}')
+    expect(create).not.toMatch(/\bvariant=/)
+    expect(page).toContain('variant={target.action === "cancel" || target.action === "expire" ? "destructive" : "default"} className="min-h-11"')
+    expect(button).toContain('default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"')
+    expect(button).toContain('data-crm-button={variant ?? "default"}')
+    expect(appearance).toMatch(/\[data-crm-workspace\] \[data-crm-button="default"\]\s*\{\s*--primary: var\(--crm-action\);/)
     expect(page).not.toMatch(/(?:violet|purple|cyan|fuchsia|green|amber|blue|red|slate)-/)
     expect(page).not.toContain("bg-gradient")
     expect(page).not.toContain("MotionCard")

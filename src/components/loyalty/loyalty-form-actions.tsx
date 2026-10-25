@@ -42,7 +42,7 @@ export function LoyaltyFormActions({
           onClick={onSubmit}
           disabled={busy || submitDisabled}
           className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50"
-          aria-busy={busy}
+          aria-busy={busy} data-crm-button="default"
         >
           {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
           {submitLabel}

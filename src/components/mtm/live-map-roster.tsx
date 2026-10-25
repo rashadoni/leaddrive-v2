@@ -921,7 +921,7 @@ export function LiveMapRoster({
             {filtersPanel("grid-cols-1 @md:grid-cols-2 @2xl:grid-cols-3 @5xl:grid-cols-4", "")}
             <div className="border-t border-border p-2">
               <Hint text={tMap("hint.filterDone")}>
-                <button type="button" onClick={() => { closedByDoneRef.current = true; setFiltersOpen(false) }} data-testid="live-map-roster-filters-done" className="inline-flex min-h-9 w-full items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 [@media(pointer:coarse)]:min-h-11">
+                <button type="button" onClick={() => { closedByDoneRef.current = true; setFiltersOpen(false) }} data-testid="live-map-roster-filters-done" className="inline-flex min-h-9 w-full items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 [@media(pointer:coarse)]:min-h-11" data-crm-button="default">
                   {tMap("roster.filter.done", { shown: rows.length, total: agents.length })}
                 </button>
               </Hint>

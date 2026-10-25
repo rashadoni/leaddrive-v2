@@ -564,7 +564,7 @@ export default function DealsPage() {
           <button
             data-tour-id="deals-new"
             onClick={() => { setEditDeal(undefined); setFormOpen(true) }}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-[#FF4D00] text-white hover:bg-[#e04400] transition-colors rounded-lg"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-lg" data-crm-button="default"
           >
             <Plus className="h-4 w-4" />
             {t("newDeal")}

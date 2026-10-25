@@ -69,7 +69,7 @@ export function SocialOnboardingChecklist({ hasFacebook, hasInstagram, defaultOp
               action={
                 <a
                   href="/api/v1/social/oauth/facebook/start"
-                  className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.97]"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.97]" data-crm-button="default"
                 >
                   <LinkIcon className="h-3 w-3" /> {t("connectFacebookPage")}
                 </a>

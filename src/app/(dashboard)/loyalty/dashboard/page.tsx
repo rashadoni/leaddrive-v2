@@ -314,7 +314,7 @@ export default function LoyaltyOverviewPage() {
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                   <Link
                     href="/loyalty/builder"
-                    className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                    className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90" data-crm-button="default"
                   >
                     {t("emptyBuilderCta")}
                   </Link>

@@ -259,7 +259,7 @@ export default function LoyaltyBuilderPage() {
                   <button
                     type="button"
                     onClick={() => setTab("tiers")}
-                    className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                    className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90" data-crm-button="default"
                   >
                     <Sparkles className="h-4 w-4" />
                     {t("emptyCta")}
@@ -331,7 +331,7 @@ export default function LoyaltyBuilderPage() {
                     {readiness.nextStep === "pos" ? (
                       <Link
                         href="/loyalty/pos"
-                        className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                        className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90" data-crm-button="default"
                       >
                         <ArrowRight className="h-4 w-4" />
                         {t("continueSetup")}
@@ -341,7 +341,7 @@ export default function LoyaltyBuilderPage() {
                         type="button"
                         onClick={() => goToStep(readiness.nextStep)}
                         disabled={!readiness.nextStep}
-                        className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50" data-crm-button="default"
                       >
                         <ArrowRight className="h-4 w-4" />
                         {t("continueSetup")}

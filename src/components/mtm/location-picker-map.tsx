@@ -278,7 +278,7 @@ function FullScreenMap({ latitude, longitude, onChange, onClose, address, onAddr
             <button
               type="button"
               onClick={onClose}
-              className="min-h-9 shrink-0 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
+              className="min-h-9 shrink-0 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground" data-crm-button="default"
             >
               {t("done")}
             </button>

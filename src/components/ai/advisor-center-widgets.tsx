@@ -2820,7 +2820,7 @@ export function AdvisorActionList({
                           {copy.edit}
                         </Button>
                       ) : null}
-                      <Button size="sm" className="w-full rounded-full bg-orange-600 text-white shadow-sm hover:bg-orange-700 sm:w-auto" onClick={() => onReview(action, "approve")}><CheckCircle2 className="h-3.5 w-3.5" />{copy.approve}</Button>
+                      <Button size="sm" className="w-full rounded-full shadow-sm sm:w-auto" onClick={() => onReview(action, "approve")}><CheckCircle2 className="h-3.5 w-3.5" />{copy.approve}</Button>
                       <Button size="sm" variant="outline" className="w-full rounded-full bg-white/80 sm:w-auto dark:bg-zinc-950/40" onClick={() => onReview(action, "reject")}><XCircle className="h-3.5 w-3.5" />{copy.reject}</Button>
                     </div>
                   ) : null}

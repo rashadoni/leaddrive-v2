@@ -60,10 +60,12 @@ const categoryIcons: Record<string, string> = {
   ticket: "🎫",
 }
 
-// ─── Atlassian-style 6-column Kanban (matches the design screenshot) ──────────
+// Shared Kanban surfaces; stage and priority colors retain their meaning.
 const KB = {
-  text: "#172B4D", sub: "#6B778C", border: "#DFE1E6", colBg: "#F1F2F4",
-  primary: "#EA580C", green: "#00875A", red: "#DE350B", amber: "#FF8B00",
+  text: "hsl(var(--foreground))", sub: "hsl(var(--muted-foreground))",
+  border: "hsl(var(--border))", card: "hsl(var(--card))",
+  colBg: "color-mix(in srgb, hsl(var(--background)) 70%, hsl(var(--card)) 30%)",
+  primary: "hsl(var(--crm-action))", green: "#00875A", red: "#DE350B", amber: "#FF8B00",
 }
 // Four columns (BACKLOG/TO DO/IN PROGRESS/DONE) so the board fits on screen.
 // Existing CRM tasks use pending/todo/in_progress/completed. Tasks that happen
@@ -1391,7 +1393,7 @@ function KanbanView({ filtered, priorityLabels, dragTask, setDragTask, handleKan
                         "cursor-grab rounded-xl p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing",
                         dragTask === task.id && "opacity-50"
                       )}
-                      style={{ background: featured ? "#FFFBF5" : "#FFFFFF", border: `1px solid ${featured ? KB.amber : KB.border}` }}
+                      style={{ background: featured ? "color-mix(in srgb, hsl(var(--card)) 92%, #FF8B00 8%)" : KB.card, border: `1px solid ${featured ? KB.amber : KB.border}` }}
                       onClick={() => router.push(`/tasks/${task.id}`)}
                     >
                       {featured && (
@@ -1481,7 +1483,7 @@ function KanbanView({ filtered, priorityLabels, dragTask, setDragTask, handleKan
                     <button
                       onClick={() => setExpandedCols(prev => ({ ...prev, [col.key]: true }))}
                       className="w-full rounded-md border border-dashed py-2 text-center text-xs"
-                      style={{ borderColor: KB.border, color: KB.sub, background: "#FFFFFF" }}
+                      style={{ borderColor: KB.border, color: KB.sub, background: KB.card }}
                     >
                       {t("showMore", { count: hiddenCount }) || `+${hiddenCount}`}
                     </button>

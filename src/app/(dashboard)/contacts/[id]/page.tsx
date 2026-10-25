@@ -401,7 +401,7 @@ export default function ContactDetailPage() {
                   <ClickToCallButton phone={contact.phone!} contactId={contact.id} contactName={contact.fullName} />
                 )}
                 {isVisible("email") && contact.email && (
-                  <a href={`mailto:${contact.email}`} title={tc("email")} className="h-8 w-8 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors shadow-sm">
+                  <a href={`mailto:${contact.email}`} title={tc("email")} className="h-8 w-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors shadow-sm" data-crm-button="default">
                     <Mail className="h-3.5 w-3.5 text-white" />
                   </a>
                 )}
