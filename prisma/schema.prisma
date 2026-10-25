@@ -1236,7 +1236,8 @@ model Company {
   leadTemperature String? // cold, warm, hot
   userCount       Int          @default(0)
   costCode        String?
-  voen            String?
+  voen            String? // 10 digits; not unique — the form warns about a duplicate instead
+  director        String? // legal representative («Qanuni təmsilçi») from the tax registry or typed in
   creditLimit     Float? // AR credit limit; null = no limit enforced
   creditCurrency  String? // ISO currency code for creditLimit (else fall back to org default)
   createdAt       DateTime     @default(now())
@@ -1260,6 +1261,7 @@ model Company {
   monitoringSubjects MonitoringSubject[]
 
   @@index([organizationId])
+  @@index([organizationId, voen])
   @@map("companies")
 }
 

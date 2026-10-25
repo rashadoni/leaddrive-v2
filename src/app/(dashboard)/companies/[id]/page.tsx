@@ -36,6 +36,11 @@ interface CompanyDetail {
   employeeCount: number | null
   annualRevenue: number | null
   description: string | null
+  voen: string | null
+  director: string | null
+  slaPolicyId: string | null
+  creditLimit: number | null
+  creditCurrency: string | null
   createdAt: string
   contacts: Array<{ id: string; fullName: string; position: string | null; email: string | null; phone: string | null }>
   deals: Array<{ id: string; name: string; stage: string; valueAmount: number; currency: string; createdAt: string }>
@@ -85,6 +90,7 @@ export default function CompanyDetailPage() {
   const { data: session } = useSession()
   const t = useTranslations("companies")
   const tc = useTranslations("common")
+  const tv = useTranslations("companyVoen")
   const locale = useLocale()
   const [company, setCompany] = useState<CompanyDetail | null>(null)
   useAutoTour("companyDetail")
@@ -272,6 +278,9 @@ export default function CompanyDetailPage() {
                 )}
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   {[
+                    isVisible("voen") ? ["VÖEN", company.voen || "—"] : null,
+                    isVisible("director") ? [tv("director"), company.director || "—"] : null,
+                    isVisible("address") ? [tc("address"), company.address || "—"] : null,
                     isVisible("industry") ? [tc("industry"), company.industry || "—"] : null,
                     isVisible("employeeCount") ? [tc("employees"), company.employeeCount?.toString() || "—"] : null,
                     isVisible("country") ? [tc("country"), company.country || "—"] : null,
@@ -603,6 +612,11 @@ export default function CompanyDetailPage() {
           website: company.website || "", phone: company.phone || "", email: company.email || "",
           address: company.address || "", city: company.city || "", country: company.country || "",
           status: company.status, description: company.description || "",
+          // Everything the form saves, or saving from here would clear it.
+          voen: company.voen || "", director: company.director || "",
+          slaPolicyId: company.slaPolicyId,
+          creditLimit: company.creditLimit != null ? String(company.creditLimit) : "",
+          creditCurrency: company.creditCurrency || "",
         }}
       />
     </div>

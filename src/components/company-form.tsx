@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { formatSlaHours } from "@/lib/format-sla"
+import { VoenField, type TaxpayerCardView } from "@/components/companies/voen-field"
 
 interface CompanyFormData {
   name: string
@@ -24,6 +25,8 @@ interface CompanyFormData {
   slaPolicyId: string | null
   creditLimit: string
   creditCurrency: string
+  voen: string
+  director: string
 }
 
 interface SlaPolicyOption {
@@ -44,6 +47,7 @@ interface CompanyFormProps {
 export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }: CompanyFormProps) {
   const t = useTranslations("forms")
   const tc = useTranslations("common")
+  const tv = useTranslations("companyVoen")
   const isEdit = !!initialData?.id
   const [form, setForm] = useState<CompanyFormData>({
     name: initialData?.name || "",
@@ -59,6 +63,8 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
     slaPolicyId: (initialData as any)?.slaPolicyId || null,
     creditLimit: (initialData as any)?.creditLimit != null ? String((initialData as any).creditLimit) : "",
     creditCurrency: (initialData as any)?.creditCurrency || "",
+    voen: initialData?.voen || "",
+    director: initialData?.director || "",
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -80,6 +86,8 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
         slaPolicyId: (initialData as any)?.slaPolicyId || null,
         creditLimit: (initialData as any)?.creditLimit != null ? String((initialData as any).creditLimit) : "",
         creditCurrency: (initialData as any)?.creditCurrency || "",
+        voen: initialData?.voen || "",
+        director: initialData?.director || "",
       })
       setError("")
       // Fetch SLA policies
@@ -127,6 +135,14 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
   }
 
   const update = (key: keyof CompanyFormData, value: string) => setForm((f) => ({ ...f, [key]: value }))
+  // The registry's card fills only what is still empty: what the user typed stays.
+  const applyRegistryCard = (card: TaxpayerCardView) => setForm((f) => ({
+    ...f,
+    name: f.name.trim() ? f.name : card.name,
+    address: f.address.trim() ? f.address : card.legalAddress || "",
+    director: f.director.trim() ? f.director : card.director || "",
+    country: f.country.trim() ? f.country : "Azərbaycan",
+  }))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -137,9 +153,16 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
         <DialogContent>
           {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
           <div className="grid gap-4">
-            <div>
-              <Label htmlFor="name">{`${tc("name")} *`}</Label>
-              <Input id="name" value={form.name} onChange={(e) => update("name", e.target.value)} required />
+            <VoenField value={form.voen} onChange={(v) => update("voen", v)} companyId={initialData?.id} orgId={orgId} onApply={applyRegistryCard} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="name">{`${tc("name")} *`}</Label>
+                <Input id="name" value={form.name} onChange={(e) => update("name", e.target.value)} required />
+              </div>
+              <div>
+                <Label htmlFor="director">{tv("director")}</Label>
+                <Input id="director" value={form.director} onChange={(e) => update("director", e.target.value)} />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
