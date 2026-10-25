@@ -81,7 +81,7 @@ async function main() {
     await admin.$executeRawUnsafe(`CREATE POLICY identity_fixture_settings_read ON mtm_settings FOR SELECT USING ("organizationId"=current_setting('app.org_id',true))`)
 
     phase = "ACTUAL_ADDITIVE_MIGRATION"
-    for (const migration of ["20261103120000_identity_foundation", "20261103121000_identity_contact_revision", "20261103122000_identity_proof_authority", "20261103123000_identity_legacy_write_fence"]) execFileSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--file", `prisma/migrations/${migration}/migration.sql`], {
+    for (const migration of ["20261103120000_identity_foundation", "20261103121000_identity_contact_revision", "20261103122000_identity_proof_authority", "20261103123000_identity_legacy_write_fence", "20261103124000_identity_staged_credential_revision"]) execFileSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--file", `prisma/migrations/${migration}/migration.sql`], {
       env: { ...process.env, PGHOST: url.hostname, PGPORT: url.port, PGDATABASE: url.pathname.slice(1), PGUSER: decodeURIComponent(url.username), PGPASSWORD: decodeURIComponent(url.password) },
       stdio: ["ignore", "pipe", "pipe"], timeout: 30_000,
     })

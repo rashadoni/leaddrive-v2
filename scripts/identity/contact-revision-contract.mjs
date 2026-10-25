@@ -33,7 +33,7 @@ export async function checkContactRevision({ admin, writer, actor, build, checks
       : tx.$executeRaw`UPDATE mtm_agents SET phone=${phone} WHERE "organizationId"=${org} AND id=${person.actorId}`)
   }
   // Temporarily expand this disposable role only for these actual legacy writes.
-  await admin.$executeRawUnsafe('GRANT UPDATE (phone) ON users, mtm_agents TO identity_foundation_writer')
+  await admin.$executeRawUnsafe('GRANT UPDATE (phone,"passwordHash") ON users, mtm_agents TO identity_foundation_writer')
   try {
     for (const source of ["user", "actor"]) {
       phase(`CONTACT_${source.toUpperCase()}_AWAY_RETURN_REFUSES_OLD_CODE`)
@@ -62,6 +62,38 @@ export async function checkContactRevision({ admin, writer, actor, build, checks
       checks.push(`contact_${source}_away_return_invalidates_confirmed_setup_without_changing_legacy_password`)
     }
 
+    for (const source of ["user", "actor"]) {
+      phase(`STAGED_${source.toUpperCase()}_PASSWORD_RESET_INVALIDATES_CODE_AND_SETUP`)
+      const table = source === "user" ? "users" : "mtm_agents"
+      const reset = (person, value) => withLegacyCredentialWrite(writer, org, [{ kind: "ACTOR", actorId: person.actorId }], tx =>
+        tx.$executeRawUnsafe(`UPDATE ${table} SET "passwordHash"=$1 WHERE "organizationId"=$2 AND id=$3`, value, org, source === "user" ? person.userId : person.actorId))
+      const original = source === "user" ? "!fixture-old-hash" : null
+      const pending = await setup(`password-code-${source}`)
+      await reset(pending, "!fixture-reset-hash"); await reset(pending, original)
+      const advanced = await account(pending.userId)
+      assert.equal(advanced.version, 3); assert.equal(advanced.credentialEpoch, 3); assert.equal(advanced.contactRevision, 1)
+      assert.notEqual((await consumeStagedPhoneProofWithSetup(writer, org, pending.attempt, resolveKey)).status, "CONFIRMED")
+      await reset(pending, original)
+      assert.equal((await account(pending.userId)).version, 3)
+      const confirmed = await setup(`password-setup-${source}`)
+      const possession = await consumeStagedPhoneProofWithSetup(writer, org, confirmed.attempt, resolveKey)
+      assert.equal(possession.status, "CONFIRMED")
+      await reset(confirmed, "!fixture-reset-hash"); await reset(confirmed, original)
+      await assert.rejects(setStagedIdentityCredential(writer, org, { setupToken: possession.setupToken, password: "Fictional!Contact482", requestId: `password-reset-setup-${source}` }, resolveKey, passwordPolicyError), /IDENTITY_SETUP_EXPIRED/)
+      assert.equal((await account(confirmed.userId)).passwordHash, null)
+      checks.push(`staged_${source}_credential_away_return_invalidates_pending_code_and_confirmed_setup_without_claiming_new_contact`)
+    }
+
+    phase("STAGED_CREDENTIAL_AUDIT_FAILURE_ROLLS_BACK_LEGACY_PASSWORD")
+    const credentialRollback = await setup("credential-rollback"), credentialBefore = await account(credentialRollback.userId)
+    await admin.$executeRawUnsafe("ALTER TABLE identity_events ADD CONSTRAINT staged_credential_audit_refusal CHECK (\"userId\" <> 'contact-user-credential-rollback' OR action <> 'PERSON_LIFECYCLE_CHANGED')")
+    try {
+      await assert.rejects(admin.$executeRaw`UPDATE users SET "passwordHash"='!fixture-refused-reset' WHERE id=${credentialRollback.userId}`, error => error?.meta?.code === "23514")
+      assert.deepEqual(await account(credentialRollback.userId), credentialBefore)
+      assert.equal((await admin.user.findUniqueOrThrow({ where: { id: credentialRollback.userId }, select: { passwordHash: true } })).passwordHash, "!fixture-old-hash")
+    } finally { await admin.$executeRawUnsafe('ALTER TABLE identity_events DROP CONSTRAINT staged_credential_audit_refusal') }
+    checks.push("staged_credential_reset_revision_and_security_receipt_roll_back_together")
+
     phase("CONTACT_AUDIT_FAILURE_ROLLS_BACK_SOURCE_AND_REVISIONS")
     const rollback = await setup("rollback"), before = await account(rollback.userId)
     await admin.$executeRawUnsafe("ALTER TABLE identity_events ADD CONSTRAINT contact_fixture_audit_refusal CHECK (\"userId\" <> 'contact-user-rollback' OR \"contactRevision\" IS NULL)")
@@ -82,5 +114,5 @@ export async function checkContactRevision({ admin, writer, actor, build, checks
     await assert.rejects(admin.$executeRaw`UPDATE identity_accounts SET "contactRevision"=2 WHERE "organizationId"=${org} AND "userId"=${rollback.userId}`, error => error?.meta?.code === "23514")
     await assert.rejects(admin.$executeRaw`UPDATE identity_accounts SET "contactRevision"=1 WHERE "organizationId"=${org} AND "userId"='contact-user-code-user'`, error => error?.meta?.code === "23514")
     checks.push("canonical_contact_cannot_be_changed_by_legacy_writer_or_revision_without_matching_epochs")
-  } finally { await admin.$executeRawUnsafe('REVOKE UPDATE (phone) ON users, mtm_agents FROM identity_foundation_writer') }
+  } finally { await admin.$executeRawUnsafe('REVOKE UPDATE (phone,"passwordHash") ON users, mtm_agents FROM identity_foundation_writer') }
 }

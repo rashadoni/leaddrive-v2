@@ -1095,3 +1095,9 @@ Server run40213352343 again completed90 PG foundation checks but v2 invitation p
 - No identity activation, production marker/config installation, provider messages or deployment. Next: qualify the new database/runtime barriers, then implement atomic reviewed cutover and public first-login/admin form composition.
 
 - Hosted0f6eee707 actual-cookie run40215360373 PASS. PG40215360200 completed49 groups, then failed direct lifecycle relink with42501: its disposable restricted role lacked SELECT on identity_actor_bindings, now read by the new guard. Added only SELECT(organizationId,actorId,userId) to that fixture role; no production privilege change or guard bypass. Fresh combined validation required.
+
+### 2026-10-25T17:29:51.816853+00:00 — pending proof invalidation on legacy password reset (UTC)
+
+- Added migration20261103124000: a changed legacy User password/logout timestamp or actor password increments an existing staged account version/credentialEpoch and writes its receipt atomically. Changing away/back cannot revive an outstanding code/setup; unchanged writes are no-ops. No canonical credential or contact is changed, and no account is created by the trigger.
+- Added actual-PG cases for pending and confirmed proof after User/card password reset, exact hash restoration and audit rollback. Syntax/runner policy86/diff checks PASS. SQL/Prisma/PG gates NOT RUN locally under host limits; combined80780102d floor/fence CI still in progress before publishing this next checkpoint.
+- This closes a subject-source race required by the future atomic cutover. Next: inspect hosted floor/fence results, qualify this trigger, then implement the reviewed cutover service. No production activation or claims of complete registration.
