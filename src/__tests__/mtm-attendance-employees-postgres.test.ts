@@ -641,18 +641,24 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       user: await prisma.user.findUniqueOrThrow({ where: { id: fixture.userId }, select: { name: true, phone: true, isActive: true, role: true, updatedAt: true } }),
       card: await prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId }, select: { name: true, phone: true, status: true, userId: true, updatedAt: true } }),
       audit: await prisma.mtmAuditLog.count({ where: { organizationId: org, action: "MTM_ATTENDANCE_EMPLOYEE_UPDATED" } }),
+      generalAudit: await prisma.auditLog.count({ where: { organizationId: org, action: "user_updated" } }),
     }))
     const before = await state()
-    sql(scratch!.adminDb, `ALTER TABLE mtm_audit_logs ADD CONSTRAINT identity_hr_profile_audit_failure CHECK ("organizationId" <> 'identity-hr-profile-maintenance' OR action <> 'MTM_ATTENDANCE_EMPLOYEE_UPDATED') NOT VALID`)
-    try {
-      await expect(tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, phone: newPhone }))).rejects.toBeDefined()
-      expect(await state()).toEqual(before)
-    } finally { sql(scratch!.adminDb, "ALTER TABLE mtm_audit_logs DROP CONSTRAINT identity_hr_profile_audit_failure") }
+    await expect(tenant(org, () => store.updateAttendanceEmployee({ ...reviewer, userId: fixture.userId }, "missing-profile-card", { ...page, phone: newPhone })))
+      .rejects.toMatchObject({ status: 403 })
+    for (const [table, action] of [["mtm_audit_logs", "MTM_ATTENDANCE_EMPLOYEE_UPDATED"], ["audit_logs", "user_updated"]]) {
+      sql(scratch!.adminDb, `ALTER TABLE ${table} ADD CONSTRAINT identity_hr_profile_audit_failure CHECK ("organizationId" <> 'identity-hr-profile-maintenance' OR action <> '${action}') NOT VALID`)
+      try {
+        await expect(tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, phone: newPhone }))).rejects.toBeDefined()
+        expect(await state()).toEqual(before)
+      } finally { sql(scratch!.adminDb, `ALTER TABLE ${table} DROP CONSTRAINT identity_hr_profile_audit_failure`) }
+    }
     await tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, phone: newPhone }))
     const maintained = await state()
     expect(maintained.user).toMatchObject({ phone: newPhone, name: page.name, role: "viewer", isActive: true })
     expect(maintained.card).toMatchObject({ phone: newPhone, name: page.name, userId: fixture.userId, status: "ACTIVE" })
     expect(maintained.audit).toBe(1)
+    expect(maintained.generalAudit).toBe(1)
     await expect(tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, phone: claimedPhone })))
       .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED", status: 409 })
     expect(await state()).toEqual(maintained)
