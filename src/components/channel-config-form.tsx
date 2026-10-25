@@ -1240,9 +1240,9 @@ export function ChannelConfigForm({
     <>
       <DialogHeader
         className={cn(
-          "border-b border-zinc-200 text-zinc-950",
+          "border-b border-border text-foreground",
           compactGuidance ? "px-5 pb-4 pt-5" : "px-6 pb-5 pt-6",
-          isInline ? "bg-zinc-50" : "bg-gradient-to-br from-white via-orange-50/60 to-white",
+          isInline ? "bg-muted/40" : "bg-card",
         )}
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

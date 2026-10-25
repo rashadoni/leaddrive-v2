@@ -151,7 +151,7 @@ export default function EmailLogPage() {
           size="sm"
           onClick={runAiAnalysis}
           disabled={aiLoading || stats.total === 0}
-          className="relative overflow-hidden bg-gradient-to-r from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] hover:opacity-90 text-white border-0 shadow-md shadow-[hsl(var(--ai-from))]/25 hover:shadow-lg hover:shadow-[hsl(var(--ai-from))]/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]"
+          className="gap-1.5"
         >
           {aiLoading ? (
             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -166,11 +166,11 @@ export default function EmailLogPage() {
 
       {/* Da Vinci AI Analysis Card */}
       {aiOpen && (
-        <div className="rounded-xl border border-[hsl(var(--ai-from))]/20 bg-card p-5">
+        <div className="crm-panel p-5">
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))]">
-                <Sparkles className="h-4 w-4 text-white" />
+              <div className="p-1.5 rounded-lg bg-muted">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
               </div>
               <h3 className="text-sm font-semibold">Da Vinci — {t("title")}</h3>
             </div>

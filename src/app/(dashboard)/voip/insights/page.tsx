@@ -253,7 +253,7 @@ export default function ConversationInsightsPage() {
         {!loading && data && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard surface="card" className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Phone className="w-3 h-3" /> {t("kpiCallsAnalysed")}
                 </p>
@@ -261,7 +261,7 @@ export default function ConversationInsightsPage() {
                   {data.totalCallsWithInsights}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard surface="card" className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <CheckSquare className="w-3 h-3" /> {t("kpiActionItems")}
                 </p>
@@ -269,7 +269,7 @@ export default function ConversationInsightsPage() {
                   {data.totalActionItems}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard surface="card" className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Target className="w-3 h-3" /> {t("kpiCompetitorsNamed")}
                 </p>
@@ -277,7 +277,7 @@ export default function ConversationInsightsPage() {
                   {data.competitorMentions.length}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard surface="card" className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <MessageSquare className="w-3 h-3" /> {t("kpiCoachingPatterns")}
                 </p>
@@ -289,7 +289,7 @@ export default function ConversationInsightsPage() {
 
             {/* Sentiment distribution bar */}
             {data.totalCalls > 0 && (
-              <MotionCard className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg mb-4">
+              <MotionCard surface="card" className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg mb-4">
                 <p className="text-sm font-medium mb-2">
                   {t("sentimentDistribution")}
                 </p>
@@ -330,7 +330,7 @@ export default function ConversationInsightsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
               {/* Competitor mentions */}
-              <MotionCard className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard surface="card" className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
                 <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
                   <Target className="w-4 h-4" /> {t("competitorMentions")}
                 </h3>
@@ -356,7 +356,7 @@ export default function ConversationInsightsPage() {
               </MotionCard>
 
               {/* Coaching patterns */}
-              <MotionCard className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg lg:col-span-2">
+              <MotionCard surface="card" className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg lg:col-span-2">
                 <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
                   <MessageSquare className="w-4 h-4" /> {t("coachingPatterns")}
                 </h3>
@@ -400,7 +400,7 @@ export default function ConversationInsightsPage() {
               {t("recentCalls", { count: data.calls.length })}
             </h2>
             {data.calls.length === 0 ? (
-              <MotionCard className="p-12 text-center text-muted-foreground">
+              <MotionCard surface="card" className="rounded-lg p-12 text-center text-muted-foreground">
                 <Brain className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p className="font-medium">{t("emptyTitle")}</p>
                 <p className="text-sm mt-1">{t("emptyDesc")}</p>
@@ -412,6 +412,7 @@ export default function ConversationInsightsPage() {
                   return (
                     <MotionCard
                       key={c.id}
+                      surface="card"
                       className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg"
                     >
                       <button

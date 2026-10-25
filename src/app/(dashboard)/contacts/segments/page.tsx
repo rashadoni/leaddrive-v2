@@ -242,9 +242,9 @@ export default function InsightsPage() {
           </div>
 
           {/* AI insights */}
-          <div className="rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30 p-4">
+          <div className="crm-panel p-4">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-semibold flex items-center gap-2 text-violet-700 dark:text-violet-300">
+              <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
                 <Sparkles className="h-4 w-4" /> {t("aiTitle")}
               </h2>
               <Button variant="outline" size="sm" onClick={fetchInsights} disabled={insightsLoading}>
@@ -255,7 +255,7 @@ export default function InsightsPage() {
               <ul className="space-y-1.5 text-sm">
                 {insights.map((ln, i) => (
                   <li key={i} className="flex gap-2">
-                    <span className="text-violet-500">•</span>
+                    <span className="text-muted-foreground">•</span>
                     <span>{ln}</span>
                   </li>
                 ))}

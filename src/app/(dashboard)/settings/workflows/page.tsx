@@ -253,28 +253,28 @@ export default function WorkflowsPage() {
 
       {/* First-visit onboarding — points users at the templates gallery */}
       {showOnboarding && (
-        <div className="relative rounded-lg border border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50 p-4 dark:border-violet-900 dark:from-violet-950/40 dark:to-purple-950/40">
+        <div className="relative rounded-lg border border-border bg-card text-card-foreground p-4">
           <button
             onClick={dismissOnboarding}
-            className="absolute top-3 right-3 text-violet-600/60 hover:text-violet-700 dark:text-violet-300/60 dark:hover:text-violet-200"
+            className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
             aria-label={t("onboardingDismiss")}
           >
             <X className="h-4 w-4" />
           </button>
           <div className="flex items-start gap-3 pr-6">
-            <div className="rounded-md bg-gradient-to-br from-violet-500 to-purple-600 p-2 text-white shadow-sm shrink-0">
+            <div className="rounded-md bg-muted p-2 text-muted-foreground shrink-0">
               <Sparkles className="h-4 w-4" />
             </div>
             <div className="flex-1">
-              <h3 className="font-medium text-sm text-violet-900 dark:text-violet-100">
+              <h3 className="font-medium text-sm text-foreground">
                 {t("onboardingTitle")}
               </h3>
-              <p className="text-xs text-violet-800/80 dark:text-violet-200/70 mt-1 leading-relaxed">
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                 {t("onboardingBody")}
               </p>
               <div className="mt-3 flex items-center gap-2">
                 <Link href="/settings/workflows/templates">
-                  <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5">
+                  <Button size="sm" className="gap-1.5">
                     <Sparkles className="h-3.5 w-3.5" />
                     {t("onboardingCta")}
                   </Button>

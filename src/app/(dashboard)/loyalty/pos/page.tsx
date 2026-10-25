@@ -256,7 +256,7 @@ export default function LoyaltyPosPage() {
       )}
 
       {!member ? (
-        <MotionCard className="p-5 border border-zinc-200 dark:border-zinc-700 rounded-xl">
+        <MotionCard surface="card" className="p-5 border border-zinc-200 dark:border-zinc-700 rounded-xl">
           {scanning ? (
             <div className="space-y-3">
               <video ref={videoRef} className="w-full rounded-lg bg-black aspect-square object-cover" muted playsInline />
@@ -302,7 +302,7 @@ export default function LoyaltyPosPage() {
           )}
         </MotionCard>
       ) : (
-        <MotionCard className="p-5 border border-zinc-200 dark:border-zinc-700 rounded-xl space-y-4">
+        <MotionCard surface="card" className="p-5 border border-zinc-200 dark:border-zinc-700 rounded-xl space-y-4">
           {/* Member */}
           <div className="flex items-start justify-between gap-3">
             <div>

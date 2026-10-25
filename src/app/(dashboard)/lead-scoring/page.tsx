@@ -187,7 +187,7 @@ export default function LeadScoringPage() {
           </p>
         }
         actions={
-          <Button onClick={scoreAll} disabled={scoring || loading} className="ai-glow">
+          <Button onClick={scoreAll} disabled={scoring || loading}>
             {scoring ? (
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
             ) : (

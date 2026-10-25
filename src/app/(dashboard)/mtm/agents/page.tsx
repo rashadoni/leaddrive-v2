@@ -24,10 +24,10 @@ import { UserCog, Plus, Pencil, Trash2, MoreHorizontal, Users, Download, Phone, 
 import { mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
 
 const roleColors: Record<string, string> = {
-  ADMIN: "text-violet-700 dark:text-violet-300",
-  MANAGER: "text-sky-700 dark:text-sky-300",
-  SUPERVISOR: "text-violet-700 dark:text-violet-300",
-  AGENT: "text-sky-700 dark:text-sky-300",
+  ADMIN: "text-foreground",
+  MANAGER: "text-muted-foreground",
+  SUPERVISOR: "text-foreground",
+  AGENT: "text-muted-foreground",
 }
 const statusColors: Record<string, string> = {
   ACTIVE: "text-emerald-700 dark:text-emerald-300",
@@ -326,7 +326,7 @@ export default function MtmAgentsPage() {
       <div
         key={agent.id}
         data-testid={leads ? "mtm-agent-leader-card" : "mtm-agent-card"}
-        className={`h-full rounded-lg border bg-card p-4 flex flex-col gap-3 ${leads ? "border-blue-300 dark:border-blue-800 ring-1 ring-blue-100 dark:ring-blue-900/40 shadow-sm" : "border-zinc-200 dark:border-zinc-700"}`}
+        className={`h-full rounded-lg border bg-card p-4 flex flex-col gap-3 ${leads ? "border-foreground/25 shadow-sm" : "border-zinc-200 dark:border-zinc-700"}`}
       >
         <div className="flex items-start gap-3 min-h-[2.75rem]">
           <div className="relative h-10 w-10 shrink-0">
@@ -364,7 +364,7 @@ export default function MtmAgentsPage() {
         {/* Badges: role · status · app — one wrapping row with a reserved height */}
         <div className="flex flex-1 flex-wrap content-start items-start gap-1.5 min-h-[2.75rem]">
           <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${leads ? "font-semibold " : ""}${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
-          {leads && team ? <span className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap text-sky-700 dark:text-sky-300" data-testid="mtm-agent-team-size">{t("teamSize", { count: team.size - 1 })}</span> : null}
+          {leads && team ? <span className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap text-muted-foreground" data-testid="mtm-agent-team-size">{t("teamSize", { count: team.size - 1 })}</span> : null}
           <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[agent.status] || ""}`}>{statusLabel(agent.status)}</span>
           {appBadge(app)}
           {app && !app.notificationsConnected ? (
@@ -409,7 +409,7 @@ export default function MtmAgentsPage() {
   const renderTeam = (team: MtmAgentTeam<any>, depth: number): ReactNode => {
     const cards = [...(team.leader ? [team.leader] : []), ...team.members]
     return (
-      <section key={team.key} data-testid="mtm-agent-team" className={depth > 0 ? "border-l-2 border-blue-200 pl-3 dark:border-blue-900" : ""}>
+      <section key={team.key} data-testid="mtm-agent-team" className={depth > 0 ? "border-l-2 border-border pl-3" : ""}>
         {teamHeader(team.label, team.size, team.leader ? undefined : t("leaderNotListed"), depth > 0)}
         {cards.length ? <div className={cardGrid}>{cards.map(agent => renderCard(agent, team))}</div> : null}
         {team.subteams.length ? <div className={`space-y-4 ${cards.length ? "mt-4" : ""}`}>{team.subteams.map(sub => renderTeam(sub, depth + 1))}</div> : null}

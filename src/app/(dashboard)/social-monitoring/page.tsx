@@ -2934,11 +2934,11 @@ export default function SocialMonitoringPage() {
       <Link
         data-tour-id="social-ai"
         href="/settings/ai-automation"
-        className="group flex items-center justify-between rounded-xl border border-violet-200 dark:border-violet-900/60 bg-gradient-to-br from-violet-50/60 to-pink-50/40 dark:from-violet-950/20 dark:to-pink-950/10 px-4 py-3 transition-all duration-200 hover:border-violet-300 hover:shadow-sm dark:hover:border-violet-800"
+        className="group crm-panel flex items-center justify-between px-4 py-3 transition-colors hover:border-foreground/25"
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-            <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
           </div>
           <div>
             <p className="text-sm font-medium">{t("aiAutopilotTitle")}</p>
@@ -3003,10 +3003,10 @@ export default function SocialMonitoringPage() {
 
       {activeView === "agent" && (
         <div className="space-y-4">
-          <div className="rounded-xl border border-violet-200 dark:border-violet-900/60 bg-gradient-to-br from-violet-50/60 to-pink-50/40 dark:from-violet-950/20 dark:to-pink-950/10 px-4 py-3">
+          <div className="crm-panel px-4 py-3">
             <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-                <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
               </div>
               <div>
                 <span className="text-sm font-semibold">{t("agentTabTitle")}</span>
@@ -4764,11 +4764,11 @@ export default function SocialMonitoringPage() {
                 const canDryRunSend = latestDraft?.status === "approved" && !draftIsDirty
                 const canEnqueueLive = latestDraft?.status === "approved" && !draftIsDirty && liveReplyAllowed
                 return (
-                  <div className="animate-fade-in-up mt-2 space-y-3 rounded-xl border border-violet-200/70 bg-gradient-to-br from-violet-50/50 to-transparent p-3 dark:border-violet-900/50 dark:from-violet-950/20">
+                  <div className="crm-panel animate-fade-in-up mt-2 space-y-3 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-violet-100 dark:bg-violet-900/40">
-                          <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-300" />
+                        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-muted">
+                          <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
                         </span>
                         <span className="text-sm font-semibold">{t("aiDraftTitle")}</span>
                         {latestDraft && (

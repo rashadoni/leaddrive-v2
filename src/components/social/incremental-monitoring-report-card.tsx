@@ -139,7 +139,7 @@ export function IncrementalMonitoringReportCard({ orgId }: Props) {
 
   return (
     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800">
-      <div className="flex flex-col gap-4 border-b border-zinc-200 bg-gradient-to-r from-primary/[0.07] via-transparent to-transparent px-5 py-4 dark:border-zinc-800 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 border-b border-zinc-200 bg-card px-5 py-4 dark:border-zinc-800 md:flex-row md:items-center md:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <div className="rounded-xl border border-primary/15 bg-primary/10 p-2.5 text-primary">
             <FileClock className="h-5 w-5" />

@@ -397,7 +397,7 @@ export function OfferForm({
 
           {/* ═══ SECTION 5: Totals ═══ */}
           {items.length > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/20 dark:to-cyan-950/20 p-4">
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/40 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Calculator className="h-4 w-4 text-teal-600" />
                 <span className="text-sm font-semibold text-teal-700 dark:text-teal-400">{t("summary")}</span>

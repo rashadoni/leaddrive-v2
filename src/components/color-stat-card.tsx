@@ -113,6 +113,7 @@ export function ColorStatCard({
 
   return (
     <div
+      data-crm-card=""
       className={cn(
         "rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 flex flex-col gap-2 transition-all duration-200 hover:shadow-md",
         className

@@ -371,8 +371,8 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
-              <Sparkles className="h-6 w-6 text-white" />
+            <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
+              <Sparkles className="h-6 w-6 text-muted-foreground" />
             </div>
             <div>
               <h2 className="text-xl font-bold">{isEdit ? tf("editAiAgent") : tf("newAiAgent")}</h2>
@@ -430,16 +430,16 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
                     onClick={() => setForm(f => ({ ...f, model: model.id }))}
                     className={cn(
                       "w-full flex items-center gap-4 p-3.5 rounded-xl border-2 transition-all text-left",
-                      isSelected ? model.bgSelected + " shadow-sm" : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
+                      isSelected ? "border-foreground bg-muted/40 shadow-sm" : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
                     )}
                   >
-                    <div className={cn("h-10 w-10 rounded-lg bg-gradient-to-br flex items-center justify-center flex-shrink-0", model.color)}>
-                      <Icon className="h-5 w-5 text-white" />
+                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                      <Icon className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm">{model.name}</span>
-                        {isSelected && <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">{t("selected")}</span>}
+                        {isSelected && <span className="text-[10px] font-bold text-foreground bg-muted px-2 py-0.5 rounded-full">{t("selected")}</span>}
                       </div>
                       <p className="text-xs text-muted-foreground">{t(model.descKey as any)}</p>
                     </div>
@@ -820,7 +820,7 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
           <Button
             onClick={handleSubmit}
             disabled={saving}
-            className="rounded-xl px-8 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg"
+            className="rounded-xl px-8"
           >
             <Save className="h-4 w-4 mr-2" />
             {saving ? t("saving") : isEdit ? t("saveAgent") : t("createAgent")}

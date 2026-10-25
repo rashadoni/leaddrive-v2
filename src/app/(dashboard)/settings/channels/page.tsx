@@ -2205,8 +2205,7 @@ function ChannelsPageInner() {
 
           <div className="grid min-h-[620px] gap-6 px-6 py-6 lg:grid-cols-[360px_minmax(0,1fr)]">
             <aside className="space-y-5">
-              <div className={cn("relative overflow-hidden rounded-3xl border bg-white p-5 shadow-sm", connectCard.accent)}>
-                <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br opacity-80", connectCard.accent)} />
+              <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-sm">
                 <div className="relative flex items-center gap-3">
                   <div className="grid h-12 w-12 place-items-center rounded-2xl border border-orange-200 bg-orange-50 text-xl font-black text-orange-600">
                     {ConnectIcon && <ConnectIcon className="h-6 w-6" />}

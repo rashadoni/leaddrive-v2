@@ -620,9 +620,9 @@ export default function JourneysPage() {
                   </div>
 
                   {/* AI launcher — opens the existing Da Vinci assistant with journey context (Creatio campaign-agent rail) */}
-                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-gradient-to-br from-violet-500/10 to-purple-500/5 p-3.5">
+                  <div className="crm-panel p-3.5">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-violet-500" /> {t("aiLauncherTitle")}
+                      <Sparkles className="h-3.5 w-3.5 text-muted-foreground" /> {t("aiLauncherTitle")}
                     </p>
                     <p className="text-xs text-muted-foreground mb-2.5">{t("aiLauncherDesc")}</p>
                     <Button

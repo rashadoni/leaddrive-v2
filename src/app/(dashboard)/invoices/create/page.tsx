@@ -424,26 +424,26 @@ export default function CreateInvoicePage() {
   return (
     <div className="-mx-6 -mt-6 min-h-screen bg-muted/30">
 
-      {/* GRADIENT HEADER */}
-      <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-4 shadow-md">
+      {/* Workspace header */}
+      <div className="border-b border-border bg-card px-6 py-4">
         <div className="flex items-center justify-between max-w-full">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => router.push("/invoices")}
-              className="text-white/80 hover:text-white hover:bg-white/10"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t("backToInvoices") || "Back to Invoices"}
             </Button>
-            <HelpButton slug="invoice-create" variant="label" className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white" />
+            <HelpButton slug="invoice-create" variant="label" className="border-border bg-card text-foreground hover:bg-muted" />
             <div>
-              <p className="text-white/70 text-xs uppercase tracking-widest font-medium mb-0.5">
+              <p className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-0.5">
                 {t("createInvoice") || "Create Invoice"}
               </p>
               <input
-                className="bg-transparent border-0 border-b border-white/30 focus:border-white outline-none text-white text-xl font-bold placeholder:text-white/40 w-80 pb-0.5"
+                className="bg-transparent border-0 border-b border-border focus:border-ring outline-none text-foreground text-xl font-bold placeholder:text-muted-foreground w-80 pb-0.5"
                 placeholder={t("invoiceTitlePlaceholder") || "e.g. Web Development Services – March 2026"}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -451,7 +451,7 @@ export default function CreateInvoicePage() {
             </div>
           </div>
           {invoiceNumber && (
-            <Badge className="bg-white/20 text-white border-white/30 text-sm px-3 py-1 font-mono">
+            <Badge className="bg-muted text-muted-foreground border-border text-sm px-3 py-1 font-mono">
               {invoiceNumber}
             </Badge>
           )}
@@ -462,7 +462,7 @@ export default function CreateInvoicePage() {
       <div className="px-6 pt-5 pb-10 space-y-4 max-w-5xl mx-auto">
 
           {/* CLIENT CARD */}
-          <Card className="border-l-4 border-l-cyan-500">
+          <Card className="border-border">
             <CardHeader className="pb-3 pt-4 px-4">
               <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 {t("client") || "Client"}
@@ -556,7 +556,7 @@ export default function CreateInvoicePage() {
           </Card>
 
           {/* ITEMS CARD */}
-          <Card className="border-l-4 border-l-blue-500">
+          <Card className="border-border">
             <CardHeader className="pb-2 pt-3 px-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -592,13 +592,13 @@ export default function CreateInvoicePage() {
               <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-[#0891b2] text-white text-xs font-semibold uppercase tracking-wider">
+                    <tr className="bg-muted text-muted-foreground text-xs font-semibold uppercase tracking-wider">
                       <th className="px-3 py-2 text-left min-w-[220px]">{t("colServiceName") || "Məhsul, xidmət və ya işin təsnifatı"}</th>
                       {customColumns.map((col) => (
                         <th key={col.key} className="px-2 py-2 text-left min-w-[110px]">
                           <div className="flex items-center gap-1">
                             <input
-                              className="bg-transparent border-b border-white/30 focus:border-white outline-none text-white text-xs font-semibold uppercase w-full min-w-[55px]"
+                              className="bg-transparent border-b border-border focus:border-ring outline-none text-foreground text-xs font-semibold uppercase w-full min-w-[55px]"
                               value={col.label}
                               onChange={(e) => setCustomColumns((prev) => prev.map((c) => c.key === col.key ? { ...c, label: e.target.value } : c))}
                             />
@@ -651,7 +651,7 @@ export default function CreateInvoicePage() {
           </Card>
 
           {/* DETAILS CARD */}
-          <Card className="border-l-4 border-l-violet-500">
+          <Card className="border-border">
             <CardHeader className="pb-2 pt-3 px-4">
               <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 {t("details") || "Details"}
@@ -759,7 +759,7 @@ export default function CreateInvoicePage() {
           </Card>
 
           {/* NOTES CARD (collapsible) */}
-          <Card className="border-l-4 border-l-amber-400">
+          <Card className="border-border">
             <button
               type="button"
               onClick={() => setShowNotes((v) => !v)}
@@ -795,7 +795,7 @@ export default function CreateInvoicePage() {
           </Card>
 
           {/* SUMMARY + ACTIONS (bottom) */}
-          <Card className="border-t-4 border-t-cyan-500">
+          <Card className="border-border">
             <CardContent className="px-5 py-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("summary") || "Summary"}</h3>

@@ -372,7 +372,7 @@ export default function EmailTemplatesPage() {
                       setShowForm(true)
                     }}
                   >
-                    <div className="h-20 rounded bg-gradient-to-br from-primary/5 to-primary/10 flex items-center justify-center mb-3 group-hover:from-primary/10 group-hover:to-primary/20 transition-colors">
+                    <div className="h-20 rounded bg-muted/40 flex items-center justify-center mb-3 group-hover:bg-muted transition-colors">
                       <LayoutTemplate className="h-8 w-8 text-primary/40 group-hover:text-primary/60" />
                     </div>
                     <h3 className="font-medium text-sm">{tmpl.name}</h3>

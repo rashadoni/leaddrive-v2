@@ -4350,7 +4350,7 @@ function ChannelConnectInner() {
                 </div>
 
                 <div className="grid gap-4">
-                  <section className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white to-orange-50/60 p-5">
+                  <section className="rounded-3xl border border-border bg-card p-5">
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{c.tutorialProviderSide}</p>
                     <div className="mt-5 rounded-2xl border border-orange-200 bg-white p-4 shadow-sm">
                       <div className="flex items-center gap-3">

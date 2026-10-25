@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { Lightbulb, X, ArrowRight, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useCrmAppearance } from "@/components/ui/crm-appearance"
 import { motion, AnimatePresence } from "framer-motion"
 
 const STORAGE_KEY = "leaddrive_dismissed_tips"
@@ -191,7 +192,7 @@ function saveDismissed(dismissed: Set<string>) {
 export function DidYouKnow({
   page,
   className = "",
-  variant = "default",
+  variant: requestedVariant,
   density = "default",
 }: {
   page: string
@@ -202,6 +203,8 @@ export function DidYouKnow({
   const t = useTranslations("tips")
   const tc = useTranslations("common")
   const router = useRouter()
+  const crmAppearance = useCrmAppearance()
+  const variant = requestedVariant ?? (crmAppearance && page !== "dashboard" ? "disclosure" : "default")
   const [dismissed, setDismissed] = useState<Set<string>>(() => getDismissed())
   const [currentIdx, setCurrentIdx] = useState(0)
   const [direction, setDirection] = useState(0)

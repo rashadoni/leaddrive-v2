@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./crm-workspace.css";
 
 /* dark: utilities fire under html.dark EXCEPT inside a .force-light subtree —
    used by the light-locked board page so embedded shared components (tasks

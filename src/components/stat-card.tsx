@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { useCrmAppearance } from "@/components/ui/crm-appearance"
 import { useCountUp } from "@/hooks/use-count-up"
 
 interface StatCardProps {
@@ -58,30 +59,30 @@ function AnimatedValue({ value }: { value: string | number }) {
 }
 
 export function StatCard({ title, value, description, icon, trend, className, accentColor }: StatCardProps) {
+  const workspace = useCrmAppearance()
+  const statusAccent = accentColor === "green" || accentColor === "red" || accentColor === "amber"
   const glowColor = accentColor ? ACCENT_HEX[accentColor] : "#EA580C"
   const iconBg = accentColor ? ACCENT_ICON_BG[accentColor] : "bg-primary/10 text-primary"
 
   return (
-    <div className={cn(
+    <div data-crm-stat="" className={cn(
       "relative overflow-hidden rounded-xl",
-      "bg-white/60 dark:bg-white/[0.08]",
-      "backdrop-blur-[12px]",
-      "border border-white/30 dark:border-white/[0.12]",
-      "shadow-lg shadow-black/[0.03]",
-      "hover:shadow-xl hover:shadow-black/[0.06]",
+      workspace
+        ? "border border-border bg-card text-card-foreground shadow-sm"
+        : "bg-white/60 dark:bg-white/[0.08] backdrop-blur-[12px] border border-white/30 dark:border-white/[0.12] shadow-lg shadow-black/[0.03] hover:shadow-xl hover:shadow-black/[0.06]",
       "transition-all duration-300",
       className,
     )}>
       {/* Glow effect underneath */}
-      <div
+      {!workspace && <div
         className="absolute -bottom-3 left-6 right-6 h-6 rounded-full blur-xl opacity-30"
         style={{ backgroundColor: glowColor }}
-      />
+      />}
 
       <div className="relative flex flex-row items-center justify-between pb-1 pt-4 px-5">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
         {icon && (
-          <div className={cn("rounded-full p-2", iconBg)}>
+          <div className={cn("rounded-full p-2", workspace && !statusAccent ? "bg-muted text-muted-foreground" : iconBg)}>
             {icon}
           </div>
         )}

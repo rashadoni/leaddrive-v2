@@ -404,7 +404,7 @@ export function DealSidebar({ deal, orgId, offersCount, invoicesCount, onEdit, f
       {deal.contact && (
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-700">
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-base font-bold text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+            <div className="h-11 w-11 rounded-full bg-muted flex items-center justify-center text-base font-bold text-foreground flex-shrink-0">
               {deal.contact.fullName.split(" ").map(n => n[0]).join("").slice(0, 2)}
             </div>
             <div className="flex-1 min-w-0">

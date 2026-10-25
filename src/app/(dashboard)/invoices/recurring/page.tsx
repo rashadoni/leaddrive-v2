@@ -327,8 +327,8 @@ export default function RecurringInvoicesPage() {
   if (loading) {
     return (
       <div className="-mx-6 -mt-6 min-h-screen bg-muted/30">
-        <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-6">
-          <div className="animate-pulse h-12 bg-white/20 rounded-lg w-64" />
+        <div className="border-b border-border bg-card px-6 py-6">
+          <div className="animate-pulse h-12 bg-muted rounded-lg w-64" />
         </div>
         <div className="px-6 pt-6">
           <div className="animate-pulse h-96 bg-muted rounded-lg" />
@@ -339,23 +339,23 @@ export default function RecurringInvoicesPage() {
 
   return (
     <div className="-mx-6 -mt-6 min-h-screen bg-muted/30 pb-20">
-      {/* Gradient Header */}
-      <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-5 shadow-md">
+      {/* Workspace header */}
+      <div className="border-b border-border bg-card px-6 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/invoices")} className="text-white/80 hover:text-white hover:bg-white/10">
+            <Button variant="ghost" size="sm" onClick={() => router.push("/invoices")} className="text-muted-foreground hover:text-foreground hover:bg-muted">
               <ArrowLeft className="h-4 w-4 mr-1" /> {t("backToList")}
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">{t("recurringInvoices")} <HelpButton slug="invoices-recurring" variant="label" className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white" /></h1>
-              <p className="text-white/70 text-xs mt-0.5">{rules.length} {t("recurring").toLowerCase()}</p>
+              <h1 className="text-xl font-bold text-foreground flex items-center gap-2">{t("recurringInvoices")} <HelpButton slug="invoices-recurring" variant="label" className="border-border bg-card text-foreground hover:bg-muted" /></h1>
+              <p className="text-muted-foreground text-xs mt-0.5">{rules.length} {t("recurring").toLowerCase()}</p>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={handleGenerateNow} disabled={generating}>
+            <Button variant="outline" size="sm" className="bg-card border-border text-foreground hover:bg-muted" onClick={handleGenerateNow} disabled={generating}>
               <RefreshCw className={`h-4 w-4 mr-1 ${generating ? "animate-spin" : ""}`} /> Hazırla və göndər
             </Button>
-            <Button size="sm" className="bg-white text-cyan-700 hover:bg-white/90" onClick={() => setDialogOpen(true)}>
+            <Button size="sm" onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-1" /> Yeni
             </Button>
           </div>
@@ -367,8 +367,8 @@ export default function RecurringInvoicesPage() {
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-cyan-100 dark:bg-cyan-900 flex items-center justify-center">
-              <RefreshCw className="h-5 w-5 text-cyan-600" />
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+              <RefreshCw className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
               <p className="text-2xl font-bold">{rules.length}</p>
@@ -397,8 +397,8 @@ export default function RecurringInvoicesPage() {
 
         {/* Bulk actions bar */}
         {selectedIds.size > 0 && (
-          <div className="rounded-xl border-2 border-cyan-400 bg-cyan-50 dark:bg-cyan-950 p-3 flex items-center justify-between">
-            <span className="text-sm font-semibold text-cyan-800 dark:text-cyan-200">{t("selectedCount", { count: selectedIds.size })}</span>
+          <div className="rounded-xl border border-border bg-card p-3 flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">{t("selectedCount", { count: selectedIds.size })}</span>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" className="h-8 text-green-700 border-green-300 hover:bg-green-50" onClick={() => handleBulkToggle(true)}>
                 <Play className="h-3.5 w-3.5 mr-1" /> {t("activateBtn")}
@@ -406,7 +406,7 @@ export default function RecurringInvoicesPage() {
               <Button size="sm" variant="outline" className="h-8 text-orange-700 border-orange-300 hover:bg-orange-50" onClick={() => handleBulkToggle(false)}>
                 <Pause className="h-3.5 w-3.5 mr-1" /> {t("pauseBtn")}
               </Button>
-              <Button size="sm" className="h-8 bg-cyan-600 hover:bg-cyan-700" onClick={handleGenerateNow} disabled={generating}>
+              <Button size="sm" className="h-8" onClick={handleGenerateNow} disabled={generating}>
                 <RefreshCw className={`h-3.5 w-3.5 mr-1 ${generating ? "animate-spin" : ""}`} /> {t("generateBtn")}
               </Button>
             </div>
@@ -435,7 +435,7 @@ export default function RecurringInvoicesPage() {
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
             <input
-              className="w-full h-9 pl-9 pr-3 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 outline-none"
+              className="w-full h-9 pl-9 pr-3 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card focus:ring-2 focus:ring-ring focus:border-ring outline-none"
               placeholder="Axtar... (şirkət, ad, email)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -447,7 +447,7 @@ export default function RecurringInvoicesPage() {
               type="checkbox"
               checked={selectedIds.size === filteredRules.length && filteredRules.length > 0}
               onChange={toggleSelectAll}
-              className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700 accent-cyan-600"
+              className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700 accent-primary"
             />
             <span className="text-xs text-muted-foreground">Hamısı ({filteredRules.length})</span>
           </label>
@@ -470,10 +470,10 @@ export default function RecurringInvoicesPage() {
             <tbody>
               {filteredRules.map((rule, i) => (
                 <tr key={rule.id}
-                  className={`border-b transition-colors hover:bg-cyan-50/50 dark:hover:bg-cyan-900/10 ${i % 2 === 1 ? "bg-muted/20" : ""} ${selectedIds.has(rule.id) ? "bg-cyan-50 dark:bg-cyan-950" : ""}`}
+                  className={`border-b transition-colors hover:bg-muted/50 ${i % 2 === 1 ? "bg-muted/20" : ""} ${selectedIds.has(rule.id) ? "bg-muted" : ""}`}
                 >
                   <td className="px-3 py-2.5">
-                    <input type="checkbox" checked={selectedIds.has(rule.id)} onChange={() => toggleSelect(rule.id)} className="h-4 w-4 rounded accent-cyan-600" />
+                    <input type="checkbox" checked={selectedIds.has(rule.id)} onChange={() => toggleSelect(rule.id)} className="h-4 w-4 rounded accent-primary" />
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="font-medium text-sm">{rule.company?.name || rule.title}</div>

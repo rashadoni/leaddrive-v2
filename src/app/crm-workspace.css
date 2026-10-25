@@ -1,0 +1,80 @@
+/* Shared operational workspace. Scope is deliberately absent from /dashboard,
+   the navigation shell, public sites and document/email previews. Status/data
+   colours are never reset by a wildcard or a match on a Tailwind colour name. */
+[data-crm-workspace] {
+  --crm-panel-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+[data-crm-workspace] :is([data-crm-card], [data-crm-stat], .crm-panel, .ai-card, .glass-panel) {
+  box-shadow: var(--crm-panel-shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-crm-workspace] :is(.crm-panel, .ai-card, .glass-panel) {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+[data-crm-workspace] :is(.ai-glow, .ai-card):hover {
+  box-shadow: var(--crm-panel-shadow);
+}
+
+[data-crm-workspace] .ai-gradient-border::before {
+  display: none;
+}
+
+[data-crm-workspace] .ai-accent {
+  border-color: hsl(var(--border));
+  box-shadow: none;
+}
+
+[data-crm-workspace] [data-crm-button="brand"] {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+[data-crm-workspace] [data-crm-badge="ai"] {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  border-color: hsl(var(--border));
+}
+
+/* A tab is navigation, not a second primary action. The same orange underline
+   is used by MTM's ordinary buttons and the shared Radix Tabs component. */
+[data-crm-workspace] [data-crm-tabs] {
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
+  box-shadow: none;
+}
+
+[data-crm-workspace] [data-crm-tab] {
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  --tw-shadow: 0 0 #0000;
+}
+
+[data-crm-workspace] [data-crm-tab][data-state="active"] {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  border-bottom-color: hsl(var(--primary));
+}
+
+/* Dialogs sit above the page. A recessed canvas stays gray inside them. */
+[data-crm-workspace] [data-crm-dialog],
+[data-crm-workspace][role="dialog"] {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+[data-crm-workspace] [data-crm-stat-icon] {
+  color: hsl(var(--muted-foreground));
+}
+
+[data-crm-workspace] [data-crm-stat-value] {
+  color: hsl(var(--foreground));
+}

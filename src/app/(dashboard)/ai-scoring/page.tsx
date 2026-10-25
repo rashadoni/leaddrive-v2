@@ -151,8 +151,8 @@ export default function AILeadScoringPage() {
       {/* Header */}
       <div className="flex items-center justify-between rounded-xl p-4 ai-card">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-[hsl(var(--ai-from))]/10 to-[hsl(var(--ai-to))]/10 rounded-lg ai-glow">
-            <Brain className="h-6 w-6 text-[hsl(var(--ai-from))]" />
+          <div className="p-2.5 bg-muted rounded-lg">
+            <Brain className="h-6 w-6 text-muted-foreground" />
           </div>
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">{t("title")}<HelpButton slug="ai-scoring" variant="label" /></h1>
@@ -166,7 +166,7 @@ export default function AILeadScoringPage() {
             </p>
           </div>
         </div>
-        <Button onClick={scoreAll} disabled={scoring} className="gap-2 ai-glow">
+        <Button onClick={scoreAll} disabled={scoring} className="gap-2">
           {scoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
           {scoring ? tc("loading") : t("newAgent")}
         </Button>

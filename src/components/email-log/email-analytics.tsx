@@ -110,22 +110,21 @@ export function EmailAnalytics({ logs, stats }: EmailAnalyticsProps) {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: t("total"), value: stats.total, icon: Mail, color: "from-primary to-primary/80", sub: `${stats.outbound} ${t("analyticsOut")} / ${stats.inbound} ${t("analyticsIn")}` },
-          { label: t("outbound"), value: stats.outbound, icon: Send, color: "from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))]", sub: `${computed.deliveryRate}% ${t("analyticsDelivered")}` },
-          { label: t("inbound"), value: stats.inbound, icon: Inbox, color: "from-primary/80 to-primary", sub: t("analyticsReceived") },
-          { label: t("sent"), value: stats.sent, icon: CheckCircle, color: "from-emerald-500 to-green-600", sub: `${computed.deliveryRate}% ${t("analyticsRate")}` },
-          { label: t("failed"), value: stats.failed, icon: AlertTriangle, color: "from-red-500 to-rose-600", sub: `${computed.failRate}% ${t("analyticsFailRate")}` },
-          { label: t("bounced"), value: stats.bounced, icon: RotateCcw, color: "from-orange-500 to-amber-600", sub: t("analyticsBouncedBack") },
+          { label: t("total"), value: stats.total, icon: Mail, color: "text-muted-foreground", sub: `${stats.outbound} ${t("analyticsOut")} / ${stats.inbound} ${t("analyticsIn")}` },
+          { label: t("outbound"), value: stats.outbound, icon: Send, color: "text-muted-foreground", sub: `${computed.deliveryRate}% ${t("analyticsDelivered")}` },
+          { label: t("inbound"), value: stats.inbound, icon: Inbox, color: "text-muted-foreground", sub: t("analyticsReceived") },
+          { label: t("sent"), value: stats.sent, icon: CheckCircle, color: "text-emerald-600 dark:text-emerald-400", sub: `${computed.deliveryRate}% ${t("analyticsRate")}` },
+          { label: t("failed"), value: stats.failed, icon: AlertTriangle, color: "text-red-600 dark:text-red-400", sub: `${computed.failRate}% ${t("analyticsFailRate")}` },
+          { label: t("bounced"), value: stats.bounced, icon: RotateCcw, color: "text-amber-600 dark:text-amber-400", sub: t("analyticsBouncedBack") },
         ].map((kpi, i) => (
-          <div key={i} className="relative overflow-hidden rounded-xl text-white p-4">
-            <div className={cn("absolute inset-0 bg-gradient-to-br", kpi.color)} />
+          <div key={i} data-crm-card="" className="relative overflow-hidden rounded-xl border border-border bg-card text-card-foreground p-4">
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-white/80 truncate">{kpi.label}</span>
-                <kpi.icon className="h-4 w-4 text-white/60" />
+                <span className="text-xs font-medium text-muted-foreground truncate">{kpi.label}</span>
+                <kpi.icon className={cn("h-4 w-4", kpi.color)} />
               </div>
               <p className="text-2xl font-bold tabular-nums tracking-tight">{kpi.value}</p>
-              <p className="text-[11px] text-white/70 mt-0.5">{kpi.sub}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{kpi.sub}</p>
             </div>
           </div>
         ))}

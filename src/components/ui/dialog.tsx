@@ -230,6 +230,7 @@ export function Dialog({ open, onOpenChange, children, widthClassName = "max-w-[
         <div
           ref={dialogRef}
           role="dialog"
+          data-crm-dialog=""
           aria-modal="true"
           aria-labelledby={hasTitle ? titleId : undefined}
           aria-describedby={hasDescription ? descriptionId : undefined}

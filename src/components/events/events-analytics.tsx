@@ -258,12 +258,12 @@ function InviteModal({ event, onClose }: { event: Event; onClose: () => void }) 
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-violet-600 to-purple-600">
-          <div className="flex items-center gap-2 text-white">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
+          <div className="flex items-center gap-2 text-foreground">
             <Mail className="w-5 h-5" />
             <h2 className="text-base font-semibold">{t("sendInvitation")}</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/20 text-white transition-colors">
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -504,8 +504,8 @@ export function EventsAnalytics({ events }: EventsAnalyticsProps) {
             {MOCK_ATTENDEES.map((att) => (
               <div key={att.id} className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-muted/50 transition-colors">
                 {/* Avatar */}
-                <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/20 to-blue-500/20 flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-violet-300">{att.initials}</span>
+                <div className="shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-muted-foreground">{att.initials}</span>
                 </div>
                 {/* Name + company */}
                 <div className="flex-1 min-w-0">
