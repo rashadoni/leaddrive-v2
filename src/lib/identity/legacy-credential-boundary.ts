@@ -36,8 +36,8 @@ export async function readLegacyCredentialBoundary(client: RegistryClient, organ
         linkedUserId = id
         userIds.add(id)
       } else {
-        const actor = await tx.mtmAgent.findFirst({ where: { id, organizationId, status: "ACTIVE" }, select: { userId: true } })
-        if (!actor) return "UNAVAILABLE" as const
+        const actor = await tx.mtmAgent.findFirst({ where: { id, organizationId }, select: { userId: true, status: true } })
+        if (!actor || actor.status !== "ACTIVE") return "UNAVAILABLE" as const
         linkedUserId = actor.userId
         if (linkedUserId) userIds.add(linkedUserId)
         const binding = await tx.identityActorBinding.findUnique({ where: { organizationId_actorId: { organizationId, actorId: id } }, select: { userId: true } })

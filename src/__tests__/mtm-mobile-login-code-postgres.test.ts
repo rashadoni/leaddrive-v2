@@ -336,6 +336,35 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect((await verify("+994501110005", codeOf(sent[0]))).status).toBe(200)
   })
 
+  it("refuses a real previously valid legacy JWT after authority changes while both old credential fingerprints stay unchanged", async () => {
+    const company = "identity-legacy-mobile-boundary"
+    const password = "Fictional-Boundary-Pass-2026!", phone = "+994501119991"
+    const { userId, cardId } = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, name: "Fictional boundary company", slug: company, modules: { "route-field": true, personnel: false } } })
+      const hash = await bcrypt.hash(password, 4)
+      const user = await prisma.user.create({ data: { organizationId: company, name: "Fictional boundary person", email: "boundary@example.invalid", passwordHash: hash, role: "viewer" } })
+      const card = await prisma.mtmAgent.create({ data: { organizationId: company, userId: user.id, name: "Fictional boundary field card", phone, role: "AGENT", passwordHash: hash } })
+      return { userId: user.id, cardId: card.id }
+    })
+    const response = await post(signIn, "", { phone, password, organizationSlug: company })
+    expect(response.status).toBe(200)
+    const token = (await response.json()).data.token as string
+    const request = () => new NextRequest("http://localhost:3000/api/v1/mtm/mobile/profile", { headers: { authorization: `Bearer ${token}` } })
+    expect((await resolveMobileAuth(request()))?.agentId).toBe(cardId)
+    const credentials = () => bypass(() => Promise.all([
+      prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { passwordHash: true, passwordChangedAt: true, isActive: true } }),
+      prisma.mtmAgent.findUniqueOrThrow({ where: { id: cardId }, select: { passwordHash: true, userId: true, status: true } }),
+    ]))
+    const before = await credentials()
+    // Synthetic authority assumption only, not proof/enrollment or activation
+    // tooling: even an incomplete canonical record must not restore old auth.
+    await bypass(() => prisma.identityAccount.create({ data: { organizationId: company, userId,
+      cutoverAt: new Date(), passwordHash: "!fixture-canonical-boundary" } }))
+    expect(await resolveMobileAuth(request())).toBeNull()
+    expect(await credentials()).toEqual(before)
+    expect(sent).toHaveLength(0)
+  })
+
   it("says aloud that codes cannot be sent while the template is missing — to everybody, and withdraws the code", async () => {
     await bypass(() => prisma.otpCode.updateMany({ where: { organizationId: ORG, phone: "+994501110001" }, data: { createdAt: new Date(Date.now() - 120_000) } }))
     metaAnswers = () => new Response(JSON.stringify({ error: { code: 132001, message: "Template name does not exist in the translation" } }), { status: 404 })
