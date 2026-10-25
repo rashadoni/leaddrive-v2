@@ -103,7 +103,7 @@ jobs:
           GRANT CONNECT ON DATABASE identity_crm_browser_test TO identity_crm_browser;
           GRANT USAGE ON SCHEMA public TO identity_crm_browser;
           GRANT SELECT ON ALL TABLES IN SCHEMA public TO identity_crm_browser;
-          GRANT UPDATE ("lastLogin", "loginCount") ON users TO identity_crm_browser;
+          GRANT UPDATE ("lastLogin", "loginCount", "updatedAt") ON users TO identity_crm_browser;
           SQL
           npx prisma validate
           npx prisma generate

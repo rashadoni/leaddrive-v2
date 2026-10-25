@@ -39,6 +39,7 @@ const flagKey = { organizationId_key: { organizationId: company, key: "identityA
 const result = { status: "RUNNING", headSha: head, productionMutation: false, actualCookie: false,
   providerMessages: false, phase: "ADMISSION", checks: [], physicalAndroid: "NOT RUN" }
 let browser
+let outputOwned = false
 const contexts = []
 const phase = name => { result.phase = name }
 const check = name => result.checks.push(name)
@@ -63,6 +64,7 @@ try {
   } else {
     assert.equal(process.argv[2], "verify")
     await mkdir(output, { mode: 0o700 }) // Refuse stale output, never clear another run.
+    outputOwned = true
     browser = await chromium.launch({ headless: true })
     async function context() {
       const current = await browser.newContext({ baseURL: origin.href, viewport: { width: 1440, height: 900 } })
@@ -113,6 +115,8 @@ try {
     assert.deepEqual((await session(ordinary.current)).user.role, "viewer")
     assert.ok((await ordinary.current.cookies()).some(c => /(?:authjs|next-auth)\.session-token/.test(c.name)))
     result.actualCookie = true
+    const personState = await admin.user.findUniqueOrThrow({ where: { id: userId("ordinary") }, select: { loginCount: true, role: true } })
+    assert.ok(personState.loginCount > 0); assert.equal(personState.role, "admin")
     const roster = await ordinary.current.request.get("/api/v1/users", { timeout: 120000 })
     assert.equal(roster.status(), 200)
     const rosterBody = await roster.json()
@@ -171,8 +175,7 @@ try {
   for (const current of contexts) await current.close().catch(() => {})
   await browser?.close().catch(() => {})
   await admin.$disconnect()
-  if (process.argv[2] === "verify") {
-    await mkdir(output, { recursive: true, mode: 0o700 })
+  if (process.argv[2] === "verify" && outputOwned) {
     await writeFile(resolve(output, "result.json"), JSON.stringify(result, null, 2) + "\n", { mode: 0o600 })
   }
 }
