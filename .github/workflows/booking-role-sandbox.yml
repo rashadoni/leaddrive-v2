@@ -1,0 +1,152 @@
+name: Booking isolated role browser stand
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/booking-role-sandbox.yml'
+      - 'scripts/booking/role-browser-*.mjs'
+      - 'scripts/ci/fixtures/booking-role-sandbox.sql'
+      - 'src/lib/booking/**'
+      - 'src/components/booking/**'
+      - 'src/components/tasks/task-meeting-notice.tsx'
+      - 'src/components/tasks/task-detail-view.tsx'
+      - 'src/app/api/v1/bookings/**'
+      - 'src/app/api/v1/tasks/**'
+      - 'prisma/schema.prisma'
+      - 'prisma/migrations/*booking*/migration.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: booking-role-sandbox-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  booking-role-browser:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      CI: 'true'
+      NODE_ENV: test
+      BOOKING_ROLE_SANDBOX: '1'
+      BOOKING_ROLE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      NEXT_TELEMETRY_DISABLED: '1'
+      LEADDRIVE_DISABLE_SERVICE_WORKER: '1'
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: booking_role_sandbox
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d booking_role_sandbox"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Generate ephemeral loopback configuration
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PG_PORT"
+          APP_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')"
+          BOOKING_DB_PASSWORD="$(openssl rand -hex 24)"
+          BOOKING_AUTH_SECRET="$(openssl rand -hex 32)"
+          BOOKING_PII_SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$BOOKING_DB_PASSWORD"
+          echo "::add-mask::$BOOKING_AUTH_SECRET"
+          echo "::add-mask::$BOOKING_PII_SECRET"
+          {
+            echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/booking_role_sandbox"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/booking_role_sandbox"
+            echo "DATABASE_URL=postgresql://booking_role_sandbox:${BOOKING_DB_PASSWORD}@127.0.0.1:${PG_PORT}/booking_role_sandbox"
+            echo "BOOKING_DB_PASSWORD=$BOOKING_DB_PASSWORD"
+            echo "APP_PORT=$APP_PORT"
+            echo "BOOKING_ROLE_BASE_URL=http://localhost:${APP_PORT}"
+            echo "NEXTAUTH_URL=http://localhost:${APP_PORT}"
+            echo "AUTH_URL=http://localhost:${APP_PORT}"
+            echo "APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${APP_PORT}"
+            echo "AUTH_SECRET=$BOOKING_AUTH_SECRET"
+            echo "NEXTAUTH_SECRET=$BOOKING_AUTH_SECRET"
+            echo "TENANT_PII_MASTER_KEY=$BOOKING_PII_SECRET"
+          } >> "$GITHUB_ENV"
+          mkdir -p artifacts/booking-role-sandbox
+          printf '{"status":"PREPARING","checkedSha":"%s","productionMutation":false}\n' "$GITHUB_SHA" > artifacts/booking-role-sandbox/workflow-context.json
+      - name: Validate isolation before any database mutation
+        run: |
+          node --test scripts/booking/role-browser-contract.test.mjs
+          node --input-type=module -e 'import {sandboxContract} from "./scripts/booking/role-browser-contract.mjs"; sandboxContract(process.env)'
+      - name: Prepare bounded hosted build memory
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
+        env:
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: '16777216'
+      - run: npm ci
+      - name: Create disposable schema and actual Booking constraints
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'DROP TABLE IF EXISTS booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE'
+          for migration in 20261101090000_online_booking 20261102090000_booking_workspace 20261102100000_booking_commands; do
+            psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f "prisma/migrations/$migration/migration.sql"
+          done
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=app_password="$BOOKING_DB_PASSWORD" -f scripts/ci/fixtures/booking-role-sandbox.sql
+          npx prisma generate
+      - name: Compile complete isolated production bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'export const DEPLOY_SHA = "%s"\nexport const BUILT_AT = "%s"\n' "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/generated/build-sha.ts
+          node scripts/ci/patch-next-build-worker-trace.mjs
+          ulimit -c 0
+          /usr/bin/time -v npx next build --webpack
+        env:
+          NODE_ENV: production
+          NODE_OPTIONS: --max-old-space-size=12288
+          LEADDRIVE_COLD_PRODUCTION_BUILD: '1'
+          NEXT_BUILD_CPUS: '1'
+          NEXT_WEBPACK_PARALLELISM: '1'
+      - name: Install native Chromium on ephemeral runner
+        run: npx playwright install --with-deps chromium
+      - name: Execute authenticated populated role browser acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          NODE_ENV=production node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port "$APP_PORT" > "$RUNNER_TEMP/booking-sandbox-app.log" 2>&1 &
+          BOOKING_APP_PID=$!
+          cleanup() { kill "$BOOKING_APP_PID" 2>/dev/null || true; wait "$BOOKING_APP_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 60); do
+            if curl -fsS --max-time 3 "$BOOKING_ROLE_BASE_URL/api/v1/ping" >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS --max-time 5 "$BOOKING_ROLE_BASE_URL/api/v1/ping" >/dev/null
+          node scripts/booking/role-browser-evidence.mjs
+      - name: Retain sanitized evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: booking-role-sandbox-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/booking-role-sandbox
+          if-no-files-found: error
+          retention-days: 14
+      - name: Release hosted build swap
+        if: always()
+        run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
