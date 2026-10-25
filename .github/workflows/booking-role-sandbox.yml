@@ -7,12 +7,39 @@ on:
       - '.github/workflows/booking-role-sandbox.yml'
       - 'scripts/booking/role-browser-*.mjs'
       - 'scripts/ci/fixtures/booking-role-sandbox.sql'
+      - 'scripts/ci/pr-draft-state.sh'
+      - 'scripts/ci/prepare-hosted-build-runner.sh'
+      - 'scripts/ci/patch-next-build-worker-trace.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'next.config.ts'
+      - 'src/proxy.ts'
       - 'src/lib/booking/**'
+      - 'src/lib/crypto/**'
+      - 'src/lib/auth.ts'
+      - 'src/lib/api-auth.ts'
+      - 'src/lib/with-rls.ts'
+      - 'src/lib/rls-context.ts'
+      - 'src/lib/prisma.ts'
+      - 'src/lib/permissions.ts'
+      - 'src/lib/nav-items.ts'
+      - 'src/lib/timezone.ts'
+      - 'src/lib/format-date.ts'
+      - 'src/components/sidebar.tsx'
+      - 'src/components/task-form.tsx'
+      - 'src/components/tour/**'
       - 'src/components/booking/**'
       - 'src/components/tasks/task-meeting-notice.tsx'
       - 'src/components/tasks/task-detail-view.tsx'
       - 'src/app/api/v1/bookings/**'
+      - 'src/app/api/v1/booking-pages/**'
       - 'src/app/api/v1/tasks/**'
+      - 'src/app/api/v1/users/me/preferences/**'
+      - 'src/app/api/v1/public/csp-report/**'
+      - 'src/app/api/auth/**'
+      - 'src/app/(dashboard)/meetings/**'
+      - 'src/app/(dashboard)/tasks/**'
+      - 'messages/en.json'
       - 'prisma/schema.prisma'
       - 'prisma/migrations/*booking*/migration.sql'
   workflow_dispatch:
@@ -25,8 +52,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  sandbox-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      draft: ${{ steps.draft.outputs.draft }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - id: draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: bash scripts/ci/pr-draft-state.sh
   booking-role-browser:
-    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    needs: sandbox-scope
+    if: ${{ needs.sandbox-scope.outputs.draft != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     env:
@@ -90,7 +138,7 @@ jobs:
           printf '{"status":"PREPARING","checkedSha":"%s","productionMutation":false}\n' "$GITHUB_SHA" > artifacts/booking-role-sandbox/workflow-context.json
       - name: Validate isolation before any database mutation
         run: |
-          node --test scripts/booking/role-browser-contract.test.mjs
+          node --test scripts/booking/role-browser-contract.test.mjs scripts/booking/role-browser-checks.test.mjs
           node --input-type=module -e 'import {sandboxContract} from "./scripts/booking/role-browser-contract.mjs"; sandboxContract(process.env)'
       - name: Prepare bounded hosted build memory
         run: bash scripts/ci/prepare-hosted-build-runner.sh

@@ -6,6 +6,8 @@ import bcrypt from 'bcryptjs';
 import { chromium } from 'playwright';
 import { makeRlsTestPrisma } from '../_rls.mjs';
 import { sandboxContract } from './role-browser-contract.mjs';
+import { assertOwnMeetingItems, assertConfigurationDenied } from './role-browser-checks.mjs';
+import { loadFixtureCrypto } from './role-browser-crypto.mjs';
 
 const { base, admin: adminURL, app: appURL } = sandboxContract(process.env);
 assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), process.env.GITHUB_SHA);
@@ -27,11 +29,16 @@ const receipt = { version: 1, status: 'RUNNING', startedAt: new Date().toISOStri
     'Login uses real CSRF/credentials callback, not visual login-form testing',
     'Synthetic pre-cutover Booking rows; read-only UI, not public create/provider delivery acceptance',
     'Session switch checked after navigation, not cross-tab in-place broadcast invalidation',
+    'Stored-key provisioning/v2 primitive roundtrip tested; no broad production encrypted-PII route acceptance',
     'No full accessibility, load or disaster-recovery certification; service worker disabled in stand',
     'External public font assets are blocked; screenshots may use fallback fonts',
     'Normal synthetic-user navigation preferences/login metadata may update; Booking/Task business facts must remain unchanged',
   ] };
 const bindings = ['scripts/booking/role-browser-evidence.mjs', 'scripts/booking/role-browser-contract.mjs',
+  'scripts/booking/role-browser-checks.mjs', 'scripts/booking/role-browser-crypto.mjs',
+  'src/lib/crypto/tenant-pii-encryption.ts', 'src/lib/crypto/tenant-data-key-cache.ts',
+  'src/lib/crypto/tenant-data-keys.ts', 'scripts/ci/pr-draft-state.sh',
+  'src/app/api/v1/booking-pages/route.ts', 'src/app/api/v1/bookings/coordinators/route.ts',
   'scripts/ci/fixtures/booking-role-sandbox.sql', '.github/workflows/booking-role-sandbox.yml',
   'src/lib/booking/access.ts', 'src/lib/booking/queries.ts', 'src/lib/booking/task-reference.ts',
   'src/components/booking/booking-workspace.tsx', 'src/components/tasks/task-meeting-notice.tsx',
@@ -80,6 +87,14 @@ async function seed() {
     name: `Booking sandbox ${key}`, slug: `booking-sandbox-${suffix}-${key}`, plan: 'enterprise',
     modules: { crm: true, sales: true, settings: true }, settings: { timezone: 'UTC' },
   } }));
+  const crypto = await loadFixtureCrypto();
+  for (const org of orgs) {
+    const key = crypto.generateTenantDataKey();
+    try {
+      const wrapped = crypto.wrapTenantDataKey(org.id, 1, key);
+      await admin.tenantDataKey.create({ data: { organizationId: org.id, version: 1, ...wrapped } });
+    } finally { key.fill(0); }
+  }
   const people = {};
   for (const [key, role, org] of [['employee', 'sales', orgs[0]], ['coordinator', 'manager', orgs[0]],
     ['assigned', 'sales', orgs[0]], ['excluded', 'manager', orgs[0]], ['foreign', 'sales', orgs[1]]]) {
@@ -115,18 +130,45 @@ async function seed() {
 }
 async function snapshot() {
   const result = [];
-  for (const table of ['organizations', 'bookings', 'booking_pages', 'booking_coordinator_grants', 'tasks', 'domain_events', 'effect_outbox']) {
+  for (const table of ['organizations', 'tenant_data_keys', 'bookings', 'booking_pages', 'booking_coordinator_grants', 'tasks', 'domain_events', 'effect_outbox']) {
     const data = await admin.$queryRawUnsafe(`SELECT row_to_json(t) AS document FROM public."${table}" t ORDER BY id`);
     result.push({ table, count: data.length, sha256: createHash('sha256').update(JSON.stringify(data)).digest('hex') });
   }
   return result;
 }
-async function fixtureFence() {
+async function fixtureFence(fixture) {
   const [role] = await app.$queryRawUnsafe(`SELECT r.rolsuper,r.rolbypassrls,r.rolcreatedb,r.rolcreaterole FROM pg_roles r WHERE r.rolname=current_user`);
   assert.ok(role && Object.values(role).every(value => value === false));
   assert.equal(await app.booking.count(), 0, 'Unscoped app connection must see no tenant bookings');
   assert.equal(await app.user.count(), 0, 'Unscoped app connection must see no tenant users');
+  assert.equal(await app.tenantDataKey.count(), 0, 'Unscoped app connection must see no tenant keys');
+  const [keyPrivileges] = await app.$queryRawUnsafe(`SELECT has_table_privilege(current_user,'public.tenant_data_keys','INSERT') AS can_insert,
+    has_table_privilege(current_user,'public.tenant_data_keys','UPDATE') AS can_update,
+    has_table_privilege(current_user,'public.tenant_data_keys','DELETE') AS can_delete`);
+  assert.ok(Object.values(keyPrivileges).every(value => value === false));
   pass('restricted-database-role-and-forced-tenant-RLS');
+  const crypto = await loadFixtureCrypto();
+  for (const org of fixture.orgs) {
+    const keys = await app.$transaction(async tx => {
+      await tx.$executeRaw`SELECT set_config('app.org_id', ${org.id}, true)`;
+      return tx.tenantDataKey.findMany();
+    });
+    assert.equal(keys.length, 1);
+    assert.equal(keys[0].organizationId, org.id);
+    assert.equal(keys[0].version, 1);
+    const key = crypto.unwrapTenantDataKey(org.id, 1, keys[0].masterKeyId, keys[0].wrappedKey);
+    try {
+      crypto.storeTenantDataKeyRing(org.id, { loadedAt: Date.now(), current: 1,
+        keys: new Map([[1, crypto.tenantDataKeyMaterial(org.id, key)]]) });
+    } finally { key.fill(0); }
+  }
+  const [own, other] = fixture.orgs;
+  const wire = crypto.encryptForTenantBound(own.id, 'sandbox_fixture', 'phone', '+00000000000');
+  assert.match(wire, /^v2:1:/);
+  assert.equal(crypto.decryptForTenantBound(own.id, 'sandbox_fixture', 'phone', wire), '+00000000000');
+  assert.throws(() => crypto.decryptForTenantBound(other.id, 'sandbox_fixture', 'phone', wire));
+  assert.equal(await app.tenantDataKey.count(), 0);
+  pass('preseeded-wrapped-keys-scoped-read-and-v2-roundtrip', { organizations: 2, runtimeKeyWritesAllowed: false });
 }
 async function view(user) {
   const context = await browser.newContext({ baseURL: base.origin, viewport: { width: 1440, height: 1000 }, locale: 'en-US', serviceWorkers: 'block' });
@@ -186,6 +228,11 @@ async function scopeCase(fixture, key, expectedKeys) {
     await v.page.goto(`/meetings?tab=${tab}`);
     await v.page.getByText(copy.workspaceForbidden, { exact: true }).waitFor();
   }
+  for (const path of ['/api/v1/booking-pages', '/api/v1/bookings/coordinators']) {
+    const response = await v.context.request.get(path, { timeout: 60000 });
+    assertConfigurationDenied(response.status(), await response.json());
+  }
+  pass(`${key}-actual-administrative-HTTP-GET-denial-without-protected-data`);
   await v.page.goto('/meetings');
   await v.page.locator('#meeting-period').selectOption('all');
   await rows(v.page).first().waitFor();
@@ -194,7 +241,8 @@ async function scopeCase(fixture, key, expectedKeys) {
 }
 try {
   const fixture = await seed();
-  await fixtureFence();
+  stage = 'fixture-isolation-and-keys';
+  await fixtureFence(fixture);
   const before = await snapshot();
   browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   receipt.browserVersion = browser.version();
@@ -273,6 +321,10 @@ try {
   await coordinator.page.locator('#meeting-host').selectOption(fixture.people.coordinator.id);
   await waitRows(coordinator.page, 1);
   assert.equal(await rows(coordinator.page).count(), 1);
+  assert.equal(await rows(coordinator.page).filter({ hasText: fixture.meetings.coordinator.name }).count(), 1);
+  assert.equal(await rows(coordinator.page).filter({ hasText: fixture.meetings.assigned.name }).count(), 0);
+  const mine = (await api(coordinator.context, `/api/v1/bookings?status=all&host=${encodeURIComponent(fixture.people.coordinator.id)}`)).data.items;
+  assertOwnMeetingItems(mine, fixture.meetings.coordinator.id, fixture.people.coordinator.id);
   assert.equal((await api(coordinator.context, `/api/v1/bookings/${fixture.meetings.assigned.id}`)).data.canManage, false);
   pass('coordinator-my-meetings-filter-and-readonly-team-grant');
   stage = 'session-switch';
@@ -282,12 +334,17 @@ try {
   const switched = (await api(coordinator.context, '/api/v1/bookings?status=all')).data.items;
   assert.deepEqual(switched.map(item => item.id), [fixture.meetings.employee.id]);
   pass('same-browser-session-switch-rechecks-scope-on-navigation');
+  stage = 'business-facts';
   assert.deepEqual(await snapshot(), before, 'Read-only browser run changed business facts');
   receipt.factSnapshot = before;
   assert.equal(receipt.blockedNetwork.length, 0, 'Unexpected external or mutation request attempted');
   pass('business-facts-unchanged-and-no-browser-provider-or-business-mutation-requests', {
     uiPreferenceRequests: receipt.uiPreferenceRequests, cspDiagnosticRequests: receipt.cspDiagnosticRequests,
   });
+  stage = 'runtime-key-loading';
+  const runtimeLog = await readFile(`${process.env.RUNNER_TEMP}/booking-sandbox-app.log`, 'utf8');
+  assert.equal(runtimeLog.includes('tenant-data-key-load'), false, 'Preseeded key loading failed in the actual app');
+  pass('actual-app-key-loading-without-bootstrap-failure');
   receipt.status = 'PASS_ISOLATED_ROLE_BROWSER_STAND';
 } catch (error) {
   receipt.status = 'FAIL_ISOLATED_ROLE_BROWSER_STAND';
