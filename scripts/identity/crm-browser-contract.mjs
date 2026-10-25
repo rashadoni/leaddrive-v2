@@ -225,14 +225,17 @@ try {
     assert.equal(lookup.status(), 200)
     const candidate = (await lookup.json()).data
     assert.equal(candidate.kind, "canonical"); assert.equal(candidate.userId, userId("enrollment")); assert.equal(candidate.timeActorId, null)
+    phase("TIME_REGISTRATION_REVIEWED_CANDIDATE")
     const registration = { userId: candidate.userId, expectedClaimId: candidate.claimId, expectedAccountVersion: candidate.accountVersion,
       requestId: "7675ea61-e8fd-4083-b796-53f8de9345bf", position: "Accountant", departmentId: null, newDepartmentName: "Fictional Finance",
       teamId: null, newTeamName: "Fictional Payroll", hireDate: "2026-10-25" }
     const registrationUrl = "/api/v1/identity/time/enroll"
     assert.equal((await viewer.current.request.post(registrationUrl, { timeout: 120000, data: registration })).status(), 403)
+    phase("TIME_REGISTRATION_FIXTURE_SNAPSHOT")
     const beforePerson = await admin.user.findUniqueOrThrow({ where: { id: candidate.userId } })
     const beforeAccount = await admin.identityAccount.findUniqueOrThrow({ where: accountKey("enrollment") })
     const beforeField = await admin.mtmAgent.findUniqueOrThrow({ where: { id: userId("enrollment-field") } })
+    phase("TIME_REGISTRATION_AUDIT_FAILURE_SETUP")
     await admin.$executeRawUnsafe('CREATE SEQUENCE identity_time_audit_reached')
     await admin.$executeRawUnsafe('GRANT USAGE,SELECT ON SEQUENCE identity_time_audit_reached TO identity_crm_browser')
     await admin.$executeRawUnsafe(`CREATE FUNCTION identity_time_fail_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
@@ -240,6 +243,7 @@ try {
       RETURN NEW; END $$`)
     await admin.$executeRawUnsafe('CREATE TRIGGER identity_time_fail_audit BEFORE INSERT ON mtm_audit_logs FOR EACH ROW EXECUTE FUNCTION identity_time_fail_audit()')
     try {
+      phase("TIME_REGISTRATION_AUDIT_ROLLBACK")
       assert.equal((await administrator.current.request.post(registrationUrl, { timeout: 120000, data: registration })).status(), 500)
       assert.equal((await admin.$queryRawUnsafe('SELECT is_called FROM identity_time_audit_reached'))[0].is_called, true)
       assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: candidate.userId, role: "EMPLOYEE" } }), 0)
@@ -251,8 +255,10 @@ try {
       await admin.$executeRawUnsafe('DROP FUNCTION identity_time_fail_audit()')
       await admin.$executeRawUnsafe('DROP SEQUENCE identity_time_audit_reached')
     }
+    phase("TIME_REGISTRATION_COMMIT")
     const registered = await administrator.current.request.post(registrationUrl, { timeout: 120000, data: registration })
     assert.equal(registered.status(), 201)
+    phase("TIME_REGISTRATION_PRESERVED_HISTORY")
     const registeredData = (await registered.json()).data
     assert.notEqual(registeredData.agentId, beforeField.id)
     const registeredCard = await admin.mtmAgent.findUniqueOrThrow({ where: { id: registeredData.agentId }, include: { department: true, team: true } })
@@ -415,6 +421,11 @@ try {
   result.failureCode = error?.code === "ERR_ASSERTION" ? "ASSERTION"
     : /^P[0-9]{4}$/.test(error?.code ?? "") ? error.code
       : error?.name === "TimeoutError" ? "BROWSER_TIMEOUT" : "RUNTIME"
+  const sourceLocation = String(error?.stack ?? "").match(/crm-browser-contract[.]mjs:(\d+):(\d+)/)
+  if (sourceLocation) result.failureLocation = { line: Number(sourceLocation[1]), column: Number(sourceLocation[2]) }
+  if (["TypeError", "ReferenceError", "PrismaClientValidationError", "PrismaClientKnownRequestError"].includes(error?.name)) result.failureClass = error.name
+  const databaseCode = error?.meta?.code
+  if (typeof databaseCode === "string" && /^[0-9]{5}$/.test(databaseCode)) result.databaseCode = databaseCode
   if (error?.code === "ERR_ASSERTION") {
     result.assertionTypes = { actual: typeof error.actual, expected: typeof error.expected }
     if (typeof error.actual === "number" && typeof error.expected === "number") {
