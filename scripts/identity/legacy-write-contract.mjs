@@ -48,20 +48,26 @@ export async function checkLegacyWrites({ admin, writer, actor, other, build, ch
     }
     const normal = subjects.get("normal")
     const write = (actorId, value, work) => fence(writer, org, card(actorId), async tx => {
-      const result = await tx.mtmAgent.updateMany({ where: { organizationId: org, id: actorId, passwordHash: "!fixture-old" }, data: { passwordHash: value } })
+      // The minimal admitted fixture deliberately has no Prisma @updatedAt
+      // column. Exercise a real bound credential CAS without inventing one.
+      const count = await tx.$executeRaw`UPDATE mtm_agents SET "passwordHash" = ${value}
+        WHERE "organizationId" = ${org} AND id = ${actorId} AND "passwordHash" = '!fixture-old'`
       if (work) await work(tx)
-      return result.count
+      return count
     })
 
     phase("LEGACY_WRITE_SCOPE_RLS_AND_ATOMIC_ROLLBACK")
     const before = await current(normal.actorId)
     await assert.rejects(write(normal.actorId, "!fixture-rollback", async () => { throw new Error("fixture-audit-failed") }), /fixture-audit-failed/)
     assert.deepEqual(await current(normal.actorId), before)
+    phase("LEGACY_WRITE_SCOPE_TAMPERING_ROLLBACK")
     await assert.rejects(write(normal.actorId, "!fixture-scope-rollback", tx => tx.$queryRaw`SELECT set_config('app.rls_bypass', 'on', true)`), /IDENTITY_LEGACY_WRITE_CONTEXT_INVALID/)
     assert.deepEqual(await current(normal.actorId), before)
+    phase("LEGACY_WRITE_FOREIGN_TENANT_REFUSAL")
     let called = false
     assert.deepEqual(await fence(writer, other.organizationId, card(normal.actorId), async () => { called = true }), { allowed: false })
     assert.equal(called, false)
+    phase("LEGACY_WRITE_INHERITED_BYPASS_CLEARED")
     const inherited = { $transaction: (work, options) => writer.$transaction(async tx => {
       await tx.$queryRaw`SELECT set_config('app.rls_bypass', 'on', true)`
       return work(tx)
@@ -70,11 +76,13 @@ export async function checkLegacyWrites({ admin, writer, actor, other, build, ch
       const [scope] = await tx.$queryRaw`SELECT current_setting('app.rls_bypass') AS bypass`
       return scope.bypass
     }), { allowed: true, value: "off" })
+    phase("LEGACY_WRITE_MALFORMED_INPUT_BEFORE_TRANSACTION")
     let transactions = 0
     const unused = { $transaction: () => { transactions++; throw new Error("must not start") } }
     await assert.rejects(fence(unused, org, [], async () => {}), /IDENTITY_LEGACY_WRITE_PRINCIPAL_INVALID/)
     await assert.rejects(fence(unused, org, [{ kind: "USER", userId: normal.userId, extra: true }], async () => {}), /IDENTITY_LEGACY_WRITE_PRINCIPAL_INVALID/)
     assert.equal(transactions, 0)
+    phase("LEGACY_WRITE_POSITIVE_CREDENTIAL_CAS")
     assert.deepEqual(await write(normal.actorId, "!fixture-new"), { allowed: true, value: 1 })
     checks.push("legacy_write_fence_enforces_actual_tenant_scope_and_rolls_back_callback_failure_or_scope_tampering")
 
@@ -110,7 +118,7 @@ export async function checkLegacyWrites({ admin, writer, actor, other, build, ch
     let wrote = false
     const writingSecond = fence(observedWriter, org, card(second.actorId), async tx => {
       wrote = true
-      return tx.mtmAgent.updateMany({ where: { organizationId: org, id: second.actorId }, data: { passwordHash: "!fixture-forbidden" } })
+      return tx.$executeRaw`UPDATE mtm_agents SET "passwordHash" = '!fixture-forbidden' WHERE "organizationId" = ${org} AND id = ${second.actorId}`
     })
     writingSecond.catch(waitingPid.reject)
     try { await blocked(await waitingPid.promise) } finally { finish.resolve() }
