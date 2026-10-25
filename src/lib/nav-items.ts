@@ -13,6 +13,7 @@ import type { ElementType } from "react"
 import { type ModuleId, type AddonFlagId, hasModule } from "@/lib/modules"
 import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "@/lib/tenant-capabilities"
 import { checkPermission, type Role } from "@/lib/permissions"
+import { REVIEWER_ROLE, reviewerPageClosed } from "@/lib/reviewer-access"
 import { isMtmNavigationItemActive } from "@/lib/mtm/navigation"
 import {
   Megaphone,
@@ -594,6 +595,10 @@ export function isNavItemOrgSettingEnabled(org: OrgNavContext, item: NavItem): b
  */
 export function isNavItemRoleAllowed(org: OrgNavContext, item: NavItem): boolean {
   const role = (org.role as Role) || "viewer"
+  // An outside reviewer (src/lib/reviewer-access.ts) is refused every settings
+  // page by the proxy, so the menu does not offer one: no Settings group, and no
+  // section's own /settings/… entry either.
+  if (role === REVIEWER_ROLE && (item.group === "Settings" || reviewerPageClosed(navItemPathname(item.href)))) return false
   if (item.permissionScope && !checkPermission(role, item.permissionScope, "read")) return false
   if (item.allowedRoles && !item.allowedRoles.includes(role)) return false
   if (item.orgWide && (org.hiddenModules?.length ?? 0) > 0) return false
