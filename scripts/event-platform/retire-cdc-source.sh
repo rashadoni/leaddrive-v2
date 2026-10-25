@@ -5,6 +5,8 @@
 #
 #   retire-cdc-source.sh inspect   read-only: CDC slots, publication, role, event rows, latest backup
 #   retire-cdc-source.sh apply     safety dump, then retire CDC; idempotent, re-run is a no-op
+#   retire-cdc-source.sh restore   undo apply: CDC role may log in again, publication back;
+#                                  the connector creates its slot itself when it reconnects
 #
 # Why this exists: a Debezium slot left behind when the Connect hosts go away
 # pins WAL on the production disk (~0.4 GB/day, up to max_slot_wal_keep_size)
@@ -32,7 +34,7 @@ set -Eeuo pipefail
 die() { printf 'retire-cdc: FATAL: %s\n' "$*" >&2; exit 1; }
 
 mode="${1:-}"
-case "$mode" in inspect|apply) ;; *) sed -n '2,8p' "$0" 2>/dev/null || true; die "usage: inspect|apply" ;; esac
+case "$mode" in inspect|apply|restore) ;; *) sed -n '2,10p' "$0" 2>/dev/null || true; die "usage: inspect|apply|restore" ;; esac
 
 dbname="${DBNAME:-leaddrive_v2}"
 [[ "$dbname" =~ ^[a-z_][a-z0-9_]{0,62}$ ]] || die "DBNAME has an unexpected shape"
@@ -89,6 +91,33 @@ SQL
 printf 'retire-cdc: mode=%s database=%s observed_at=%s\n' "$mode" "$dbname" "$(date -u +%FT%TZ)"
 report
 [ "$mode" = inspect ] && exit 0
+
+if [ "$mode" = restore ]; then
+  # Owner, 2026-10-25, the same evening: Kafka stays. Undo apply on the
+  # database side only. The publication is the one prepare-cdc.sql creates;
+  # the slot is left to Debezium (slot.drop.on.stop=false, it creates a missing
+  # slot on start), so nothing here pins WAL before a connector is back.
+  [ "$(count "select count(*) from pg_roles where rolname = '$ROLE'")" = 1 ] \
+    || die "CDC role $ROLE is missing; enrol the source with source-enroll.sh cdc-role instead"
+  psql_db <<SQL
+alter role $ROLE login;
+do \$pub\$
+begin
+  if not exists (select 1 from pg_publication where pubname = '$PUBLICATION') then
+    create publication $PUBLICATION for table only public."event_outbox"
+      with (publish = 'insert', publish_via_partition_root = false);
+  end if;
+end
+\$pub\$;
+SQL
+  [ "$(count "select count(*) from pg_roles where rolname = '$ROLE' and rolcanlogin")" = 1 ] || die "the CDC role still cannot log in"
+  [ "$(count "select string_agg(schemaname || '.' || tablename, ',') from pg_publication_tables where pubname = '$PUBLICATION'")" = public.event_outbox ] \
+    || die "the CDC publication does not cover exactly public.event_outbox"
+  echo "retire-cdc: after restore"
+  report
+  echo "retire-cdc: RESTORED — CDC role can log in, publication present; restart the connector to recreate the slot"
+  exit 0
+fi
 
 slots_now="$(count "select count(*) from pg_replication_slots where $OUR_SLOTS")"
 pub_now="$(count "select count(*) from pg_publication where pubname = '$PUBLICATION'")"
