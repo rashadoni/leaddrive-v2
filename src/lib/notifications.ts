@@ -24,6 +24,7 @@ function deriveNotificationUrl(entityType?: string, entityId?: string): string {
   if (!entityType || !entityId) return "/notifications"
   switch (entityType) {
     // Phase 1 — CRM core entities
+    case "booking": return `/meetings?booking=${encodeURIComponent(entityId)}`
     case "task":    return `/tasks/${entityId}`
     // A link that lands on the notifications page when the notification is
     // ABOUT a lead is a small lie the recipient pays for with a search.

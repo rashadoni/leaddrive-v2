@@ -3,7 +3,7 @@ import { LEGACY_MODULE_MAP, type ModuleId } from "./modules"
 export type Role = "superadmin" | "admin" | "manager" | "sales" | "support" | "ticketing" | "viewer" | "reviewer"
 export type Action = "read" | "write" | "delete" | "export" | "admin"
 export type Module =
-  | "companies" | "contacts" | "deals" | "leads" | "tasks"
+  | "companies" | "contacts" | "deals" | "leads" | "tasks" | "bookings"
   | "contracts" | "offers" | "tickets" | "kb" | "campaigns"
   | "reports" | "profitability" | "ai" | "settings" | "users" | "audit"
   // ERP modules
@@ -172,7 +172,7 @@ export const PERMISSION_MODULE_TO_MODULE_ID: Record<string, ModuleId> = {
  * appear in the API-keys scope picker and be enforceable at the auth layer.
  */
 export const MODULES: readonly Module[] = [
-  "companies", "contacts", "deals", "leads", "tasks",
+  "companies", "contacts", "deals", "leads", "tasks", "bookings",
   "contracts", "offers", "invoices", "tickets", "kb", "campaigns",
   "projects", "events", "pricing", "budgeting",
   "reports", "profitability",
@@ -585,6 +585,8 @@ export const ROUTE_MODULE_MAP: Record<string, Module> = {
   "/api/v1/deals": "deals",
   "/api/v1/leads": "leads",
   "/api/v1/tasks": "tasks",
+  "/api/v1/bookings": "bookings",
+  "/api/v1/booking-pages": "bookings",
   "/api/v1/divisions": "tasks",
   "/api/v1/board-permissions": "tasks",
   "/api/v1/contracts": "contracts",
@@ -994,6 +996,9 @@ export function checkPermission(role: Role, module: Module | string, action: Act
   // A reviewer only reads, and never a closed scope — checked before the
   // wildcard so no route can widen it by naming a module.
   if (role === "reviewer" && (action !== "read" || REVIEWER_CLOSED_SCOPES.has(module))) return false
+  if (module === "bookings") {
+    return ["admin", "superadmin", "manager", "sales", "support", "ticketing"].includes(role) && ["read", "write"].includes(action)
+  }
   // Wildcard roles (admin, viewer)
   if (perms["*"]?.includes(action)) return true
   // Module-specific

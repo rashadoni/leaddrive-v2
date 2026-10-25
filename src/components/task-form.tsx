@@ -13,6 +13,7 @@ import { substituteTemplateVars } from "@/lib/task-templates/substitute"
 import { getRelatedSearchEndpoint, parseRelatedResults } from "@/lib/tasks/related-entity-search"
 import { useSession } from "next-auth/react"
 import { useTaskTypes, useEventTypes } from "@/components/tasks/use-task-types"
+import { TaskMeetingNotice } from "@/components/tasks/task-meeting-notice"
 
 const ENTITY_TYPES = [
   { value: "company", icon: Building2 },
@@ -60,6 +61,7 @@ interface TaskTemplate {
 export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: TaskFormProps) {
   const t = useTranslations("forms")
   const tc = useTranslations("common")
+  const tb = useTranslations("booking")
   const ttl = useTranslations("taskTemplates")
   const tTasks = useTranslations("tasks") // Type / Event-type labels (opGb* keys)
   const { data: session } = useSession()
@@ -96,6 +98,7 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [blockedTaskId, setBlockedTaskId] = useState<string | null>(null)
   const [users, setUsers] = useState<{ id: string; name: string }[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDef[]>([])
@@ -371,7 +374,14 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
         headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": orgId } : {} as Record<string, string>) },
         body: JSON.stringify(body),
       })
-      if (!res.ok) throw new Error((await res.json()).error || "Failed")
+      if (!res.ok) {
+        const failure = await res.json().catch(() => ({}))
+        if (failure.code === "BOOKING_MANAGED_TASK") {
+          setBlockedTaskId(initialData?.id ?? null)
+          throw new Error(tb("taskManagedError"))
+        }
+        throw new Error(failure.error || "Failed")
+      }
       // Roadmap #21 — apply template's checklist to the newly created task.
       // The task API doesn't accept inline checklist; we POST each item to
       // /tasks/[id]/checklist after the task lands.
@@ -443,6 +453,7 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
       <DialogHeader><DialogTitle>{isEdit ? t("editTask") : t("newTask")}</DialogTitle></DialogHeader>
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <DialogContent>
+          {isEdit && initialData?.id ? <TaskMeetingNotice taskId={initialData.id} orgId={orgId} blocked={blockedTaskId === initialData.id} onNavigate={() => onOpenChange(false)} /> : null}
           {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
           <div className="grid gap-2.5">
             {/* Roadmap #21 — template picker. Only shown when creating

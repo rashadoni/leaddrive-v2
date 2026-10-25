@@ -150,7 +150,7 @@ type AdvisorActionDisplayLocalizers = {
 
 function briefingToneClasses(tone?: AdvisorBriefingItem["tone"]) {
   if (tone === "critical") return "border-red-200 bg-red-50/70 text-red-900 hover:border-red-300 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-200"
-  if (tone === "money") return "border-emerald-200 bg-emerald-50/70 text-emerald-900 hover:border-emerald-300 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-200"
+  if (tone === "money") return "border-amber-200 bg-amber-50/70 text-amber-900 hover:border-amber-300 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200"
   if (tone === "info") return "border-blue-200 bg-blue-50/70 text-blue-900 hover:border-blue-300 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-200"
   if (tone === "healthy") return "border-zinc-200 bg-zinc-50 text-zinc-900 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
   return "border-zinc-200 bg-background text-foreground hover:border-primary/50 dark:border-zinc-700"
@@ -234,7 +234,7 @@ function filterHistoryActions(actions: ShadowAction[], filters: {
 
 function scenarioToneClasses(tone: AdvisorScenarioItem["tone"]) {
   if (tone === "critical") return "border-red-200 bg-red-50 text-red-800 hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
-  if (tone === "money") return "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+  if (tone === "money") return "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50"
   if (tone === "healthy") return "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
   return "border-zinc-200 bg-card text-foreground hover:bg-muted/40 dark:border-zinc-700"
 }
@@ -306,7 +306,7 @@ export function AdvisorScenarioLauncher({
 }) {
   const activeScenarios = scenarios.filter((scenario) => scenario.count > 0)
   return (
-    <section className="rounded-2xl border border-orange-100/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(255,247,237,0.68),rgba(255,255,255,0.98))] p-4 shadow-sm dark:border-orange-900/35 dark:bg-card">
+    <section className="rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-3xl font-semibold leading-tight text-foreground">
@@ -391,17 +391,23 @@ export function SummaryTile({
       icon: "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300",
       value: "text-red-700 dark:text-red-300",
     }
-    : tone === "money" || tone === "healthy"
+    : tone === "money"
       ? {
-        card: "border-emerald-200/80 bg-emerald-50/70 dark:border-emerald-900/50 dark:bg-emerald-950/20",
-        icon: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-        value: "text-emerald-700 dark:text-emerald-300",
+        card: "border-amber-200/80 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/20",
+        icon: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+        value: "text-amber-700 dark:text-amber-300",
       }
-      : {
-        card: "border-zinc-200 bg-white/90 dark:border-zinc-800 dark:bg-zinc-950/50",
-        icon: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
-        value: "text-foreground",
-      }
+      : tone === "healthy"
+        ? {
+          card: "border-emerald-200/80 bg-emerald-50/70 dark:border-emerald-900/50 dark:bg-emerald-950/20",
+          icon: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+          value: "text-emerald-700 dark:text-emerald-300",
+        }
+        : {
+          card: "border-border bg-card text-card-foreground",
+          icon: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
+          value: "text-card-foreground",
+        }
   return (
     <div className={`group flex min-h-[92px] min-w-[10.5rem] flex-1 basis-[11rem] items-center gap-3 rounded-xl border px-4 py-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${toneClasses.card}`}>
       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105 ${toneClasses.icon}`}>
@@ -427,7 +433,7 @@ export function AdvisorKpiStrip({
   }>
 }) {
   return (
-    <section className="rounded-2xl border border-orange-100/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(255,247,237,0.62),rgba(255,255,255,0.98))] p-2 shadow-sm dark:border-orange-900/35 dark:bg-card">
+    <section className="rounded-2xl border border-border bg-card p-2 text-card-foreground shadow-sm">
       <div className="flex flex-wrap gap-2">
         {tiles.map((tile) => (
           <SummaryTile
@@ -463,7 +469,7 @@ export function AdvisorGuidedFlow({
   ]
 
   return (
-    <section className="rounded-2xl border border-orange-100/80 bg-white/90 p-3 shadow-sm dark:border-orange-900/35 dark:bg-card sm:p-4" data-tour-id="ai-actions-flow">
+    <section className="rounded-2xl border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4" data-tour-id="ai-actions-flow">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/60 dark:bg-orange-950/30 dark:text-orange-300">
           <ShieldCheck className="h-3.5 w-3.5" />

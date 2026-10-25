@@ -487,6 +487,11 @@ jobs:
           PHARMACY_PHONE_ORDERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           PHARMACY_PHONE_ORDERS_DB_GATE: required
 
+      - name: Booking release admission and recovery contract gate
+        run: node --test scripts/booking/release-contract.test.mjs
+        env:
+          BOOKING_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
       - name: Online booking database gate
         # Same gate as in pr-checks: one meeting per host per time, by the real
         # booking transaction (see the test's header).
@@ -1056,6 +1061,11 @@ jobs:
           cp -r scripts/*.ts  .next/standalone/scripts/ 2>/dev/null || true
           cp -r scripts/*.sh  .next/standalone/scripts/ 2>/dev/null || true
           cp scripts/event-platform-postconditions.sql .next/standalone/scripts/
+          mkdir -p .next/standalone/scripts/booking .next/standalone/scripts/event-platform
+          cp -r scripts/booking/. .next/standalone/scripts/booking/
+          cp scripts/event-platform/inspect-production.sh .next/standalone/scripts/event-platform/
+          node scripts/booking/release-contract.mjs --write-manifest .next/standalone "$DEPLOY_TARGET_SHA"
+
           test -s .next/standalone/scripts/event-platform-postconditions.sql || {
             echo "::error::event-platform production postcondition missing from standalone artifact"
             exit 1
@@ -1686,6 +1696,21 @@ jobs:
             exit 1
           }
 
+      - name: Admit booking backend from current main before staging
+        if: ${{ env.DEPLOYMENT_MODE == 'normal' }}
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          artifact="/tmp/leaddrive-deploy-artifact/leaddrive-prod-${DEPLOY_TARGET_SHA}.tar.gz"
+          marker="$RUNNER_TEMP/booking-candidate-contract.json"
+          tar -xOzf "$artifact" ./.booking-backend-contract.json > "$marker"
+          node scripts/booking/release-contract.mjs --emit-admission "$DEPLOY_TARGET_SHA" < "$marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+
       - name: Stage immutable artifact on production disk
         # This copies bytes only; it does not stop PM2, run migrations, unpack
         # into the live tree, or consume production build memory. The SHA in
@@ -2135,6 +2160,18 @@ jobs:
                exit 1
              fi'
 
+      - name: Verify booking release with read-only production evidence
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          node scripts/booking/release-contract.mjs --emit-proof "$DEPLOY_TARGET_SHA" \
+            < "$RUNNER_TEMP/booking-candidate-contract.json" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+
       - name: Cleanup SSH key
         if: always()
         run: |
@@ -2296,6 +2333,21 @@ jobs:
             exit 1
           }
 
+      - name: Checkout current-main recovery admission
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Preserve current-main booking admission outside historical checkout
+        run: |
+          set -euo pipefail
+          umask 077
+          admission="$RUNNER_TEMP/booking-current-main-admission"
+          mkdir -p "$admission/scripts/booking" "$admission/scripts/event-platform"
+          cp scripts/booking/release-contract.mjs scripts/booking/release-state.sql "$admission/scripts/booking/"
+          cp scripts/event-platform/inspect-production.sh "$admission/scripts/event-platform/"
+
       - name: Checkout deployment script from the recovered revision
         uses: actions/checkout@v6
         with:
@@ -2399,6 +2451,23 @@ jobs:
           SSHCFG
           chmod 600 ~/.ssh/config
 
+      - name: Admit retained booking backend with current-main code
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          artifact="/tmp/leaddrive-recovery-artifact/leaddrive-prod-${RECOVERY_SHA}.tar.gz"
+          marker="$RUNNER_TEMP/booking-recovery-contract.json"
+          # Empty is a genuine pre-A artifact; the current-main remote gate
+          # rejects it as soon as production has the expanded booking schema.
+          tar -xOzf "$artifact" ./.booking-backend-contract.json > "$marker" 2>/dev/null || true
+          node "$RUNNER_TEMP/booking-current-main-admission/scripts/booking/release-contract.mjs" \
+            --emit-admission "$RECOVERY_SHA" < "$marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+
       - name: Stage exact retained recovery artifact on production disk
         run: |
           artifact="/tmp/leaddrive-recovery-artifact/leaddrive-prod-${RECOVERY_SHA}.tar.gz"
@@ -2445,6 +2514,17 @@ jobs:
             | sed -n 's/.*"artifactSha":"\([0-9a-f]\{40\}\)".*/\1/p')
           [ "$LIVE_SHA" = "$EXPECTED_SHA" ]
           REMOTE
+
+      - name: Verify restored booking contract with current-main evidence
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/booking-current-main-admission/scripts/booking/release-contract.mjs" \
+            --emit-proof "$RECOVERY_SHA" < "$RUNNER_TEMP/booking-recovery-contract.json" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
 
       - name: Cleanup SSH key
         if: always()

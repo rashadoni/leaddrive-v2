@@ -37,6 +37,8 @@ export interface BookingRules {
 }
 
 export interface BusyInterval {
+  bufferBeforeMinutes?: number
+  bufferAfterMinutes?: number
   start: Date
   end: Date
 }
@@ -120,7 +122,7 @@ export function computeSlots(input: {
         if (start.getTime() < earliest) continue
         const end = start.getTime() + duration
         const free = hostIds.filter((hostId) =>
-          !(busyByHost.get(hostId) ?? []).some((busy) => overlaps(busy, start.getTime() - buffer, end + buffer)))
+          !(busyByHost.get(hostId) ?? []).some((busy) => overlaps(busy, start.getTime() - Math.max(buffer, (busy.bufferAfterMinutes ?? 0) * 60_000), end + Math.max(buffer, (busy.bufferBeforeMinutes ?? 0) * 60_000))))
         if (free.length === 0) continue
         slots.push({ startsAt: start.toISOString(), endsAt: new Date(end).toISOString(), hostIds: free })
       }
