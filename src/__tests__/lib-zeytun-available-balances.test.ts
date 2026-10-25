@@ -197,4 +197,24 @@ describe("bounded AvailableBalances reader", () => {
     expect(transport).toHaveBeenCalledTimes(1)
     expect(transport.mock.calls[0][1].method).toBe("POST")
   })
+  it("lists the catalog's makers for the recognizer, most frequent first, without placeholders", () => {
+    const item = (n: number, ru: string, az: string | null) => {
+      const r = row()
+      return { ...r, Номенклатура: { ...r.Номенклатура, Guid: `11111111-2222-4333-8444-${String(n).padStart(12, "0")}`,
+        Номер: `SN-${n}`, Наименование: ru, НаименованиеАз: az ?? "", МассивШтрихкодов: [] } }
+    }
+    const feed = new ZeytunAvailableBalances(payload([
+      item(1, "Парацетамол 0,5 гр № 20 (Таблетки) (Sopharma ) (Болгария)", "Parasetamol 500 mq № 20 /*qutu/* \\*Sopharma Asc , Bolqarıstan\\*"),
+      item(2, "Темпалгин № 10 (Таблетки) (Sopharma) (Болгария)", null),
+      item(3, "Мезим форте № 20 (Таблетки) (Berlin-Chemie) (Германия)", "Mezim forte 10 000 Vah № 20 (Həb) (Berlin-Chemie) (Almaniya)"),
+      item(4, "Нимесил № 30 (Саше) (Berlin-Chemie) (Германия)", null),
+      item(5, "Масло № 1 (Масло) (Прочее) (Азербайджан)", null),
+      item(6, "Масло № 2 (Масло) (Прочее) (Азербайджан)", null),
+      item(7, "Одиночка № 1 (Таблетки) (Rarefarm) (Индия)", null),
+    ]), context)
+    // Sopharma three times (twice in Russian labels, once in the Azerbaijani
+    // marker), Berlin-Chemie twice; a maker seen once and "Прочее" are left out.
+    expect(feed.manufacturerWords()).toEqual(["Sopharma", "Berlin-Chemie"])
+    expect(feed.manufacturerWords(1)).toEqual(["Sopharma"])
+  })
 })
