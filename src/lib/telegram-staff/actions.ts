@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma"
 import { checkPermission } from "@/lib/permissions"
 import { createLeadCommand } from "@/lib/crm-commands/lead/create-lead"
 import { createTaskCommand } from "@/lib/crm-commands/task/create-task"
+import { azerbaijaniLocalPart, isPlausibleLeadPhone } from "@/lib/inbox/customer-phone"
 import type { StaffActor } from "./actor"
 
 export const ACTION_TTL_MS = 10 * 60_000
@@ -34,11 +35,33 @@ export const proposeTaskSchema = z.strictObject({
 
 export type ActionKind = "create_lead" | "create_task"
 
+const AZ_CODES = "010, 050, 051, 055, 060, 070, 077 və ya 099"
+
+/**
+ * A phone as an employee types it, made into the form the CRM keeps — or the
+ * reason it cannot be. Owner 2026-10-25 («нужно чтоб помогал с телефонным
+ * номером»): «050 333 09 28», «0503330928», «994 50 333 09 28» all become
+ * +994503330928; seven digits without a code are a question back, never a
+ * guess (the model had turned «333 09 28» into 9943330928, which the CRM then
+ * refused only on the confirm button).
+ */
+export function readLeadPhone(raw: string): { ok: true; phone: string } | { ok: false; reason: "NEEDS_CODE" | "INVALID" } {
+  const trimmed = raw.trim()
+  let digits = trimmed.replace(/\D/g, "")
+  if (digits.startsWith("00")) digits = digits.slice(2)
+  if (digits.length === 7) return { ok: false, reason: "NEEDS_CODE" }
+  const local = digits.length === 9 ? azerbaijaniLocalPart(`0${digits}`) : azerbaijaniLocalPart(digits)
+  if (local) return { ok: true, phone: `+994${local}` }
+  const foreign = (trimmed.startsWith("+") || trimmed.startsWith("00")) && !digits.startsWith("994")
+  if (foreign && isPlausibleLeadPhone(digits)) return { ok: true, phone: `+${digits}` }
+  return { ok: false, reason: "INVALID" }
+}
+
 /** The JSON schemas the model sees for the two proposal tools. */
 export const PROPOSE_TOOLS = [
   {
     name: "propose_create_lead",
-    description: "Prepare a new lead for the employee to confirm with a button. Nothing is created until they press it. Ask for the person's name if it is missing; never invent a phone or e-mail.",
+    description: "Prepare a new lead for the employee to confirm with a button. Nothing is created until they press it. Ask for the person's name if it is missing; never invent a phone or e-mail. Pass the phone exactly as the employee wrote it — never add, drop or change digits; the tool normalises it and tells you when a code is missing.",
     input_schema: z.toJSONSchema(proposeLeadSchema),
   },
   {
@@ -64,6 +87,17 @@ export async function proposeAction(actor: StaffActor, linkId: string, toolName:
   if (!parsed.success) return { result: `BAD_ARGUMENTS: ${parsed.error.issues[0]?.message ?? "invalid"}` }
 
   let payload: Record<string, unknown> = parsed.data
+  if (kind === "create_lead" && "phone" in parsed.data && parsed.data.phone) {
+    const phone = readLeadPhone(parsed.data.phone)
+    if (!phone.ok) {
+      return {
+        result: phone.reason === "NEEDS_CODE"
+          ? `PHONE_NEEDS_CODE: «${parsed.data.phone}» has 7 digits. The country is Azerbaijan (+994) by default; ask only which operator code it has (${AZ_CODES}) and wait for the answer. Do not guess.`
+          : `PHONE_INVALID: «${parsed.data.phone}» is not a valid phone number. Ask the employee to write it in full, for example 050 123 45 67.`,
+      }
+    }
+    payload = { ...payload, phone: phone.phone }
+  }
   if (kind === "create_task" && parsed.data && "board" in parsed.data && parsed.data.board) {
     const board = await prisma.division.findFirst({
       where: { organizationId: actor.orgId, isActive: true, isDepartment: false, name: { equals: parsed.data.board, mode: "insensitive" } },
@@ -90,7 +124,7 @@ export function actionPreview(kind: string, payload: Record<string, unknown>, la
   }
   if (kind === "create_lead") {
     add(labels.lead, payload.contactName)
-    add(labels.phone, payload.phone)
+    add(labels.phone, typeof payload.phone === "string" ? displayPhone(payload.phone) : undefined)
     add(labels.email, payload.email)
     add(labels.company, payload.companyName)
     add(labels.note, payload.note)
@@ -104,6 +138,15 @@ export function actionPreview(kind: string, payload: Record<string, unknown>, la
 }
 
 export interface PreviewLabels { question: string; lead: string; phone: string; email: string; company: string; note: string; task: string; due: string; board: string }
+
+/**
+ * The country first, then the number (owner 2026-10-25: «указывал страну сразу,
+ * по умолчанию Азербайджан, а дальше номер»): +994 50 333 09 28.
+ */
+export function displayPhone(phone: string): string {
+  const az = /^\+994(\d{2})(\d{3})(\d{2})(\d{2})$/.exec(phone)
+  return az ? `+994 ${az[1]} ${az[2]} ${az[3]} ${az[4]}` : phone
+}
 
 function formatDue(iso: string): string {
   const date = new Date(iso)
