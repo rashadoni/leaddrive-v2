@@ -81,6 +81,17 @@ describe("resolveMetaSenderName", () => {
     await expect(resolveMetaSenderName(base)).resolves.toBe("1318586653085202")
   })
 
+  it("logs Meta's error code and message, not just the HTTP status", async () => {
+    fetchMock.mockResolvedValue(graph(400, {
+      error: { message: "(#100) Missing feature", type: "OAuthException", code: 100, error_subcode: 2018218 },
+    }))
+
+    await expect(resolveMetaSenderName({ ...base, platform: "facebook" })).resolves.toBe("1318586653085202")
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("facebook lookup failed (400) for sender 1318586653085202 code=100 subcode=2018218 type=OAuthException: (#100) Missing feature"),
+    )
+  })
+
   it("falls back to the sender id when the channel has no token", async () => {
     await expect(resolveMetaSenderName({ ...base, token: null })).resolves.toBe("1318586653085202")
     expect(fetchMock).not.toHaveBeenCalled()
