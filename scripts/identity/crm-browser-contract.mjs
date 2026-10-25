@@ -73,13 +73,16 @@ try {
       return current
     }
     const authTimes = []
-    async function login(suffix, entered = password, organizationSlug = company) {
+    async function reserveAuthPost() {
       while (authTimes.length && authTimes[0] <= Date.now() - 61000) authTimes.shift()
       if (authTimes.length >= 8) {
         await delay(Math.max(0, authTimes[0] + 61000 - Date.now()) + 25)
         authTimes.shift()
       }
       authTimes.push(Date.now())
+    }
+    async function login(suffix, entered = password, organizationSlug = company) {
+      await reserveAuthPost()
       const current = await context()
       const csrf = await current.request.get("/api/auth/csrf", { timeout: 120000 })
       assert.equal(csrf.status(), 200)
@@ -158,10 +161,23 @@ try {
       const admitted = await login(suffix); assert.equal(admitted.error, null)
       const state = await session(admitted.current)
       assert.equal(state.user[suffix === "setup" ? "needsSetup2fa" : "needs2fa"], true)
+      await reserveAuthPost()
+      const csrf = await admitted.current.request.get("/api/auth/csrf", { timeout: 120000 })
+      assert.equal(csrf.status(), 200)
+      const { csrfToken } = await csrf.json()
+      const forged = await admitted.current.request.post("/api/auth/session", { timeout: 120000, data: { csrfToken, data: {
+        needs2fa: false, needsSetup2fa: false, role: "superadmin",
+        identityCrm: { mode: "IDENTITY_CRM_V1", organizationId: company, userId: userId(suffix),
+          claimId: "fictional-browser-forged-claim", credentialEpoch: 999, grantVersion: 999 },
+      } } })
+      assert.equal(forged.status(), 200)
+      const after = await session(admitted.current)
+      assert.equal(after.user.role, "viewer")
+      assert.equal(after.user[suffix === "setup" ? "needsSetup2fa" : "needs2fa"], true)
       const response = await admitted.current.request.get("/api/v1/users", { timeout: 120000 })
       assert.equal(response.status(), 403)
     }
-    check("shared_password_does_not_satisfy_existing_crm_mfa_setup_or_totp")
+    check("shared_password_or_actual_session_update_cannot_satisfy_crm_mfa_or_forge_private_grants")
     result.status = "PASS"; result.phase = "COMPLETE"
     process.stdout.write(`IDENTITY_CRM_BROWSER_PASS checks=${result.checks.length}\n`)
   }
