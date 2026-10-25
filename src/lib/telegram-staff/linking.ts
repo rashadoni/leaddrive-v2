@@ -90,3 +90,18 @@ export async function unlinkTelegram(orgId: string, userId: string): Promise<voi
   await prisma.telegramStaffLink.deleteMany({ where: { organizationId: orgId, userId } })
   await prisma.telegramStaffLinkToken.deleteMany({ where: { organizationId: orgId, userId, usedAt: null } })
 }
+
+/** Settings → «Telegram-bot»: who is linked to the organization's bot. */
+export async function listLinks(orgId: string) {
+  const links = await prisma.telegramStaffLink.findMany({
+    where: { organizationId: orgId },
+    select: { userId: true, telegramUsername: true, linkedAt: true, user: { select: { name: true, email: true } } },
+    orderBy: { linkedAt: "asc" },
+  })
+  return links.map((link) => ({
+    userId: link.userId,
+    name: link.user.name || link.user.email,
+    telegramUsername: link.telegramUsername,
+    linkedAt: link.linkedAt.toISOString(),
+  }))
+}
