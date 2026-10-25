@@ -23,15 +23,19 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: production-deploy
-  cancel-in-progress: false
-
 jobs:
   retire:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: production
+    # Shares the production lock with deploys and waits its turn behind them
+    # without replacing a pending deploy (same as event-platform-readiness.yml).
+    # The first dispatch, 2026-10-25, used the default single pending slot and
+    # was replaced by a deploy while main kept deploying.
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+      queue: max
     steps:
       - uses: actions/checkout@v6
         with:
