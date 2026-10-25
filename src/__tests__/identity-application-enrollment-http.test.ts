@@ -9,6 +9,8 @@ vi.mock("@/lib/prisma", () => ({ prisma: {} }))
 vi.mock("@/lib/rls-context", () => ({ runWithTenant: (_org: string, work: () => unknown) => work() }))
 vi.mock("@/lib/identity/application-enrollment", () => ({ enrollIdentityApplication: mocks.enroll }))
 import { PUT } from "@/app/api/v1/identity/people/[id]/applications/route"
+import { POST as prepareActor } from "@/app/api/v1/identity/people/[id]/actors/route"
+vi.mock("@/lib/identity/application-actor", () => ({ prepareIdentityApplicationActor: mocks.enroll }))
 
 const claims = { mode: "IDENTITY_CRM_V1", organizationId: "fixture-company", userId: "fixture-admin", claimId: "fixture-claim", credentialEpoch: 3, grantVersion: 4 }
 const body = { actorId: "fixture-time", application: "TIME", role: "EMPLOYEE", status: "ACTIVE", expectedAccountVersion: 2,
@@ -79,5 +81,17 @@ describe("identity application enrollment HTTP authority", () => {
     const response = await request()
     expect(response.status).toBe(500)
     expect(await response.json()).toEqual({ error: "IDENTITY_ENROLLMENT_FAILED" })
+  })
+  it("creates a card only for the authenticated tenant and explicitly selected person", async () => {
+    const data = { actorId: null, application: "TIME", role: "EMPLOYEE", expectedAccountVersion: 2, reviewReference: "review-person", requestId: "prepare-card" }
+    const response = await prepareActor(new NextRequest("https://fixture.example/api/v1/identity/people/fixture-person/actors", { method: "POST", body: JSON.stringify(data) }), { params: Promise.resolve({ id: "fixture-person" }) })
+    expect(response.status).toBe(200)
+    expect(mocks.enroll).toHaveBeenCalledWith({}, { organizationId: "fixture-company", userId: "fixture-admin", mode: "CANONICAL", claims }, { ...data, userId: "fixture-person" })
+  })
+  it("rejects a phone-based card adoption request", async () => {
+    const data = { actorId: null, application: "TIME", role: "EMPLOYEE", expectedAccountVersion: 2, reviewReference: "review-person", requestId: "prepare-card", phone: "+994507770099" }
+    const response = await prepareActor(new NextRequest("https://fixture.example/api/v1/identity/people/fixture-person/actors", { method: "POST", body: JSON.stringify(data) }), { params: Promise.resolve({ id: "fixture-person" }) })
+    expect(response.status).toBe(400)
+    expect(mocks.enroll).not.toHaveBeenCalled()
   })
 })

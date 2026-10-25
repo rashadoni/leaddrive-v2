@@ -59,7 +59,7 @@ try {
       await admin.identityPhoneClaim.create({ data: { organizationId: company, userId: userId(suffix), normalizedPhone: `+99450777001${i}`, verifiedAt: new Date(), accountVersion: 1 } })
       if (suffix !== "employee") await admin.identityApplicationGrant.create({ data: { organizationId: company, userId: userId(suffix), application: "CRM", status: "ACTIVE", role: suffix === "administrator" ? "admin" : "viewer" } })
     }
-    for (const [application, role] of [["TIME", "EMPLOYEE"], ["ROUTE_FIELD", "AGENT"]]) {
+    for (const [application, role] of [["ROUTE_FIELD", "AGENT"]]) {
       const actorId = userId(`employee-${application}`)
       await admin.mtmAgent.create({ data: { id: actorId, organizationId: company, userId: userId("employee"), name: "Fictional employee", role, status: "ACTIVE", attendanceParticipant: application === "TIME" } })
       await admin.identityActorBinding.create({ data: { organizationId: company, userId: userId("employee"), actorId, reviewedByUserId: userId("administrator"), reviewReference: `fixture-${application}`, accountVersion: 1 } })
@@ -205,20 +205,49 @@ try {
     check("shared_password_or_actual_session_update_cannot_satisfy_crm_mfa_or_forge_private_grants")
     phase("ACTUAL_COOKIE_ADMINISTRATOR_MODULE_ENROLLMENT")
     const enrollmentUrl = `/api/v1/identity/people/${userId("employee")}/applications`
-    const enrollment = { actorId: userId("employee-TIME"), application: "TIME", role: "EMPLOYEE", status: "ACTIVE",
-      expectedAccountVersion: 1, expectedGrantVersion: 0, expectedMembershipVersion: 0, requestId: "cookie-time-enroll" }
+    const actorUrl = `/api/v1/identity/people/${userId("employee")}/actors`
+    const enrollment = { actorId: "unprepared", application: "TIME", role: "EMPLOYEE", status: "ACTIVE",
+      expectedAccountVersion: 2, expectedGrantVersion: 0, expectedMembershipVersion: 0, requestId: "cookie-time-enroll" }
     const viewer = await login("ordinary"); assert.equal(viewer.error, null)
     assert.equal((await viewer.current.request.put(enrollmentUrl, { timeout: 120000, data: enrollment })).status(), 403)
     const administrator = await login("administrator"); assert.equal(administrator.error, null)
     assert.equal((await session(administrator.current)).user.role, "admin")
     assert.equal((await admin.user.findUniqueOrThrow({ where: { id: userId("administrator") } })).role, "viewer")
+    const preparation = { actorId: null, application: "TIME", role: "EMPLOYEE", expectedAccountVersion: 1,
+      reviewReference: "cookie-person-review", requestId: "cookie-time-create-card" }
+    assert.equal((await viewer.current.request.post(actorUrl, { timeout: 120000, data: preparation })).status(), 403)
+    // Fail the real INSERT receipt after card creation; the whole operation
+    // must roll back so retry cannot leave a second, unaudited history.
+    await admin.$executeRawUnsafe(`ALTER TABLE identity_events ADD CONSTRAINT cookie_actor_audit_failure CHECK ("requestId" <> 'cookie-time-create-card')`)
+    try {
+      const failed = await administrator.current.request.post(actorUrl, { timeout: 120000, data: preparation })
+      assert.equal(failed.status(), 500)
+      assert.equal((await admin.identityAccount.findUniqueOrThrow({ where: accountKey("employee") })).version, 1)
+      assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: userId("employee") } }), 1)
+    } finally {
+      await admin.$executeRawUnsafe("ALTER TABLE identity_events DROP CONSTRAINT cookie_actor_audit_failure")
+    }
+    const prepared = await administrator.current.request.post(actorUrl, { timeout: 120000, data: preparation })
+    assert.equal(prepared.status(), 200)
+    const preparedData = (await prepared.json()).data
+    assert.equal(preparedData.accountVersion, 2)
+    assert.notEqual(preparedData.actorId, userId("employee-ROUTE_FIELD"))
+    enrollment.actorId = preparedData.actorId
+    const replay = await administrator.current.request.post(actorUrl, { timeout: 120000, data: preparation })
+    assert.equal(replay.status(), 200)
+    assert.deepEqual((await replay.json()).data, { ...preparedData, replayed: true })
+    const duplicate = await administrator.current.request.post(actorUrl, { timeout: 120000, data: { ...preparation, expectedAccountVersion: 2, requestId: "cookie-time-duplicate" } })
+    assert.equal(duplicate.status(), 409)
+    assert.equal((await duplicate.json()).error, "IDENTITY_EXISTING_ACTOR_REVIEW_REQUIRED")
+    assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: userId("employee") } }), 2)
+    assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: company, userId: userId("employee") } }), 0)
     assert.equal((await administrator.current.request.put(enrollmentUrl, { timeout: 120000, data: { ...enrollment, organizationId: "other-company" } })).status(), 400)
     const enrolled = await administrator.current.request.put(enrollmentUrl, { timeout: 120000, data: enrollment })
     assert.equal(enrolled.status(), 200)
     assert.match(enrolled.headers()["cache-control"], /no-store/)
-    assert.deepEqual(await enrolled.json(), { success: true, data: { accountVersion: 2, grantVersion: 1, membershipVersion: 1, replayed: false } })
+    assert.deepEqual(await enrolled.json(), { success: true, data: { accountVersion: 3, grantVersion: 1, membershipVersion: 1, replayed: false } })
     const field = await administrator.current.request.put(enrollmentUrl, { timeout: 120000, data: { ...enrollment,
-      actorId: userId("employee-ROUTE_FIELD"), application: "ROUTE_FIELD", role: "AGENT", expectedAccountVersion: 2, requestId: "cookie-field-enroll" } })
+      actorId: userId("employee-ROUTE_FIELD"), application: "ROUTE_FIELD", role: "AGENT", expectedAccountVersion: 3, requestId: "cookie-field-enroll" } })
     assert.equal(field.status(), 200)
     assert.equal(await admin.identityApplicationMembership.count({ where: { organizationId: company, userId: userId("employee"), status: "ACTIVE" } }), 2)
     assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: company, userId: userId("employee"), application: "CRM" } }), 0)
