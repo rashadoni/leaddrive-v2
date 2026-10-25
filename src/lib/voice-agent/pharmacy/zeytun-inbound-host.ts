@@ -23,6 +23,12 @@ export async function readPrivate(path: string, limit = 8192): Promise<unknown> 
     return JSON.parse(buffer.subarray(0, bytesRead).toString("utf8"))
   } finally { await handle.close() }
 }
+// 2026-10-25 live call: the session request got 503 and the station ended the
+// call in silence. Parsing the 14 MB catalog holds this process ~2 s, and the
+// call's transaction had 500 ms to start. The station allows 5 s per session
+// request; the transaction now waits up to 3 s for a connection.
+const CALL_TX_MAX_WAIT_MS = 3000, CALL_TX_TIMEOUT_MS = 4500
+
 /** The caller's number in international form when it is one; otherwise as the PBX gave it. */
 function callerNumber(value: string) {
   const compact = value.replace(/[\s()-]/gu, "")
@@ -60,7 +66,7 @@ export function createInboundPilotHost(options: {
           AND ("consentAudit"->'pharmacyInboundPreview' IS NULL OR "consentAudit"->'pharmacyInboundPreview'=${marker}::jsonb)
         RETURNING id
       `
-    }, { isolationLevel: "ReadCommitted", maxWait: 500, timeout: 2500 }))
+    }, { isolationLevel: "ReadCommitted", maxWait: CALL_TX_MAX_WAIT_MS, timeout: CALL_TX_TIMEOUT_MS }))
     return rows.length === 1 && rows[0].id === call.id
   }
   return {
@@ -87,7 +93,7 @@ export function createInboundPilotHost(options: {
             AND ch."channelType"='voip' AND ch."isActive"=true AND ch.settings->'provider'='"asterisk"'::jsonb
             AND ch.settings->'voiceAgentEnabled'='true'::jsonb
         `
-      }, { isolationLevel: "ReadCommitted", maxWait: 500, timeout: 2500 }))
+      }, { isolationLevel: "ReadCommitted", maxWait: CALL_TX_MAX_WAIT_MS, timeout: CALL_TX_TIMEOUT_MS }))
       if (rows.length !== 1 || !(rows[0].startedAt instanceof Date)) return null
       return { ...rows[0], startedAt: rows[0].startedAt.toISOString() }
     },
@@ -111,14 +117,24 @@ export function createInboundPilotHost(options: {
         // must not be reread on every spoken request. New operator grant retries.
         return catalog.value
       }
-      // The line lives for weeks: re-read the store every ten minutes in the
-      // background and keep answering from the parsed copy meanwhile. A failed
-      // re-read keeps the copy; the request path's age gate still applies.
+      // The line lives for weeks: look at the store every ten minutes in the
+      // background and keep answering from the parsed copy meanwhile. Only the
+      // header is read first: the same snapshot re-observed by the refresh cron
+      // takes its new date without a re-parse, which holds this process ~2 s.
+      // A failed look keeps the copy; the request path's age gate still applies.
       if (isLineGrant(config) && !catalog.next && Date.now() - catalog.at >= 10 * 60_000) {
-        const current = catalog, fresh = load()
-        current.next = fresh.then(() => {
+        const current = catalog
+        const source = config.approvedSource
+        current.next = (async () => {
+          const head = await new ZeytunSnapshotStore(options.snapshotDirectory, source.organizationId, source.scopeKey).peek()
+          const parsed = await current.value
+          if (!head) throw new Error("snapshot_unavailable")
+          const fresh = head.version === parsed.version
+            ? Promise.resolve({ ...parsed, observedAt: head.observedAt })
+            : load()
+          await fresh
           if (catalog === current) catalog = { key, at: Date.now(), value: fresh }
-        }, () => {
+        })().catch(() => {
           if (catalog === current) { current.at = Date.now(); current.next = undefined }
         })
       }
