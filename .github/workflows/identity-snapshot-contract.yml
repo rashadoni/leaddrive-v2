@@ -14,6 +14,7 @@ on:
       - 'src/lib/crm-product-availability.ts'
       - 'src/lib/mtm/attendance-feature.ts'
       - 'src/lib/mobile-auth.ts'
+      - 'src/lib/mtm-audit.ts'
       - 'src/lib/mtm/mobile-login-*.ts'
       - 'src/app/api/v1/mtm/mobile/auth/**'
       - 'src/__tests__/api-mtm-misc.test.ts'

@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { assertIdentityScope } from "./contract"
 import type { RegistryClient } from "./registry"
 import { withIdentityMobileReadSnapshot } from "./mobile-session-resolver"
@@ -28,28 +29,34 @@ export async function readLegacyCredentialBoundary(client: RegistryClient, organ
     if (id === null) return "UNAVAILABLE"
     assertIdentityScope(organizationId, id)
     const snapshot = await withIdentityMobileReadSnapshot(client, organizationId, async tx => {
-      const company = await tx.organization.findFirst({ where: { id: organizationId, isActive: true }, select: { id: true } })
-      if (!company) return "UNAVAILABLE" as const
-      const userIds = new Set<string>()
-      let linkedUserId: string | null = null
-      if (kind === "USER") {
-        linkedUserId = id
-        userIds.add(id)
-      } else {
-        const actor = await tx.mtmAgent.findFirst({ where: { id, organizationId }, select: { userId: true, status: true } })
-        if (!actor || actor.status !== "ACTIVE") return "UNAVAILABLE" as const
-        linkedUserId = actor.userId
-        if (linkedUserId) userIds.add(linkedUserId)
-        const binding = await tx.identityActorBinding.findUnique({ where: { organizationId_actorId: { organizationId, actorId: id } }, select: { userId: true } })
-        if (binding) userIds.add(binding.userId)
-      }
-      if (userIds.size) {
-        const accounts = await tx.identityAccount.findMany({ where: { organizationId, userId: { in: [...userIds] } }, select: { cutoverAt: true } })
-        if (accounts.some(account => account.cutoverAt !== null)) return "MIGRATED" as const
-      }
-      if (linkedUserId && !await tx.user.findFirst({ where: { id: linkedUserId, organizationId, isActive: true, anonymizedAt: null }, select: { id: true } })) return "UNAVAILABLE" as const
-      return "LEGACY" as const
+      return readLegacyCredentialBoundaryInTransaction(tx, organizationId, principal)
     })
     return snapshot.value
   } catch { return "UNAVAILABLE" }
+}
+
+/** Internal eligibility only: caller owns a verified scope and transaction. */
+export async function readLegacyCredentialBoundaryInTransaction(tx: Prisma.TransactionClient, organizationId: string,
+  principal: LegacyCredentialPrincipal): Promise<LegacyCredentialBoundary> {
+  const company = await tx.organization.findFirst({ where: { id: organizationId, isActive: true }, select: { id: true } })
+  if (!company) return "UNAVAILABLE" as const
+  const userIds = new Set<string>()
+  let linkedUserId: string | null = null
+  if (principal.kind === "USER") {
+    linkedUserId = principal.userId
+    userIds.add(principal.userId)
+  } else {
+    const actor = await tx.mtmAgent.findFirst({ where: { id: principal.actorId, organizationId }, select: { userId: true, status: true } })
+    if (!actor || actor.status !== "ACTIVE") return "UNAVAILABLE" as const
+    linkedUserId = actor.userId
+    if (linkedUserId) userIds.add(linkedUserId)
+    const binding = await tx.identityActorBinding.findUnique({ where: { organizationId_actorId: { organizationId, actorId: principal.actorId } }, select: { userId: true } })
+    if (binding) userIds.add(binding.userId)
+  }
+  if (userIds.size) {
+    const accounts = await tx.identityAccount.findMany({ where: { organizationId, userId: { in: [...userIds] } }, select: { cutoverAt: true } })
+    if (accounts.some(account => account.cutoverAt !== null)) return "MIGRATED" as const
+  }
+  if (linkedUserId && !await tx.user.findFirst({ where: { id: linkedUserId, organizationId, isActive: true, anonymizedAt: null }, select: { id: true } })) return "UNAVAILABLE" as const
+  return "LEGACY" as const
 }

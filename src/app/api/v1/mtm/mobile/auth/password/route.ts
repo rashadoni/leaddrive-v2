@@ -2,13 +2,14 @@ import { NextRequest } from "next/server"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { runWithRlsBypass } from "@/lib/rls-context"
+import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
+import { withLegacyCredentialWrite } from "@/lib/identity/legacy-credential-write"
+import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { passwordPolicyError } from "@/lib/password-policy"
 import { clientIp } from "@/lib/request-ip"
 import { MOBILE_LOGIN_ORGANIZATION_SELECT } from "@/lib/mtm/mobile-login-phone"
 import {
-  linkedUserCredentials,
   mobileAppRefusal,
   mobileLoginSuccess,
   legacyMobileMaySignIn,
@@ -58,28 +59,43 @@ export async function POST(req: NextRequest) {
       if (refusal) return refusal
 
       const passwordHash = await bcrypt.hash(body.value.password, 12)
-      // Compare-and-set on the old hash: two phones racing with one token set
-      // one password, and the loser is told to confirm the number again.
-      const changed = await prisma.mtmAgent.updateMany({
-        where: { id: row.id, organizationId: row.organizationId, passwordHash: row.passwordHash },
-        data: { passwordHash },
-      })
-      if (changed.count !== 1) return expired()
-      const agent = { ...row, passwordHash }
-
-      const linkedUser = agent.userId ? await linkedUserCredentials(agent, agent.userId) : null
-      if (agent.userId && !linkedUser) return expired()
-      await writeMtmAudit({
-        organizationId: agent.organizationId,
-        agentId: agent.id,
-        action: "MOBILE_PASSWORD_SET_BY_CODE",
-        entity: "agent",
-        entityId: agent.id,
-        metadataKind: "login_code",
-        newData: { reason: "whatsapp_code" },
-        req,
-      }).catch(error => console.warn("[MTM/mobile/auth/password] audit failed", error))
-      return mobileLoginSuccess(agent, agent.userId, linkedUser)
+      const changed = await runWithTenant(row.organizationId, () => withLegacyCredentialWrite(prisma, row.organizationId,
+        [{ kind: "ACTOR", actorId: row.id }], async tx => {
+          const fresh = await tx.mtmAgent.findFirst({
+            where: { id: row.id, organizationId: row.organizationId },
+            include: { organization: { select: MOBILE_LOGIN_ORGANIZATION_SELECT } },
+          })
+          if (!fresh || fresh.status !== "ACTIVE" || fresh.userId !== row.userId
+            || !fresh.organization.isActive || !passwordSetupStillFresh(fresh, setup.fingerprint)) return null
+          if (fresh.role === "EMPLOYEE" && (!fresh.userId || !fresh.attendanceParticipant
+            || !await readAttendanceFeature(tx, fresh.organizationId))) return null
+          if (mobileAppRefusal(fresh)) return null
+          const linkedUser = fresh.userId ? await tx.user.findFirst({
+            where: { id: fresh.userId, organizationId: fresh.organizationId, isActive: true, anonymizedAt: null },
+            select: { id: true, passwordHash: true, passwordChangedAt: true },
+          }) : null
+          if (fresh.userId && !linkedUser) return null
+          // Authority, actor ownership, setup fingerprint and CAS are checked
+          // under the same transaction/tenant lock as canonical writers.
+          const result = await tx.mtmAgent.updateMany({
+            where: { id: fresh.id, organizationId: fresh.organizationId, passwordHash: fresh.passwordHash },
+            data: { passwordHash },
+          })
+          if (result.count !== 1) return null
+          await writeMtmAudit({
+            organizationId: fresh.organizationId,
+            agentId: fresh.id,
+            action: "MOBILE_PASSWORD_SET_BY_CODE",
+            entity: "agent",
+            entityId: fresh.id,
+            metadataKind: "login_code",
+            newData: { reason: "whatsapp_code" },
+            req,
+          }, tx)
+          return { agent: { ...fresh, passwordHash }, linkedUser }
+        }))
+      if (!changed.allowed || !changed.value) return expired()
+      return mobileLoginSuccess(changed.value.agent, changed.value.agent.userId, changed.value.linkedUser)
     })
   } catch (error) {
     console.error("[MTM/mobile/auth/password] failed", error)

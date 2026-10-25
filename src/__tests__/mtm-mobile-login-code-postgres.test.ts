@@ -364,6 +364,11 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     const setupToken = (await verified.json()).data.setupToken as string
     expect(setupToken).toEqual(expect.any(String))
     sent.length = 0
+    await bypass(() => prisma.otpCode.updateMany({ where: { organizationId: company, phone }, data: { createdAt: new Date(Date.now() - 120_000) } }))
+    expect((await post(requestCode, "/code", { phone, organizationSlug: company })).status).toBe(200)
+    expect(sent).toHaveLength(1)
+    const unconsumedCode = codeOf(sent[0])
+    sent.length = 0
     // Synthetic authority assumption only, not proof/enrollment or activation
     // tooling: even an incomplete canonical record must not restore old auth.
     await bypass(() => prisma.identityAccount.create({ data: { organizationId: company, userId,
@@ -372,6 +377,12 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect((await post(signIn, "", { phone, password, organizationSlug: company })).status).toBe(401)
     expect((await post(signIn, "", { email: "boundary@example.invalid", password, organizationSlug: company })).status).toBe(401)
     expect((await post(setPassword, "/password", { setupToken, password: "Different-Boundary-Pass-2026!" })).status).toBe(401)
+    // A still-correct, unconsumed code must not mint setup after cutover.
+    const refusedCode = await post(verifyCode, "/code/verify", { phone, organizationSlug: company, code: unconsumedCode })
+    expect(refusedCode.status).toBe(400)
+    expect((await refusedCode.json()).code).toBe("MTM_LOGIN_CODE_INVALID")
+    const liveCode = await bypass(() => prisma.otpCode.findFirstOrThrow({ where: { organizationId: company, phone, usedAt: null }, orderBy: { createdAt: "desc" } }))
+    expect(liveCode.attempts).toBe(0)
     // Remove the ordinary cooldown as an alternative explanation for no send.
     await bypass(() => prisma.otpCode.updateMany({ where: { organizationId: company, phone }, data: { createdAt: new Date(Date.now() - 120_000) } }))
     const asked = await post(requestCode, "/code", { phone, organizationSlug: company })
@@ -396,6 +407,29 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
       expect(await prisma.mtmAuditLog.count({ where: { organizationId: company, action: "AUTO_LINK" } })).toBe(0)
     })
     expect(sent).toHaveLength(0)
+  })
+
+  it("rolls back the legacy code password change when its real audit insert fails, preserving the setup capability", async () => {
+    const company = "identity-setup-atomic-audit", phone = "+994501119992", password = "Fictional-Atomic-Pass-2026!"
+    const cardId = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, name: "Fictional atomic setup company", slug: company, modules: { "route-field": true } } })
+      return (await prisma.mtmAgent.create({ data: { organizationId: company, name: "Fictional atomic setup card", phone, role: "AGENT", passwordHash: await bcrypt.hash(password, 4) } })).id
+    })
+    expect((await post(requestCode, "/code", { phone, organizationSlug: company })).status).toBe(200)
+    expect(sent).toHaveLength(1)
+    const verified = await post(verifyCode, "/code/verify", { phone, organizationSlug: company, code: codeOf(sent[0]) })
+    expect(verified.status).toBe(200)
+    const setupToken = (await verified.json()).data.setupToken as string
+    const before = await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: cardId }, select: { passwordHash: true, userId: true, status: true } }))
+    await bypass(() => prisma.$executeRawUnsafe(`ALTER TABLE mtm_audit_logs ADD CONSTRAINT identity_fixture_setup_audit_fail CHECK ("organizationId" <> 'identity-setup-atomic-audit' OR action <> 'MOBILE_PASSWORD_SET_BY_CODE') NOT VALID`))
+    try {
+      expect((await post(setPassword, "/password", { setupToken, password: "Fictional-Atomic-Changed-2026!" })).status).toBe(500)
+      expect(await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: cardId }, select: { passwordHash: true, userId: true, status: true } }))).toEqual(before)
+    } finally {
+      await bypass(() => prisma.$executeRawUnsafe("ALTER TABLE mtm_audit_logs DROP CONSTRAINT identity_fixture_setup_audit_fail"))
+    }
+    expect((await post(setPassword, "/password", { setupToken, password: "Fictional-Atomic-Changed-2026!" })).status).toBe(200)
+    expect((await post(setPassword, "/password", { setupToken, password: "Fictional-Atomic-Changed-2026!" })).status).toBe(401)
   })
 
   it("says aloud that codes cannot be sent while the template is missing — to everybody, and withdraws the code", async () => {
