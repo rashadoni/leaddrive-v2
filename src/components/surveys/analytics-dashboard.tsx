@@ -66,7 +66,7 @@ export function SurveyAnalyticsDashboard({ surveyId, orgId }: Props) {
             <button
               key={d}
               onClick={() => setRange(d)}
-              className={`px-2.5 py-1 rounded-md border ${range === d ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}
+              className={`px-2.5 py-1 rounded-md border ${range === d ? "crm-choice-selected  " : "bg-background hover:bg-muted"}`}
             >
               {d === 365 ? "1y" : `${d}d`}
             </button>

@@ -244,7 +244,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 className={cn(
                   "min-h-11 min-w-11 rounded-md px-2 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none sm:min-h-9 sm:min-w-9",
                   pageSize === size
-                    ? "bg-primary font-medium text-primary-foreground"
+                    ? "crm-choice-selected font-medium "
                     : "text-muted-foreground hover:bg-muted"
                 )}
               >

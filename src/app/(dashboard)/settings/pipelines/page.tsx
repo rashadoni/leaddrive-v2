@@ -463,7 +463,7 @@ export default function PipelinesSettingsPage() {
               onClick={() => selectPipeline(p.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
                 selectedPipelineId === p.id
-                  ? "bg-primary text-primary-foreground border-primary"
+                  ? "crm-choice-selected  "
                   : "bg-muted/50 hover:bg-muted border-transparent"
               }`}
             >

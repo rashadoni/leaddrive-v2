@@ -1129,7 +1129,7 @@ export default function TasksPage() {
             <Button
               data-crm-filter=""
               data-state={myTasksOnly ? "active" : "inactive"}
-              variant={myTasksOnly ? "default" : "outline"}
+              variant={myTasksOnly ? "selected" : "outline"}
               size="sm"
               onClick={() => setMyTasksOnly(!myTasksOnly)}
             >
@@ -1180,7 +1180,7 @@ export default function TasksPage() {
           </Button>
         ) : null}
         <Button
-          variant={activeFilter === "all" ? "default" : "outline"}
+          variant={activeFilter === "all" ? "selected" : "outline"}
           size="sm"
           onClick={() => setActiveFilter("all")}
         >
@@ -1189,7 +1189,7 @@ export default function TasksPage() {
         {(["backlog", "pending", "in_progress", "completed", "cancelled"] as const).map(key => (
           <Button
             key={key}
-            variant={activeFilter === key ? "default" : "outline"}
+            variant={activeFilter === key ? "selected" : "outline"}
             size="sm"
             onClick={() => setActiveFilter(key)}
           >

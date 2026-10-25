@@ -848,7 +848,7 @@ export default function LeadDetailPage() {
               const isLost = lead.status === "lost"
 
               return (
-                <button
+                <button data-crm-color-role="status"
                   key={status}
                   onClick={() => handleStatusChange(status)}
                   disabled={updatingStatus}

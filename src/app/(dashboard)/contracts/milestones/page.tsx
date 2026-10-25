@@ -183,7 +183,7 @@ export default function ContractMilestonesPage() {
           <Label className="text-xs">{t("filterOverdue")}</Label>
           <Button
             size="sm"
-            variant={overdue ? "default" : "outline"}
+            variant={overdue ? "selected" : "outline"}
             className="h-8"
             onClick={() => { setOverdue((v) => !v); setPage(1) }}
           >

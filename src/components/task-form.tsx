@@ -633,7 +633,7 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
                     onClick={() => handleEntityTypeChange(relatedType === value ? "" : value)}
                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border transition-colors ${
                       relatedType === value
-                        ? "bg-primary text-primary-foreground border-primary"
+                        ? "crm-choice-selected  "
                         : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                     }`}
                   >

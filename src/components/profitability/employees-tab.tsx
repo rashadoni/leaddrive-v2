@@ -170,11 +170,11 @@ export function EmployeesTab() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant={filterDept === "all" ? "default" : "outline"} size="sm" onClick={() => setFilterDept("all")}>
+        <Button variant={filterDept === "all" ? "selected" : "outline"} size="sm" onClick={() => setFilterDept("all")}>
           All ({totalHeadcount})
         </Button>
         {deptSummary.map(d => (
-          <Button key={d.dept} variant={filterDept === d.dept ? "default" : "outline"} size="sm" onClick={() => setFilterDept(d.dept)}>
+          <Button key={d.dept} variant={filterDept === d.dept ? "selected" : "outline"} size="sm" onClick={() => setFilterDept(d.dept)}>
             {d.dept} ({d.count})
           </Button>
         ))}

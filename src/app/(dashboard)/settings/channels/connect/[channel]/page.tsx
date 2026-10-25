@@ -3613,7 +3613,7 @@ function ChannelConnectInner() {
                               {whatsappSmokeResult.warning} {c.whatsappCallingSmokeMetaReminder}
                             </p>
                           </div>
-                          <Button asChild size="sm" className="shrink-0 bg-emerald-700 text-white hover:bg-emerald-800">
+                          <Button asChild size="sm" variant="outline" className="shrink-0">
                             <Link href={whatsappSmokeResult.inboxUrl}>
                               {c.whatsappCallingSmokeOpenInbox}
                               <ArrowRight className="ml-2 h-3.5 w-3.5" />

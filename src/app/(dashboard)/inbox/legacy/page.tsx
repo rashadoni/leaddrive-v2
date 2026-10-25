@@ -511,7 +511,7 @@ export default function InboxPage() {
             className={cn(
               "px-3 py-1.5 text-sm rounded-md transition-colors",
               channelFilter === ch
-                ? "bg-primary text-primary-foreground"
+                ? "crm-choice-selected "
                 : "text-muted-foreground hover:bg-muted"
             )}
           >

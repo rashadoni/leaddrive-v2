@@ -121,8 +121,8 @@ export function ProjectTasksTab({ projectId, tasks, allTasks, milestones, users,
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <div className="flex gap-1 rounded-lg border border-border p-0.5">
-            <button onClick={() => setTaskViewMode("list")} className={cn("px-3 py-1.5 text-sm rounded-md transition-colors", taskViewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>List</button>
-            <button onClick={() => setTaskViewMode("kanban")} className={cn("px-3 py-1.5 text-sm rounded-md transition-colors", taskViewMode === "kanban" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>{t("kanban")}</button>
+            <button onClick={() => setTaskViewMode("list")} className={cn("px-3 py-1.5 text-sm rounded-md transition-colors", taskViewMode === "list" ? "crm-choice-selected " : "hover:bg-muted")}>List</button>
+            <button onClick={() => setTaskViewMode("kanban")} className={cn("px-3 py-1.5 text-sm rounded-md transition-colors", taskViewMode === "kanban" ? "crm-choice-selected " : "hover:bg-muted")}>{t("kanban")}</button>
           </div>
           <select value={taskFilterStatus} onChange={e => setTaskFilterStatus(e.target.value)} className="rounded-lg border border-input bg-background px-2 py-1.5 text-xs">
             <option value="all">{t("status")}: All</option>

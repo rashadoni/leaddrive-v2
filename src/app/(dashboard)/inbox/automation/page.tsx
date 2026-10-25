@@ -2912,7 +2912,7 @@ export default function InboxAutomationPage() {
                               ))}
                             </select>
                             <Button
-                              variant={isSelected ? "default" : "outline"}
+                              variant={isSelected ? "selected" : "outline"}
                               size="sm"
                               disabled={busy}
                               onClick={() => {

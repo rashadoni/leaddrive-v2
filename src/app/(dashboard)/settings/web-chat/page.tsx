@@ -292,7 +292,7 @@ export default function WebChatSettingsPage() {
             <p className="text-sm font-medium">{t("widgetEnabled")}</p>
             <p className="text-xs text-muted-foreground">{t("widgetEnabledDesc")}</p>
           </div>
-          <button
+          <button data-crm-color-role="toggle"
             onClick={() => update({ enabled: !cfg.enabled })}
             className={`h-6 w-11 rounded-full transition-colors ${cfg.enabled ? "bg-green-500" : "bg-muted"}`}
           >

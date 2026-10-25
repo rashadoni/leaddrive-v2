@@ -433,8 +433,8 @@ function TypeParentFields({
     <div className="mb-3">
       <label className="mb-1 block text-sm font-medium">{t("boardType")}</label>
       <div className="mb-1 inline-flex rounded-md border p-0.5">
-        <button type="button" onClick={() => setIsDepartment(false)} className={`rounded px-3 py-1 text-sm ${!isDepartment ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t("typeSection")}</button>
-        <button type="button" onClick={() => setIsDepartment(true)} className={`rounded px-3 py-1 text-sm ${isDepartment ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t("typeDepartment")}</button>
+        <button type="button" onClick={() => setIsDepartment(false)} className={`rounded px-3 py-1 text-sm ${!isDepartment ? "crm-choice-selected " : "text-muted-foreground"}`}>{t("typeSection")}</button>
+        <button type="button" onClick={() => setIsDepartment(true)} className={`rounded px-3 py-1 text-sm ${isDepartment ? "crm-choice-selected " : "text-muted-foreground"}`}>{t("typeDepartment")}</button>
       </div>
       <p className="mb-2 text-xs text-muted-foreground">{isDepartment ? t("typeDepartmentHint") : t("typeSectionHint")}</p>
       {!isDepartment && (

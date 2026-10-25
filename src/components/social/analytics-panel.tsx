@@ -127,7 +127,7 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
                 setLoading(true)
                 setRange(v)
               }}
-              className={`px-2.5 py-1 rounded-md border ${range === v ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}
+              className={`px-2.5 py-1 rounded-md border ${range === v ? "crm-choice-selected  " : "bg-background hover:bg-muted"}`}
             >
               {label}
             </button>

@@ -947,7 +947,7 @@ function ScopedWorkforceWorkbench({ view, session }: {
           {(["today", "timesheet", "requests"] as WorkforceView[]).map((item) => {
             const href = item === "today" ? "/workforce" : `/workforce/${item}`
             const label = item === "today" ? tNav("workforceToday") : item === "timesheet" ? tNav("workforceTimesheet") : tNav("workforceRequests")
-            return <Button key={item} asChild size="sm" variant={item === view ? "default" : "outline"} className="min-h-12">
+            return <Button key={item} asChild size="sm" variant={item === view ? "selected" : "outline"} className="min-h-12">
               <Link
                 href={href}
                 aria-disabled={approvalRefreshLifecycle.isBusy()}

@@ -561,7 +561,7 @@ export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, no
                         className="mt-1 h-8 w-full rounded-lg border border-input bg-background px-2 text-[11px] text-muted-foreground outline-none focus:border-primary/60 focus:text-foreground [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:text-base"
                       />
                       <Hint text={t("hint.shareWhatsApp")}>
-                        <a
+                        <a data-crm-color-role="provider"
                           href={liveMapShareLinkWhatsAppUrl(messageOf(fresh.url))}
                           target="_blank"
                           rel="noopener noreferrer"

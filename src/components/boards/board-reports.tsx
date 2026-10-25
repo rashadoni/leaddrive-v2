@@ -149,7 +149,7 @@ export function BoardReports({ divisionId, assignees, onOpenTask, reloadKey, can
             <button
               key={r}
               onClick={() => setRange(r)}
-              className={`px-3 py-1.5 text-xs font-medium ${range === r ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+              className={`px-3 py-1.5 text-xs font-medium ${range === r ? "crm-choice-selected " : "bg-background text-muted-foreground hover:bg-muted"}`}
             >
               {t(`range_${r}`)}
             </button>

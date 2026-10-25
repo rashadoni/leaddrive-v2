@@ -180,7 +180,7 @@ export function RouteTargetTypeSettings({
                     </span>
                     <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden="true" />
                   </button>
-                  <button
+                  <button data-crm-color-role="toggle"
                     type="button"
                     role="switch"
                     aria-checked={row.enabled}

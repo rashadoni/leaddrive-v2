@@ -5,8 +5,9 @@
   color-scheme: light;
   --border: 216 21% 84%;
   --input: 216 18% 72%;
-  --crm-action: 20 90% 38%;
-  --crm-action-hover: 20 90% 33%;
+  --crm-action: 0 0% 9%;
+  --crm-action-hover: 0 0% 18%;
+  --crm-action-foreground: 0 0% 100%;
   --crm-accent-text: 20 90% 33%;
   --crm-panel-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
 }
@@ -16,6 +17,9 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] [data-crm-workspace]:not(
   color-scheme: dark;
   --border: 215 18% 33%;
   --input: 215 16% 45%;
+  --crm-action: 0 0% 96%;
+  --crm-action-hover: 0 0% 86%;
+  --crm-action-foreground: 0 0% 9%;
   --crm-accent-text: 24 95% 70%;
 }
 
@@ -23,6 +27,9 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] [data-crm-workspace]:not(
   color-scheme: light;
   --border: 216 21% 84%;
   --input: 216 18% 72%;
+  --crm-action: 0 0% 9%;
+  --crm-action-hover: 0 0% 18%;
+  --crm-action-foreground: 0 0% 100%;
   --crm-accent-text: 20 90% 33%;
 }
 
@@ -75,15 +82,51 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] [data-crm-workspace]:not(
    hang-up and other semantic button classes must retain their own colours. */
 [data-crm-workspace] [data-crm-button="default"] {
   --primary: var(--crm-action);
+  --primary-foreground: var(--crm-action-foreground);
+}
+
+[data-crm-workspace] [data-crm-button="default"].bg-primary:hover:not(:disabled):not([data-crm-color-role]) {
+  background-color: hsl(var(--crm-action-hover));
+}
+
+[data-crm-workspace] [data-crm-button]:focus-visible {
+  outline: 2px solid hsl(var(--foreground));
+  outline-offset: 2px;
 }
 
 [data-crm-workspace] [data-crm-button="brand"] {
   background: hsl(var(--crm-action));
-  color: hsl(var(--primary-foreground));
+  color: hsl(var(--crm-action-foreground));
 }
 
 [data-crm-workspace] [data-crm-button="brand"]:hover:not(:disabled) {
   background: hsl(var(--crm-action-hover));
+  opacity: 1;
+}
+
+/* A selected value is not a submit/create action. This class also supports
+   native filter buttons without changing their selection or event handling. */
+[data-crm-workspace] .crm-choice-selected,
+[data-crm-workspace] [data-crm-filter][data-state="active"] {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--input));
+  box-shadow: inset 0 0 0 1px hsl(var(--input));
+  font-weight: 600;
+}
+
+/* Explicit inverse panels (e.g. the dark demo issuance panel) need the
+   opposite pair even when the surrounding workspace is light. */
+[data-crm-workspace] [data-crm-action-surface="inverse"] {
+  --crm-action: 0 0% 96%;
+  --crm-action-hover: 0 0% 86%;
+  --crm-action-foreground: 0 0% 9%;
+}
+
+.dark [data-crm-workspace] [data-crm-action-surface="inverse"]:not(:where(.force-light, .force-light *)) {
+  --crm-action: 0 0% 9%;
+  --crm-action-hover: 0 0% 18%;
+  --crm-action-foreground: 0 0% 100%;
 }
 
 [data-crm-workspace] [data-crm-badge="ai"] {
@@ -120,12 +163,6 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] [data-crm-workspace]:not(
   background: hsl(var(--card));
   color: hsl(var(--muted-foreground));
   box-shadow: none;
-}
-
-[data-crm-workspace] [data-crm-filter][data-state="active"] {
-  border-color: hsl(var(--foreground));
-  color: hsl(var(--foreground));
-  font-weight: 600;
 }
 
 /* Dialogs sit above the page. A recessed canvas stays gray inside them. */

@@ -476,7 +476,7 @@ export default function IntegrationsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-3">
-                    <button
+                    <button data-crm-color-role="toggle"
                       onClick={() => toggleWebhook(wh.id, !wh.isActive)}
                       className={cn("w-2.5 h-2.5 rounded-full", wh.isActive ? "bg-green-500" : "bg-muted-foreground/30")}
                       title={wh.isActive ? t("statusActive") : t("statusInactive")}

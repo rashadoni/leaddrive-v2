@@ -208,7 +208,7 @@ export function NextBestOffers({ dealId, orgId }: { dealId: string; orgId?: stri
               {t("nboAddToDeal")}
             </Button>
           ) : (
-            <Button disabled className="bg-green-500">
+            <Button data-crm-color-role="status" disabled className="bg-green-500">
               <Check className="h-4 w-4 mr-2" /> {t("nboAdded")}
             </Button>
           )}

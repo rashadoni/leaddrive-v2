@@ -562,7 +562,7 @@ export default function JourneysPage() {
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  variant={flowView ? "default" : "outline"}
+                  variant={flowView ? "selected" : "outline"}
                   className="gap-1 text-xs h-7"
                   onClick={() => setFlowView(!flowView)}
                 >

@@ -129,7 +129,7 @@ export function ActivityTimeline({ dealId, orgId }: { dealId: string; orgId?: st
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`px-2.5 py-1 text-xs rounded-full border border-border transition-colors ${
-                  filter === f ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                  filter === f ? "crm-choice-selected  " : "bg-background hover:bg-muted"
                 }`}
               >
                 {f === "all" ? tc("actTypeAll") : tc((TYPE_CONFIG[f]?.labelKey || "actTypeNote") as any)} ({count})

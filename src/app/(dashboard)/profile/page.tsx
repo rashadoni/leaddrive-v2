@@ -650,7 +650,7 @@ function AppearanceSection() {
               onClick={() => setTheme("light")}
               aria-pressed={!isDark}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                !isDark ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                !isDark ? "crm-choice-selected " : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Sun className="h-3.5 w-3.5" />
@@ -661,7 +661,7 @@ function AppearanceSection() {
               onClick={() => setTheme("dark")}
               aria-pressed={isDark}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                isDark ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                isDark ? "crm-choice-selected " : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Moon className="h-3.5 w-3.5" />

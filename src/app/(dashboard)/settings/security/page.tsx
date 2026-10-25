@@ -545,14 +545,14 @@ export default function SecuritySettingsPage() {
                               <button
                                 type="button"
                                 onClick={() => toggle(readScope)}
-                                className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${readOn ? "bg-primary text-primary-foreground border-primary" : "bg-muted/50 hover:bg-muted"}`}
+                                className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${readOn ? "crm-choice-selected  " : "bg-muted/50 hover:bg-muted"}`}
                               >
                                 {c.read}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => toggle(writeScope)}
-                                className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${writeOn ? "bg-primary text-primary-foreground border-primary" : "bg-muted/50 hover:bg-muted"}`}
+                                className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${writeOn ? "crm-choice-selected  " : "bg-muted/50 hover:bg-muted"}`}
                               >
                                 {c.write}
                               </button>
