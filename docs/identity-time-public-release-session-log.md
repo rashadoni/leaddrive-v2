@@ -1,0 +1,8 @@
+# Identity-compatible Time public release
+
+## 2026-10-25T22:53:48.972842+00:00 — coordinated authorized rollout
+
+- Continuation of crm-person-identity task, not replacement of its preserved journal. Owner explicitly approved “Давай, выпусти для Zeytun” after review of shared-password authentication, compatible native publication before person conversion, and the explicit limitation that the new S23 build has not been tested because ADB is unavailable. This approval covers this coordinated native publication without representing physical acceptance as PASS.
+- Dedicated clean promotion worktree crm-identity-time-public-release, branch codex/identity-time-public-release, based on reviewed server main7f654ee9dd62d52e403ab52ca6072f2a1e3a8d2e (PR1028). Origin https://github.com/rashadoni/leaddrive-v2.git, production13.140.132.245:/opt/leaddrive-v2, normal protected-main immutable Actions route only. Original identity and native worktrees/journals retained.
+- No release pointer edited yet: backend deployment40242081858 is pending. Native PR20481022fb is qualified but must merge after backend compatibility is live. Fresh Time main build must exceed1049 feature candidate and published1048; package/certificate/source/asset/hash must be verified. Field publication remains its independent channel.
+- Next: verify backend deployment, merge native and build reviewed main, publish exact signed Time bytes and receipt, update only Time manifest/test/evidence/docs, pass hosted required gates, merge/deploy and inspect public download. Physical Maestro/installed update NOT RUN; existing1048 physical evidence does not qualify the new build.
