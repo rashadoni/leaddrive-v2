@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          setupToken: signPasswordSetupToken(holder.agent),
+          setupToken: signPasswordSetupToken(holder.agent, holder.sendTo),
           agent: { name: holder.agent.name },
           organizationName: organization.name,
         },

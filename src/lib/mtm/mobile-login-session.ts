@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { readLegacyCredentialBoundary, readLegacyPhoneCredentialBoundary } from "@/lib/identity/legacy-credential-boundary"
 import { JWT_SECRET } from "@/lib/mobile-auth"
+import { normalizeIdentityPhone } from "@/lib/identity/contract"
 import { createSessionFingerprint } from "@/lib/session-invalidation"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
@@ -147,24 +148,30 @@ export function mobileLoginSuccess(agent: MobileLoginAgent, linkedUserId: string
  * The token names the card by `sub` and carries no `agentId`, so neither the
  * middleware nor resolveMobileAuth can mistake it for a session. It holds the
  * card's credential fingerprint at the moment the code was accepted; setting
- * the password changes that fingerprint, so the token works once.
+ * the password changes that fingerprint, so the token works once. Version2
+ * also binds the server-verified delivery number; the setter rechecks the
+ * current effective number inside its writer transaction. Older unbound
+ * capabilities expire closed and require a new code, never a format fallback.
  */
 const PASSWORD_SETUP_AUDIENCE = "mtm-password-setup"
 const PASSWORD_SETUP_TTL = "15m"
 
-export function signPasswordSetupToken(agent: Pick<MtmAgent, "id" | "organizationId" | "passwordHash">): string {
+export function signPasswordSetupToken(agent: Pick<MtmAgent, "id" | "organizationId" | "passwordHash">, verifiedPhone: string): string {
+  const phone = normalizeIdentityPhone(verifiedPhone)
+  if (!phone || phone !== verifiedPhone) throw new Error("MTM_SETUP_PHONE_INVALID")
   return jwt.sign(
-    { org: agent.organizationId, fp: createSessionFingerprint({ principalId: agent.id, passwordHash: agent.passwordHash, secret: JWT_SECRET }) },
+    { v: 2, phone, org: agent.organizationId, fp: createSessionFingerprint({ principalId: agent.id, passwordHash: agent.passwordHash, secret: JWT_SECRET }) },
     JWT_SECRET,
     { subject: agent.id, audience: PASSWORD_SETUP_AUDIENCE, expiresIn: PASSWORD_SETUP_TTL },
   )
 }
 
-export function readPasswordSetupToken(token: string): { agentId: string; organizationId: string; fingerprint: string } | null {
+export function readPasswordSetupToken(token: string): { agentId: string; organizationId: string; fingerprint: string; phone: string } | null {
   try {
-    const payload = jwt.verify(token, JWT_SECRET, { audience: PASSWORD_SETUP_AUDIENCE }) as jwt.JwtPayload
-    if (typeof payload.sub !== "string" || typeof payload.org !== "string" || typeof payload.fp !== "string") return null
-    return { agentId: payload.sub, organizationId: payload.org, fingerprint: payload.fp }
+    const payload = jwt.verify(token, JWT_SECRET, { audience: PASSWORD_SETUP_AUDIENCE, algorithms: ["HS256"] }) as jwt.JwtPayload
+    if (payload.v !== 2 || typeof payload.phone !== "string" || normalizeIdentityPhone(payload.phone) !== payload.phone
+      || typeof payload.sub !== "string" || typeof payload.org !== "string" || typeof payload.fp !== "string") return null
+    return { agentId: payload.sub, organizationId: payload.org, fingerprint: payload.fp, phone: payload.phone }
   } catch {
     return null
   }

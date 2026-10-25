@@ -58,10 +58,11 @@ export async function readLegacyPhoneCredentialBoundary(client: RegistryClient, 
 
 /** Internal phone-derived setup mutation check. Caller owns the scoped writer
  * transaction and its canonical tenant lock; no nested snapshot/transaction.
- * The number comes from current server state, never from the setup request. */
+ * Compare current server state with an optional verified capability number;
+ * never pass an unverified phone field from the setup request body. */
 export async function readLegacyPhoneCredentialBoundaryInTransaction(tx: Prisma.TransactionClient,
-  organizationId: string, actorId: string): Promise<LegacyCredentialBoundary> {
-  return readLegacyPhoneState(tx, organizationId, actorId)
+  organizationId: string, actorId: string, verifiedPhone?: string): Promise<LegacyCredentialBoundary> {
+  return readLegacyPhoneState(tx, organizationId, actorId, verifiedPhone)
 }
 
 async function readLegacyPhoneState(tx: Prisma.TransactionClient, organizationId: string,

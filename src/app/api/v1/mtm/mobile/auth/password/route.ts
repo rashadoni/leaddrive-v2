@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
         include: { organization: { select: MOBILE_LOGIN_ORGANIZATION_SELECT } },
       })
       if (!row || row.status !== "ACTIVE" || !row.organization.isActive || !passwordSetupStillFresh(row, setup.fingerprint)) return expired()
-      if (!(await legacyMobileMaySignIn(row))) return expired()
+      if (!(await legacyMobileMaySignIn(row, setup.phone))) return expired()
       const refusal = mobileAppRefusal(row)
       if (refusal) return refusal
 
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
           if (fresh.role === "EMPLOYEE" && (!fresh.userId || !fresh.attendanceParticipant
             || !await readAttendanceFeature(tx, fresh.organizationId))) return null
           if (mobileAppRefusal(fresh)) return null
-          if (await readLegacyPhoneCredentialBoundaryInTransaction(tx, fresh.organizationId, fresh.id) !== "LEGACY") return null
+          if (await readLegacyPhoneCredentialBoundaryInTransaction(tx, fresh.organizationId, fresh.id, setup.phone) !== "LEGACY") return null
           const linkedUser = fresh.userId ? await tx.user.findFirst({
             where: { id: fresh.userId, organizationId: fresh.organizationId, isActive: true, anonymizedAt: null },
             select: { id: true, passwordHash: true, passwordChangedAt: true },

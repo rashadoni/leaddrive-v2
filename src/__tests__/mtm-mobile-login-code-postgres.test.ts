@@ -524,7 +524,7 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     // phone-derived write path. Keep the separate OTP unconsumed for its test.
     const { signPasswordSetupToken } = await import("@/lib/mtm/mobile-login-session")
     const originalCard = await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId } }))
-    const oldSetup = signPasswordSetupToken(originalCard)
+    const oldSetup = signPasswordSetupToken(originalCard, phone)
     await bypass(async () => {
       await prisma.identityAccount.update({ where: { organizationId_userId: { organizationId: company, userId: fixture.canonicalId } },
         data: { cutoverAt: new Date(), passwordHash: "!canonical-namespace-fixture", version: 2, credentialEpoch: 2 } })
@@ -593,6 +593,42 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
       expect(await prisma.mtmAuditLog.count({ where: { organizationId: company, action: "AUTO_LINK" } })).toBe(0)
     })
     expect(sent).toHaveLength(0)
+  })
+
+  it.each(["actor", "user"] as const)("binds password setup to the confirmed number after the actual %s phone writer changes it", async source => {
+    const company = `identity-setup-phone-${source}`, oldPhone = "+994507775511", newPhone = "+994507775512", oldPassword = "Fictional-Before-Phone-2026!"
+    const fixture = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, slug: company, name: "Fictional phone-bound setup", modules: { "route-field": true, settings: true } } })
+      const actor = await prisma.user.create({ data: { organizationId: company, name: "Fictional phone admin", email: `admin-${source}@setup-phone.invalid`, role: "admin", passwordHash: "!fixture" } })
+      const person = await prisma.user.create({ data: { organizationId: company, name: "Fictional phone holder", email: `holder-${source}@setup-phone.invalid`, role: "viewer", passwordHash: "!fixture", phone: source === "user" ? oldPhone : null } })
+      const card = await prisma.mtmAgent.create({ data: { organizationId: company, userId: person.id, name: "Fictional phone card", role: "AGENT", phone: source === "actor" ? oldPhone : null, passwordHash: await bcrypt.hash(oldPassword, 4) } })
+      return { actorId: actor.id, userId: person.id, cardId: card.id, oldHash: card.passwordHash }
+    })
+    expect((await post(requestCode, "/code", { phone: oldPhone, organizationSlug: company })).status).toBe(200)
+    const checked = await post(verifyCode, "/code/verify", { phone: oldPhone, organizationSlug: company, code: codeOf(sent[0]) })
+    expect(checked.status).toBe(200)
+    const setupToken = (await checked.json()).data.setupToken as string
+    const claims = jwt.decode(setupToken) as jwt.JwtPayload
+    expect(claims).toMatchObject({ v: 2, phone: oldPhone })
+    // Even a correctly signed old capability is never interpreted as v2.
+    const unbound = jwt.sign({ org: company, fp: claims.fp }, process.env.NEXTAUTH_SECRET!, { subject: fixture.cardId, audience: "mtm-password-setup", expiresIn: "15m" })
+    expect((await post(setPassword, "/password", { setupToken: unbound, password: "Fictional-Unbound-2026!" })).status).toBe(401)
+    webSession.current = { orgId: company, userId: fixture.actorId, role: "admin", email: `admin-${source}@setup-phone.invalid`, name: "Fictional phone admin", principalType: "session" }
+    try {
+      const id = source === "actor" ? fixture.cardId : fixture.userId
+      const request = new NextRequest(`http://localhost/api/v1/${source === "actor" ? "mtm/agents" : "users"}/${id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone: newPhone }) })
+      const response = source === "actor" ? await updateAgent(request, { params: Promise.resolve({ id }) }) : await updateCrmUser(request, { params: Promise.resolve({ id }) })
+      expect(response.status).toBe(200)
+    } finally { webSession.current = null }
+    expect((await post(setPassword, "/password", { setupToken, password: "Fictional-Stale-Phone-2026!" })).status).toBe(401)
+    expect((await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId }, select: { passwordHash: true } }))).passwordHash).toBe(fixture.oldHash)
+    sent.length = 0
+    expect((await post(requestCode, "/code", { phone: newPhone, organizationSlug: company })).status).toBe(200)
+    const fresh = await post(verifyCode, "/code/verify", { phone: newPhone, organizationSlug: company, code: codeOf(sent[0]) })
+    expect(fresh.status).toBe(200)
+    const freshToken = (await fresh.json()).data.setupToken as string
+    expect((await post(setPassword, "/password", { setupToken: freshToken, password: "Fictional-Fresh-Phone-2026!" })).status).toBe(200)
+    expect((await post(setPassword, "/password", { setupToken: freshToken, password: "Fictional-Fresh-Phone-2026!" })).status).toBe(401)
   })
 
   it("rolls back the legacy code password change when its real audit insert fails, preserving the setup capability", async () => {
