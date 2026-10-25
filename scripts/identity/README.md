@@ -396,3 +396,27 @@ no DB access for invalid JWTs, failed/mutating policy refusal, independent app
 revocation, membership reactivation, common credential epoch and stale actor
 link. This is a synthetic post-auth fixture, not a public password-login test
 or production entitlement audit.
+
+
+### Monotonic security state and authoritative lifecycle
+
+SQL refuses decreasing account/credential revisions, changing the person/tenant
+key, clearing/changing an existing cutover, or changing the hash/first cutover
+without a new credential epoch. An application rollback cannot restore legacy
+password lookup through a nullable authority marker.
+
+For authoritative accounts only, changes to User isActive/anonymizedAt advance
+the shared credential epoch/revision with immutable system audit. Changes to a
+technical actor's global user link/status advance each linked membership version
+and audit, without changing the binding or activating a grant. Disable/restore
+cannot revive an old JWT. Trigger audit failure rolls back the status/link and
+versions atomically. Staged/legacy accounts are unaffected. Tests use a separate
+NOLOGIN/NOBYPASSRLS operator with minimal column privileges and tenant policies,
+not a weaker snapshot/staging writer.
+
+Person/technical-actor global lifecycle is distinct from an ordinary app access
+switch. Before cutover, adapt/fence all legacy writers: disabling Field alone
+must change only Field grant/membership, not User.isActive or MtmAgent.status.
+The triggers are not permission to turn on new auth ahead of that work. Normal
+password login/provider/API/UI and app workflow/queue migration remain separate
+integration gates; no current route has switched to this identity runtime.

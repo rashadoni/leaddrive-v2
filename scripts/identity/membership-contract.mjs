@@ -111,7 +111,7 @@ export async function checkMembershipTransactions({ admin, writer, failing, acto
   assert.equal(await admin.identityApplicationMembership.count({ where: { organizationId: org, userId: rollback.userId } }), 0)
   await admin.$executeRawUnsafe('UPDATE mtm_agents SET "userId"=$1 WHERE id=$2', base.userId, base.actorId)
   await admin.$executeRawUnsafe('UPDATE users SET "isActive"=true WHERE id=$1', base.userId)
-  await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: org, userId: base.userId } }, data: { passwordHash: "synthetic-existing-credential-fixture", cutoverAt: new Date() } })
+  await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: org, userId: base.userId } }, data: { passwordHash: "synthetic-existing-credential-fixture", cutoverAt: new Date(), credentialEpoch: { increment: 1 }, version: { increment: 1 } } })
   await assert.rejects(member(writer, actor, { ...revoke, expectedAccountVersion: 12, expectedMembershipVersion: 6, requestId: "membership-after-cutover" }), /IDENTITY_ALREADY_AUTHORITATIVE/)
   checks.push("relinked_actor_never_transfers_history_revocation_remains_possible_and_staging_refuses_cutover")
   await checkIdentityResolver({ admin, writer, build, actor, userId: base.userId, actorId: base.actorId, otherUserId: rollback.userId, checks, phase })

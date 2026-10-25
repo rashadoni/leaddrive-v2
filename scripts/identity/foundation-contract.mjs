@@ -301,7 +301,7 @@ async function main() {
     phase = "PHONE_RESERVATION_TENANT_AND_CUTOVER_BOUNDARIES"
     const otherReserved = await reserveStagedIdentityPhone(writer, other, { ...identical, userId: other.userId, requestId: "other-company-same-reserved-phone" })
     assert.equal(otherReserved.status, "RESERVED")
-    await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: A, userId: "identity-user-a8" } }, data: { cutoverAt: new Date(), passwordHash: "synthetic-not-a-usable-password" } })
+    await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: A, userId: "identity-user-a8" } }, data: { cutoverAt: new Date(), passwordHash: "synthetic-not-a-usable-password", credentialEpoch: { increment: 1 }, version: { increment: 1 } } })
     await assert.rejects(reserveStagedIdentityPhone(writer, actor, identical), /IDENTITY_ALREADY_AUTHORITATIVE/)
     await expectDatabaseError(() => admin.$executeRawUnsafe('INSERT INTO identity_events (id,"organizationId","userId","actorUserId","requestId","requestHash",action,"accountVersion","normalizedPhone","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,1,$8,now())', "invalid-reservation-receipt", A, historical.userId, actor.userId, "invalid-reserved-event", "a".repeat(64), "PHONE_RESERVED", "+994550005599"), "23514")
     receipt.checks.push("reservation_scope_is_tenant_local_and_refuses_live_authoritative_account")

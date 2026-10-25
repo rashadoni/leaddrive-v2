@@ -1,4 +1,5 @@
--- Stage 1: empty, additive registry. No backfill, legacy writes, grants or cutover.
+-- Empty additive registry; no backfill, legacy data rewrite or cutover.
+-- Lifecycle guards affect only explicitly authoritative identities.
 BEGIN;
 SET LOCAL lock_timeout = '3s';
 SET LOCAL statement_timeout = '30s';
@@ -157,7 +158,7 @@ CREATE TABLE identity_events (
   "actorUserId" TEXT,
   "requestId" VARCHAR(128) NOT NULL CHECK (length("requestId") > 0),
   "requestHash" VARCHAR(64) NOT NULL CHECK ("requestHash" ~ '^[a-f0-9]{64}$'),
-  action VARCHAR(40) NOT NULL CHECK (action IN ('ACCOUNT_STAGED', 'GRANT_CHANGED', 'PHONE_RESERVED', 'PHONE_CONFIRMED', 'PHONE_RELEASED', 'RESERVATION_EXPIRED', 'PHONE_PROOF_ISSUED', 'PHONE_PROOF_REJECTED', 'PHONE_DELIVERY_LEASED', 'PHONE_DELIVERY_RECORDED', 'PHONE_RESERVATION_CANCELLED', 'CREDENTIAL_STAGED', 'ACTOR_BINDING_REVIEWED', 'MEMBERSHIP_CHANGED')),
+  action VARCHAR(40) NOT NULL CHECK (action IN ('ACCOUNT_STAGED', 'GRANT_CHANGED', 'PHONE_RESERVED', 'PHONE_CONFIRMED', 'PHONE_RELEASED', 'RESERVATION_EXPIRED', 'PHONE_PROOF_ISSUED', 'PHONE_PROOF_REJECTED', 'PHONE_DELIVERY_LEASED', 'PHONE_DELIVERY_RECORDED', 'PHONE_RESERVATION_CANCELLED', 'CREDENTIAL_STAGED', 'ACTOR_BINDING_REVIEWED', 'MEMBERSHIP_CHANGED', 'PERSON_LIFECYCLE_CHANGED', 'ACTOR_LIFECYCLE_CHANGED')),
   "accountVersion" INTEGER NOT NULL CHECK ("accountVersion" > 0),
   application VARCHAR(16) CHECK (application IN ('CRM', 'TIME', 'ROUTE_FIELD')),
   "grantStatus" VARCHAR(16) CHECK ("grantStatus" IN ('ACTIVE', 'REVOKED')),
@@ -180,14 +181,15 @@ CREATE TABLE identity_events (
   "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY ("organizationId", "userId") REFERENCES identity_accounts("organizationId", "userId") ON DELETE RESTRICT ON UPDATE RESTRICT,
   FOREIGN KEY ("organizationId", "actorUserId") REFERENCES users("organizationId", id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CHECK ("actorUserId" IS NOT NULL OR action IN ('PHONE_PROOF_REJECTED','PHONE_DELIVERY_LEASED','PHONE_DELIVERY_RECORDED')),
+  CHECK ("actorUserId" IS NOT NULL OR action IN ('PHONE_PROOF_REJECTED','PHONE_DELIVERY_LEASED','PHONE_DELIVERY_RECORDED','PERSON_LIFECYCLE_CHANGED','ACTOR_LIFECYCLE_CHANGED')),
   CHECK (action NOT IN ('PHONE_PROOF_ISSUED','PHONE_PROOF_REJECTED','PHONE_DELIVERY_LEASED','PHONE_DELIVERY_RECORDED','PHONE_CONFIRMED','CREDENTIAL_STAGED')
     OR ("proofId" IS NOT NULL AND "credentialEpoch" IS NOT NULL)),
   CHECK (action <> 'PHONE_PROOF_ISSUED' OR ("reservationId" IS NOT NULL AND "normalizedPhone" IS NOT NULL AND "proofExpiresAt" IS NOT NULL
     AND "proofExpiresAt" > "createdAt" AND "proofExpiresAt" <= "createdAt" + interval '10 minutes')),
   CHECK (action <> 'PHONE_PROOF_REJECTED' OR ("proofAttempt" IS NOT NULL AND "proofOutcome" IS NOT NULL)),
   CHECK (action <> 'ACTOR_BINDING_REVIEWED' OR ("actorId" IS NOT NULL AND "reviewReference" IS NOT NULL)),
-  CHECK (action <> 'MEMBERSHIP_CHANGED' OR (application IS NOT NULL AND application IN ('TIME','ROUTE_FIELD') AND "actorId" IS NOT NULL AND "membershipStatus" IS NOT NULL AND "membershipVersion" IS NOT NULL AND "grantVersion" IS NOT NULL)),
+  CHECK (action NOT IN ('MEMBERSHIP_CHANGED','ACTOR_LIFECYCLE_CHANGED') OR (application IS NOT NULL AND application IN ('TIME','ROUTE_FIELD') AND "actorId" IS NOT NULL AND "membershipStatus" IS NOT NULL AND "membershipVersion" IS NOT NULL AND "grantVersion" IS NOT NULL)),
+  CHECK (action NOT IN ('PERSON_LIFECYCLE_CHANGED','ACTOR_LIFECYCLE_CHANGED') OR "credentialEpoch" IS NOT NULL),
   CHECK (action <> 'CREDENTIAL_STAGED' OR "claimId" IS NOT NULL),
   CHECK (action <> 'PHONE_CONFIRMED' OR ("claimId" IS NOT NULL AND "normalizedPhone" IS NOT NULL)),
   CHECK (action <> 'PHONE_RESERVED' OR ("normalizedPhone" IS NOT NULL AND "reservationId" IS NOT NULL AND length("reservationId") > 0 AND "reservationExpiresAt" IS NOT NULL AND "reservationExpiresAt" > "createdAt" AND "reservationExpiresAt" <= "createdAt" + interval '15 minutes')),
@@ -231,4 +233,73 @@ CREATE TRIGGER identity_actor_binding_immutable BEFORE UPDATE OR DELETE ON ident
   FOR EACH ROW EXECUTE FUNCTION identity_reject_binding_mutation();
 CREATE TRIGGER identity_actor_binding_no_truncate BEFORE TRUNCATE ON identity_actor_bindings
   FOR EACH STATEMENT EXECUTE FUNCTION identity_reject_binding_mutation();
+-- Security revisions never roll back, and an authoritative record cannot
+-- silently resume legacy credentials after an application rollback.
+CREATE FUNCTION identity_guard_account_revision() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW."organizationId" IS DISTINCT FROM OLD."organizationId" OR NEW."userId" IS DISTINCT FROM OLD."userId" THEN
+    RAISE EXCEPTION 'IDENTITY_ACCOUNT_SCOPE_IMMUTABLE' USING ERRCODE = '23514';
+  END IF;
+  IF NEW.version < OLD.version OR NEW."credentialEpoch" < OLD."credentialEpoch" THEN
+    RAISE EXCEPTION 'IDENTITY_ACCOUNT_REVISION_ROLLBACK' USING ERRCODE = '23514';
+  END IF;
+  IF OLD."cutoverAt" IS NOT NULL AND NEW."cutoverAt" IS DISTINCT FROM OLD."cutoverAt" THEN
+    RAISE EXCEPTION 'IDENTITY_AUTHORITY_IMMUTABLE' USING ERRCODE = '23514';
+  END IF;
+  IF (NEW."passwordHash" IS DISTINCT FROM OLD."passwordHash" OR NEW."cutoverAt" IS DISTINCT FROM OLD."cutoverAt")
+      AND NEW."credentialEpoch" <= OLD."credentialEpoch" THEN
+    RAISE EXCEPTION 'IDENTITY_CREDENTIAL_EPOCH_REQUIRED' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER identity_account_revision_guard BEFORE UPDATE ON identity_accounts
+  FOR EACH ROW EXECUTE FUNCTION identity_guard_account_revision();
+
+-- Only reviewed authoritative identities are affected. Do not lock proofs or
+-- outboxes here: normal writers lock User before account and recheck epochs.
+CREATE FUNCTION identity_person_lifecycle_changed() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE changed RECORD; event_id TEXT;
+BEGIN
+  UPDATE public.identity_accounts SET version = version + 1, "credentialEpoch" = "credentialEpoch" + 1, "updatedAt" = clock_timestamp()
+    WHERE "organizationId" = NEW."organizationId" AND "userId" = NEW.id AND "cutoverAt" IS NOT NULL
+    RETURNING "organizationId" AS organization_id, "userId" AS user_id, version, "credentialEpoch" AS credential_epoch INTO changed;
+  IF FOUND THEN
+    event_id := pg_catalog.gen_random_uuid()::text;
+    INSERT INTO public.identity_events (id,"organizationId","userId","actorUserId","requestId","requestHash",action,"accountVersion","credentialEpoch","createdAt")
+      VALUES (event_id,changed.organization_id,changed.user_id,NULL,'person-state:' || event_id,
+        encode(sha256(convert_to(event_id,'UTF8')),'hex'),'PERSON_LIFECYCLE_CHANGED',changed.version,changed.credential_epoch,clock_timestamp());
+  END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER identity_person_lifecycle AFTER UPDATE OF "isActive", "anonymizedAt" ON users
+  FOR EACH ROW WHEN (OLD."isActive" IS DISTINCT FROM NEW."isActive" OR OLD."anonymizedAt" IS DISTINCT FROM NEW."anonymizedAt")
+  EXECUTE FUNCTION identity_person_lifecycle_changed();
+
+-- A technical actor's global lifecycle is not an application grant switch.
+-- App-only revocation must use its grant/membership; legacy writes must be
+-- fenced/adapted before cutover. Each transition invalidates old member tokens.
+CREATE FUNCTION identity_actor_lifecycle_changed() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE changed RECORD; event_id TEXT;
+BEGIN
+  FOR changed IN
+    UPDATE public.identity_application_memberships AS m SET version = m.version + 1, "updatedAt" = clock_timestamp()
+    FROM public.identity_accounts AS a, public.identity_application_grants AS g
+    WHERE m."organizationId" = NEW."organizationId" AND m."actorId" = NEW.id
+      AND a."organizationId" = m."organizationId" AND a."userId" = m."userId" AND a."cutoverAt" IS NOT NULL
+      AND g."organizationId" = m."organizationId" AND g."userId" = m."userId" AND g.application = m.application
+    RETURNING m."organizationId" AS organization_id,m."userId" AS user_id,m.application,m."actorId" AS actor_id,m.status,m.version,
+      a.version AS account_version,a."credentialEpoch" AS credential_epoch,g.version AS grant_version
+  LOOP
+    event_id := pg_catalog.gen_random_uuid()::text;
+    INSERT INTO public.identity_events (id,"organizationId","userId","actorUserId","requestId","requestHash",action,"accountVersion",application,
+      "actorId","membershipStatus","membershipVersion","grantVersion","credentialEpoch","createdAt")
+      VALUES (event_id,changed.organization_id,changed.user_id,NULL,'actor-state:' || event_id,encode(sha256(convert_to(event_id,'UTF8')),'hex'),
+        'ACTOR_LIFECYCLE_CHANGED',changed.account_version,changed.application,changed.actor_id,changed.status,changed.version,
+        changed.grant_version,changed.credential_epoch,clock_timestamp());
+  END LOOP;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER identity_actor_lifecycle AFTER UPDATE OF "userId",status ON mtm_agents
+  FOR EACH ROW WHEN (OLD."userId" IS DISTINCT FROM NEW."userId" OR OLD.status IS DISTINCT FROM NEW.status)
+  EXECUTE FUNCTION identity_actor_lifecycle_changed();
 COMMIT;
