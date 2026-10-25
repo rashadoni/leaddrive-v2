@@ -428,6 +428,37 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect(sent).toHaveLength(0)
   })
 
+  it("atomically links a proven legacy mailbox owner and rolls back the link when its audit fails", async () => {
+    const company = "identity-atomic-email-link", email = "atomic-link@example.invalid", password = "Fictional-Atomic-Link-Pass-2026!"
+    const fixture = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, name: "Fictional atomic email link", slug: company, modules: { "route-field": true } } })
+      const user = await prisma.user.create({ data: { organizationId: company, name: "Fictional proven mailbox owner", email, passwordHash: await bcrypt.hash(password, 4), role: "viewer" } })
+      const card = await prisma.mtmAgent.create({ data: { organizationId: company, name: "Fictional unlinked card", email, role: "AGENT" } })
+      return { userId: user.id, cardId: card.id }
+    })
+    const login = () => post(signIn, "", { email, password, organizationSlug: company })
+    await bypass(() => prisma.$executeRawUnsafe(`ALTER TABLE mtm_audit_logs ADD CONSTRAINT identity_fixture_link_audit_fail CHECK ("organizationId" <> 'identity-atomic-email-link' OR action <> 'AUTO_LINK') NOT VALID`))
+    try {
+      expect((await login()).status).toBe(500)
+      await bypass(async () => {
+        expect((await prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId } })).userId).toBeNull()
+        expect(await prisma.mtmAuditLog.count({ where: { organizationId: company, action: { in: ["AUTO_LINK", "MOBILE_LOGIN"] } } })).toBe(0)
+      })
+    } finally { await bypass(() => prisma.$executeRawUnsafe("ALTER TABLE mtm_audit_logs DROP CONSTRAINT identity_fixture_link_audit_fail")) }
+    const admitted = await login()
+    expect(admitted.status).toBe(200)
+    const data = (await admitted.json()).data
+    expect(await resolveMobileAuth(new NextRequest("http://localhost/api/v1/mtm/mobile/me", {
+      headers: { authorization: `Bearer ${data.token}` },
+    }))).toMatchObject({ agentId: fixture.cardId, userId: fixture.userId, orgId: company })
+    await bypass(async () => {
+      expect((await prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId } })).userId).toBe(fixture.userId)
+      expect(await prisma.mtmAuditLog.count({ where: { organizationId: company, action: "AUTO_LINK" } })).toBe(1)
+      expect(await prisma.mtmAuditLog.count({ where: { organizationId: company, action: "MOBILE_LOGIN" } })).toBe(1)
+    })
+    expect(sent).toHaveLength(0)
+  })
+
   it("does not adopt a canonical User through the legacy same-email auto-link", async () => {
     const company = "identity-legacy-email-boundary", email = "unlinked@example.invalid", password = "Fictional-Unlinked-Pass-2026!"
     const cardId = await bypass(async () => {

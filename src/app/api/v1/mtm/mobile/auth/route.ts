@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { hashForRateLimit } from "@/lib/rate-limit"
 import { writeMtmAudit } from "@/lib/mtm-audit"
-import { runWithRlsBypass } from "@/lib/rls-context"
+import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
+import { withLegacyCredentialWrite } from "@/lib/identity/legacy-credential-write"
 import { maskLegacyAuthEmail } from "@/lib/auth-credentials"
 import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 import { clientIp } from "@/lib/request-ip"
@@ -328,24 +329,39 @@ export async function POST(req: NextRequest) {
       // mobile product. Authentication is evaluated first to avoid an
       // unauthenticated entitlement oracle; the write happens only after the
       // commercial gate has passed.
-      await prisma.mtmAgent.update({
-        where: { id: agent.id },
-        data: { userId: pendingAutoLink.userId },
-      })
-      await writeMtmAudit({
-        organizationId: agent.organizationId,
-        agentId: agent.id,
-        action: "AUTO_LINK",
-        entity: "agent",
-        entityId: agent.id,
-        metadataKind: "auto_link",
-        oldData: { userId: pendingAutoLink.previousUserId },
-        newData: {
-          userId: pendingAutoLink.userId,
-          reason: "Mobile login matched CRM user by email",
-        },
-        req,
-      }).catch((err) => console.warn("[MTM/mobile/auth] AUTO_LINK audit failed", err))
+      const originalAgent = agent, link = pendingAutoLink, proof = linkedUserCredentialState
+      const linked = await runWithTenant(agent.organizationId, () => withLegacyCredentialWrite(prisma, originalAgent.organizationId,
+        [{ kind: "ACTOR", actorId: originalAgent.id }, { kind: "USER", userId: link.userId }], async tx => {
+          const freshAgent = await tx.mtmAgent.findFirst({ where: { id: originalAgent.id, organizationId: originalAgent.organizationId } })
+          const freshUser = await tx.user.findFirst({
+            where: { id: link.userId, organizationId: originalAgent.organizationId, email: methodThreeEmail!, isActive: true, anonymizedAt: null },
+            select: { id: true, passwordHash: true, passwordChangedAt: true },
+          })
+          if (!freshAgent || !freshUser || !proof || freshAgent.status !== "ACTIVE"
+            || freshAgent.userId !== link.previousUserId || freshAgent.passwordHash !== null
+            || freshAgent.email !== originalAgent.email || freshAgent.role !== originalAgent.role
+            || freshAgent.attendanceParticipant !== originalAgent.attendanceParticipant
+            || freshUser.passwordHash !== proof.passwordHash
+            || (freshUser.passwordChangedAt?.getTime() ?? null) !== (proof.passwordChangedAt?.getTime() ?? null)) return null
+          const organization = await tx.organization.findUnique({ where: { id: originalAgent.organizationId }, select: MOBILE_LOGIN_ORGANIZATION_SELECT })
+          if (!organization?.isActive || mobileAppRefusal({ ...freshAgent, organization })) return null
+          const changed = await tx.mtmAgent.updateMany({
+            where: { id: freshAgent.id, organizationId: originalAgent.organizationId, userId: link.previousUserId,
+              passwordHash: null, status: "ACTIVE", email: freshAgent.email },
+            data: { userId: link.userId },
+          })
+          if (changed.count !== 1) return null
+          await writeMtmAudit({
+            organizationId: originalAgent.organizationId, agentId: freshAgent.id, action: "AUTO_LINK",
+            entity: "agent", entityId: freshAgent.id, metadataKind: "auto_link",
+            oldData: { userId: link.previousUserId },
+            newData: { userId: link.userId, reason: "Mobile login matched CRM user by email" }, req,
+          }, tx)
+          return { agent: { ...freshAgent, userId: link.userId, organization }, user: freshUser }
+        }))
+      if (!linked.allowed || !linked.value) return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
+      agent = linked.value.agent
+      linkedUserCredentialState = linked.value.user
     }
 
     // F-08: positive login audit (companion to MOBILE_LOGIN_FAILED above).
