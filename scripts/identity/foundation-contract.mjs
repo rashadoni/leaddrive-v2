@@ -12,6 +12,7 @@ import { checkLegacyCrm } from "./legacy-crm-contract.mjs"
 import { checkCanonicalCrmSession } from "./crm-session-contract.mjs"
 import { checkContactRevision } from "./contact-revision-contract.mjs"
 import { checkApplicationEnrollment } from "./application-enrollment-contract.mjs"
+import { checkProofAuthority } from "./proof-authority-contract.mjs"
 import { checkLegacyWrites } from "./legacy-write-contract.mjs"
 import { checkLegacyBoundary } from "./legacy-boundary-contract.mjs"
 import { checkMembershipTransactions } from "./membership-contract.mjs"
@@ -63,6 +64,7 @@ async function main() {
     await admin.$executeRawUnsafe('ALTER TABLE mtm_agents ADD CONSTRAINT identity_fixture_agents_tenant_key UNIQUE ("organizationId", id)')
     await admin.$executeRawUnsafe("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'manager'")
     await admin.$executeRawUnsafe('ALTER TABLE users ADD COLUMN "passwordChangedAt" TIMESTAMP(3)')
+    await admin.$executeRawUnsafe('ALTER TABLE users ADD COLUMN "require2fa" BOOLEAN NOT NULL DEFAULT false, ADD COLUMN "totpEnabled" BOOLEAN NOT NULL DEFAULT false, ADD COLUMN "totpSecret" TEXT, ADD COLUMN "smsAuthEnabled" BOOLEAN NOT NULL DEFAULT false, ADD COLUMN "verifiedPhone" TEXT')
     await admin.$executeRawUnsafe('ALTER TABLE organizations ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true')
     await admin.$executeRawUnsafe("UPDATE users SET role = 'admin' WHERE id IN ('identity-user-a', 'identity-user-b')")
     await admin.$executeRawUnsafe('INSERT INTO users (id, "organizationId", "isActive", role) VALUES ($1, $2, true, $3)', "identity-user-a3", A, "viewer")
@@ -78,7 +80,7 @@ async function main() {
     await admin.$executeRawUnsafe(`CREATE POLICY identity_fixture_settings_read ON mtm_settings FOR SELECT USING ("organizationId"=current_setting('app.org_id',true))`)
 
     phase = "ACTUAL_ADDITIVE_MIGRATION"
-    for (const migration of ["20261103120000_identity_foundation", "20261103121000_identity_contact_revision"]) execFileSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--file", `prisma/migrations/${migration}/migration.sql`], {
+    for (const migration of ["20261103120000_identity_foundation", "20261103121000_identity_contact_revision", "20261103122000_identity_proof_authority"]) execFileSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--file", `prisma/migrations/${migration}/migration.sql`], {
       env: { ...process.env, PGHOST: url.hostname, PGPORT: url.port, PGDATABASE: url.pathname.slice(1), PGUSER: decodeURIComponent(url.username), PGPASSWORD: decodeURIComponent(url.password) },
       stdio: ["ignore", "pipe", "pipe"], timeout: 30_000,
     })
@@ -404,6 +406,7 @@ async function main() {
     await checkCanonicalCrmSession({ admin, writer, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
     await checkContactRevision({ admin, writer, actor, build, checks: receipt.checks, phase: value => { phase = value } })
     await checkApplicationEnrollment({ admin, writer, failing, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
+    await checkProofAuthority({ admin, writer, failing, actor, build, checks: receipt.checks, phase: value => { phase = value } })
 
     phase = "RLS_AND_IMMUTABILITY"
     for (const table of TABLES) {

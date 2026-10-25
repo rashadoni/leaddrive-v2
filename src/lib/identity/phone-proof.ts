@@ -12,6 +12,9 @@ export type PhoneProofContext = {
   credentialEpoch: number
   createdAt: string
   expiresAt: string
+  version?: 2
+  authorityHash?: string
+  contactRevision?: number
 }
 export type PhoneProofKey = { id: string; material: Uint8Array }
 export type SealedPhoneProof = { keyId: string; codeHash: string; deliveryCiphertext: string }
@@ -25,8 +28,9 @@ function instant(value: unknown): number {
 }
 
 function contextBytes(context: PhoneProofContext): Buffer {
+  const names = context?.version === 2 ? [...CONTEXT_KEYS, "version", "authorityHash", "contactRevision"] : CONTEXT_KEYS
   if (!context || typeof context !== "object" || Array.isArray(context)
-    || Object.keys(context).length !== CONTEXT_KEYS.length || CONTEXT_KEYS.some(key => !Object.hasOwn(context, key))) {
+    || Object.keys(context).length !== names.length || names.some(key => !Object.hasOwn(context, key))) {
     throw new IdentityRegistryError("IDENTITY_PROOF_CONTEXT_INVALID")
   }
   assertIdentityScope(context.organizationId, context.userId)
@@ -37,21 +41,25 @@ function contextBytes(context: PhoneProofContext): Buffer {
     || !Number.isFinite(created) || !Number.isFinite(expires) || expires <= created || expires - created > 600_000) {
     throw new IdentityRegistryError("IDENTITY_PROOF_CONTEXT_INVALID")
   }
-  return Buffer.from(JSON.stringify([PURPOSE, context.organizationId, context.userId, context.reservationId, context.challengeId,
-    context.normalizedPhone, context.accountVersion, context.credentialEpoch, context.createdAt, context.expiresAt]), "utf8")
+  if (context.version === 2 && (typeof context.authorityHash !== "string" || !/^[a-f0-9]{64}$/.test(context.authorityHash)
+    || !Number.isInteger(context.contactRevision) || context.contactRevision! < 1 || context.contactRevision! > 2_147_483_647)) throw new IdentityRegistryError("IDENTITY_PROOF_CONTEXT_INVALID")
+  return Buffer.from(JSON.stringify([context.version === 2 ? "leaddrive:identity:phone-possession:v2" : PURPOSE, context.organizationId, context.userId, context.reservationId, context.challengeId,
+    context.normalizedPhone, context.accountVersion, context.credentialEpoch, context.createdAt, context.expiresAt,
+    ...(context.version === 2 ? [context.authorityHash, context.contactRevision] : [])]), "utf8")
 }
 
 function validKeyId(value: unknown): value is string {
   return typeof value === "string" && value.length >= 1 && value.length <= 40 && !/[^A-Za-z0-9_-]/.test(value)
 }
 
-function keys(key: PhoneProofKey) {
+function keys(key: PhoneProofKey, version = 1) {
   if (!key || !validKeyId(key.id)
     || !(key.material instanceof Uint8Array) || key.material.byteLength !== 32) throw new IdentityRegistryError("IDENTITY_PROOF_KEY_INVALID")
   const root = Buffer.from(key.material)
+  const purpose = `leaddrive:identity:phone-possession:v${version}`
   try {
-    return { mac: Buffer.from(hkdfSync("sha256", root, PURPOSE, `code-mac/v1/${key.id}`, 32)), encryption: Buffer.from(hkdfSync("sha256", root, PURPOSE, `delivery-encryption/v1/${key.id}`, 32)),
-      attempt: Buffer.from(hkdfSync("sha256", root, PURPOSE, `attempt-request/v1/${key.id}`, 32)) }
+    return { mac: Buffer.from(hkdfSync("sha256", root, purpose, `code-mac/v${version}/${key.id}`, 32)), encryption: Buffer.from(hkdfSync("sha256", root, purpose, `delivery-encryption/v${version}/${key.id}`, 32)),
+      attempt: Buffer.from(hkdfSync("sha256", root, purpose, `attempt-request/v${version}/${key.id}`, 32)) }
   } finally { root.fill(0) }
 }
 
@@ -79,20 +87,20 @@ function recordValid(proof: SealedPhoneProof): boolean {
  * the transaction service, not this primitive. No HTTP/provider call occurs.
  */
 export function sealPhoneProof(context: PhoneProofContext, key: PhoneProofKey): SealedPhoneProof {
-  const aad = contextBytes(context), derived = keys(key)
+  const aad = contextBytes(context), derived = keys(key, context.version ?? 1)
   const code = Buffer.from(randomInt(0, 1_000_000).toString().padStart(6, "0"), "ascii")
   try {
     const iv = randomBytes(12), cipher = createCipheriv("aes-256-gcm", derived.encryption, iv, { authTagLength: 16 })
     cipher.setAAD(aad)
     const ciphertext = Buffer.concat([cipher.update(code), cipher.final()]), tag = cipher.getAuthTag()
     return { keyId: key.id, codeHash: codeMac(aad, code, derived.mac).toString("hex"),
-      deliveryCiphertext: ["v1", key.id, iv.toString("base64url"), ciphertext.toString("base64url"), tag.toString("base64url")].join(".") }
+      deliveryCiphertext: [context.version === 2 ? "v2" : "v1", key.id, iv.toString("base64url"), ciphertext.toString("base64url"), tag.toString("base64url")].join(".") }
   } finally { code.fill(0); aad.fill(0); clearKeys(derived) }
 }
 
 /** `at` must be trusted current server/database time, never a request value. */
 export function verifyPhoneProofCode(context: PhoneProofContext, proof: SealedPhoneProof, key: PhoneProofKey, code: string, at: Date): boolean {
-  const aad = contextBytes(context), derived = keys(key)
+  const aad = contextBytes(context), derived = keys(key, context.version ?? 1)
   try {
     if (!active(context, at) || !recordValid(proof) || proof.keyId !== key.id || typeof code !== "string" || code.length !== 6 || !/^[0-9]{6}$/.test(code)) return false
     const entered = Buffer.from(code, "ascii")
@@ -107,12 +115,12 @@ export function verifyPhoneProofCode(context: PhoneProofContext, proof: SealedPh
  * include it in logs, or treat successful decryption/delivery as possession.
  */
 export function openPhoneProofDelivery(context: PhoneProofContext, proof: SealedPhoneProof, key: PhoneProofKey, at: Date): string {
-  const aad = contextBytes(context), derived = keys(key)
+  const aad = contextBytes(context), derived = keys(key, context.version ?? 1)
   let clear: Buffer | undefined, block: Buffer | undefined
   try {
     if (!active(context, at) || !recordValid(proof) || proof.keyId !== key.id) throw new Error("REFUSED")
     const fields = proof.deliveryCiphertext.split(".")
-    if (fields.length !== 5 || fields[0] !== "v1" || fields[1] !== key.id
+    if (fields.length !== 5 || fields[0] !== (context.version === 2 ? "v2" : "v1") || fields[1] !== key.id
       || !/^[A-Za-z0-9_-]{16}$/.test(fields[2]) || !/^[A-Za-z0-9_-]{8}$/.test(fields[3]) || !/^[A-Za-z0-9_-]{22}$/.test(fields[4])) throw new Error("REFUSED")
     const [iv, ciphertext, tag] = fields.slice(2).map(value => Buffer.from(value, "base64url"))
     if ([iv, ciphertext, tag].some((value, index) => value.toString("base64url") !== fields[index + 2])) throw new Error("REFUSED")
@@ -138,7 +146,7 @@ export function openPhoneProofDelivery(context: PhoneProofContext, proof: Sealed
 export function phoneProofAttemptHash(context: PhoneProofContext, key: PhoneProofKey, requestId: string, enteredCode: string): string {
   assertIdentityRequestId(requestId)
   if (typeof enteredCode !== "string" || enteredCode.length > 64) throw new IdentityRegistryError("IDENTITY_PROOF_INPUT_INVALID")
-  const aad = contextBytes(context), derived = keys(key)
+  const aad = contextBytes(context), derived = keys(key, context.version ?? 1)
   try {
     return createHmac("sha256", derived.attempt).update(aad).update(Buffer.from([0])).update(JSON.stringify([requestId, enteredCode]), "utf8").digest("hex")
   } finally { aad.fill(0); clearKeys(derived) }

@@ -5,6 +5,8 @@ import type { IdentityPhoneProof, Prisma } from "@prisma/client"
 import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError } from "./contract"
 import { phoneProofAttemptHash, sealPhoneProof, verifyPhoneProofCode, type PhoneProofContext, type PhoneProofKey, type SealedPhoneProof } from "./phone-proof"
 import { withRegistryTransaction, type RegistryClient, type IdentityActor } from "./registry"
+import { withIdentityAdministrator, type IdentityAdministrator } from "./administrator"
+import { freezeIdentityProofAuthority, revalidateIdentityProofAuthority, parseIdentityProofAuthority, identityProofAuthorityHash } from "./proof-authority"
 
 export type StagedProofIssue = { userId: string; reservationId: string; expectedAccountVersion: number; expectedCredentialEpoch: number; requestId: string }
 export type StagedProofAttempt = { proofId: string; requestId: string; code: string }
@@ -18,14 +20,17 @@ function exact(input: object, names: string[]) {
 }
 function version(value: number) { return Number.isInteger(value) && value > 0 && value <= 2_147_483_647 }
 function context(row: IdentityPhoneProof): PhoneProofContext {
+  const authority = row.contextVersion === 2 ? parseIdentityProofAuthority(row.issuerAuthority) : null
+  if (row.contextVersion === 2 && (!authority || !row.contactRevision)) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
   return { organizationId: row.organizationId, userId: row.userId, reservationId: row.reservationId, challengeId: row.id, normalizedPhone: row.normalizedPhone,
-    accountVersion: row.accountVersion, credentialEpoch: row.credentialEpoch, createdAt: row.createdAt.toISOString(), expiresAt: row.expiresAt.toISOString() }
+    accountVersion: row.accountVersion, credentialEpoch: row.credentialEpoch, createdAt: row.createdAt.toISOString(), expiresAt: row.expiresAt.toISOString(),
+    ...(authority ? { version: 2 as const, authorityHash: identityProofAuthorityHash(authority), contactRevision: row.contactRevision! } : {}) }
 }
 async function clock(tx: Prisma.TransactionClient) { return (await tx.$queryRaw<Array<{ now: Date }>>`SELECT clock_timestamp() AS now`)[0].now }
 async function subject(tx: Prisma.TransactionClient, organizationId: string, userId: string) {
   const [person] = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM users WHERE "organizationId" = ${organizationId} AND id = ${userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
   if (!person) throw new IdentityRegistryError("IDENTITY_SUBJECT_UNAVAILABLE")
-  const account = await tx.identityAccount.findUnique({ where: { organizationId_userId: { organizationId, userId } }, select: { version: true, credentialEpoch: true, cutoverAt: true } })
+  const account = await tx.identityAccount.findUnique({ where: { organizationId_userId: { organizationId, userId } }, select: { version: true, credentialEpoch: true, contactRevision: true, cutoverAt: true } })
   if (!account) throw new IdentityRegistryError("IDENTITY_STAGE_REQUIRED")
   if (account.cutoverAt) throw new IdentityRegistryError("IDENTITY_ALREADY_AUTHORITATIVE")
   const links = await tx.mtmAgent.findMany({ where: { organizationId, userId }, select: { id: true }, take: 2 })
@@ -46,6 +51,12 @@ async function proofTransaction<T>(client: RegistryClient, organizationId: strin
   }, { isolationLevel: "ReadCommitted", timeout: 15_000, maxWait: 5_000 })
 }
 async function issuer(tx: Prisma.TransactionClient, proof: IdentityPhoneProof) {
+  if (proof.contextVersion === 2) {
+    await revalidateIdentityProofAuthority(tx, proof.issuerAuthority, proof.organizationId, proof.issuedByUserId)
+    const account = await tx.identityAccount.findUnique({ where: { organizationId_userId: { organizationId: proof.organizationId, userId: proof.userId } }, select: { contactRevision: true } })
+    if (account?.contactRevision !== proof.contactRevision) throw new IdentityRegistryError("IDENTITY_PROOF_STALE")
+    return
+  }
   const [admin] = await tx.$queryRaw<Array<{ role: string }>>`SELECT role FROM users WHERE "organizationId" = ${proof.organizationId} AND id = ${proof.issuedByUserId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
   if (!admin || !["admin", "superadmin"].includes(admin.role)) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
   const issuerAccount = await tx.identityAccount.findUnique({
@@ -61,11 +72,22 @@ async function suppress(tx: Prisma.TransactionClient, organizationId: string, pr
 
 /** Atomically queue an encrypted proof for an existing staged reservation. No transport call or plaintext response. */
 export async function issueStagedPhoneProof(client: RegistryClient, actor: IdentityActor, input: StagedProofIssue, key: PhoneProofKey) {
+  return issuePhoneProof(client, actor, input, key)
+}
+/** New canonical administrator invitation. Legacy v1 records stay v1 and are
+ * still refused after issuer conversion; only a fresh issuance can use v2. */
+export async function issueCanonicalAdministratorPhoneProof(client: RegistryClient, actor: IdentityAdministrator, input: StagedProofIssue, key: PhoneProofKey) {
+  if (actor.mode !== "CANONICAL") throw new IdentityRegistryError("IDENTITY_ADMIN_REQUIRED")
+  return issuePhoneProof(client, actor, input, key, actor)
+}
+async function issuePhoneProof(client: RegistryClient, actor: IdentityActor, input: StagedProofIssue, key: PhoneProofKey, canonical?: IdentityAdministrator) {
   exact(input, ["userId", "reservationId", "expectedAccountVersion", "expectedCredentialEpoch", "requestId"])
   assertIdentityScope(actor.organizationId, input.userId); assertIdentityRequestId(input.reservationId); assertIdentityRequestId(input.requestId)
   if (!version(input.expectedAccountVersion) || !version(input.expectedCredentialEpoch)) throw new IdentityRegistryError("IDENTITY_PROOF_INPUT_INVALID")
-  const requestHash = digest([1, "PHONE_PROOF_ISSUED", actor.organizationId, actor.userId, input.userId, input.reservationId, input.expectedAccountVersion, input.expectedCredentialEpoch])
-  return withRegistryTransaction(client, actor, false, async tx => {
+  const work = async (tx: Prisma.TransactionClient) => {
+    const authority = canonical ? await freezeIdentityProofAuthority(tx, canonical) : null
+    const requestHash = digest([canonical ? 2 : 1, "PHONE_PROOF_ISSUED", actor.organizationId, actor.userId, input.userId, input.reservationId, input.expectedAccountVersion, input.expectedCredentialEpoch,
+      ...(authority ? [identityProofAuthorityHash(authority)] : [])])
     const account = await subject(tx, actor.organizationId, input.userId), now = await clock(tx)
     const event = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: actor.organizationId, requestId: input.requestId } } })
     if (event) {
@@ -85,15 +107,17 @@ export async function issueStagedPhoneProof(client: RegistryClient, actor: Ident
     const id = randomUUID(), expiresAt = new Date(Math.min(reservation.expiresAt.valueOf(), now.valueOf() + 600_000))
     const frozen: PhoneProofContext = { organizationId: actor.organizationId, userId: input.userId, reservationId: reservation.id, challengeId: id,
       normalizedPhone: reservation.normalizedPhone, accountVersion: account.version, credentialEpoch: account.credentialEpoch, createdAt: now.toISOString(), expiresAt: expiresAt.toISOString() }
-    const sealed = sealPhoneProof(frozen, key)
+    const sealed = sealPhoneProof(authority ? { ...frozen, version: 2, authorityHash: identityProofAuthorityHash(authority), contactRevision: account.contactRevision } : frozen, key)
     await tx.identityPhoneProof.create({ data: { id, organizationId: actor.organizationId, userId: input.userId, issuedByUserId: actor.userId, reservationId: reservation.id,
-      normalizedPhone: reservation.normalizedPhone, accountVersion: account.version, credentialEpoch: account.credentialEpoch, createdAt: now, expiresAt, ...sealed } })
+      normalizedPhone: reservation.normalizedPhone, accountVersion: account.version, credentialEpoch: account.credentialEpoch, createdAt: now, expiresAt, ...sealed,
+      ...(authority ? { contextVersion: 2, contactRevision: account.contactRevision, issuerAuthority: authority as unknown as Prisma.InputJsonObject } : {}) } })
     await tx.identityPhoneProofOutbox.create({ data: { organizationId: actor.organizationId, userId: input.userId, proofId: id, availableAt: now } })
     await tx.identityEvent.create({ data: { id: randomUUID(), organizationId: actor.organizationId, userId: input.userId, actorUserId: actor.userId, requestId: input.requestId,
       requestHash, action: "PHONE_PROOF_ISSUED", accountVersion: account.version, credentialEpoch: account.credentialEpoch, normalizedPhone: reservation.normalizedPhone,
       reservationId: reservation.id, proofId: id, proofExpiresAt: expiresAt, createdAt: now } })
     return { ...metadata, status: "PENDING", proofId: id, expiresAt: expiresAt.toISOString(), replayed: false }
-  })
+  }
+  return canonical ? withIdentityAdministrator(client, canonical, work) : withRegistryTransaction(client, actor, false, work)
 }
 
 async function lockedProof(tx: Prisma.TransactionClient, organizationId: string, id: string) {
@@ -322,7 +346,8 @@ async function setupState(tx: Prisma.TransactionClient, organizationId: string, 
   const currentClaim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_userId: { organizationId, userId: proof.userId } }, select: { id: true } })
   const frozen: CredentialSetupContext = { organizationId, userId: proof.userId, proofId, claimId: confirmation.claimId,
     accountVersion: confirmation.accountVersion, credentialEpoch: confirmation.credentialEpoch,
-    confirmedAt: proof.usedAt.toISOString(), expiresAt: proof.expiresAt.toISOString() }
+    confirmedAt: proof.usedAt.toISOString(), expiresAt: proof.expiresAt.toISOString(),
+    ...(proof.contextVersion === 2 ? { version: 2 as const, authorityHash: context(proof).authorityHash!, contactRevision: proof.contactRevision! } : {}) }
   return { proof, account, currentClaim, frozen, now: await clock(tx) }
 }
 

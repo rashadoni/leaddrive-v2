@@ -7,6 +7,18 @@ const key = { id: "synthetic-setup-key", material: new Uint8Array(32).fill(19) }
 const now = new Date("2026-10-24T20:00:01.000Z")
 
 describe("narrow credential setup capability, not an authentication session", () => {
+  it("never upgrades v1 setup or swaps v2 issuer/contact authority", () => {
+    const frozen: CredentialSetupContext = { ...context(), version: 2, authorityHash: "a".repeat(64), contactRevision: 4 }
+    const token = mintCredentialSetup(frozen, key, now)
+    expect(token).toMatch(/^lds2\./)
+    expect(credentialSetupHint(token)).toEqual({ keyId: key.id, proofId: "proof-a" })
+    expect(verifyCredentialSetup(frozen, key, token, now)).toBe(true)
+    expect(verifyCredentialSetup(frozen, key, mintCredentialSetup(context(), key, now), now)).toBe(false)
+    for (const swapped of [context(), { ...frozen, authorityHash: "b".repeat(64) }, { ...frozen, contactRevision: 5 }]) {
+      expect(verifyCredentialSetup(swapped, key, token, now)).toBe(false)
+      expect(credentialSetupRequestHash(swapped, key, "v2-request", "FictionalPassword!48")).not.toBe(credentialSetupRequestHash(frozen, key, "v2-request", "FictionalPassword!48"))
+    }
+  })
   it("replays the same frozen capability without exposing scope, credentials or grants", () => {
     const token = mintCredentialSetup(context(), key, now)
     expect(mintCredentialSetup(context(), key, now)).toBe(token)

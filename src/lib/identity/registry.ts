@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import type { Prisma, PrismaClient } from "@prisma/client"
+import { withIdentityAdministrator, type IdentityAdministrator } from "./administrator"
 import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, assertStagedPhoneReservation, compareIdentityShadow, IdentityRegistryError, type IdentityApplication, type IdentityGrantStatus, type StagedApplicationGrantInput, type StagedPhoneReservationInput } from "./contract"
 
 export type RegistryClient = Pick<PrismaClient, "$transaction">
@@ -40,10 +41,16 @@ export async function withRegistryTransaction<T>(client: RegistryClient, actor: 
  * No HTTP/login path calls this additive service in stage 1.
  */
 export async function stageIdentityAccount(client: RegistryClient, actor: IdentityActor, input: { userId: string; requestId: string }) {
+  return stageAccount(client, actor, input)
+}
+export async function stageIdentityAccountByAdministrator(client: RegistryClient, actor: IdentityAdministrator, input: { userId: string; requestId: string }) {
+  return stageAccount(client, actor, input, actor)
+}
+async function stageAccount(client: RegistryClient, actor: IdentityActor, input: { userId: string; requestId: string }, administrator?: IdentityAdministrator) {
   assertIdentityScope(actor.organizationId, input.userId)
   assertIdentityRequestId(input.requestId)
   const requestHash = createHash("sha256").update(JSON.stringify([1, "ACCOUNT_STAGED", actor.organizationId, actor.userId, input.userId])).digest("hex")
-  return withRegistryTransaction(client, actor, false, async tx => {
+  const work = async (tx: Prisma.TransactionClient) => {
     const event = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: actor.organizationId, requestId: input.requestId } }, select: { requestHash: true, accountVersion: true } })
     if (event) {
       if (event.requestHash !== requestHash) throw new IdentityRegistryError("IDENTITY_REQUEST_REUSED")
@@ -59,7 +66,8 @@ export async function stageIdentityAccount(client: RegistryClient, actor: Identi
     const account = existing ?? await tx.identityAccount.create({ data: key, select: { version: true } })
     await tx.identityEvent.create({ data: { id: randomUUID(), ...key, actorUserId: actor.userId, requestId: input.requestId, requestHash, action: "ACCOUNT_STAGED", accountVersion: account.version } })
     return { status: "STAGED" as const, accountVersion: account.version, replayed: false, authenticationChanged: false as const }
-  })
+  }
+  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
 }
 
 /** Consistent private comparison; its result is never an authorization decision. */
@@ -125,11 +133,17 @@ export async function planStagedApplicationGrant(client: RegistryClient, actor: 
  * Future confirmation must lock and revalidate this same tenant and versions.
  */
 export async function reserveStagedIdentityPhone(client: RegistryClient, actor: IdentityActor, input: StagedPhoneReservationInput) {
+  return reservePhone(client, actor, input)
+}
+export async function reserveIdentityPhoneByAdministrator(client: RegistryClient, actor: IdentityAdministrator, input: StagedPhoneReservationInput) {
+  return reservePhone(client, actor, input, actor)
+}
+async function reservePhone(client: RegistryClient, actor: IdentityActor, input: StagedPhoneReservationInput, administrator?: IdentityAdministrator) {
   assertIdentityScope(actor.organizationId, input.userId)
   const normalizedPhone = assertStagedPhoneReservation(input)
   const requestHash = createHash("sha256").update(JSON.stringify([1, "PHONE_RESERVED", actor.organizationId, actor.userId,
     input.userId, normalizedPhone, input.expectedAccountVersion, input.expectedCredentialEpoch])).digest("hex")
-  return withRegistryTransaction(client, actor, false, async tx => {
+  const work = async (tx: Prisma.TransactionClient) => {
     const [user] = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM users WHERE "organizationId" = ${actor.organizationId} AND id = ${input.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
     if (!user) throw new IdentityRegistryError("IDENTITY_SUBJECT_UNAVAILABLE")
     const accountKey = { organizationId: actor.organizationId, userId: input.userId }
@@ -166,5 +180,6 @@ export async function reserveStagedIdentityPhone(client: RegistryClient, actor: 
     await tx.identityEvent.create({ data: { id: randomUUID(), ...accountKey, actorUserId: actor.userId, requestId: input.requestId,
       requestHash, action: "PHONE_RESERVED", accountVersion: account.version, normalizedPhone, reservationId: id, reservationExpiresAt: expiresAt, createdAt: now } })
     return { mode: "SHADOW" as const, status: "RESERVED" as const, reservationId: id, expiresAt: expiresAt.toISOString(), replayed: false, authenticationChanged: false as const }
-  })
+  }
+  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
 }

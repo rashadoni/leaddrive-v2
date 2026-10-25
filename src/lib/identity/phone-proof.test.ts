@@ -7,6 +7,25 @@ const key = (): PhoneProofKey => ({ id: "fixture-key-1", material: new Uint8Arra
 const at = () => new Date("2026-10-24T20:01:00.000Z")
 
 describe("bound phone-possession proof primitive (no login or provider)", () => {
+  it("binds v2 delivery and attempts to canonical issuer authority and durable contact revision", () => {
+    const frozen: PhoneProofContext = { ...context(), version: 2, authorityHash: "a".repeat(64), contactRevision: 7 }
+    const sealed = sealPhoneProof(frozen, key()), code = openPhoneProofDelivery(frozen, sealed, key(), at())
+    expect(sealed.deliveryCiphertext).toMatch(/^v2\./)
+    expect(verifyPhoneProofCode(frozen, sealed, key(), code, at())).toBe(true)
+    for (const swapped of [{ ...frozen, authorityHash: "b".repeat(64) }, { ...frozen, contactRevision: 8 }, context()]) {
+      expect(verifyPhoneProofCode(swapped, sealed, key(), code, at())).toBe(false)
+      expect(() => openPhoneProofDelivery(swapped, sealed, key(), at())).toThrow("IDENTITY_PROOF_DELIVERY_REFUSED")
+      expect(phoneProofAttemptHash(swapped, key(), "attempt-v2", code)).not.toBe(phoneProofAttemptHash(frozen, key(), "attempt-v2", code))
+    }
+    const old = sealPhoneProof(context(), key()), oldCode = openPhoneProofDelivery(context(), old, key(), at())
+    expect(verifyPhoneProofCode(frozen, old, key(), oldCode, at())).toBe(false)
+    expect(() => openPhoneProofDelivery(frozen, old, key(), at())).toThrow("IDENTITY_PROOF_DELIVERY_REFUSED")
+  })
+  it("refuses incomplete or forged v2 contexts", () => {
+    for (const fields of [{ version: 2 }, { version: 2, authorityHash: "a".repeat(64), contactRevision: 0 }, { version: 3, authorityHash: "a".repeat(64), contactRevision: 1 }]) {
+      expect(() => sealPhoneProof({ ...context(), ...fields } as PhoneProofContext, key())).toThrow("IDENTITY_PROOF_CONTEXT_INVALID")
+    }
+  })
   it("seals the six-digit secret and returns only keyed hash/ciphertext metadata", () => {
     const input = context(), secret = key(), proof = sealPhoneProof(input, secret)
     expect(Object.keys(proof).sort()).toEqual(["codeHash", "deliveryCiphertext", "keyId"])

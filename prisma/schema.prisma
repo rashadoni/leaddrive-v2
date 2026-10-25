@@ -983,6 +983,9 @@ model IdentityPhoneProof {
   normalizedPhone String @db.VarChar(16)
   accountVersion  Int
   credentialEpoch Int
+  contextVersion  Int @default(1)
+  contactRevision Int?
+  issuerAuthority Json?
   keyId           String @db.VarChar(40)
   codeHash        String @db.VarChar(64)
   deliveryCiphertext String? @db.VarChar(128)
