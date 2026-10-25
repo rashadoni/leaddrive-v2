@@ -1241,3 +1241,42 @@ Fund на проде — этап A6 и требует условий A3–A5. �
 `cdc_legacy_expanded_comparison` в cdc-smoke (`diagnosticOnly`,
 `payloadParityPassed=false`) не входит в условия A2 и не исправлялось.
 
+### A2 на основном кластере: synthetic Fund drill — 2026-10-25
+
+Владелец: «Да, прогони полную цепочку на настоящем кластере Kafka с TLS и
+тестовыми организациями, согласуй с сессией Kafka»; затем «даю согласие».
+Тот же сценарий, что CI `full-cdc-fund`, но на основном кластере
+`K3TZRGsp2DK1UJYj_Sxrwg` (3 брокера EU/UK/GRA), инструменты
+[`fund-drill.sh`](../../scripts/event-platform/cluster/fund-drill.sh) (up/status/down)
+и [`fund-drill.ts`](../../scripts/event-platform/cluster/fund-drill.ts).
+
+- Транспорт: обработчик (KafkaPartitionBridge, production-профиль, не
+  `test.profile`) ходит к брокерам по SASL_SSL/SCRAM-SHA-512, TLS 1.3, проверка
+  имени хоста; отдельная учётка `ld-drill-worker` с ACL deny-by-default на
+  префикс `ld.testbroker.` и группы `ld-testbroker-`.
+- Источник: одноразовый PostgreSQL 16 на kafka-p-connect-eu (10.88.0.16:55432,
+  только overlay, временное nft-правило для 10.88.0.17); коннектор
+  `leaddrive-event-outbox-test-fund` на рабочем Connect-кластере. Перезапуск —
+  stop/resume только этого коннектора; воркеры Connect не останавливались.
+- Итог: `fund_drill_source_role`, `snapshot`, `connector_stop_resume_wal`,
+  `raw_kafka_bytes_hash`, `restricted_sql_exact_two_tenant_parity`,
+  `committed_ack_loss_duplicate`, `worker_restart`,
+  `source_active_effects_other_tenant_unchanged`, `shadow_only_fault_injection`,
+  `corrected_new_build_recovery`, `old_bad_builds_and_group_preserved` = PASS;
+  `replay_sends=NONE`; `leaddrive-event-outbox-prod` = RUNNING/RUNNING на каждой
+  проверке; `production_activation=NOT_RUN`.
+- Уборка `fund-drill.sh down`: тема, учётка, ACL, группы, офсеты и сам
+  коннектор, контейнеры, nft-правило, /opt/ld-drill и образ postgres удалены;
+  `status` показывает только продовый коннектор.
+
+Находка: обработчик при старте вызывает `describeConfigs` (проверка
+`cleanup.policy=delete`), а план ACL давал `ld-fund-worker` только Read/Describe.
+На кластере с ACL обработчик Fund не дошёл бы до READY. CI этого не видел (стенд
+без ACL). Исправлено в `services.mjs` (+ DescribeConfigs на finance events) и
+закреплено тестом, который сверяет ACL с admin-вызовами обработчика. На самом
+кластере ACL `ld-fund-worker` этим изменением НЕ применены: это
+`provision.sh apply-catalog primary prod`, решение сессии эксплуатации Kafka.
+
+Не доказано этим прогоном: TLS на участке источник → Connect (одноразовая база
+без TLS, участок идёт по WireGuard), отказ площадки во время потока, прод.
+

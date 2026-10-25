@@ -66,8 +66,8 @@ test('a healthy platform raises nothing', () => {
 test('the CDC slot: retention, inactivity and loss are each named', () => {
   const at = (slot) => { const p = healthyProbes(); p['leaddrive-prod'].data.source.slots = slot ? [{ name: SLOT, active: true, walStatus: 'reserved', retainedBytes: 0, safeBytes: null, ...slot }] : []
     return evaluate({ topology, inventory, probes: p, cluster: healthyCluster() }) }
-  assert.deepEqual(at({ retainedBytes: 512 << 20 }), [])
-  assert.deepEqual(at({ retainedBytes: 2 * 1024 ** 3 }).map((p) => [p.id, p.severity]), [['slot-retained', 'warning']])
+  assert.deepEqual(at({ retainedBytes: 64 << 20 }), [])
+  assert.deepEqual(at({ retainedBytes: 512 << 20 }).map((p) => [p.id, p.severity]), [['slot-retained', 'warning']])
   assert.deepEqual(at({ retainedBytes: 5 * 1024 ** 3 }).map((p) => [p.id, p.severity]), [['slot-retained', 'critical']])
   assert.match(at({ retainedBytes: 5 * 1024 ** 3, safeBytes: 11 * 1024 ** 3 })[0].detail, /5\.0 ГБ.*осталось 11\.0 ГБ/)
   assert.deepEqual(ids(at({ active: false })), ['slot-inactive'])
