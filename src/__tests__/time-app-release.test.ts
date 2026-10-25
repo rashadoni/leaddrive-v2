@@ -16,9 +16,14 @@ afterEach(() => {
 })
 
 describe("Time release boundary", () => {
-  it("starts unavailable; QA artifacts do not create a public release", () => {
-    expect(manifest.release).toBeNull()
-    expect(parseTimeAppRelease(manifest)).toBeNull()
+  it("promotes the reviewed main-built Time 1048 release", () => {
+    expect(parseTimeAppRelease(manifest)).toMatchObject({
+      versionName: "1.0.0", versionCode: 1048,
+      sourceSha: "32fe203d256d2928a67bd5f4a596ac58a2149775", sourceBranch: "main",
+      signingCertificateSha256: TIME_APP_CERTIFICATE,
+      tag: "time-v1.0.0-1048",
+      apkUrl: "https://github.com/rashadoni/leaddrive-mtm/releases/download/time-v1.0.0-1048/leaddrive-time-1.0.0-1048.apk",
+    })
   })
   it("accepts a complete separately identified Time manifest", () => {
     expect(parseTimeAppRelease(envelope)).toEqual(release)
@@ -47,6 +52,23 @@ async function mockRelease(value: typeof release | null) {
 }
 
 describe("public Time routes", () => {
+  it("serves the promoted manifest through both real public routes", async () => {
+    vi.stubEnv("TIME_APP_STORE_URL", "")
+    const latest = await import("@/app/api/v1/public/time-app/latest/route")
+    const response = await latest.GET()
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      packageName: TIME_APP_PACKAGE, channel: TIME_APP_CHANNEL,
+      versionCode: 1048, versionName: "1.0.0",
+      apkSha256: manifest.release.apkSha256,
+      downloadUrl: "https://app.leaddrivecrm.org/time/download", storeUrl: null,
+    })
+    const download = await import("@/app/time/download/route")
+    const redirect = await download.GET()
+    expect(redirect.status).toBe(302)
+    expect(redirect.headers.get("Location")).toBe(manifest.release.apkUrl)
+    expect(redirect.headers.get("Cache-Control")).toBe("no-store")
+  })
   it("returns a typed unavailable response without a download or Field fallback", async () => {
     await mockRelease(null)
     const latest = await import("@/app/api/v1/public/time-app/latest/route")
