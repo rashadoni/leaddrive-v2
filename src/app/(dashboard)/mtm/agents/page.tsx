@@ -326,7 +326,7 @@ export default function MtmAgentsPage() {
       <div
         key={agent.id}
         data-testid={leads ? "mtm-agent-leader-card" : "mtm-agent-card"}
-        className={`h-full rounded-lg border bg-card p-4 flex flex-col gap-3 ${leads ? "border-foreground/25 shadow-sm" : "border-zinc-200 dark:border-zinc-700"}`}
+        className={`h-full rounded-lg border bg-card p-4 flex flex-col gap-3 ${leads ? "border-foreground/25 shadow-sm" : "border-border"}`}
       >
         <div className="flex items-start gap-3 min-h-[2.75rem]">
           <div className="relative h-10 w-10 shrink-0">
@@ -377,7 +377,7 @@ export default function MtmAgentsPage() {
         {/* The way into the employee's section, in words: their clients, with the count when the server gave one. */}
         {clientSections ? (
           <Hint text={t("hint.clients")}>
-            <Link href={agentHref(agent)} data-testid="mtm-agent-clients-link" className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 text-sm font-medium hover:bg-muted dark:border-zinc-700">
+            <Link href={agentHref(agent)} data-testid="mtm-agent-clients-link" className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-border px-3 text-sm font-medium hover:bg-muted">
               <span className="inline-flex min-w-0 items-center gap-1.5"><UsersRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="truncate">{typeof agent.clients === "number" ? t("clientsCount", { count: agent.clients }) : t("clients")}</span></span>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             </Link>
@@ -385,7 +385,7 @@ export default function MtmAgentsPage() {
         ) : null}
 
         {/* Contact + quick actions — a fixed-height footer at the bottom */}
-        <div className="mt-auto flex h-8 items-center justify-between gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-2">
+        <div className="mt-auto flex h-8 items-center justify-between gap-2 border-t border-border pt-2">
           <span className="text-[11px] text-muted-foreground truncate">{agent.phone || agent.email || agent.userEmail || "—"}</span>
           {renderContactLinks(agent)}
         </div>
@@ -440,7 +440,7 @@ export default function MtmAgentsPage() {
     const activity = agent.activity as { visits: number; planFulfillment: number | null } | null | undefined
     const app = agent.app as { state: "active" | "quiet" | "never"; lastSignalAt: string | null } | undefined
     return (
-      <tr key={agent.id} data-testid="mtm-agent-row" className={`border-t border-zinc-100 dark:border-zinc-800 ${leads ? "font-medium" : ""}`}>
+      <tr key={agent.id} data-testid="mtm-agent-row" className={`border-t border-border ${leads ? "font-medium" : ""}`}>
         <td className="py-2 pr-2" style={{ paddingLeft: `${0.75 + Math.min(depth, 4) * 1.25}rem` }}>
           <div className="flex items-center gap-2 min-w-0">
             <div className="relative h-8 w-8 shrink-0">{avatar(agent, "sm")}{presenceDot(agent, presence)}</div>
@@ -474,7 +474,7 @@ export default function MtmAgentsPage() {
     )
   }
   const groupRow = (key: string, label: string, count: number, hint?: string) => (
-    <tr key={`group-${key}`} className="border-t border-zinc-200 dark:border-zinc-700 bg-muted/40">
+    <tr key={`group-${key}`} className="border-t border-border bg-muted/40">
       <td colSpan={clientSections ? 9 : 8} className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label} <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] font-normal">{count}</span>
         {hint ? <span className="ml-2 text-[10px] font-normal normal-case">{hint}</span> : null}
@@ -482,7 +482,7 @@ export default function MtmAgentsPage() {
     </tr>
   )
   const renderList = () => (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card" data-testid="mtm-agents-list">
+    <div className="rounded-lg border border-border bg-card" data-testid="mtm-agents-list">
       {/* Horizontal only, per the MTM table rule; columns already drop out on
           narrow screens, and there is no vertical frame — one page scroll. */}
       <div className="overflow-x-auto">
@@ -535,7 +535,7 @@ export default function MtmAgentsPage() {
       </div>
 
       {loadError ? (
-        <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm">
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{loadError}</span>
         </div>
       ) : null}
@@ -565,7 +565,7 @@ export default function MtmAgentsPage() {
               aria-describedby="mtm-agents-managers-tile-hint"
               data-testid="mtm-agents-managers-tile"
               onClick={toggleManagers}
-              className={`inline-flex h-10 items-center rounded-full border px-3 text-sm font-medium transition-colors ${activeFilter === "managers" ? "border-foreground font-semibold text-foreground" : "border-zinc-200 bg-card text-muted-foreground hover:bg-muted dark:border-zinc-700"}`}
+              className={`inline-flex h-10 items-center rounded-full border px-3 text-sm font-medium transition-colors ${activeFilter === "managers" ? "border-foreground font-semibold text-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted"}`}
             >
               <span id="mtm-agents-managers-tile-hint" className="sr-only">{t("filterManagersHint")}</span>
               {t("statManagers")} ({totalManagers})
@@ -585,7 +585,7 @@ export default function MtmAgentsPage() {
               ]}
               onChange={setSortBy} />
           </Hint>
-          <span className="inline-flex border-b border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("viewToggle")} data-testid="mtm-agents-view-toggle">
+          <span className="inline-flex border-b border-border" role="group" aria-label={t("viewToggle")} data-testid="mtm-agents-view-toggle">
             <Hint text={t("hint.viewCards")}><Button variant="ghost" size="sm" className={mtmTabClass(view === "cards")} aria-pressed={view === "cards"} onClick={() => changeView("cards")}><LayoutGrid className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewCards")}</span><span className="sr-only sm:hidden">{t("viewCards")}</span></Button></Hint>
             <Hint text={t("hint.viewList")}><Button variant="ghost" size="sm" className={mtmTabClass(view === "list")} aria-pressed={view === "list"} onClick={() => changeView("list")}><List className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewList")}</span><span className="sr-only sm:hidden">{t("viewList")}</span></Button></Hint>
           </span>
@@ -593,7 +593,7 @@ export default function MtmAgentsPage() {
       </MtmFilterBar>
 
       {filtered.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{loadError ? loadError : agents.length === 0 ? t("empty") : t("noResults")}</div>
+        <div className="h-48 flex items-center justify-center text-muted-foreground border border-border rounded-lg bg-card">{loadError ? loadError : agents.length === 0 ? t("empty") : t("noResults")}</div>
       ) : view === "list" ? renderList() : (
         <div className="flex flex-wrap gap-x-3 gap-y-5">
           {hierarchy.teams.map(teamSlot)}

@@ -377,7 +377,7 @@ export function PharmacyPromotionAgentCapture({ scopeKey }: { scopeKey: string }
 
   return (
     <>
-    <section className="border border-zinc-200 bg-card dark:border-zinc-700" aria-labelledby="promotion-agent-capture-title">
+    <section className="border border-border bg-card" aria-labelledby="promotion-agent-capture-title">
       <div className="grid gap-4 p-4 lg:p-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,.72fr)]">
         <div>
           <div className="flex items-start gap-3">

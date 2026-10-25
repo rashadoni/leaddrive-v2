@@ -233,7 +233,7 @@ export function APDashboard() {
                   <tr className="border-b text-left">
                     <th className="py-2 px-2 w-8">
                       {canSelect && (
-                        <input type="checkbox" checked={bills.length > 0 && selected.size === bills.length} onChange={toggleAll} className="rounded border-zinc-200 dark:border-zinc-700" />
+                        <input type="checkbox" checked={bills.length > 0 && selected.size === bills.length} onChange={toggleAll} className="rounded border-input" />
                       )}
                     </th>
                     <th className="py-2 px-2 font-medium text-muted-foreground">{t("colBillNumber")}</th>
@@ -254,7 +254,7 @@ export function APDashboard() {
                     <tr key={bill.id} className={`border-b last:border-0 hover:bg-muted/50 ${isOverdue ? "bg-red-50/50 dark:bg-red-950/20" : ""} ${selected.has(bill.id) ? "bg-blue-50/50 dark:bg-blue-950/20" : ""} ${isFocused ? "outline outline-1 outline-primary/40" : ""}`}>
                       <td className="py-2 px-2">
                         {canSelect && (
-                          <input type="checkbox" checked={selected.has(bill.id)} onChange={() => toggleSelect(bill.id)} className="rounded border-zinc-200 dark:border-zinc-700" />
+                          <input type="checkbox" checked={selected.has(bill.id)} onChange={() => toggleSelect(bill.id)} className="rounded border-input" />
                         )}
                       </td>
                       <td className="py-2 px-2 font-medium">{bill.billNumber}</td>

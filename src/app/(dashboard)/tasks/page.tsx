@@ -186,7 +186,7 @@ function CalendarIntegrationModal({ open, onClose }: { open: boolean; onClose: (
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-background rounded-lg shadow-xl w-full max-w-lg mx-4 p-6" onClick={e => e.stopPropagation()}>
+      <div data-crm-dialog="" className="bg-card text-card-foreground border border-border rounded-lg shadow-xl w-full max-w-lg mx-4 p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <Link2 className="h-5 w-5" /> {t("connectCalendar")}
@@ -369,7 +369,7 @@ function TaskCalendar({
         </Button>
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
+      <div className="grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden border border-border">
         {dayNames.map(d => (
           <div key={d} className="bg-muted py-2 text-center text-xs font-semibold text-muted-foreground">
             {d}
@@ -491,7 +491,7 @@ function BulkActionsBar({ selectedIds, onAction, onClear, customFieldDefs }: {
             {t("inlineSetCustomFieldButton")}
           </Button>
           {setFieldOpen && (
-            <div className="absolute z-50 mt-1 min-w-[220px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md py-1 max-h-[400px] overflow-y-auto">
+            <div className="absolute z-50 mt-1 min-w-[220px] rounded-lg border border-border bg-popover shadow-md py-1 max-h-[400px] overflow-y-auto">
               {bulkable.map(def => (
                 <div key={def.id} className="px-2 py-1.5">
                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1 mb-0.5">
@@ -1104,20 +1104,20 @@ export default function TasksPage() {
         {/* Tier 2 — toolbar: view switch + scope (left), data actions (right) */}
         <div className="flex flex-col gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700" data-tour-id="tasks-views">
-              <button
+            <div data-crm-tabs="" className="flex overflow-hidden rounded-lg border border-border" data-tour-id="tasks-views">
+              <button data-crm-tab="" data-state={view === "list" ? "active" : "inactive"}
                 onClick={() => setView("list")}
                 className={cn("px-3 py-1.5 text-sm flex items-center gap-1 transition-colors", view === "list" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
               >
                 <ListChecks className="h-3.5 w-3.5" /> {t("list")}
               </button>
-              <button
+              <button data-crm-tab="" data-state={view === "kanban" ? "active" : "inactive"}
                 onClick={() => setView("kanban")}
-                className={cn("px-3 py-1.5 text-sm flex items-center gap-1 border-x border-zinc-200 transition-colors dark:border-zinc-700", view === "kanban" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+                className={cn("px-3 py-1.5 text-sm flex items-center gap-1 border-x border-border transition-colors", view === "kanban" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
               >
                 <Columns3 className="h-3.5 w-3.5" /> {t("kanban")}
               </button>
-              <button
+              <button data-crm-tab="" data-state={view === "calendar" ? "active" : "inactive"}
                 onClick={() => setView("calendar")}
                 className={cn("px-3 py-1.5 text-sm flex items-center gap-1 transition-colors", view === "calendar" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
               >
@@ -1125,6 +1125,8 @@ export default function TasksPage() {
               </button>
             </div>
             <Button
+              data-crm-filter=""
+              data-state={myTasksOnly ? "active" : "inactive"}
               variant={myTasksOnly ? "default" : "outline"}
               size="sm"
               onClick={() => setMyTasksOnly(!myTasksOnly)}

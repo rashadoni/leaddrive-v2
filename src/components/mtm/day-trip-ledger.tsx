@@ -79,7 +79,7 @@ export function DayTripLedger({
   const entryDays = trip.entries.map((entry) => dayOf("at" in entry ? entry.at : entry.startedAt))
 
   return (
-    <section data-testid="mtm-day-trip" className="rounded-lg border border-zinc-200 bg-card dark:border-zinc-700" aria-labelledby="day-trip-title">
+    <section data-testid="mtm-day-trip" className="rounded-lg border border-border bg-card" aria-labelledby="day-trip-title">
       <div className="border-b px-3 py-2">
         <h3 id="day-trip-title" className="text-sm font-semibold">{t("title")}</h3>
         <p data-testid="mtm-day-trip-summary" className="mt-0.5 text-xs text-muted-foreground">

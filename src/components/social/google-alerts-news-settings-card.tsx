@@ -69,7 +69,7 @@ export function GoogleAlertsNewsSettingsCard() {
   }
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-card p-4 shadow-sm dark:border-zinc-700">
+    <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -104,7 +104,7 @@ export function GoogleAlertsNewsSettingsCard() {
               (считала только бесплатный новостной канал), и владелец не мог
               подтвердить, что лента вообще привязана и опрашивается. */}
           {settings.rssFeeds && (
-            <div className="border-b border-zinc-200 py-3 dark:border-zinc-700">
+            <div className="border-b border-border py-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Rss className="h-3.5 w-3.5 text-orange-600 dark:text-orange-300" />
                 <div className="text-xs font-semibold">{t("googleAlerts.rssTitle")}</div>

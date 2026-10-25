@@ -92,7 +92,7 @@ function Empty({ text }: { text: string }) {
 
 function ReportCard({ title, sub, icon, children }: { title: string; sub?: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <div className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center gap-2">
         <span className="text-muted-foreground">{icon}</span>
         <div>
@@ -394,7 +394,7 @@ function DueList({ title, tasks, accent, unassigned, onOpenTask }: {
 }) {
   if (!tasks.length) return null
   return (
-    <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <div className="rounded-xl border border-border bg-card p-4">
       <h3 className={`mb-2 text-sm font-semibold ${accent}`}>{title} · {tasks.length}</h3>
       <div className="max-h-48 space-y-1 overflow-y-auto">
         {tasks.map((t) => (

@@ -144,7 +144,7 @@ export function ProjectCrmActivityTab({ projectId, headers, refreshKey = 0 }: Pr
 
   if (tasks.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700 p-8 text-center">
+      <div className="rounded-lg border border-dashed border-border p-8 text-center">
         <Inbox className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
         <p className="text-sm text-muted-foreground mb-1">{t("crmActivityEmpty")}</p>
         <p className="text-xs text-muted-foreground/70">{t("crmActivityEmptyHint")}</p>
@@ -173,7 +173,7 @@ export function ProjectCrmActivityTab({ projectId, headers, refreshKey = 0 }: Pr
                 type="button"
                 onClick={() => router.push(`/tasks/${task.id}`)}
                 className={cn(
-                  "w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg border-l-4 border border-zinc-200 dark:border-zinc-700 bg-card hover:bg-muted/40 transition-colors group",
+                  "w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg border-l-4 border border-border bg-card hover:bg-muted/40 transition-colors group",
                   PRIORITY_BORDER[task.priority] || "border-l-zinc-300",
                   overdue && "ring-1 ring-red-300/50 dark:ring-red-700/40",
                 )}

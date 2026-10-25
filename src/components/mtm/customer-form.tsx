@@ -126,7 +126,7 @@ export function MtmCustomerForm({
       </DialogHeader>
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <DialogContent>
-          {error && <div role="alert" data-testid="mtm-form-error" className="mb-3 rounded border border-l-4 border-zinc-200 border-l-red-500 bg-card p-2 text-sm text-foreground dark:border-zinc-700 dark:border-l-red-500">{error}</div>}
+          {error && <div role="alert" data-testid="mtm-form-error" className="mb-3 rounded border border-l-4 border-border border-l-red-500 bg-card p-2 text-sm text-foreground dark:border-l-red-500">{error}</div>}
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-3">
               <div><Label htmlFor="code">{tf("code")}</Label><Input id="code" value={form.code} onChange={e => update("code", e.target.value)} placeholder={tf("placeholderCode")} /></div>

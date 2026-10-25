@@ -144,7 +144,7 @@ export default function SurveyDetailPage() {
       <SurveyUnsubscribesPanel surveyId={survey.id} orgId={orgId} />
 
       {stats && stats.nps != null && (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-lg border border-border bg-card p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold">{t("npsScore")}</h2>
             <span className={`text-4xl font-bold ${stats.nps >= 50 ? "text-green-600" : stats.nps >= 0 ? "text-amber-600" : "text-red-600"}`}>
@@ -171,7 +171,7 @@ export default function SurveyDetailPage() {
       <NpsTrendChart responses={responses} type={survey.type} />
 
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-3">
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">{t("distribution")}</h2>
           <div className="flex items-center gap-2">
@@ -184,7 +184,7 @@ export default function SurveyDetailPage() {
         <QuestionBuilder value={questions} onChange={setQuestions} />
       </div>
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card">
+      <div className="rounded-lg border border-border bg-card">
         <div className="p-4 border-b">
           <h2 className="text-sm font-semibold">{t("recentResponses")} ({responses.length})</h2>
         </div>
@@ -336,7 +336,7 @@ function NpsTrendChart({ responses, type }: { responses: Response[]; type: strin
 
 function StatTile({ icon: Icon, label, value, color }: { icon: any; label: string; value: number; color?: string }) {
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-3 flex items-center gap-3">
+    <div className="rounded-lg border border-border bg-card p-3 flex items-center gap-3">
       <div className="p-2 rounded-lg bg-muted">
         <Icon className={`h-4 w-4 ${color || ""}`} />
       </div>

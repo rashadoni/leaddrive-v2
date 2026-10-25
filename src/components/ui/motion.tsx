@@ -3,24 +3,34 @@
 import { motion, AnimatePresence, type HTMLMotionProps } from "framer-motion"
 import { forwardRef, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
+import { useCrmAppearance } from "./crm-appearance"
 
 // ── Fade-in card with optional delay ──
 export const MotionCard = forwardRef<
   HTMLDivElement,
-  HTMLMotionProps<"div"> & { delay?: number; surface?: "card" | "inset" }
->(({ delay = 0, surface, className, children, ...props }, ref) => (
-  <motion.div
-    ref={ref}
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: 8 }}
-    transition={{ duration: 0.25, delay, ease: [0.23, 1, 0.32, 1] }}
-    className={surface ? cn(surface === "card" ? "bg-card text-card-foreground" : "bg-muted", className) : className}
-    {...props}
-  >
-    {children}
-  </motion.div>
-))
+  HTMLMotionProps<"div"> & { delay?: number; surface?: "card" | "inset" | "none" }
+>(({ delay = 0, surface, className, children, ...props }, ref) => {
+  const crmAppearance = useCrmAppearance()
+  const resolvedSurface = surface ?? (crmAppearance ? "card" : "none")
+  return (
+    <motion.div
+      ref={ref}
+      data-crm-card={resolvedSurface === "card" ? "" : undefined}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 8 }}
+      transition={{ duration: 0.25, delay, ease: [0.23, 1, 0.32, 1] }}
+      className={cn(
+        resolvedSurface === "card" && "rounded-xl border border-border bg-card text-card-foreground shadow-sm",
+        resolvedSurface === "inset" && "bg-muted",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </motion.div>
+  )
+})
 MotionCard.displayName = "MotionCard"
 
 // ── Staggered list container ──

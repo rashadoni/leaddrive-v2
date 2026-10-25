@@ -99,7 +99,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
           aria-expanded={open}
           aria-controls="live-map-layers-panel"
           onClick={() => setOpen((value) => !value)}
-          className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-zinc-300 bg-card px-3 text-sm font-medium shadow-md dark:border-zinc-600"
+          className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium shadow-md"
         >
           {open ? <X className="h-4 w-4" aria-hidden="true" /> : <Layers className="h-4 w-4" aria-hidden="true" />}
           {tMap("layers.title")}
@@ -108,7 +108,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
         </button>
       </Hint>
       {open ? null : alerts.map((item, index) => (
-        <div key={item.testId ?? `alert-${index}`} role="status" className="border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 pointer-events-auto flex max-w-[min(18rem,calc(100vw-3rem))] shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-2.5 py-1.5 text-xs shadow-md" data-testid={item.testId ?? "live-map-layers-alert"}>
+        <div key={item.testId ?? `alert-${index}`} role="status" className="border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 pointer-events-auto flex max-w-[min(18rem,calc(100vw-3rem))] shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-2.5 py-1.5 text-xs shadow-md" data-testid={item.testId ?? "live-map-layers-alert"}>
           <span>{item.text}</span>
           {item.actionLabel && item.onAction ? (
             <button type="button" onClick={item.onAction} data-testid={item.testId ? `${item.testId}-action` : "live-map-layers-alert-action"} className="inline-flex min-h-8 items-center font-semibold underline underline-offset-2 [@media(pointer:coarse)]:min-h-11">
@@ -118,9 +118,9 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
         </div>
       ))}
       {open ? (
-        <div id="live-map-layers-panel" className="pointer-events-auto min-h-0 w-72 max-w-full overflow-y-auto rounded-lg border border-zinc-300 bg-card p-2 shadow-lg @lg:w-[31rem] @2xl:w-[35rem] dark:border-zinc-600">
+        <div id="live-map-layers-panel" className="pointer-events-auto min-h-0 w-72 max-w-full overflow-y-auto rounded-lg border border-border bg-card p-2 shadow-lg @lg:w-[31rem] @2xl:w-[35rem]">
           {baseMaps && baseMaps.options.length > 1 ? (
-            <div className="mb-1 border-b border-zinc-200 px-1 pb-2 dark:border-zinc-700" data-testid="live-map-base-maps">
+            <div className="mb-1 border-b border-border px-1 pb-2" data-testid="live-map-base-maps">
               <div id="live-map-base-maps-title" className="text-xs font-semibold uppercase text-muted-foreground">{tMap("layers.base")}</div>
               <div role="radiogroup" aria-labelledby="live-map-base-maps-title" className="mt-1 flex flex-wrap gap-1.5">
                 {baseMaps.options.map((option) => {
@@ -135,7 +135,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
                         data-testid={`live-map-base-map-${option.id}`}
                         className={cn(
                           "inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                          chosen ? "border-foreground font-semibold" : "border-zinc-300 hover:bg-muted dark:border-zinc-600",
+                          chosen ? "border-foreground font-semibold" : "border-border hover:bg-muted",
                         )}
                       >
                         {option.label}
@@ -149,7 +149,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
           {/* A line above every switch but the first row's: one of them in one column, two in two. */}
           <ul className="grid grid-cols-1 @lg:grid-cols-2 @lg:gap-x-4" data-testid="live-map-layers-list">
             {layers.map((layer) => (
-              <li key={layer.id} className="flex items-center gap-3 border-t border-zinc-200 px-1 py-1.5 first:border-t-0 @lg:[&:nth-child(2)]:border-t-0 @lg:last:odd:col-span-2 dark:border-zinc-700">
+              <li key={layer.id} className="flex items-center gap-3 border-t border-border px-1 py-1.5 first:border-t-0 @lg:[&:nth-child(2)]:border-t-0 @lg:last:odd:col-span-2">
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium">{layer.label}</span>
                   {layer.hint ? <span className="block text-xs text-muted-foreground" data-testid={`live-map-layer-hint-${layer.id}`}>{layer.hint}</span> : null}
@@ -171,7 +171,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
             ))}
           </ul>
           {hiddenAgentCount > 0 ? (
-            <div className="mt-1 flex items-center justify-between gap-2 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-2 py-1.5 text-xs" data-testid="live-map-hidden-agents">
+            <div className="mt-1 flex items-center justify-between gap-2 rounded-md border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-2 py-1.5 text-xs" data-testid="live-map-hidden-agents">
               <span>{tMap("layers.hiddenAgents", { count: hiddenAgentCount })}</span>
               <Hint text={tMap("hint.showAll")}>
                 <button type="button" onClick={onShowAllAgents} className="inline-flex min-h-9 items-center gap-1 font-semibold underline underline-offset-2">

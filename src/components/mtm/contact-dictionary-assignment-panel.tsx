@@ -351,7 +351,7 @@ export function MtmContactDictionaryAssignmentPanel({
     // Nothing to choose from yet, and only the person who can create the
     // lists gets this far: tell them where.
     return (
-      <section data-testid="mtm-contact-categories-empty" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+      <section data-testid="mtm-contact-categories-empty" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
         <div className="grid gap-1">
           <h2 className="text-base font-semibold">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">{t("noLists")}</p>
@@ -364,7 +364,7 @@ export function MtmContactDictionaryAssignmentPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
+    <section className="rounded-2xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
         <div className="flex min-w-0 items-center gap-3">
           <div className="p-2 text-muted-foreground"><ShieldCheck className="h-5 w-5" /></div>
@@ -381,13 +381,13 @@ export function MtmContactDictionaryAssignmentPanel({
       </div>
 
       {groups.length ? <div className={cn(
-        "grid border-t border-zinc-200 dark:border-zinc-700 md:divide-x md:divide-zinc-200 md:dark:divide-zinc-700",
+        "grid border-t border-border md:divide-x md:divide-border md:dark:divide-border",
         groups.length === 2 && "md:grid-cols-2",
         groups.length === 3 && "md:grid-cols-3",
         groups.length === 4 && "md:grid-cols-2 xl:grid-cols-4",
       )}>
         {groups.map(([kind, label]) => (
-          <div key={kind} data-testid={`mtm-contact-category-group-${kind}`} className="grid content-start gap-3 border-b border-zinc-200 p-4 last:border-b-0 dark:border-zinc-700 lg:border-b-0 sm:p-5">
+          <div key={kind} data-testid={`mtm-contact-category-group-${kind}`} className="grid content-start gap-3 border-b border-border p-4 last:border-b-0 lg:border-b-0 sm:p-5">
             <h3 className="text-sm font-semibold">{t(label)}</h3>
             {kind === "CLIENT_TYPE" && !assignedClientType && clientCategory.entry ? (
               <div className="flex flex-wrap gap-2">
@@ -413,7 +413,7 @@ export function MtmContactDictionaryAssignmentPanel({
       </div> : null}
 
       {pendingRequests.length ? (
-        <div className="grid gap-3 border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 sm:p-5">
+        <div className="grid gap-3 border-t border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 sm:p-5">
           <div className="flex items-center gap-2 text-sm font-semibold"><CircleAlert className="h-4 w-4" />{t("pendingTitle")}</div>
           {pendingRequests.map((request) => (
             <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -434,11 +434,11 @@ export function MtmContactDictionaryAssignmentPanel({
       ) : null}
 
       {historical.length ? (
-        <details className="group border-t border-zinc-200 p-4 dark:border-zinc-700 sm:p-5">
+        <details className="group border-t border-border p-4 sm:p-5">
           <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-sm font-semibold">
             <History className="h-4 w-4" />{t("history", { count: historical.length })}
           </summary>
-          <div className="mt-3 divide-y divide-zinc-200 dark:divide-zinc-700">
+          <div className="mt-3 divide-y divide-border">
             {historical.map((assignment) => (
               <div key={assignment.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                 <AssignmentBadge assignment={assignment} locale={locale} />
@@ -459,7 +459,7 @@ export function MtmContactDictionaryAssignmentPanel({
               <DialogDescription>{t("editDescription")}</DialogDescription>
             </DialogHeader>
 
-            {clientTypeDictionary ? <div className="grid gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
+            {clientTypeDictionary ? <div className="grid gap-3 rounded-xl border border-border p-3">
               <div className="grid gap-2">
                 <Label htmlFor="contact-client-type">{t("clientType")}</Label>
                   <Select id="contact-client-type" className="min-h-11" value={clientTypeCode || "__none__"} onChange={(event) => {
@@ -501,7 +501,7 @@ export function MtmContactDictionaryAssignmentPanel({
             ] as const).map(([dictionary, values, update, label]) => (dictionary ? (
               <fieldset key={label} className="grid gap-3">
                 <legend className="text-sm font-medium">{t(label)}</legend>
-                  <div className="grid gap-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700 sm:grid-cols-2">
+                  <div className="grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-2">
                     {dictionary.entries.map((entry) => (
                       <label key={entry.code} className="flex min-h-10 cursor-pointer items-start gap-2 rounded-lg px-2 py-2 hover:bg-muted/60">
                         <input

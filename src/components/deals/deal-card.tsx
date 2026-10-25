@@ -160,7 +160,7 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
           // перетащить. До этого у неё была только светло-серая рамка и тень
           // на наведении — в покое она сливалась с фоном колонки и читалась
           // как строка списка, а не как карточка.
-          "rounded-xl border border-l-[3px] border-zinc-200/90 dark:border-zinc-700 bg-card p-3 transition-all",
+          "rounded-xl border border-l-[3px] border-border bg-card p-3 transition-all",
           "shadow-[0_1px_3px_rgba(16,24,40,0.10),0_1px_2px_rgba(16,24,40,0.06)]",
           "dark:shadow-[0_1px_3px_rgba(0,0,0,0.45)]",
           "hover:shadow-[0_8px_16px_-4px_rgba(16,24,40,0.14),0_3px_6px_-3px_rgba(16,24,40,0.08)]",
@@ -249,13 +249,13 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
           ref={popoverRef}
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute top-full left-0 right-0 z-20 mt-1 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card shadow-lg"
+          className="absolute top-full left-0 right-0 z-20 mt-1 p-2 rounded-lg border border-border bg-card shadow-lg"
           onClick={e => e.stopPropagation()}
         >
           <div className="flex gap-1.5">
             <input
               autoFocus
-              className="flex-1 h-7 border border-zinc-200 dark:border-zinc-700 rounded-md px-2 text-[11px] bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+              className="flex-1 h-7 border border-input rounded-md px-2 text-[11px] bg-background focus:outline-none focus:ring-1 focus:ring-ring"
               placeholder={t("taskTitlePlaceholder")}
               value={taskTitle}
               onChange={e => setTaskTitle(e.target.value)}

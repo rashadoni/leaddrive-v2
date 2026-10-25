@@ -117,14 +117,14 @@ export function MtmAccessPanel() {
       ) : roster.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
-        <div className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-          <div className="hidden gap-4 border-b border-zinc-200 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground dark:border-zinc-700 md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.6fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div className="rounded-xl border border-border bg-card">
+          <div className="hidden gap-4 border-b border-border px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.6fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
             <span>{t("colPerson")}</span>
             <span><HintValue text={t("hint.colCrmRole")}>{t("colCrmRole")}</HintValue></span>
             <span><HintValue text={t("hint.colAccess")}>{t("colAccess")}</HintValue></span>
             <span><HintValue text={t("hint.colRoutes")}>{t("colRoutes")}</HintValue></span>
           </div>
-          <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          <ul className="divide-y divide-border">
             {roster.rows.map((row) => (
               <AccessRowView
                 key={row.user.id}
@@ -222,7 +222,7 @@ function AccessRowView({
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                  className="h-4 w-4 rounded border-input"
                   checked={row.card.canPlanOwnRoutes !== false}
                   disabled={busy}
                   onChange={(event) => onCardFlag(row.card.id, "canPlanOwnRoutes", event.target.checked)}
@@ -234,7 +234,7 @@ function AccessRowView({
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                  className="h-4 w-4 rounded border-input"
                   checked={row.card.canSelfPublishRoutes === true}
                   disabled={busy}
                   onChange={(event) => onCardFlag(row.card.id, "canSelfPublishRoutes", event.target.checked)}

@@ -55,7 +55,7 @@ export function MtmAgentAttachByPlace({ agentId, agentName, onAttached, onForbid
   const label = remove === 0 ? t("attachChosen", { count: add }) : add === 0 ? t("attachRemove", { count: remove }) : t("attachChange", { add, remove })
 
   return (
-    <div className="space-y-4 rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700" data-testid="mtm-agent-attach-by-place">
+    <div className="space-y-4 rounded-xl border border-border bg-card p-4" data-testid="mtm-agent-attach-by-place">
       <MtmAgentClientPicker agentId={agentId} onChange={setChoice} refresh={refresh} onForbidden={onForbidden} />
       {error ? (
         <p role="alert" className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">

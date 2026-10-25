@@ -36,7 +36,7 @@ const planColors: Record<string, string> = {
   // All four tiers carry a dark-mode pair so badges read consistently in both
   // themes. Starter is neutral zinc; siblings keep their semantic brand
   // colors (blue/violet/amber) with matching dark variants.
-  starter: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
+  starter: "bg-zinc-100 text-zinc-700 border-border dark:bg-zinc-800 dark:text-zinc-300",
   business: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
   professional: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800",
   enterprise: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
@@ -181,7 +181,7 @@ export default function OrganizationSettingsPage() {
             />
             <p className="text-xs text-muted-foreground mt-1">{t("orgLogoHint")}</p>
             {logo && (
-              <div className="mt-2 p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg inline-block bg-muted/30">
+              <div className="mt-2 p-2 border border-border rounded-lg inline-block bg-muted/30">
                 {/* eslint-disable-next-line @next/next/no-img-element -- Logo URLs are tenant-provided and may use arbitrary domains. */}
                 <img src={logo} alt="Logo" className="h-12 max-w-[200px] object-contain" onError={(e) => (e.currentTarget.style.display = "none")} />
               </div>
@@ -251,7 +251,7 @@ export default function OrganizationSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/30">
+            <div className="p-4 rounded-lg border border-border bg-muted/30">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                 <Crown className="h-4 w-4" /> {t("orgPlan")}
               </div>
@@ -259,13 +259,13 @@ export default function OrganizationSettingsPage() {
                 {(data?.plan || "enterprise").charAt(0).toUpperCase() + (data?.plan || "enterprise").slice(1)}
               </Badge>
             </div>
-            <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/30">
+            <div className="p-4 rounded-lg border border-border bg-muted/30">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                 <Users className="h-4 w-4" /> {t("orgMaxUsers")}
               </div>
               <p className="text-xl font-bold">{data?.maxUsers === -1 ? "∞" : data?.maxUsers}</p>
             </div>
-            <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/30">
+            <div className="p-4 rounded-lg border border-border bg-muted/30">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                 <Contact className="h-4 w-4" /> {t("orgMaxContacts")}
               </div>

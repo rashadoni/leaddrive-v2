@@ -7,7 +7,7 @@
  */
 
 /** The row a page's tabs stand on: one grey rule, the chosen tab draws its own line over it. */
-export const MTM_TAB_ROW = "flex min-w-0 flex-wrap gap-1 border-b border-zinc-200 dark:border-zinc-700"
+export const MTM_TAB_ROW = "flex min-w-0 flex-wrap gap-1 border-b border-border"
 
 /** A tab inside a page (a ghost Button or a plain button). */
 export function mtmTabClass(active: boolean): string {

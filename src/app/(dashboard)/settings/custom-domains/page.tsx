@@ -243,7 +243,7 @@ export default function CustomDomainsPage() {
       </div>
 
       {/* Example card */}
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/30 p-4">
+      <div className="rounded-lg border border-border bg-muted/30 p-4">
         <div className="flex items-start gap-3">
           <FileCode2 className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
           <div>
@@ -279,7 +279,7 @@ export default function CustomDomainsPage() {
       ) : (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("yourDomains")}</h3>
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700">
+          <div className="rounded-lg border border-border">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

@@ -278,7 +278,7 @@ function DefinitionRow({
   hint?: string | null
 }) {
   return (
-    <div className="grid gap-1 border-b border-zinc-200 py-3 last:border-0 dark:border-zinc-700 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4">
+    <div className="grid gap-1 border-b border-border py-3 last:border-0 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4">
       <dt className="text-xs font-medium text-muted-foreground"><HintValue text={hint}>{label}</HintValue></dt>
       <dd className="min-w-0 break-words text-sm">{value || "—"}</dd>
     </div>
@@ -319,7 +319,7 @@ function SectionCard({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+    <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
           <h2 className="text-base font-semibold">{title}</h2>
@@ -481,7 +481,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
         </span>
       </div>
 
-      <header className="overflow-hidden rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
+      <header className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-7">
           <div className="grid min-w-0 gap-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -634,7 +634,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
 
             <SectionCard title={t("ownershipTitle")} description={t("ownershipDescription")}>
               {contact.agentAssignments.length ? (
-                <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                <div className="divide-y divide-border">
                   {contact.agentAssignments.map((assignment) => (
                     <article key={assignment.id} className="grid gap-2 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]">
                       <div className="grid gap-1">
@@ -817,7 +817,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(19rem,0.8fr)]">
             <SectionCard title={t("auditTitle")} description={t("auditDescription")}>
               {history.length ? (
-                <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                <div className="divide-y divide-border">
                   {history.map((event) => (
                     <article key={event.id} className="grid gap-2 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]">
                       <div className="grid gap-1" data-testid="mtm-contact-history-event">
@@ -842,7 +842,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
             </SectionCard>
             <SectionCard title={t("requestsTitle")} description={t("requestsDescription")}>
               {contact.changeRequests.length ? (
-                <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                <div className="divide-y divide-border">
                   {contact.changeRequests.map((request) => (
                     <article key={request.id} className="grid gap-2 py-3 first:pt-0 last:pb-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -957,7 +957,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
         </>
       ) : null}
 
-      <div className="sticky bottom-3 z-10 rounded-2xl border border-zinc-200 bg-background/95 p-3 shadow-lg backdrop-blur md:hidden dark:border-zinc-700">
+      <div className="sticky bottom-3 z-10 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur md:hidden">
         <div className={cn("grid gap-2", capabilities.canManage || capabilities.canRequestChanges ? "grid-cols-4" : "grid-cols-3")}>
           {capabilities.canManage || capabilities.canRequestChanges ? (
             <Hint text={changeHint} side="top">
@@ -1001,7 +1001,7 @@ function WorkplaceList({
   onEnd?: (workplace: Workplace) => void
 }) {
   return (
-    <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+    <div className="divide-y divide-border">
       {workplaces.map((workplace) => (
         <article key={workplace.id} className="grid gap-3 py-4 first:pt-0 last:pb-0">
           <div className="flex flex-wrap items-center gap-2">

@@ -140,7 +140,7 @@ const TOOL_COLORS: Record<string, string> = {
 
 function getToolColor(tool: string): string {
   const key = Object.keys(TOOL_COLORS).find(k => tool.toLowerCase().includes(k))
-  return key ? TOOL_COLORS[key] : "bg-muted text-foreground/70 border-zinc-200 dark:border-zinc-700"
+  return key ? TOOL_COLORS[key] : "bg-muted text-foreground/70 border-border"
 }
 
 const AGENT_TYPE_KEYS = new Set(["general", "sales", "support", "marketing", "analyst", "contract"])
@@ -410,8 +410,8 @@ export default function AICommandCenterPage() {
       <PageDescription text={t("pageDescription")} />
 
       {/* Section navigation */}
-      <div className="grid grid-cols-2 gap-0 border-b border-border">
-        <button
+      <div data-crm-tabs="" className="grid grid-cols-2 gap-0 border-b border-border">
+        <button data-crm-tab="" data-state={activeTab === "dashboard" ? "active" : "inactive"}
           onClick={() => setActiveTab("dashboard")}
           className={cn(
             "-mb-px border-b-2 bg-transparent py-3.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2",
@@ -422,7 +422,7 @@ export default function AICommandCenterPage() {
         >
           <Activity className="h-4 w-4" /> {t("tabDashboard")} <InfoHint text={t("hintTabDashboard")} size={12} />
         </button>
-        <button
+        <button data-crm-tab="" data-state={activeTab === "constructor" ? "active" : "inactive"}
           onClick={() => setActiveTab("constructor")}
           className={cn(
             "-mb-px border-b-2 bg-transparent py-3.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2",
@@ -450,7 +450,7 @@ export default function AICommandCenterPage() {
           {/* KPI Row 1 — 4 cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Sessions */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">{t("totalSessions")} <InfoHint text={t("hintTotalSessions")} size={12} /></p>
@@ -464,7 +464,7 @@ export default function AICommandCenterPage() {
             </div>
 
             {/* Deflection */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">{t("deflectionRate")} <InfoHint text={t("hintDeflectionRate")} size={12} /></p>
@@ -485,7 +485,7 @@ export default function AICommandCenterPage() {
             </div>
 
             {/* CSAT */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">CSAT <InfoHint text={t("hintCsat")} size={12} /></p>
@@ -501,7 +501,7 @@ export default function AICommandCenterPage() {
             </div>
 
             {/* FCR */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">{t("fcrRate")} <InfoHint text={t("hintFcr")} size={12} /></p>
@@ -520,7 +520,7 @@ export default function AICommandCenterPage() {
           {/* KPI Row 2 — 3x2 with round icons */}
           <div className="grid gap-4 md:grid-cols-3">
             {/* Avg resolution time */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm flex items-center gap-4">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm flex items-center gap-4">
               <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                 <Timer className="h-5 w-5 text-muted-foreground" />
               </div>
@@ -587,7 +587,7 @@ export default function AICommandCenterPage() {
           </div>
 
           {/* Alerts Section */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card shadow-sm">
+          <div className="rounded-xl border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between p-5 border-b">
               <div className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-red-500" />
@@ -633,7 +633,7 @@ export default function AICommandCenterPage() {
           </div>
 
           {/* Sessions Table */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card shadow-sm">
+          <div className="rounded-xl border border-border bg-card shadow-sm">
             <div className="p-5 border-b">
               <h3 className="font-semibold flex items-center gap-2">
                 <ScrollText className="h-5 w-5 text-primary" /> {t("sessionsLast7Days")} <InfoHint text={t("hintTabSessions")} size={12} />
@@ -647,7 +647,7 @@ export default function AICommandCenterPage() {
           </div>
 
           {/* Logs Section — v1 style with trace details */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-background shadow-sm">
+          <div className="rounded-xl border border-border bg-background shadow-sm">
             <div className="p-5 border-b flex items-center justify-between">
               <h3 className="font-semibold flex items-center gap-2">
                 <ScrollText className="h-5 w-5 text-[hsl(var(--ai-from))]" /> {t("interactionLogs")} <InfoHint text={t("hintTabLogs")} size={12} />
@@ -710,7 +710,7 @@ export default function AICommandCenterPage() {
 
             return (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSelectedLog(null)}>
-                <div className="bg-background rounded-xl shadow-2xl border border-zinc-200 dark:border-zinc-700 max-w-3xl w-full max-h-[85vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+                <div className="bg-background rounded-xl shadow-2xl border border-border max-w-3xl w-full max-h-[85vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
                   {/* Header */}
                   <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-background z-10 rounded-t-xl">
                     <div>
@@ -724,22 +724,22 @@ export default function AICommandCenterPage() {
                   <div className="p-5 space-y-5">
                     {/* KPI Cards */}
                     <div className="grid grid-cols-4 gap-3">
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3 text-center">
+                      <div className="rounded-lg border border-border bg-background p-3 text-center">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("latencyLabel")}</div>
                         <div className={cn("text-xl font-bold font-mono", selectedLog.latencyMs! > 10000 ? "text-red-500" : "text-emerald-600 dark:text-emerald-400")}>{latencySec}s</div>
                         <div className="text-[10px] text-muted-foreground">{selectedLog.latencyMs} ms</div>
                       </div>
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3 text-center">
+                      <div className="rounded-lg border border-border bg-background p-3 text-center">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("tokensLabel")}</div>
                         <div className="text-xl font-bold font-mono text-primary">{totalTokens}</div>
                         <div className="text-[10px] text-muted-foreground">{t("tokensInput", { input: selectedLog.promptTokens ?? 0, output: selectedLog.completionTokens ?? 0 })}</div>
                       </div>
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3 text-center">
+                      <div className="rounded-lg border border-border bg-background p-3 text-center">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("costLabel")}</div>
                         <div className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400">${(selectedLog.costUsd ?? 0).toFixed(4)}</div>
                         <div className="text-[10px] text-muted-foreground">{selectedLog.model || "—"}</div>
                       </div>
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3 text-center">
+                      <div className="rounded-lg border border-border bg-background p-3 text-center">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("qualityLabel")}</div>
                         <div className="text-xl font-bold font-mono">{selectedLog.qualityScore != null ? `${selectedLog.qualityScore}/10` : "—"}</div>
                         <div className="text-[10px] text-muted-foreground">{selectedLog.qualityScore != null ? t("qualityRated") : t("qualityNotRated")}</div>
@@ -783,7 +783,7 @@ export default function AICommandCenterPage() {
                     {/* Steps */}
                     <div className="space-y-2">
                       {/* KB Search step */}
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3">
+                      <div className="rounded-lg border border-border bg-background p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="h-7 w-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center"><ScrollText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /></div>
@@ -805,7 +805,7 @@ export default function AICommandCenterPage() {
                       </div>
 
                       {/* LLM Call step */}
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3">
+                      <div className="rounded-lg border border-border bg-background p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="h-7 w-7 rounded-lg bg-[hsl(var(--ai-from))]/10 flex items-center justify-center"><BrainCircuit className="h-4 w-4 text-[hsl(var(--ai-from))]" /></div>
@@ -829,7 +829,7 @@ export default function AICommandCenterPage() {
 
                       {/* Tools step (if any) */}
                       {toolsCount > 0 && (
-                        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3">
+                        <div className="rounded-lg border border-border bg-background p-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="h-7 w-7 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center"><Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" /></div>
@@ -844,7 +844,7 @@ export default function AICommandCenterPage() {
                     </div>
 
                     {/* Da Vinci Response */}
-                    <div className="rounded-lg bg-muted border border-zinc-200 dark:border-zinc-700 p-3">
+                    <div className="rounded-lg bg-muted border border-border p-3">
                       <div className="flex items-center gap-2 mb-1">
                         <Bot className="h-4 w-4 text-[hsl(var(--ai-from))]" />
                         <span className="text-xs font-semibold text-[hsl(var(--ai-from))] uppercase">{t("daVinciResponse")}</span>
@@ -955,8 +955,8 @@ export default function AICommandCenterPage() {
                         <Settings2 className="h-3.5 w-3.5 text-primary" />
                         <span className="text-foreground/70">{t("toolsCount", { count: tools.length })}</span>
                       </div>
-                      <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700 text-sm",
-                        agent.escalationEnabled !== false ? "bg-red-50 border-red-200" : "bg-muted border-zinc-200 dark:border-zinc-700"
+                      <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-sm",
+                        agent.escalationEnabled !== false ? "bg-red-50 border-red-200" : "bg-muted border-border"
                       )}>
                         <span>{agent.escalationEnabled !== false ? "🔴" : "⚪"}</span>
                         <span className="text-foreground/70">{agent.escalationEnabled !== false ? t("escalationOn") : t("escalationOff")}</span>
@@ -975,7 +975,7 @@ export default function AICommandCenterPage() {
                     {tools.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {tools.map(tool => (
-                          <span key={tool} className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs font-medium", getToolColor(tool))}>
+                          <span key={tool} className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border text-xs font-medium", getToolColor(tool))}>
                             📄 {tool.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}
                           </span>
                         ))}
@@ -1048,7 +1048,7 @@ export default function AICommandCenterPage() {
                 )
               })}
               {agents.length === 0 && (
-                <div className="col-span-2 text-center py-12 text-muted-foreground rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card">
+                <div className="col-span-2 text-center py-12 text-muted-foreground rounded-xl border border-border bg-card">
                   <BrainCircuit className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p className="font-medium">{t("noAgents")}</p>
                   <p className="text-sm mt-1">{t("createFirstAgent")}</p>
@@ -1120,7 +1120,7 @@ export default function AICommandCenterPage() {
           </Card>
 
           {/* Guardrails — Rules & Restrictions */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card shadow-sm">
+          <div className="rounded-xl border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between p-5 border-b">
               <div>
                 <h3 className="font-semibold flex items-center gap-2">

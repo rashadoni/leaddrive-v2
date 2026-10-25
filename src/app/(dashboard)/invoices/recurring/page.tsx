@@ -366,7 +366,7 @@ export default function RecurringInvoicesPage() {
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 flex items-center gap-3">
+          <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
               <RefreshCw className="h-5 w-5 text-muted-foreground" />
             </div>
@@ -375,7 +375,7 @@ export default function RecurringInvoicesPage() {
               <p className="text-xs text-muted-foreground">{t("totalRules")}</p>
             </div>
           </div>
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 flex items-center gap-3">
+          <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
               <Play className="h-5 w-5 text-green-600" />
             </div>
@@ -384,7 +384,7 @@ export default function RecurringInvoicesPage() {
               <p className="text-xs text-muted-foreground">{t("active")}</p>
             </div>
           </div>
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 flex items-center gap-3">
+          <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
               <Pause className="h-5 w-5 text-orange-600" />
             </div>
@@ -435,7 +435,7 @@ export default function RecurringInvoicesPage() {
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
             <input
-              className="w-full h-9 pl-9 pr-3 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card focus:ring-2 focus:ring-ring focus:border-ring outline-none"
+              className="w-full h-9 pl-9 pr-3 text-sm border border-input rounded-lg bg-card focus:ring-2 focus:ring-ring focus:border-ring outline-none"
               placeholder="Axtar... (şirkət, ad, email)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -447,14 +447,14 @@ export default function RecurringInvoicesPage() {
               type="checkbox"
               checked={selectedIds.size === filteredRules.length && filteredRules.length > 0}
               onChange={toggleSelectAll}
-              className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700 accent-primary"
+              className="h-4 w-4 rounded border-input accent-primary"
             />
             <span className="text-xs text-muted-foreground">Hamısı ({filteredRules.length})</span>
           </label>
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden shadow-sm">
+        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase tracking-wider">
@@ -675,7 +675,7 @@ export default function RecurringInvoicesPage() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, includeVat: e.target.checked }))
                     }
-                    className="rounded border-zinc-200 dark:border-zinc-700"
+                    className="rounded border-input"
                   />
                   {t("includeVat")}
                 </Label>
@@ -749,7 +749,7 @@ export default function RecurringInvoicesPage() {
             {/* Items */}
             <div className="space-y-2">
               <Label>{t("items")}</Label>
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-md overflow-hidden">
+              <div className="border border-border rounded-md overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-muted">
                     <tr>

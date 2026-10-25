@@ -90,7 +90,7 @@ function TerritoryForm({ initial, onSave, onClose }: TerritoryFormProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b flex items-center justify-between">
           <h2 className="font-semibold text-lg">{initial ? t("form.editTitle") : t("form.newTitle")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">×</button>
@@ -114,7 +114,7 @@ function TerritoryForm({ initial, onSave, onClose }: TerritoryFormProps) {
             <label htmlFor="active" className="text-sm">{t("form.activeLabel")}</label>
           </div>
 
-          <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 space-y-3 bg-muted/30">
+          <div className="border border-border rounded-lg p-4 space-y-3 bg-muted/30">
             <p className="text-sm font-semibold">{t("form.rulesTitle")}</p>
             <p className="text-xs text-muted-foreground">{t("form.rulesHint")}</p>
 
@@ -202,7 +202,7 @@ function MemberManager({ territory, users, onClose, onRefresh }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b flex items-center justify-between">
           <h2 className="font-semibold">{t("members.title", { name: territory.name })}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">×</button>
@@ -234,7 +234,7 @@ function MemberManager({ territory, users, onClose, onRefresh }: {
               <select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
-                className="flex-1 text-sm border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1.5 bg-background"
+                className="flex-1 text-sm border border-input rounded px-2 py-1.5 bg-background"
               >
                 <option value="">{t("members.selectUser")}</option>
                 {available.map((u) => (
@@ -371,7 +371,7 @@ export default function TerritoriesPage() {
           { key: "active", label: t("stats.active"), value: territories.filter((t) => t.isActive).length },
           { key: "totalMembers", label: t("stats.totalMembers"), value: territories.reduce((s, t) => s + t.members.length, 0) },
         ].map((s) => (
-          <div key={s.key} className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
+          <div key={s.key} className="border border-border rounded-xl p-4">
             <p className="text-xs text-muted-foreground">{s.label}</p>
             <p className="text-2xl font-bold mt-1">{s.value}</p>
           </div>
@@ -382,7 +382,7 @@ export default function TerritoriesPage() {
       {loading ? (
         <p className="text-muted-foreground text-sm" data-tour-id="territories-list">{t("loading")}</p>
       ) : territories.length === 0 ? (
-        <div className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-12 text-center space-y-3" data-tour-id="territories-list">
+        <div className="border border-border rounded-xl p-12 text-center space-y-3" data-tour-id="territories-list">
           <MapPin className="h-10 w-10 mx-auto text-muted-foreground/40" />
           <p className="font-medium">{t("empty.title")}</p>
           <p className="text-sm text-muted-foreground">{t("empty.description")}</p>
@@ -393,7 +393,7 @@ export default function TerritoriesPage() {
       ) : (
         <div className="space-y-3" data-tour-id="territories-list">
           {territories.map((t) => (
-            <div key={t.id} className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-5 space-y-3">
+            <div key={t.id} className="border border-border rounded-xl p-5 space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-0.5 min-w-0">
                   <div className="flex items-center gap-2">

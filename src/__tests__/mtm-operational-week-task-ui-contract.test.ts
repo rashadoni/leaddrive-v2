@@ -72,7 +72,7 @@ describe("SWM-15C operational-week task UI contract", () => {
   it("aligns visual and DOM focus order across compact and desktop layouts", () => {
     const ui = source(operationalWeekPath)
     const compactRail = ui.indexOf('<aside className="md:max-[100rem]:grid md:max-[100rem]:grid-cols-2 min-[100rem]:hidden"')
-    const agenda = ui.indexOf('<div className="min-w-0 border-t border-zinc-200 dark:border-zinc-700 min-[100rem]:border-t-0">', compactRail)
+    const agenda = ui.indexOf('<div className="min-w-0 border-t border-border min-[100rem]:border-t-0">', compactRail)
     const desktopRail = ui.indexOf('<aside className="hidden min-w-0 min-[100rem]:block', agenda)
 
     expect(ui).toContain('function renderAttentionRailContent(railId: "compact" | "desktop")')

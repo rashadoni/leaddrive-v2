@@ -34,7 +34,7 @@ export function MtmAttendanceSetupChecklist({ year }: { year: string }) {
   const done = steps.filter(step => step.done).length
   // One filled button on the screen: the next step to do; the rest are outlined (owner-approved colours, 2026-10-18).
   const next = steps.findIndex(step => !step.done)
-  return <section className="space-y-4 rounded-2xl border border-zinc-200 bg-card p-5 dark:border-zinc-700" aria-labelledby="attendance-setup-title" data-testid="attendance-setup-checklist">
+  return <section className="space-y-4 rounded-2xl border border-border bg-card p-5" aria-labelledby="attendance-setup-title" data-testid="attendance-setup-checklist">
     <div className="space-y-2">
       <h2 id="attendance-setup-title" className="text-lg font-semibold">{p("setupTitle", { done, total: steps.length })}</h2>
       <p className="max-w-3xl text-sm text-muted-foreground">{p("setupHint")}</p>
@@ -46,7 +46,7 @@ export function MtmAttendanceSetupChecklist({ year }: { year: string }) {
         {step.done ? <Check className="h-4 w-4" /> : index + 1}</span>
       <span className="min-w-0 flex-1"><span className={`block font-semibold ${step.done ? "text-muted-foreground" : ""}`}>{p(`setupSteps.${step.key}.title`, { year })}</span>
         <span className="block text-sm text-muted-foreground">{p(`setupSteps.${step.key}.${step.done ? "done" : "todo"}`, { count: step.count ?? 0, total: step.total ?? 0 })}</span></span>
-      <Link href={HREF[step.key]} prefetch={false} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${step.done ? "text-muted-foreground hover:text-foreground" : index === next ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border border-zinc-200 text-foreground hover:bg-muted dark:border-zinc-700"}`}>
+      <Link href={HREF[step.key]} prefetch={false} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${step.done ? "text-muted-foreground hover:text-foreground" : index === next ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border border-border text-foreground hover:bg-muted"}`}>
         {p(step.done ? "setupOpen" : "setupDo")}</Link>
     </li>)}</ol>
   </section>

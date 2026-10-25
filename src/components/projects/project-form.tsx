@@ -220,7 +220,7 @@ export function ProjectForm({ open, onClose, onSaved, editData }: ProjectFormPro
               <div>
                 <label className="text-sm font-medium mb-1 block">{t("color")}</label>
                 <div className="flex items-center gap-2">
-                  <input type="color" value={formColor} onChange={e => setFormColor(e.target.value)} className="h-9 w-12 rounded border border-zinc-200 dark:border-zinc-700 cursor-pointer" />
+                  <input type="color" value={formColor} onChange={e => setFormColor(e.target.value)} className="h-9 w-12 rounded border border-input cursor-pointer" />
                   <span className="text-xs text-muted-foreground font-mono">{formColor}</span>
                 </div>
               </div>

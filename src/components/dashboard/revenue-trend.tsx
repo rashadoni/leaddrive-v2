@@ -22,7 +22,7 @@ export function RevenueTrend({ forecast }: { forecast: any[] }) {
     : 0
 
   return (
-    <div className="dashboard-bento-card rounded-lg bg-card border border-zinc-200 dark:border-zinc-700 shadow-sm p-3">
+    <div className="dashboard-bento-card rounded-lg bg-card border border-border shadow-sm p-3">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <TrendingUp className="h-4 w-4 text-emerald-500" />

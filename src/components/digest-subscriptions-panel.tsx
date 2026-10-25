@@ -208,7 +208,7 @@ export function DigestSubscriptionsPanel() {
                                 value={s.frequency}
                                 onChange={(e) => updateRow(r.user.id, s.type, { frequency: e.target.value as Frequency })}
                                 disabled={!canEdit}
-                                className="h-7 text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 bg-background w-full"
+                                className="h-7 text-xs border border-input rounded px-2 bg-background w-full"
                               >
                                 {(["off","daily","every_2_days","weekly","monthly"] as Frequency[]).map((f) => (
                                   <option key={f} value={f}>{t(FREQ_KEYS[f] as Parameters<typeof t>[0])}</option>
@@ -221,10 +221,10 @@ export function DigestSubscriptionsPanel() {
                                   {(["email","in_app","telegram","slack"] as Channel[]).map((ch) => (
                                     <label
                                       key={ch}
-                                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 text-[10px] cursor-pointer ${
+                                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-border text-[10px] cursor-pointer ${
                                         s.channels.includes(ch)
                                           ? "bg-primary/10 border-primary text-primary"
-                                          : "bg-background border-zinc-200 dark:border-zinc-700 text-muted-foreground hover:bg-muted"
+                                          : "bg-background border-border text-muted-foreground hover:bg-muted"
                                       }`}
                                     >
                                       <input

@@ -139,8 +139,8 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
   if (!loading && requests.length === 0) return null
 
   return (
-    <section id="mtm-customer-location-queue" className="overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700" aria-labelledby="customer-location-heading" data-testid="mtm-customer-location-queue">
-      <header className="flex flex-wrap items-center gap-2 border-b border-zinc-200 px-4 py-4 dark:border-zinc-700 sm:px-5">
+    <section id="mtm-customer-location-queue" className="overflow-hidden rounded-xl border border-border bg-card" aria-labelledby="customer-location-heading" data-testid="mtm-customer-location-queue">
+      <header className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-4 sm:px-5">
         <h2 id="customer-location-heading" className="flex items-center gap-2 text-base font-semibold">
           <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
           {t("locationQueueTitle")}
@@ -154,7 +154,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
         </div>
       ) : null}
 
-      <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+      <div className="divide-y divide-border">
         {requests.map((request) => {
           const deciding = busy?.id === request.id ? busy.decision : null
           const facts: Array<[string, string]> = [
@@ -168,7 +168,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
           ]
           return (
             <article key={request.id} className="grid gap-4 p-4 sm:p-5 xl:grid-cols-2" data-testid={`mtm-customer-location-request-${request.id}`}>
-              <div className="relative isolate h-64 overflow-hidden rounded-lg border border-zinc-200 bg-muted dark:border-zinc-700 xl:h-full xl:min-h-72">
+              <div className="relative isolate h-64 overflow-hidden rounded-lg border border-border bg-muted xl:h-full xl:min-h-72">
                 <RequestMap
                   previous={request.previous}
                   proposed={request.proposed}
@@ -197,7 +197,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
 
                 <dl className="grid grid-cols-2 gap-2">
                   {facts.map(([label, value]) => (
-                    <div key={label} className="rounded-lg border border-zinc-200 bg-card px-3 py-2 dark:border-zinc-700">
+                    <div key={label} className="rounded-lg border border-border bg-card px-3 py-2">
                       <dt className="text-[11px] text-muted-foreground"><HintValue text={t("hint.locationFacts")}>{label}</HintValue></dt>
                       <dd className="text-sm font-semibold text-foreground">{value}</dd>
                     </div>
@@ -205,7 +205,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
                 </dl>
 
                 {request.comment ? (
-                  <p className="rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700">
+                  <p className="rounded-lg border border-border px-3 py-2 text-sm">
                     <span className="block text-[11px] text-muted-foreground">{t("locationAgentComment")}</span>
                     {request.comment}
                   </p>
@@ -213,13 +213,13 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
 
                 {/* «Адрес на проверке»: he was let in from this place, and the visit waits for this answer too. */}
                 {request.visits && request.visits.length > 0 ? (
-                  <p className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card px-3 py-2 text-sm text-foreground dark:border-zinc-700 dark:border-l-amber-500" data-testid="mtm-customer-location-visits">
+                  <p className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card px-3 py-2 text-sm text-foreground dark:border-l-amber-500" data-testid="mtm-customer-location-visits">
                     {t("locationVisitsNote", { count: request.visits.length, time: clock.format(new Date(request.visits[0].checkInAt)) })}
                   </p>
                 ) : null}
 
                 {request.pinMovedSince ? (
-                  <p role="status" className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card px-3 py-2 text-sm text-foreground dark:border-zinc-700 dark:border-l-amber-500" data-testid="mtm-customer-location-pin-moved">
+                  <p role="status" className="flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card px-3 py-2 text-sm text-foreground dark:border-l-amber-500" data-testid="mtm-customer-location-pin-moved">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                     {t("locationPinMoved")}
                   </p>

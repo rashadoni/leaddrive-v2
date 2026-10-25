@@ -653,7 +653,7 @@ export default function AiAutomationPage() {
                 min="0.5"
                 value={budgetLimit}
                 onChange={e => setBudgetLimit(e.target.value)}
-                className="h-7 w-20 text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 bg-background"
+                className="h-7 w-20 text-xs border border-input rounded px-2 bg-background"
               />
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={saveBudgetLimit} disabled={savingBudget}>
                 {savingBudget ? "..." : t("save")}
@@ -674,7 +674,7 @@ export default function AiAutomationPage() {
                     min="1"
                     value={aiLimits[key]}
                     onChange={(e) => setAiLimits((prev) => ({ ...prev, [key]: e.target.value }))}
-                    className="h-7 w-24 rounded border border-zinc-200 bg-background px-2 text-xs dark:border-zinc-700"
+                    className="h-7 w-24 rounded border border-input bg-background px-2 text-xs"
                   />
                 </label>
               ))}
@@ -734,14 +734,14 @@ export default function AiAutomationPage() {
                 placeholder="Bot Token"
                 value={delivery.telegramBotToken}
                 onChange={e => setDelivery(d => ({ ...d, telegramBotToken: e.target.value }))}
-                className="h-8 text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 bg-background"
+                className="h-8 text-xs border border-input rounded px-2 bg-background"
               />
               <input
                 type="text"
                 placeholder="Chat ID"
                 value={delivery.telegramChatId}
                 onChange={e => setDelivery(d => ({ ...d, telegramChatId: e.target.value }))}
-                className="h-8 text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 bg-background"
+                className="h-8 text-xs border border-input rounded px-2 bg-background"
               />
             </div>
           </div>
@@ -773,7 +773,7 @@ export default function AiAutomationPage() {
               placeholder="Webhook URL (https://hooks.slack.com/...)"
               value={delivery.slackWebhookUrl}
               onChange={e => setDelivery(d => ({ ...d, slackWebhookUrl: e.target.value }))}
-              className="h-8 w-full text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 bg-background"
+              className="h-8 w-full text-xs border border-input rounded px-2 bg-background"
             />
           </div>
 
@@ -974,7 +974,7 @@ export default function AiAutomationPage() {
                     <select
                       value={advisorDraft.maxAutonomyLevel}
                       onChange={(e) => setAdvisorDraft((draft) => ({ ...draft, maxAutonomyLevel: e.target.value as AdvisorSettingsPayload["settings"]["maxAutonomyLevel"] }))}
-                      className="h-9 w-full rounded border border-zinc-200 bg-background px-2 text-sm dark:border-zinc-700"
+                      className="h-9 w-full rounded border border-input bg-background px-2 text-sm"
                     >
                       {["L0", "L1", "L2", "L3", "L4"].map((level) => (
                         <option key={level} value={level}>{level}</option>
@@ -989,7 +989,7 @@ export default function AiAutomationPage() {
                       max="500"
                       value={advisorDraft.dailyLimit}
                       onChange={(e) => setAdvisorDraft((draft) => ({ ...draft, dailyLimit: e.target.value }))}
-                      className="h-9 w-full rounded border border-zinc-200 bg-background px-2 text-sm dark:border-zinc-700"
+                      className="h-9 w-full rounded border border-input bg-background px-2 text-sm"
                     />
                   </label>
                   <label className="space-y-1 text-xs text-muted-foreground">
@@ -1000,7 +1000,7 @@ export default function AiAutomationPage() {
                       max="100"
                       value={advisorDraft.actionTypeDailyLimit}
                       onChange={(e) => setAdvisorDraft((draft) => ({ ...draft, actionTypeDailyLimit: e.target.value }))}
-                      className="h-9 w-full rounded border border-zinc-200 bg-background px-2 text-sm dark:border-zinc-700"
+                      className="h-9 w-full rounded border border-input bg-background px-2 text-sm"
                     />
                   </label>
                 </div>
@@ -1152,7 +1152,7 @@ export default function AiAutomationPage() {
                   <div
                     key={f.key}
                     className={`rounded-lg border transition-colors ${
-                      f.enabled ? "bg-card border-zinc-200 dark:border-zinc-700" : "bg-muted/30 border-transparent"
+                      f.enabled ? "bg-card border-border" : "bg-muted/30 border-transparent"
                     }`}
                   >
                     <div className="flex items-center justify-between p-3">
@@ -1215,7 +1215,7 @@ export default function AiAutomationPage() {
                 if (!shadow || !live) return null
                 const Icon = s.icon
                 return (
-                  <div key={s.key} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-3.5">
+                  <div key={s.key} className="rounded-lg border border-border bg-card p-3.5">
                     <div className="flex items-start gap-2.5 mb-3">
                       <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${s.accent}`} />
                       <div className="min-w-0">

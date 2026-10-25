@@ -115,7 +115,7 @@ function formatShortDate(dateStr: string, locale: string): string {
 const STATUS_MAP: Record<string, { labelKey: string; className: string }> = {
   open: { labelKey: "statusRegistrationOpen", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
   planned: { labelKey: "statusPlanned", className: "bg-primary/10 text-primary border-primary/20" },
-  completed: { labelKey: "statusCompleted", className: "bg-muted text-muted-foreground border-zinc-200 dark:border-zinc-700" },
+  completed: { labelKey: "statusCompleted", className: "bg-muted text-muted-foreground border-border" },
   cancelled: { labelKey: "statusCancelled", className: "bg-red-500/10 text-red-400 border-red-500/20" },
 }
 
@@ -123,7 +123,7 @@ const ROLE_STYLES: Record<string, string> = {
   Speaker: "bg-[hsl(var(--ai-from))]/10 text-[hsl(var(--ai-from))] border-[hsl(var(--ai-from))]/20",
   Organizer: "bg-primary/10 text-primary border-primary/20",
   VIP: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-  Attendee: "bg-muted text-muted-foreground border-zinc-200 dark:border-zinc-700",
+  Attendee: "bg-muted text-muted-foreground border-border",
   Sponsor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
 }
 
@@ -254,7 +254,7 @@ function InviteModal({ event, onClose }: { event: Event; onClose: () => void }) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
+        className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -288,7 +288,7 @@ function InviteModal({ event, onClose }: { event: Event; onClose: () => void }) 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Email *</label>
             <textarea
-              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-3 py-2 text-sm min-h-[60px] resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[60px] resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30"
               placeholder={t("inviteEmailsPlaceholder")}
               value={emails}
               onChange={e => setEmails(e.target.value)}
@@ -299,7 +299,7 @@ function InviteModal({ event, onClose }: { event: Event; onClose: () => void }) 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t("emailSubject")}</label>
             <input
-              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30"
               value={subject}
               onChange={e => setSubject(e.target.value)}
             />
@@ -309,7 +309,7 @@ function InviteModal({ event, onClose }: { event: Event; onClose: () => void }) 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t("personalMessage")}</label>
             <textarea
-              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30"
               placeholder={t("personalMessagePlaceholder")}
               value={message}
               onChange={e => setMessage(e.target.value)}
@@ -417,7 +417,7 @@ export function EventsAnalytics({ events }: EventsAnalyticsProps) {
       {/* ── Top Row: Events List + Attendees ─────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Left: Events list (wider) */}
-        <div className="lg:col-span-3 bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-4">
+        <div className="lg:col-span-3 bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <CalendarDays className="w-4 h-4 text-violet-400" />
@@ -463,7 +463,7 @@ export function EventsAnalytics({ events }: EventsAnalyticsProps) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium truncate">{ev.name}</span>
-                        <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-700 shrink-0", st.className)}>
+                        <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-border shrink-0", st.className)}>
                           {t(st.labelKey)}
                         </span>
                       </div>
@@ -490,7 +490,7 @@ export function EventsAnalytics({ events }: EventsAnalyticsProps) {
         </div>
 
         {/* Right: Attendees for selected event */}
-        <div className="lg:col-span-2 bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-4">
+        <div className="lg:col-span-2 bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold">
               {t("participants")} — {selectedEvent?.name ?? "—"}
@@ -547,7 +547,7 @@ export function EventsAnalytics({ events }: EventsAnalyticsProps) {
       {/* ── Bottom Row: Budget + Calendar + Registration ─────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Budget & ROI */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-4">
+        <div className="bg-card rounded-xl border border-border p-4">
           <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
             <DollarSign className="w-4 h-4 text-emerald-400" />
             {t("budgetAndRoi")}
@@ -597,7 +597,7 @@ export function EventsAnalytics({ events }: EventsAnalyticsProps) {
         </div>
 
         {/* Event Calendar */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-4">
+        <div className="bg-card rounded-xl border border-border p-4">
           <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
             <CalendarCheck className="w-4 h-4 text-blue-400" />
             {t("eventCalendar")}
@@ -630,7 +630,7 @@ export function EventsAnalytics({ events }: EventsAnalyticsProps) {
         </div>
 
         {/* Registration Portal */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-4">
+        <div className="bg-card rounded-xl border border-border p-4">
           <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
             <Link2 className="w-4 h-4 text-amber-400" />
             {t("registrationPortal")}

@@ -337,7 +337,7 @@ export default function EditInvoicePage() {
                       <Package className="h-3 w-3 mr-1" />{t("fromProducts")}
                     </Button>
                     {showProductDropdown && products.length > 0 && (
-                      <div className="absolute right-0 mt-1 w-72 bg-popover border border-zinc-200 dark:border-zinc-700 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                      <div className="absolute right-0 mt-1 w-72 bg-popover border border-border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
                         {products.map(product => (
                           <button key={product.id} className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex justify-between items-center" onClick={() => addFromProduct(product)}>
                             <span className="truncate mr-2">{product.name}</span>
@@ -354,7 +354,7 @@ export default function EditInvoicePage() {
               </div>
             </CardHeader>
             <CardContent className="px-4 pb-3">
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-x-auto">
+              <div className="border border-border rounded-lg overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted text-muted-foreground text-xs font-semibold uppercase tracking-wider">

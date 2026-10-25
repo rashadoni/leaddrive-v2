@@ -26,7 +26,7 @@ export function ContactTransferReceiptPanel({
   return (
     <section
       aria-label={t("transferReceipt.title")}
-      className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700"
+      className="rounded-xl border border-border bg-card p-4"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">

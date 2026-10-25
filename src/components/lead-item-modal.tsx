@@ -373,9 +373,9 @@ export function LeadItemModal({ open, onOpenChange, lead, orgId, onSaved, onConv
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 px-6 border-b shrink-0 overflow-x-auto">
+          <div data-crm-tabs="" className="flex gap-1 px-6 border-b shrink-0 overflow-x-auto">
             {tabs.map(tab => (
-              <button
+              <button data-crm-tab="" data-state={activeTab === tab.id ? "active" : "inactive"}
                 key={tab.id}
                 onClick={() => { setActiveTab(tab.id); if (tab.id === "activity" && !activities.length) loadActivities() }}
                 className={`px-4 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors ${
@@ -406,10 +406,10 @@ export function LeadItemModal({ open, onOpenChange, lead, orgId, onSaved, onConv
                           onClick={() => changeStatus(s)}
                           disabled={saving}
                           className={cn(
-                            "flex items-center gap-1.5 text-xs py-1.5 px-3 rounded-md border border-zinc-200 dark:border-zinc-700 transition-all",
+                            "flex items-center gap-1.5 text-xs py-1.5 px-3 rounded-md border border-border transition-all",
                             displayLead.status === s
                               ? "bg-primary/10 text-primary font-semibold border-primary/30"
-                              : "bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground border-zinc-200 dark:border-zinc-700"
+                              : "bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground border-border"
                           )}
                         >
                           <span className={cn("w-2 h-2 rounded-full shrink-0", statusColors[s])} />
@@ -427,10 +427,10 @@ export function LeadItemModal({ open, onOpenChange, lead, orgId, onSaved, onConv
                           onClick={() => changePriority(p)}
                           disabled={saving}
                           className={cn(
-                            "flex items-center gap-1.5 text-xs py-1.5 px-3 rounded-md border border-zinc-200 dark:border-zinc-700 transition-all",
+                            "flex items-center gap-1.5 text-xs py-1.5 px-3 rounded-md border border-border transition-all",
                             displayLead.priority === p
                               ? "bg-primary/10 text-primary font-semibold border-primary/30"
-                              : "bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground border-zinc-200 dark:border-zinc-700"
+                              : "bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground border-border"
                           )}
                         >
                           <span className={cn("w-2 h-2 rounded-full shrink-0",
@@ -465,7 +465,7 @@ export function LeadItemModal({ open, onOpenChange, lead, orgId, onSaved, onConv
 
                   {editing ? (
                     /* Edit form */
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-muted/20">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-border rounded-lg bg-muted/20">
                       <div>
                         <Label className="text-xs flex items-center gap-1.5 mb-1.5">
                           <User className="h-3 w-3" /> {t("modalContactName")} *
@@ -609,7 +609,7 @@ export function LeadItemModal({ open, onOpenChange, lead, orgId, onSaved, onConv
                 {!editing && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">{t("modalNotes")}</p>
-                    <div className="p-3 bg-muted/20 rounded-lg border border-zinc-200 dark:border-zinc-700 min-h-[48px]">
+                    <div className="p-3 bg-muted/20 rounded-lg border border-border min-h-[48px]">
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                         {displayLead.notes || t("modalNoNotesView")}
                       </p>
@@ -855,7 +855,7 @@ export function LeadItemModal({ open, onOpenChange, lead, orgId, onSaved, onConv
                 </Button>
 
                 {generatedText && (
-                  <div className="space-y-3 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 bg-muted/10">
+                  <div className="space-y-3 border border-border rounded-lg p-4 bg-muted/10">
                     {generatedText.subject && (
                       <div>
                         <Label className="text-xs text-primary uppercase">{t("modalSubject")}</Label>

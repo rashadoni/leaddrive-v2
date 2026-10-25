@@ -228,7 +228,7 @@ export function DealForm({ open, onOpenChange, onSaved, initialData, orgId, pipe
           {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
           <div className="grid gap-4">
             {isEdit && (
-              <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-muted/30 px-3 py-2 text-sm dark:border-zinc-700">
+              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
                 <span className="text-muted-foreground">{t("dealOfferStatus")}</span>
                 {(initialData?._count?.offers ?? 0) > 0 ? (
                   <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700 dark:bg-orange-950/40 dark:text-orange-300">

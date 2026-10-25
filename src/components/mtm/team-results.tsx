@@ -181,7 +181,7 @@ export function MtmTeamResultsView({ preset, onPresetChange, teams, teamId, onTe
       </div>
 
       {failed ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-card px-4 py-4 text-sm dark:border-zinc-700">
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 text-sm">
           {t("loadFailed")}
           <Button type="button" variant="outline" size="sm" className="min-h-10" onClick={onRetry}><RefreshCw className="mr-1.5 h-4 w-4" />{t("retry")}</Button>
         </div>
@@ -194,17 +194,17 @@ export function MtmTeamResultsView({ preset, onPresetChange, teams, teamId, onTe
           {truncated ? <p role="status" className="text-sm text-amber-700 dark:text-amber-300">{t("truncated")}</p> : null}
 
           <div data-testid="mtm-team-results-cards" className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+            <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /><HintValue text={t("hint.cardPlan")}>{t("cardPlan")}</HintValue></div>
               <div className={`mt-1 text-3xl font-semibold tabular-nums ${TONE_TEXT[mtmPlanTone(report.plan.denominator > 0 ? report.plan.percentage : null)]}`}>{report.plan.denominator > 0 ? `${report.plan.percentage}%` : "—"}</div>
               <div className="mt-1 text-sm text-muted-foreground">{t("cardPlanDetail", { done: report.plan.numerator, planned: report.plan.denominator })}</div>
             </div>
-            <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+            <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" aria-hidden="true" /><HintValue text={t("hint.cardVisits")}>{t("cardVisits")}</HintValue></div>
               <div className="mt-1 text-3xl font-semibold tabular-nums">{report.gps.denominator}</div>
               <div className="mt-1 text-sm text-muted-foreground">{t("cardVisitsDetail")}</div>
             </div>
-            <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+            <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground"><Satellite className="h-4 w-4" aria-hidden="true" /><HintValue text={t("hint.cardGps")}>{t("cardGps")}</HintValue></div>
               <div className="mt-1 text-3xl font-semibold tabular-nums">{report.gps.denominator > 0 ? `${report.gps.percentage}%` : "—"}</div>
               <div className="mt-1 text-sm text-muted-foreground">{t("cardGpsDetail", { withGps: report.gps.numerator, visits: report.gps.denominator })}</div>
@@ -212,14 +212,14 @@ export function MtmTeamResultsView({ preset, onPresetChange, teams, teamId, onTe
           </div>
 
           {rows.length === 0 ? (
-            <p className="rounded-xl border border-zinc-200 bg-card px-4 py-6 text-center text-sm text-muted-foreground dark:border-zinc-700">{t("empty")}</p>
+            <p className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">{t("empty")}</p>
           ) : (
-            <div className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-              <h3 className="border-b border-zinc-200 px-4 py-3 text-sm font-semibold dark:border-zinc-700">{t("tableTitle")}</h3>
+            <div className="rounded-xl border border-border bg-card">
+              <h3 className="border-b border-border px-4 py-3 text-sm font-semibold">{t("tableTitle")}</h3>
               <div className="overflow-x-auto">
                 <table data-testid="mtm-team-results-agents" className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-zinc-200 text-left text-xs text-muted-foreground dark:border-zinc-700">
+                    <tr className="border-b border-border text-left text-xs text-muted-foreground">
                       <th className="px-4 py-2 font-medium">{t("colAgent")}</th>
                       <th className="px-3 py-2 text-right font-medium">{t("colPlan")}</th>
                       <th className="px-3 py-2 font-medium">{t("colPercent")}</th>
@@ -231,7 +231,7 @@ export function MtmTeamResultsView({ preset, onPresetChange, teams, teamId, onTe
                     {rows.map((row) => {
                       const tone = mtmPlanTone(row.planPercent)
                       return (
-                        <tr key={row.agentId} className="border-b border-zinc-200 last:border-0 hover:bg-muted/40 dark:border-zinc-700">
+                        <tr key={row.agentId} className="border-b border-border last:border-0 hover:bg-muted/40">
                           <td className="px-4 py-2">
                             <Link href={`/mtm/calendar?view=agent&agentId=${encodeURIComponent(row.agentId)}`} className="font-medium text-foreground hover:underline" aria-label={t("openAgent", { name: row.agentName })}>{row.agentName}</Link>
                           </td>
@@ -258,7 +258,7 @@ export function MtmTeamResultsView({ preset, onPresetChange, teams, teamId, onTe
           )}
 
           {report.trend.some((day) => day.planned > 0) ? (
-            <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+            <div className="rounded-xl border border-border bg-card p-4">
               <h3 className="mb-3 text-sm font-semibold">{t("byDay")}</h3>
               <div data-testid="mtm-team-results-days" className="flex h-28 items-end gap-1">
                 {report.trend.map((day) => {

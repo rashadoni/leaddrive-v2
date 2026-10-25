@@ -609,7 +609,7 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .shadow-\[0_1px_3px_rgba\
 }
 
 /* Wallpaper: keep buttons visible and opaque */
-html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-primary {
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-primary:not([data-crm-tab]):not([data-crm-filter]) {
   background-color: hsl(var(--crm-action, 20 90% 38%)) !important;
 }
 
@@ -623,14 +623,8 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] a.bg-primary {
   backdrop-filter: none !important;
 }
 
-/* Wallpaper: input fields need solid dark background */
-html[data-wallpaper][data-wallpaper-scope="dashboard"] input,
-html[data-wallpaper][data-wallpaper-scope="dashboard"] select,
-html[data-wallpaper][data-wallpaper-scope="dashboard"] textarea {
-  background-color: hsl(var(--card)) !important;
-  color: hsl(var(--card-foreground)) !important;
-  border-color: hsl(var(--input)) !important;
-}
+/* Native fields inherit the shared CRM surface tokens in crm-workspace.css.
+   Keep validation, focus and intentionally transparent fields overridable. */
 
 /* Wallpaper: dialog/modal overlay */
 html[data-wallpaper][data-wallpaper-scope="dashboard"] [role="dialog"]:not([data-crm-surface="canvas"]),

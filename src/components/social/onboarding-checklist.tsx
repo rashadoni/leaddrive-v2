@@ -30,7 +30,7 @@ export function SocialOnboardingChecklist({ hasFacebook, hasInstagram, defaultOp
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-700">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <button
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}

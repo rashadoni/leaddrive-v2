@@ -276,7 +276,7 @@ export default function SmtpSettingsPage() {
       </div>
 
       {/* Quick presets */}
-      <div data-tour-id="smtp-presets" className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 bg-card">
+      <div data-tour-id="smtp-presets" className="border border-border rounded-lg p-4 bg-card">
         <p className="text-sm font-medium text-muted-foreground mb-3">{c.quickSetup}:</p>
         <div className="flex gap-2 flex-wrap">
           {[
@@ -298,7 +298,7 @@ export default function SmtpSettingsPage() {
       </div>
 
       {/* SMTP Settings */}
-      <div data-tour-id="smtp-credentials" className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-6 bg-card space-y-5">
+      <div data-tour-id="smtp-credentials" className="border border-border rounded-lg p-6 bg-card space-y-5">
         {/* Host */}
         <div>
           <Label className="text-sm">{c.smtpServer}</Label>
@@ -386,7 +386,7 @@ export default function SmtpSettingsPage() {
       </div>
 
       {/* Test Email */}
-      <div data-tour-id="smtp-test-email" className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-6 bg-card space-y-4">
+      <div data-tour-id="smtp-test-email" className="border border-border rounded-lg p-6 bg-card space-y-4">
         <h2 className="text-lg font-semibold">{c.testEmail}</h2>
         <div className="flex gap-3 items-end">
           <div className="flex-1">

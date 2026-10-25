@@ -78,7 +78,7 @@ describe("MTM calm colours (owner, 2026-10-18)", () => {
     expect(warning).toContain("Gözləyir")
 
     const outline = renderToStaticMarkup(createElement(Badge, { variant: "outline" }, "A"))
-    expect(outline).toContain("border-zinc-200")
+    expect(outline).toContain("border-border")
     expect(outline).not.toMatch(/\bbg-/)
   })
 

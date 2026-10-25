@@ -195,7 +195,7 @@ export default function WorkflowTemplatesPage() {
           ))}
         </div>
       ) : templates.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-zinc-200 bg-card px-6 py-14 text-center text-muted-foreground dark:border-zinc-700" data-tour-id="workflow-templates-list">
+        <div className="rounded-lg border border-dashed border-border bg-card px-6 py-14 text-center text-muted-foreground" data-tour-id="workflow-templates-list">
           <Sparkles className="mx-auto mb-3 h-10 w-10 opacity-30" />
           <p className="font-medium text-foreground">{t("empty")}</p>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6">{t("emptyHint")}</p>
@@ -303,7 +303,7 @@ export default function WorkflowTemplatesPage() {
                     const setCustom = (patch: CustomField) =>
                       setCustomizations({ ...customizations, [String(idx)]: { ...custom, ...patch } })
                     return (
-                      <div key={idx} className="rounded-md border border-zinc-200 dark:border-zinc-700 p-3 space-y-2">
+                      <div key={idx} className="rounded-md border border-border p-3 space-y-2">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-[10px] font-mono">
                             {action.actionType}

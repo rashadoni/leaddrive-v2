@@ -1250,7 +1250,7 @@ export function ChannelConfigForm({
             <div
               className={cn(
                 "grid shrink-0 place-items-center border bg-white text-orange-600 shadow-sm",
-                compactGuidance ? "h-10 w-10 rounded-xl border-zinc-200 shadow-none" : "h-12 w-12 rounded-2xl border-orange-200",
+                compactGuidance ? "h-10 w-10 rounded-xl border-border shadow-none" : "h-12 w-12 rounded-2xl border-orange-200",
               )}
             >
               {LockedChannelIcon ? <LockedChannelIcon className={compactGuidance ? "h-5 w-5" : "h-6 w-6"} /> : <MessageSquare className={compactGuidance ? "h-5 w-5" : "h-6 w-6"} />}
@@ -1280,7 +1280,7 @@ export function ChannelConfigForm({
               className={cn(
                 "w-fit rounded-full border bg-white font-semibold",
                 compactGuidance
-                  ? "border-zinc-200 px-2.5 py-1 text-xs text-zinc-600"
+                  ? "border-border px-2.5 py-1 text-xs text-zinc-600"
                   : "border-orange-200 px-3 py-1 text-sm text-orange-700 shadow-sm",
               )}
             >
@@ -1327,7 +1327,7 @@ export function ChannelConfigForm({
                   className={cn(
                     "mt-1.5 flex gap-3 border",
                     compactGuidance
-                      ? "items-center rounded-lg border-zinc-200 bg-zinc-50 px-3 py-2"
+                      ? "items-center rounded-lg border-border bg-zinc-50 px-3 py-2"
                       : "items-start rounded-2xl border-orange-200 bg-orange-50/80 p-4 shadow-sm",
                   )}
                 >
@@ -1378,7 +1378,7 @@ export function ChannelConfigForm({
             </div>
 
             {!compactGuidance && lockChannelType && selectedChannelType && (
-              <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <div className="rounded-3xl border border-border bg-white p-4 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">
@@ -1395,7 +1395,7 @@ export function ChannelConfigForm({
                     {setupIntentLabel}
                   </div>
                 </div>
-                <div className="mt-4 divide-y divide-zinc-200 overflow-hidden rounded-2xl border border-zinc-200">
+                <div className="mt-4 divide-y divide-border overflow-hidden rounded-2xl border border-border">
                   {[
                     { label: c.planProviderTitle, value: operatorPlan.provider, marker: "1" },
                     { label: c.planLeadDriveTitle, value: operatorPlan.leadDrive, marker: "2" },
@@ -1418,8 +1418,8 @@ export function ChannelConfigForm({
             )}
 
             {!compactGuidance && lockChannelType && selectedChannelType && (
-              <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-50/80 shadow-sm">
-                <div className="border-b border-zinc-200 bg-white p-4">
+              <div className="overflow-hidden rounded-3xl border border-border bg-zinc-50/80 shadow-sm">
+                <div className="border-b border-border bg-white p-4">
                   <div className="flex items-start gap-3">
                     <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-orange-50 text-orange-600 ring-1 ring-orange-200">
                       <span className="text-sm font-bold">1</span>
@@ -1488,7 +1488,7 @@ export function ChannelConfigForm({
                               "flex w-full gap-3 rounded-2xl border px-3 py-3 text-left text-sm leading-5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500",
                               selected
                                 ? "border-orange-400 bg-orange-50 text-orange-950 shadow-[0_0_0_2px_rgba(251,146,60,0.20)]"
-                                : "border-zinc-200 bg-white text-zinc-700 hover:border-orange-200 hover:bg-zinc-50 hover:text-orange-900"
+                                : "border-border bg-white text-zinc-700 hover:border-orange-200 hover:bg-zinc-50 hover:text-orange-900"
                             )}
                           >
                             <span
@@ -1533,8 +1533,8 @@ export function ChannelConfigForm({
             )}
 
             {!compactGuidance && credentialGuide && (
-              <div className="grid gap-3 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <div className="grid gap-3 rounded-3xl border border-border bg-white p-4 shadow-sm">
+                <div className="rounded-2xl border border-border bg-zinc-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
                     {c.credentialMapTitle}
                   </p>
@@ -1550,19 +1550,19 @@ export function ChannelConfigForm({
             )}
 
             {!compactGuidance && lockChannelType && credentialFieldRows.length > 0 && (
-              <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <div className="rounded-3xl border border-border bg-white p-4 shadow-sm">
                 <div className="flex flex-col gap-1">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">
                     {c.fieldMapTitle}
                   </p>
                   <p className="max-w-2xl text-xs leading-5 text-zinc-500">{c.fieldMapHint}</p>
                 </div>
-                <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200">
-                  <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                <div className="mt-4 overflow-hidden rounded-2xl border border-border">
+                  <div className="border-b border-border bg-zinc-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
                     <span>{c.fieldMapField}</span>
                     <span className="mt-1 block normal-case tracking-normal text-zinc-400">{c.fieldMapWhere}</span>
                   </div>
-                  <div className="divide-y divide-zinc-100">
+                  <div className="divide-y divide-border">
                     {credentialFieldRows.map((row) => (
                       <div
                         key={`${row.field}-${row.source}`}
@@ -1647,7 +1647,7 @@ export function ChannelConfigForm({
                     {tf("webhookUrlHint")}
                   </p>
                 </div>
-                <section className="space-y-3 rounded-lg border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+                <section className="space-y-3 rounded-lg border border-border bg-zinc-50/70 p-3 dark:bg-zinc-950/30">
                   <div>
                     <h3 className="text-sm font-semibold">{c.emailIntakeTitle}</h3>
                   </div>
@@ -1680,7 +1680,7 @@ export function ChannelConfigForm({
             )}
 
             {form.channelType === "whatsapp" && (
-              <section className="space-y-5 rounded-3xl border border-zinc-200 bg-zinc-50/70 p-4 shadow-sm">
+              <section className="space-y-5 rounded-3xl border border-border bg-zinc-50/70 p-4 shadow-sm">
                 <div
                   id="whatsappProviderGuide"
                   tabIndex={-1}
@@ -1835,7 +1835,7 @@ export function ChannelConfigForm({
             )}
 
             {form.channelType === "sms" && (
-              <section className="space-y-5 rounded-3xl border border-zinc-200 bg-zinc-50/70 p-4 shadow-sm">
+              <section className="space-y-5 rounded-3xl border border-border bg-zinc-50/70 p-4 shadow-sm">
                 <div
                   id="smsProviderStep"
                   tabIndex={-1}
@@ -1979,7 +1979,7 @@ export function ChannelConfigForm({
                 )}
 
                 {isEdit && (
-                  <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="space-y-2 rounded-lg border border-border bg-zinc-50 p-3">
                     <Label htmlFor="smsTestNumber" className="text-sm font-medium">{tf("smsTestLabel")}</Label>
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <Input
@@ -2029,7 +2029,7 @@ export function ChannelConfigForm({
             )}
 
             {form.channelType === "chatwoot" && (
-              <section className="space-y-5 rounded-3xl border border-zinc-200 bg-zinc-50/70 p-4 shadow-sm">
+              <section className="space-y-5 rounded-3xl border border-border bg-zinc-50/70 p-4 shadow-sm">
                 <div
                   id="chatwootBridgeGuide"
                   tabIndex={-1}
@@ -2103,7 +2103,7 @@ export function ChannelConfigForm({
             )}
 
             {(form.channelType === "facebook" || form.channelType === "instagram") && (
-              <section className="space-y-5 rounded-3xl border border-zinc-200 bg-zinc-50/70 p-4 shadow-sm">
+              <section className="space-y-5 rounded-3xl border border-border bg-zinc-50/70 p-4 shadow-sm">
                 {/* Model A — the default path. LeadDrive's own Meta app: one OAuth click, no tenant
                     keys at all. `?from=channels-*` does two things on the server: it tells the start
                     route this is an INBOX connect (so the messaging scopes are requested even on a
@@ -2179,14 +2179,14 @@ export function ChannelConfigForm({
                     inputs carry NO html `required`: a required control inside a collapsed <details>
                     makes Chrome abort submit with "invalid form control is not focusable" and no
                     visible message. The all-three-or-none rule is enforced in handleSubmit instead. */}
-                <details className="rounded-lg border border-zinc-200 bg-white p-3">
+                <details className="rounded-lg border border-border bg-white p-3">
                   <summary className="cursor-pointer text-sm font-medium text-zinc-800">
                     {c.metaOwnAppToggle}
                   </summary>
                   <div className="mt-3 space-y-5">
                     <p className="text-xs text-muted-foreground">{c.metaOwnAppHint}</p>
                     {form.channelType === "instagram" && (
-                      <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                      <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-zinc-50 p-3">
                         <input
                           type="checkbox"
                           checked={form.igLogin}
@@ -2320,7 +2320,7 @@ export function ChannelConfigForm({
                         {c.metaSaveFirst}
                       </p>
                     ) : null}
-                    <div className="space-y-3 border-t border-zinc-200 pt-3">
+                    <div className="space-y-3 border-t border-border pt-3">
                       <p className="text-xs text-muted-foreground">{c.metaManualFallback}</p>
                       <div>
                         <Label htmlFor="apiKey" className="text-sm font-medium">Page Access Token</Label>
@@ -2415,7 +2415,7 @@ export function ChannelConfigForm({
             )}
 
             {/* Status */}
-            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 transition-colors hover:bg-zinc-100">
+            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-zinc-50 p-3 transition-colors hover:bg-zinc-100">
               <input
                 type="checkbox"
                 checked={form.isActive}
@@ -2468,7 +2468,7 @@ export function ChannelConfigForm({
 
   if (variant === "inline") {
     return (
-      <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-[28px] border border-border bg-white shadow-sm">
         {formBody}
       </div>
     )

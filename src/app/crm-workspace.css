@@ -2,6 +2,7 @@
    Public sites and exported documents remain outside this scope. Status/data
    colours are never reset by a wildcard or a match on a Tailwind colour name. */
 [data-crm-workspace] {
+  color-scheme: light;
   --border: 216 21% 84%;
   --input: 216 18% 72%;
   --crm-action: 20 90% 38%;
@@ -12,15 +13,32 @@
 
 .dark [data-crm-workspace]:not(:where(.force-light, .force-light *)),
 html[data-wallpaper][data-wallpaper-scope="dashboard"] [data-crm-workspace]:not(:where(.force-light, .force-light *)) {
+  color-scheme: dark;
   --border: 215 18% 33%;
   --input: 215 16% 45%;
   --crm-accent-text: 24 95% 70%;
 }
 
 [data-crm-workspace] .force-light {
+  color-scheme: light;
   --border: 216 21% 84%;
   --input: 216 18% 72%;
   --crm-accent-text: 20 90% 33%;
+}
+
+/* Native fields use the same tokens as Input/Select. Base-layer defaults allow
+   explicit validation, disabled, transparent and focus utilities to win. The
+   background token is local to the field, so bg-background means its surface. */
+@layer base {
+  [data-crm-workspace] :where(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"], [type="button"], [type="submit"], [type="reset"], [type="image"])) {
+    --background: var(--card);
+    --border: var(--input);
+    background-color: hsl(var(--card));
+  }
+
+  [data-crm-workspace] :where(input[type="checkbox"], input[type="radio"]) {
+    accent-color: hsl(var(--primary));
+  }
 }
 
 [data-crm-workspace] :is([data-crm-card], [data-crm-section], [data-crm-stat], .crm-panel, .ai-card, .glass-panel) {
@@ -94,6 +112,20 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] [data-crm-workspace]:not(
   color: hsl(var(--foreground));
   font-weight: 600;
   border-bottom-color: hsl(var(--primary));
+}
+
+[data-crm-workspace] [data-crm-filter] {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
+  box-shadow: none;
+}
+
+[data-crm-workspace] [data-crm-filter][data-state="active"] {
+  border-color: hsl(var(--foreground));
+  color: hsl(var(--foreground));
+  font-weight: 600;
 }
 
 /* Dialogs sit above the page. A recessed canvas stays gray inside them. */

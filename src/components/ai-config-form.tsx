@@ -430,7 +430,7 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
                     onClick={() => setForm(f => ({ ...f, model: model.id }))}
                     className={cn(
                       "w-full flex items-center gap-4 p-3.5 rounded-xl border-2 transition-all text-left",
-                      isSelected ? "border-foreground bg-muted/40 shadow-sm" : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
+                      isSelected ? "border-foreground bg-muted/40 shadow-sm" : "border-border hover:border-zinc-300 dark:hover:border-zinc-600"
                     )}
                   >
                     <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
@@ -525,7 +525,7 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
                     onClick={() => toggleGroup(group)}
                     className={cn(
                       "w-full flex items-center gap-3.5 p-3.5 rounded-xl border-2 transition-all text-left",
-                      enabled ? "border-blue-300 bg-blue-50/60 shadow-sm" : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
+                      enabled ? "border-blue-300 bg-blue-50/60 shadow-sm" : "border-border hover:border-zinc-300 dark:hover:border-zinc-600"
                     )}
                   >
                     <div className={cn(
@@ -586,15 +586,15 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
                       type="button"
                       onClick={() => toggleRule(preset)}
                       className={cn(
-                        "w-full flex items-center gap-3 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 transition-all text-left",
-                        enabled ? "border-red-200 bg-red-50/60" : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600",
+                        "w-full flex items-center gap-3 p-3 rounded-xl border border-border transition-all text-left",
+                        enabled ? "border-red-200 bg-red-50/60" : "border-border hover:border-zinc-300 dark:hover:border-zinc-600",
                         preset.alwaysOn && "opacity-90 cursor-default"
                       )}
                     >
                       {/* Checkbox */}
                       <div className={cn(
                         "w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border-2 transition-colors",
-                        enabled ? "bg-red-500 border-red-500" : "border-zinc-200 dark:border-zinc-700 bg-card",
+                        enabled ? "bg-red-500 border-red-500" : "border-border bg-card",
                         preset.alwaysOn && "bg-red-400 border-red-400"
                       )}>
                         {enabled && (
@@ -685,7 +685,7 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
                         "p-2 rounded-xl border-2 text-center transition-all",
                         form.agentType === at.id
                           ? "border-orange-400 bg-orange-50/60 shadow-sm"
-                          : "border-zinc-200 dark:border-zinc-700 hover:border-orange-200"
+                          : "border-border hover:border-orange-200"
                       )}
                     >
                       <p className="text-xs font-semibold">{at.label}</p>
@@ -757,10 +757,10 @@ export function AiConfigForm({ open, onOpenChange, onSaved, initialData, orgId }
                             : [...f.intents, intent],
                         }))}
                         className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-all",
+                          "px-3 py-1.5 rounded-lg text-xs font-medium border border-border transition-all",
                           active
                             ? "bg-orange-100 text-orange-700 border-orange-300"
-                            : "bg-muted/50 text-muted-foreground border-zinc-200 dark:border-zinc-700 hover:border-orange-200"
+                            : "bg-muted/50 text-muted-foreground border-border hover:border-orange-200"
                         )}
                       >
                         {intent.replace(/_/g, " ")}

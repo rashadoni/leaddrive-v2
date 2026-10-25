@@ -40,7 +40,7 @@ export function VisitPhotoGrid({ photos, formatTime, openLabel, titleLabel }: {
               type="button"
               onClick={() => setOpenIndex(index)}
               aria-label={openLabel(index + 1)}
-              className="group block w-full overflow-hidden rounded-lg border border-zinc-200 bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-800"
+              className="group block w-full overflow-hidden rounded-lg border border-border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <PhotoThumbnailImg
                 src={photo.thumbnailUrl || mtmPhotoThumbnailUrl(photo.url)}

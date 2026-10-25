@@ -194,7 +194,7 @@ export default function AILeadScoringPage() {
       </div>
 
       {/* Summary bar */}
-      <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 bg-muted/30 space-y-1 text-sm">
+      <div className="border border-border rounded-lg p-4 bg-muted/30 space-y-1 text-sm">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
           <span>{tl("avgScore")}: <strong className="text-primary">{avgScore}/100</strong></span>
           <span data-testid="ai-scoring-probability">
@@ -211,7 +211,7 @@ export default function AILeadScoringPage() {
       {/* Lead table */}
       <div>
         <h2 className="text-lg font-semibold mb-3">{tl("title")}</h2>
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden">
+        <div className="rounded-lg border border-border bg-card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">

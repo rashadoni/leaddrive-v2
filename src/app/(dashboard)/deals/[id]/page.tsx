@@ -102,7 +102,7 @@ function TagsInput({ tags, onChange, addTagLabel }: { tags: string[]; onChange: 
         </span>
       ))}
       <input
-        className="h-5 w-20 border border-zinc-200 dark:border-zinc-700 rounded-full px-2 text-[11px] bg-background focus:outline-none focus:ring-2 focus:ring-ring/30"
+        className="h-5 w-20 border border-input rounded-full px-2 text-[11px] bg-background focus:outline-none focus:ring-2 focus:ring-ring/30"
         placeholder={`+ ${addTagLabel}`}
         value={input}
         onChange={e => setInput(e.target.value)}
@@ -159,7 +159,7 @@ function AiPredictionCard({ dealId, orgId }: { dealId: string; orgId?: string })
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+      <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           {t("aiPredictionLoading")}
@@ -178,7 +178,7 @@ function AiPredictionCard({ dealId, orgId }: { dealId: string; orgId?: string })
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-4">
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("aiPrediction")}</span>
         <button
@@ -581,7 +581,7 @@ export default function DealDetailPage() {
       )}>
         {/* LEFT: Data sidebar */}
         <div className="space-y-4 [grid-area:left] min-w-0">
-          <div data-tour-id="deal-sidebar" className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden">
+          <div data-tour-id="deal-sidebar" className="rounded-xl border border-border bg-card overflow-hidden">
             <DealSidebar
               deal={deal}
               orgId={orgId}
@@ -613,7 +613,7 @@ export default function DealDetailPage() {
 
         {/* MAIN: tabs (Обзор | Лента), Creatio-style */}
         <div className="space-y-4 [grid-area:main] min-w-0">
-          <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-700">
+          <div className="flex gap-1 border-b border-border">
             {([
               { id: "overview" as const, label: t("tabOverview") },
               { id: "feed" as const, label: t("toolbarFeed") },
@@ -691,14 +691,14 @@ export default function DealDetailPage() {
           </div>
 
           {/* Unified Timeline */}
-          <div data-tour-id="deal-timeline" className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div data-tour-id="deal-timeline" className="rounded-xl border border-border bg-card p-4">
             <ActivityTimeline key={timelineKey} dealId={id} orgId={orgId} />
           </div>
           </div>
 
           {/* Tab: MEDDPICC (D1) — mounted lazily on first open */}
           {rightTab === "meddpicc" && (
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-4">
               <DealMeddpicc dealId={id} orgId={orgId} initial={deal.meddpicc} onSaved={fetchDeal} />
             </div>
           )}

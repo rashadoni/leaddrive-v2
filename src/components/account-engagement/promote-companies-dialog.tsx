@@ -172,7 +172,7 @@ export function PromoteCompaniesDialog({ open, onOpenChange, onPromoted }: Props
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("search")}
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-input bg-card text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
             </div>
 
@@ -182,7 +182,7 @@ export function PromoteCompaniesDialog({ open, onOpenChange, onPromoted }: Props
               </div>
             )}
 
-            <div className="max-h-[40vh] overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-700 divide-y divide-zinc-100 dark:divide-zinc-800">
+            <div className="max-h-[40vh] overflow-y-auto rounded-lg border border-border divide-y divide-border">
               {loading ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Loader2 className="w-5 h-5 animate-spin inline mr-2" />
@@ -239,7 +239,7 @@ export function PromoteCompaniesDialog({ open, onOpenChange, onPromoted }: Props
           <>
             <button
               onClick={() => onOpenChange(false)}
-              className="px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm hover:bg-muted"
+              className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted"
             >
               {t("cancel")}
             </button>

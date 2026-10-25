@@ -1078,7 +1078,7 @@ export default function ContractsPage() {
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">{t("semanticSearchResults", { count: semanticResults.length })}</p>
-                  <div className="divide-y rounded-md border bg-background">
+                  <div className="divide-y divide-border rounded-md border border-border bg-card text-card-foreground">
                     {semanticResults.map(r => (
                       <button
                         key={r.contractId}
@@ -1351,15 +1351,15 @@ export default function ContractsPage() {
       {/* Detail Panel */}
       {detailContract && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setDetailContract(null)}>
-          <div className="w-full max-w-lg bg-background shadow-xl h-full overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
+          <div data-crm-dialog="" className="w-full max-w-lg border-l border-border bg-card text-card-foreground shadow-xl h-full overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div data-crm-dialog-content="" className="min-h-full p-6">
+              <div data-crm-dialog-header="" className="flex items-center justify-between -mx-6 -mt-6 mb-4 px-6 py-4">
                 <h2 className="text-lg font-bold">{t("title")} #{detailContract.contractNumber}</h2>
                 <button onClick={() => setDetailContract(null)} className="p-1 hover:bg-muted rounded"><X className="h-5 w-5" /></button>
               </div>
 
               <div className="space-y-4">
-                <div>
+                <div className="rounded-lg border border-border bg-card text-card-foreground p-4">
                   <h3 className="text-xl font-semibold">{detailContract.title}</h3>
                   {detailContract.company && (
                     <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
@@ -1379,35 +1379,35 @@ export default function ContractsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-muted/50 rounded-lg p-3">
+                  <div className="bg-card text-card-foreground border border-border rounded-lg p-3">
                     <div className="text-muted-foreground text-xs">{t("status")}</div>
                     <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block", statusColors[detailContract.status])}>
                       {statusLabels[detailContract.status] || detailContract.status}
                     </span>
                   </div>
-                  <div className="bg-muted/50 rounded-lg p-3">
+                  <div className="bg-card text-card-foreground border border-border rounded-lg p-3">
                     <div className="text-muted-foreground text-xs">{t("type")}</div>
                     <div className="font-medium mt-1">{typeLabels[detailContract.type || ""] || detailContract.type || "—"}</div>
                   </div>
-                  <div className="bg-muted/50 rounded-lg p-3">
+                  <div className="bg-card text-card-foreground border border-border rounded-lg p-3">
                     <div className="text-muted-foreground text-xs">{t("amount")}</div>
                     <div className="font-bold mt-1">{detailContract.valueAmount ? `${detailContract.valueAmount.toLocaleString()} ${detailContract.currency}` : "—"}</div>
                   </div>
-                  <div className="bg-muted/50 rounded-lg p-3">
+                  <div className="bg-card text-card-foreground border border-border rounded-lg p-3">
                     <div className="text-muted-foreground text-xs">{t("startDate")} — {t("endDate")}</div>
                     <div className="font-medium mt-1">{formatDate(detailContract.startDate, locale)} — {formatDate(detailContract.endDate, locale)}</div>
                   </div>
                 </div>
 
                 {detailContract.notes && (
-                  <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                  <div className="bg-card text-card-foreground border border-border rounded-lg p-3 text-sm">
                     <div className="text-muted-foreground text-xs mb-1">{t("notes")}</div>
                     <div>{detailContract.notes}</div>
                   </div>
                 )}
 
                 {/* Invoices */}
-                <div className="border-t pt-4">
+                <div className="rounded-lg border border-border bg-card text-card-foreground p-4">
                   <h4 className="text-sm font-semibold flex items-center gap-1.5 mb-3">
                     <Receipt className="h-4 w-4" /> {t("invoices")} ({detailInvoices.length})
                   </h4>
@@ -1446,7 +1446,7 @@ export default function ContractsPage() {
                 </div>
 
                 {/* History */}
-                <div className="border-t pt-4">
+                <div className="rounded-lg border border-border bg-card text-card-foreground p-4">
                   <h4 className="text-sm font-semibold flex items-center gap-1.5 mb-3">
                     <History className="h-4 w-4" /> {t("history")}
                   </h4>
@@ -1483,7 +1483,7 @@ export default function ContractsPage() {
                 </div>
 
                 {/* Files */}
-                <div className="border-t pt-4">
+                <div className="rounded-lg border border-border bg-card text-card-foreground p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-sm font-semibold flex items-center gap-1.5">
                       <File className="h-4 w-4" /> ({detailFiles.length})
@@ -1529,7 +1529,7 @@ export default function ContractsPage() {
                   )}
                 </div>
 
-                <div className="flex flex-col gap-2 pt-2">
+                <div className="flex flex-col gap-2 rounded-lg border border-border bg-card text-card-foreground p-4">
                   {detailContract.status === "draft" && (
                     <Button
                       className="w-full"

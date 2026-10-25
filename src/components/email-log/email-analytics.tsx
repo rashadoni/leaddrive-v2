@@ -133,7 +133,7 @@ export function EmailAnalytics({ logs, stats }: EmailAnalyticsProps) {
       {/* Row 2: Status + Direction + Campaign */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Status Distribution */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
             {t("statusDistribution")}
@@ -167,7 +167,7 @@ export function EmailAnalytics({ logs, stats }: EmailAnalyticsProps) {
         </div>
 
         {/* Direction Breakdown */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Send className="h-4 w-4 text-muted-foreground" />
             {t("directionBreakdown")}
@@ -197,7 +197,7 @@ export function EmailAnalytics({ logs, stats }: EmailAnalyticsProps) {
         </div>
 
         {/* Campaign vs Manual */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-muted-foreground" />
             {t("campaignEmails")}
@@ -230,7 +230,7 @@ export function EmailAnalytics({ logs, stats }: EmailAnalyticsProps) {
       {/* Row 3: Monthly Trend + Top Recipients */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Monthly Trend */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
             {t("emailsByMonth")}
@@ -264,7 +264,7 @@ export function EmailAnalytics({ logs, stats }: EmailAnalyticsProps) {
         </div>
 
         {/* Top Recipients */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
             {t("topRecipients")}

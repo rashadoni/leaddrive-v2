@@ -27,7 +27,7 @@ type Props = {
 }
 
 const platformColor: Record<string, string> = {
-  tiktok: "border-zinc-300 bg-zinc-950 text-white dark:border-zinc-700",
+  tiktok: "border-zinc-300 bg-zinc-950 text-white dark:border-border",
   instagram: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 dark:border-fuchsia-900 dark:bg-fuchsia-950/30 dark:text-fuchsia-300",
   facebook: "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300",
   youtube: "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300",
@@ -138,8 +138,8 @@ export function IncrementalMonitoringReportCard({ orgId }: Props) {
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800">
-      <div className="flex flex-col gap-4 border-b border-zinc-200 bg-card px-5 py-4 dark:border-zinc-800 md:flex-row md:items-center md:justify-between">
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="flex flex-col gap-4 border-b border-border bg-card px-5 py-4 md:flex-row md:items-center md:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <div className="rounded-xl border border-primary/15 bg-primary/10 p-2.5 text-primary">
             <FileClock className="h-5 w-5" />
@@ -147,7 +147,7 @@ export function IncrementalMonitoringReportCard({ orgId }: Props) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-semibold">{t("title")}</h3>
-              <span className="rounded-full border border-zinc-200 bg-background px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground dark:border-zinc-700">
+              <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t("weekly")}
               </span>
             </div>
@@ -189,7 +189,7 @@ export function IncrementalMonitoringReportCard({ orgId }: Props) {
                 tone: "text-muted-foreground",
               },
             ].map(metric => (
-              <div key={metric.label} className="rounded-xl border border-zinc-200 bg-background p-3 dark:border-zinc-800">
+              <div key={metric.label} className="rounded-xl border border-border bg-background p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[11px] font-medium text-muted-foreground">{metric.label}</span>
                   <metric.icon className={`h-3.5 w-3.5 ${metric.tone}`} />
@@ -203,7 +203,7 @@ export function IncrementalMonitoringReportCard({ orgId }: Props) {
             {report.platforms.length > 0 ? report.platforms.map(platform => (
               <span
                 key={platform.platform}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${platformColor[platform.platform] ?? "border-zinc-200 bg-muted/40 dark:border-zinc-700"}`}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${platformColor[platform.platform] ?? "border-border bg-muted/40"}`}
               >
                 <span className="capitalize">{platform.platform}</span>
                 <span className="font-semibold tabular-nums">{platform.total}</span>
@@ -211,7 +211,7 @@ export function IncrementalMonitoringReportCard({ orgId }: Props) {
             )) : <p className="text-xs text-muted-foreground">{t("empty")}</p>}
           </div>
 
-          <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-muted/25 p-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/25 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("clientSummary")}</p>
               <p className="mt-1 text-sm leading-relaxed">{report.summaryText}</p>

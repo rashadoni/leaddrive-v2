@@ -465,7 +465,7 @@ function SecuritySection({ profile }: { profile: MeProfile }) {
       <CardContent className="space-y-4">
         {/* 2FA status — managed on the dedicated /settings/security page */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between rounded-lg border border-zinc-200/70 dark:border-zinc-700/70 px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm">{t("twoFactorTotp")}</span>
@@ -474,7 +474,7 @@ function SecuritySection({ profile }: { profile: MeProfile }) {
               {profile.totpEnabled ? t("enabled") : t("disabled")}
             </Badge>
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-zinc-200/70 dark:border-zinc-700/70 px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
             <div className="flex items-center gap-2">
               <Smartphone className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm">{t("twoFactorSms")}</span>
@@ -493,7 +493,7 @@ function SecuritySection({ profile }: { profile: MeProfile }) {
         </div>
 
         {/* Log out of all devices */}
-        <div className="flex items-center justify-between gap-4 border-t border-zinc-200/60 dark:border-zinc-700/60 pt-4">
+        <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-sm font-medium">
               <ShieldOff className="h-4 w-4 text-muted-foreground" />
@@ -640,7 +640,7 @@ function AppearanceSection() {
             {isDark ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
             {t("theme")}
           </span>
-          <div className="inline-flex rounded-full border border-zinc-200/70 dark:border-zinc-700/70 p-0.5">
+          <div className="inline-flex rounded-full border border-border p-0.5">
             <button
               type="button"
               onClick={() => setTheme("light")}
@@ -667,7 +667,7 @@ function AppearanceSection() {
         </div>
 
         {/* Wallpaper — reuses the existing WallpaperSelector popover */}
-        <div className="flex items-center justify-between border-t border-zinc-200/60 dark:border-zinc-700/60 pt-4">
+        <div className="flex items-center justify-between border-t border-border pt-4">
           <span className="text-sm font-medium">{t("wallpaper")}</span>
           <WallpaperSelector />
         </div>
@@ -694,11 +694,11 @@ function ActivitySection({ profile }: { profile: MeProfile }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border border-zinc-200/70 dark:border-zinc-700/70 px-3 py-2.5">
+          <div className="rounded-lg border border-border px-3 py-2.5">
             <p className="text-xs text-muted-foreground">{t("lastLogin")}</p>
             <p className="mt-0.5 text-sm font-medium">{lastLogin}</p>
           </div>
-          <div className="rounded-lg border border-zinc-200/70 dark:border-zinc-700/70 px-3 py-2.5">
+          <div className="rounded-lg border border-border px-3 py-2.5">
             <p className="text-xs text-muted-foreground">{t("loginCount")}</p>
             <p className="mt-0.5 text-sm font-medium">{profile.loginCount ?? 0}</p>
           </div>

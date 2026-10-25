@@ -200,7 +200,7 @@ export function MtmTaskFilesPanel({
   const formatDate = (value: string) => formatInTimezone(value, timezone, { dateStyle: "medium", timeStyle: "short" }, locale)
 
   return (
-    <section id="files" className="scroll-mt-24 space-y-5 border-t border-zinc-200 pt-8 dark:border-zinc-700">
+    <section id="files" className="scroll-mt-24 space-y-5 border-t border-border pt-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div><h2 className="flex items-center gap-2 text-base font-semibold tracking-tight"><FileText className="h-4 w-4 text-muted-foreground" />{t("files")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("filesHint")}</p></div>
         {canUpload ? (
@@ -213,13 +213,13 @@ export function MtmTaskFilesPanel({
         ) : null}
       </div>
 
-      {!online ? <div className="flex items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm print:hidden" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0" /><span>{t("filesOfflineHint")}</span></div> : null}
+      {!online ? <div className="flex items-start gap-3 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm print:hidden" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0" /><span>{t("filesOfflineHint")}</span></div> : null}
       {message ? <p className="text-sm text-muted-foreground print:hidden" role="status">{message}</p> : null}
 
       {queued.length ? (
         <div className="space-y-3 print:hidden">
           <h3 className="text-sm font-semibold">{t("pendingUploads", { count: queued.length })}</h3>
-          <ul className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+          <ul className="divide-y divide-border border-y border-border">
             {queued.map((entry) => (
               <li key={entry.clientDocumentId} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
                 <FileText className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -241,7 +241,7 @@ export function MtmTaskFilesPanel({
       ) : null}
 
       {documents.length ? (
-        <ul className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+        <ul className="divide-y divide-border border-y border-border">
           {documents.map((document) => (
             <li key={document.id} className="flex items-center gap-3 py-4">
               <FileText className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -250,7 +250,7 @@ export function MtmTaskFilesPanel({
             </li>
           ))}
         </ul>
-      ) : <div className="flex min-h-32 flex-col items-center justify-center gap-2 border-y border-zinc-200 px-4 text-center dark:border-zinc-700"><FileText className="h-6 w-6 text-muted-foreground" /><p className="text-sm font-medium">{t("filesEmpty")}</p><p className="text-xs text-muted-foreground">{t("filesEmptyHint")}</p></div>}
+      ) : <div className="flex min-h-32 flex-col items-center justify-center gap-2 border-y border-border px-4 text-center"><FileText className="h-6 w-6 text-muted-foreground" /><p className="text-sm font-medium">{t("filesEmpty")}</p><p className="text-xs text-muted-foreground">{t("filesEmptyHint")}</p></div>}
     </section>
   )
 }

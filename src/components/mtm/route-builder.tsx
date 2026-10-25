@@ -1561,8 +1561,8 @@ export function MtmRouteBuilder({
               : t("hint.builderSaveDraft")
 
   return (
-    <section data-testid="mtm-route-builder" className="flex min-h-0 max-h-dvh flex-1 flex-col overflow-hidden border-y border-zinc-200 bg-card dark:border-zinc-700 min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]">
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
+    <section data-testid="mtm-route-builder" className="flex min-h-0 max-h-dvh flex-1 flex-col overflow-hidden border-y border-border bg-card min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-primary" />
@@ -1592,8 +1592,8 @@ export function MtmRouteBuilder({
             initialData?.version != null
             && recoverableDraft.routeVersion != null
             && recoverableDraft.routeVersion !== initialData.version
-              ? "border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500"
-              : "border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500"
+              ? "border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500"
+              : "border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500"
           }`}
           role="status"
         >
@@ -1626,7 +1626,7 @@ export function MtmRouteBuilder({
       ) : null}
 
       {recoveredAt ? (
-        <div data-testid="mtm-route-draft-recovered" className="flex border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 shrink-0 flex-col gap-2 border-b px-4 py-2 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
+        <div data-testid="mtm-route-draft-recovered" className="flex border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 shrink-0 flex-col gap-2 border-b px-4 py-2 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
           <div className="flex min-w-0 items-start gap-2">
             <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <div className="min-w-0">
@@ -1639,14 +1639,14 @@ export function MtmRouteBuilder({
       ) : null}
 
       {draftStorageFailed ? (
-        <div data-testid="mtm-route-draft-storage-error" className="flex border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 shrink-0 items-start gap-2 border-b px-4 py-2 text-sm" role="alert">
+        <div data-testid="mtm-route-draft-storage-error" className="flex border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 shrink-0 items-start gap-2 border-b px-4 py-2 text-sm" role="alert">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <p>{t("routeDraftStorageFailed")}</p>
         </div>
       ) : null}
 
       {error ? (
-        <div ref={errorRef} role="alert" tabIndex={-1} className="flex items-start gap-2 border-b border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-4 py-3 text-sm outline-none">
+        <div ref={errorRef} role="alert" tabIndex={-1} className="flex items-start gap-2 border-b border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 px-4 py-3 text-sm outline-none">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="min-w-0 flex-1">
             <p>{error}</p>
@@ -1662,7 +1662,7 @@ export function MtmRouteBuilder({
       ) : null}
 
       {conflicts.length > 0 ? (
-        <div className="border-b border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm">
+        <div className="border-b border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm">
           <div className="flex items-center gap-2 font-medium">
             <AlertTriangle className="h-4 w-4" /> {t("conflictsFound", { count: conflicts.length })}
           </div>
@@ -1671,7 +1671,7 @@ export function MtmRouteBuilder({
       ) : null}
 
       {isPublishedEdit ? (
-        <div className="flex items-start gap-2 border-b border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 px-4 py-3 text-sm">
+        <div className="flex items-start gap-2 border-b border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 px-4 py-3 text-sm">
           <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
           <p>{t("publishedEditNotice")}</p>
         </div>
@@ -1681,8 +1681,8 @@ export function MtmRouteBuilder({
         <div
           className={`border-b px-4 py-3 ${
             prefillState === "error"
-              ? "border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500"
-              : "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500"
+              ? "border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500"
+              : "border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500"
           }`}
           role={prefillState === "error" ? "alert" : "status"}
           aria-live="polite"
@@ -1716,7 +1716,7 @@ export function MtmRouteBuilder({
         </div>
       ) : null}
 
-      <nav className="shrink-0 border-b border-zinc-200 px-4 py-2 dark:border-zinc-700" aria-label={t("builderProgressLabel")}>
+      <nav className="shrink-0 border-b border-border px-4 py-2" aria-label={t("builderProgressLabel")}>
         <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-1 sm:gap-3">
           {([
             { step: 1 as const, label: t("progressWhoWhen"), complete: setupComplete, detail: setupComplete ? t("progressWhoWhenDone", { employee: selectedAgentName ?? "—", date: planningDateLabel(date, locale) }) : t("progressWhoWhenTodo"), hint: t("hint.builderStepWhoWhen"), lockedHint: null },
@@ -1811,7 +1811,7 @@ export function MtmRouteBuilder({
             {dateWasChosenFromCalendar ? (
               <div data-testid="mtm-route-calendar-date-confirmation" className="space-y-1">
                 <span className="text-sm font-medium">{t("selectedCalendarDate")}</span>
-                <div className="flex min-h-11 items-center gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 px-3 py-2">
+                <div className="flex min-h-11 items-center gap-3 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 px-3 py-2">
                   <CalendarDays className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-300" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{planningDateLabel(date, locale)}</p>
@@ -1829,7 +1829,7 @@ export function MtmRouteBuilder({
             )}
           </div>
 
-          <details data-testid="mtm-route-optional-settings" className="border-y border-zinc-200 py-2 dark:border-zinc-700">
+          <details data-testid="mtm-route-optional-settings" className="border-y border-border py-2">
             <summary className="cursor-pointer list-none text-sm font-medium marker:hidden">
               <span className="inline-flex min-h-9 items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -1849,7 +1849,7 @@ export function MtmRouteBuilder({
                     {t("participants")}
                   </HintValue>
                 </Label>
-                <div className="mt-2 max-h-48 divide-y divide-zinc-200 overflow-y-auto border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                <div className="mt-2 max-h-48 divide-y divide-border overflow-y-auto border-y border-border">
                   {agents.filter((agent) => agent.id !== primaryAgentId).map((agent) => {
                     const checked = participantIds.includes(agent.id)
                     return (
@@ -1889,7 +1889,7 @@ export function MtmRouteBuilder({
               <span className="text-xs tabular-nums text-muted-foreground">{t("stopCount", { count: stops.length })}</span>
             </div>
             {stops.length > 0 ? (
-              <div className="mb-2 flex flex-col gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mb-2 flex flex-col gap-2 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-start gap-2">
                   <span className="grid h-7 w-7 shrink-0 place-items-center text-emerald-600 dark:text-emerald-400"><Check className="h-4 w-4" /></span>
                   <div className="min-w-0">
@@ -1908,8 +1908,8 @@ export function MtmRouteBuilder({
                 className="order-2 hidden min-w-0 md:sticky md:top-0 md:block md:max-h-[calc(100dvh-14rem)] md:overflow-y-auto"
                 aria-labelledby="mtm-route-selected-stops-heading"
               >
-                <div className="border border-zinc-200 bg-card dark:border-zinc-700">
-                  <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-3 py-3 dark:border-zinc-700">
+                <div className="border border-border bg-card">
+                  <div className="flex items-start justify-between gap-3 border-b border-border px-3 py-3">
                     <div className="min-w-0">
                       <h4 id="mtm-route-selected-stops-heading" className="text-sm font-semibold">{t("customersSelected", { count: stops.length })}</h4>
                     </div>
@@ -1918,13 +1918,13 @@ export function MtmRouteBuilder({
                     </span>
                   </div>
                   {stops.length > 0 ? (
-                    <ol className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                    <ol className="divide-y divide-border">
                       {stops.map((stop, index) => {
                         const locked = isPublishedEdit && isRouteBuilderStopLocked(stop)
                         const stopName = stop.contact?.displayName ?? stop.customer.name
                         return (
                           <li key={stopKey(stop)} className="flex min-h-14 items-center gap-2 px-3 py-2">
-                            <span className="grid h-7 w-7 shrink-0 place-items-center border border-zinc-200 text-xs font-semibold tabular-nums dark:border-zinc-700">
+                            <span className="grid h-7 w-7 shrink-0 place-items-center border border-border text-xs font-semibold tabular-nums">
                               {index + 1}
                             </span>
                             <span className="min-w-0 flex-1">
@@ -1955,7 +1955,7 @@ export function MtmRouteBuilder({
                   )}
                   {/* On the block, not the full-width button: a disabled button lets the pointer through to it. */}
                   <Hint text={customersComplete ? t("hint.builderReview") : t("hint.builderReviewLocked")}>
-                  <div className="border-t border-zinc-200 p-3 dark:border-zinc-700">
+                  <div className="border-t border-border p-3">
                     <Button
                       type="button"
                       variant="outline"
@@ -1973,7 +1973,7 @@ export function MtmRouteBuilder({
             {customerPickerOpen ? (
               <div id="route-builder-customer-picker" data-testid="mtm-route-customer-picker">
             {!setupComplete ? (
-              <div className="grid min-h-44 place-items-center rounded-lg border border-zinc-200 bg-muted/25 p-5 text-center dark:border-zinc-700">
+              <div className="grid min-h-44 place-items-center rounded-lg border border-border bg-muted/25 p-5 text-center">
                 <div className="max-w-md">
                   <CalendarDays className="mx-auto h-6 w-6 text-primary" />
                   <p className="mt-3 font-semibold">{t("customerPickerBlockedTitle")}</p>
@@ -2037,7 +2037,7 @@ export function MtmRouteBuilder({
                 ) : null}
               </div>
             </div>
-            <details data-testid="mtm-route-candidate-scope-explanation" className="border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 group mb-2 rounded-lg">
+            <details data-testid="mtm-route-candidate-scope-explanation" className="border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 group mb-2 rounded-lg">
               <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs font-semibold text-sky-950 marker:hidden dark:text-sky-100">
                 <span className="flex min-w-0 items-center gap-2">
                   <Users className="h-4 w-4 shrink-0" />
@@ -2083,7 +2083,7 @@ export function MtmRouteBuilder({
             ) : null}
             <details
               data-testid="mtm-route-planning-tools"
-              className="group mt-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
+              className="group mt-2 rounded-lg border border-border"
               open={advancedOpen}
               onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
             >
@@ -2104,7 +2104,7 @@ export function MtmRouteBuilder({
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </span>
               </summary>
-              <div className="border-t border-zinc-200 p-3 dark:border-zinc-700">
+              <div className="border-t border-border p-3">
                 <div className="max-w-sm">
                   <Hint text={t("hint.builderSort")} align="start">
                   <Select className="h-11" value={candidateSort} onChange={(event) => setCandidateSort(event.target.value as CandidateSort)} aria-label={t("candidateSort")}>
@@ -2115,16 +2115,16 @@ export function MtmRouteBuilder({
                   </Select>
                   </Hint>
                 </div>
-            <div className="mt-3 border-y border-zinc-200 bg-muted/20 px-2 py-2 dark:border-zinc-700" data-testid="mtm-planning-filter-summary">
+            <div className="mt-3 border-y border-border bg-muted/20 px-2 py-2" data-testid="mtm-planning-filter-summary">
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
                 <span className="font-semibold text-foreground">{t("planningScope")}</span>
-                <span className="border border-zinc-200 bg-card px-2 py-1 dark:border-zinc-700">
+                <span className="border border-border bg-card px-2 py-1">
                   {selectedAgentName ?? t("agentNotSelected")}
                 </span>
-                <span className="border border-zinc-200 bg-card px-2 py-1 dark:border-zinc-700">
+                <span className="border border-border bg-card px-2 py-1">
                   {date ? planningDateLabel(date, locale) : t("dateNotSelected")}
                 </span>
-                <span className="border border-zinc-200 bg-card px-2 py-1 dark:border-zinc-700">
+                <span className="border border-border bg-card px-2 py-1">
                   {selectedRouteTargetType ? routeTargetLabel(selectedRouteTargetType, locale) : t(directionLabelKey(direction))}
                 </span>
               </div>
@@ -2161,7 +2161,7 @@ export function MtmRouteBuilder({
             ) : null}
               <fieldset
                 id="route-builder-advanced-filters"
-                className="mt-3 grid gap-2 border-y border-zinc-200 py-3 dark:border-zinc-700 sm:grid-cols-2 xl:grid-cols-4"
+                className="mt-3 grid gap-2 border-y border-border py-3 sm:grid-cols-2 xl:grid-cols-4"
               >
                 <legend className="sr-only">{t("advancedFilters")}</legend>
                 <CandidateFacetSelect
@@ -2213,7 +2213,7 @@ export function MtmRouteBuilder({
                 </div>
               </fieldset>
             {coveragePreview?.available && coveragePreview.groups?.length ? (
-              <div className="mt-3 border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 px-3 py-2 text-xs" data-testid="mtm-planner-coverage-preview">
+              <div className="mt-3 border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 px-3 py-2 text-xs" data-testid="mtm-planner-coverage-preview">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <HintValue className="font-semibold" text={t("hint.builderCoverage")} align="start">{t("candidateCoverageVerified", { version: coveragePreview.policy?.version ?? 0 })}</HintValue>
                   <span className="tabular-nums">{t("candidateCoveragePeriod", { start: coveragePreview.period?.start ?? "—", end: coveragePreview.period?.end ?? "—" })}</span>
@@ -2297,7 +2297,7 @@ export function MtmRouteBuilder({
                         ? { id: candidate.contactId, displayName: candidate.name, specialtyName: candidate.specialtyName }
                         : null,
                     }])}
-                    className={`group flex min-h-16 items-center gap-3 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-default disabled:border-emerald-200 disabled:opacity-100 dark:border-zinc-700 dark:disabled:border-emerald-900 ${
+                    className={`group flex min-h-16 items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-default disabled:border-emerald-200 disabled:opacity-100 dark:disabled:border-emerald-900 ${
                       candidateIndex === visibleCandidates.length - 1 && visibleCandidates.length % 2 === 1
                         ? "sm:col-span-2"
                         : ""
@@ -2309,7 +2309,7 @@ export function MtmRouteBuilder({
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span className="block min-w-0 flex-1 truncate text-sm font-medium">{candidate.name}</span>
-                        <span className="shrink-0 border border-zinc-200 px-1.5 py-0.5 text-xs font-medium text-muted-foreground dark:border-zinc-700">
+                        <span className="shrink-0 border border-border px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
                           <HintValue text={t("hint.builderCategory")} align="end">{candidate.category}</HintValue>
                         </span>
                       </span>
@@ -2449,7 +2449,7 @@ export function MtmRouteBuilder({
             {candidatePagingSupported ? (
               <nav
                 data-testid="mtm-route-candidate-pagination"
-                className="mt-3 flex flex-wrap items-center justify-center gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700"
+                className="mt-3 flex flex-wrap items-center justify-center gap-2 border-t border-border pt-3"
                 aria-label={t("candidatePaginationLabel")}
               >
                 <Button
@@ -2511,7 +2511,7 @@ export function MtmRouteBuilder({
                 </Hint>
               </div>
             </div>
-            <div className="mb-2 flex flex-wrap items-end justify-between gap-2 border-y border-zinc-200 py-3 dark:border-zinc-700">
+            <div className="mb-2 flex flex-wrap items-end justify-between gap-2 border-y border-border py-3">
               <div>
                 <p className="text-sm font-medium">{t("reviewOrderTitle")}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{t("reviewOrderHint")}</p>
@@ -2537,12 +2537,12 @@ export function MtmRouteBuilder({
             </div>
             <div data-testid="mtm-route-meeting-assistant">
               {meetingAvailabilityLoading ? (
-                <div data-testid="mtm-route-meeting-assistant-loading" role="status" className="mb-2 flex items-center gap-2 rounded-md border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 px-3 py-2 text-xs">
+                <div data-testid="mtm-route-meeting-assistant-loading" role="status" className="mb-2 flex items-center gap-2 rounded-md border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 px-3 py-2 text-xs">
                   <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
                   {t("meetingAssistantLoading")}
                 </div>
               ) : null}
-              <div className="divide-y divide-zinc-200 border-b border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+              <div className="divide-y divide-border border-b border-border">
               {stops.map((stop, index) => {
                 const locked = isPublishedEdit && isRouteBuilderStopLocked(stop)
                 const stopMeetingNotices = stop.plannedTime
@@ -2554,7 +2554,7 @@ export function MtmRouteBuilder({
                   : []
                 return (
                   <div key={stopKey(stop)} data-testid={`mtm-route-stop-${index}`} className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-zinc-200 text-xs font-semibold tabular-nums dark:border-zinc-700">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-border text-xs font-semibold tabular-nums">
                       {index + 1}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -2692,7 +2692,7 @@ export function MtmRouteBuilder({
         confirmVariant="default"
         icon={<Clock3 className="h-5 w-5 text-muted-foreground" />}
       />
-      <div data-testid="mtm-route-builder-actions" className="sticky bottom-0 z-20 flex shrink-0 items-center justify-end gap-2 border-t border-zinc-200 bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(15,23,42,0.06)] dark:border-zinc-700 sm:px-4">
+      <div data-testid="mtm-route-builder-actions" className="sticky bottom-0 z-20 flex shrink-0 items-center justify-end gap-2 border-t border-border bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(15,23,42,0.06)] sm:px-4">
         <div id="route-builder-next-action" className="hidden min-w-0 items-start gap-2 text-sm sm:flex sm:flex-1" role="status" aria-live="polite">
           <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center text-muted-foreground">
             <span className="text-[10px] font-bold">{activeStep}</span>

@@ -161,7 +161,7 @@ export function DealDetailSheet({ deal, open, onOpenChange, onEdit, onDelete, on
                         <select
                           value={pricingForm.type}
                           onChange={(e) => setPricingForm({ ...pricingForm, type: e.target.value })}
-                          className="w-full h-8 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm"
+                          className="w-full h-8 border border-input rounded px-2 text-sm"
                         >
                           <option value="recurring">{t("pricingRecurring")}</option>
                           <option value="one_time">{t("pricingOneTime")}</option>

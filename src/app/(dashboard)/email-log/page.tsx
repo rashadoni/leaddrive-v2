@@ -222,7 +222,7 @@ export default function EmailLogPage() {
           <select
             value={filterDirection}
             onChange={e => { setFilterDirection(e.target.value); setPage(1) }}
-            className="text-sm border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1.5 bg-background"
+            className="text-sm border border-input rounded-md px-2 py-1.5 bg-background"
           >
             <option value="">{t("allDirections")}</option>
             <option value="outbound">{t("filterOutbound")}</option>
@@ -232,7 +232,7 @@ export default function EmailLogPage() {
           <select
             value={filterStatus}
             onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
-            className="text-sm border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1.5 bg-background"
+            className="text-sm border border-input rounded-md px-2 py-1.5 bg-background"
           >
             <option value="">{t("allStatuses")}</option>
             <option value="sent">{statusLabels.sent}</option>
@@ -267,7 +267,7 @@ export default function EmailLogPage() {
               <div
                 key={log.id}
                 className={cn(
-                  "border border-zinc-200 dark:border-zinc-700 rounded-lg transition-all",
+                  "border border-border rounded-lg transition-all",
                   log.status === "failed" ? "bg-red-50/50 dark:bg-red-900/10 border-red-200" :
                   log.status === "bounced" ? "bg-orange-50/50 dark:bg-orange-900/10 border-orange-200" :
                   isOutbound ? "bg-green-50/30 dark:bg-green-900/5" : "bg-blue-50/30 dark:bg-blue-900/5"
@@ -327,7 +327,7 @@ export default function EmailLogPage() {
                     {log.body ? (
                       <div className="mt-3">
                         <div className="text-xs text-muted-foreground mb-2 font-medium">{t("messagePreview")}:</div>
-                        <div className="border border-zinc-200 dark:border-zinc-700 rounded-md bg-card p-4 max-h-72 overflow-y-auto">
+                        <div className="border border-border rounded-md bg-card p-4 max-h-72 overflow-y-auto">
                           <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(log.body || "") }} className="text-sm prose prose-sm max-w-none" />
                         </div>
                       </div>

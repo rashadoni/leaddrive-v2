@@ -209,7 +209,7 @@ export function RouteBuilderInlineAssignmentPanel({
       </div>
 
       {confirming ? (
-        <div className="mt-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3">
+        <div className="mt-3 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3">
           <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
             {t("inlineAssignmentTransferTitle", { name: confirming.name })}
           </p>
@@ -248,7 +248,7 @@ export function RouteBuilderInlineAssignmentPanel({
       ) : null}
 
       {items.length > 0 ? (
-        <div className="mt-2 divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-card dark:divide-zinc-700 dark:border-zinc-700">
+        <div className="mt-2 divide-y divide-border rounded-lg border border-border bg-card">
           {items.map((candidate) => {
             const identity = candidateIdentity(candidate)
             const transferring = takesOver(candidate)

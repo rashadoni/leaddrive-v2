@@ -126,7 +126,7 @@ export function UserPicker({ users, disabled, label, onSelect, orgId, className 
         onClick={() => setOpen((o) => !o)}
         disabled={disabled}
         className={cn(
-          "inline-flex items-center gap-1 h-8 px-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-card text-xs hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed",
+          "inline-flex items-center gap-1 h-8 px-2 rounded-md border border-border bg-card text-xs hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed",
           className,
         )}
         aria-label={label || t("reassign") || "Reassign"}
@@ -138,8 +138,8 @@ export function UserPicker({ users, disabled, label, onSelect, orgId, className 
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 right-0 min-w-[240px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md">
-          <div className="p-2 border-b border-zinc-200 dark:border-zinc-700">
+        <div className="absolute z-50 mt-1 right-0 min-w-[240px] rounded-lg border border-border bg-popover shadow-md">
+          <div className="p-2 border-b border-border">
             <input
               ref={inputRef}
               value={search}

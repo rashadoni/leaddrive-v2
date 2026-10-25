@@ -264,7 +264,7 @@ export default function ContractLifecyclePage() {
         {!loading && data && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" data-tour-id="lifecycle-kpis">
-              <MotionCard surface="card" className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard surface="card" className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> {t("kpiRenewalAlerts")}
                 </p>
@@ -272,7 +272,7 @@ export default function ContractLifecyclePage() {
                   {data.renewals.total}
                 </p>
               </MotionCard>
-              <MotionCard surface="card" className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard surface="card" className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3" /> {t("kpiOverdueRenewals")}
                 </p>
@@ -284,7 +284,7 @@ export default function ContractLifecyclePage() {
                   {data.renewals.overdueCount}
                 </p>
               </MotionCard>
-              <MotionCard surface="card" className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard surface="card" className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <UserCheck className="w-3 h-3" /> {t("kpiPendingApproval")}
                 </p>
@@ -292,7 +292,7 @@ export default function ContractLifecyclePage() {
                   {data.approvals.total}
                 </p>
               </MotionCard>
-              <MotionCard surface="card" className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard surface="card" className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Clock className="w-3 h-3" /> {t("kpiBottleneckStage")}
                 </p>
@@ -337,7 +337,7 @@ export default function ContractLifecyclePage() {
                       <MotionCard
                         key={r.id}
                         surface="card"
-                        className={`p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg ${
+                        className={`p-3 border border-border rounded-lg ${
                           r.isOverdue
                             ? "border-red-500 bg-red-500/5"
                             : r.daysUntilDue <= 14
@@ -414,7 +414,7 @@ export default function ContractLifecyclePage() {
                         key={g.label}
                         surface="card"
                         id={groupDomId(g.label)}
-                        className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg scroll-mt-4"
+                        className="p-3 border border-border rounded-lg scroll-mt-4"
                       >
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="font-semibold">{g.label}</h3>

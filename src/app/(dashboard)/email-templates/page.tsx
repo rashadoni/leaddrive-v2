@@ -271,7 +271,7 @@ export default function EmailTemplatesPage() {
               <div
                 key={template.id}
                 className={cn(
-                  "border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer bg-card relative group",
+                  "border border-border rounded-lg p-4 hover:shadow-md transition-all cursor-pointer bg-card relative group",
                   !isActive && "opacity-60"
                 )}
                 onClick={() => { setEditData(template); setShowForm(true) }}
@@ -356,7 +356,7 @@ export default function EmailTemplatesPage() {
                 {EMAIL_TEMPLATE_LIBRARY.map(tmpl => (
                   <div
                     key={tmpl.id}
-                    className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 hover:shadow-md hover:border-primary/50 transition-all cursor-pointer group"
+                    className="border border-border rounded-lg p-4 hover:shadow-md hover:border-primary/50 transition-all cursor-pointer group"
                     onClick={() => {
                       setEditData({
                         id: "",

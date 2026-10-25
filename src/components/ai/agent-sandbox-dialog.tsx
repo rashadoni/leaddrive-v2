@@ -127,7 +127,7 @@ export function AgentSandboxDialog({
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send() } }}
             placeholder={t("placeholder")}
             disabled={busy}
-            className="flex-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-3 py-2 text-sm"
+            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
           <Button onClick={send} disabled={busy || !input.trim()}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

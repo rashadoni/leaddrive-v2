@@ -2479,7 +2479,7 @@ function getChannelFaq(
 
 export default function ChannelConnectPage() {
   return (
-    <Suspense fallback={<div className="force-light min-h-[calc(100vh-170px)] rounded-[28px] border bg-white" />}>
+    <Suspense fallback={<div className="min-h-[calc(100vh-170px)] rounded-xl border bg-card" />}>
       <ChannelConnectInner />
     </Suspense>
   )
@@ -2730,7 +2730,7 @@ function ChannelConnectInner() {
 
   if (!guide) {
     return (
-      <div className="force-light rounded-[28px] border bg-white p-8 text-zinc-950 shadow-sm">
+      <div className="rounded-xl border bg-card p-8 text-foreground shadow-sm">
         <Button asChild variant="ghost" className="mb-6 gap-2">
           <Link href="/settings/channels">
             <ArrowLeft className="h-4 w-4" />
@@ -2738,7 +2738,7 @@ function ChannelConnectInner() {
           </Link>
         </Button>
         <h1 className="text-2xl font-semibold">{c.notFoundTitle}</h1>
-        <p className="mt-2 text-sm text-zinc-600">{c.notFoundDesc}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{c.notFoundDesc}</p>
       </div>
     )
   }
@@ -2974,10 +2974,10 @@ function ChannelConnectInner() {
   // Where a Meta card withholds its form (metaRowWithheld), the only way on is the channel list — not
   // externalCredentialActions, whose links lead straight back to this page without the row id.
   const metaNoRowBlock = metaRowWithheld && !metaRowPending ? (
-    <div data-testid="meta-no-row" className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-      <p className="text-sm font-semibold text-zinc-800">{c.noRowTitle}</p>
-      <p className="mt-1 text-sm leading-6 text-zinc-600">{c.noRowDesc}</p>
-      <Button asChild className="mt-4 gap-2 bg-orange-600 text-white hover:bg-orange-700">
+    <div data-testid="meta-no-row" className="mt-6 rounded-xl border border-border bg-muted p-4">
+      <p className="text-sm font-semibold text-foreground">{c.noRowTitle}</p>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">{c.noRowDesc}</p>
+      <Button asChild className="mt-4 gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
         <Link href="/settings/channels">
           {c.noRowAction}
           <ArrowRight className="h-4 w-4" />
@@ -2987,13 +2987,13 @@ function ChannelConnectInner() {
   ) : null
   const externalCredentialActions = !effectiveFormInitialData && !metaRowWithheld ? (
     <div className="mt-6 flex flex-wrap gap-4">
-      <Button asChild className="gap-2 bg-orange-600 text-white hover:bg-orange-700">
+      <Button asChild className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
         <Link href={credentialHref}>
           {guide.connect.primary}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </Button>
-      <Button asChild variant="ghost" className="text-orange-700 hover:bg-orange-50 hover:text-orange-800">
+      <Button asChild variant="ghost" className="text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300">
         <Link href={credentialHref}>{guide.connect.secondary}</Link>
       </Button>
     </div>
@@ -3122,7 +3122,7 @@ function ChannelConnectInner() {
     }
   }
   return (
-    <div className="force-light overflow-hidden rounded-[28px] border border-zinc-200 bg-[#f8fafc] text-zinc-950 shadow-[0_24px_80px_rgba(15,23,42,0.10)] lg:overflow-visible">
+    <div className="overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-sm lg:overflow-visible">
       <div className={cn(
         "grid min-h-[calc(100vh-170px)]",
         stage === "connect" ? "lg:grid-cols-[280px_minmax(0,1fr)]" : "lg:grid-cols-[320px_minmax(0,1fr)]",
@@ -3130,11 +3130,11 @@ function ChannelConnectInner() {
         <aside
           data-tour-id={isWhatsAppCallingGuide ? "whatsapp-calls-sidebar" : undefined}
           className={cn(
-            "min-w-0 border-b border-zinc-200 bg-white p-6 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r",
+            "min-w-0 border-b border-border bg-card p-6 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r",
             stage === "connect" ? "order-last lg:order-none lg:p-5" : "",
           )}
         >
-          <Button asChild variant="ghost" className={cn("-ml-2 gap-2 text-orange-700 hover:bg-orange-50 hover:text-orange-800", stage === "connect" ? "mb-5" : "mb-8")}>
+          <Button asChild variant="ghost" className={cn("-ml-2 gap-2 text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300", stage === "connect" ? "mb-5" : "mb-8")}>
             <Link href="/settings/channels">
               <ArrowLeft className="h-4 w-4" />
               {c.back}
@@ -3142,27 +3142,27 @@ function ChannelConnectInner() {
           </Button>
 
           <div className={cn(
-            "grid place-items-center border border-orange-200 bg-orange-50 font-black text-orange-600 shadow-inner",
-            stage === "connect" ? "h-14 w-14 rounded-2xl" : "h-28 w-28 rounded-[32px] text-3xl",
+            "grid place-items-center border border-orange-200 bg-orange-50 font-black text-orange-600 shadow-inner dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800",
+            stage === "connect" ? "h-14 w-14 rounded-xl" : "h-28 w-28 rounded-[32px] text-3xl",
           )}>
             <Icon className={cn(stage === "connect" ? "h-7 w-7" : "h-14 w-14")} />
           </div>
           <h1 className={cn("break-words font-semibold leading-tight tracking-tight", stage === "connect" ? "mt-4 text-xl" : "mt-7 text-3xl")}>{guide.title}</h1>
-          <p className={cn("max-w-[24rem] text-sm text-zinc-600", stage === "connect" ? "mt-2 leading-6" : "mt-5 leading-7")}>{guide.sideDescription}</p>
+          <p className={cn("max-w-[24rem] text-sm text-muted-foreground", stage === "connect" ? "mt-2 leading-6" : "mt-5 leading-7")}>{guide.sideDescription}</p>
 
           {stage !== "connect" ? (
             <button
               type="button"
               onClick={() => openTutorial(0)}
-              className="mt-8 flex items-center gap-3 text-left text-sm font-semibold text-orange-700 hover:text-orange-800"
+              className="mt-8 flex items-center gap-3 text-left text-sm font-semibold text-orange-700 hover:text-orange-800 dark:text-orange-300 dark:hover:text-orange-300"
             >
               <PlayCircle className="h-4 w-4" />
               {c.videoTutorial}
             </button>
           ) : null}
 
-          <div className={cn("rounded-3xl border border-zinc-200 bg-zinc-50 p-4", stage === "connect" ? "mt-5" : "mt-8")}>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          <div className={cn("rounded-xl border border-border bg-muted p-4", stage === "connect" ? "mt-5" : "mt-8")}>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               {c.processTitle}
             </p>
             <div className="mt-4 space-y-2">
@@ -3177,12 +3177,12 @@ function ChannelConnectInner() {
                     aria-current={isActive ? "step" : undefined}
                     aria-label={`${index + 1}. ${item.label}`}
                     className={cn(
-                      "flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-sm font-semibold transition",
+                      "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition",
                       isActive
-                        ? "border-orange-300 bg-white text-orange-700 shadow-sm"
+                        ? "border-orange-300 bg-card text-[hsl(var(--crm-accent-text))] shadow-sm dark:border-orange-800"
                         : isDone
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                          : "border-transparent bg-transparent text-zinc-600 hover:border-orange-200 hover:bg-white hover:text-orange-700",
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
+                          : "border-transparent bg-transparent text-muted-foreground hover:border-orange-200 hover:bg-card hover:text-[hsl(var(--crm-accent-text))]",
                     )}
                   >
                     <span
@@ -3192,7 +3192,7 @@ function ChannelConnectInner() {
                           ? "bg-orange-600 text-white"
                           : isDone
                             ? "bg-emerald-600 text-white"
-                            : "bg-white text-zinc-500 ring-1 ring-zinc-200",
+                            : "bg-card text-muted-foreground ring-1 ring-zinc-200",
                       )}
                       aria-hidden="true"
                     >
@@ -3208,27 +3208,27 @@ function ChannelConnectInner() {
           {stage !== "connect" ? (
             <>
               <div className="mt-5 grid gap-3">
-                <div className="rounded-3xl border border-orange-200 bg-orange-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">
+                <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 dark:bg-orange-950/30 dark:border-orange-800">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">
                     {c.readyBeforeTitle}
                   </p>
                   <ul className="mt-3 space-y-2">
                     {channelRequirements.prepare.slice(0, 3).map((item) => (
-                      <li key={item} className="flex gap-2 text-xs leading-5 text-zinc-700">
-                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-600" />
+                      <li key={item} className="flex gap-2 text-xs leading-5 text-foreground">
+                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-300" />
                         <span>{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
-                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:bg-emerald-950/30 dark:border-emerald-800">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
                     {c.afterConnectTitle}
                   </p>
                   <ul className="mt-3 space-y-2">
                     {channelRequirements.verify.slice(0, 2).map((item) => (
-                      <li key={item} className="flex gap-2 text-xs leading-5 text-zinc-700">
-                        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700" />
+                      <li key={item} className="flex gap-2 text-xs leading-5 text-foreground">
+                        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700 dark:text-emerald-300" />
                         <span>{item}</span>
                       </li>
                     ))}
@@ -3238,25 +3238,25 @@ function ChannelConnectInner() {
 
               <div className="mt-10">
                 <h2 className="text-lg font-semibold">{c.additionalResources}</h2>
-                <ul className="mt-4 space-y-3 text-sm leading-6 text-orange-700">
+                <ul className="mt-4 space-y-3 text-sm leading-6 text-orange-700 dark:text-orange-300">
                   {guide.resources.map((resource, index) => (
                     <li key={resource}>
                       <button
                         type="button"
                         onClick={() => openTutorial(index)}
                         aria-label={`${resource}. ${c.resourceAction}`}
-                        className="group flex w-full gap-3 rounded-2xl border border-transparent p-2 text-left transition hover:border-orange-200 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                        className="group flex w-full gap-3 rounded-xl border border-transparent p-2 text-left transition hover:border-orange-200 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:hover:bg-orange-950/50"
                       >
                         <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-orange-500" />
                         <span className="min-w-0 break-words">
-                          <span className="block text-zinc-700 group-hover:text-orange-800">{resource}</span>
-                          <span className="mt-1 block text-xs font-semibold text-orange-600">{c.resourceAction}</span>
+                          <span className="block text-foreground group-hover:text-orange-800">{resource}</span>
+                          <span className="mt-1 block text-xs font-semibold text-orange-600 dark:text-orange-300">{c.resourceAction}</span>
                         </span>
                       </button>
                     </li>
                   ))}
                 </ul>
-                <Button asChild variant="secondary" className="mt-5 border border-zinc-200 bg-white">
+                <Button asChild variant="secondary" className="mt-5 border border-border bg-card">
                   <Link href="/knowledge-base">
                     <BookOpen className="mr-2 h-4 w-4" />
                     {c.learnMore}
@@ -3265,15 +3265,15 @@ function ChannelConnectInner() {
               </div>
             </>
           ) : (
-            <div className="mt-5 rounded-2xl border border-orange-200 bg-orange-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700">{c.tutorialPlayerFieldMap}</p>
-              <p className="mt-2 break-words text-sm font-semibold leading-6 text-orange-950">
+            <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50 p-4 dark:bg-orange-950/30 dark:border-orange-800">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.tutorialPlayerFieldMap}</p>
+              <p className="mt-2 break-words text-sm font-semibold leading-6 text-orange-950 dark:text-orange-300">
                 {tutorialScreen.leadDriveFields.slice(0, 3).join(" · ")}
               </p>
               <button
                 type="button"
                 onClick={() => openTutorial(0)}
-                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-orange-700 hover:text-orange-900"
+                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-orange-700 hover:text-orange-900 dark:text-orange-300 dark:hover:text-orange-300"
               >
                 <PlayCircle className="h-4 w-4" />
                 {c.quickStartGuideAction}
@@ -3290,8 +3290,8 @@ function ChannelConnectInner() {
         >
           <div className="mx-auto max-w-5xl">
             {stage !== "connect" ? (
-              <div className="mb-8 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 shadow-sm">
-                <Info className="h-5 w-5 shrink-0 text-orange-600" />
+              <div className="mb-8 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground shadow-sm">
+                <Info className="h-5 w-5 shrink-0 text-orange-600 dark:text-orange-300" />
                 <span>{c.helpBanner}</span>
               </div>
             ) : null}
@@ -3299,23 +3299,23 @@ function ChannelConnectInner() {
             {stage !== "connect" ? (
               <section
                 data-tour-id={isWhatsAppCallingGuide ? "whatsapp-calls-map" : undefined}
-                className="mb-8 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm"
+                className="mb-8 overflow-hidden rounded-xl border border-border bg-card shadow-sm"
               >
-                <div className="border-b border-zinc-200 bg-zinc-50 px-5 py-4">
+                <div className="border-b border-border bg-muted px-5 py-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">
                         {c.channelSetup}
                       </p>
-                      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+                      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
                         {c.connectionMapTitle}
                       </h2>
-                      <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
+                      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                         {c.connectionMapDesc}
                       </p>
                     </div>
                     {guide.badge ? (
-                      <Badge className="w-fit border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50">
+                      <Badge className="w-fit border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50">
                         {guide.badge}
                       </Badge>
                     ) : null}
@@ -3329,38 +3329,38 @@ function ChannelConnectInner() {
                     const MapIcon = item.icon
                     const iconClass =
                       item.tone === "success"
-                        ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                        ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300"
                         : item.tone === "accent"
-                          ? "bg-orange-50 text-orange-700 ring-orange-200"
-                          : "bg-zinc-100 text-zinc-700 ring-zinc-200"
+                          ? "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-950/30 dark:text-orange-300"
+                          : "bg-muted text-foreground ring-zinc-200"
                     const numberClass =
                       item.tone === "success"
                         ? "bg-emerald-600 text-white"
                         : item.tone === "accent"
                           ? "bg-orange-600 text-white"
-                          : "bg-white text-zinc-600 ring-1 ring-zinc-200"
+                          : "bg-card text-muted-foreground ring-1 ring-zinc-200"
                     return (
                       <article
                         key={item.title}
                         className={cn(
                           "relative min-w-0 rounded-[1.35rem] border p-4",
                           item.tone === "success"
-                            ? "border-emerald-200 bg-emerald-50/55"
+                            ? "border-emerald-200 bg-emerald-50/55 dark:bg-emerald-950/30 dark:border-emerald-800"
                             : item.tone === "accent"
-                              ? "border-orange-200 bg-orange-50/60"
-                              : "border-zinc-200 bg-zinc-50",
+                              ? "border-orange-200 bg-orange-50/60 dark:bg-orange-950/30 dark:border-orange-800"
+                              : "border-border bg-muted",
                         )}
                       >
                         {index < connectionMapItems.length - 1 ? (
                           <div
                             aria-hidden="true"
-                            className="absolute -right-5 top-10 z-10 hidden h-10 w-10 place-items-center rounded-full border border-zinc-200 bg-white text-zinc-400 shadow-sm lg:grid"
+                            className="absolute -right-5 top-10 z-10 hidden h-10 w-10 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-sm lg:grid"
                           >
                             <ArrowRight className="h-4 w-4" />
                           </div>
                         ) : null}
                         <div className="flex items-start gap-3">
-                          <div className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-2xl ring-1", iconClass)}>
+                          <div className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl ring-1", iconClass)}>
                             <MapIcon className="h-5 w-5" />
                           </div>
                           <div className="min-w-0 flex-1">
@@ -3368,22 +3368,22 @@ function ChannelConnectInner() {
                               <span className={cn("grid h-6 w-6 place-items-center rounded-full text-xs font-bold", numberClass)}>
                                 {index + 1}
                               </span>
-                              <h3 className="break-words text-sm font-semibold leading-6 text-zinc-950">{item.title}</h3>
+                              <h3 className="break-words text-sm font-semibold leading-6 text-foreground">{item.title}</h3>
                             </div>
-                            <p className="mt-2 break-words text-xs leading-5 text-zinc-600">{item.description}</p>
+                            <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">{item.description}</p>
                           </div>
                         </div>
                         <ul className="mt-4 space-y-2">
                           {item.items.slice(0, 3).map((step) => (
-                            <li key={step} className="flex gap-2 text-xs leading-5 text-zinc-700">
+                            <li key={step} className="flex gap-2 text-xs leading-5 text-foreground">
                               <CheckCircle2
                                 className={cn(
                                   "mt-0.5 h-3.5 w-3.5 shrink-0",
                                   item.tone === "success"
-                                    ? "text-emerald-600"
+                                    ? "text-emerald-600 dark:text-emerald-300"
                                     : item.tone === "accent"
-                                      ? "text-orange-600"
-                                      : "text-zinc-500",
+                                      ? "text-orange-600 dark:text-orange-300"
+                                      : "text-muted-foreground",
                                 )}
                               />
                               <span className="min-w-0 break-words">{step}</span>
@@ -3399,14 +3399,14 @@ function ChannelConnectInner() {
 
             <div
               className={cn(
-                "mb-8 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm lg:hidden",
+                "mb-8 rounded-xl border border-border bg-card p-5 shadow-sm lg:hidden",
                 stage === "connect" ? "hidden" : "",
               )}
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">{c.processTitle}</p>
-                  <p className="mt-2 text-sm text-zinc-600">{guide.connect.description}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600 dark:text-orange-300">{c.processTitle}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{guide.connect.description}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {processSteps.map((item, index) => {
@@ -3421,10 +3421,10 @@ function ChannelConnectInner() {
                         className={cn(
                           "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition",
                           isActive
-                            ? "border-orange-300 bg-orange-50 text-orange-700"
+                            ? "border-orange-300 bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800"
                             : isDone
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                              : "border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-orange-200 hover:bg-zinc-100 hover:text-zinc-900",
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
+                              : "border-border bg-muted text-muted-foreground hover:border-orange-200 hover:bg-muted hover:text-foreground",
                         )}
                       >
                         {isActive ? (
@@ -3436,7 +3436,7 @@ function ChannelConnectInner() {
                             <CheckCircle2 className="h-3 w-3" />
                           </span>
                         ) : (
-                          <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] text-zinc-500" aria-hidden="true">
+                          <span className="grid h-5 w-5 place-items-center rounded-full bg-card text-[10px] text-muted-foreground" aria-hidden="true">
                             {index + 1}
                           </span>
                         )}
@@ -3451,15 +3451,15 @@ function ChannelConnectInner() {
             {isWhatsAppCallingGuide ? (
               <section
                 data-tour-id="whatsapp-calls-readiness"
-                className="mb-8 rounded-3xl border border-orange-200 bg-white p-5 shadow-sm"
+                className="mb-8 rounded-xl border border-orange-200 bg-card p-5 shadow-sm dark:border-orange-800"
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">
                       {c.readinessSummary}
                     </p>
-                    <h2 className="mt-2 text-xl font-semibold text-zinc-950">{statusCopy.title}</h2>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
+                    <h2 className="mt-2 text-xl font-semibold text-foreground">{statusCopy.title}</h2>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                       {whatsappReadinessMessage}
                     </p>
                   </div>
@@ -3467,10 +3467,10 @@ function ChannelConnectInner() {
                     <Badge className={cn(
                       "w-fit border text-xs",
                       whatsappModuleDisabled
-                        ? "border-zinc-200 bg-zinc-100 text-zinc-600 hover:bg-zinc-100"
+                        ? "border-border bg-muted text-muted-foreground hover:bg-muted"
                         : whatsappCredentialsReady
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
-                        : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
+                        : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-950/50"
                     )}>
                       {whatsappModuleDisabled
                         ? statusCopy.unavailable
@@ -3488,16 +3488,16 @@ function ChannelConnectInner() {
                         <div
                           key={check.label}
                           className={cn(
-                            "min-w-0 flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-medium",
+                            "min-w-0 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium",
                             check.ready
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                              : "border-amber-200 bg-amber-50 text-amber-900"
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
+                              : "border-amber-200 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800"
                           )}
                         >
                           {check.ready ? (
-                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
                           ) : (
-                            <Info className="h-4 w-4 shrink-0 text-amber-700" />
+                            <Info className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
                           )}
                           <span className="min-w-0 flex-1 break-words">{check.label}</span>
                           <span className="shrink-0">{check.ready ? statusCopy.ready : statusCopy.missing}</span>
@@ -3505,7 +3505,7 @@ function ChannelConnectInner() {
                       ))}
                     </div>
                     {!whatsappCredentialsReady ? (
-                      <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                      <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800">
                         {statusCopy.blocked}
                       </p>
                     ) : null}
@@ -3513,42 +3513,42 @@ function ChannelConnectInner() {
                 ) : null}
 
                 {whatsappModuleDisabled ? (
-                  <Button disabled variant="secondary" className="mt-5 border border-zinc-200 bg-zinc-100 text-zinc-500">
+                  <Button disabled variant="secondary" className="mt-5 border border-border bg-muted text-muted-foreground">
                     {statusCopy.moduleDisabledAction}
                   </Button>
                 ) : (
-                  <Button asChild variant="secondary" className="mt-5 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50">
+                  <Button asChild variant="secondary" className="mt-5 border border-border bg-card text-foreground hover:bg-muted">
                     <Link href={stageHref("connect")}>{statusCopy.openForm}</Link>
                   </Button>
                 )}
 
-                <div data-tour-id="whatsapp-calls-webhook" className="mt-5 rounded-3xl border border-orange-200 bg-orange-50/70 p-4">
+                <div data-tour-id="whatsapp-calls-webhook" className="mt-5 rounded-xl border border-orange-200 bg-orange-50/70 p-4 dark:bg-orange-950/30 dark:border-orange-800">
                   <div className="flex items-start gap-3">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-white text-orange-700 ring-1 ring-orange-200">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-card text-[hsl(var(--crm-accent-text))] ring-1 ring-orange-200">
                       <Webhook className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-zinc-950">{c.whatsappCallingWebhookTitle}</p>
-                      <p className="mt-2 text-sm leading-6 text-zinc-700">{c.whatsappCallingWebhookHint}</p>
+                      <p className="text-sm font-semibold text-foreground">{c.whatsappCallingWebhookTitle}</p>
+                      <p className="mt-2 text-sm leading-6 text-foreground">{c.whatsappCallingWebhookHint}</p>
                       <dl className="mt-4 grid gap-3">
                         <div>
-                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700">{c.whatsappCallingWebhookCallback}</dt>
-                          <dd className="mt-2 break-all rounded-2xl border border-orange-200 bg-white px-3 py-2 font-mono text-xs text-orange-900">
+                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.whatsappCallingWebhookCallback}</dt>
+                          <dd className="mt-2 break-all rounded-xl border border-orange-200 bg-card px-3 py-2 font-mono text-xs text-orange-900 dark:text-orange-300 dark:border-orange-800">
                             {whatsappCallingCallbackUrl}
                           </dd>
                           {!orgSlug ? (
-                            <p className="mt-2 text-xs leading-5 text-orange-800">{c.whatsappCallingTenantFallback}</p>
+                            <p className="mt-2 text-xs leading-5 text-orange-800 dark:text-orange-300">{c.whatsappCallingTenantFallback}</p>
                           ) : null}
                         </div>
                         <div>
-                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700">{c.whatsappCallingWebhookVerify}</dt>
-                          <dd className="mt-2 rounded-2xl border border-orange-200 bg-white px-3 py-2 text-xs font-medium text-orange-900">
+                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.whatsappCallingWebhookVerify}</dt>
+                          <dd className="mt-2 rounded-xl border border-orange-200 bg-card px-3 py-2 text-xs font-medium text-orange-900 dark:text-orange-300 dark:border-orange-800">
                             {statusCopy.verifyToken}
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700">{c.whatsappCallingWebhookSubscribe}</dt>
-                          <dd className="mt-2 rounded-2xl border border-orange-200 bg-white px-3 py-2 text-xs font-medium text-orange-900">
+                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.whatsappCallingWebhookSubscribe}</dt>
+                          <dd className="mt-2 rounded-xl border border-orange-200 bg-card px-3 py-2 text-xs font-medium text-orange-900 dark:text-orange-300 dark:border-orange-800">
                             calls
                           </dd>
                         </div>
@@ -3557,24 +3557,24 @@ function ChannelConnectInner() {
                   </div>
                 </div>
 
-                <div data-tour-id="whatsapp-calls-smoke" className="mt-5 rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+                <div data-tour-id="whatsapp-calls-smoke" className="mt-5 rounded-xl border border-border bg-muted p-4">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-white text-orange-700 ring-1 ring-orange-200">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-card text-[hsl(var(--crm-accent-text))] ring-1 ring-orange-200">
                           <PhoneCall className="h-4 w-4" />
                         </span>
-                        <p className="text-sm font-semibold text-zinc-950">{c.whatsappCallingSmokeTitle}</p>
+                        <p className="text-sm font-semibold text-foreground">{c.whatsappCallingSmokeTitle}</p>
                       </div>
-                      <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">{c.whatsappCallingSmokeDesc}</p>
-                      <p className="mt-2 max-w-3xl text-xs leading-5 text-zinc-500">{c.whatsappCallingSmokeNoExternal}</p>
+                      <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{c.whatsappCallingSmokeDesc}</p>
+                      <p className="mt-2 max-w-3xl text-xs leading-5 text-muted-foreground">{c.whatsappCallingSmokeNoExternal}</p>
                     </div>
                     <Button
                       data-video-target="whatsapp-calls-smoke-button"
                       type="button"
                       onClick={runWhatsAppCallingSmoke}
                       disabled={!whatsappSmokeCanRun || whatsappSmokeRunning}
-                      className="w-full shrink-0 bg-orange-600 text-white hover:bg-orange-700 disabled:bg-zinc-200 disabled:text-zinc-500 lg:w-auto"
+                      className="w-full shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-zinc-200 disabled:text-muted-foreground lg:w-auto"
                     >
                       {whatsappSmokeRunning ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -3586,7 +3586,7 @@ function ChannelConnectInner() {
                   </div>
 
                   {!whatsappSmokeCanRun && whatsappSmokeDisabledReason ? (
-                    <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                    <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800">
                       {whatsappSmokeDisabledReason}
                     </p>
                   ) : null}
@@ -3595,21 +3595,21 @@ function ChannelConnectInner() {
                     <div
                       aria-live="polite"
                       className={cn(
-                        "mt-4 rounded-2xl border px-4 py-3 text-sm leading-6",
+                        "mt-4 rounded-xl border px-4 py-3 text-sm leading-6",
                         whatsappSmokeResult.ok
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-950"
-                          : "border-red-200 bg-red-50 text-red-900",
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
+                          : "border-red-200 bg-red-50 text-red-900 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800",
                       )}
                     >
                       {whatsappSmokeResult.ok ? (
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                           <div>
                             <p className="font-semibold">{c.whatsappCallingSmokeSuccess}</p>
-                            <p className="mt-1 text-xs leading-5 text-emerald-900">
+                            <p className="mt-1 text-xs leading-5 text-emerald-900 dark:text-emerald-300">
                               {whatsappSmokeResult.callSid} · {whatsappSmokeResult.status}
                               {whatsappSmokeResult.customerPhone ? ` · ${whatsappSmokeResult.customerPhone}` : ""}
                             </p>
-                            <p className="mt-2 text-xs leading-5 text-emerald-900">
+                            <p className="mt-2 text-xs leading-5 text-emerald-900 dark:text-emerald-300">
                               {whatsappSmokeResult.warning} {c.whatsappCallingSmokeMetaReminder}
                             </p>
                           </div>
@@ -3636,32 +3636,32 @@ function ChannelConnectInner() {
               >
                 <div className="space-y-6">
                   <div>
-                    <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50">
+                    <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50">
                       <ShieldCheck className="mr-1 h-3.5 w-3.5" />
                       {c.channelSetup}
                     </Badge>
                     <h2 className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight">{guide.connect.title}</h2>
-                    <p className="mt-4 max-w-3xl text-base leading-8 text-zinc-600">{guide.bodyDescription}</p>
+                    <p className="mt-4 max-w-3xl text-base leading-8 text-muted-foreground">{guide.bodyDescription}</p>
                   </div>
 
-                  <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-                    <div className="grid gap-5 border-b border-zinc-200 bg-[linear-gradient(135deg,#fff7ed,#ffffff_52%,#f4f4f5)] p-5">
+                  <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                    <div className="grid gap-5 border-b border-border bg-muted p-5">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge className="border-zinc-200 bg-white text-zinc-700 hover:bg-white">
+                          <Badge className="border-border bg-card text-foreground hover:bg-card">
                             {guide.tutorial.duration}
                           </Badge>
                           {guide.badge ? (
-                            <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50">{guide.badge}</Badge>
+                            <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50">{guide.badge}</Badge>
                           ) : null}
                         </div>
-                        <h3 className="mt-4 text-xl font-semibold tracking-tight text-zinc-950">{guide.tutorial.title}</h3>
-                        <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">{guide.tutorial.description}</p>
+                        <h3 className="mt-4 text-xl font-semibold tracking-tight text-foreground">{guide.tutorial.title}</h3>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{guide.tutorial.description}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => openTutorial(0)}
-                        className="group flex h-full min-h-32 items-center justify-center rounded-[1.35rem] border border-orange-200 bg-white p-5 text-center shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
+                        className="group flex h-full min-h-32 items-center justify-center rounded-[1.35rem] border border-orange-200 bg-card p-5 text-center shadow-sm transition hover:border-orange-300 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-950/50"
                       >
                         <span className="grid h-16 w-16 place-items-center rounded-full bg-orange-600 text-white shadow-[0_14px_30px_rgba(249,115,22,0.24)] transition group-hover:scale-105">
                           <PlayCircle className="h-8 w-8" />
@@ -3670,13 +3670,13 @@ function ChannelConnectInner() {
                       </button>
                     </div>
                     <div className="p-5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                         {c.tutorialStepsTitle}
                       </p>
                       <ol className="mt-4 grid gap-3">
                         {guide.tutorial.steps.map((step, index) => (
-                          <li key={step} className="flex gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm leading-6 text-zinc-700">
-                            <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-orange-100 text-[11px] font-bold text-orange-700">
+                          <li key={step} className="flex gap-3 rounded-xl border border-border bg-muted px-3 py-3 text-sm leading-6 text-foreground">
+                            <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-orange-100 text-[11px] font-bold text-orange-700 dark:bg-orange-950/30 dark:text-orange-300">
                               {index + 1}
                             </span>
                             <span>{step}</span>
@@ -3687,16 +3687,16 @@ function ChannelConnectInner() {
                   </div>
 
                   {isMetaGuide ? (
-                    <section className="rounded-3xl border border-orange-200 bg-orange-50/70 p-5 shadow-sm">
+                    <section className="rounded-xl border border-orange-200 bg-orange-50/70 p-5 shadow-sm dark:bg-orange-950/30 dark:border-orange-800">
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div>
-                          <Badge className="border-orange-200 bg-white text-orange-700 hover:bg-white">
+                          <Badge className="border-orange-200 bg-card text-[hsl(var(--crm-accent-text))] hover:bg-card dark:border-orange-800">
                             {metaCopy.badge}
                           </Badge>
-                          <h3 className="mt-3 text-xl font-semibold tracking-tight text-zinc-950">
+                          <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
                             {metaCopy.title}
                           </h3>
-                          <p className="mt-2 max-w-3xl text-sm leading-6 text-orange-950/75">
+                          <p className="mt-2 max-w-3xl text-sm leading-6 text-orange-950/75 dark:text-orange-300">
                             {metaCopy.description}
                           </p>
                         </div>
@@ -3705,14 +3705,14 @@ function ChannelConnectInner() {
                         {metaSetupItems.map((item) => {
                           const ItemIcon = item.icon
                           return (
-                            <article key={item.title} className="rounded-[1.35rem] border border-orange-200 bg-white p-4">
+                            <article key={item.title} className="rounded-[1.35rem] border border-orange-200 bg-card p-4 dark:border-orange-800">
                               <div className="flex items-start gap-3">
-                                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-orange-100 text-orange-700 ring-1 ring-orange-200">
+                                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-700 ring-1 ring-orange-200 dark:bg-orange-950/30 dark:text-orange-300">
                                   <ItemIcon className="h-5 w-5" />
                                 </div>
                                 <div>
-                                  <h4 className="text-sm font-semibold leading-6 text-zinc-950">{item.title}</h4>
-                                  <p className="mt-1 text-xs leading-5 text-zinc-600">{item.description}</p>
+                                  <h4 className="text-sm font-semibold leading-6 text-foreground">{item.title}</h4>
+                                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</p>
                                 </div>
                               </div>
                             </article>
@@ -3727,16 +3727,16 @@ function ChannelConnectInner() {
                   ) : null}
 
                   {isTikTokChatwootGuide ? (
-                    <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+                    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div>
-                          <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50">
+                          <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50">
                             {chatwootCopy.badge}
                           </Badge>
-                          <h3 className="mt-3 text-xl font-semibold tracking-tight text-zinc-950">
+                          <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
                             {chatwootCopy.title}
                           </h3>
-                          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
+                          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                             {chatwootCopy.description}
                           </p>
                         </div>
@@ -3745,14 +3745,14 @@ function ChannelConnectInner() {
                         {chatwootSetupItems.map((item) => {
                           const ItemIcon = item.icon
                           return (
-                            <article key={item.title} className="rounded-[1.35rem] border border-zinc-200 bg-zinc-50 p-4">
+                            <article key={item.title} className="rounded-[1.35rem] border border-border bg-muted p-4">
                               <div className="flex items-start gap-3">
-                                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white text-orange-700 ring-1 ring-orange-200">
+                                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-card text-[hsl(var(--crm-accent-text))] ring-1 ring-orange-200">
                                   <ItemIcon className="h-5 w-5" />
                                 </div>
                                 <div>
-                                  <h4 className="text-sm font-semibold leading-6 text-zinc-950">{item.title}</h4>
-                                  <p className="mt-1 text-xs leading-5 text-zinc-600">{item.description}</p>
+                                  <h4 className="text-sm font-semibold leading-6 text-foreground">{item.title}</h4>
+                                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</p>
                                 </div>
                               </div>
                             </article>
@@ -3763,22 +3763,22 @@ function ChannelConnectInner() {
                   ) : null}
 
                   <div className="grid gap-4">
-                    <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+                    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
                       <div className="flex items-center gap-3">
-                        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-zinc-100 text-zinc-700">
+                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-muted text-foreground">
                           <ExternalLink className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                             {c.tutorialProviderSide}
                           </p>
-                          <p className="mt-1 text-sm font-semibold text-zinc-950">{guide.title}</p>
+                          <p className="mt-1 text-sm font-semibold text-foreground">{guide.title}</p>
                         </div>
                       </div>
                       <ol className="mt-5 space-y-3">
                         {providerPreviewSteps.map((step, index) => (
-                          <li key={step} className="flex gap-3 text-sm leading-6 text-zinc-700">
-                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-zinc-100 text-[11px] font-bold text-zinc-700 ring-1 ring-zinc-200">
+                          <li key={step} className="flex gap-3 text-sm leading-6 text-foreground">
+                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-muted text-[11px] font-bold text-foreground ring-1 ring-zinc-200">
                               {index + 1}
                             </span>
                             <span>{step}</span>
@@ -3787,21 +3787,21 @@ function ChannelConnectInner() {
                       </ol>
                     </section>
 
-                    <section className="rounded-3xl border border-orange-200 bg-orange-50 p-5 shadow-sm">
+                    <section className="rounded-xl border border-orange-200 bg-orange-50 p-5 shadow-sm dark:bg-orange-950/30 dark:border-orange-800">
                       <div className="flex items-center gap-3">
-                        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-orange-700 ring-1 ring-orange-200">
+                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-card text-[hsl(var(--crm-accent-text))] ring-1 ring-orange-200">
                           <ShieldCheck className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">
                             {c.tutorialLeadDriveSide}
                           </p>
-                          <p className="mt-1 text-sm font-semibold text-zinc-950">{c.channelSetup}</p>
+                          <p className="mt-1 text-sm font-semibold text-foreground">{c.channelSetup}</p>
                         </div>
                       </div>
                       <ol className="mt-5 space-y-3">
                         {leadDrivePreviewSteps.map((step, index) => (
-                          <li key={step} className="flex gap-3 text-sm leading-6 text-zinc-800">
+                          <li key={step} className="flex gap-3 text-sm leading-6 text-foreground">
                             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-orange-600 text-[11px] font-bold text-white">
                               {index + providerPreviewSteps.length + 1}
                             </span>
@@ -3815,22 +3815,22 @@ function ChannelConnectInner() {
 
                 <aside
                   data-tour-id={isWhatsAppCallingGuide ? "whatsapp-calls-scenario" : undefined}
-                  className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm"
+                  className="rounded-xl border border-border bg-card p-5 shadow-sm"
                 >
                   <h3 className="text-lg font-semibold">{c.selectScenario}</h3>
                   <div className="mt-5 space-y-3">
                     {scenarioOptions.map((option) => {
                       const selected = mode === option.value
                       const optionToneClass = selected
-                        ? "border-orange-300 bg-orange-50 text-orange-950"
-                        : "border-zinc-200 bg-white text-zinc-700 hover:border-orange-200"
+                        ? "border-orange-300 bg-orange-50 text-orange-950 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800"
+                        : "border-border bg-card text-foreground hover:border-orange-200"
                       return (
                         <button
                           key={option.value}
                           type="button"
                           onClick={() => setMode(option.value)}
                           className={cn(
-                            "flex w-full gap-3 rounded-2xl border p-4 text-left transition",
+                            "flex w-full gap-3 rounded-xl border p-4 text-left transition",
                             optionToneClass,
                           )}
                         >
@@ -3839,7 +3839,7 @@ function ChannelConnectInner() {
                             <span className="block text-sm font-semibold">{option.title}</span>
                             <span className={cn(
                               "mt-1 block text-xs leading-5",
-                              selected ? "text-orange-800" : "text-zinc-500",
+                              selected ? "text-orange-800 dark:text-orange-300" : "text-muted-foreground",
                             )}>{option.description}</span>
                             {option.checklist.length ? (
                               <span className="mt-3 flex flex-wrap gap-1.5">
@@ -3849,8 +3849,8 @@ function ChannelConnectInner() {
                                     className={cn(
                                       "rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1",
                                       selected
-                                        ? "bg-white/80 text-orange-900 ring-orange-200"
-                                        : "bg-zinc-50 text-zinc-600 ring-zinc-200",
+                                        ? "bg-card/80 text-orange-900 ring-orange-200 dark:text-orange-300"
+                                        : "bg-muted text-muted-foreground ring-zinc-200",
                                     )}
                                   >
                                     {item}
@@ -3863,14 +3863,14 @@ function ChannelConnectInner() {
                       )
                     })}
                   </div>
-                  <div className="mt-5 rounded-2xl border border-orange-200 bg-orange-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">{c.selectedScenario}</p>
-                    <p className="mt-2 text-sm font-semibold text-orange-950">{selectedScenarioTitle}</p>
-                    <p className="mt-1 text-xs leading-5 text-orange-800">{selectedScenarioDescription}</p>
+                  <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50 p-4 dark:bg-orange-950/30 dark:border-orange-800">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">{c.selectedScenario}</p>
+                    <p className="mt-2 text-sm font-semibold text-orange-950 dark:text-orange-300">{selectedScenarioTitle}</p>
+                    <p className="mt-1 text-xs leading-5 text-orange-800 dark:text-orange-300">{selectedScenarioDescription}</p>
                     {selectedScenario.checklist.length ? (
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {selectedScenario.checklist.slice(0, 4).map((item) => (
-                          <span key={item} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-orange-900 ring-1 ring-orange-200">
+                          <span key={item} className="rounded-full bg-card px-2.5 py-1 text-[11px] font-semibold text-orange-900 ring-1 ring-orange-200 dark:text-orange-300">
                             {item}
                           </span>
                         ))}
@@ -3881,29 +3881,29 @@ function ChannelConnectInner() {
                     <Button
                       type="button"
                       onClick={() => goToStage("eligibility")}
-                      className="bg-orange-600 text-white hover:bg-orange-700"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
                     >
                       {c.getStarted}
                     </Button>
                     {effectiveFormInitialData ? (
                       <Link
                         href={stageHref("connect")}
-                        className={cn(buttonVariants({ variant: "ghost" }), "text-orange-700 hover:bg-orange-50 hover:text-orange-800")}
+                        className={cn(buttonVariants({ variant: "ghost" }), "text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300")}
                       >
                         {c.skip}
                       </Link>
                     ) : (
-                      <Button asChild variant="ghost" className="text-orange-700 hover:bg-orange-50 hover:text-orange-800">
+                      <Button asChild variant="ghost" className="text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300">
                         <Link href={credentialHref}>{c.skip}</Link>
                       </Button>
                     )}
                   </div>
-                  <div className="mt-7 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{c.readyBeforeTitle}</p>
+                  <div className="mt-7 rounded-xl border border-border bg-muted p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.readyBeforeTitle}</p>
                     <ul className="mt-3 space-y-2">
                       {readyChecklist.map((item) => (
-                        <li key={item} className="flex gap-2 text-xs leading-5 text-zinc-600">
-                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-600" />
+                        <li key={item} className="flex gap-2 text-xs leading-5 text-muted-foreground">
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-300" />
                           <span>{item}</span>
                         </li>
                       ))}
@@ -3918,24 +3918,24 @@ function ChannelConnectInner() {
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                   <div>
-                    <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50">
+                    <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50">
                       {c.eligibilityBadge}
                     </Badge>
                     <h2 className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight">{guide.eligibility.title}</h2>
-                    <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">{c.readinessQuestionDesc}</p>
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{c.readinessQuestionDesc}</p>
                   </div>
-                  <Badge className="w-fit border-zinc-200 bg-white text-zinc-700 hover:bg-white">
+                  <Badge className="w-fit border-border bg-card text-foreground hover:bg-card">
                     {stepIndex + 1}/{guide.eligibility.steps.length}
                   </Badge>
                 </div>
 
                 <div className="mt-8 grid max-w-5xl gap-6">
-                  <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-                    <div className="border-b border-zinc-200 bg-zinc-50 px-5 py-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">
+                  <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                    <div className="border-b border-border bg-muted px-5 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">
                         {c.readinessQuestionTitle}
                       </p>
-                      <p className="mt-2 text-lg font-semibold leading-7 text-zinc-950">{currentStep.question}</p>
+                      <p className="mt-2 text-lg font-semibold leading-7 text-foreground">{currentStep.question}</p>
                     </div>
 
                     <div className="p-5">
@@ -3952,12 +3952,12 @@ function ChannelConnectInner() {
                                 setSelectedOption(readinessAnswers[index] ?? 0)
                               }}
                               className={cn(
-                                "flex items-center gap-3 rounded-2xl border px-3 py-3 text-left text-sm font-semibold transition",
+                                "flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm font-semibold transition",
                                 active
-                                  ? "border-orange-300 bg-orange-50 text-orange-950"
+                                  ? "border-orange-300 bg-orange-50 text-orange-950 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800"
                                   : answered
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                                    : "border-zinc-200 bg-white text-zinc-600 hover:border-orange-200 hover:bg-zinc-50 hover:text-zinc-950",
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
+                                    : "border-border bg-card text-muted-foreground hover:border-orange-200 hover:bg-muted hover:text-foreground",
                               )}
                             >
                               <span
@@ -3967,7 +3967,7 @@ function ChannelConnectInner() {
                                     ? "bg-orange-600 text-white"
                                     : answered
                                       ? "bg-emerald-600 text-white"
-                                      : "bg-zinc-100 text-zinc-600",
+                                      : "bg-muted text-muted-foreground",
                                 )}
                               >
                                 {answered && !active ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
@@ -3979,8 +3979,8 @@ function ChannelConnectInner() {
                       </div>
 
                       {currentStep.info ? (
-                        <div className="mt-5 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm leading-6 text-orange-950">
-                          <Info className="mr-2 inline h-4 w-4 text-orange-700" />
+                        <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm leading-6 text-orange-950 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800">
+                          <Info className="mr-2 inline h-4 w-4 text-orange-700 dark:text-orange-300" />
                           {currentStep.info}
                         </div>
                       ) : null}
@@ -4003,16 +4003,16 @@ function ChannelConnectInner() {
                                 }))
                               }}
                               className={cn(
-                                "flex w-full items-start gap-4 rounded-2xl border px-4 py-4 text-left transition",
+                                "flex w-full items-start gap-4 rounded-xl border px-4 py-4 text-left transition",
                                 active
-                                  ? "border-orange-300 bg-orange-50 text-orange-950 shadow-sm"
-                                  : "border-zinc-200 bg-white text-zinc-700 hover:border-orange-200 hover:bg-zinc-50",
+                                  ? "border-orange-300 bg-orange-50 text-orange-950 shadow-sm dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800"
+                                  : "border-border bg-card text-foreground hover:border-orange-200 hover:bg-muted",
                               )}
                             >
                               <span
                                 className={cn(
                                   "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border-2",
-                                  active ? "border-orange-600 bg-white" : "border-zinc-300 bg-zinc-50",
+                                  active ? "border-orange-600 bg-card" : "border-input bg-muted",
                                 )}
                               >
                                 {active ? <span className="h-3 w-3 rounded-full bg-orange-600" /> : null}
@@ -4026,9 +4026,9 @@ function ChannelConnectInner() {
                       </div>
 
                       {selectedAnswer ? (
-                        <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-6 text-zinc-700">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{c.currentChoice}</p>
-                          <p className="mt-2 font-medium text-zinc-950">{selectedAnswer}</p>
+                        <div className="mt-5 rounded-xl border border-border bg-muted p-4 text-sm leading-6 text-foreground">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.currentChoice}</p>
+                          <p className="mt-2 font-medium text-foreground">{selectedAnswer}</p>
                         </div>
                       ) : null}
 
@@ -4050,7 +4050,7 @@ function ChannelConnectInner() {
                               setSelectedOption(readinessAnswers[nextIndex] ?? 0)
                             }
                           }}
-                          className="bg-orange-600 text-white hover:bg-orange-700"
+                          className="bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                           {isLastStep ? c.yesContinue : c.next}
                           <ArrowRight className="ml-2 h-4 w-4" />
@@ -4058,12 +4058,12 @@ function ChannelConnectInner() {
                         {effectiveFormInitialData ? (
                           <Link
                             href={stageHref("connect")}
-                            className={cn(buttonVariants({ variant: "ghost" }), "text-orange-700 hover:bg-orange-50 hover:text-orange-800")}
+                            className={cn(buttonVariants({ variant: "ghost" }), "text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300")}
                           >
                             {c.skip}
                           </Link>
                         ) : (
-                          <Button asChild variant="ghost" className="text-orange-700 hover:bg-orange-50 hover:text-orange-800">
+                          <Button asChild variant="ghost" className="text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300">
                             <Link href={credentialHref}>{c.skip}</Link>
                           </Button>
                         )}
@@ -4072,8 +4072,8 @@ function ChannelConnectInner() {
                   </div>
 
                   <aside className="space-y-4">
-                    <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{c.readinessProgress}</p>
+                    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.readinessProgress}</p>
                       <div className="mt-4 space-y-2">
                         {readinessSummaryItems.map((item, index) => (
                           <button
@@ -4083,7 +4083,7 @@ function ChannelConnectInner() {
                               setStepIndex(index)
                               setSelectedOption(readinessAnswers[index] ?? 0)
                             }}
-                            className="flex w-full items-start gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-left transition hover:border-orange-200 hover:bg-white"
+                            className="flex w-full items-start gap-3 rounded-xl border border-border bg-muted px-3 py-2.5 text-left transition hover:border-orange-200 hover:bg-card"
                           >
                             <span
                               className={cn(
@@ -4094,8 +4094,8 @@ function ChannelConnectInner() {
                               {item.answer ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
                             </span>
                             <span className="min-w-0">
-                              <span className="block text-xs font-semibold text-zinc-950">{item.label}</span>
-                              <span className={cn("mt-1 block text-xs leading-5", item.answer ? "text-zinc-600" : "text-amber-700")}>
+                              <span className="block text-xs font-semibold text-foreground">{item.label}</span>
+                              <span className={cn("mt-1 block text-xs leading-5", item.answer ? "text-muted-foreground" : "text-amber-700 dark:text-amber-300")}>
                                 {item.answer || c.wizardNotAnswered}
                               </span>
                             </span>
@@ -4104,14 +4104,14 @@ function ChannelConnectInner() {
                       </div>
                     </section>
 
-                    <section className="rounded-3xl border border-orange-200 bg-orange-50 p-5 shadow-sm">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">{c.selectedScenario}</p>
-                      <p className="mt-2 text-sm font-semibold leading-6 text-orange-950">{selectedScenarioTitle}</p>
-                      <p className="mt-2 text-xs leading-5 text-orange-800">{selectedScenarioDescription}</p>
+                    <section className="rounded-xl border border-orange-200 bg-orange-50 p-5 shadow-sm dark:bg-orange-950/30 dark:border-orange-800">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">{c.selectedScenario}</p>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-orange-950 dark:text-orange-300">{selectedScenarioTitle}</p>
+                      <p className="mt-2 text-xs leading-5 text-orange-800 dark:text-orange-300">{selectedScenarioDescription}</p>
                       {selectedScenario.checklist.length ? (
                         <div className="mt-3 flex flex-wrap gap-1.5">
                           {selectedScenario.checklist.slice(0, 4).map((item) => (
-                            <span key={item} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-orange-900 ring-1 ring-orange-200">
+                            <span key={item} className="rounded-full bg-card px-2.5 py-1 text-[11px] font-semibold text-orange-900 ring-1 ring-orange-200 dark:text-orange-300">
                               {item}
                             </span>
                           ))}
@@ -4119,12 +4119,12 @@ function ChannelConnectInner() {
                       ) : null}
                     </section>
 
-                    <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{c.readinessWhyTitle}</p>
-                      <p className="mt-2 text-sm leading-6 text-zinc-600">{c.readinessWhyDesc}</p>
-                      <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{c.readinessNextTitle}</p>
-                        <p className="mt-2 text-xs leading-5 text-emerald-900">{c.readinessNextDesc}</p>
+                    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.readinessWhyTitle}</p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{c.readinessWhyDesc}</p>
+                      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:bg-emerald-950/30 dark:border-emerald-800">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">{c.readinessNextTitle}</p>
+                        <p className="mt-2 text-xs leading-5 text-emerald-900 dark:text-emerald-300">{c.readinessNextDesc}</p>
                       </div>
                     </section>
                   </aside>
@@ -4135,51 +4135,51 @@ function ChannelConnectInner() {
                 data-tour-id={isWhatsAppCallingGuide ? "whatsapp-calls-connect" : undefined}
                 className="max-w-5xl"
               >
-                <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-950/50">
                   <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
                   {c.channelSetup}
                 </Badge>
                 <h2 className="mt-5 text-3xl font-semibold tracking-tight">{guide.connect.title}</h2>
-                <p className="mt-5 max-w-4xl text-base leading-8 text-zinc-700">{guide.connect.description}</p>
+                <p className="mt-5 max-w-4xl text-base leading-8 text-foreground">{guide.connect.description}</p>
                 {showOauthResult ? (
                   <div
                     data-testid="oauth-result-banner"
                     data-tone={oauthBannerTone}
                     className={cn(
-                      "mt-5 rounded-2xl border p-4",
+                      "mt-5 rounded-xl border p-4",
                       oauthBannerTone === "success"
-                        ? "border-emerald-200 bg-emerald-50"
+                        ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800"
                         : (oauthBannerTone === "pending" || oauthBannerTone === "neutral")
-                          ? "border-zinc-200 bg-zinc-50"
-                          : "border-amber-200 bg-amber-50",
+                          ? "border-border bg-muted"
+                          : "border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800",
                     )}
                   >
                     <p className={cn(
                       "text-sm font-semibold",
                       oauthBannerTone === "success"
-                        ? "text-emerald-800"
+                        ? "text-emerald-800 dark:text-emerald-300"
                         : (oauthBannerTone === "pending" || oauthBannerTone === "neutral")
-                          ? "text-zinc-800"
-                          : "text-amber-900",
+                          ? "text-foreground"
+                          : "text-amber-900 dark:text-amber-300",
                     )}>
                       {oauthBannerTitle}
                     </p>
                     <p className={cn(
                       "mt-1 text-sm leading-6",
                       oauthBannerTone === "success"
-                        ? "text-emerald-700"
+                        ? "text-emerald-700 dark:text-emerald-300"
                         : (oauthBannerTone === "pending" || oauthBannerTone === "neutral")
-                          ? "text-zinc-600"
-                          : "text-amber-800",
+                          ? "text-muted-foreground"
+                          : "text-amber-800 dark:text-amber-300",
                     )}>
                       {oauthBannerDesc}
                     </p>
                   </div>
                 ) : null}
                 {oauthError ? (
-                  <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4">
-                    <p className="text-sm font-semibold text-red-800">{c.oauthErrorTitle}</p>
-                    <p className="mt-1 text-sm leading-6 text-red-700">
+                  <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 dark:bg-red-950/30 dark:border-red-800">
+                    <p className="text-sm font-semibold text-red-800 dark:text-red-300">{c.oauthErrorTitle}</p>
+                    <p className="mt-1 text-sm leading-6 text-red-700 dark:text-red-300">
                       {c.oauthErrorDesc.replace("{code}", oauthError)}
                     </p>
                   </div>
@@ -4190,25 +4190,25 @@ function ChannelConnectInner() {
                 {credentialFormBlock}
                 {metaNoRowBlock}
                 {externalCredentialActions}
-                <div className="mt-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-                  <div className="flex flex-col gap-3 border-b border-zinc-200 bg-zinc-50 px-5 py-4 md:flex-row md:items-start md:justify-between">
+                <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                  <div className="flex flex-col gap-3 border-b border-border bg-muted px-5 py-4 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700">{c.afterConnectTitle}</p>
-                      <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-700">{c.setupOutcomeDesc}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.afterConnectTitle}</p>
+                      <p className="mt-2 max-w-3xl text-sm leading-6 text-foreground">{c.setupOutcomeDesc}</p>
                     </div>
-                    <Badge className="w-fit border-orange-200 bg-white text-orange-700 hover:bg-white">
+                    <Badge className="w-fit border-orange-200 bg-card text-[hsl(var(--crm-accent-text))] hover:bg-card dark:border-orange-800">
                       {selectedScenarioTitle}
                     </Badge>
                   </div>
-                  <div className="grid divide-y divide-zinc-200 md:grid-cols-3 md:divide-x md:divide-y-0">
+                  <div className="grid divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
                     {compactConnectSteps.map((item, index) => {
                       const StepIcon = item.icon
                       const iconClass =
                         item.tone === "success"
-                          ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                          ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300"
                           : item.tone === "accent"
-                            ? "bg-orange-50 text-orange-700 ring-orange-200"
-                            : "bg-zinc-100 text-zinc-700 ring-zinc-200"
+                            ? "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-950/30 dark:text-orange-300"
+                            : "bg-muted text-foreground ring-zinc-200"
                       return (
                         <article key={item.title} className="min-w-0 p-4">
                           <div className="flex items-start gap-3">
@@ -4217,10 +4217,10 @@ function ChannelConnectInner() {
                             </span>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold text-zinc-500">{index + 1}</span>
-                                <h3 className="break-words text-sm font-semibold text-zinc-950">{item.title}</h3>
+                                <span className="text-xs font-semibold text-muted-foreground">{index + 1}</span>
+                                <h3 className="break-words text-sm font-semibold text-foreground">{item.title}</h3>
                               </div>
-                              <p className="mt-1 break-words text-xs leading-5 text-zinc-600">{item.description}</p>
+                              <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">{item.description}</p>
                             </div>
                           </div>
                         </article>
@@ -4229,22 +4229,22 @@ function ChannelConnectInner() {
                   </div>
                 </div>
 
-                <details className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-50 [&::-webkit-details-marker]:hidden">
+                <details className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-foreground transition hover:bg-muted [&::-webkit-details-marker]:hidden">
                     <span className="flex min-w-0 items-center gap-2">
-                      <Info className="h-4 w-4 shrink-0 text-orange-600" />
+                      <Info className="h-4 w-4 shrink-0 text-orange-600 dark:text-orange-300" />
                       <span className="break-words">{c.watchGuideTitle}</span>
                     </span>
-                    <span className="shrink-0 rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-600">
+                    <span className="shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
                       {guide.tutorial.duration}
                     </span>
                   </summary>
-                  <div className="grid gap-5 border-t border-zinc-200 p-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                  <div className="grid gap-5 border-t border-border p-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                     <section className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700">{c.tutorialPlayerFieldMap}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.tutorialPlayerFieldMap}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {tutorialScreen.leadDriveFields.slice(0, 5).map((field) => (
-                          <span key={field} className="max-w-full break-words rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium leading-5 text-orange-900">
+                          <span key={field} className="max-w-full break-words rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium leading-5 text-orange-900 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800">
                             {field}
                           </span>
                         ))}
@@ -4255,7 +4255,7 @@ function ChannelConnectInner() {
                           variant="outline"
                           size="sm"
                           onClick={() => openTutorial(0)}
-                          className="border-orange-200 bg-white text-orange-700 hover:bg-orange-50 hover:text-orange-800"
+                          className="border-orange-200 bg-card text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50 dark:hover:text-orange-300"
                         >
                           <PlayCircle className="mr-2 h-4 w-4" />
                           {c.quickStartGuideAction}
@@ -4265,24 +4265,24 @@ function ChannelConnectInner() {
                           variant="outline"
                           size="sm"
                           onClick={() => goToStage("eligibility")}
-                          className="border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                          className="border-border bg-card text-foreground hover:bg-muted"
                         >
                           {c.wizardEditReadiness}
                         </Button>
                       </div>
                     </section>
                     <section className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">{c.faqTitle}</p>
-                      <div className="mt-2 divide-y divide-zinc-200">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{c.faqTitle}</p>
+                      <div className="mt-2 divide-y divide-border">
                         {faqItems.slice(0, 2).map((item, index) => (
                           <AccordionItem
                             key={`${item.q}-${index}`}
                             title={item.q}
                             icon={index === 0 ? <Info className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
                             defaultOpen={index === 0}
-                            className="border-zinc-200"
+                            className="border-border"
                           >
-                            <p className="px-8 pb-1 text-sm leading-6 text-zinc-600">
+                            <p className="px-8 pb-1 text-sm leading-6 text-muted-foreground">
                               {item.a}
                             </p>
                           </AccordionItem>
@@ -4294,7 +4294,7 @@ function ChannelConnectInner() {
               </section>
             )}
 
-            <p className="mt-14 text-center text-sm text-zinc-500">
+            <p className="mt-14 text-center text-sm text-muted-foreground">
               {c.guideFooter} <ExternalLink className="inline h-3.5 w-3.5" />
             </p>
           </div>
@@ -4306,21 +4306,21 @@ function ChannelConnectInner() {
         widthClassName="max-w-6xl"
         maxHeightClassName="max-h-[92vh]"
       >
-        <DialogHeader className="border-b border-zinc-200 bg-white pr-14">
+        <DialogHeader className="border-b border-border bg-card pr-14">
           <div className="flex flex-wrap items-start gap-3">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-orange-200 bg-orange-50 text-orange-600">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-orange-200 bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800">
               <PlayCircle className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">{c.tutorialPreviewTitle}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600 dark:text-orange-300">{c.tutorialPreviewTitle}</p>
               <DialogTitle className="mt-1 text-2xl font-semibold tracking-tight">{guide.tutorial.title}</DialogTitle>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">{guide.tutorial.description}</p>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{guide.tutorial.description}</p>
             </div>
           </div>
         </DialogHeader>
-        <DialogContent className="force-light bg-[#f8fafc] p-5">
+        <DialogContent className="bg-background p-5">
           <div className="grid gap-5">
-            <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
+            <div className="force-light overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50 px-5 py-3">
                 <div className="flex items-center gap-2">
                   <span className="h-3 w-3 rounded-full bg-red-400" />
@@ -4435,8 +4435,8 @@ function ChannelConnectInner() {
               </div>
             </div>
 
-            <aside className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{c.tutorialStepsTitle}</p>
+            <aside className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.tutorialStepsTitle}</p>
               <div className="mt-4 space-y-2">
                 {tutorialSteps.map((step, index) => {
                   const active = index === tutorialStepIndex
@@ -4446,10 +4446,10 @@ function ChannelConnectInner() {
                       type="button"
                       onClick={() => setTutorialStepIndex(index)}
                       className={cn(
-                        "flex w-full gap-3 rounded-2xl border p-3 text-left text-sm leading-6 transition",
+                        "flex w-full gap-3 rounded-xl border p-3 text-left text-sm leading-6 transition",
                         active
-                          ? "border-orange-300 bg-orange-50 text-orange-900"
-                          : "border-zinc-200 bg-white text-zinc-700 hover:border-orange-200 hover:bg-zinc-50 hover:text-zinc-950",
+                          ? "border-orange-300 bg-orange-50 text-orange-900 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800"
+                          : "border-border bg-card text-foreground hover:border-orange-200 hover:bg-muted hover:text-foreground",
                       )}
                     >
                       {active ? (
@@ -4457,7 +4457,7 @@ function ChannelConnectInner() {
                           {index + 1}
                         </span>
                       ) : (
-                        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-zinc-100 text-xs font-bold text-zinc-600">
+                        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
                           {index + 1}
                         </span>
                       )}
@@ -4469,7 +4469,7 @@ function ChannelConnectInner() {
             </aside>
           </div>
         </DialogContent>
-        <DialogFooter className="flex-wrap justify-between gap-3 bg-white">
+        <DialogFooter className="flex-wrap justify-between gap-3 bg-card">
           <Button
             type="button"
             variant="outline"
@@ -4496,7 +4496,7 @@ function ChannelConnectInner() {
             </Button>
             <Button
               type="button"
-              className="bg-orange-600 text-white hover:bg-orange-700"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
                 setTutorialOpen(false)
                 goToStage("eligibility")

@@ -161,14 +161,14 @@ export function WorkforceManagerToday({
   }
 
   return <>
-    <section className="grid gap-px overflow-hidden rounded-xl border border-zinc-200 bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-700 sm:grid-cols-2 xl:grid-cols-4" aria-label={t("dailySummary")}>
+    <section className="grid gap-px overflow-hidden rounded-xl border border-border bg-zinc-200 dark:bg-zinc-700 sm:grid-cols-2 xl:grid-cols-4" aria-label={t("dailySummary")}>
       {summary.map(({ key, label, value, icon: Icon }) => <div key={key} className="flex min-h-28 flex-col justify-between bg-card p-5">
         <Icon className="h-4 w-4 text-zinc-600 dark:text-zinc-300" aria-hidden="true" />
         <div><p className="text-2xl font-semibold tabular-nums">{value}</p><p className="text-sm text-zinc-600 dark:text-zinc-300">{label}</p></div>
       </div>)}
     </section>
 
-    <section aria-labelledby="workforce-manager-today-list" className="border-y border-zinc-200 dark:border-zinc-700">
+    <section aria-labelledby="workforce-manager-today-list" className="border-y border-border">
       <div className="flex flex-col gap-1 px-1 py-5 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
           <h3 id="workforce-manager-today-list" className="text-base font-semibold">{t("teamToday")}</h3>
@@ -176,10 +176,10 @@ export function WorkforceManagerToday({
         </div>
         <span className="text-sm text-zinc-600 dark:text-zinc-300">{t("managerLoadedPeople", { count: data.people.length })}</span>
       </div>
-      <p className="border-t border-zinc-200 px-1 py-3 text-xs leading-5 text-zinc-600 dark:text-zinc-300 dark:border-zinc-700">
+      <p className="border-t border-border px-1 py-3 text-xs leading-5 text-zinc-600 dark:text-zinc-300">
         {t("managerSummaryBoundary")}
       </p>
-      <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+      <div className="divide-y divide-border">
         {data.people.map((person) => {
           const window = plannedWindow(person)
           return <article key={person.id} className="grid gap-4 px-1 py-5 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(15rem,1fr)_minmax(14rem,0.8fr)] lg:items-start">
@@ -223,7 +223,7 @@ export function WorkforceManagerToday({
       <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {paginationResult ? `${t("managerLoadMoreResult", { added: paginationResult.added, total: paginationResult.total })}${paginationResult.hasMore ? "" : ` ${t("managerListComplete")}`}` : ""}
       </p>
-      {data.pagination.nextCursor || hasRequested ? <div className="border-t border-zinc-200 py-5 text-center dark:border-zinc-700">
+      {data.pagination.nextCursor || hasRequested ? <div className="border-t border-border py-5 text-center">
         <Button ref={paginationControl} type="button" variant="outline" className="h-auto min-h-12 max-w-full scroll-my-2 whitespace-normal text-center aria-disabled:opacity-50" aria-disabled={busy || !data.pagination.nextCursor} onClick={loadMore}>
           {busy ? t("managerLoadingMore") : data.pagination.nextCursor ? t("managerLoadMore") : t("managerListComplete")}
         </Button>

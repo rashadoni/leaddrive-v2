@@ -76,11 +76,11 @@ function buildMonthDays(month: Date, routes: MtmRouteRecord[]) {
 }
 
 function routeTone(status: MtmRouteRecord["status"]) {
-  if (status === "COMPLETED") return "border-zinc-200 text-emerald-700 dark:border-zinc-700 dark:text-emerald-300"
-  if (status === "IN_PROGRESS") return "border-zinc-200 text-sky-700 dark:border-zinc-700 dark:text-sky-300"
-  if (status === "CANCELLED") return "border-zinc-200 text-red-700 dark:border-zinc-700 dark:text-red-300"
-  if (status === "DRAFT") return "border-zinc-200 text-amber-700 dark:border-zinc-700 dark:text-amber-300"
-  return "border-zinc-200 bg-muted/60 text-foreground dark:border-zinc-700"
+  if (status === "COMPLETED") return "border-border text-emerald-700 dark:text-emerald-300"
+  if (status === "IN_PROGRESS") return "border-border text-sky-700 dark:text-sky-300"
+  if (status === "CANCELLED") return "border-border text-red-700 dark:text-red-300"
+  if (status === "DRAFT") return "border-border text-amber-700 dark:text-amber-300"
+  return "border-border bg-muted/60 text-foreground"
 }
 
 
@@ -162,8 +162,8 @@ export function MtmRouteCalendar({
   }
 
   return (
-    <section data-testid="mtm-route-calendar" className="overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-      <header className="flex flex-col gap-3 border-b border-zinc-200 px-3 py-3 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+    <section data-testid="mtm-route-calendar" className="overflow-hidden rounded-xl border border-border bg-card">
+      <header className="flex flex-col gap-3 border-b border-border px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -241,7 +241,7 @@ export function MtmRouteCalendar({
 
       <div className="hidden grid-cols-7 xl:grid">
         {weekdayKeys.map((weekday) => (
-          <div key={weekday} className="border-b border-r border-zinc-200 px-2 py-2 text-center text-xs font-medium text-muted-foreground last:border-r-0 dark:border-zinc-700">
+          <div key={weekday} className="border-b border-r border-border px-2 py-2 text-center text-xs font-medium text-muted-foreground last:border-r-0">
             {t(`weekday.${weekday}`)}
           </div>
         ))}
@@ -284,7 +284,7 @@ export function MtmRouteCalendar({
               // не выполнил план (аудит 2026-09-26).
               data-closed-day={closedReason ? "true" : "false"}
               title={closedReason ?? undefined}
-              className={`group min-h-32 border-b border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700 xl:min-h-28 ${isCurrentMonth ? (closedReason ? "bg-muted/40" : isPastDay ? "bg-muted/20" : "bg-card") : "bg-muted/30 text-muted-foreground/50"}`}
+              className={`group min-h-32 border-b border-r border-border p-1.5 last:border-r-0 xl:min-h-28 ${isCurrentMonth ? (closedReason ? "bg-muted/40" : isPastDay ? "bg-muted/20" : "bg-card") : "bg-muted/30 text-muted-foreground/50"}`}
             >
               <div className="mb-1 flex min-h-9 items-center justify-between gap-1">
                 <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${isToday ? "font-bold text-primary ring-1 ring-inset ring-primary" : isPastDay ? "text-muted-foreground" : ""}`}>{day.date.getDate()}</span>
@@ -312,7 +312,7 @@ export function MtmRouteCalendar({
                   data-testid="mtm-route-calendar-day-summary"
                   aria-pressed={isSelected}
                   aria-label={`${formatDate(day.date, locale, { weekday: "long", day: "numeric", month: "long" })}: ${t("routesOnDate", { count: summary.routes })}`}
-                  className={`block w-full rounded-lg border px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isSelected ? "border-foreground ring-1 ring-inset ring-foreground" : "border-zinc-200 hover:bg-muted/60 dark:border-zinc-700"}`}
+                  className={`block w-full rounded-lg border px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isSelected ? "border-foreground ring-1 ring-inset ring-foreground" : "border-border hover:bg-muted/60"}`}
                   onClick={() => {
                     selectDate(key)
                     revealSelectedDayPanel()
@@ -345,7 +345,7 @@ export function MtmRouteCalendar({
       </div>
 
       {selectedDay ? (
-        <div ref={selectedDayPanelRef} data-testid="mtm-route-calendar-selected-day" className="scroll-mb-3 border-t border-zinc-200 p-3 dark:border-zinc-700 xl:p-4">
+        <div ref={selectedDayPanelRef} data-testid="mtm-route-calendar-selected-day" className="scroll-mb-3 border-t border-border p-3 xl:p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="text-sm font-semibold capitalize">{formatDate(selectedDay.date, locale, { weekday: "long", day: "numeric", month: "long" })}</h3>

@@ -486,7 +486,7 @@ export default function CreateInvoicePage() {
                       className="h-8 text-sm"
                     />
                     {showCompanyDropdown && companySearch && (
-                      <div className="absolute z-50 w-full mt-1 bg-popover border border-zinc-200 dark:border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
                         {companies
                           .filter((c) => c.name.toLowerCase().includes(companySearch.toLowerCase()))
                           .slice(0, 15)
@@ -574,7 +574,7 @@ export default function CreateInvoicePage() {
                       <Package className="h-3 w-3 mr-1" />{t("fromProducts") || "Products"}
                     </Button>
                     {showProductDropdown && (
-                      <div className="absolute right-0 mt-1 w-72 bg-popover border border-zinc-200 dark:border-zinc-700 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                      <div className="absolute right-0 mt-1 w-72 bg-popover border border-border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
                         {products.map((product) => (
                           <button key={product.id} className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex justify-between items-center" onClick={() => addFromProduct(product)}>
                             <span className="truncate mr-2">{product.name}</span>
@@ -592,7 +592,7 @@ export default function CreateInvoicePage() {
               </div>
             </CardHeader>
             <CardContent className="px-4 pb-3">
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-x-auto">
+              <div className="border border-border rounded-lg overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted text-muted-foreground text-xs font-semibold uppercase tracking-wider">

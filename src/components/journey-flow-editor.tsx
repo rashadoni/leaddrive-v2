@@ -435,7 +435,7 @@ export function JourneyFlowEditor({ steps, onSave }: JourneyFlowEditorProps) {
   }, [nodes, edges, onSave])
 
   return (
-    <div className="flex flex-col h-[550px] rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden">
+    <div className="flex flex-col h-[550px] rounded-xl border border-border bg-card overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center gap-1.5 px-3 py-2 border-b bg-muted/80 flex-wrap">
         <span className="text-xs font-semibold text-muted-foreground mr-2">{t("flowAddStep")}:</span>

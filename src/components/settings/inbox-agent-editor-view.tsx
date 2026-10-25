@@ -123,7 +123,7 @@ export function InboxAgentEditorView({
   const fitClass = fitContent ? "overflow-hidden resize-none" : undefined
 
   return (
-    <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card p-4 space-y-5">
+    <div className="border border-border rounded-lg bg-card p-4 space-y-5">
       <div className="flex items-start gap-2">
         <Bot className="h-5 w-5 text-violet-500 mt-0.5 shrink-0" />
         <div>
@@ -134,7 +134,7 @@ export function InboxAgentEditorView({
 
       {/* Master switch — the org-level aiAutoReply flag the engine self-gates on. */}
       {decorate("master",
-        <div className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 bg-muted/30">
+        <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/30">
           <div className="pr-3">
             <Label className="font-medium">{t("aiMasterToggle")}</Label>
             <p className="text-xs text-muted-foreground">{t("aiMasterHint")}</p>
@@ -235,7 +235,7 @@ export function InboxAgentEditorView({
         )}
 
         {decorate("escalation",
-          <div className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div className="pr-3">
               <Label className="font-medium">{t("fieldEscalation")}</Label>
               <p className="text-xs text-muted-foreground">{t("fieldEscalationHint")}</p>

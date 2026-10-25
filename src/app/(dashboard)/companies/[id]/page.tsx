@@ -327,7 +327,7 @@ export default function CompanyDetailPage() {
                 {(company.contacts || []).map(contact => (
                   <div
                     key={contact.id}
-                    className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => router.push(`/contacts/${contact.id}`)}
                   >
                     <div className="flex items-center gap-3">
@@ -362,7 +362,7 @@ export default function CompanyDetailPage() {
                 {(company.deals || []).map(deal => (
                   <div
                     key={deal.id}
-                    className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => router.push(`/deals/${deal.id}`)}
                   >
                     <div>
@@ -411,7 +411,7 @@ export default function CompanyDetailPage() {
                           <TimelineIcon type={entry.type} activityType={entry.meta?.activityType} />
                         </div>
                         <div
-                          className={`rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 transition-colors ${entry.type === "deal" ? "cursor-pointer hover:bg-muted/50" : ""}`}
+                          className={`rounded-lg border border-border p-3 transition-colors ${entry.type === "deal" ? "cursor-pointer hover:bg-muted/50" : ""}`}
                           onClick={() => entry.type === "deal" && router.push(`/deals/${entry.id}`)}
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -450,7 +450,7 @@ export default function CompanyDetailPage() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead><tr className="border-b border-zinc-200 dark:border-zinc-700 text-left">
+                    <thead><tr className="border-b border-border text-left">
                       <th className="py-2 px-2 font-medium">Date</th>
                       <th className="py-2 px-2 font-medium">Direction</th>
                       <th className="py-2 px-2 font-medium">Duration</th>
@@ -459,7 +459,7 @@ export default function CompanyDetailPage() {
                     </tr></thead>
                     <tbody>
                       {callHistory.map((call: any) => (
-                        <tr key={call.id} className="border-b border-zinc-200 dark:border-zinc-700 hover:bg-muted/50">
+                        <tr key={call.id} className="border-b border-border hover:bg-muted/50">
                           <td className="py-2 px-2 text-muted-foreground">{new Date(call.createdAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
                           <td className="py-2 px-2"><Badge variant={call.direction === "outbound" ? "default" : "secondary"} className="text-xs">{call.direction}</Badge></td>
                           <td className="py-2 px-2">{call.duration ? `${Math.floor(call.duration / 60)}:${String(call.duration % 60).padStart(2, "0")}` : "—"}</td>
@@ -509,7 +509,7 @@ export default function CompanyDetailPage() {
                   {(pricingProfile.categories || []).map((pc: any) => {
                     const isExpanded = expandedPricingCats.has(pc.id)
                     return (
-                      <div key={pc.id} className="border border-zinc-200 dark:border-zinc-700 rounded-lg">
+                      <div key={pc.id} className="border border-border rounded-lg">
                         <button
                           onClick={() => {
                             const next = new Set(expandedPricingCats)
@@ -539,7 +539,7 @@ export default function CompanyDetailPage() {
                               </thead>
                               <tbody>
                                 {pc.services.map((svc: any) => (
-                                  <tr key={svc.id} className="border-t border-zinc-200 dark:border-zinc-700">
+                                  <tr key={svc.id} className="border-t border-border">
                                     <td className="py-1.5">{svc.name}</td>
                                     <td className="py-1.5 text-center text-xs text-muted-foreground">{svc.unit}</td>
                                     <td className="py-1.5 text-center font-mono">{svc.qty}</td>
@@ -566,7 +566,7 @@ export default function CompanyDetailPage() {
                   <CardContent>
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-zinc-200 dark:border-zinc-700 text-left text-muted-foreground">
+                        <tr className="border-b border-border text-left text-muted-foreground">
                           <th className="pb-2 pr-4">{tc("type")}</th>
                           <th className="pb-2 pr-4">{tc("name")}</th>
                           <th className="pb-2 pr-4 text-right">{tc("total")}</th>
@@ -576,7 +576,7 @@ export default function CompanyDetailPage() {
                       </thead>
                       <tbody>
                         {pricingSales.map((sale: any) => (
-                          <tr key={sale.id} className="border-b border-zinc-200 dark:border-zinc-700 last:border-0">
+                          <tr key={sale.id} className="border-b border-border last:border-0">
                             <td className="py-2 pr-4">
                               <Badge className={sale.type === "recurring" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"}>
                                 {sale.type === "recurring" ? t("recurring") : t("oneTime")}
@@ -586,7 +586,7 @@ export default function CompanyDetailPage() {
                             <td className="py-2 pr-4 text-right font-mono font-medium">{sale.total?.toLocaleString(undefined, { maximumFractionDigits: 2 })} ₼</td>
                             <td className="py-2 pr-4 text-xs">{sale.effectiveDate ? formatDate(sale.effectiveDate, locale) : "—"}</td>
                             <td className="py-2">
-                              <Badge variant="outline" className={sale.status === "active" ? "text-green-600 border-green-300" : "text-muted-foreground border-zinc-200 dark:border-zinc-700"}>
+                              <Badge variant="outline" className={sale.status === "active" ? "text-green-600 border-green-300" : "text-muted-foreground border-border"}>
                                 {sale.status === "active" ? t("saleActive") : sale.status === "cancelled" ? t("saleCancelled") : t("saleCompleted")}
                               </Badge>
                             </td>

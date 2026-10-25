@@ -1593,7 +1593,7 @@ describe("the page behind the list", () => {
     expect(rows).toBeGreaterThan(-1)
     expect(roster.slice(rows)).not.toMatch(/overflow-(y-)?(auto|scroll)|max-h-/)
     // The offsets are <main>'s own padding; without them rows show through above the heading.
-    expect(roster).toContain('"-top-3 z-20 rounded-t-lg border-b border-zinc-200 bg-card sm:-top-4 lg:-top-8 dark:border-zinc-700",')
+    expect(roster).toContain('"-top-3 z-20 rounded-t-lg border-b border-border bg-card sm:-top-4 lg:-top-8",')
     // It follows the screen — except while it holds the open filters under the map, when it can be taller than the screen.
     expect(roster).toContain('!filtersInList && "[@media(min-height:600px)]:sticky",')
     expect(readFileSync("src/app/(dashboard)/layout.tsx", "utf8")).toMatch(/<main className=\{`[^`]*overflow-y-auto[^`]* p-3 sm:p-4 lg:p-8 /)

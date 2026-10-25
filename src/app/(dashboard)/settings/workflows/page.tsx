@@ -73,7 +73,7 @@ const actionBgColors: Record<string, string> = {
   create_task: "bg-teal-50 text-teal-700 border-teal-200",
   update_field: "bg-purple-50 text-purple-700 border-purple-200",
   send_notification: "bg-orange-50 text-orange-700 border-orange-200", notify: "bg-orange-50 text-orange-700 border-orange-200",
-  webhook: "bg-muted/50 text-foreground/70 border-zinc-200 dark:border-zinc-700",
+  webhook: "bg-muted/50 text-foreground/70 border-border",
   auto_assign: "bg-indigo-50 text-indigo-700 border-indigo-200", assign_to: "bg-indigo-50 text-indigo-700 border-indigo-200",
 }
 
@@ -322,7 +322,7 @@ export default function WorkflowsPage() {
           const conditionsSummary = getConditionsSummary(wf.conditions)
           return (
             <div key={wf.id} className={cn(
-              "border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card hover:shadow-md transition-shadow",
+              "border border-border rounded-lg bg-card hover:shadow-md transition-shadow",
               !wf.isActive && "opacity-60"
             )}>
               <div className="p-4">
@@ -331,10 +331,10 @@ export default function WorkflowsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className={cn(
-                        "text-xs px-2.5 py-0.5 rounded-full font-medium border border-zinc-200 dark:border-zinc-700",
+                        "text-xs px-2.5 py-0.5 rounded-full font-medium border border-border",
                         wf.isActive
                           ? "bg-green-100 text-green-700 border-green-200"
-                          : "bg-muted text-muted-foreground border-zinc-200 dark:border-zinc-700"
+                          : "bg-muted text-muted-foreground border-border"
                       )}>
                         {wf.isActive ? t("statActive") : t("statInactive")}
                       </span>
@@ -415,8 +415,8 @@ export default function WorkflowsPage() {
                         <div
                           key={i}
                           className={cn(
-                            "inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-700",
-                            actionBgColors[action.actionType] || "bg-muted text-muted-foreground border-zinc-200 dark:border-zinc-700"
+                            "inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border border-border",
+                            actionBgColors[action.actionType] || "bg-muted text-muted-foreground border-border"
                           )}
                         >
                           <AIcon className="h-3 w-3 shrink-0" />
