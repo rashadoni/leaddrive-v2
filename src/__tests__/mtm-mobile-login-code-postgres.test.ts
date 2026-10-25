@@ -35,6 +35,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
+import { hashOneTimeToken } from "@/lib/one-time-token"
 import { NextRequest, NextResponse } from "next/server"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
@@ -80,6 +81,11 @@ vi.mock("@/lib/superadmin-guard", () => ({
     ? webSession.current : NextResponse.json({ error: "Forbidden" }, { status: 403 })),
 }))
 
+const recoveryMail = vi.hoisted(() => ({ messages: [] as Array<{ organizationId: string; to: string; html: string }> }))
+vi.mock("@/lib/email", () => ({ sendEmail: vi.fn(async (message: { organizationId: string; to: string; html: string }) => {
+  recoveryMail.messages.push(message)
+}) }))
+
 // Limits are not under test; every request is let through.
 vi.mock("@/lib/public-abuse-guard", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/public-abuse-guard")>(),
@@ -121,6 +127,9 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
   let setPassword!: typeof import("@/app/api/v1/mtm/mobile/auth/password/route").POST
   let signIn!: typeof import("@/app/api/v1/mtm/mobile/auth/route").POST
   let resetUser!: typeof import("@/app/api/v1/users/[id]/reset-password/route").POST
+  let changeOwnPassword!: typeof import("@/app/api/v1/users/me/change-password/route").POST
+  let forgotPassword!: typeof import("@/app/api/v1/auth/forgot-password/route").POST
+  let redeemPassword!: typeof import("@/app/api/v1/auth/reset-password/route").POST
   let resetTenantUser!: typeof import("@/app/api/v1/admin/tenants/[id]/users/[userId]/reset-password/route").POST
   let updateAgent!: typeof import("@/app/api/v1/mtm/agents/[id]/route").PUT
   let resolveMobileAuth!: typeof import("@/lib/mobile-auth").resolveMobileAuth
@@ -149,6 +158,9 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     resolveMobileAuth = (await import("@/lib/mobile-auth")).resolveMobileAuth
     await import("@/lib/auth")
     resetUser = (await import("@/app/api/v1/users/[id]/reset-password/route")).POST
+    changeOwnPassword = (await import("@/app/api/v1/users/me/change-password/route")).POST
+    forgotPassword = (await import("@/app/api/v1/auth/forgot-password/route")).POST
+    redeemPassword = (await import("@/app/api/v1/auth/reset-password/route")).POST
     resetTenantUser = (await import("@/app/api/v1/admin/tenants/[id]/users/[userId]/reset-password/route")).POST
     availability = await import("@/lib/mtm/whatsapp-login-code")
     vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
@@ -173,6 +185,7 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
   }, 300_000)
 
   afterEach(() => {
+    recoveryMail.messages.length = 0
     sent.length = 0
     metaAnswers = null
     availability.resetLoginCodeAvailability()
@@ -526,6 +539,78 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
       expect((await bypass(() => prisma.organization.findUniqueOrThrow({ where: { id: company }, select: { isActive: true } }))).isActive).toBe(scope === "tenant")
       expect(sent).toHaveLength(0)
     } finally { webSession.current = null }
+  })
+
+  it("keeps own password proof and audit atomic, clears old reset links and refuses canonical legacy changes", async () => {
+    const company = "identity-own-password", oldPassword = "Fictional-Own-Initial-2026!", newPassword = "Fictional-Own-Changed-2026!"
+    const userId = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, name: "Fictional own password company", slug: company } })
+      return (await prisma.user.create({ data: { organizationId: company, name: "Fictional own password person", email: "own@credential.invalid", role: "viewer", passwordHash: await bcrypt.hash(oldPassword, 4), resetToken: hashOneTimeToken("fixture-own-old-link"), resetTokenExp: new Date(Date.now() + 3_600_000) } })).id
+    })
+    const call = (handler: (request: NextRequest) => Promise<Response>, url: string, body: unknown) => handler(new NextRequest(`http://localhost:3000${url}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }))
+    const change = (currentPassword: string, nextPassword: string) => call(changeOwnPassword, "/api/v1/users/me/change-password", { currentPassword, newPassword: nextPassword })
+    const state = () => bypass(() => prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { passwordHash: true, passwordChangedAt: true, resetToken: true, resetTokenExp: true } }))
+    webSession.current = { userId, orgId: company, role: "viewer", email: "own@credential.invalid", name: "Fictional own password person", principalType: "session" }
+    try {
+      expect((await change("incorrect-current-password", newPassword)).status).toBe(400)
+      expect((await change(oldPassword, newPassword)).status).toBe(200)
+      const before = await state()
+      expect(await bcrypt.compare(newPassword, before.passwordHash)).toBe(true)
+      expect(before.resetToken).toBeNull(); expect(before.resetTokenExp).toBeNull()
+      expect((await call(redeemPassword, "/api/v1/auth/reset-password", { token: "fixture-own-old-link", password: "Fictional-Own-Replayed-2026!" })).status).toBe(400)
+      await bypass(() => prisma.$executeRawUnsafe(`ALTER TABLE audit_logs ADD CONSTRAINT identity_fixture_own_audit_fail CHECK ("organizationId" <> 'identity-own-password' OR action <> 'password_change') NOT VALID`))
+      try {
+        expect((await change(newPassword, "Fictional-Own-Rollback-2026!")).status).toBe(500)
+        expect(await state()).toEqual(before)
+      } finally { await bypass(() => prisma.$executeRawUnsafe("ALTER TABLE audit_logs DROP CONSTRAINT identity_fixture_own_audit_fail")) }
+      await bypass(() => prisma.identityAccount.create({ data: { organizationId: company, userId, cutoverAt: new Date(), passwordHash: "!fixture-own-canonical" } }))
+      expect((await change(newPassword, "Fictional-Own-Forbidden-2026!")).status).toBe(409)
+      expect(await state()).toEqual(before)
+      expect(sent).toHaveLength(0); expect(recoveryMail.messages).toHaveLength(0)
+    } finally { webSession.current = null }
+  })
+
+  it("redeems legacy email links once and refuses issue or redemption after canonical authority", async () => {
+    const company = "identity-email-password", email = "email@credential.invalid", oldPassword = "Fictional-Email-Initial-2026!"
+    const userId = await bypass(async () => {
+      // Recovery does not admit sign-in or reactivate a suspended company.
+      await prisma.organization.create({ data: { id: company, name: "Fictional email password company", slug: company, isActive: false } })
+      return (await prisma.user.create({ data: { organizationId: company, name: "Fictional email password person", email, role: "viewer", passwordHash: await bcrypt.hash(oldPassword, 4) } })).id
+    })
+    const call = (handler: (request: NextRequest) => Promise<Response>, path: string, body: unknown) => handler(new NextRequest(`http://localhost:3000/api/v1/auth/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }))
+    const ask = () => call(forgotPassword, "forgot-password", { email })
+    const tokenOf = (index: number) => {
+      expect(recoveryMail.messages[index]).toMatchObject({ organizationId: company, to: email })
+      const token = recoveryMail.messages[index].html.match(/reset-password\?token=([a-zA-Z0-9_-]+)/)?.[1]
+      expect(token).toEqual(expect.any(String)); return token as string
+    }
+    const redeem = (token: string) => call(redeemPassword, "reset-password", { token, password: "Fictional-Email-Changed-2026!" })
+    expect((await ask()).status).toBe(200)
+    expect(recoveryMail.messages).toHaveLength(1)
+    const token = tokenOf(0)
+    const original = await bypass(() => prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { passwordHash: true, passwordChangedAt: true, resetToken: true, resetTokenExp: true } }))
+    await bypass(() => prisma.$executeRawUnsafe(`ALTER TABLE audit_logs ADD CONSTRAINT identity_fixture_email_audit_fail CHECK ("organizationId" <> 'identity-email-password' OR action <> 'password_reset_by_email') NOT VALID`))
+    try {
+      await expect(redeem(token)).rejects.toThrow()
+      expect(await bypass(() => prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { passwordHash: true, passwordChangedAt: true, resetToken: true, resetTokenExp: true } }))).toEqual(original)
+    } finally { await bypass(() => prisma.$executeRawUnsafe("ALTER TABLE audit_logs DROP CONSTRAINT identity_fixture_email_audit_fail")) }
+    expect((await redeem(token)).status).toBe(200)
+    expect((await redeem(token)).status).toBe(400)
+    expect((await ask()).status).toBe(200)
+    expect(recoveryMail.messages).toHaveLength(2)
+    const outstanding = tokenOf(1)
+    const state = () => bypass(() => prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { passwordHash: true, passwordChangedAt: true, resetToken: true, resetTokenExp: true } }))
+    const before = await state()
+    expect(await bcrypt.compare("Fictional-Email-Changed-2026!", before.passwordHash)).toBe(true)
+    expect(before.resetToken).toBe(hashOneTimeToken(outstanding))
+    await bypass(() => prisma.identityAccount.create({ data: { organizationId: company, userId, cutoverAt: new Date(), passwordHash: "!fixture-email-canonical" } }))
+    expect((await redeem(outstanding)).status).toBe(400)
+    recoveryMail.messages.length = 0
+    expect((await ask()).status).toBe(200)
+    expect(recoveryMail.messages).toHaveLength(0)
+    expect(await state()).toEqual(before)
+    expect((await bypass(() => prisma.organization.findUniqueOrThrow({ where: { id: company }, select: { isActive: true } }))).isActive).toBe(false)
+    expect(sent).toHaveLength(0)
   })
 
   it("says aloud that codes cannot be sent while the template is missing — to everybody, and withdraws the code", async () => {

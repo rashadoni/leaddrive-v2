@@ -13,7 +13,10 @@
  */
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { prisma } from "@/lib/prisma"
+import { logAudit, prisma } from "@/lib/prisma"
+import { runWithTenant } from "@/lib/rls-context"
+import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
+import { readLegacyCrmCredentialBoundary } from "@/lib/identity/legacy-crm-boundary"
 import { withRlsSessionAuth } from "@/lib/with-rls"
 import bcrypt from "bcryptjs"
 import { passwordPolicyError } from "@/lib/password-policy"
@@ -46,11 +49,14 @@ export const POST = withRlsSessionAuth(async (req, session) => {
   try {
     const user = await prisma.user.findFirst({
       where: { id: userId, organizationId: orgId },
-      select: { id: true, passwordHash: true },
+      select: { id: true, passwordHash: true, passwordChangedAt: true },
     })
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
+
+    const boundary = await runWithTenant(orgId, () => readLegacyCrmCredentialBoundary(prisma, orgId, userId))
+    if (boundary !== "LEGACY") return NextResponse.json({ error: "Use the current credential management flow for this account", code: "IDENTITY_CREDENTIAL_FLOW_REQUIRED" }, { status: 409 })
 
     const ok = await bcrypt.compare(currentPassword, user.passwordHash)
     if (!ok) {
@@ -68,15 +74,31 @@ export const POST = withRlsSessionAuth(async (req, session) => {
 
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST)
 
-    // Scope the write to the caller's own row. passwordChangedAt drives the
-    // session-fingerprint check in auth.ts (see SECURITY NOTE above).
-    const result = await prisma.user.updateMany({
-      where: { id: userId, organizationId: orgId },
-      data: { passwordHash, passwordChangedAt: new Date() },
-    })
-    if (result.count === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
+    const result = await runWithTenant(orgId, () => withLegacyCredentialMaintenance(prisma, orgId,
+      [{ kind: "USER", userId }], async tx => {
+        const fresh = await tx.user.findFirst({
+          where: { id: userId, organizationId: orgId, isActive: true, anonymizedAt: null },
+          select: { id: true, passwordHash: true, passwordChangedAt: true },
+        })
+        // The comparison outside the lock proves this exact old credential.
+        if (!fresh || fresh.passwordHash !== user.passwordHash
+          || (fresh.passwordChangedAt?.getTime() ?? null) !== (user.passwordChangedAt?.getTime() ?? null)) return false
+        const changedAt = new Date()
+        const changed = await tx.user.updateMany({
+          where: { id: userId, organizationId: orgId, passwordHash: user.passwordHash,
+            passwordChangedAt: user.passwordChangedAt ?? null, isActive: true, anonymizedAt: null },
+          data: { passwordHash, passwordChangedAt: changedAt, resetToken: null, resetTokenExp: null },
+        })
+        if (changed.count !== 1) return false
+        await logAudit(orgId, "password_change", "user", userId, undefined, {
+          userId,
+          oldValue: { passwordChangedAt: fresh.passwordChangedAt },
+          newValue: { passwordChangedAt: changedAt, sessionsInvalidated: true },
+        }, tx)
+        return true
+      }))
+    if (!result.allowed) return NextResponse.json({ error: "Use the current credential management flow for this account", code: "IDENTITY_CREDENTIAL_FLOW_REQUIRED" }, { status: 409 })
+    if (!result.value) return NextResponse.json({ error: "Credential changed; sign in again and retry" }, { status: 400 })
 
     return NextResponse.json({ success: true })
   } catch (e) {
