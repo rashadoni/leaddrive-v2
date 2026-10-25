@@ -104,3 +104,15 @@
 - Key fixture: fenced admin creates two real wrapped keys using actual pure TS crypto helpers transpiled in memory, no algorithm copy/app/auth/Prisma mocks. Restricted app reads each key only inside transaction tenant context; unscoped sees0, INSERT/UPDATE/DELETE key privilegesfalse, actual v2 roundtrip succeeds and wrong tenant fails. Key table added to immutable before/after snapshot (eight tables). Real app key-load failure marker must be absent; raw log is read locally on hosted runner, never uploaded. No runtime business/key write privilege broadened. Broad encrypted-route acceptance remains outside this primitive/provisioning proof.
 - Actual local20/20 Node contract/regression/crypto tests PASS; existing live-draft7/7PASS; node syntax/scoped ESLint PASS, YAML live-gate/token/path assertions PASS, event-platform assets27domains/86topics/5schemas PASS, runner policy83workflows PASS. origin/main fetched unchangeda98e87. No local DB/build/compiler/full-app E2E run; hosted proof still pending, old receipts retained.
 - Next: checkpoint all explicit task paths including prior local proof history, push draft branch, mark ready and require new exact-source hosted stand plus five source gates. No merge/deploy.
+
+
+## 2026-10-25 12:47 Asia/Baku — Exact fixed candidate published for fresh hosted verification
+
+- Pushedc110afb0cb0265779c7624a7ab237a6acdc89f4e to existing branch/PR1032, including preserved local historical proof/review checkpoints. Waited until GitHub PR head actually matchedc110 before marking ready. New ready-event stand40177964018 and required checks40177964012 are running. Runner policy40177930262 and scan40177930278 SUCCESS. Draft workflow40177930250 overallSUCCESS is not browser proof: heavyweight stand was skipped as intended while draft.
+- New candidate requires20 actual acceptance cases (prior15+key fixture+three direct HTTP denials+runtime key-load check),24 source bindings and eight immutable table snapshots including two key rows. Local docs advance only until final outcome; no doc-only push to restart/cancel good CI. Next: inspect actual hosted schema/full-build/auth/results, diagnose genuine failures without weakening assertions, retain fresh source-bound receipts and close only actually verified points. No main merge/deploy.
+
+
+## 2026-10-25 12:49 Asia/Baku — Early hosted dependency-order failure corrected
+
+- Stand40177964018 heavy job121122776057 FAIL before DB provisioning: newly added crypto test imported TypeScript before npm ci. Exact logs confirm ERR_MODULE_NOT_FOUND/typescript. Live draft preflight121122659507 SUCCESS. This run is not PASS; no schema/build/browser executed.
+- Kept dependency-free17case isolation contract before install/any DB mutation; moved actual3case assertion/crypto test immediately after npm ci and still before schema writes. YAML step-order assertion now PASS; event-platform assets and runner policy PASS. No assertion weakened or runtime/app privilege change. PR back to draft while checkpointing this workflow correction; fresh exact-head run required.

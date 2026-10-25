@@ -138,13 +138,15 @@ jobs:
           printf '{"status":"PREPARING","checkedSha":"%s","productionMutation":false}\n' "$GITHUB_SHA" > artifacts/booking-role-sandbox/workflow-context.json
       - name: Validate isolation before any database mutation
         run: |
-          node --test scripts/booking/role-browser-contract.test.mjs scripts/booking/role-browser-checks.test.mjs
+          node --test scripts/booking/role-browser-contract.test.mjs
           node --input-type=module -e 'import {sandboxContract} from "./scripts/booking/role-browser-contract.mjs"; sandboxContract(process.env)'
       - name: Prepare bounded hosted build memory
         run: bash scripts/ci/prepare-hosted-build-runner.sh
         env:
           LEADDRIVE_BUILD_MIN_BUDGET_KIB: '16777216'
       - run: npm ci
+      - name: Check role assertions and actual crypto fixture after dependencies
+        run: node --test scripts/booking/role-browser-checks.test.mjs
       - name: Create disposable schema and actual Booking constraints
         shell: bash
         run: |
