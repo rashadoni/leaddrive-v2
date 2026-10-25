@@ -31037,5 +31037,16 @@
     "openAgain": "Open again",
     "checkLinked": "I pressed Start",
     "linkSteps": "Open the bot and press «Start». The link works for 15 minutes."
+  },
+  "whatsappSignupWindow": {
+    "title": "Connect WhatsApp",
+    "description": "Meta will ask you to sign in, choose your business and the WhatsApp number. When it finishes, this window closes and the number appears in your CRM.",
+    "button": "Continue with Facebook",
+    "working": "Waiting for Meta…",
+    "done": "Done — you can close this window.",
+    "cancelled": "The Meta window was closed before the connection finished.",
+    "failed": "The connection did not finish. Close this window and try again from the channel catalog.",
+    "notFromCatalog": "Open this window from Settings → Channels → WhatsApp in your CRM.",
+    "notConfigured": "Connecting WhatsApp through Meta is not available on this server."
   }
 }
