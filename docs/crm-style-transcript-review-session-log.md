@@ -293,3 +293,9 @@
 - PR [#1034](https://github.com/rashadoni/leaddrive-v2/pull/1034) объединён через GitHub с expected_head_sha. Merge SHA: `cee8b68a7a811c0b861d00ab97664bb58f58511d`.
 - Штатный [Deploy to Production run 40188190012](https://github.com/rashadoni/leaddrive-v2/actions/runs/40188190012) стартовал на этом SHA. Следующий этап: дождаться build/checks/deploy/smoke, сверить публичный artifactSha и проверить три изменённые страницы.
 - Authenticated native Chrome подтверждён на /tickets, light; исходная вкладка сохранена. Подготовлен ограниченный post-release просмотр /companies, /cdp/insights, /ai/actions; /dashboard исключён. Browser evidence будет вне Git в приватной папке release. Тяжёлые проверки локально NOT RUN по ограничению host; проверки PR выполнены hosted CI.
+
+### Сборка release artifact завершена
+
+- В run `40188190012` задания `Quality & security gates` и `Production build & publish artifact` завершились success. Полная production-сборка Next.js выполнена на GitHub-hosted runner, не на Contabo development host.
+- Началось штатное `Deploy to production & post-deploy smoke` для merge SHA `cee8b68a7a811c0b861d00ab97664bb58f58511d`. До результата этой job и отдельной сверки публичного build-info выпуск не считается подтверждённым.
+- Read-only review post-release helper выявил и помог устранить ложноположительные условия ожидания/выбора карточек и восстановление viewport/preferences. Helper находится только в /tmp, не входит в приложение. Рабочие данные, AI-действия и главная страница не затрагиваются.
