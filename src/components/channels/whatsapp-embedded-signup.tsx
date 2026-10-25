@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Loader2 } from "lucide-react"
+import { appOrigin, readRelayedSignup, signupWindowUrl } from "@/lib/whatsapp-signup-window"
 
 /**
  * "Connect WhatsApp with Meta" — Meta's Embedded Signup dialog (lib/whatsapp-embedded-signup).
@@ -28,7 +29,7 @@ type FacebookSdk = {
   init: (options: Record<string, unknown>) => void
   login: (callback: (response: SdkLoginResponse) => void, options: Record<string, unknown>) => void
 }
-type SignupSession = { wabaId: string; phoneNumberId: string; businessId: string | null }
+export type SignupSession = { wabaId: string; phoneNumberId: string; businessId: string | null }
 export type WhatsAppEmbeddedSignupStatus =
   | { kind: "idle" }
   | { kind: "working" }
@@ -44,7 +45,7 @@ declare global {
 
 const SDK_SRC = "https://connect.facebook.net/en_US/sdk.js"
 
-function loadSdk(appId: string): Promise<FacebookSdk> {
+export function loadSdk(appId: string): Promise<FacebookSdk> {
   if (window.FB) return Promise.resolve(window.FB)
   return new Promise((resolve, reject) => {
     window.fbAsyncInit = () => {
@@ -91,10 +92,69 @@ export function readSignupMessage(origin: string, raw: unknown): SignupSession |
   return { wabaId, phoneNumberId, businessId }
 }
 
+export type EmbeddedSignupDialogOutcome =
+  | { kind: "connected"; code: string; session: SignupSession }
+  | { kind: "cancel" }
+  | { kind: "failed" }
+
+/**
+ * Opens Meta's Embedded Signup dialog on THIS page and resolves with the one-time code and the account
+ * and number the customer picked. Meta starts the SDK only on the app host (its allowed-domains list),
+ * so tenant hosts reach this through the app-host window (lib/whatsapp-signup-window) instead.
+ */
+export function runEmbeddedSignupDialog(config: { appId: string; configId: string }): Promise<EmbeddedSignupDialogOutcome> {
+  return new Promise((resolve) => {
+    let session: SignupSession | null = null
+    let settled = false
+    const settle = (outcome: EmbeddedSignupDialogOutcome) => {
+      if (settled) return
+      settled = true
+      window.removeEventListener("message", onMessage)
+      resolve(outcome)
+    }
+    const onMessage = (event: MessageEvent) => {
+      const result = readSignupMessage(event.origin, event.data)
+      if (result === "cancel") settle({ kind: "cancel" })
+      else if (result) session = result
+    }
+    window.addEventListener("message", onMessage)
+
+    const finish = async (code: string) => {
+      // Meta posts the session message around the same time as the login callback; give it a moment.
+      for (let i = 0; i < 20 && !session; i += 1) await new Promise((r) => setTimeout(r, 250))
+      settle(session ? { kind: "connected", code, session } : { kind: "failed" })
+    }
+
+    loadSdk(config.appId)
+      .then((sdk) => {
+        // The SDK requires a plain (non-async) callback.
+        sdk.login(
+          (response) => {
+            const code = response?.authResponse?.code
+            if (code) void finish(code)
+            else settle({ kind: "cancel" })
+          },
+          {
+            config_id: config.configId,
+            response_type: "code",
+            override_default_response_type: true,
+            extras: { setup: {}, sessionInfoVersion: "3" },
+          },
+        )
+      })
+      .catch(() => settle({ kind: "failed" }))
+  })
+}
+
 /**
  * Meta's Embedded Signup as a hook, so any element can start it — the channel catalog's WhatsApp tile
  * is the button itself. `availability` is "unavailable" when the server has no Embedded Signup
  * configuration (WHATSAPP_EMBEDDED_SIGNUP_*): the caller then offers manual setup instead.
+ *
+ * On the app host the dialog runs in this tab. On a tenant host (zeytun.leaddrivecrm.org) Meta refuses
+ * to start its SDK, so the tile opens the app-host signup window and takes the result it posts back
+ * (lib/whatsapp-signup-window). Either way the code is exchanged by THIS host's API, under this tab's
+ * session and organisation.
  */
 export function useWhatsAppEmbeddedSignup({
   cancelledMessage,
@@ -108,7 +168,7 @@ export function useWhatsAppEmbeddedSignup({
   // undefined: still asking the server; null: not configured here.
   const [config, setConfig] = useState<{ appId: string; configId: string } | null | undefined>(undefined)
   const [status, setStatus] = useState<WhatsAppEmbeddedSignupStatus>({ kind: "idle" })
-  const session = useRef<SignupSession | null>(null)
+  const relayWindow = useRef<Window | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -126,24 +186,7 @@ export function useWhatsAppEmbeddedSignup({
     }
   }, [])
 
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      const result = readSignupMessage(event.origin, event.data)
-      if (result === "cancel") setStatus({ kind: "error", message: cancelledMessage })
-      else if (result) session.current = result
-    }
-    window.addEventListener("message", onMessage)
-    return () => window.removeEventListener("message", onMessage)
-  }, [cancelledMessage])
-
-  const finish = async (code: string) => {
-    // Meta posts the session message around the same time as the login callback; give it a moment.
-    for (let i = 0; i < 20 && !session.current; i += 1) await new Promise((r) => setTimeout(r, 250))
-    const picked = session.current
-    if (!picked) {
-      setStatus({ kind: "error", message: failedMessage })
-      return
-    }
+  const finish = async (code: string, picked: SignupSession) => {
     try {
       const res = await fetch("/api/v1/channels/whatsapp/embedded-signup", {
         method: "POST",
@@ -171,30 +214,66 @@ export function useWhatsAppEmbeddedSignup({
       setStatus({ kind: "error", message: failedMessage })
     }
   }
+  const finishRef = useRef(finish)
+  finishRef.current = finish
 
-  const start = async () => {
-    if (!config || status.kind === "working") return
-    session.current = null
-    setStatus({ kind: "working" })
-    try {
-      const sdk = await loadSdk(config.appId)
-      // The SDK requires a plain (non-async) callback.
-      sdk.login(
-        (response) => {
-          const code = response?.authResponse?.code
-          if (code) void finish(code)
-          else setStatus({ kind: "error", message: cancelledMessage })
-        },
-        {
-          config_id: config.configId,
-          response_type: "code",
-          override_default_response_type: true,
-          extras: { setup: {}, sessionInfoVersion: "3" },
-        },
-      )
-    } catch {
-      setStatus({ kind: "error", message: failedMessage })
+  // The app-host window's result (tenant hosts only).
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (!relayWindow.current || event.source !== relayWindow.current) return
+      const result = readRelayedSignup(event.origin, event.data)
+      if (!result) return
+      relayWindow.current = null
+      if (result.kind === "cancel") setStatus({ kind: "error", message: cancelledMessage })
+      else if (result.kind === "failed") setStatus({ kind: "error", message: failedMessage })
+      else {
+        const { code, wabaId, phoneNumberId, businessId } = result
+        void finishRef.current(code, { wabaId, phoneNumberId, businessId })
+      }
     }
+    window.addEventListener("message", onMessage)
+    return () => window.removeEventListener("message", onMessage)
+  }, [cancelledMessage, failedMessage])
+
+  // A window closed without a result is a cancelled connection, not an endless spinner.
+  useEffect(() => {
+    if (status.kind !== "working") return
+    const timer = window.setInterval(() => {
+      const popup = relayWindow.current
+      if (!popup || !popup.closed) return
+      // The window posts and then closes itself; let a result already on its way arrive first.
+      window.setTimeout(() => {
+        if (relayWindow.current !== popup) return
+        relayWindow.current = null
+        setStatus({ kind: "error", message: cancelledMessage })
+      }, 1000)
+    }, 700)
+    return () => window.clearInterval(timer)
+  }, [status.kind, cancelledMessage])
+
+  const start = () => {
+    if (!config || status.kind === "working") return
+    if (window.location.origin !== appOrigin()) {
+      // Opened synchronously inside the click, or the browser blocks it.
+      const popup = window.open(
+        signupWindowUrl(window.location.origin, document.documentElement.lang || null),
+        "leaddrive-whatsapp-signup",
+        "popup,width=620,height=760",
+      )
+      if (!popup) {
+        setStatus({ kind: "error", message: failedMessage })
+        return
+      }
+      relayWindow.current = popup
+      setStatus({ kind: "working" })
+      return
+    }
+    setStatus({ kind: "working" })
+    void runEmbeddedSignupDialog(config).then((outcome) => {
+      if (outcome.kind === "cancel") setStatus({ kind: "error", message: cancelledMessage })
+      else if (outcome.kind === "failed") setStatus({ kind: "error", message: failedMessage })
+      else void finish(outcome.code, outcome.session)
+    })
   }
 
   const availability: "loading" | "ready" | "unavailable" = config === undefined ? "loading" : config ? "ready" : "unavailable"

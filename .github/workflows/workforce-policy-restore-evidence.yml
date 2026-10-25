@@ -4,6 +4,8 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "scripts/workforce-crm-lifecycle-evidence.mjs"
+      - "scripts/ci/verify-github-candidate.mjs"
+      - "src/__tests__/github-candidate-provenance.test.ts"
       - "src/lib/crm-product-availability.ts"
       - ".github/workflows/workforce-policy-restore-evidence.yml"
       - "scripts/_rls.mjs"
@@ -181,6 +183,10 @@ jobs:
           # not accept Prisma's blanket data-loss override for schema alignment.
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE UNIQUE INDEX IF NOT EXISTS "booking_pages_org_id_key" ON "booking_pages"("organizationId", "id"); CREATE UNIQUE INDEX IF NOT EXISTS "bookings_org_id_key" ON "bookings"("organizationId", "id");'
           DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema prisma/schema.prisma --skip-generate
+          # Auth.js now reads the irreversible identity marker. The restricted
+          # role was granted before this table existed in the historical base.
+          # Add only its scoped marker columns after preserving that proof.
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f scripts/ci/fixtures/workforce-policy-restore-identity-read.sql
       - name: Execute mandatory real PostgreSQL restore concurrency and rollback tests
         run: npx vitest run src/__tests__/lib-workforce-policy-restore-postgres.test.ts --maxWorkers=1
       - name: Install Chromium on hosted Ubuntu

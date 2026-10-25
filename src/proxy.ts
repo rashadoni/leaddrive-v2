@@ -87,7 +87,7 @@ function isPersonnelApiPath(pathname: string): boolean {
 // click redirects are loaded by unauthenticated recipients (email clients, SMS).
 // Without this, the auth middleware 307→/login and open/click/attribution silently
 // under-count. The routes themselves are RLS-context-wrapped (runWithRlsBypass).
-const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/", "/share/location/", "/field", "/time", "/book/"]
+const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/", "/share/location/", "/field", "/time", "/book/", "/connect/whatsapp"]
 const publicExactPaths = new Set(["/manifest.json", "/sw.js", "/unsubscribe"])
 
 /**
@@ -674,6 +674,8 @@ const authMiddleware = auth(async (req) => {
       || pathname.startsWith("/ticket-closure/")
       || pathname.startsWith("/portal/invoice/")
       || pathname.startsWith("/book/")
+      // The WhatsApp signup window on the app host speaks the language of the tenant tab that opened it.
+      || matchesPublicPath(pathname, "/connect/whatsapp")
       || appDownloadPage
       ? req.nextUrl.searchParams.get("lang")
       : null
@@ -806,10 +808,11 @@ const authMiddleware = auth(async (req) => {
             )
             const payloadJson = atob(b64)
             const payload = JSON.parse(payloadJson)
-            // Only block if this is clearly a mobile JWT (carries agentId).
+            // Both legacy actor tokens and canonical app tokens are mobile.
+            // This unverified hint can only deny; route handlers verify crypto.
             // Web/session tokens, API keys (already excluded via ld_ prefix),
             // and other Bearer tokens do NOT have agentId → fall through normally.
-            if (payload?.agentId) {
+            if (payload?.agentId || payload?.iss === "leaddrive:identity:mobile:v1") {
               console.warn(
                 `[mobile-auth][middleware-reject] mobile JWT rejected on non-MTM path — agentId=${payload.agentId} path=${pathname}`
               )

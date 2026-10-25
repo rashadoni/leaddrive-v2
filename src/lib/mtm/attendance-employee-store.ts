@@ -1,7 +1,11 @@
+import { identityDirectoryPhone } from "@/lib/identity/directory-contact"
 import { createHash, randomUUID } from "node:crypto"
 import { ATTENDANCE_TRACKED_CARD_WHERE, attendanceTrackedCardSql, isAttendanceTrackedCard } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
+import { runWithTenant } from "@/lib/rls-context"
+import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
+import { readLegacyPhoneAssignmentBoundaryInTransaction } from "@/lib/identity/legacy-credential-boundary"
 import { findPhoneOwner } from "@/lib/mtm/mobile-login-phone"
 import { readAttendanceProjectionInTransaction } from "@/lib/mtm/attendance-report-store"
 import { summarizeMtmAttendanceRows } from "@/lib/mtm/attendance-report"
@@ -60,8 +64,10 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const users = await tx.user.findMany({ where: { organizationId, isActive: true, anonymizedAt: null }, select: { id: true, name: true, phone: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
     const cards = await tx.mtmAgent.findMany({ where: { organizationId }, select: { id: true, name: true, phone: true, position: true, managerId: true, userId: true, role: true, status: true, attendanceParticipant: true, attendanceExcluded: true, attendanceIncludedFrom: true, teamId: true, team: { select: { name: true } }, departmentId: true, department: { select: { name: true } },
+      user: { select: { identityAccount: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
+      identityActorBinding: { select: { account: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
       auditLogs: { where: { organizationId, metadataKind: "mtm_attendance_employment", OR: [
-        { action: { in: ["MTM_ATTENDANCE_EMPLOYEE_CREATED", "MTM_ATTENDANCE_EMPLOYEE_ENROLLED"] } },
+        { action: { in: ["MTM_ATTENDANCE_EMPLOYEE_CREATED", "MTM_ATTENDANCE_EMPLOYEE_ENROLLED", "MTM_IDENTITY_TIME_ENROLLED"] } },
         { action: "MTM_ATTENDANCE_EMPLOYMENT_RECORDED", newData: { path: ["kind"], equals: "HIRE" } },
       ] }, select: { id: true }, take: 1 },
     }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
@@ -87,7 +93,7 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
         eligible: false }
     }), employees: tracked.map(card => ({ id: card.id, name: card.name, role: card.role, status: card.status, teamName: card.team?.name ?? null,
       departmentId: card.departmentId, departmentName: card.department?.name ?? null, position: card.position ?? null, teamId: card.teamId, managerId: card.managerId,
-      phone: card.phone ?? (card.userId ? phones.get(card.userId) ?? null : null), todayMark: marks.get(card.id) ?? null,
+      phone: identityDirectoryPhone({ userAccount: card.user?.identityAccount, boundAccount: card.identityActorBinding?.account, legacyPhone: card.phone ?? (card.userId ? phones.get(card.userId) ?? null : null) }), todayMark: marks.get(card.id) ?? null,
       included: !card.attendanceExcluded, participationVersion: latestParticipation.get(card.id) ?? null, includedFrom: card.attendanceIncludedFrom?.toISOString() ?? null,
       history: events.filter(event => event.agentId === card.id).map(event => ({ id: event.id, kind: event.kind,
         // A termination instant is the start of the day after the last work day.
@@ -303,7 +309,8 @@ export async function readAttendanceEmployee(actor: AttendanceReviewer, agentId:
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const card = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, ...ATTENDANCE_TRACKED_CARD_WHERE },
       select: { id: true, name: true, phone: true, email: true, role: true, status: true, position: true, teamId: true, managerId: true, attendanceExcluded: true, team: { select: { name: true } }, departmentId: true, department: { select: { name: true } },
-        user: { select: { id: true, name: true, phone: true, email: true, role: true, isActive: true } } } })
+        user: { select: { id: true, name: true, phone: true, email: true, role: true, isActive: true, identityAccount: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
+        identityActorBinding: { select: { account: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } } } })
     if (!card) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
     const [teams, departments, managerCards, events, participation] = await Promise.all([
       tx.mtmTeam.findMany({ where: { organizationId }, select: { id: true, name: true, departmentId: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1000 }),
@@ -328,10 +335,14 @@ export async function readAttendanceEmployee(actor: AttendanceReviewer, agentId:
       if (!(error instanceof Error) || !error.message.startsWith("MTM_ATTENDANCE_")) throw error
     }
     const marks = await todayMarks(tx, organizationId, [agentId], today)
-    const preparation = await readAttendanceEmployeePreparation(tx, { organizationId, agentId, date: today }, card, now)
+    const phone = identityDirectoryPhone({ userAccount: card.user?.identityAccount, boundAccount: card.identityActorBinding?.account, legacyPhone: card.phone ?? card.user?.phone ?? null })
+    const preparationCard = card.user?.identityAccount?.cutoverAt || card.identityActorBinding?.account.cutoverAt
+      ? { ...card, phone, email: null, user: card.user ? { ...card.user, phone, email: null } : null } : card
+    const preparation = await readAttendanceEmployeePreparation(tx, { organizationId, agentId, date: today }, preparationCard, now)
     return { timezone, today, teams, departments, preparation, managers: managerCards.map(manager => ({ id: manager.id, name: manager.name, position: manager.position ?? null })), month,
-      employee: { id: card.id, name: card.user?.name ?? card.name, phone: card.phone ?? card.user?.phone ?? null, email: realEmail(card.email) ?? realEmail(card.user?.email),
-        role: card.role, status: card.status, crmRole: card.user?.role ?? null, loginEditable: !card.user || !LOGIN_LOCKED_ROLES.has(card.user.role),
+      employee: { id: card.id, name: card.user?.name ?? card.name, phone, email: realEmail(card.email) ?? realEmail(card.user?.email),
+        role: card.role, status: card.status, crmRole: card.user?.role ?? null, loginEditable: !card.user?.identityAccount?.cutoverAt && !card.identityActorBinding?.account.cutoverAt
+          && (!card.user || !LOGIN_LOCKED_ROLES.has(card.user.role)),
         position: card.position ?? null, teamId: card.teamId, teamName: card.team?.name ?? null, departmentId: card.departmentId, departmentName: card.department?.name ?? null, managerId: card.managerId,
         included: !card.attendanceExcluded, participationVersion: participation.at(-1)?.id ?? null, todayMark: marks.get(agentId) ?? null,
         history: events.map(event => ({ id: event.id, kind: event.kind, date: employmentDate(event, timezone), at: event.effectiveAt.toISOString(), byName: names.get(event.recordedByUserId) ?? null })) } }
@@ -347,7 +358,12 @@ export async function updateAttendanceEmployee(actor: AttendanceReviewer, agentI
   const parsed = AttendanceEmployeeProfileSchema.safeParse(raw)
   if (!parsed.success) throw new AttendanceRequestError(parsed.error.issues.some(issue => issue.path[0] === "phone") ? "MTM_ATTENDANCE_EMPLOYEE_PHONE_INVALID" : "MTM_ATTENDANCE_EMPLOYEE_INVALID", 400)
   const input = parsed.data, organizationId = actor.organizationId
-  const result = await prisma.$transaction(async tx => {
+  const editsLogin = input.phone !== undefined || input.email !== undefined
+  const save = async (tx: Prisma.TransactionClient) => {
+    // All profile writes share this lock: a metadata-only save must not take
+    // actor→User locks while a phone writer holds User→actor locks.
+    await tx.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'identity-registry:' + organizationId}, 0))`
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor)
     const [card] = await tx.$queryRaw<Array<{ name: string; phone: string | null; email: string | null; userId: string | null; position: string | null; teamId: string | null; departmentId: string | null; managerId: string | null }>>`
       SELECT name, phone, email, "userId", "position", "teamId", "departmentId", "managerId" FROM mtm_agents WHERE "organizationId" = ${organizationId} AND id = ${agentId}
@@ -360,6 +376,9 @@ export async function updateAttendanceEmployee(actor: AttendanceReviewer, agentI
     const emailChange = input.email !== undefined && input.email !== beforeEmail
     if ((phoneChange || emailChange) && user && LOGIN_LOCKED_ROLES.has(user.role)) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED", 403)
     if (phoneChange) {
+      if (await readLegacyPhoneAssignmentBoundaryInTransaction(tx, organizationId, input.phone!) !== "LEGACY") {
+        throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED", 409)
+      }
       // The number signs a person in: two people with one number would both be refused the code.
       const owner = await findPhoneOwner(tx, organizationId, input.phone!)
       if (owner.kind === "ambiguous" || (owner.kind === "found" && owner.agentId !== agentId)) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN", 409)
@@ -385,9 +404,26 @@ export async function updateAttendanceEmployee(actor: AttendanceReviewer, agentI
     const audit = await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId, entity: "agent", entityId: agentId,
       action: "MTM_ATTENDANCE_EMPLOYEE_UPDATED", metadataKind: "mtm_attendance_employee_card", oldData: before,
       newData: { ...after, ...(hire ? { hireEventId: hire.id, hireDate: input.hireDate } : {}) } }, select: { id: true } })
+    if (editsLogin && user) await logAudit(organizationId, "user_updated", "user", user.id, after.email ?? after.name, {
+      userId: actor.userId, oldValue: { name: before.name, phone: before.phone, email: before.email },
+      newValue: { name: after.name, phone: after.phone, email: after.email, source: "personnel" } }, tx)
     return { auditId: audit.id, userId: user?.id ?? null, before, after }
-  }, { timeout: 15_000 })
-  if (result.userId) await logAudit(organizationId, "user_updated", "user", result.userId, result.after.email ?? result.after.name, {
+  }
+  const result = !editsLogin ? await prisma.$transaction(save, { timeout: 15_000 }) : await (async () => {
+    // Admission precedes target credential inspection. Repeat authorization
+    // inside save after the fence; no locks survive this separate preflight.
+    await runWithTenant(organizationId, () => prisma.$transaction(async tx => {
+      await requireAttendanceEmployeeAdmin(tx, actor)
+      if (!await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, ...ATTENDANCE_TRACKED_CARD_WHERE }, select: { id: true } })) {
+        throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
+      }
+    }, { timeout: 15_000 }))
+    const fenced = await runWithTenant(organizationId, () => withLegacyCredentialMaintenance(prisma, organizationId,
+      [{ kind: "ACTOR", actorId: agentId }], save))
+    if (!fenced.allowed) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED", 409)
+    return fenced.value
+  })()
+  if (!editsLogin && result.userId) await logAudit(organizationId, "user_updated", "user", result.userId, result.after.email ?? result.after.name, {
     userId: actor.userId, oldValue: { name: result.before.name, phone: result.before.phone, email: result.before.email },
     newValue: { name: result.after.name, phone: result.after.phone, email: result.after.email, source: "personnel" } })
   return { agentId, eventId: result.auditId, idempotent: false }

@@ -6,7 +6,7 @@ import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 import { clientIp } from "@/lib/request-ip"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import { findPhoneOwner, maskedPhone, phoneDigits, MOBILE_LOGIN_ORGANIZATION_SELECT } from "@/lib/mtm/mobile-login-phone"
-import { mobileAppRefusal, officeEmployeeMaySignIn, type MobileLoginAgent } from "@/lib/mtm/mobile-login-session"
+import { mobileAppRefusal, legacyMobileMaySignIn, type MobileLoginAgent } from "@/lib/mtm/mobile-login-session"
 
 /**
  * What the three sign-in-by-code endpoints share: the request shape, the
@@ -77,7 +77,7 @@ export async function codeHolder(organization: MobileLoginAgent["organization"],
   const row = await prisma.mtmAgent.findFirst({ where: { id: owner.agentId, organizationId: organization.id } })
   if (!row || row.status !== "ACTIVE") return { kind: "nobody", reason: "inactive" }
   const agent: MobileLoginAgent = { ...row, organization }
-  if (!(await officeEmployeeMaySignIn(agent)) || mobileAppRefusal(agent)) return { kind: "nobody", reason: "not_admitted" }
+  if (!(await legacyMobileMaySignIn(agent, phone)) || mobileAppRefusal(agent)) return { kind: "nobody", reason: "not_admitted" }
   if (!owner.sendTo) return { kind: "nobody", reason: "national_number" }
   return { kind: "agent", agent, sendTo: owner.sendTo }
 }

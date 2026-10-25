@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
+import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
 import { sendEmail } from "@/lib/email"
-import { runWithRlsBypass } from "@/lib/rls-context"
+import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { checkRateLimit, hashForRateLimit } from "@/lib/rate-limit"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import { clientIp } from "@/lib/request-ip"
@@ -97,11 +98,17 @@ export async function POST(req: NextRequest) {
     // second message costs them nothing but a line in the inbox.
     for (const user of users) {
       const { token, tokenHash } = generateOneTimeToken()
-      await prisma.user.update({
-        where: { id: user.id },
-        // Only the digest is stored. See src/lib/one-time-token.ts.
-        data: { resetToken: tokenHash, resetTokenExp: expiresAt },
-      })
+      const issued = await runWithTenant(user.organizationId, () => withLegacyCredentialMaintenance(prisma, user.organizationId,
+        [{ kind: "USER", userId: user.id }], async tx => {
+          // Bind issuance to the same active, non-anonymous mailbox owner.
+          // Only the digest is stored; network delivery remains outside the TX.
+          const changed = await tx.user.updateMany({
+            where: { id: user.id, organizationId: user.organizationId, email, isActive: true, anonymizedAt: null },
+            data: { resetToken: tokenHash, resetTokenExp: expiresAt },
+          })
+          return changed.count === 1
+        }))
+      if (!issued.allowed || !issued.value) continue
 
       const resetUrl = `${baseUrl}/reset-password?token=${token}`
       const workspace = user.organization?.name ? escHtml(user.organization.name) : ""

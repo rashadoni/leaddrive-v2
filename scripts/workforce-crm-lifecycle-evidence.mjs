@@ -6,6 +6,7 @@ import ts from "typescript"
 import bcrypt from "bcryptjs"
 import { chromium } from "playwright"
 import { makeRlsTestPrisma } from "./_rls.mjs"
+import { verifyGithubCandidate } from "./ci/verify-github-candidate.mjs"
 
 // The retained functional journeys remain executable after extraction. In CRM,
 // test the shipped lifecycle contract, never enable archived code via a flag.
@@ -66,16 +67,9 @@ if (process.env.REDIS_URL) {
   assert.ok(redis.protocol === "redis:" && loopback.has(redis.hostname) && (!redis.pathname || redis.pathname === "/0") && !redis.username && !redis.password && !redis.search && !redis.hash, "Disposable loopback Redis required")
 }
 const headSha = process.env[`${prefix}_HEAD_SHA`]
-assert.match(headSha || "", /^[0-9a-f]{40}$/)
-const checkoutSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim()
-assert.equal(checkoutSha, process.env.GITHUB_SHA)
-execFileSync("git", ["merge-base", "--is-ancestor", headSha, "HEAD"])
-const parents = execFileSync("git", ["show", "-s", "--format=%P", "HEAD"], { encoding: "utf8" }).trim().split(" ")
-if (checkoutSha !== headSha) {
-  const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, "utf8"))
-  assert.equal(event.pull_request?.head?.sha, headSha)
-  assert.deepEqual(parents, [event.pull_request.base.sha, headSha], "Exact GitHub candidate parents required")
-}
+const candidate = verifyGithubCandidate({ githubSha: process.env.GITHUB_SHA, headSha,
+  event: JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, "utf8")), repository: process.env.GITHUB_REPOSITORY })
+const { checkoutSha, parents } = candidate
 const output = process.env[`${prefix}_OUTPUT_DIR`] || (name === "bulk" ? process.env.WF_BULK_OUTPUT : undefined)
 assert.ok(output?.startsWith("artifacts/"))
 await mkdir(output, { recursive: true })
@@ -93,13 +87,13 @@ const app = makeRlsTestPrisma(helperAppURL.href)
 const receipt = {
   status: "RUNNING", contract: "CRM_WORKFORCE_WITHDRAWN", profile: name, headSha, checkoutSha,
   tree: execFileSync("git", ["rev-parse", "HEAD^{tree}"], { encoding: "utf8" }).trim(),
-  parents,
+  parents, candidate,
   runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
   productionMutation: false, cases: [], sourceBindings: [],
   archivedJourney: { script: archivedScript, status: "NOT RUN", reason: "Product withdrawn from CRM; original journey retained for extraction" },
   limitations: ["Synthetic disposable database, not production observations", "Next development bundle; production build is a separate gate", "No functional HRM acceptance or roadmap closure"],
 }
-for (const path of [policyPath, "src/proxy.ts", "scripts/workforce-crm-lifecycle-evidence.mjs", `scripts/${archivedScript}`]) {
+for (const path of [policyPath, "src/proxy.ts", "scripts/workforce-crm-lifecycle-evidence.mjs", "scripts/ci/verify-github-candidate.mjs", `scripts/${archivedScript}`]) {
   const bytes = await readFile(path)
   receipt.sourceBindings.push({ path, sha256: createHash("sha256").update(bytes).digest("hex") })
 }

@@ -1080,6 +1080,9 @@ jobs:
           cp -r scripts/booking/. .next/standalone/scripts/booking/
           cp scripts/event-platform/inspect-production.sh .next/standalone/scripts/event-platform/
           node scripts/booking/release-contract.mjs --write-manifest .next/standalone "$DEPLOY_TARGET_SHA"
+          mkdir -p .next/standalone/scripts/identity
+          cp scripts/identity/release-contract.mjs scripts/identity/release-state.sql .next/standalone/scripts/identity/
+          node scripts/identity/release-contract.mjs --write-manifest .next/standalone "$DEPLOY_TARGET_SHA"
 
           test -s .next/standalone/scripts/event-platform-postconditions.sql || {
             echo "::error::event-platform production postcondition missing from standalone artifact"
@@ -1725,6 +1728,12 @@ jobs:
           node scripts/booking/release-contract.mjs --emit-admission "$DEPLOY_TARGET_SHA" < "$marker" \
             | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
                 "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+          identity_marker="$RUNNER_TEMP/identity-candidate-contract.json"
+          tar -xOzf "$artifact" ./.identity-backend-contract.json > "$identity_marker"
+          node scripts/identity/release-contract.mjs --emit-admission "$DEPLOY_TARGET_SHA" < "$identity_marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+
 
       - name: Stage immutable artifact on production disk
         # This copies bytes only; it does not stop PM2, run migrations, unpack
@@ -2361,6 +2370,8 @@ jobs:
           admission="$RUNNER_TEMP/booking-current-main-admission"
           mkdir -p "$admission/scripts/booking" "$admission/scripts/event-platform"
           cp scripts/booking/release-contract.mjs scripts/booking/release-state.sql "$admission/scripts/booking/"
+          mkdir -p "$admission/scripts/identity"
+          cp scripts/identity/release-contract.mjs scripts/identity/release-state.sql "$admission/scripts/identity/"
           cp scripts/event-platform/inspect-production.sh "$admission/scripts/event-platform/"
 
       - name: Checkout deployment script from the recovered revision
@@ -2482,6 +2493,13 @@ jobs:
             --emit-admission "$RECOVERY_SHA" < "$marker" \
             | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
                 "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+          identity_marker="$RUNNER_TEMP/identity-recovery-contract.json"
+          tar -xOzf "$artifact" ./.identity-backend-contract.json > "$identity_marker" 2>/dev/null || true
+          node "$RUNNER_TEMP/booking-current-main-admission/scripts/identity/release-contract.mjs" \
+            --emit-admission "$RECOVERY_SHA" < "$identity_marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+
 
       - name: Stage exact retained recovery artifact on production disk
         run: |

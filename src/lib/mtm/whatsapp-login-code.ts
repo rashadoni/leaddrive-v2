@@ -78,7 +78,7 @@ type Fetch = typeof fetch
 export async function sendLoginCodeToWhatsApp(
   sender: WhatsAppConfig,
   input: { to: string; code: string; language: string | null | undefined },
-  deps: { fetch?: Fetch; now?: () => number; templateName?: string } = {},
+  deps: { fetch?: Fetch; now?: () => number; templateName?: string; signal?: AbortSignal } = {},
 ): Promise<LoginCodeDelivery> {
   const doFetch = deps.fetch ?? fetch
   const now = deps.now ?? Date.now
@@ -87,6 +87,7 @@ export async function sendLoginCodeToWhatsApp(
   let missing = 0
   const languages = templateLanguages(input.language)
   for (const language of languages) {
+    if (deps.signal?.aborted) return { status: "failed", reason: "timeout" }
     let response: Response
     try {
       response = await doFetch(`${GRAPH_API_BASE}/${sender.phoneNumberId}/messages`, {
@@ -105,7 +106,7 @@ export async function sendLoginCodeToWhatsApp(
             ],
           },
         }),
-        signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+        signal: deps.signal ? AbortSignal.any([deps.signal, AbortSignal.timeout(SEND_TIMEOUT_MS)]) : AbortSignal.timeout(SEND_TIMEOUT_MS),
       })
     } catch (error) {
       return { status: "failed", reason: error instanceof Error && error.name === "TimeoutError" ? "timeout" : "network" }
