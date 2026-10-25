@@ -408,6 +408,19 @@ jobs:
           FUND_SHADOW_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           FUND_SHADOW_DB_GATE: required
 
+      - name: Fund shadow pilot runner PostgreSQL gate
+        run: |
+          npm ci --prefix ops/event-platform/fund-shadow --ignore-scripts --no-audit --no-fund
+          NODE_PATH=ops/event-platform/fund-shadow/node_modules ops/event-platform/fund-shadow/node_modules/.bin/esbuild \
+            scripts/event-platform/fund-shadow/pilot.integration.ts --bundle --platform=node --target=node18 --format=cjs \
+            --external:@prisma/client --external:pg-native --log-level=error --outfile="$RUNNER_TEMP/pilot.integration.cjs"
+          NODE_PATH="$GITHUB_WORKSPACE/node_modules" node "$RUNNER_TEMP/pilot.integration.cjs"
+        env:
+          PILOT_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          PILOT_PSQL: psql -h 127.0.0.1 -p 5432
+          PILOT_SQL_FILE: scripts/event-platform/fund-shadow/provision-role.sql
+          PGPASSWORD: postgres
+
       - name: Workforce shared-lock PostgreSQL race gate
         run: >-
           npx vitest run
