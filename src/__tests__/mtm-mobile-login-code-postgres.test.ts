@@ -428,6 +428,33 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect(sent).toHaveLength(0)
   })
 
+  it("counts canonical CRM allocations independently from mobile people while preserving legacy disabled seats", async () => {
+    const company = "identity-crm-seat-count"
+    const userId = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, name: "Fictional independent seats", slug: company, maxUsers: 1 } })
+      await prisma.user.create({ data: { organizationId: company, name: "Fictional disabled legacy seat", email: "legacy-seat@example.invalid", passwordHash: "!unused", role: "viewer", isActive: false } })
+      const mobile = await prisma.user.create({ data: { organizationId: company, name: "Fictional mobile person", email: "mobile-seat@example.invalid", passwordHash: "!unused", role: "admin" } })
+      await prisma.identityAccount.create({ data: { organizationId: company, userId: mobile.id, cutoverAt: new Date(), passwordHash: "!canonical-seat-fixture" } })
+      await prisma.identityApplicationGrant.create({ data: { organizationId: company, userId: mobile.id, application: "TIME", status: "ACTIVE", role: "EMPLOYEE" } })
+      return mobile.id
+    })
+    const { checkUserLimit } = await import("@/lib/plan-limits")
+    const { runWithTenant } = await import("@/lib/rls-context")
+    const check = () => runWithTenant(company, () => checkUserLimit(company))
+    expect(await check()).toMatchObject({ allowed: false, message: "User limit reached (1/1). Upgrade your plan to add more users." })
+    await bypass(() => prisma.organization.update({ where: { id: company }, data: { maxUsers: 2 } }))
+    expect(await check()).toEqual({ allowed: true })
+    await bypass(() => prisma.identityApplicationGrant.create({ data: { organizationId: company, userId, application: "CRM", status: "ACTIVE", role: "viewer" } }))
+    expect((await check()).allowed).toBe(false)
+    // Lifecycle/rollout off does not silently deallocate an assigned CRM seat.
+    await bypass(() => prisma.organization.update({ where: { id: company }, data: { isActive: false } }))
+    expect((await check()).allowed).toBe(false)
+    await bypass(() => prisma.identityApplicationGrant.update({ where: { organizationId_userId_application: { organizationId: company, userId, application: "CRM" } }, data: { status: "REVOKED", role: null, version: 2 } }))
+    expect(await check()).toEqual({ allowed: true })
+    expect(await bypass(() => prisma.user.count({ where: { organizationId: company } }))).toBe(2)
+    expect(sent).toHaveLength(0)
+  })
+
   it("keeps legacy card reset and relink atomic and refuses canonical current or new owners", async () => {
     const company = "identity-card-maintenance", oldPassword = "Fictional-Card-Old-Pass-2026!", newPassword = "Fictional-Card-New-Pass-2026!"
     const fixture = await bypass(async () => {

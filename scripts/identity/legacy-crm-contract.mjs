@@ -76,4 +76,33 @@ export async function checkLegacyCrm({ admin, writer, actor, other, build, check
   }, options) }
   assert.equal(await boundary(inherited, other.organizationId, beta), "LEGACY")
   checks.push("legacy_crm_eligibility_uses_verified_readonly_repeatable_tenant_scope_and_never_falls_back_on_invalid_or_missing_state")
+
+  const { identityCrmSeatUserWhere: seatWhere } = await module("crm-seat-policy")
+  const { withIdentityMobileReadSnapshot: snapshot } = await module("mobile-session-resolver")
+  const counts = async () => (await snapshot(writer, org, async tx => ({
+    seats: await tx.user.count({ where: seatWhere(org) }), people: await tx.user.count({ where: { organizationId: org } }),
+  }))).value
+  const beforeSeats = await counts()
+  phase("CRM_SEATS_PRESERVE_LEGACY_SHADOW_AND_EXCLUDE_MOBILE_ONLY_PEOPLE")
+  for (const kind of ["legacy", "shadow", "time", "field", "both-mobile", "crm", "disabled-crm", "revoked-crm"]) {
+    const userId = `crm-seat-${kind}`
+    await admin.$executeRaw`INSERT INTO users (id,"organizationId","isActive",role) VALUES (${userId},${org},${kind !== "disabled-crm"},'viewer')`
+    if (kind === "legacy") continue
+    await admin.identityAccount.create({ data: { organizationId: org, userId,
+      ...(kind === "shadow" ? {} : { cutoverAt: new Date(), passwordHash: "!fixture-seat-canonical" }) } })
+    const applications = kind === "both-mobile" ? ["TIME", "ROUTE_FIELD"] : [kind === "time" || kind === "shadow" ? "TIME" : kind === "field" ? "ROUTE_FIELD" : "CRM"]
+    for (const application of applications) await admin.identityApplicationGrant.create({ data: {
+      organizationId: org, userId, application, status: kind === "revoked-crm" ? "REVOKED" : "ACTIVE",
+      role: kind === "revoked-crm" ? null : application === "TIME" ? "EMPLOYEE" : application === "ROUTE_FIELD" ? "AGENT" : "viewer",
+    } })
+  }
+  assert.deepEqual(await counts(), { seats: beforeSeats.seats + 4, people: beforeSeats.people + 8 })
+  checks.push("crm_seats_count_all_legacy_shadow_and_allocated_crm_grants_including_disabled_but_not_canonical_time_field_or_both_mobile_people")
+  phase("CRM_SEATS_REVOKE_ONLY_EXPLICIT_CRM_ALLOCATION_AND_RESPECT_TENANT_RLS")
+  await admin.identityApplicationGrant.update({ where: { organizationId_userId_application: { organizationId: org, userId: "crm-seat-crm", application: "CRM" } },
+    data: { status: "REVOKED", role: null, version: 2 } })
+  assert.deepEqual(await counts(), { seats: beforeSeats.seats + 3, people: beforeSeats.people + 8 })
+  const foreignSeats = await snapshot(writer, org, tx => tx.user.count({ where: seatWhere(other.organizationId) }))
+  assert.equal(foreignSeats.value, 0)
+  checks.push("crm_seat_revocation_frees_only_crm_allocation_without_removing_people_and_foreign_tenant_count_is_denied_by_rls")
 }
