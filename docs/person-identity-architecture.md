@@ -301,3 +301,12 @@ Source audit подтверждает: phone-proof-registry issuer() повто�
 
 
 Packaging integration note:50c full Next bundle failed explicit local .js specifiers once the previously inactive identity graph became reachable. Root package is CommonJS; new candidate uses project-conventional extensionless relative imports only inside owned identity TS sources. Emitted CJS .js files and dynamic fixture imports remain unchanged. Both scoped Node runtime/PG and actual Next bundle require new exact-source verification. No global Next/TypeScript/dependency configuration was changed. This failure is distinct from the real-Prisma ALS caller failure; neither is resolved merely by the earlier focal PASS.
+
+
+### 9.4. CRM authority и неизменность MFA при следующем подключении
+
+Прочитанный two-factor-policy.ts задаёт обязательную настройку только User.require2fa; роль сама по себе её не включает. Добровольно включённый TOTP/SMS по-прежнему запрашивается. Новый common-password/phone proof не должен очищать эти флаги, TOTP/backup codes/nonce/verifiedPhone или создавать CRM session. Нельзя вводить подразумеваемую новую MFA-политику по названию app role. OAuth остаётся запрещён текущим callbacks.signIn.
+
+CRM admission нового человека требует явного действующего CRM grant и canonical credential epoch в выдаче/refresh/центральном cookie/API guard; наличие active User или Time/Field grant не даёт CRM. Legacy email/password/reset поля не становятся fallback после cutover. Реальные Role значения в permissions.ts включают ticketing/reviewer и platform superadmin. Обычный CRM app grant не должен дать platform superadmin: ALL_ROLES содержит платформенную роль, поэтому это не готовый allowlist для tenant grant. Reviewer дополнительно сохраняет текущий expiry/scope guard. Прежде чем использовать staging CRM role в runtime, нужна явная проверка допустимого tenant role, не type cast произвольной строки.
+
+withRegistryTransaction и staged proof issuer пока проверяют legacy User.role admin/superadmin. Они не являются готовой runtime-authority canonical CRM администратора: после отделения прав соответствующий свежий grant/epoch/revocation нужен внутри транзакции, либо staging-only сервис обязан отказывать converted issuer. Одной проверки сессии снаружи недостаточно для фонового/позднего proof. Это условие следующего этапа, не подтверждённая production уязвимость: текущие canonical активации отсутствуют. Изменения User lifecycle, app-only revocation и seat accounting не смешиваются.
