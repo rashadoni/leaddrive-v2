@@ -22,7 +22,7 @@ describe("bound phone-possession proof primitive (no login or provider)", () => 
     expect(() => openPhoneProofDelivery(frozen, old, key(), at())).toThrow("IDENTITY_PROOF_DELIVERY_REFUSED")
   })
   it("refuses incomplete or forged v2 contexts", () => {
-    for (const fields of [{ version: 2 }, { version: 2, authorityHash: "a".repeat(64), contactRevision: 0 }, { version: 3, authorityHash: "a".repeat(64), contactRevision: 1 }]) {
+    for (const fields of [{ version: 2 }, { version: 2, authorityHash: "a".repeat(64), contactRevision: 0 }, { version: 4, authorityHash: "a".repeat(64), contactRevision: 1 }]) {
       expect(() => sealPhoneProof({ ...context(), ...fields } as PhoneProofContext, key())).toThrow("IDENTITY_PROOF_CONTEXT_INVALID")
     }
   })
@@ -132,5 +132,21 @@ describe("secret-safe proof-attempt idempotency", () => {
   it("bounds untrusted attempt text and rejects malformed request IDs", () => {
     expect(() => phoneProofAttemptHash(context(), key(), "attempt-1", "x".repeat(65))).toThrow("IDENTITY_PROOF_INPUT_INVALID")
     expect(() => phoneProofAttemptHash(context(), key(), "attempt-1\n", "123456")).toThrow("IDENTITY_REQUEST_INVALID")
+  })
+})
+
+
+describe("recovery proof purpose separation", () => {
+  it("never reinterprets an invitation as self-recovery or vice versa", () => {
+    const recovery: PhoneProofContext = { ...context(), version: 3, authorityHash: "c".repeat(64), contactRevision: 2 }
+    const invitation: PhoneProofContext = { ...recovery, version: 2 }
+    for (const frozen of [recovery, invitation, context()]) {
+      const proof = sealPhoneProof(frozen, key()), code = openPhoneProofDelivery(frozen, proof, key(), at())
+      for (const other of [recovery, invitation, context()]) {
+        const same = frozen.version === other.version
+        expect(verifyPhoneProofCode(other, proof, key(), code, at())).toBe(same)
+        if (!same) expect(() => openPhoneProofDelivery(other, proof, key(), at())).toThrow("IDENTITY_PROOF_DELIVERY_REFUSED")
+      }
+    }
   })
 })

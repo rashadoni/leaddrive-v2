@@ -66,6 +66,7 @@ export async function activateReviewedIdentity(client: RegistryClient, administr
     const proof = await tx.identityPhoneProof.findFirst({ where: { ...scope, id: credential.proofId, status: "CONFIRMED" } })
     const now = (await tx.$queryRaw<Array<{ now: Date }>>`SELECT clock_timestamp() AS now`)[0].now
     if (!proof || proof.expiresAt <= now) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
+    if (!proof.issuedByUserId || ![1, 2].includes(proof.contextVersion)) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
     if (proof.contextVersion === 2) await revalidateIdentityProofAuthority(tx, proof.issuerAuthority, scope.organizationId, proof.issuedByUserId)
     else if (administrator.mode !== "LEGACY" || proof.issuedByUserId !== administrator.userId) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
     await tx.$queryRaw`SELECT id FROM identity_phone_claims WHERE "organizationId"=${scope.organizationId} AND "userId"=${scope.userId} FOR SHARE`
@@ -73,7 +74,7 @@ export async function activateReviewedIdentity(client: RegistryClient, administr
     if (!claim || claim.id !== credential.claimId || claim.normalizedPhone !== proof.normalizedPhone) throw new IdentityRegistryError("IDENTITY_ACTIVATION_STALE")
     const flag = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: scope.organizationId, key: IDENTITY_AUTH_SETTING_KEY } }, select: { value: true } })
     if (!isIdentityAuthExplicitlyEnabled(flag?.value)) throw new IdentityRegistryError("IDENTITY_APPLICATION_DISABLED")
-    const cards = await tx.$queryRaw<Array<{ id: string; phone: string | null; role: string; status: string; attendanceParticipant: boolean; attendanceExcluded: boolean }>>`SELECT id,phone,role,status,"attendanceParticipant","attendanceExcluded" FROM mtm_agents WHERE "organizationId"=${scope.organizationId} AND "userId"=${scope.userId} ORDER BY id FOR UPDATE`
+    const cards = await tx.$queryRaw<Array<{ id: string; phone: string | null; role: string; status: string; attendanceParticipant: boolean; attendanceExcluded: boolean }>>`SELECT id,phone,role,status,"attendanceParticipant","attendanceExcluded" FROM mtm_agents WHERE "organizationId"=${scope.organizationId} AND "userId"=${scope.userId} ORDER BY id LIMIT 2 FOR UPDATE`
     if (cards.length > 1) throw new IdentityRegistryError("IDENTITY_LEGACY_LINK_AMBIGUOUS")
     for (const number of [person.phone, ...cards.map(card => card.phone)]) {
       if (number && normalizeIdentityPhone(number) !== claim.normalizedPhone && !phonesMatch(number, claim.normalizedPhone)) throw new IdentityRegistryError("IDENTITY_SOURCE_CONTACT_REVIEW_REQUIRED")

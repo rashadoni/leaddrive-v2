@@ -8,6 +8,8 @@ import { withRegistryTransaction, type RegistryClient, type IdentityActor } from
 import { withIdentityAdministrator, type IdentityAdministrator } from "./administrator"
 import { freezeIdentityProofAuthority, revalidateIdentityProofAuthority, parseIdentityProofAuthority, identityProofAuthorityHash } from "./proof-authority"
 
+import { parseIdentityRecoveryAuthority, identityRecoveryAuthorityHash, revalidateIdentityRecoveryAuthority } from "./recovery-authority"
+
 export type StagedProofIssue = { userId: string; reservationId: string; expectedAccountVersion: number; expectedCredentialEpoch: number; requestId: string }
 export type StagedProofAttempt = { proofId: string; requestId: string; code: string }
 /** Server-owned, tenant-scoped key ring. Never populate it from request data. */
@@ -20,11 +22,15 @@ function exact(input: object, names: string[]) {
 }
 function version(value: number) { return Number.isInteger(value) && value > 0 && value <= 2_147_483_647 }
 function context(row: IdentityPhoneProof): PhoneProofContext {
+  if (![1, 2, 3].includes(row.contextVersion)) throw new IdentityRegistryError("IDENTITY_PROOF_CONTEXT_INVALID")
+  const recovery = row.contextVersion === 3 ? parseIdentityRecoveryAuthority(row.issuerAuthority) : null
+  if (row.contextVersion === 3 && (!recovery || row.issuedByUserId !== null || recovery.contactRevision !== row.contactRevision || recovery.normalizedPhone !== row.normalizedPhone)) throw new IdentityRegistryError("IDENTITY_RECOVERY_UNAVAILABLE")
   const authority = row.contextVersion === 2 ? parseIdentityProofAuthority(row.issuerAuthority) : null
   if (row.contextVersion === 2 && (!authority || !row.contactRevision)) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
   return { organizationId: row.organizationId, userId: row.userId, reservationId: row.reservationId, challengeId: row.id, normalizedPhone: row.normalizedPhone,
     accountVersion: row.accountVersion, credentialEpoch: row.credentialEpoch, createdAt: row.createdAt.toISOString(), expiresAt: row.expiresAt.toISOString(),
-    ...(authority ? { version: 2 as const, authorityHash: identityProofAuthorityHash(authority), contactRevision: row.contactRevision! } : {}) }
+    ...(authority ? { version: 2 as const, authorityHash: identityProofAuthorityHash(authority), contactRevision: row.contactRevision! } : {}),
+    ...(recovery ? { version: 3 as const, authorityHash: identityRecoveryAuthorityHash(recovery), contactRevision: row.contactRevision! } : {}) }
 }
 async function clock(tx: Prisma.TransactionClient) { return (await tx.$queryRaw<Array<{ now: Date }>>`SELECT clock_timestamp() AS now`)[0].now }
 async function subject(tx: Prisma.TransactionClient, organizationId: string, userId: string) {
@@ -51,6 +57,8 @@ async function proofTransaction<T>(client: RegistryClient, organizationId: strin
   }, { isolationLevel: "ReadCommitted", timeout: 15_000, maxWait: 5_000 })
 }
 async function issuer(tx: Prisma.TransactionClient, proof: IdentityPhoneProof) {
+  if (proof.contextVersion === 3) { await revalidateIdentityRecoveryAuthority(tx, proof.issuerAuthority, proof.organizationId, proof.userId); return }
+  if (!proof.issuedByUserId) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
   if (proof.contextVersion === 2) {
     await revalidateIdentityProofAuthority(tx, proof.issuerAuthority, proof.organizationId, proof.issuedByUserId)
     const account = await tx.identityAccount.findUnique({ where: { organizationId_userId: { organizationId: proof.organizationId, userId: proof.userId } }, select: { contactRevision: true } })
@@ -142,7 +150,7 @@ export async function consumeStagedPhoneProof(client: RegistryClient, organizati
   if (typeof input.code !== "string" || input.code.length > 64) throw new IdentityRegistryError("IDENTITY_PROOF_INPUT_INVALID")
   return proofTransaction(client, organizationId, true, async tx => {
     const proof = await lockedProof(tx, organizationId, input.proofId)
-    if (!proof) return invalid()
+    if (!proof || proof.contextVersion === 3) return invalid()
     const account = await subject(tx, organizationId, proof.userId)
     await issuer(tx, proof)
     const now = await clock(tx)
@@ -273,7 +281,8 @@ export async function claimStagedPhoneProofDelivery(client: RegistryClient, orga
     if (row.status !== "PENDING" || row.attempts !== 0 || row.availableAt > now) return null
     if (proof.status !== "PENDING" || !proof.deliveryCiphertext) return null
     if (now >= proof.expiresAt || now < proof.createdAt) { await suppress(tx, organizationId, [proofId], "EXPIRED"); return null }
-    const account = await subject(tx, organizationId, proof.userId)
+    const authority = proof.contextVersion === 3 ? await revalidateIdentityRecoveryAuthority(tx, proof.issuerAuthority, organizationId, proof.userId) : null
+    const account = authority ? { version: authority.accountVersion, credentialEpoch: authority.credentialEpoch } : await subject(tx, organizationId, proof.userId)
     await issuer(tx, proof)
     const reservation = await tx.identityPhoneReservation.findFirst({ where: { organizationId, userId: proof.userId, id: proof.reservationId } })
     if (!reservation || reservation.expiresAt <= now || reservation.normalizedPhone !== proof.normalizedPhone
@@ -338,7 +347,7 @@ export async function recordStagedPhoneProofDelivery(client: RegistryClient, org
 
 async function setupState(tx: Prisma.TransactionClient, organizationId: string, proofId: string) {
   const proof = await lockedProof(tx, organizationId, proofId)
-  if (!proof || proof.status !== "CONFIRMED" || !proof.usedAt) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
+  if (!proof || proof.contextVersion === 3 || proof.status !== "CONFIRMED" || !proof.usedAt) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
   const account = await subject(tx, organizationId, proof.userId)
   await issuer(tx, proof)
   const confirmation = await tx.identityEvent.findFirst({ where: { organizationId, userId: proof.userId, proofId, action: "PHONE_CONFIRMED" } })
@@ -419,3 +428,7 @@ export async function setStagedIdentityCredential(client: RegistryClient, organi
     return { ...metadata, status: "CREDENTIAL_STAGED" as const, accountVersion: nextVersion, credentialEpoch: nextEpoch, replayed: false }
   })
 }
+
+/** Internal recovery composition shares transaction, locking and crypto only;
+ * these helpers confer no authorization without a fresh purpose-specific guard. */
+export { proofTransaction, context as phoneProofContext, clock as phoneProofClock, lockedProof, keyFor as phoneProofKeyFor, suppress as suppressPhoneProofs }

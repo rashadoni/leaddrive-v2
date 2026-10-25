@@ -978,7 +978,7 @@ model IdentityPhoneProof {
   id              String @id @default(uuid())
   organizationId  String
   userId          String
-  issuedByUserId  String
+  issuedByUserId  String?
   reservationId   String
   normalizedPhone String @db.VarChar(16)
   accountVersion  Int
@@ -995,7 +995,7 @@ model IdentityPhoneProof {
   expiresAt       DateTime @db.Timestamptz(3)
   usedAt          DateTime? @db.Timestamptz(3)
   account         IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
-  issuer          User @relation("IdentityProofIssuer", fields: [organizationId, issuedByUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  issuer          User? @relation("IdentityProofIssuer", fields: [organizationId, issuedByUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   delivery        IdentityPhoneProofOutbox?
 
   @@unique([organizationId, userId, id], map: "identity_phone_proofs_subject_key")

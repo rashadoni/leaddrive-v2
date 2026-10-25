@@ -65,3 +65,14 @@ describe("narrow credential setup capability, not an authentication session", ()
     expect(() => credentialSetupRequestHash(context(), key, "request-1", "あ".repeat(25))).toThrow("IDENTITY_SETUP_INPUT_INVALID")
   })
 })
+
+
+it("separates canonical recovery from both invitation setup versions", () => {
+  const recovery: CredentialSetupContext = { ...context(), version: 3, authorityHash: "d".repeat(64), contactRevision: 3 }
+  const invitation: CredentialSetupContext = { ...recovery, version: 2 }
+  for (const frozen of [context(), invitation, recovery]) {
+    const token = mintCredentialSetup(frozen, key, now)
+    expect(credentialSetupHint(token)).toEqual({ keyId: key.id, proofId: frozen.proofId })
+    for (const other of [context(), invitation, recovery]) expect(verifyCredentialSetup(other, key, token, now)).toBe(frozen.version === other.version)
+  }
+})

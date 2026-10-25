@@ -6,7 +6,7 @@ import type { PhoneProofKey } from "./phone-proof"
 export type CredentialSetupContext = {
   organizationId: string; userId: string; proofId: string; claimId: string;
   accountVersion: number; credentialEpoch: number; confirmedAt: string; expiresAt: string;
-  version?: 2; authorityHash?: string; contactRevision?: number;
+  version?: 2 | 3; authorityHash?: string; contactRevision?: number;
 }
 const PURPOSE = "leaddrive:identity:credential-setup:v1"
 const NAMES = ["organizationId", "userId", "proofId", "claimId", "accountVersion", "credentialEpoch", "confirmedAt", "expiresAt"]
@@ -16,7 +16,7 @@ function instant(value: unknown) {
   return Number.isFinite(date.valueOf()) && date.toISOString() === value ? date.valueOf() : Number.NaN
 }
 function contextBytes(context: CredentialSetupContext) {
-  const names = context?.version === 2 ? [...NAMES, "version", "authorityHash", "contactRevision"] : NAMES
+  const names = (context?.version === 2 || context?.version === 3) ? [...NAMES, "version", "authorityHash", "contactRevision"] : NAMES
   if (!context || typeof context !== "object" || Array.isArray(context) || Object.keys(context).length !== names.length
     || names.some(name => !Object.hasOwn(context, name))) throw new IdentityRegistryError("IDENTITY_SETUP_CONTEXT_INVALID")
   assertIdentityScope(context.organizationId, context.userId)
@@ -24,9 +24,9 @@ function contextBytes(context: CredentialSetupContext) {
   const start = instant(context.confirmedAt), end = instant(context.expiresAt)
   if (![context.accountVersion, context.credentialEpoch].every(n => Number.isInteger(n) && n > 0 && n <= 2_147_483_647)
     || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || end - start > 600_000) throw new IdentityRegistryError("IDENTITY_SETUP_CONTEXT_INVALID")
-  if (context.version === 2 && (typeof context.authorityHash !== "string" || !/^[a-f0-9]{64}$/.test(context.authorityHash)
+  if ((context.version === 2 || context.version === 3) && (typeof context.authorityHash !== "string" || !/^[a-f0-9]{64}$/.test(context.authorityHash)
     || !Number.isInteger(context.contactRevision) || context.contactRevision! < 1 || context.contactRevision! > 2_147_483_647)) throw new IdentityRegistryError("IDENTITY_SETUP_CONTEXT_INVALID")
-  return Buffer.from(JSON.stringify([context.version === 2 ? "leaddrive:identity:credential-setup:v2" : PURPOSE, ...names.map(name => context[name as keyof CredentialSetupContext])]), "utf8")
+  return Buffer.from(JSON.stringify([(context.version === 2 || context.version === 3) ? `leaddrive:identity:credential-setup:v${context.version}` : PURPOSE, ...names.map(name => context[name as keyof CredentialSetupContext])]), "utf8")
 }
 function withKey<T>(key: PhoneProofKey, kind: "capability" | "request", work: (derived: Buffer) => T, version = 1): T {
   if (!key || typeof key.id !== "string" || key.id.length < 1 || key.id.length > 40 || /[^A-Za-z0-9_-]/.test(key.id)
@@ -70,7 +70,7 @@ export function verifyCredentialSetup(context: CredentialSetupContext, key: Phon
 export function credentialSetupHint(token: string): { keyId: string; proofId: string } | null {
   if (typeof token !== "string" || token.length > 320) return null
   const parts = token.split(".")
-  if (parts.length !== 4 || !["lds1", "lds2"].includes(parts[0]) || parts[1].length < 1 || parts[1].length > 40 || /[^A-Za-z0-9_-]/.test(parts[1])
+  if (parts.length !== 4 || !["lds1", "lds2", "lds3"].includes(parts[0]) || parts[1].length < 1 || parts[1].length > 40 || /[^A-Za-z0-9_-]/.test(parts[1])
     || parts[2].length < 1 || parts[2].length > 171 || /[^A-Za-z0-9_-]/.test(parts[2]) || parts[3].length !== 43 || /[^A-Za-z0-9_-]/.test(parts[3])) return null
   const decoded = Buffer.from(parts[2], "base64url"), proofId = decoded.toString("utf8")
   if (decoded.toString("base64url") !== parts[2] || !Buffer.from(proofId, "utf8").equals(decoded)) return null

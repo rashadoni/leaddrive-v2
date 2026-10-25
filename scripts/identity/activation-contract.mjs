@@ -1,3 +1,4 @@
+import { checkCanonicalRecovery } from "./recovery-contract.mjs"
 import assert from "node:assert/strict"
 import bcrypt from "bcryptjs"
 import { resolve } from "node:path"
@@ -100,6 +101,8 @@ export async function checkIdentityActivation({ admin, writer, failing, actor, o
     await assert.rejects(activate(writer, issuer, invited.input, runtime), /IDENTITY_ADMIN_REQUIRED/)
     assert.ok((await account(invited.input.userId)).cutoverAt)
     checks.push("canonical_administrator_can_review_plan_prove_and_activate_without_legacy_role_and_revocation_denies_replay")
+
+    await checkCanonicalRecovery({ load, admin, writer, failing, org, prepare, activate, administrator, runtime, checks, phase, passwordPolicyError })
 
   } finally {
     await admin.mtmSetting.update({ where: flagKey, data: originalFlag })
