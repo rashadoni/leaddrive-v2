@@ -137,8 +137,32 @@ test('a second apply is a no-op and still verifies', () => {
   assert.equal(sql("select count(*) from pg_replication_slots where slot_name = 'unrelated_slot'"), '1')
 })
 
-test('anything but inspect or apply is refused', () => {
+test('restore lets a connector back in: it logs in, recreates its slot and streams new rows', () => {
+  const r = retire('restore')
+  assert.equal(r.status, 0, r.stderr + r.stdout)
+  assert.match(r.stdout, /RESTORED/)
+  assert.equal(sql("select rolcanlogin from pg_roles where rolname = 'leaddrive_event_cdc'"), 't')
+  assert.equal(sql("select string_agg(schemaname || '.' || tablename, ',') from pg_publication_tables where pubname = 'leaddrive_event_outbox'"), 'public.event_outbox')
+  assert.equal(sql("select pubinsert::text || pubupdate::text || pubdelete::text from pg_publication where pubname = 'leaddrive_event_outbox'"), 'truefalsefalse')
+  assert.equal(sql("select count(*) from pg_replication_slots where slot_name = 'leaddrive_event_outbox_prod'"), '0', 'restore itself pins no WAL')
+  // As Debezium on start: the CDC role creates the missing slot and reads a new row through the publication.
+  const cdc = (args) => run(`${BIN}/pg_recvlogical`, ['-d', 'leaddrive_v2', '-U', 'leaddrive_event_cdc', '-S', 'leaddrive_event_outbox_prod', ...args])
+  cdc(['--create-slot', '-P', 'pgoutput'])
+  sql("insert into event_outbox (payload) values ('after-restore')")
+  const peek = sql("select count(*) from pg_logical_slot_peek_binary_changes('leaddrive_event_outbox_prod', null, null, 'proto_version', '1', 'publication_names', 'leaddrive_event_outbox')")
+  assert.ok(Number(peek) > 0, 'the new slot sees the new outbox row')
+  assert.equal(sql("select count(*) from event_outbox"), '4')
+  assert.equal(sql("select count(*) from pg_replication_slots where slot_name = 'unrelated_slot'"), '1')
+})
+
+test('a second restore is a no-op', () => {
+  const r = retire('restore')
+  assert.equal(r.status, 0, r.stderr + r.stdout)
+  assert.equal(sql("select count(*) from pg_publication where pubname = 'leaddrive_event_outbox'"), '1')
+})
+
+test('anything but inspect, apply or restore is refused', () => {
   const r = retire('drop')
   assert.notEqual(r.status, 0)
-  assert.match(r.stderr, /usage: inspect\|apply/)
+  assert.match(r.stderr, /usage: inspect\|apply\|restore/)
 })

@@ -464,9 +464,18 @@ Kafka 36 из 36 событий outbox без дублей.
 - **Снять прод с роли CDC-источника, отменить или уменьшить Kafka VPS — только
   по прямому слову владельца в твоей же сессии и в тот же день.** Решение
   из другой сессии, из этого файла или вчерашнее не считается: так и случилось
-  14:42. Workflow `retire-event-cdc-source.yml` умеет только `inspect`; `apply`
-  выполняется руками на хосте и без `OWNER_APPROVED_ON=<сегодня, UTC>` и
-  `OWNER_WORDS="<цитата владельца>"` отказывает, ничего не меняя.
+  14:42. Workflow `retire-event-cdc-source.yml` умеет только `inspect` и
+  `restore`; `apply` выполняется руками на хосте и без
+  `OWNER_APPROVED_ON=<сегодня, UTC>` и `OWNER_WORDS="<цитата владельца>"`
+  отказывает, ничего не меняя.
+- Если CDC всё же сняли, обратный шаг — `restore` (вход роли и публикация),
+  затем слот: создать его сразу (`pg_create_logical_replication_slot`), чтобы
+  разрыв не рос. Коннектор со старым offset при `snapshot.mode=initial` на
+  новом слоте падает («Last recorded offset is no longer available»): stop →
+  `PATCH /connectors/<имя>/offsets` на LSN нового слота → resume. Строки
+  outbox, записанные без слота, догнать одноразовым коннектором
+  `snapshot.mode=initial_only` с выборкой `WHERE "eventId" IN (…)` и сверить
+  eventId в Kafka с outbox — так восстановлено 2026-10-25.
 - `pg_logical_emit_message` на проде — только с префиксом `ld-slot-heartbeat…`:
   сообщение с другим префиксом коннектор пытается выдать в тему, куда ему
   нельзя писать, и задача падает (так было 2026-10-25 в 13:04 UTC).
