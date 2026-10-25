@@ -586,3 +586,10 @@ Exact50c full bundle40152589945/job121047220308 FAILED (exit1,8m28.66) webpack c
 Verified root package.json has no type=module (CommonJS default); existing actual tenant policy already compiled/runs with extensionless imports. Normalized only31 relative import specifiers in12 task-owned src/lib/identity TypeScript files to extensionless project convention. Output files remain .js, compiled CJS require resolves them; scripts that dynamically import emitted .js are unchanged. Full hosted scoped compiler/PG runtime AND Next bundle must revalidate new source; NOT RUN locally under host workload rule. No global resolver alias/tsconfig/package/dependency/baseline relaxed. Narrow diff/check only, existing75b ALS fix retained as separate checkpoint.
 
 Next publish both concrete integration fixes, preserve ready state for necessary repeat global/focal/real-login/build gates. Do not expand source while this verification runs. App/DB context fix and packaging fix require actual passing exact result, not prior green. No production/phone/provider mutation or identity merge.
+
+
+### 2026-10-25T02:25:37.447076+00:00 — both integration fixes published; repeat exact full gates
+
+Publishedff53f2d954de7f6111ba9e1705e65ac335a500c0 includes75b ALS caller/unit correction plus scoped extensionless identity imports. Ready PR1028 remains without auto_merge; no merge/deploy. Focal40154136372 and ready full40154136481 RUNNING. Scan40154136471/runner40154136590 SUCCESS. PR body explicitly records prior50c focal/type PASS but real-login/static and Next failures, concrete fixes and current pending gates; no inherited new-source PASS.
+
+Head must remain stable until exact focal/globaltype/static/real-login PG/bundle results. Local diff/83-workflow policy/Gitleaks8.30.1 narrowhistory PASS. No local heavy test/build. Continue only on concrete failures; after successful verification resume remaining credential/reset/write/CRM/onboarding/API/app-data/client migration. Original phone acceptance still independent and not completed, no device command/provider/production action.
