@@ -314,11 +314,14 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
     }
 
     const changesCredentials = Boolean(body.password) || body.userId !== undefined
-    const audit = (newData: Prisma.MtmAgentUncheckedUpdateManyInput, tx?: Prisma.TransactionClient) => writeMtmAudit({
-      organizationId: orgId, agentId: id, action: "AGENT_UPDATE", entity: "agent", entityId: id,
-      metadataKind: "agent_update", oldData: before,
-      newData: { ...newData, passwordHash: newData.passwordHash ? "[redacted]" : undefined }, req,
-    }, tx)
+    const audit = (newData: Prisma.MtmAgentUncheckedUpdateManyInput, tx?: Prisma.TransactionClient) => {
+      const event = {
+        organizationId: orgId, agentId: id, action: "AGENT_UPDATE", entity: "agent", entityId: id,
+        metadataKind: "agent_update" as const, oldData: before,
+        newData: { ...newData, passwordHash: newData.passwordHash ? "[redacted]" : undefined }, req,
+      }
+      return tx ? writeMtmAudit(event, tx) : writeMtmAudit(event)
+    }
     const write = async (externalCode?: string): Promise<Prisma.BatchPayload> => {
       const update = externalCode === undefined ? data : { ...data, externalCode }
       const where = { id: scopedAgentIdFilter(administration, id), organizationId: orgId }
