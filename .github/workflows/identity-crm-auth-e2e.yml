@@ -126,19 +126,21 @@ jobs:
           GRANT CONNECT ON DATABASE identity_crm_browser_test TO identity_crm_browser;
           GRANT USAGE ON SCHEMA public TO identity_crm_browser;
           GRANT SELECT ON ALL TABLES IN SCHEMA public TO identity_crm_browser;
-          GRANT UPDATE ("lastLogin", "loginCount", "updatedAt") ON users TO identity_crm_browser;
-          GRANT UPDATE (version, "updatedAt", "passwordHash", "credentialEpoch") ON identity_accounts TO identity_crm_browser;
+          GRANT UPDATE ("lastLogin", "loginCount", "updatedAt", "passwordHash", "passwordChangedAt") ON users TO identity_crm_browser;
+          GRANT UPDATE (version, "updatedAt", "passwordHash", "credentialEpoch", "cutoverAt") ON identity_accounts TO identity_crm_browser;
           GRANT UPDATE (id) ON organizations, identity_phone_claims, mtm_agents TO identity_crm_browser;
           GRANT INSERT, UPDATE ON identity_application_grants, identity_application_memberships TO identity_crm_browser;
           GRANT INSERT ON identity_events TO identity_crm_browser;
           GRANT INSERT ON mtm_agents, identity_actor_bindings TO identity_crm_browser;
-          GRANT UPDATE (position, "teamId", "departmentId", "updatedAt") ON mtm_agents TO identity_crm_browser;
+          GRANT UPDATE (position, "teamId", "departmentId", "updatedAt", "passwordHash") ON mtm_agents TO identity_crm_browser;
           GRANT INSERT ON mtm_departments, mtm_teams, workforce_employment_events TO identity_crm_browser;
           GRANT UPDATE ("departmentId", "updatedAt") ON mtm_teams TO identity_crm_browser;
           GRANT UPDATE (id) ON mtm_settings TO identity_crm_browser;
           GRANT INSERT ON mtm_audit_logs TO identity_crm_browser;
           GRANT INSERT, UPDATE ON identity_phone_proofs, identity_phone_proof_outbox TO identity_crm_browser;
           GRANT INSERT, UPDATE, DELETE ON identity_phone_reservations TO identity_crm_browser;
+          GRANT INSERT, DELETE ON identity_phone_claims TO identity_crm_browser;
+          GRANT INSERT, UPDATE ON identity_onboarding_intents TO identity_crm_browser;
           SQL
           npx prisma validate
           npx prisma generate
@@ -146,6 +148,14 @@ jobs:
       - name: Compile actual identity services for private synthetic recovery issuance
         run: node scripts/identity/compile-foundation.mjs
       - run: npx playwright install --with-deps chromium
+      - name: Bind disposable activation to its exact checked-out artifact contract
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$IDENTITY_CRM_HEAD_SHA"
+          test ! -e .deploy-sha
+          umask 077
+          printf '%s\n' "$IDENTITY_CRM_HEAD_SHA" > .deploy-sha
+          node scripts/identity/release-contract.mjs --write-manifest "$PWD" "$IDENTITY_CRM_HEAD_SHA"
       - name: Actual browser cookie, role, epoch, grant revocation and CRM MFA
         run: |
           set -euo pipefail

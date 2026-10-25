@@ -71,6 +71,14 @@ try {
     await admin.identityActorBinding.create({ data: { organizationId: company, userId: userId("enrollment"), actorId: fieldId, reviewedByUserId: userId("administrator"), reviewReference: "fixture-enrollment-field", accountVersion: 1 } })
     await admin.identityApplicationGrant.create({ data: { organizationId: company, userId: userId("enrollment"), application: "ROUTE_FIELD", role: "AGENT", status: "ACTIVE" } })
     await admin.identityApplicationMembership.create({ data: { organizationId: company, userId: userId("enrollment"), actorId: fieldId, application: "ROUTE_FIELD", status: "ACTIVE" } })
+    const pendingUser = userId("onboarding"), pendingActor = userId("onboarding-field")
+    await admin.user.create({ data: { id: pendingUser, organizationId: company, email: email("onboarding"), name: "Fictional first login",
+      phone: "+994507770020", role: "viewer", passwordHash: legacyHash, isActive: true } })
+    await admin.mtmAgent.create({ data: { id: pendingActor, organizationId: company, userId: pendingUser, name: "Fictional first login", phone: "+994507770020", role: "AGENT", status: "ACTIVE", passwordHash: legacyHash } })
+    await admin.identityAccount.create({ data: { organizationId: company, userId: pendingUser, version: 4 } })
+    await admin.identityActorBinding.create({ data: { organizationId: company, userId: pendingUser, actorId: pendingActor, reviewedByUserId: userId("administrator"), reviewReference: "fixture-first-login-field", accountVersion: 3 } })
+    await admin.identityApplicationGrant.create({ data: { organizationId: company, userId: pendingUser, application: "ROUTE_FIELD", role: "AGENT", status: "ACTIVE" } })
+    await admin.identityApplicationMembership.create({ data: { organizationId: company, userId: pendingUser, application: "ROUTE_FIELD", actorId: pendingActor, status: "ACTIVE" } })
     await admin.mtmSetting.create({ data: { organizationId: company, key: "attendanceEnabled", value: true } })
     await admin.mtmSetting.create({ data: { organizationId: company, key: "identityAuthV1", value: { version: 1, enabled: true } } })
     process.stdout.write("IDENTITY_CRM_BROWSER_FIXTURE_PREPARED\n")
@@ -356,6 +364,48 @@ try {
     const { identityRuntimeKeys } = await loadIdentity("runtime-keys")
     recoveryClient = makeRlsTestPrisma(appUrl.href)
     const proofKey = identityRuntimeKeys().proof.active
+    phase("ACTUAL_ADMIN_FIRST_LOGIN_REVIEW")
+    const invitationUrl = `/api/v1/identity/people/${userId("onboarding")}/onboarding`
+    const invitation = { phone: "+994507770020", application: "ROUTE_FIELD", expectedAccountVersion: 4,
+      expectedCredentialEpoch: 1, expectedContactRevision: 1, requestId: "cookie-onboarding-review", reviewReference: "cookie-explicit-first-login",
+      applications: [{ application: "ROUTE_FIELD", role: "AGENT", status: "ACTIVE", grantVersion: 1,
+        actorId: userId("onboarding-field"), membershipVersion: 1, membershipStatus: "ACTIVE" }] }
+    assert.equal((await viewer.current.request.post(invitationUrl, { timeout: 120000, data: invitation })).status(), 403)
+    const invitationResponse = await administrator.current.request.post(invitationUrl, { timeout: 120000, data: invitation })
+    assert.equal(invitationResponse.status(), 201)
+    const invitationResult = (await invitationResponse.json()).data
+    const { issueIdentityOnboardingProof } = await loadIdentity("onboarding")
+    const firstProof = await issueIdentityOnboardingProof(recoveryClient, company, { phone: invitation.phone, application: "ROUTE_FIELD", requestId: "cookie-first-login-code" }, proofKey)
+    const firstRow = await admin.identityPhoneProof.findUniqueOrThrow({ where: { id: firstProof.proofId } })
+    const firstCode = openPhoneProofDelivery(phoneProofContext(firstRow), firstRow, proofKey, new Date())
+    const firstClient = await context()
+    phase("ACTUAL_PUBLIC_FIRST_LOGIN_CONFIRMATION")
+    await reserveAuthPost()
+    const firstConfirmed = await firstClient.request.post("/api/v1/mtm/mobile/auth/code/verify", { timeout: 120000, data: {
+      organizationSlug: company, phone: invitation.phone, application: "ROUTE_FIELD", challengeId: firstRow.id, code: firstCode,
+    } })
+    assert.equal(firstConfirmed.status(), 200)
+    const firstSetup = (await firstConfirmed.json()).data.setupToken
+    assert.ok(firstSetup.startsWith("lds2."))
+    const firstPassword = `Onboarding!${password.slice(0, 32)}`
+    phase("ACTUAL_PUBLIC_FIRST_LOGIN_CUTOVER")
+    await reserveAuthPost()
+    const firstSession = await firstClient.request.post("/api/v1/mtm/mobile/auth/password", { timeout: 120000, data: {
+      organizationSlug: company, application: "ROUTE_FIELD", setupToken: firstSetup, password: firstPassword,
+    } })
+    assert.equal(firstSession.status(), 200)
+    const firstData = (await firstSession.json()).data
+    assert.equal(firstData.application, "ROUTE_FIELD"); assert.equal(firstData.agent.id, userId("onboarding-field"))
+    assert.equal((await admin.identityOnboardingIntent.findUniqueOrThrow({ where: { id: invitationResult.intentId } })).status, "COMPLETED")
+    assert.equal((await admin.user.findUniqueOrThrow({ where: { id: userId("onboarding") }, select: { passwordHash: true } })).passwordHash, "!identity:canonical-only")
+    assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: company, userId: userId("onboarding"), application: { in: ["CRM", "TIME"] } } }), 0)
+    assert.equal((await firstClient.request.get("/api/v1/mtm/mobile/profile", { timeout: 120000, headers: { Authorization: `Bearer ${firstData.token}` } })).status(), 200)
+    await reserveAuthPost()
+    assert.equal((await firstClient.request.post("/api/v1/mtm/mobile/auth/password", { timeout: 120000, data: {
+      organizationSlug: company, application: "ROUTE_FIELD", setupToken: firstSetup, password: "Wrong!FirstLogin482",
+    } })).status(), 401)
+    check("actual_admin_review_public_first_login_code_password_atomic_cutover_and_fresh_session_without_implicit_crm_time_or_completed_receipt_authentication")
+    phase("ACTUAL_PUBLIC_COMMON_PASSWORD_RECOVERY")
     // Private synthetic issuance only. Actual public verification/reset below;
     // no provider configuration, external request or plaintext-code artifact.
     const issued = await issueCanonicalRecovery(recoveryClient, company, {
