@@ -105,6 +105,9 @@ export const NOT_OPENABLE: Record<string, "internal" | "config" | "nested" | "pe
   "mtm/customers/[id]": "pending",
   "mtm/promotions/[id]": "pending",
   "mtm/tasks/[id]": "pending",
+  // A pharmacy's phone order: callers' own words and prices, for a manager
+  // to check. Not registered for voice, like the MTM cards above.
+  "pharmacy-orders/[id]": "pending",
   // An operational surface for dispatching calls, not a customer record the
   // voice agent reads aloud. Keeping it unopenable holds the read-only line.
   "voip/call-queues/[id]": "internal",

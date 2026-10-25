@@ -77,6 +77,8 @@ model Organization {
   adConversionDestinations AdConversionDestination[]
   adConversionEvents       AdConversionEvent[]
   bookings              Booking[]
+  pharmacyPhoneOrders   PharmacyPhoneOrder[]
+  pharmacyPhoneOrderLines PharmacyPhoneOrderLine[]
   reviewerAccessGrants  ReviewerAccessGrant[]
   accountGradeConfig    AccountGradeConfig?
   intentSignalConfig    IntentSignalConfig?
@@ -23090,6 +23092,89 @@ model AdConversionEvent {
   @@map("ad_conversion_events")
 }
 
+/// An order list a pharmacy dictated to the AI operator on the phone. It is a
+/// preliminary request for a manager to check: nothing here reaches 1C by
+/// itself, and the manager's "confirm" records that they entered it there.
+/// One order per call (`providerCallId`); a second save during the same call
+/// replaces the lines while the order still waits for review.
+model PharmacyPhoneOrder {
+  id                     String       @id @default(cuid())
+  organizationId         String
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Shown to people as TS-<number>; counts per organization.
+  number                 Int
+  /// pending_review | confirmed | rejected
+  status                 String       @default("pending_review")
+  /// The PBX call id (AudioSocket UUID) the list was taken on.
+  providerCallId         String
+  callStartedAt          DateTime
+  /// Tenant-bound ciphertext of the caller's number.
+  callerPhone            String
+  /// test_call | phone_unique | named_on_call | unidentified
+  pharmacyIdentification String
+  /// 1C counterparty GUID, name and address when the pharmacy is known.
+  pharmacyGuid           String?
+  pharmacyName           String?
+  pharmacyAddress        String?
+  /// The catalog snapshot the lines were resolved and priced against: the
+  /// snapshot store's namespace, its scope key and the version.
+  catalogSource          String
+  catalogScopeKey        String
+  catalogVersion         String
+  catalogObservedAt      DateTime
+  currency               String       @default("AZN")
+  /// Sum of the priced lines only; a line not found in the catalog has no price.
+  totalAmount            Decimal      @db.Decimal(14, 2)
+  /// Bumped by every save from the call and every manager edit.
+  revision               Int          @default(1)
+  confirmedById          String?
+  confirmedAt            DateTime?
+  rejectedById           String?
+  rejectedAt             DateTime?
+  rejectReason           String?
+  /// Delivery state of the manager's WhatsApp notice: { status, at, messageId?, error? }.
+  managerNotice          Json?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  lines PharmacyPhoneOrderLine[]
+
+  @@unique([organizationId, number])
+  @@unique([organizationId, providerCallId])
+  @@index([organizationId, status, createdAt])
+  @@map("pharmacy_phone_orders")
+}
+
+/// One line of a phone order: the caller's own words next to the catalog item
+/// they were resolved to. A line the catalog did not resolve keeps the words
+/// and quantity and has no product or price until a manager picks one.
+model PharmacyPhoneOrderLine {
+  id             String             @id @default(cuid())
+  organizationId String
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  orderId        String
+  order          PharmacyPhoneOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  position       Int
+  /// resolved | not_found
+  status         String
+  /// 1C product GUID, item code and label from the catalog snapshot.
+  externalId     String?
+  itemCode       String?
+  productName    String?
+  /// What the caller said for this line, as the model heard it.
+  spokenText     String
+  quantity       Int
+  /// The unit the caller used: qutu, ədəd, flakon, ...
+  unit           String
+  unitPrice      Decimal?           @db.Decimal(12, 4)
+  lineTotal      Decimal?           @db.Decimal(14, 2)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([orderId, position])
+  @@index([organizationId])
+  @@map("pharmacy_phone_order_lines")
+}
 
 /// Explicit own/team expansion for the meetings workspace; board membership is unrelated.
 model BookingCoordinatorGrant {
