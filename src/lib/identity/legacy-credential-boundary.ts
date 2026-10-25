@@ -87,6 +87,24 @@ async function readLegacyPhoneState(tx: Prisma.TransactionClient, organizationId
   return canonicalClaim ? "MIGRATED" : "LEGACY"
 }
 
+/** Internal legacy contact assignment refusal, not ownership proof. Caller
+ * owns the shared tenant writer lock and independently validates/authorizes
+ * the contact edit. National suffixes only refuse; never select/adopt a person.
+ * Shadow claims do not reserve an active login namespace. */
+export async function readLegacyPhoneAssignmentBoundaryInTransaction(tx: Prisma.TransactionClient,
+  organizationId: string, value: string): Promise<LegacyCredentialBoundary> {
+  assertIdentityScope(organizationId, "phone-assignment")
+  if (typeof value !== "string" || value.length > 128) return "UNAVAILABLE"
+  const digits = phoneDigits(value)
+  if (digits.length < 7 || digits.length > 15) return "UNAVAILABLE"
+  const match = digits.startsWith("0") ? { normalizedPhone: { endsWith: digits.slice(1) } }
+    : { normalizedPhone: `+${digits}` }
+  const claim = await tx.identityPhoneClaim.findFirst({ where: {
+    organizationId, account: { cutoverAt: { not: null } }, ...match,
+  }, select: { id: true } })
+  return claim ? "MIGRATED" : "LEGACY"
+}
+
 /** Internal eligibility only: caller owns a verified scope and transaction. */
 export async function readLegacyCredentialBoundaryInTransaction(tx: Prisma.TransactionClient, organizationId: string,
   principal: LegacyCredentialPrincipal): Promise<LegacyCredentialBoundary> {

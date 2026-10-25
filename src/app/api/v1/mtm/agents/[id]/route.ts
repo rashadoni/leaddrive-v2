@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
+import { readLegacyPhoneAssignmentBoundaryInTransaction } from "@/lib/identity/legacy-credential-boundary"
 import { IdentityRegistryError } from "@/lib/identity/contract"
 import { attendanceIdentityConflictResponse } from "@/lib/mtm/attendance-identity-error"
 import { withRls } from "@/lib/with-rls"
@@ -313,7 +314,7 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
       data.passwordHash = await bcrypt.hash(body.password, 12)
     }
 
-    const changesCredentials = Boolean(body.password) || body.userId !== undefined
+    const changesCredentials = Boolean(body.password) || body.userId !== undefined || body.phone !== undefined
     const audit = (newData: Prisma.MtmAgentUncheckedUpdateManyInput, tx?: Prisma.TransactionClient) => {
       const event = {
         organizationId: orgId, agentId: id, action: "AGENT_UPDATE", entity: "agent", entityId: id,
@@ -330,18 +331,30 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
         ...(body.userId ? [{ kind: "USER" as const, userId: body.userId }] : [])]
       const result = await runWithTenant(orgId, () => withLegacyCredentialMaintenance(prisma, orgId, principals, async tx => {
         const fresh = await tx.mtmAgent.findFirst({ where, select: {
-          role: true, status: true, userId: true, teamId: true, managerId: true,
+          role: true, status: true, userId: true, teamId: true, managerId: true, phone: true,
         } })
         if (!fresh) return { count: 0 }
         // The permission decision above belongs to this exact card/scope.
         // Do not reset or relink after a concurrent privilege/territory move.
         if (fresh.role !== before.role || fresh.status !== before.status || fresh.userId !== before.userId
-          || fresh.teamId !== before.teamId || fresh.managerId !== before.managerId) {
+          || fresh.teamId !== before.teamId || fresh.managerId !== before.managerId
+          || (body.phone !== undefined && fresh.phone !== before.phone)) {
           throw new IdentityRegistryError("IDENTITY_LEGACY_CARD_STATE_CHANGED")
         }
         if (body.userId && !await tx.user.findFirst({ where: {
           id: body.userId, organizationId: orgId, isActive: true, anonymizedAt: null,
         }, select: { id: true } })) throw new IdentityRegistryError("IDENTITY_LEGACY_CARD_STATE_CHANGED")
+        if (body.phone) {
+          if (await readLegacyPhoneAssignmentBoundaryInTransaction(tx, orgId, body.phone) !== "LEGACY") {
+            throw new IdentityRegistryError("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+          }
+          // Repeat a changed number's uniqueness under the canonical lock.
+          // An unchanged historical national spelling keeps its old behavior.
+          if (body.phone.replace(/[\s\-()]/g, "") !== (before.phone ?? "").replace(/[\s\-()]/g, "")) {
+            const phone = await checkSignInPhone(tx, orgId, body.phone, before.id)
+            if (!phone.ok) throw new IdentityRegistryError("IDENTITY_LEGACY_CARD_STATE_CHANGED")
+          }
+        }
         const changed = await tx.mtmAgent.updateMany({ where, data: update })
         if (changed.count === 1) await audit(update, tx)
         return changed

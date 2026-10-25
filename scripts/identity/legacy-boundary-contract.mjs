@@ -78,7 +78,7 @@ export async function checkLegacyBoundary({ admin, writer, actor, other, build, 
   assert.equal(opens, 0)
   checks.push("legacy_boundary_never_treats_missing_inactive_foreign_invalid_context_or_database_failure_as_legacy_permission")
 
-  const { readLegacyPhoneCredentialBoundary: phoneBoundary, readLegacyPhoneCredentialBoundaryInTransaction: phoneMutationBoundary } = await module("legacy-credential-boundary")
+  const { readLegacyPhoneCredentialBoundary: phoneBoundary, readLegacyPhoneCredentialBoundaryInTransaction: phoneMutationBoundary, readLegacyPhoneAssignmentBoundaryInTransaction: assignmentBoundary } = await module("legacy-credential-boundary")
   const { withLegacyCredentialWrite: phoneWriter } = await module("legacy-credential-write")
   const canonicalUser = "legacy-phone-canonical-user", oldUser = "legacy-phone-old-user"
   const directCard = "legacy-phone-direct-card", fallbackCard = "legacy-phone-user-card"
@@ -97,6 +97,7 @@ export async function checkLegacyBoundary({ admin, writer, actor, other, build, 
   assert.deepEqual(await phoneWriter(writer, org, [card(fallbackCard)], tx => phoneMutationBoundary(tx, org, fallbackCard)), { allowed: true, value: "LEGACY" })
   checks.push("legacy_phone_namespace_shadow_claim_does_not_change_direct_or_linked_user_national_alias_admission")
 
+  assert.deepEqual(await phoneWriter(writer, org, [card(fallbackCard)], tx => assignmentBoundary(tx, org, phone)), { allowed: true, value: "LEGACY" })
   phase("LEGACY_PHONE_NAMESPACE_CANONICAL_OWNER_BLOCKS_DIFFERENT_OLD_ACTOR")
   await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: org, userId: canonicalUser } },
     data: { cutoverAt: new Date(), passwordHash: "!fixture-canonical-phone", version: 2, credentialEpoch: 2 } })
@@ -109,6 +110,15 @@ export async function checkLegacyBoundary({ admin, writer, actor, other, build, 
   assert.equal(await phoneBoundary(writer, org, fallbackCard, "+155507778866"), "MIGRATED")
   assert.deepEqual(await phoneWriter(writer, org, [card(fallbackCard)], tx => phoneMutationBoundary(tx, org, fallbackCard)), { allowed: true, value: "MIGRATED" })
   checks.push("canonical_phone_namespace_refuses_old_other_person_direct_user_national_and_country_ambiguous_aliases_without_reassigning_ownership")
+
+  phase("LEGACY_CONTACT_ASSIGNMENT_REFUSES_CANONICAL_NAMESPACE")
+  for (const entered of [phone, national]) {
+    assert.deepEqual(await phoneWriter(writer, org, [card(fallbackCard)], tx => assignmentBoundary(tx, org, entered)), { allowed: true, value: "MIGRATED" })
+  }
+  assert.deepEqual(await phoneWriter(writer, org, [card(fallbackCard)], tx => assignmentBoundary(tx, org, "+994507770009")), { allowed: true, value: "LEGACY" })
+  assert.deepEqual(await phoneWriter(writer, org, [card(fallbackCard)], tx => assignmentBoundary(tx, org, "")), { allowed: true, value: "UNAVAILABLE" })
+  assert.deepEqual(await phoneWriter(writer, other.organizationId, [user(betaId)], tx => assignmentBoundary(tx, other.organizationId, phone)), { allowed: true, value: "LEGACY" })
+  checks.push("legacy_contact_assignment_shared_writer_refuses_canonical_exact_or_national_namespace_but_preserves_shadow_other_number_and_foreign_tenant")
 
   phase("LEGACY_PHONE_NAMESPACE_SCOPE_STALE_AND_DATABASE_ERRORS_REFUSE")
   assert.equal(await phoneBoundary(writer, other.organizationId, directCard, phone), "UNAVAILABLE")

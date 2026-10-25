@@ -468,25 +468,30 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     const change = (id: string, body: unknown) => updateAgent(new NextRequest(`http://localhost/api/v1/mtm/agents/${id}`, {
       method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
     }), { params: Promise.resolve({ id }) })
-    const cardState = () => bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId }, select: { passwordHash: true, status: true, userId: true } }))
+    const cardState = () => bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId }, select: { passwordHash: true, status: true, userId: true, phone: true } }))
     webSession.current = { orgId: company, userId: fixture.adminId, role: "admin", email: "card-admin@example.invalid", name: "Fictional admin", principalType: "session" }
     try {
       await bypass(() => prisma.$executeRawUnsafe(`ALTER TABLE mtm_audit_logs ADD CONSTRAINT identity_fixture_card_audit_fail CHECK ("organizationId" <> 'identity-card-maintenance' OR action <> 'AGENT_UPDATE') NOT VALID`))
       try {
-        expect((await change(fixture.cardId, { password: newPassword })).status).toBe(400)
-        expect(await cardState()).toEqual({ passwordHash: fixture.oldHash, status: "INACTIVE", userId: fixture.userId })
+        expect((await change(fixture.cardId, { password: newPassword, phone: "+994507779922" })).status).toBe(400)
+        expect(await cardState()).toEqual({ passwordHash: fixture.oldHash, status: "INACTIVE", userId: fixture.userId, phone: null })
       } finally { await bypass(() => prisma.$executeRawUnsafe("ALTER TABLE mtm_audit_logs DROP CONSTRAINT identity_fixture_card_audit_fail")) }
       expect((await change(fixture.cardId, { password: newPassword })).status).toBe(200)
       const maintained = await cardState()
       expect(maintained.status).toBe("INACTIVE")
       expect(await bcrypt.compare(newPassword, maintained.passwordHash!)).toBe(true)
       await bypass(() => prisma.identityAccount.create({ data: { organizationId: company, userId: fixture.userId, cutoverAt: new Date(), passwordHash: "!canonical-card-fixture" } }))
-      for (const body of [{ password: oldPassword }, { userId: null }]) {
+      for (const body of [{ password: oldPassword }, { userId: null }, { phone: "+994507779922" }, { phone: null }]) {
         const refused = await change(fixture.cardId, body)
         expect(refused.status).toBe(409)
         expect((await refused.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
       }
       expect((await change(fixture.otherId, { userId: fixture.userId })).status).toBe(409)
+      await bypass(() => prisma.identityPhoneClaim.create({ data: { organizationId: company, userId: fixture.userId, normalizedPhone: "+994507779922", verifiedAt: new Date(), accountVersion: 1 } }))
+      const refusedPhone = await change(fixture.otherId, { phone: "+994507779922" })
+      expect(refusedPhone.status).toBe(409)
+      expect((await refusedPhone.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+      expect((await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.otherId } }))).phone).toBeNull()
       expect(await cardState()).toEqual(maintained)
       await bypass(async () => {
         expect((await prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.otherId } })).userId).toBeNull()
