@@ -203,7 +203,7 @@ export function slotHeartbeat(env) {
     // (drill run 40193162960 wrote to __debezium-heartbeat.* with it).
     'topic.heartbeat.prefix': `ld.${env}.connect.heartbeat`,
     'heartbeat.action.query': `SELECT pg_logical_emit_message(false, '${SLOT_MESSAGE_PREFIX}', '')`,
-    'message.prefix.exclude.list': SLOT_MESSAGE_PREFIX,
+    'message.prefix.exclude.list': `${SLOT_MESSAGE_PREFIX}.*`,
   }
 }
 
