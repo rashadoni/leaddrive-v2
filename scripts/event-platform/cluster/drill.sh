@@ -412,8 +412,9 @@ node -e '
     .replaceAll("__PGDATABASE__", "leaddrive").replaceAll("__SECRET_FROM_PROVIDER__", process.argv[3])
     .replaceAll("__PG_SSL_ROOT_CERT_PATH__", "/etc/kafka/tls/ca.pem")
   if (/__[A-Z_]+__/.test(s)) throw new Error("unresolved placeholder in connector")
-  process.stdout.write(s)
-' "$repo/ops/event-platform/debezium/event-outbox-connector.template.json" "$env" "$cdc_password" >"$work/connector.json"
+  const c = JSON.parse(s)
+  import(process.argv[4]).then((m) => { Object.assign(c.config, m.slotHeartbeat(process.argv[2])); process.stdout.write(JSON.stringify(c)) })
+' "$repo/ops/event-platform/debezium/event-outbox-connector.template.json" "$env" "$cdc_password" "$services" >"$work/connector.json"
 docker exec -i kafka-p-connect-eu curl -fsS -X POST -H 'Content-Type: application/json' --data @- \
   http://kafka-p-connect-eu:8083/connectors <"$work/connector.json" >/dev/null || fail "connector registration rejected"
 connector_status() { docker exec kafka-p-connect-eu curl -fsS "http://kafka-p-connect-eu:8083/connectors/leaddrive-event-outbox-$env/status"; }

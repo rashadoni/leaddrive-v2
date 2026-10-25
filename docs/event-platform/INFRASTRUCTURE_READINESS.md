@@ -467,10 +467,14 @@ default `lsn.flush.mode=connector` Debezium confirms only positions it emitted,
 and the outbox was quiet. Left alone the slot would reach the 16 GB cap in
 about seven weeks and be dropped. Debezium heartbeats alone do not help: the
 first drill run (CI run 40024551361) sent a heartbeat a minute and the slot
-did not move. The connector now uses `lsn.flush.mode=connector_and_driver`,
-which also confirms keepalive positions nobody subscribes to; the drill proves
-the slot follows WAL written only to other tables and that no outbox row is
-lost across a task restart in the middle of that traffic. The Kafka watch
+did not move. `lsn.flush.mode=connector_and_driver` was rejected: the driver
+confirms past Debezium's stored offset, so a restart either refuses to start
+or, with `offset.mismatch.strategy=trust_slot`, skips the gap. Each heartbeat
+now emits a logical-decoding message (`pg_logical_emit_message`) that the slot
+must deliver; Debezium consumes it without emitting a record and commits the
+position with the next heartbeat. The drill proves the slot follows WAL
+written only to other tables and that no outbox row is lost across a task
+restart in the middle of that traffic. The Kafka watch
 (`ops/event-platform/README.md`, "What the watch covers today") alerts on the
 same retained bytes if this ever stops working, and on 2026-10-24 already
 reported the real two-hour outage of the OVH Gravelines site and its end.

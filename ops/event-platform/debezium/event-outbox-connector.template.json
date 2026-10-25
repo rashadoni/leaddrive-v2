@@ -14,7 +14,6 @@
     "plugin.name": "pgoutput",
     "slot.name": "leaddrive_event_outbox___ENV__",
     "slot.drop.on.stop": "false",
-    "lsn.flush.mode": "connector_and_driver",
     "publication.name": "leaddrive_event_outbox",
     "publication.autocreate.mode": "disabled",
     "schema.include.list": "public",
