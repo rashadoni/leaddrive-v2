@@ -37,6 +37,14 @@ net.core.somaxconn = 4096
 EOF
 sysctl --system >/dev/null
 
+# Contabo images drop the page cache and trim every disk at :17 each hour. The
+# controllers then miss their 2 s Raft fetch timeout; on 2026-10-25 19:17 UTC it
+# moved the quorum leader and left 491 partitions short of a copy for 10
+# minutes. Kafka lives on the page cache; Ubuntu's weekly fstrim.timer stays.
+for job in /etc/cron.hourly/free /etc/cron.hourly/fstrim; do
+  if [ -f "$job" ]; then chmod -x "$job"; fi
+done
+
 getent group ld-kafka >/dev/null || groupadd --system --gid "$kafka_uid" ld-kafka
 getent passwd ld-kafka >/dev/null || useradd --system --uid "$kafka_uid" --gid "$kafka_uid" \
   --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin ld-kafka
