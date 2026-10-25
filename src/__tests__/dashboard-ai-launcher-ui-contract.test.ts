@@ -24,6 +24,11 @@ describe("dashboard AI launcher placement", () => {
     expect(layout).toContain('pathname.startsWith("/leaderboard")')
     expect(layout).toContain("isDashboardHome && heroCommandVisible")
     expect(layout).toContain("heroCommandVisible: isDashboardHome && heroCommandVisible")
+    // While the dashboard loads, its skeleton holds the hero field; saying
+    // "no field" then flashed the orange shared bar on every open.
+    const dashboardPage = source("src/app/(dashboard)/dashboard/page.tsx")
+    expect(dashboardPage).toContain("setHeroCommandVisible(loading || showGreeting)")
+    expect(dashboardPage).not.toContain("setHeroCommandVisible(showGreeting && !loading)")
     expect(panel).toContain("showFloatingLauncher = true")
     expect(panel).toContain("!open && showFloatingLauncher")
     expect(voice).toContain("showFloatingLauncher = true")

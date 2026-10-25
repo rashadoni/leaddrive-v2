@@ -1031,6 +1031,14 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-help >
   backdrop-filter: blur(16px) saturate(1.1);
 }
 
+/* Below xl help is a bare "?" icon (header.tsx); the label padding would
+   stretch it into a wide empty pill. */
+@media (max-width: 1279px) {
+  html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-help > * {
+    padding: 6px;
+  }
+}
+
 html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-help > *:hover {
   color: hsl(0 0% 100%) !important;
   border-color: hsl(0 0% 100% / 0.24) !important;
