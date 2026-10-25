@@ -482,6 +482,8 @@ export const navItems: NavItem[] = [
   { module: "settings", href: "/settings/users", icon: Users, tKey: "users", group: "Settings", permissionScope: "settings" },
   { module: "settings", href: "/settings/smtp-settings", icon: Server, tKey: "smtp", group: "Settings", permissionScope: "settings" },
   { module: "settings", href: "/settings/integrations", icon: Plug, tKey: "integrations", group: "Settings", permissionScope: "settings" },
+  // The organization's own Telegram bot for its employees (task 8).
+  { module: "settings", href: "/settings/telegram-bot", icon: Send, tKey: "telegramBot", group: "Settings", allowedRoles: ADMIN_ROLES },
   // Telephony provider setup. Lives under Settings (not Support) because that is
   // where owners look for it — the page configures a provider connection, not a
   // support workflow. Still addon-gated: the VoIP add-on covers this page plus
