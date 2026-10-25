@@ -47,6 +47,7 @@ function button(label: string) {
   return Array.from(container.querySelectorAll("button")).find((element) => element.textContent?.trim() === label)!
 }
 function capability(id: string) { return container.querySelector(`[data-tenant-capability="${id}"] [role="switch"]`) }
+function pageFeature(id: string) { return container.querySelector(`[data-page-feature="${id}"] [role="switch"]`) }
 function hiddenCategory(label: string) {
   return Array.from(container.querySelectorAll("button[aria-label]")).find((element) => element.textContent?.includes(label))!
 }
@@ -89,21 +90,33 @@ describe("unified tenant module picker", () => {
   })
 
   it("preserves an unrelated draft edit made while a save is in flight", async () => {
-    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "personnel"])))
+    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "support", "personnel"])))
     await render()
     let finish!: (result: Response) => void
     fetchMock.mockReturnValueOnce(new Promise<Response>(resolve => { finish = resolve }))
     await click(button(messages("en").admin.tenants.save))
-    const extraLabel = Array.from(container.querySelectorAll("div"))
-      .find(element => element.textContent === "Complaints Register")!
-    const extraToggle = extraLabel.parentElement!.parentElement!.querySelector("button")!
+    const extraToggle = pageFeature("complaints_register")!
     await click(extraToggle)
-    expect(extraToggle.textContent).toBe("on")
-    await act(async () => finish(response({ ...tenant(["crm", "personnel"]), modules: { crm: true, personnel: true } })))
-    expect(extraToggle.textContent).toBe("on")
-    fetchMock.mockResolvedValueOnce(response({ ...tenant(["crm", "personnel", "complaints_register"]), modules: { crm: true, personnel: true } }))
+    expect(extraToggle.getAttribute("aria-checked")).toBe("true")
+    await act(async () => finish(response({ ...tenant(["crm", "support", "personnel"]), modules: { crm: true, support: true, personnel: true } })))
+    expect(pageFeature("complaints_register")?.getAttribute("aria-checked")).toBe("true")
+    fetchMock.mockResolvedValueOnce(response({ ...tenant(["crm", "support", "personnel", "complaints_register"]), modules: { crm: true, support: true, personnel: true } }))
     await click(button(messages("en").admin.tenants.save))
     expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body)).features).toContain("complaints_register")
+  })
+
+  it("switches a flagged page on its own row, inside its group", async () => {
+    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "mtm"], { crm: true, mtm: true })))
+    await render("az")
+    const row = container.querySelector('[data-page-feature="pharmacy_phone_orders"]')!
+    expect(row.closest("[data-module-group]")?.getAttribute("data-module-group")).toBe("Route & Field")
+    expect(row.textContent).toContain(messages("az").nav.pharmacyPhoneOrders)
+    expect(row.className).toContain("line-through")
+    await click(pageFeature("pharmacy_phone_orders"))
+    expect(row.className).not.toContain("line-through")
+    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "mtm", "pharmacy_phone_orders"], { crm: true, mtm: true })))
+    await click(button(messages("az").admin.tenants.save))
+    expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body)).features).toContain("pharmacy_phone_orders")
   })
 
   it("includes both independent capabilities in bulk actions and preserves unrelated flags", async () => {

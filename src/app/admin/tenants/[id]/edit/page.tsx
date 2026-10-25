@@ -17,6 +17,7 @@ import {
   TENANT_MODULE_SECTIONS,
   TENANT_MODULE_CONTROLS,
   isTenantModuleSelected,
+  isTenantModulePageEnabled,
   setTenantModuleSelection,
 } from "@/lib/admin-sidebar-catalog"
 import { EDITABLE_TENANT_CAPABILITIES, getTenantEditorCapabilities, type TenantEditorCapabilities } from "@/lib/tenant-editor-entitlements"
@@ -449,16 +450,29 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
                       {/* Pages affected */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                         {section.items.map((item) => {
-                          const isEnabled = isTenantModuleSelected(form, item.control)
+                          const isEnabled = isTenantModulePageEnabled(form, item)
+                          const { feature } = item
                           return (
                             <div
                               key={item.href}
+                              data-page-feature={feature}
                               className={`flex items-center gap-2 rounded px-2.5 py-1.5 text-xs transition-colors ${
                                 isEnabled ? "text-foreground" : "text-muted-foreground/40 line-through"
                               }`}
                             >
                               <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isEnabled ? "bg-green-400" : "bg-zinc-200"}`} />
-                              {tNav(item.tKey)}
+                              {feature ? (
+                                // A page behind its own flag: the group switch alone
+                                // does not show it, so the flag sits on the page row.
+                                <label className="inline-flex items-center gap-1.5 no-underline">
+                                  <Switch
+                                    checked={form.features.includes(feature)}
+                                    aria-label={tNav(item.tKey)}
+                                    onCheckedChange={() => toggleFeature(feature)}
+                                  />
+                                  {tNav(item.tKey)}
+                                </label>
+                              ) : tNav(item.tKey)}
                             </div>
                           )
                         })}
@@ -591,46 +605,8 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
             <div className="mt-5 pt-5 border-t border-zinc-200/60 dark:border-zinc-700/60 space-y-2">
               <h4 className="text-sm font-semibold">Extra features</h4>
               <p className="text-[11px] text-muted-foreground">
-                Optional modules that aren&apos;t tied to a plan tier. Available on top of the main module list.
+                Optional switches that aren&apos;t tied to a plan tier. Pages behind their own flag (complaints register, pharmacy phone orders) are switched on their row in Active Modules above.
               </p>
-              <div className="flex items-center justify-between py-2 px-3 rounded-md border border-zinc-200/40 dark:border-zinc-700/40 bg-muted/20">
-                <div>
-                  <div className="text-sm font-medium">Complaints Register</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Дополнительный раздел /complaints в группе Support (FMCG / consumer-goods use case).
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => toggleFeature("complaints_register")}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
-                    form.features.includes("complaints_register")
-                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                      : "bg-transparent text-muted-foreground border border-zinc-200 dark:border-zinc-700 hover:bg-muted"
-                  }`}
-                >
-                  {form.features.includes("complaints_register") ? "on" : "off"}
-                </button>
-              </div>
-              <div className="flex items-center justify-between py-2 px-3 rounded-md border border-zinc-200/40 dark:border-zinc-700/40 bg-muted/20">
-                <div>
-                  <div className="text-sm font-medium">Pharmacy phone orders</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Раздел /pharmacy-orders в группе Route &amp; Field: заказы, которые аптеки продиктовали ИИ-оператору по телефону.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => toggleFeature("pharmacy_phone_orders")}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
-                    form.features.includes("pharmacy_phone_orders")
-                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                      : "bg-transparent text-muted-foreground border border-zinc-200 dark:border-zinc-700 hover:bg-muted"
-                  }`}
-                >
-                  {form.features.includes("pharmacy_phone_orders") ? "on" : "off"}
-                </button>
-              </div>
               <div className="flex items-center justify-between py-2 px-3 rounded-md border border-zinc-200/40 dark:border-zinc-700/40 bg-muted/20">
                 <div>
                   <div className="text-sm font-medium">Social: Brand-protection only</div>

@@ -192,7 +192,13 @@ export type TenantModuleControl =
 export interface TenantModuleSection {
   group: string
   controls: TenantModuleControl[]
-  items: { control: TenantModuleControl; tKey: string; href: string }[]
+  /**
+   * `feature` is the nav item's own per-tenant flag (`complaints_register`,
+   * `pharmacy_phone_orders`): the page needs it ON TOP of the group control,
+   * so the editor gives it a switch on the page row itself. Read off navItems,
+   * so a new flagged page gets its switch without anyone adding one by hand.
+   */
+  items: { control: TenantModuleControl; tKey: string; href: string; feature?: string }[]
 }
 
 /** One presentation list; a capability takes precedence over its legacy module. */
@@ -207,10 +213,23 @@ export const TENANT_MODULE_SECTIONS: TenantModuleSection[] = NAV_GROUP_ORDER.map
     } else if (item.module) {
       control = { kind: "module", id: item.module }
     } else return []
-    return [{ control, tKey: item.tKey, href: item.href }]
+    return [{ control, tKey: item.tKey, href: item.href, ...(item.feature ? { feature: item.feature } : {}) }]
   })
   return { group, items, controls: [...new Map(items.map(({ control }) => [control.id, control])).values()] }
 }).filter((section) => section.items.length > 0)
+
+/** Every per-page flag the sidebar reads, in sidebar order. */
+export const TENANT_PAGE_FEATURES: string[] = [
+  ...new Set(TENANT_MODULE_SECTIONS.flatMap((section) => section.items.flatMap((item) => item.feature ? [item.feature] : []))),
+]
+
+/** Is this page on for the tenant: its group control AND its own flag, if it has one. */
+export function isTenantModulePageEnabled(
+  selection: TenantModuleSelection,
+  item: TenantModuleSection["items"][number],
+): boolean {
+  return isTenantModuleSelected(selection, item.control) && (!item.feature || selection.features.includes(item.feature))
+}
 
 export const TENANT_MODULE_CONTROLS = [...new Map(
   TENANT_MODULE_SECTIONS.flatMap((section) => section.controls).map((control) => [control.id, control]),
