@@ -1,0 +1,43 @@
+{
+  "status": "PASS_COMPONENT_FORM_BROWSER",
+  "observedAt": "2026-10-25T03:26:33.592Z",
+  "component": "real TaskForm with TaskMeetingNotice",
+  "data": "synthetic only",
+  "sizes": {
+    "viewport": 390,
+    "document": 390,
+    "dialog": 358,
+    "dialogScroll": 358
+  },
+  "writes": [
+    {
+      "path": "/api/v1/tasks/fixture-task",
+      "method": "PATCH"
+    },
+    {
+      "path": "/api/v1/tasks/fixture-task",
+      "method": "PATCH"
+    },
+    {
+      "path": "/api/v1/tasks/fixture-task",
+      "method": "PATCH"
+    }
+  ],
+  "errors": [],
+  "external": [],
+  "checks": [
+    "authorized exact meeting link",
+    "44px keyboard-focusable action",
+    "409 is localized and keeps dialog open",
+    "navigation closes form",
+    "390px dark form no overflow",
+    "denied booking identity absent",
+    "503 retry recovers"
+  ],
+  "notProven": [
+    "authenticated production UI",
+    "real role sessions",
+    "full application E2E",
+    "real customer/provider mutation"
+  ]
+}
