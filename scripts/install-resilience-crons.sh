@@ -52,6 +52,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/inbox-autonomous-agent/ { next }
   /cron-trigger\.sh \/api\/cron\/chatwoot-inbound-poll/ { next }
   /cron-trigger\.sh \/api\/cron\/voice-session-reaper/ { next }
+  /cron-trigger\.sh \/api\/cron\/zeytun-catalog-refresh/ { next }
   /cron-trigger\.sh \/api\/cron\/voice-call-queues/ { next }
   /cron-trigger\.sh \/api\/cron\/commitment-escalation/ { next }
   /cron-trigger\.sh \/api\/cron\/missed-inbound-reconciliation/ { next }
@@ -93,6 +94,10 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # reservation is never settled and the monthly budget drains to zero without
   # anyone having talked. Every minute: the grace window is 90s.
   printf '%s\n' "* * * * * $TRIGGER /api/cron/voice-session-reaper >> $LOG 2>&1"
+  # Zeytun's phone line serves only a catalog snapshot younger than a day.
+  # Half-hourly ticks; the endpoint downloads at most hourly (its own lock and
+  # persisted deadline) and does nothing without the private 1C connection file.
+  printf '%s\n' "*/30 * * * * $TRIGGER /api/cron/zeytun-catalog-refresh >> $LOG 2>&1"
   # Durable AI lead queues advance by at most one state transition per tenant
   # per tick. Dispatch remains a no-op unless both the server execution flag
   # and the tenant's VoIP queue switch are explicitly enabled.

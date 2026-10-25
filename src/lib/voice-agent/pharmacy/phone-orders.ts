@@ -35,6 +35,8 @@ export type PhoneOrderSaveInput = {
   callStartedAt: string
   callerPhoneE164: string
   identification: "test_call" | "phone_unique" | "named_on_call" | "unidentified"
+  /** The pharmacy as the caller named it (named_on_call), unverified. */
+  pharmacyName?: string
   catalog: PhoneOrderCatalog
   lines: PhoneOrderLineInput[]
 }
@@ -114,7 +116,8 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
       await tx.pharmacyPhoneOrderLine.createMany({ data: lineRows.map(line => ({ ...line, orderId: existing.id })) })
       const updated = await tx.pharmacyPhoneOrder.update({
         where: { id: existing.id },
-        data: { totalAmount: total, revision: { increment: 1 }, catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey,
+        data: { ...(input.pharmacyName ? { pharmacyName: input.pharmacyName, pharmacyIdentification: input.identification } : {}),
+          totalAmount: total, revision: { increment: 1 }, catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey,
           catalogVersion: input.catalog.version, catalogObservedAt: new Date(input.catalog.observedAt) },
       })
       return { status: "saved" as const, orderId: updated.id, number: updated.number, revision: updated.revision,
@@ -126,7 +129,7 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
         organizationId: orgId, number: (last._max.number ?? 1000) + 1, providerCallId: input.providerCallId,
         callStartedAt: new Date(input.callStartedAt),
         callerPhone: encryptForTenantBound(orgId, PHONE_ORDERS_TABLE, "callerPhone", input.callerPhoneE164),
-        pharmacyIdentification: input.identification,
+        pharmacyIdentification: input.identification, pharmacyName: input.pharmacyName ?? null,
         catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey, catalogVersion: input.catalog.version,
         catalogObservedAt: new Date(input.catalog.observedAt), totalAmount: total,
         lines: { create: lineRows },
