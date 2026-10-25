@@ -1,0 +1,145 @@
+name: Identity CRM actual Auth.js cookie E2E
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/identity-crm-auth-e2e.yml'
+      - 'scripts/identity/**'
+      - 'src/lib/auth.ts'
+      - 'src/lib/identity/**'
+      - 'src/lib/api-auth.ts'
+      - 'src/lib/two-factor-*.ts'
+      - 'src/types/next-auth.d.ts'
+      - 'prisma/schema.prisma'
+      - 'prisma/migrations/20261103120000_identity_foundation/**'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: identity-crm-auth-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actual-cookie:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: identity_crm_browser_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: [5432/tcp]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d identity_crm_browser_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      CI: 'true'
+      NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=6144
+      NEXT_TELEMETRY_DISABLED: '1'
+      LEADDRIVE_DISABLE_SERVICE_WORKER: '1'
+      IDENTITY_CRM_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      # Frozen full pre-identity schema: apply the actual additive migration,
+      # never db-push away its SQL guards or silently follow a moving base.
+      IDENTITY_CRM_BASE_SHA: a98e87eeb2f7da5cda97f58a25bd1390d5eaae54
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.IDENTITY_CRM_HEAD_SHA }}
+          fetch-depth: 0
+      - name: Bind source and ephemeral loopback targets
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$IDENTITY_CRM_HEAD_SHA"
+          [[ "$IDENTITY_CRM_BASE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          node scripts/ci/check-github-runner-policy.mjs
+          CRM_APP_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')"
+          CRM_DB_PASSWORD="$(openssl rand -hex 24)"
+          CRM_AUTH_SECRET="$(openssl rand -hex 32)"
+          CRM_FIXTURE_PASSWORD="$(openssl rand -hex 24)"
+          CRM_PII_KEY="$(openssl rand -hex 32)"
+          for value in "$CRM_DB_PASSWORD" "$CRM_AUTH_SECRET" "$CRM_FIXTURE_PASSWORD" "$CRM_PII_KEY"; do echo "::add-mask::$value"; done
+          {
+            echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/identity_crm_browser_test"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/identity_crm_browser_test"
+            echo "DATABASE_URL=postgresql://identity_crm_browser:${CRM_DB_PASSWORD}@127.0.0.1:${PG_PORT}/identity_crm_browser_test"
+            echo "IDENTITY_CRM_DB_PASSWORD=$CRM_DB_PASSWORD"
+            echo "IDENTITY_CRM_PORT=$CRM_APP_PORT"
+            echo "AUTH_URL=http://localhost:${CRM_APP_PORT}"
+            echo "NEXTAUTH_URL=http://localhost:${CRM_APP_PORT}"
+            echo "APP_URL=http://localhost:${CRM_APP_PORT}"
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:${CRM_APP_PORT}"
+            echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${CRM_APP_PORT}"
+            echo "AUTH_SECRET=$CRM_AUTH_SECRET"
+            echo "NEXTAUTH_SECRET=$CRM_AUTH_SECRET"
+            echo "TENANT_PII_MASTER_KEY=$CRM_PII_KEY"
+            echo "IDENTITY_CRM_FIXTURE_PASSWORD=$CRM_FIXTURE_PASSWORD"
+            echo "IDENTITY_CRM_OUTPUT=$RUNNER_TEMP/identity-crm-browser-result"
+            echo "LEADDRIVE_RUNTIME_DIR=$RUNNER_TEMP/identity-crm-runtime"
+            echo "LEADDRIVE_LOG_DIR=$RUNNER_TEMP/identity-crm-logs"
+          } >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Base schema, real additive identity migration and restricted application login
+        run: |
+          set -euo pipefail
+          git show "$IDENTITY_CRM_BASE_SHA:prisma/schema.prisma" > "$RUNNER_TEMP/identity-crm-base.prisma"
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema "$RUNNER_TEMP/identity-crm-base.prisma" --skip-generate
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261103120000_identity_foundation/migration.sql
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -v app_password="$IDENTITY_CRM_DB_PASSWORD" <<'SQL'
+          CREATE ROLE identity_crm_browser LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD :'app_password';
+          GRANT CONNECT ON DATABASE identity_crm_browser_test TO identity_crm_browser;
+          GRANT USAGE ON SCHEMA public TO identity_crm_browser;
+          GRANT SELECT ON ALL TABLES IN SCHEMA public TO identity_crm_browser;
+          GRANT UPDATE ("lastLogin", "loginCount") ON users TO identity_crm_browser;
+          SQL
+          npx prisma validate
+          npx prisma generate
+          node scripts/identity/crm-browser-contract.mjs prepare
+      - run: npx playwright install --with-deps chromium
+      - name: Actual browser cookie, role, epoch, grant revocation and CRM MFA
+        run: |
+          set -euo pipefail
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$IDENTITY_CRM_PORT" > "$RUNNER_TEMP/identity-crm-app.log" 2>&1 &
+          CRM_APP_PID=$!
+          cleanup() { kill "$CRM_APP_PID" 2>/dev/null || true; wait "$CRM_APP_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "$AUTH_URL/api/v1/ping" >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$CRM_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then
+              echo '::error::Isolated identity CRM application failed to start'
+              exit 1
+            fi
+            sleep 2
+          done
+          node scripts/identity/crm-browser-contract.mjs verify
+      - name: Preserve only sanitized workflow status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          root = pathlib.Path(os.environ['IDENTITY_CRM_OUTPUT'])
+          root.mkdir(parents=True, exist_ok=True)
+          (root / 'workflow.json').write_text(json.dumps({'headSha': os.environ['IDENTITY_CRM_HEAD_SHA'], 'baseSha': os.environ['IDENTITY_CRM_BASE_SHA'], 'jobStatus': os.environ['JOB_STATUS'], 'productionMutation': False}) + '\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: identity-crm-cookie-${{ env.IDENTITY_CRM_HEAD_SHA }}-${{ github.run_attempt }}
+          path: ${{ env.IDENTITY_CRM_OUTPUT }}
+          if-no-files-found: error
+          retention-days: 14

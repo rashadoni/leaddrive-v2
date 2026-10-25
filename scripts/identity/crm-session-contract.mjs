@@ -17,7 +17,7 @@ export async function checkCanonicalCrmSession({ admin, writer, actor, other, bu
   const originalFlag = await admin.mtmSetting.findUniqueOrThrow({ where: flag, select: { value: true } })
   const originalCompany = await admin.organization.findUniqueOrThrow({ where: { id: org }, select: { isActive: true } })
   try {
-    await admin.organization.update({ where: { id: org }, data: { isActive: true } })
+    await admin.organization.update({ where: { id: org }, data: { isActive: true }, select: { id: true } })
     await admin.mtmSetting.update({ where: flag, data: { value: { version: 1, enabled: true } } })
     await admin.$executeRaw`INSERT INTO users (id,"organizationId","isActive",role,"passwordHash") VALUES (${userId},${org},true,'viewer',${legacyHash})`
     await admin.identityAccount.create({ data: { ...scope, cutoverAt: new Date(), passwordHash: commonHash } })
@@ -73,9 +73,9 @@ export async function checkCanonicalCrmSession({ admin, writer, actor, other, bu
       assert.equal(await session(writer, org, userId, current.claims), null)
     }
     await admin.mtmSetting.update({ where: flag, data: { value: { version: 1, enabled: true } } })
-    await admin.organization.update({ where: { id: org }, data: { isActive: false } })
+    await admin.organization.update({ where: { id: org }, data: { isActive: false }, select: { id: true } })
     assert.equal(await session(writer, org, userId, current.claims), null)
-    await admin.organization.update({ where: { id: org }, data: { isActive: true } })
+    await admin.organization.update({ where: { id: org }, data: { isActive: true }, select: { id: true } })
     await admin.$executeRaw`UPDATE users SET role='superadmin' WHERE id=${userId}`
     assert.equal(await session(writer, org, userId, current.claims), null)
     await admin.$executeRaw`UPDATE users SET role='reviewer' WHERE id=${userId}`
@@ -116,6 +116,6 @@ export async function checkCanonicalCrmSession({ admin, writer, actor, other, bu
     checks.push("canonical_crm_database_failure_or_tampered_private_claims_never_supply_authority")
   } finally {
     await admin.mtmSetting.update({ where: flag, data: { value: originalFlag.value } })
-    await admin.organization.update({ where: { id: org }, data: originalCompany })
+    await admin.organization.update({ where: { id: org }, data: originalCompany, select: { id: true } })
   }
 }
