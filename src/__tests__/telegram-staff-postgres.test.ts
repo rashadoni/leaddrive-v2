@@ -222,13 +222,13 @@ pgDescribe("the employees' Telegram bot on a real Postgres", () => {
 
     const links = await bypass(() => prisma.telegramStaffLink.findMany({ where: { organizationId: ORG } }))
     expect(links.map((link) => [link.userId, link.telegramUserId])).toEqual([["u-admin", "5001"]])
-    expect(sent().map((m) => [m.chat_id, String(m.text).slice(0, 6)])).toEqual([["5001", "Готово"], ["5002", "Эта сс"]])
+    expect(sent().map((m) => [m.chat_id, String(m.text).slice(0, 8)])).toEqual([["5001", "Hazırdır"], ["5002", "Bu link "]])
     expect(model.seen).toEqual([])
   })
 
   it("tells a stranger how to link and shows no data, without asking the model", async () => {
     await deliver(message(9999, "покажи все сделки"))
-    expect(sent()).toEqual([expect.objectContaining({ chat_id: "9999", text: expect.stringContaining("не привязан") })])
+    expect(sent()).toEqual([expect.objectContaining({ chat_id: "9999", text: expect.stringContaining("bağlı deyil") })])
     expect(model.seen).toEqual([])
   })
 
@@ -249,6 +249,7 @@ pgDescribe("the employees' Telegram bot on a real Postgres", () => {
     const preview = sent().at(-1)!
     const buttons = (preview.reply_markup as { inline_keyboard: { callback_data: string }[][] }).inline_keyboard[0]
     expect(preview.text).toContain("Əli Məmmədov")
+    expect(preview.text).toContain("Telefon: +994 50 123 45 67")
     expect(await bypass(() => prisma.lead.count({ where: { organizationId: ORG } }))).toBe(0)
 
     const press = (fromId: number, data: string) => deliver({ callback_query: { id: `cb${fromId}`, data, from: { id: fromId, language_code: "ru" }, message: { message_id: 9, chat: { id: fromId, type: "private" } } } })
@@ -259,7 +260,23 @@ pgDescribe("the employees' Telegram bot on a real Postgres", () => {
     await press(5001, buttons[0].callback_data)
     const leads = await bypass(() => prisma.lead.findMany({ where: { organizationId: ORG } }))
     expect(leads.map((lead) => [lead.contactName, lead.phone, lead.source, lead.assignedTo])).toEqual([["Əli Məmmədov", "+994501234567", "telegram_bot", "u-admin"]])
-    expect(tg.calls.filter((call) => call.method === "editMessageText").map((call) => String(call.body.text))).toEqual(["Лид создан.", "Это уже неактуально."])
+    expect(tg.calls.filter((call) => call.method === "editMessageText").map((call) => String(call.body.text))).toEqual(["Lid yaradıldı.", "Bu artıq aktual deyil."])
+  })
+
+  it("asks for the operator code of a seven-digit phone instead of proposing it, and keeps a local number as +994", async () => {
+    model.script = [toolUse("propose_create_lead", { contactName: "Vasif Əliyev", phone: "333 09 28" }), say("Hansı operator kodu: 050, 055…?")]
+    await deliver(message(5001, "Vasif Əliyev üçün lid yarat, 333 09 28"))
+    expect(JSON.stringify(model.seen[1].messages.at(-1))).toContain("PHONE_NEEDS_CODE")
+    expect(await bypass(() => prisma.telegramStaffAction.count({ where: { organizationId: ORG, status: "pending" } }))).toBe(0)
+    expect(sent().at(-1)).toMatchObject({ text: "Hansı operator kodu: 050, 055…?" })
+
+    tg.calls = []
+    model.script = [toolUse("propose_create_lead", { contactName: "Vasif Əliyev", phone: "050 333 09 28" }), say("Təsdiqləyin.")]
+    await deliver(message(5001, "050"))
+    const preview = sent().at(-1)!
+    expect(preview.text).toContain("Telefon: +994 50 333 09 28")
+    const pending = await bypass(() => prisma.telegramStaffAction.findFirst({ where: { organizationId: ORG, status: "pending" } }))
+    expect(pending?.payload).toMatchObject({ phone: "+994503330928" })
   })
 
   it("answers a retried update once", async () => {
@@ -275,7 +292,7 @@ pgDescribe("the employees' Telegram bot on a real Postgres", () => {
     await bypass(() => prisma.user.update({ where: { id: "u-admin" }, data: { passwordChangedAt: new Date(Date.now() + 1000) } }))
     await deliver(message(5001, "мои задачи"))
 
-    expect(sent()).toEqual([expect.objectContaining({ chat_id: "5001", text: expect.stringContaining("привяжите Telegram заново") })])
+    expect(sent()).toEqual([expect.objectContaining({ chat_id: "5001", text: expect.stringContaining("yenidən bağlayın") })])
     expect(await bypass(() => prisma.telegramStaffLink.count({ where: { organizationId: ORG } }))).toBe(0)
     expect(model.seen).toEqual([])
   })

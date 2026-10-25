@@ -2,8 +2,7 @@
  * One Telegram update to the organization's employee bot, inside that
  * organization's tenant scope. The bot talks only in private chats and only
  * to linked employees: anyone else gets one line saying how to link, and no
- * data. The fixed phrases follow the Telegram app's language (az/ru/en); the
- * model answers in whatever language the employee writes.
+ * data. It speaks Azerbaijani unless the employee asks for another language.
  */
 import { prisma } from "@/lib/prisma"
 import { APP_URL } from "@/lib/domains"
@@ -11,68 +10,32 @@ import { answerCallbackQuery, editMessageText, sendChatAction, sendMessage } fro
 import { decryptBotToken } from "./bot-config"
 import { consumeLinkToken } from "./linking"
 import { loadStaffActor } from "./actor"
-import { actionPreview, decideAction, type PreviewLabels } from "./actions"
+import { actionPreview, decideAction } from "./actions"
 import { runStaffAgent, trimTurns, type Turn } from "./agent"
 
-type Lang = "az" | "ru" | "en"
-
-const TEXT: Record<Lang, Record<string, string>> = {
-  az: {
-    notLinked: "Bu Telegram LeadDrive hesabına bağlı deyil. CRM-də Profil → Telegram → «Telegram-ı bağla» basın.",
-    linked: "Hazırdır, Telegram bağlandı{name}. Mənə adi sözlərlə yazın: «bu gün tapşırıqlarım», «Əli üçün lid yarat, +994…».",
-    linkInvalid: "Bu link artıq keçərli deyil. Profildə yenisini alın.",
-    linkTaken: "Bu Telegram artıq başqa əməkdaşa bağlıdır.",
-    inactive: "Hesabınız aktiv deyil.",
-    relink: "Təhlükəsizlik üçün Telegram-ı yenidən bağlayın: Profil → Telegram.",
-    notAllowed: "Bu bot sizin rolunuz üçün açıq deyil.",
-    noAi: "Da Vinci AI modulu təşkilatınızda qoşulmayıb.",
-    budget: "Bu ay üçün AI limiti bitib. Administratora yazın.",
-    error: "Alınmadı, bir az sonra yenidən yazın.",
-    onlyText: "Hələlik yalnız mətn mesajlarını başa düşürəm.",
-    confirm: "Təsdiqlə", cancel: "Ləğv et",
-    question: "Yaradılsın?", lead: "Lid", phone: "Telefon", email: "E-poçt", company: "Şirkət", note: "Qeyd", task: "Tapşırıq", due: "Müddət", board: "Lövhə",
-    doneLead: "Lid yaradıldı.", doneTask: "Tapşırıq yaradıldı.", open: "CRM-də aç",
-    cancelled: "Ləğv edildi.", expired: "Vaxt keçdi — yenidən yazın.", gone: "Bu artıq aktual deyil.", notYours: "Bu sizin təklifiniz deyil.", failed: "Yaradılmadı",
-  },
-  ru: {
-    notLinked: "Этот Telegram не привязан к аккаунту LeadDrive. В CRM: Профиль → Telegram → «Привязать Telegram».",
-    linked: "Готово, Telegram привязан{name}. Пишите обычными словами: «мои задачи на сегодня», «создай лида Али, +994…».",
-    linkInvalid: "Эта ссылка уже недействительна. Получите новую в профиле.",
-    linkTaken: "Этот Telegram уже привязан к другому сотруднику.",
-    inactive: "Ваш аккаунт не активен.",
-    relink: "Для безопасности привяжите Telegram заново: Профиль → Telegram.",
-    notAllowed: "Бот недоступен для вашей роли.",
-    noAi: "Модуль Da Vinci AI не подключён в вашей организации.",
-    budget: "Лимит ИИ на этот месяц исчерпан. Напишите администратору.",
-    error: "Не получилось, попробуйте чуть позже.",
-    onlyText: "Пока я понимаю только текстовые сообщения.",
-    confirm: "Подтвердить", cancel: "Отмена",
-    question: "Создать?", lead: "Лид", phone: "Телефон", email: "Почта", company: "Компания", note: "Заметка", task: "Задача", due: "Срок", board: "Доска",
-    doneLead: "Лид создан.", doneTask: "Задача создана.", open: "Открыть в CRM",
-    cancelled: "Отменено.", expired: "Время вышло — напишите заново.", gone: "Это уже неактуально.", notYours: "Это не ваше предложение.", failed: "Не создано",
-  },
-  en: {
-    notLinked: "This Telegram is not linked to a LeadDrive account. In the CRM: Profile → Telegram → «Link Telegram».",
-    linked: "Done, Telegram is linked{name}. Write in plain words: «my tasks today», «create a lead Ali, +994…».",
-    linkInvalid: "This link is no longer valid. Get a new one in your profile.",
-    linkTaken: "This Telegram is already linked to another employee.",
-    inactive: "Your account is not active.",
-    relink: "For security, link Telegram again: Profile → Telegram.",
-    notAllowed: "The bot is not available for your role.",
-    noAi: "Da Vinci AI is not enabled for your organization.",
-    budget: "This month's AI limit is used up. Ask your administrator.",
-    error: "That did not work, try again a bit later.",
-    onlyText: "For now I understand text messages only.",
-    confirm: "Confirm", cancel: "Cancel",
-    question: "Create this?", lead: "Lead", phone: "Phone", email: "E-mail", company: "Company", note: "Note", task: "Task", due: "Due", board: "Board",
-    doneLead: "Lead created.", doneTask: "Task created.", open: "Open in CRM",
-    cancelled: "Cancelled.", expired: "Time is up — write it again.", gone: "This is no longer current.", notYours: "This is not your proposal.", failed: "Not created",
-  },
+/**
+ * The bot's own phrases. Azerbaijani always (owner 2026-10-25: «пусть говорит
+ * всегда по умолчанию на азербайджанском»), whatever the phone's language.
+ */
+const T = {
+  notLinked: "Bu Telegram LeadDrive hesabına bağlı deyil. CRM-də Profil → Telegram → «Telegram-ı bağla» basın.",
+  linked: "Hazırdır, Telegram bağlandı{name}. Mənə adi sözlərlə yazın: «bu gün tapşırıqlarım», «Əli üçün lid yarat, +994…».",
+  linkInvalid: "Bu link artıq keçərli deyil. Profildə yenisini alın.",
+  linkTaken: "Bu Telegram artıq başqa əməkdaşa bağlıdır.",
+  inactive: "Hesabınız aktiv deyil.",
+  relink: "Təhlükəsizlik üçün Telegram-ı yenidən bağlayın: Profil → Telegram.",
+  notAllowed: "Bu bot sizin rolunuz üçün açıq deyil.",
+  noAi: "Da Vinci AI modulu təşkilatınızda qoşulmayıb.",
+  budget: "Bu ay üçün AI limiti bitib. Administratora yazın.",
+  error: "Alınmadı, bir az sonra yenidən yazın.",
+  onlyText: "Hələlik yalnız mətn mesajlarını başa düşürəm.",
+  confirm: "Təsdiqlə", cancel: "Ləğv et",
+  question: "Yaradılsın?", lead: "Lid", phone: "Telefon", email: "E-poçt", company: "Şirkət", note: "Qeyd", task: "Tapşırıq", due: "Müddət", board: "Lövhə",
+  doneLead: "Lid yaradıldı.", doneTask: "Tapşırıq yaradıldı.", open: "CRM-də aç",
+  cancelled: "Ləğv edildi.", expired: "Vaxt keçdi — yenidən yazın.", gone: "Bu artıq aktual deyil.", notYours: "Bu sizin təklifiniz deyil.", failed: "Yaradılmadı",
 }
 
-const langOf = (code?: string): Lang => (code?.startsWith("ru") ? "ru" : code?.startsWith("en") ? "en" : "az")
-
-interface TgUser { id: number; username?: string; language_code?: string; is_bot?: boolean }
+interface TgUser { id: number; username?: string; is_bot?: boolean }
 export interface TelegramUpdate {
   update_id: number
   message?: { message_id: number; text?: string; chat: { id: number; type: string }; from?: TgUser }
@@ -94,16 +57,15 @@ export async function handleStaffUpdate(bot: StaffBotRow, update: TelegramUpdate
 
   if (update.callback_query) {
     const query = update.callback_query
-    const t = TEXT[langOf(query.from.language_code)]
     const match = /^a:([A-Za-z0-9_-]{1,40}):(ok|no)$/.exec(query.data ?? "")
     const link = await prisma.telegramStaffLink.findFirst({ where: { organizationId: orgId, botId: bot.id, telegramUserId: String(query.from.id) } })
     if (!match || !link || query.message?.chat.type !== "private") {
-      await answerCallbackQuery(token, query.id, link ? t.gone : t.notLinked)
+      await answerCallbackQuery(token, query.id, link ? T.gone : T.notLinked)
       return
     }
     const actorResult = await loadStaffActor(link)
     if (!actorResult.ok) {
-      await answerCallbackQuery(token, query.id, t.notAllowed)
+      await answerCallbackQuery(token, query.id, T.notAllowed)
       return
     }
     const outcome = await decideAction(actorResult.actor, link.id, match[1], match[2] === "ok", now)
@@ -111,12 +73,12 @@ export async function handleStaffUpdate(bot: StaffBotRow, update: TelegramUpdate
     let text: string
     let buttons: { text: string; url: string }[][] | undefined
     if (outcome.status === "done") {
-      text = outcome.kind === "create_lead" ? t.doneLead : t.doneTask
-      buttons = [[{ text: t.open, url: `${APP_URL.replace(/\/$/, "")}/${outcome.kind === "create_lead" ? "leads" : "tasks"}/${outcome.entityId}` }]]
+      text = outcome.kind === "create_lead" ? T.doneLead : T.doneTask
+      buttons = [[{ text: T.open, url: `${APP_URL.replace(/\/$/, "")}/${outcome.kind === "create_lead" ? "leads" : "tasks"}/${outcome.entityId}` }]]
     } else if (outcome.status === "failed") {
-      text = `${t.failed}: ${outcome.message}`
+      text = `${T.failed}: ${outcome.message}`
     } else {
-      text = { cancelled: t.cancelled, expired: t.expired, gone: t.gone, not_yours: t.notYours }[outcome.status]
+      text = { cancelled: T.cancelled, expired: T.expired, gone: T.gone, not_yours: T.notYours }[outcome.status]
     }
     await answerCallbackQuery(token, query.id)
     if (outcome.status !== "not_yours") await editMessageText(token, chatId, query.message.message_id, text, buttons).catch(() => sendMessage(token, chatId, text, buttons))
@@ -125,7 +87,6 @@ export async function handleStaffUpdate(bot: StaffBotRow, update: TelegramUpdate
 
   const message = update.message
   if (!message?.from || message.from.is_bot || message.chat.type !== "private") return
-  const t = TEXT[langOf(message.from.language_code)]
   const chatId = String(message.chat.id)
   const telegramUserId = String(message.from.id)
   const text = (message.text ?? "").trim()
@@ -133,25 +94,25 @@ export async function handleStaffUpdate(bot: StaffBotRow, update: TelegramUpdate
   const start = /^\/start(?:\s+(\S+))?$/.exec(text)
   if (start?.[1]) {
     const result = await consumeLinkToken({ orgId, botId: bot.id, token: start[1], telegramUserId, telegramUsername: message.from.username ?? null, chatId, now })
-    const reply = result.outcome === "linked" ? t.linked.replace("{name}", result.userName ? `, ${result.userName}` : "") : result.outcome === "taken" ? t.linkTaken : t.linkInvalid
+    const reply = result.outcome === "linked" ? T.linked.replace("{name}", result.userName ? `, ${result.userName}` : "") : result.outcome === "taken" ? T.linkTaken : T.linkInvalid
     await sendMessage(token, chatId, reply)
     return
   }
 
   const link = await prisma.telegramStaffLink.findFirst({ where: { organizationId: orgId, botId: bot.id, telegramUserId } })
   if (!link) {
-    await sendMessage(token, chatId, t.notLinked)
+    await sendMessage(token, chatId, T.notLinked)
     return
   }
   const actorResult = await loadStaffActor(link)
   if (!actorResult.ok) {
     if (actorResult.code === "RELINK_REQUIRED") await prisma.telegramStaffLink.deleteMany({ where: { id: link.id } })
-    const refusal = { USER_INACTIVE: t.inactive, RELINK_REQUIRED: t.relink, NOT_ALLOWED: t.notAllowed, NO_AI_MODULE: t.noAi }[actorResult.code]
+    const refusal = { USER_INACTIVE: T.inactive, RELINK_REQUIRED: T.relink, NOT_ALLOWED: T.notAllowed, NO_AI_MODULE: T.noAi }[actorResult.code]
     await sendMessage(token, chatId, refusal)
     return
   }
   if (!text || start) {
-    await sendMessage(token, chatId, start ? t.linked.replace("{name}", "") : t.onlyText)
+    await sendMessage(token, chatId, start ? T.linked.replace("{name}", "") : T.onlyText)
     return
   }
 
@@ -162,11 +123,11 @@ export async function handleStaffUpdate(bot: StaffBotRow, update: TelegramUpdate
     reply = await agent({ actor: actorResult.actor, linkId: link.id, text, history, now })
   } catch (error) {
     console.error("[telegram-staff] agent failed", { orgId, error: error instanceof Error ? error.message : error })
-    await sendMessage(token, chatId, t.error)
+    await sendMessage(token, chatId, T.error)
     return
   }
   if (reply.budgetExhausted) {
-    await sendMessage(token, chatId, t.budget)
+    await sendMessage(token, chatId, T.budget)
     return
   }
 
@@ -174,9 +135,9 @@ export async function handleStaffUpdate(bot: StaffBotRow, update: TelegramUpdate
   if (reply.actionId) {
     const action = await prisma.telegramStaffAction.findFirst({ where: { id: reply.actionId, organizationId: orgId }, select: { kind: true, payload: true } })
     if (action) {
-      await sendMessage(token, chatId, actionPreview(action.kind, action.payload as Record<string, unknown>, t as unknown as PreviewLabels), [[
-        { text: `✅ ${t.confirm}`, callback_data: `a:${reply.actionId}:ok` },
-        { text: t.cancel, callback_data: `a:${reply.actionId}:no` },
+      await sendMessage(token, chatId, actionPreview(action.kind, action.payload as Record<string, unknown>, T), [[
+        { text: `✅ ${T.confirm}`, callback_data: `a:${reply.actionId}:ok` },
+        { text: T.cancel, callback_data: `a:${reply.actionId}:no` },
       ]])
     }
   }
