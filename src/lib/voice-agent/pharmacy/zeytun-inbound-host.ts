@@ -99,7 +99,7 @@ export function createInboundPilotHost(options: {
         const snapshot = await store.load()
         // The rehearsal is pinned to the version the owner approved; the line
         // takes the newest live snapshot the refresh cron saved.
-        if (!snapshot || (!isLineGrant(config) && snapshot.version !== source.catalogVersion)) throw new Error("snapshot_unavailable")
+        if (!snapshot || (!isLineGrant(config) && snapshot.version !== config.approvedSource.catalogVersion)) throw new Error("snapshot_unavailable")
         const feed = new ZeytunAvailableBalances(snapshot.payload, snapshot.context)
         return { organizationId: source.organizationId, scopeKey: source.scopeKey, version: snapshot.version,
           observedAt: snapshot.context.observedAt, source: snapshot.context.source,

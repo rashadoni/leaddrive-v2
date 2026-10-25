@@ -3,7 +3,7 @@ import { createInboundPilotHandler, ZEYTUN_INBOUND_CLOSING, ZEYTUN_INBOUND_OPENI
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
 
 const now = Date.parse("2026-10-22T12:00:00Z"), token = "t".repeat(48)
-export const config: InboundPilotConfig = {
+export const config: Extract<InboundPilotConfig, { purpose: "owner_inbound_preview" }> = {
   version: 1, enabled: true, purpose: "owner_inbound_preview", id: "aaaaaaaa-1111-4111-8111-111111111111",
   organizationId: "tenant-test", channelConfigId: "line-test", testPhoneE164: "+994500000001",
   issuedAt: new Date(now - 60_000).toISOString(), expiresAt: new Date(now + 600_000).toISOString(), approvalReference: "test-approval",
