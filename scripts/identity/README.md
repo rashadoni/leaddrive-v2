@@ -440,3 +440,29 @@ resolution and29 lightweight admission/inventory tests passed locally; real
 compiler/Vitest/PG work stays in GitHub. CI explicitly imports the emitted
 policy before tests, avoiding an untested output/dependency layout. The shared
 catalog and attendance regression suites are included in the focused gate.
+
+
+### Canonical password login composition, no public endpoint
+
+`mobile-password-auth.ts` considers only the selected company's authoritative
+canonical claim/account with a cost12 credential. It never reads User/agent
+passwords, legacy phones or email as a fallback. Valid unknown numbers still
+perform fictitious cost12 work; absent/staged candidates always fail. Password
+input is bounded to72 UTF-8 bytes; the public boundary must add IP/tenant/
+principal rate limits before exposing this function. Other historical bcrypt
+costs need reviewed reset/rehash during migration, not silent adoption here.
+
+After bcrypt outside any transaction, a second guarded snapshot rechecks the
+same claim/person/hash/epoch and the actual fixed tenant policy, current app
+grant/membership/binding/actor. Only then it signs a dedicated app JWT using DB
+time. Claim reassignment or password rotation during comparison cannot sign
+for the new owner. The result contains only token and own app context; no hash
+or raw private candidate. No CRM session, MFA change, implicit app grant or
+legacy data mutation occurs. No current route calls this canonical login.
+
+Five actual-PG groups build three synthetic principals through the real staged
+review/grant/member/reservation/proof/setup services, then assume an approved
+test cutover. They check both apps/one actor, same phone/different company,
+valid legacy-password refusal, real grant/license gates and credential/owner
+races. Reassignment is a trusted fixture mutation to test the reader, not a
+phone-change API or evidence of a real SMS/WhatsApp ownership check.

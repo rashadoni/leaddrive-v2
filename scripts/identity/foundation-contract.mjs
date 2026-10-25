@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process"
 import { writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
+import { checkCanonicalPasswordLogin } from "./mobile-password-contract.mjs"
 import { checkMembershipTransactions } from "./membership-contract.mjs"
 import { checkPhoneProofTransactions } from "./phone-proof-contract.mjs"
 import { admitContractTarget } from "./postgres-contract.mjs"
@@ -381,6 +382,8 @@ async function main() {
     await checkPhoneProofTransactions({ admin, writer, failing, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
 
     await checkMembershipTransactions({ admin, writer, failing, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
+
+    await checkCanonicalPasswordLogin({ admin, writer, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
 
     phase = "RLS_AND_IMMUTABILITY"
     for (const table of TABLES) {
