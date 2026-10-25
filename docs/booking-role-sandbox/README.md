@@ -36,8 +36,9 @@ forward migrations; старые version=0 записи создаются до 
 
 Runtime браузера блокирует внешние запросы и попытки бизнес-изменений.
 Обычные PUT личных favorites/recents и POST локальной log-only CSP-диагностики
-проходят настоящие handlers и отдельно считаются. Первый тур нового пользователя
-закрывается штатной клавишей Escape, без force click/подмены DOM/localStorage.
+проходят настоящие handlers и отдельно считаются. Если появляется первый тур,
+предусмотрено штатное закрытие Escape, без force click/подмены DOM/localStorage.
+В финальном прогоне этот обработчик не потребовался (toursDismissed=0).
 Внешние публичные шрифты также блокируются и отдельно считаются; изображения
 могут использовать fallback font. API-ответы и авторизация не мокируются.
 Cookie/token/password/raw app logs и storageState в артефакт не попадают.
@@ -56,10 +57,23 @@ lint, YAML/runner policy и whitespace.
 `workflow-context.json` при ранней ошибке остаётся PREPARING, это не PASS.
 До успешного hosted run стенд считается подготовленным, а не проверенным.
 
+Финальный [hosted run40175047313](https://github.com/rashadoni/leaddrive-v2/actions/runs/40175047313)
+завершён SUCCESS: actual cold bundle и15/15 authenticated browser cases.
+Candidate39ec68f1d0f7b640e8437d57b74ad7f5c3f06c27, проверенный merge50f205317e4d7d4ea155a786586f01c181ed7d60.
+Сохранены [квитанция](evidence/result.json), [метаданные/digest](evidence/artifact-metadata.json),
+[календарь координатора](evidence/coordinator-calendar.png) и
+[задача сотрудника](evidence/employee-task-link.png). ZIP digest и16 source hashes
+сверены; реальные screenshot просмотрены. Первый неуспешный run остаётся в
+append-only журнале. Ограничения и P2 по будущим path triggers описаны в
+[критичном аудите](critical-audit.md).
+
 Этот результат дополнит переданный локальный production admin-smoke. Он не
 является приёмкой настоящих production employee/coordinator аккаунтов, live
 Google/письма, public create или полного accessibility/load/DR. Смена сессии
 проверяется с навигацией, а не как мгновенная cross-tab broadcast-инвалидация.
+Encrypted PII/key bootstrap и запуск standalone entrypoint также не подтверждены:
+реальные замечания из логов приведены в критичном аудите. Зелёный role result
+не означает отсутствие всех backend/build warnings.
 
 Развёртывание стенда не требует merge/deploy приложения. В этой задаче
 production release не выполняется.

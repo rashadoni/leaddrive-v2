@@ -1,8 +1,11 @@
 # Критичный аудит изолированного ролевого стенда
 
 Дата: 2026-10-25, Asia/Baku. Объём — новый стенд PR #1032, а не повторный
-release всего раздела встреч. Финальные hosted-результаты пока ожидаются;
-этот документ будет дополнен фактической квитанцией перед завершением задачи.
+release всего раздела встреч. Hosted stand40175047313 завершён SUCCESS:
+15/15 browser cases, реальная полная сборка и отдельная БД. Проверенная версия
+head39ec68f1d0f7b640e8437d57b74ad7f5c3f06c27, merge50f205317e4d7d4ea155a786586f01c181ed7d60.
+Квитанция: [result.json](evidence/result.json), происхождение и проверенный ZIP
+digest: [artifact-metadata.json](evidence/artifact-metadata.json).
 
 ## Что именно доказывает проверка
 
@@ -39,8 +42,18 @@ Task → точная Meeting, отсутствие чужой ссылки и �
 - Секреты не сохраняются в JSON/screenshots/storageState/raw app logs.
   Квитанция связывает head SHA, проверенный merge SHA, build-info и хэши исходников.
   Само наличие загруженного артефакта или PREPARING-контекста не означает PASS.
-- Первый неуспешный прогон сохранён в журнале. Его нормальный onboarding overlay
-  закрывается штатной Escape, без force click, подмены DOM или изменения auth.
+- Первый неуспешный прогон сохранён в журнале. Для обычного onboarding overlay
+  предусмотрен штатный Escape, без force click, подмены DOM или изменения auth.
+  В финальном прогоне toursDismissed=0: overlay не потребовал этого обработчика,
+  поэтому его фактическое срабатывание не объявляется проверенным.
+
+Фактическая финальная квитанция подтверждает сотрудник1 / координатор2 /
+manager-без-grant1, точный Task → Meeting, существующие отрицательные контроли,
+смену сессии с навигацией и неизменность семи бизнес-таблиц. Неожиданных browser
+запросов0; обычных UI preference PUT5, локальных log-only CSP POST16.
+ZIP SHA256 проверен, все16 source bindings сверены с candidate Git и рабочими
+файлами. Chromium145.0.7632.6. Cold build8m31s, peakRSS10,793,060KiB — причина
+оставлять этот gate hosted, не запускать на постоянном dev Contabo.
 
 ## Замечание P2 — неполное покрытие path triggers
 
@@ -59,15 +72,42 @@ main доступен также явный workflow_dispatch. Не расшир
 базовые проверки ради экономии времени. Это P2 поддержки теста, не доказанный
 дефект прав доступа приложения.
 
+## Замечание P2 — encrypted-key bootstrap не покрыт fixture
+
+Место: `scripts/booking/role-browser-evidence.mjs:76` (seed),
+`scripts/ci/fixtures/booking-role-sandbox.sql:18` (write allowlist).
+В cleanup-логе PostgreSQL фактически обнаружен отказ INSERT в tenant_data_keys.
+Стенд не подготовил tenant key ring; readonly app role правильно не имеет права
+создать его. Настоящий `preloadTenantDataKeys` перехватывает bootstrap failure
+как best-effort (`src/lib/crypto/tenant-data-keys.ts:142`), поэтому проверенные
+legacy/plaintext роли/связи продолжают работать и15cases проходят.
+
+Влияние: текущий положительный результат нельзя переносить на чтение encrypted
+PII, создание ключей или новую запись с шифрованием. Это установленный пробел
+fixture, не доказанный production-дефект и не «чистые логи без ошибок».
+Для отдельного crypto acceptance нужны заранее созданные wrapped test keys и
+encrypted synthetic rows на административной стадии с явными assertions;
+расширять runtime права приложения ради подавления сообщения нельзя.
+
+## Предупреждения сборки и граница runtime
+
+Build завершён SUCCESS, но содержит ENOENT warning при копировании traced
+`(dashboard)/page_client-reference-manifest.js` в `.next/standalone`. Этот стенд
+запускает настоящий compiled app через `next start`, а не `.next/standalone/server.js`.
+Поэтому runtime браузера доказан, а совместимость отдельного standalone entrypoint
+этим run не сертифицируется. Предупреждения Sentry без auth token ожидаемы:
+в стенд намеренно не передаются production provider secrets. Raw app logs
+не публикуются. Эти факты не скрываются общим зелёным статусом.
+
 ## Проверка UI по пяти направлениям audit
 
 | Направление | Доступное доказательство | Граница |
 | --- | --- | --- |
-| Доступность | Настоящие кнопки/links, labelled regions, aria-busy/pressed и штатная Escape участвуют в тесте | Полный keyboard/focus/contrast/axe — NOT RUN |
-| Производительность | Полный cold bundle выполняется hosted; scope проверяется на 5 встречах | Load, Web Vitals, большие списки и worker throughput — NOT RUN |
+| Доступность | Настоящие кнопки/links, labelled regions и aria-busy/pressed участвуют в тесте | Полный keyboard/focus/contrast/axe, срабатывание Escape-обработчика — NOT RUN |
+| Производительность | Полный cold bundle PASS hosted; scope проверен на 5 встречах | Load, Web Vitals, большие списки и worker throughput — NOT RUN |
 | Темизация | Стенд использует существующее приложение без нового CSS/темы | Новый dark-mode прогон — NOT RUN |
 | Адаптивность | Текущий viewport 1440×1000 | Mobile/zoom/browser matrix в этом стенде — NOT RUN |
-| Визуальные анти-паттерны | Новый стенд не добавляет продуктовый UI; итоговые screenshots подлежат просмотру | Не выдавать этот проход за полный новый дизайн-аудит |
+| Визуальные анти-паттерны | Оба финальных screenshots просмотрены: календарь показывает 2 встречи на26Oct; карточка задачи содержит Open meeting без перекрывающего тура | Не выдавать этот проход за полный новый дизайн-аудит |
 
 Суммарный балл /20 не выставлен: перечисленные направления не измерены полностью.
 Оценивать их по успешному role test означало бы выдать неизвестное за проверенное.
@@ -77,13 +117,14 @@ main доступен также явный workflow_dispatch. Не расшир
 ## Оставшиеся границы
 
 Live production сотрудник/ограниченный координатор, public create/cancel,
-Google/почта/внешняя доставка, revocation без навигации, полный migration replay,
+Google/почта/внешняя доставка, encrypted PII/key bootstrap, standalone entrypoint,
+revocation без навигации, полный migration replay,
 accessibility/load/DR — **NOT RUN** в этом стенде по его изолированному scope.
 Положительный синтетический результат дополнит, но не заменит переданный
 production admin-smoke и будущую live ролевую приёмку. Старые I-03/I-04/I-06/
 I-12/I-13 из предыдущего аудита этим PR не объявляются закрытыми.
 
 В новом исходнике стенда блокирующих дефектов P0/P1 после критического прохода
-не установлено. Итоговый допуск самого стенда зависит от полного hosted PASS
+не установлено; отмечены2P2 пробела автоматического покрытия. Итоговый допуск самого стенда зависит от полного hosted PASS
 и обязательных source checks на точной проверяемой версии. Production merge
 или deploy не входит в задачу.
