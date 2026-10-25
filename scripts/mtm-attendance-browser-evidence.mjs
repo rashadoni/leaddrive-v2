@@ -40,7 +40,7 @@ const destinations = {
 const personnelHrefs = ['/mtm/attendance', '/mtm/attendance/timesheet', '/mtm/attendance/people', '/mtm/attendance/reports', '/mtm/attendance/settings']
 const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-toggle-refresh-hide', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
 caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal', 'browser-branch-lost-acknowledgement-retry', 'browser-catalogue-competing-tabs', 'browser-private-document-download-and-permissions')
-caseNames.push('employee-explanations-authentication')
+caseNames.push('employee-explanations-authentication', 'browser-existing-crm-phone-hire')
 const manifest = {
   version: 1, status: 'RUNNING', headSha: head, workflowSha: process.env.GITHUB_SHA,
   runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
@@ -1276,6 +1276,54 @@ try {
     for await (const chunk of stream) chunks.push(chunk)
     assert.deepEqual(Buffer.concat(chunks), sanitizedBytes)
     return { actualBrowserDocumentDownload: true, draftAndUnselectedHidden: true, deniedRoles: 4, otherEmployeeDenied: true, sameTeamReviewerAllowed: true, exifRemoved: true, invalidFileAndSizeRejected: true, upload: 'Actual mobile multipart HTTP, not APK picker', admissionBackend: 'Application development memory fallback; production Redis gate NOT_RUN' }
+  })
+  await run('browser-existing-crm-phone-hire', 'browser-action+database-backed-http', async () => {
+    const organizationId = fixture.organization.id, name = 'Fixture existing CRM person', phone = '+994550009901'
+    const user = await fixture.admin.user.create({ data: { organizationId, name, phone, email: `existing-${organizationId}@example.invalid`, role: 'sales', passwordHash: fixture.users.employee.passwordHash } })
+    const card = await fixture.admin.mtmAgent.findFirstOrThrow({ where: { organizationId, userId: user.id } })
+    assert.equal(card.role, 'EMPLOYEE'); assert.equal(card.attendanceParticipant, true)
+    const before = { users: await fixture.admin.user.count({ where: { organizationId } }), cards: await fixture.admin.mtmAgent.count({ where: { organizationId } }) }
+    assert.ok(!(await api('admin', '/employees')).employees.some(row => row.id === card.id))
+    await api('hr', '/employees/phone-match', { method: 'POST', body: { phone }, status: 403 })
+    await api('foreign', '/employees/phone-match', { method: 'POST', body: { phone } }).then(result => assert.deepEqual(result, { kind: 'none' }))
+    await readyPage('employees')
+    await page.getByTestId('attendance-add-employee').click()
+    const form = page.getByTestId('attendance-add-employee-form')
+    await form.getByLabel(pt('addEmployeeName'), { exact: true }).fill(name)
+    await form.getByTestId('attendance-add-employee-phone').fill(phone)
+    // The fixture's actual user quota is full. Existing-person hiring must not
+    // require another seat; new-account creation remains refused.
+    assert.ok(fixture.organization.maxUsers !== -1 && before.users >= fixture.organization.maxUsers)
+    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 403)
+    const result = page.getByTestId('attendance-phone-match')
+    await result.waitFor()
+    assert.ok((await result.innerText()).includes(name))
+    // Also exercise the original PHONE_TAKEN branch with a free fixture seat.
+    try {
+      await fixture.admin.organization.update({ where: { id: organizationId }, data: { maxUsers: before.users + 1 } })
+      await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 409)
+      await result.waitFor()
+    } finally {
+      await fixture.admin.organization.update({ where: { id: organizationId }, data: { maxUsers: fixture.organization.maxUsers } })
+    }
+    assert.ok((await result.innerText()).includes(pt('addEmployeePhoneExistingHire')))
+    await page.screenshot({ path: `${output}/existing-crm-phone-match.png`, fullPage: false })
+    await result.getByRole('link', { name: pt('addEmployeePhoneOpenProfile'), exact: true }).click()
+    await page.locator('#employee-hire-date').fill(today)
+    await clickResponse(page.getByRole('button', { name: pt('employeeSave'), exact: true }), `${apiRoot}/employees/${card.id}`)
+    const directory = await api('admin', '/employees')
+    const hired = directory.employees.find(row => row.id === card.id)
+    assert.ok(hired); assert.equal(hired.history[0].kind, 'HIRE'); assert.equal(hired.history[0].date, today)
+    assert.deepEqual({ users: await fixture.admin.user.count({ where: { organizationId } }), cards: await fixture.admin.mtmAgent.count({ where: { organizationId } }) }, before)
+    const afterUser = await fixture.admin.user.findUniqueOrThrow({ where: { id: user.id } })
+    const afterCard = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: card.id } })
+    for (const key of ['id', 'phone', 'email', 'role', 'passwordHash', 'hiddenModules']) assert.deepEqual(afterUser[key], user[key])
+    for (const key of ['id', 'userId', 'phone', 'role', 'passwordHash']) assert.equal(afterCard[key], card[key])
+    await page.getByTestId('attendance-employee-back').click()
+    await page.locator('#employee-search').fill(name)
+    await page.getByTestId('employee-row').filter({ hasText: name }).waitFor()
+    await page.screenshot({ path: `${output}/existing-crm-phone-hired.png`, fullPage: false })
+    return { existingIdentityPreserved: true, credentialsUnchanged: true, duplicateAccounts: false, crossTenantHidden: true }
   })
   await run('browser-locales-mobile-width', 'browser-navigation+layout', async () => {
     for (const locale of ['az', 'ru', 'en']) {
