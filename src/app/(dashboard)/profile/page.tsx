@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select } from "@/components/ui/select"
 import { WallpaperSelector } from "@/components/wallpaper-selector"
+import { ProfileTelegramCard } from "@/components/telegram-staff/profile-telegram-card"
 import { HelpButton } from "@/components/help/help-button"
 import {
   User, Loader2, Upload, KeyRound, ShieldCheck, ShieldOff, Smartphone, LogOut, ChevronRight,
@@ -129,6 +130,7 @@ export default function ProfilePage() {
       <PersonalInfoSection profile={profile} setProfile={setProfile} />
       <ChangePasswordSection />
       <SecuritySection profile={profile} />
+      <ProfileTelegramCard />
       <LanguageRegionSection profile={profile} setProfile={setProfile} />
       <AppearanceSection />
       <ActivitySection profile={profile} />

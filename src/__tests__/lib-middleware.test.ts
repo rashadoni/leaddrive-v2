@@ -595,7 +595,7 @@ describe("middleware", async () => {
     const res = await authMiddleware(req)
     expect(res.status).toBe(307)
     expect(res.headers.get("location")).toBe("https://mars.leaddrivecrm.org/login?error=cross-tenant")
-    expect(res.headers.get("set-cookie")).toContain("authjs.session-token=;")
+    expect(res.headers.get("set-cookie")).toBeNull()
   })
 
   it("allows /manifest.json without authentication", async () => {
@@ -1371,8 +1371,10 @@ describe("middleware", async () => {
   //
   // Session cookie is shared across *.leaddrivecrm.org (COOKIE_DOMAIN).
   // Middleware must not let a user whose session is for tenant X operate
-  // on tenant Y's subdomain — redirect to /login?error=cross-tenant and
-  // clear the shared cookie.
+  // on tenant Y's subdomain — redirect to /login?error=cross-tenant (401 for
+  // an API call) and leave the shared cookie alone: it holds the session the
+  // person signed into last, and a stale tab of the other tenant must not
+  // sign them out of it.
 
   it("redirects to /login?error=cross-tenant when session org differs from subdomain slug", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
@@ -1396,12 +1398,32 @@ describe("middleware", async () => {
     expect(location).toContain("error=cross-tenant")
     // Redirect should stay on the tenant subdomain (host), not bounce to app.
     expect(location).toContain("afigroup.leaddrivecrm.org")
-    // Session cookie must be cleared so the user lands on /login fresh.
-    const setCookie = res.headers.get("set-cookie") || ""
-    expect(setCookie).toMatch(/authjs\.session-token=;/)
+    // The shared cookie is not touched: signing in here replaces it.
+    expect(res.headers.get("set-cookie")).toBeNull()
     // Structured warn for ops visibility.
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringMatching(/^\[cross-tenant-block\] session-slug=leaddrive host-slug=afigroup/),
+    )
+    warnSpy.mockRestore()
+  })
+
+  it("does not sign the person out of the tenant they just entered when a stale tab of another polls", async () => {
+    // Production 2026-10-25: a Zeytun sign-in, then the still-open LeadDrive
+    // tab's /api/v1/notifications poll arrived with the new Zeytun session.
+    // Clearing the shared cookie here undid the Zeytun sign-in in seconds.
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const req = makeReq({
+      pathname: "/api/v1/notifications",
+      host: "leaddrive.leaddrivecrm.org",
+      auth: { user: { id: "u-zeytun", organizationId: "org-zeytun", organizationSlug: "zeytun", role: "admin" } },
+    })
+    const res = await authMiddleware(req)
+    expect(res.status).toBe(401)
+    expect(await res.json()).toMatchObject({ code: "session_expired" })
+    expect(res.headers.get("set-cookie")).toBeNull()
+    expect(forwardedRequestHeader(res, "x-organization-id")).toBeNull()
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/^\[cross-tenant-block\] session-slug=zeytun host-slug=leaddrive path=\/api\/v1\/notifications/),
     )
     warnSpy.mockRestore()
   })
