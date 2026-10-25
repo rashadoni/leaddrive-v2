@@ -19,6 +19,13 @@ test('each service identity gets only the access its job needs', () => {
   const fund = grantsFor(PRINCIPALS.fundWorker)
   assert.deepEqual(fund.filter((g) => g.includes('--topic')).map((g) => g.match(/--topic (\S+)/)[1]), ['ld.prod.finance.events.v1'])
   assert.ok(!fund.some((g) => /--operation (Write|IdempotentWrite)/.test(g)), 'the fund worker only reads')
+  // Every admin call the bridge makes at start must be granted, or it never
+  // reaches READY on an ACL-enforcing cluster (the CI stack has no ACLs).
+  const bridge = readFileSync(new URL('../../../ops/event-platform/driver/KafkaPartitionBridge.java', import.meta.url), 'utf8')
+  const financeGrant = fund.find((g) => g.includes('--topic ld.prod.finance.events.v1'))
+  for (const [call, operation] of [['describeTopics', 'Describe'], ['describeConfigs', 'DescribeConfigs']]) {
+    if (bridge.includes(`admin.${call}(`)) assert.match(financeGrant, new RegExp(`--operation ${operation}\\b`), `bridge calls ${call}`)
+  }
 
   const registry = grantsFor(PRINCIPALS.registry)
   for (const g of registry.filter((g) => g.includes('--topic'))) {
