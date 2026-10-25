@@ -76,6 +76,10 @@ model Organization {
   bookingPages          BookingPage[]
   adConversionDestinations AdConversionDestination[]
   adConversionEvents       AdConversionEvent[]
+  telegramStaffBot         TelegramStaffBot?
+  telegramStaffLinks       TelegramStaffLink[]
+  telegramStaffLinkTokens  TelegramStaffLinkToken[]
+  telegramStaffActions     TelegramStaffAction[]
   bookings              Booking[]
   pharmacyPhoneOrders   PharmacyPhoneOrder[]
   pharmacyPhoneOrderLines PharmacyPhoneOrderLine[]
@@ -839,6 +843,10 @@ model User {
   // Explicitly confirmed CRM mutations proposed by the in-CRM voice assistant.
   aiActionIntents AiActionIntent[] @relation("AiActionIntentUser")
   aiActionIntentEvents AiActionIntentEvent[] @relation("AiActionIntentEventUser")
+
+  // Telegram bot for employees (task 8): the user's linked Telegram account.
+  telegramStaffLink       TelegramStaffLink?
+  telegramStaffLinkTokens TelegramStaffLinkToken[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, id])
@@ -23247,4 +23255,90 @@ model BookingChangeNote {
   @@index([organizationId, bookingId])
   @@unique([organizationId, eventId])
   @@map("booking_change_notes")
+}
+
+/// An organization's own Telegram bot through which its employees work with
+/// the CRM (task 8; owner 2026-10-25: «свой бот у каждой организации»). One per
+/// organization; a bot serves one organization only. The token is encrypted
+/// with the organization's key; Telegram proves a webhook call with the secret
+/// whose hash is kept here.
+model TelegramStaffBot {
+  id                String              @id @default(cuid())
+  organizationId    String              @unique
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  telegramBotId     String              @unique
+  botUsername       String
+  tokenCiphertext   String
+  webhookSecretHash String
+  isActive          Boolean             @default(true)
+  /// Highest Telegram update_id handled: a retried update is answered once.
+  lastUpdateId      BigInt              @default(0)
+  connectedById     String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  links             TelegramStaffLink[]
+
+  @@map("telegram_staff_bots")
+}
+
+/// An employee's Telegram account linked to the organization's bot. The bot
+/// answers only in this private chat, and only with this user's rights.
+model TelegramStaffLink {
+  id               String                @id @default(cuid())
+  organizationId   String
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  botId            String
+  bot              TelegramStaffBot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  userId           String                @unique
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telegramUserId   String
+  telegramUsername String?
+  chatId           String
+  /// The last few turns of the conversation, so «and the phone is …» follows on.
+  recentTurns      Json?
+  linkedAt         DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  actions          TelegramStaffAction[]
+
+  @@unique([botId, telegramUserId])
+  @@index([organizationId])
+  @@map("telegram_staff_links")
+}
+
+/// One-time «link your Telegram» token, t.me/<bot>?start=<token>. Only its hash is kept.
+model TelegramStaffLinkToken {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash      String       @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, userId])
+  @@map("telegram_staff_link_tokens")
+}
+
+/// A write the bot proposed and waits for «Təsdiqlə» on. Nothing is written
+/// before the employee presses it; a second press finds it no longer pending.
+model TelegramStaffAction {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  linkId         String
+  link           TelegramStaffLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  kind           String
+  payload        Json
+  status         String            @default("pending")
+  expiresAt      DateTime
+  resultId       String?
+  error          String?
+  createdAt      DateTime          @default(now())
+  decidedAt      DateTime?
+
+  @@index([organizationId, status])
+  @@index([linkId])
+  @@map("telegram_staff_actions")
 }
