@@ -1,55 +1,50 @@
 #!/usr/bin/env bash
-# Move the Fanum station's advertised public address from .131 to .130.
+# Set the public address the Fanum station advertises in SIP and SDP.
 #
-#   sudo bash install            185.161.225.131 → 185.161.225.130
-#   sudo bash install rollback   back to 185.161.225.131
+#   sudo bash install 185.161.225.189
 #
-# On 2026-10-25 ~07:59 UTC Fanum's edge started sending the station out through
-# 185.161.225.130 (the network admin says on purpose). pjsip.conf still
-# advertises .131 in SIP and SDP, so replies and audio would go to an address
-# that no longer leads here. Only the two external_* lines of transport-udp
-# change.
+# The station sits behind the hoster's FortiGate, and on 2026-10-25 its
+# outgoing address changed twice: .131 → .130 (~07:59 UTC), then .130 → .189
+# (~17:45 UTC, when the hoster moved it out of a policy it had been put into by
+# mistake). pjsip.conf has to name the address the station really leaves
+# through, or SIP replies and audio go somewhere else. Only the two external_*
+# lines of transport-udp change; to go back, run it again with the old address.
 #
 # PJSIP applies transport settings only at start (no allow_reload), so this
-# restarts Asterisk — and refuses while any channel is up. If Asterisk does not
+# restarts Asterisk — and refuses while any channel is up, or when the station
+# does not actually go out through the requested address. If Asterisk does not
 # come back fully booted with the new address, the file is restored and
 # Asterisk restarted again. Registration with the operator is reported, not
-# required: the operator has to allow the new address on its side.
+# required: the operator has to allow the address on its side.
 set -Eeuo pipefail
 umask 077
 export LC_ALL=C
 
 readonly CONF="/etc/asterisk/pjsip.conf"
-readonly OLD_ADDRESS="185.161.225.131"
-readonly NEW_ADDRESS="185.161.225.130"
 readonly REGISTRATION="fanum-provider-registration"
 
 fail() { printf 'fanum-external-address: %s\n' "$1" >&2; exit 1; }
 say() { printf 'fanum-external-address: %s\n' "$1"; }
 [[ $EUID -eq 0 ]] || fail "run with sudo"
-case "${1:-install}" in
-  install) from="$OLD_ADDRESS"; to="$NEW_ADDRESS" ;;
-  rollback) from="$NEW_ADDRESS"; to="$OLD_ADDRESS" ;;
-  *) fail "usage: install [rollback]" ;;
-esac
+to="${1:-}"
+[[ $to =~ ^185\.161\.225\.([0-9]{1,3})$ ]] && (( BASH_REMATCH[1] <= 255 )) \
+  || fail "usage: install 185.161.225.<n> (the address the station goes out through)"
 [[ -f $CONF && ! -L $CONF ]] || fail "missing: $CONF"
 
 lines_with() {
   grep -cxE "external_(signaling|media)_address=${1//./\\.}" "$CONF" || true
 }
-if [[ "$(lines_with "$to")" == 2 && "$(lines_with "$from")" == 0 ]]; then
+[[ "$(grep -c '^external_' "$CONF")" == 2 ]] || fail "expected exactly two external_* lines; nothing written"
+from="$(sed -n 's/^external_signaling_address=//p' "$CONF")"
+[[ "$(lines_with "$from")" == 2 ]] || fail "external_* lines disagree; nothing written"
+if [[ $from == "$to" ]]; then
   say "already $to; nothing changed"
   exit 0
 fi
-[[ "$(lines_with "$from")" == 2 && "$(grep -c '^external_' "$CONF")" == 2 ]] \
-  || fail "expected exactly the two external_* lines with $from; nothing written"
 
-# Moving to .130, the station must really leave through it. A rollback skips
-# this: it is the way back whatever the network does.
-if [[ $to == "$NEW_ADDRESS" ]]; then
-  seen="$(curl -fsS -m 10 https://ifconfig.me 2>/dev/null || true)"
-  [[ $seen == "$to" ]] || fail "station goes out through '${seen:-unknown}', not $to; nothing written"
-fi
+# The station must really leave through the address we are about to advertise.
+seen="$(curl -fsS -m 10 https://ifconfig.me 2>/dev/null || true)"
+[[ $seen == "$to" ]] || fail "station goes out through '${seen:-unknown}', not $to; nothing written"
 
 channels="$(asterisk -rx 'core show channels count' 2>/dev/null | awk '/active channel/ {print $1; exit}' || true)"
 [[ $channels =~ ^[0-9]+$ ]] || fail "could not read active channels from Asterisk; nothing written"
