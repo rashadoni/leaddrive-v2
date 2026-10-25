@@ -5,7 +5,7 @@ import type { IdentityMobileTenantPolicy } from "./mobile-session-resolver"
 
 /** Control-plane opt-in only; false/missing never means legacy fallback. */
 export const IDENTITY_AUTH_SETTING_KEY = "identityAuthV1"
-function explicitOptIn(value: unknown): boolean {
+export function isIdentityAuthExplicitlyEnabled(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   const record = value as Record<string, unknown>
   return Object.keys(record).length === 2 && Object.hasOwn(record, "version") && Object.hasOwn(record, "enabled")
@@ -22,5 +22,5 @@ export const readIdentityMobileTenantPolicy: IdentityMobileTenantPolicy = async 
   const licensed = application === "TIME"
     ? isTenantCapabilityEnabled("personnel", company) && await readAttendanceFeature(tx, organizationId)
     : isTenantCapabilityEnabled("route-field", company)
-  return { identityEnabled: explicitOptIn(flag?.value), licensed }
+  return { identityEnabled: isIdentityAuthExplicitlyEnabled(flag?.value), licensed }
 }

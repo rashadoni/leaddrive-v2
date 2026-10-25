@@ -6,12 +6,11 @@ import type { IdentityMobileApplication } from "./mobile-session-contract"
 import { issueIdentityMobileSession, verifyIdentityMobileSession, type IdentitySessionSigningKey } from "./mobile-session"
 import { readIdentityMobileState, withIdentityMobileReadSnapshot } from "./mobile-session-resolver"
 import { readIdentityMobileTenantPolicy } from "./tenant-policy"
+import { IDENTITY_PASSWORD_DUMMY_HASH as DUMMY_HASH, isCanonicalIdentityPasswordHash as canonicalHash } from "./canonical-password"
 
 export type IdentityMobilePasswordInput = { phone: string; password: string; application: IdentityMobileApplication }
 // Public, deliberately fictitious work factor. An absent candidate always
 // returns null even if this comparison were ever true; it is not a credential.
-const DUMMY_HASH = "$2b$12$" + "A".repeat(53)
-const canonicalHash = (value: unknown): value is string => typeof value === "string" && value.length === 60 && /^\$2[aby]\$12\$[./A-Za-z0-9]{53}$/.test(value)
 async function credential(tx: Prisma.TransactionClient, organizationId: string, normalizedPhone: string) {
   const claim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId, normalizedPhone } }, select: { id: true, userId: true } })
   if (!claim) return null

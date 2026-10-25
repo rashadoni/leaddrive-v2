@@ -16,7 +16,7 @@ END $$;
 ALTER TABLE public.identity_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.identity_accounts FORCE ROW LEVEL SECURITY;
 REVOKE ALL ON public.identity_accounts FROM wf_policy_restore;
-GRANT SELECT (id, "organizationId", "userId", "cutoverAt") ON public.identity_accounts TO wf_policy_restore;
+GRANT SELECT ("organizationId", "userId", "cutoverAt") ON public.identity_accounts TO wf_policy_restore;
 CREATE POLICY wf_policy_restore_identity_marker_read ON public.identity_accounts
   FOR SELECT TO wf_policy_restore
   USING ("organizationId" = current_setting('app.org_id', true));

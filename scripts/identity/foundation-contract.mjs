@@ -9,6 +9,7 @@ import { pathToFileURL } from "node:url"
 import { checkCanonicalPasswordLogin } from "./mobile-password-contract.mjs"
 import { checkApplicationRevisions } from "./application-revision-contract.mjs"
 import { checkLegacyCrm } from "./legacy-crm-contract.mjs"
+import { checkCanonicalCrmSession } from "./crm-session-contract.mjs"
 import { checkLegacyWrites } from "./legacy-write-contract.mjs"
 import { checkLegacyBoundary } from "./legacy-boundary-contract.mjs"
 import { checkMembershipTransactions } from "./membership-contract.mjs"
@@ -398,6 +399,7 @@ async function main() {
     await checkLegacyWrites({ admin, writer, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
 
     await checkLegacyCrm({ admin, writer, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
+    await checkCanonicalCrmSession({ admin, writer, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
 
     phase = "RLS_AND_IMMUTABILITY"
     for (const table of TABLES) {
