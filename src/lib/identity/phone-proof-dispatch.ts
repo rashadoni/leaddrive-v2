@@ -7,7 +7,9 @@ export type ProofDispatchDependencies = {
   claim: (organizationId: string, proofId: string) => Promise<StagedProofDelivery | null>;
   record: (organizationId: string, receipt: StagedProofDeliveryReceipt) => Promise<unknown>;
   resolveKey: (keyId: string) => PhoneProofKey | null;
-  /** Fixed server transport only: one provider request, no hidden retries/logging. */
+  /** Fixed bounded transport only. Alternate templates are allowed solely after
+   * an explicit no-send rejection; never retry timeout, network or ambiguous
+   * acknowledgement. Honor signal before every request; never log secrets. */
   send: (input: { to: string; code: string; signal: AbortSignal }) => Promise<ProofTransportResult>;
   /** Server clock; injection is for deterministic tests, never request input. */
   now?: () => Date;

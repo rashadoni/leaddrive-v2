@@ -78,7 +78,8 @@ jobs:
           CRM_FIXTURE_PASSWORD="$(openssl rand -hex 24)"
           CRM_PII_KEY="$(openssl rand -hex 32)"
           CRM_MOBILE_KEY="$(openssl rand -hex 32)"
-          for value in "$CRM_DB_PASSWORD" "$CRM_AUTH_SECRET" "$CRM_FIXTURE_PASSWORD" "$CRM_PII_KEY" "$CRM_MOBILE_KEY"; do echo "::add-mask::$value"; done
+          CRM_PROOF_KEY="$(openssl rand -hex 32)"
+          for value in "$CRM_DB_PASSWORD" "$CRM_AUTH_SECRET" "$CRM_FIXTURE_PASSWORD" "$CRM_PII_KEY" "$CRM_MOBILE_KEY" "$CRM_PROOF_KEY"; do echo "::add-mask::$value"; done
           {
             echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/identity_crm_browser_test"
             echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/identity_crm_browser_test"
@@ -93,6 +94,7 @@ jobs:
             echo "AUTH_SECRET=$CRM_AUTH_SECRET"
             echo "NEXTAUTH_SECRET=$CRM_AUTH_SECRET"
             echo "IDENTITY_MOBILE_SESSION_KEYS={\"active\":\"fixture\",\"keys\":{\"fixture\":\"$CRM_MOBILE_KEY\"}}"
+            echo "IDENTITY_PHONE_PROOF_KEYS={\"active\":\"fixture\",\"keys\":{\"fixture\":\"$CRM_PROOF_KEY\"}}"
             echo "TENANT_PII_MASTER_KEY=$CRM_PII_KEY"
             echo "IDENTITY_CRM_FIXTURE_PASSWORD=$CRM_FIXTURE_PASSWORD"
             echo "IDENTITY_CRM_OUTPUT=$RUNNER_TEMP/identity-crm-browser-result"
@@ -123,16 +125,20 @@ jobs:
           GRANT USAGE ON SCHEMA public TO identity_crm_browser;
           GRANT SELECT ON ALL TABLES IN SCHEMA public TO identity_crm_browser;
           GRANT UPDATE ("lastLogin", "loginCount", "updatedAt") ON users TO identity_crm_browser;
-          GRANT UPDATE (version, "updatedAt") ON identity_accounts TO identity_crm_browser;
+          GRANT UPDATE (version, "updatedAt", "passwordHash", "credentialEpoch") ON identity_accounts TO identity_crm_browser;
           GRANT UPDATE (id) ON organizations, identity_phone_claims, mtm_agents TO identity_crm_browser;
           GRANT INSERT, UPDATE ON identity_application_grants, identity_application_memberships TO identity_crm_browser;
           GRANT INSERT ON identity_events TO identity_crm_browser;
           GRANT INSERT ON mtm_agents, identity_actor_bindings TO identity_crm_browser;
           GRANT INSERT ON mtm_audit_logs TO identity_crm_browser;
+          GRANT INSERT, UPDATE ON identity_phone_proofs, identity_phone_proof_outbox TO identity_crm_browser;
+          GRANT INSERT, UPDATE, DELETE ON identity_phone_reservations TO identity_crm_browser;
           SQL
           npx prisma validate
           npx prisma generate
           node scripts/identity/crm-browser-contract.mjs prepare
+      - name: Compile actual identity services for private synthetic recovery issuance
+        run: node scripts/identity/compile-foundation.mjs
       - run: npx playwright install --with-deps chromium
       - name: Actual browser cookie, role, epoch, grant revocation and CRM MFA
         run: |

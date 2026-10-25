@@ -78,14 +78,14 @@ type Fetch = typeof fetch
 export async function sendLoginCodeToWhatsApp(
   sender: WhatsAppConfig,
   input: { to: string; code: string; language: string | null | undefined },
-  deps: { fetch?: Fetch; now?: () => number; templateName?: string; signal?: AbortSignal; singleAttempt?: boolean } = {},
+  deps: { fetch?: Fetch; now?: () => number; templateName?: string; signal?: AbortSignal } = {},
 ): Promise<LoginCodeDelivery> {
   const doFetch = deps.fetch ?? fetch
   const now = deps.now ?? Date.now
   const templateName = deps.templateName ?? loginCodeTemplateName()
   const to = input.to.replace(/\D/g, "")
   let missing = 0
-  const languages = deps.singleAttempt ? templateLanguages(input.language).slice(0, 1) : templateLanguages(input.language)
+  const languages = templateLanguages(input.language)
   for (const language of languages) {
     if (deps.signal?.aborted) return { status: "failed", reason: "timeout" }
     let response: Response
@@ -122,7 +122,6 @@ export async function sendLoginCodeToWhatsApp(
     return { status: "failed", reason: code ? `meta_${code}` : `http_${response.status}` }
   }
   if (missing === languages.length) {
-    if (deps.singleAttempt) return { status: "unavailable", reason: "template_language_missing" }
     unavailableUntil = now() + UNAVAILABLE_FOR_MS
     return { status: "unavailable", reason: "template_missing" }
   }

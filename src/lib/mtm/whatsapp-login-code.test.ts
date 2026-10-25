@@ -9,13 +9,14 @@ describe("recovery provider lease", () => {
   it("never sends after the caller's lease was aborted", async () => {
     const controller = new AbortController(); controller.abort()
     const fetch = vi.fn()
-    expect(await sendLoginCodeToWhatsApp(sender, input, { fetch, signal: controller.signal, singleAttempt: true })).toEqual({ status: "failed", reason: "timeout" })
+    expect(await sendLoginCodeToWhatsApp(sender, input, { fetch, signal: controller.signal })).toEqual({ status: "failed", reason: "timeout" })
     expect(fetch).not.toHaveBeenCalled()
   })
-  it("makes one request on missing translation and does not disable other languages", async () => {
-    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: 132001 } }), { status: 400 }))
-    expect(await sendLoginCodeToWhatsApp(sender, input, { fetch, singleAttempt: true })).toEqual({ status: "unavailable", reason: "template_language_missing" })
-    expect(fetch).toHaveBeenCalledOnce(); expect(loginCodeTemporarilyUnavailable()).toBe(false)
+  it("tries another language only after an explicit no-send template rejection", async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 132001 } }), { status: 400 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ messages: [{ id: "fixture-ack" }] }), { status: 200 }))
+    expect(await sendLoginCodeToWhatsApp(sender, input, { fetch })).toEqual({ status: "sent", messageId: "fixture-ack", language: "az" })
+    expect(fetch).toHaveBeenCalledTimes(2); expect(loginCodeTemporarilyUnavailable()).toBe(false)
   })
   it("propagates lease cancellation to the actual provider request", async () => {
     const controller = new AbortController()
@@ -23,7 +24,7 @@ describe("recovery provider lease", () => {
       controller.abort(); expect(init.signal.aborted).toBe(true)
       throw new Error("fictional transport aborted")
     })
-    expect((await sendLoginCodeToWhatsApp(sender, input, { fetch, signal: controller.signal, singleAttempt: true })).status).toBe("failed")
+    expect((await sendLoginCodeToWhatsApp(sender, input, { fetch, signal: controller.signal })).status).toBe("failed")
     expect(fetch).toHaveBeenCalledOnce()
   })
 })

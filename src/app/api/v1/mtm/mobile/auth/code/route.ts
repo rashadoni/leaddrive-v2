@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
       if (application) {
         const recovery = await requestIdentityMobileRecovery(prisma, organization.id, { phone, application }, async ({ to, code, signal }) => {
-          const delivered = await sendLoginCodeToWhatsApp(sender, { to, code, language }, { signal, singleAttempt: true })
+          const delivered = await sendLoginCodeToWhatsApp(sender, { to, code, language }, { signal })
           if (delivered.status === "sent" && delivered.messageId) return { status: "SENT", providerMessageId: delivered.messageId }
           if (delivered.status === "unavailable") return { status: "FAILED" }
           return { status: "UNCERTAIN" }

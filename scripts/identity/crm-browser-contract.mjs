@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { mkdir, realpath, writeFile } from "node:fs/promises"
 import { resolve, relative, isAbsolute } from "node:path"
+import { pathToFileURL } from "node:url"
 import { setTimeout as delay } from "node:timers/promises"
 import bcrypt from "bcryptjs"
 import { chromium } from "playwright"
@@ -39,6 +40,7 @@ const flagKey = { organizationId_key: { organizationId: company, key: "identityA
 const result = { status: "RUNNING", headSha: head, productionMutation: false, actualCookie: false,
   providerMessages: false, phase: "ADMISSION", checks: [], physicalAndroid: "NOT RUN" }
 let browser
+let recoveryClient
 let outputOwned = false
 const contexts = []
 const phase = name => { result.phase = name }
@@ -276,8 +278,53 @@ try {
     }
     const fieldWithTime = await mobile.request.get("/api/v1/mtm/agents", { timeout: 120000, headers: mobileSessions.TIME, maxRedirects: 0 })
     assert.ok([401, 403].includes(fieldWithTime.status()))
+    phase("ACTUAL_PUBLIC_COMMON_PASSWORD_RECOVERY")
+    const loadIdentity = name => import(pathToFileURL(resolve(temp, "identity-foundation/identity", `${name}.js`)).href)
+    const { issueCanonicalRecovery } = await loadIdentity("canonical-recovery")
+    const { phoneProofContext } = await loadIdentity("phone-proof-registry")
+    const { openPhoneProofDelivery } = await loadIdentity("phone-proof")
+    const { identityRuntimeKeys } = await loadIdentity("runtime-keys")
+    recoveryClient = makeRlsTestPrisma(appUrl.href)
+    const proofKey = identityRuntimeKeys().proof.active
+    // Private synthetic issuance only. Actual public verification/reset below;
+    // no provider configuration, external request or plaintext-code artifact.
+    const issued = await issueCanonicalRecovery(recoveryClient, company, {
+      phone: "+994507770014", application: "TIME", requestId: "cookie-recovery-issue",
+    }, proofKey)
+    assert.ok(issued)
+    const proof = await admin.identityPhoneProof.findUniqueOrThrow({ where: { id: issued.proofId } })
+    const enteredCode = openPhoneProofDelivery(phoneProofContext(proof), proof, proofKey, new Date())
+    const verifyBody = { organizationSlug: company, phone: "+994507770014", application: "TIME", challengeId: proof.id, code: enteredCode }
+    const wrongApplication = await mobile.request.post("/api/v1/mtm/mobile/auth/code/verify", { timeout: 120000, data: { ...verifyBody, application: "ROUTE_FIELD" } })
+    assert.equal(wrongApplication.status(), 400)
+    const verified = await mobile.request.post("/api/v1/mtm/mobile/auth/code/verify", { timeout: 120000, data: verifyBody })
+    assert.equal(verified.status(), 200)
+    const setupToken = (await verified.json()).data.setupToken
+    assert.ok(setupToken.startsWith("lds3."))
+    const recoveredPassword = `Recovered!${password.slice(0, 32)}`
+    const reset = await mobile.request.post("/api/v1/mtm/mobile/auth/password", { timeout: 120000, data: {
+      organizationSlug: company, application: "TIME", setupToken, password: recoveredPassword,
+    } })
+    assert.equal(reset.status(), 200)
+    assert.equal((await reset.json()).data.agent.id, enrollment.actorId)
+    for (const application of ["TIME", "ROUTE_FIELD"]) {
+      assert.equal((await mobile.request.get("/api/v1/mtm/mobile/profile", { timeout: 120000, headers: mobileSessions[application], maxRedirects: 0 })).status(), 401)
+      const relogin = await mobile.request.post("/api/v1/mtm/mobile/auth", { timeout: 120000, data: {
+        organizationSlug: company, application, phone: "+994507770014", password: recoveredPassword,
+      } })
+      assert.equal(relogin.status(), 200)
+      const data = (await relogin.json()).data
+      assert.equal(data.agent.id, application === "TIME" ? enrollment.actorId : userId("employee-ROUTE_FIELD"))
+      mobileSessions[application] = { Authorization: `Bearer ${data.token}` }
+    }
+    const oldPassword = await mobile.request.post("/api/v1/mtm/mobile/auth", { timeout: 120000, data: {
+      organizationSlug: company, application: "TIME", phone: "+994507770014", password,
+    } })
+    assert.equal(oldPassword.status(), 401)
+    check("actual_public_recovery_is_application_bound_changes_common_password_revokes_both_old_sessions_and_preserves_separate_actors_without_provider_messages")
+    phase("ACTUAL_INDEPENDENT_TIME_REVOCATION_AFTER_RECOVERY")
     const revokedTime = await administrator.current.request.put(enrollmentUrl, { timeout: 120000, data: { ...enrollment,
-      status: "REVOKED", expectedAccountVersion: 4, expectedGrantVersion: 1, expectedMembershipVersion: 1, requestId: "cookie-time-revoke" } })
+      status: "REVOKED", expectedAccountVersion: 5, expectedGrantVersion: 1, expectedMembershipVersion: 1, requestId: "cookie-time-revoke" } })
     assert.equal(revokedTime.status(), 200)
     assert.equal((await mobile.request.get("/api/v1/mtm/mobile/profile", { timeout: 120000, headers: mobileSessions.TIME, maxRedirects: 0 })).status(), 401)
     assert.equal((await mobile.request.get("/api/v1/mtm/mobile/profile", { timeout: 120000, headers: mobileSessions.ROUTE_FIELD, maxRedirects: 0 })).status(), 200)
@@ -307,6 +354,7 @@ try {
 } finally {
   for (const current of contexts) await current.close().catch(() => {})
   await browser?.close().catch(() => {})
+  await recoveryClient?.$disconnect()
   await admin.$disconnect()
   if (process.argv[2] === "verify" && outputOwned) {
     await writeFile(resolve(output, "result.json"), JSON.stringify(result, null, 2) + "\n", { mode: 0o600 })
