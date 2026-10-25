@@ -1,7 +1,5 @@
 "use client"
 
-import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
-
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
@@ -28,13 +26,13 @@ import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { PageHeader } from "@/components/page-header"
 import { ReviewerAccessPanel } from "@/components/settings/reviewer-access-panel"
-import { navItems, orgFromSession } from "@/lib/nav-items"
+import { orgFromSession } from "@/lib/nav-items"
 import {
   roleIgnoresModuleMask,
   tenantHideableModules,
   USER_HIDEABLE_MODULE_IDS,
-  WORKFORCE_HIDEABLE_ID,
 } from "@/lib/user-module-access"
+import { userModuleOptions } from "@/lib/user-module-options"
 import {
   ASSIGNABLE_FIELD_CARD_ROLES,
   defaultFieldCardRole,
@@ -214,16 +212,12 @@ function UserFormDialog({
   // Not memoized: the session object changes identity on every refetch, so a
   // memo keyed on it would recompute anyway, and the list is a dozen entries.
   const sessionUser = session?.user
-  const moduleOptions = (
+  const moduleOptions = userModuleOptions(
     sessionUser?.role === "superadmin"
       ? USER_HIDEABLE_MODULE_IDS
-      : tenantHideableModules(orgFromSession(sessionUser))
-  ).filter(isCrmCapabilityAvailable).map((id) => {
-    const group = navItems.find((item) =>
-      id === WORKFORCE_HIDEABLE_ID ? item.capability === id : item.module === id,
-    )?.group
-    return { id, label: group ? tn(`groups.${group}` as never) : id }
-  })
+      : tenantHideableModules(orgFromSession(sessionUser)),
+    (key) => tn(key as never),
+  )
   const moduleMaskIgnored = roleIgnoresModuleMask(form.role)
   // Route & Field has a third setting besides the role and the tick: the
   // employee card linked to this login. Without one, a non-admin is refused by
@@ -506,7 +500,7 @@ function UserFormDialog({
                   {moduleOptions.map((option) => {
                     const access = moduleAccessOutcome(form.role, form.hiddenModules, option.id)
                     return (
-                      <li key={option.id} className="px-3 py-2">
+                      <li key={option.id} title={option.pagesText} className="px-3 py-2">
                         <div className="flex items-center justify-between gap-3">
                           {moduleMaskIgnored ? (
                             <span className="text-sm">{option.label}</span>
