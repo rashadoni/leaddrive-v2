@@ -208,3 +208,28 @@ test('the main watch reports a backup watch that stopped passing', () => {
   gra.backupWatch = { lastPass: null }
   assert.match(evaluate({ topology, inventory, probes, cluster: healthyCluster() })[0].detail, /ни разу/)
 })
+
+test('every outbox event older than the grace must be in Kafka; extras are fine', () => {
+  const ID = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+  const outbox = { graceSeconds: 300, rows: [[ID(1), 'leaddrive.domain.finance.v1', 1792789253579], [ID(2), 'leaddrive.domain.sales.v1', 1792789263579]] }
+  const events = { complete: true, behind: 0, ids: [ID(1), ID(2), ID(9)] }
+  const withParity = (o, e) => {
+    const probes = healthyProbes()
+    probes['leaddrive-prod'].data.source.outbox = o
+    return evaluate({ topology, inventory, probes, cluster: healthyCluster(), events: e })
+  }
+  assert.deepEqual(withParity(outbox, events), [], 'all delivered; an extra or repeated record is not a problem')
+  assert.deepEqual(withParity(outbox, undefined), [], 'not attempted: nothing to say')
+
+  const [missing] = withParity(outbox, { ...events, ids: [ID(2)] })
+  assert.equal(missing.id, 'events-missing')
+  assert.equal(missing.severity, 'critical')
+  assert.match(missing.detail, /^1 событий из outbox прода старше 5 минут нет в Kafka \(leaddrive\.domain\.finance\.v1\)/)
+  assert.match(missing.detail, new RegExp(ID(1)))
+
+  // A read that stopped early must not be mistaken for lost events.
+  assert.deepEqual(ids(withParity(outbox, { complete: false, behind: 3, ids: [] })), ['parity-unavailable'])
+  assert.deepEqual(ids(withParity(outbox, { error: 'offset reset failed' })), ['parity-unavailable'])
+  assert.match(withParity(undefined, events)[0].detail, /обновить/, 'an old production probe says so')
+  assert.deepEqual(ids(withParity({ error: 'permission denied' }, events)), ['parity-unavailable'])
+})

@@ -168,7 +168,13 @@ async function main() {
       if (r.ok && r.data.cluster && !r.data.cluster.error) { cluster = { broker: broker.name, data: r.data.cluster }; break }
       console.log(`cluster view from ${broker.name} failed: ${r.error ?? r.data.cluster?.error}`)
     }
-    problems = [...(silence ? [silence] : []), ...evaluate({ topology, inventory, probes, cluster })]
+    // Parity reads Kafka through the broker that just answered for the cluster.
+    let events
+    if (cluster) {
+      const r = parse(await ssh(cluster.broker, 'events', 200_000))
+      events = r.ok ? r.data.events : { error: r.error }
+    }
+    problems = [...(silence ? [silence] : []), ...evaluate({ topology, inventory, probes, cluster, events })]
     console.log(`probed ${members.length} hosts, cluster via ${cluster?.broker ?? 'none'}; problems: ${problems.map((p) => p.id).join(', ') || 'none'}`)
   }
 
