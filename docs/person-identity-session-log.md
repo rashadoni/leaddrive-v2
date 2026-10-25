@@ -469,3 +469,12 @@ Confirmed User required email/name/passwordHash, current Credentials admits acti
 ### 2026-10-25T01:05:41.865075+00:00 — logout bridge assertion review
 
 Strengthened the unpublished53-group candidate: exact system audit counts prove failed-audit rollback and equal-timestamp no-op, actual older non-null timestamp plus clearing both advance epochs and revoke fresh Time/Field JWTs. Re-minted a positive token immediately before the existing anonymization probe so adding prior logout revocations does not turn that original assertion into an already-invalid-token tautology. Local syntax/diff PASS; actual PG NOT RUN until next hosted source. Current2a196d7fd focused40148835529 has completed npm ci and is generating Prisma, no new failure observed. Keep current run intact.
+
+
+### 2026-10-25T01:08:51.294476+00:00 — canonical password and real tenant policy gate passed
+
+Exact2a196d7fd3cf23e4f481188fc1a644df2a2d7aea focused40148835529/job121035872593 SUCCESS. Full actual job log retained; inspect exact115 Vitest/29 Node/6 snapshot/52 foundation totals before attributing. This source includes new shared readonly scope, real tenant policy and canonical password races. No field/CRM legacy credential or role adopted; same phone in another company stays independent; invalid old hash/claim cannot sign. Fixture updatedAt fix resolves9a failure; schema validate/generate/scoped strict TS/runtime import all pass. Hosted secret scan40148835460 alsoSUCCESS.
+
+Local00e94a148 logout marker bridge with positive preconditions/audit/backdate assertions is not covered by this PASS and needs its own53-group gate. Current production-build40148835524/job121036001617 is still building onGitHub; preserve its result before new push where practical. Full typecheck/static gates skipped for draft=NOT RUN for current source, notPASS. New identity API/UI/mobile migration/provider/real audit/cutover still incomplete and notactivated. Next publish53-group source after retaining current build, then verify; physicalTime1047 continues under original controller.
+
+Actual2a196 log counts confirmed:115 Vitest across10 files,29 Node,6 snapshot and52 foundation PostgreSQL checks PASS; sourceSha exact, productionObserved=false. Last5 include current grant/license admission, post-bcrypt credential race, phone owner race with immutable original actor, RLS/append-only and unchanged shadow legacy state. New53-group bridge remains separately pending.
