@@ -107,3 +107,10 @@ condition = "AND"
 paths = ['''^scripts/backup/commission-production-backup\.sh$''']
 regexTarget = "line"
 regexes = ['''^OWNER_KEY_VERIFIER_SHA256="d72e3bcd19b0838e3d47ff45d3f5580eac3c668fde8aef07dea900971b33a7ca"$''']
+
+[[rules.allowlists]]
+description = "Reviewed refusal-policy prose in the inactive identity README; not an API credential"
+condition = "AND"
+paths = ['''^scripts/identity/README\.md$''']
+regexTarget = "secret"
+regexes = ['''^failed/mutating$''']

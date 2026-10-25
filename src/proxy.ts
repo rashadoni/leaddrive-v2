@@ -808,10 +808,11 @@ const authMiddleware = auth(async (req) => {
             )
             const payloadJson = atob(b64)
             const payload = JSON.parse(payloadJson)
-            // Only block if this is clearly a mobile JWT (carries agentId).
+            // Both legacy actor tokens and canonical app tokens are mobile.
+            // This unverified hint can only deny; route handlers verify crypto.
             // Web/session tokens, API keys (already excluded via ld_ prefix),
             // and other Bearer tokens do NOT have agentId → fall through normally.
-            if (payload?.agentId) {
+            if (payload?.agentId || payload?.iss === "leaddrive:identity:mobile:v1") {
               console.warn(
                 `[mobile-auth][middleware-reject] mobile JWT rejected on non-MTM path — agentId=${payload.agentId} path=${pathname}`
               )

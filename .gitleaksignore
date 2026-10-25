@@ -1,0 +1,11 @@
+
+# Reviewed synthetic setup capabilities in historical HTTP mocks only.
+# These values cannot verify cryptographically; current fixtures construct them.
+# Exact commit/path/rule/line fingerprints leave future changes fully scanned.
+4dbd22e699313480a5f697e79b96cf5ff21e02d5:src/__tests__/identity-self-bootstrap-http.test.ts:generic-api-key:51
+4dbd22e699313480a5f697e79b96cf5ff21e02d5:src/__tests__/identity-self-bootstrap-http.test.ts:generic-api-key:55
+85825720ddd656c6440430ab7eb919170362fcf2:src/__tests__/identity-mobile-recovery-http.test.ts:generic-api-key:22
+85825720ddd656c6440430ab7eb919170362fcf2:src/__tests__/identity-mobile-recovery-http.test.ts:generic-api-key:53
+85825720ddd656c6440430ab7eb919170362fcf2:src/__tests__/identity-mobile-recovery-http.test.ts:generic-api-key:55
+85825720ddd656c6440430ab7eb919170362fcf2:src/__tests__/identity-mobile-recovery-http.test.ts:generic-api-key:59
+85825720ddd656c6440430ab7eb919170362fcf2:src/__tests__/identity-mobile-recovery-http.test.ts:generic-api-key:64

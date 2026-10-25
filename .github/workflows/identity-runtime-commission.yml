@@ -1,0 +1,99 @@
+name: Identity runtime commissioning
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        required: true
+        options: [inspect, prepare-keys, enable-company]
+        default: inspect
+      company_slug:
+        description: Explicit single company; no people are converted by this job
+        type: string
+        required: true
+      deployed_sha:
+        description: Reviewed main SHA already deployed; must equal this workflow revision
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  commission:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate inputs and admit reviewed main operation and registered target
+        env:
+          OPERATION: ${{ inputs.operation }}
+          COMPANY_SLUG: ${{ inputs.company_slug }}
+          DEPLOYED_SHA: ${{ inputs.deployed_sha }}
+          TARGET_HOST: ${{ secrets.SERVER_HOST }}
+          TARGET_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = rashadoni/leaddrive-v2
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$DEPLOYED_SHA" = "$GITHUB_SHA"
+          node --input-type=module <<'JS'
+          import { readFileSync } from 'node:fs'
+          import { commissionInput } from './scripts/identity/commission-runtime.mjs'
+          commissionInput(process.env.OPERATION, process.env.COMPANY_SLUG, process.env.DEPLOYED_SHA, process.env.GITHUB_ACTOR)
+          const target = JSON.parse(readFileSync('clients/registry.json', 'utf8')).clients.leaddrive
+          if (target.server !== process.env.TARGET_HOST || target.sshUser !== process.env.TARGET_USER
+            || target.server !== '13.140.132.245' || target.sshUser !== 'root'
+            || target.appDir !== '/opt/leaddrive-v2' || target.pm2Name !== 'leaddrive-v2') throw new Error('IDENTITY_COMMISSION_TARGET_INVALID')
+          JS
+          node --test scripts/identity/commission-runtime.test.mjs
+      - uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Run the pinned operator script without exporting runtime secrets
+        env:
+          OPERATION: ${{ inputs.operation }}
+          COMPANY_SLUG: ${{ inputs.company_slug }}
+          DEPLOYED_SHA: ${{ inputs.deployed_sha }}
+          TARGET_HOST: ${{ secrets.SERVER_HOST }}
+          TARGET_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          SSH_OPTIONS=(-o BatchMode=yes -o ConnectTimeout=30 -o ServerAliveInterval=15 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -i "$HOME/.ssh/deploy_key")
+          TARGET="$TARGET_USER@$TARGET_HOST"
+          STAGE="$(ssh "${SSH_OPTIONS[@]}" "$TARGET" 'umask 077; mktemp -d /var/lib/leaddrive-identity-ops.XXXXXX')"
+          [[ "$STAGE" =~ ^/var/lib/leaddrive-identity-ops\.[A-Za-z0-9]{6}$ ]]
+          cleanup() { ssh "${SSH_OPTIONS[@]}" "$TARGET" "rm -rf -- '$STAGE'" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          LOCAL_STAGE="$(mktemp -d "$RUNNER_TEMP/identity-operator.XXXXXX")"
+          for file in scripts/identity/commission-runtime.mjs scripts/identity/commission-enable.sql scripts/identity/commission-lock.py scripts/identity/release-contract.mjs scripts/identity/release-state.sql scripts/event-platform/inspect-production.sh scripts/backup/snapshot-secrets.sh; do
+            mkdir -p "$LOCAL_STAGE/$(dirname "$file")"
+            cp "$file" "$LOCAL_STAGE/$file"
+            sha256sum "$file" >> "$LOCAL_STAGE/SHA256SUMS"
+          done
+          scp "${SSH_OPTIONS[@]}" -r "$LOCAL_STAGE/scripts" "$LOCAL_STAGE/SHA256SUMS" "$TARGET:$STAGE/"
+          ssh "${SSH_OPTIONS[@]}" "$TARGET" "bash -s -- '$STAGE' '$OPERATION' '$COMPANY_SLUG' '$DEPLOYED_SHA' '$GITHUB_ACTOR'" <<'REMOTE'
+          set -euo pipefail
+          STAGE="$1"
+          test ! -L "$STAGE"
+          test "$(stat -c '%U:%G:%a' "$STAGE")" = root:root:700
+          cd "$STAGE"
+          sha256sum --check --strict SHA256SUMS >/dev/null
+          env -i PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 python3 scripts/identity/commission-lock.py "$2" "$3" "$4" "$5"
+          REMOTE

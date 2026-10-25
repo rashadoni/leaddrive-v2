@@ -9,6 +9,8 @@ declare module "next-auth" {
     organizationName?: string
     plan?: string
     sessionFingerprint?: string
+    /** Private canonical authority; never exposed by the session callback. */
+    identityCrm?: import("../lib/identity/crm-session").IdentityCrmClaims
   }
 
   interface Session {
@@ -41,6 +43,8 @@ declare module "next-auth/jwt" {
     plan?: string
     /** Opaque HMAC of the current DB credential/session epoch. */
     sessionFingerprint?: string
+    /** Private canonical authority; never exposed by the session callback. */
+    identityCrm?: import("../lib/identity/crm-session").IdentityCrmClaims
     /** End of an outside reviewer's grant (ISO); absent for everyone else. */
     reviewerAccessUntil?: string
   }

@@ -654,6 +654,10 @@ model PlanRequest {
 }
 
 model User {
+  identityAccount IdentityAccount?
+  identityActions IdentityEvent[] @relation("IdentityEventActor")
+  identityProofsIssued IdentityPhoneProof[] @relation("IdentityProofIssuer")
+  identityActorReviews IdentityActorBinding[] @relation("IdentityActorReviewer")
   coordinatedBookingHosts BookingCoordinatorGrant[] @relation("BookingCoordinator")
   bookingCoordinators BookingCoordinatorGrant[] @relation("BookingCoordinatedHost")
   hostedBookings Booking[] @relation("BookingHost")
@@ -857,6 +861,258 @@ model User {
 /// recently-used modules); `data` is a forward-compat bucket so future
 /// per-user UI state lands here instead of spawning more tables. Org-scoped
 /// via `organizationId` for tenant-bound cleanup, keyed 1-1 on `userId`.
+/// Additive, inactive identity registry. No legacy login reads these tables.
+/// A reviewed cutover and verified phone/credential migration are separate steps.
+model IdentityAccount {
+  organizationId  String
+  userId          String
+  user            User @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  version         Int @default(1)
+  credentialEpoch Int @default(1)
+  /// Monotonic even when a contact changes away and back before OTP expiry.
+  contactRevision Int @default(1)
+  passwordHash    String?
+  cutoverAt       DateTime? @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+  phoneClaim      IdentityPhoneClaim?
+  reservations    IdentityPhoneReservation[]
+  phoneProofs     IdentityPhoneProof[]
+  onboardingIntents IdentityOnboardingIntent[]
+  grants          IdentityApplicationGrant[]
+  actorBindings   IdentityActorBinding[]
+  events          IdentityEvent[]
+
+  @@id([organizationId, userId])
+  @@map("identity_accounts")
+}
+
+/// One person may hold CRM, TIME and ROUTE_FIELD independently.
+/// The SQL CHECKs restrict applications/status and require an explicit active role.
+model IdentityApplicationGrant {
+  membership IdentityApplicationMembership?
+  organizationId String
+  userId         String
+  application    String @db.VarChar(16)
+  status         String @default("REVOKED") @db.VarChar(16)
+  role           String? @db.VarChar(50)
+  version        Int @default(1)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  account        IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([organizationId, userId, application])
+  @@map("identity_application_grants")
+}
+
+/// Explicit reviewed historical ownership, never inferred from phone/email.
+/// SQL forbids mutation/deletion; a new person must get a new actor.
+model IdentityActorBinding {
+  organizationId String
+  userId String
+  actorId String
+  reviewedByUserId String
+  reviewReference String @db.VarChar(128)
+  accountVersion Int
+  reviewedAt DateTime @default(now()) @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  account IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  actor MtmAgent @relation(fields: [organizationId, actorId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  reviewer User @relation("IdentityActorReviewer", fields: [organizationId, reviewedByUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  memberships IdentityApplicationMembership[]
+
+  @@id([organizationId, actorId])
+  @@unique([organizationId, userId, actorId], map: "identity_actor_bindings_subject_key")
+  @@map("identity_actor_bindings")
+}
+
+/// Inactive plan. Cutover, license and per-app workflow separation are separate gates.
+model IdentityApplicationMembership {
+  organizationId String
+  userId String
+  application String @db.VarChar(16)
+  actorId String
+  status String @default("REVOKED") @db.VarChar(16)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  grant IdentityApplicationGrant @relation(fields: [organizationId, userId, application], references: [organizationId, userId, application], onDelete: Restrict, onUpdate: Restrict)
+  binding IdentityActorBinding @relation(fields: [organizationId, userId, actorId], references: [organizationId, userId, actorId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([organizationId, userId, application])
+  @@unique([organizationId, application, actorId], map: "identity_application_memberships_actor_key")
+  @@map("identity_application_memberships")
+}
+
+/// Only confirmed current assignments live here. Reservations never grant login.
+/// A replacement gets a new claim ID; history remains in immutable IdentityEvent.
+model IdentityPhoneClaim {
+  id              String @id @default(uuid())
+  organizationId  String
+  userId          String
+  normalizedPhone String @db.VarChar(16)
+  accountVersion  Int
+  verifiedAt      DateTime @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  account         IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizationId, normalizedPhone])
+  @@unique([organizationId, userId])
+  @@map("identity_phone_claims")
+}
+
+model IdentityPhoneReservation {
+  id                     String @id @default(uuid())
+  organizationId         String
+  userId                 String
+  normalizedPhone        String @db.VarChar(16)
+  expectedAccountVersion Int
+  expectedCredentialEpoch Int
+  requestId              String @db.VarChar(128)
+  expiresAt              DateTime @db.Timestamptz(3)
+  createdAt              DateTime @default(now()) @db.Timestamptz(3)
+  account                IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizationId, normalizedPhone])
+  @@unique([organizationId, userId])
+  @@unique([organizationId, requestId])
+  @@index([expiresAt])
+  @@map("identity_phone_reservations")
+}
+
+/// Frozen proof context survives removal of its consumed/expired reservation.
+/// A reservationId is a historical pointer; the service requires the live owned
+/// reservation before first consumption. No proof is a login/application grant.
+model IdentityPhoneProof {
+  id              String @id @default(uuid())
+  organizationId  String
+  userId          String
+  issuedByUserId  String?
+  reservationId   String
+  normalizedPhone String @db.VarChar(16)
+  accountVersion  Int
+  credentialEpoch Int
+  onboardingIntentId String?
+  onboardingIntent IdentityOnboardingIntent? @relation(fields: [organizationId, userId, onboardingIntentId], references: [organizationId, userId, id], onDelete: Restrict, onUpdate: Restrict)
+  contextVersion  Int @default(1)
+  contactRevision Int?
+  issuerAuthority Json?
+  keyId           String @db.VarChar(40)
+  codeHash        String @db.VarChar(64)
+  deliveryCiphertext String? @db.VarChar(128)
+  status          String @default("PENDING") @db.VarChar(16)
+  attempts        Int @default(0)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt       DateTime @db.Timestamptz(3)
+  usedAt          DateTime? @db.Timestamptz(3)
+  account         IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  issuer          User? @relation("IdentityProofIssuer", fields: [organizationId, issuedByUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  delivery        IdentityPhoneProofOutbox?
+
+  @@unique([organizationId, userId, id], map: "identity_phone_proofs_subject_key")
+  @@index([organizationId, reservationId, createdAt], map: "identity_phone_proofs_reservation_created_idx")
+  @@index([organizationId, expiresAt], map: "identity_phone_proofs_expiry_idx")
+  @@map("identity_phone_proofs")
+}
+
+/// Administrator-reviewed first-login intent. It is not a phone claim or session.
+/// Immutable review/issuer/application plan; cancellation and completion retained.
+model IdentityOnboardingIntent {
+  id String @id @default(uuid())
+  organizationId String
+  userId String
+  issuedByUserId String
+  issuerAuthority Json
+  normalizedPhone String @db.VarChar(16)
+  application String @db.VarChar(16)
+  applications Json
+  timeEnrollment Json?
+  accountVersion Int
+  credentialEpoch Int
+  contactRevision Int
+  requestId String @db.VarChar(128)
+  requestHash String @db.VarChar(64)
+  reviewReference String @db.VarChar(128)
+  status String @default("ACTIVE") @db.VarChar(16)
+  currentProofId String?
+  issuedAccountVersion Int
+  issuedCredentialEpoch Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  completedAt DateTime? @db.Timestamptz(3)
+  account IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  proofs IdentityPhoneProof[]
+
+  @@unique([organizationId, userId, id], map: "identity_onboarding_intents_subject_key")
+  @@unique([organizationId, requestId], map: "identity_onboarding_request_key")
+  @@index([organizationId, normalizedPhone, status], map: "identity_onboarding_phone_status_idx")
+  @@map("identity_onboarding_intents")
+}
+
+/// One external-send attempt per proof. An expired/uncertain lease is never
+/// automatically resent. SENT means provider acknowledgement, not possession.
+model IdentityPhoneProofOutbox {
+  organizationId String
+  userId         String
+  proofId        String
+  proof          IdentityPhoneProof @relation(fields: [organizationId, userId, proofId], references: [organizationId, userId, id], onDelete: Cascade, onUpdate: Restrict)
+  status         String @default("PENDING") @db.VarChar(16)
+  attempts       Int @default(0)
+  availableAt    DateTime @default(now()) @db.Timestamptz(3)
+  leaseToken     String? @db.Uuid
+  leaseUntil     DateTime? @db.Timestamptz(3)
+  providerMessageId String? @db.VarChar(300)
+  outcome        String? @db.VarChar(32)
+  settledAt      DateTime? @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@id([organizationId, proofId])
+  @@unique([organizationId, userId, proofId], map: "identity_phone_proof_outbox_subject_key")
+  @@index([organizationId, status, availableAt], map: "identity_phone_proof_outbox_due_idx")
+  @@map("identity_phone_proof_outbox")
+}
+
+/// Append-only security receipts. Raw credentials, OTP and session data are absent.
+/// Phone assignment history is private tenant data, never an operational log payload.
+model IdentityEvent {
+  id              String @id @default(uuid())
+  organizationId  String
+  userId          String
+  actorUserId     String?
+  requestId       String @db.VarChar(128)
+  requestHash     String @db.VarChar(64)
+  action          String @db.VarChar(40)
+  accountVersion  Int
+  application     String? @db.VarChar(16)
+  grantStatus     String? @db.VarChar(16)
+  grantRole       String? @db.VarChar(50)
+  grantVersion    Int?
+  actorId         String?
+  membershipStatus String? @db.VarChar(16)
+  membershipVersion Int?
+  reviewReference String? @db.VarChar(128)
+  normalizedPhone String? @db.VarChar(16)
+  reservationId   String?
+  reservationExpiresAt DateTime? @db.Timestamptz(3)
+  proofId         String?
+  proofExpiresAt  DateTime? @db.Timestamptz(3)
+  proofAttempt    Int?
+  proofOutcome    String? @db.VarChar(32)
+  credentialEpoch Int?
+  contactRevision Int?
+  activationArtifactSha String? @db.VarChar(40)
+  previousClaimId String?
+  claimId         String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  account         IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  actor           User? @relation("IdentityEventActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizationId, requestId])
+  @@index([organizationId, userId, createdAt, id])
+  @@map("identity_events")
+}
+
 model UserPreference {
   id             String       @id @default(cuid())
   userId         String       @unique
@@ -5913,6 +6169,7 @@ model MtmDepartment {
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
+  identityActorBinding IdentityActorBinding?
   attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceMonthMemberships MtmAttendanceMonthMember[]
   attendanceReminderSubjects MtmAttendanceReminderNotice[] @relation("AttendanceReminderSubject")

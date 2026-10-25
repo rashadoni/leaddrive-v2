@@ -2,7 +2,7 @@ import { officeAttendanceMobilePath } from "@/lib/mtm/attendance-employee-contra
 import { NextRequest, NextResponse } from "next/server"
 import jwt, { type JwtPayload } from "jsonwebtoken"
 import { prisma } from "./prisma"
-import { runWithRlsBypass } from "./rls-context"
+import { runWithRlsBypass, runWithTenant } from "./rls-context"
 import {
   createSessionFingerprint,
   hasCurrentSessionFingerprint,
@@ -11,6 +11,8 @@ import { requireAuthSecret } from "./auth-secret"
 import { isTenantCapabilityEnabled } from "./tenant-capabilities"
 import { resolveWorkforceExceptionResponseRecording } from "./workforce/exception-response-rollout"
 import { readAttendanceFeature } from "./mtm/attendance-feature"
+import { readLegacyCredentialBoundary } from "./identity/legacy-credential-boundary"
+import { isIdentityMobileToken, readIdentityMobileRuntimeClaims, resolveIdentityMobileRuntime } from "./identity/mobile-runtime"
 
 export function requireJwtSecret(): string {
   return requireAuthSecret()
@@ -18,6 +20,7 @@ export function requireJwtSecret(): string {
 export const JWT_SECRET: string = requireJwtSecret()
 
 export interface MobileAuthResult {
+  identityApplication?: "TIME" | "ROUTE_FIELD"
   agentId: string
   userId: string
   orgId: string
@@ -96,8 +99,15 @@ export function getMobileAuth(req: NextRequest): MobileTokenAuthResult | null {
   if (!authHeader?.startsWith("Bearer ")) return null
 
   const token = authHeader.slice(7)
+  if (token.length > 4096) return null
   // Skip API keys (ld_ prefix)
   if (token.startsWith("ld_")) return null
+
+  if (isIdentityMobileToken(token)) {
+    const claims = readIdentityMobileRuntimeClaims(token)
+    return claims ? { agentId: claims.actorId, userId: claims.sub, orgId: claims.organizationId,
+      name: "", email: "", role: "", identityApplication: claims.application } : null
+  }
 
   try {
     const verified = jwt.verify(token, JWT_SECRET)
@@ -143,6 +153,9 @@ export async function resolveMobileAuth(
   req: NextRequest,
   _options: MobileAuthOptions = {},
 ): Promise<MobileAuthResult | null> {
+  const authorization = req.headers.get("authorization")
+  if (authorization?.startsWith("Bearer ") && authorization.length > 4103) return null
+  if (authorization?.startsWith("Bearer ") && isIdentityMobileToken(authorization.slice(7))) return resolveIdentityMobileRuntime(req, authorization.slice(7), prisma)
   const decoded = getMobileAuth(req)
   if (!decoded) return null
   let currentRole: string | null = null
@@ -155,6 +168,12 @@ export async function resolveMobileAuth(
   }
 
   try {
+    // A verified legacy JWT must not bypass irreversible identity cutover.
+    // The reader checks the current link AND reviewed original actor owner;
+    // disabling rollout or relinking a card cannot restore the old token.
+    const legacyBoundary = await runWithTenant(decoded.orgId,
+      () => readLegacyCredentialBoundary(prisma, decoded.orgId, { kind: "ACTOR", actorId: decoded.agentId }))
+    if (legacyBoundary !== "LEGACY") return null
     // RLS: revocation check runs before any tenant context exists — bypass-wrapped.
     const agent = await runWithRlsBypass(() => prisma.mtmAgent.findFirst({
       where: { id: decoded.agentId, organizationId: decoded.orgId },

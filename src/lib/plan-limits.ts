@@ -7,6 +7,7 @@
 // plan-name helpers — they return 0 for unknown plan keys.
 import { PLANS, type PlanId } from "@/lib/modules"
 import { prisma } from "@/lib/prisma"
+import { identityCrmSeatUserWhere } from "@/lib/identity/crm-seat-policy"
 
 export type Resource = "users" | "contacts" | "ai_calls"
 
@@ -63,12 +64,13 @@ export function getPercentageUsed(
 }
 
 /**
- * Check if organization can add more users (DB-backed check using org.maxUsers).
+ * Check CRM seat allocation using org.maxUsers. Legacy/shadow User accounting
+ * stays unchanged; canonical Time/Field-only people do not consume CRM seats.
  */
 export async function checkUserLimit(orgId: string): Promise<{ allowed: boolean; message?: string }> {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
-    select: { maxUsers: true, _count: { select: { users: true } } },
+    select: { maxUsers: true, _count: { select: { users: { where: identityCrmSeatUserWhere(orgId) } } } },
   })
   if (!org) return { allowed: false, message: "Organization not found" }
   if (org.maxUsers === -1) return { allowed: true }

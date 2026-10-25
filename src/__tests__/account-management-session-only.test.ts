@@ -32,6 +32,13 @@ vi.mock("@/lib/api-auth", () => ({
   isAuthError: vi.fn((value: unknown) => value instanceof Response),
 }))
 
+// This suite tests human-session admission. Canonical migration/transaction
+// invariants are exercised by the real identity and endpoint PG contracts.
+vi.mock("@/lib/identity/legacy-credential-write", () => ({
+  withLegacyCredentialMaintenance: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    ({ allowed: true, value: await work(client) })),
+}))
+
 vi.mock("@/lib/prisma", () => ({
   logAudit: vi.fn(async () => undefined),
   prisma: {
@@ -78,6 +85,7 @@ vi.mock("bcryptjs", () => ({
   default: { hash: vi.fn(async () => "hashed-password") },
 }))
 
+import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
 import { requireAuth, requireSessionAuth } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { POST as createUser } from "@/app/api/v1/users/route"
@@ -144,6 +152,7 @@ describe("account-security management is browser-session-only", () => {
       const response = await attempt()
       expect(response.status).toBe(401)
     }
+    expect(withLegacyCredentialMaintenance).not.toHaveBeenCalled()
 
     expect(requireSessionAuth).toHaveBeenCalledTimes(accountManagementAttempts().length)
     expect(requireAuth).not.toHaveBeenCalled()
@@ -189,6 +198,8 @@ describe("account-security management is browser-session-only", () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(targetUser as never)
       .mockResolvedValueOnce(targetUser as never)
+      .mockResolvedValueOnce(targetUser as never)
+      // Credential maintenance re-reads the same target under its write lock.
       .mockResolvedValueOnce(targetUser as never)
     vi.mocked(prisma.user.create).mockResolvedValue({
       id: "user-new",

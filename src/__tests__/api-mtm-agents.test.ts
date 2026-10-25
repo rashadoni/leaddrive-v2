@@ -1,6 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { NextRequest } from "next/server"
 import { Prisma } from "@prisma/client"
+import bcrypt from "bcryptjs"
+
+vi.mock("@/lib/identity/legacy-credential-boundary", () => ({
+  readLegacyPhoneAssignmentBoundaryInTransaction: vi.fn(async () => "LEGACY"),
+}))
+const credentialFence = vi.hoisted(() => ({ allowed: true }))
+vi.mock("@/lib/identity/legacy-credential-write", () => ({
+  withLegacyCredentialMaintenance: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    credentialFence.allowed ? { allowed: true, value: await work(client) } : { allowed: false }),
+}))
 
 vi.mock("@/lib/prisma", async () => {
   const { makeMtmPrismaMock } = await import("./mocks/mtm-prisma")
@@ -63,6 +73,7 @@ function makeParams(id: string) {
 }
 
 beforeEach(() => {
+  credentialFence.allowed = true
   vi.clearAllMocks()
   // Route tests reuse user ids with different cards; never serve a memoized actor.
   resetMtmFieldScopeMemo()
@@ -753,6 +764,30 @@ describe("GET /api/v1/mtm/agents/[id]", () => {
 
 // ─── PUT /api/v1/mtm/agents/[id] ───────────────────────────
 describe("PUT /api/v1/mtm/agents/[id]", () => {
+  it.each([{ password: "BrandNew456!" }, { userId: null }, { phone: null }])("refuses an old credential, link or phone write when canonical ownership wins: %j", async body => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", role: "AGENT", status: "ACTIVE", userId: null, managerId: null, teamId: null } as any)
+    credentialFence.allowed = false
+    const response = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/a1", "PUT", body), makeParams("a1"))
+    expect(response.status).toBe(409)
+    expect((await response.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("does not reset credentials after a concurrent territory change", async () => {
+    mockAgentAdministrator()
+    const card = { id: "a1", role: "AGENT", status: "ACTIVE", userId: null, managerId: null, teamId: "old-team" }
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card as any)
+    vi.mocked(bcrypt.hash).mockImplementationOnce(async () => {
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ ...card, teamId: "new-team" } as any)
+      return "hashed-new-password" as never
+    })
+    const response = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/a1", "PUT", { password: "BrandNew456!" }), makeParams("a1"))
+    expect(response.status).toBe(409)
+    expect((await response.json()).code).toBe("IDENTITY_LEGACY_CARD_STATE_CHANGED")
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+  })
+
   it("returns 404 when agent not found", async () => {
     mockAgentAdministrator()
     vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 0 })
