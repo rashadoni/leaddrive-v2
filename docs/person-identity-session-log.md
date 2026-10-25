@@ -873,3 +873,12 @@ Next publish authorized branch/PR1028 now for exact complete canonical Auth.js/p
 Published e8181d1baf53ce9b605fff456f794da1f731d7c3 after108commit full-range secret scan PASS. PR1028 body rewritten around final Auth.js integration, preserved prior failures/verification and rollout limits. New focal40172289788/job121105497284, actual-cookie40172289753/job121105497196, full40172289770/build121105497611/static121105593957/type121105593928 running. pr-scope121105497434 metadataSUCCESS. No new-source success inferred from dc703. Native Playwright/Chromium only in isolated hosted Linux; no TinyFish, real browser login or phone control.
 
 Current stopping boundary for any interruption: published e818 source under exact hosted validation; inspect focal/new real cookie/full gate results and fix concrete failures, then remaining canonical onboarding/contact/stream/client prerequisites. Original physical Time24h remains independently active, earliest valid reconnection25Oct21:07UTC; not qualified before independent actual receipt/visual/backend/cleanup. No identity activation, merge or deploy.
+
+
+### 2026-10-25T07:24:55.558065+00:00 — remaining writer and rollback boundary audited while canonical gates run
+
+Read-only inventory confirmed old User/admin/attendance/actor-create phone writers still use legacy ownership only; employee profile currently locks actor before linked User, so adding identity tenant/User/actor lock order must be deliberate, not nested transaction patch. No these paths changed during pending Auth.js gate.
+
+Corrected architecture by append-only superseding note9.19: immutable SQL marker/epoch retention does not itself protect against rollback to a backend binary unaware of that marker. Current staged setup preserves old hashes by design and synthetic marker tests are not an actual old-artifact rollback rehearsal. Before activation require enforceable compatible server artifact floor, atomic legacy credential/cookie invalidation and old reset/setup/contact/create barriers with real races/rollback acceptance. No cutover/scrub/production mutation or proof of old-binary compatibility claimed. This prerequisite was previously too broadly described in8.6; older wording retained and explicitly superseded.
+
+Published e818 focused/new-cookie/full gates still running, no results inferred for new source. Next inspect exact gates/fix concrete failures; continue phone writer/onboarding/stream/client work before any activation.
