@@ -11,6 +11,7 @@ import { checkApplicationRevisions } from "./application-revision-contract.mjs"
 import { checkLegacyCrm } from "./legacy-crm-contract.mjs"
 import { checkCanonicalCrmSession } from "./crm-session-contract.mjs"
 import { checkContactRevision } from "./contact-revision-contract.mjs"
+import { checkApplicationEnrollment } from "./application-enrollment-contract.mjs"
 import { checkLegacyWrites } from "./legacy-write-contract.mjs"
 import { checkLegacyBoundary } from "./legacy-boundary-contract.mjs"
 import { checkMembershipTransactions } from "./membership-contract.mjs"
@@ -402,6 +403,7 @@ async function main() {
     await checkLegacyCrm({ admin, writer, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
     await checkCanonicalCrmSession({ admin, writer, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
     await checkContactRevision({ admin, writer, actor, build, checks: receipt.checks, phase: value => { phase = value } })
+    await checkApplicationEnrollment({ admin, writer, failing, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
 
     phase = "RLS_AND_IMMUTABILITY"
     for (const table of TABLES) {

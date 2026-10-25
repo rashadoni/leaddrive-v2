@@ -8,11 +8,13 @@ on:
       - 'scripts/identity/**'
       - 'src/lib/auth.ts'
       - 'src/lib/identity/**'
+      - 'src/app/api/v1/identity/**'
       - 'src/lib/api-auth.ts'
       - 'src/lib/two-factor-*.ts'
       - 'src/types/next-auth.d.ts'
       - 'prisma/schema.prisma'
       - 'prisma/migrations/20261103120000_identity_foundation/**'
+      - 'prisma/migrations/20261103121000_identity_contact_revision/**'
       - 'package-lock.json'
   workflow_dispatch:
 
@@ -98,12 +100,17 @@ jobs:
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
           DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema "$RUNNER_TEMP/identity-crm-base.prisma" --skip-generate
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261103120000_identity_foundation/migration.sql
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261103121000_identity_contact_revision/migration.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -v app_password="$IDENTITY_CRM_DB_PASSWORD" <<'SQL'
           CREATE ROLE identity_crm_browser LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD :'app_password';
           GRANT CONNECT ON DATABASE identity_crm_browser_test TO identity_crm_browser;
           GRANT USAGE ON SCHEMA public TO identity_crm_browser;
           GRANT SELECT ON ALL TABLES IN SCHEMA public TO identity_crm_browser;
           GRANT UPDATE ("lastLogin", "loginCount", "updatedAt") ON users TO identity_crm_browser;
+          GRANT UPDATE (version) ON identity_accounts TO identity_crm_browser;
+          GRANT UPDATE (id) ON organizations, identity_phone_claims, mtm_agents TO identity_crm_browser;
+          GRANT INSERT, UPDATE ON identity_application_grants, identity_application_memberships TO identity_crm_browser;
+          GRANT INSERT ON identity_events TO identity_crm_browser;
           SQL
           npx prisma validate
           npx prisma generate

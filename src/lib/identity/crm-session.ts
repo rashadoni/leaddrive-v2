@@ -37,7 +37,7 @@ export function parseIdentityCrmClaims(value: unknown): IdentityCrmClaims | null
 function sameClaims(a: IdentityCrmClaims, b: IdentityCrmClaims) {
   return FIELDS.every(key => a[key] === b[key])
 }
-async function authority(tx: Prisma.TransactionClient, organizationId: string, userId: string) {
+export async function readIdentityCrmAuthorityInTransaction(tx: Prisma.TransactionClient, organizationId: string, userId: string) {
   const scope = { organizationId, userId }
   const [company, person, account, claim, grant, setting] = await Promise.all([
     tx.organization.findFirst({ where: { id: organizationId }, select: { id: true, isActive: true } }),
@@ -58,7 +58,7 @@ async function authority(tx: Prisma.TransactionClient, organizationId: string, u
   return claims ? { claims, role: grant.role as IdentityCrmRole } : null
 }
 async function credential(tx: Prisma.TransactionClient, organizationId: string, userId: string) {
-  const state = await authority(tx, organizationId, userId)
+  const state = await readIdentityCrmAuthorityInTransaction(tx, organizationId, userId)
   if (!state) return null
   const account = await tx.identityAccount.findUnique({ where: { organizationId_userId: { organizationId, userId } }, select: { passwordHash: true } })
   if (!account || !isCanonicalIdentityPasswordHash(account.passwordHash)) return null
@@ -91,7 +91,7 @@ export async function resolveIdentityCrmSession(client: RegistryClient, organiza
   try {
     const claims = parseIdentityCrmClaims(hint)
     if (!claims || claims.organizationId !== organizationId || claims.userId !== userId) return null
-    const current = (await withIdentityMobileReadSnapshot(client, organizationId, tx => authority(tx, organizationId, userId))).value
+    const current = (await withIdentityMobileReadSnapshot(client, organizationId, tx => readIdentityCrmAuthorityInTransaction(tx, organizationId, userId))).value
     return current && sameClaims(current.claims, claims) ? current : null
   } catch { return null }
 }

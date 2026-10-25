@@ -50,15 +50,21 @@ try {
   assert.equal(table.relrowsecurity, true); assert.equal(table.relforcerowsecurity, true)
   if (process.argv[2] === "prepare") {
     assert.equal(await admin.organization.count(), 0); assert.equal(await admin.user.count(), 0)
-    await admin.organization.create({ data: { id: company, slug: company, name: "Fictional identity browser company", features: ["settings"], modules: { settings: true } } })
+    await admin.organization.create({ data: { id: company, slug: company, name: "Fictional identity browser company", features: ["settings"], modules: { settings: true, personnel: true, "route-field": true } } })
     const commonHash = await bcrypt.hash(password, 12), legacyHash = await bcrypt.hash(`${password}-legacy`, 4)
-    for (const [i, suffix] of ["ordinary", "setup", "totp"].entries()) {
-      await admin.user.create({ data: { id: userId(suffix), organizationId: company, email: email(suffix), name: `Fictional ${suffix}`, role: "admin",
+    for (const [i, suffix] of ["ordinary", "setup", "totp", "administrator", "employee"].entries()) {
+      await admin.user.create({ data: { id: userId(suffix), organizationId: company, email: email(suffix), name: `Fictional ${suffix}`, role: suffix === "administrator" ? "viewer" : "admin",
         passwordHash: legacyHash, require2fa: suffix === "setup", totpEnabled: suffix === "totp", smsAuthEnabled: false } })
       await admin.identityAccount.create({ data: { organizationId: company, userId: userId(suffix), passwordHash: commonHash, cutoverAt: new Date() } })
       await admin.identityPhoneClaim.create({ data: { organizationId: company, userId: userId(suffix), normalizedPhone: `+99450777001${i}`, verifiedAt: new Date(), accountVersion: 1 } })
-      await admin.identityApplicationGrant.create({ data: { organizationId: company, userId: userId(suffix), application: "CRM", status: "ACTIVE", role: "viewer" } })
+      if (suffix !== "employee") await admin.identityApplicationGrant.create({ data: { organizationId: company, userId: userId(suffix), application: "CRM", status: "ACTIVE", role: suffix === "administrator" ? "admin" : "viewer" } })
     }
+    for (const [application, role] of [["TIME", "EMPLOYEE"], ["ROUTE_FIELD", "AGENT"]]) {
+      const actorId = userId(`employee-${application}`)
+      await admin.mtmAgent.create({ data: { id: actorId, organizationId: company, userId: userId("employee"), name: "Fictional employee", role, status: "ACTIVE", attendanceParticipant: application === "TIME" } })
+      await admin.identityActorBinding.create({ data: { organizationId: company, userId: userId("employee"), actorId, reviewedByUserId: userId("administrator"), reviewReference: `fixture-${application}`, accountVersion: 1 } })
+    }
+    await admin.mtmSetting.create({ data: { organizationId: company, key: "attendanceEnabled", value: true } })
     await admin.mtmSetting.create({ data: { organizationId: company, key: "identityAuthV1", value: { version: 1, enabled: true } } })
     process.stdout.write("IDENTITY_CRM_BROWSER_FIXTURE_PREPARED\n")
   } else {
@@ -193,8 +199,34 @@ try {
       assert.equal(after.user[suffix === "setup" ? "needsSetup2fa" : "needs2fa"], true)
       const response = await admitted.current.request.get("/api/v1/users", { timeout: 120000, maxRedirects: 0 })
       assert.equal(response.status(), 403)
+      const grantAttempt = await admitted.current.request.put(`/api/v1/identity/people/${userId("employee")}/applications`, { timeout: 120000, data: {} })
+      assert.equal(grantAttempt.status(), 403)
     }
     check("shared_password_or_actual_session_update_cannot_satisfy_crm_mfa_or_forge_private_grants")
+    phase("ACTUAL_COOKIE_ADMINISTRATOR_MODULE_ENROLLMENT")
+    const enrollmentUrl = `/api/v1/identity/people/${userId("employee")}/applications`
+    const enrollment = { actorId: userId("employee-TIME"), application: "TIME", role: "EMPLOYEE", status: "ACTIVE",
+      expectedAccountVersion: 1, expectedGrantVersion: 0, expectedMembershipVersion: 0, requestId: "cookie-time-enroll" }
+    const viewer = await login("ordinary"); assert.equal(viewer.error, null)
+    assert.equal((await viewer.current.request.put(enrollmentUrl, { timeout: 120000, data: enrollment })).status(), 403)
+    const administrator = await login("administrator"); assert.equal(administrator.error, null)
+    assert.equal((await session(administrator.current)).user.role, "admin")
+    assert.equal((await admin.user.findUniqueOrThrow({ where: { id: userId("administrator") } })).role, "viewer")
+    assert.equal((await administrator.current.request.put(enrollmentUrl, { timeout: 120000, data: { ...enrollment, organizationId: "other-company" } })).status(), 400)
+    const enrolled = await administrator.current.request.put(enrollmentUrl, { timeout: 120000, data: enrollment })
+    assert.equal(enrolled.status(), 200)
+    assert.match(enrolled.headers()["cache-control"], /no-store/)
+    assert.deepEqual(await enrolled.json(), { success: true, data: { accountVersion: 2, grantVersion: 1, membershipVersion: 1, replayed: false } })
+    const field = await administrator.current.request.put(enrollmentUrl, { timeout: 120000, data: { ...enrollment,
+      actorId: userId("employee-ROUTE_FIELD"), application: "ROUTE_FIELD", role: "AGENT", expectedAccountVersion: 2, requestId: "cookie-field-enroll" } })
+    assert.equal(field.status(), 200)
+    assert.equal(await admin.identityApplicationMembership.count({ where: { organizationId: company, userId: userId("employee"), status: "ACTIVE" } }), 2)
+    assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: company, userId: userId("employee"), application: "CRM" } }), 0)
+    await admin.identityApplicationGrant.update({ where: grantKey("administrator"), data: { status: "REVOKED", version: 2 } })
+    const revokedEnrollment = await administrator.current.request.put(enrollmentUrl, { timeout: 120000, maxRedirects: 0, data: enrollment })
+    assert.ok([401, 403, 307].includes(revokedEnrollment.status()))
+    assert.equal(await admin.identityEvent.count({ where: { organizationId: company, userId: userId("employee"), action: "MEMBERSHIP_CHANGED" } }), 2)
+    check("actual_cookie_admin_enrolls_separate_time_field_actors_without_crm_access_and_revocation_mfa_viewer_scope_are_enforced")
     result.status = "PASS"; result.phase = "COMPLETE"
     process.stdout.write(`IDENTITY_CRM_BROWSER_PASS checks=${result.checks.length}\n`)
   }
